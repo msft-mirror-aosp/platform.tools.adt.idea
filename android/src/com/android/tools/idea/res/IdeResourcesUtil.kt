@@ -83,6 +83,7 @@ import com.android.tools.lint.detector.api.computeResourceName
 import com.android.tools.lint.detector.api.stripIdPrefix
 import com.android.tools.res.ResourceNamespacing
 import com.android.utils.SdkUtils
+import com.android.utils.XmlUtils
 import com.android.utils.isBindingExpression
 import com.google.common.base.CharMatcher
 import com.google.common.base.Joiner
@@ -840,7 +841,6 @@ fun getTextContentForRendering(tag: XmlTag): String = getTextContent(tag, ignore
 private fun getTextContent(tag: XmlTag, ignoreXliff: Boolean): String {
   // We can't just use tag.getValue().getTrimmedText() here because we need to remove
   // intermediate elements such as <xliff> text:
-  // TODO: Make sure I correct handle HTML content for XML items in <string> nodes!
   // For example, for the following string we want to compute "Share with (Bluetooth)" (for
   // getTextContent) or "Share with %s" (for getTextContentForRendering):
   // <string name="share">Share with <xliff:g id="application_name"
@@ -895,23 +895,41 @@ private fun appendText(sb: StringBuilder, tag: XmlTag, ignoreXliff: Boolean) {
     if (child is XmlText) {
       sb.append(getXmlTextValue(child))
     } else if (child is XmlTag) {
-      // xliff support
-      if (!ignoreXliff && XLIFF_G_TAG == child.localName && child.namespace.startsWith(XLIFF_NAMESPACE_PREFIX)) {
-        val example = child.getAttributeValue(ATTR_EXAMPLE)
-        if (example != null) {
-          // <xliff:g id="number" example="7">%d</xliff:g> minutes => "(7) minutes"
-          sb.append('(').append(example).append(')')
-          continue
-        } else {
-          val id = child.getAttributeValue(ATTR_ID)
-          if (id != null) {
-            // Step <xliff:g id="step_number">%1$d</xliff:g> => Step ${step_number}
-            sb.append('$').append('{').append(id).append('}')
+      val isXliff = XLIFF_G_TAG == child.localName && child.namespace.startsWith(XLIFF_NAMESPACE_PREFIX)
+      if (isXliff) {
+        // xliff support
+        if (!ignoreXliff) {
+          val example = child.getAttributeValue(ATTR_EXAMPLE)
+          if (example != null) {
+            // <xliff:g id="number" example="7">%d</xliff:g> minutes => "(7) minutes"
+            sb.append('(').append(example).append(')')
             continue
+          } else {
+            val id = child.getAttributeValue(ATTR_ID)
+            if (id != null) {
+              // Step <xliff:g id="step_number">%1$d</xliff:g> => Step ${step_number}
+              sb.append('$').append('{').append(id).append('}')
+              continue
+            }
           }
         }
+        appendText(sb, child, ignoreXliff)
+      } else if (ignoreXliff) {
+        sb.append('<').append(child.name)
+        for (attribute in child.attributes) {
+          sb.append(' ').append(attribute.name).append("=\"")
+          val value = attribute.value
+          if (value != null) {
+            XmlUtils.appendXmlAttributeValue(sb, value)
+          }
+          sb.append('"')
+        }
+        sb.append('>')
+        appendText(sb, child, true)
+        sb.append("</").append(child.name).append('>')
+      } else {
+        appendText(sb, child, false)
       }
-      appendText(sb, child, ignoreXliff)
     }
   }
 }

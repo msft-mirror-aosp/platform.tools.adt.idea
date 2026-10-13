@@ -174,7 +174,7 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
    * Increment when making changes that may affect content of repository cache files.
    * Used together with CachingData.codeVersion. Important for developer builds.
    */
-  static final String CACHE_FILE_FORMAT_VERSION = "2";
+  static final String CACHE_FILE_FORMAT_VERSION = "3";
   private static final byte[] CACHE_FILE_HEADER = "Resource cache".getBytes(UTF_8);
   /**
    * Maximum fraction of resources out of date in the cache for the cache to be considered fresh.

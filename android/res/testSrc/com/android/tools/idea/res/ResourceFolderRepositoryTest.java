@@ -359,7 +359,7 @@ public class ResourceFolderRepositoryTest {
 
   /** Tests handling of xliff markup. */
   @Test
-  public void xliff() {
+  public void xliff() throws Exception {
     VirtualFile file1 = myFixture.copyFileToProject(XLIFF, "res/values/myvalues.xml");
     PsiFile psiFile1 = PsiManager.getInstance(myProject).findFile(file1);
     assertThat(psiFile1).isNotNull();
@@ -368,13 +368,41 @@ public class ResourceFolderRepositoryTest {
     assertThat(
       (Object)repository.getResources(RES_AUTO, ResourceType.STRING, "share_with_application").get(0).getResourceValue().getValue()).isEqualTo(
       "Share your score of (1337) with (Bluetooth)!");
+    assertThat(
+      repository.getResources(RES_AUTO, ResourceType.STRING, "share_with_application").get(0).getResourceValue().getRenderingValue()).isEqualTo(
+      "\n        Share your score of %1$s\n        with %2$s!\n    ");
     assertThat(repository.getResources(RES_AUTO, ResourceType.STRING, "description_call").get(0).getResourceValue().getValue()).isEqualTo(
       "Call ${name}");
+    assertThat(repository.getResources(RES_AUTO, ResourceType.STRING, "description_call").get(0).getResourceValue().getRenderingValue()).isEqualTo(
+      "Call %1$s");
     assertThat(
       (Object)repository.getResources(RES_AUTO, ResourceType.STRING, "callDetailsDurationFormat").get(0).getResourceValue().getValue()).isEqualTo(
       "(42) mins (28) secs");
+    assertThat(
+      repository.getResources(RES_AUTO, ResourceType.STRING, "callDetailsDurationFormat").get(0).getResourceValue().getRenderingValue()).isEqualTo(
+      "%s mins %s secs");
     assertThat(repository.getResources(RES_AUTO, ResourceType.STRING, "other").get(0).getResourceValue().getValue()).isEqualTo(
       "${number_of_sessions} sessions removed from your schedule");
+    assertThat(repository.getResources(RES_AUTO, ResourceType.STRING, "other").get(0).getResourceValue().getRenderingValue()).isEqualTo(
+      "%1$s sessions removed from your schedule");
+
+    // Also verify PsiResourceItem handling of xliff and HTML tags after a PSI edit.
+    PsiDocumentManager documentManager = PsiDocumentManager.getInstance(myProject);
+    Document document = documentManager.getDocument(psiFile1);
+    assertThat(document).isNotNull();
+    WriteCommandAction.runWriteCommandAction(null, () -> {
+      int offset = document.getText().indexOf("</resources>");
+      document.insertString(offset, "<string name=\"styled_xliff\"><b><xliff:g id=\"minutes\" example=\"1\">%1$02d</xliff:g></b></string>\n");
+      documentManager.commitDocument(document);
+    });
+    waitForUpdates(repository);
+    assertThat(
+      repository.getResources(RES_AUTO, ResourceType.STRING, "share_with_application").get(0).getResourceValue().getRenderingValue()).isEqualTo(
+      "\n        Share your score of %1$s\n        with %2$s!\n    ");
+    ResourceItem styledItem = getOnlyItem(repository, ResourceType.STRING, "styled_xliff");
+    assertThat(styledItem).isInstanceOf(PsiResourceItem.class);
+    assertThat(styledItem.getResourceValue().getValue()).isEqualTo("(1)");
+    assertThat(styledItem.getResourceValue().getRenderingValue()).isEqualTo("<b>%1$02d</b>");
   }
 
   @Test
