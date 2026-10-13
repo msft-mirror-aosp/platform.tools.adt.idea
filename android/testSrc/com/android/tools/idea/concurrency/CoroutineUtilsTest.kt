@@ -114,7 +114,7 @@ class CoroutineUtilsTest {
       /** Fake method that has to run on the UI thread. */
       @UiThread
       fun updateLabelText(@Suppress("UNUSED_PARAMETER") text: String) {
-        checkThread(UI_THREAD)
+        assertTrue(ApplicationManager.getApplication().isDispatchThread)
         textUpdated.countDown()
       }
 
@@ -135,15 +135,15 @@ class CoroutineUtilsTest {
 
       @UiThread
       fun buttonClicked() {
-        checkThread(UI_THREAD)
+        assertTrue(ApplicationManager.getApplication().isDispatchThread)
 
         launch(Dispatchers.EDT) {
-          checkThread(UI_THREAD)
+          assertTrue(ApplicationManager.getApplication().isDispatchThread)
           // This suspends the coroutine, releasing the IO thread until computation is done on the worker thread.
           val computedData: String = withContext(Dispatchers.Default) { computeData() }
           val anotherData = suspendComputeData()
 
-          checkThread(UI_THREAD)
+          assertTrue(ApplicationManager.getApplication().isDispatchThread)
           updateLabelText(computedData + anotherData)
         }
       }
@@ -151,8 +151,8 @@ class CoroutineUtilsTest {
 
     val fooManager = FooManager()
     Disposer.register(projectRule.project, fooManager)
-    uiExecutor.submit { fooManager.buttonClicked() }
-    textUpdated.await(2, TimeUnit.SECONDS)
+    runInEdtAndWait { fooManager.buttonClicked() }
+    assertTrue(textUpdated.await(10, TimeUnit.SECONDS))
   }
 
   @Test
