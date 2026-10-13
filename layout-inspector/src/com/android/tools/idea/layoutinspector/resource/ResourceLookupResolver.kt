@@ -51,8 +51,6 @@ import com.android.tools.idea.layoutinspector.model.ComposeViewNode
 import com.android.tools.idea.layoutinspector.model.ViewNode
 import com.android.tools.idea.layoutinspector.properties.InspectorPropertyItem
 import com.android.tools.idea.layoutinspector.properties.PropertyType.COLOR
-import com.android.tools.idea.model.Namespacing
-import com.android.tools.idea.namespacing
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.projectsystem.getTokenOrNull
 import com.android.tools.idea.res.ResourceNamespaceContext
@@ -97,27 +95,25 @@ fun findFacetFromPackage(project: Project, packageName: String): AndroidFacet? {
 }
 
 /**
- * Map a [namespace] to [ResourceNamespace.RES_AUTO] if namespaces are not turned on for the [facet].
+ * Map a [namespace] to [ResourceNamespace.RES_AUTO] if it is not [ResourceNamespace.ANDROID].
  *
- * The namespaces from the agent are using the real package names. Map these into [ResourceNamespace.RES_AUTO] if the design resources are
+ * The namespaces from the agent are using the real package names. Map these into [ResourceNamespace.RES_AUTO] since design resources are
  * not using namespaces.
  */
-fun mapNamespace(facet: AndroidFacet?, namespace: ResourceNamespace): ResourceNamespace =
-  when {
-    facet != null && facet.namespacing == Namespacing.REQUIRED -> namespace
-    namespace == ResourceNamespace.ANDROID -> ResourceNamespace.ANDROID
+fun mapNamespace(namespace: ResourceNamespace): ResourceNamespace =
+  when (namespace) {
+    ResourceNamespace.ANDROID -> ResourceNamespace.ANDROID
     else -> ResourceNamespace.RES_AUTO
   }
 
 /**
- * Adjust a [ResourceReference] depending on namespaces being turned on for the [facet].
+ * Adjust a [ResourceReference] to use [ResourceNamespace.RES_AUTO] if its namespace is not [ResourceNamespace.ANDROID].
  *
- * The namespaces in resource references from the agent are using the real package names. Map these into [ResourceNamespace.RES_AUTO] if the
+ * The namespaces in resource references from the agent are using the real package names. Map these into [ResourceNamespace.RES_AUTO] since
  * design resources are not using namespaces.
  */
-fun mapReference(facet: AndroidFacet?, reference: ResourceReference?): ResourceReference? =
-  if (reference == null || facet?.namespacing == Namespacing.REQUIRED) reference
-  else ResourceReference(mapNamespace(facet, reference.namespace), reference.resourceType, reference.name)
+fun mapReference(reference: ResourceReference?): ResourceReference? =
+  if (reference == null) null else ResourceReference(mapNamespace(reference.namespace), reference.resourceType, reference.name)
 
 /** Find a [Navigatable] given a [PsiElement]. */
 fun findNavigatable(element: PsiElement): Navigatable? =
@@ -551,16 +547,6 @@ class ResourceLookupResolver(
     xmlFile.rootTag?.accept(locator)
     return locator.foundXmlTag?.also { if (isViewLayout) view.tag = it }
   }
-
-  /**
-   * Map a [namespace] to [ResourceNamespace.RES_AUTO] if namespaces are not turned on.
-   *
-   * The namespaces in resource references from the agent are using the real package names. Map these into [ResourceNamespace.RES_AUTO] if
-   * the design resources are not handled with namespaces.
-   */
-  private fun mapNamespace(namespace: ResourceNamespace): ResourceNamespace = mapNamespace(appFacet, namespace)
-
-  private fun mapReference(reference: ResourceReference?): ResourceReference? = mapReference(appFacet, reference)
 
   /** A [PsiRecursiveElementVisitor] to find a view in an [XmlFile]. */
   private class ViewLocator(view: ViewNode) : PsiRecursiveElementVisitor() {
