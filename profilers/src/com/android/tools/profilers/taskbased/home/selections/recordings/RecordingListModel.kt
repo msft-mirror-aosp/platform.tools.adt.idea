@@ -46,6 +46,13 @@ class RecordingListModel(
   private val _selectedRecording = MutableStateFlow<SessionItem?>(null)
   val selectedRecording = _selectedRecording.asStateFlow()
 
+  /**
+   * When this model (one per Profiler tool window) was created. The transport database is application-scoped and outlives the window, so
+   * recordings imported earlier, e.g. before the project was closed and reopened, reappear as newly added. An imported session's
+   * `startTimestampEpochMs` is its import time, so comparing the two tells these apart from fresh imports.
+   */
+  private val creationTimeEpochMs = System.currentTimeMillis()
+
   init {
     profilers.sessionsManager.addDependency(this).onChange(SessionAspect.SESSIONS) { sessionItemsUpdated() }
   }
@@ -102,17 +109,13 @@ class RecordingListModel(
     autoOpenRecordingIfNewlyImported(oldRecordingList, newRecordingList)
   }
 
-  /**
-   * Checks whether the updated recording list indicates the addition of a single, new imported recording. If so, the recording is
-   * automatically selected and opened.
-   */
+  /** If exactly one newly added recording was imported since this model was created (see [creationTimeEpochMs]), selects and opens it. */
   private fun autoOpenRecordingIfNewlyImported(oldRecordingList: List<SessionItem>, newRecordingList: List<SessionItem>) {
     val difference = newRecordingList.toSet() - oldRecordingList.toSet()
-    // Confirm there is one, new recording added. If so, auto open the new recording.
-    val newRecording = difference.firstOrNull()
-    if (difference.size == 1 && newRecording != null && SessionsManager.isSessionImported(newRecording.session)) {
-      openRecording(newRecording)
-    }
+    // Filter first, so other new recordings (e.g. older imports reappearing after a reopen) don't block a fresh import.
+    difference
+      .singleOrNull { SessionsManager.isSessionImported(it.session) && it.sessionMetaData.startTimestampEpochMs >= creationTimeEpochMs }
+      ?.let(::openRecording)
   }
 
   /** Selects the recording and launches it in the task tab with its respective task type. */

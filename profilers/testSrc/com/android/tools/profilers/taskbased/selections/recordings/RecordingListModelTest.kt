@@ -33,6 +33,7 @@ import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.taskbased.home.selections.recordings.RecordingListModel
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandlerFactory
 import com.google.common.truth.Truth.assertThat
+import java.util.concurrent.TimeUnit
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -48,6 +49,7 @@ class RecordingListModelTest {
   private lateinit var myManager: SessionsManager
   private lateinit var ideProfilerServices: FakeIdeProfilerServices
   private lateinit var recordingListModel: RecordingListModel
+  private var openProfilerTaskCount = 0
 
   @Before
   fun setup() {
@@ -56,7 +58,7 @@ class RecordingListModelTest {
     myManager = myProfilers.sessionsManager
     val taskHandlers = ProfilerTaskHandlerFactory.createTaskHandlers(myManager)
     taskHandlers.forEach { myProfilers.addTaskHandler(it.key, it.value) }
-    recordingListModel = RecordingListModel(myProfilers, taskHandlers, {}) {}
+    recordingListModel = RecordingListModel(myProfilers, taskHandlers, {}) { openProfilerTaskCount++ }
     ideProfilerServices.enableTaskBasedUx(true)
   }
 
@@ -261,6 +263,63 @@ class RecordingListModelTest {
     // Make sure the recording list has updated.
     recordingList = recordingListModel.recordingList.value.toList()
     assertThat(recordingList).isEmpty()
+  }
+
+  @Test
+  fun `recording imported after model creation is auto opened`() {
+    addImportedHeapDumpRecording(importTimeEpochMs = System.currentTimeMillis())
+
+    assertThat(recordingListModel.selectedRecording.value).isEqualTo(recordingListModel.recordingList.value.single())
+    assertThat(openProfilerTaskCount).isEqualTo(1)
+  }
+
+  @Test
+  fun `recording imported before model creation is not auto opened`() {
+    // Mimics reopening a project: the recording was imported into the application-scoped transport database before this model (i.e. this
+    // Profiler window) was created, so it is only being listed again.
+    addImportedHeapDumpRecording(importTimeEpochMs = 1L)
+
+    assertThat(recordingListModel.recordingList.value).hasSize(1)
+    assertThat(recordingListModel.selectedRecording.value).isNull()
+    assertThat(openProfilerTaskCount).isEqualTo(0)
+  }
+
+  @Test
+  fun `fresh import is auto opened when an older import is already listed`() {
+    // After a project reopen, the older import is listed again without being opened.
+    addImportedHeapDumpRecording(importTimeEpochMs = 1L)
+    assertThat(openProfilerTaskCount).isEqualTo(0)
+
+    val freshSessionId = addImportedHeapDumpRecording(importTimeEpochMs = System.currentTimeMillis(), startUs = 3L)
+
+    assertThat(recordingListModel.recordingList.value).hasSize(2)
+    assertThat(recordingListModel.selectedRecording.value?.session?.sessionId).isEqualTo(freshSessionId)
+    assertThat(openProfilerTaskCount).isEqualTo(1)
+  }
+
+  /**
+   * Adds a completed, imported Heap Dump recording spanning [startUs, startUs + 1] to the transport database, mirroring what importing an
+   * .hprof file creates. Returns the recording's session id.
+   */
+  private fun addImportedHeapDumpRecording(importTimeEpochMs: Long, startUs: Long = 1L): Long {
+    val streamId = 1L
+    val startNs = TimeUnit.MICROSECONDS.toNanos(startUs)
+    val endNs = TimeUnit.MICROSECONDS.toNanos(startUs + 1)
+    // This overload uses a pid of 0, which marks the session as imported (see SessionsManager.isSessionImported).
+    val sessionStartEvent =
+      ProfilersTestData.generateSessionStartEvent(
+        streamId,
+        startNs,
+        startNs,
+        Common.SessionData.SessionStarted.SessionType.MEMORY_CAPTURE,
+        importTimeEpochMs,
+      )
+    myTransportService.addEventToStream(streamId, sessionStartEvent.build())
+    myTransportService.addEventToStream(streamId, ProfilersTestData.generateSessionEndEvent(streamId, startNs, endNs).build())
+    val heapDumpInfo = Memory.HeapDumpInfo.newBuilder().setStartTime(startNs).setEndTime(endNs).build()
+    myTransportService.addEventToStream(streamId, ProfilersTestData.generateMemoryHeapDumpData(startNs, startUs, heapDumpInfo).build())
+    myManager.update()
+    return startNs
   }
 
   companion object {
