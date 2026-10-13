@@ -422,6 +422,52 @@ class DeviceMenuActionTest {
         .trimIndent()
     assertThat(actual).contains(expectedSection)
   }
+
+  @Test
+  fun testDeviceFilterExcludesDevices() = runBlocking {
+    val configuration = Mockito.mock(Configuration::class.java)
+    val configurationModelModule: ConfigurationModelModule = StudioConfigurationModelModule(projectRule.projectRule.module)
+    whenever(configuration.settings).thenReturn(ConfigurationManager.getOrCreateInstance(projectRule.projectRule.module))
+    whenever(configuration.configModule).thenReturn(configurationModelModule)
+    val dataContext = SimpleDataContext.getSimpleContext(CONFIGURATIONS, listOf(configuration))
+
+    // With no filter, "Display Glasses" is present in the menu under XR.
+    val unfilteredMenu = DeviceMenuAction()
+    unfilteredMenu.updateActions(dataContext)
+    val unfilteredActual = withContext(Dispatchers.EDT) {
+      prettyPrintActions(unfilteredMenu, { action: AnAction -> !isAvdAction(action) }, dataContext)
+    }
+    assertThat(unfilteredActual).contains("Display Glasses (450 × 450 dp, mdpi)")
+
+    // With a filter excluding AI Glasses, "Display Glasses" is excluded while other devices remain.
+    val filteredMenu = DeviceMenuAction(deviceFilter = { !Device.isAiGlasses(it) })
+    filteredMenu.updateActions(dataContext)
+    val filteredActual = withContext(Dispatchers.EDT) {
+      prettyPrintActions(filteredMenu, { action: AnAction -> !isAvdAction(action) }, dataContext)
+    }
+    assertThat(filteredActual).doesNotContain("Display Glasses")
+    assertThat(filteredActual).contains("XR Headset (1280 × 1279 dp, xhdpi)")
+    assertThat(filteredActual).contains("Pixel 10")
+  }
+
+  @Test
+  fun testDeviceFilterExcludingNonGlassesOmitsReferenceDevicesSectionAndEmptySubmenus() = runBlocking {
+    val configuration = Mockito.mock(Configuration::class.java)
+    val configurationModelModule: ConfigurationModelModule = StudioConfigurationModelModule(projectRule.projectRule.module)
+    whenever(configuration.settings).thenReturn(ConfigurationManager.getOrCreateInstance(projectRule.projectRule.module))
+    whenever(configuration.configModule).thenReturn(configurationModelModule)
+    val dataContext = SimpleDataContext.getSimpleContext(CONFIGURATIONS, listOf(configuration))
+
+    val glassesOnlyMenu = DeviceMenuAction(deviceFilter = { Device.isAiGlasses(it) })
+    glassesOnlyMenu.updateActions(dataContext)
+    val actual = withContext(Dispatchers.EDT) {
+      prettyPrintActions(glassesOnlyMenu, { action: AnAction -> !isAvdAction(action) }, dataContext)
+    }
+    assertThat(actual).doesNotContain("Reference Devices")
+    assertThat(actual).doesNotContain("Phones")
+    assertThat(actual).doesNotContain("Tablets")
+    assertThat(actual).contains("Display Glasses (450 × 450 dp, mdpi)")
+  }
 }
 
 private class TestConfigurationSettings(private val testDevices: List<Device>) : ConfigurationSettings {

@@ -46,7 +46,6 @@ import com.android.tools.sdk.CompatibilityRenderTarget
 import com.google.common.collect.ImmutableList
 import com.google.common.truth.Truth.assertThat
 import org.junit.Assert
-import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
@@ -125,11 +124,11 @@ class PreviewConfigurationTest {
       }
 
     previewElement.applyTo(configuration, { deviceAiGlasses })
-    assertNotNull(configuration.imageTransformation)
+    assertThat(configuration.imageTransformation).isNotNull()
 
     previewElement.configuration = devicePhoneConfiguration
     previewElement.applyTo(configuration, { devicePhone })
-    assertNotNull(configuration.imageTransformation)
+    assertThat(configuration.imageTransformation).isNull()
   }
 
   @Test

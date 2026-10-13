@@ -22,13 +22,22 @@ import com.android.sdklib.devices.Device
 import com.android.tools.configurations.Configuration
 import com.android.tools.idea.actions.SCENE_VIEW
 import com.android.tools.idea.common.surface.SceneView
+import com.android.tools.idea.compose.PsiComposePreviewElementInstance
+import com.android.tools.idea.compose.preview.PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.preview.BackgroundManager
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.preview.PreviewConfiguration
+import com.android.tools.preview.PreviewDisplaySettings
+import com.android.tools.preview.SingleComposePreviewElementInstance
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
-import com.intellij.testFramework.ApplicationRule
+import com.intellij.psi.PsiElement
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.testFramework.TestActionEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
@@ -38,7 +47,7 @@ import org.mockito.kotlin.whenever
 
 class GlassesBlendDropdownActionTest {
 
-  @get:Rule val applicationRule = ApplicationRule()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
   @get:Rule val flagRule = FlagRule(StudioFlags.COMPOSE_PREVIEW_AI_GLASSES_PREVIEW, true)
 
@@ -70,6 +79,55 @@ class GlassesBlendDropdownActionTest {
 
     val event3 = setUpDeviceAndActionVisibility(AI_GLASSES_TAG.id, PreviewMode.AnimationInspection(mock()))
     assertThat(event3.presentation.isEnabledAndVisible).isFalse()
+  }
+
+  @Test
+  fun `selecting No Background clears background in BackgroundManager`() {
+    val previewBody = mock<SmartPsiElementPointer<PsiElement>>()
+    whenever(previewBody.project).thenReturn(projectRule.project)
+    val previewElement: PsiComposePreviewElementInstance =
+      SingleComposePreviewElementInstance(
+        methodFqn = "TestKt.Preview",
+        displaySettings =
+          PreviewDisplaySettings(
+            name = "Preview",
+            baseName = "Preview",
+            parameterName = null,
+            group = null,
+            showDecoration = false,
+            background = PreviewDisplaySettings.Background.Default,
+            organizationGroup = "",
+            organizationName = "",
+          ),
+        previewElementDefinition = null,
+        previewBody = previewBody,
+        configuration = PreviewConfiguration.cleanAndGet(),
+      )
+    val dataContext =
+      SimpleDataContext.builder()
+        .add(CommonDataKeys.PROJECT, projectRule.project)
+        .add(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE, previewElement)
+        .build()
+
+    val noneAction = SetGlassesBackgroundAction(GlassesBackground.NONE)
+    val lightAction = SetGlassesBackgroundAction(GlassesBackground.LIGHT_BACKGROUND)
+    val backgroundManager = BackgroundManager.getInstance(projectRule.project)
+
+    // Initially no glasses background is set; NONE is selected.
+    assertThat(noneAction.isSelected(TestActionEvent.createTestEvent(noneAction, dataContext))).isTrue()
+    assertThat(lightAction.isSelected(TestActionEvent.createTestEvent(lightAction, dataContext))).isFalse()
+
+    // Selecting LIGHT_BACKGROUND stores Background.Image in BackgroundManager.
+    lightAction.setSelected(TestActionEvent.createTestEvent(lightAction, dataContext), true)
+    assertThat(backgroundManager.getBackground(previewBody)?.image).isEqualTo(GlassesBackground.LIGHT_BACKGROUND.imageTransform)
+    assertThat(lightAction.isSelected(TestActionEvent.createTestEvent(lightAction, dataContext))).isTrue()
+    assertThat(noneAction.isSelected(TestActionEvent.createTestEvent(noneAction, dataContext))).isFalse()
+
+    // Selecting NONE removes the background entry from BackgroundManager so default showBackground is restored.
+    noneAction.setSelected(TestActionEvent.createTestEvent(noneAction, dataContext), true)
+    assertThat(backgroundManager.getBackground(previewBody)).isNull()
+    assertThat(noneAction.isSelected(TestActionEvent.createTestEvent(noneAction, dataContext))).isTrue()
+    assertThat(lightAction.isSelected(TestActionEvent.createTestEvent(lightAction, dataContext))).isFalse()
   }
 
   /**

@@ -16,9 +16,12 @@
 package com.android.tools.idea.compose.preview.resize
 
 import com.android.SdkConstants
+import com.android.flags.junit.FlagRule
+import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Device
 import com.android.tools.adtui.stdui.OUTLINE_PROPERTY
 import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.adtui.swing.findAllDescendants
 import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.adtui.swing.popup.PopupRule
 import com.android.tools.configurations.Configuration
@@ -31,12 +34,14 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.compose.preview.PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.configurations.isReferenceDevice
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.NlModelBuilderUtil
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
 import com.android.tools.preview.MAX_DIMENSION_DP
 import com.android.tools.preview.SingleComposePreviewElementInstance
+import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.ide.ui.laf.darcula.ui.DarculaTextFieldUI
@@ -79,8 +84,9 @@ import org.junit.runners.JUnit4
 class ResizePanelTest {
   private val projectRule = AndroidProjectRule.withSdk()
   private val popupRule = PopupRule()
+  private val flagRule = FlagRule(StudioFlags.AI_GLASSES_DEVICE_SUPPORT_ENABLED, true)
 
-  @get:Rule val rule = RuleChain(projectRule, popupRule)
+  @get:Rule val rule = RuleChain(projectRule, popupRule, flagRule)
 
   private lateinit var resizePanel: ResizePanel
   private lateinit var fakeUi: FakeUi
@@ -996,5 +1002,52 @@ class ResizePanelTest {
 
     assertEquals(newDevice.id, refreshedSceneManager.model.configuration.cachedDevice?.id)
     assertTrue(refreshedSceneManager.sceneRenderConfiguration.needsInflation.get())
+  }
+
+  @Test
+  fun `device picker dropdown excludes AI Glasses for non-AI-Glasses previews and excludes non-glasses devices when baseline is AI Glasses`() = runInEdtAndGet {
+    setupAndShowPanel()
+    assertThat(Device.isAiGlasses(configuration.device)).isFalse()
+
+    // 1. For a standard phone preview, open device dropdown and verify Display Glasses is not present
+    fakeUi.clickOn(devicePicker)
+    fakeUi.layoutAndDispatchEvents()
+    val phonePopupMenu = popupRule.popupContents
+    assertThat(phonePopupMenu).named("Popup menu not found").isNotNull()
+    val phoneMenuItems = phonePopupMenu!!.findAllDescendants<ActionMenuItem>().map { it.text }.toList()
+    popupRule.mockPopup.hide()
+    phonePopupMenu.isVisible = false
+
+    assertThat(phoneMenuItems.any { it.contains("Display Glasses") }).isFalse()
+    assertThat(phoneMenuItems.any { it.contains("Medium Phone") || it.contains("Pixel") }).isTrue()
+
+    // 2. Set an AI Glasses device as the baseline preview device and set the scene manager
+    val aiGlassesDevice = createAiGlassesDevice()
+    configuration.setEffectiveDevice(aiGlassesDevice, aiGlassesDevice.defaultState)
+    resizePanel.clear()
+    resizePanel.setSceneManager(sceneManager)
+
+    // Open device dropdown for AI Glasses preview and verify Display Glasses is offered, but non-glasses devices are excluded
+    fakeUi.clickOn(devicePicker)
+    fakeUi.layoutAndDispatchEvents()
+    val glassesPopupMenu = popupRule.popupContents
+    assertThat(glassesPopupMenu).named("Popup menu not found").isNotNull()
+    val glassesMenuItems = glassesPopupMenu!!.findAllDescendants<ActionMenuItem>().map { it.text }.toList()
+    popupRule.mockPopup.hide()
+    glassesPopupMenu.isVisible = false
+
+    assertThat(glassesMenuItems.any { it.contains("Display Glasses") }).isTrue()
+    assertThat(glassesMenuItems.any { it.contains("Medium Phone") || it.contains("Pixel") }).isFalse()
+  }
+
+  private fun createAiGlassesDevice(): Device {
+    val baseDevice = configuration.settings.devices.first()
+    return Device.Builder(baseDevice)
+      .apply {
+        setId("ai_glasses_device")
+        setName("Display Glasses")
+        setTagId(SystemImageTags.AI_GLASSES_TAG.id)
+      }
+      .build()
   }
 }

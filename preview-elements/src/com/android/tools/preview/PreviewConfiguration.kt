@@ -121,15 +121,15 @@ fun ConfigurablePreviewElement<*>.applyTo(
   )
 
   // Backgrounds only apply to AI Glasses for now.
-  if (Device.isAiGlasses(renderConfiguration.cachedDevice)) {
-    // Backgrounds need to be handled separately since they are rendered by Studio (and not
-    // layoutlib).
-    // The background is composited in studio by using an image transformation as opposed to giving
-    // it to Layoutlib to paint it behind the content.
-    (displaySettings.background as? PreviewDisplaySettings.Background.Image)?.image?.let { background ->
-      renderConfiguration.setImageTransformation(Configuration.ImageTransformationType.GLASSES_BACKGROUND_IMAGE, background)
+  // Backgrounds need to be handled separately since they are rendered by Studio (and not
+  // layoutlib).
+  // The background is composited in studio by using an image transformation as opposed to giving
+  // it to Layoutlib to paint it behind the content.
+  val glassesBackground =
+    (displaySettings.background as? PreviewDisplaySettings.Background.Image)?.image?.takeIf {
+      Device.isAiGlasses(renderConfiguration.cachedDevice)
     }
-  }
+  renderConfiguration.setImageTransformation(Configuration.ImageTransformationType.GLASSES_BACKGROUND_IMAGE, glassesBackground)
 }
 
 /**

@@ -513,15 +513,22 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     DumbAwareAction("Device", "Select a device to resize the preview", AllIcons.General.ArrowDown), CustomComponentAction {
     private val deviceMenuAction =
       DeviceMenuAction(
-        object : DeviceChangeListener {
-          override fun onDeviceChanged(oldDevice: Device?, newDevice: Device) {
-            handleDeviceSelection(newDevice)
-          }
+        deviceChangeListener =
+          object : DeviceChangeListener {
+            override fun onDeviceChanged(oldDevice: Device?, newDevice: Device) {
+              handleDeviceSelection(newDevice)
+            }
 
-          override fun onRevertToOriginal() {
-            revertResizing()
-          }
-        }
+            override fun onRevertToOriginal() {
+              revertResizing()
+            }
+          },
+        deviceFilter = { device ->
+          // Only offer AI Glasses devices if the baseline preview device is an AI Glasses device,
+          // and only offer non-AI-Glasses devices if the baseline preview device is a standard device.
+          val baselineDevice = baselineSnapshot?.device ?: currentConfiguration?.device
+          Device.isAiGlasses(baselineDevice) == Device.isAiGlasses(device)
+        },
       )
 
     override fun actionPerformed(e: AnActionEvent) {

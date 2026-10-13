@@ -149,9 +149,12 @@ private val EMPTY_DEVICE_CHANGE_LISTENER = object : DeviceChangeListener {}
  * list of available devices, including reference devices, custom AVDs, and generic devices.
  *
  * @param deviceChangeListener A listener that is notified when the user selects a new device.
+ * @param deviceFilter An optional predicate to filter which devices are offered in the menu.
  */
-class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener = EMPTY_DEVICE_CHANGE_LISTENER) :
-  DropDownAction("Device for Preview", "Device for Preview", StudioIcons.LayoutEditor.Toolbar.VIRTUAL_DEVICES) {
+class DeviceMenuAction @JvmOverloads constructor(
+  private val deviceChangeListener: DeviceChangeListener = EMPTY_DEVICE_CHANGE_LISTENER,
+  private val deviceFilter: ((Device) -> Boolean)? = null,
+) : DropDownAction("Device for Preview", "Device for Preview", StudioIcons.LayoutEditor.Toolbar.VIRTUAL_DEVICES) {
 
   override fun actionPerformed(e: AnActionEvent) {
     val button = (e.presentation.getClientProperty(COMPONENT_KEY) as? ActionButton) ?: (e.inputEvent?.component as? ActionButton) ?: return
@@ -206,6 +209,15 @@ class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener = 
     return devicesMap.values.flatMap { it }.firstOrNull { deviceInGroup -> isSameDevice(deviceInGroup, targetDevice) }
   }
 
+  private fun getSuitableDevices(config: Configuration): Map<DeviceGroup, List<Device>> {
+    val suitable = getSuitableDevicesForMenu(config)
+    return if (deviceFilter != null) {
+      suitable.mapValues { (_, devices) -> devices.filter(deviceFilter) }.filterValues { it.isNotEmpty() }
+    } else {
+      suitable
+    }
+  }
+
   private fun updatePresentation(e: AnActionEvent) {
     val presentation = e.presentation
     val configuration = e.getData(CONFIGURATIONS)?.firstOrNull()
@@ -213,7 +225,7 @@ class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener = 
     if (visible) {
       var device = configuration.cachedDevice
       if (device?.id == Configuration.CUSTOM_DEVICE_ID) {
-        val suitableDevices = getSuitableDevicesForMenu(configuration)
+        val suitableDevices = getSuitableDevices(configuration)
         // Attempt to find a real device that matches the characteristics of the custom device.
         // If one is found, we use it. Otherwise, we stick with the custom device.
         device = findMatchingDevice(suitableDevices, device) ?: device
@@ -243,14 +255,18 @@ class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener = 
 
   private fun createDeviceMenuList(configuration: Configuration) {
     var selectionMade = false
-    val groupedDevices = getSuitableDevicesForMenu(configuration)
+    val groupedDevices = getSuitableDevices(configuration)
     val currentDevice = configuration.cachedDevice
     selectionMade = addReferenceDeviceSection(groupedDevices, currentDevice, selectionMade)
     selectionMade = addWearDeviceSection(groupedDevices, currentDevice, selectionMade)
     selectionMade = addTvDeviceSection(groupedDevices, currentDevice, selectionMade)
     selectionMade = addAutomotiveDeviceSection(groupedDevices, currentDevice, selectionMade)
     selectionMade = addXrDeviceSection(groupedDevices, currentDevice, selectionMade)
-    selectionMade = addAvdDeviceSection(configuration.settings.avdDevices, currentDevice, selectionMade)
+    val avdDevices =
+      configuration.settings.avdDevices.let { devices ->
+        if (deviceFilter != null) devices.filter(deviceFilter) else devices
+      }
+    selectionMade = addAvdDeviceSection(avdDevices, currentDevice, selectionMade)
     selectionMade = addOtherDeviceSection(groupedDevices, currentDevice, selectionMade)
     addGenericDeviceAndNewDefinitionSection(groupedDevices, currentDevice, selectionMade)
   }
@@ -270,6 +286,7 @@ class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener = 
   ): Boolean {
     var newSelectionMade = selectionMade
     val otherDevices = groupedDevices.get(DeviceGroup.OTHER) ?: return newSelectionMade
+    if (otherDevices.isEmpty()) return newSelectionMade
     add(DeviceCategory("Other", "Other devices", StudioIcons.LayoutEditor.Toolbar.DEVICE_PHONE))
     for (device in otherDevices) {
       val isMatch = isSameDevice(device, currentDevice)
@@ -297,11 +314,30 @@ class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener = 
     currentDevice: Device?,
     selectionMade: Boolean,
   ): Boolean {
+    val referenceDevices = ReferenceDeviceType.entries.mapNotNull { getReferenceDevice(groupedDevices, it) }
+
+    // Add canonical small and medium phone devices at the top of menu.
+    val phoneDevices =
+      listOfNotNull(
+        getCanonicalDevice(groupedDevices, CanonicalDeviceType.SMALL_PHONE),
+        getCanonicalDevice(groupedDevices, CanonicalDeviceType.MEDIUM_PHONE),
+      ) + groupedDevices.getOrDefault(DeviceGroup.NEXUS_XL, emptyList())
+
+    // Add canonical medium tablet device at the top of menu.
+    val tabletDevices =
+      listOfNotNull(getCanonicalDevice(groupedDevices, CanonicalDeviceType.MEDIUM_TABLET)) +
+        groupedDevices.getOrDefault(DeviceGroup.NEXUS_TABLET, emptyList())
+
+    val desktopDevices = groupedDevices[DeviceGroup.DESKTOP] ?: emptyList()
+
+    if (referenceDevices.isEmpty() && phoneDevices.isEmpty() && tabletDevices.isEmpty() && desktopDevices.isEmpty()) {
+      return selectionMade
+    }
+
     var newSelectionMade = selectionMade
     add(DeviceCategory("Reference Devices", "Reference Devices", StudioIcons.Avd.DEVICE_MOBILE))
 
-    for (type in ReferenceDeviceType.entries) {
-      val device = getReferenceDevice(groupedDevices, type) ?: continue
+    for (device in referenceDevices) {
       val isMatch = isSameDevice(device, currentDevice)
       var selected = false
       if (isMatch && !newSelectionMade) {
@@ -311,21 +347,9 @@ class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener = 
       add(SetDeviceAction(getDeviceLabel(device), { updatePresentation(it) }, deviceChangeListener, device, null, selected))
     }
 
-    // Add canonical small and medium phone devices at the top of menu.
-    val phoneDevices =
-      listOfNotNull(
-        getCanonicalDevice(groupedDevices, CanonicalDeviceType.SMALL_PHONE),
-        getCanonicalDevice(groupedDevices, CanonicalDeviceType.MEDIUM_PHONE),
-      ) + groupedDevices.getOrDefault(DeviceGroup.NEXUS_XL, emptyList())
     newSelectionMade = addDevicesToPopup("Phones", phoneDevices, currentDevice, newSelectionMade)
-
-    // Add canonical medium tablet device at the top of menu.
-    val tabletDevices =
-      listOfNotNull(getCanonicalDevice(groupedDevices, CanonicalDeviceType.MEDIUM_TABLET)) +
-        groupedDevices.getOrDefault(DeviceGroup.NEXUS_TABLET, emptyList())
     newSelectionMade = addDevicesToPopup("Tablets", tabletDevices, currentDevice, newSelectionMade)
-
-    groupedDevices.get(DeviceGroup.DESKTOP)?.let { newSelectionMade = addDevicesToPopup("Desktop", it, currentDevice, newSelectionMade) }
+    newSelectionMade = addDevicesToPopup("Desktop", desktopDevices, currentDevice, newSelectionMade)
     addSeparator()
     return newSelectionMade
   }
@@ -425,6 +449,7 @@ class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener = 
   private fun addXrDeviceSection(groupedDevices: Map<DeviceGroup, List<Device>>, currentDevice: Device?, selectionMade: Boolean): Boolean {
     var newSelectionMade = selectionMade
     val xrDevices = groupedDevices.get(DeviceGroup.XR) ?: return newSelectionMade
+    if (xrDevices.isEmpty()) return newSelectionMade
     add(DeviceCategory("XR", "Android XR devices", StudioIcons.DeviceExplorer.PHYSICAL_DEVICE_HEADSET))
     for (device in xrDevices) {
       val isMatch = isSameDevice(device, currentDevice)
@@ -495,6 +520,7 @@ class DeviceMenuAction(private val deviceChangeListener: DeviceChangeListener = 
    * @return A boolean indicating whether a selection was made in this group.
    */
   private fun addDevicesToPopup(title: String, devices: List<Device>, currentDevice: Device?, selectionMade: Boolean): Boolean {
+    if (devices.isEmpty()) return selectionMade
     var newSelectionMade = selectionMade
     val group = DefaultActionGroup(title, true)
     add(group)
