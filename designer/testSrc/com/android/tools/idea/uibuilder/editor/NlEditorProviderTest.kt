@@ -129,9 +129,12 @@ class NlEditorProviderTest {
       editor.textEditor.editor.caretModel.moveToOffset(buttonOffset)
       assertThat(surface.selectionModel.selection).containsExactly(buttonComponent)
 
-      // Design Surface -> XML
+      // Design Surface -> XML (also switches from Design mode to Split mode so XML is visible)
+      editor.selectDesignMode(userExplicitlyTriggered = false)
+      assertThat(editor.isDesignMode()).isTrue()
       val descriptor = PsiNavigationSupport.getInstance().getDescriptor(textViewComponent.tagDeprecated)!!
       editor.navigateTo(descriptor)
+      assertThat(editor.isSplitMode()).isTrue()
       assertThat(editor.textEditor.editor.caretModel.offset).isEqualTo(textViewComponent.tagDeprecated.textOffset)
     }
   }

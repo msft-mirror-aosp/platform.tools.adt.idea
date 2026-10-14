@@ -30,8 +30,12 @@ import com.android.tools.idea.uibuilder.handlers.constraint.ConstraintComponentU
 import com.android.tools.idea.uibuilder.model.NlDropEvent
 import com.android.tools.idea.uibuilder.surface.interaction.DragDropInteraction
 import com.android.tools.idea.uibuilder.surface.interaction.PanInteraction
+import com.intellij.ide.util.PsiNavigationSupport
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.pom.Navigatable
+import com.intellij.psi.PsiElement
 import java.awt.Cursor
 import java.awt.Toolkit
 import java.awt.dnd.DnDConstants
@@ -235,7 +239,6 @@ abstract class InteractionHandlerBase(private val surface: DesignSurface<*>) : I
     val y = mouseEvent.y
     val selectedEditor = FileEditorManager.getInstance(surface.project).selectedEditor
     if (selectedEditor is DesignToolsSplitEditor) {
-      val splitEditor = selectedEditor as DesignToolsSplitEditor?
       // We want the code editor scroll position to be modified,
       // even if we are in design mode, and it is not visible at the moment.
       val sceneView = surface.getSceneViewAtOrPrimary(x, y) ?: return
@@ -319,7 +322,44 @@ abstract class InteractionHandlerBase(private val surface: DesignSurface<*>) : I
 }
 
 fun navigateToComponent(component: NlComponent, needsFocusEditor: Boolean) {
-  component.navigatable?.navigate(needsFocusEditor)
+  val navigatable = component.navigatable ?: return
+  if (needsFocusEditor) {
+    navigatable.navigate(true)
+    return
+  }
+
+  // When clicking on a component on the design surface in Design-only mode, update the text
+  // editor caret/scroll position directly to keep the editor in Design mode rather than
+  // routing through navigatable.navigate(), which would trigger DesignToolsSplitEditor.navigateTo
+  // and switch the editor to Split mode.
+  if (navigateToTextEditorInDesignMode(component, navigatable)) {
+    return
+  }
+
+  navigatable.navigate(false)
+}
+
+/**
+ * When [DesignToolsSplitEditor] is in Design-only mode, navigates [DesignToolsSplitEditor.textEditor]
+ * directly so that the caret and scroll position are updated without switching to Split mode.
+ *
+ * Returns `true` if navigation was handled directly on the text editor, or `false` otherwise.
+ */
+private fun navigateToTextEditorInDesignMode(component: NlComponent, navigatable: Navigatable): Boolean {
+  val selectedEditor = FileEditorManager.getInstance(component.model.project).selectedEditor
+  if (selectedEditor is DesignToolsSplitEditor && selectedEditor.isDesignMode()) {
+    val descriptor =
+      when (navigatable) {
+        is OpenFileDescriptor -> navigatable
+        is PsiElement -> PsiNavigationSupport.getInstance().getDescriptor(navigatable)
+        else -> null
+      }
+    if (descriptor != null && selectedEditor.textEditor.canNavigateTo(descriptor)) {
+      selectedEditor.textEditor.navigateTo(descriptor)
+      return true
+    }
+  }
+  return false
 }
 
 /** [GuiInputHandler] that ignores all interactions. */
