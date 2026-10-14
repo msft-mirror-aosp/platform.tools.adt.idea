@@ -46,6 +46,8 @@ public final class ImageAssetBrowser extends TextFieldWithBrowseButton implement
 
   public ImageAssetBrowser() {
     addBrowseFolderListener(null, FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor().withFileFilter(ImageAssetBrowser::isImageFile));
+    // Set a fixed column count so long file paths do not inflate the preferred width of the parent scroll pane.
+    getTextField().setColumns(15);
 
     TextProperty imagePathText = new TextProperty(getTextField());
     myBindings.bind(imagePathText, myImageAsset.imagePath().transform(file -> file.map(File::getAbsolutePath).orElse("")));

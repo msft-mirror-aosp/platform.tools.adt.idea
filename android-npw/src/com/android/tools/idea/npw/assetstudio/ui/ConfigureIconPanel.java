@@ -84,6 +84,7 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -358,7 +359,8 @@ public final class ConfigureIconPanel extends JPanel implements Disposable, Conf
     myRootPanel = new JPanel();
     myRootPanel.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
     myScrollPane = new JBScrollPane();
-    myScrollPane.setHorizontalScrollBarPolicy(31);
+    // Show horizontal scrollbar when the panel is resized narrower than its icon configuration controls.
+    myScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     myRootPanel.add(myScrollPane, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                                                       GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                       GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null,

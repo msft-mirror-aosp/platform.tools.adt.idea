@@ -96,6 +96,7 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.TitledBorder;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -594,9 +595,11 @@ public class ConfigureTvBannerPanel extends JPanel implements Disposable, Config
                                                           GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     final JBTabbedPane jBTabbedPane1 = new JBTabbedPane();
     jBTabbedPane1.setTabPlacement(1);
+    // Allow the tabbed pane to shrink with the parent panel when the window is resized smaller.
     myRootPanel.add(jBTabbedPane1, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                                                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
-                                                       GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null,
+                                                       GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                                                       JBUI.emptySize(),
                                                        new Dimension(200, 200), null, 0, false));
     jBTabbedPane1.setBorder(
       BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0), null, TitledBorder.DEFAULT_JUSTIFICATION,
@@ -605,7 +608,8 @@ public class ConfigureTvBannerPanel extends JPanel implements Disposable, Config
     panel2.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
     jBTabbedPane1.addTab("Foreground Layer", panel2);
     myForegroundScrollPane = new JBScrollPane();
-    myForegroundScrollPane.setHorizontalScrollBarPolicy(31);
+    // Show horizontal scrollbar when the panel is resized narrower than its foreground layer controls.
+    myForegroundScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     panel2.add(myForegroundScrollPane, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
@@ -827,7 +831,8 @@ public class ConfigureTvBannerPanel extends JPanel implements Disposable, Config
     panel4.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
     jBTabbedPane1.addTab("Background Layer", panel4);
     myBackgroundScrollPane = new JBScrollPane();
-    myBackgroundScrollPane.setHorizontalScrollBarPolicy(31);
+    // Show horizontal scrollbar when the panel is resized narrower than its background layer controls.
+    myBackgroundScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     panel4.add(myBackgroundScrollPane, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
@@ -1012,7 +1017,8 @@ public class ConfigureTvBannerPanel extends JPanel implements Disposable, Config
     panel6.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
     jBTabbedPane1.addTab("Options", panel6);
     myOtherIconsScrollPane = new JBScrollPane();
-    myOtherIconsScrollPane.setHorizontalScrollBarPolicy(31);
+    // Show horizontal scrollbar when the panel is resized narrower than its options controls.
+    myOtherIconsScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     panel6.add(myOtherIconsScrollPane, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,

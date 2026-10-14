@@ -374,7 +374,8 @@ public final class GenerateImageAssetPanel extends JPanel implements Disposable,
     myOutputIconTypePanel = new JPanel();
     myOutputIconTypePanel.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
     myIconTypePanel.add(myOutputIconTypePanel,
-                        new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_NORTH, GridConstraints.FILL_HORIZONTAL, 1,
+                        new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_NORTH, GridConstraints.FILL_HORIZONTAL,
+                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                             GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     final JBLabel jBLabel1 = new JBLabel();
     jBLabel1.setText("Icon type:");
@@ -382,15 +383,20 @@ public final class GenerateImageAssetPanel extends JPanel implements Disposable,
                                                             GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED,
                                                             new Dimension(80, -1), null, null, 0, false));
     myIconTypeCombo = new JComboBox();
+    // Allow the combo box and configuration panels to shrink horizontally when the window is resized smaller
+    // so the right edge of the tabs and vertical scrollbar are not clipped outside myIconTypePanel.
     myOutputIconTypePanel.add(myIconTypeCombo, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
+                                                                   GridConstraints.SIZEPOLICY_CAN_SHRINK |
                                                                    GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED,
-                                                                   null, null, null, 0, false));
+                                                                   new Dimension(0, -1), null, null, 0, false));
     myConfigureIconPanels = new JPanel();
     myConfigureIconPanels.setLayout(new CardLayout(0, 0));
     myIconTypePanel.add(myConfigureIconPanels, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                                                                   GridConstraints.SIZEPOLICY_CAN_SHRINK |
                                                                    GridConstraints.SIZEPOLICY_CAN_GROW,
                                                                    GridConstraints.SIZEPOLICY_CAN_SHRINK |
-                                                                   GridConstraints.SIZEPOLICY_CAN_GROW, new Dimension(430, -1), null, null,
+                                                                   GridConstraints.SIZEPOLICY_CAN_GROW, new Dimension(0, 0),
+                                                                   new Dimension(430, -1), null,
                                                                    0, false));
     myPreviewPanel = new JPanel();
     myPreviewPanel.setLayout(new GridLayoutManager(2, 1, new Insets(0, 2, 0, 0), -1, -1));

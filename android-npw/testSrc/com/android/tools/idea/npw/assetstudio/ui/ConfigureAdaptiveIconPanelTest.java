@@ -24,15 +24,21 @@ import com.android.tools.adtui.swing.FakeUi;
 import com.android.tools.adtui.validation.ValidatorPanel;
 import com.android.tools.idea.npw.assetstudio.assets.ImageAsset;
 import com.android.tools.idea.npw.assetstudio.icon.AndroidIconType;
+import com.android.tools.idea.npw.assetstudio.wizard.GenerateImageAssetPanel;
 import com.android.tools.idea.observable.AbstractProperty;
 import com.android.tools.idea.observable.BatchInvoker;
 import com.android.tools.idea.observable.TestInvokeStrategy;
 import com.android.tools.idea.observable.core.BoolValueProperty;
 import com.android.tools.idea.observable.core.ObjectValueProperty;
+import com.android.tools.idea.projectsystem.AndroidModulePaths;
 import com.android.tools.idea.rendering.DrawableRenderer;
 import com.android.tools.idea.testing.AndroidProjectRule;
 import com.android.tools.idea.testing.EdtAndroidProjectRule;
+import com.intellij.openapi.Disposable;
+import com.intellij.openapi.diagnostic.DefaultLogger;
+import com.intellij.openapi.ui.Splitter;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.testFramework.PlatformTestUtil;
 import com.intellij.testFramework.RunsInEdt;
 import com.intellij.ui.components.JBScrollPane;
@@ -41,11 +47,14 @@ import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
 import java.awt.Component;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.io.File;
 import java.io.RandomAccessFile;
+import java.nio.file.Files;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.JScrollBar;
 import javax.swing.SwingUtilities;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.junit.After;
@@ -242,6 +251,65 @@ public class ConfigureAdaptiveIconPanelTest {
       else {
         assertThat(viewportViewLocation).isEqualTo(expectedViewportViewLocation);
       }
+    }
+  }
+
+  @Test
+  public void testScrollBarsVisibleAfterResizingImageAssetPanel() throws Exception {
+    // Initialize the Image Asset panel in a temporary resource directory.
+    AndroidFacet facet = AndroidFacet.getInstance(myProjectRule.getFixture().getModule());
+    AndroidModulePaths modulePaths = mock(AndroidModulePaths.class);
+    File resourceFolder = Files.createTempDirectory("res").toFile();
+    resourceFolder.deleteOnExit();
+    LocalFileSystem.getInstance().refreshAndFindFileByIoFile(resourceFolder);
+    Disposable assetDisposable = Disposer.newDisposable();
+    DefaultLogger.disableStderrDumping(assetDisposable);
+    try {
+      GenerateImageAssetPanel assetPanel =
+        new GenerateImageAssetPanel(assetDisposable, facet, modulePaths, resourceFolder);
+
+      // Verify that at the default preferred wizard size (1020x680), no scrollbars are needed.
+      assetPanel.setSize(JBUI.size(1020, 680));
+      FakeUi fakeUi = new FakeUi(assetPanel, assetDisposable);
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+      myInvokeStrategy.updateAllSteps();
+      fakeUi.layoutAndDispatchEvents();
+
+      Splitter splitter = UIUtil.findComponentOfType(assetPanel, Splitter.class);
+      JComponent leftSplitterPanel = splitter.getFirstComponent();
+      ConfigureAdaptiveIconPanel adaptivePanel =
+        UIUtil.findComponentOfType(assetPanel, ConfigureAdaptiveIconPanel.class);
+      JBTabbedPane tabbedPane = UIUtil.findComponentOfType(adaptivePanel, JBTabbedPane.class);
+      JBScrollPane foregroundScrollPane =
+        (JBScrollPane)UIUtil.findComponentOfType(
+          (JComponent)tabbedPane.getComponentAt(0), JBScrollPane.class);
+
+      assertThat(foregroundScrollPane.getHorizontalScrollBar().isVisible()).isFalse();
+      assertThat(foregroundScrollPane.getVerticalScrollBar().isVisible()).isFalse();
+
+      // Resize the panel smaller horizontally and vertically (680x250) and re-layout.
+      assetPanel.setSize(JBUI.size(680, 250));
+      fakeUi.layoutAndDispatchEvents();
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+      myInvokeStrategy.updateAllSteps();
+      fakeUi.layoutAndDispatchEvents();
+
+      // Verify the configuration panel shrinks to match the left splitter pane width instead of overflowing.
+      assertThat(adaptivePanel.getRootComponent().getWidth()).isEqualTo(leftSplitterPanel.getWidth());
+      assertThat(tabbedPane.getWidth()).isEqualTo(leftSplitterPanel.getWidth());
+
+      // Verify both vertical and horizontal scrollbars are visible and positioned within the visible bounds of the left panel.
+      JScrollBar verticalScrollBar = foregroundScrollPane.getVerticalScrollBar();
+      JScrollBar horizontalScrollBar = foregroundScrollPane.getHorizontalScrollBar();
+      Rectangle verticalScrollBarBoundsInLeftPanel =
+        SwingUtilities.convertRectangle(verticalScrollBar.getParent(), verticalScrollBar.getBounds(), leftSplitterPanel);
+      assertThat(verticalScrollBar.isVisible()).isTrue();
+      assertThat(verticalScrollBarBoundsInLeftPanel.x + verticalScrollBarBoundsInLeftPanel.width)
+        .isAtMost(leftSplitterPanel.getWidth());
+      assertThat(horizontalScrollBar.isVisible()).isTrue();
+    }
+    finally {
+      Disposer.dispose(assetDisposable);
     }
   }
 }
