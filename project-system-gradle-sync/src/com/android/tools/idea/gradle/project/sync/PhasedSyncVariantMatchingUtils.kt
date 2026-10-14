@@ -31,6 +31,7 @@ import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeBasicVariantName
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeBasicVariantNameImpl
+import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.forEach
@@ -152,18 +153,47 @@ fun setupProjectsVariantsAndConsume(
     // passed through to other model builders.
     resultsForVariants[gradleProject]?.let { androidProjectContext.selectedVariantName = it }
 
-    val variantNameModel = IdeBasicVariantNameImpl(androidProjectContext.selectedVariantName)
-    modelConsumer?.consumeProjectModel(gradleProject, variantNameModel, IdeBasicVariantName::class.java)
-    if (cachedModels != null) {
-      // Set the cachedData variant value.
-      cachedModels.data[gradleProject] =
-        CachedAndroidProjectData(
-          androidProjectContext.modelVersions,
-          androidProjectContext.selectedVariantName,
-          androidProjectContext.ideAndroidProject,
-          androidProjectContext.shouldSkipRuntimeClassPathForLibraries,
-          androidProjectContext.declaredDependencies.allOutgoingProjectsDependenciesToConfigurations.keys.toList(),
-        )
+    cacheAndroidDataAndConsumeProjectVariant(
+      gradleProject,
+      androidProjectContext.selectedVariantName,
+      modelConsumer,
+      cachedModels,
+      androidProjectContext.modelVersions,
+      androidProjectContext.ideAndroidProject,
+      androidProjectContext.shouldSkipRuntimeClassPathForLibraries,
+      androidProjectContext.declaredDependencies.allOutgoingProjectsDependenciesToConfigurations.keys.toList(),
+    )
+  }
+}
+
+internal fun cacheAndroidDataAndConsumeProjectVariant(
+  gradleProject: BasicGradleProject,
+  variantName: String,
+  modelConsumer: ProjectImportModelProvider.GradleModelConsumer?,
+  cachedModels: ModelProviderCachedData?,
+  modelVersions: ModelVersions,
+  ideAndroidProject: IdeAndroidProjectImpl,
+  shouldSkipRuntimeClassPathForLibraries: Boolean,
+  allOutgoingProjectsDependencies: List<String>,
+) {
+  val variantNameModel = IdeBasicVariantNameImpl(variantName)
+  // Consume the Selected Variant
+  modelConsumer?.consumeProjectModel(gradleProject, variantNameModel, IdeBasicVariantName::class.java)
+  // Cache the Android data.
+  if (cachedModels != null) {
+    // Set the cachedData variant value.
+    cachedModels.data[gradleProject] =
+      CachedAndroidProjectData(
+        modelVersions,
+        variantName,
+        ideAndroidProject,
+        shouldSkipRuntimeClassPathForLibraries,
+        allOutgoingProjectsDependencies,
+      )
+
+    // Cache the variant if it's valid.
+    (ideAndroidProject.coreVariants.find { it.name == variantName } as? IdeVariantCoreImpl)?.let {
+      cachedModels.selectedVariant[gradleProject] = it
     }
   }
 }

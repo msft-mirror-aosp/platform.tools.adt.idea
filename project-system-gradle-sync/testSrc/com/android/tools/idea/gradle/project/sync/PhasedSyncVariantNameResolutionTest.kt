@@ -33,6 +33,7 @@ import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.ide.gradle.model.impl.LegacyAndroidGradlePluginPropertiesImpl
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
+import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.google.common.truth.Truth.assertThat
 import java.io.File
 import kotlin.test.assertFailsWith
@@ -1416,6 +1417,7 @@ class PhasedSyncVariantNameResolutionTest {
     val buildIdentifier = Mockito.mock(BuildIdentifier::class.java)
     val basicAndroidProject = Mockito.mock(BasicAndroidProject::class.java)
     val androidProject = Mockito.mock(AndroidProject::class.java)
+    val ideAndroidProject = Mockito.mock(IdeAndroidProjectImpl::class.java)
     val androidDsl = Mockito.mock(AndroidDsl::class.java)
     val declaredDependencies = Mockito.mock(DeclaredDependencies::class.java)
     val modelVersions = ModelVersions(agp = AgpVersion.parse("9.0.0"), modelVersion = ModelVersion(24, 0), minimumModelConsumer = null)
@@ -1459,6 +1461,14 @@ class PhasedSyncVariantNameResolutionTest {
         variant
       }
     whenever(androidProject.variants).thenReturn(androidProjectVariants)
+
+    val coreIdeVariants =
+      project.variants.map { variantName ->
+        val variant = Mockito.mock(IdeVariantCoreImpl::class.java)
+        whenever(variant.name).thenReturn(variantName)
+        variant
+      }
+    whenever(ideAndroidProject.coreVariants).thenReturn(coreIdeVariants)
 
     val buildTypes =
       project.buildTypes.map { testBuildType ->
@@ -1577,6 +1587,7 @@ class PhasedSyncVariantNameResolutionTest {
       declaredDependencies,
       legacyAndroidGradlePluginPropertiesImpl,
       modelVersions,
+      ideAndroidProject,
     )
   }
 
@@ -1613,5 +1624,6 @@ class PhasedSyncVariantNameResolutionTest {
     val declaredDependencies: DeclaredDependencies,
     val legacyAndroidGradlePluginPropertiesImpl: LegacyAndroidGradlePluginPropertiesImpl,
     val modelVersions: ModelVersions,
+    val ideAndroidProject: IdeAndroidProjectImpl,
   )
 }
