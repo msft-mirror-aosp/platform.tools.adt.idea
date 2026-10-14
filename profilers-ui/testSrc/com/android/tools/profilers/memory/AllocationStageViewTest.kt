@@ -27,6 +27,8 @@ import com.android.tools.profilers.taskbased.task.interim.RecordingScreenModel
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import icons.StudioIcons
 import java.awt.geom.Rectangle2D
 import java.util.concurrent.TimeUnit
@@ -43,6 +45,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 
 @RunWith(Parameterized::class)
+@RunsInEdt
 class AllocationStageViewTest(private val isLive: Boolean) {
   private val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
@@ -52,6 +55,7 @@ class AllocationStageViewTest(private val isLive: Boolean) {
   @get:Rule val applicationRule = ApplicationRule()
 
   @get:Rule val disposableRule = DisposableRule()
+  @get:Rule val myEdtRule = EdtRule()
 
   private lateinit var profilers: StudioProfilers
   private lateinit var stage: AllocationStage

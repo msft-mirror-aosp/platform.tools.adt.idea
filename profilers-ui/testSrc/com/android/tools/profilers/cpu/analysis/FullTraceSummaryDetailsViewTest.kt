@@ -35,12 +35,15 @@ import com.android.tools.profilers.cpu.systemtrace.ThreadModel
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
 
+@RunsInEdt
 class FullTraceSummaryDetailsViewTest {
   companion object {
     private val CAPTURE_RANGE = Range(0.0, Double.MAX_VALUE)
@@ -54,6 +57,7 @@ class FullTraceSummaryDetailsViewTest {
   private val transportService = FakeTransportService(timer, false)
 
   @get:Rule var grpcServer = FakeGrpcServer.createFakeGrpcServer("FullTraceSummaryDetailsViewTest", transportService)
+  @get:Rule val myEdtRule = EdtRule()
 
   private lateinit var profilersView: StudioProfilersView
 

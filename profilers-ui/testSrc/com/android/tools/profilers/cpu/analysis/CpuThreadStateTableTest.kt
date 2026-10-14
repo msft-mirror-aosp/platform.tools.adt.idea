@@ -24,13 +24,17 @@ import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.cpu.LazyDataSeries
 import com.android.tools.profilers.cpu.ThreadState
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class CpuThreadStateTableTest {
   @get:Rule val grpcChannel = FakeGrpcChannel("CpuThreadStateTableTest")
+  @get:Rule val myEdtRule = EdtRule()
 
   private val ideServices = FakeIdeProfilerServices()
   private lateinit var profilers: StudioProfilers

@@ -21,12 +21,18 @@ import com.android.tools.adtui.model.Range
 import com.android.tools.profilers.cpu.CaptureNode
 import com.android.tools.profilers.cpu.nodemodel.SingleNameModel
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import javax.swing.JButton
 import javax.swing.RowSorter
 import javax.swing.SortOrder
+import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class CaptureNodeDetailTableTest {
+  @get:Rule val myEdtRule = EdtRule()
+
   @Test
   fun tableIsPopulated() {
     val dataSeries = listOf(NODE)

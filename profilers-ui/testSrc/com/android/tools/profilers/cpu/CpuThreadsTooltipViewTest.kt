@@ -19,13 +19,18 @@ import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.model.DefaultTimeline
 import com.android.tools.adtui.model.SeriesData
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import javax.swing.JLabel
 import javax.swing.JPanel
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class CpuThreadsTooltipViewTest {
+  @get:Rule val myEdtRule = EdtRule()
   private val timeline = DefaultTimeline()
   private lateinit var cpuThreadsTooltip: CpuThreadsTooltip
   private lateinit var cpuThreadsTooltipView: FakeCpuThreadsTooltipView

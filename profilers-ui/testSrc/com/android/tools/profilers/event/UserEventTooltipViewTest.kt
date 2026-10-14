@@ -29,11 +29,14 @@ import com.android.tools.profilers.StudioProfilers
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class UserEventTooltipViewTest {
   private lateinit var simpleEventTooltipView: FakeUserEventTooltipView
   private val timer: FakeTimer = FakeTimer()
@@ -45,6 +48,7 @@ class UserEventTooltipViewTest {
   @get:Rule val applicationRule = ApplicationRule()
 
   @get:Rule val disposableRule = DisposableRule()
+  @get:Rule val myEdtRule = EdtRule()
 
   @Before
   fun setup() {

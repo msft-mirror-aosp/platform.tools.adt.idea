@@ -21,11 +21,16 @@ import com.android.tools.adtui.instructions.TextInstruction
 import com.android.tools.profilers.cpu.capturedetails.CaptureDetailsView.NO_DATA_FOR_RANGE_MESSAGE
 import com.android.tools.profilers.cpu.capturedetails.CaptureDetailsView.NO_DATA_FOR_THREAD_MESSAGE
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.awt.CardLayout
 import javax.swing.JPanel
+import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class CaptureDetailsViewTest {
+  @get:Rule val myEdtRule = EdtRule()
 
   @Test
   fun testNoDataForRange() {

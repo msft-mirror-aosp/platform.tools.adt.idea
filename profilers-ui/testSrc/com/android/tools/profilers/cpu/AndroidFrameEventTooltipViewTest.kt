@@ -24,11 +24,16 @@ import com.android.tools.profilers.cpu.systemtrace.AndroidFrameEvent
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameEventTooltip
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameEventTrackModel
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import javax.swing.JPanel
+import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class AndroidFrameEventTooltipViewTest {
+  @get:Rule val myEdtRule = EdtRule()
   private val multiSelectionModel = MultiSelectionModel<CpuAnalyzable<*>>()
 
   @Test

@@ -38,12 +38,15 @@ import com.android.tools.profilers.selectItem
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import javax.swing.JComponent
 import javax.swing.JLabel
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class MemoryVisualizationViewTest {
   private val timer = FakeTimer()
 
@@ -52,6 +55,7 @@ class MemoryVisualizationViewTest {
   @get:Rule val applicationRule = ApplicationRule()
 
   @get:Rule val disposableRule = DisposableRule()
+  @get:Rule val myEdtRule = EdtRule()
 
   private lateinit var fakeIdeProfilerComponents: FakeIdeProfilerComponents
   private lateinit var stage: MainMemoryProfilerStage

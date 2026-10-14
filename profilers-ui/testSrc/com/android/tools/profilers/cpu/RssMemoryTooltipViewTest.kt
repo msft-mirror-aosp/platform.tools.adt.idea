@@ -20,11 +20,17 @@ import com.android.tools.adtui.model.RangedSeries
 import com.android.tools.adtui.model.SeriesData
 import com.android.tools.profilers.cpu.systemtrace.RssMemoryTooltip
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import javax.swing.JPanel
+import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class RssMemoryTooltipViewTest {
+  @get:Rule val myEdtRule = EdtRule()
+
   @Test
   fun textUpdatesOnRangeChanged() {
     val timeline = DefaultTimeline()

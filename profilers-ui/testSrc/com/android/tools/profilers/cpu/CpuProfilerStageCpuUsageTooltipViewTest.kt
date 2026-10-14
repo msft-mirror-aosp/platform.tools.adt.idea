@@ -31,6 +31,8 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import javax.swing.JComponent
 import javax.swing.JLabel
@@ -38,6 +40,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class CpuProfilerStageCpuUsageTooltipViewTest {
   private val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
@@ -49,6 +52,7 @@ class CpuProfilerStageCpuUsageTooltipViewTest {
   @get:Rule val applicationRule = ApplicationRule()
 
   @get:Rule val disposableRule = DisposableRule()
+  @get:Rule val myEdtRule = EdtRule()
 
   @Before
   fun setUp() {

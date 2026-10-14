@@ -39,6 +39,8 @@ import com.android.tools.profilers.memory.adapters.instancefilters.BitmapDuplica
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import icons.StudioIcons
 import javax.swing.JComponent
 import org.junit.Before
@@ -48,6 +50,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 
+@RunsInEdt
 class CapturePanelTest {
 
   private lateinit var profilers: StudioProfilers
@@ -60,6 +63,7 @@ class CapturePanelTest {
   @get:Rule val applicationRule = ApplicationRule()
 
   @get:Rule val disposableRule = DisposableRule()
+  @get:Rule val myEdtRule = EdtRule()
 
   @Before
   fun setupBase() {

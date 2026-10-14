@@ -33,12 +33,15 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.function.Supplier
 import javax.swing.JLabel
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class MemoryCaptureStageViewTest {
 
   private lateinit var profilers: StudioProfilers
@@ -54,6 +57,7 @@ class MemoryCaptureStageViewTest {
   @get:Rule val disposableRule = DisposableRule()
 
   @Rule @JvmField val grpcChannel = FakeGrpcChannel("MemoryProfilerStageViewTestChannel", transportService)
+  @get:Rule val myEdtRule = EdtRule()
 
   @Before
   fun setupBase() {

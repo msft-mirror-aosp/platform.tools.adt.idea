@@ -23,9 +23,15 @@ import com.android.tools.adtui.model.trackgroup.TrackModel
 import com.android.tools.profilers.ProfilerTrackRendererType
 import com.android.tools.profilers.cpu.systemtrace.BatteryDrainTrackModel
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class BatteryDrainTrackRendererTest {
+  @get:Rule val myEdtRule = EdtRule()
+
   @Test
   fun render() {
     val batteryDrainTrackModel =

@@ -24,6 +24,8 @@ import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Common.AgentData
 import com.google.common.truth.Truth
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import icons.StudioIcons
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -35,6 +37,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 
 @RunWith(Parameterized::class)
+@RunsInEdt
 class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
   @get:Rule val applicationRule = ApplicationRule()
   private val timer = FakeTimer()
@@ -43,6 +46,7 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
     else FakeTransportService(timer)
 
   @JvmField @Rule val grpcChannel: FakeGrpcServer = FakeGrpcServer.createFakeGrpcServer("StageWithToolbarViewTestChannel", service)
+  @get:Rule val myEdtRule = EdtRule()
 
   private val ideProfilerServices = FakeIdeProfilerServices()
   private lateinit var studioProfilers: StudioProfilers

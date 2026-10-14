@@ -64,6 +64,8 @@ import com.android.tools.profilers.memory.adapters.classifiers.NativeMemoryHeapS
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.intellij.testFramework.ApplicationRule;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.RunsInEdt;
 import com.intellij.ui.ColoredTreeCellRenderer;
 import icons.StudioIcons;
 import java.io.ByteArrayOutputStream;
@@ -87,6 +89,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+@RunsInEdt
 public class MemoryClassifierViewTest {
   private static final int CAPTURE_START_TIME = 0;
   private final FakeTimer myTimer = new FakeTimer();
@@ -95,6 +98,7 @@ public class MemoryClassifierViewTest {
   public final ApplicationRule myApplicationRule = new ApplicationRule();
   @Rule
   public FakeGrpcChannel myGrpcChannel = new FakeGrpcChannel("MEMORY_TEST_CHANNEL", myTransportService);
+  @Rule public final EdtRule myEdtRule = new EdtRule();
   private FakeIdeProfilerComponents myFakeIdeProfilerComponents;
   private MainMemoryProfilerStage myStage;
   private MemoryClassifierView myClassifierView;

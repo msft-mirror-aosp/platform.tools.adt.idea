@@ -32,6 +32,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.components.JBLabel
 import javax.swing.JButton
 import javax.swing.JComponent
@@ -43,6 +44,7 @@ import org.mockito.Mockito
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
+@RunsInEdt
 class LiveStageViewTest {
   private val myTimer = FakeTimer()
   private val myComponents = FakeIdeProfilerComponents()

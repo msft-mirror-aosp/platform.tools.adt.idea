@@ -40,6 +40,8 @@ import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.components.JBPanel
 import java.awt.BorderLayout
 import javax.swing.JComponent
@@ -55,6 +57,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
+@RunsInEdt
 open class LiveMemoryFootprintViewTest {
   protected var myTimer = FakeTimer()
   private val myComponents = FakeIdeProfilerComponents()
@@ -65,6 +68,7 @@ open class LiveMemoryFootprintViewTest {
   @get:Rule val myGrpcChannel = FakeGrpcChannel("MainMemoryProfilerLiveViewTest", myTransportService)
 
   @get:Rule val disposableRule = DisposableRule()
+  @get:Rule val myEdtRule = EdtRule()
 
   private lateinit var myProfilersView: StudioProfilersView
   private lateinit var myModel: LiveMemoryFootprintModel

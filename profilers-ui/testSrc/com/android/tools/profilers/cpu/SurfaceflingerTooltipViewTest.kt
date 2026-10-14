@@ -20,11 +20,17 @@ import com.android.tools.adtui.model.SeriesData
 import com.android.tools.profilers.cpu.systemtrace.SurfaceflingerEvent
 import com.android.tools.profilers.cpu.systemtrace.SurfaceflingerTooltip
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import javax.swing.JPanel
+import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class SurfaceflingerTooltipViewTest {
+  @get:Rule val myEdtRule = EdtRule()
+
   @Test
   fun textUpdatesOnRangeChange() {
     val timeline = DefaultTimeline()

@@ -46,6 +46,8 @@ import com.android.tools.profilers.memory.adapters.ValueObject;
 import com.android.tools.profilers.memory.adapters.classifiers.ClassSet;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.truth.Truth;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.RunsInEdt;
 import com.intellij.util.containers.ContainerUtil;
 import java.awt.Component;
 import java.util.Arrays;
@@ -66,10 +68,12 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+@RunsInEdt
 public class MemoryInstanceDetailsViewTest {
   private final FakeTimer myTimer = new FakeTimer();
   @Rule
   public FakeGrpcChannel myGrpcChannel = new FakeGrpcChannel("MEMORY_TEST_CHANNEL", new FakeTransportService(myTimer));
+  @Rule public final EdtRule myEdtRule = new EdtRule();
 
   private MainMemoryProfilerStage myStage;
   private MemoryInstanceDetailsView myDetailsView;

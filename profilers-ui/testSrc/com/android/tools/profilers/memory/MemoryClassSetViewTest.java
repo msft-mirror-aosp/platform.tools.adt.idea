@@ -52,6 +52,8 @@ import com.android.tools.profilers.memory.adapters.classifiers.HeapSet;
 import com.intellij.testFramework.ApplicationRule;
 import com.intellij.testFramework.DisposableRule;
 import com.google.common.collect.ImmutableList;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.RunsInEdt;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -67,6 +69,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+@RunsInEdt
 public class MemoryClassSetViewTest {
   private static final long MOCK_CLASS_ID = 1;
   private static final String MOCK_CLASS_NAME = "MockClass";
@@ -76,6 +79,7 @@ public class MemoryClassSetViewTest {
   @Rule public final FakeGrpcChannel myGrpcChannel = new FakeGrpcChannel("MemoryInstanceViewTestGrpc", new FakeTransportService(myTimer));
   @Rule public final ApplicationRule myApplicationRule = new ApplicationRule();
   @Rule public final DisposableRule myDisposableRule = new DisposableRule();
+  @Rule public final EdtRule myEdtRule = new EdtRule();
 
   private MainMemoryProfilerStage myStage;
 

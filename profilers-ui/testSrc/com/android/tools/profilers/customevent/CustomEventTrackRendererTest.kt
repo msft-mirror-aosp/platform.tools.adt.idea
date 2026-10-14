@@ -28,16 +28,20 @@ import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.ProfilerTrackRendererType
 import com.android.tools.profilers.StudioProfilers
 import com.google.common.truth.Truth
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class CustomEventTrackRendererTest {
   private val timer = FakeTimer()
   private val services = FakeIdeProfilerServices()
   private val transportService = FakeTransportService(timer, true)
 
   @get:Rule var grpcChannel = FakeGrpcChannel("CustomEventTrackTestChannel", transportService)
+  @get:Rule val myEdtRule = EdtRule()
 
   private lateinit var profilers: StudioProfilers
 

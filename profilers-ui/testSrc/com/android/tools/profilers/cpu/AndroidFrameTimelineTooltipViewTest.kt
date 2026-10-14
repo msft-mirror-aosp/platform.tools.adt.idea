@@ -24,13 +24,19 @@ import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineModel
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineTooltip
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceCpuCapture
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import javax.swing.JPanel
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 import perfetto.protos.PerfettoTrace
 
+@RunsInEdt
 class AndroidFrameTimelineTooltipViewTest {
+  @get:Rule val myEdtRule = EdtRule()
+
   @Test
   fun `tooltip updates on change`() {
     val timeline =

@@ -42,6 +42,8 @@ import com.android.tools.profilers.memory.adapters.classifiers.ClassSet;
 import com.google.common.collect.ImmutableSet;
 import com.intellij.testFramework.ApplicationRule;
 import com.intellij.testFramework.DisposableRule;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.RunsInEdt;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
@@ -50,11 +52,13 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
+@RunsInEdt
 public class MemoryNavigationTest {
   private final FakeTimer myTimer = new FakeTimer();
   @Rule public final FakeGrpcChannel myGrpcChannel = new FakeGrpcChannel("MemoryNavigationTestGrpc", new FakeTransportService(myTimer));
   @Rule public final ApplicationRule myApplicationRule = new ApplicationRule();
   @Rule public final DisposableRule myDisposableRule = new DisposableRule();
+  @Rule public final EdtRule myEdtRule = new EdtRule();
 
   private MainMemoryProfilerStage myStage;
   private MainMemoryProfilerStageView myStageView;
