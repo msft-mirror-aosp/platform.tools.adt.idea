@@ -430,6 +430,10 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       thisLogger().error("Interrupted while waiting for the emulator gRPC server to terminate")
     }
     grpcServer = null
+    screenshotStreamObserver = null
+    screenshotStreamRequest = null
+    clipboardStreamObserver = null
+    notificationStreamObserver = null
   }
 
   /** Adds, removes, updates secondary displays. */

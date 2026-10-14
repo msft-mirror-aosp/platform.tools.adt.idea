@@ -71,16 +71,7 @@ class FakeEmulatorRule : TestRule {
         registrationDirectory = Files.createDirectories(root.resolve("avd/running"))
         emulatorCatalog.overrideRegistrationDirectory(registrationDirectory)
         AvdManagerConnection.setConnectionFactory { sdkHandler, _ -> TestAvdManagerConnection(sdkHandler, avdRoot) }
-        val androidSdks =
-          object : AndroidSdksImpl() {
-            private val sdkHandler by lazy {
-              val sdkRoot = FakeEmulator.getSdkFolder(avdRoot)
-              AndroidSdkHandler(sdkRoot, sdkRoot)
-            }
-
-            override fun tryToChooseSdkHandler(): AndroidSdkHandler = sdkHandler
-          }
-        ApplicationManager.getApplication()?.registerOrReplaceServiceInstance(AndroidSdks::class.java, androidSdks, disposable)
+        ApplicationManager.getApplication()?.registerOrReplaceServiceInstance(AndroidSdks::class.java, TestAndroidSdks(avdRoot), disposable)
       }
 
       override fun after() {
@@ -94,6 +85,7 @@ class FakeEmulatorRule : TestRule {
             emulator.stop()
           }
         } finally {
+          emulators.clear()
           disposable?.let { Disposer.dispose(it) }
           for (emulator in emulatorControllers) {
             emulator.awaitTermination(1.seconds)
@@ -117,6 +109,15 @@ class FakeEmulatorRule : TestRule {
     val emulator = FakeEmulator(avdFolder, availableGrpcPort++, dir)
     emulators.add(emulator)
     return emulator
+  }
+
+  private class TestAndroidSdks(avdRoot: Path) : AndroidSdksImpl() {
+    private val sdkHandler by lazy {
+      val sdkRoot = FakeEmulator.getSdkFolder(avdRoot)
+      AndroidSdkHandler(sdkRoot, sdkRoot)
+    }
+
+    override fun tryToChooseSdkHandler(): AndroidSdkHandler = sdkHandler
   }
 
   private inner class TestAvdManagerConnection(sdkHandler: AndroidSdkHandler, avdHomeFolder: Path) :
