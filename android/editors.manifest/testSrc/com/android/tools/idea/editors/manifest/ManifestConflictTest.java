@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableList;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
+import com.intellij.testFramework.EdtTestUtil;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -92,7 +93,8 @@ public class ManifestConflictTest {
 
   private void clickLink(Module module, String errorHtml, int i) {
     List<String> link = grabHTMLLinks(errorHtml);
-    myHtmlLinkManager.handleUrl(link.get(i), module, null);
+    // ManifestPanel is @UiThread; its links are clicked from a HyperlinkListener on the EDT.
+    EdtTestUtil.runInEdtAndWait(() -> myHtmlLinkManager.handleUrl(link.get(i), module, null));
   }
 
   public static List<String> grabHTMLLinks(String html) {
@@ -115,7 +117,8 @@ public class ManifestConflictTest {
     String[] errors = new String[records.size()];
     for (int c = 0; c < records.size(); c++) {
       MergingReport.Record record = records.get(c);
-      errors[c] = ReadAction.computeBlocking(() -> ManifestPanel.getErrorHtml(AndroidFacet.getInstance(module), record.getMessage(), record.getSourceLocation(), myHtmlLinkManager, token, null, true));
+      errors[c] = EdtTestUtil.runInEdtAndGet(() -> ReadAction.computeBlocking(() -> ManifestPanel.getErrorHtml(
+        AndroidFacet.getInstance(module), record.getMessage(), record.getSourceLocation(), myHtmlLinkManager, token, null, true)));
     }
     return errors;
   }
