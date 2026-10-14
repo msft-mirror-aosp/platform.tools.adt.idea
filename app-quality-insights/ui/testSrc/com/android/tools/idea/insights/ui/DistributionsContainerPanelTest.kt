@@ -48,7 +48,8 @@ class DistributionsContainerPanelTest {
         currentIssueDetails = LoadingState.Loading,
       )
     val flow = MutableSharedFlow<AppInsightsCrashState>()
-    val panel = DistributionsContainerPanel(AndroidCoroutineScope(projectRule.disposable, Dispatchers.EDT), flow)
+    val panel =
+      withContext(Dispatchers.EDT) { DistributionsContainerPanel(AndroidCoroutineScope(projectRule.disposable, Dispatchers.EDT), flow) }
 
     withContext(Dispatchers.EDT) {
       flow.emit(initialState)
