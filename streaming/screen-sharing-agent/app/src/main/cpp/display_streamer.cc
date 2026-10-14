@@ -205,6 +205,8 @@ void DisplayStreamer::Run() {
   int error_count = 0;
   uint32_t frame_before_timeout = 0;
 
+  NativeWindow surface;
+
   while (stop_reason != FrameStreamStopReason::END_OF_STREAM && !thread_handle_.IsStopping() && !Agent::IsShuttingDown()) {
     DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni, display_id_);
     if (!display_info.IsValid() || !display_info.IsOn()) {
@@ -225,27 +227,6 @@ void DisplayStreamer::Run() {
     }
     Log::D("Display %d: stop_reason=%d, frame_number_=%u frame_before_timeout=%u frame_timeout_=%lld ms",
            display_id_, stop_reason, frame_number_, frame_before_timeout, frame_timeout_.count());
-    if (virtual_display_.IsNull() && display_token_.IsNull()) {
-      {
-        unique_lock lock(mutex_);
-        if (codec_stop_pending_) {
-          codec_stop_pending_ = false;
-          continue;  // Start another loop to refresh display information.
-        }
-      }
-      string display_name = StringPrintf("studio.screen.sharing:%d", display_id_);
-      if (Agent::feature_level() >= 34) {
-        virtual_display_ = DisplayManager::CreateVirtualDisplay(
-            jni, display_name.c_str(), display_info.logical_size.width, display_info.logical_size.height, display_id_, nullptr);
-      } else {
-        bool secure = Agent::feature_level() < 31;  // Creation of secure displays is not allowed on API 31+.
-        display_token_ = SurfaceControl::CreateDisplay(jni, display_name.c_str(), secure);
-        if (display_token_.IsNull()) {
-          Log::Fatal(VIRTUAL_DISPLAY_CREATION_ERROR, "Display %d: unable to create a virtual display", display_id_);
-        }
-      }
-    }
-    NativeWindow surface;
     {
       unique_lock lock(mutex_);
       if (codec_stop_pending_) {
@@ -266,18 +247,34 @@ void DisplayStreamer::Run() {
           codec_, *codec_info_, max_video_resolution_.Rotated(rotation_correction), bit_rate_, media_format, display_info, display_id_);
       Log::D("Display %d: rotation=%d rotation_correction=%d video_size=%dx%d",
              display_id_, display_info.rotation, rotation_correction, video_size.width, video_size.height);
-      media_status_t status = AMediaCodec_createInputSurface(codec_, &surface);  // Requires API 26.
+      NativeWindow new_surface;
+      media_status_t status = AMediaCodec_createInputSurface(codec_, &new_surface);  // Requires API 26.
       if (status != AMEDIA_OK) {
         Log::Fatal(INPUT_SURFACE_CREATION_ERROR, "Display %d: AMediaCodec_createInputSurface returned %d", display_id_, status);
       }
       if (Agent::feature_level() >= 34) {
-        virtual_display_.Resize(video_size.width, video_size.height, display_info_.logical_density_dpi);
-        virtual_display_.SetSurface(surface);
+        if (virtual_display_.IsNull()) {
+          string display_name = StringPrintf("studio.screen.sharing:%d", display_id_);
+          virtual_display_ = DisplayManager::CreateVirtualDisplay(
+              jni, display_name.c_str(), video_size.width, video_size.height, display_id_, new_surface);
+        } else {
+          virtual_display_.Resize(video_size.width, video_size.height, display_info_.logical_density_dpi);
+          virtual_display_.SetSurface(new_surface);
+        }
       } else {
+        if (display_token_.IsNull()) {
+          string display_name = StringPrintf("studio.screen.sharing:%d", display_id_);
+          bool secure = Agent::feature_level() < 31;  // Creation of secure displays is not allowed on API 31+.
+          display_token_ = SurfaceControl::CreateDisplay(jni, display_name.c_str(), secure);
+          if (display_token_.IsNull()) {
+            Log::Fatal(VIRTUAL_DISPLAY_CREATION_ERROR, "Display %d: unable to create a virtual display", display_id_);
+          }
+        }
         int32_t height = lround(static_cast<double>(video_size.width) * display_info.logical_size.height / display_info.logical_size.width);
         int32_t y = (video_size.height - height) / 2;
-        SurfaceControl::ConfigureProjection(jni, display_token_, surface, display_info, { 0, y, video_size.width, height });
+        SurfaceControl::ConfigureProjection(jni, display_token_, new_surface, display_info, { 0, y, video_size.width, height });
       }
+      surface = std::move(new_surface);
       StartCodecUnlocked();
       codec_running_ = true;
       Size display_size = display_info.NaturalSize();  // The display dimensions in the canonical orientation.
@@ -296,11 +293,6 @@ void DisplayStreamer::Run() {
     Log::D("Display %d: ProcessFramesUntilCodecStopped returned %d", display_id_, stop_reason);
     StopCodec();
     DeleteCodec();
-    if (virtual_display_.IsNotNull()) {
-      virtual_display_.SetSurface(nullptr);
-    } else {
-      SurfaceControl::SetSurface(jni, display_token_, nullptr);
-    }
     if (stop_reason == FrameStreamStopReason::CODEC_ERROR) {
       if (++error_count >= MAX_SUBSEQUENT_ERRORS && !ReduceBitRate()) {
         ExitCode exitCode = bit_rate_ <= MIN_BIT_RATE ? WEAK_VIDEO_ENCODER : REPEATED_VIDEO_ENCODER_ERRORS;
