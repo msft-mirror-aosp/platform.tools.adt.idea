@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -84,6 +85,7 @@ import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icon.IconKey
 
 private val templateCellSize = 192.dp
+private const val DISABLED_ITEM_ALPHA = 0.4f
 
 @Composable
 fun ChooseAndroidProjectStepUI(model: ChooseAndroidProjectStepModel) {
@@ -174,6 +176,13 @@ internal fun ItemGrid(
   val scrollState = rememberLazyGridState()
   var hasFocus by remember { mutableStateOf(false) }
   val gridFocusRequester = remember { FocusRequester() }
+  val selectIfEnabled: (GridItem) -> Unit = { item -> if (item.isEnabled) onGridItemClick(item) }
+
+  // Drop the selection if the selected item becomes disabled, e.g. a promotion whose plugin is being installed.
+  val isSelectedItemEnabled = selectedGridItem?.isEnabled ?: true
+  LaunchedEffect(selectedGridItem, isSelectedItemEnabled) {
+    if (!isSelectedItemEnabled) onGridItemClick(null)
+  }
 
   LaunchedEffect(selectedGridItem) {
     if (selectedGridItem != null) {
@@ -206,19 +215,19 @@ internal fun ItemGrid(
 
               return@onKeyEvent when {
                 event.type == KeyEventType.KeyUp && event.key == Key.DirectionUp && currentItemIndex > columnCount - 1 -> {
-                  onGridItemClick(gridItems[currentItemIndex - columnCount])
+                  selectIfEnabled(gridItems[currentItemIndex - columnCount])
                   true
                 }
                 event.type == KeyEventType.KeyUp && event.key == Key.DirectionDown && currentItemIndex < gridItems.size - columnCount -> {
-                  onGridItemClick(gridItems[currentItemIndex + columnCount])
+                  selectIfEnabled(gridItems[currentItemIndex + columnCount])
                   true
                 }
                 event.type == KeyEventType.KeyUp && event.key == Key.DirectionLeft && currentItemIndex > 0 -> {
-                  onGridItemClick(gridItems[currentItemIndex - 1])
+                  selectIfEnabled(gridItems[currentItemIndex - 1])
                   true
                 }
                 event.type == KeyEventType.KeyUp && event.key == Key.DirectionRight && currentItemIndex < gridItems.size - 1 -> {
-                  onGridItemClick(gridItems[currentItemIndex + 1])
+                  selectIfEnabled(gridItems[currentItemIndex + 1])
                   true
                 }
                 else -> false
@@ -234,10 +243,10 @@ internal fun ItemGrid(
             isSelected = isSelected,
             isFocused = isFocused,
             onItemClick = {
-              onGridItemClick(item)
+              selectIfEnabled(item)
               if (!hasFocus) gridFocusRequester.requestFocus()
             },
-            onItemDoubleClick = { onGridItemDoubleClick(item) },
+            onItemDoubleClick = { if (item.isEnabled) onGridItemDoubleClick(item) },
           )
         }
       }
@@ -257,8 +266,9 @@ private fun GridItemCell(item: GridItem, isSelected: Boolean, isFocused: Boolean
     verticalArrangement = Arrangement.SpaceBetween,
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { item.Icon() }
-    GridItemText(item, isSelected, isFocused)
+    val contentAlpha = if (item.isEnabled) 1f else DISABLED_ITEM_ALPHA
+    Box(modifier = Modifier.weight(1f).fillMaxWidth().alpha(contentAlpha), contentAlignment = Alignment.Center) { item.Icon() }
+    Box(modifier = Modifier.alpha(contentAlpha)) { GridItemText(item, isSelected, isFocused) }
   }
 }
 
