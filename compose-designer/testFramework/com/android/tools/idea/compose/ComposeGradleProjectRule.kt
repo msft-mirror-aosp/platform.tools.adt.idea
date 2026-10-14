@@ -21,25 +21,34 @@ import com.android.testutils.TestUtils.resolveWorkspacePath
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker
 import com.android.tools.idea.gradle.project.build.invoker.GradleInvocationResult
+import com.android.tools.idea.gradle.project.sync.snapshots.PreparedTestProject
+import com.android.tools.idea.gradle.project.sync.snapshots.TemplateBasedTestProject
+import com.android.tools.idea.gradle.project.sync.snapshots.testProjectTemplateFromPath
 import com.android.tools.idea.gradle.util.BuildMode
+import com.android.tools.idea.projectsystem.gradle.getMainModule
 import com.android.tools.idea.rendering.StudioRenderService
 import com.android.tools.idea.rendering.createNoSecurityRenderService
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
-import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
-import com.android.tools.idea.testing.AndroidGradleProjectRule
+import com.android.tools.idea.testing.AgpVersionSoftwareEnvironment
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.IntegrationTestEnvironment
 import com.android.tools.idea.testing.NamedExternalResource
 import com.android.tools.idea.testing.TestLoggerRule
 import com.android.tools.idea.testing.buildAndWait
+import com.android.tools.idea.testing.gradleModule
+import com.android.tools.idea.testing.requestSyncAndWait
 import com.android.tools.idea.testing.withCompileSdk
 import com.android.tools.idea.testing.withTargetSdk
+import com.android.tools.idea.util.androidFacet
 import com.android.tools.rendering.RenderService
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.projectRoots.Sdk
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import java.io.File
+import org.jetbrains.android.facet.AndroidFacet
 import org.junit.Assert.assertTrue
 import org.junit.rules.RuleChain
 import org.junit.rules.TestRule
@@ -48,23 +57,52 @@ import org.junit.runners.model.Statement
 
 private val COMPILE_SDK_VERSION = AndroidApiLevel(35)
 
+internal fun createComposeTestProject(projectPath: String, testDataPath: String): TemplateBasedTestProject {
+  val baseTemplate = testProjectTemplateFromPath(projectPath, testDataPath)
+  return object : TemplateBasedTestProject by baseTemplate {
+    override fun prepareTestProject(
+      integrationTestEnvironment: IntegrationTestEnvironment,
+      name: String,
+      agpVersion: AgpVersionSoftwareEnvironment,
+      ndkVersion: String?,
+      sdk: Sdk?,
+      syncReady: Boolean,
+    ): PreparedTestProject {
+      return baseTemplate.prepareTestProject(
+        integrationTestEnvironment,
+        name,
+        agpVersion.withCompileSdk(COMPILE_SDK_VERSION).withTargetSdk(COMPILE_SDK_VERSION),
+        ndkVersion,
+        sdk,
+        syncReady,
+      )
+    }
+  }
+}
+
 /** [TestRule] that implements the [before] and [after] setup specific for Compose rendering tests. */
 private class ComposeGradleProjectRuleImpl(
-  private val projectPath: String,
   private val testDataPath: String,
-  private val projectRule: AndroidGradleProjectRule,
+  private val projectRule: AndroidProjectRule,
 ) : NamedExternalResource() {
   override fun before(description: Description) {
     RenderService.shutdownRenderExecutor(5)
     RenderService.initializeRenderExecutor()
     StudioRenderService.setForTesting(projectRule.project, createNoSecurityRenderService())
     projectRule.fixture.testDataPath = resolveWorkspacePath(testDataPath).toString()
-    projectRule.load(projectPath, AGP_CURRENT.withCompileSdk(COMPILE_SDK_VERSION).withTargetSdk(COMPILE_SDK_VERSION))
 
-    projectRule.invokeTasks("compileDebugSources").apply {
-      buildError?.printStackTrace()
-      assertTrue("The project must compile correctly for the test to pass", isBuildSuccessful)
-    }
+    projectRule.project
+      .buildAndWait { invoker ->
+        invoker.executeTasks(
+          GradleBuildInvoker.Request.builder(projectRule.project, File(projectRule.project.basePath!!), "compileDebugSources")
+            .setMode(BuildMode.COMPILE_JAVA)
+            .build()
+        )
+      }
+      .apply {
+        buildError?.printStackTrace()
+        assertTrue("The project must compile correctly for the test to pass", isBuildSuccessful)
+      }
 
     IndexingTestUtil.waitUntilIndexesAreReady(projectRule.project)
   }
@@ -75,15 +113,12 @@ private class ComposeGradleProjectRuleImpl(
   }
 }
 
-/** A [TestRule] providing the same behaviour as [AndroidGradleProjectRule] but with the correct setup for rendering Compose elements. */
+/** A [TestRule] providing the same behaviour as [AndroidProjectRule.testProject] but with the correct setup for rendering Compose elements. */
 open class ComposeGradleProjectRule(
   projectPath: String,
   testDataPath: String = TEST_DATA_PATH,
-  private val projectRule: AndroidGradleProjectRule =
-    AndroidGradleProjectRule(
-      agpVersionSoftwareEnvironment =
-        AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT.withTargetSdk(COMPILE_SDK_VERSION).withCompileSdk(COMPILE_SDK_VERSION)
-    ),
+  private val projectRule: AndroidProjectRule =
+    AndroidProjectRule.testProject(createComposeTestProject(projectPath, testDataPath)),
 ) : ComposeProjectBasedTestRule {
   override val project: Project
     get() = projectRule.project
@@ -94,11 +129,12 @@ open class ComposeGradleProjectRule(
   protected open val delegate: RuleChain =
     RuleChain.outerRule(TestLoggerRule())
       .around(projectRule)
-      .around(ComposeGradleProjectRuleImpl(projectPath, testDataPath, projectRule))
+      .around(ComposeGradleProjectRuleImpl(testDataPath, projectRule))
       .around(EdtRule())
       .around(FlagRule(StudioFlags.GRADLE_SAVE_LOG_TO_FILE, true))
 
-  fun androidFacet(gradlePath: String) = projectRule.mainAndroidFacet(gradlePath)
+  fun androidFacet(gradlePath: String): AndroidFacet =
+    project.gradleModule(gradlePath)?.getMainModule()?.androidFacet ?: error("No module with Gradle path: $gradlePath")
 
   override fun apply(base: Statement, description: Description): Statement = delegate.apply(base, description)
 
@@ -125,6 +161,6 @@ open class ComposeGradleProjectRule(
   }
 
   fun requestSyncAndWait() {
-    projectRule.requestSyncAndWait()
+    project.requestSyncAndWait()
   }
 }

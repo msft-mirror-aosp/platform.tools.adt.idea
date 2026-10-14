@@ -28,7 +28,7 @@ import com.android.tools.idea.editors.build.RenderingBuildStatus
 import com.android.tools.idea.editors.fast.FastPreviewConfiguration
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.preview.PreviewRefreshManager
-import com.android.tools.idea.testing.AndroidGradleProjectRule
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.NamedExternalResource
 import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.intellij.openapi.application.EDT
@@ -64,7 +64,7 @@ class ComposePreviewFakeUiGradleRule(
   projectPath: String,
   private val previewFilePath: String,
   testDataPath: String = TEST_DATA_PATH,
-  projectRule: AndroidGradleProjectRule = AndroidGradleProjectRule(),
+  projectRule: AndroidProjectRule = AndroidProjectRule.testProject(createComposeTestProject(projectPath, testDataPath)),
 ) : ComposeGradleProjectRule(projectPath, testDataPath, projectRule) {
 
   // The logger must be initialized later since at this point the logger framework is not ready yet
