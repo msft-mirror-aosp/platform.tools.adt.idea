@@ -20,7 +20,6 @@ import static com.android.tools.idea.profilers.profilingconfig.CpuProfilerConfig
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.Client;
 import com.android.ddmlib.IDevice;
-import com.android.ide.common.gradle.Dependency;
 import com.android.ide.common.repository.GoogleMavenArtifactId;
 import com.android.tools.idea.codenavigation.CodeNavigator;
 import com.android.tools.idea.codenavigation.IntelliJNavSource;
@@ -40,7 +39,6 @@ import com.android.tools.idea.projectsystem.AndroidModuleSystem;
 import com.android.tools.idea.projectsystem.DependencyType;
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
-import com.android.tools.idea.projectsystem.RegisteredDependencyCompatibilityResult;
 import com.android.tools.idea.projectsystem.RegisteredDependencyId;
 import com.android.tools.idea.projectsystem.RegisteredDependencyQueryId;
 import com.android.tools.idea.projectsystem.RegisteringModuleSystem;
@@ -115,8 +113,6 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -145,15 +141,33 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   @NotNull private final IntellijProfilerPreferences myPersistentPreferences;
   @NotNull private final TemporaryProfilerPreferences myTemporaryPreferences;
 
+  /** Warning shown when no stable studio-leakcanary version is found. */
+  @VisibleForTesting
+  static final String LEAKCANARY_VERSION_NOT_RESOLVED_MESSAGE =
+    "Couldn't find a stable version of " + GoogleMavenArtifactId.LEAKCANARY + " in the project's repositories. " +
+    "Check your connection and repository settings, then try again.";
+
+  /** Turns a dependency's '+' id into a real version. */
+  @NotNull private final DependencyVersionResolver myDependencyVersionResolver;
+
   public IntellijProfilerServices(@NotNull Project project,
                                   @NotNull SymbolFilesLocator symbolLocator) {
+    this(project, symbolLocator, new DependencyVersionResolver());
+  }
+
+  @VisibleForTesting
+  IntellijProfilerServices(@NotNull Project project,
+                           @NotNull SymbolFilesLocator symbolLocator,
+                           @NotNull DependencyVersionResolver dependencyVersionResolver) {
     myProject = project;
     myFeatureTracker = new StudioFeatureTracker(myProject);
 
     mySymbolLocator = symbolLocator;
+    myDependencyVersionResolver = dependencyVersionResolver;
 
     NativeSymbolizer nativeSymbolizer = NativeSymbolizerKt.createNativeSymbolizer(mySymbolLocator);
     Disposer.register(this, nativeSymbolizer::stop);
+    Disposer.register(this, myDependencyVersionResolver);
     myNativeSymbolizer = new IntelliJNativeFrameSymbolizer(nativeSymbolizer);
     myPersistentPreferences = new IntellijProfilerPreferences();
     myTemporaryPreferences = new TemporaryProfilerPreferences();
@@ -588,99 +602,19 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
                   (Computable<RegisteredDependencyId>) () -> registeringModuleSystem.getRegisteredDependencyId(artifact)
               );
 
-              // 3. Force the project system to analyze it. This safely resolves the '+' to a concrete version via the background index fetch!
-              ListenableFuture<RegisteredDependencyCompatibilityResult<RegisteredDependencyId>> compatibilityFuture =
-                  registeringModuleSystem.analyzeDependencyCompatibility(List.of(unresolvedId));
+              // 3. Turn '+' into a real version.
+              RegisteredDependencyId tempResolvedId = myDependencyVersionResolver.resolve(
+                DependencyVersionResolver.Key.of(module, artifact), unresolvedId,
+                () -> registeringModuleSystem.analyzeDependencyCompatibility(List.of(unresolvedId)), indicator);
 
-              RegisteredDependencyId tempResolvedId;
-              if (compatibilityFuture != null) {
-                RegisteredDependencyCompatibilityResult<RegisteredDependencyId> result;
-                try {
-                  final long timeoutSeconds = 10;
-                  final long pollIntervalMs = 100;
-
-                  long startTimeNs = System.nanoTime();
-                  long timeoutNs = TimeUnit.SECONDS.toNanos(timeoutSeconds);
-
-                  // Poll the future, allowing the user to cancel the progress bar
-                  while (!compatibilityFuture.isDone()) {
-                    indicator.checkCanceled();
-
-                    // Use a 10-second timeout to prevent hanging on bad network
-                    if (System.nanoTime() - startTimeNs > timeoutNs) {
-                      throw new TimeoutException("Compatibility analysis timed out after " + timeoutSeconds + " seconds.");
-                    }
-                    try {
-                      compatibilityFuture.get(pollIntervalMs, TimeUnit.MILLISECONDS);
-                    } catch (TimeoutException ignored) {
-                      // Expected during polling. Keep looping.
-                    }
-                  }
-                  result = compatibilityFuture.get();
-
-                  // 4. Extract the concrete, resolved ID if available
-                  if (result.getCompatible().containsKey(unresolvedId)) {
-                    tempResolvedId = result.getCompatible().get(unresolvedId);
-                    getLogger().info("Successfully resolved " + artifact + " to concrete version: " + tempResolvedId);
-                  } else {
-                    tempResolvedId = unresolvedId;
-                    getLogger().warn("Failed to resolve exact version for " + artifact + ". Falling back to dynamic version.");
-                  }
-                } catch (ProcessCanceledException pce) {
-                  // Handled correctly, complete future as false to safely abort the injection process
-                  compatibilityFuture.cancel(true);
-                  getLogger().info("User canceled dependency injection for " + artifact);
-                  future.complete(false);
-                  throw pce; // Rethrow to let IntelliJ ProgressManager know the task was canceled
-                } catch (TimeoutException timeoutEx) {
-                  compatibilityFuture.cancel(true);
-                  tempResolvedId = unresolvedId;
-                  getLogger().warn("Network timeout resolving " + artifact + ". Falling back to dynamic version.");
-                } catch (Exception ex) {
-                  compatibilityFuture.cancel(true);
-                  if (ex instanceof InterruptedException) {
-                    Thread.currentThread().interrupt(); // Restore interrupt status
-                  }
-                  tempResolvedId = unresolvedId;
-                  getLogger().warn("Exception resolving " + artifact + ". Falling back to dynamic version.", ex);
-                }
-              } else {
-                // Fallback for tests or unexpected mock behaviors where the future is null
-                tempResolvedId = unresolvedId;
-                getLogger().warn("Compatibility analysis returned null future. Falling back to dynamic version.");
+              // 4. LeakCanary needs a stable version like 1.0.0, never '+' or alpha.
+              // Other artifacts keep the '+' fallback on purpose.
+              if (artifact == GoogleMavenArtifactId.LEAKCANARY && !DependencyVersionResolver.isPinnedStableVersion(tempResolvedId)) {
+                abortLeakCanaryInjection(tempResolvedId, future);
+                return;
               }
 
-              RegisteredDependencyId finalResolvedId = tempResolvedId;
-
-              // Fallback to extract preview versions (e.g. alphas) specifically for LeakCanary since analyzeDependencyCompatibility filters them out.
-              // We restrict this reflection hack ONLY to the studio-leakcanary artifact to prevent breaking other generic ProjectSystem callers.
-              if (artifact == GoogleMavenArtifactId.LEAKCANARY && finalResolvedId.toString().endsWith(":+")) {
-                try {
-                  Class<?> repoManagerClass = Class.forName("com.android.tools.idea.gradle.repositories.RepositoryUrlManager");
-                  Object repoManager = repoManagerClass.getMethod("get").invoke(null);
-                  Object versionString = repoManagerClass.getMethod("getLibraryRevision", String.class, String.class, java.util.function.Predicate.class, boolean.class, java.nio.file.FileSystem.class)
-                      .invoke(repoManager, artifact.getMavenGroupId(), artifact.getMavenArtifactId(), null, true, java.nio.file.FileSystems.getDefault());
-
-                  if (versionString != null) {
-                    // Update both the UI string AND the backend injected ID to ensure they match (Addressing code review feedback)
-                    final String resolvedCoordinate = artifact.getMavenGroupId() + ":" + artifact.getMavenArtifactId() + ":" + versionString;
-                    try {
-                      Dependency dependencyObj = Dependency.parse(resolvedCoordinate);
-
-                      java.lang.reflect.Constructor<?> constructor = unresolvedId.getClass().getDeclaredConstructor(Dependency.class);
-                      constructor.setAccessible(true);
-                      finalResolvedId = (RegisteredDependencyId) constructor.newInstance(dependencyObj);
-                    } catch (Exception innerE) {
-                      getLogger().warn("Failed to reflectively create exact version for LeakCanary. Falling back to dynamic version.", innerE);
-                      finalResolvedId = unresolvedId;
-                    }
-                  }
-                } catch (Exception ignored) {
-                  // If reflection fails (e.g., method signature changes), silently swallow the exception and fall back to the '+' version.
-                }
-              }
-
-              final RegisteredDependencyId dependencyIdToInject = finalResolvedId;
+              final RegisteredDependencyId dependencyIdToInject = tempResolvedId;
               final String finalCoordinateForUi = dependencyIdToInject.toString();
 
               // 5. Safely inject the concrete version on the UI thread
@@ -722,6 +656,8 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
                 }
               }, ModalityState.defaultModalityState());
             } catch (ProcessCanceledException pce) {
+              // The user canceled. Stop and rethrow so the ProgressManager knows.
+              getLogger().info("User canceled dependency injection for " + artifact);
               future.complete(false);
               throw pce;
             } catch (Exception ex) {
@@ -749,6 +685,26 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
       future.complete(false);
     }
   }
+
+  /** Stops LeakCanary injection: no dialog, no build file change, shows a warning balloon. */
+  private void abortLeakCanaryInjection(@NotNull RegisteredDependencyId resolvedId, @NotNull CompletableFuture<Boolean> future) {
+    getLogger().warn("Could not resolve a stable version for " + GoogleMavenArtifactId.LEAKCANARY + " (resolved: " + resolvedId +
+                     "). Aborting dependency injection.");
+    ApplicationManager.getApplication().invokeLater(() -> {
+      if (!myProject.isDisposed()) {
+        AndroidNotification.getInstance(myProject).showBalloon(
+          "LeakCanary", LEAKCANARY_VERSION_NOT_RESOLVED_MESSAGE, NotificationType.WARNING);
+      }
+    });
+    future.complete(false);
+  }
+
+  @VisibleForTesting
+  @NotNull
+  DependencyVersionResolver getDependencyVersionResolver() {
+    return myDependencyVersionResolver;
+  }
+
   @VisibleForTesting
   protected boolean showConfirmationDialog(Module module, GoogleMavenArtifactId artifact, DependencyType dependencyType, @Nullable String resolvedCoordinate) {
     DependencyConfirmationDialog dialog = new DependencyConfirmationDialog(myProject, module, artifact, dependencyType, resolvedCoordinate);
