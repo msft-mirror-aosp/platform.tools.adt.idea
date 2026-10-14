@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace 'com.example.emptyapplication'
+    namespace = 'com.example.emptyapplication'
     compileSdk 33
 
     defaultConfig {

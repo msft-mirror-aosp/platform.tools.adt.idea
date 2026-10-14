@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace 'com.example.userlib'
+    namespace = 'com.example.userlib'
     compileSdk 35
 
     defaultConfig {

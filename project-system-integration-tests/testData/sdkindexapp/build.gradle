@@ -4,7 +4,7 @@ plugins {
 
 android {
     compileSdk 33
-    namespace "com.example.sdkindexapp"
+    namespace = "com.example.sdkindexapp"
     defaultConfig {
         minSdk 26
     }

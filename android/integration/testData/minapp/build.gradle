@@ -5,7 +5,7 @@ plugins {
 android {
     compileSdk 33
     defaultConfig {
-        namespace "com.example.minapp"
+        namespace = "com.example.minapp"
         minSdk 26
         targetSdk 33
     }

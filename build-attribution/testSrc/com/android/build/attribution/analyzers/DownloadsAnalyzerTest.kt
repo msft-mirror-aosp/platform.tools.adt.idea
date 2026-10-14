@@ -306,7 +306,7 @@ class DownloadsAnalyzerTest {
             """
           repositories {
               maven {
-                  url "${server1.url}"
+                  url = "${server1.url}"
                   allowInsecureProtocol = true
                   metadataSources() {
                       mavenPom()
@@ -314,7 +314,7 @@ class DownloadsAnalyzerTest {
                   }
               }
               maven {
-                  url "${server2.url}"
+                  url = "${server2.url}"
                   allowInsecureProtocol = true
                   metadataSources() {
                       mavenPom()
@@ -354,7 +354,7 @@ class DownloadsAnalyzerTest {
             """
           repositories {
               maven {
-                  url "${server2.url}"
+                  url = "${server2.url}"
                   allowInsecureProtocol = true
                   metadataSources() {
                       mavenPom()

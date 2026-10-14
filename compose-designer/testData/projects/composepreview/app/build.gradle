@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace 'com.example.composepreviewtest'
+    namespace = 'com.example.composepreviewtest'
     compileSdk 33
 
     defaultConfig {

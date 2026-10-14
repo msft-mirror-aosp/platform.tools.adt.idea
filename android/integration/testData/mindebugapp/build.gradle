@@ -5,7 +5,7 @@ plugins {
 android {
     compileSdk 33
     defaultConfig {
-        namespace "com.example.mindebugapp"
+        namespace = "com.example.mindebugapp"
         minSdk 26
     }
     compileOptions {

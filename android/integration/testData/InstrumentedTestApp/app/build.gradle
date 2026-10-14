@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-  namespace 'com.example.instrumentedtestapp'
+  namespace = 'com.example.instrumentedtestapp'
   compileSdk 33
 
   defaultConfig {

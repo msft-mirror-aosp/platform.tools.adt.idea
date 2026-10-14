@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-  namespace 'com.example.junittestapp'
+  namespace = 'com.example.junittestapp'
   compileSdk 33
 
   defaultConfig {
-    namespace "com.example.junittestapp"
+    namespace = "com.example.junittestapp"
     minSdk 24
     targetSdk 33
     versionCode 1

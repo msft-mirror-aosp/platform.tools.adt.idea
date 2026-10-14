@@ -22,7 +22,7 @@ android {
     }
 
     viewBinding {
-        enabled true
+        enabled = true
     }
 }
 

@@ -20,7 +20,7 @@ plugins {
 }
 
 android {
-    namespace "com.example.android.architecture.blueprints.todoapp.shared.test"
+    namespace = "com.example.android.architecture.blueprints.todoapp.shared.test"
     compileSdk libs.versions.compileSdk.get().toInteger()
     defaultConfig {
         minSdk libs.versions.minSdk.get().toInteger()
