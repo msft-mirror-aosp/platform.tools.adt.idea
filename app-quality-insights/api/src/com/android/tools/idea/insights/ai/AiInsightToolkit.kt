@@ -102,7 +102,7 @@ abstract class AiInsightToolkit(private val project: Project, private val insigh
     val contributor =
       AiInsightContributor.getFirstAvailableContributor() ?: return LoadingState.Unauthorized("No insight contributor found")
     return runGrpcCatching(failure) {
-      val insight = contributor.fetchInsight(event)
+      val insight = contributor.fetchInsight(project, event)
       insightCache.putAiInsight(connection, issueId, variantId, insight)
       LoadingState.Ready(insight)
     }
