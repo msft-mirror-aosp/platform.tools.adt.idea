@@ -37,6 +37,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.runInEdtAndGet
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.image.BufferedImage
@@ -216,8 +217,8 @@ class ComposePreviewFakeUiGradleRule(
   }
 
   /** Finds the render result of the [SceneViewPeerPanel] with the given [name]. */
-  fun findSceneViewRenderWithName(@Suppress("SameParameterValue") name: String): BufferedImage {
+  fun findSceneViewRenderWithName(@Suppress("SameParameterValue") name: String): BufferedImage = runInEdtAndGet {
     val sceneViewPanel = fakeUi.findComponent<SceneViewPeerPanel> { it.displayName == name }!!
-    return fakeUi.render().getSubimage(sceneViewPanel.x, sceneViewPanel.y, sceneViewPanel.width, sceneViewPanel.height)
+    fakeUi.render().getSubimage(sceneViewPanel.x, sceneViewPanel.y, sceneViewPanel.width, sceneViewPanel.height)
   }
 }

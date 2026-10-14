@@ -23,10 +23,12 @@ import com.android.tools.idea.preview.NoopAnimationTracker
 import com.android.tools.idea.preview.animation.AllTabPanel.Companion.createAllTabPanelForTest
 import com.android.tools.idea.preview.animation.TestUtils.findExpandButton
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.uibuilder.NlModelBuilderUtil
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.ui.JBColor
 import com.intellij.ui.JBSplitter
@@ -40,9 +42,10 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class AllTabPanelTest {
 
-  @get:Rule val projectRule = AndroidProjectRule.inMemory()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory().onEdt()
 
   private lateinit var surface: DesignSurface<*>
 
@@ -51,7 +54,13 @@ class AllTabPanelTest {
   @Before
   fun setUp() {
     val model = runInEdtAndGet {
-      NlModelBuilderUtil.model(projectRule, "layout", "layout.xml", ComponentDescriptor(SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER)).build()
+      NlModelBuilderUtil.model(
+          projectRule.projectRule,
+          "layout",
+          "layout.xml",
+          ComponentDescriptor(SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER),
+        )
+        .build()
     }
     surface = NlSurfaceBuilder.builder(projectRule.project, projectRule.testRootDisposable).build()
     surface.addModelsWithoutRender(listOf(model))

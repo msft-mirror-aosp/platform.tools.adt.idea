@@ -27,13 +27,13 @@ class LabelCardTest {
 
   @Test
   fun `create animation card`(): Unit {
-    val card = LabelCard("Title")
-    card.component.setSize(100, card.getCurrentHeight())
-    card.setDuration(0)
-
-    assertTrue(card.getCurrentHeight() > minimumSize.height)
-
     ApplicationManager.getApplication().invokeAndWait {
+      val card = LabelCard("Title")
+      card.component.setSize(100, card.getCurrentHeight())
+      card.setDuration(0)
+
+      assertTrue(card.getCurrentHeight() > minimumSize.height)
+
       val ui = FakeUi(card.component)
       ui.layout()
 

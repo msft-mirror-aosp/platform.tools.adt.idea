@@ -37,6 +37,7 @@ import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.RESIZE_COMPOSE_PREVIEW_EVENT
 import com.google.wireless.android.sdk.stats.ResizeComposePreviewEvent
 import com.intellij.testFramework.runInEdtAndGet
+import com.intellij.testFramework.runInEdtAndWait
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -86,14 +87,16 @@ class ComposeResizeTrackerTest {
     val targetY = startY + 200
     val startInfo = InteractionInformation(startX, startY, 0)
 
-    // 1. Begin the drag
-    resizeInteraction.begin(MousePressedEvent(MouseEventBuilder(startX, startY).build(), startInfo))
+    runInEdtAndWait {
+      // 1. Begin the drag
+      resizeInteraction.begin(MousePressedEvent(MouseEventBuilder(startX, startY).build(), startInfo))
 
-    // 2. Update (drag) to the target coordinates
-    resizeInteraction.update(MouseDraggedEvent(MouseEventBuilder(targetX, targetY).build(), startInfo))
+      // 2. Update (drag) to the target coordinates
+      resizeInteraction.update(MouseDraggedEvent(MouseEventBuilder(targetX, targetY).build(), startInfo))
 
-    // 3. Commit (release mouse)
-    resizeInteraction.commit(MouseReleasedEvent(MouseEventBuilder(targetX, targetY).build(), InteractionInformation(targetX, targetY, 0)))
+      // 3. Commit (release mouse)
+      resizeInteraction.commit(MouseReleasedEvent(MouseEventBuilder(targetX, targetY).build(), InteractionInformation(targetX, targetY, 0)))
+    }
 
     val event = usageTrackerRule.usages.find { it.studioEvent.kind == RESIZE_COMPOSE_PREVIEW_EVENT }!!.studioEvent.resizeComposePreviewEvent
 

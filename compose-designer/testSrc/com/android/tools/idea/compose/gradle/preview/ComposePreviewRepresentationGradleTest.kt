@@ -157,7 +157,7 @@ class ComposePreviewRepresentationGradleTest {
     withContext(Dispatchers.EDT) { fakeUi.layoutAndDispatchEvents() }
     delayUntilCondition(100, 5.seconds) { fakeUi.findAllComponents<SceneViewPeerPanel>().count() == 5 }
 
-    val output = fakeUi.render()
+    val output = withContext(Dispatchers.EDT) { fakeUi.render() }
 
     assertEquals(
       """
@@ -578,10 +578,12 @@ class ComposePreviewRepresentationGradleTest {
     // FakeUi doesn't call the designSurface.resize() callback needed to call the [notifyZoomToFit]
     // when the render has finished. We need then to do notify the resize manually.
     val surfaceSize = previewView.mainSurface.size
-    (previewView.mainSurface.zoomController as DesignSurfaceZoomController).notifyDesignSurfaceResized(
-      surfaceSize.width,
-      surfaceSize.height,
-    )
+    withContext(Dispatchers.EDT) {
+      (previewView.mainSurface.zoomController as DesignSurfaceZoomController).notifyDesignSurfaceResized(
+        surfaceSize.width,
+        surfaceSize.height,
+      )
+    }
     delayUntilCondition(delayPerIterationMs = 250) { !previewView.mainSurface.zoomController.canZoomToFit() }
 
     // Focus mode should be in zoom-to-fit scale.
@@ -589,8 +591,10 @@ class ComposePreviewRepresentationGradleTest {
     assertFalse(previewView.mainSurface.zoomController.canZoomToFit())
 
     // Change the scale of the surface.
-    previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
-    previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
+    withContext(Dispatchers.EDT) {
+      previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
+      previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
+    }
 
     // Stop Focus mode.
     switchToDefaultMode()
@@ -620,10 +624,12 @@ class ComposePreviewRepresentationGradleTest {
     }
     delayUntilCondition(delayPerIterationMs = 500, timeout = 10.seconds) { composePreviewRepresentation.mode.value is PreviewMode.Focus }
     val surfaceSize = previewView.mainSurface.size
-    (previewView.mainSurface.zoomController as DesignSurfaceZoomController).notifyDesignSurfaceResized(
-      surfaceSize.width,
-      surfaceSize.height,
-    )
+    withContext(Dispatchers.EDT) {
+      (previewView.mainSurface.zoomController as DesignSurfaceZoomController).notifyDesignSurfaceResized(
+        surfaceSize.width,
+        surfaceSize.height,
+      )
+    }
     delayUntilCondition(delayPerIterationMs = 250) { !previewView.mainSurface.zoomController.canZoomToFit() }
 
     // Focus mode first tab should be in zoom-to-fit scale.
@@ -631,9 +637,11 @@ class ComposePreviewRepresentationGradleTest {
     assertFalse(previewView.mainSurface.zoomController.canZoomToFit())
 
     // Change the scale of the first tab.
-    previewView.mainSurface.zoomController.zoom(ZoomType.IN)
-    previewView.mainSurface.zoomController.zoom(ZoomType.IN)
-    previewView.mainSurface.zoomController.zoom(ZoomType.IN)
+    withContext(Dispatchers.EDT) {
+      previewView.mainSurface.zoomController.zoom(ZoomType.IN)
+      previewView.mainSurface.zoomController.zoom(ZoomType.IN)
+      previewView.mainSurface.zoomController.zoom(ZoomType.IN)
+    }
 
     // Because of the zoom change now we would be able to zoom-to-fit again.
     assertTrue(previewView.mainSurface.zoomController.canZoomToFit())
@@ -643,14 +651,16 @@ class ComposePreviewRepresentationGradleTest {
       composePreviewRepresentation.setMode(PreviewMode.Focus(secondSelectedPreviewElement))
     }
 
-    (previewView.mainSurface.zoomController as DesignSurfaceZoomController).notifyDesignSurfaceResized(
-      surfaceSize.width,
-      surfaceSize.height,
-    )
-    (previewView.mainSurface.zoomController as DesignSurfaceZoomController).notifyDesignSurfaceResized(
-      surfaceSize.width,
-      surfaceSize.height,
-    )
+    withContext(Dispatchers.EDT) {
+      (previewView.mainSurface.zoomController as DesignSurfaceZoomController).notifyDesignSurfaceResized(
+        surfaceSize.width,
+        surfaceSize.height,
+      )
+      (previewView.mainSurface.zoomController as DesignSurfaceZoomController).notifyDesignSurfaceResized(
+        surfaceSize.width,
+        surfaceSize.height,
+      )
+    }
 
     delayUntilCondition(delayPerIterationMs = 250) { !previewView.mainSurface.zoomController.canZoomToFit() }
 
@@ -681,10 +691,12 @@ class ComposePreviewRepresentationGradleTest {
     // FakeUi doesn't call the designSurface.resize() callback needed to call the [notifyZoomToFit]
     // when the render has finished. We need then to do notify the resize manually.
     val surfaceSize = previewView.mainSurface.size
-    (previewView.mainSurface.zoomController as DesignSurfaceZoomController).notifyDesignSurfaceResized(
-      surfaceSize.width,
-      surfaceSize.height,
-    )
+    withContext(Dispatchers.EDT) {
+      (previewView.mainSurface.zoomController as DesignSurfaceZoomController).notifyDesignSurfaceResized(
+        surfaceSize.width,
+        surfaceSize.height,
+      )
+    }
     delayUntilCondition(delayPerIterationMs = 250) { !previewView.mainSurface.zoomController.canZoomToFit() }
 
     // Animation inspection mode should be in zoom-to-fit scale.
@@ -692,8 +704,10 @@ class ComposePreviewRepresentationGradleTest {
     assertFalse(previewView.mainSurface.zoomController.canZoomToFit())
 
     // Change the scale of the surface.
-    previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
-    previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
+    withContext(Dispatchers.EDT) {
+      previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
+      previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
+    }
 
     // Stop Animation inspection mode.
     switchToDefaultMode()
@@ -724,8 +738,10 @@ class ComposePreviewRepresentationGradleTest {
     assertFalse(previewView.mainSurface.zoomController.canZoomToFit())
 
     // Change the scale of the surface.
-    previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
-    previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
+    withContext(Dispatchers.EDT) {
+      previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
+      previewView.mainSurface.zoomController.zoom(ZoomType.OUT)
+    }
 
     // Stop Interactive Preview mode.
     switchToDefaultMode()
@@ -901,7 +917,7 @@ class ComposePreviewRepresentationGradleTest {
     designSurfaceZoomController.notifyDesignSurfaceCreated()
 
     // Simulate design surface resize event
-    designSurfaceZoomController.notifyDesignSurfaceResized(500, 500)
+    withContext(Dispatchers.EDT) { designSurfaceZoomController.notifyDesignSurfaceResized(500, 500) }
   }
 
   private suspend fun setFakeUi(testPreviewView: TestComposePreviewView): FakeUi {

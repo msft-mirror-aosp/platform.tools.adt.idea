@@ -23,16 +23,19 @@ import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.surface.SceneView
 import com.android.tools.idea.preview.PreviewViewSingleWordFilter
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.testFramework.RunsInEdt
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
+@RunsInEdt
 class PreviewViewSingleWordFilterTest {
 
-  @Rule @JvmField val rule = AndroidProjectRule.Companion.inMemory()
+  @Rule @JvmField val rule = AndroidProjectRule.Companion.inMemory().onEdt()
 
   @Test
   fun testOnlyShowMatchedViews() {

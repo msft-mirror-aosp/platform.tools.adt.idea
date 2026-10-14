@@ -49,14 +49,18 @@ class AnimationCardTest {
   fun `create animation card`(): Unit = runBlocking {
     val frozenFlow = MutableStateFlow(SupportedAnimationManager.FrozenState(false))
     val card =
-      AnimationCard(
-          Mockito.mock(DesignSurface::class.java),
-          "Title",
-          listOf(FreezeAction({ 200 }, frozenFlow, NoopAnimationTracker)),
-          NoopAnimationTracker,
-        )
-        .apply { setDuration(111) }
-    card.setSize(300, 300)
+      withContext(Dispatchers.EDT) {
+        AnimationCard(
+            Mockito.mock(DesignSurface::class.java),
+            "Title",
+            listOf(FreezeAction({ 200 }, frozenFlow, NoopAnimationTracker)),
+            NoopAnimationTracker,
+          )
+          .apply {
+            setDuration(111)
+            setSize(300, 300)
+          }
+      }
 
     val ui =
       withContext(Dispatchers.EDT) {
