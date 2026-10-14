@@ -23,7 +23,7 @@ android {
     minSdkVersion 15
     targetSdkVersion 19
   }
-  targetProjectPath ':module1'
+  targetProjectPath = ':module1'
 }
 
 repositories {

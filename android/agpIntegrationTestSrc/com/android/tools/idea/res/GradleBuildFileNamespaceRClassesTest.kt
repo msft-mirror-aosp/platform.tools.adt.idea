@@ -109,8 +109,8 @@ class GradleBuildFileNamespaceRClassesTest {
         .appendText(
           """
           android {
-            namespace "com.example.foo.libmodule"
-            testNamespace "com.example.foo.libmodule.test"
+            namespace = "com.example.foo.libmodule"
+            testNamespace = "com.example.foo.libmodule.test"
           }
           """
             .trimIndent()

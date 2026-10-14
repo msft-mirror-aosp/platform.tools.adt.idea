@@ -291,7 +291,7 @@ sealed class TestRClassesTest {
 
     val updatedGradleFileText =
       """${gradleFileText.substring(0, insertionIndex)}
-          androidResources ${if (androidResourcesEnabled) "true" else "false"}
+          androidResources = ${if (androidResourcesEnabled) "true" else "false"}
       ${gradleFileText.substring(insertionIndex)}
       """
         .trimIndent()

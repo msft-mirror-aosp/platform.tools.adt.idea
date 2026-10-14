@@ -26,7 +26,7 @@ android {
     testApplicationId 'com.example.android.app.testmodule'
   }
 
-  targetProjectPath ':app'
+  targetProjectPath = ':app'
 }
 
 repositories {
