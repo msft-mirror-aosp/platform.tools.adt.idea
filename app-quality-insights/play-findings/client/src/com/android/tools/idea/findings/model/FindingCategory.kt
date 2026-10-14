@@ -29,9 +29,14 @@ fun FindingType.toFindingCategory(): FindingCategory {
     FindingType.VITALS_ANOMALY,
     FindingType.VITALS_BAD_BEHAVIOR,
     FindingType.VITALS_DEVICE_BAD_BEHAVIOR,
-    FindingType.SDK_HAS_CRASH_ANNOTATION -> FindingCategory.TECHNICAL_QUALITY
+    FindingType.SDK_HAS_CRASH_ANNOTATION,
+    FindingType.LARGE_SCREENS_CRASH -> FindingCategory.TECHNICAL_QUALITY
 
-    FindingType.EDGE_TO_EDGE_COMPAT -> FindingCategory.USER_EXPERIENCE
+    FindingType.EDGE_TO_EDGE_COMPAT,
+    FindingType.LARGE_SCREENS_LAYOUT,
+    FindingType.LARGE_SCREENS_CAMERA_STRETCHED,
+    FindingType.LARGE_SCREENS_CAMERA_SIDEWAYS,
+    FindingType.LARGE_SCREENS_CONTINUITY -> FindingCategory.USER_EXPERIENCE
 
     FindingType.UNKNOWN -> FindingCategory.OTHER
   }

@@ -17,9 +17,12 @@ package com.android.tools.idea.findings.client
 
 import com.android.tools.findings.client.PlayFindingsClient
 import com.android.tools.idea.findings.model.AffectedScope
+import com.android.tools.idea.findings.model.DeviceInfo
 import com.android.tools.idea.findings.model.FindingData
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.findings.model.FindingType
+import com.android.tools.idea.findings.model.StackTrace
+import com.android.tools.idea.findings.model.VisualEvidence
 import com.android.tools.idea.findings.model.VitalsMetric
 import com.android.tools.idea.insights.LoadingState
 import com.google.common.truth.Truth.assertThat
@@ -29,6 +32,10 @@ import com.google.play.androidpublisher.v3.EdgeToEdgeCompatFindingData
 import com.google.play.androidpublisher.v3.Finding as ProtoFinding
 import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
 import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
+import com.google.play.androidpublisher.v3.LargeScreensCrashFindingData
+import com.google.play.androidpublisher.v3.LargeScreensDeviceInfo as ProtoLargeScreensDeviceInfo
+import com.google.play.androidpublisher.v3.LargeScreensLayoutFindingData
+import com.google.play.androidpublisher.v3.LargeScreensVisualFindingData
 import com.google.play.androidpublisher.v3.VitalsAnomalyFindingData
 import com.google.play.androidpublisher.v3.VitalsBadBehaviorFindingData
 import com.google.play.androidpublisher.v3.VitalsDeviceBadBehaviorFindingData
@@ -307,6 +314,106 @@ class StudioFindingsClientTest {
     assertThat(findings[0].type).isEqualTo(FindingType.SDK_HAS_CRASH_ANNOTATION)
     assertThat(findings[0].severity).isEqualTo(FindingSeverity.INFO)
     assertThat(findings[0].findingData).isEqualTo(FindingData.Empty)
+  }
+
+  @Test
+  fun testFetchFindings_LargeScreens() = runBlocking {
+    val protoDeviceInfo =
+      ProtoLargeScreensDeviceInfo.newBuilder()
+        .setDeviceBrandName("samsung")
+        .setDeviceModel("sm-f946b")
+        .setAndroidVersion("14")
+        .setAndroidSdkVersion(34)
+        .build()
+    val expectedDeviceInfo =
+      DeviceInfo(
+        deviceBrandName = "samsung",
+        deviceModel = "sm-f946b",
+        androidVersion = "14",
+        androidSdkVersion = 34,
+      )
+
+    val responseProto =
+      ComputeFindingsResponse.newBuilder()
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/ls-layout")
+            .setFindingType(ProtoFinding.Type.LARGE_SCREENS_LAYOUT)
+            .setFindingSeverity(ProtoFinding.Severity.WARNING)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setLargeScreensLayout(
+                  LargeScreensLayoutFindingData.newBuilder()
+                    .setLayoutIssueType(LargeScreensLayoutFindingData.LayoutIssueType.DOES_NOT_USE_ENTIRE_SCREEN)
+                    .setScreenshotFifeUrl("https://lh3.googleusercontent.com/layout-screenshot")
+                    .setDeviceInfo(protoDeviceInfo)
+                )
+            )
+        )
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/ls-camera")
+            .setFindingType(ProtoFinding.Type.LARGE_SCREENS_CAMERA_STRETCHED)
+            .setFindingSeverity(ProtoFinding.Severity.WARNING)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setLargeScreensVisual(
+                  LargeScreensVisualFindingData.newBuilder()
+                    .setScreenshotFifeUrl("https://lh3.googleusercontent.com/camera-screenshot")
+                    .setDeviceInfo(protoDeviceInfo)
+                )
+            )
+        )
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/ls-crash")
+            .setFindingType(ProtoFinding.Type.LARGE_SCREENS_CRASH)
+            .setFindingSeverity(ProtoFinding.Severity.SEVERE)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setLargeScreensCrash(
+                  LargeScreensCrashFindingData.newBuilder()
+                    .setStackTrace("java.lang.IllegalStateException: Crash on fold")
+                    .setDeviceInfo(protoDeviceInfo)
+                )
+            )
+        )
+        .build()
+
+    whenever(mockPlayClient.fetchFindings(any(), anyOrNull())).thenReturn(JsonFormat.printer().print(responseProto))
+
+    val result = client.fetchFindings(FetchFindingsRequest("com.example.app"))
+    assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
+    val findings = (result as LoadingState.Ready).value
+    assertThat(findings).hasSize(3)
+
+    assertThat(findings[0].type).isEqualTo(FindingType.LARGE_SCREENS_LAYOUT)
+    assertThat(findings[0].findingData)
+      .isEqualTo(
+        FindingData.LargeScreens(
+          layoutIssueType = "DOES_NOT_USE_ENTIRE_SCREEN",
+          visualEvidences = listOf(VisualEvidence(url = "https://lh3.googleusercontent.com/layout-screenshot")),
+          deviceInfo = expectedDeviceInfo,
+        )
+      )
+
+    assertThat(findings[1].type).isEqualTo(FindingType.LARGE_SCREENS_CAMERA_STRETCHED)
+    assertThat(findings[1].findingData)
+      .isEqualTo(
+        FindingData.LargeScreens(
+          visualEvidences = listOf(VisualEvidence(url = "https://lh3.googleusercontent.com/camera-screenshot")),
+          deviceInfo = expectedDeviceInfo,
+        )
+      )
+
+    assertThat(findings[2].type).isEqualTo(FindingType.LARGE_SCREENS_CRASH)
+    assertThat(findings[2].findingData)
+      .isEqualTo(
+        FindingData.LargeScreens(
+          stackTrace = StackTrace(raw = "java.lang.IllegalStateException: Crash on fold"),
+          deviceInfo = expectedDeviceInfo,
+        )
+      )
   }
 
   @Test

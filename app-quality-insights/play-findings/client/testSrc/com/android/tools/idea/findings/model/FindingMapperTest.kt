@@ -137,4 +137,36 @@ class FindingMapperTest {
         "User-perceived crashes or ANRs are occurring in a production version of your app. One of your SDK providers has additional information about this issue to help you fix it."
       )
   }
+
+  @Test
+  fun testLargeScreensDisplayNameAndDetails() {
+    val layoutFinding =
+      AppFinding.Supported(
+        name = "applications/com.example.app/findings/6",
+        type = FindingType.LARGE_SCREENS_LAYOUT,
+        severity = FindingSeverity.WARNING,
+        findingData = FindingData.LargeScreens(layoutIssueType = "DOES_NOT_USE_ENTIRE_SCREEN"),
+      )
+    assertThat(layoutFinding.category).isEqualTo(FindingCategory.USER_EXPERIENCE)
+    assertThat(layoutFinding.displayName).isEqualTo("App does not use entire screen")
+    assertThat(layoutFinding.details)
+      .isEqualTo(
+        "App does not use entire screen (letterboxed / pillarboxed). Optimize your layouts for tablets, foldables, and desktop devices."
+      )
+
+    val crashFinding =
+      AppFinding.Supported(
+        name = "applications/com.example.app/findings/7",
+        type = FindingType.LARGE_SCREENS_CRASH,
+        severity = FindingSeverity.SEVERE,
+        findingData =
+          FindingData.LargeScreens(stackTrace = StackTrace("java.lang.NullPointerException: Missing view\n\tat Foo.bar(Foo.kt:10)")),
+      )
+    assertThat(crashFinding.category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
+    assertThat(crashFinding.displayName).isEqualTo("Large screen crash on configuration change")
+    assertThat(crashFinding.details)
+      .isEqualTo(
+        "App crashed during a configuration change: java.lang.NullPointerException: Missing view. Handle configuration changes or avoid lifecycle destruction issues."
+      )
+  }
 }

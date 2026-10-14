@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package google.play.androidpublisher.v3;
+
+option java_package = "com.google.play.androidpublisher.v3";
+option java_multiple_files = true;
+option java_outer_classname = "LargeScreensFindingDataProto";
+
+// The device a Large Screens finding was observed on.
+//
+// Large Screens findings are always device scoped: the defect, the repro steps
+// and often the fix depend on the form factor, the OEM's framework
+// customizations and the Android version. The same defect observed on two
+// devices is therefore reported as two findings, each carrying its own
+// device_info, rather than as one finding with a list of devices.
+message LargeScreensDeviceInfo {
+  // Brand of the device, i.e. "ro.product.brand" (e.g. "samsung", "google").
+  string device_brand_name = 1;
+
+  // Model of the device, i.e. "ro.product.model" (e.g. "sm-i610").
+  //
+  // This is the model identifier reported by the device, which is not
+  // necessarily its marketing name ("Galaxy Z Fold 8"), so it is only
+  // meaningful next to device_brand_name.
+  string device_model = 2;
+
+  // Android platform version the device was running (e.g. "14", "17").
+  string android_version = 3;
+
+  // Android SDK (API) level the device was running (e.g. 34).
+  //
+  // Unambiguous API level developers compare their targetSdk against.
+  int32 android_sdk_version = 4;
+}
+
+// Finding data for Large Screens layout findings
+// [Finding.Type.LARGE_SCREENS_LAYOUT][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_LAYOUT].
+//
+// Layout issues are evidenced by a screenshot, the device the defect was
+// observed on, and classified with a specific layout issue type.
+message LargeScreensLayoutFindingData {
+  // Types of UI layout issues identified on large screens.
+  enum LayoutIssueType {
+    // Unspecified layout issue type.
+    LAYOUT_ISSUE_TYPE_UNSPECIFIED = 0;
+
+    // Unnecessary or excessive empty space in the screen layout.
+    EXCESSIVE_WHITE_SPACE = 1;
+
+    // App content does not fill the available screen area (e.g. unwanted
+    // letterboxing).
+    DOES_NOT_USE_ENTIRE_SCREEN = 2;
+
+    // UI components overlap each other, obscuring content or controls.
+    OVERLAPPING = 3;
+
+    // Images or typography rendered inappropriately large or scaled up.
+    IMAGES_OR_TEXT_ARE_TOO_LARGE_OR_BLOWN_UP = 4;
+
+    // Image/text assets appear pixelated, blurry, or distorted due to scaling.
+    PIXELS_LOOK_BLURRED_OR_STRETCHED = 5;
+
+    // Content extends beyond visible screen boundaries and is truncated.
+    CONTENT_CUT_OFF_ON_SCREEN = 6;
+
+    // Buttons or interactive controls lack consistent sizing, alignment, or
+    // spacing.
+    BUTTONS_OR_CONTROLS_PLACEMENTS_ARE_NOT_UNIFORM = 7;
+
+    // Images or typography aspect ratio is distorted or stretched.
+    IMAGES_OR_TEXT_ARE_STRETCHED = 8;
+
+    // Sub-navigation bars, tab bars, or menus appear compressed or cramped.
+    SUBNAVS_LOOK_CRUNCHED_OR_SQUISHED = 9;
+
+    // Individual interactive controls or buttons are excessively sized.
+    BUTTONS_OR_CONTROLS_ARE_TOO_BIG = 10;
+
+    // Content or controls overlap system bars, display cutouts, or navigation
+    // bars.
+    EDGE_TO_EDGE = 11;
+  }
+
+  // The specific type of layout issue detected.
+  LayoutIssueType layout_issue_type = 1;
+
+  // Required. FIFE/signed image URL for the screenshot illustrating the issue.
+  string screenshot_fife_url = 2;
+
+  // The device the defect was observed on.
+  LargeScreensDeviceInfo device_info = 3;
+}
+
+// Finding data for Large Screens visual findings that do not have layout issue
+// types.
+//
+// Applies to
+// [Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED],
+// [Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS]
+// and
+// [Finding.Type.LARGE_SCREENS_CONTINUITY][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CONTINUITY].
+// All of them carry a screenshot and the device the defect was observed on.
+message LargeScreensVisualFindingData {
+  // Required. FIFE/signed image URL for the screenshot illustrating the issue.
+  string screenshot_fife_url = 1;
+
+  // The device the defect was observed on.
+  LargeScreensDeviceInfo device_info = 2;
+}
+
+// Finding data for
+// [Finding.Type.LARGE_SCREENS_CRASH][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CRASH].
+//
+// Crashes have no screenshot and no UI hierarchy dump, so the evidence this
+// payload carries is the stack trace and the device the app crashed on.
+message LargeScreensCrashFindingData {
+  // The device the crash was observed on.
+  LargeScreensDeviceInfo device_info = 1;
+
+  // Stack trace of the crash, as captured by the Android DropBox entry with
+  // the trailing logcat buffer removed.
+  //
+  // This is the same text the app's own crash handler would have logged, so it
+  // contains only frames and messages produced by the app under test and by
+  // the Android framework. Empty when the test run predates stack trace
+  // capture or when the DropBox entry could not be read.
+  string stack_trace = 2;
+}

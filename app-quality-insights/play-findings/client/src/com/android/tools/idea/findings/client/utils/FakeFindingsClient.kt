@@ -22,6 +22,7 @@ import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingData
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.findings.model.FindingType
+import com.android.tools.idea.findings.model.StackTrace
 import com.android.tools.idea.findings.model.VitalsMetric
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.Selection
@@ -179,8 +180,47 @@ class FakeFindingsClient(private val delayMs: Long = DEFAULT_DELAY_MS) : Finding
           ),
         affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
       ),
+      // Large screen continuity (state loss on fold/unfold/resize)
       AppFinding.Supported(
-        name = "applications/$TEST_PACKAGE_NAME/findings/19",
+        name = "applications/$TEST_PACKAGE_NAME/findings/15",
+        type = FindingType.LARGE_SCREENS_CONTINUITY,
+        severity = FindingSeverity.WARNING,
+        findingData = FindingData.LargeScreens(),
+        affectedScopes = listOf(AffectedScope.Artifact("101")),
+      ),
+      // Large screen crash on configuration change
+      AppFinding.Supported(
+        name = "applications/$TEST_PACKAGE_NAME/findings/16",
+        type = FindingType.LARGE_SCREENS_CRASH,
+        severity = FindingSeverity.SEVERE,
+        findingData =
+          FindingData.LargeScreens(
+            stackTrace =
+              StackTrace(
+                raw =
+                  """
+                  java.lang.NullPointerException: Attempt to invoke virtual method 'void android.widget.TextView.setText(java.lang.CharSequence)' on a null object reference
+                  	at com.example.app.ui.detail.DetailFragment.onViewCreated(DetailFragment.kt:74)
+                  	at androidx.fragment.app.Fragment.performViewCreated(Fragment.java:3146)
+                  	at androidx.fragment.app.FragmentStateManager.createView(FragmentStateManager.java:588)
+                  	at androidx.fragment.app.FragmentStateManager.moveToExpectedState(FragmentStateManager.java:272)
+                  	at androidx.fragment.app.FragmentManager.executeOpsTogether(FragmentManager.java:1943)
+                  	at androidx.fragment.app.FragmentManager.removeRedundantOperationsAndExecute(FragmentManager.java:1845)
+                  	at androidx.fragment.app.FragmentManager.execPendingActions(FragmentManager.java:1782)
+                  	at androidx.fragment.app.FragmentManager${'$'}5.run(FragmentManager.java:562)
+                  	at android.os.Handler.handleCallback(Handler.java:958)
+                  	at android.os.Handler.dispatchMessage(Handler.java:99)
+                  	at android.os.Looper.loopOnce(Looper.java:230)
+                  	at android.os.Looper.loop(Looper.java:319)
+                  	at android.app.ActivityThread.main(ActivityThread.java:8919)
+                  """
+                    .trimIndent()
+              )
+          ),
+        affectedScopes = listOf(AffectedScope.Artifact("101")),
+      ),
+      AppFinding.Supported(
+        name = "applications/$TEST_PACKAGE_NAME/findings/18",
         type = FindingType.SDK_HAS_CRASH_ANNOTATION,
         severity = FindingSeverity.INFO,
         findingData = FindingData.Empty,

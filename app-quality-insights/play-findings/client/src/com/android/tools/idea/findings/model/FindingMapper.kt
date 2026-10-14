@@ -39,6 +39,19 @@ fun getFindingDisplayName(type: FindingType, data: FindingData? = null): String 
       if (metric != null) "Per-device vitals bad behavior: $metric" else "Per-device vitals bad behavior"
     }
     FindingType.SDK_HAS_CRASH_ANNOTATION -> "Some crashes or ANRs have a note from an SDK provider"
+    FindingType.LARGE_SCREENS_LAYOUT -> {
+      when ((data as? FindingData.LargeScreens)?.layoutIssueType) {
+        "DOES_NOT_USE_ENTIRE_SCREEN" -> "App does not use entire screen"
+        "CONTENT_CUT_OFF_ON_SCREEN" -> "Content cut off on screen"
+        "OVERLAPPING" -> "Overlapping UI elements"
+        null -> "Large screens layout issue"
+        else -> "Large screens layout issue: ${(data as FindingData.LargeScreens).layoutIssueType}"
+      }
+    }
+    FindingType.LARGE_SCREENS_CAMERA_STRETCHED -> "Camera preview stretched on large screens"
+    FindingType.LARGE_SCREENS_CAMERA_SIDEWAYS -> "Camera preview sideways on large screens"
+    FindingType.LARGE_SCREENS_CONTINUITY -> "Large screen continuity issue"
+    FindingType.LARGE_SCREENS_CRASH -> "Large screen crash on configuration change"
     FindingType.UNKNOWN -> "Unknown Finding"
   }
 }
@@ -85,8 +98,43 @@ fun getFindingDetails(type: FindingType, data: FindingData): String? {
         } ?: "App vitals exceed the bad behavior threshold on specific device models."
     }
 
-    FindingType.SDK_HAS_CRASH_ANNOTATION ->
+    FindingType.SDK_HAS_CRASH_ANNOTATION -> {
       "User-perceived crashes or ANRs are occurring in a production version of your app. One of your SDK providers has additional information about this issue to help you fix it."
+    }
+
+    FindingType.LARGE_SCREENS_LAYOUT -> {
+      val issueDesc =
+        when ((data as? FindingData.LargeScreens)?.layoutIssueType) {
+          "DOES_NOT_USE_ENTIRE_SCREEN" -> "App does not use entire screen (letterboxed / pillarboxed)."
+          "CONTENT_CUT_OFF_ON_SCREEN" -> "Content cut off on screen."
+          "OVERLAPPING" -> "Overlapping UI elements detected."
+          null -> "Layout issues detected on large screen devices."
+          else -> "UI layout issue detected on large screens: ${(data as FindingData.LargeScreens).layoutIssueType}."
+        }
+      "$issueDesc Optimize your layouts for tablets, foldables, and desktop devices."
+    }
+
+    FindingType.LARGE_SCREENS_CAMERA_STRETCHED -> {
+      "Camera preview appears stretched or distorted on large screens or foldables. Use CameraX or configure proper aspect ratio handling for multi-window and large screen environments."
+    }
+
+    FindingType.LARGE_SCREENS_CAMERA_SIDEWAYS -> {
+      "Camera preview is oriented sideways or rotated incorrectly on large screen devices. Ensure your camera display rotation accounts for device and display orientation."
+    }
+
+    FindingType.LARGE_SCREENS_CONTINUITY -> {
+      "State loss or continuity issue detected on fold/unfold or screen resizing. Preserve UI and app state across configuration changes and display resizing."
+    }
+
+    FindingType.LARGE_SCREENS_CRASH -> {
+      val crashData = data as? FindingData.LargeScreens
+      val exceptionLine = crashData?.stackTrace?.raw?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
+      if (exceptionLine != null) {
+        "App crashed during a configuration change: $exceptionLine. Handle configuration changes or avoid lifecycle destruction issues."
+      } else {
+        "App crashed during a configuration change (such as folding, unfolding, or resizing on large screen devices). Handle configuration changes or avoid lifecycle destruction issues."
+      }
+    }
 
     FindingType.UNKNOWN -> null
   }

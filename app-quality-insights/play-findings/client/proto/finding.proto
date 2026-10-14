@@ -54,6 +54,21 @@ message Finding {
     //
     // Associated finding data: None.
     SDK_HAS_CRASH_ANNOTATION = 6;
+
+    // Identifies UI layout issues on large screens.
+    LARGE_SCREENS_LAYOUT = 9;
+
+    // Identifies camera preview stretched issues on large screens.
+    LARGE_SCREENS_CAMERA_STRETCHED = 10;
+
+    // Identifies camera preview sideways issues on large screens.
+    LARGE_SCREENS_CAMERA_SIDEWAYS = 11;
+
+    // Identifies large screen continuity issues (e.g. state loss on fold/unfold/resize).
+    LARGE_SCREENS_CONTINUITY = 12;
+
+    // Identifies crash on configuration change on large screens.
+    LARGE_SCREENS_CRASH = 13;
   }
 
   // The type of this finding. Always set.

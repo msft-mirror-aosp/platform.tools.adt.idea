@@ -99,7 +99,7 @@ class FindingsProjectLevelControllerTest {
       val state = controller.state.value
       assertThat(state.packageName).isEqualTo(FakeFindingsClient.TEST_PACKAGE_NAME)
       @Suppress("UNCHECKED_CAST") val findings = (state.currentFindings as LoadingState.Ready<List<AppFinding>>).value
-      assertThat(findings).hasSize(8)
+      assertThat(findings).hasSize(10)
     }
   }
 

@@ -93,7 +93,7 @@ class FindingsToolWindowContext
  * Layout consists of a top filter toolbar above a two-pane [WorkBench] and [ThreeComponentsSplitter]:
  * - **Top toolbar**: Category/severity filter dropdowns, refresh action, and last-refreshed timestamp.
  * - **Left pane**: [FindingsTableView] listing findings matching the active filters.
- * - **Right pane**: [FindingsDetailsPanel] displaying metadata and description for the selected finding.
+ * - **Right pane**: [FindingsDetailsPanel] displaying metadata, description, and evidence for the selected finding.
  */
 class FindingsTab(
   private val controller: FindingsProjectLevelController,
@@ -103,7 +103,7 @@ class FindingsTab(
 ) : JPanel(BorderLayout()), Disposable {
   private val scope = createCoroutineScope(mainContext)
 
-  @VisibleForTesting internal val detailsPanel = FindingsDetailsPanel()
+  @VisibleForTesting internal val detailsPanel = FindingsDetailsPanel(parentDisposable = this, project = project)
   private val table = FindingsTableView(onSelectionChanged = ::updateSelection)
   private val workBench = WorkBench<FindingsToolWindowContext>(project, "AQI_FINDINGS", null, this)
 

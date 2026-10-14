@@ -4,6 +4,7 @@ package google.play.androidpublisher.v3;
 
 import "drm_app_compat_finding_data.proto";
 import "edge_to_edge_compat_finding_data.proto";
+import "large_screens_finding_data.proto";
 import "vitals_anomaly_finding_data.proto";
 import "vitals_bad_behavior_finding_data.proto";
 import "vitals_device_bad_behavior_finding_data.proto";
@@ -42,5 +43,19 @@ message FindingData {
     // Data for Vitals Device Bad Behavior findings
     // [Finding.Type.VITALS_DEVICE_BAD_BEHAVIOR][google.play.androidpublisher.v3.Finding.Type.VITALS_DEVICE_BAD_BEHAVIOR].
     VitalsDeviceBadBehaviorFindingData vitals_device_bad_behavior = 5;
+
+    // Data for Large Screens Layout findings
+    // [Finding.Type.LARGE_SCREENS_LAYOUT][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_LAYOUT].
+    LargeScreensLayoutFindingData large_screens_layout = 6;
+
+    // Data for Large Screens Visual findings
+    // [Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED],
+    // [Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS],
+    // [Finding.Type.LARGE_SCREENS_CONTINUITY][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CONTINUITY].
+    LargeScreensVisualFindingData large_screens_visual = 7;
+
+    // Data for Large Screens Crash findings
+    // [Finding.Type.LARGE_SCREENS_CRASH][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CRASH].
+    LargeScreensCrashFindingData large_screens_crash = 8;
   }
 }

@@ -40,6 +40,21 @@ enum class FindingType {
   /** App is using one or more SDK versions that have a crash annotation. */
   SDK_HAS_CRASH_ANNOTATION,
 
+  /** Large screens UI layout issue. */
+  LARGE_SCREENS_LAYOUT,
+
+  /** Camera preview stretched on large screens. */
+  LARGE_SCREENS_CAMERA_STRETCHED,
+
+  /** Camera preview sideways on large screens. */
+  LARGE_SCREENS_CAMERA_SIDEWAYS,
+
+  /** Large screen continuity (state loss on fold/unfold/resize). */
+  LARGE_SCREENS_CONTINUITY,
+
+  /** Large screen crash on configuration change. */
+  LARGE_SCREENS_CRASH,
+
   /** Fallback for unrecognized finding types to ensure forward compatibility. */
   UNKNOWN,
 }
@@ -53,6 +68,11 @@ fun FindingType.toProto(): ProtoFinding.Type? =
     FindingType.VITALS_BAD_BEHAVIOR -> ProtoFinding.Type.VITALS_BAD_BEHAVIOR
     FindingType.VITALS_DEVICE_BAD_BEHAVIOR -> ProtoFinding.Type.VITALS_DEVICE_BAD_BEHAVIOR
     FindingType.SDK_HAS_CRASH_ANNOTATION -> ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION
+    FindingType.LARGE_SCREENS_LAYOUT -> ProtoFinding.Type.LARGE_SCREENS_LAYOUT
+    FindingType.LARGE_SCREENS_CAMERA_STRETCHED -> ProtoFinding.Type.LARGE_SCREENS_CAMERA_STRETCHED
+    FindingType.LARGE_SCREENS_CAMERA_SIDEWAYS -> ProtoFinding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS
+    FindingType.LARGE_SCREENS_CONTINUITY -> ProtoFinding.Type.LARGE_SCREENS_CONTINUITY
+    FindingType.LARGE_SCREENS_CRASH -> ProtoFinding.Type.LARGE_SCREENS_CRASH
     FindingType.UNKNOWN -> null
   }
 
@@ -65,6 +85,11 @@ fun ProtoFinding.Type.toDomain(): FindingType =
     ProtoFinding.Type.VITALS_BAD_BEHAVIOR -> FindingType.VITALS_BAD_BEHAVIOR
     ProtoFinding.Type.VITALS_DEVICE_BAD_BEHAVIOR -> FindingType.VITALS_DEVICE_BAD_BEHAVIOR
     ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION -> FindingType.SDK_HAS_CRASH_ANNOTATION
+    ProtoFinding.Type.LARGE_SCREENS_LAYOUT -> FindingType.LARGE_SCREENS_LAYOUT
+    ProtoFinding.Type.LARGE_SCREENS_CAMERA_STRETCHED -> FindingType.LARGE_SCREENS_CAMERA_STRETCHED
+    ProtoFinding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS -> FindingType.LARGE_SCREENS_CAMERA_SIDEWAYS
+    ProtoFinding.Type.LARGE_SCREENS_CONTINUITY -> FindingType.LARGE_SCREENS_CONTINUITY
+    ProtoFinding.Type.LARGE_SCREENS_CRASH -> FindingType.LARGE_SCREENS_CRASH
     else -> {
       LOG.warn("Encountered unknown finding type: $this")
       FindingType.UNKNOWN

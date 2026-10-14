@@ -79,6 +79,14 @@ sealed interface FindingData {
     val affectedInstallsRatio: Double? = null,
   ) : FindingData
 
+  /** Payload for Large Screens findings (UI layout, camera preview issues, crashes on fold/resize, etc.). */
+  data class LargeScreens(
+    val layoutIssueType: String? = null,
+    val visualEvidences: List<VisualEvidence> = emptyList(),
+    val stackTrace: StackTrace? = null,
+    val deviceInfo: DeviceInfo? = null,
+  ) : FindingData
+
   /** Represents a finding type that has no extra structured data payload. */
   object Empty : FindingData
 
@@ -91,6 +99,26 @@ sealed interface FindingData {
    */
   data class Unknown(val rawData: String) : FindingData
 }
+
+/** Visual evidence (such as a screenshot and its optional UI view hierarchy) associated with a finding. */
+data class VisualEvidence(
+  val url: String,
+  val viewHierarchy: ViewHierarchy? = null,
+)
+
+/** UI view hierarchy associated with a finding. */
+data class ViewHierarchy(val url: String)
+
+/** Crash stack trace associated with a finding. */
+data class StackTrace(val raw: String)
+
+/** Device information associated with a finding. */
+data class DeviceInfo(
+  val deviceBrandName: String,
+  val deviceModel: String,
+  val androidVersion: String,
+  val androidSdkVersion: Int,
+)
 
 /** Vitals metric associated with a Vitals finding. */
 sealed interface VitalsMetric {

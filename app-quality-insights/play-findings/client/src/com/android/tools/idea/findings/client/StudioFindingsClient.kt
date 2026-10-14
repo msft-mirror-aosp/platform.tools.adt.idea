@@ -19,8 +19,11 @@ import com.android.tools.findings.client.PlayFindingsClient
 import com.android.tools.findings.client.PlayFindingsEndpoints
 import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.AppFinding
+import com.android.tools.idea.findings.model.DeviceInfo
 import com.android.tools.idea.findings.model.FindingData
 import com.android.tools.idea.findings.model.FindingType
+import com.android.tools.idea.findings.model.StackTrace
+import com.android.tools.idea.findings.model.VisualEvidence
 import com.android.tools.idea.findings.model.VitalsMetric
 import com.android.tools.idea.findings.model.toDomain
 import com.android.tools.idea.flags.StudioFlags
@@ -30,6 +33,8 @@ import com.google.play.androidpublisher.v3.ComputeFindingsResponse as ProtoCompu
 import com.google.play.androidpublisher.v3.Finding as ProtoFinding
 import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
 import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
+import com.google.play.androidpublisher.v3.LargeScreensDeviceInfo as ProtoLargeScreensDeviceInfo
+import com.google.play.androidpublisher.v3.LargeScreensLayoutFindingData as ProtoLargeScreensLayoutFindingData
 import com.google.play.androidpublisher.v3.VitalsDeviceBadBehaviorFindingData as ProtoVitalsDeviceBadBehaviorFindingData
 import com.google.protobuf.util.JsonFormat
 import com.intellij.openapi.Disposable
@@ -150,8 +155,44 @@ private fun ProtoFindingData.toDomain(): FindingData =
           affectedInstallsRatio = affectedInstallsRatio.takeIf { it > 0.0 },
         )
       }
+    ProtoFindingData.DataTypeCase.LARGE_SCREENS_LAYOUT ->
+      largeScreensLayout.run {
+        FindingData.LargeScreens(
+          layoutIssueType =
+            layoutIssueType
+              .takeIf {
+                it != ProtoLargeScreensLayoutFindingData.LayoutIssueType.LAYOUT_ISSUE_TYPE_UNSPECIFIED &&
+                  it != ProtoLargeScreensLayoutFindingData.LayoutIssueType.UNRECOGNIZED
+              }
+              ?.name,
+          visualEvidences = screenshotFifeUrl.takeIf { it.isNotBlank() }?.let { listOf(VisualEvidence(url = it)) } ?: emptyList(),
+          deviceInfo = if (hasDeviceInfo()) deviceInfo.toDomain() else null,
+        )
+      }
+    ProtoFindingData.DataTypeCase.LARGE_SCREENS_VISUAL ->
+      largeScreensVisual.run {
+        FindingData.LargeScreens(
+          visualEvidences = screenshotFifeUrl.takeIf { it.isNotBlank() }?.let { listOf(VisualEvidence(url = it)) } ?: emptyList(),
+          deviceInfo = if (hasDeviceInfo()) deviceInfo.toDomain() else null,
+        )
+      }
+    ProtoFindingData.DataTypeCase.LARGE_SCREENS_CRASH ->
+      largeScreensCrash.run {
+        FindingData.LargeScreens(
+          stackTrace = stackTrace.takeIf { it.isNotBlank() }?.let { StackTrace(raw = it) },
+          deviceInfo = if (hasDeviceInfo()) deviceInfo.toDomain() else null,
+        )
+      }
     else -> FindingData.Empty
   }
+
+private fun ProtoLargeScreensDeviceInfo.toDomain(): DeviceInfo =
+  DeviceInfo(
+    deviceBrandName = deviceBrandName,
+    deviceModel = deviceModel,
+    androidVersion = androidVersion,
+    androidSdkVersion = androidSdkVersion,
+  )
 
 private fun ProtoInAppLocation.toDomain(): AffectedScope? =
   when (locationTypeCase) {
