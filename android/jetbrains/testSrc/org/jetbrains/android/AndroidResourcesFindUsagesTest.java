@@ -19,6 +19,12 @@ package org.jetbrains.android;
 import static com.android.AndroidProjectTypes.PROJECT_TYPE_LIBRARY;
 import static com.google.common.truth.Truth.assertThat;
 
+import com.android.tools.idea.concurrency.FutureTestUtils;
+import com.google.common.util.concurrent.Futures;
+import com.intellij.find.FindManager;
+import com.intellij.find.findUsages.FindUsagesHandler;
+import com.intellij.find.findUsages.FindUsagesOptions;
+import com.intellij.find.impl.FindManagerBase;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.editor.Editor;
@@ -28,7 +34,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.search.GlobalSearchScope;
+import com.intellij.psi.search.SearchScope;
 import com.intellij.testFramework.TreeNodeTester;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
@@ -42,12 +50,18 @@ import com.intellij.usages.UsageTargetUtil;
 import com.intellij.usages.UsageViewManager;
 import com.intellij.usages.UsageViewPresentation;
 import com.intellij.usages.impl.UsageViewImpl;
+import com.intellij.util.ArrayUtil;
+import com.intellij.util.CommonProcessors;
+import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.containers.ContainerUtil;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * FindUsages tests for Android resources.
@@ -1027,14 +1041,38 @@ public class AndroidResourcesFindUsagesTest extends AndroidTestCase {
 
     UsageTarget[] targets = UsageTargetUtil.findUsageTargets(editor, psiFile, psiElement);
     assert targets != null && targets.length > 0 && targets[0] instanceof PsiElementUsageTarget;
-    return ((CodeInsightTestFixtureImpl)fixture).findUsages(((PsiElementUsageTarget)targets[0]).getElement(), scope);
+    return findUsagesInBackground(fixture, ((PsiElementUsageTarget)targets[0]).getElement(), scope);
   }
 
   public static Collection<UsageInfo> findUsagesNoEditor(String filePath, JavaCodeInsightTestFixture fixture) {
     PsiFile psiFile = fixture.configureByFile(filePath);
     final UsageTarget[] targets = UsageTargetUtil.findUsageTargets(psiFile);
     assert targets.length > 0 && targets[0] instanceof PsiElementUsageTarget;
-    return fixture.findUsages(((PsiElementUsageTarget)targets[0]).getElement());
+    return findUsagesInBackground(fixture, ((PsiElementUsageTarget)targets[0]).getElement(), null);
+  }
+
+  /**
+   * Same as {@link CodeInsightTestFixtureImpl#findUsages(PsiElement, SearchScope)}, but like FindUsagesManager in production, only
+   * sets up the {@link FindUsagesHandler} on the calling (UI) thread and runs {@link FindUsagesHandler#processElementUsages}, which is
+   * {@code @WorkerThread} for Android resources, on a pooled thread while pumping UI events.
+   */
+  public static Collection<UsageInfo> findUsagesInBackground(@NotNull CodeInsightTestFixture fixture,
+                                                             @NotNull PsiElement targetElement,
+                                                             @Nullable SearchScope scope) {
+    FindUsagesHandler handler =
+      ((FindManagerBase)FindManager.getInstance(fixture.getProject())).getFindUsagesManager().getFindUsagesHandler(targetElement, false);
+    assertNotNull("Cannot find handler for: " + targetElement, handler);
+    PsiElement[] psiElements = ArrayUtil.mergeArrays(handler.getPrimaryElements(), handler.getSecondaryElements());
+    FindUsagesOptions options = handler.getFindUsagesOptions(null);
+    if (scope != null) options.searchScope = scope;
+    CommonProcessors.CollectProcessor<UsageInfo> processor =
+      new CommonProcessors.CollectProcessor<>(Collections.synchronizedList(new ArrayList<>()));
+    FutureTestUtils.pumpEventsAndWaitForFuture(Futures.submit(() -> {
+      for (PsiElement psiElement : psiElements) {
+        handler.processElementUsages(psiElement, processor, options);
+      }
+    }, AppExecutorUtil.getAppExecutorService()));
+    return processor.getResults();
   }
 
   /**
