@@ -56,12 +56,17 @@ class EmulatorExtendedControlsActionGroupTest {
   fun testFlagEnabledAndDisabledVisibility() {
     val view = emulatorViewRule.newEmulatorView()
     val actionId = "android.emulator.extended.controls"
+    val displaysActionId = "android.emulator.displays"
     val cellularActionId = "android.emulator.cellular"
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
     val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(presentationDisabled.isVisible).isFalse()
     assertThat(presentationDisabled.isEnabled).isFalse()
+
+    val displaysDisabled = updateAndGetActionPresentation(displaysActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(displaysDisabled.isVisible).isFalse()
+    assertThat(displaysDisabled.isEnabled).isFalse()
 
     val cellularDisabled = updateAndGetActionPresentation(cellularActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(cellularDisabled.isVisible).isFalse()
@@ -72,13 +77,17 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(presentationEnabled.isVisible).isTrue()
     assertThat(presentationEnabled.isEnabled).isTrue()
 
+    val displaysEnabled = updateAndGetActionPresentation(displaysActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(displaysEnabled.isVisible).isTrue()
+    assertThat(displaysEnabled.isEnabled).isTrue()
+
     val cellularEnabled = updateAndGetActionPresentation(cellularActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(cellularEnabled.isVisible).isTrue()
     assertThat(cellularEnabled.isEnabled).isTrue()
   }
 
   @Test
-  fun testChildrenAndOpenCellularDialog() {
+  fun testChildrenAndOpenDialogs() {
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
     val view = emulatorViewRule.newEmulatorView()
 
@@ -87,14 +96,21 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(1)
-    val cellularAction = children[0]
+    assertThat(children).hasLength(2)
+    val displaysAction = children[0]
+    assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
+    assertThat(displaysAction.templatePresentation.icon).isEqualTo(StagingIcons.DISPLAYS)
+
+    val cellularAction = children[1]
     assertThat(cellularAction.templatePresentation.text).isEqualTo("Cellular")
     assertThat(cellularAction.templatePresentation.icon).isEqualTo(StagingIcons.CELLULAR)
 
-    createModalDialogAndInteractWithIt({
-      executeAction(cellularAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
-    }) { dlg ->
+    createModalDialogAndInteractWithIt({ executeAction(displaysAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
+      assertThat(dlg.title).isEqualTo("Displays (${view.emulator.emulatorId.avdName})")
+      dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
+    }
+
+    createModalDialogAndInteractWithIt({ executeAction(cellularAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
       assertThat(dlg.title).isEqualTo("Cellular (${view.emulator.emulatorId.avdName})")
       dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
     }

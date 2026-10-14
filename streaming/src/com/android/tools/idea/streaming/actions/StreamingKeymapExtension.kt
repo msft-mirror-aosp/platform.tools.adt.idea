@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.actions
 
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.emulator.actions.EmulatorCellularAction
+import com.android.tools.idea.streaming.emulator.actions.EmulatorDisplaysAction
 import com.android.tools.idea.streaming.emulator.actions.EmulatorExtendedControlsActionGroup
 import com.android.tools.idea.streaming.emulator.actions.EmulatorShowExtendedControlsAction
 import com.intellij.openapi.actionSystem.ActionManager
@@ -36,6 +37,7 @@ private const val ACTION_GROUP = "Streaming"
 
 private const val SHOW_EXTENDED_CONTROLS_ACTION_ID = "android.emulator.show.extended.controls"
 private const val EXTENDED_CONTROLS_GROUP_ID = "android.emulator.extended.controls"
+private const val DISPLAYS_ACTION_ID = "android.emulator.displays"
 private const val CELLULAR_ACTION_ID = "android.emulator.cellular"
 
 /** Adds the Settings -> Keymap > Running Devices section. */
@@ -57,8 +59,10 @@ class StreamingKeymapExtension : KeymapExtension {
       val extendedControlsInStudio = StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.get()
       if (
         (action is EmulatorExtendedControlsActionGroup ||
+          action is EmulatorDisplaysAction ||
           action is EmulatorCellularAction ||
           id == EXTENDED_CONTROLS_GROUP_ID ||
+          id == DISPLAYS_ACTION_ID ||
           id == CELLULAR_ACTION_ID) && !extendedControlsInStudio
       ) {
         continue

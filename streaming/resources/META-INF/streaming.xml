@@ -289,6 +289,8 @@
               icon="AllIcons.Actions.More" text="Extended Controls" description="Show emulator extended controls"/>
       <group id="android.emulator.extended.controls" class="com.android.tools.idea.streaming.emulator.actions.EmulatorExtendedControlsActionGroup"
              icon="AllIcons.Actions.More" text="Extended Controls" description="Extended emulator controls" popup="true">
+        <action id="android.emulator.displays" class="com.android.tools.idea.streaming.emulator.actions.EmulatorDisplaysAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.DISPLAYS" text="Displays" description="Configure Displays"/>
         <action id="android.emulator.cellular" class="com.android.tools.idea.streaming.emulator.actions.EmulatorCellularAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.CELLULAR" text="Cellular" description="Open cellular settings"/>
       </group>

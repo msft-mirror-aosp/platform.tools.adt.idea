@@ -795,6 +795,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Configure Displays",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Configure project structure",
       "path": "ActionManager"
     },
@@ -904,6 +908,10 @@
     },
     {
       "hit": "Display selected file in the Resource Manager",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Displays",
       "path": "ActionManager"
     },
     {

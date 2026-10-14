@@ -184,7 +184,11 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile private var screenshotStreamObserver: StreamObserver<Image>? = null
   @Volatile private var clipboardStreamObserver: StreamObserver<ClipData>? = null
   @Volatile private var notificationStreamObserver: StreamObserver<Notification>? = null
-  private var displays = listOf(DisplayConfiguration.newBuilder().setWidth(config.displayWidth).setHeight(config.displayHeight).build())
+  @Volatile
+  var displays =
+    listOf(DisplayConfiguration.newBuilder().setWidth(config.displayWidth).setHeight(config.displayHeight).setDpi(config.density).build())
+    private set
+
   @Volatile
   var batteryStatus: BatteryState = BatteryState.newBuilder().setChargeLevel(100).setStatus(BatteryState.BatteryStatus.CHARGING).build()
   @Volatile var gpsLocation: GpsState = GpsState.newBuilder().setLatitude(0.0).setLongitude(0.0).setAltitude(0.0).build()
@@ -431,21 +435,25 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   /** Adds, removes, updates secondary displays. */
   suspend fun changeSecondaryDisplays(secondaryDisplays: List<DisplayConfiguration>) {
     coroutineDispatcher.invoke {
-      val newDisplays = ArrayList<DisplayConfiguration>(secondaryDisplays.size + 1)
-      newDisplays.add(displays[0])
-      for (display in secondaryDisplays) {
-        if (display.display != PRIMARY_DISPLAY_ID) {
-          newDisplays.add(display)
-        }
+      updateSecondaryDisplays(secondaryDisplays)
+    }
+  }
+
+  private fun updateSecondaryDisplays(secondaryDisplays: List<DisplayConfiguration>) {
+    val newDisplays = ArrayList<DisplayConfiguration>(secondaryDisplays.size + 1)
+    newDisplays.add(displays[0])
+    for (display in secondaryDisplays) {
+      if (display.display != PRIMARY_DISPLAY_ID) {
+        newDisplays.add(display)
       }
-      if (newDisplays != displays) {
-        displays = newDisplays
-        val notificationObserver = notificationStreamObserver ?: return@invoke
-        val displayConfigurations = DisplayConfigurations.newBuilder().addAllDisplays(displays)
-        val notification = DisplayConfigurationsChangedNotification.newBuilder().setDisplayConfigurations(displayConfigurations)
-        val response = Notification.newBuilder().setDisplayConfigurationsChangedNotification(notification).build()
-        notificationObserver.sendStreamingResponse(response)
-      }
+    }
+    if (newDisplays != displays) {
+      displays = newDisplays
+      val notificationObserver = notificationStreamObserver ?: return
+      val displayConfigurations = DisplayConfigurations.newBuilder().addAllDisplays(displays).setUserConfigurable(3).setMaxDisplays(11)
+      val notification = DisplayConfigurationsChangedNotification.newBuilder().setDisplayConfigurations(displayConfigurations)
+      val response = Notification.newBuilder().setDisplayConfigurationsChangedNotification(notification).build()
+      notificationObserver.sendStreamingResponse(response)
     }
   }
 
@@ -827,7 +835,15 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
     override fun getDisplayConfigurations(request: Empty, responseObserver: StreamObserver<DisplayConfigurations>) {
       executor.execute {
-        val response = DisplayConfigurations.newBuilder().addAllDisplays(displays).build()
+        val response = DisplayConfigurations.newBuilder().addAllDisplays(displays).setUserConfigurable(3).setMaxDisplays(11).build()
+        sendResponse(responseObserver, response)
+      }
+    }
+
+    override fun setDisplayConfigurations(request: DisplayConfigurations, responseObserver: StreamObserver<DisplayConfigurations>) {
+      executor.execute {
+        updateSecondaryDisplays(request.displaysList)
+        val response = DisplayConfigurations.newBuilder().addAllDisplays(displays).setUserConfigurable(3).setMaxDisplays(11).build()
         sendResponse(responseObserver, response)
       }
     }
