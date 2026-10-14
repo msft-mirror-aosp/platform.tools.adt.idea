@@ -31,6 +31,10 @@ import com.android.tools.adtui.ImageUtils
 import com.android.tools.adtui.actions.createTestEvent
 import com.android.tools.adtui.actions.executeAction
 import com.android.tools.adtui.actions.updateAndGetActionPresentation
+import com.android.tools.adtui.common.AdtUiCursorType
+import com.android.tools.adtui.common.AdtUiCursorsProvider
+import com.android.tools.adtui.common.TestAdtUiCursorsProvider
+import com.android.tools.adtui.common.replaceAdtUiCursorWithPredefinedCursor
 import com.android.tools.adtui.swing.DataManagerRule
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
@@ -95,6 +99,7 @@ import com.intellij.util.ui.JBUI
 import icons.StudioIcons
 import java.awt.Color
 import java.awt.Component
+import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.MouseInfo
 import java.awt.Point
@@ -188,6 +193,7 @@ class EmulatorToolWindowPanelTest {
   @Before
   fun setUp() {
     StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT.overrideForTest(true, testRootDisposable)
+    StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_CURSORS.overrideForTest(true, testRootDisposable)
     val mockScreenRecordingCache = mock<ScreenRecordingSupportedCache>()
     whenever(mockScreenRecordingCache.isScreenRecordingSupported(any())).thenReturn(true)
     projectRule.project.registerServiceInstance(ScreenRecordingSupportedCache::class.java, mockScreenRecordingCache, testRootDisposable)
@@ -779,6 +785,19 @@ class EmulatorToolWindowPanelTest {
     val emulatorView = panel.primaryDisplayView ?: fail()
     assertThat((panel.icon as LayeredIcon).getIcon(0)).isEqualTo(StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_HEADSET)
 
+    ApplicationManager.getApplication().replaceService(AdtUiCursorsProvider::class.java, TestAdtUiCursorsProvider(), testRootDisposable)
+    val handCursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+    val pinchCursor = Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+    val eyeCursor = Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_HAND_INPUT, handCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_HAND_INPUT_PINCH, pinchCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_EYE_INPUT, eyeCursor)
+
+    val pointerInfo = mock<PointerInfo>()
+    whenever(pointerInfo.location).thenAnswer { Point(100, 100) }
+    val mouseInfoMock = mockStatic<MouseInfo>(testRootDisposable)
+    mouseInfoMock.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
+
     // Check appearance.
     var frameNumber = emulatorView.frameNumber
     assertThat(frameNumber).isEqualTo(0u)
@@ -788,18 +807,29 @@ class EmulatorToolWindowPanelTest {
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 600 height: 565")
 
     val xrInputController = EmulatorXrInputController.getInstance(project, emulatorView.emulator)
-    val testCases = mapOf(XrInputMode.HAND to "xr_hand_event", XrInputMode.EYE to "xr_eye_event", XrInputMode.MOUSE to "mouse_event")
+    val testCases =
+      listOf(
+        Triple(XrInputMode.HAND, "xr_hand_event", handCursor to pinchCursor),
+        Triple(XrInputMode.EYE, "xr_eye_event", eyeCursor to eyeCursor),
+        Triple(XrInputMode.MOUSE, "mouse_event", Cursor.getDefaultCursor() to Cursor.getDefaultCursor()),
+      )
     var streamInputCall: GrpcCallRecord? = null
-    for ((inputMode, expectedEvent) in testCases) {
+    for ((inputMode, expectedEvent, cursors) in testCases) {
+      val (defaultCursor, pressedCursor) = cursors
       xrInputController.inputMode = inputMode
+      assertThat(panel.findComponentAt(100, 100)?.cursor).isEqualTo(defaultCursor)
       fakeUi.mouse.moveTo(100, 100)
+      assertThat(panel.findComponentAt(100, 100)?.cursor).isEqualTo(defaultCursor)
       val call = streamInputCall ?: getNextGrpcCallIgnoringStreamScreenshot().also { streamInputCall = it }
       assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 378 y: 296 }")
       fakeUi.mouse.press(100, 100)
+      assertThat(panel.findComponentAt(100, 100)?.cursor).isEqualTo(pressedCursor)
       assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 378 y: 296 buttons: 1 }")
       fakeUi.mouse.dragTo(500, 200)
+      assertThat(panel.findComponentAt(500, 200)?.cursor).isEqualTo(pressedCursor)
       assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 2190 y: 749 buttons: 1 }")
       fakeUi.mouse.release()
+      assertThat(panel.findComponentAt(500, 200)?.cursor).isEqualTo(defaultCursor)
       assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 2190 y: 749 }")
     }
   }

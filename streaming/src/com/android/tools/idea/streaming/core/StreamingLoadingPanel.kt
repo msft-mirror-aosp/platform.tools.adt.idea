@@ -47,7 +47,10 @@ class StreamingLoadingPanel(parentDisposable: Disposable) :
   /** Similar to [stopLoading] but without a fade-out animation. */
   fun stopLoadingInstantly() {
     stopLoading()
-    findRoundedPanel()?.isVisible = false
+    findRoundedPanel()?.let {
+      it.isVisible = false
+      it.parent?.parent?.isVisible = false
+    }
   }
 
   private fun findRoundedPanel(): RoundedPanel? {

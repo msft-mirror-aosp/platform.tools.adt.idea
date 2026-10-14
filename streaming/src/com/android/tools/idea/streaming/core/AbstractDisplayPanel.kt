@@ -121,29 +121,21 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
 
     scrollPane = MyScrollPane()
 
+    val scrollBarWidth = scrollPane.verticalScrollBar.preferredWidth + 1
+
     notificationLayerPane =
-      object : JPanel(DirectionalFlowLayout(DirectionalFlowLayout.Direction.BOTTOM_TO_TOP, gap = JBUI.scale(6), fillOrthogonal = false)) {
-          override fun contains(x: Int, y: Int): Boolean {
-            return components.any { it.isVisible && it.bounds.contains(x, y) }
-          }
-        }
-        .apply {
-          val scrollBarWidth = scrollPane.verticalScrollBar.preferredWidth + 1
-          @Suppress("UseDPIAwareBorders") // scrollBarWidth is scaled already.
-          border = EmptyBorder(scrollBarWidth, scrollBarWidth, scrollBarWidth, scrollBarWidth)
-          isOpaque = false
-          isFocusable = false
-        }
+      OverlayLayerPane(
+        DirectionalFlowLayout(DirectionalFlowLayout.Direction.BOTTOM_TO_TOP, gap = JBUI.scale(6), fillOrthogonal = false),
+        scrollBarWidth,
+        focusable = false,
+      )
 
     floatingToolbarLayerPane =
-      JPanel().apply {
-        layout = DirectionalFlowLayout(DirectionalFlowLayout.Direction.RIGHT_TO_LEFT, gap = JBUI.scale(6))
-        val scrollBarWidth = scrollPane.verticalScrollBar.preferredWidth + 1
-        @Suppress("UseDPIAwareBorders") // scrollBarWidth is scaled already.
-        border = EmptyBorder(scrollBarWidth, scrollBarWidth, scrollBarWidth, scrollBarWidth)
-        isOpaque = false
-        isFocusable = true
-      }
+      OverlayLayerPane(
+        DirectionalFlowLayout(DirectionalFlowLayout.Direction.RIGHT_TO_LEFT, gap = JBUI.scale(6)),
+        scrollBarWidth,
+        focusable = true,
+      )
 
     val layeredPane =
       JLayeredPane().apply {
@@ -269,6 +261,23 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     sink[DISPLAY_VIEW_KEY] = displayView
     sink[ZOOMABLE_KEY] = displayView
     (zoomToolbar ?: xrNavigationToolbar)?.let { floatingToolbar -> sink[FLOATING_TOOLBAR_KEY] = floatingToolbar }
+  }
+
+  /**
+   * A panel placed in [JLayeredPane.PALETTE_LAYER] and sized to cover the entire layered pane. Returns true from [contains] only over
+   * visible child components so that AWT's cursor lookup ([Container.findComponentAt]) and mouse hit-testing pass through empty areas to
+   * the underlying layers.
+   */
+  private class OverlayLayerPane(layout: LayoutManager, scrollBarWidth: Int, focusable: Boolean) : JPanel(layout) {
+
+    init {
+      @Suppress("UseDPIAwareBorders") // scrollBarWidth is scaled already.
+      border = EmptyBorder(scrollBarWidth, scrollBarWidth, scrollBarWidth, scrollBarWidth)
+      isOpaque = false
+      isFocusable = focusable
+    }
+
+    override fun contains(x: Int, y: Int): Boolean = anyVisibleChildContains(x, y)
   }
 
   private class LayeredPaneLayoutManager : LayoutManager {

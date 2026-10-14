@@ -47,6 +47,7 @@ import java.awt.Component
 import java.awt.Container
 import java.awt.Dimension
 import java.awt.Graphics
+import java.awt.HeadlessException
 import java.awt.KeyboardFocusManager
 import java.awt.MouseInfo
 import java.awt.Point
@@ -266,19 +267,30 @@ internal fun Component.containsFocus(): Boolean {
 }
 
 /** Checks if the mouse pointer is inside this [Component]. */
-fun Component.isMouseInside(): Boolean {
+fun Component.isMouseInside(): Boolean = mouseLocation() != null
+
+/** Returns the mouse pointer location in this [Component]'s coordinate space if the mouse is inside it, or null otherwise. */
+fun Component.mouseLocation(): Point? {
   // Ensure the component is showing on the screen before converting screen coordinates.
   if (!isShowing) {
-    return false
+    return null
   }
   // Get the current mouse pointer location on the screen.
-  val pointerInfo = MouseInfo.getPointerInfo() ?: return false
+  val pointerInfo =
+    try {
+      MouseInfo.getPointerInfo()
+    } catch (_: HeadlessException) {
+      null
+    } ?: return null
   val mouseLocation = pointerInfo.location
   // Convert the screen coordinates to the component's coordinate space.
   SwingUtilities.convertPointFromScreen(mouseLocation, this)
   // Check if the converted point is inside the component.
-  return contains(mouseLocation)
+  return if (contains(mouseLocation)) mouseLocation else null
 }
+
+/** Checks if the point with the given coordinates in this [Container]'s coordinate space is inside any of its visible child components. */
+internal fun Container.anyVisibleChildContains(x: Int, y: Int): Boolean = components.any { it.isVisible && it.contains(x - it.x, y - it.y) }
 
 internal inline fun <reified T : Any> Component.findAncestor(): T? = ComponentUtil.getStrictParentOfType(T::class.java, this)
 

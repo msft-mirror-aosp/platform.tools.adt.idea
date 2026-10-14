@@ -1318,6 +1318,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.hand.and.eye.input", "Enable hand and eye input modes for XR AVDs",
     "Enables hand and eye input modes for XR AVDs");
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_AND_EYE_CURSORS = new BooleanFlag(
+    EMBEDDED_EMULATOR, "xr.hand.and.eye.cursors", "Use hand and eye cursors for XR AVDs",
+    "Enables distinctive cursors for hand and eye input modes for XR AVDs");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_CAMERA_ENVIRONMENT = new BooleanFlag(
     EMBEDDED_EMULATOR, "camera.environment", "Enable Camera Environment",
     "Enables displaying host cameras in the environment menu for AI Glasses");

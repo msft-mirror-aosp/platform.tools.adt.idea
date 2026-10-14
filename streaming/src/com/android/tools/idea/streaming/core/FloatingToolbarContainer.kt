@@ -181,6 +181,13 @@ internal class FloatingToolbarContainer(
     super.removeNotify()
   }
 
+  /**
+   * Since FloatingToolbarContainer stretches across the full orthogonal dimension of its parent container while its child [ToolbarPanel]s
+   * only occupy part of that strip, return true only over visible child panels so that AWT's cursor lookup [Container.findComponentAt]) and
+   * mouse hit-testing pass through the empty area to the underlying [DisplayView].
+   */
+  override fun contains(x: Int, y: Int): Boolean = anyVisibleChildContains(x, y)
+
   /** Adds a floating toolbar. */
   fun addToolbar(@NonNls place: String, actionGroup: ActionGroup) {
     val actionToolbar =
