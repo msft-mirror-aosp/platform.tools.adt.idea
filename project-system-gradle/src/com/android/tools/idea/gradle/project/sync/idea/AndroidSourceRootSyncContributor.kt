@@ -513,7 +513,7 @@ private fun getTestSuitesTargetingVariant(
   variantName: String,
 ): List<IdeTestSuiteImpl> {
   val variant = basicAndroidProject.variants.first { it.name == variantName }
-  return variant.testSuiteArtifacts.keys.map { testSuiteName -> ideAndroidProject.testSuites.first { it.name == testSuiteName } }
+  return variant.testSuiteVariantTargets.keys.map { testSuiteName -> ideAndroidProject.testSuites.first { it.name == testSuiteName } }
 }
 
 private fun SyncContributorAndroidProjectContext.configureTestSuiteSourceSetModuleEntity(

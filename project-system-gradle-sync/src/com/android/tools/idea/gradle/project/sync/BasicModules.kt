@@ -100,7 +100,6 @@ enum class ModelFeature(
   // ModelVersion(13, 0) is taken by I217c809052b867642de145041de50b5578bc09f5
   HAS_SOURCES_LIST_AND_JAVADOC_IN_VARIANT_DEPENDENCIES(ModelVersion(14, 0)),
   HAS_BUILD_AWARE_PROJECT_GRAPH(ModelVersion(15, 0)),
-  HAS_TEST_SUITES(ModelVersion(16, 0)),
   HAS_R8_MAPPING_FILE_PATH(ModelVersion(18, 0)),
   HAS_R8_PARTITION_FILE_PATH(ModelVersion(19, 0)),
   HAS_MATCHING_FALLBACKS(ModelVersion(20, 0)),
@@ -108,7 +107,9 @@ enum class ModelFeature(
   HAS_TEST_SUITES_SOURCES(ModelVersion(21, 1)),
   HAS_KEEP_RULES_SOURCES(ModelVersion(22, 0)),
   HAS_AAR_KEEP_RULES_SOURCES(ModelVersion(23, 0)),
-  HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES(ModelVersion(24, 0));
+  HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES(ModelVersion(24, 0)),
+  // Test suite targets moved from BasicTestSuite to BasicVariant.testSuiteVariantTargets in model version 25.0.
+  HAS_TEST_SUITES(ModelVersion(25, 0));
 
   init {
     check(!enabledForModelVersions.isEmpty) { "All features should be enabled for some model versions" }

@@ -1237,21 +1237,18 @@ fun modelCacheV2Impl(
     }
   }
 
-  fun testSuiteArtifactsFrom(variant: Variant, testSuites: Collection<BasicTestSuite>): Collection<IdeTestSuiteVariantTargetImpl> {
+  fun testSuiteArtifactsFrom(basicVariant: BasicVariant): Collection<IdeTestSuiteVariantTargetImpl> {
     return if (modelVersions[ModelFeature.HAS_TEST_SUITES]) {
-      val suitesForThisVariant = testSuites.map { testSuite ->
-        testSuite.targetsByVariant
-          .filter { variantTarget -> variantTarget.targetedVariant == variant.name }
-          .map { target ->
-            IdeTestSuiteVariantTargetImpl(
-              suiteName = testSuite.name,
-              targetedVariantName = target.targetedVariant,
-              targets =
-                target.targets.map { target -> IdeTestSuiteTargetImpl(target.name, target.testTaskName, target.targetedDevices.toList()) },
-            )
-          }
+      basicVariant.testSuiteVariantTargets.values.map { variantTarget ->
+        IdeTestSuiteVariantTargetImpl(
+          suiteName = variantTarget.testSuiteName,
+          targetedVariantName = basicVariant.name,
+          targets =
+            variantTarget.targets.map { target ->
+              IdeTestSuiteTargetImpl(target.name, target.testTaskName, target.targetedDevices.toList())
+            },
+        )
       }
-      suitesForThisVariant.flatten()
     } else emptyList()
   }
 
@@ -1298,7 +1295,6 @@ fun modelCacheV2Impl(
     basicVariant: BasicVariant,
     variant: Variant,
     legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
-    testSuites: Collection<BasicTestSuite>,
     assetContext: VariantAssetSourceProviderContext,
   ): IdeVariantCoreImpl {
     // To get merged flavors for V2, we merge flavors from default config and all the flavors.
@@ -1350,7 +1346,7 @@ fun modelCacheV2Impl(
           legacyAndroidGradlePluginProperties,
           assetContext,
         ),
-      testSuiteArtifacts = testSuiteArtifactsFrom(variant, testSuites).toList(),
+      testSuiteArtifacts = testSuiteArtifactsFrom(basicVariant).toList(),
       testFixturesArtifact =
         variant.testFixturesArtifact?.let { it: AndroidArtifact ->
           androidArtifactFrom(
@@ -1777,14 +1773,9 @@ fun modelCacheV2Impl(
             name = basicTestSuite.name,
             sources = sources,
             junitEngineInfo = IdeJUnitEngineInfoImpl(testSuite.junitEngineInfo.includedEngines),
-            targetedVariants = basicTestSuite.targetsByVariant.map { it.targetedVariant },
+            targetedVariants = basicProject.variants.filter { it.testSuiteVariantTargets.containsKey(basicTestSuite.name) }.map { it.name },
           )
         }
-      } else emptyList()
-
-    val basicTestSuites =
-      if (modelVersions[ModelFeature.HAS_TEST_SUITES]) {
-        basicProject.testSuites
       } else emptyList()
 
     val coreVariantsCopy =
@@ -1796,7 +1787,6 @@ fun modelCacheV2Impl(
           basicVariant,
           variantModel,
           legacyAndroidGradlePluginProperties,
-          basicTestSuites,
           assetContext,
         )
       }
@@ -1873,7 +1863,6 @@ fun modelCacheV2Impl(
       basicVariant: BasicVariant,
       variant: Variant,
       legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
-      testSuites: Collection<BasicTestSuite>,
       androidDsl: AndroidDsl,
       basicProject: BasicAndroidProject,
     ): ModelResult<IdeVariantCoreImpl> = ModelResult.create {
@@ -1886,7 +1875,6 @@ fun modelCacheV2Impl(
         basicVariant,
         variant,
         legacyAndroidGradlePluginProperties,
-        testSuites,
         assetContext,
       )
     }
