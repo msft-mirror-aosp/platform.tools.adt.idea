@@ -1,4 +1,13 @@
 {
+  "id": "com.android.studio.ml.AcpConfigurable",
+  "name": "Agents",
+  "entries": [
+    {
+      "hit": "Agents"
+    }
+  ]
+}
+{
   "id": "com.android.studio.ml.McpConfigurable",
   "name": "MCP Servers",
   "entries": [
@@ -142,9 +151,6 @@
     },
     {
       "hit": "\nBlocked shell commands (none)"
-    },
-    {
-      "hit": "\nLocked by administrator"
     },
     {
       "hit": "Access gitignored files"
