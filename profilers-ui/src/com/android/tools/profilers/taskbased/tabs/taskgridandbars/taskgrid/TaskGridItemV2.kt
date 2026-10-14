@@ -63,6 +63,7 @@ import com.android.tools.profilers.taskbased.common.icons.TaskIconUtils
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.ui.ColorUtil
 import org.jetbrains.jewel.foundation.modifier.onHover
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.foundation.theme.LocalTextStyle
@@ -133,6 +134,12 @@ fun TaskIconAndDescriptionWrapperV2(task: ProfilerTaskType, isSelectedTask: Bool
     lingerMillis = 0,
     tooltipPlacement = TooltipPlacement.ComponentRect(),
   ) {
+    // The editor background gives tiles a distinct fill, but the tile text follows the IDE theme. Only use it when both are dark or
+    // both are light; otherwise (e.g. Light theme + Dark editor scheme) let the tool window background show through.
+    val editorBackground = EditorColorsManager.getInstance().globalScheme.defaultBackground
+    val defaultTileBackground =
+      if (ColorUtil.isDark(editorBackground) == JewelTheme.isDark) Color(editorBackground.rgb) else Color.Transparent
+
     Box(
       modifier =
         Modifier.padding(vertical = 5.dp)
@@ -149,7 +156,7 @@ fun TaskIconAndDescriptionWrapperV2(task: ProfilerTaskType, isSelectedTask: Bool
             } else if (isHovered) {
               TASK_HOVER_BACKGROUND_COLOR
             } else {
-              Color(EditorColorsManager.getInstance().globalScheme.defaultBackground.rgb)
+              defaultTileBackground
             }
           )
           .selectable(selected = isSelectedTask, interactionSource = interactionSource, indication = null, role = Role.RadioButton) {
