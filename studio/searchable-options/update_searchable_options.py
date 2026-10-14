@@ -33,6 +33,9 @@ def generate_searchable_options(work_dir, out_dir, ide_path, plugins):
     for info in zip_file.infolist():
       extract_file(zip_file, info, work_dir)
 
+  # Studio requires user.home to exist (see AbstractAndroidLocations).
+  os.makedirs(os.path.join(work_dir, "home"), exist_ok=True)
+
   vmoptions_file = "%s/studio.vmoptions" % work_dir
   with open(vmoptions_file, "w") as props:
     props.writelines([
