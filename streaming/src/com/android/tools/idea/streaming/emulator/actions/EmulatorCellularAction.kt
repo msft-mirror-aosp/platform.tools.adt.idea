@@ -21,7 +21,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 
 /** Opens the cellular settings dialog. */
-class EmulatorCellularAction : AbstractEmulatorAction() {
+internal class EmulatorCellularAction : AbstractEmulatorAction() {
 
   override fun update(event: AnActionEvent) {
     if (!StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.get()) {

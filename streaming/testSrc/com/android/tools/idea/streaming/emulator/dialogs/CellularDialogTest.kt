@@ -72,12 +72,26 @@ class CellularDialogTest {
   @Test
   fun testInitialStateFromDefaults() {
     val dialog = CellularDialog(emulatorController)
+    val dialogWrapper = dialog.createWrapper()
 
-    assertThat(dialog.networkType).isEqualTo(CellularStandard.FULL)
-    assertThat(dialog.signalStrength).isEqualTo(CellularSignal.MODERATE)
-    assertThat(dialog.voiceStatus).isEqualTo(CellularStatus.HOME)
-    assertThat(dialog.dataStatus).isEqualTo(CellularStatus.HOME)
-    assertThat(dialog.meterStatus).isEqualTo(CellularMeterStatus.METERED)
+    createModalDialogAndInteractWithIt(dialogWrapper::show) { dlg ->
+      val rootPane = dlg.rootPane
+      val ui = FakeUi(rootPane)
+
+      val networkTypeBox = ui.getComponent<ComboBox<*>> { it.name == "networkTypeComboBox" }
+      val signalStrengthBox = ui.getComponent<ComboBox<*>> { it.name == "signalStrengthComboBox" }
+      val voiceStatusBox = ui.getComponent<ComboBox<*>> { it.name == "voiceStatusComboBox" }
+      val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
+      val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
+
+      assertThat(networkTypeBox.selectedItem?.toString()).isEqualTo("Full")
+      assertThat(signalStrengthBox.selectedItem?.toString()).isEqualTo("Moderate")
+      assertThat(voiceStatusBox.selectedItem?.toString()).isEqualTo("Home")
+      assertThat(dataStatusBox.selectedItem?.toString()).isEqualTo("Home")
+      assertThat(meterStatusBox.selectedItem?.toString()).isEqualTo("Metered")
+
+      ui.clickOn(rootPane.defaultButton)
+    }
   }
 
   @Test
@@ -92,32 +106,27 @@ class CellularDialogTest {
         .build()
 
     val dialog = CellularDialog(emulatorController)
+    val dialogWrapper = dialog.createWrapper()
 
-    waitForCondition(5.seconds) {
-      dialog.networkType == CellularStandard.LTE &&
-        dialog.signalStrength == CellularSignal.GOOD &&
-        dialog.voiceStatus == CellularStatus.ROAMING &&
-        dialog.dataStatus == CellularStatus.SEARCHING &&
-        dialog.meterStatus == CellularMeterStatus.TEMPORARILY_NOT_METERED
-    }
-  }
+    createModalDialogAndInteractWithIt(dialogWrapper::show) { dlg ->
+      val rootPane = dlg.rootPane
+      val ui = FakeUi(rootPane)
 
-  @Test
-  fun testChangingPropertiesUpdatesEmulator() {
-    val dialog = CellularDialog(emulatorController)
+      val networkTypeBox = ui.getComponent<ComboBox<*>> { it.name == "networkTypeComboBox" }
+      val signalStrengthBox = ui.getComponent<ComboBox<*>> { it.name == "signalStrengthComboBox" }
+      val voiceStatusBox = ui.getComponent<ComboBox<*>> { it.name == "voiceStatusComboBox" }
+      val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
+      val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
 
-    dialog.networkType = CellularStandard.FIVE_G
-    dialog.signalStrength = CellularSignal.GREAT
-    dialog.voiceStatus = CellularStatus.DENIED
-    dialog.dataStatus = CellularStatus.UNREGISTERED
-    dialog.meterStatus = CellularMeterStatus.TEMPORARILY_NOT_METERED
+      waitForCondition(5.seconds) {
+        networkTypeBox.selectedItem?.toString() == "LTE" &&
+          signalStrengthBox.selectedItem?.toString() == "Good" &&
+          voiceStatusBox.selectedItem?.toString() == "Roaming" &&
+          dataStatusBox.selectedItem?.toString() == "Searching" &&
+          meterStatusBox.selectedItem?.toString() == "Temporarily not metered"
+      }
 
-    waitForCondition(5.seconds) {
-      fakeEmulator.cellInfo.cellStandard.number == CellularStandard.FIVE_G.ordinal + 1 &&
-        fakeEmulator.cellInfo.cellSignalStrength.level.number == CellularSignal.GREAT.ordinal &&
-        fakeEmulator.cellInfo.cellStatusVoice.number == CellularStatus.DENIED.ordinal + 1 &&
-        fakeEmulator.cellInfo.cellStatusData.number == CellularStatus.UNREGISTERED.ordinal + 1 &&
-        fakeEmulator.cellInfo.cellMeterStatus.number == CellularMeterStatus.TEMPORARILY_NOT_METERED.ordinal + 1
+      ui.clickOn(rootPane.defaultButton)
     }
   }
 
@@ -130,41 +139,53 @@ class CellularDialogTest {
       val rootPane = dlg.rootPane
       val ui = FakeUi(rootPane)
 
-      val networkTypeBox = ui.getComponent<ComboBox<CellularStandard>> { it.name == "networkTypeComboBox" }
-      val signalStrengthBox = ui.getComponent<ComboBox<CellularSignal>> { it.name == "signalStrengthComboBox" }
-      val voiceStatusBox = ui.getComponent<ComboBox<CellularStatus>> { it.name == "voiceStatusComboBox" }
-      val dataStatusBox = ui.getComponent<ComboBox<CellularStatus>> { it.name == "dataStatusComboBox" }
-      val meterStatusBox = ui.getComponent<ComboBox<CellularMeterStatus>> { it.name == "meterStatusComboBox" }
+      val networkTypeBox = ui.getComponent<ComboBox<*>> { it.name == "networkTypeComboBox" }
+      val signalStrengthBox = ui.getComponent<ComboBox<*>> { it.name == "signalStrengthComboBox" }
+      val voiceStatusBox = ui.getComponent<ComboBox<*>> { it.name == "voiceStatusComboBox" }
+      val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
+      val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
 
-      assertThat(networkTypeBox.selectedItem).isEqualTo(CellularStandard.FULL)
-      assertThat(signalStrengthBox.selectedItem).isEqualTo(CellularSignal.MODERATE)
-      assertThat(voiceStatusBox.selectedItem).isEqualTo(CellularStatus.HOME)
-      assertThat(dataStatusBox.selectedItem).isEqualTo(CellularStatus.HOME)
-      assertThat(meterStatusBox.selectedItem).isEqualTo(CellularMeterStatus.METERED)
+      assertThat(networkTypeBox.selectedItem?.toString()).isEqualTo("Full")
+      assertThat(signalStrengthBox.selectedItem?.toString()).isEqualTo("Moderate")
+      assertThat(voiceStatusBox.selectedItem?.toString()).isEqualTo("Home")
+      assertThat(dataStatusBox.selectedItem?.toString()).isEqualTo("Home")
+      assertThat(meterStatusBox.selectedItem?.toString()).isEqualTo("Metered")
 
-      networkTypeBox.selectedItem = CellularStandard.GSM
-      signalStrengthBox.selectedItem = CellularSignal.POOR
-      voiceStatusBox.selectedItem = CellularStatus.ROAMING
-      dataStatusBox.selectedItem = CellularStatus.DENIED
-      meterStatusBox.selectedItem = CellularMeterStatus.TEMPORARILY_NOT_METERED
+      networkTypeBox.selectItem("5G")
+      signalStrengthBox.selectItem("Great")
+      voiceStatusBox.selectItem("Denied (emergency calls only)")
+      dataStatusBox.selectItem("Unregistered (off)")
+      meterStatusBox.selectItem("Temporarily not metered")
+
+      waitForCondition(5.seconds) {
+        fakeEmulator.cellInfo.cellStandard == CellInfo.CellStandard.CELL_STANDARD_5G &&
+          fakeEmulator.cellInfo.cellSignalStrength.level == CellSignalStrength.CellSignalLevel.SIGNAL_STRENGTH_GREAT &&
+          fakeEmulator.cellInfo.cellStatusVoice == CellInfo.CellStatus.CELL_STATUS_DENIED &&
+          fakeEmulator.cellInfo.cellStatusData == CellInfo.CellStatus.CELL_STATUS_UNREGISTERED &&
+          fakeEmulator.cellInfo.cellMeterStatus == CellInfo.CellMeterStatus.CELL_METER_STATUS_TEMPORARILY_NOT_METERED
+      }
+
+      networkTypeBox.selectItem("GSM")
+      signalStrengthBox.selectItem("Poor")
+      voiceStatusBox.selectItem("Roaming")
+      dataStatusBox.selectItem("Denied (emergency calls only)")
+      meterStatusBox.selectItem("Temporarily not metered")
 
       val closeButton = rootPane.defaultButton
       assertThat(closeButton.text).isEqualTo("Close")
       ui.clickOn(closeButton)
     }
 
-    assertThat(dialog.networkType).isEqualTo(CellularStandard.GSM)
-    assertThat(dialog.signalStrength).isEqualTo(CellularSignal.POOR)
-    assertThat(dialog.voiceStatus).isEqualTo(CellularStatus.ROAMING)
-    assertThat(dialog.dataStatus).isEqualTo(CellularStatus.DENIED)
-    assertThat(dialog.meterStatus).isEqualTo(CellularMeterStatus.TEMPORARILY_NOT_METERED)
-
     waitForCondition(5.seconds) {
-      fakeEmulator.cellInfo.cellStandard.number == CellularStandard.GSM.ordinal + 1 &&
-        fakeEmulator.cellInfo.cellSignalStrength.level.number == CellularSignal.POOR.ordinal &&
-        fakeEmulator.cellInfo.cellStatusVoice.number == CellularStatus.ROAMING.ordinal + 1 &&
-        fakeEmulator.cellInfo.cellStatusData.number == CellularStatus.DENIED.ordinal + 1 &&
-        fakeEmulator.cellInfo.cellMeterStatus.number == CellularMeterStatus.TEMPORARILY_NOT_METERED.ordinal + 1
+      fakeEmulator.cellInfo.cellStandard == CellInfo.CellStandard.CELL_STANDARD_GSM &&
+        fakeEmulator.cellInfo.cellSignalStrength.level == CellSignalStrength.CellSignalLevel.SIGNAL_STRENGTH_POOR &&
+        fakeEmulator.cellInfo.cellStatusVoice == CellInfo.CellStatus.CELL_STATUS_ROAMING &&
+        fakeEmulator.cellInfo.cellStatusData == CellInfo.CellStatus.CELL_STATUS_DENIED &&
+        fakeEmulator.cellInfo.cellMeterStatus == CellInfo.CellMeterStatus.CELL_METER_STATUS_TEMPORARILY_NOT_METERED
     }
+  }
+
+  private fun ComboBox<*>.selectItem(text: String) {
+    selectedItem = (0 until itemCount).map { getItemAt(it) }.first { it.toString() == text }
   }
 }
