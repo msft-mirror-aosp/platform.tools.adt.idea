@@ -41,7 +41,7 @@ public:
   [[nodiscard]] int32_t size() const { return info_.size; }
   [[nodiscard]] int64_t presentation_time_us() const { return info_.presentationTimeUs; }
   [[nodiscard]] uint32_t flags() const { return info_.flags; }
-  [[nodiscard]] int error_code() const { return std::max(static_cast<int>(index_), 0); }
+  [[nodiscard]] int error_code() const { return std::min(static_cast<int>(index_), 0); }
 
 private:
   AMediaCodec* codec_;

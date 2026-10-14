@@ -351,10 +351,10 @@ DisplayStreamer::FrameStreamStopReason DisplayStreamer::ProcessFramesUntilCodecS
       if (!IsCodecRunning()) {
         return FrameStreamStopReason::CODEC_STOPPED;
       }
-      if (steady_clock::now() - start_time >= frame_timeout_) {
-        return FrameStreamStopReason::TIMEOUT;
+      if (codec_buffer.error_code() == AMEDIACODEC_INFO_TRY_AGAIN_LATER) {
+        return steady_clock::now() - start_time >= frame_timeout_ ? FrameStreamStopReason::TIMEOUT : FrameStreamStopReason::CODEC_ERROR;
       }
-      if (codec_buffer.error_code() == AMEDIACODEC_INFO_TRY_AGAIN_LATER || ++error_count >= NUM_DEQUE_ATTEMPTS) {
+      if (codec_buffer.error_code() <= AMEDIA_ERROR_BASE || ++error_count >= NUM_DEQUE_ATTEMPTS) {
         return FrameStreamStopReason::CODEC_ERROR;
       }
       continue;
