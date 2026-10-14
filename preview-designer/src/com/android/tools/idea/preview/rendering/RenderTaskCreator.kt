@@ -49,6 +49,7 @@ fun createRenderTaskFuture(
   classesToPreload: Collection<String> = emptyList(),
   customViewInfoParser: ((Any) -> List<ViewInfo>)? = null,
   showDecorations: Boolean = false,
+  useTransparentBackground: Boolean = false,
   configure: (Configuration) -> Unit = {},
   renderTopic: RenderAsyncActionExecutor.RenderingTopic = RenderAsyncActionExecutor.RenderingTopic.NOT_SPECIFIED,
 ): CompletableFuture<RenderTask> {
@@ -74,6 +75,9 @@ fun createRenderTaskFuture(
           disableDecorations()
           withRenderingMode(SessionParams.RenderingMode.SHRINK)
         }
+        if (useTransparentBackground) {
+          useTransparentBackground()
+        }
       }
       .withLayoutScanner(useLayoutScanner)
       .withForceMonochromeIcon(StudioFlags.FORCE_MONOCHROME_ADAPTIVE_ICON.get())
@@ -96,6 +100,7 @@ fun createRenderResultFuture(
   classesToPreload: Collection<String> = emptyList(),
   customViewInfoParser: ((Any) -> List<ViewInfo>)? = null,
   showDecorations: Boolean = false,
+  useTransparentBackground: Boolean = false,
   configure: (Configuration) -> Unit = {},
   renderTopic: RenderAsyncActionExecutor.RenderingTopic = RenderAsyncActionExecutor.RenderingTopic.NOT_SPECIFIED,
 ): CompletableFuture<RenderResult> {
@@ -108,6 +113,7 @@ fun createRenderResultFuture(
       classesToPreload,
       customViewInfoParser,
       showDecorations,
+      useTransparentBackground,
       configure,
       renderTopic,
     )
@@ -115,6 +121,6 @@ fun createRenderResultFuture(
     CompletableFuture.supplyAsync({ renderTaskFuture.get() }, AppExecutorUtil.getAppExecutorService()).thenCompose {
       it?.render() ?: CompletableFuture.completedFuture(null as RenderResult?)
     }
-  renderResultFuture.handle { _, _ -> renderTaskFuture.get().disposeAsync() }
+  renderResultFuture.handle { _, _ -> renderTaskFuture.get()?.disposeAsync() }
   return renderResultFuture
 }
