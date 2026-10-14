@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.idea.blaze.qsync.query.QuerySummaryTestUtil.createProtoForPackages;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.devtools.build.lib.query2.proto.proto2api.Build;
 import com.google.idea.blaze.common.Label;
@@ -351,10 +352,141 @@ public class QuerySummaryTest {
     assertThat(buildPackage.getStamp()).isEqualTo(12345L);
 
     Query.Summary serialized =
-        QuerySummaryImpl.newBuilder().putAllPackages(qs.getBuildPackages()).build().protoForSerializationOnly();
+        QuerySummaryImpl.newBuilder()
+            .putAllPackages(qs.getBuildPackages())
+            .build()
+            .protoForSerializationOnly();
     QuerySummary deserialized = QuerySummaryImpl.create(serialized);
-    QuerySummary.BuildPackage deserializedPackage = deserialized.getBuildPackage(Label.of("//pkg:pkg"));
+    QuerySummary.BuildPackage deserializedPackage =
+        deserialized.getBuildPackage(Label.of("//pkg:pkg"));
     assertThat(deserializedPackage).isNotNull();
     assertThat(deserializedPackage.getStamp()).isEqualTo(12345L);
+  }
+
+  @Test
+  public void testWithPackageStamps_noChanges_returnsSameInstance() {
+    QuerySummary qs =
+        QuerySummaryImpl.create(createProtoForPackages("//pkg1:rule1", "//pkg2:rule2"));
+    QuerySummary stamped = qs.withPackageStamps(pkg -> null);
+    assertThat(stamped).isSameInstanceAs(qs);
+
+    QuerySummary stampedSame = qs.withPackageStamps(pkg -> pkg.getStamp());
+    assertThat(stampedSame).isSameInstanceAs(qs);
+  }
+
+  @Test
+  public void testWithPackageStamps_updatesStamps_andSharesCollections() {
+    QuerySummary qs =
+        QuerySummaryImpl.create(createProtoForPackages("//pkg1:rule1", "//pkg2:rule2"));
+    Label pkg1 = Label.of("//pkg1:pkg1");
+    Label pkg2 = Label.of("//pkg2:pkg2");
+
+    QuerySummary.BuildPackage origPkg1 = qs.getBuildPackage(pkg1);
+    QuerySummary.BuildPackage origPkg2 = qs.getBuildPackage(pkg2);
+    assertThat(origPkg1).isNotNull();
+    assertThat(origPkg2).isNotNull();
+    assertThat(origPkg1.getStamp()).isEqualTo(0L);
+
+    QuerySummary stamped =
+        qs.withPackageStamps(
+            pkg -> {
+              if (pkg.getPackageLabel().equals(origPkg1.getPackageLabel())) {
+                return 9999L;
+              }
+              return null;
+            });
+
+    assertThat(stamped).isNotSameInstanceAs(qs);
+
+    QuerySummary.BuildPackage stampedPkg1 = stamped.getBuildPackage(pkg1);
+    QuerySummary.BuildPackage stampedPkg2 = stamped.getBuildPackage(pkg2);
+    assertThat(stampedPkg1).isNotNull();
+    assertThat(stampedPkg2).isNotNull();
+
+    // Changed package has updated stamp:
+    assertThat(stampedPkg1.getStamp()).isEqualTo(9999L);
+    // Unchanged package is reused by reference:
+    assertThat(stampedPkg2).isSameInstanceAs(origPkg2);
+
+    // Rule and source file maps on the updated package are reused by reference:
+    assertThat(stampedPkg1.getRulesMap()).isSameInstanceAs(origPkg1.getRulesMap());
+    assertThat(stampedPkg1.getSourceFilesMap()).isSameInstanceAs(origPkg1.getSourceFilesMap());
+    assertThat(stampedPkg1.getSubincludes()).isSameInstanceAs(origPkg1.getSubincludes());
+
+    // Invariant derived structures are preserved:
+    assertThat(stamped.getPackages()).isSameInstanceAs(qs.getPackages());
+    assertThat(stamped.getAllBuildIncludedFiles()).isSameInstanceAs(qs.getAllBuildIncludedFiles());
+    assertThat(stamped.getReverseSubincludeMap()).isSameInstanceAs(qs.getReverseSubincludeMap());
+    assertThat(stamped.getRulesCount()).isEqualTo(qs.getRulesCount());
+
+    // String storage is shared by reference:
+    assertThat(stamped.protoForSerializationOnly().getStringStorage())
+        .isSameInstanceAs(qs.protoForSerializationOnly().getStringStorage());
+  }
+
+  @Test
+  public void testWithPackageStamps_preservesTestRule() {
+    Query.Summary protoWithTestRule =
+        Query.Summary.newBuilder()
+            .setVersion(QuerySummaryImpl.PROTO_VERSION)
+            .setStringStorage(
+                Query.StringStorage.newBuilder()
+                    .addIndexedStrings("")
+                    .addIndexedStrings("pkg")
+                    .addIndexedStrings("test_rule")
+                    .addIndexedStrings("my_rule")
+                    .build())
+            .addBuildPackages(
+                Query.StoredBuildPackage.newBuilder()
+                    .setWorkspace(0)
+                    .setBuildPackage(1)
+                    .addStoredRules(
+                        Query.StoredRule.newBuilder()
+                            .setLabel(
+                                Query.StoredLabel.newBuilder()
+                                    .setWorkspace(0)
+                                    .setBuildPackage(1)
+                                    .setName(3)
+                                    .build())
+                            .setRuleClass(2)
+                            .setTestRule(
+                                Query.StoredLabel.newBuilder()
+                                    .setWorkspace(0)
+                                    .setBuildPackage(1)
+                                    .setName(2)
+                                    .build())
+                            .build())
+                    .build())
+            .build();
+
+    QuerySummary qs = QuerySummaryImpl.create(protoWithTestRule);
+    QueryData.Rule origRule = QuerySummaryKt.getRule(qs, Label.of("//pkg:my_rule"));
+    assertThat(origRule).isNotNull();
+    assertThat(origRule.testRule()).isEqualTo(Label.of("//pkg:test_rule"));
+
+    QuerySummary stamped = qs.withPackageStamps(pkg -> 12345L);
+    QueryData.Rule stampedRule = QuerySummaryKt.getRule(stamped, Label.of("//pkg:my_rule"));
+    assertThat(stampedRule).isNotNull();
+    assertThat(stampedRule.testRule()).isEqualTo(Label.of("//pkg:test_rule"));
+  }
+
+  @Test
+  public void testWithPackageStamps_mapExtension_normalizesPackageKeys() {
+    QuerySummary qs =
+        QuerySummaryImpl.create(createProtoForPackages("//pkg1:rule1", "//pkg2:rule2"));
+    // Pass standard target labels (e.g. //pkg1:rule1 or //pkg1:pkg1) instead of package label
+    // //pkg1:__pkg__
+    ImmutableMap<Label, Long> stamps =
+        ImmutableMap.of(
+            Label.of("//pkg1:rule1"), 5555L,
+            Label.of("//pkg2:pkg2"), 7777L);
+
+    QuerySummary stamped = QuerySummaryKt.withPackageStamps(qs, stamps);
+    QuerySummary.BuildPackage pkg1 = stamped.getBuildPackage(Label.of("//pkg1:rule1"));
+    QuerySummary.BuildPackage pkg2 = stamped.getBuildPackage(Label.of("//pkg2:pkg2"));
+    assertThat(pkg1).isNotNull();
+    assertThat(pkg2).isNotNull();
+    assertThat(pkg1.getStamp()).isEqualTo(5555L);
+    assertThat(pkg2.getStamp()).isEqualTo(7777L);
   }
 }
