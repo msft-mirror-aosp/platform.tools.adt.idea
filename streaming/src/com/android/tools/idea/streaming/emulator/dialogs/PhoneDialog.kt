@@ -19,28 +19,18 @@ import com.android.emulation.control.incubating.Call
 import com.android.emulation.control.incubating.Call.CallState
 import com.android.emulation.control.incubating.SmsMessage
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.streaming.StreamingBundle.message
-import com.android.tools.idea.streaming.core.CloseDialogAction
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.utils.throwIfCancellation
 import com.intellij.ide.util.PropertiesComponent
-import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
-import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
-import com.intellij.openapi.util.DimensionService
-import com.intellij.openapi.util.Disposer
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.JBColor
-import com.intellij.ui.components.DialogManager
 import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
-import com.intellij.ui.components.dialog
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.Cell
@@ -59,17 +49,13 @@ import javax.swing.JButton
 import javax.swing.JTextField
 import javax.swing.border.LineBorder
 import javax.swing.event.DocumentEvent
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.jetbrains.annotations.Nls
 import org.jetbrains.annotations.NonNls
 
 /** Dialog for simulating incoming phone calls and SMS messages on the emulator, similar to the Phone page in extended controls. */
-internal class PhoneDialog(private val emulator: EmulatorController) {
-  private val coroutineScope = emulator.createCoroutineScope()
-  private var phoneEventsJob: Job? = null
+internal class PhoneDialog(emulator: EmulatorController) :
+  AbstractExtendedControlsDialog(emulator, message("phone.dialog.title", emulator.emulatorId.avdName)) {
 
   private var activeCall: Call = Call.getDefaultInstance()
   private val numberComboBoxModel = DefaultComboBoxModel(getInitialPhoneNumbers())
@@ -80,10 +66,6 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
   private lateinit var smsMessageArea: Cell<JBTextArea>
   private lateinit var sendSmsButton: Cell<JButton>
 
-  /** An invisible text field used to trigger clearing of the error messages. See the [clearError] function. */
-  private val validationText = JTextField()
-  private var dialogWrapper: DialogWrapper? = null
-
   private val currentPhoneNumberText: String
     get() {
       if (!::numberComboBox.isInitialized) return numberComboBoxModel.selectedItem as? String ?: DEFAULT_PHONE_NUMBERS[0]
@@ -91,10 +73,10 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
     }
 
   init {
-    phoneEventsJob = coroutineScope.launch {
+    val phoneEventsJob = coroutineScope.launch {
       try {
         val activeCalls = emulator.listCalls()
-        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
+        withContext(uiContext) {
           if (activeCall.state == CallState.CALL_STATE_UNSPECIFIED && activeCalls.callsCount > 0) {
             activeCall = activeCalls.getCalls(0)
             updateUiFromState()
@@ -108,7 +90,7 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
       try {
         emulator.receivePhoneEvents().collect { event ->
           if (event.hasActive() && event.active.callsCount == 0) {
-            withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
+            withContext(uiContext) {
               if (activeCall.state != CallState.CALL_STATE_UNSPECIFIED) {
                 endCall()
               }
@@ -120,10 +102,11 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
         // Error is already logged by EmulatorController.
       }
     }
+    onDispose { phoneEventsJob.cancel() }
   }
 
   /** Creates contents of the dialog. */
-  private fun createPanel(): DialogPanel {
+  override fun createPanel(): DialogPanel {
     val isAutomotive = emulator.emulatorConfig.deviceType == DeviceType.AUTOMOTIVE
     val inputChangeListener =
       object : DocumentAdapter() {
@@ -237,18 +220,9 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
       recordRecentNumber(rawNumber)
       val cleanNumber = cleanPhoneNumber(rawNumber)
       val call = Call.newBuilder().setNumber(cleanNumber).build()
-      coroutineScope.launch {
-        try {
-          val createdCall = emulator.createCall(call)
-          withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-            activeCall = createdCall.toBuilder().setNumber(cleanNumber).setState(CallState.CALL_STATE_ACTIVE).build()
-            updateUiFromState()
-          }
-        } catch (e: Exception) {
-          withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-            e.message?.let { showError(it) }
-          }
-        }
+      launchGrpcCall({ it.createCall(call) }) { createdCall ->
+        activeCall = createdCall.toBuilder().setNumber(cleanNumber).setState(CallState.CALL_STATE_ACTIVE).build()
+        updateUiFromState()
       }
     } else {
       endCall()
@@ -257,18 +231,9 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
 
   private fun endCall() {
     val callToEnd = activeCall
-    coroutineScope.launch {
-      try {
-        emulator.deleteCall(callToEnd)
-        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-          activeCall = Call.getDefaultInstance()
-          updateUiFromState()
-        }
-      } catch (e: Exception) {
-        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-          e.message?.let { showError(it) }
-        }
-      }
+    launchGrpcCall({ it.deleteCall(callToEnd) }) {
+      activeCall = Call.getDefaultInstance()
+      updateUiFromState()
     }
   }
 
@@ -281,18 +246,9 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
         else -> return
       }
     val updatedRequest = activeCall.toBuilder().setState(newState).build()
-    coroutineScope.launch {
-      try {
-        emulator.updateCall(updatedRequest)
-        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-          activeCall = updatedRequest
-          updateUiFromState()
-        }
-      } catch (e: Exception) {
-        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-          e.message?.let { showError(it) }
-        }
-      }
+    launchGrpcCall({ it.updateCall(updatedRequest) }) {
+      activeCall = updatedRequest
+      updateUiFromState()
     }
   }
 
@@ -316,15 +272,7 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
     recordRecentNumber(rawNumber)
     val cleanNumber = cleanPhoneNumber(rawNumber)
     val sms = SmsMessage.newBuilder().setNumber(cleanNumber).setText(messageText).build()
-    coroutineScope.launch {
-      try {
-        emulator.receiveSms(sms)
-      } catch (e: Exception) {
-        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-          e.message?.let { showError(it) }
-        }
-      }
-    }
+    launchGrpcCall({ it.receiveSms(sms) })
   }
 
   private fun recordRecentNumber(number: String) {
@@ -382,52 +330,6 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
     }
   }
 
-  /** Shows a red error message at the bottom of the dialog. */
-  private fun showError(@Nls message: String) {
-    (dialogWrapper as? DialogManager)?.performAction {
-      validationText.text = message
-      listOf(ValidationInfo(message), ValidationInfo(message, validationText))
-    }
-  }
-
-  /** Clears the error message at the bottom of the dialog. */
-  private fun clearError() {
-    validationText.text = ""
-  }
-
-  /** Creates the dialog wrapper. */
-  fun createWrapper(project: Project? = null, parent: Component? = null): DialogWrapper {
-    val dialogPanel = createPanel()
-    return dialog(
-        title = message("phone.dialog.title", emulator.emulatorId.avdName),
-        resizable = true,
-        panel = dialogPanel,
-        project = project,
-        parent = parent,
-        createActions = { listOf(CloseDialogAction(dialogPanel, isDefault = true)) },
-      )
-      .apply {
-        dialogWrapper = this
-
-        setInitialLocationCallback {
-          val dimensionService = DimensionService.getInstance()
-          val savedSize = dimensionService.getSize(DIMENSION_SERVICE_KEY, project)
-          if (savedSize != null) {
-            setSize(savedSize.width, savedSize.height)
-          }
-          return@setInitialLocationCallback dimensionService.getLocation(DIMENSION_SERVICE_KEY, project)
-        }
-
-        Disposer.register(disposable) {
-          dialogWrapper = null
-          phoneEventsJob?.cancel()
-          val dimensionService = DimensionService.getInstance()
-          dimensionService.setLocation(DIMENSION_SERVICE_KEY, location, project)
-          dimensionService.setSize(DIMENSION_SERVICE_KEY, size, project)
-        }
-      }
-  }
-
   private class TextAreaBorder : LineBorder(JBColor.border(), 1) {
     override fun getBorderInsets(c: Component, insets: Insets): Insets {
       val left = JBUI.scale(6)
@@ -447,7 +349,6 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
   }
 
   companion object {
-    @NonNls private val DIMENSION_SERVICE_KEY = "#${PhoneDialog::class.qualifiedName}"
     @NonNls internal const val RECENT_NUMBERS_PROPERTY = "com.android.tools.idea.streaming.phone.dialog.recent.numbers"
     private const val MAX_RECENT_NUMBERS = 8
     private const val FIELD_WIDTH = 280
@@ -465,7 +366,7 @@ internal class PhoneDialog(private val emulator: EmulatorController) {
 
     /** Shows the [PhoneDialog] for the given [emulator]. */
     fun showPhoneDialog(emulator: EmulatorController, project: Project? = null, parent: Component? = null) {
-      PhoneDialog(emulator).createWrapper(project, parent).show()
+      PhoneDialog(emulator).show(project, parent)
     }
 
     private fun getInitialPhoneNumbers(): Array<String> {

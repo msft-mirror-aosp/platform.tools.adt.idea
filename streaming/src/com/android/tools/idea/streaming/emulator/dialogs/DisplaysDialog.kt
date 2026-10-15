@@ -21,21 +21,15 @@ import com.android.emulator.control.DisplayConfigurations
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.streaming.StreamingBundle.message
-import com.android.tools.idea.streaming.core.CloseDialogAction
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.NotificationTracker
 import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.actionSystem.ActionToolbarPosition
-import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
-import com.intellij.openapi.util.DimensionService
-import com.intellij.openapi.util.Disposer
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.DoubleClickListener
 import com.intellij.ui.TableUtil
@@ -70,14 +64,11 @@ import javax.swing.event.TableModelEvent
 import javax.swing.table.DefaultTableCellRenderer
 import javax.swing.table.JTableHeader
 import javax.swing.table.TableCellRenderer
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.jetbrains.annotations.NonNls
 
 /** Dialog for configuring emulator displays, providing functionality similar to the Displays page in extended controls. */
-internal class DisplaysDialog(private val emulator: EmulatorController) {
+internal class DisplaysDialog(emulator: EmulatorController) :
+  AbstractExtendedControlsDialog(emulator, message("displays.dialog.title", emulator.emulatorId.avdName)) {
 
   private var maxSecondaryDisplays: Int = 0
 
@@ -86,8 +77,12 @@ internal class DisplaysDialog(private val emulator: EmulatorController) {
   private val displayTableModel = DisplayTableModel()
   private val displayTable = DisplayTable(displayTableModel)
 
-  private var stateModified = false
-  private val displayConfigurationsChannel = Channel<DisplayConfigurations>(Channel.CONFLATED)
+  private val displayConfigurationsChannel =
+    createStateChannel(
+      getState = EmulatorController::getDisplayConfigurations,
+      onStateLoaded = ::updateFromDisplayConfigurations,
+      setState = EmulatorController::setDisplayConfigurations,
+    )
 
   init {
     // Install a double-click listener to edit configurable displays on double click.
@@ -109,26 +104,6 @@ internal class DisplaysDialog(private val emulator: EmulatorController) {
           }
         }
         .installOn(this)
-    }
-
-    emulator.createCoroutineScope().launch {
-      try {
-        val config = emulator.getDisplayConfigurations()
-        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-          if (!stateModified) {
-            updateFromDisplayConfigurations(config)
-          }
-        }
-      } catch (_: Exception) {
-        // Error is already logged by EmulatorController.
-      }
-      for (config in displayConfigurationsChannel) {
-        try {
-          emulator.setDisplayConfigurations(config)
-        } catch (_: Exception) {
-          // Error is already logged by EmulatorController.
-        }
-      }
     }
   }
 
@@ -298,7 +273,7 @@ internal class DisplaysDialog(private val emulator: EmulatorController) {
   }
 
   /** Creates contents of the dialog. */
-  private fun createPanel(): DialogPanel {
+  override fun createPanel(): DialogPanel {
     return panel {
       row {
         cell(createTablePanel()).align(Align.FILL)
@@ -396,42 +371,17 @@ internal class DisplaysDialog(private val emulator: EmulatorController) {
   }
 
   /** Creates the dialog wrapper. */
-  fun createWrapper(project: Project? = null, parent: Component? = null): DialogWrapper {
-    val panel = createPanel()
-    return dialog(
-        title = message("displays.dialog.title", emulator.emulatorId.avdName),
-        resizable = true,
-        panel = panel,
-        project = project,
-        parent = parent,
-        createActions = { listOf(CloseDialogAction(panel, isDefault = true)) },
-      )
-      .apply {
-        val notificationTracker = NotificationTracker.forEmulator(emulator)
-        disposable.createCoroutineScope(Dispatchers.EDT + ModalityState.any().asContextElement()).launch {
-          notificationTracker.displayConfigurations.collect { displayConfigs ->
-            if (displayConfigs != null && !stateModified) {
-              updateFromDisplayList(displayConfigs)
-            }
+  override fun createWrapper(project: Project?, parent: Component?): DialogWrapper {
+    return super.createWrapper(project, parent).apply {
+      val notificationTracker = NotificationTracker.forEmulator(emulator)
+      disposable.createCoroutineScope(uiContext).launch {
+        notificationTracker.displayConfigurations.collect { displayConfigs ->
+          if (displayConfigs != null && !stateModified) {
+            updateFromDisplayList(displayConfigs)
           }
-        }
-
-        setInitialLocationCallback {
-          val dimensionService = DimensionService.getInstance()
-          val savedSize = dimensionService.getSize(DIMENSION_SERVICE_KEY, project)
-          if (savedSize != null) {
-            setSize(savedSize.width, savedSize.height)
-          }
-          return@setInitialLocationCallback dimensionService.getLocation(DIMENSION_SERVICE_KEY, project)
-        }
-
-        Disposer.register(disposable) {
-          displayConfigurationsChannel.close()
-          val dimensionService = DimensionService.getInstance()
-          dimensionService.setLocation(DIMENSION_SERVICE_KEY, location, project)
-          dimensionService.setSize(DIMENSION_SERVICE_KEY, size, project)
         }
       }
+    }
   }
 
   private class DisplayTableModel : ListTableModel<DisplayItem>() {
@@ -570,7 +520,6 @@ internal class DisplaysDialog(private val emulator: EmulatorController) {
   }
 
   companion object {
-    @NonNls private val DIMENSION_SERVICE_KEY = "#${DisplaysDialog::class.qualifiedName}"
     private const val HEADER_GAP = 17
     private const val COLUMN_PADDING = 16
 
@@ -583,7 +532,7 @@ internal class DisplaysDialog(private val emulator: EmulatorController) {
 
     /** Shows the [DisplaysDialog] for the given [emulator]. */
     fun showDisplaysDialog(emulator: EmulatorController, project: Project? = null, parent: Component? = null) {
-      DisplaysDialog(emulator).createWrapper(project, parent).show()
+      DisplaysDialog(emulator).show(project, parent)
     }
   }
 }
@@ -642,77 +591,77 @@ private class EditDisplayDialog(
 
     return panel {
       row {
-        comboBox(DefaultComboBoxModel(displayTypes.toTypedArray()), renderer = textListCellRenderer { it?.displayName ?: "" })
-          .label(message("displays.dialog.preset.label"), LabelPosition.TOP)
-          .align(AlignX.FILL)
-          .focused()
-          .applyToComponent {
-            name = "displayTypeComboBox"
-            selectedItem = selectedType
-            displayTypeComboBox = this
-            setMinimumAndPreferredWidth(JBUIScale.scale(COMBO_BOX_WIDTH))
-            addItemListener { event ->
-              if (!isUpdatingUi && event.stateChange == ItemEvent.SELECTED) {
-                val newType = event.item as? DisplayType ?: return@addItemListener
-                selectedType = newType
-                if (!newType.isCustom) {
-                  this@EditDisplayDialog.width = newType.width
-                  this@EditDisplayDialog.height = newType.height
-                  dpi = newType.dpi
-                  isUpdatingUi = true
-                  try {
-                    widthField?.text = newType.width.toString()
-                    heightField?.text = newType.height.toString()
-                    dpiField?.text = newType.dpi.toString()
-                  } finally {
-                    isUpdatingUi = false
+          comboBox(DefaultComboBoxModel(displayTypes.toTypedArray()), renderer = textListCellRenderer { it?.displayName ?: "" })
+            .label(message("displays.dialog.preset.label"), LabelPosition.TOP)
+            .align(AlignX.FILL)
+            .focused()
+            .applyToComponent {
+              name = "displayTypeComboBox"
+              selectedItem = selectedType
+              displayTypeComboBox = this
+              setMinimumAndPreferredWidth(JBUIScale.scale(COMBO_BOX_WIDTH))
+              addItemListener { event ->
+                if (!isUpdatingUi && event.stateChange == ItemEvent.SELECTED) {
+                  val newType = event.item as? DisplayType ?: return@addItemListener
+                  selectedType = newType
+                  if (!newType.isCustom) {
+                    this@EditDisplayDialog.width = newType.width
+                    this@EditDisplayDialog.height = newType.height
+                    dpi = newType.dpi
+                    isUpdatingUi = true
+                    try {
+                      widthField?.text = newType.width.toString()
+                      heightField?.text = newType.height.toString()
+                      dpiField?.text = newType.dpi.toString()
+                    } finally {
+                      isUpdatingUi = false
+                    }
                   }
                 }
               }
             }
-          }
-      }
+        }
         .layout(RowLayout.PARENT_GRID)
 
       row {
-        intTextField()
-          .label(message("displays.dialog.width.label"), LabelPosition.TOP)
-          .bindIntText(::width)
-          .align(AlignX.FILL)
-          .resizableColumn()
-          .validationOnInput { validateDimensionField(it, isHeight = false) }
-          .validationOnApply { validateDimensionField(it, isHeight = false) }
-          .applyToComponent {
-            name = "widthField"
-            widthField = this
-            document.addDocumentListener(documentListener)
-          }
-        intTextField()
-          .label(message("displays.dialog.height.label"), LabelPosition.TOP)
-          .bindIntText(::height)
-          .align(AlignX.FILL)
-          .resizableColumn()
-          .validationOnInput { validateDimensionField(it, isHeight = true) }
-          .validationOnApply { validateDimensionField(it, isHeight = true) }
-          .applyToComponent {
-            name = "heightField"
-            heightField = this
-            document.addDocumentListener(documentListener)
-          }
-        intTextField()
-          .label(message("displays.dialog.dpi.label"), LabelPosition.TOP)
-          .bindIntText(::dpi)
-          .align(AlignX.FILL)
-          .resizableColumn()
-          .validationOnInput { validateDpiField(it) }
-          .validationOnApply { validateDpiField(it) }
-          .applyToComponent {
-            name = "dpiField"
-            dpiField = this
-            document.addDocumentListener(documentListener)
-          }
+          intTextField()
+            .label(message("displays.dialog.width.label"), LabelPosition.TOP)
+            .bindIntText(::width)
+            .align(AlignX.FILL)
+            .resizableColumn()
+            .validationOnInput { validateDimensionField(it, isHeight = false) }
+            .validationOnApply { validateDimensionField(it, isHeight = false) }
+            .applyToComponent {
+              name = "widthField"
+              widthField = this
+              document.addDocumentListener(documentListener)
+            }
+          intTextField()
+            .label(message("displays.dialog.height.label"), LabelPosition.TOP)
+            .bindIntText(::height)
+            .align(AlignX.FILL)
+            .resizableColumn()
+            .validationOnInput { validateDimensionField(it, isHeight = true) }
+            .validationOnApply { validateDimensionField(it, isHeight = true) }
+            .applyToComponent {
+              name = "heightField"
+              heightField = this
+              document.addDocumentListener(documentListener)
+            }
+          intTextField()
+            .label(message("displays.dialog.dpi.label"), LabelPosition.TOP)
+            .bindIntText(::dpi)
+            .align(AlignX.FILL)
+            .resizableColumn()
+            .validationOnInput { validateDpiField(it) }
+            .validationOnApply { validateDpiField(it) }
+            .applyToComponent {
+              name = "dpiField"
+              dpiField = this
+              document.addDocumentListener(documentListener)
+            }
         }
-          .layout(RowLayout.PARENT_GRID)
+        .layout(RowLayout.PARENT_GRID)
     }
   }
 
