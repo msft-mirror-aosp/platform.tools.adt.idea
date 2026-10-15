@@ -79,7 +79,6 @@ iml_module(
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-        "//tools/adt/idea/android-adb:intellij.android.adb.tests",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/base/adblib:studio.android.sdktools.adblib.tests",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
