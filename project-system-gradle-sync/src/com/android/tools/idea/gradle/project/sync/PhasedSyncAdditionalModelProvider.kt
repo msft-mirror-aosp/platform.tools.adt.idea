@@ -61,6 +61,6 @@ private fun createIdeAndroidModels(cachedModels: ModelProviderCachedData, gradle
       data.selectedVariantName,
       selectedAbiName = null,
       v2NativeModule = null,
-      kaptGradleModel = null,
+      kaptGradleModel = cachedModels.kaptGradleModel[gradleProject]!!,
     )
   }

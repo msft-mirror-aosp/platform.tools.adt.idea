@@ -21,12 +21,15 @@ import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import java.io.Serializable
 import java.util.concurrent.ConcurrentHashMap
 import org.gradle.tooling.model.gradle.BasicGradleProject
+import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 
 /** Class for storing per Gradle-project data between multiple model providers. */
 class ModelProviderCachedData(private val disableLegacyModelProvidersForSupportedProjects: Boolean) : Serializable {
   internal val versions = ConcurrentHashMap<BasicGradleProject, Versions>()
   internal val data = ConcurrentHashMap<BasicGradleProject, CachedAndroidProjectData>()
   internal val selectedVariant = ConcurrentHashMap<BasicGradleProject, IdeVariantCoreImpl>()
+
+  internal val kaptGradleModel = ConcurrentHashMap<BasicGradleProject, KaptGradleModel>()
 
   private var allProjectsSupportedByPhasedSync: Boolean = false
 
@@ -57,6 +60,7 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
     versions.clear()
     data.clear()
     selectedVariant.clear()
+    kaptGradleModel.clear()
   }
 }
 

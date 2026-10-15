@@ -209,7 +209,10 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
         }
       )
       .filterNotNull()
-      .forEach { (gradleProject, kaptModel) -> modelConsumer.consumeProjectModel(gradleProject, kaptModel, KaptGradleModel::class.java) }
+      .forEach { (gradleProject, kaptModel) ->
+        cachedModels.kaptGradleModel[gradleProject] = kaptModel
+        modelConsumer.consumeProjectModel(gradleProject, kaptModel, KaptGradleModel::class.java)
+      }
 
     populateGradleProjectModel(controller, buildModels, modelConsumer, exceptionsPerProject)
 
