@@ -1306,6 +1306,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Open phone controls",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Open recent test session",
       "path": "ActionManager"
     },

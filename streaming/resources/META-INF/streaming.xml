@@ -295,6 +295,8 @@
                 icon="com.android.tools.idea.streaming.StagingIcons.CELLULAR" text="Cellular" description="Open cellular settings"/>
         <action id="android.emulator.battery" class="com.android.tools.idea.streaming.emulator.actions.EmulatorBatteryAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.BATTERY" text="Battery" description="Open battery settings"/>
+        <action id="android.emulator.phone" class="com.android.tools.idea.streaming.emulator.actions.EmulatorPhoneAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.PHONE" text="Phone" description="Open phone controls"/>
       </group>
     </group>
 

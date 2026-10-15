@@ -17,8 +17,12 @@ package com.android.tools.idea.streaming.emulator
 
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.annotations.concurrency.UiThread
+import com.android.emulation.control.incubating.ActiveCalls
+import com.android.emulation.control.incubating.Call
 import com.android.emulation.control.incubating.CellInfo
 import com.android.emulation.control.incubating.ModemGrpc
+import com.android.emulation.control.incubating.PhoneEvent
+import com.android.emulation.control.incubating.SmsMessage as ModemSmsMessage
 import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraList
 import com.android.emulator.control.CameraNotification
@@ -184,6 +188,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile private var screenshotStreamObserver: StreamObserver<Image>? = null
   @Volatile private var clipboardStreamObserver: StreamObserver<ClipData>? = null
   @Volatile private var notificationStreamObserver: StreamObserver<Notification>? = null
+  @Volatile private var phoneEventStreamObserver: StreamObserver<PhoneEvent>? = null
   @Volatile
   var displays =
     listOf(DisplayConfiguration.newBuilder().setWidth(config.displayWidth).setHeight(config.displayHeight).setDpi(config.density).build())
@@ -193,6 +198,8 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   var batteryStatus: BatteryState = BatteryState.newBuilder().setChargeLevel(100).setStatus(BatteryState.BatteryStatus.CHARGING).build()
   @Volatile var gpsLocation: GpsState = GpsState.newBuilder().setLatitude(0.0).setLongitude(0.0).setAltitude(0.0).build()
   @Volatile var cellInfo: CellInfo = CellInfo.getDefaultInstance()
+  @Volatile var activeCalls: List<Call> = emptyList()
+  @Volatile var receivedSms: List<ModemSmsMessage> = emptyList()
 
   @Volatile
   var devicePosture: PostureValue? = config.postures.lastOrNull()?.posture
@@ -434,6 +441,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     screenshotStreamRequest = null
     clipboardStreamObserver = null
     notificationStreamObserver = null
+    phoneEventStreamObserver = null
   }
 
   /** Adds, removes, updates secondary displays. */
@@ -1104,6 +1112,81 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         sendResponse(responseObserver, cellInfo)
       }
     }
+
+    override fun createCall(request: Call, responseObserver: StreamObserver<Call>) {
+      executor.execute {
+        val createdCall =
+          Call.newBuilder()
+            .setNumber(request.number)
+            .setDirection(Call.CallDirection.CALL_DIRECTION_INBOUND)
+            .setState(Call.CallState.CALL_STATE_INCOMING)
+            .build()
+        activeCalls = activeCalls.filter { it.number != request.number } + createdCall
+        sendResponse(responseObserver, createdCall)
+        notifyActiveCallsChanged()
+      }
+    }
+
+    override fun updateCall(request: Call, responseObserver: StreamObserver<Call>) {
+      executor.execute {
+        val existing = activeCalls.find { it.number == request.number }
+        if (existing == null) {
+          responseObserver.onError(StatusRuntimeException(Status.NOT_FOUND.withDescription("Unable to find call ${request.number}")))
+          return@execute
+        }
+        val updated = existing.toBuilder().setState(request.state).build()
+        activeCalls = activeCalls.map { if (it.number == request.number) updated else it }
+        sendResponse(responseObserver, updated)
+        notifyActiveCallsChanged()
+      }
+    }
+
+    override fun deleteCall(request: Call, responseObserver: StreamObserver<Empty>) {
+      executor.execute {
+        activeCalls = activeCalls.filter { it.number != request.number }
+        sendEmptyResponse(responseObserver)
+        notifyActiveCallsChanged()
+      }
+    }
+
+    override fun listCalls(request: Empty, responseObserver: StreamObserver<ActiveCalls>) {
+      executor.execute {
+        sendResponse(responseObserver, ActiveCalls.newBuilder().addAllCalls(activeCalls).build())
+      }
+    }
+
+    override fun receiveSms(request: ModemSmsMessage, responseObserver: StreamObserver<Empty>) {
+      executor.execute {
+        receivedSms = receivedSms + request
+        sendEmptyResponse(responseObserver)
+      }
+    }
+
+    override fun receivePhoneEvents(request: Empty, responseObserver: StreamObserver<PhoneEvent>) {
+      executor.execute {
+        phoneEventStreamObserver = responseObserver
+      }
+    }
+  }
+
+  private fun notifyActiveCallsChanged() {
+    val observer = phoneEventStreamObserver ?: return
+    val event =
+      PhoneEvent.newBuilder()
+        .setType(PhoneEvent.PhoneEventType.PHONE_EVENT_TYPE_ACTIVE)
+        .setActive(ActiveCalls.newBuilder().addAllCalls(activeCalls))
+        .build()
+    observer.sendStreamingResponse(event)
+  }
+
+  /** Simulates the device hanging up all active calls. */
+  fun endAllCallsOnDevice() {
+    executor
+      .submit {
+        activeCalls = emptyList()
+        notifyActiveCallsChanged()
+      }
+      .get()
   }
 
   private inner class LoggingInterceptor : ServerInterceptor {

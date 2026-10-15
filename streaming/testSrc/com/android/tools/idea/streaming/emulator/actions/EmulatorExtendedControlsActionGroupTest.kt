@@ -60,6 +60,7 @@ class EmulatorExtendedControlsActionGroupTest {
     val displaysActionId = "android.emulator.displays"
     val cellularActionId = "android.emulator.cellular"
     val batteryActionId = "android.emulator.battery"
+    val phoneActionId = "android.emulator.phone"
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
     val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -78,6 +79,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(batteryDisabled.isVisible).isFalse()
     assertThat(batteryDisabled.isEnabled).isFalse()
 
+    val phoneDisabled = updateAndGetActionPresentation(phoneActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(phoneDisabled.isVisible).isFalse()
+    assertThat(phoneDisabled.isEnabled).isFalse()
+
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
     val presentationEnabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(presentationEnabled.isVisible).isTrue()
@@ -95,6 +100,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(batteryEnabled.isVisible).isTrue()
     assertThat(batteryEnabled.isEnabled).isTrue()
 
+    val phoneEnabled = updateAndGetActionPresentation(phoneActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(phoneEnabled.isVisible).isTrue()
+    assertThat(phoneEnabled.isEnabled).isTrue()
+
     val automotiveView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createAutomotiveAvd(path) })
     val batteryAutomotive = updateAndGetActionPresentation(batteryActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(batteryAutomotive.isVisible).isFalse()
@@ -111,7 +120,7 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(3)
+    assertThat(children).hasLength(4)
     val displaysAction = children[0]
     assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
     assertThat(displaysAction.templatePresentation.icon).isEqualTo(StagingIcons.DISPLAYS)
@@ -123,6 +132,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val batteryAction = children[2]
     assertThat(batteryAction.templatePresentation.text).isEqualTo("Battery")
     assertThat(batteryAction.templatePresentation.icon).isEqualTo(StagingIcons.BATTERY)
+
+    val phoneAction = children[3]
+    assertThat(phoneAction.templatePresentation.text).isEqualTo("Phone")
+    assertThat(phoneAction.templatePresentation.icon).isEqualTo(StagingIcons.PHONE)
 
     createModalDialogAndInteractWithIt({ executeAction(displaysAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
       assertThat(dlg.title).isEqualTo("Displays (${view.emulator.emulatorId.avdName})")
@@ -136,6 +149,11 @@ class EmulatorExtendedControlsActionGroupTest {
 
     createModalDialogAndInteractWithIt({ executeAction(batteryAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
       assertThat(dlg.title).isEqualTo("Battery (${view.emulator.emulatorId.avdName})")
+      dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
+    }
+
+    createModalDialogAndInteractWithIt({ executeAction(phoneAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
+      assertThat(dlg.title).isEqualTo("Phone (${view.emulator.emulatorId.avdName})")
       dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
     }
   }

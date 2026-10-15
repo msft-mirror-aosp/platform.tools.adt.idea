@@ -36,6 +36,7 @@ private const val EXTENDED_CONTROLS_GROUP_ID = "android.emulator.extended.contro
 private const val DISPLAYS_ACTION_ID = "android.emulator.displays"
 private const val CELLULAR_ACTION_ID = "android.emulator.cellular"
 private const val BATTERY_ACTION_ID = "android.emulator.battery"
+private const val PHONE_ACTION_ID = "android.emulator.phone"
 
 /** Adds the Settings -> Keymap > Running Devices section. */
 internal class StreamingKeymapExtension : KeymapExtension {
@@ -51,7 +52,13 @@ internal class StreamingKeymapExtension : KeymapExtension {
         if (id == SHOW_EXTENDED_CONTROLS_ACTION_ID) {
           continue
         }
-      } else if (id == EXTENDED_CONTROLS_GROUP_ID || id == DISPLAYS_ACTION_ID || id == CELLULAR_ACTION_ID || id == BATTERY_ACTION_ID) {
+      } else if (
+        id == EXTENDED_CONTROLS_GROUP_ID ||
+          id == DISPLAYS_ACTION_ID ||
+          id == CELLULAR_ACTION_ID ||
+          id == BATTERY_ACTION_ID ||
+          id == PHONE_ACTION_ID
+      ) {
         continue
       }
       ActionsTreeUtil.addAction(keymapGroup, action, filtered)
