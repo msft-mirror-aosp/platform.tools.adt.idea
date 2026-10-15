@@ -1224,6 +1224,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> LIGHTBUILD_ENABLE =
     new BooleanFlag(LIGHTBUILD, "enable", "Enable Lightbuild plugin",
                     "Enables the Lightbuild plugin.");
+
+  public static final Flag<Boolean> NEW_LIGHTBUILD_PROJECT_WITH_CATALOG_ENABLE =
+    new BooleanFlag(LIGHTBUILD, "new.project.with.catalog.enable", "Enable version catalog in new Lightbuild project",
+                    "When enabled, new Lightbuild projects are created using version catalog.");
   //endregion
 
   //region Layout Inspector
