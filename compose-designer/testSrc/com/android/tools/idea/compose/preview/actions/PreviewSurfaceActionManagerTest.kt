@@ -93,9 +93,6 @@ class PreviewSurfaceActionManagerTest {
 
   @Test
   fun testAvailableActionsOnPreviewContextMenu() {
-    StudioFlags.COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI_AGENTIC.overrideForTest(true, projectRule.testRootDisposable)
-    StudioFlags.COMPOSE_PREVIEW_MATCH_UI_AGENT.overrideForTest(true, projectRule.testRootDisposable)
-    StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.overrideForTest(true, projectRule.testRootDisposable)
     StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.overrideForTest(true, projectRule.testRootDisposable)
     StudioFlags.COMPOSE_PREVIEW_LOOKAHEAD_VISUALIZATION.overrideForTest(true, projectRule.testRootDisposable)
 

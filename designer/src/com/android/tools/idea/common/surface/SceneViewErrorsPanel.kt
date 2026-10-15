@@ -19,7 +19,6 @@ import com.android.tools.adtui.common.AdtUiUtils
 import com.android.tools.idea.common.error.Issue
 import com.android.tools.idea.common.error.IssueSource
 import com.android.tools.idea.common.error.fixWithAiActionProvider
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.rendering.RenderProblem
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.actionSystem.ActionManager
@@ -42,8 +41,7 @@ import javax.swing.border.LineBorder
 private const val ERROR_LABEL_CONTENT = "Render problem"
 private val TRANSLUCENT_BACKGROUND_COLOR = Gray._220.withAlpha(200)
 private val DEFAULT_BORDER = LineBorder(AdtUiUtils.DEFAULT_BORDER_COLOR, 1)
-private val DEFAULT_HEIGHT = 35
-private val EXTENDED_HEIGHT = DEFAULT_HEIGHT * 2
+private const val EXTENDED_HEIGHT = 70
 
 /** Shows a Panel with an error message */
 class SceneViewErrorsPanel(val errorProvider: () -> List<Throwable>?, val styleProvider: () -> Style = { Style.SOLID }) :
@@ -61,7 +59,7 @@ class SceneViewErrorsPanel(val errorProvider: () -> List<Throwable>?, val styleP
     TRANSLUCENT,
   }
 
-  private val height = if (StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.get()) EXTENDED_HEIGHT else DEFAULT_HEIGHT
+  private val height = EXTENDED_HEIGHT
   private val size = JBUI.size(130, height)
   private val label =
     JBLabel(ERROR_LABEL_CONTENT).apply {
@@ -107,7 +105,7 @@ class SceneViewErrorsPanel(val errorProvider: () -> List<Throwable>?, val styleP
       // We update the button every time the style changes.
       // When the panel is visible, we might add the "Fix with AI" button.
       // When it's hidden, the button will be removed.
-      if (newStyle == Style.SOLID && StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.get()) {
+      if (newStyle == Style.SOLID) {
         updateFixWithAiButton()
       } else {
         fixWithAiActionGroup.removeAll()

@@ -18,7 +18,6 @@ package com.android.tools.idea.common.error
 import com.android.ide.common.rendering.api.ILayoutLog
 import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.idea.common.model.NlModel
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.rendering.errors.ComposeRenderErrorContributor
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.error.RenderIssueProvider
@@ -48,7 +47,6 @@ import com.intellij.util.ui.UIUtil
 import javax.swing.event.HyperlinkListener
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -60,12 +58,6 @@ import org.mockito.kotlin.whenever
 class DesignerCommonIssueSidePanelTest {
 
   @JvmField @Rule val rule = AndroidProjectRule.inMemory()
-
-  @After
-  fun tearDown() {
-    StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.clearOverride()
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.clearOverride()
-  }
 
   @Test
   fun testHyperlinkListener() {
@@ -100,8 +92,6 @@ class DesignerCommonIssueSidePanelTest {
 
   @Test
   fun testVirtualFileIsProvidedToAction() {
-    StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.override(true)
-
     val file = rule.fixture.addFileToProject("path/to/file.xml", "<root/>")
 
     val model: NlModel = mock()
@@ -143,18 +133,53 @@ class DesignerCommonIssueSidePanelTest {
 
   @Test
   fun testFixWithAiButtonWhenUiCheckFlagIsEnabled() {
-    assertFixWithAiButton(fixWithAiFlagEnabled = true)
-  }
+    val expectedVisualLintRenderIssue =
+      VisualLintRenderIssue.builder()
+        .summary("This is the summary of a visual lint render issue")
+        .severity(HighlightSeverity.WARNING)
+        .contentDescriptionProvider { HtmlBuilder() }
+        .model(mock())
+        .components(mutableListOf())
+        .type(VisualLintErrorType.BOUNDS)
+        .build()
 
-  @Test
-  fun testFixWithAiButtonNotVisibleUiCheckFlagIsFlagDisabled() {
-    assertFixWithAiButton(fixWithAiFlagEnabled = false)
+    val expectedActionText = "FixWithAiButton"
+    var currentVisualLintIssue: VisualLintRenderIssue? = null
+    var currentActionEvent: AnActionEvent? = null
+    val panel =
+      DesignerCommonIssueSidePanel(rule.project, rule.testRootDisposable) {
+        object : AnAction(expectedActionText) {
+          override fun actionPerformed(e: AnActionEvent) {
+            currentActionEvent = e
+            val issueNode = e.getData(PlatformDataKeys.SELECTED_ITEM) as? IssueNode
+            val issue = issueNode?.issue as? VisualLintRenderIssue
+            assertTrue("The provided issue is not of type VisualLintRenderIssue. Issue: $issue", issue is VisualLintRenderIssue)
+            currentVisualLintIssue = issue as VisualLintRenderIssue
+          }
+        }
+      }
+    panel.loadIssueNode(createIssueNode(expectedVisualLintRenderIssue))
+
+    val actionToolbar = panel.findDescendant(ActionToolbar::class.java)
+    assertNotNull(actionToolbar) { "ActionToolbar not found!" }
+
+    // Validate only 1 button is added to the toolbar
+    val actions = actionToolbar.actionGroup.getChildren(null)
+    assertEquals(1, actions.size)
+
+    // Check the button has been created (not null).
+    val fixWithAiActionButton = actions.first()
+    assertEquals(expectedActionText, fixWithAiActionButton.templateText)
+
+    // Simulate a click and verify the action handler receives the expected issue.
+    val expectedActionEvent = createTestEvent(expectedVisualLintRenderIssue, fixWithAiActionButton)
+    fixWithAiActionButton.actionPerformed(expectedActionEvent)
+    assertEquals(expectedVisualLintRenderIssue, currentVisualLintIssue)
+    assertEquals(expectedActionEvent, currentActionEvent)
   }
 
   @Test
   fun testFixWithAiButtonVisibleWhenComposeRenderErrorFlagIsEnabled() {
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(true)
-
     val issue = MockIssueFactory.createRenderIssue(HighlightSeverity.ERROR)
     val nlRenderIssue = RenderIssueProvider.NlRenderIssueWrapper.wrapIssue(issue, null)
     val panel =
@@ -171,8 +196,6 @@ class DesignerCommonIssueSidePanelTest {
 
   @Test
   fun testFixWithAiButtonVisibleForComposeContributorViewModelAndCompositionLocalIssues() {
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(true)
-
     val viewModelThrowable =
       Throwable("lateinit property okHttpClient has not been initialized").apply {
         stackTrace = arrayOf(StackTraceElement("androidx.lifecycle.viewmodel.compose.ViewModelKt", "viewModel", "ViewModel.kt", 72))
@@ -210,8 +233,6 @@ class DesignerCommonIssueSidePanelTest {
 
   @Test
   fun testFixWithAiButtonNotVisibleWhenComposeRenderErrorIsWarning() {
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(true)
-
     for (severity in listOf(HighlightSeverity.WARNING, HighlightSeverity.WEAK_WARNING, HighlightSeverity.INFORMATION)) {
       val issue = MockIssueFactory.createRenderIssue(severity)
       val nlRenderIssue = RenderIssueProvider.NlRenderIssueWrapper.wrapIssue(issue, null)
@@ -230,7 +251,6 @@ class DesignerCommonIssueSidePanelTest {
 
   @Test
   fun testFixWithAiButtonNotVisibleWhenComposeRenderErrorFlagIsEnabledAndInvalidIssueType() {
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(true)
     val issue = TestIssue()
     val panel =
       DesignerCommonIssueSidePanel(rule.project, rule.testRootDisposable) {
@@ -242,75 +262,6 @@ class DesignerCommonIssueSidePanelTest {
 
     val actionToolbar = panel.findDescendant(ActionToolbar::class.java)
     assertNull(actionToolbar)
-  }
-
-  @Test
-  fun testFixWithAiButtonNotVisibleWhenComposeRenderErrorFlagIsDisabled() {
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(false)
-
-    val issue = TestIssue()
-    val panel =
-      DesignerCommonIssueSidePanel(rule.project, rule.testRootDisposable) {
-        object : AnAction("Fix with AI") {
-          override fun actionPerformed(e: AnActionEvent) {}
-        }
-      }
-    panel.loadIssueNode(TestIssueNode(issue))
-
-    val actionToolbar = panel.findDescendant(ActionToolbar::class.java)
-    assertNull(actionToolbar)
-  }
-
-  private fun assertFixWithAiButton(fixWithAiFlagEnabled: Boolean) {
-    StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.override(fixWithAiFlagEnabled)
-
-    val expectedVisualLintRenderIssue =
-      VisualLintRenderIssue.builder()
-        .summary("This is the summary of a visual lint render issue")
-        .severity(HighlightSeverity.WARNING)
-        .contentDescriptionProvider { HtmlBuilder() }
-        .model(mock())
-        .components(mutableListOf())
-        .type(VisualLintErrorType.BOUNDS)
-        .build()
-
-    val expectedActionText = "FixWithAiButton"
-    var currentVisualLintIssue: VisualLintRenderIssue? = null
-    var currentActionEvent: AnActionEvent? = null
-    val panel =
-      DesignerCommonIssueSidePanel(rule.project, rule.testRootDisposable) {
-        object : AnAction(expectedActionText) {
-          override fun actionPerformed(e: AnActionEvent) {
-            currentActionEvent = e
-            val issueNode = e.getData(PlatformDataKeys.SELECTED_ITEM) as? IssueNode
-            val issue = issueNode?.issue as? VisualLintRenderIssue
-            assertTrue("The provided issue is not of type VisualLintRenderIssue. Issue: $issue", issue is VisualLintRenderIssue)
-            currentVisualLintIssue = issue as VisualLintRenderIssue
-          }
-        }
-      }
-    panel.loadIssueNode(createIssueNode(expectedVisualLintRenderIssue))
-
-    val actionToolbar = panel.findDescendant(ActionToolbar::class.java)
-    if (fixWithAiFlagEnabled) {
-      assertNotNull(actionToolbar) { "ActionToolbar not found!" }
-
-      // Validate only 1 button is added to the toolbar
-      val actions = actionToolbar.actionGroup.getChildren(null)
-      assertEquals(1, actions.size)
-
-      // Check the button has been created (not null).
-      val fixWithAiActionButton = actions.first()
-      assertEquals(expectedActionText, fixWithAiActionButton.templateText)
-
-      // Simulate a click and verify the action handler receives the expected issue.
-      val expectedActionEvent = createTestEvent(expectedVisualLintRenderIssue, fixWithAiActionButton)
-      fixWithAiActionButton.actionPerformed(expectedActionEvent)
-      assertEquals(expectedVisualLintRenderIssue, currentVisualLintIssue)
-      assertEquals(expectedActionEvent, currentActionEvent)
-    } else {
-      assertNull(actionToolbar)
-    }
   }
 
   private fun createTestEvent(issue: VisualLintRenderIssue, action: AnAction): AnActionEvent {

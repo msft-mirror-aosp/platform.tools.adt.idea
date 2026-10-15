@@ -1631,45 +1631,13 @@ public final class StudioFlags {
     COMPOSE, "project.uses.compose.override", "Forces the Compose project detection",
     "If enabled, the project will be treated as a Compose project, showing Previews if available and enhancing the Compose editing");
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_GENERATE_PREVIEW_AGENTIC = new BooleanFlag(
-    COMPOSE, "preview.generate.preview.action.agentic", "Use agents to generate Compose Previews",
-    "Uses agentic approach when generating Compose Previews corresponding to the selected @Composable."
-  );
-
-  public static final Flag<Boolean> COMPOSE_UI_CHECK_FIX_WITH_AI = new BooleanFlag(
-    COMPOSE, "ui.check.fix.with.ai", "Enable fix with AI button to fix UI Check errors",
-    "Enables a button to fix with AI UI Check errors showing in the error panel"
-    );
-
-  public static final Flag<Boolean> COMPOSE_RENDER_ERROR_FIX_WITH_AI = new BooleanFlag(
-    COMPOSE, "render.error.fix.with.ai", "Enable fix with AI button to fix",
-    "Enables a button to fix with AI render errors related to previews"
-  );
-
   public static final Flag<Boolean> COMPOSE_ENABLE_GDP_MCP_DIALOG = new BooleanFlag(
     COMPOSE, "enable.gdp.mcp.dialog", "Enable GDP MCP server dialog",
     "Enables the dialog prompting to enable the GDP MCP server.");
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_TRANSFORM_UI_WITH_AI_AGENTIC = new BooleanFlag(
-    COMPOSE, "transform.ui.with.ai.agentic", "Use agent for Transform UI with Gemini",
-    "Uses agentic approach when performing transform UI with Gemini."
-    );
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_SCREENSHOT_TO_CODE = new BooleanFlag(
-    COMPOSE, "preview.screenshot.to.code", "Enable screenshot to code action",
-    "Enables an action to generate compose code from a screenshot.");
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_MATCH_UI_AGENT = new BooleanFlag(
-    COMPOSE, "preview.match.ui.agent", "Enable an action to match the preview to a target image",
-    "Enables an action that triggers an agent that will match a Compose Preview to a user-provided target image.");
-
   public static final Flag<Boolean> COMPOSE_PREVIEW_CODE_TO_PREVIEW_NAVIGATION = new BooleanFlag(
     COMPOSE, "preview.code.to.preview.navigation", "Enable the highlighting of preview components when clicking on code",
     "If a user moves their caret to a element present in a preview, we highlight those elements");
-
-  public static final Flag<Boolean> COMPOSE_PREVIEW_RENDER_TOOL = new BooleanFlag(
-    COMPOSE, "preview.render.tool", "Enable the Compose Preview render agent tool",
-    "If enabled, an agent tool to render Compose Previews will be available for agents.");
 
   public static final Flag<Boolean> COMPOSE_PREVIEW_AI_GLASSES_PREVIEW = new BooleanFlag(
     COMPOSE, "preview.ai.glasses.preview", "Enable Compose Preview for AI Glasses",

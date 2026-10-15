@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.common.error
 
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.rendering.errors.ui.MessageTip
 import com.android.tools.idea.uibuilder.error.RenderIssueProvider.NlRenderIssueWrapper
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
@@ -128,8 +127,7 @@ private class DesignerCommonIssueDetailPanel(
 
     // Not a visual lint issue.
     val contentPanel = JPanel(VerticalLayout(0))
-    // Check the feature flag first before evaluating render issue type and ERROR severity.
-    if (StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.get() && issue is NlRenderIssueWrapper && issue.severity == HighlightSeverity.ERROR) {
+    if (issue is NlRenderIssueWrapper && issue.severity == HighlightSeverity.ERROR) {
       addFixWithAiButton(contentPanel, offSetBottom = true)
     }
     contentPanel.add(descriptionPane)
@@ -171,9 +169,7 @@ private class DesignerCommonIssueDetailPanel(
 
   private fun JPanel.addVisualRenderIssue(issue: VisualLintRenderIssue) {
     val affectedFilePanel = createAffectedFilePanel(issue)
-    if (StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.get()) {
-      addFixWithAiButton(affectedFilePanel, offSetBottom = false)
-    }
+    addFixWithAiButton(affectedFilePanel, offSetBottom = false)
     add(affectedFilePanel, BorderLayout.CENTER)
   }
 

@@ -20,7 +20,6 @@ import com.android.tools.idea.common.error.IssuePanelService
 import com.android.tools.idea.common.error.NotSuppressedFilter
 import com.android.tools.idea.common.error.UICheckNodeFactory
 import com.android.tools.idea.compose.preview.ComposeStudioBotActionFactory
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.preview.ComposePreviewElementInstance
 import com.intellij.analysis.problemsView.toolWindow.ProblemsView
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewPanelProvider
@@ -77,8 +76,6 @@ class UiCheckPanelProvider(
    * expected to be an accessibility issue found in the UI Check Panel.
    */
   private fun fixWithAiActionProvider(): AnAction? {
-    if (StudioFlags.COMPOSE_UI_CHECK_FIX_WITH_AI.get())
-      return ComposeStudioBotActionFactory.EP_NAME.extensionList.firstOrNull()?.fixVisualLintIssuesAction(instance.methodFqn)
-    return null
+    return ComposeStudioBotActionFactory.EP_NAME.extensionList.firstOrNull()?.fixVisualLintIssuesAction(instance.methodFqn)
   }
 }

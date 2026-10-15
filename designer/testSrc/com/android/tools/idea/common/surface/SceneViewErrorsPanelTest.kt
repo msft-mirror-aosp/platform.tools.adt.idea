@@ -19,7 +19,6 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.common.error.Issue
 import com.android.tools.idea.common.error.IssueFixActionProvider
 import com.android.tools.idea.common.error.IssueSource
-import com.android.tools.idea.flags.StudioFlags
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.lang.annotation.HighlightSeverity
@@ -40,7 +39,6 @@ import com.intellij.ui.components.JBLabel
 import java.awt.BorderLayout
 import java.awt.Dimension
 import javax.swing.JPanel
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -74,11 +72,6 @@ class SceneViewErrorsPanelTest {
     fakeUi.root.validate()
   }
 
-  @After
-  fun tearDown() {
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.clearOverride()
-  }
-
   @Test
   fun testVisibilityIsControlledByConstructorParameter() {
     var panelStyle = SceneViewErrorsPanel.Style.SOLID
@@ -100,20 +93,7 @@ class SceneViewErrorsPanelTest {
   }
 
   @Test
-  fun testPreferredAndMinimumSizes() {
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(false)
-    val sceneViewErrorsPanel = SceneViewErrorsPanel(errorProvider = { emptyList() })
-    panelParent.add(sceneViewErrorsPanel, BorderLayout.CENTER)
-
-    assertEquals(35, sceneViewErrorsPanel.minimumSize.height)
-    assertEquals(130, sceneViewErrorsPanel.minimumSize.width)
-    assertEquals(35, sceneViewErrorsPanel.preferredSize.height)
-    assertEquals(130, sceneViewErrorsPanel.preferredSize.width)
-  }
-
-  @Test
   fun testPreferredAndMinimumSizesForAiFix() {
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(true)
     val sceneViewErrorsPanel = SceneViewErrorsPanel(errorProvider = { emptyList() })
     panelParent.add(sceneViewErrorsPanel, BorderLayout.CENTER)
 
@@ -125,8 +105,6 @@ class SceneViewErrorsPanelTest {
 
   @Test
   fun testAiFixButtonIsAvailable() {
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(true)
-
     val throwable = Throwable("Test error")
     val issue = createIssue(throwable)
 
@@ -166,35 +144,6 @@ class SceneViewErrorsPanelTest {
     // Performing action
     action?.actionPerformed(TestActionEvent.createTestEvent(action))
     assertEquals(issue, capturedSelectedItem)
-  }
-
-  @Test
-  fun testAiFixButtonIsNotAvailableWhenFlagIsOff() {
-    StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.override(false)
-    val testAction =
-      object : AnAction("Fix with AI") {
-        override fun actionPerformed(e: AnActionEvent) {}
-      }
-    val issueFixActionProvider =
-      object : IssueFixActionProvider {
-        override fun getAiActions(): List<AnAction> {
-          return listOf(testAction)
-        }
-      }
-    ExtensionTestUtil.maskExtensions(
-      ExtensionPointName("com.android.tools.idea.designer.issueFixActionProvider"),
-      listOf(issueFixActionProvider),
-      disposableRule.disposable,
-    )
-
-    val sceneViewErrorsPanel = SceneViewErrorsPanel(errorProvider = { listOf(Throwable("Test error")) })
-    panelParent.add(sceneViewErrorsPanel, BorderLayout.CENTER)
-    fakeUi.root.validate()
-    fakeUi.updateToolbars()
-
-    val toolbar = (sceneViewErrorsPanel.layout as BorderLayout).getLayoutComponent(BorderLayout.SOUTH) as ActionToolbar
-    assertNotNull(toolbar)
-    assertFalse(toolbar.actions.any { it.templatePresentation.text == "Fix with AI" })
   }
 
   private fun createIssue(throwable: Throwable) =
