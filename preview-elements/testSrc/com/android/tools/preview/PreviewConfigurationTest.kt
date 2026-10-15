@@ -18,6 +18,10 @@ package com.android.tools.preview
 import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.ide.common.resources.Locale
 import com.android.ide.common.resources.configuration.FolderConfiguration
+import com.android.resources.Density
+import com.android.resources.ScreenOrientation
+import com.android.resources.ScreenRatio
+import com.android.resources.ScreenRound
 import com.android.resources.ScreenSize
 import com.android.resources.UiMode
 import com.android.sdklib.IAndroidTarget
@@ -222,6 +226,73 @@ class PreviewConfigurationTest {
 
     assertThat(configuration.device?.tagId).isNull()
     assertThat(Device.isWear(configuration.device)).isFalse()
+  }
+
+  @Test
+  fun testParentDeviceSpecMatchesParentDeviceConfigurationQualifiers() {
+    // Create a Pixel 8 Pro device whose diagonal exceeds 5 inches but whose XML screen size is NORMAL
+    val pixel8ProScreen =
+      Screen().apply {
+        xDimension = 1344
+        yDimension = 2992
+        pixelDensity = Density.XXHIGH
+        diagonalLength = 6.70
+        size = ScreenSize.NORMAL
+        ratio = ScreenRatio.LONG
+        screenRound = ScreenRound.NOTROUND
+      }
+    val pixel8ProState =
+      State().apply {
+        name = "Portrait"
+        isDefaultState = true
+        orientation = ScreenOrientation.PORTRAIT
+        hardware = Hardware().apply { screen = pixel8ProScreen }
+      }
+    val pixel8ProDevice =
+      Device.Builder()
+        .apply {
+          setId("pixel_8_pro")
+          setName("Pixel 8 Pro")
+          setManufacturer("Google")
+          addSoftware(Software())
+          addState(pixel8ProState)
+        }
+        .build()
+    val availableDevices = ImmutableList.of(pixel8ProDevice)
+
+    // Apply id:pixel_8_pro to a render configuration
+    val idConfiguration =
+      Configuration.create(
+        TestConfigurationSettingsImpl(devices = availableDevices),
+        FolderConfiguration.createDefault(),
+      )
+    PreviewConfiguration.cleanAndGet(device = "id:pixel_8_pro")
+      .applyConfigurationForTest(idConfiguration, { null }, { availableDevices }, { null })
+
+    // Apply spec:parent=pixel_8_pro to another render configuration
+    val parentSpecConfiguration =
+      Configuration.create(
+        TestConfigurationSettingsImpl(devices = availableDevices),
+        FolderConfiguration.createDefault(),
+      )
+    PreviewConfiguration.cleanAndGet(device = "spec:parent=pixel_8_pro")
+      .applyConfigurationForTest(parentSpecConfiguration, { null }, { availableDevices }, { null })
+
+    // Verify that both configurations resolve to the exact same FolderConfiguration and NORMAL screen size
+    assertThat(idConfiguration.fullConfig.screenSizeQualifier?.value).isEqualTo(ScreenSize.NORMAL)
+    assertThat(parentSpecConfiguration.fullConfig.screenSizeQualifier?.value).isEqualTo(ScreenSize.NORMAL)
+    assertThat(parentSpecConfiguration.fullConfig).isEqualTo(idConfiguration.fullConfig)
+
+    // Apply spec:parent=pixel_8_pro,orientation=landscape and verify screen size remains NORMAL in landscape
+    val landscapeParentSpecConfiguration =
+      Configuration.create(
+        TestConfigurationSettingsImpl(devices = availableDevices),
+        FolderConfiguration.createDefault(),
+      )
+    PreviewConfiguration.cleanAndGet(device = "spec:parent=pixel_8_pro,orientation=landscape")
+      .applyConfigurationForTest(landscapeParentSpecConfiguration, { null }, { availableDevices }, { null })
+    assertThat(landscapeParentSpecConfiguration.fullConfig.screenSizeQualifier?.value).isEqualTo(ScreenSize.NORMAL)
+    assertThat(landscapeParentSpecConfiguration.fullConfig.screenOrientationQualifier?.value).isEqualTo(ScreenOrientation.LANDSCAPE)
   }
 
   private fun createDevice(tagId: String?): Device {

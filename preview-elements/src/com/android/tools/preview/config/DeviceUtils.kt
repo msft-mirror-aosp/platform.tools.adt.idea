@@ -61,6 +61,7 @@ const val DEFAULT_WEAROS_DEVICE_ID = "wearos_small_round"
 /** Used for `Round Chin` devices. */
 const val CHIN_SIZE_PX_FOR_ROUND_CHIN = 30
 
+/** Converts this [Device] into a [DeviceConfig] preserving its parent device reference when applicable. */
 fun Device.toDeviceConfig(): DeviceConfig {
   val config = MutableDeviceConfig().apply { dimUnit = DimUnit.px }
   val deviceState = this.defaultState
@@ -80,14 +81,19 @@ fun Device.toDeviceConfig(): DeviceConfig {
     config.shape = Shape.Normal
   }
 
-  // Set the backing ID at the end, otherwise there's risk of deleting it by changing other
-  // properties
+  // Set the backing ID and parent device at the end, otherwise there's risk of deleting them by
+  // changing other properties
   if (this.id != Configuration.CUSTOM_DEVICE_ID) {
     config.parentDeviceId = this.id
+    config.parentDevice = this
   }
   return config
 }
 
+/**
+ * Instantiates a custom [Device] from this [DeviceConfig], cloning the parent device's hardware and screen properties when backed by an
+ * unmodified parent [Device].
+ */
 fun DeviceConfig.createDeviceInstance(): Device {
   val deviceConfig =
     if (this !is MutableDeviceConfig) {
@@ -95,21 +101,28 @@ fun DeviceConfig.createDeviceInstance(): Device {
     } else {
       this
     }
+  // Clone the parent device's default state when backed by a parent device so inherent properties
+  // such as screen size bucket, screen ratio, and hardware qualifiers match the parent device
+  val backingParentDevice = deviceConfig.parentDevice
+  val initialDefaultState =
+    backingParentDevice?.defaultState?.deepCopy()?.apply {
+      name = "default"
+      isDefaultState = true
+    }
+      ?: State().apply {
+        name = "default"
+        isDefaultState = true
+        hardware = Hardware()
+      }
   val customDevice =
     Device.Builder()
       .apply {
-        setTagId("")
+        setTagId(backingParentDevice?.tagId ?: "")
         setName("Custom")
         setId(Configuration.CUSTOM_DEVICE_ID)
         setManufacturer("")
         addSoftware(Software())
-        addState(
-          State().apply {
-            name = "default"
-            isDefaultState = true
-            hardware = Hardware()
-          }
-        )
+        addState(initialDefaultState)
       }
       .build()
   customDevice.defaultState.apply {
@@ -118,29 +131,37 @@ fun DeviceConfig.createDeviceInstance(): Device {
         Orientation.landscape -> ScreenOrientation.LANDSCAPE
         Orientation.portrait -> ScreenOrientation.PORTRAIT
       }
-    hardware =
-      Hardware().apply {
-        screen =
-          Screen().apply {
-            // For "proper" conversions, the dpi in the DeviceConfig should be updated to the
-            // resolved density. This is to guarantee that the
-            // dimension as defined by the user reflects exactly in the Device (both the value and
-            // the unit), since this change in density
-            // may introduce an error when calculating the Screen dimensions
-            val resolvedDensity = Densities.getCommonScreenDensity(false, deviceConfig.dpi.toDouble(), 0)
-            deviceConfig.dpi = resolvedDensity.dpiValue
-            deviceConfig.dimUnit = DimUnit.px // Transforms dimension to Pixels
-            xDimension = deviceConfig.width.roundToInt()
-            yDimension = deviceConfig.height.roundToInt()
-            pixelDensity = resolvedDensity
-            diagonalLength = sqrt((1.0 * xDimension * xDimension) + (1.0 * yDimension * yDimension)) / pixelDensity.dpiValue
-            screenRound = if (deviceConfig.isRound) ScreenRound.ROUND else ScreenRound.NOTROUND
-            chin = if (deviceConfig.isRound) deviceConfig.chinSize.roundToInt() else 0
-            size = ScreenSize.getScreenSize(diagonalLength)
-            ratio = ScreenRatio.create(xDimension, yDimension)
-          }
-        buttonType = ButtonType.SOFT // needed for displaying nav bar when showing device decorations
+    // Synthesize a new Hardware and Screen only when there is no backing parent device screen;
+    // otherwise preserve the cloned parent hardware and ensure soft buttons are enabled
+    if (backingParentDevice?.defaultHardware?.screen != null) {
+      if (hardware.buttonType == null) {
+        hardware.buttonType = ButtonType.SOFT
       }
+    } else {
+      hardware =
+        Hardware().apply {
+          screen =
+            Screen().apply {
+              // For "proper" conversions, the dpi in the DeviceConfig should be updated to the
+              // resolved density. This is to guarantee that the
+              // dimension as defined by the user reflects exactly in the Device (both the value and
+              // the unit), since this change in density
+              // may introduce an error when calculating the Screen dimensions
+              val resolvedDensity = Densities.getCommonScreenDensity(false, deviceConfig.dpi.toDouble(), 0)
+              deviceConfig.dpi = resolvedDensity.dpiValue
+              deviceConfig.dimUnit = DimUnit.px // Transforms dimension to Pixels
+              xDimension = deviceConfig.width.roundToInt()
+              yDimension = deviceConfig.height.roundToInt()
+              pixelDensity = resolvedDensity
+              diagonalLength = sqrt((1.0 * xDimension * xDimension) + (1.0 * yDimension * yDimension)) / pixelDensity.dpiValue
+              screenRound = if (deviceConfig.isRound) ScreenRound.ROUND else ScreenRound.NOTROUND
+              chin = if (deviceConfig.isRound) deviceConfig.chinSize.roundToInt() else 0
+              size = ScreenSize.getScreenSize(diagonalLength)
+              ratio = ScreenRatio.create(xDimension, yDimension)
+            }
+          buttonType = ButtonType.SOFT // needed for displaying nav bar when showing device decorations
+        }
+    }
   }
   return customDevice
 }
