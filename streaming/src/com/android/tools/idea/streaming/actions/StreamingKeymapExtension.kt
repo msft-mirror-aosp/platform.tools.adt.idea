@@ -50,13 +50,6 @@ internal class StreamingKeymapExtension : KeymapExtension {
 
     val actionManager = ActionManager.getInstance()
     for (action in ActionsTreeUtil.getActions(ACTION_GROUP)) {
-      if (
-        (action is StreamingXrInputModeAction.InteractionHand ||
-          action is StreamingXrInputModeAction.InteractionEye ||
-          action is StreamingXrInputModePopupGroup) && !StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT.get()
-      ) {
-        continue
-      }
       val id = (action as? ActionStubBase)?.id ?: actionManager.getId(action)
       val extendedControlsInStudio = StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.get()
       if (
