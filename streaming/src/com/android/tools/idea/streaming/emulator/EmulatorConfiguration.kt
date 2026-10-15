@@ -59,6 +59,7 @@ private constructor(
   val hasOrientationSensors: Boolean = false,
   val hasTransparentDisplay: Boolean = false,
   val hasTouchScreen: Boolean = false,
+  val hasBattery: Boolean = false,
   val initialOrientationQuadrants: Int = 0,
   val displayModes: List<DisplayMode> = emptyList(),
   val postures: List<PostureDescriptor> = emptyList(),
@@ -133,6 +134,7 @@ private constructor(
       val hasOrientationSensors = getConfigBoolean(configIni["hw.sensors.orientation"], true)
       val hasTransparentDisplay = getConfigBoolean(configIni["hw.lcd.transparent"], false)
       val hasTouchScreen = "no-touch" != configIni["hw.screen"]
+      val hasBattery = getConfigBoolean(configIni["hw.battery"], true)
       val postureMode = parseInt(hardwareIni["hw.sensor.hinge.resizable.config"], -1)
       val displayModes =
         try {
@@ -266,6 +268,7 @@ private constructor(
         hasOrientationSensors = hasOrientationSensors,
         hasTransparentDisplay = hasTransparentDisplay,
         hasTouchScreen = hasTouchScreen,
+        hasBattery = hasBattery,
         initialOrientationQuadrants = initialOrientation,
         displayModes = displayModes,
         postures = postures,
@@ -276,7 +279,8 @@ private constructor(
       )
     }
 
-    private fun getConfigBoolean(value: String?, defaultValue: Boolean): Boolean = value?.equals("yes", ignoreCase = true) ?: defaultValue
+    private fun getConfigBoolean(value: String?, defaultValue: Boolean): Boolean =
+      value?.let { it.equals("yes", ignoreCase = true) || it.equals("true", ignoreCase = true) } ?: defaultValue
 
     fun createStub(avdName: String, avdFolder: Path): EmulatorConfiguration = EmulatorConfiguration(avdFolder, avdName)
 

@@ -16,6 +16,7 @@
 package com.android.tools.idea.streaming.actions
 
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.streaming.emulator.actions.EmulatorBatteryAction
 import com.android.tools.idea.streaming.emulator.actions.EmulatorCellularAction
 import com.android.tools.idea.streaming.emulator.actions.EmulatorDisplaysAction
 import com.android.tools.idea.streaming.emulator.actions.EmulatorExtendedControlsActionGroup
@@ -39,9 +40,10 @@ private const val SHOW_EXTENDED_CONTROLS_ACTION_ID = "android.emulator.show.exte
 private const val EXTENDED_CONTROLS_GROUP_ID = "android.emulator.extended.controls"
 private const val DISPLAYS_ACTION_ID = "android.emulator.displays"
 private const val CELLULAR_ACTION_ID = "android.emulator.cellular"
+private const val BATTERY_ACTION_ID = "android.emulator.battery"
 
 /** Adds the Settings -> Keymap > Running Devices section. */
-class StreamingKeymapExtension : KeymapExtension {
+internal class StreamingKeymapExtension : KeymapExtension {
 
   override fun createGroup(filtered: Condition<in AnAction>, project: Project?): KeymapGroup? {
     val keymapGroup = KeymapGroupFactory.getInstance().createGroup(KEYMAP_SECTION_NAME)
@@ -61,9 +63,11 @@ class StreamingKeymapExtension : KeymapExtension {
         (action is EmulatorExtendedControlsActionGroup ||
           action is EmulatorDisplaysAction ||
           action is EmulatorCellularAction ||
+          action is EmulatorBatteryAction ||
           id == EXTENDED_CONTROLS_GROUP_ID ||
           id == DISPLAYS_ACTION_ID ||
-          id == CELLULAR_ACTION_ID) && !extendedControlsInStudio
+          id == CELLULAR_ACTION_ID ||
+          id == BATTERY_ACTION_ID) && !extendedControlsInStudio
       ) {
         continue
       }

@@ -686,6 +686,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Battery",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Build",
       "path": "ActionManager"
     },
@@ -1291,6 +1295,10 @@
     },
     {
       "hit": "Open Wear Health Services panel",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open battery settings",
       "path": "ActionManager"
     },
     {

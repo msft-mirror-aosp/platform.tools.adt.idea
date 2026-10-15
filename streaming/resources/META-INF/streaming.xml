@@ -293,6 +293,8 @@
                 icon="com.android.tools.idea.streaming.StagingIcons.DISPLAYS" text="Displays" description="Configure Displays"/>
         <action id="android.emulator.cellular" class="com.android.tools.idea.streaming.emulator.actions.EmulatorCellularAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.CELLULAR" text="Cellular" description="Open cellular settings"/>
+        <action id="android.emulator.battery" class="com.android.tools.idea.streaming.emulator.actions.EmulatorBatteryAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.BATTERY" text="Battery" description="Open battery settings"/>
       </group>
     </group>
 

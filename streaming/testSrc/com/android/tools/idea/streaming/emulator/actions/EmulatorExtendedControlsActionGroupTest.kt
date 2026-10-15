@@ -23,6 +23,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.StagingIcons
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
+import com.android.tools.idea.streaming.emulator.FakeEmulator
 import com.android.tools.idea.streaming.testutil.newEmulatorView
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
@@ -58,6 +59,7 @@ class EmulatorExtendedControlsActionGroupTest {
     val actionId = "android.emulator.extended.controls"
     val displaysActionId = "android.emulator.displays"
     val cellularActionId = "android.emulator.cellular"
+    val batteryActionId = "android.emulator.battery"
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
     val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -72,6 +74,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(cellularDisabled.isVisible).isFalse()
     assertThat(cellularDisabled.isEnabled).isFalse()
 
+    val batteryDisabled = updateAndGetActionPresentation(batteryActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(batteryDisabled.isVisible).isFalse()
+    assertThat(batteryDisabled.isEnabled).isFalse()
+
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
     val presentationEnabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(presentationEnabled.isVisible).isTrue()
@@ -84,6 +90,15 @@ class EmulatorExtendedControlsActionGroupTest {
     val cellularEnabled = updateAndGetActionPresentation(cellularActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(cellularEnabled.isVisible).isTrue()
     assertThat(cellularEnabled.isEnabled).isTrue()
+
+    val batteryEnabled = updateAndGetActionPresentation(batteryActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(batteryEnabled.isVisible).isTrue()
+    assertThat(batteryEnabled.isEnabled).isTrue()
+
+    val automotiveView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createAutomotiveAvd(path) })
+    val batteryAutomotive = updateAndGetActionPresentation(batteryActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(batteryAutomotive.isVisible).isFalse()
+    assertThat(batteryAutomotive.isEnabled).isFalse()
   }
 
   @Test
@@ -96,7 +111,7 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(2)
+    assertThat(children).hasLength(3)
     val displaysAction = children[0]
     assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
     assertThat(displaysAction.templatePresentation.icon).isEqualTo(StagingIcons.DISPLAYS)
@@ -105,6 +120,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(cellularAction.templatePresentation.text).isEqualTo("Cellular")
     assertThat(cellularAction.templatePresentation.icon).isEqualTo(StagingIcons.CELLULAR)
 
+    val batteryAction = children[2]
+    assertThat(batteryAction.templatePresentation.text).isEqualTo("Battery")
+    assertThat(batteryAction.templatePresentation.icon).isEqualTo(StagingIcons.BATTERY)
+
     createModalDialogAndInteractWithIt({ executeAction(displaysAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
       assertThat(dlg.title).isEqualTo("Displays (${view.emulator.emulatorId.avdName})")
       dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
@@ -112,6 +131,11 @@ class EmulatorExtendedControlsActionGroupTest {
 
     createModalDialogAndInteractWithIt({ executeAction(cellularAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
       assertThat(dlg.title).isEqualTo("Cellular (${view.emulator.emulatorId.avdName})")
+      dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
+    }
+
+    createModalDialogAndInteractWithIt({ executeAction(batteryAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
+      assertThat(dlg.title).isEqualTo("Battery (${view.emulator.emulatorId.avdName})")
       dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
     }
   }

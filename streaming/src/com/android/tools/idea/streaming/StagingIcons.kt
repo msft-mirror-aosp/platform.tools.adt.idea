@@ -25,6 +25,8 @@ object StagingIcons {
     return IconManager.getInstance().loadRasterizedIcon(path, StagingIcons::class.java.classLoader, cacheKey, flags)
   }
 
+  @JvmField val BATTERY: Icon = load("icons/battery.svg", -315019472, 2)
+
   @JvmField val CELLULAR: Icon = load("icons/cellular.svg", 1297226650, 2)
 
   @JvmField val DISPLAYS: Icon = load("icons/displays.svg", -1197752924, 2)

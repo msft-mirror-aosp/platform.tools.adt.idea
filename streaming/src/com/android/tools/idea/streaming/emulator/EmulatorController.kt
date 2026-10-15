@@ -25,6 +25,7 @@ import com.android.emulation.control.incubating.ModemGrpc
 import com.android.emulation.control.incubating.PhoneEvent
 import com.android.emulation.control.incubating.SmsMessage
 import com.android.emulator.control.AudioPacket
+import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraList
 import com.android.emulator.control.ClipData
 import com.android.emulator.control.DisplayConfigurations
@@ -812,6 +813,42 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
   suspend fun getEnvironment(): Environment {
     val observer = SuspendingStreamObserver<Environment>()
     getEnvironment(observer)
+    return observer.getResult()
+  }
+
+  /** Sets the battery state of the emulator. */
+  private fun setBattery(batteryState: BatteryState, streamObserver: StreamObserver<Empty>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("setBattery(${shortDebugString(batteryState)})")
+    }
+    emulatorControllerStub.setBattery(
+      batteryState,
+      DelegatingStreamObserver(streamObserver, EmulatorControllerGrpc.getSetBatteryMethod()),
+    )
+  }
+
+  /** Sets the battery state of the emulator. */
+  suspend fun setBattery(batteryState: BatteryState) {
+    val observer = SuspendingStreamObserver<Empty>()
+    setBattery(batteryState, observer)
+    observer.getResult()
+  }
+
+  /** Retrieves the battery state of the emulator. */
+  private fun getBattery(streamObserver: StreamObserver<BatteryState>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("getBattery()")
+    }
+    emulatorControllerStub.getBattery(
+      EMPTY_PROTO,
+      DelegatingStreamObserver(streamObserver, EmulatorControllerGrpc.getGetBatteryMethod()),
+    )
+  }
+
+  /** Retrieves the battery state of the emulator. */
+  suspend fun getBattery(): BatteryState {
+    val observer = SuspendingStreamObserver<BatteryState>()
+    getBattery(observer)
     return observer.getResult()
   }
 
