@@ -478,7 +478,6 @@ studio_plugin(
     },
     visibility = ["//visibility:public"],
     deps = [
-        ":com.android.tools.gradle.dcl",
         ":com.android.tools.gradle.dsl",
         ":com.android.tools.idea.smali",
         "@intellij//:JUnit",
@@ -857,7 +856,6 @@ studio_plugin(
     modules = {
         "gradle-dsl.jar": [
             "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
-            "//tools/adt/idea/gradle-dsl-declarative:intellij.android.gradle.dsl.declarative",
             "//tools/adt/idea/gradle-dsl-flags:intellij.android.gradle.dsl.flags",
             "//tools/adt/idea/gradle-dsl-groovy:intellij.android.gradle.dsl.groovy",
             "//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin",
@@ -867,34 +865,12 @@ studio_plugin(
     },
     visibility = ["//visibility:public"],
     deps = [
-        ":com.android.tools.gradle.dcl",
         "@intellij//:com.intellij.gradle",
         "@intellij//:com.intellij.java",
         "@intellij//:intellij.java.impl",
         "@intellij//:org.intellij.groovy",
         "@intellij//:org.jetbrains.kotlin",
         "@intellij//:org.toml.lang",
-    ],
-)
-
-studio_plugin(
-    name = "com.android.tools.gradle.dcl",
-    directory = "gradle-declarative",
-    modules = {
-        "gradle-declarative.jar": [
-            "//tools/adt/idea/gradle-declarative-lang:intellij.android.gradle.declarative.lang",
-            "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide",
-            "//tools/adt/idea/gradle-declarative-lang-sync:intellij.android.gradle.declarative.lang.sync",
-            "//tools/adt/idea/gradle-declarative-lang-flags:intellij.android.gradle.declarative.lang.flags",
-        ],
-    },
-    visibility = ["//visibility:public"],
-    deps = [
-        "@intellij//:com.intellij.gradle",
-        "@intellij//:com.intellij.java",
-        "@intellij//:intellij.platform.uast",
-        "@intellij//:org.jetbrains.kotlin",
-        "@intellij//:org.jetbrains.plugins.gradle",
     ],
 )
 
@@ -1028,7 +1004,6 @@ STUDIO_CORE_PLUGINS = [
     "//tools/adt/idea/studio:com.google.applinkassistant",
     "//tools/adt/idea/studio:com.google.applinkassistant.ai",
     "//tools/adt/idea/studio:com.google.targetsdkversionassistant",
-    "//tools/adt/idea/studio:com.android.tools.gradle.dcl",
     "//tools/adt/idea/studio:com.android.tools.gradle.dsl",
     "//tools/vendor/google/optional-plugins/project-system-lightbuild:com.google.lightbuild",
     "//tools/vendor/google/optional-plugins/project-system-lightbuild/aiplugin-lightbuild:com.google.lightbuild.aiplugin",

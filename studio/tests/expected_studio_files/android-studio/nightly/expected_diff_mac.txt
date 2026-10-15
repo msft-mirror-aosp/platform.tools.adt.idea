@@ -3161,8 +3161,6 @@
 +++Android Studio Nightly.app/Contents/plugins/gmd-code-completion/lib/google-api-services-storage-v1-rev20230301-2.0.0.jar
 +++Android Studio Nightly.app/Contents/plugins/gmd-code-completion/lib/google-api-services-testing-v1-rev20250327-2.0.0.jar
 +++Android Studio Nightly.app/Contents/plugins/gmd-code-completion/lib/google-api-services-toolresults-v1beta3-rev20230410-2.0.0.jar
-+++Android Studio Nightly.app/Contents/plugins/gradle-declarative/lib/gradle-declarative.jar
-+++Android Studio Nightly.app/Contents/plugins/gradle-declarative/lib/gradle-declarative.so.jar
 +++Android Studio Nightly.app/Contents/plugins/gradle-dsl/lib/gradle-dsl.jar
 +++Android Studio Nightly.app/Contents/plugins/gradle-java-plugin/lib/gradle-java-plugin.jar
 +++Android Studio Nightly.app/Contents/plugins/gradle-java-plugin/lib/gradle-jps.jar
@@ -6976,8 +6974,6 @@
 ---Android Studio Preview.app/Contents/plugins/gmd-code-completion/lib/google-api-services-storage-v1-rev20230301-2.0.0.jar
 ---Android Studio Preview.app/Contents/plugins/gmd-code-completion/lib/google-api-services-testing-v1-rev20250327-2.0.0.jar
 ---Android Studio Preview.app/Contents/plugins/gmd-code-completion/lib/google-api-services-toolresults-v1beta3-rev20230410-2.0.0.jar
----Android Studio Preview.app/Contents/plugins/gradle-declarative/lib/gradle-declarative.jar
----Android Studio Preview.app/Contents/plugins/gradle-declarative/lib/gradle-declarative.so.jar
 ---Android Studio Preview.app/Contents/plugins/gradle-dsl/lib/gradle-dsl.jar
 ---Android Studio Preview.app/Contents/plugins/gradle-java-plugin/lib/gradle-java-plugin.jar
 ---Android Studio Preview.app/Contents/plugins/gradle-java-plugin/lib/gradle-jps.jar

@@ -16,12 +16,10 @@
 package com.android.tools.idea.gradle.project.sync.runsGradle;
 
 import static com.android.SdkConstants.FN_BUILD_GRADLE;
-import static com.android.SdkConstants.FN_BUILD_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.FN_BUILD_GRADLE_KTS;
 import static com.android.SdkConstants.FN_GRADLE_CONFIG_PROPERTIES;
 import static com.android.SdkConstants.FN_GRADLE_PROPERTIES;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE;
-import static com.android.SdkConstants.FN_SETTINGS_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE_KTS;
 import static com.android.tools.idea.Projects.getBaseDirPath;
 import static com.android.tools.idea.gradle.util.GradleProjectSystemUtil.getGradleBuildFile;
@@ -29,9 +27,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.intellij.openapi.util.io.FileUtilRt.createIfNotExists;
 import static com.intellij.openapi.vfs.VfsUtil.findFileByIoFile;
 
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport;
-import com.android.tools.idea.gradle.dcl.lang.flags.DeclarativeIdeSupport;
-import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativePsiFactory;
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependencyModel;
 import com.android.tools.idea.gradle.project.sync.GradleFiles;
 import com.android.tools.idea.gradle.util.GradleWrapper;
@@ -95,25 +90,6 @@ public class GradleFilesIntegrationTest {
   private void loadSimpleApplication() {
     projectRule.loadProject(TestProjectPaths.SIMPLE_APPLICATION);
     simulateSyncForGradleFilesUpdate();
-  }
-
-  private void loadSimpleDeclarativeApplication() {
-    assertThat(DeclarativeStudioSupport.isEnabled()).isTrue();
-    assertThat(DeclarativeIdeSupport.isEnabled()).isTrue();
-    projectRule.loadProject(TestProjectPaths.SIMPLE_APPLICATION_DECLARATIVE);
-    simulateSyncForGradleFilesUpdate();
-  }
-
-  private void runWithDeclarativeSupport(Runnable runnable) {
-    try {
-      DeclarativeStudioSupport.override(true);
-      DeclarativeIdeSupport.override(true);
-      runnable.run();
-    }
-    finally {
-      DeclarativeIdeSupport.clearOverride();
-      DeclarativeStudioSupport.clearOverride();
-    }
   }
 
   private void simulateSyncForGradleFilesUpdate() {
@@ -441,26 +417,6 @@ public class GradleFilesIntegrationTest {
   }
 
   @Test
-  public void testModifiedWhenAddingTextChildInDeclarativeSettingsFile() {
-    runWithDeclarativeSupport(() -> {
-      loadSimpleDeclarativeApplication();
-      VirtualFile virtualFile = findOrCreateFileRelativeToProjectRootFolder(FN_SETTINGS_GRADLE_DECLARATIVE);
-      runDeclarativeFakeModificationTest((factory, file) -> file.add(factory.createBlock("coolBlock")), true,
-                                         virtualFile);
-    });
-  }
-
-  @Test
-  public void testModifiedWhenAddingTextChildInDeclarativeBuildFile() {
-    runWithDeclarativeSupport(() -> {
-      loadSimpleDeclarativeApplication();
-      VirtualFile virtualFile = findOrCreateFileRelativeToProjectRootFolder("app", FN_BUILD_GRADLE_DECLARATIVE);
-      runDeclarativeFakeModificationTest((factory, file) -> file.add(factory.createBlock("coolBlock")), true,
-                                         virtualFile);
-    });
-  }
-
-  @Test
   public void testModifiedWhenAddingTextChildInKotlinBuildFile() {
     projectRule.loadProject(TestProjectPaths.SIMPLE_APPLICATION_VERSION_CATALOG_KTS);
     simulateSyncForGradleFilesUpdate();
@@ -484,28 +440,10 @@ public class GradleFilesIntegrationTest {
   }
 
   @Test
-  public void testNotModifiedWhenAddingWhitespaceInDeclarativeSettingsFile() {
-    runWithDeclarativeSupport(() -> {
-      loadSimpleDeclarativeApplication();
-      VirtualFile virtualFile = findOrCreateFileRelativeToProjectRootFolder(FN_SETTINGS_GRADLE_DECLARATIVE);
-      runDeclarativeFakeModificationTest((factory, file) -> file.add(factory.createNewline()), false, virtualFile);
-    });
-  }
-
-  @Test
   public void testNotModifiedWhenAddingWhitespaceInKotlinBuildFile() {
     projectRule.loadProject(TestProjectPaths.SIMPLE_APPLICATION_VERSION_CATALOG_KTS);
     VirtualFile virtualFile = findOrCreateFileRelativeToProjectRootFolder(FN_BUILD_GRADLE_KTS);
     runKtsFakeModificationTest((factory, file) -> file.add(factory.createNewLine(1)), false, virtualFile);
-  }
-
-  @Test
-  public void testNotModifiedWhenAddingWhitespaceInDeclarativeBuildFile() {
-    runWithDeclarativeSupport(() -> {
-      loadSimpleDeclarativeApplication();
-      VirtualFile virtualFile = findOrCreateFileRelativeToProjectRootFolder("app", FN_BUILD_GRADLE_DECLARATIVE);
-      runGroovyFakeModificationTest((factory, file) -> file.add(factory.createLineTerminator(1)), false, virtualFile);
-    });
   }
 
   @NotNull
@@ -574,21 +512,6 @@ public class GradleFilesIntegrationTest {
                                           boolean preCheckEnabled,
                                           @NotNull VirtualFile file) {
     runGenericFakeModificationTest(KtPsiFactory::new, editFunction, expectedResult, preCheckEnabled, file);
-  }
-
-  private void runDeclarativeFakeModificationTest(@NotNull BiConsumer<DeclarativePsiFactory, PsiFile> editFunction,
-                                                  boolean expectedResult,
-                                                  @NotNull VirtualFile file) {
-    runDeclarativeFakeModificationTest(editFunction, expectedResult, true, file);
-  }
-
-  private void runDeclarativeFakeModificationTest(@NotNull BiConsumer<DeclarativePsiFactory, PsiFile> editFunction,
-                                                  boolean expectedResult,
-                                                  boolean preCheckEnabled,
-                                                  @NotNull VirtualFile file) {
-    assertThat(DeclarativeStudioSupport.isEnabled()).isTrue();
-    assertThat(DeclarativeIdeSupport.isEnabled()).isTrue();
-    runGenericFakeModificationTest(DeclarativePsiFactory::new, editFunction, expectedResult, preCheckEnabled, file);
   }
 
   private void runTomlFakeModificationTest(@NotNull BiConsumer<TomlPsiFactory, PsiFile> editFunction,

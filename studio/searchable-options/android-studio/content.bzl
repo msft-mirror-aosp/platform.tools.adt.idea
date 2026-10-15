@@ -3,7 +3,6 @@ SEARCHABLE_OPTIONS = {
     "canary": {
         "//tools/adt/idea/studio:searchable-options/android-studio/canary-searchable-options/p-androidx.compose.plugins.idea-searchableOptions.json": "androidx.compose.plugins.idea",
         "//tools/adt/idea/studio:searchable-options/android-studio/canary-searchable-options/p-com.android.tools.design-searchableOptions.json": "com.android.tools.design",
-        "//tools/adt/idea/studio:searchable-options/android-studio/canary-searchable-options/p-com.android.tools.gradle.dcl-searchableOptions.json": "com.android.tools.gradle.dcl",
         "//tools/adt/idea/studio:searchable-options/android-studio/canary-searchable-options/p-com.android.tools.ndk-searchableOptions.json": "com.android.tools.ndk",
         "//tools/adt/idea/studio:searchable-options/android-studio/canary-searchable-options/p-com.google.applinkassistant-searchableOptions.json": "com.google.applinkassistant",
         "//tools/adt/idea/studio:searchable-options/android-studio/canary-searchable-options/p-com.google.gct.directaccess-searchableOptions.json": "com.google.gct.directaccess",
@@ -16,7 +15,6 @@ SEARCHABLE_OPTIONS = {
     "nightly": {
         "//tools/adt/idea/studio:searchable-options/android-studio/nightly-searchable-options/p-androidx.compose.plugins.idea-searchableOptions.json": "androidx.compose.plugins.idea",
         "//tools/adt/idea/studio:searchable-options/android-studio/nightly-searchable-options/p-com.android.tools.design-searchableOptions.json": "com.android.tools.design",
-        "//tools/adt/idea/studio:searchable-options/android-studio/nightly-searchable-options/p-com.android.tools.gradle.dcl-searchableOptions.json": "com.android.tools.gradle.dcl",
         "//tools/adt/idea/studio:searchable-options/android-studio/nightly-searchable-options/p-com.android.tools.ndk-searchableOptions.json": "com.android.tools.ndk",
         "//tools/adt/idea/studio:searchable-options/android-studio/nightly-searchable-options/p-com.google.applinkassistant-searchableOptions.json": "com.google.applinkassistant",
         "//tools/adt/idea/studio:searchable-options/android-studio/nightly-searchable-options/p-com.google.gct.directaccess-searchableOptions.json": "com.google.gct.directaccess",
@@ -29,7 +27,6 @@ SEARCHABLE_OPTIONS = {
     "stable": {
         "//tools/adt/idea/studio:searchable-options/android-studio/stable-searchable-options/p-androidx.compose.plugins.idea-searchableOptions.json": "androidx.compose.plugins.idea",
         "//tools/adt/idea/studio:searchable-options/android-studio/stable-searchable-options/p-com.android.tools.design-searchableOptions.json": "com.android.tools.design",
-        "//tools/adt/idea/studio:searchable-options/android-studio/stable-searchable-options/p-com.android.tools.gradle.dcl-searchableOptions.json": "com.android.tools.gradle.dcl",
         "//tools/adt/idea/studio:searchable-options/android-studio/stable-searchable-options/p-com.android.tools.ndk-searchableOptions.json": "com.android.tools.ndk",
         "//tools/adt/idea/studio:searchable-options/android-studio/stable-searchable-options/p-com.google.applinkassistant-searchableOptions.json": "com.google.applinkassistant",
         "//tools/adt/idea/studio:searchable-options/android-studio/stable-searchable-options/p-com.google.gct.directaccess-searchableOptions.json": "com.google.gct.directaccess",

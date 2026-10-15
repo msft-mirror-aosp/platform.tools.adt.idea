@@ -30,7 +30,6 @@ import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.BuildEnvironment
 import com.android.tools.idea.testing.TestProjectPaths.MINIMAL_CATALOG_APPLICATION
 import com.android.tools.idea.testing.TestProjectPaths.SIMPLE_APPLICATION
-import com.android.tools.idea.testing.TestProjectPaths.SIMPLE_APPLICATION_DECLARATIVE
 import com.android.tools.idea.testing.TestProjectPaths.SIMPLE_APPLICATION_PLUGINS_DSL
 import com.android.tools.idea.testing.TestProjectPaths.SIMPLE_APPLICATION_VERSION_CATALOG
 import com.android.tools.idea.testing.TestProjectPaths.SINGLE_MODULE_APPLICATION
@@ -374,47 +373,6 @@ class PluginsHelperTest {
 
         val catalogContent = project.getTextForFile("gradle/libs.versions.toml")
         assertThat(catalogContent).doesNotContain("com.example.foo")
-      },
-    )
-  }
-
-  @Test
-  fun testAddPluginToDeclarativeSettings() {
-    doTest(
-      SIMPLE_APPLICATION_DECLARATIVE,
-      { _, _, helper ->
-        val changed = helper.applySettingsPlugin("com.example.foo", "10.0")
-        assertThat(changed.size).isEqualTo(1)
-      },
-      {
-        val projectBuildContent = project.getTextForFile("app/build.gradle.dcl")
-        assertThat(projectBuildContent).doesNotContain("example")
-
-        val settingsBuildContent = project.getTextForFile("settings.gradle.dcl")
-        val pluginsBlockContent = getBlockContent(settingsBuildContent, "plugins")
-        assertThat(pluginsBlockContent).contains("id(\"com.example.foo\").version(\"10.0\")")
-        assertThat(settingsBuildContent).doesNotContain("libs.plugins.example.foo")
-      },
-    )
-  }
-
-  @Test
-  fun testAddPluginToDeclarative() {
-    doTest(
-      SIMPLE_APPLICATION_DECLARATIVE,
-      { projectBuildModel, model, helper ->
-        val plugins = projectBuildModel.declarativeSettingsModel!!.plugins()
-        val changed = helper.addPlugin("com.example.foo", "10.0", null, plugins, model)
-        assertThat(changed.size).isEqualTo(1)
-      },
-      {
-        val projectBuildContent = project.getTextForFile("app/build.gradle.dcl")
-        assertThat(projectBuildContent).doesNotContain("example")
-
-        val settingsBuildContent = project.getTextForFile("settings.gradle.dcl")
-        val pluginsBlockContent = getBlockContent(settingsBuildContent, "plugins")
-        assertThat(pluginsBlockContent).contains("id(\"com.example.foo\").version(\"10.0\")")
-        assertThat(settingsBuildContent).doesNotContain("libs.plugins.example.foo")
       },
     )
   }

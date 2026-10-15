@@ -116,8 +116,6 @@ class GradleTomlUseScopeEnlargerTest {
         "gradle/libs.versions.toml",
         "[libraries]\nguava = 'com.google.guava:guava:30.0'",
       )
-    val declarativeFile = projectRule.fixture.addFileToProject("build.gradle.dcl", "").virtualFile
-    val regularFile = projectRule.fixture.addFileToProject("readme.txt", "").virtualFile
 
     val testExtension =
       object : GradleVersionCatalogHandler {
@@ -130,15 +128,12 @@ class GradleTomlUseScopeEnlargerTest {
     val ep = ExtensionPointName.create<GradleVersionCatalogHandler>("org.jetbrains.plugins.gradle.externallyHandledExtensions")
     ExtensionTestUtil.maskExtensions(ep, listOf(testExtension), projectRule.testRootDisposable)
 
-    DeclarativeStudioSupport.override(true)
+    DeclarativeStudioSupport.override(false)
     try {
       val tomlElement = PsiTreeUtil.findChildOfType(catalogFile, TomlElement::class.java)!!
       val scope = enlarger.getAdditionalUseScope(tomlElement)
 
       assertThat(scope).isNotNull()
-      assertThat(scope?.displayName).contains("Gradle Declarative Configuration Files")
-      assertThat(scope?.contains(declarativeFile)).isTrue()
-      assertThat(scope?.contains(regularFile)).isFalse()
     } finally {
       DeclarativeStudioSupport.clearOverride()
     }

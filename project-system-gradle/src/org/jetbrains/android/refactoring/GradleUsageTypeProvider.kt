@@ -16,8 +16,6 @@
 package org.jetbrains.android.refactoring
 
 import com.android.SdkConstants
-import com.android.tools.idea.gradle.dcl.lang.DeclarativeLanguage
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport
 import com.android.tools.idea.gradle.project.sync.GradleFiles
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -30,12 +28,7 @@ import org.jetbrains.plugins.groovy.GroovyLanguage
 /** Recognizes elements in files that [GradleFiles] considers to be build scripts. */
 class GradleUsageTypeProvider : UsageTypeProvider {
   override fun getUsageType(element: PsiElement): UsageType? {
-    if (
-      element?.language != GroovyLanguage &&
-        element?.language != KotlinLanguage.INSTANCE &&
-        (!DeclarativeStudioSupport.isEnabled() || element?.language != DeclarativeLanguage.INSTANCE)
-    )
-      return null
+    if (element?.language != GroovyLanguage && element?.language != KotlinLanguage.INSTANCE) return null
     return if (GradleFiles.getInstance(element.project).isGradleFile(element.containingFile)) GRADLE_USAGE_TYPE else null
   }
 

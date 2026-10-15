@@ -21,8 +21,6 @@ import com.android.tools.idea.gradle.dependencies.DependencyDescription
 import com.android.tools.idea.gradle.dependencies.PluginDescription
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.testing.AndroidGradleProjectRule
-import com.android.tools.idea.testing.BuildEnvironment
-import com.android.tools.idea.testing.TestProjectPaths.EMPTY_APPLICATION_DECLARATIVE
 import com.android.tools.idea.testing.TestProjectPaths.SIMPLE_APPLICATION
 import com.android.tools.idea.testing.findModule
 import com.android.tools.idea.testing.getTextForFile
@@ -61,36 +59,6 @@ class DependenciesProcessorTest {
       assertThat(project.getTextForFile("app/build.gradle")).contains("api 'my.not.existing.dependency:gradle:1.2.3-dev'")
 
       assertThat(project.getTextForFile("app/build.gradle")).contains("apply plugin: 'org.example'")
-    }
-  }
-
-  @Test
-  fun simpleAddEcosystemPluginAndDependency() {
-    projectRule.loadProject(EMPTY_APPLICATION_DECLARATIVE)
-    val projectBuildModel = ProjectBuildModel.get(project)
-    val appModule = project.findModule("app")
-    val env = BuildEnvironment.getInstance()
-    val config =
-      DependenciesConfig.defaultConfig()
-        .withDependency(DependencyDescription("api", "my.not.existing.dependency:gradle:1.2.3-dev"))
-        .withPlugin(
-          PluginDescription(
-            "com.android.application",
-            env.gradlePluginVersion,
-            "com.android.tools.build:gradle:${env.gradlePluginVersion}",
-            "com.android.ecosystem",
-            env.gradlePluginVersion,
-          )
-        )
-    WriteCommandAction.runWriteCommandAction(project) {
-      DependenciesProcessor(projectBuildModel).apply(config, appModule)
-      projectBuildModel.applyChanges()
-    }
-    runReadAction {
-      assertThat(project.getTextForFile("settings.gradle.dcl"))
-        .contains("id(\"com.android.ecosystem\").version(\"${env.gradlePluginVersion}\")")
-
-      assertThat(project.getTextForFile("app/build.gradle.dcl")).contains("androidApp {")
     }
   }
 }
