@@ -200,15 +200,15 @@ PROJECT                       : project
             Scope                         : Test
         LIBRARY                       : Gradle: androidx.arch.core:core-runtime:2.1.0@aar [=]
             Scope                         : Test
-        LIBRARY                       : Gradle: androidx.databinding:databinding-adapters:<AGP_VERSION>@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:databinding-adapters:9.4.1@aar [=]
             Scope                         : Test
         LIBRARY                       : Gradle: androidx.databinding:databinding-common:<AGP_VERSION> [=]
             Scope                         : Test
-        LIBRARY                       : Gradle: androidx.databinding:databinding-ktx:<AGP_VERSION>@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:databinding-ktx:9.4.1@aar [=]
             Scope                         : Test
-        LIBRARY                       : Gradle: androidx.databinding:databinding-runtime:<AGP_VERSION>@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:databinding-runtime:9.4.1@aar [=]
             Scope                         : Test
-        LIBRARY                       : Gradle: androidx.databinding:viewbinding:<AGP_VERSION>@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:viewbinding:9.4.1@aar [=]
             Scope                         : Test
         LIBRARY                       : Gradle: androidx.lifecycle:lifecycle-common:2.6.1 [=]
             Scope                         : Test
@@ -447,11 +447,11 @@ PROJECT                       : project
         LIBRARY                       : Gradle: androidx.annotation:annotation:1.2.0 [=]
         LIBRARY                       : Gradle: androidx.arch.core:core-common:2.2.0 [=]
         LIBRARY                       : Gradle: androidx.arch.core:core-runtime:2.1.0@aar [=]
-        LIBRARY                       : Gradle: androidx.databinding:databinding-adapters:<AGP_VERSION>@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:databinding-adapters:9.4.1@aar [=]
         LIBRARY                       : Gradle: androidx.databinding:databinding-common:<AGP_VERSION> [=]
-        LIBRARY                       : Gradle: androidx.databinding:databinding-ktx:<AGP_VERSION>@aar [=]
-        LIBRARY                       : Gradle: androidx.databinding:databinding-runtime:<AGP_VERSION>@aar [=]
-        LIBRARY                       : Gradle: androidx.databinding:viewbinding:<AGP_VERSION>@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:databinding-ktx:9.4.1@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:databinding-runtime:9.4.1@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:viewbinding:9.4.1@aar [=]
         LIBRARY                       : Gradle: androidx.lifecycle:lifecycle-common:2.6.1 [=]
         LIBRARY                       : Gradle: androidx.lifecycle:lifecycle-livedata-core:2.6.1@aar [=]
         LIBRARY                       : Gradle: androidx.lifecycle:lifecycle-livedata:2.6.1@aar [=]
@@ -623,15 +623,15 @@ PROJECT                       : project
             Scope                         : Test
         LIBRARY                       : Gradle: androidx.arch.core:core-runtime:2.1.0@aar [=]
             Scope                         : Test
-        LIBRARY                       : Gradle: androidx.databinding:databinding-adapters:<AGP_VERSION>@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:databinding-adapters:9.4.1@aar [=]
             Scope                         : Test
         LIBRARY                       : Gradle: androidx.databinding:databinding-common:<AGP_VERSION> [=]
             Scope                         : Test
-        LIBRARY                       : Gradle: androidx.databinding:databinding-ktx:<AGP_VERSION>@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:databinding-ktx:9.4.1@aar [=]
             Scope                         : Test
-        LIBRARY                       : Gradle: androidx.databinding:databinding-runtime:<AGP_VERSION>@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:databinding-runtime:9.4.1@aar [=]
             Scope                         : Test
-        LIBRARY                       : Gradle: androidx.databinding:viewbinding:<AGP_VERSION>@aar [=]
+        LIBRARY                       : Gradle: androidx.databinding:viewbinding:9.4.1@aar [=]
             Scope                         : Test
         LIBRARY                       : Gradle: androidx.lifecycle:lifecycle-common:2.6.1 [=]
             Scope                         : Test
@@ -766,22 +766,22 @@ PROJECT                       : project
         LIBRARY                       : Gradle: androidx.arch.core:core-runtime:2.1.0@aar
             *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-runtime-2.1.0/AndroidManifest.xml
             *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-runtime-2.1.0/jars/classes.jar!/
-        LIBRARY                       : Gradle: androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
-            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/AndroidManifest.xml
-            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/res
-            *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/jars/classes.jar!/
+        LIBRARY                       : Gradle: androidx.databinding:databinding-adapters:9.4.1@aar
+            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/AndroidManifest.xml
+            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/res
+            *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/jars/classes.jar!/
         LIBRARY                       : Gradle: androidx.databinding:databinding-common:<AGP_VERSION>
             *CLASSES                      : jar://<M2>/androidx/databinding/databinding-common/<AGP_VERSION>/databinding-common-<AGP_VERSION>.jar!/
-        LIBRARY                       : Gradle: androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
-            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/AndroidManifest.xml
-            *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/jars/classes.jar!/
-        LIBRARY                       : Gradle: androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
-            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/AndroidManifest.xml
-            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/res
-            *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/jars/classes.jar!/
-        LIBRARY                       : Gradle: androidx.databinding:viewbinding:<AGP_VERSION>@aar
-            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/AndroidManifest.xml
-            *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/jars/classes.jar!/
+        LIBRARY                       : Gradle: androidx.databinding:databinding-ktx:9.4.1@aar
+            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/AndroidManifest.xml
+            *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/jars/classes.jar!/
+        LIBRARY                       : Gradle: androidx.databinding:databinding-runtime:9.4.1@aar
+            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/AndroidManifest.xml
+            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/res
+            *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/jars/classes.jar!/
+        LIBRARY                       : Gradle: androidx.databinding:viewbinding:9.4.1@aar
+            *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/AndroidManifest.xml
+            *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/jars/classes.jar!/
         LIBRARY                       : Gradle: androidx.lifecycle:lifecycle-common:2.6.1
             *CLASSES                      : jar://<M2>/androidx/lifecycle/lifecycle-common/2.6.1/lifecycle-common-2.6.1.jar!/
         LIBRARY                       : Gradle: androidx.lifecycle:lifecycle-livedata-core:2.6.1@aar

@@ -143,78 +143,78 @@ LIBRARY_TABLE
         resStaticLibrary              : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-runtime-2.2.0/res.apk [-]
         - runtimeJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-runtime-2.2.0/jars/classes.jar
         symbolFile                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/core-runtime-2.2.0/R.txt
-    - library                     : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar (IdeAndroidLibraryImpl)
-        aidlFolder                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/aidl [-]
-        artifact                      : <M2>/androidx/databinding/databinding-adapters/<AGP_VERSION>/databinding-adapters-<AGP_VERSION>.aar
-        artifactAddress               : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
-        assetsFolder                  : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/assets [-]
-        - compileJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/jars/classes.jar
-        component                     : androidx.databinding:databinding-adapters:<AGP_VERSION>
-        externalAnnotations           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/annotations.zip [-]
-        folder                        : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>
-        jniFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/jni [-]
-        manifest                      : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/AndroidManifest.xml
-        proguardRules                 : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/proguard.txt [-]
-        publicResources               : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/public.txt [-]
-        renderscriptFolder            : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/rs [-]
-        resFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/res
-        resStaticLibrary              : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/res.apk [-]
-        - runtimeJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/jars/classes.jar
-        symbolFile                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-<AGP_VERSION>/R.txt
-    - library                     : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar (IdeAndroidLibraryImpl)
-        aidlFolder                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/aidl [-]
-        artifact                      : <M2>/androidx/databinding/databinding-ktx/<AGP_VERSION>/databinding-ktx-<AGP_VERSION>.aar
-        artifactAddress               : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
-        assetsFolder                  : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/assets [-]
-        - compileJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/jars/classes.jar
-        component                     : androidx.databinding:databinding-ktx:<AGP_VERSION>
-        externalAnnotations           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/annotations.zip [-]
-        folder                        : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>
-        jniFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/jni [-]
-        manifest                      : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/AndroidManifest.xml
-        proguardRules                 : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/proguard.txt [-]
-        publicResources               : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/public.txt [-]
-        renderscriptFolder            : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/rs [-]
-        resFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/res [-]
-        resStaticLibrary              : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/res.apk [-]
-        - runtimeJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/jars/classes.jar
-        symbolFile                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-<AGP_VERSION>/R.txt
-    - library                     : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar (IdeAndroidLibraryImpl)
-        aidlFolder                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/aidl [-]
-        artifact                      : <M2>/androidx/databinding/databinding-runtime/<AGP_VERSION>/databinding-runtime-<AGP_VERSION>.aar
-        artifactAddress               : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
-        assetsFolder                  : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/assets [-]
-        - compileJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/jars/classes.jar
-        component                     : androidx.databinding:databinding-runtime:<AGP_VERSION>
-        externalAnnotations           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/annotations.zip [-]
-        folder                        : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>
-        jniFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/jni [-]
-        manifest                      : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/AndroidManifest.xml
-        proguardRules                 : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/proguard.txt
-        publicResources               : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/public.txt [-]
-        renderscriptFolder            : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/rs [-]
-        resFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/res
-        resStaticLibrary              : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/res.apk [-]
-        - runtimeJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/jars/classes.jar
-        symbolFile                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-<AGP_VERSION>/R.txt
-    - library                     : androidx.databinding:viewbinding:<AGP_VERSION>@aar (IdeAndroidLibraryImpl)
-        aidlFolder                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/aidl [-]
-        artifact                      : <M2>/androidx/databinding/viewbinding/<AGP_VERSION>/viewbinding-<AGP_VERSION>.aar
-        artifactAddress               : androidx.databinding:viewbinding:<AGP_VERSION>@aar
-        assetsFolder                  : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/assets [-]
-        - compileJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/jars/classes.jar
-        component                     : androidx.databinding:viewbinding:<AGP_VERSION>
-        externalAnnotations           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/annotations.zip [-]
-        folder                        : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>
-        jniFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/jni [-]
-        manifest                      : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/AndroidManifest.xml
-        proguardRules                 : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/proguard.txt [-]
-        publicResources               : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/public.txt [-]
-        renderscriptFolder            : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/rs [-]
-        resFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/res [-]
-        resStaticLibrary              : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/res.apk [-]
-        - runtimeJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/jars/classes.jar
-        symbolFile                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-<AGP_VERSION>/R.txt
+    - library                     : androidx.databinding:databinding-adapters:9.4.1@aar (IdeAndroidLibraryImpl)
+        aidlFolder                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/aidl [-]
+        artifact                      : <M2>/androidx/databinding/databinding-adapters/9.4.1/databinding-adapters-9.4.1.aar
+        artifactAddress               : androidx.databinding:databinding-adapters:9.4.1@aar
+        assetsFolder                  : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/assets [-]
+        - compileJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/jars/classes.jar
+        component                     : androidx.databinding:databinding-adapters:9.4.1
+        externalAnnotations           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/annotations.zip [-]
+        folder                        : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1
+        jniFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/jni [-]
+        manifest                      : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/AndroidManifest.xml
+        proguardRules                 : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/proguard.txt [-]
+        publicResources               : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/public.txt [-]
+        renderscriptFolder            : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/rs [-]
+        resFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/res
+        resStaticLibrary              : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/res.apk [-]
+        - runtimeJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/jars/classes.jar
+        symbolFile                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-adapters-9.4.1/R.txt
+    - library                     : androidx.databinding:databinding-ktx:9.4.1@aar (IdeAndroidLibraryImpl)
+        aidlFolder                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/aidl [-]
+        artifact                      : <M2>/androidx/databinding/databinding-ktx/9.4.1/databinding-ktx-9.4.1.aar
+        artifactAddress               : androidx.databinding:databinding-ktx:9.4.1@aar
+        assetsFolder                  : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/assets [-]
+        - compileJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/jars/classes.jar
+        component                     : androidx.databinding:databinding-ktx:9.4.1
+        externalAnnotations           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/annotations.zip [-]
+        folder                        : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1
+        jniFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/jni [-]
+        manifest                      : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/AndroidManifest.xml
+        proguardRules                 : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/proguard.txt [-]
+        publicResources               : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/public.txt [-]
+        renderscriptFolder            : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/rs [-]
+        resFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/res [-]
+        resStaticLibrary              : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/res.apk [-]
+        - runtimeJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/jars/classes.jar
+        symbolFile                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-ktx-9.4.1/R.txt
+    - library                     : androidx.databinding:databinding-runtime:9.4.1@aar (IdeAndroidLibraryImpl)
+        aidlFolder                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/aidl [-]
+        artifact                      : <M2>/androidx/databinding/databinding-runtime/9.4.1/databinding-runtime-9.4.1.aar
+        artifactAddress               : androidx.databinding:databinding-runtime:9.4.1@aar
+        assetsFolder                  : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/assets [-]
+        - compileJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/jars/classes.jar
+        component                     : androidx.databinding:databinding-runtime:9.4.1
+        externalAnnotations           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/annotations.zip [-]
+        folder                        : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1
+        jniFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/jni [-]
+        manifest                      : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/AndroidManifest.xml
+        proguardRules                 : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/proguard.txt
+        publicResources               : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/public.txt [-]
+        renderscriptFolder            : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/rs [-]
+        resFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/res
+        resStaticLibrary              : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/res.apk [-]
+        - runtimeJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/jars/classes.jar
+        symbolFile                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/databinding-runtime-9.4.1/R.txt
+    - library                     : androidx.databinding:viewbinding:9.4.1@aar (IdeAndroidLibraryImpl)
+        aidlFolder                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/aidl [-]
+        artifact                      : <M2>/androidx/databinding/viewbinding/9.4.1/viewbinding-9.4.1.aar
+        artifactAddress               : androidx.databinding:viewbinding:9.4.1@aar
+        assetsFolder                  : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/assets [-]
+        - compileJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/jars/classes.jar
+        component                     : androidx.databinding:viewbinding:9.4.1
+        externalAnnotations           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/annotations.zip [-]
+        folder                        : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1
+        jniFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/jni [-]
+        manifest                      : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/AndroidManifest.xml
+        proguardRules                 : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/proguard.txt [-]
+        publicResources               : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/public.txt [-]
+        renderscriptFolder            : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/rs [-]
+        resFolder                     : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/res [-]
+        resStaticLibrary              : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/res.apk [-]
+        - runtimeJarFiles             : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/jars/classes.jar
+        symbolFile                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/viewbinding-9.4.1/R.txt
     - library                     : androidx.lifecycle:lifecycle-livedata-core:2.6.1@aar (IdeAndroidLibraryImpl)
         aidlFolder                    : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/lifecycle-livedata-core-2.6.1/aidl [-]
         artifact                      : <M2>/androidx/lifecycle/lifecycle-livedata-core/2.6.1/lifecycle-livedata-core-2.6.1.aar
@@ -1498,12 +1498,12 @@ MODULE                        : project.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
-                        androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                            androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.6.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.6.1@aar
@@ -1511,10 +1511,10 @@ MODULE                        : project.app
                             javaLibrary                   : androidx.arch.core:core-common:2.2.0@jar
                             javaLibrary                   : androidx.lifecycle:lifecycle-common:2.6.1@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-adapters:9.4.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-ktx:9.4.1@aar
                             javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4@jar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime-ktx:2.6.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.6.1@aar
@@ -1698,13 +1698,13 @@ MODULE                        : project.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
-                        androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
                             javaLibrary                   : androidx.collection:collection:1.0.0@jar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                            androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.6.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.6.1@aar
@@ -1727,12 +1727,12 @@ MODULE                        : project.app
                             androidLibrary                : androidx.tracing:tracing:1.0.0@aar
                         androidLibrary                : androidx.tracing:tracing:1.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
-                        androidLibrary                : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
-                            androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-adapters:9.4.1@aar
+                            androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
-                            androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-ktx:9.4.1@aar
+                            androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4@jar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime-ktx:2.6.1@aar
@@ -1980,12 +1980,12 @@ MODULE                        : project.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
-                        androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                            androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.6.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.6.1@aar
@@ -1993,10 +1993,10 @@ MODULE                        : project.app
                             javaLibrary                   : androidx.arch.core:core-common:2.2.0@jar
                             javaLibrary                   : androidx.lifecycle:lifecycle-common:2.6.1@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-adapters:9.4.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-ktx:9.4.1@aar
                             javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4@jar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime-ktx:2.6.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.6.1@aar
@@ -2080,11 +2080,11 @@ MODULE                        : project.app
                             javaLibrary                   : com.google.guava:guava:19.0@jar
                             androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                            androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
-                            androidLibrary                : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
-                            androidLibrary                : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
+                            androidLibrary                : androidx.databinding:databinding-adapters:9.4.1@aar
+                            androidLibrary                : androidx.databinding:databinding-ktx:9.4.1@aar
                         unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-core|1.6.4|org.gradle.category>library, org.gradle.libraryelements>jar, org.gradle.status>release, org.gradle.usage>java-api, org.jetbrains.kotlin.platform.type>jvm|org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4
                             javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4@jar
                         unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-bom|1.6.4|org.gradle.category>platform, org.gradle.status>release, org.gradle.usage>java-api|org.jetbrains.kotlinx:kotlinx-coroutines-bom-derived-platform:1.6.4
@@ -2131,11 +2131,11 @@ MODULE                        : project.app
                     - provided                    : androidx.annotation:annotation:1.2.0
                     - provided                    : androidx.arch.core:core-common:2.2.0
                     - provided                    : androidx.arch.core:core-runtime:2.1.0@aar
-                    - provided                    : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
+                    - provided                    : androidx.databinding:databinding-adapters:9.4.1@aar
                     - provided                    : androidx.databinding:databinding-common:<AGP_VERSION>
-                    - provided                    : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
-                    - provided                    : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
-                    - provided                    : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                    - provided                    : androidx.databinding:databinding-ktx:9.4.1@aar
+                    - provided                    : androidx.databinding:databinding-runtime:9.4.1@aar
+                    - provided                    : androidx.databinding:viewbinding:9.4.1@aar
                     - provided                    : androidx.lifecycle:lifecycle-common:2.6.1
                     - provided                    : androidx.lifecycle:lifecycle-livedata-core:2.6.1@aar
                     - provided                    : androidx.lifecycle:lifecycle-livedata:2.6.1@aar
@@ -2316,12 +2316,12 @@ MODULE                        : project.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
-                        androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                            androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.6.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.6.1@aar
@@ -2329,10 +2329,10 @@ MODULE                        : project.app
                             javaLibrary                   : androidx.arch.core:core-common:2.2.0@jar
                             javaLibrary                   : androidx.lifecycle:lifecycle-common:2.6.1@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-adapters:9.4.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-ktx:9.4.1@aar
                             javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4@jar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime-ktx:2.6.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-livedata:2.6.1@aar
@@ -2408,11 +2408,11 @@ MODULE                        : project.app
                             javaLibrary                   : com.google.guava:guava:19.0@jar
                             androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                            androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
-                            androidLibrary                : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
-                            androidLibrary                : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
+                            androidLibrary                : androidx.databinding:databinding-adapters:9.4.1@aar
+                            androidLibrary                : androidx.databinding:databinding-ktx:9.4.1@aar
                         unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-core|1.6.4|org.gradle.category>library, org.gradle.libraryelements>jar, org.gradle.status>release, org.gradle.usage>java-api, org.jetbrains.kotlin.platform.type>jvm|org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4
                             javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4@jar
                         unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-bom|1.6.4|org.gradle.category>platform, org.gradle.status>release, org.gradle.usage>java-api|org.jetbrains.kotlinx:kotlinx-coroutines-bom-derived-platform:1.6.4
@@ -2529,13 +2529,13 @@ MODULE                        : project.app
                             androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
                         androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
-                        androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
                             javaLibrary                   : androidx.collection:collection:1.0.0@jar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                            androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.6.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         androidLibrary                : androidx.lifecycle:lifecycle-runtime:2.6.1@aar
@@ -2558,12 +2558,12 @@ MODULE                        : project.app
                             androidLibrary                : androidx.tracing:tracing:1.0.0@aar
                         androidLibrary                : androidx.tracing:tracing:1.0.0@aar
                             javaLibrary                   : androidx.annotation:annotation:1.2.0@jar
-                        androidLibrary                : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
-                            androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-adapters:9.4.1@aar
+                            androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                        androidLibrary                : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
-                            androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
+                        androidLibrary                : androidx.databinding:databinding-ktx:9.4.1@aar
+                            androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4@jar
                             androidLibrary                : androidx.lifecycle:lifecycle-runtime-ktx:2.6.1@aar
@@ -2645,11 +2645,11 @@ MODULE                        : project.app
                             javaLibrary                   : com.google.guava:guava:19.0@jar
                             androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
-                            androidLibrary                : androidx.databinding:viewbinding:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:viewbinding:9.4.1@aar
                             javaLibrary                   : androidx.databinding:databinding-common:<AGP_VERSION>@jar
-                            androidLibrary                : androidx.databinding:databinding-runtime:<AGP_VERSION>@aar
-                            androidLibrary                : androidx.databinding:databinding-adapters:<AGP_VERSION>@aar
-                            androidLibrary                : androidx.databinding:databinding-ktx:<AGP_VERSION>@aar
+                            androidLibrary                : androidx.databinding:databinding-runtime:9.4.1@aar
+                            androidLibrary                : androidx.databinding:databinding-adapters:9.4.1@aar
+                            androidLibrary                : androidx.databinding:databinding-ktx:9.4.1@aar
                         unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-core|1.6.4|org.gradle.category>library, org.gradle.libraryelements>jar, org.gradle.status>release, org.gradle.usage>java-api, org.jetbrains.kotlin.platform.type>jvm|org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4
                             javaLibrary                   : org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4@jar
                         unknown                       : org.jetbrains.kotlinx|kotlinx-coroutines-bom|1.6.4|org.gradle.category>platform, org.gradle.status>release, org.gradle.usage>java-api|org.jetbrains.kotlinx:kotlinx-coroutines-bom-derived-platform:1.6.4
