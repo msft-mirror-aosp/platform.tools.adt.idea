@@ -1,5 +1,0 @@
-dependencies{
-}
-/* Some comment
- foo()
-*/

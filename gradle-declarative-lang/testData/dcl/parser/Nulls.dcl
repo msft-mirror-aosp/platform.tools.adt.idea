@@ -1,2 +1,0 @@
-a = null
-function(null)
