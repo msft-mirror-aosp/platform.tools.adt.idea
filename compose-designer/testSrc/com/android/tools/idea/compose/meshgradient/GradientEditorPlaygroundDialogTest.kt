@@ -19,6 +19,7 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.ui.dsl.listCellRenderer.KotlinUIDslRendererComponent
 import javax.swing.JLabel
 import javax.swing.JList
 import org.junit.Assert.assertEquals
@@ -36,7 +37,8 @@ class GradientEditorPlaygroundDialogTest {
     val list = JList<GradientType>()
     val names =
       GradientType.entries.map { type ->
-        (dialog.typeSelector.renderer.getListCellRendererComponent(list, type, 0, false, false) as JLabel).text
+        val component = dialog.typeSelector.renderer.getListCellRendererComponent(list, type, 0, false, false)
+        (component as? KotlinUIDslRendererComponent)?.getCopyText() ?: (component as? JLabel)?.text
       }
     assertEquals(listOf("Mesh Gradient", "Linear Gradient", "Radial Gradient", "Sweep Gradient"), names)
   }

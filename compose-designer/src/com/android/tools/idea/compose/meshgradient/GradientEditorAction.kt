@@ -26,7 +26,7 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogWrapper
-import com.intellij.ui.SimpleListCellRenderer
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import javax.swing.JComponent
@@ -55,7 +55,7 @@ internal class GradientEditorPlaygroundDialog(private val project: Project) : Di
   internal val typeSelector =
     ComboBox(GradientType.entries.toTypedArray()).apply {
       accessibleContext.accessibleName = message("gradient.editor.type.selector.description")
-      renderer = SimpleListCellRenderer.create<GradientType>("") { it.displayName }
+      renderer = textListCellRenderer("") { it.displayName }
       item = state.currentType
       addActionListener { item?.let { state.currentType = it } }
     }
