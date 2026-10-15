@@ -17,7 +17,6 @@ iml_module(
         "@intellij//:com.intellij.properties",
         "@intellij//:org.toml.lang",
         "//tools/base/lint:studio.android.sdktools.lint-checks",
-        "//tools/adt/idea/gradle-declarative-lang:intellij.android.gradle.declarative.lang",
         "@intellij//:intellij.java.analysis.impl",
         "@intellij//:com.intellij.gradle",
         "@intellij//:intellij.gradle.java.groovy",
