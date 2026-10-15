@@ -31,7 +31,6 @@ import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeBasicVariantName
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeBasicVariantNameImpl
-import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.forEach
@@ -190,11 +189,6 @@ internal fun cacheAndroidDataAndConsumeProjectVariant(
         shouldSkipRuntimeClassPathForLibraries,
         allOutgoingProjectsDependencies,
       )
-
-    // Cache the variant if it's valid.
-    (ideAndroidProject.coreVariants.find { it.name == variantName } as? IdeVariantCoreImpl)?.let {
-      cachedModels.selectedVariant[gradleProject] = it
-    }
   }
 }
 
