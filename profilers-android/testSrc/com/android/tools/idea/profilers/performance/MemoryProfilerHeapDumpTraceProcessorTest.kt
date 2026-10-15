@@ -23,10 +23,8 @@ import com.android.tools.idea.transport.TransportService
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.idea.transport.faketransport.TransportServiceTestImpl
-import com.android.tools.perflogger.Analyzer
 import com.android.tools.perflogger.Benchmark
 import com.android.tools.perflogger.Metric
-import com.android.tools.perflogger.WindowDeviationAnalyzer
 import com.android.tools.profiler.perfetto.proto.TraceProcessor.QueryParameters
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
@@ -54,7 +52,7 @@ import org.junit.Test
  * Note: the memory metric only covers the Studio JVM. The heap graph itself lives in the out-of-process Trace Processor Daemon.
  */
 class MemoryProfilerHeapDumpTraceProcessorTest {
-  private val loadBenchmark = benchmarkMemoryAndTime("Heap Dump", "TraceProcessor-Load-Capture")
+  private val loadBenchmark = benchmarkMemoryAndTime("Heap Dump", "TraceProcessor-Load-Capture", analyzer = HEAP_DUMP_ANALYZER)
   private val queryTimeBenchmark =
     Benchmark.Builder("Heap Dump Trace Processor Query Time (micros)").setProject("Android Studio Profilers").build()
   private val ideServices = FakeIdeProfilerServices()
@@ -146,7 +144,7 @@ class MemoryProfilerHeapDumpTraceProcessorTest {
       validate(result)
       metric.addSamples(queryTimeBenchmark, Metric.MetricSample(startTimestampMs + i, elapsedMicros))
     }
-    metric.setAnalyzers(queryTimeBenchmark, setOf(QUERY_ANALYZER))
+    metric.setAnalyzers(queryTimeBenchmark, setOf(HEAP_DUMP_ANALYZER))
     metric.commit()
   }
 
@@ -155,11 +153,5 @@ class MemoryProfilerHeapDumpTraceProcessorTest {
     const val INSTANCES_PAGE_SIZE = 100
     const val QUERY_WARMUPS = 2
     const val QUERY_SAMPLES = 20
-
-    val QUERY_ANALYZER: WindowDeviationAnalyzer =
-      WindowDeviationAnalyzer.Builder()
-        .setMetricAggregate(Analyzer.MetricAggregate.MIN)
-        .addMedianTolerance(WindowDeviationAnalyzer.MedianToleranceParams.Builder().build())
-        .build()
   }
 }
