@@ -90,12 +90,6 @@ public class ManifestPanelGradleTokenTest {
       return null;
     }
 
-    @Nullable
-    @Override
-    public PathString getResApkFile() {
-      return null;
-    }
-
     @Override
     public boolean getHasResources() {
       return false;

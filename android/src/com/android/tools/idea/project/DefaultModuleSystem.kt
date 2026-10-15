@@ -15,10 +15,8 @@
  */
 package com.android.tools.idea.project
 
-import com.android.SdkConstants
 import com.android.SdkConstants.FD_RES
 import com.android.SdkConstants.FN_ANDROID_MANIFEST_XML
-import com.android.SdkConstants.FN_RESOURCE_STATIC_LIBRARY
 import com.android.SdkConstants.FN_RESOURCE_TEXT
 import com.android.ide.common.repository.WellKnownMavenArtifactId
 import com.android.projectmodel.ExternalAndroidLibrary
@@ -110,19 +108,9 @@ class DefaultModuleSystem(override val module: Module) :
       val roots = library.getFiles(OrderRootType.CLASSES)
 
       // all libraries are assumed to have a non-empty name
-      val classesJar = roots.firstOrNull { it.name == SdkConstants.FN_CLASSES_JAR }?.toPathString()
       val libraryName = library.name ?: return@forEachLibrary true
 
-      // For testing purposes we create libraries with a res.apk root (legacy projects don't have those). Recognize them here and
-      // create ExternalLibrary as necessary.
-      val resFolderRoot = roots.firstOrNull { it.name == FD_RES }?.toPathString()
-      val resApkRoot = roots.firstOrNull { it.name == FN_RESOURCE_STATIC_LIBRARY }?.toPathString()
-      val (resFolder, resApk) =
-        when {
-          resApkRoot != null -> Pair(resApkRoot.parentOrRoot.resolve(FD_RES), resApkRoot)
-          resFolderRoot != null -> Pair(resFolderRoot, resFolderRoot.parentOrRoot.resolve(FN_RESOURCE_STATIC_LIBRARY))
-          else -> return@forEachLibrary true
-        }
+      val resFolder = roots.firstOrNull { it.name == FD_RES }?.toPathString() ?: return@forEachLibrary true
 
       libraries.add(
         ExternalLibraryImpl(
@@ -130,7 +118,6 @@ class DefaultModuleSystem(override val module: Module) :
           manifestFile = resFolder.parentOrRoot.resolve(FN_ANDROID_MANIFEST_XML),
           resFolder = RecursiveResourceFolder(resFolder),
           symbolFile = resFolder.parentOrRoot.resolve(FN_RESOURCE_TEXT),
-          resApkFile = resApk,
         )
       )
 

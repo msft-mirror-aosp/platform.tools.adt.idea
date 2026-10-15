@@ -61,17 +61,7 @@ interface ExternalAndroidLibrary {
    */
   val symbolFile: PathString?
 
-  /**
-   * Path to the aapt static library (`res.apk`) containing namespaced resources in proto format.
-   *
-   * This is only known for "AARv2" files, built from namespaced sources.
-   */
-  val resApkFile: PathString?
-
-  /**
-   * Returns true if this [ExternalAndroidLibrary] contributes any resources. Resources may be packaged as either a res.apk file or a res
-   * folder.
-   */
+  /** Returns true if this [ExternalAndroidLibrary] contributes any resources. */
   val hasResources: Boolean
 
   /** Returns a library name which can be used as library identifier and displayed to the user. */
@@ -121,13 +111,6 @@ data class ExternalLibraryImpl(
    * such file exists.
    */
   override val symbolFile: PathString? = null,
-
-  /**
-   * Path to the aapt static library (`res.apk`) containing namespaced resources in proto format.
-   *
-   * This is only known for "AARv2" files, built from namespaced sources.
-   */
-  override val resApkFile: PathString? = null,
 ) : ExternalAndroidLibrary {
   /**
    * Constructs a new [ExternalAndroidLibrary] with the given address and all other values set to their defaults. Intended to simplify
@@ -135,12 +118,9 @@ data class ExternalLibraryImpl(
    */
   constructor(address: String) : this(address, null)
 
-  /**
-   * Returns true if this [ExternalAndroidLibrary] contributes any resources. Resources may be packaged as either a res.apk file or a res
-   * folder.
-   */
+  /** Returns true if this [ExternalAndroidLibrary] contributes any resources. */
   override val hasResources
-    get() = resApkFile != null || resFolder != null
+    get() = resFolder != null
 
   /** Returns a copy of the receiver with the given manifest file. Intended to simplify construction from Java. */
   fun withManifestFile(path: PathString?) = copy(manifestFile = path)

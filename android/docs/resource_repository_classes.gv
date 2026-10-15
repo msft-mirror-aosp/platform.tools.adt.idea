@@ -26,12 +26,11 @@ digraph {
     LoadableResourceRepository [style="filled", color="lightgray"];
     LoadableResourceRepository -> SingleNamespaceResourceRepository [style="dashed"];
     AarSourceResourceRepository [style="filled", color="lightpink"];
-    AarSourceResourceRepository -> AbstractAarResourceRepository;
+    AarSourceResourceRepository -> AarResourceRepository [style="dashed"];
+    AarSourceResourceRepository -> AbstractResourceRepository;
     LintResourceRepository [style="filled", color="lightpink"];
     LintResourceRepository -> SingleNamespaceResourceRepository [style="dashed"];
     LintResourceRepository -> AbstractResourceRepository;
-    AarProtoResourceRepository [style="filled", color="lightpink"];
-    AarProtoResourceRepository -> AbstractAarResourceRepository;
     AppResourceRepository [style="filled", color="lightpink"];
     AppResourceRepository -> MultiResourceRepository;
     TestResourceRepository [style="filled", color="lightpink"];
@@ -55,9 +54,6 @@ digraph {
     MultiResourceRepository -> LocalResourceRepository;
     SingleNamespaceResourceRepository [style="filled", color="lightgray"];
     SingleNamespaceResourceRepository -> ResourceRepository [style="dashed"];
-    AbstractAarResourceRepository [style="filled", color="lightblue"];
-    AbstractAarResourceRepository -> AarResourceRepository [style="dashed"];
-    AbstractAarResourceRepository -> AbstractResourceRepository;
     CacheableResourceRepository [style="filled", color="lightgray"];
     CacheableResourceRepository -> ResourceRepository [style="dashed"];
     ProjectResourceRepository [style="filled", color="lightpink"];
