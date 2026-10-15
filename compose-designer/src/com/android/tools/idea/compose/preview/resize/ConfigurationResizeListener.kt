@@ -19,9 +19,7 @@ import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.configurations.DeviceSize
 import com.android.tools.configurations.deviceSizePx
-import com.android.tools.idea.common.util.updateLayoutParams
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
-import com.android.tools.idea.uibuilder.scene.executeInRenderSession
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
@@ -87,23 +85,11 @@ class ConfigurationResizeListener(
   }
 
   private suspend fun requestRender(newDeviceSize: Dimension) {
-    if (!sceneManager.sceneRenderConfiguration.showDecorations) {
-      // Updating the LayoutParams is best effort: there may be no view (e.g. the last render failed) or no render session.
-      // Still request the render below, otherwise the preview stays at the old size while the configuration has the new one.
-      val viewObj = sceneManager.viewObject
-      // If the preview has never been rendered there is nothing showing the old size, and its first render will already use the new
-      // configuration, so don't trigger a render from here.
-      if (viewObj == null && sceneManager.renderResult == null) return
-      if (viewObj != null) {
-        try {
-          sceneManager.executeInRenderSession(false) { updateLayoutParams(viewObj, newDeviceSize.width, newDeviceSize.height) }
-        } catch (e: CancellationException) {
-          throw e
-        } catch (e: Exception) {
-          logger.warn("Unable to update the LayoutParams before rendering the new size", e)
-        }
-      }
-    }
+    // If the preview has never been rendered there is nothing showing the old size, and its first render will already use the new
+    // configuration, so don't trigger a render from here.
+    if (sceneManager.viewObject == null && sceneManager.renderResult == null) return
+
+    sceneManager.sceneRenderConfiguration.needsInflation?.set(true)
     sceneManager.requestRenderWithNewSize(newDeviceSize.width, newDeviceSize.height)
 
     val surface = sceneManager.designSurface
@@ -115,8 +101,12 @@ class ConfigurationResizeListener(
         val requiredScale = surface.zoomController.getFitScale()
         val currentScale = surface.zoomController.scale
         if (
-          currentScale > requiredScale || // Preview is larger than the viewport
-            requiredScale > currentScale * ZOOM_TO_FIT_RESCALE_THRESHOLD // Preview is too small
+          requiredScale > 0.0 &&
+            currentScale > 0.0 &&
+            !requiredScale.isNaN() &&
+            !requiredScale.isInfinite() &&
+            (currentScale > requiredScale * ZOOM_TO_FIT_RESCALE_THRESHOLD || // Preview is more than double the viewport
+              requiredScale > currentScale * ZOOM_TO_FIT_RESCALE_THRESHOLD) // Preview is too small
         ) {
           // Since the preview has been resized, we reset the zoom-to-fit settings to reopen the mask
           // without waiting for another design surface layout creation or resize event.

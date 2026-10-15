@@ -146,13 +146,15 @@ class WearTileAnimationPreviewTest {
     delayUntilCondition(200) { surface.models.contains(model) }
 
     animationPreview =
-      WearTileAnimationPreview(
-        projectRule.testRootDisposable.createCoroutineScope(),
-        projectRule.project,
-        surface,
-        wearTilePreviewElement,
-        tracker = WearTileAnimationTracker(AnimationToolingUsageTracker.getInstance(null)),
-      )
+      withContext(Dispatchers.EDT) {
+        WearTileAnimationPreview(
+          projectRule.testRootDisposable.createCoroutineScope(),
+          projectRule.project,
+          surface,
+          wearTilePreviewElement,
+          tracker = WearTileAnimationTracker(AnimationToolingUsageTracker.getInstance(null)),
+        )
+      }
 
     Disposer.register(projectRule.testRootDisposable, model)
     Disposer.register(projectRule.testRootDisposable, surface)

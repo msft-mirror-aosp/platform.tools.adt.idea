@@ -132,6 +132,13 @@ DefaultConfig
         JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
         BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
         KeepRulesDirectories          : <ROOT>/app/src/main/keepRules [-]
+        ApiConfigurationName          : api
+        CompileOnlyConfigurationName  : compileOnly
+        CompileOnlyApiConfigurationName         : compileOnlyApi
+        ImplementationConfigurationName         : implementation
+        RuntimeOnlyConfigurationName  : runtimeOnly
+        AnnotationProcessorConfigurationName    : annotationProcessor
+        KaptConfigurationName         : kapt
     ExtraSourceProviders
         ExtraSourceProvider
             ArtifactName                  : _android_test_
@@ -147,6 +154,13 @@ DefaultConfig
                 JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTest/keepRules [-]
+                ApiConfigurationName          : androidTestApi
+                CompileOnlyConfigurationName  : androidTestCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestCompileOnlyApi
+                ImplementationConfigurationName         : androidTestImplementation
+                RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTest
         ExtraSourceProvider
             ArtifactName                  : _unit_test_
             SourceProvider
@@ -161,6 +175,13 @@ DefaultConfig
                 JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/test/keepRules [-]
+                ApiConfigurationName          : testApi
+                CompileOnlyConfigurationName  : testCompileOnly
+                CompileOnlyApiConfigurationName         : testCompileOnlyApi
+                ImplementationConfigurationName         : testImplementation
+                RuntimeOnlyConfigurationName  : testRuntimeOnly
+                AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                KaptConfigurationName         : kaptTest
 BuildTypes
     BuildType
         Name                          : debug
@@ -183,6 +204,13 @@ BuildTypes
         JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
         BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
         KeepRulesDirectories          : <ROOT>/app/src/debug/keepRules [-]
+        ApiConfigurationName          : debugApi
+        CompileOnlyConfigurationName  : debugCompileOnly
+        CompileOnlyApiConfigurationName         : debugCompileOnlyApi
+        ImplementationConfigurationName         : debugImplementation
+        RuntimeOnlyConfigurationName  : debugRuntimeOnly
+        AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+        KaptConfigurationName         : kaptDebug
     ExtraSourceProviders
         ExtraSourceProvider
             ArtifactName                  : _android_test_
@@ -198,6 +226,13 @@ BuildTypes
                 JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestDebug/keepRules [-]
+                ApiConfigurationName          : androidTestDebugApi
+                CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestDebugCompileOnlyApi
+                ImplementationConfigurationName         : androidTestDebugImplementation
+                RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestDebug
     ExtraSourceProviders
         ExtraSourceProvider
             ArtifactName                  : _unit_test_
@@ -213,6 +248,13 @@ BuildTypes
                 JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testDebug/keepRules [-]
+                ApiConfigurationName          : testDebugApi
+                CompileOnlyConfigurationName  : testDebugCompileOnly
+                CompileOnlyApiConfigurationName         : testDebugCompileOnlyApi
+                ImplementationConfigurationName         : testDebugImplementation
+                RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                KaptConfigurationName         : kaptTestDebug
     BuildType
         Name                          : release
         ApplicationIdSuffix           : suffix
@@ -239,6 +281,13 @@ BuildTypes
         JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
         BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
         KeepRulesDirectories          : <ROOT>/app/src/release/keepRules [-]
+        ApiConfigurationName          : releaseApi
+        CompileOnlyConfigurationName  : releaseCompileOnly
+        CompileOnlyApiConfigurationName         : releaseCompileOnlyApi
+        ImplementationConfigurationName         : releaseImplementation
+        RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+        AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+        KaptConfigurationName         : kaptRelease
     BuildType
         Name                          : specialRelease
         VersionNameSuffix             : vnsSpecial
@@ -262,6 +311,13 @@ BuildTypes
         JniLibsDirectories            : <ROOT>/app/src/specialRelease/jniLibs [-]
         BaselineProfileDirectories    : <ROOT>/app/src/specialRelease/baselineProfiles [-]
         KeepRulesDirectories          : <ROOT>/app/src/specialRelease/keepRules [-]
+        ApiConfigurationName          : specialReleaseApi
+        CompileOnlyConfigurationName  : specialReleaseCompileOnly
+        CompileOnlyApiConfigurationName         : specialReleaseCompileOnlyApi
+        ImplementationConfigurationName         : specialReleaseImplementation
+        RuntimeOnlyConfigurationName  : specialReleaseRuntimeOnly
+        AnnotationProcessorConfigurationName    : specialReleaseAnnotationProcessor
+        KaptConfigurationName         : kaptSpecialRelease
 ProductFlavors
     ProductFlavor
         Name                          : basic
@@ -280,6 +336,13 @@ ProductFlavors
         JniLibsDirectories            : <ROOT>/app/src/basic/jniLibs [-]
         BaselineProfileDirectories    : <ROOT>/app/src/basic/baselineProfiles [-]
         KeepRulesDirectories          : <ROOT>/app/src/basic/keepRules [-]
+        ApiConfigurationName          : basicApi
+        CompileOnlyConfigurationName  : basicCompileOnly
+        CompileOnlyApiConfigurationName         : basicCompileOnlyApi
+        ImplementationConfigurationName         : basicImplementation
+        RuntimeOnlyConfigurationName  : basicRuntimeOnly
+        AnnotationProcessorConfigurationName    : basicAnnotationProcessor
+        KaptConfigurationName         : kaptBasic
     ExtraSourceProviders
         ExtraSourceProvider
             ArtifactName                  : _android_test_
@@ -295,6 +358,13 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/androidTestBasic/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestBasic/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestBasic/keepRules [-]
+                ApiConfigurationName          : androidTestBasicApi
+                CompileOnlyConfigurationName  : androidTestBasicCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestBasicCompileOnlyApi
+                ImplementationConfigurationName         : androidTestBasicImplementation
+                RuntimeOnlyConfigurationName  : androidTestBasicRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestBasicAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestBasic
         ExtraSourceProvider
             ArtifactName                  : _unit_test_
             SourceProvider
@@ -309,6 +379,13 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/testBasic/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testBasic/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testBasic/keepRules [-]
+                ApiConfigurationName          : testBasicApi
+                CompileOnlyConfigurationName  : testBasicCompileOnly
+                CompileOnlyApiConfigurationName         : testBasicCompileOnlyApi
+                ImplementationConfigurationName         : testBasicImplementation
+                RuntimeOnlyConfigurationName  : testBasicRuntimeOnly
+                AnnotationProcessorConfigurationName    : testBasicAnnotationProcessor
+                KaptConfigurationName         : kaptTestBasic
     ProductFlavor
         Name                          : paid
         VersionNameSuffix             : vnsFoo
@@ -343,6 +420,13 @@ ProductFlavors
         JniLibsDirectories            : <ROOT>/app/src/paid/jniLibs [-]
         BaselineProfileDirectories    : <ROOT>/app/src/paid/baselineProfiles [-]
         KeepRulesDirectories          : <ROOT>/app/src/paid/keepRules [-]
+        ApiConfigurationName          : paidApi
+        CompileOnlyConfigurationName  : paidCompileOnly
+        CompileOnlyApiConfigurationName         : paidCompileOnlyApi
+        ImplementationConfigurationName         : paidImplementation
+        RuntimeOnlyConfigurationName  : paidRuntimeOnly
+        AnnotationProcessorConfigurationName    : paidAnnotationProcessor
+        KaptConfigurationName         : kaptPaid
     ExtraSourceProviders
         ExtraSourceProvider
             ArtifactName                  : _android_test_
@@ -358,6 +442,13 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/androidTestPaid/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestPaid/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestPaid/keepRules [-]
+                ApiConfigurationName          : androidTestPaidApi
+                CompileOnlyConfigurationName  : androidTestPaidCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestPaidCompileOnlyApi
+                ImplementationConfigurationName         : androidTestPaidImplementation
+                RuntimeOnlyConfigurationName  : androidTestPaidRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestPaidAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestPaid
         ExtraSourceProvider
             ArtifactName                  : _unit_test_
             SourceProvider
@@ -372,6 +463,13 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/testPaid/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testPaid/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testPaid/keepRules [-]
+                ApiConfigurationName          : testPaidApi
+                CompileOnlyConfigurationName  : testPaidCompileOnly
+                CompileOnlyApiConfigurationName         : testPaidCompileOnlyApi
+                ImplementationConfigurationName         : testPaidImplementation
+                RuntimeOnlyConfigurationName  : testPaidRuntimeOnly
+                AnnotationProcessorConfigurationName    : testPaidAnnotationProcessor
+                KaptConfigurationName         : kaptTestPaid
     ProductFlavor
         Name                          : bar
         ApplicationIdSuffix           : barSuffix
@@ -389,6 +487,13 @@ ProductFlavors
         JniLibsDirectories            : <ROOT>/app/src/bar/jniLibs [-]
         BaselineProfileDirectories    : <ROOT>/app/src/bar/baselineProfiles [-]
         KeepRulesDirectories          : <ROOT>/app/src/bar/keepRules [-]
+        ApiConfigurationName          : barApi
+        CompileOnlyConfigurationName  : barCompileOnly
+        CompileOnlyApiConfigurationName         : barCompileOnlyApi
+        ImplementationConfigurationName         : barImplementation
+        RuntimeOnlyConfigurationName  : barRuntimeOnly
+        AnnotationProcessorConfigurationName    : barAnnotationProcessor
+        KaptConfigurationName         : kaptBar
     ExtraSourceProviders
         ExtraSourceProvider
             ArtifactName                  : _android_test_
@@ -404,6 +509,13 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/androidTestBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestBar/keepRules [-]
+                ApiConfigurationName          : androidTestBarApi
+                CompileOnlyConfigurationName  : androidTestBarCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestBarCompileOnlyApi
+                ImplementationConfigurationName         : androidTestBarImplementation
+                RuntimeOnlyConfigurationName  : androidTestBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestBarAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestBar
         ExtraSourceProvider
             ArtifactName                  : _unit_test_
             SourceProvider
@@ -418,6 +530,13 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/testBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testBar/keepRules [-]
+                ApiConfigurationName          : testBarApi
+                CompileOnlyConfigurationName  : testBarCompileOnly
+                CompileOnlyApiConfigurationName         : testBarCompileOnlyApi
+                ImplementationConfigurationName         : testBarImplementation
+                RuntimeOnlyConfigurationName  : testBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : testBarAnnotationProcessor
+                KaptConfigurationName         : kaptTestBar
     ProductFlavor
         Name                          : otherBar
         Dimension                     : bar
@@ -438,6 +557,13 @@ ProductFlavors
         JniLibsDirectories            : <ROOT>/app/src/otherBar/jniLibs [-]
         BaselineProfileDirectories    : <ROOT>/app/src/otherBar/baselineProfiles [-]
         KeepRulesDirectories          : <ROOT>/app/src/otherBar/keepRules [-]
+        ApiConfigurationName          : otherBarApi
+        CompileOnlyConfigurationName  : otherBarCompileOnly
+        CompileOnlyApiConfigurationName         : otherBarCompileOnlyApi
+        ImplementationConfigurationName         : otherBarImplementation
+        RuntimeOnlyConfigurationName  : otherBarRuntimeOnly
+        AnnotationProcessorConfigurationName    : otherBarAnnotationProcessor
+        KaptConfigurationName         : kaptOtherBar
     ExtraSourceProviders
         ExtraSourceProvider
             ArtifactName                  : _android_test_
@@ -453,6 +579,13 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/androidTestOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestOtherBar/keepRules [-]
+                ApiConfigurationName          : androidTestOtherBarApi
+                CompileOnlyConfigurationName  : androidTestOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : androidTestOtherBarImplementation
+                RuntimeOnlyConfigurationName  : androidTestOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestOtherBar
         ExtraSourceProvider
             ArtifactName                  : _unit_test_
             SourceProvider
@@ -467,6 +600,13 @@ ProductFlavors
                 JniLibsDirectories            : <ROOT>/app/src/testOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testOtherBar/keepRules [-]
+                ApiConfigurationName          : testOtherBarApi
+                CompileOnlyConfigurationName  : testOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : testOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : testOtherBarImplementation
+                RuntimeOnlyConfigurationName  : testOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : testOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptTestOtherBar
 SigningConfigs
     SigningConfig
         Name                          : debug
@@ -1300,6 +1440,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicBarDebug/keepRules [-]
+                ApiConfigurationName          : basicBarDebugApi
+                CompileOnlyConfigurationName  : basicBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : basicBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : basicBarDebugImplementation
+                RuntimeOnlyConfigurationName  : basicBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptBasicBarDebug
             MultiFlavorSourceProvider
                 Name                          : basicBar
                 Manifest                      : <ROOT>/app/src/basicBar/AndroidManifest.xml [-]
@@ -1312,6 +1459,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicBar/keepRules [-]
+                ApiConfigurationName          : basicBarApi
+                CompileOnlyConfigurationName  : basicBarCompileOnly
+                CompileOnlyApiConfigurationName         : basicBarCompileOnlyApi
+                ImplementationConfigurationName         : basicBarImplementation
+                RuntimeOnlyConfigurationName  : basicBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicBarAnnotationProcessor
+                KaptConfigurationName         : kaptBasicBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -1649,6 +1803,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/androidTestBasicBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestBasicBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestBasicBarDebug/keepRules [-]
+                ApiConfigurationName          : androidTestBasicBarDebugApi
+                CompileOnlyConfigurationName  : androidTestBasicBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestBasicBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : androidTestBasicBarDebugImplementation
+                RuntimeOnlyConfigurationName  : androidTestBasicBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestBasicBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestBasicBarDebug
             MultiFlavorSourceProvider
                 Name                          : androidTestBasicBar
                 Manifest                      : <ROOT>/app/src/androidTestBasicBar/AndroidManifest.xml [-]
@@ -1661,6 +1822,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/androidTestBasicBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestBasicBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestBasicBar/keepRules [-]
+                ApiConfigurationName          : androidTestBasicBarApi
+                CompileOnlyConfigurationName  : androidTestBasicBarCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestBasicBarCompileOnlyApi
+                ImplementationConfigurationName         : androidTestBasicBarImplementation
+                RuntimeOnlyConfigurationName  : androidTestBasicBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestBasicBarAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestBasicBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -1899,6 +2067,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/testBasicBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testBasicBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testBasicBarDebug/keepRules [-]
+                ApiConfigurationName          : testBasicBarDebugApi
+                CompileOnlyConfigurationName  : testBasicBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : testBasicBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : testBasicBarDebugImplementation
+                RuntimeOnlyConfigurationName  : testBasicBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : testBasicBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptTestBasicBarDebug
             MultiFlavorSourceProvider
                 Name                          : testBasicBar
                 Manifest                      : <ROOT>/app/src/testBasicBar/AndroidManifest.xml [-]
@@ -1911,6 +2086,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/testBasicBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testBasicBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testBasicBar/keepRules [-]
+                ApiConfigurationName          : testBasicBarApi
+                CompileOnlyConfigurationName  : testBasicBarCompileOnly
+                CompileOnlyApiConfigurationName         : testBasicBarCompileOnlyApi
+                ImplementationConfigurationName         : testBasicBarImplementation
+                RuntimeOnlyConfigurationName  : testBasicBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : testBasicBarAnnotationProcessor
+                KaptConfigurationName         : kaptTestBasicBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -2266,6 +2448,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicOtherBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicOtherBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicOtherBarDebug/keepRules [-]
+                ApiConfigurationName          : basicOtherBarDebugApi
+                CompileOnlyConfigurationName  : basicOtherBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : basicOtherBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : basicOtherBarDebugImplementation
+                RuntimeOnlyConfigurationName  : basicOtherBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicOtherBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptBasicOtherBarDebug
             MultiFlavorSourceProvider
                 Name                          : basicOtherBar
                 Manifest                      : <ROOT>/app/src/basicOtherBar/AndroidManifest.xml [-]
@@ -2278,6 +2467,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicOtherBar/keepRules [-]
+                ApiConfigurationName          : basicOtherBarApi
+                CompileOnlyConfigurationName  : basicOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : basicOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : basicOtherBarImplementation
+                RuntimeOnlyConfigurationName  : basicOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptBasicOtherBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -2615,6 +2811,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/androidTestBasicOtherBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestBasicOtherBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestBasicOtherBarDebug/keepRules [-]
+                ApiConfigurationName          : androidTestBasicOtherBarDebugApi
+                CompileOnlyConfigurationName  : androidTestBasicOtherBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestBasicOtherBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : androidTestBasicOtherBarDebugImplementation
+                RuntimeOnlyConfigurationName  : androidTestBasicOtherBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestBasicOtherBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestBasicOtherBarDebug
             MultiFlavorSourceProvider
                 Name                          : androidTestBasicOtherBar
                 Manifest                      : <ROOT>/app/src/androidTestBasicOtherBar/AndroidManifest.xml [-]
@@ -2627,6 +2830,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/androidTestBasicOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestBasicOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestBasicOtherBar/keepRules [-]
+                ApiConfigurationName          : androidTestBasicOtherBarApi
+                CompileOnlyConfigurationName  : androidTestBasicOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestBasicOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : androidTestBasicOtherBarImplementation
+                RuntimeOnlyConfigurationName  : androidTestBasicOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestBasicOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestBasicOtherBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -2865,6 +3075,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/testBasicOtherBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testBasicOtherBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testBasicOtherBarDebug/keepRules [-]
+                ApiConfigurationName          : testBasicOtherBarDebugApi
+                CompileOnlyConfigurationName  : testBasicOtherBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : testBasicOtherBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : testBasicOtherBarDebugImplementation
+                RuntimeOnlyConfigurationName  : testBasicOtherBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : testBasicOtherBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptTestBasicOtherBarDebug
             MultiFlavorSourceProvider
                 Name                          : testBasicOtherBar
                 Manifest                      : <ROOT>/app/src/testBasicOtherBar/AndroidManifest.xml [-]
@@ -2877,6 +3094,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/testBasicOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testBasicOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testBasicOtherBar/keepRules [-]
+                ApiConfigurationName          : testBasicOtherBarApi
+                CompileOnlyConfigurationName  : testBasicOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : testBasicOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : testBasicOtherBarImplementation
+                RuntimeOnlyConfigurationName  : testBasicOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : testBasicOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptTestBasicOtherBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -3233,6 +3457,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidBarDebug/keepRules [-]
+                ApiConfigurationName          : paidBarDebugApi
+                CompileOnlyConfigurationName  : paidBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : paidBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : paidBarDebugImplementation
+                RuntimeOnlyConfigurationName  : paidBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptPaidBarDebug
             MultiFlavorSourceProvider
                 Name                          : paidBar
                 Manifest                      : <ROOT>/app/src/paidBar/AndroidManifest.xml [-]
@@ -3245,6 +3476,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidBar/keepRules [-]
+                ApiConfigurationName          : paidBarApi
+                CompileOnlyConfigurationName  : paidBarCompileOnly
+                CompileOnlyApiConfigurationName         : paidBarCompileOnlyApi
+                ImplementationConfigurationName         : paidBarImplementation
+                RuntimeOnlyConfigurationName  : paidBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidBarAnnotationProcessor
+                KaptConfigurationName         : kaptPaidBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -3582,6 +3820,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/androidTestPaidBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestPaidBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestPaidBarDebug/keepRules [-]
+                ApiConfigurationName          : androidTestPaidBarDebugApi
+                CompileOnlyConfigurationName  : androidTestPaidBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestPaidBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : androidTestPaidBarDebugImplementation
+                RuntimeOnlyConfigurationName  : androidTestPaidBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestPaidBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestPaidBarDebug
             MultiFlavorSourceProvider
                 Name                          : androidTestPaidBar
                 Manifest                      : <ROOT>/app/src/androidTestPaidBar/AndroidManifest.xml [-]
@@ -3594,6 +3839,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/androidTestPaidBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestPaidBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestPaidBar/keepRules [-]
+                ApiConfigurationName          : androidTestPaidBarApi
+                CompileOnlyConfigurationName  : androidTestPaidBarCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestPaidBarCompileOnlyApi
+                ImplementationConfigurationName         : androidTestPaidBarImplementation
+                RuntimeOnlyConfigurationName  : androidTestPaidBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestPaidBarAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestPaidBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -3832,6 +4084,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/testPaidBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testPaidBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testPaidBarDebug/keepRules [-]
+                ApiConfigurationName          : testPaidBarDebugApi
+                CompileOnlyConfigurationName  : testPaidBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : testPaidBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : testPaidBarDebugImplementation
+                RuntimeOnlyConfigurationName  : testPaidBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : testPaidBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptTestPaidBarDebug
             MultiFlavorSourceProvider
                 Name                          : testPaidBar
                 Manifest                      : <ROOT>/app/src/testPaidBar/AndroidManifest.xml [-]
@@ -3844,6 +4103,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/testPaidBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testPaidBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testPaidBar/keepRules [-]
+                ApiConfigurationName          : testPaidBarApi
+                CompileOnlyConfigurationName  : testPaidBarCompileOnly
+                CompileOnlyApiConfigurationName         : testPaidBarCompileOnlyApi
+                ImplementationConfigurationName         : testPaidBarImplementation
+                RuntimeOnlyConfigurationName  : testPaidBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : testPaidBarAnnotationProcessor
+                KaptConfigurationName         : kaptTestPaidBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -4203,6 +4469,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidOtherBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidOtherBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidOtherBarDebug/keepRules [-]
+                ApiConfigurationName          : paidOtherBarDebugApi
+                CompileOnlyConfigurationName  : paidOtherBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : paidOtherBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : paidOtherBarDebugImplementation
+                RuntimeOnlyConfigurationName  : paidOtherBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidOtherBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptPaidOtherBarDebug
             MultiFlavorSourceProvider
                 Name                          : paidOtherBar
                 Manifest                      : <ROOT>/app/src/paidOtherBar/AndroidManifest.xml [-]
@@ -4215,6 +4488,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidOtherBar/keepRules [-]
+                ApiConfigurationName          : paidOtherBarApi
+                CompileOnlyConfigurationName  : paidOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : paidOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : paidOtherBarImplementation
+                RuntimeOnlyConfigurationName  : paidOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptPaidOtherBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -4552,6 +4832,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/androidTestPaidOtherBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestPaidOtherBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestPaidOtherBarDebug/keepRules [-]
+                ApiConfigurationName          : androidTestPaidOtherBarDebugApi
+                CompileOnlyConfigurationName  : androidTestPaidOtherBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestPaidOtherBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : androidTestPaidOtherBarDebugImplementation
+                RuntimeOnlyConfigurationName  : androidTestPaidOtherBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestPaidOtherBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestPaidOtherBarDebug
             MultiFlavorSourceProvider
                 Name                          : androidTestPaidOtherBar
                 Manifest                      : <ROOT>/app/src/androidTestPaidOtherBar/AndroidManifest.xml [-]
@@ -4564,6 +4851,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/androidTestPaidOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/androidTestPaidOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/androidTestPaidOtherBar/keepRules [-]
+                ApiConfigurationName          : androidTestPaidOtherBarApi
+                CompileOnlyConfigurationName  : androidTestPaidOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : androidTestPaidOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : androidTestPaidOtherBarImplementation
+                RuntimeOnlyConfigurationName  : androidTestPaidOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : androidTestPaidOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptAndroidTestPaidOtherBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -4802,6 +5096,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/testPaidOtherBarDebug/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testPaidOtherBarDebug/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testPaidOtherBarDebug/keepRules [-]
+                ApiConfigurationName          : testPaidOtherBarDebugApi
+                CompileOnlyConfigurationName  : testPaidOtherBarDebugCompileOnly
+                CompileOnlyApiConfigurationName         : testPaidOtherBarDebugCompileOnlyApi
+                ImplementationConfigurationName         : testPaidOtherBarDebugImplementation
+                RuntimeOnlyConfigurationName  : testPaidOtherBarDebugRuntimeOnly
+                AnnotationProcessorConfigurationName    : testPaidOtherBarDebugAnnotationProcessor
+                KaptConfigurationName         : kaptTestPaidOtherBarDebug
             MultiFlavorSourceProvider
                 Name                          : testPaidOtherBar
                 Manifest                      : <ROOT>/app/src/testPaidOtherBar/AndroidManifest.xml [-]
@@ -4814,6 +5115,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/testPaidOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/testPaidOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/testPaidOtherBar/keepRules [-]
+                ApiConfigurationName          : testPaidOtherBarApi
+                CompileOnlyConfigurationName  : testPaidOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : testPaidOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : testPaidOtherBarImplementation
+                RuntimeOnlyConfigurationName  : testPaidOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : testPaidOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptTestPaidOtherBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -5169,6 +5477,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicBarRelease/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicBarRelease/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicBarRelease/keepRules [-]
+                ApiConfigurationName          : basicBarReleaseApi
+                CompileOnlyConfigurationName  : basicBarReleaseCompileOnly
+                CompileOnlyApiConfigurationName         : basicBarReleaseCompileOnlyApi
+                ImplementationConfigurationName         : basicBarReleaseImplementation
+                RuntimeOnlyConfigurationName  : basicBarReleaseRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicBarReleaseAnnotationProcessor
+                KaptConfigurationName         : kaptBasicBarRelease
             MultiFlavorSourceProvider
                 Name                          : basicBar
                 Manifest                      : <ROOT>/app/src/basicBar/AndroidManifest.xml [-]
@@ -5181,6 +5496,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicBar/keepRules [-]
+                ApiConfigurationName          : basicBarApi
+                CompileOnlyConfigurationName  : basicBarCompileOnly
+                CompileOnlyApiConfigurationName         : basicBarCompileOnlyApi
+                ImplementationConfigurationName         : basicBarImplementation
+                RuntimeOnlyConfigurationName  : basicBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicBarAnnotationProcessor
+                KaptConfigurationName         : kaptBasicBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -5545,6 +5867,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicOtherBarRelease/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicOtherBarRelease/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicOtherBarRelease/keepRules [-]
+                ApiConfigurationName          : basicOtherBarReleaseApi
+                CompileOnlyConfigurationName  : basicOtherBarReleaseCompileOnly
+                CompileOnlyApiConfigurationName         : basicOtherBarReleaseCompileOnlyApi
+                ImplementationConfigurationName         : basicOtherBarReleaseImplementation
+                RuntimeOnlyConfigurationName  : basicOtherBarReleaseRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicOtherBarReleaseAnnotationProcessor
+                KaptConfigurationName         : kaptBasicOtherBarRelease
             MultiFlavorSourceProvider
                 Name                          : basicOtherBar
                 Manifest                      : <ROOT>/app/src/basicOtherBar/AndroidManifest.xml [-]
@@ -5557,6 +5886,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicOtherBar/keepRules [-]
+                ApiConfigurationName          : basicOtherBarApi
+                CompileOnlyConfigurationName  : basicOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : basicOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : basicOtherBarImplementation
+                RuntimeOnlyConfigurationName  : basicOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptBasicOtherBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -5922,6 +6258,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidBarRelease/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidBarRelease/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidBarRelease/keepRules [-]
+                ApiConfigurationName          : paidBarReleaseApi
+                CompileOnlyConfigurationName  : paidBarReleaseCompileOnly
+                CompileOnlyApiConfigurationName         : paidBarReleaseCompileOnlyApi
+                ImplementationConfigurationName         : paidBarReleaseImplementation
+                RuntimeOnlyConfigurationName  : paidBarReleaseRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidBarReleaseAnnotationProcessor
+                KaptConfigurationName         : kaptPaidBarRelease
             MultiFlavorSourceProvider
                 Name                          : paidBar
                 Manifest                      : <ROOT>/app/src/paidBar/AndroidManifest.xml [-]
@@ -5934,6 +6277,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidBar/keepRules [-]
+                ApiConfigurationName          : paidBarApi
+                CompileOnlyConfigurationName  : paidBarCompileOnly
+                CompileOnlyApiConfigurationName         : paidBarCompileOnlyApi
+                ImplementationConfigurationName         : paidBarImplementation
+                RuntimeOnlyConfigurationName  : paidBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidBarAnnotationProcessor
+                KaptConfigurationName         : kaptPaidBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -6302,6 +6652,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidOtherBarRelease/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidOtherBarRelease/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidOtherBarRelease/keepRules [-]
+                ApiConfigurationName          : paidOtherBarReleaseApi
+                CompileOnlyConfigurationName  : paidOtherBarReleaseCompileOnly
+                CompileOnlyApiConfigurationName         : paidOtherBarReleaseCompileOnlyApi
+                ImplementationConfigurationName         : paidOtherBarReleaseImplementation
+                RuntimeOnlyConfigurationName  : paidOtherBarReleaseRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidOtherBarReleaseAnnotationProcessor
+                KaptConfigurationName         : kaptPaidOtherBarRelease
             MultiFlavorSourceProvider
                 Name                          : paidOtherBar
                 Manifest                      : <ROOT>/app/src/paidOtherBar/AndroidManifest.xml [-]
@@ -6314,6 +6671,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidOtherBar/keepRules [-]
+                ApiConfigurationName          : paidOtherBarApi
+                CompileOnlyConfigurationName  : paidOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : paidOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : paidOtherBarImplementation
+                RuntimeOnlyConfigurationName  : paidOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptPaidOtherBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -6672,6 +7036,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicBarSpecialRelease/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicBarSpecialRelease/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicBarSpecialRelease/keepRules [-]
+                ApiConfigurationName          : basicBarSpecialReleaseApi
+                CompileOnlyConfigurationName  : basicBarSpecialReleaseCompileOnly
+                CompileOnlyApiConfigurationName         : basicBarSpecialReleaseCompileOnlyApi
+                ImplementationConfigurationName         : basicBarSpecialReleaseImplementation
+                RuntimeOnlyConfigurationName  : basicBarSpecialReleaseRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicBarSpecialReleaseAnnotationProcessor
+                KaptConfigurationName         : kaptBasicBarSpecialRelease
             MultiFlavorSourceProvider
                 Name                          : basicBar
                 Manifest                      : <ROOT>/app/src/basicBar/AndroidManifest.xml [-]
@@ -6684,6 +7055,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicBar/keepRules [-]
+                ApiConfigurationName          : basicBarApi
+                CompileOnlyConfigurationName  : basicBarCompileOnly
+                CompileOnlyApiConfigurationName         : basicBarCompileOnlyApi
+                ImplementationConfigurationName         : basicBarImplementation
+                RuntimeOnlyConfigurationName  : basicBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicBarAnnotationProcessor
+                KaptConfigurationName         : kaptBasicBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -7044,6 +7422,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicOtherBarSpecialRelease/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicOtherBarSpecialRelease/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicOtherBarSpecialRelease/keepRules [-]
+                ApiConfigurationName          : basicOtherBarSpecialReleaseApi
+                CompileOnlyConfigurationName  : basicOtherBarSpecialReleaseCompileOnly
+                CompileOnlyApiConfigurationName         : basicOtherBarSpecialReleaseCompileOnlyApi
+                ImplementationConfigurationName         : basicOtherBarSpecialReleaseImplementation
+                RuntimeOnlyConfigurationName  : basicOtherBarSpecialReleaseRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicOtherBarSpecialReleaseAnnotationProcessor
+                KaptConfigurationName         : kaptBasicOtherBarSpecialRelease
             MultiFlavorSourceProvider
                 Name                          : basicOtherBar
                 Manifest                      : <ROOT>/app/src/basicOtherBar/AndroidManifest.xml [-]
@@ -7056,6 +7441,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/basicOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/basicOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/basicOtherBar/keepRules [-]
+                ApiConfigurationName          : basicOtherBarApi
+                CompileOnlyConfigurationName  : basicOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : basicOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : basicOtherBarImplementation
+                RuntimeOnlyConfigurationName  : basicOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : basicOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptBasicOtherBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -7417,6 +7809,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidBarSpecialRelease/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidBarSpecialRelease/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidBarSpecialRelease/keepRules [-]
+                ApiConfigurationName          : paidBarSpecialReleaseApi
+                CompileOnlyConfigurationName  : paidBarSpecialReleaseCompileOnly
+                CompileOnlyApiConfigurationName         : paidBarSpecialReleaseCompileOnlyApi
+                ImplementationConfigurationName         : paidBarSpecialReleaseImplementation
+                RuntimeOnlyConfigurationName  : paidBarSpecialReleaseRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidBarSpecialReleaseAnnotationProcessor
+                KaptConfigurationName         : kaptPaidBarSpecialRelease
             MultiFlavorSourceProvider
                 Name                          : paidBar
                 Manifest                      : <ROOT>/app/src/paidBar/AndroidManifest.xml [-]
@@ -7429,6 +7828,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidBar/keepRules [-]
+                ApiConfigurationName          : paidBarApi
+                CompileOnlyConfigurationName  : paidBarCompileOnly
+                CompileOnlyApiConfigurationName         : paidBarCompileOnlyApi
+                ImplementationConfigurationName         : paidBarImplementation
+                RuntimeOnlyConfigurationName  : paidBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidBarAnnotationProcessor
+                KaptConfigurationName         : kaptPaidBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -7793,6 +8199,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidOtherBarSpecialRelease/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidOtherBarSpecialRelease/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidOtherBarSpecialRelease/keepRules [-]
+                ApiConfigurationName          : paidOtherBarSpecialReleaseApi
+                CompileOnlyConfigurationName  : paidOtherBarSpecialReleaseCompileOnly
+                CompileOnlyApiConfigurationName         : paidOtherBarSpecialReleaseCompileOnlyApi
+                ImplementationConfigurationName         : paidOtherBarSpecialReleaseImplementation
+                RuntimeOnlyConfigurationName  : paidOtherBarSpecialReleaseRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidOtherBarSpecialReleaseAnnotationProcessor
+                KaptConfigurationName         : kaptPaidOtherBarSpecialRelease
             MultiFlavorSourceProvider
                 Name                          : paidOtherBar
                 Manifest                      : <ROOT>/app/src/paidOtherBar/AndroidManifest.xml [-]
@@ -7805,6 +8218,13 @@ IdeVariants
                 JniLibsDirectories            : <ROOT>/app/src/paidOtherBar/jniLibs [-]
                 BaselineProfileDirectories    : <ROOT>/app/src/paidOtherBar/baselineProfiles [-]
                 KeepRulesDirectories          : <ROOT>/app/src/paidOtherBar/keepRules [-]
+                ApiConfigurationName          : paidOtherBarApi
+                CompileOnlyConfigurationName  : paidOtherBarCompileOnly
+                CompileOnlyApiConfigurationName         : paidOtherBarCompileOnlyApi
+                ImplementationConfigurationName         : paidOtherBarImplementation
+                RuntimeOnlyConfigurationName  : paidOtherBarRuntimeOnly
+                AnnotationProcessorConfigurationName    : paidOtherBarAnnotationProcessor
+                KaptConfigurationName         : kaptPaidOtherBar
             Dependencies
                 compileClasspath
                     androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar

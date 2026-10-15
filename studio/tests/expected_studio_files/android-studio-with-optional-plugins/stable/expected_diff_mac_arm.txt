@@ -2347,8 +2347,8 @@
 +++Android Studio.app/Contents/plugins/android/lib/play_findings_proto.jar
 +++Android Studio.app/Contents/plugins/android/lib/play_vitals_kt_proto.jar
 +++Android Studio.app/Contents/plugins/android/lib/proto.jar
-+++Android Studio.app/Contents/plugins/android/lib/protobuf-java-util-3.24.4.jar
-+++Android Studio.app/Contents/plugins/android/lib/protobuf-kotlin-3.24.4.jar
++++Android Studio.app/Contents/plugins/android/lib/protobuf-java-util-3.25.5.jar
++++Android Studio.app/Contents/plugins/android/lib/protobuf-kotlin-3.25.5.jar
 +++Android Studio.app/Contents/plugins/android/lib/r8.jar
 +++Android Studio.app/Contents/plugins/android/lib/repository-sdk-schema.jar
 +++Android Studio.app/Contents/plugins/android/lib/repository.jar
@@ -3096,7 +3096,7 @@
 +++Android Studio.app/Contents/plugins/firebase/lib/firebase_provisioning_kt_proto.jar
 +++Android Studio.app/Contents/plugins/firebase/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
 +++Android Studio.app/Contents/plugins/firebase/lib/grpc-google-common-protos-2.51.0.jar
-+++Android Studio.app/Contents/plugins/firebase/lib/protobuf-java-util-3.22.3.jar
++++Android Studio.app/Contents/plugins/firebase/lib/protobuf-java-util-3.25.5.jar
 +++Android Studio.app/Contents/plugins/gemini/lib/acp-jvm-0.30.1.jar
 +++Android Studio.app/Contents/plugins/gemini/lib/acp-model-jvm-0.30.1.jar
 +++Android Studio.app/Contents/plugins/gemini/lib/aicode_grpc.jar
@@ -6166,8 +6166,8 @@
 ---Android Studio Preview.app/Contents/plugins/android/lib/play_findings_proto.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/play_vitals_kt_proto.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/proto.jar
----Android Studio Preview.app/Contents/plugins/android/lib/protobuf-java-util-3.24.4.jar
----Android Studio Preview.app/Contents/plugins/android/lib/protobuf-kotlin-3.24.4.jar
+---Android Studio Preview.app/Contents/plugins/android/lib/protobuf-java-util-3.25.5.jar
+---Android Studio Preview.app/Contents/plugins/android/lib/protobuf-kotlin-3.25.5.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/r8.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/repository-sdk-schema.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/repository.jar
@@ -6915,7 +6915,7 @@
 ---Android Studio Preview.app/Contents/plugins/firebase/lib/firebase_provisioning_kt_proto.jar
 ---Android Studio Preview.app/Contents/plugins/firebase/lib/google-api-services-cloudresourcemanager-v3-rev20230416-2.0.0.jar
 ---Android Studio Preview.app/Contents/plugins/firebase/lib/grpc-google-common-protos-2.51.0.jar
----Android Studio Preview.app/Contents/plugins/firebase/lib/protobuf-java-util-3.22.3.jar
+---Android Studio Preview.app/Contents/plugins/firebase/lib/protobuf-java-util-3.25.5.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/acp-jvm-0.30.1.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/acp-model-jvm-0.30.1.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/aicode_grpc.jar

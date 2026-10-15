@@ -34,6 +34,7 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWit
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.hasRenderErrors
 import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.ActionGroupWrapper
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -42,9 +43,11 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
+import kotlin.reflect.KClass
 
 /**
  * Helper method that navigates back to the previous [PreviewMode] for all [PreviewModeManager]s in the given [AnActionEvent]'s
@@ -173,37 +176,45 @@ private fun hasRenderedImage(dataContext: DataContext): Boolean {
   return sceneManager?.renderResult?.renderedImage?.let { image -> image != RecyclableImage.NULL } == true
 }
 
-// TODO(b/292057010) Enable group filtering for Gallery mode.
-private class PreviewDefaultWrapper(actions: List<AnAction>) : DefaultActionGroup(actions) {
-  override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+/**
+ * Makes the given action only visible when the preview is in the [mode] [PreviewMode]. Returns an [AnAction] that handles the visibility.
+ */
+fun <T : PreviewMode> AnAction.visibleOnlyIn(mode: KClass<T>): AnAction =
+  // ActionToolbarImpl checks `action is Separator` directly, so wrap Separator in a
+  // DefaultActionGroup to let ActionUpdater expand it only when visible.
+  when (val action = if (this is Separator) DefaultActionGroup(this) else this) {
+    is ActionGroup ->
+      object : ActionGroupWrapper(action) {
+        override fun update(e: AnActionEvent) {
+          super.update(e)
+          e.presentation.isVisible = e.presentation.isVisible && mode.isInstance(e.getData(PreviewModeManager.KEY)?.mode?.value)
+        }
 
-  override fun update(e: AnActionEvent) {
-    super.update(e)
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+      }
+    else ->
+      object : AnActionWrapper(action) {
+        override fun update(e: AnActionEvent) {
+          super.update(e)
+          e.presentation.isVisible = e.presentation.isVisible && mode.isInstance(e.getData(PreviewModeManager.KEY)?.mode?.value)
+        }
 
-    e.getData(PreviewModeManager.KEY)?.let { e.presentation.isVisible = it.mode.value is PreviewMode.Default }
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+      }
   }
-}
 
+// TODO(b/292057010) Enable group filtering for Gallery mode.
 /**
  * Makes the given action only visible when the preview is in the [PreviewMode.Default] mode. Returns an [AnAction] that handles the
  * visibility.
  */
-fun AnAction.visibleOnlyInDefaultPreview(): AnAction = PreviewDefaultWrapper(listOf(this))
+fun AnAction.visibleOnlyInDefaultPreview(): AnAction = visibleOnlyIn(PreviewMode.Default::class)
 
 /** Makes the given action only visible when the preview is in the [PreviewMode.Focus] mode. */
-fun AnAction.visibleOnlyInFocus(): AnAction =
-  object : AnActionWrapper(this) {
-    override fun update(e: AnActionEvent) {
-      super.update(e)
-      e.presentation.isVisible = e.presentation.isVisible && e.getData(PreviewModeManager.KEY)?.mode?.value is PreviewMode.Focus
-    }
-  }
+fun AnAction.visibleOnlyInFocus(): AnAction = visibleOnlyIn(PreviewMode.Focus::class)
 
 /** Makes the given action only visible when the preview is in the [PreviewMode.Interactive] mode. */
-fun AnAction.visibleOnlyInInteractive(): AnAction =
-  object : AnActionWrapper(this) {
-    override fun update(e: AnActionEvent) {
-      super.update(e)
-      e.presentation.isVisible = e.presentation.isVisible && e.getData(PreviewModeManager.KEY)?.mode?.value is PreviewMode.Interactive
-    }
-  }
+fun AnAction.visibleOnlyInInteractive(): AnAction = visibleOnlyIn(PreviewMode.Interactive::class)
+
+/** Makes the given action only visible when the preview is in the [PreviewMode.UiCheck] mode. */
+fun AnAction.visibleOnlyInUiCheck(): AnAction = visibleOnlyIn(PreviewMode.UiCheck::class)

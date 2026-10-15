@@ -549,6 +549,160 @@ class MaterialIconsUpdaterTest {
     assertThat(downloadDir.resolve("style1/my_icon_2/style1_my_icon_2_24.xml")).exists()
   }
 
+  @Test
+  fun pathTraversalInMetadataIsRejected() {
+    val outsideDir = testDirectory.resolve("outside_dir").apply { createDirectories() }
+    val secretFile = outsideDir.resolve("secret.txt").apply { writeText("do_not_delete") }
+
+    val maliciousMetadataContent =
+      """)]}'
+{
+  "host": "$HOST",
+  "asset_url_pattern": "$PATTERN",
+  "families": [
+    "Style 1",
+    "../../escaped_family",
+    "..\\..\\escaped_backslash"
+  ],
+  "icons": [
+    {
+      "name": "my_icon_1",
+      "version": 2,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59530
+    },
+    {
+      "name": "../../outside_dir",
+      "version": 1,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59531
+    },
+    {
+      "name": "..\\..\\outside_dir",
+      "version": 1,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59532
+    }
+  ],
+  "categories": []
+}
+"""
+    mockDownloadService(
+      listOf(
+        FakeDownload(
+          url = "https://my.host.com/s/i/style1/my_icon_1/v2/24px.xml",
+          downloadPath = "style1/my_icon_1/my_icon_1",
+          destinationPath = "style1/my_icon_1/style1_my_icon_1_24.tmp",
+        )
+      )
+    )
+
+    val existingMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    val maliciousMetadataFile = testDirectory.resolve("malicious_metadata.txt").apply { writeText(maliciousMetadataContent) }.toFile()
+    val maliciousMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(maliciousMetadataFile)).getOrThrow()
+
+    assertTrue(
+      updateIconsAtDir(
+        existingMetadata = existingMetadata,
+        newMetadata = maliciousMetadata,
+        targetDir = downloadDir,
+        iconsUrlProvider = iconsUrlProvider,
+      )
+    )
+
+    // Traversed directories must not be created and sibling files outside downloadDir must not be deleted
+    assertThat(testDirectory.resolve("escaped_family")).doesNotExist()
+    assertThat(secretFile).exists()
+    assertEquals("do_not_delete", secretFile.readText())
+    assertEquals(1, outsideDir.toFile().listFiles()!!.size)
+
+    // Valid icon should still update normally, and invalid families/icons must not be persisted
+    assertEquals(NEW_VD, downloadDir.resolve("style1/my_icon_1/style1_my_icon_1_24.xml").readText())
+    val updatedMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    assertEquals(listOf("Style 1"), updatedMetadata.families.toList())
+    assertEquals(listOf("my_icon_1"), updatedMetadata.icons.map { it.name })
+  }
+
+  @Test
+  fun allInvalidIconsInMetadataDoesNotWipeExistingIcons() {
+    val maliciousMetadataContent =
+      """)]}'
+{
+  "host": "$HOST",
+  "asset_url_pattern": "$PATTERN",
+  "families": [
+    "Style 1"
+  ],
+  "icons": [
+    {
+      "name": "../../outside_dir",
+      "version": 1,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59531
+    }
+  ],
+  "categories": []
+}
+"""
+    val maliciousMetadataFile = testDirectory.resolve("all_malicious_icons.txt").apply { writeText(maliciousMetadataContent) }.toFile()
+    val parseResult = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(maliciousMetadataFile))
+    assertTrue(parseResult.isFailure)
+
+    val currentMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    assertEquals(2, currentMetadata.icons.size)
+    assertThat(downloadDir.resolve("style1/my_icon_1/style1_my_icon_1_24.xml")).exists()
+    assertThat(downloadDir.resolve("style1/my_icon_2/style1_my_icon_2_24.xml")).exists()
+  }
+
+  @Test
+  fun downloadedFileEscapingTargetDirIsDeletedAndNotCleanedUp() {
+    val outsideDir = testDirectory.resolve("outside_dir").apply { createDirectories() }
+    val secretFile = outsideDir.resolve("secret.txt").apply { writeText("do_not_delete") }
+    val traversedTempFile = outsideDir.resolve("traversed.tmp")
+
+    val mockDownloadableFileService = Mockito.mock(DownloadableFileService::class.java)
+    ApplicationManager.getApplication()
+      .registerOrReplaceServiceInstance(DownloadableFileService::class.java, mockDownloadableFileService, projectRule.disposable)
+    val descriptor =
+      DownloadableFileDescriptionImpl(
+        "https://my.host.com/s/i/style1/my_icon_1/v2/24px.xml",
+        FileUtil.toSystemDependentName("style1/my_icon_1/style1_my_icon_1_24"),
+        "tmp",
+      )
+    whenever(mockDownloadableFileService.createFileDescription(Mockito.anyString(), Mockito.anyString())).thenReturn(descriptor)
+    val mockDownloader = Mockito.mock(FileDownloader::class.java)
+    whenever(mockDownloader.download(Mockito.any())).thenAnswer {
+      traversedTempFile.writeText(NEW_VD)
+      listOf(Pair(traversedTempFile.toFile(), descriptor))
+    }
+    whenever(mockDownloadableFileService.createDownloader(Mockito.any(), Mockito.eq("Material Icons"))).thenReturn(mockDownloader)
+
+    val existingMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    val testDownloadedMetadataFile = testDirectory.resolve("downloaded_metadata.txt").apply { writeText(NEW_METADATA_CONTENT) }.toFile()
+    val newMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(testDownloadedMetadataFile)).getOrThrow()
+
+    updateIconsAtDir(
+      existingMetadata = existingMetadata,
+      newMetadata = newMetadata,
+      targetDir = downloadDir,
+      iconsUrlProvider = iconsUrlProvider,
+    )
+
+    // Traversed temp file should be deleted, not renamed, and sibling files in outsideDir must remain intact
+    assertThat(traversedTempFile).doesNotExist()
+    assertThat(secretFile).exists()
+    assertEquals("do_not_delete", secretFile.readText())
+    assertEquals(1, outsideDir.toFile().listFiles()!!.size)
+  }
+
   private fun String.toExpectedJsonFormat(): String {
     val expectedPrefixIndex = NOT_EXECUTABLE_PREFIX.length - 1
     var isInStringToken = false

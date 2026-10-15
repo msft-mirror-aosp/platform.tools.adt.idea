@@ -19,8 +19,11 @@ import com.android.tools.profiler.proto.Memory
 import com.android.tools.profiler.proto.Memory.TrackStatus
 import com.android.tools.profiler.proto.Trace
 import com.google.common.truth.Truth.assertThat
+import com.google.wireless.android.sdk.stats.LeakCanaryTaskMetadata.LeakAnalysis
 import com.google.wireless.android.sdk.stats.TaskFailedMetadata.AllocationTrackStatus
 import com.google.wireless.android.sdk.stats.TaskFailedMetadata.HeapDumpStatus
+import com.google.wireless.android.sdk.stats.TaskFailedMetadata.LeakCanaryProcessingStatus
+import com.google.wireless.android.sdk.stats.TaskFailedMetadata.LeakCanaryStartStatus
 import com.google.wireless.android.sdk.stats.TaskFailedMetadata.TraceStartStatus
 import com.google.wireless.android.sdk.stats.TaskFailedMetadata.TraceStopStatus
 import org.junit.Test
@@ -97,5 +100,58 @@ class TaskMetadataMappersTest {
       val statsProto = action.toStatsProto()
       assertThat(statsProto.name).isEqualTo(action.name)
     }
+  }
+
+  @Test
+  fun testLeakCanaryStartErrorCodeToStatsProto() {
+    for (errorCode in LeakCanaryStartErrorCode.entries) {
+      val statsProto = errorCode.toStatsProto()
+      assertThat(statsProto.errorCode).isEqualTo(LeakCanaryStartStatus.ErrorCode.valueOf(errorCode.name))
+    }
+  }
+
+  @Test
+  fun testLeakCanaryProcessingErrorCodeToStatsProto() {
+    for (errorCode in LeakCanaryProcessingErrorCode.entries) {
+      val statsProto = errorCode.toStatsProto()
+      assertThat(statsProto.errorCode).isEqualTo(LeakCanaryProcessingStatus.ErrorCode.valueOf(errorCode.name))
+    }
+  }
+
+  @Test
+  fun testLeakCanaryLeakAnalysisToStatsProto() {
+    val populatedAnalysis =
+      LeakCanaryLeakAnalysis(
+        retainedObjectsCount = 12,
+        occurrencesCount = 3,
+        estimatedMemoryLeakedBytes = 4096L,
+        leakingNoRows = 4,
+        leakingMaybeRows = 2,
+        leakingYesRows = 1,
+        heapDumpAnalysisTimeMs = 1500L,
+        totalRecordingTimeMs = 8000L,
+        isLibraryLeak = true,
+        hprofFileSizeBytes = 1048576L,
+        hprofDownloadDurationMs = 350L,
+      )
+
+    val statsProto = populatedAnalysis.toStatsProto()
+    assertThat(statsProto.retainedObjectsCount).isEqualTo(12)
+    assertThat(statsProto.occurrencesCount).isEqualTo(3)
+    assertThat(statsProto.estimatedMemoryLeakedBytes).isEqualTo(4096L)
+    assertThat(statsProto.leakingNoRows).isEqualTo(4)
+    assertThat(statsProto.leakingMaybeRows).isEqualTo(2)
+    assertThat(statsProto.leakingYesRows).isEqualTo(1)
+    assertThat(statsProto.heapDumpAnalysisTimeMs).isEqualTo(1500L)
+    assertThat(statsProto.totalRecordingTimeMs).isEqualTo(8000L)
+    assertThat(statsProto.isLibraryLeak).isTrue()
+    assertThat(statsProto.hprofFileSizeBytes).isEqualTo(1048576L)
+    assertThat(statsProto.hprofDownloadDurationMs).isEqualTo(350L)
+  }
+
+  @Test
+  fun testEmptyLeakCanaryLeakAnalysisToStatsProto() {
+    val emptyStatsProto = LeakCanaryLeakAnalysis().toStatsProto()
+    assertThat(emptyStatsProto).isEqualTo(LeakAnalysis.getDefaultInstance())
   }
 }

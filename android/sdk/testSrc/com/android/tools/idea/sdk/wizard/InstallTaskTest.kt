@@ -35,10 +35,16 @@ import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
+import com.android.tools.idea.progress.StudioProgressIndicatorAdapter
+import com.android.tools.idea.sdk.SdkDownloadTracker
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.android.tools.idea.wizard.model.ModelWizard.WizardListener
 import com.android.tools.idea.wizard.model.ModelWizard.WizardResult
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.replaceService
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import org.jetbrains.android.AndroidTestCase
@@ -46,6 +52,7 @@ import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito
 import org.mockito.Mockito.inOrder
+import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when` as whenever
 
@@ -66,6 +73,7 @@ class InstallTaskTest : AndroidTestCase() {
   private lateinit var operations: MutableMap<RepoPackage, PackageOperation>
   private lateinit var installTask: InstallTask
   private lateinit var sdkHandler: AndroidSdkHandler
+  private lateinit var repoManager: FakeRepoManager
   private lateinit var factory: InstallerFactory
   private lateinit var existing1: LocalPackage
 
@@ -75,19 +83,15 @@ class InstallTaskTest : AndroidTestCase() {
     available1 = spy(FakeRemotePackage("p2"))
     available2 = spy(FakeRemotePackage("p3"))
     factory = mock()
-    installer = mock()
-    installer2 = mock()
     uninstaller = mock()
 
     val repoPackages = RepositoryPackages(listOf(existing1), listOf(available1, available2))
-    val repoManager = FakeRepoManager(sdkRoot, repoPackages)
+    repoManager = FakeRepoManager(sdkRoot, repoPackages)
     sdkHandler = AndroidSdkHandler(sdkRoot, sdkRoot, repoManager)
 
-    whenever(installer.prepare(any())).thenReturn(true)
-    whenever(installer2.prepare(any())).thenReturn(true)
+    installer = mockInstaller(available1)
+    installer2 = mockInstaller(available2)
     whenever(uninstaller.prepare(any())).thenReturn(true)
-    whenever(installer.complete(any())).thenReturn(true)
-    whenever(installer2.complete(any())).thenReturn(true)
     whenever(uninstaller.complete(any())).thenReturn(true)
 
     operations =
@@ -101,8 +105,24 @@ class InstallTaskTest : AndroidTestCase() {
     whenever(factory.createInstaller(eq(available2), eq(repoManager), any())).thenReturn(installer2)
     whenever(factory.createUninstaller(existing1, repoManager)).thenReturn(uninstaller)
 
+    // Each test gets its own tracker, so that installs from one don't turn up in another.
+    ApplicationManager.getApplication().replaceService(SdkDownloadTracker::class.java, SdkDownloadTracker(), testRootDisposable)
+
     installTask = createInstallTask()
   }
+
+  /**
+   * An [Installer] mock that prepares and completes successfully, and that knows the things every real operation knows: its package, its
+   * [FakeRepoManager] and its status. [InstallTask] hands its operations to the [SdkDownloadTracker], which reads all three.
+   */
+  private fun mockInstaller(forPackage: RemotePackage): Installer =
+    mock<Installer>().also {
+      whenever(it.prepare(any())).thenReturn(true)
+      whenever(it.complete(any())).thenReturn(true)
+      whenever(it.getPackage()).thenReturn(forPackage)
+      whenever(it.repoManager).thenReturn(repoManager)
+      whenever(it.installStatus).thenReturn(PackageOperation.InstallStatus.NOT_STARTED)
+    }
 
   private fun createInstallTask(completeCallback: ((List<RepoPackage>) -> Unit)? = null): InstallTask =
     InstallTask(
@@ -249,15 +269,55 @@ class InstallTaskTest : AndroidTestCase() {
     Disposer.dispose(wizard)
   }
 
+  fun testCancelWizardCancelsInstall() {
+    val factory = mock<InstallerFactory>()
+    whenever(factory.createInstaller(eq(available1), any(), any())).thenReturn(installer)
+
+    val installStep =
+      InstallSelectedPackagesStep(
+        installRequests = listOf(UpdatablePackage(available1)),
+        sdkHandler = sdkHandler,
+        backgroundable = true,
+        factory = factory,
+      )
+    val prepareStarted = CompletableFuture<Boolean>()
+    val sawCancellation = CompletableFuture<Boolean>()
+    whenever(installer.prepare(any())).thenAnswer { invocation ->
+      // StudioDownloader wraps the indicator in a StudioProgressIndicatorAdapter and polls checkCanceled() as bytes arrive.
+      val progress = StudioProgressIndicatorAdapter(invocation.arguments[0] as ProgressIndicator)
+      prepareStarted.complete(true)
+      val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+      try {
+        while (System.nanoTime() < deadline) {
+          progress.checkCanceled()
+          Thread.sleep(10)
+        }
+      } catch (e: ProcessCanceledException) {
+        sawCancellation.complete(true)
+        throw e
+      }
+      false
+    }
+
+    val wizard = ModelWizard.Builder().addStep(installStep).build()
+    pumpEventsAndWaitForFuture(prepareStarted, 5, TimeUnit.SECONDS)
+
+    wizard.cancel()
+    Disposer.dispose(wizard)
+
+    pumpEventsAndWaitForFuture(sawCancellation, 10, TimeUnit.SECONDS)
+    verify(installer, never()).complete(any())
+  }
+
   fun testProgressWithBackgrounding() {
     val factory = mock<InstallerFactory>()
     val p3 = spy(FakeRemotePackage("p4"))
     val p4 = spy(FakeRemotePackage("p5"))
     whenever(factory.createInstaller(eq(available1), any(), any())).thenReturn(installer)
     whenever(factory.createInstaller(eq(available2), any(), any())).thenReturn(installer2)
-    val installer3 = mock<Installer>()
+    val installer3 = mockInstaller(p3)
     whenever(factory.createInstaller(eq(p3), any(), any())).thenReturn(installer3)
-    val installer4 = mock<Installer>()
+    val installer4 = mockInstaller(p4)
     whenever(factory.createInstaller(eq(p4), any(), any())).thenReturn(installer4)
 
     val installStep =
@@ -320,6 +380,57 @@ class InstallTaskTest : AndroidTestCase() {
     } finally {
       wizard?.let { Disposer.dispose(it) }
     }
+  }
+
+  /** Operations that we're never going to finish have to be abandoned, or they look like they're still being installed. */
+  fun testCancellationAbandonsUnfinishedOperations() {
+    val canceledProgress = FakeProgressIndicator().apply { cancel() }
+
+    try {
+      installTask.execute(canceledProgress)
+      fail("Expected the canceled install to throw")
+    } catch (expected: ProcessCanceledException) {}
+
+    verify(installer).abandon(any())
+    verify(installer2).abandon(any())
+    verify(uninstaller).abandon(any())
+    verify(installer, never()).complete(any())
+  }
+
+  /**
+   * The install runs blocking code, which notices that the task was cancelled the way the downloader and file I/O do: through
+   * [ProgressManager.checkCanceled], which sees the cancellation of the coroutine running it.
+   */
+  fun testCancellingTheTaskCancelsTheInstall() {
+    val prepareStarted = CompletableFuture<Boolean>()
+    val sawCancellation = CompletableFuture<Boolean>()
+    whenever(installer.prepare(any())).thenAnswer {
+      prepareStarted.complete(true)
+      val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+      try {
+        while (System.nanoTime() < deadline) {
+          ProgressManager.checkCanceled()
+          Thread.sleep(10)
+        }
+      } catch (e: ProcessCanceledException) {
+        sawCancellation.complete(true)
+        throw e
+      }
+      false
+    }
+
+    val job = installTask.runAsync()
+    val finished = CompletableFuture<Boolean>()
+    job.invokeOnCompletion { finished.complete(true) }
+
+    pumpEventsAndWaitForFuture(prepareStarted, 5, TimeUnit.SECONDS)
+    job.cancel()
+
+    pumpEventsAndWaitForFuture(sawCancellation, 10, TimeUnit.SECONDS)
+    pumpEventsAndWaitForFuture(finished, 10, TimeUnit.SECONDS)
+    // The install never got to the packages it hadn't started on, so nothing is working on them any more.
+    verify(installer2, never()).prepare(any())
+    verify(installer2).abandon(any())
   }
 
   private inline fun <reified T : Any> mock(): T = Mockito.mock(T::class.java)

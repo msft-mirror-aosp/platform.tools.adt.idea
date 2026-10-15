@@ -15,8 +15,11 @@
  */
 package com.android.tools.idea.run;
 
+import static org.mockito.Mockito.mock;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Ordering;
+import com.intellij.openapi.options.ConfigurationQuickFix;
 import junit.framework.TestCase;
 
 import java.util.List;
@@ -49,5 +52,27 @@ public class ValidationErrorTest extends TestCase {
     assertEquals("fatal2", sortedErrors.get(2).getMessage());
     assertTrue(sortedErrors.get(3).isFatal());
     assertEquals("fatal1", sortedErrors.get(3).getMessage());
+  }
+
+  public void testInfoWithCategoryAndQuickfix() {
+    ConfigurationQuickFix quickfix = mock(ConfigurationQuickFix.class);
+
+    ValidationError error = ValidationError.info("info message", ValidationError.Category.PROFILER, quickfix);
+
+    assertEquals(ValidationError.Severity.INFO, error.getSeverity());
+    assertEquals("info message", error.getMessage());
+    assertEquals(ValidationError.Category.PROFILER, error.getCategory());
+    assertSame(quickfix, error.getQuickfix());
+    assertFalse(error.isFatal());
+  }
+
+  public void testInfoWithoutCategoryOrQuickfix() {
+    ValidationError error = ValidationError.info("info message");
+
+    assertEquals(ValidationError.Severity.INFO, error.getSeverity());
+    assertEquals("info message", error.getMessage());
+    assertNull(error.getCategory());
+    assertNull(error.getQuickfix());
+    assertFalse(error.isFatal());
   }
 }

@@ -24,11 +24,16 @@ import com.android.sdklib.deviceprovisioner.DeviceProperties
 import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.PairedGlassesInfo
+import com.android.tools.adtui.swing.popup.FakeJBPopup.ShowStyle
+import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.devicemanagerv2.DeviceRowData
 import com.android.tools.idea.devicemanagerv2.PairingStatus
 import com.android.tools.idea.wearpairing.WearPairingManager
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.EDT
+import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.TestActionEvent
+import com.intellij.ui.popup.PopupFactoryImpl.ActionItem
 import icons.StudioIcons
 import java.awt.Component
 import kotlinx.coroutines.CoroutineScope
@@ -49,26 +54,35 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PairedDevicesPanelTest {
+  @get:Rule(order = 0) val applicationRule = ApplicationRule()
+  @get:Rule(order = 1) val popupRule = JBPopupRule()
+
   @Test
   fun removeButtonEnabledStatus() = runTestWithFixture {
     val handle2 = createHandle("2")
     deviceHandles.send(listOf(mainHandle, handle2))
     yield()
-    pairedDevices.send(mapOf("1" to listOf(handle2.pairingStatus(WearPairingManager.PairingState.CONNECTING))))
-    yield()
 
     assertThat(panel.removeButton.isEnabled).isFalse()
 
-    pairingTable.selection.selectNextRow()
+    pairedDevices.send(mapOf("1" to listOf(handle2.pairingStatus(WearPairingManager.PairingState.CONNECTING))))
     yield()
 
+    assertThat(panel.selectedPairedDevice).isEqualTo(handle2)
     assertThat(panel.removeButton.isEnabled).isTrue()
+
+    pairedDevices.send(emptyMap())
+    yield()
+
+    assertThat(panel.selectedPairedDevice).isNull()
+    assertThat(panel.removeButton.isEnabled).isFalse()
   }
 
   @Test
@@ -107,11 +121,15 @@ class PairedDevicesPanelTest {
     yield()
 
     assertThat(pairingTable.values).hasSize(1)
+    assertThat(panel.selectedPairedDevice).isEqualTo(handle2)
+    assertThat(panel.removeButton.isEnabled).isTrue()
 
     deviceHandles.send(listOf(mainHandle, handle3))
     yield()
 
     assertThat(pairingTable.values).isEmpty()
+    assertThat(panel.selectedPairedDevice).isNull()
+    assertThat(panel.removeButton.isEnabled).isFalse()
   }
 
   @Test
@@ -152,17 +170,31 @@ class PairedDevicesPanelTest {
     pairedDevices.send(mapOf("1" to listOf(handle2.pairingStatus(WearPairingManager.PairingState.CONNECTED))))
     yield()
 
-    assertThat(panel.removeButton.isEnabled).isFalse()
-
-    pairingTable.selection.selectNextRow()
-    yield()
-
+    assertThat(panel.selectedPairedDevice).isEqualTo(handle2)
     assertThat(panel.removeButton.isEnabled).isTrue()
 
     val presentation = pairingDelegate.getRemovePresentation(mainHandle, handle2)
     assertThat(presentation.isEnabled).isTrue()
     assertThat(presentation.confirmationTitle).isEqualTo("Title")
     assertThat(presentation.confirmationMessage).isEqualTo("Message")
+  }
+
+  @Test
+  fun testSingleDelegateAddButtonInvokesDirectly() = runTest {
+    withContext(Dispatchers.EDT) {
+      val delegate = TestPairingDelegate()
+      val testScope = createChildScope()
+      val handle = FakeDeviceHandle(testScope, "phone1", deviceType = DeviceType.HANDHELD)
+      val panel = PairedDevicesPanel.create(listOf(delegate), testScope, Dispatchers.EDT, handle, emptyFlow())
+      assertThat(panel.addButton.isEnabled).isTrue()
+
+      panel.addButton.doClick()
+      yield()
+
+      assertThat(delegate.wizardShown).isTrue()
+      assertThat(popupRule.fakePopupFactory.popupCount).isEqualTo(0)
+      testScope.cancel()
+    }
   }
 
   @Test
@@ -174,6 +206,21 @@ class PairedDevicesPanelTest {
       val handle = FakeDeviceHandle(testScope, "phone1", deviceType = DeviceType.HANDHELD)
       val panel = PairedDevicesPanel.create(listOf(delegate1, delegate2), testScope, Dispatchers.EDT, handle, emptyFlow())
       assertThat(panel.addButton.isEnabled).isTrue()
+
+      panel.addButton.doClick()
+      val popup = popupRule.fakePopupFactory.getNextListPopup<ActionItem>()
+      assertThat(popup.showStyle).isEqualTo(ShowStyle.SHOW_UNDERNEATH_OF)
+      assertThat(popup.showArgs).containsExactly(panel.addButton)
+      assertThat(popup.items.map { it.text }).containsExactly("Test Pair Device", "Pair AI Glasses...").inOrder()
+
+      popup.actions[0].actionPerformed(TestActionEvent.createTestEvent(popup.actions[0]))
+      yield()
+      assertThat(delegate1.wizardShown).isTrue()
+      assertThat(delegate2.wizardShown).isFalse()
+
+      popup.actions[1].actionPerformed(TestActionEvent.createTestEvent(popup.actions[1]))
+      yield()
+      assertThat(delegate2.wizardShown).isTrue()
       testScope.cancel()
     }
   }
@@ -210,7 +257,7 @@ class PairedDevicesPanelTest {
       PairedDevicesPanel.create(
         listOf(pairingDelegate),
         scope,
-        Dispatchers.EDT,
+        dispatcher,
         mainHandle,
         deviceHandles.consumeAsFlow().stateIn(scope, SharingStarted.Lazily, emptyList()),
       )
@@ -357,6 +404,122 @@ class PairedDevicesPanelTest {
     assertThat(PairedDevicesTable.Status.attribute.value(panel.pairingsTable.values.single())).isEqualTo("Offline")
   }
 
+  @Test
+  fun selectionFallsBackWhenSelectedPairingIsRemoved() = runTestWithFixture {
+    val handle2 = createHandle("2")
+    val handle3 = createHandle("3")
+    deviceHandles.send(listOf(mainHandle, handle2, handle3))
+    yield()
+    pairedDevices.send(mapOf(mainHandle.name to listOf(handle2.pairingStatus(WearPairingManager.PairingState.CONNECTED))))
+    yield()
+
+    assertThat(panel.selectedPairedDevice).isEqualTo(handle2)
+    assertThat(panel.removeButton.isEnabled).isTrue()
+
+    pairedDevices.send(
+      mapOf(
+        mainHandle.name to
+          listOf(
+            handle2.pairingStatus(WearPairingManager.PairingState.CONNECTED),
+            handle3.pairingStatus(WearPairingManager.PairingState.CONNECTED),
+          )
+      )
+    )
+    yield()
+
+    assertThat(pairingTable.values.map { it.handle }).containsExactly(handle2, handle3).inOrder()
+    assertThat(panel.selectedPairedDevice).isEqualTo(handle2)
+
+    pairingTable.selection.selectNextRow()
+    yield()
+
+    assertThat(panel.selectedPairedDevice).isEqualTo(handle3)
+    assertThat(panel.removeButton.isEnabled).isTrue()
+
+    pairedDevices.send(mapOf(mainHandle.name to listOf(handle2.pairingStatus(WearPairingManager.PairingState.CONNECTED))))
+    yield()
+
+    assertThat(pairingTable.values.map { it.handle }).containsExactly(handle2)
+    assertThat(panel.selectedPairedDevice).isEqualTo(handle2)
+    assertThat(panel.removeButton.isEnabled).isTrue()
+
+    pairedDevices.send(emptyMap())
+    yield()
+
+    assertThat(panel.selectedPairedDevice).isNull()
+    assertThat(panel.removeButton.isEnabled).isFalse()
+    panel.removeSelectedPairing()
+  }
+
+  @Test
+  fun removeButtonTracksDeviceStateChanges() = runTest {
+    withContext(Dispatchers.EDT) {
+      val dispatcher = UnconfinedTestDispatcher(testScheduler)
+      val testScope = createChildScope(context = dispatcher)
+      val mainHandle = FakeDeviceHandle(testScope, "1")
+      val handle2 = FakeDeviceHandle(testScope, "2")
+      val statusMap = mapOf("1" to listOf(handle2.pairingStatus(WearPairingManager.PairingState.CONNECTED)))
+      val delegate =
+        object : TestPairingDelegate(flowOf(statusMap)) {
+          override fun getRemovePresentation(handle: DeviceHandle, pairedDevice: DeviceHandle): RemovePresentation =
+            RemovePresentation(
+              isEnabled = handle.state.isOnline() && !handle.state.isTransitioning && !pairedDevice.state.isTransitioning,
+              confirmationTitle = "Title",
+              confirmationMessage = "Message",
+            )
+        }
+      val devicesFlow = MutableStateFlow(listOf(mainHandle, handle2))
+      val panel = PairedDevicesPanel.create(listOf(delegate), testScope, dispatcher, mainHandle, devicesFlow)
+
+      yield()
+      assertThat(panel.selectedPairedDevice).isEqualTo(handle2)
+      assertThat(panel.removeButton.isEnabled).isFalse()
+
+      handle2.setOnline()
+      handle2.stateFlow.value = (handle2.state as DeviceState.Connected).copy(isTransitioning = true)
+      mainHandle.setOnline()
+      yield()
+      assertThat(panel.removeButton.isEnabled).isFalse()
+      panel.removeSelectedPairing()
+
+      handle2.stateFlow.value = (handle2.state as DeviceState.Connected).copy(isTransitioning = false)
+      yield()
+      assertThat(panel.removeButton.isEnabled).isTrue()
+
+      mainHandle.setOffline()
+      yield()
+      assertThat(panel.removeButton.isEnabled).isFalse()
+
+      testScope.cancel()
+    }
+  }
+
+  @Test
+  fun glassesPairingIsSelectedByDefault() = runTest {
+    withContext(Dispatchers.EDT) {
+      val fixture = Fixture(this@runTest, isGlasses = true)
+      val glassesHandle = fixture.createGlassesHandle("glasses1", "phone1")
+
+      fixture.deviceHandles.send(listOf(fixture.mainHandle, glassesHandle))
+      yield()
+      fixture.pairedDevices.send(
+        mapOf("Fake::phone1" to listOf(PairingStatus("Fake::glasses1", "Glasses", WearPairingManager.PairingState.CONNECTED)))
+      )
+      yield()
+
+      assertThat(fixture.panel.selectedPairedDevice).isEqualTo(glassesHandle)
+      assertThat(fixture.panel.removeButton.isEnabled).isTrue()
+
+      fixture.pairedDevices.send(emptyMap())
+      yield()
+
+      assertThat(fixture.panel.selectedPairedDevice).isNull()
+      assertThat(fixture.panel.removeButton.isEnabled).isFalse()
+
+      fixture.scope.cancel()
+    }
+  }
+
   class FakeDeviceHandle(
     override val scope: CoroutineScope,
     val name: String,
@@ -400,6 +563,7 @@ class PairedDevicesPanelTest {
 
   open class TestPairingDelegate(val pairedDevicesFlow: Flow<Map<String, List<PairingStatus>>> = emptyFlow()) : PairingDelegate {
     override val addMenuItemTitle: String = "Test Pair Device"
+    var wizardShown = false
 
     override fun getPairingId(handle: DeviceHandle): String? = handle.state.properties.wearPairingId
 
@@ -409,7 +573,9 @@ class PairedDevicesPanelTest {
 
     override fun isPairDeviceWizardSupported(handle: DeviceHandle): Boolean = true
 
-    override suspend fun showPairDeviceWizard(parent: Component, handle: DeviceHandle) {}
+    override suspend fun showPairDeviceWizard(parent: Component, handle: DeviceHandle) {
+      wizardShown = true
+    }
 
     override fun getRemovePresentation(handle: DeviceHandle, pairedDevice: DeviceHandle): RemovePresentation =
       RemovePresentation(isEnabled = true, confirmationTitle = "Title", confirmationMessage = "Message")

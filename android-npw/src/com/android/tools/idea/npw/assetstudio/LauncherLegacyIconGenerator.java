@@ -32,6 +32,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.ui.UIUtil;
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
@@ -109,6 +110,12 @@ public class LauncherLegacyIconGenerator extends IconGenerator {
   @NotNull
   public LauncherLegacyOptions createOptions(boolean forPreview) {
     LauncherLegacyOptions options = new LauncherLegacyOptions(forPreview);
+    options.shape = myDogEared.get() ? applyDog(myShape.get()) : myShape.get();
+    options.crop = myCropped.get();
+    options.style = Style.SIMPLE;
+    options.backgroundColor = myBackgroundColor.get().getRGB();
+    options.isDogEar = myDogEared.get();
+
     BaseAsset asset = sourceAsset().getValueOrNull();
     if (asset != null) {
       double paddingFactor = asset.paddingPercent().get() / 100.;
@@ -118,15 +125,10 @@ public class LauncherLegacyIconGenerator extends IconGenerator {
       if (color != null) {
         options.foregroundColor = color.getRGB();
       }
-      options.image = new TransformedImageAsset(asset, IMAGE_SIZE_MDPI.getSize(), scaleFactor,
+      Dimension targetSize = getTargetRect(options.shape, Density.MEDIUM).getSize();
+      options.image = new TransformedImageAsset(asset, targetSize, scaleFactor, options.crop,
                                                 color, getGraphicGeneratorContext(), myLineSeparator);
     }
-
-    options.shape = myShape.get();
-    options.crop = myCropped.get();
-    options.style = Style.SIMPLE;
-    options.backgroundColor = myBackgroundColor.get().getRGB();
-    options.isDogEar = myDogEared.get();
 
     return options;
   }

@@ -21,27 +21,19 @@ import com.android.ide.common.gradle.Module
 import com.android.ide.common.gradle.Version
 import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.ide.common.repository.GoogleMavenRepository
-import com.android.ide.common.repository.GoogleMavenRepository.Companion.MAVEN_GOOGLE_CACHE_DIR_KEY
-import com.android.ide.common.repository.GoogleMavenRepositoryV2
-import com.android.ide.common.repository.GoogleMavenRepositoryV2Host
-import com.android.ide.common.repository.IdeNetworkCacheUtils
 import com.android.ide.common.repository.MavenRepositories
-import com.android.ide.common.repository.NetworkCache
 import com.android.ide.common.repository.SdkMavenRepository
 import com.android.io.CancellableFileIo
 import com.android.sdklib.repository.AndroidSdkHandler
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.util.GradleLocalCache
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.android.tools.idea.lint.common.LintIdeSupport
 import com.android.tools.idea.sdk.AndroidSdks
-import com.android.tools.idea.ui.GuiTestingService
 import com.android.tools.lint.checks.GradleDetector.Companion.getLatestVersionFromRemoteRepo
 import com.android.tools.lint.client.api.LintClient
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.collect.ImmutableList
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.thisLogger
@@ -51,7 +43,6 @@ import java.io.File
 import java.nio.file.FileSystem
 import java.nio.file.FileSystems
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Predicate
 
@@ -63,22 +54,16 @@ class RepositoryUrlManager
 constructor(
   private val googleMavenRepositoryProvider: () -> GoogleMavenRepository,
   private val cachedGoogleMavenRepository: GoogleMavenRepository,
-  private val googleMavenRepositoryV2: GoogleMavenRepositoryV2,
-  private val cachedGoogleMavenRepositoryV2: GoogleMavenRepositoryV2,
   private val useEmbeddedStudioRepo: Boolean = true,
 ) {
   @VisibleForTesting
   constructor(
     googleMavenRepository: GoogleMavenRepository,
     cachedGoogleMavenRepository: GoogleMavenRepository,
-    googleMavenRepositoryV2: GoogleMavenRepositoryV2,
-    cachedGoogleMavenRepositoryV2: GoogleMavenRepositoryV2,
     useEmbeddedStudioRepo: Boolean = true,
   ) : this(
     { googleMavenRepository },
     cachedGoogleMavenRepository,
-    googleMavenRepositoryV2,
-    cachedGoogleMavenRepositoryV2,
     useEmbeddedStudioRepo,
   )
 
@@ -87,44 +72,14 @@ constructor(
 
   private val pendingNetworkRequests: MutableSet<String> = ConcurrentHashMap.newKeySet()
   private val logger: Logger = thisLogger()
-  private val useGMavenV2: Boolean = StudioFlags.ENABLE_GMAVEN_REPOSITORY_V2.get()
 
   private fun bestGoogleMavenRepository(): GoogleMavenRepository =
     if (ApplicationManager.getApplication().isDispatchThread) cachedGoogleMavenRepository else googleMavenRepository
-
-  private fun bestGoogleMavenRepositoryV2(): GoogleMavenRepositoryV2 =
-    if (ApplicationManager.getApplication().isDispatchThread) cachedGoogleMavenRepositoryV2 else googleMavenRepositoryV2
 
   internal constructor() :
     this(
       { IdeGoogleMavenRepository.getInstance() },
       OfflineIdeGoogleMavenRepository,
-      GoogleMavenRepositoryV2.create(
-        object : GoogleMavenRepositoryV2Host {
-          override val cacheDir: Path? =
-            if (ApplicationManager.getApplication().isUnitTestMode || GuiTestingService.getInstance().isGuiTestingMode) null
-            else Paths.get(PathManager.getSystemPath()).normalize().resolve(MAVEN_GOOGLE_CACHE_DIR_KEY)
-
-          override fun readUrlData(url: String, timeout: Int, lastModified: Long): NetworkCache.ReadUrlDataResult =
-            IdeNetworkCacheUtils.readHttpUrlData(url, timeout, lastModified)
-
-          override fun error(throwable: Throwable, message: String?) =
-            Logger.getInstance(RepositoryUrlManager::class.java).warn(message, throwable)
-        }
-      ),
-      GoogleMavenRepositoryV2.create(
-        object : GoogleMavenRepositoryV2Host {
-          override val cacheDir: Path? =
-            if (ApplicationManager.getApplication().isUnitTestMode || GuiTestingService.getInstance().isGuiTestingMode) null
-            else Paths.get(PathManager.getSystemPath()).normalize().resolve(MAVEN_GOOGLE_CACHE_DIR_KEY)
-
-          override fun readUrlData(url: String, timeout: Int, lastModified: Long): NetworkCache.ReadUrlDataResult =
-            throw UnsupportedOperationException("Should not be called as it is supposed to be an offline repository")
-
-          override fun error(throwable: Throwable, message: String?) =
-            Logger.getInstance(RepositoryUrlManager::class.java).warn(message, throwable)
-        }
-      ),
       false,
     )
 
@@ -163,12 +118,7 @@ constructor(
     includePreviews: Boolean,
     fileSystem: FileSystem,
   ): Version? {
-    val version: Version? =
-      if (useGMavenV2) {
-        bestGoogleMavenRepositoryV2().findVersion(groupId, artifactId, filter, includePreviews)
-      } else {
-        bestGoogleMavenRepository().findVersion(groupId, artifactId, filter, includePreviews)
-      }
+    val version: Version? = bestGoogleMavenRepository().findVersion(groupId, artifactId, filter, includePreviews)
     if (ApplicationManager.getApplication().isDispatchThread) {
       refreshCacheInBackground(groupId, artifactId)
     }
@@ -198,12 +148,7 @@ constructor(
   }
 
   fun findCompileDependencies(groupId: String, artifactId: String, version: Version): List<Dependency> {
-    val result: List<Dependency> =
-      if (useGMavenV2) {
-        bestGoogleMavenRepositoryV2().findCompileDependencies(groupId, artifactId, version)
-      } else {
-        bestGoogleMavenRepository().findCompileDependencies(groupId, artifactId, version)
-      }
+    val result: List<Dependency> = bestGoogleMavenRepository().findCompileDependencies(groupId, artifactId, version)
     if (ApplicationManager.getApplication().isDispatchThread) {
       refreshCacheInBackground(groupId, artifactId)
     }
@@ -284,22 +229,12 @@ constructor(
     if (ApplicationManager.getApplication().isDispatchThread) {
       refreshCacheInBackground(module.group, module.name)
     }
-    val stableVersion =
-      if (useGMavenV2) {
-        bestGoogleMavenRepositoryV2().findVersion(module.group, module.name, filter, false)
-      } else {
-        bestGoogleMavenRepository().findVersion(module.group, module.name, filter, false)
-      }
+    val stableVersion = bestGoogleMavenRepository().findVersion(module.group, module.name, filter, false)
     if (stableVersion != null) {
       logger.debug("Resolved dependency stable ${module.group}:${module.name}:$stableVersion in GMaven")
       return stableVersion.toString()
     }
-    val previewVersion =
-      if (useGMavenV2) {
-        bestGoogleMavenRepositoryV2().findVersion(module.group, module.name, filter, true)
-      } else {
-        bestGoogleMavenRepository().findVersion(module.group, module.name, filter, true)
-      }
+    val previewVersion = bestGoogleMavenRepository().findVersion(module.group, module.name, filter, true)
     if (previewVersion != null) {
       // Only had preview version; use that (for example, artifacts that haven't been released as stable yet).
       logger.debug("Resolved dependency preview ${module.group}:${module.name}:$previewVersion in GMaven")
@@ -359,11 +294,7 @@ constructor(
         try {
           // We don't care about the result, just the side effect of updating the cache.
           // This will only make a network request if there is no cache or it has expired.
-          if (useGMavenV2) {
-            googleMavenRepositoryV2.findVersion(groupId, artifactId, { true }, true)
-          } else {
-            googleMavenRepository.findVersion(groupId, artifactId, { true }, true)
-          }
+          googleMavenRepository.findVersion(groupId, artifactId, { true }, true)
         } finally {
           pendingNetworkRequests.remove(searchKey)
         }

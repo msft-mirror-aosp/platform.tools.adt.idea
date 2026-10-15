@@ -20,7 +20,10 @@ import com.android.tools.idea.material.icons.common.MaterialSymbolsUrlProvider
 import com.android.tools.idea.material.icons.common.SymbolConfiguration
 import com.android.tools.idea.material.icons.common.Symbols
 import com.android.tools.idea.material.icons.utils.MaterialIconsUtils.METADATA_FILE_NAME
+import com.android.tools.idea.material.icons.utils.MaterialIconsUtils.isValidPathSegment
+import com.android.tools.idea.material.icons.utils.MaterialIconsUtils.isWithinDirectory
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.download.DownloadableFileService
 import java.io.File
 import java.nio.file.Files
@@ -133,8 +136,16 @@ class MaterialSymbolsUpdater {
       symbolName: String,
       materialSymbolsUrlProvider: MaterialSymbolsUrlProvider,
     ) {
-      val folder =
-        materialSymbolsUrlProvider.getLocalSymbolsPath()?.resolve("${symbolConfiguration.type.localName}/${symbolName}") ?: return
+      if (!isValidPathSegment(symbolName)) {
+        LOG.warn("Refusing to download symbol with invalid name: $symbolName")
+        return
+      }
+      val symbolsRoot = materialSymbolsUrlProvider.getLocalSymbolsPath() ?: return
+      val folder = symbolsRoot.resolve("${symbolConfiguration.type.localName}/${symbolName}")
+      if (!isWithinDirectory(symbolsRoot, folder)) {
+        LOG.warn("Refusing to download symbol outside target dir: $folder")
+        return
+      }
       val fileName = symbolConfiguration.toFileName(symbolName)
       val remoteUrl = symbolConfiguration.toUrlString(symbolName)
       downloadAndMove(remoteUrl, "$fileName.tmp", fileName, folder, SYMBOL_VD_DOWNLOADER_NAME)
@@ -157,6 +168,10 @@ class MaterialSymbolsUpdater {
       downloadFolder: File,
       downloaderName: String,
     ) {
+      if (!isValidPathSegment(tempFileName) || !isValidPathSegment(finalFileName)) {
+        LOG.warn("Refusing to download file with invalid file name: temp=$tempFileName final=$finalFileName")
+        return
+      }
       try {
         val downloadService = DownloadableFileService.getInstance()
 
@@ -164,9 +179,27 @@ class MaterialSymbolsUpdater {
 
         val downloader = downloadService.createDownloader(fileDescription, downloaderName)
         val downloadedFile = downloader.download(downloadFolder).first().first
+        if (!isWithinDirectory(downloadFolder, downloadedFile)) {
+          LOG.warn("Refusing to process downloaded file outside target dir: $downloadedFile")
+          FileUtil.delete(downloadedFile)
+          return
+        }
 
-        Files.move(downloadedFile.toPath(), downloadedFile.parentFile.resolve(finalFileName).toPath(), StandardCopyOption.REPLACE_EXISTING)
-        downloadedFile.delete()
+        val parentDir =
+          downloadedFile.parentFile
+            ?: run {
+              LOG.warn("Parent directory is null for downloaded file: $downloadedFile")
+              FileUtil.delete(downloadedFile)
+              return
+            }
+        val targetFile = parentDir.resolve(finalFileName)
+        if (!isWithinDirectory(downloadFolder, targetFile)) {
+          LOG.warn("Refusing to write symbol file outside target dir: $targetFile")
+          FileUtil.delete(downloadedFile)
+          return
+        }
+
+        Files.move(downloadedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
       } catch (e: Throwable) {
         LOG.warn("Download failed for $finalFileName with error: $e")
       }

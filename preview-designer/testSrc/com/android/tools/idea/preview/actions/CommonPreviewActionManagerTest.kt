@@ -32,6 +32,7 @@ import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.surface.NavigationHandler
 import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.AnActionWrapper
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.runInEdt
@@ -231,8 +232,8 @@ class CommonPreviewActionManagerTest {
     val actions = popupMenuActions.getChildren(testEvent)
 
     assertEquals(2, actions.size)
-    assertTrue(actions[0] is com.android.tools.idea.common.actions.CopyResultImageAction)
-    assertTrue(actions[1] is ActionGroup)
+    assertTrue(actions[0] is CopyResultImageAction)
+    assertTrue((actions[1] as AnActionWrapper).delegate is ViewInFocusModeAction)
     actions[1].update(testEvent)
     assertTrue(testEvent.presentation.isVisible)
   }
@@ -249,7 +250,8 @@ class CommonPreviewActionManagerTest {
     val actions = popupMenuActions.getChildren(testEvent)
 
     assertEquals(2, actions.size)
-    assertTrue(actions[0] is com.android.tools.idea.common.actions.CopyResultImageAction)
+    assertTrue(actions[0] is CopyResultImageAction)
+    assertTrue((actions[1] as AnActionWrapper).delegate is ViewInFocusModeAction)
     actions[1].update(testEvent)
     assertFalse(testEvent.presentation.isVisible)
   }

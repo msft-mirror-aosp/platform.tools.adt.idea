@@ -120,14 +120,29 @@ public class TagSnapshotTest {
 
   @Test
   public void testComposeViewReplacement() {
-    @Language("XML") final String imageString = "<androidx.compose.ui.platform.ComposeView xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
-                                                "  android:layout_width=\"wrap_content\"\n" +
-                                                "  android:layout_height=\"wrap_content\" />";
+    @Language("XML") final String withComposableName =
+      "<androidx.compose.ui.platform.ComposeView xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
+      "  xmlns:tools=\"http://schemas.android.com/tools\"\n" +
+      "  android:layout_width=\"wrap_content\"\n" +
+      "  android:layout_height=\"wrap_content\"\n" +
+      "  tools:composableName=\"com.example.MyComposableKt.Preview\" />";
 
-    RenderXmlTag image = XmlParser.parseRootTag(imageString);
-    TagSnapshot button = TagSnapshot.createTagSnapshot(image, null);
-    assertThat(button.toString()).isEqualTo(
-      "TagSnapshot{androidx.compose.ui.tooling.ComposeViewAdapter, attributes=[AttributeSnapshot{layout_width=\"wrap_content\"}, AttributeSnapshot{layout_height=\"wrap_content\"}], children=\n" +
+    RenderXmlTag tagWithComposableName = XmlParser.parseRootTag(withComposableName);
+    TagSnapshot adapterSnapshot = TagSnapshot.createTagSnapshot(tagWithComposableName, null);
+    assertThat(adapterSnapshot.toString()).isEqualTo(
+      "TagSnapshot{androidx.compose.ui.tooling.ComposeViewAdapter, attributes=[AttributeSnapshot{layout_width=\"wrap_content\"}, AttributeSnapshot{layout_height=\"wrap_content\"}, AttributeSnapshot{composableName=\"com.example.MyComposableKt.Preview\"}], children=\n" +
+      "[]\n" +
+      "}");
+
+    @Language("XML") final String withoutComposableName =
+      "<androidx.compose.ui.platform.ComposeView xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
+      "  android:layout_width=\"wrap_content\"\n" +
+      "  android:layout_height=\"wrap_content\" />";
+
+    RenderXmlTag tagWithoutComposableName = XmlParser.parseRootTag(withoutComposableName);
+    TagSnapshot composeViewSnapshot = TagSnapshot.createTagSnapshot(tagWithoutComposableName, null);
+    assertThat(composeViewSnapshot.toString()).isEqualTo(
+      "TagSnapshot{androidx.compose.ui.platform.ComposeView, attributes=[AttributeSnapshot{layout_width=\"wrap_content\"}, AttributeSnapshot{layout_height=\"wrap_content\"}], children=\n" +
       "[]\n" +
       "}");
   }

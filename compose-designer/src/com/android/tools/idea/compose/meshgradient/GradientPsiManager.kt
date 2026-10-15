@@ -67,8 +67,13 @@ internal const val OP_TO = "to"
 internal const val ARG_ROWS = "rows"
 internal const val ARG_COLUMNS = "columns"
 internal const val ARG_HAS_BICUBIC_COLOR = "hasBicubicColor"
-private const val ARG_ROW = "row"
-private const val ARG_COLUMN = "column"
+
+/** Name of the `setVertex` row parameter. */
+internal const val ARG_ROW = "row"
+
+/** Name of the `setVertex` column parameter. */
+internal const val ARG_COLUMN = "column"
+
 internal const val ARG_POSITION = "position"
 internal const val ARG_COLOR = "color"
 internal const val ARG_LEFT_CONTROL_POINT = "leftControlPoint"
@@ -95,6 +100,12 @@ internal const val ARG_END_Y = "endY"
 internal const val ARG_CENTER = "center"
 internal const val ARG_RADIUS = "radius"
 internal const val ARG_TILE_MODE = "tileMode"
+
+/** Positional index of the `setVertex` row argument. */
+internal const val INDEX_ROW = 0
+
+/** Positional index of the `setVertex` column argument. */
+internal const val INDEX_COLUMN = 1
 
 /** Positional index of the `setVertex` position argument. */
 internal const val INDEX_POSITION = 2
@@ -789,8 +800,8 @@ class GradientPsiManager(private val project: Project) {
   private fun parseVertex(call: KtCallExpression, onDynamic: () -> Unit, importsByFile: ImportsByFile): ParsedVertex? {
     if (call.valueArguments.size < 4) return null
 
-    val row = findArgumentExpression(call, ARG_ROW, 0)?.let { parseStaticInt(it, importsByFile) } ?: return null
-    val col = findArgumentExpression(call, ARG_COLUMN, 1)?.let { parseStaticInt(it, importsByFile) } ?: return null
+    val row = findArgumentExpression(call, ARG_ROW, INDEX_ROW)?.let { parseStaticInt(it, importsByFile) } ?: return null
+    val col = findArgumentExpression(call, ARG_COLUMN, INDEX_COLUMN)?.let { parseStaticInt(it, importsByFile) } ?: return null
 
     val unparsedArguments = mutableSetOf<String>()
     /** Evaluates the argument [name] with [parse], recording it as unparsed when it cannot be statically evaluated. */

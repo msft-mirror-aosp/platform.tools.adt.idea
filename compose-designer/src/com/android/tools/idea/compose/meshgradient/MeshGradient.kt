@@ -19,39 +19,24 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.paint
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.PointMode
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
 import com.android.tools.idea.compose.meshgradient.impl.MeshGradientPainter
 
+/**
+ * Draws a mesh gradient of [rows] x [columns] patches whose vertices are given by [points], indexed by row and then by column, with
+ * positions normalized to the composable's size.
+ */
 @Composable
-fun MeshGradient(
-  modifier: Modifier = Modifier,
+internal fun MeshGradient(
   rows: Int,
   columns: Int,
-  hasBicubicColor: Boolean = false,
   points: List<List<MeshGradientPoint>>,
-  showPoints: Boolean = false,
+  modifier: Modifier = Modifier,
+  hasBicubicColor: Boolean = false,
   content: @Composable () -> Unit = {},
-): Unit {
-  val pointSize = with(LocalDensity.current) { 1.5.dp.toPx() }
-  val pointsPaint =
-    remember(pointSize) {
-      Paint().apply {
-        color = Color.White.copy(alpha = 0.4f)
-        strokeWidth = pointSize
-        strokeCap = StrokeCap.Round
-        blendMode = BlendMode.SrcOver
-      }
-    }
+) {
   val gradientPainter =
     remember(rows, columns, hasBicubicColor, points) {
       MeshGradientPainter(rows, columns, hasBicubicColor) {
@@ -74,31 +59,7 @@ fun MeshGradient(
       }
     }
 
-  Box(
-    modifier =
-      modifier.paint(gradientPainter).drawBehind {
-        if (showPoints) {
-          val canvasSize = size
-          var totalPoints = 0
-          for (i in points.indices) {
-            totalPoints += points[i].size
-          }
-          val intermediatePoints = FloatArray(totalPoints * 2)
-          var index = 0
-          for (i in points.indices) {
-            val row = points[i]
-            for (j in row.indices) {
-              val point = row[j]
-              intermediatePoints[index++] = point.position.x * canvasSize.width
-              intermediatePoints[index++] = point.position.y * canvasSize.height
-            }
-          }
-          drawIntoCanvas { canvas -> canvas.drawRawPoints(pointMode = PointMode.Points, points = intermediatePoints, paint = pointsPaint) }
-        }
-      }
-  ) {
-    content()
-  }
+  Box(modifier = modifier.paint(gradientPainter)) { content() }
 }
 
 data class MeshGradientPoint(

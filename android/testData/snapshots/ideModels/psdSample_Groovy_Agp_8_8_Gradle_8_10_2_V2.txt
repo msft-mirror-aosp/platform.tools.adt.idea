@@ -1234,6 +1234,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1249,6 +1256,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1263,6 +1277,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -1285,6 +1306,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1300,6 +1328,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1315,6 +1350,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             ApplicationIdSuffix           : suffix
@@ -1341,6 +1383,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1356,6 +1405,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
         BuildType
             Name                          : specialRelease
             VersionNameSuffix             : vnsSpecial
@@ -1379,6 +1435,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/specialRelease/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/specialRelease/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/specialRelease/baselineProfiles [-]
+            ApiConfigurationName          : specialReleaseApi
+            CompileOnlyConfigurationName  : specialReleaseCompileOnly
+            CompileOnlyApiConfigurationName         : specialReleaseApi
+            ImplementationConfigurationName         : specialReleaseImplementation
+            RuntimeOnlyConfigurationName  : specialReleaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : specialReleaseAnnotationProcessor
+            KaptConfigurationName         : kaptSpecialRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1394,6 +1457,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testSpecialRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testSpecialRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testSpecialRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testSpecialReleaseApi
+                    CompileOnlyConfigurationName  : testSpecialReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testSpecialReleaseApi
+                    ImplementationConfigurationName         : testSpecialReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testSpecialReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testSpecialReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestSpecialRelease
     ProductFlavors
         ProductFlavor
             Name                          : basic
@@ -1412,6 +1482,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/basic/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/basic/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/basic/baselineProfiles [-]
+            ApiConfigurationName          : basicApi
+            CompileOnlyConfigurationName  : basicCompileOnly
+            CompileOnlyApiConfigurationName         : basicApi
+            ImplementationConfigurationName         : basicImplementation
+            RuntimeOnlyConfigurationName  : basicRuntimeOnly
+            AnnotationProcessorConfigurationName    : basicAnnotationProcessor
+            KaptConfigurationName         : kaptBasic
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1427,6 +1504,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestBasic/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestBasic/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestBasicApi
+                    CompileOnlyConfigurationName  : androidTestBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicApi
+                    ImplementationConfigurationName         : androidTestBasicImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestBasic
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1441,6 +1525,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBasic/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testBasic/baselineProfiles [-]
+                    ApiConfigurationName          : testBasicApi
+                    CompileOnlyConfigurationName  : testBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicApi
+                    ImplementationConfigurationName         : testBasicImplementation
+                    RuntimeOnlyConfigurationName  : testBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicAnnotationProcessor
+                    KaptConfigurationName         : kaptTestBasic
         ProductFlavor
             Name                          : paid
             VersionNameSuffix             : vnsFoo
@@ -1475,6 +1566,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/paid/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/paid/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/paid/baselineProfiles [-]
+            ApiConfigurationName          : paidApi
+            CompileOnlyConfigurationName  : paidCompileOnly
+            CompileOnlyApiConfigurationName         : paidApi
+            ImplementationConfigurationName         : paidImplementation
+            RuntimeOnlyConfigurationName  : paidRuntimeOnly
+            AnnotationProcessorConfigurationName    : paidAnnotationProcessor
+            KaptConfigurationName         : kaptPaid
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1490,6 +1588,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestPaid/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestPaid/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestPaidApi
+                    CompileOnlyConfigurationName  : androidTestPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestPaidApi
+                    ImplementationConfigurationName         : androidTestPaidImplementation
+                    RuntimeOnlyConfigurationName  : androidTestPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestPaidAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestPaid
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1504,6 +1609,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testPaid/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testPaid/baselineProfiles [-]
+                    ApiConfigurationName          : testPaidApi
+                    CompileOnlyConfigurationName  : testPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : testPaidApi
+                    ImplementationConfigurationName         : testPaidImplementation
+                    RuntimeOnlyConfigurationName  : testPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testPaidAnnotationProcessor
+                    KaptConfigurationName         : kaptTestPaid
         ProductFlavor
             Name                          : bar
             ApplicationIdSuffix           : barSuffix
@@ -1521,6 +1633,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/bar/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/bar/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/bar/baselineProfiles [-]
+            ApiConfigurationName          : barApi
+            CompileOnlyConfigurationName  : barCompileOnly
+            CompileOnlyApiConfigurationName         : barApi
+            ImplementationConfigurationName         : barImplementation
+            RuntimeOnlyConfigurationName  : barRuntimeOnly
+            AnnotationProcessorConfigurationName    : barAnnotationProcessor
+            KaptConfigurationName         : kaptBar
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1536,6 +1655,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestBar/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestBarApi
+                    CompileOnlyConfigurationName  : androidTestBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBarApi
+                    ImplementationConfigurationName         : androidTestBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBarAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestBar
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1550,6 +1676,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testBar/baselineProfiles [-]
+                    ApiConfigurationName          : testBarApi
+                    CompileOnlyConfigurationName  : testBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testBarApi
+                    ImplementationConfigurationName         : testBarImplementation
+                    RuntimeOnlyConfigurationName  : testBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBarAnnotationProcessor
+                    KaptConfigurationName         : kaptTestBar
         ProductFlavor
             Name                          : otherBar
             Dimension                     : bar
@@ -1572,6 +1705,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/otherBar/jniLibs [-]
             ShadersDirectories            : <ROOT>/app/src/otherBar/shaders [-]
             BaselineProfileDirectories    : <ROOT>/app/src/otherBar/baselineProfiles [-]
+            ApiConfigurationName          : otherBarApi
+            CompileOnlyConfigurationName  : otherBarCompileOnly
+            CompileOnlyApiConfigurationName         : otherBarApi
+            ImplementationConfigurationName         : otherBarImplementation
+            RuntimeOnlyConfigurationName  : otherBarRuntimeOnly
+            AnnotationProcessorConfigurationName    : otherBarAnnotationProcessor
+            KaptConfigurationName         : kaptOtherBar
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1587,6 +1727,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestOtherBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestOtherBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestOtherBar/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestOtherBarApi
+                    CompileOnlyConfigurationName  : androidTestOtherBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestOtherBarApi
+                    ImplementationConfigurationName         : androidTestOtherBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestOtherBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestOtherBarAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestOtherBar
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1601,6 +1748,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testOtherBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testOtherBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testOtherBar/baselineProfiles [-]
+                    ApiConfigurationName          : testOtherBarApi
+                    CompileOnlyConfigurationName  : testOtherBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testOtherBarApi
+                    ImplementationConfigurationName         : testOtherBarImplementation
+                    RuntimeOnlyConfigurationName  : testOtherBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testOtherBarAnnotationProcessor
+                    KaptConfigurationName         : kaptTestOtherBar
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1766,6 +1920,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/basicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/basicBarDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/basicBarDebug/baselineProfiles [-]
+                    ApiConfigurationName          : basicBarDebugApi
+                    CompileOnlyConfigurationName  : basicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : basicBarDebugApi
+                    ImplementationConfigurationName         : basicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : basicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : basicBarDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptBasicBarDebug
                 MultiFlavorSourceProvider
                     Name                          : basicBar
                     Manifest                      : <ROOT>/app/src/basicBar/AndroidManifest.xml [-]
@@ -1778,6 +1939,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/basicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/basicBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/basicBar/baselineProfiles [-]
+                    ApiConfigurationName          : basicBarApi
+                    CompileOnlyConfigurationName  : basicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : basicBarApi
+                    ImplementationConfigurationName         : basicBarImplementation
+                    RuntimeOnlyConfigurationName  : basicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : basicBarAnnotationProcessor
+                    KaptConfigurationName         : kaptBasicBar
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -2069,6 +2237,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestBasicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestBasicBarDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestBasicBarDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestBasicBarDebugApi
+                    CompileOnlyConfigurationName  : androidTestBasicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicBarDebugApi
+                    ImplementationConfigurationName         : androidTestBasicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicBarDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestBasicBarDebug
                 MultiFlavorSourceProvider
                     Name                          : androidTestBasicBar
                     Manifest                      : <ROOT>/app/src/androidTestBasicBar/AndroidManifest.xml [-]
@@ -2081,6 +2256,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestBasicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/androidTestBasicBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestBasicBar/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestBasicBarApi
+                    CompileOnlyConfigurationName  : androidTestBasicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicBarApi
+                    ImplementationConfigurationName         : androidTestBasicBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicBarAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestBasicBar
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support.test.espresso:espresso-core:3.0.2@aar
@@ -2328,6 +2510,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testBasicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBasicBarDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testBasicBarDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testBasicBarDebugApi
+                    CompileOnlyConfigurationName  : testBasicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicBarDebugApi
+                    ImplementationConfigurationName         : testBasicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : testBasicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicBarDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestBasicBarDebug
                 MultiFlavorSourceProvider
                     Name                          : testBasicBar
                     Manifest                      : <ROOT>/app/src/testBasicBar/AndroidManifest.xml [-]
@@ -2340,6 +2529,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testBasicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/app/src/testBasicBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testBasicBar/baselineProfiles [-]
+                    ApiConfigurationName          : testBasicBarApi
+                    CompileOnlyConfigurationName  : testBasicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicBarApi
+                    ImplementationConfigurationName         : testBasicBarImplementation
+                    RuntimeOnlyConfigurationName  : testBasicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicBarAnnotationProcessor
+                    KaptConfigurationName         : kaptTestBasicBar
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -2730,6 +2926,13 @@ MODULE                        : project.dyn_feature
             JniLibsDirectories            : <ROOT>/dyn_feature/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/dyn_feature/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2745,6 +2948,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -2759,6 +2969,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -2781,6 +2998,13 @@ MODULE                        : project.dyn_feature
             JniLibsDirectories            : <ROOT>/dyn_feature/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/dyn_feature/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2796,6 +3020,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2811,6 +3042,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -2832,6 +3070,13 @@ MODULE                        : project.dyn_feature
             JniLibsDirectories            : <ROOT>/dyn_feature/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/dyn_feature/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2847,6 +3092,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
         BuildType
             Name                          : specialRelease
             IsDebuggable                  : false
@@ -2868,6 +3120,13 @@ MODULE                        : project.dyn_feature
             JniLibsDirectories            : <ROOT>/dyn_feature/src/specialRelease/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/specialRelease/shaders [-]
             BaselineProfileDirectories    : <ROOT>/dyn_feature/src/specialRelease/baselineProfiles [-]
+            ApiConfigurationName          : specialReleaseApi
+            CompileOnlyConfigurationName  : specialReleaseCompileOnly
+            CompileOnlyApiConfigurationName         : specialReleaseApi
+            ImplementationConfigurationName         : specialReleaseImplementation
+            RuntimeOnlyConfigurationName  : specialReleaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : specialReleaseAnnotationProcessor
+            KaptConfigurationName         : kaptSpecialRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2883,6 +3142,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testSpecialRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testSpecialRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/testSpecialRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testSpecialReleaseApi
+                    CompileOnlyConfigurationName  : testSpecialReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testSpecialReleaseApi
+                    ImplementationConfigurationName         : testSpecialReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testSpecialReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testSpecialReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestSpecialRelease
     ProductFlavors
         ProductFlavor
             Name                          : basic
@@ -2900,6 +3166,13 @@ MODULE                        : project.dyn_feature
             JniLibsDirectories            : <ROOT>/dyn_feature/src/basic/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/basic/shaders [-]
             BaselineProfileDirectories    : <ROOT>/dyn_feature/src/basic/baselineProfiles [-]
+            ApiConfigurationName          : basicApi
+            CompileOnlyConfigurationName  : basicCompileOnly
+            CompileOnlyApiConfigurationName         : basicApi
+            ImplementationConfigurationName         : basicImplementation
+            RuntimeOnlyConfigurationName  : basicRuntimeOnly
+            AnnotationProcessorConfigurationName    : basicAnnotationProcessor
+            KaptConfigurationName         : kaptBasic
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2915,6 +3188,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestBasic/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/androidTestBasic/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestBasicApi
+                    CompileOnlyConfigurationName  : androidTestBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicApi
+                    ImplementationConfigurationName         : androidTestBasicImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestBasic
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -2929,6 +3209,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testBasic/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/testBasic/baselineProfiles [-]
+                    ApiConfigurationName          : testBasicApi
+                    CompileOnlyConfigurationName  : testBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicApi
+                    ImplementationConfigurationName         : testBasicImplementation
+                    RuntimeOnlyConfigurationName  : testBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicAnnotationProcessor
+                    KaptConfigurationName         : kaptTestBasic
         ProductFlavor
             Name                          : paid
             Dimension                     : foo
@@ -2945,6 +3232,13 @@ MODULE                        : project.dyn_feature
             JniLibsDirectories            : <ROOT>/dyn_feature/src/paid/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/paid/shaders [-]
             BaselineProfileDirectories    : <ROOT>/dyn_feature/src/paid/baselineProfiles [-]
+            ApiConfigurationName          : paidApi
+            CompileOnlyConfigurationName  : paidCompileOnly
+            CompileOnlyApiConfigurationName         : paidApi
+            ImplementationConfigurationName         : paidImplementation
+            RuntimeOnlyConfigurationName  : paidRuntimeOnly
+            AnnotationProcessorConfigurationName    : paidAnnotationProcessor
+            KaptConfigurationName         : kaptPaid
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -2960,6 +3254,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestPaid/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/androidTestPaid/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestPaidApi
+                    CompileOnlyConfigurationName  : androidTestPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestPaidApi
+                    ImplementationConfigurationName         : androidTestPaidImplementation
+                    RuntimeOnlyConfigurationName  : androidTestPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestPaidAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestPaid
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -2974,6 +3275,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testPaid/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/testPaid/baselineProfiles [-]
+                    ApiConfigurationName          : testPaidApi
+                    CompileOnlyConfigurationName  : testPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : testPaidApi
+                    ImplementationConfigurationName         : testPaidImplementation
+                    RuntimeOnlyConfigurationName  : testPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testPaidAnnotationProcessor
+                    KaptConfigurationName         : kaptTestPaid
         ProductFlavor
             Name                          : bar
             Dimension                     : bar
@@ -2990,6 +3298,13 @@ MODULE                        : project.dyn_feature
             JniLibsDirectories            : <ROOT>/dyn_feature/src/bar/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/bar/shaders [-]
             BaselineProfileDirectories    : <ROOT>/dyn_feature/src/bar/baselineProfiles [-]
+            ApiConfigurationName          : barApi
+            CompileOnlyConfigurationName  : barCompileOnly
+            CompileOnlyApiConfigurationName         : barApi
+            ImplementationConfigurationName         : barImplementation
+            RuntimeOnlyConfigurationName  : barRuntimeOnly
+            AnnotationProcessorConfigurationName    : barAnnotationProcessor
+            KaptConfigurationName         : kaptBar
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -3005,6 +3320,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/androidTestBar/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestBarApi
+                    CompileOnlyConfigurationName  : androidTestBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBarApi
+                    ImplementationConfigurationName         : androidTestBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBarAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestBar
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -3019,6 +3341,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/testBar/baselineProfiles [-]
+                    ApiConfigurationName          : testBarApi
+                    CompileOnlyConfigurationName  : testBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testBarApi
+                    ImplementationConfigurationName         : testBarImplementation
+                    RuntimeOnlyConfigurationName  : testBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBarAnnotationProcessor
+                    KaptConfigurationName         : kaptTestBar
         ProductFlavor
             Name                          : otherBar
             Dimension                     : bar
@@ -3035,6 +3364,13 @@ MODULE                        : project.dyn_feature
             JniLibsDirectories            : <ROOT>/dyn_feature/src/otherBar/jniLibs [-]
             ShadersDirectories            : <ROOT>/dyn_feature/src/otherBar/shaders [-]
             BaselineProfileDirectories    : <ROOT>/dyn_feature/src/otherBar/baselineProfiles [-]
+            ApiConfigurationName          : otherBarApi
+            CompileOnlyConfigurationName  : otherBarCompileOnly
+            CompileOnlyApiConfigurationName         : otherBarApi
+            ImplementationConfigurationName         : otherBarImplementation
+            RuntimeOnlyConfigurationName  : otherBarRuntimeOnly
+            AnnotationProcessorConfigurationName    : otherBarAnnotationProcessor
+            KaptConfigurationName         : kaptOtherBar
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -3050,6 +3386,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestOtherBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestOtherBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/androidTestOtherBar/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestOtherBarApi
+                    CompileOnlyConfigurationName  : androidTestOtherBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestOtherBarApi
+                    ImplementationConfigurationName         : androidTestOtherBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestOtherBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestOtherBarAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestOtherBar
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -3064,6 +3407,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testOtherBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testOtherBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/testOtherBar/baselineProfiles [-]
+                    ApiConfigurationName          : testOtherBarApi
+                    CompileOnlyConfigurationName  : testOtherBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testOtherBarApi
+                    ImplementationConfigurationName         : testOtherBarImplementation
+                    RuntimeOnlyConfigurationName  : testOtherBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testOtherBarAnnotationProcessor
+                    KaptConfigurationName         : kaptTestOtherBar
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -3165,6 +3515,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/basicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/basicBarDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/basicBarDebug/baselineProfiles [-]
+                    ApiConfigurationName          : basicBarDebugApi
+                    CompileOnlyConfigurationName  : basicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : basicBarDebugApi
+                    ImplementationConfigurationName         : basicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : basicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : basicBarDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptBasicBarDebug
                 MultiFlavorSourceProvider
                     Name                          : basicBar
                     Manifest                      : <ROOT>/dyn_feature/src/basicBar/AndroidManifest.xml [-]
@@ -3177,6 +3534,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/basicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/basicBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/basicBar/baselineProfiles [-]
+                    ApiConfigurationName          : basicBarApi
+                    CompileOnlyConfigurationName  : basicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : basicBarApi
+                    ImplementationConfigurationName         : basicBarImplementation
+                    RuntimeOnlyConfigurationName  : basicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : basicBarAnnotationProcessor
+                    KaptConfigurationName         : kaptBasicBar
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -3456,6 +3820,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestBasicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestBasicBarDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/androidTestBasicBarDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestBasicBarDebugApi
+                    CompileOnlyConfigurationName  : androidTestBasicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicBarDebugApi
+                    ImplementationConfigurationName         : androidTestBasicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicBarDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestBasicBarDebug
                 MultiFlavorSourceProvider
                     Name                          : androidTestBasicBar
                     Manifest                      : <ROOT>/dyn_feature/src/androidTestBasicBar/AndroidManifest.xml [-]
@@ -3468,6 +3839,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/androidTestBasicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/androidTestBasicBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/androidTestBasicBar/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestBasicBarApi
+                    CompileOnlyConfigurationName  : androidTestBasicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicBarApi
+                    ImplementationConfigurationName         : androidTestBasicBarImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicBarAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestBasicBar
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -3654,6 +4032,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testBasicBarDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testBasicBarDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/testBasicBarDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testBasicBarDebugApi
+                    CompileOnlyConfigurationName  : testBasicBarDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicBarDebugApi
+                    ImplementationConfigurationName         : testBasicBarDebugImplementation
+                    RuntimeOnlyConfigurationName  : testBasicBarDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicBarDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestBasicBarDebug
                 MultiFlavorSourceProvider
                     Name                          : testBasicBar
                     Manifest                      : <ROOT>/dyn_feature/src/testBasicBar/AndroidManifest.xml [-]
@@ -3666,6 +4051,13 @@ MODULE                        : project.dyn_feature
                     JniLibsDirectories            : <ROOT>/dyn_feature/src/testBasicBar/jniLibs [-]
                     ShadersDirectories            : <ROOT>/dyn_feature/src/testBasicBar/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/dyn_feature/src/testBasicBar/baselineProfiles [-]
+                    ApiConfigurationName          : testBasicBarApi
+                    CompileOnlyConfigurationName  : testBasicBarCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicBarApi
+                    ImplementationConfigurationName         : testBasicBarImplementation
+                    RuntimeOnlyConfigurationName  : testBasicBarRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicBarAnnotationProcessor
+                    KaptConfigurationName         : kaptTestBasicBar
                 Dependencies
                     compileClasspath
                         androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
@@ -4042,6 +4434,13 @@ MODULE                        : project.lib
             JniLibsDirectories            : <ROOT>/lib/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/lib/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -4057,6 +4456,13 @@ MODULE                        : project.lib
                     JniLibsDirectories            : <ROOT>/lib/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -4071,6 +4477,13 @@ MODULE                        : project.lib
                     JniLibsDirectories            : <ROOT>/lib/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -4093,6 +4506,13 @@ MODULE                        : project.lib
             JniLibsDirectories            : <ROOT>/lib/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/lib/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -4108,6 +4528,13 @@ MODULE                        : project.lib
                     JniLibsDirectories            : <ROOT>/lib/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -4123,6 +4550,13 @@ MODULE                        : project.lib
                     JniLibsDirectories            : <ROOT>/lib/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>/lib/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-8.8.0 [-]
@@ -4147,6 +4581,13 @@ MODULE                        : project.lib
             JniLibsDirectories            : <ROOT>/lib/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/lib/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/lib/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -4162,6 +4603,13 @@ MODULE                        : project.lib
                     JniLibsDirectories            : <ROOT>/lib/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/lib/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/lib/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -5054,6 +5502,13 @@ MODULE                        : project.nested1
             JniLibsDirectories            : <ROOT>/nested1/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested1/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5069,6 +5524,13 @@ MODULE                        : project.nested1
                     JniLibsDirectories            : <ROOT>/nested1/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested1/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -5083,6 +5545,13 @@ MODULE                        : project.nested1
                     JniLibsDirectories            : <ROOT>/nested1/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested1/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -5105,6 +5574,13 @@ MODULE                        : project.nested1
             JniLibsDirectories            : <ROOT>/nested1/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested1/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5120,6 +5596,13 @@ MODULE                        : project.nested1
                     JniLibsDirectories            : <ROOT>/nested1/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested1/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5135,6 +5618,13 @@ MODULE                        : project.nested1
                     JniLibsDirectories            : <ROOT>/nested1/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested1/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -5156,6 +5646,13 @@ MODULE                        : project.nested1
             JniLibsDirectories            : <ROOT>/nested1/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested1/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5171,6 +5668,13 @@ MODULE                        : project.nested1
                     JniLibsDirectories            : <ROOT>/nested1/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested1/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -5357,6 +5861,13 @@ MODULE                        : project.nested1.deep
             JniLibsDirectories            : <ROOT>/nested1/deep/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/deep/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested1/deep/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5372,6 +5883,13 @@ MODULE                        : project.nested1.deep
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested1/deep/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -5386,6 +5904,13 @@ MODULE                        : project.nested1.deep
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested1/deep/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -5408,6 +5933,13 @@ MODULE                        : project.nested1.deep
             JniLibsDirectories            : <ROOT>/nested1/deep/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/deep/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested1/deep/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5423,6 +5955,13 @@ MODULE                        : project.nested1.deep
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested1/deep/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5438,6 +5977,13 @@ MODULE                        : project.nested1.deep
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested1/deep/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -5459,6 +6005,13 @@ MODULE                        : project.nested1.deep
             JniLibsDirectories            : <ROOT>/nested1/deep/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested1/deep/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested1/deep/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5474,6 +6027,13 @@ MODULE                        : project.nested1.deep
                     JniLibsDirectories            : <ROOT>/nested1/deep/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested1/deep/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested1/deep/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -5674,6 +6234,13 @@ MODULE                        : project.nested2
             JniLibsDirectories            : <ROOT>/nested2/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5689,6 +6256,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -5703,6 +6277,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -5725,6 +6306,13 @@ MODULE                        : project.nested2
             JniLibsDirectories            : <ROOT>/nested2/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5740,6 +6328,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5755,6 +6350,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -5776,6 +6378,13 @@ MODULE                        : project.nested2
             JniLibsDirectories            : <ROOT>/nested2/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -5791,6 +6400,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
     ProductFlavors
         ProductFlavor
             Name                          : basic
@@ -5808,6 +6424,13 @@ MODULE                        : project.nested2
             JniLibsDirectories            : <ROOT>/nested2/src/basic/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/src/basic/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/src/basic/baselineProfiles [-]
+            ApiConfigurationName          : basicApi
+            CompileOnlyConfigurationName  : basicCompileOnly
+            CompileOnlyApiConfigurationName         : basicApi
+            ImplementationConfigurationName         : basicImplementation
+            RuntimeOnlyConfigurationName  : basicRuntimeOnly
+            AnnotationProcessorConfigurationName    : basicAnnotationProcessor
+            KaptConfigurationName         : kaptBasic
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5823,6 +6446,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/androidTestBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/androidTestBasic/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/androidTestBasic/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestBasicApi
+                    CompileOnlyConfigurationName  : androidTestBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicApi
+                    ImplementationConfigurationName         : androidTestBasicImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestBasic
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -5837,6 +6467,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/testBasic/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testBasic/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/testBasic/baselineProfiles [-]
+                    ApiConfigurationName          : testBasicApi
+                    CompileOnlyConfigurationName  : testBasicCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicApi
+                    ImplementationConfigurationName         : testBasicImplementation
+                    RuntimeOnlyConfigurationName  : testBasicRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicAnnotationProcessor
+                    KaptConfigurationName         : kaptTestBasic
         ProductFlavor
             Name                          : paid
             Dimension                     : foo
@@ -5853,6 +6490,13 @@ MODULE                        : project.nested2
             JniLibsDirectories            : <ROOT>/nested2/src/paid/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/src/paid/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/src/paid/baselineProfiles [-]
+            ApiConfigurationName          : paidApi
+            CompileOnlyConfigurationName  : paidCompileOnly
+            CompileOnlyApiConfigurationName         : paidApi
+            ImplementationConfigurationName         : paidImplementation
+            RuntimeOnlyConfigurationName  : paidRuntimeOnly
+            AnnotationProcessorConfigurationName    : paidAnnotationProcessor
+            KaptConfigurationName         : kaptPaid
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -5868,6 +6512,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/androidTestPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/androidTestPaid/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/androidTestPaid/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestPaidApi
+                    CompileOnlyConfigurationName  : androidTestPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestPaidApi
+                    ImplementationConfigurationName         : androidTestPaidImplementation
+                    RuntimeOnlyConfigurationName  : androidTestPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestPaidAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestPaid
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -5882,6 +6533,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/testPaid/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testPaid/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/testPaid/baselineProfiles [-]
+                    ApiConfigurationName          : testPaidApi
+                    CompileOnlyConfigurationName  : testPaidCompileOnly
+                    CompileOnlyApiConfigurationName         : testPaidApi
+                    ImplementationConfigurationName         : testPaidImplementation
+                    RuntimeOnlyConfigurationName  : testPaidRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testPaidAnnotationProcessor
+                    KaptConfigurationName         : kaptTestPaid
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -5938,6 +6596,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/basicDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/basicDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/basicDebug/baselineProfiles [-]
+                    ApiConfigurationName          : basicDebugApi
+                    CompileOnlyConfigurationName  : basicDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : basicDebugApi
+                    ImplementationConfigurationName         : basicDebugImplementation
+                    RuntimeOnlyConfigurationName  : basicDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : basicDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptBasicDebug
                 Dependencies
                     compileClasspath
                     runtimeClasspath
@@ -5968,6 +6633,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/androidTestBasicDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/androidTestBasicDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/androidTestBasicDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestBasicDebugApi
+                    CompileOnlyConfigurationName  : androidTestBasicDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestBasicDebugApi
+                    ImplementationConfigurationName         : androidTestBasicDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestBasicDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestBasicDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestBasicDebug
                 Dependencies
                     compileClasspath
                         module                        : <ROOT>-:nested2-MAIN
@@ -6006,6 +6678,13 @@ MODULE                        : project.nested2
                     JniLibsDirectories            : <ROOT>/nested2/src/testBasicDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/src/testBasicDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/src/testBasicDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testBasicDebugApi
+                    CompileOnlyConfigurationName  : testBasicDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testBasicDebugApi
+                    ImplementationConfigurationName         : testBasicDebugImplementation
+                    RuntimeOnlyConfigurationName  : testBasicDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testBasicDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestBasicDebug
                 Dependencies
                     compileClasspath
                         module                        : <ROOT>-:nested2-MAIN
@@ -6110,6 +6789,13 @@ MODULE                        : project.nested2.deep
             JniLibsDirectories            : <ROOT>/nested2/deep/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/deep/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/deep/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -6125,6 +6811,13 @@ MODULE                        : project.nested2.deep
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/deep/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -6139,6 +6832,13 @@ MODULE                        : project.nested2.deep
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/deep/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -6161,6 +6861,13 @@ MODULE                        : project.nested2.deep
             JniLibsDirectories            : <ROOT>/nested2/deep/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/deep/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/deep/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -6176,6 +6883,13 @@ MODULE                        : project.nested2.deep
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/deep/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -6191,6 +6905,13 @@ MODULE                        : project.nested2.deep
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/deep/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -6212,6 +6933,13 @@ MODULE                        : project.nested2.deep
             JniLibsDirectories            : <ROOT>/nested2/deep/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/deep/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/deep/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -6227,6 +6955,13 @@ MODULE                        : project.nested2.deep
                     JniLibsDirectories            : <ROOT>/nested2/deep/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/deep/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/deep/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -6424,6 +7159,13 @@ MODULE                        : project.nested2.trans.deep2
             JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/main/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/main/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/trans/deep2/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -6439,6 +7181,13 @@ MODULE                        : project.nested2.trans.deep2
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/androidTest/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/androidTest/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/trans/deep2/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -6453,6 +7202,13 @@ MODULE                        : project.nested2.trans.deep2
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/test/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/test/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/trans/deep2/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -6475,6 +7231,13 @@ MODULE                        : project.nested2.trans.deep2
             JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/debug/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/debug/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/trans/deep2/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -6490,6 +7253,13 @@ MODULE                        : project.nested2.trans.deep2
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/androidTestDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/androidTestDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/trans/deep2/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -6505,6 +7275,13 @@ MODULE                        : project.nested2.trans.deep2
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/testDebug/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/testDebug/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/trans/deep2/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -6526,6 +7303,13 @@ MODULE                        : project.nested2.trans.deep2
             JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/release/jniLibs [-]
             ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/release/shaders [-]
             BaselineProfileDirectories    : <ROOT>/nested2/trans/deep2/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -6541,6 +7325,13 @@ MODULE                        : project.nested2.trans.deep2
                     JniLibsDirectories            : <ROOT>/nested2/trans/deep2/src/testRelease/jniLibs [-]
                     ShadersDirectories            : <ROOT>/nested2/trans/deep2/src/testRelease/shaders [-]
                     BaselineProfileDirectories    : <ROOT>/nested2/trans/deep2/src/testRelease/baselineProfiles [-]
+                    ApiConfigurationName          : testReleaseApi
+                    CompileOnlyConfigurationName  : testReleaseCompileOnly
+                    CompileOnlyApiConfigurationName         : testReleaseApi
+                    ImplementationConfigurationName         : testReleaseImplementation
+                    RuntimeOnlyConfigurationName  : testReleaseRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testReleaseAnnotationProcessor
+                    KaptConfigurationName         : kaptTestRelease
     SigningConfigs
         SigningConfig
             Name                          : debug

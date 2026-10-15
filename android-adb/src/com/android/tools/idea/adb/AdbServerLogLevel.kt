@@ -20,7 +20,10 @@ enum class AdbServerLogLevel(val displayText: String, val enabledTags: String) {
   // https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/master/docs/user/adb.1.md#environment-variables
   // The default uses all tags except [sockets, packets, rwx, fdevent].
   MINIMAL("minimal", "adb,usb,sync,sysdeps,transport,jdwp,services,auth,shell,incremental,mdns,mdns-stack"),
-  FULL("full", "all"),
+  // "all:v" enables all VERBOSE logs in ADB >= 37.0.1 (where "all" defaults to DEBUG).
+  // "all" is kept as a fallback for ADB <= 37.0.0 (which ignores "all:v").
+  // "all:v" must come first since matching "all" stops ADB's trace flag parser.
+  FULL("full", "all:v,all"),
   DISABLED("disabled", "");
 
   override fun toString(): String {

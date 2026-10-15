@@ -53,8 +53,6 @@ public final class TestProjectPaths {
   public static final String MODULE_INFO_GRADLE_ONLY = "projects/moduleInfo/gradleOnly";
   public static final String MOVE_WITH_RESOURCES = "projects/moveWithResources";
   public static final String MULTIPLE_MODULE_DEPEND_ON_AAR = "projects/multipleModuleDependOnAar";
-  public static final String NAMESPACES = "projects/namespaces";
-  public static final String NAMESPACES_WITH_APPCOMPAT = "projects/namespaces_with_appcompat";
   public static final String NAVIGATION_EDITOR_BASIC = "projects/navigationEditor/basic";
   public static final String NAVIGATION_EDITOR_INCLUDE_FROM_LIB = "projects/navigationEditor/includeFromLib";
   public static final String NESTED_MODULE = "projects/nestedModule";

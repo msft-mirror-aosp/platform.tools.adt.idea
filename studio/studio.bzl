@@ -724,7 +724,11 @@ def _stamp_platform(ctx, platform, platform_files, added_plugins):
         args.add("--version_component", version_component)
         args.add("--replace_build_number")
         args.add("--replace_selector", system_selector)
-        _stamp(ctx, args, [ctx.info_file], info_plist, stamped_info_plist)
+        srcs = [ctx.info_file]
+        if ctx.file.mac_document_types:
+            args.add("--add_document_types", ctx.file.mac_document_types)
+            srcs.append(ctx.file.mac_document_types)
+        _stamp(ctx, args, srcs, info_plist, stamped_info_plist)
 
     if platform == WIN:
         studio_exe, stamped_studio_exe = _declare_stamped_file(ctx, ret, platform, platform.base_path + "bin/studio64.exe")
@@ -1004,6 +1008,10 @@ _android_studio = rule(
     attrs = {
         "host_platform_name": attr.string(),
         "codesign_entitlements": attr.label(allow_single_file = True),
+        "mac_document_types": attr.label(
+            allow_single_file = [".plist"],
+            doc = "A plist file with an array of CFBundleDocumentTypes entries to add to the macOS Info.plist",
+        ),
         "compress": attr.bool(),
         "essential_plugins": attr.string_list(),
         "jre": attr.label(providers = [StudioDataInfo]),

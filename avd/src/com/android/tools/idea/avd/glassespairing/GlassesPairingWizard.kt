@@ -415,15 +415,41 @@ internal constructor(
             }
 
           if (createdRow != null) {
-            selectedDevice = createdRow
-            val currentSorted = deviceRowFlow.value.sortedWith(compareBy(Collator.getInstance()) { it.name })
-            val index = currentSorted.indexOfFirst { it.handle.id == createdRow.handle.id }
-            if (index >= 0) {
-              state.selectedKeys = setOf(createdRow.handle.id)
-              state.scrollToItem(index)
+            withContext(Dispatchers.UI) {
+              val currentSorted = deviceRowFlow.value.sortedWith(compareBy(Collator.getInstance()) { it.name })
+              selectAndScrollTo(createdRow, currentSorted, state)
             }
           }
         }
+      }
+    }
+  }
+
+  @Composable
+  private fun SyncDefaultDeviceSelection(sortedDevices: ImmutableList<DeviceRow>, state: SingleSelectionLazyListState) {
+    LaunchedEffect(sortedDevices) {
+      val current = selectedDevice?.let { cur -> sortedDevices.find { it.handle.id == cur.handle.id && it.isEnabled } }
+      val target =
+        current
+          ?: sortedDevices
+            .filter { it.isEnabled }
+            .minWithOrNull(compareByDescending<DeviceRow> { it.isConnected }.thenByDescending { it.state.properties.pairedPhoneId == null })
+      selectAndScrollTo(target, sortedDevices, state)
+    }
+  }
+
+  private suspend fun selectAndScrollTo(
+    target: DeviceRow?,
+    sortedDevices: List<DeviceRow>,
+    state: SingleSelectionLazyListState,
+  ) {
+    selectedDevice = target
+    val newKeys = target?.let { setOf(it.handle.id) } ?: emptySet()
+    if (state.selectedKeys != newKeys) {
+      state.selectedKeys = newKeys
+      if (target != null) {
+        val index = sortedDevices.indexOfFirst { it.handle.id == target.handle.id }
+        if (index >= 0) state.scrollToItem(index)
       }
     }
   }
@@ -465,6 +491,7 @@ internal constructor(
       val sortedDevices = remember(devices) { devices.sortedWith(compareBy(Collator.getInstance()) { it.name }).toImmutableList() }
 
       val state = getOrCreateState { SingleSelectionLazyListState(LazyListState()) }
+      SyncDefaultDeviceSelection(sortedDevices, state)
       Column(Modifier.padding(20.dp)) {
         if (sortedDevices.isEmpty()) {
           LargeText(text = "No compatible AVDs found.")
@@ -482,8 +509,10 @@ internal constructor(
           DeviceList(
             sortedDevices,
             onSelectedDeviceChange = {
+              if (selectedDevice?.handle?.id != it.handle.id) {
+                GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_DEVICE_SELECTED)
+              }
               selectedDevice = it
-              GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_DEVICE_SELECTED)
             },
             state,
             Modifier.weight(1f),
@@ -551,6 +580,7 @@ internal constructor(
 
     val component = LocalComponent.current
     val state = getOrCreateState { SingleSelectionLazyListState(LazyListState()) }
+    SyncDefaultDeviceSelection(sortedDevices, state)
 
     var unpairingInProgress by remember { mutableStateOf(false) }
 
@@ -568,8 +598,10 @@ internal constructor(
         DeviceList(
           sortedDevices,
           onSelectedDeviceChange = {
+            if (selectedDevice?.handle?.id != it.handle.id) {
+              GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_DEVICE_SELECTED)
+            }
             selectedDevice = it
-            GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_DEVICE_SELECTED)
           },
           state,
           Modifier.weight(1f),

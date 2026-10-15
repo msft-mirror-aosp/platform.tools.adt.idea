@@ -16,13 +16,17 @@
 package com.android.tools.idea.streaming.emulator.actions
 
 import com.android.emulator.control.ThemingStyle
+import com.android.tools.adtui.actions.updateAndGetActionPresentation
 import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorViewRule
 import com.android.tools.idea.streaming.testutil.newEmulatorView
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.ui.LafManager
 import com.intellij.ide.ui.laf.UIThemeLookAndFeelInfoImpl
+import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
@@ -51,7 +55,7 @@ class EmulatorShowExtendedControlsActionTest {
     ApplicationManager.getApplication().replaceService(LafManager::class.java, mockLafManager, emulatorViewRule.disposable)
 
     val view = emulatorViewRule.newEmulatorView()
-    emulatorViewRule.executeAction("android.emulator.extended.controls", view)
+    emulatorViewRule.executeAction("android.emulator.show.extended.controls", view)
 
     val emulator = emulatorViewRule.getFakeEmulator(view)
     var call = emulator.getNextGrpcCall(2.seconds)
@@ -59,5 +63,21 @@ class EmulatorShowExtendedControlsActionTest {
     assertThat(call.request).isEqualTo(ThemingStyle.newBuilder().setStyle(ThemingStyle.Style.CONTRAST).build())
     call = emulator.getNextGrpcCall(1.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.UiController/showExtendedControls")
+  }
+
+  @Test
+  fun testFlagEnabledHidesAndDisablesAction() {
+    val view = emulatorViewRule.newEmulatorView()
+    val actionId = "android.emulator.show.extended.controls"
+
+    StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
+    val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(presentationDisabled.isVisible).isTrue()
+    assertThat(presentationDisabled.isEnabled).isTrue()
+
+    StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
+    val presentationEnabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(presentationEnabled.isVisible).isFalse()
+    assertThat(presentationEnabled.isEnabled).isFalse()
   }
 }

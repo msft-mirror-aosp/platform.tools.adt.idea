@@ -1318,6 +1318,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT = new BooleanFlag(
     EMBEDDED_EMULATOR, "xr.hand.and.eye.input", "Enable hand and eye input modes for XR AVDs",
     "Enables hand and eye input modes for XR AVDs");
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_XR_HAND_AND_EYE_CURSORS = new BooleanFlag(
+    EMBEDDED_EMULATOR, "xr.hand.and.eye.cursors", "Use hand and eye cursors for XR AVDs",
+    "Enables distinctive cursors for hand and eye input modes for XR AVDs");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_CAMERA_ENVIRONMENT = new BooleanFlag(
     EMBEDDED_EMULATOR, "camera.environment", "Enable Camera Environment",
     "Enables displaying host cameras in the environment menu for AI Glasses");
@@ -1333,6 +1336,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR = new BooleanFlag(
     EMBEDDED_EMULATOR, "display.off.indicator", "Enable Display Off Indicator",
     "Enables displaying \"Display off\" indicator for AI Glasses when display is turned off");
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO = new BooleanFlag(
+    EMBEDDED_EMULATOR, "extended.controls.in.studio", "Enable Extended Controls in Studio",
+    "Replaces external extended controls with the ones implemented in Studio");
   public static final Flag<Boolean> RUNNING_DEVICES_HIDE_TOOL_WINDOW_NAME = new BooleanFlag(
     EMBEDDED_EMULATOR, "hide.tool.window.name", "Hide Tool Window Name",
     "Hides the name of the Running Devices window when it contains any device tabs");
@@ -1415,21 +1421,9 @@ public final class StudioFlags {
   //region Refactorings
   private static final FlagGroup REFACTORINGS = new FlagGroup(FLAGS, "refactor", "Refactor menu");
 
-  public static final Flag<Boolean> MIGRATE_TO_RESOURCE_NAMESPACES_REFACTORING_ENABLED = new BooleanFlag(
-    REFACTORINGS, "migrateto.resourcenamespaces.enabled", "Enable the Migrate to Resource Namespaces refactoring",
-    "If enabled, show the action in the refactoring menu");
-
-
   public static final Flag<Boolean> INFER_ANNOTATIONS_REFACTORING_ENABLED = new BooleanFlag(
     REFACTORINGS, "infer.annotations.enabled", "Enable the Infer Annotations refactoring",
     "If enabled, show the action in the refactoring menu");
-
-  public static final Flag<Boolean> ENABLE_GMAVEN_REPOSITORY_V2 = new BooleanFlag(
-    REFACTORINGS,
-    "gmaven.repository.v2.enabled",
-    "Switches to GMaven Repository V2",
-    "If enabled, uses GMaven Repository V2 to pull data related to packages, artifacts, versions and their dependencies"
-  );
 
   //endregion
 
@@ -3011,12 +3005,6 @@ public final class StudioFlags {
   public static final Flag<Boolean> JOURNEYS_AGENT_EXECUTION = new BooleanFlag(
     JOURNEYS_WITH_GEMINI, "enable.agent.support", "Enable Journeys Agent Execution",
     "Enable running Journeys using an AI agent."
-  );
-  public static final Flag<String> JOURNEYS_AGENT_SKILLS_OVERRIDE_PATH = new StringFlag(
-    JOURNEYS_WITH_GEMINI, "agent.skills.override.path", "Path to local directory overriding bundled Journey skill files",
-    "Path to a directory containing Journey skill markdown files (e.g., 'journeys.md', 'interact.md'). " +
-    "If a file exists in this directory, it overrides the bundled resource.",
-    ""
   );
   // endregion JOURNEYS_WITH_GEMINI
 

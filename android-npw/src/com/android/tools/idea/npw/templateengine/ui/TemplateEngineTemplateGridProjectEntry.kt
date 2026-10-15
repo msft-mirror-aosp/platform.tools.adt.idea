@@ -31,8 +31,8 @@ import com.android.tools.idea.npw.model.NewProjectModuleModel
 import com.android.tools.idea.npw.project.ChooseAndroidProjectEntry
 import com.android.tools.idea.npw.project.GridItem
 import com.android.tools.idea.npw.project.ItemGrid
-import com.android.tools.idea.npw.templateengine.api.ExternalTemplateSpec
 import com.android.tools.idea.npw.templateengine.api.PromotionCardSpec
+import com.android.tools.idea.npw.templateengine.services.ExternalTemplate
 import icons.StudioIllustrationsCompose
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -43,7 +43,10 @@ sealed interface TemplateGalleryItem : GridItem {
   override val title: String
   override val description: String
 
-  data class Standard(val definition: TemplateDefinition) : TemplateGalleryItem {
+  /** A gallery item backed by a declarative [TemplateDefinition], rendered by the template engine. */
+  sealed class Renderable : TemplateGalleryItem {
+    abstract val definition: TemplateDefinition
+
     override val title: String
       get() = definition.name
 
@@ -66,25 +69,16 @@ sealed interface TemplateGalleryItem : GridItem {
     }
   }
 
-  data class Promotion(val spec: PromotionCardSpec) : TemplateGalleryItem {
-    override val title: String
-      get() = spec.title
+  /** A built-in SDK template. */
+  data class Standard(override val definition: TemplateDefinition) : Renderable()
 
-    override val description: String
-      get() = spec.description
-
-    @Composable
-    override fun Icon() {
-      val customThumb = spec.thumb
-      if (customThumb != null) {
-        customThumb()
-      } else {
-        Icon(key = StudioIllustrationsCompose.Wizards.NoActivity, contentDescription = "")
-      }
-    }
+  /** A template contributed by a plugin. */
+  data class External(val template: ExternalTemplate) : Renderable() {
+    override val definition: TemplateDefinition
+      get() = template.definition
   }
 
-  data class External(val spec: ExternalTemplateSpec) : TemplateGalleryItem {
+  data class Promotion(val spec: PromotionCardSpec) : TemplateGalleryItem {
     override val title: String
       get() = spec.title
 
@@ -108,7 +102,12 @@ class TemplateEngineTemplateGridProjectEntry(
   val items: List<TemplateGalleryItem>,
   var onTemplateDoubleClick: () -> Unit = {},
 ) : ChooseAndroidProjectEntry {
-  var selectedItem by mutableStateOf(items.firstOrNull { it is TemplateGalleryItem.Standard } ?: items.firstOrNull())
+  var selectedItem by
+    mutableStateOf(
+      items.firstOrNull { it is TemplateGalleryItem.Standard }
+        ?: items.firstOrNull { it is TemplateGalleryItem.Renderable }
+        ?: items.firstOrNull()
+    )
 
   // Compatibility getter for tests
   val categoryTitle: String
@@ -116,16 +115,16 @@ class TemplateEngineTemplateGridProjectEntry(
 
   // Compatibility getter/setter for ViewModel / Wizard
   var selectedTemplate: TemplateDefinition?
-    get() = (selectedItem as? TemplateGalleryItem.Standard)?.definition
+    get() = (selectedItem as? TemplateGalleryItem.Renderable)?.definition
     set(value) {
       if (value != null) {
-        selectedItem = items.firstOrNull { it is TemplateGalleryItem.Standard && it.definition == value }
+        selectedItem = items.firstOrNull { it is TemplateGalleryItem.Renderable && it.definition == value }
       }
     }
 
   // Compatibility getter for ViewModel / Wizard
   val templates: List<TemplateDefinition>
-    get() = items.filterIsInstance<TemplateGalleryItem.Standard>().map { it.definition }
+    get() = items.filterIsInstance<TemplateGalleryItem.Renderable>().map { it.definition }
 
   @Composable
   override fun AndroidProjectListEntry(isSelected: Boolean, isFocused: Boolean) {

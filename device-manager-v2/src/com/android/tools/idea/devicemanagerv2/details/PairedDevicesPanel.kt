@@ -23,9 +23,12 @@ import com.android.tools.adtui.stdui.CommonButton
 import com.android.tools.idea.devicemanagerv2.PairingStatus
 import com.android.tools.idea.wearpairing.WearPairingManager
 import com.intellij.icons.AllIcons
-import com.intellij.openapi.ui.JBMenuItem
-import com.intellij.openapi.ui.JBPopupMenu
+import com.intellij.ide.DataManager
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.MessageDialogBuilder
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.components.JBScrollPane
 import java.awt.BorderLayout
 import javax.swing.Box
@@ -36,6 +39,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -73,15 +77,19 @@ private constructor(
           0 -> {}
           1 -> scope.launch(uiContext) { supportedDelegates.single().showPairDeviceWizard(this@PairedDevicesPanel, handle) }
           else -> {
-            val popup = JBPopupMenu()
-            for (delegate in supportedDelegates) {
-              val menuItem =
-                JBMenuItem(delegate.addMenuItemTitle).apply {
-                  addActionListener { scope.launch(uiContext) { delegate.showPairDeviceWizard(this@PairedDevicesPanel, handle) } }
+            val actions =
+              DefaultActionGroup(
+                supportedDelegates.map { delegate ->
+                  object : DumbAwareAction(delegate.addMenuItemTitle) {
+                    override fun actionPerformed(e: AnActionEvent) {
+                      scope.launch(uiContext) { delegate.showPairDeviceWizard(this@PairedDevicesPanel, handle) }
+                    }
+                  }
                 }
-              popup.add(menuItem)
-            }
-            popup.show(button, 0, button.height)
+              )
+            JBPopupFactory.getInstance()
+              .createActionGroupPopup(null, actions, DataManager.getInstance().getDataContext(button), false, null, 10)
+              .showUnderneathOf(button)
           }
         }
       }
@@ -113,18 +121,30 @@ private constructor(
       handle.stateFlow.collect {
         val supportedCount = pairingDelegates.count { delegate -> delegate.isPairDeviceWizardSupported(handle) }
         addButton.isEnabled = supportedCount > 0
+        updateRemoveButtonState()
       }
     }
 
     scope.launch(uiContext) {
-      pairingsTable.selection.asFlow().collect { selectedKeys ->
-        val pairedDevice = (selectedKeys.firstOrNull() as? RowKey.ValueRowKey)?.key as? DeviceHandle
-        val delegate = pairedDevice?.let { getDelegateForPairedDevice(it) }
-        val presentation = if (pairedDevice != null && delegate != null) delegate.getRemovePresentation(handle, pairedDevice) else null
-        removeButton.isEnabled = presentation?.isEnabled == true
+      pairingsTable.selection.asFlow().collectLatest {
+        val pairedDevice = selectedPairedDevice
+        if (pairedDevice != null) {
+          pairedDevice.stateFlow.collect { updateRemoveButtonState() }
+        } else {
+          updateRemoveButtonState()
+        }
       }
     }
   }
+
+  val selectedPairedDevice: DeviceHandle?
+    get() {
+      val selected = pairingsTable.selection.selectedKeys().firstOrNull() ?: return null
+      // We don't enable grouping so this will always be a ValueRowKey; removeRowByKey does not
+      // clear selection, so verify the handle is still present in pairingsTable.values.
+      val device = (selected as RowKey.ValueRowKey).key as DeviceHandle
+      return device.takeIf { pairingsTable.values.any { row -> row.handle == it } }
+    }
 
   private fun getDelegateForPairedDevice(pairedDevice: DeviceHandle): PairingDelegate? = pairingDelegates.find {
     it.isDelegateForDevice(handle, pairedDevice)
@@ -132,19 +152,38 @@ private constructor(
 
   fun updatePairedDeviceData(pairedDeviceData: PairedDeviceData) {
     when (pairedDeviceData.pairingState) {
-      WearPairingManager.PairingState.UNKNOWN -> pairingsTable.removeRowByKey(pairedDeviceData.handle)
-      else -> pairingsTable.addOrUpdateRow(pairedDeviceData)
+      WearPairingManager.PairingState.UNKNOWN -> removeDevice(pairedDeviceData.handle)
+      else -> {
+        pairingsTable.addOrUpdateRow(pairedDeviceData)
+        syncSelectionWithRows()
+      }
     }
   }
 
   fun removeDevice(handle: DeviceHandle) {
     pairingsTable.removeRowByKey(handle)
+    syncSelectionWithRows()
+  }
+
+  private fun syncSelectionWithRows() {
+    if (selectedPairedDevice == null) {
+      val firstRow = pairingsTable.values.firstOrNull()
+      if (firstRow == null) {
+        pairingsTable.selection.clear()
+      } else {
+        pairingsTable.selection.selectRow(RowKey.ValueRowKey(firstRow.handle))
+      }
+    }
+  }
+
+  private fun updateRemoveButtonState() {
+    val pairedDevice = selectedPairedDevice
+    val presentation = pairedDevice?.let { device -> getDelegateForPairedDevice(device)?.getRemovePresentation(handle, device) }
+    removeButton.isEnabled = presentation?.isEnabled == true
   }
 
   fun removeSelectedPairing() {
-    val selected = pairingsTable.selection.selectedKeys().firstOrNull() ?: return
-    // We don't enable grouping so this will always be a ValueRowKey
-    val pairedDevice = ((selected as? RowKey.ValueRowKey)?.key as? DeviceHandle) ?: return
+    val pairedDevice = selectedPairedDevice ?: return
     val delegate = getDelegateForPairedDevice(pairedDevice) ?: return
 
     val presentation = delegate.getRemovePresentation(handle, pairedDevice)

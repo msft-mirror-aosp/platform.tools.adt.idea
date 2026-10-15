@@ -58,6 +58,7 @@ import com.android.tools.idea.adddevicedialog.DeviceTable
 import com.android.tools.idea.adddevicedialog.DeviceTableColumns
 import com.android.tools.idea.adddevicedialog.DeviceTableShowDetailsState
 import com.android.tools.idea.adddevicedialog.FormFactor
+import com.android.tools.idea.adddevicedialog.FormFactors
 import com.android.tools.idea.adddevicedialog.LoadingState
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.avdmanager.checkAcceleration
@@ -177,10 +178,11 @@ internal class AddDeviceWizard(
     val deviceTableShowDetailsState = getOrCreateState { DeviceTableShowDetailsState() }
     val lazyListState = getOrCreateState { LazyListState() }
     val tableSortState = getOrCreateState { TableSortState<VirtualDeviceProfile>() }
-    val filterState = getOrCreateState { VirtualDeviceFilterState() }
 
     DeviceLoadingPage(profiles) { profiles ->
       val profiles = remember(profiles) { profiles.filter(virtualDeviceFilter) }
+      val formFactors = remember(profiles) { FormFactor.uniqueValuesOf(profiles) }
+      val filterState = getOrCreateState { VirtualDeviceFilterState(formFactors.firstOrNull() ?: FormFactors.PHONE) }
       val selectionState = getOrCreateState { TableSelectionState<VirtualDeviceProfile>(profiles.find { it.name == "Medium Phone" }) }
 
       // Holds a Device that should be selected as a result of a DeviceUiAction; e.g. when a new
@@ -239,7 +241,7 @@ internal class AddDeviceWizard(
             profiles,
             avdColumns,
             filterContent = {
-              SingleSelectionRadioButtons(FormFactor.uniqueValuesOf(profiles), filterState.formFactorFilter)
+              SingleSelectionRadioButtons(formFactors, filterState.formFactorFilter)
               Divider(orientation = Orientation.Horizontal, Modifier.fillMaxWidth().padding(vertical = 16.dp, horizontal = 2.dp))
               CheckboxRow(
                 "Show obsolete device profiles",
@@ -299,7 +301,8 @@ internal class AddDeviceWizard(
 internal fun Device.toVirtualDeviceProfile(): VirtualDeviceProfile =
   VirtualDeviceProfile.Builder().apply { initializeFromDevice(this@toVirtualDeviceProfile) }.build()
 
-private class VirtualDeviceFilterState : DeviceFilterState<VirtualDeviceProfile>() {
+private class VirtualDeviceFilterState(initialFormFactor: String = FormFactors.PHONE) :
+  DeviceFilterState<VirtualDeviceProfile>(initialFormFactor) {
   var showDeprecated: Boolean by mutableStateOf(false)
 
   override fun apply(row: VirtualDeviceProfile): Boolean = super.apply(row) && (showDeprecated || !row.isDeprecated)

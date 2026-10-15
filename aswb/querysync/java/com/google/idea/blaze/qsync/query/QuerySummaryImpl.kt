@@ -39,10 +39,21 @@ import java.nio.file.Path
  *
  * Instances of the the [Query.Summary] proto are maintained in memory so data should not be added to it unnecessarily.
  */
-data class QuerySummaryImpl(private val proto: Query.Summary) : QuerySummary {
+class QuerySummaryImpl
+private constructor(
+  private val proto: Query.Summary,
+  private val decodedPackages: List<BuildPackageImpl>,
+  private val buildPackagesMap: Map<Label, BuildPackageImpl>,
+  override val packages: PackageSet,
+  override val reverseSubincludeMap: Map<Path, Collection<Path>>,
+  override val allBuildIncludedFiles: Set<Label>,
+  override val packagesWithErrors: Set<Path>,
+  override val packagesWithErrorsCount: Int,
+  override val rulesCount: Int,
+) : QuerySummary {
 
-  override val isCompatibleWithCurrentPluginVersion
-    get(): Boolean = proto.version == PROTO_VERSION
+  override val isCompatibleWithCurrentPluginVersion: Boolean
+    get() = proto.version == PROTO_VERSION
 
   /** Do not generate toString, this object is too large */
   override fun toString(): String {
@@ -52,69 +63,87 @@ data class QuerySummaryImpl(private val proto: Query.Summary) : QuerySummary {
   /** An opaque proto buffer to be serialized with the project state and re-create the [ ] using [QuerySummaryImpl.create]. */
   override fun protoForSerializationOnly(): Query.Summary = proto
 
-  private class BuildPackageImpl(
-    override val packageLabel: Label,
-    sourceFiles: Collection<QueryData.SourceFile>,
-    rules: Collection<QueryData.Rule>,
-    override val hasError: Boolean,
-    override val stamp: Long = 0L,
-  ) : QuerySummary.BuildPackage {
-    override val sourceFilesMap: Map<Label, QueryData.SourceFile> = sourceFiles.associateBy { it.label }
-    override val rulesMap: Map<Label, QueryData.Rule> = rules.associateBy { it.label }
-    override val subincludes: Set<Label> = sourceFiles.flatMap { it.subincliudes }.toSet()
-  }
-
-  override val buildPackages: Collection<QuerySummary.BuildPackage>
-  private val buildPackagesMap: Map<Label, QuerySummary.BuildPackage>
-  override val packagesWithErrors: Set<Path>
-  override val packages: PackageSet
-  override val allBuildIncludedFiles: Set<Label>
-  override val reverseSubincludeMap: Map<Path, Collection<Path>>
-  override val packagesWithErrorsCount: Int
-  override val rulesCount: Int
-
-  init {
-    val lookup = StringLookup(proto.stringStorage.indexedStringsList)
-    buildPackages =
-      proto.buildPackagesList.map { pkg ->
-        val packageLabel =
-          Label.fromWorkspacePackageAndName(
-            lookup.lookupString(pkg.workspace),
-            Path.of(lookup.lookupString(pkg.buildPackage)),
-            Label.PACKAGE_TARGET_NAME,
-          )
-        BuildPackageImpl(
-          packageLabel = packageLabel,
-          sourceFiles = pkg.sourceFilesList.map { lookup.storedSourceFileToSourceFile(it) },
-          rules = pkg.storedRulesList.map { lookup.storedRuleToRule(it) },
-          hasError = pkg.hasError,
-          stamp = pkg.stamp,
-        )
-      }
-
-    buildPackagesMap = buildPackages.associateBy { it.packageLabel }
-
-    packagesWithErrors = buildPackages.asSequence().filter { it.hasError }.map { it.packageLabel.getBuildPackagePath() }.toSet()
-
-    packages = PackageSet(buildPackages.map { it.packageLabel.getBuildPackagePath() }.toSet())
-
-    allBuildIncludedFiles = buildPackages.flatMap { it.subincludes }.toSet()
-
-    reverseSubincludeMap =
-      buildPackages
-        .asSequence()
-        .flatMap { pkg ->
-          pkg.subincludes.asSequence().map { subinclude -> subinclude.toFilePath() to pkg.packageLabel.getBuildPackagePath() }
-        }
-        .groupBy({ it.first }, { it.second })
-        .mapValues { it.value.toSet() }
-
-    packagesWithErrorsCount = buildPackages.count { it.hasError }
-    rulesCount = buildPackages.sumOf { it.rulesMap.size }
-  }
+  override val buildPackages: List<QuerySummary.BuildPackage>
+    get() = decodedPackages
 
   override fun getBuildPackage(packageLabel: Label): QuerySummary.BuildPackage? {
     return buildPackagesMap[packageLabel.getPackageLabel()]
+  }
+
+  override fun withPackageStamps(provider: PackageStampProvider): QuerySummary {
+    val protoPackages = proto.buildPackagesList
+    var anyChanged = false
+    val newPackages = ArrayList<BuildPackageImpl>(decodedPackages.size)
+    var protoBuilder: Query.Summary.Builder? = null
+
+    for (i in decodedPackages.indices) {
+      val pkg = decodedPackages[i]
+      val newStamp = provider.getStamp(pkg)
+      if (newStamp != null && newStamp != pkg.stamp) {
+        if (!anyChanged) {
+          anyChanged = true
+          protoBuilder = proto.toBuilder()
+        }
+        val updatedPkg = pkg.copy(stamp = newStamp)
+        newPackages.add(updatedPkg)
+        protoBuilder!!.setBuildPackages(
+          i,
+          protoPackages[i].toBuilder().setStamp(newStamp).build(),
+        )
+      } else {
+        newPackages.add(pkg)
+      }
+    }
+
+    if (!anyChanged) {
+      return this
+    }
+
+    val updatedProto = protoBuilder!!.build()
+    val updatedMap = newPackages.associateBy { it.packageLabel }
+    return QuerySummaryImpl(
+      proto = updatedProto,
+      decodedPackages = newPackages,
+      buildPackagesMap = updatedMap,
+      packages = packages,
+      reverseSubincludeMap = reverseSubincludeMap,
+      allBuildIncludedFiles = allBuildIncludedFiles,
+      packagesWithErrors = packagesWithErrors,
+      packagesWithErrorsCount = packagesWithErrorsCount,
+      rulesCount = rulesCount,
+    )
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is QuerySummaryImpl) return false
+    return proto == other.proto
+  }
+
+  override fun hashCode(): Int = proto.hashCode()
+
+  private data class BuildPackageImpl(
+    override val packageLabel: Label,
+    override val sourceFilesMap: Map<Label, QueryData.SourceFile>,
+    override val rulesMap: Map<Label, QueryData.Rule>,
+    override val subincludes: Set<Label>,
+    override val hasError: Boolean,
+    override val stamp: Long = 0L,
+  ) : QuerySummary.BuildPackage {
+    constructor(
+      packageLabel: Label,
+      sourceFiles: Collection<QueryData.SourceFile>,
+      rules: Collection<QueryData.Rule>,
+      hasError: Boolean,
+      stamp: Long = 0L,
+    ) : this(
+      packageLabel = packageLabel,
+      sourceFilesMap = sourceFiles.associateBy { it.label },
+      rulesMap = rules.associateBy { it.label },
+      subincludes = sourceFiles.flatMap { it.subincliudes }.toSet(),
+      hasError = hasError,
+      stamp = stamp,
+    )
   }
 
   private class StringIndexer {
@@ -387,7 +416,50 @@ data class QuerySummaryImpl(private val proto: Query.Summary) : QuerySummary {
 
     @JvmStatic
     fun create(proto: Query.Summary): QuerySummary {
-      return QuerySummaryImpl(proto)
+      val lookup = StringLookup(proto.stringStorage.indexedStringsList)
+      val buildPackages =
+        proto.buildPackagesList.map { pkg ->
+          val packageLabel =
+            Label.fromWorkspacePackageAndName(
+              lookup.lookupString(pkg.workspace),
+              Path.of(lookup.lookupString(pkg.buildPackage)),
+              Label.PACKAGE_TARGET_NAME,
+            )
+          BuildPackageImpl(
+            packageLabel = packageLabel,
+            sourceFiles = pkg.sourceFilesList.map { lookup.storedSourceFileToSourceFile(it) },
+            rules = pkg.storedRulesList.map { lookup.storedRuleToRule(it) },
+            hasError = pkg.hasError,
+            stamp = pkg.stamp,
+          )
+        }
+
+      val buildPackagesMap = buildPackages.associateBy { it.packageLabel }
+      val packagesWithErrors = buildPackages.asSequence().filter { it.hasError }.map { it.packageLabel.getBuildPackagePath() }.toSet()
+      val packages = PackageSet(buildPackages.map { it.packageLabel.getBuildPackagePath() }.toSet())
+      val allBuildIncludedFiles = buildPackages.flatMap { it.subincludes }.toSet()
+      val reverseSubincludeMap =
+        buildPackages
+          .asSequence()
+          .flatMap { pkg ->
+            pkg.subincludes.asSequence().map { subinclude -> subinclude.toFilePath() to pkg.packageLabel.getBuildPackagePath() }
+          }
+          .groupBy({ it.first }, { it.second })
+          .mapValues { it.value.toSet() }
+      val packagesWithErrorsCount = buildPackages.count { it.hasError }
+      val rulesCount = buildPackages.sumOf { it.rulesMap.size }
+
+      return QuerySummaryImpl(
+        proto = proto,
+        decodedPackages = buildPackages,
+        buildPackagesMap = buildPackagesMap,
+        packages = packages,
+        reverseSubincludeMap = reverseSubincludeMap,
+        allBuildIncludedFiles = allBuildIncludedFiles,
+        packagesWithErrors = packagesWithErrors,
+        packagesWithErrorsCount = packagesWithErrorsCount,
+        rulesCount = rulesCount,
+      )
     }
 
     @JvmStatic

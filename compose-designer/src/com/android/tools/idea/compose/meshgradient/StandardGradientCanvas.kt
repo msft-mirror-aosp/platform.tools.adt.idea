@@ -100,7 +100,13 @@ internal fun StandardGradientCanvas(state: GradientEditorState, modifier: Modifi
             val brush = state.toBrushGradient()?.let(::createPreviewBrush)
             onDrawBehind {
               if (brush != null) {
-                scale(size.width / brushSize.width, pivot = Offset.Zero) { drawRect(brush, size = brushSize) }
+                // DrawScope.drawRect resolves automatic brush values (Offset.Unspecified, Float.POSITIVE_INFINITY) against
+                // drawContext.size rather than its size argument, and scale only transforms the canvas matrix. Setting
+                // drawContext.size here makes the brush resolve against brushSize; scale (via withTransform) restores it afterwards.
+                scale(size.width / brushSize.width, size.height / brushSize.height, pivot = Offset.Zero) {
+                  drawContext.size = brushSize
+                  drawRect(brush)
+                }
               }
             }
           }
@@ -110,6 +116,11 @@ internal fun StandardGradientCanvas(state: GradientEditorState, modifier: Modifi
             glyph = point.glyph,
             contentDescription = point.contentDescription,
             color = point.color,
+            stateDescription = { formatPointState(point.value()) },
+            onMove = { delta ->
+              val current = point.value()
+              point.onValueChange(movedPoint(current, handlePosition(point, current), delta, previewSize))
+            },
             modifier =
               Modifier.offset {
                 val center = handlePosition(point) * canvasScale
@@ -122,6 +133,17 @@ internal fun StandardGradientCanvas(state: GradientEditorState, modifier: Modifi
   }
 }
 
+private fun formatPointState(point: Offset): String =
+  message("gradient.editor.canvas.point.state", formatCoordinate(point.x), formatCoordinate(point.y))
+
+private fun formatCoordinate(value: Float): String =
+  when {
+    value.isFinite() -> formatFloat(value)
+    value == Float.POSITIVE_INFINITY -> message("gradient.editor.brush.value.infinite")
+    value == Float.NEGATIVE_INFINITY -> message("gradient.editor.brush.value.negative.infinite")
+    else -> message("gradient.editor.brush.value.auto")
+  }
+
 /** Grows the element by [outset] pixels on each side, without changing the size and position it is laid out with. */
 private fun Modifier.outset(outset: Int): Modifier = layout { measurable, constraints ->
   val placeable = measurable.measure(constraints.offset(2 * outset, 2 * outset))
@@ -131,8 +153,8 @@ private fun Modifier.outset(outset: Int): Modifier = layout { measurable, constr
 /**
  * A draggable point of a Brush gradient.
  *
- * @property value returns the current value of the point, in brush pixels as written in code. It is only read during layout, when looking
- *   for the dragged handle and when a drag starts, so moving the point does not recompose the canvas.
+ * @property value returns the current value of the point, in brush pixels as written in code. It is only read during layout, semantics,
+ *   keyboard movement, and when looking for the dragged handle or starting a drag, so moving the point does not recompose the canvas.
  * @property resolve resolves automatic values of the point against the preview size to place the handle.
  */
 private class BrushPoint(

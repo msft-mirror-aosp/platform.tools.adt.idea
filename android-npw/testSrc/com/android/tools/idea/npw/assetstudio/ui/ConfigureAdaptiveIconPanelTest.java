@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
 
 import com.android.resources.Density;
+import com.android.tools.adtui.swing.FakeUi;
 import com.android.tools.adtui.validation.ValidatorPanel;
 import com.android.tools.idea.npw.assetstudio.assets.ImageAsset;
 import com.android.tools.idea.npw.assetstudio.icon.AndroidIconType;
@@ -34,10 +35,18 @@ import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.testFramework.PlatformTestUtil;
 import com.intellij.testFramework.RunsInEdt;
+import com.intellij.ui.components.JBScrollPane;
+import com.intellij.ui.components.JBTabbedPane;
+import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.UIUtil;
+import java.awt.Component;
+import java.awt.Point;
 import java.io.File;
 import java.io.RandomAccessFile;
+import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.SwingUtilities;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.junit.After;
 import org.junit.Before;
@@ -182,5 +191,57 @@ public class ConfigureAdaptiveIconPanelTest {
     assertThat(validatorPanel.hasErrors().get()).isTrue();
     assertThat(panel.getMonochromeAssetValidityState().get().getMessage()).contains("monochrome image");
     assertThat(panel.getMonochromeAssetValidityState().get().getMessage()).contains("too large");
+  }
+
+  @Test
+  public void testTabScrollPanesHaveEmptyBordersAndConsistentUnitIncrement() throws Exception {
+    AndroidFacet facet = AndroidFacet.getInstance(myProjectRule.getFixture().getModule());
+    ValidatorPanel validatorPanel = new ValidatorPanel(myProjectRule.getFixture().getProjectDisposable(), new JPanel());
+    DrawableRenderer renderer = mock(DrawableRenderer.class);
+
+    BoolValueProperty showGrid = new BoolValueProperty(false);
+    BoolValueProperty showSafeZone = new BoolValueProperty(true);
+    AbstractProperty<Density> previewDensity = new ObjectValueProperty<>(Density.XHIGH);
+
+    // Initialize panel with monochrome support enabled so all four tabs are created
+    ConfigureAdaptiveIconPanel panel = new ConfigureAdaptiveIconPanel(
+      myProjectRule.getFixture().getProjectDisposable(), facet, AndroidIconType.LAUNCHER,
+      showGrid, showSafeZone, previewDensity, validatorPanel, renderer, true
+    );
+    Disposer.register(myProjectRule.getFixture().getProjectDisposable(), panel);
+    myInvokeStrategy.updateAllSteps();
+
+    // Layout panel via FakeUi to verify viewport positions across tabs
+    panel.setSize(450, 420);
+    FakeUi fakeUi = new FakeUi(panel, myProjectRule.getFixture().getProjectDisposable());
+    fakeUi.layoutAndDispatchEvents();
+
+    JBTabbedPane tabbedPane = UIUtil.findComponentOfType(panel, JBTabbedPane.class);
+    assertThat(tabbedPane).isNotNull();
+    assertThat(tabbedPane.getTabCount()).isEqualTo(4);
+
+    Point expectedViewportViewLocation = null;
+    for (int tabIndex = 0; tabIndex < tabbedPane.getTabCount(); tabIndex++) {
+      tabbedPane.setSelectedIndex(tabIndex);
+      fakeUi.layoutAndDispatchEvents();
+
+      Component tabComponent = tabbedPane.getComponentAt(tabIndex);
+      JBScrollPane tabScrollPane = UIUtil.findComponentOfType((JComponent)tabComponent, JBScrollPane.class);
+      assertThat(tabScrollPane).isNotNull();
+
+      // Verify every tab scroll pane has an empty border and a vertical scrollbar unit increment of 10
+      assertThat(tabScrollPane.getBorder().getBorderInsets(tabScrollPane)).isEqualTo(JBUI.emptyInsets());
+      assertThat(tabScrollPane.getVerticalScrollBar().getUnitIncrement()).isEqualTo(10);
+
+      // Verify the viewport content origin does not shift when switching between tabs
+      Component viewportView = tabScrollPane.getViewport().getView();
+      Point viewportViewLocation = SwingUtilities.convertPoint(viewportView.getParent(), viewportView.getLocation(), panel);
+      if (expectedViewportViewLocation == null) {
+        expectedViewportViewLocation = viewportViewLocation;
+      }
+      else {
+        assertThat(viewportViewLocation).isEqualTo(expectedViewportViewLocation);
+      }
+    }
   }
 }

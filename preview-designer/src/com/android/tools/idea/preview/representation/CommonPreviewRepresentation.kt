@@ -539,8 +539,15 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       try {
         refreshProgressIndicator.text = message("refresh.progress.indicator.finding.previews")
         val filePreviewElements = previewFlowManager.toRenderPreviewElementsFlow.value.asCollection().toList()
+        val renderedPreviews =
+          previewFlowManager.renderedPreviewElementsFlow.value
+            .takeIf { it is FlowableCollection.Present }
+            ?.asCollection()
+            ?.toList()
 
-        val needsFullRefresh = request.refreshType != CommonPreviewRefreshType.QUALITY && invalidated.getAndSet(false)
+        val needsFullRefresh =
+          request.refreshType != CommonPreviewRefreshType.QUALITY &&
+            (invalidated.getAndSet(false) || renderedPreviews != filePreviewElements)
 
         invalidateIfCancelled.set(needsFullRefresh)
 

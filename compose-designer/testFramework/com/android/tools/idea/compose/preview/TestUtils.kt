@@ -45,6 +45,15 @@ import org.jetbrains.uast.UMethod
 const val COMPOSABLE_ANNOTATION_FQN = "androidx.compose.runtime.Composable"
 const val PREVIEW_TOOLING_PACKAGE = "androidx.compose.ui.tooling.preview"
 
+/**
+ * SavePreviewInNewSizeAction(), EnableUiCheckAction(), AnimationInspectorAction(), EnableInteractiveAction(), DeployToDeviceAction() in
+ * wrappers
+ */
+const val EXPECTED_SCENE_VIEW_TOOLBAR_NUMBER_OF_ACTIONS = 5
+
+/** EnableUiCheckAction(), EnableInteractiveAction(), DeployToDeviceAction() in wrappers */
+const val EXPECTED_SCENE_VIEW_TOOLBAR_VISIBLE_ACTIONS = 3
+
 internal fun UFile.declaredMethods(): Sequence<UMethod> = classes.asSequence().flatMap { it.methods.asSequence() }
 
 fun UFile.method(name: String): UMethod? = declaredMethods().filter { it.name == name }.singleOrNull()

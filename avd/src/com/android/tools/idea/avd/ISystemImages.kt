@@ -20,11 +20,11 @@ import com.android.sdklib.SystemImageSupplier
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Abi
 import com.android.sdklib.repository.AndroidSdkHandler
+import com.android.tools.analytics.CommonMetricsData
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
-import com.android.utils.CpuArchitecture
-import com.android.utils.osArchitecture
+import com.google.wireless.android.sdk.stats.ProductDetails.CpuArchitecture
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.util.SystemInfo
 import kotlin.time.Duration.Companion.days
@@ -127,7 +127,7 @@ internal fun ISystemImage.getServices(): Services {
 internal fun ISystemImage.isSupported(): Boolean = imageWarnings().isEmpty()
 
 private fun ISystemImage.incompatibleArchitectureWarning(): String? =
-  when (osArchitecture) {
+  when (CommonMetricsData.osArchitecture) {
     CpuArchitecture.X86_64 ->
       when (Abi.getEnum(primaryAbiType)) {
         in listOf(Abi.X86_64, Abi.X86) -> null

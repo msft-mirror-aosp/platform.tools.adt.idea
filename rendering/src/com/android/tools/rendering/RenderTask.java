@@ -54,6 +54,7 @@ import com.android.tools.dom.ActivityAttributesSnapshot;
 import com.android.tools.idea.layoutlib.LayoutLibrary;
 import com.android.tools.idea.layoutlib.LayoutLibraryLoader;
 import com.android.tools.idea.layoutlib.RenderParamsFlags;
+import com.android.tools.rendering.api.EnvironmentContext;
 import com.android.tools.rendering.api.IncludeReference;
 import com.android.tools.rendering.api.RenderModelManifest;
 import com.android.tools.rendering.api.RenderModelModule;
@@ -349,8 +350,12 @@ public class RenderTask {
 
   // Workaround for http://b/143378087
   private void clearClassLoader() {
+    clearClassLoader(myModuleClassLoaderReference);
+  }
+
+  private static void clearClassLoader(@NotNull ModuleClassLoaderManager.Reference<?> moduleClassLoaderReference) {
     try {
-      myModuleClassLoaderReference.close();
+      moduleClassLoaderReference.close();
     }
     catch (AlreadyDisposedException e) {
       // The project has already been disposed.
@@ -412,6 +417,7 @@ public class RenderTask {
     }
 
     CompletableFuture<?> finalReleaseFuture = releaseFuture;
+    ModuleClassLoaderManager.Reference<?> moduleClassLoaderReference = myModuleClassLoaderReference;
     return ourDisposeService.submit(() -> {
       try {
         // Wait for all current running operations to complete
@@ -421,6 +427,9 @@ public class RenderTask {
         // We do not care about these exceptions since we are disposing the task anyway
         LOG.debug(e);
       }
+      for (CompletableFuture<?> future : currentRunningFutures) {
+        future.cancel(false);
+      }
       if (finalReleaseFuture != null) {
         try {
           finalReleaseFuture.get(5, TimeUnit.SECONDS);
@@ -428,20 +437,25 @@ public class RenderTask {
         catch (Exception e) {
           LOG.debug(e);
         }
+        finalReleaseFuture.cancel(false);
       }
       try {
         if (renderSessionToDispose != null) {
+          EnvironmentContext environment = myContext.getModule().getEnvironment();
+          CompletableFuture<Void> disposeFuture =
+            disposeRenderSession(renderSessionToDispose, moduleClassLoaderReference, environment);
           try {
-            disposeRenderSession(renderSessionToDispose)
-              .whenComplete((result, ex) -> clearClassLoader())
-              .orTimeout(2, TimeUnit.SECONDS)
-              .join(); // This is running on the dispose thread so wait for the full dispose to happen.
+            disposeFuture.get(2, TimeUnit.SECONDS); // This is running on the dispose thread so wait for the full dispose to happen.
           }
           catch (Exception ignored) {
           }
+          finally {
+            disposeFuture.cancel(false);
+            clearClassLoader(moduleClassLoaderReference);
+          }
         }
         else {
-          clearClassLoader();
+          clearClassLoader(moduleClassLoaderReference);
         }
       }
       finally {
@@ -1529,14 +1543,26 @@ public class RenderTask {
    */
   @NotNull
   private CompletableFuture<Void> disposeRenderSession(@NotNull RenderSession renderSession) {
+    return disposeRenderSession(renderSession, myModuleClassLoaderReference, myContext.getModule().getEnvironment());
+  }
+
+  @NotNull
+  private static CompletableFuture<Void> disposeRenderSession(
+    @NotNull RenderSession renderSession,
+    @NotNull ModuleClassLoaderManager.Reference<?> moduleClassLoaderReference,
+    @NotNull EnvironmentContext environment
+  ) {
     long nativeMemoryUsage =
       LayoutLibraryLoader.getLayoutLibraryProvider().map(LayoutLibraryLoader.LayoutLibraryProvider::getNativeMemoryUsage).orElse(0L);
-    return RenderSessionCleaner.dispose(renderSession, myModuleClassLoaderReference.getClassLoader())
-      .thenRun(() -> {
-        if (nativeMemoryUsage > MAX_NATIVE_MEMORY) {
-          myContext.getModule().getEnvironment().cleanLayoutlibNativeMemory();
-        }
-      });
+    CompletableFuture<Void> disposeFuture =
+      RenderSessionCleaner.dispose(renderSession, moduleClassLoaderReference.getClassLoader());
+    CompletableFuture<Void> cleanupFuture = disposeFuture.whenComplete((result, ex) -> {
+      if (ex == null && nativeMemoryUsage > MAX_NATIVE_MEMORY) {
+        environment.cleanLayoutlibNativeMemory();
+      }
+    });
+    cleanupFuture.whenComplete((result, ex) -> disposeFuture.cancel(false));
+    return cleanupFuture;
   }
 
   @TestOnly

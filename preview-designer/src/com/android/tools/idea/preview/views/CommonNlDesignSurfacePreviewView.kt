@@ -99,7 +99,9 @@ class CommonNlDesignSurfacePreviewView(private val project: Project, surfaceBuil
   @UiThread
   override fun showContent() {
     workbench.hideLoading()
-    workbench.showContent()
+    if (workbench.showContent()) {
+      mainSurface.revalidateScrollArea()
+    }
   }
 
   @UiThread

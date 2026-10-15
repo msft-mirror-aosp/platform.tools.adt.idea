@@ -107,7 +107,10 @@ class UpdateReferenceImagesDialog(
   private var isFirstTestDiscovered = false
   private var isTestSuiteFinished = false
   private var renderedCount = 0
-  private lateinit var tree: CheckboxTree
+  @get:VisibleForTesting
+  lateinit var tree: CheckboxTree
+    private set
+
   private val placeholderLabel = JBLabel("Select a node from the left to see its previews.", JBLabel.CENTER)
   private val classNodeMap = mutableMapOf<String, CheckedTreeNode>()
   private val methodNodeMap = mutableMapOf<String, MutableMap<String, CheckedTreeNode>>()

@@ -83,8 +83,16 @@ open class ComposePreviewRunConfigurationProducer : LazyRunConfigurationProducer
 
   final override fun isConfigurationFromContext(configuration: ComposePreviewRunConfiguration, context: ConfigurationContext): Boolean {
     if (PreviewEssentialsModeManager.isEssentialsModeEnabled) return false
-    context.containingComposePreviewFunction()?.let {
-      val createdFromContext = configuration.composableMethodFqn == it.composePreviewFunctionFqn()
+    val module = context.module ?: context.location?.module
+    val androidHolderModule = (module?.findAndroidModule() ?: module)?.getModuleSystem()?.getHolderModule()
+    context.containingComposePreviewFunction()?.let { ktNamedFunction ->
+      val providerClass = ktNamedFunction.valueParameters.firstNotNullOfOrNull { it.providerClassNameK2() }
+      val createdFromContext =
+        configuration.composableMethodFqn == ktNamedFunction.composePreviewFunctionFqn() &&
+          configuration.providerClassFqn == providerClass &&
+          (configuration.configurationModule.module == null ||
+            androidHolderModule == null ||
+            configuration.configurationModule.module == androidHolderModule)
       if (createdFromContext) {
         // Handle configurations that already exist (e.g. that could have been created from the
         // Preview toolbar).

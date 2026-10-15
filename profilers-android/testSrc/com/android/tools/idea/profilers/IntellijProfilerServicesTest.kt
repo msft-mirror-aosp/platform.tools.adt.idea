@@ -26,6 +26,7 @@ import com.android.tools.idea.projectsystem.AndroidProjectSystem
 import com.android.tools.idea.projectsystem.DependencyType
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
+import com.android.tools.idea.projectsystem.RegisteredDependencyCompatibilityResult
 import com.android.tools.idea.projectsystem.RegisteredDependencyId
 import com.android.tools.idea.projectsystem.RegisteredDependencyQueryId
 import com.android.tools.idea.projectsystem.RegisteringModuleSystem
@@ -36,7 +37,10 @@ import com.android.tools.idea.run.profiler.CpuProfilerConfigsState
 import com.android.tools.nativeSymbolizer.SymbolFilesLocator
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.google.common.truth.Truth.assertThat
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import com.google.common.util.concurrent.SettableFuture
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.execution.process.NopProcessHandler
@@ -58,6 +62,9 @@ import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.PlatformTestUtil
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
+import java.util.function.LongSupplier
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -70,11 +77,13 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.mockito.Mockito
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.spy
+import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 import org.mockito.kotlin.whenever
@@ -231,33 +240,31 @@ class IntellijProfilerServicesTest {
   fun testAddDependencyDoesNothingIfDependencyAlreadyExists() {
     val artifact = GoogleMavenArtifactId.LEAKCANARY
     val mocks = setupDependencyMocks()
-    doReturn(false).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), org.mockito.kotlin.anyOrNull())
+    doReturn(false).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
     whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(true)
 
     mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
     ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
 
-    verify(mocks.services, never()).showConfirmationDialog(any(), any(), any(), org.mockito.kotlin.anyOrNull())
+    verify(mocks.services, never()).showConfirmationDialog(any(), any(), any(), anyOrNull())
     verify(mocks.registeringModuleSystem, never()).registerDependency(any<GoogleMavenArtifactId>(), any())
   }
 
   @Test
-  fun testAddDependencyShowsDialogIfDependencyIsMissing() {
+  fun testAddDependencyAbortsForLeakCanaryIfVersionResolutionReturnsNull() {
     val artifact = GoogleMavenArtifactId.LEAKCANARY
     val mocks = setupDependencyMocks()
     whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
-    doReturn(false).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), org.mockito.kotlin.anyOrNull())
+    doReturn(false).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
 
-    val unresolvedId = mock<RegisteredDependencyId>()
+    val unresolvedId = FakeDependencyId("$artifact:+")
     whenever(mocks.registeringModuleSystem.getRegisteredDependencyId(artifact)).thenReturn(unresolvedId)
     whenever(mocks.registeringModuleSystem.analyzeDependencyCompatibility(any())).thenReturn(null)
 
-    mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+    val future = mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
     ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
 
-    verify(mocks.services)
-      .showConfirmationDialog(any(), eq(artifact), eq(DependencyType.DEBUG_IMPLEMENTATION), org.mockito.kotlin.anyOrNull())
-    verify(mocks.registeringModuleSystem, never()).registerDependency(any<GoogleMavenArtifactId>(), any())
+    assertLeakCanaryInjectionAborted(mocks, future)
   }
 
   @Test
@@ -265,26 +272,207 @@ class IntellijProfilerServicesTest {
     val artifact = GoogleMavenArtifactId.LEAKCANARY
     val mocks = setupDependencyMocks()
     whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
-    doReturn(true).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), org.mockito.kotlin.anyOrNull())
+    doReturn(true).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
     whenever(mocks.syncManager.requestSyncProject(any())).thenReturn(mock())
 
-    // Mock background resolution
-    val unresolvedId = mock<RegisteredDependencyId>()
-    whenever(mocks.registeringModuleSystem.getRegisteredDependencyId(artifact)).thenReturn(unresolvedId)
-
-    val resolvedId = mock<RegisteredDependencyId>()
-    val compatibilityResult = mock<com.android.tools.idea.projectsystem.RegisteredDependencyCompatibilityResult<RegisteredDependencyId>>()
-    whenever(compatibilityResult.compatible).thenReturn(mapOf(unresolvedId to resolvedId))
-
-    whenever(mocks.registeringModuleSystem.analyzeDependencyCompatibility(listOf(unresolvedId)))
-      .thenReturn(com.google.common.util.concurrent.Futures.immediateFuture(compatibilityResult))
+    // Mock background resolution to a pinned stable version.
+    val unresolvedId = FakeDependencyId("$artifact:+")
+    val resolvedId = FakeDependencyId("$artifact:1.0.0")
+    mockLeakCanaryResolution(mocks, unresolvedId, Futures.immediateFuture(compatibilityResult(unresolvedId to resolvedId)))
 
     mocks.services.addDependency(artifact, DependencyType.IMPLEMENTATION)
     ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
 
-    verify(mocks.services).showConfirmationDialog(any(), eq(artifact), eq(DependencyType.IMPLEMENTATION), org.mockito.kotlin.anyOrNull())
+    verify(mocks.services).showConfirmationDialog(any(), eq(artifact), eq(DependencyType.IMPLEMENTATION), eq("$artifact:1.0.0"))
     verify(mocks.registeringModuleSystem).registerDependency(eq(resolvedId), eq(DependencyType.IMPLEMENTATION))
     verify(mocks.syncManager).requestSyncProject(ProjectSystemSyncManager.SyncReason.PROJECT_MODIFIED)
+  }
+
+  @Test
+  fun testAddDependencyAbortsForLeakCanaryIfResolvedToDynamicVersion() {
+    val artifact = GoogleMavenArtifactId.LEAKCANARY
+    val mocks = setupDependencyMocks()
+    whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
+    doReturn(true).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
+
+    val unresolvedId = FakeDependencyId("$artifact:+")
+    val resolvedId = FakeDependencyId("$artifact:+")
+    mockLeakCanaryResolution(mocks, unresolvedId, Futures.immediateFuture(compatibilityResult(unresolvedId to resolvedId)))
+
+    val future = mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+    ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+
+    assertLeakCanaryInjectionAborted(mocks, future)
+  }
+
+  @Test
+  fun testAddDependencyAbortsForLeakCanaryIfResolvedToPreviewVersion() {
+    val artifact = GoogleMavenArtifactId.LEAKCANARY
+    val mocks = setupDependencyMocks()
+    whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
+    doReturn(true).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
+
+    val unresolvedId = FakeDependencyId("$artifact:+")
+    val resolvedId = FakeDependencyId("$artifact:1.1.0-alpha01")
+    mockLeakCanaryResolution(mocks, unresolvedId, Futures.immediateFuture(compatibilityResult(unresolvedId to resolvedId)))
+
+    val future = mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+    ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+
+    assertLeakCanaryInjectionAborted(mocks, future)
+  }
+
+  @Test
+  fun testAddDependencyAbortsForLeakCanaryIfArtifactNotResolved() {
+    val artifact = GoogleMavenArtifactId.LEAKCANARY
+    val mocks = setupDependencyMocks()
+    whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
+    doReturn(true).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
+
+    // The result has no version for the dependency (e.g. not found).
+    val unresolvedId = FakeDependencyId("$artifact:+")
+    mockLeakCanaryResolution(mocks, unresolvedId, Futures.immediateFuture(compatibilityResult()))
+
+    val future = mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+    ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+
+    assertLeakCanaryInjectionAborted(mocks, future)
+  }
+
+  @Test
+  fun testAddDependencyAbortsForLeakCanaryIfVersionResolutionFails() {
+    val artifact = GoogleMavenArtifactId.LEAKCANARY
+    val mocks = setupDependencyMocks()
+    whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
+    doReturn(true).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
+
+    val unresolvedId = FakeDependencyId("$artifact:+")
+    mockLeakCanaryResolution(mocks, unresolvedId, Futures.immediateFailedFuture(RuntimeException("Network failure")))
+
+    val future = mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+    ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+
+    assertLeakCanaryInjectionAborted(mocks, future)
+  }
+
+  @Test
+  fun testAddDependencyKeepsExistingBehaviorForNonLeakCanaryArtifact() {
+    // The stable version check is only for LeakCanary. Other artifacts keep the '+' fallback.
+    val artifact = GoogleMavenArtifactId.ANDROIDX_APPCOMPAT
+    val mocks = setupDependencyMocks()
+    whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
+    doReturn(false).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
+
+    val unresolvedId = FakeDependencyId("$artifact:+")
+    whenever(mocks.registeringModuleSystem.getRegisteredDependencyId(artifact)).thenReturn(unresolvedId)
+    whenever(mocks.registeringModuleSystem.analyzeDependencyCompatibility(any())).thenReturn(null)
+
+    mocks.services.addDependency(artifact, DependencyType.IMPLEMENTATION)
+    ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+
+    verify(mocks.services).showConfirmationDialog(any(), eq(artifact), eq(DependencyType.IMPLEMENTATION), eq("$artifact:+"))
+    verify(mocks.registeringModuleSystem, never()).registerDependency(any<RegisteredDependencyId>(), any())
+  }
+
+  @Test
+  fun testAddDependencyDoesNotCancelOrCacheFailedCompatibilityAnalysis() {
+    // On failure we stop waiting, never cancel the lookup, and cache nothing.
+    val artifact = GoogleMavenArtifactId.LEAKCANARY
+    val mocks = setupDependencyMocks()
+    whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
+
+    val unresolvedId = FakeDependencyId("$artifact:+")
+    val lookup = SettableFuture.create<RegisteredDependencyCompatibilityResult<RegisteredDependencyId>>()
+    lookup.setException(RuntimeException("Network failure"))
+    mockLeakCanaryResolution(mocks, unresolvedId, lookup)
+
+    val future = mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+    ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+
+    assertLeakCanaryInjectionAborted(mocks, future)
+    assertThat(lookup.isCancelled).isFalse()
+    assertThat(mocks.services.dependencyVersionResolver.getCached(leakCanaryKey())).isNull()
+  }
+
+  @Test
+  fun testTimeoutAbortsWithoutCancelingAndRetryUsesLateResult() {
+    val artifact = GoogleMavenArtifactId.LEAKCANARY
+    val mocks = setupDependencyMocks(DependencyVersionResolver(System::nanoTime, 50))
+    whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
+    doReturn(false).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
+
+    val unresolvedId = FakeDependencyId("$artifact:+")
+    val lookup = SettableFuture.create<RegisteredDependencyCompatibilityResult<RegisteredDependencyId>>()
+    mockLeakCanaryResolution(mocks, unresolvedId, lookup)
+
+    // The lookup doesn't finish in time: the injection is aborted, but the lookup keeps running.
+    val first = mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+    ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+    assertLeakCanaryInjectionAborted(mocks, first)
+    assertThat(lookup.isCancelled).isFalse()
+
+    // It finishes later with nobody waiting. The retry uses its result, no new lookup.
+    lookup.set(compatibilityResult(unresolvedId to FakeDependencyId("$artifact:1.0.0")))
+    mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+    ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+
+    verify(mocks.registeringModuleSystem, times(1)).analyzeDependencyCompatibility(any())
+    verify(mocks.services).showConfirmationDialog(any(), eq(artifact), eq(DependencyType.DEBUG_IMPLEMENTATION), eq("$artifact:1.0.0"))
+  }
+
+  @Test
+  fun testAddDependencyReusesRecentlyResolvedVersion() {
+    val artifact = GoogleMavenArtifactId.LEAKCANARY
+    val mocks = setupDependencyMocks()
+    whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
+    doReturn(false).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
+
+    val unresolvedId = FakeDependencyId("$artifact:+")
+    val resolvedId = FakeDependencyId("$artifact:1.0.0")
+    mockLeakCanaryResolution(mocks, unresolvedId, Futures.immediateFuture(compatibilityResult(unresolvedId to resolvedId)))
+
+    repeat(2) {
+      mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+      ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+    }
+
+    // The second try uses the cached version, no new lookup.
+    verify(mocks.registeringModuleSystem, times(1)).analyzeDependencyCompatibility(any())
+    verify(mocks.services, times(2))
+      .showConfirmationDialog(any(), eq(artifact), eq(DependencyType.DEBUG_IMPLEMENTATION), eq("$artifact:1.0.0"))
+  }
+
+  @Test
+  fun testAddDependencyLooksUpVersionAgainAfterCacheExpires() {
+    val artifact = GoogleMavenArtifactId.LEAKCANARY
+    var nowNs = 1_000L
+    val mocks = setupDependencyMocks(DependencyVersionResolver(LongSupplier { nowNs }, TimeUnit.SECONDS.toMillis(20)))
+    whenever(mocks.androidModuleSystem.hasResolvedDependency(any())).thenReturn(false)
+    doReturn(false).whenever(mocks.services).showConfirmationDialog(any(), any(), any(), anyOrNull())
+
+    val unresolvedId = FakeDependencyId("$artifact:+")
+    val resolvedId = FakeDependencyId("$artifact:1.0.0")
+    mockLeakCanaryResolution(mocks, unresolvedId, Futures.immediateFuture(compatibilityResult(unresolvedId to resolvedId)))
+
+    mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+    ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+
+    nowNs += DependencyVersionResolver.CACHE_TTL_NS + 1
+    mocks.services.addDependency(artifact, DependencyType.DEBUG_IMPLEMENTATION)
+    ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+
+    verify(mocks.registeringModuleSystem, times(2)).analyzeDependencyCompatibility(any())
+  }
+
+  @Test
+  fun testDisposeDisposesDependencyVersionResolver() {
+    val resolver = DependencyVersionResolver()
+    val services = IntellijProfilerServices(project, mock<SymbolFilesLocator>(), resolver)
+    assertThat(resolver.cache(leakCanaryKey(), FakeDependencyId("${GoogleMavenArtifactId.LEAKCANARY}:1.0.0"))).isTrue()
+
+    Disposer.dispose(services)
+
+    assertThat(resolver.getCached(leakCanaryKey())).isNull()
   }
 
   @Test
@@ -297,7 +485,7 @@ class IntellijProfilerServicesTest {
     ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
 
     assertThat(future.get()).isFalse()
-    verify(mocks.services, never()).showConfirmationDialog(any(), any(), any(), org.mockito.kotlin.anyOrNull())
+    verify(mocks.services, never()).showConfirmationDialog(any(), any(), any(), anyOrNull())
   }
 
   @Test
@@ -310,7 +498,7 @@ class IntellijProfilerServicesTest {
     ApplicationManager.getApplication().invokeAndWait { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
 
     assertThat(future.get()).isFalse()
-    verify(mocks.services, never()).showConfirmationDialog(any(), any(), any(), org.mockito.kotlin.anyOrNull())
+    verify(mocks.services, never()).showConfirmationDialog(any(), any(), any(), anyOrNull())
   }
 
   private data class DependencyMocks(
@@ -322,7 +510,7 @@ class IntellijProfilerServicesTest {
     val configurationModule: AndroidRunConfigurationModule,
   )
 
-  private fun setupDependencyMocks(): DependencyMocks {
+  private fun setupDependencyMocks(resolver: DependencyVersionResolver = DependencyVersionResolver()): DependencyMocks {
     val projectSystemService = mock<ProjectSystemService>()
     val androidProjectSystem = mock<AndroidProjectSystem>()
     val androidModuleSystem = mock<AndroidModuleSystem>()
@@ -352,13 +540,47 @@ class IntellijProfilerServicesTest {
     whenever(module.project).thenReturn(project)
 
     // Re-create services as a spy for this test
-    val actualInstance = IntellijProfilerServices(project, mock<SymbolFilesLocator>())
+    val actualInstance = IntellijProfilerServices(project, mock<SymbolFilesLocator>(), resolver)
     Disposer.register(disposableRule.disposable, actualInstance)
     val servicesSpy = spy(actualInstance)
     doReturn(featureTracker).whenever(servicesSpy).featureTracker
     spiesToDispose.add(actualInstance)
 
     return DependencyMocks(servicesSpy, androidModuleSystem, registeringModuleSystem, syncManager, runManager, configurationModule)
+  }
+
+  /** A [RegisteredDependencyId] whose [toString] returns a Gradle coordinate, mirroring `GradleRegisteredDependencyId`. */
+  private class FakeDependencyId(private val coordinate: String) : RegisteredDependencyId {
+    override fun toString(): String = coordinate
+  }
+
+  /** The lookup key for LeakCanary in the "app" module used by [setupDependencyMocks]. */
+  private fun leakCanaryKey() = DependencyVersionResolver.Key("app", GoogleMavenArtifactId.LEAKCANARY)
+
+  private fun compatibilityResult(
+    vararg compatible: Pair<RegisteredDependencyId, RegisteredDependencyId>
+  ): RegisteredDependencyCompatibilityResult<RegisteredDependencyId> =
+    RegisteredDependencyCompatibilityResult(compatible = mapOf(*compatible), incompatible = listOf(), warning = "")
+
+  private fun mockLeakCanaryResolution(
+    mocks: DependencyMocks,
+    unresolvedId: RegisteredDependencyId,
+    result: ListenableFuture<RegisteredDependencyCompatibilityResult<RegisteredDependencyId>>,
+  ) {
+    whenever(mocks.registeringModuleSystem.getRegisteredDependencyId(GoogleMavenArtifactId.LEAKCANARY)).thenReturn(unresolvedId)
+    whenever(mocks.registeringModuleSystem.analyzeDependencyCompatibility(listOf(unresolvedId))).thenReturn(result)
+  }
+
+  private fun assertLeakCanaryInjectionAborted(mocks: DependencyMocks, future: CompletableFuture<Boolean>) {
+    assertThat(future.get()).isFalse()
+    verify(mocks.services, never()).showConfirmationDialog(any(), any(), any(), anyOrNull())
+    verify(mocks.registeringModuleSystem, never()).registerDependency(any<RegisteredDependencyId>(), any())
+    verify(project.getService(AndroidNotification::class.java))
+      .showBalloon(
+        eq("LeakCanary"),
+        eq(IntellijProfilerServices.LEAKCANARY_VERSION_NOT_RESOLVED_MESSAGE),
+        eq(NotificationType.WARNING),
+      )
   }
 
   private fun mockProjectAttributes(project: Project) {

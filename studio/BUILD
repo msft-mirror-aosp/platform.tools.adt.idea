@@ -388,7 +388,6 @@ studio_plugin(
             "//tools/base/backup/bmgr-parser:studio.android.sdktools.backup.bmgr.parser",
             "//tools/base/build-analyzer/common:studio.android.build-analyzer.common",
             "//tools/base/build-system/builder-model:studio.android.sdktools.builder-model",
-            "//tools/base/build-system/builder-test-api:studio.android.sdktools.builder-test-api",
             "//tools/base/adblib:studio.android.sdktools.adblib",
             "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility",
             "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools",
@@ -407,6 +406,7 @@ studio_plugin(
             "//tools/base/lint:studio.android.sdktools.lint-model",
             "//tools/base/manifest-parser:studio.android.sdktools.manifest-parser",
             "//tools/base/mlkit-common:studio.android.sdktools.mlkit-common",
+            "//tools/base/multipreview-asm:studio.android.sdktools.multipreview-asm",
             "//tools/base/ninepatch:studio.android.sdktools.ninepatch",
             "//tools/base/perflib:studio.android.sdktools.perflib",
             "//tools/base/process-monitor:studio.android.sdktools.process-monitor",
@@ -695,7 +695,7 @@ studio_plugin(
         "//tools/vendor/google/firebase-provisioning:firebase_provisioning_proto",
         "//tools/adt/idea/.idea/libraries:cloudresourcemanager",
         "//tools/adt/idea/.idea/libraries:grpc-google-common-protos",
-        "//prebuilts/tools/common/m2:protobuf-java-util-3.22.3",
+        "//prebuilts/tools/common/m2:protobuf-java-util-3.25.5",
     ],
     license_files = [
         "//tools/vendor/google/firebase:licenses",
@@ -1051,6 +1051,7 @@ android_studio(
     generate_package_metadata = True,
     jre = "//prebuilts/studio/jdk:jdk-bundle",
     legacy_default_configuration = STUDIO_CONFIG,
+    mac_document_types = "mac_document_types.plist",
     platform = "@intellij//:intellij-sdk",
     plugins = STUDIO_BASE_PLUGINS,
     searchable_options_metadata = SEARCHABLE_OPTIONS,
@@ -1074,6 +1075,7 @@ android_studio(
     generate_package_metadata = False,
     jre = "//prebuilts/studio/jdk:jdk-bundle",
     legacy_default_configuration = STUDIO_CONFIG,
+    mac_document_types = "mac_document_types.plist",
     platform = "@intellij//:intellij-sdk",
     plugins = STUDIO_BASE_PLUGINS + [
         "//tools/vendor/google/optional-plugins:plugins",
@@ -1102,6 +1104,7 @@ android_studio(
     generate_package_metadata = True,
     jre = "//prebuilts/studio/jdk:jdk-bundle",
     legacy_default_configuration = STUDIO_CONFIG,
+    mac_document_types = "//tools/adt/idea/studio:mac_document_types.plist",
     platform = "@intellij//:intellij-sdk",
     plugins = STUDIO_BASE_PLUGINS + [
         "//tools/vendor/google/automation:com.android.tools.idea.automation",

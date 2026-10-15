@@ -33,7 +33,9 @@ import com.android.tools.idea.testing.gradleModule
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
 import java.io.File
 import org.junit.Before
 import org.junit.Rule
@@ -63,10 +65,13 @@ class GradleBuildSystemFilePreviewServicesTest {
   }
 
   @RunWith(JUnit4::class)
+  @RunsInEdt
   class Listener {
     @get:Rule val projectRule = ProjectRule()
 
     @get:Rule val otherProjectRule = ProjectRule()
+
+    @get:Rule val edtRule = EdtRule()
 
     private val project
       get() = projectRule.project

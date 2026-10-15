@@ -17,6 +17,7 @@ package com.android.tools.idea.profilers.capture.unified
 
 import com.android.tools.idea.profilers.AndroidProfilerToolWindowFactory
 import com.android.tools.idea.profilers.IntellijProfilerComponents
+import com.android.tools.profilers.MinWidthScrollPane
 import com.android.tools.profilers.StageView
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
@@ -34,11 +35,14 @@ import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import java.io.File
 import java.util.concurrent.TimeUnit
+import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.LayoutFocusTraversalPolicy
 import org.jetbrains.annotations.Nls
 import org.jetbrains.annotations.VisibleForTesting
 
@@ -52,7 +56,12 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
     }
 
   private var offlineProfilers: StudioProfilers? = null
+
+  /** Holds the recording's UI: the profiler views, or the component of [delegate]. */
   private val component: JPanel = JPanel(BorderLayout())
+
+  /** The component shown in the editor tab: [component], laid out at no less than [MIN_CONTENT_WIDTH] and scrolled when narrower. */
+  private val rootComponent = MinWidthScrollPane(component) { JBUI.scale(MIN_CONTENT_WIDTH) }
 
   // Strong references to prevent garbage collection of AspectObservers
   private var profilersView: StudioProfilersView? = null
@@ -63,6 +72,10 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
       delegate != null -> component.add(delegate.component, BorderLayout.CENTER)
       file is ProfilerVirtualFile -> initializeLiveTaskEditor()
       else -> initializeOfflineSessionEditor()
+    }
+
+    if (delegate == null) {
+      installFocusTraversalPolicy()
     }
 
     if (file !is ProfilerVirtualFile) {
@@ -140,9 +153,27 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
     }
   }
 
-  override fun getComponent() = component
+  /**
+   * Makes [component] its own focus cycle root, so that Tab / Shift+Tab move between the profiler's panels (e.g. a Heap Dump's class list,
+   * instance list and fields) in layout order, as they do in the Profiler tool window.
+   *
+   * Without this, an offline capture's nearest focus cycle root is the platform's editor composite panel, whose traversal policy resolves
+   * every Tab / Shift+Tab to [getPreferredFocusedComponent], trapping focus on a single component.
+   */
+  private fun installFocusTraversalPolicy() {
+    component.isFocusCycleRoot = true
+    component.isFocusTraversalPolicyProvider = true
+    component.focusTraversalPolicy = LayoutFocusTraversalPolicy()
+  }
 
-  override fun getPreferredFocusedComponent() = delegate?.preferredFocusedComponent ?: component
+  override fun getComponent(): JComponent = rootComponent
+
+  override fun getPreferredFocusedComponent(): JComponent {
+    if (delegate != null) return delegate.preferredFocusedComponent ?: component
+    // Prefer a focusable descendant over the root panel: the editor composite panel resolves Tab on the root panel back to this component,
+    // so returning the root panel would trap focus there. Falls back to the root panel while the content is still loading.
+    return component.focusTraversalPolicy?.getDefaultComponent(component) as? JComponent ?: component
+  }
 
   @Nls(capitalization = Nls.Capitalization.Title)
   override fun getName() = if (file is ProfilerVirtualFile) file.name else "Profiler Capture"
@@ -227,5 +258,11 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
      * before disposing or tearing down the singleton live task panel.
      */
     @VisibleForTesting const val TAB_TRANSITION_DEBOUNCE_DELAY_MS = 500L
+
+    /**
+     * Minimum width, in unscaled pixels, at which the recording's UI is laid out. When the editor tab is narrower, it scrolls horizontally.
+     * Visible components marked with [MinWidthScrollPane.KEEP_PREFERRED_WIDTH] can raise it.
+     */
+    @VisibleForTesting const val MIN_CONTENT_WIDTH = 480
   }
 }

@@ -17,6 +17,8 @@ package com.android.tools.idea.streaming.emulator
 
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.annotations.concurrency.UiThread
+import com.android.emulation.control.incubating.CellInfo
+import com.android.emulation.control.incubating.ModemGrpc
 import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraList
 import com.android.emulator.control.CameraNotification
@@ -182,10 +184,15 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile private var screenshotStreamObserver: StreamObserver<Image>? = null
   @Volatile private var clipboardStreamObserver: StreamObserver<ClipData>? = null
   @Volatile private var notificationStreamObserver: StreamObserver<Notification>? = null
-  private var displays = listOf(DisplayConfiguration.newBuilder().setWidth(config.displayWidth).setHeight(config.displayHeight).build())
+  @Volatile
+  var displays =
+    listOf(DisplayConfiguration.newBuilder().setWidth(config.displayWidth).setHeight(config.displayHeight).setDpi(config.density).build())
+    private set
+
   @Volatile
   var batteryStatus: BatteryState = BatteryState.newBuilder().setChargeLevel(100).setStatus(BatteryState.BatteryStatus.CHARGING).build()
   @Volatile var gpsLocation: GpsState = GpsState.newBuilder().setLatitude(0.0).setLongitude(0.0).setAltitude(0.0).build()
+  @Volatile var cellInfo: CellInfo = CellInfo.getDefaultInstance()
 
   @Volatile
   var devicePosture: PostureValue? = config.postures.lastOrNull()?.posture
@@ -423,26 +430,34 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       thisLogger().error("Interrupted while waiting for the emulator gRPC server to terminate")
     }
     grpcServer = null
+    screenshotStreamObserver = null
+    screenshotStreamRequest = null
+    clipboardStreamObserver = null
+    notificationStreamObserver = null
   }
 
   /** Adds, removes, updates secondary displays. */
   suspend fun changeSecondaryDisplays(secondaryDisplays: List<DisplayConfiguration>) {
     coroutineDispatcher.invoke {
-      val newDisplays = ArrayList<DisplayConfiguration>(secondaryDisplays.size + 1)
-      newDisplays.add(displays[0])
-      for (display in secondaryDisplays) {
-        if (display.display != PRIMARY_DISPLAY_ID) {
-          newDisplays.add(display)
-        }
+      updateSecondaryDisplays(secondaryDisplays)
+    }
+  }
+
+  private fun updateSecondaryDisplays(secondaryDisplays: List<DisplayConfiguration>) {
+    val newDisplays = ArrayList<DisplayConfiguration>(secondaryDisplays.size + 1)
+    newDisplays.add(displays[0])
+    for (display in secondaryDisplays) {
+      if (display.display != PRIMARY_DISPLAY_ID) {
+        newDisplays.add(display)
       }
-      if (newDisplays != displays) {
-        displays = newDisplays
-        val notificationObserver = notificationStreamObserver ?: return@invoke
-        val displayConfigurations = DisplayConfigurations.newBuilder().addAllDisplays(displays)
-        val notification = DisplayConfigurationsChangedNotification.newBuilder().setDisplayConfigurations(displayConfigurations)
-        val response = Notification.newBuilder().setDisplayConfigurationsChangedNotification(notification).build()
-        notificationObserver.sendStreamingResponse(response)
-      }
+    }
+    if (newDisplays != displays) {
+      displays = newDisplays
+      val notificationObserver = notificationStreamObserver ?: return
+      val displayConfigurations = DisplayConfigurations.newBuilder().addAllDisplays(displays).setUserConfigurable(3).setMaxDisplays(11)
+      val notification = DisplayConfigurationsChangedNotification.newBuilder().setDisplayConfigurations(displayConfigurations)
+      val response = Notification.newBuilder().setDisplayConfigurationsChangedNotification(notification).build()
+      notificationObserver.sendStreamingResponse(response)
     }
   }
 
@@ -483,6 +498,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       .addService(ServerInterceptors.intercept(EmulatorControllerService(executor), LoggingInterceptor()))
       .addService(ServerInterceptors.intercept(EmulatorSnapshotService(executor), LoggingInterceptor()))
       .addService(ServerInterceptors.intercept(UiControllerService(executor), LoggingInterceptor()))
+      .addService(ServerInterceptors.intercept(ModemService(executor), LoggingInterceptor()))
       .build()
       .start()
   }
@@ -823,7 +839,15 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
     override fun getDisplayConfigurations(request: Empty, responseObserver: StreamObserver<DisplayConfigurations>) {
       executor.execute {
-        val response = DisplayConfigurations.newBuilder().addAllDisplays(displays).build()
+        val response = DisplayConfigurations.newBuilder().addAllDisplays(displays).setUserConfigurable(3).setMaxDisplays(11).build()
+        sendResponse(responseObserver, response)
+      }
+    }
+
+    override fun setDisplayConfigurations(request: DisplayConfigurations, responseObserver: StreamObserver<DisplayConfigurations>) {
+      executor.execute {
+        updateSecondaryDisplays(request.displaysList)
+        val response = DisplayConfigurations.newBuilder().addAllDisplays(displays).setUserConfigurable(3).setMaxDisplays(11).build()
         sendResponse(responseObserver, response)
       }
     }
@@ -1063,6 +1087,22 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
     override fun setUiTheme(themingStyle: ThemingStyle, responseObserver: StreamObserver<Empty>) {
       executor.execute { sendEmptyResponse(responseObserver) }
+    }
+  }
+
+  private inner class ModemService(private val executor: ExecutorService) : ModemGrpc.ModemImplBase() {
+
+    override fun setCellInfo(request: CellInfo, responseObserver: StreamObserver<CellInfo>) {
+      executor.execute {
+        cellInfo = request
+        sendResponse(responseObserver, request)
+      }
+    }
+
+    override fun getCellInfo(request: Empty, responseObserver: StreamObserver<CellInfo>) {
+      executor.execute {
+        sendResponse(responseObserver, cellInfo)
+      }
     }
   }
 

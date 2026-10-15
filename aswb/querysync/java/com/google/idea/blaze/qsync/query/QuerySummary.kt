@@ -19,6 +19,17 @@ import com.google.idea.blaze.common.Label
 import java.nio.file.Path
 import org.jetbrains.annotations.TestOnly
 
+/** Functional provider supplying updated package stamps for a [QuerySummary.BuildPackage]. */
+fun interface PackageStampProvider {
+  /**
+   * Computes the updated stamp for [pkg].
+   *
+   * @param pkg The package to inspect.
+   * @return The updated stamp, or `null` if the stamp should remain unchanged.
+   */
+  fun getStamp(pkg: QuerySummary.BuildPackage): Long?
+}
+
 /**
  * Summaries the output from a `query` invocation into just the data needed by the rest of querysync.
  *
@@ -83,6 +94,13 @@ interface QuerySummary {
 
   fun protoForSerializationOnly(): Query.Summary
 
+  /**
+   * Returns a copy of this [QuerySummary] with package stamps updated by [provider].
+   *
+   * Reuses string tables, rule graphs, source file graphs, and derived package structures without re-indexing or re-decoding.
+   */
+  fun withPackageStamps(provider: PackageStampProvider): QuerySummary
+
   companion object {
     @JvmField
     val EMPTY: QuerySummary =
@@ -101,8 +119,16 @@ interface QuerySummary {
         override val queryStrategy: QuerySpec.QueryStrategy = QuerySpec.QueryStrategy.PLAIN
 
         override fun protoForSerializationOnly(): Query.Summary = Query.Summary.getDefaultInstance()
+
+        override fun withPackageStamps(provider: PackageStampProvider): QuerySummary = this
       }
   }
+}
+
+/** Returns a copy of this [QuerySummary] with package stamps updated from [stamps], normalizing package keys. */
+fun QuerySummary.withPackageStamps(stamps: Map<Label, Long>): QuerySummary {
+  val normalizedStamps = stamps.mapKeys { it.key.getPackageLabel() }
+  return withPackageStamps { pkg -> normalizedStamps[pkg.packageLabel] }
 }
 
 fun QuerySummary.getRule(label: Label): QueryData.Rule? {

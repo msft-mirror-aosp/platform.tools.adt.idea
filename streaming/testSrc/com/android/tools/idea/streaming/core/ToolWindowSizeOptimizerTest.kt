@@ -106,7 +106,7 @@ class ToolWindowSizeOptimizerTest {
   fun testDockedHorizontal() {
     val (_, phoneView, ui) = startPhone()
 
-    // 1. Double-clicking inside the display image should not resize the tool window.
+    // Double-clicking inside the display image should not resize the tool window.
     toolWindow.setAnchor(ToolWindowAnchor.RIGHT, null)
     toolWindow.setType(ToolWindowType.DOCKED, null)
     val insideEvent =
@@ -132,7 +132,7 @@ class ToolWindowSizeOptimizerTest {
     doubleClickInView(ui, phoneView, contentX, contentY)
     assertThat(toolWindow.decorator.size).isEqualTo(Dimension(500, 500))
 
-    // 2. Docked RIGHT: shrink width to remove horizontal empty space.
+    // Docked RIGHT: shrink width to remove horizontal empty space.
     val emptySpaceEvent =
       MouseEvent(phoneView, MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(), 0, 2, phoneView.height / 2, 2, false, MouseEvent.BUTTON1)
     phoneView.dispatchEvent(emptySpaceEvent)
@@ -149,7 +149,7 @@ class ToolWindowSizeOptimizerTest {
     ToolWindowSizeOptimizer(phoneView).resizeToolWindowToRemoveEmptySpace()
     assertThat(toolbarPanel.bounds).isEqualTo(toolbarBoundsBefore)
 
-    // 3. Docked RIGHT: when shrinking is not possible, expand width to remove vertical empty space.
+    // Docked RIGHT: when shrinking is not possible, expand width to remove vertical empty space.
     toolWindow.decorator.size = Dimension(150, 500)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, phoneView)
@@ -167,7 +167,7 @@ class ToolWindowSizeOptimizerTest {
     assertThat(toolWindow.decorator.height).isEqualTo(925)
     assertMatchesAspectRatio(phoneView)
 
-    // 4. Docked LEFT: shrink and expand width.
+    // Docked LEFT: shrink and expand width.
     toolWindow.setAnchor(ToolWindowAnchor.LEFT, null)
     toolWindow.decorator.size = Dimension(500, 500)
     ui.layoutAndDispatchEvents()
@@ -522,8 +522,7 @@ class ToolWindowSizeOptimizerTest {
     wrappingToolbar.size = Dimension(500, 25)
     devicePanel.add(wrappingToolbar, BorderLayout.NORTH)
 
-    // 1. In WINDOWED mode with toolbar wrapping:
-    // Window height expands rather than downscaling the display image.
+    // In WINDOWED mode with toolbar wrapping: window height expands rather than downscaling the display image.
     toolWindow.setType(ToolWindowType.WINDOWED, null)
     dispatchAllEventsInIdeEventQueue()
     toolWindow.decorator.size = Dimension(500, 500)
@@ -539,8 +538,7 @@ class ToolWindowSizeOptimizerTest {
     assertThat(toolWindow.decorator.height).isGreaterThan(initialHeight)
     assertThat(lastChildLayoutWidth).isEqualTo(wrappingToolbar.width)
 
-    // 2. In DOCKED mode with a vertical splitter:
-    // Display image downscales to preserve the split pane boundary.
+    // In DOCKED mode with a vertical splitter: display image downscales to preserve the split pane boundary.
     val phoneContent = contentManager.contents.first()
     toolWindow.setType(ToolWindowType.DOCKED, null)
     toolWindow.setAnchor(ToolWindowAnchor.RIGHT, null)
@@ -577,7 +575,7 @@ class ToolWindowSizeOptimizerTest {
     assertThat(splitter.proportion).isEqualTo(initialProportion)
     assertMatchesAspectRatio(phoneView)
 
-    // 4. Cascading toolbar wrapping: narrowing to singleWrapWidth triggers a second wrap (to 95px),
+    // Cascading toolbar wrapping: narrowing to singleWrapWidth triggers a second wrap (to 95px),
     // which further reduces effectiveHeight and narrows phoneView again.
     wrapThreshold2 = singleWrapWidth
     wrappingToolbar.size = Dimension(naturalSize.width + 100, 25)
@@ -887,6 +885,100 @@ class ToolWindowSizeOptimizerTest {
     assertThat(devicePanel.isLayoutInspectorActive).isFalse()
     doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
     assertThat(toolWindow.decorator.width).isLessThan(500)
+    assertMatchesAspectRatio(phoneView)
+  }
+
+  @Test
+  fun testVerticalToolbarOptimization() {
+    val (_, phoneView, ui) = startPhone(Dimension(500, 500))
+    val devicePanel = phoneView.findAncestor<AbstractDevicePanel<*>>()!!
+    devicePanel.toolbarPlacement = ToolbarPlacement.VERTICAL
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    assertThat(devicePanel.toolbarPlacement).isEqualTo(ToolbarPlacement.VERTICAL)
+    assertThat(devicePanel.toolbarPanel.isVisible).isTrue()
+    val toolbarWidth = devicePanel.toolbarPanel.width
+    assertThat(toolbarWidth).isGreaterThan(0)
+
+    // Docked RIGHT: shrink width to remove horizontal empty space.
+    toolWindow.setAnchor(ToolWindowAnchor.RIGHT, null)
+    toolWindow.setType(ToolWindowType.DOCKED, null)
+    toolWindow.decorator.size = Dimension(500, 500)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    assertThat(toolWindow.decorator.width).isLessThan(500)
+    assertThat(toolWindow.decorator.height).isEqualTo(500)
+    assertMatchesAspectRatio(phoneView)
+
+    // Docked BOTTOM: shrink height when vertical empty space exists.
+    toolWindow.setAnchor(ToolWindowAnchor.BOTTOM, null)
+    toolWindow.decorator.size = Dimension(300, 600)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    doubleClickInView(ui, phoneView, phoneView.width / 2, 2)
+    assertThat(toolWindow.decorator.height).isLessThan(600)
+    assertThat(toolWindow.decorator.width).isEqualTo(300)
+    assertMatchesAspectRatio(phoneView)
+
+    // Docked BOTTOM: expand height when horizontal empty space exists.
+    toolWindow.decorator.size = Dimension(300, 300)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    assertThat(toolWindow.decorator.height).isGreaterThan(300)
+    assertThat(toolWindow.decorator.width).isEqualTo(300)
+    assertMatchesAspectRatio(phoneView)
+
+    // Undocked (WINDOWED): shrink width and height.
+    toolWindow.setType(ToolWindowType.WINDOWED, null)
+    dispatchAllEventsInIdeEventQueue()
+    toolWindow.decorator.size = Dimension(500, 500)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    assertThat(toolWindow.decorator.width).isLessThan(500)
+    assertThat(toolWindow.decorator.height).isAtLeast(500)
+    assertMatchesAspectRatio(phoneView)
+  }
+
+  @Test
+  fun testNoToolbarOptimization() {
+    val (_, phoneView, ui) = startPhone(Dimension(500, 500))
+    val devicePanel = phoneView.findAncestor<AbstractDevicePanel<*>>()!!
+    devicePanel.toolbarPlacement = ToolbarPlacement.NONE
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    assertThat(devicePanel.toolbarPlacement).isEqualTo(ToolbarPlacement.NONE)
+    assertThat(devicePanel.toolbarPanel.isVisible).isFalse()
+
+    // Docked RIGHT: shrink width to remove horizontal empty space.
+    toolWindow.setAnchor(ToolWindowAnchor.RIGHT, null)
+    toolWindow.setType(ToolWindowType.DOCKED, null)
+    toolWindow.decorator.size = Dimension(500, 500)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    assertThat(toolWindow.decorator.width).isLessThan(500)
+    assertThat(toolWindow.decorator.height).isEqualTo(500)
+    assertMatchesAspectRatio(phoneView)
+
+    // Docked BOTTOM: shrink height when vertical empty space exists.
+    toolWindow.setAnchor(ToolWindowAnchor.BOTTOM, null)
+    toolWindow.decorator.size = Dimension(150, 600)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    doubleClickInView(ui, phoneView, phoneView.width / 2, 2)
+    assertThat(toolWindow.decorator.height).isLessThan(600)
+    assertThat(toolWindow.decorator.width).isEqualTo(150)
     assertMatchesAspectRatio(phoneView)
   }
 

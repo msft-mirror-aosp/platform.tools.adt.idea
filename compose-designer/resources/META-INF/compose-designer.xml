@@ -157,6 +157,9 @@
     <notificationGroup id="Compose Preview Notification" displayType="NONE"/>
 
     <postStartupActivity implementation="com.android.tools.idea.compose.preview.ComposeNewPreviewNotificationManager$MyStartupActivity"/>
+
+    <lang.foldingBuilder language="kotlin" implementationClass="com.android.tools.idea.compose.preview.ComposePreviewFoldingBuilder" order="first"/>
+    <codeFoldingOptionsProvider instance="com.android.tools.idea.compose.preview.ComposePreviewCodeFoldingOptionsProvider"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.android.tools.idea.designer">

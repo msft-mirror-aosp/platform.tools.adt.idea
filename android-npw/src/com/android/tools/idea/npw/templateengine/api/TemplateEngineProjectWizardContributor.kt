@@ -18,6 +18,7 @@ package com.android.tools.idea.npw.templateengine.api
 import androidx.compose.runtime.Composable
 import com.android.tools.adtui.device.FormFactor
 import com.intellij.openapi.extensions.ExtensionPointName
+import java.nio.file.Path
 
 /** Specification for rendering a promotional card in the Compose NPW gallery. */
 data class PromotionCardSpec(
@@ -34,18 +35,16 @@ data class PromotionCardSpec(
   val onClickAction: (Map<String, Any>) -> Unit = {},
 )
 
-/** Specification for an external template contributed via plugin. */
-data class ExternalTemplateSpec(
-  val id: String,
-  val title: String,
-  val description: String,
-  val formFactor: FormFactor = FormFactor.MOBILE,
-  val thumb: (@Composable () -> Unit)? = null,
-  val minSdk: Int = 21,
-  val postProcessors: List<String> = emptyList(),
-)
+/** A source of declarative templates: a zip with the same layout as the SDK `android-project-templates.zip`. */
+sealed interface ExternalTemplateSpec {
+  /** A template zip on disk, e.g. in the plugin directory. Template files are read from it when a project is generated. */
+  data class ZipFile(val path: Path) : ExternalTemplateSpec
+}
 
-/** Extension point for plugins to contribute promotional cards or custom templates to New NPW (TemplateEngine). */
+/**
+ * Extension point for plugins to contribute declarative templates to New NPW (TemplateEngine). Templates are handled like built-in ones
+ * (form factor, post-processors and importer are selected by their tags).
+ */
 interface TemplateEngineProjectWizardContributor {
   companion object {
     val EP_NAME = ExtensionPointName.create<TemplateEngineProjectWizardContributor>("com.android.templateContributor")
@@ -58,6 +57,6 @@ interface TemplateEngineProjectWizardContributor {
   val priority: Int
     get() = 0
 
-  /** Custom external templates contributed by this plugin. */
+  /** Custom external templates contributed by this plugin. Invoked on a background thread. */
   fun getExternalTemplates(): List<ExternalTemplateSpec> = emptyList()
 }

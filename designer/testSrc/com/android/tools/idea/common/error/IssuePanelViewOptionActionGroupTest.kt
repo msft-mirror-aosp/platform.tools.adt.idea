@@ -32,6 +32,7 @@ import com.intellij.openapi.wm.RegisterToolWindowTask
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.TestActionEvent.createTestEvent
 import com.intellij.testFramework.assertInstanceOf
+import com.intellij.testFramework.runInEdtAndGet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -171,7 +172,7 @@ class VisualLintFilterActionTest {
   fun testPerform() {
     ToolWindowManager.getInstance(rule.project).registerToolWindow(RegisterToolWindowTask(ProblemsView.ID))
     runBlocking(Dispatchers.Default) { ProblemsViewToolWindowUtils.addTab(rule.project, SharedIssuePanelProvider(rule.project)) }
-    val panel = IssuePanelService.getDesignerCommonIssuePanel(rule.project)!!
+    val panel = runInEdtAndGet { IssuePanelService.getDesignerCommonIssuePanel(rule.project)!! }
     val visualLintIssue = mock<VisualLintRenderIssue>()
     val dataContext = SimpleDataContext.builder().add(DESIGNER_COMMON_ISSUE_PANEL, panel).add(CommonDataKeys.PROJECT, rule.project).build()
 

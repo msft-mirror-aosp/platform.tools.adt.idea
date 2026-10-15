@@ -17,7 +17,10 @@ package com.android.tools.adtui.categorytable
 
 import com.intellij.ide.ui.laf.darcula.DarculaTableHeaderUI
 import java.awt.Component
+import java.awt.Point
 import java.awt.event.MouseEvent
+import javax.accessibility.Accessible
+import javax.accessibility.AccessibleContext
 import javax.swing.Icon
 import javax.swing.JTable
 import javax.swing.SortOrder
@@ -106,6 +109,27 @@ class CategoryTableHeader(
       val sortOrder = primarySort?.takeIf { it.attribute == column.attribute }?.sortOrder ?: SortOrder.UNSORTED
       icon = sortIcons[sortOrder]
       return this
+    }
+  }
+
+  override fun getAccessibleContext(): AccessibleContext {
+    if (accessibleContext == null) {
+      accessibleContext = AccessibleCategoryTableHeader()
+    }
+    return accessibleContext
+  }
+
+  private inner class AccessibleCategoryTableHeader : AccessibleJTableHeader() {
+    // AccessibleJTableHeaderEntry requires a non-null JTable to look up columnModel and cell bounds.
+    private val dummyTable = JTable(null, columnModel)
+
+    override fun getAccessibleAt(p: Point): Accessible? = getAccessibleChild(columnAtPoint(p))
+
+    override fun getAccessibleChild(i: Int): Accessible? {
+      if (i < 0 || i >= accessibleChildrenCount) {
+        return null
+      }
+      return AccessibleJTableHeaderEntry(i, this@CategoryTableHeader, table ?: dummyTable)
     }
   }
 

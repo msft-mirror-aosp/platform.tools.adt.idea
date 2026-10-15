@@ -670,6 +670,13 @@ MODULE                        : project
             JniLibsDirectories            : <ROOT>/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/src/main/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/src/main/keepRules [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : compileOnlyApi
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -685,6 +692,13 @@ MODULE                        : project
                     JniLibsDirectories            : <ROOT>/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/src/androidTest/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/src/androidTest/keepRules [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -699,6 +713,13 @@ MODULE                        : project
                     JniLibsDirectories            : <ROOT>/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/src/test/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/src/test/keepRules [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testCompileOnlyApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -724,6 +745,13 @@ MODULE                        : project
             JniLibsDirectories            : <ROOT>/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/src/debug/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/src/debug/keepRules [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugCompileOnlyApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -739,6 +767,13 @@ MODULE                        : project
                     JniLibsDirectories            : <ROOT>/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/src/androidTestDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/src/androidTestDebug/keepRules [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -754,6 +789,13 @@ MODULE                        : project
                     JniLibsDirectories            : <ROOT>/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/src/testDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/src/testDebug/keepRules [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugCompileOnlyApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -775,6 +817,13 @@ MODULE                        : project
             JniLibsDirectories            : <ROOT>/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/src/release/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/src/release/keepRules [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseCompileOnlyApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
     SigningConfigs
         SigningConfig
             Name                          : debug

@@ -778,6 +778,9 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
   private File deobfuscateNativeAllocationTrace(@NotNull File originalFile,
                                                 @NotNull String appName,
                                                 @NotNull String deviceSerial) {
+    if (originalFile.length() == 0) {
+      return originalFile;
+    }
     List<String> symbolDirs = getStudioProfilers().getIdeServices().getNativeSymbolsDirectories();
     Map<String, String> proguardMaps = resolveProguardMapForApp(appName, deviceSerial);
     if (symbolDirs.isEmpty() && proguardMaps.isEmpty()) {

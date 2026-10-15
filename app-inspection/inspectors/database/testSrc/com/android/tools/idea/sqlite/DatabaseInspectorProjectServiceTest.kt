@@ -157,7 +157,7 @@ class DatabaseInspectorProjectServiceTest : LightPlatformTestCase() {
 
     val appInspectionServices = mock(AppInspectionIdeServices::class.java)
 
-    runDispatching {
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
       databaseInspectorProjectService.startAppInspectionSession(clientCommandsChannel, appInspectionServices, processDescriptor)
     }
 
@@ -239,7 +239,7 @@ class DatabaseInspectorProjectServiceTest : LightPlatformTestCase() {
     assertThat(model.getAllDatabaseIds()).hasSize(1)
 
     // Act
-    runDispatching {
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
       databaseInspectorProjectService.startAppInspectionSession(clientCommandsChannel, appInspectionServices, processDescriptor)
     }
 
@@ -274,7 +274,9 @@ class DatabaseInspectorProjectServiceTest : LightPlatformTestCase() {
 
   fun testGetIdeServices() {
     val ideServices = mock<AppInspectionIdeServices>()
-    runDispatching { databaseInspectorProjectService.startAppInspectionSession(mock(), ideServices, processDescriptor) }
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
+      databaseInspectorProjectService.startAppInspectionSession(mock(), ideServices, processDescriptor)
+    }
     assertThat(databaseInspectorProjectService.getIdeServices()).isSameAs(ideServices)
     runDispatching { withContext(Dispatchers.EDT) { databaseInspectorProjectService.stopAppInspectionSession(mock()) } }
     assertThat(databaseInspectorProjectService.getIdeServices()).isNull()

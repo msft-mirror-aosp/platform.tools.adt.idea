@@ -195,6 +195,13 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -209,6 +216,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -222,6 +236,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -250,6 +271,13 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -264,6 +292,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -278,6 +313,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             ApplicationIdSuffix           : .release
@@ -306,6 +348,13 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
     ProductFlavors
         ProductFlavor
             Name                          : firstAbc
@@ -330,6 +379,13 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/firstAbc/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/firstAbc/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/firstAbc/baselineProfiles [-]
+            ApiConfigurationName          : firstAbcApi
+            CompileOnlyConfigurationName  : firstAbcCompileOnly
+            CompileOnlyApiConfigurationName         : firstAbcApi
+            ImplementationConfigurationName         : firstAbcImplementation
+            RuntimeOnlyConfigurationName  : firstAbcRuntimeOnly
+            AnnotationProcessorConfigurationName    : firstAbcAnnotationProcessor
+            KaptConfigurationName         : kaptFirstAbc
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -344,6 +400,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestFirstAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestFirstAbc/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestFirstAbc/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestFirstAbcApi
+                    CompileOnlyConfigurationName  : androidTestFirstAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestFirstAbcApi
+                    ImplementationConfigurationName         : androidTestFirstAbcImplementation
+                    RuntimeOnlyConfigurationName  : androidTestFirstAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestFirstAbcAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestFirstAbc
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -357,6 +420,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testFirstAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstAbc/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testFirstAbc/baselineProfiles [-]
+                    ApiConfigurationName          : testFirstAbcApi
+                    CompileOnlyConfigurationName  : testFirstAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : testFirstAbcApi
+                    ImplementationConfigurationName         : testFirstAbcImplementation
+                    RuntimeOnlyConfigurationName  : testFirstAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testFirstAbcAnnotationProcessor
+                    KaptConfigurationName         : kaptTestFirstAbc
         ProductFlavor
             Name                          : firstXyz
             Dimension                     : Dim1
@@ -391,6 +461,13 @@ MODULE                        : MultiFlavor.app
             AssetsDirectories             : <ROOT>/app/src/secondAbc/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/secondAbc/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/secondAbc/baselineProfiles [-]
+            ApiConfigurationName          : secondAbcApi
+            CompileOnlyConfigurationName  : secondAbcCompileOnly
+            CompileOnlyApiConfigurationName         : secondAbcApi
+            ImplementationConfigurationName         : secondAbcImplementation
+            RuntimeOnlyConfigurationName  : secondAbcRuntimeOnly
+            AnnotationProcessorConfigurationName    : secondAbcAnnotationProcessor
+            KaptConfigurationName         : kaptSecondAbc
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -405,6 +482,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestSecondAbc/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestSecondAbc/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestSecondAbcApi
+                    CompileOnlyConfigurationName  : androidTestSecondAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestSecondAbcApi
+                    ImplementationConfigurationName         : androidTestSecondAbcImplementation
+                    RuntimeOnlyConfigurationName  : androidTestSecondAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestSecondAbcAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestSecondAbc
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -418,6 +502,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testSecondAbc/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testSecondAbc/baselineProfiles [-]
+                    ApiConfigurationName          : testSecondAbcApi
+                    CompileOnlyConfigurationName  : testSecondAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : testSecondAbcApi
+                    ImplementationConfigurationName         : testSecondAbcImplementation
+                    RuntimeOnlyConfigurationName  : testSecondAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testSecondAbcAnnotationProcessor
+                    KaptConfigurationName         : kaptTestSecondAbc
         ProductFlavor
             Name                          : secondXyz
             ApplicationIdSuffix           : .secondXyz
@@ -507,6 +598,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/firstAbcSecondAbcDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/firstAbcSecondAbcDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/firstAbcSecondAbcDebug/baselineProfiles [-]
+                    ApiConfigurationName          : firstAbcSecondAbcDebugApi
+                    CompileOnlyConfigurationName  : firstAbcSecondAbcDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : firstAbcSecondAbcDebugApi
+                    ImplementationConfigurationName         : firstAbcSecondAbcDebugImplementation
+                    RuntimeOnlyConfigurationName  : firstAbcSecondAbcDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : firstAbcSecondAbcDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptFirstAbcSecondAbcDebug
                 MultiFlavorSourceProvider
                     Name                          : firstAbcSecondAbc
                     Manifest                      : <ROOT>/app/src/firstAbcSecondAbc/AndroidManifest.xml [-]
@@ -519,6 +617,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/firstAbcSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/firstAbcSecondAbc/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/firstAbcSecondAbc/baselineProfiles [-]
+                    ApiConfigurationName          : firstAbcSecondAbcApi
+                    CompileOnlyConfigurationName  : firstAbcSecondAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : firstAbcSecondAbcApi
+                    ImplementationConfigurationName         : firstAbcSecondAbcImplementation
+                    RuntimeOnlyConfigurationName  : firstAbcSecondAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : firstAbcSecondAbcAnnotationProcessor
+                    KaptConfigurationName         : kaptFirstAbcSecondAbc
                 Dependencies
                     compileClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -566,6 +671,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestFirstAbcSecondAbcDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestFirstAbcSecondAbcDebugApi
+                    CompileOnlyConfigurationName  : androidTestFirstAbcSecondAbcDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestFirstAbcSecondAbcDebugApi
+                    ImplementationConfigurationName         : androidTestFirstAbcSecondAbcDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestFirstAbcSecondAbcDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestFirstAbcSecondAbcDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestFirstAbcSecondAbcDebug
                 MultiFlavorSourceProvider
                     Name                          : androidTestFirstAbcSecondAbc
                     Manifest                      : <ROOT>/app/src/androidTestFirstAbcSecondAbc/AndroidManifest.xml [-]
@@ -577,6 +689,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestFirstAbcSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestFirstAbcSecondAbc/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestFirstAbcSecondAbc/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestFirstAbcSecondAbcApi
+                    CompileOnlyConfigurationName  : androidTestFirstAbcSecondAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestFirstAbcSecondAbcApi
+                    ImplementationConfigurationName         : androidTestFirstAbcSecondAbcImplementation
+                    RuntimeOnlyConfigurationName  : androidTestFirstAbcSecondAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestFirstAbcSecondAbcAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestFirstAbcSecondAbc
                 Dependencies
                     compileClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -625,6 +744,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testFirstAbcSecondAbcDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstAbcSecondAbcDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testFirstAbcSecondAbcDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testFirstAbcSecondAbcDebugApi
+                    CompileOnlyConfigurationName  : testFirstAbcSecondAbcDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testFirstAbcSecondAbcDebugApi
+                    ImplementationConfigurationName         : testFirstAbcSecondAbcDebugImplementation
+                    RuntimeOnlyConfigurationName  : testFirstAbcSecondAbcDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testFirstAbcSecondAbcDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestFirstAbcSecondAbcDebug
                 MultiFlavorSourceProvider
                     Name                          : testFirstAbcSecondAbc
                     Manifest                      : <ROOT>/app/src/testFirstAbcSecondAbc/AndroidManifest.xml [-]
@@ -636,6 +762,13 @@ MODULE                        : MultiFlavor.app
                     AssetsDirectories             : <ROOT>/app/src/testFirstAbcSecondAbc/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testFirstAbcSecondAbc/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testFirstAbcSecondAbc/baselineProfiles [-]
+                    ApiConfigurationName          : testFirstAbcSecondAbcApi
+                    CompileOnlyConfigurationName  : testFirstAbcSecondAbcCompileOnly
+                    CompileOnlyApiConfigurationName         : testFirstAbcSecondAbcApi
+                    ImplementationConfigurationName         : testFirstAbcSecondAbcImplementation
+                    RuntimeOnlyConfigurationName  : testFirstAbcSecondAbcRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testFirstAbcSecondAbcAnnotationProcessor
+                    KaptConfigurationName         : kaptTestFirstAbcSecondAbc
                 Dependencies
                     compileClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar

@@ -98,7 +98,7 @@ class MigrateToNonTransitiveRClassesAction : AndroidGradleBaseRefactoringAction(
 /**
  * [RefactoringActionHandler] for [MigrateToNonTransitiveRClassesAction].
  *
- * Since there's no user input required to start the refactoring, it just runs a fresh [MigrateToResourceNamespacesProcessor].
+ * Since there's no user input required to start the refactoring, it just runs a fresh [MigrateToNonTransitiveRClassesProcessor].
  */
 class MigrateToNonTransitiveRClassesHandler : RefactoringActionHandler {
   @UiThread override fun invoke(project: Project, editor: Editor?, file: PsiFile?, dataContext: DataContext?) = invoke(project)

@@ -109,6 +109,10 @@ abstract class ComposePreviewElementInstance<T> : ComposePreviewElement<T>, XmlS
         // [COMPOSE_VIEW_ADAPTER] view attribute containing the FQN of the @Composable name to call
         .toolsAttribute("composableName", methodFqn)
 
+    if (configuration.deviceSpec.isNotEmpty()) {
+      xmlBuilder.toolsAttribute("device", configuration.deviceSpec)
+    }
+
     // Add PreviewWrapper
     previewWrapperProviderFqn?.let { xmlBuilder.toolsAttribute("previewWrapperProviderClass", it) }
 
@@ -445,9 +449,8 @@ open class ParametrizedComposePreviewElementTemplate<T>(
 /**
  * Loads a class by its name, falling back to replacing dots with dollars if the class is nested.
  *
- * This is a fallback for when the provided class name uses dots instead of dollars for nested classes
- * (e.g., when the class couldn't be resolved during UAST analysis and we only have the `canonicalText`
- * which uses dots).
+ * This is a fallback for when the provided class name uses dots instead of dollars for nested classes (e.g., when the class couldn't be
+ * resolved during UAST analysis and we only have the `canonicalText` which uses dots).
  */
 private fun ClassLoader.loadClassOrNested(className: String): Class<*> {
   try {

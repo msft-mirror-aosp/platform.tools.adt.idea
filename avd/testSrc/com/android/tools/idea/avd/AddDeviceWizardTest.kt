@@ -43,6 +43,7 @@ import com.android.sdklib.internal.avd.ConfigKey
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
+import com.android.tools.idea.adddevicedialog.FormFactors
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.sdk.AndroidSdks
@@ -359,6 +360,20 @@ class AddDeviceWizardTest {
 
       composeTestRule.onNodeWithText("Pixel 8").assertIsDisplayed()
       composeTestRule.onNodeWithText("Pixel 7").assertDoesNotExist()
+    }
+  }
+
+  @Test
+  fun virtualDeviceFilter_nonDefaultFormFactor() {
+    with(SdkFixture()) {
+      val wizard = TestComposeWizard {
+        with(createAddDeviceWizard(virtualDeviceFilter = { it.formFactor == FormFactors.AI_GLASSES })) { DeviceGridPage() }
+      }
+      composeTestRule.setContentWithSdkLocals { wizard.Content() }
+
+      composeTestRule.onNodeWithText("XR").assertIsSelected()
+      composeTestRule.onNodeWithText("Audio Glasses").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Display Glasses").assertIsDisplayed()
     }
   }
 }

@@ -34,6 +34,8 @@ import com.android.emulator.control.WheelEvent
 import com.android.ide.common.util.Cancelable
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.adtui.ImageUtils.ALPHA_MASK
+import com.android.tools.adtui.common.AdtUiCursorType
+import com.android.tools.adtui.common.AdtUiCursorsProvider
 import com.android.tools.adtui.device.SkinDefinition
 import com.android.tools.adtui.device.SkinLayout
 import com.android.tools.adtui.util.rotatedByQuadrants
@@ -54,6 +56,7 @@ import com.android.tools.idea.streaming.core.DetachedToolWindowReshaper
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
 import com.android.tools.idea.streaming.core.StreamingDeviceId
 import com.android.tools.idea.streaming.core.isMouseInside
+import com.android.tools.idea.streaming.core.mouseLocation
 import com.android.tools.idea.streaming.core.scaledDown
 import com.android.tools.idea.streaming.core.scaledUnbiased
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.DisplayMode
@@ -61,6 +64,7 @@ import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionSt
 import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionStateListener
 import com.android.tools.idea.streaming.emulator.actions.EnvironmentTracker
 import com.android.tools.idea.streaming.emulator.xr.EmulatorXrInputController
+import com.android.tools.idea.streaming.xr.AbstractXrInputController.Companion.INPUT_MODE_PROPERTY
 import com.android.tools.idea.streaming.xr.XrInputMode
 import com.google.protobuf.TextFormat.shortDebugString
 import com.intellij.ide.ActivityTracker
@@ -165,6 +169,7 @@ import java.awt.image.DataBufferInt
 import java.awt.image.DirectColorModel
 import java.awt.image.Raster
 import java.awt.image.SinglePixelPackedSampleModel
+import java.beans.PropertyChangeListener
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.KeyStroke
@@ -432,14 +437,36 @@ internal class EmulatorView(
     get() = notificationTracker.virtualSceneCameraActive.value
 
   private var virtualSceneCameraController: VirtualSceneCameraController? = null
+  private val xrInputModeListener = PropertyChangeListener { event ->
+    if (event.propertyName == INPUT_MODE_PROPERTY) {
+      if (mouseCoordinates == null) {
+        mouseCoordinates = mouseLocation()
+      }
+      updateCursor()
+    }
+  }
+  private var xrListenerDisposable: Disposable? = null
   override var xrInputController: EmulatorXrInputController? = null
     get() {
       if (field == null) {
         if (emulator.connectionState == ConnectionState.CONNECTED && emulatorConfig.deviceType == DeviceType.XR_HEADSET) {
-          field = EmulatorXrInputController.getInstance(project, emulator)
+          xrInputController = EmulatorXrInputController.getInstance(project, emulator)
         }
       }
       return field
+    }
+    private set(value) {
+      if (field != value) {
+        xrListenerDisposable?.let { Disposer.dispose(it) }
+        xrListenerDisposable = null
+        field = value
+        if (value != null) {
+          val disposable = Disposer.newDisposable(this)
+          value.addPropertyChangeListener(xrInputModeListener, disposable)
+          xrListenerDisposable = disposable
+        }
+        updateCursor()
+      }
     }
 
   private val stats = if (StudioFlags.EMBEDDED_EMULATOR_SCREENSHOT_STATISTICS.get()) Stats() else null
@@ -587,11 +614,13 @@ internal class EmulatorView(
       environmentCollectionJob?.cancel()
       environmentCollectionJob = null
       if (RunningAvdTracker.getInstance().runningAvds[emulator.emulatorId.avdFolder]?.isShuttingDown != true) {
+        frameNumber = 0u
         lastScreenshot = null
         lastActualSize = null
         actualSizeOverride = null
         requestedDisplaySize = null
         requestedOrientationQuadrants = null
+        projectionRectangle = null
         xrInputController = null
         hideLongRunningOperationIndicatorInstantly()
         showDisconnectedStateMessage("Disconnected from the Emulator")
@@ -633,7 +662,13 @@ internal class EmulatorView(
     assert(screenshotShape.width != 0)
     assert(screenshotShape.height != 0)
     val displayRect = computeDisplayRectangle(skin)
-    projectionRectangle = displayRect
+    if (projectionRectangle != displayRect || frameNumber == 0u) {
+      projectionRectangle = displayRect
+      if (mouseCoordinates == null) {
+        mouseCoordinates = mouseLocation()
+      }
+      updateCursor()
+    }
 
     val g = createAdjustedGraphicsContext(graphics)
 
@@ -1083,7 +1118,9 @@ internal class EmulatorView(
 
   private inner class MyMouseListener : MouseAdapter() {
 
-    private var currentButtons = 0
+    var currentButtons = 0
+      private set
+
     private var accumulatedScrollX = 0.0
     private var accumulatedScrollY = 0.0
 
@@ -1091,10 +1128,12 @@ internal class EmulatorView(
       requestFocusInWindow()
       mouseCoordinates = event.point
       if (xrInputController?.mousePressed(event, deviceDisplaySize, deviceScaleFactor) == true) {
+        updateCursor()
         return
       }
-      val insideTouchScreen = isInsideDisplayAndMouseInputSupported(event)
+      val insideTouchScreen = isInsideDisplayAndMouseInputSupported(event.point)
       if (handlePopup(event, insideTouchScreen)) {
+        updateCursor()
         return
       }
       if (insideTouchScreen) {
@@ -1107,15 +1146,18 @@ internal class EmulatorView(
       } else if (event.button == BUTTON1 && highlightedSkinButtonKey != null) {
         pressedSkinButtonKey = highlightedSkinButtonKey
       }
+      updateCursor()
     }
 
     override fun mouseReleased(event: MouseEvent) {
       mouseCoordinates = event.point
       if (xrInputController?.mouseReleased(event, deviceDisplaySize, deviceScaleFactor) == true) {
+        updateCursor()
         return
       }
-      val insideTouchScreen = isInsideDisplayAndMouseInputSupported(event)
+      val insideTouchScreen = isInsideDisplayAndMouseInputSupported(event.point)
       if (handlePopup(event, insideTouchScreen)) {
+        updateCursor()
         return
       }
       if (event.button == BUTTON1) {
@@ -1125,10 +1167,12 @@ internal class EmulatorView(
       pressedSkinButtonKey = null
       currentButtons = event.modifiersEx and BUTTON_MASK
       sendMouseEvent(event.x, event.y, currentButtons)
+      updateCursor()
     }
 
     override fun mouseEntered(event: MouseEvent) {
       mouseCoordinates = event.point
+      updateCursor()
       if (xrInputController?.mouseEntered(event, deviceDisplaySize, deviceScaleFactor) == true) {
         return
       }
@@ -1137,6 +1181,7 @@ internal class EmulatorView(
 
     override fun mouseExited(event: MouseEvent) {
       mouseCoordinates = null
+      updateCursor()
       if (xrInputController?.mouseExited(event, deviceDisplaySize, deviceScaleFactor) == true) {
         return
       }
@@ -1151,6 +1196,7 @@ internal class EmulatorView(
 
     override fun mouseDragged(event: MouseEvent) {
       mouseCoordinates = event.point
+      updateCursor()
       if (xrInputController?.mouseDragged(event, deviceDisplaySize, deviceScaleFactor) == true) {
         return
       }
@@ -1162,12 +1208,13 @@ internal class EmulatorView(
 
     override fun mouseMoved(event: MouseEvent) {
       mouseCoordinates = event.point
+      updateCursor()
       if (xrInputController?.mouseMoved(event, deviceDisplaySize, deviceScaleFactor) == true) {
         return
       }
       updateMultiTouchMode(event)
       if (
-        isInsideDisplayAndMouseInputSupported(event) &&
+        isInsideDisplayAndMouseInputSupported(event.point) &&
           virtualSceneCameraController == null &&
           !multiTouchMode &&
           (currentButtons and BUTTON_MASK) == 0
@@ -1312,18 +1359,36 @@ internal class EmulatorView(
       return Touch.newBuilder().setX(x).setY(y).setIdentifier(identifier).setPressure(pressure).setExpiration(NEVER_EXPIRE)
     }
 
-    private fun isInsideDisplayAndMouseInputSupported(event: MouseEvent): Boolean =
-      deviceType != DeviceType.AI_GLASSES && isInsideDisplay(event)
-
-    private fun isInsideDisplay(event: MouseEvent): Boolean =
-      projectionRectangle?.contains(event.x * screenScalingFactor, event.y * screenScalingFactor) ?: false
-
     private fun buttonsToAndroid(buttons: Int): Int {
       return (if (buttons and BUTTON1_DOWN_MASK != 0) ANDROID_BUTTON_PRIMARY else 0) or
         (if (buttons and BUTTON2_DOWN_MASK != 0) ANDROID_BUTTON_TERTIARY else 0) or
         (if (buttons and BUTTON3_DOWN_MASK != 0) ANDROID_BUTTON_SECONDARY else 0)
     }
   }
+
+  private fun updateCursor() {
+    if (!StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_CURSORS.get()) {
+      return
+    }
+    val cursorType =
+      when {
+        mouseCoordinates?.let { isInsideDisplayAndMouseInputSupported(it) } != true -> null
+        xrInputController?.inputMode == XrInputMode.HAND ->
+          if (mouseListener.currentButtons and BUTTON1_DOWN_MASK != 0) AdtUiCursorType.XR_HAND_INPUT_PINCH
+          else AdtUiCursorType.XR_HAND_INPUT
+        xrInputController?.inputMode == XrInputMode.EYE -> AdtUiCursorType.XR_EYE_INPUT
+        else -> null
+      }
+    val newCursor = cursorType?.let { AdtUiCursorsProvider.getInstance().getCursor(it) }
+    if (cursor != newCursor) {
+      cursor = newCursor
+    }
+  }
+
+  private fun isInsideDisplayAndMouseInputSupported(point: Point): Boolean = deviceType != DeviceType.AI_GLASSES && isInsideDisplay(point)
+
+  private fun isInsideDisplay(point: Point): Boolean =
+    projectionRectangle?.contains(point.x * screenScalingFactor, point.y * screenScalingFactor) ?: false
 
   private inner class ScreenshotReceiver(val maxImageSize: Dimension, val orientationQuadrants: Int) : EmptyStreamObserver<ImageMessage>() {
 

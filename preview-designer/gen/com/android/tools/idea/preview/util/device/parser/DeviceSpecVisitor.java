@@ -45,6 +45,14 @@ public class DeviceSpecVisitor extends PsiElementVisitor {
     visitParam(o);
   }
 
+  public void visitHasCameraParam(@NotNull DeviceSpecHasCameraParam o) {
+    visitParam(o);
+  }
+
+  public void visitHasMicrophoneParam(@NotNull DeviceSpecHasMicrophoneParam o) {
+    visitParam(o);
+  }
+
   public void visitHeightParam(@NotNull DeviceSpecHeightParam o) {
     visitParam(o);
   }
@@ -55,6 +63,14 @@ public class DeviceSpecVisitor extends PsiElementVisitor {
 
   public void visitIsRoundParam(@NotNull DeviceSpecIsRoundParam o) {
     visitParam(o);
+  }
+
+  public void visitKeyboardKindParam(@NotNull DeviceSpecKeyboardKindParam o) {
+    visitParam(o);
+  }
+
+  public void visitKeyboardKindT(@NotNull DeviceSpecKeyboardKindT o) {
+    visitPsiElement(o);
   }
 
   public void visitNameParam(@NotNull DeviceSpecNameParam o) {
@@ -85,6 +101,14 @@ public class DeviceSpecVisitor extends PsiElementVisitor {
     visitParam(o);
   }
 
+  public void visitPointerPrecisionParam(@NotNull DeviceSpecPointerPrecisionParam o) {
+    visitParam(o);
+  }
+
+  public void visitPointerPrecisionT(@NotNull DeviceSpecPointerPrecisionT o) {
+    visitPsiElement(o);
+  }
+
   public void visitSizeT(@NotNull DeviceSpecSizeT o) {
     visitPsiElement(o);
   }
@@ -97,8 +121,24 @@ public class DeviceSpecVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
+  public void visitViewingDistanceParam(@NotNull DeviceSpecViewingDistanceParam o) {
+    visitParam(o);
+  }
+
+  public void visitViewingDistanceT(@NotNull DeviceSpecViewingDistanceT o) {
+    visitPsiElement(o);
+  }
+
   public void visitWidthParam(@NotNull DeviceSpecWidthParam o) {
     visitParam(o);
+  }
+
+  public void visitWindowPostureParam(@NotNull DeviceSpecWindowPostureParam o) {
+    visitParam(o);
+  }
+
+  public void visitWindowPostureT(@NotNull DeviceSpecWindowPostureT o) {
+    visitPsiElement(o);
   }
 
   public void visitPsiElement(@NotNull PsiElement o) {

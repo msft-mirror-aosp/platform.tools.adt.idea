@@ -1,4 +1,13 @@
 {
+  "id": "com.android.studio.ml.AcpConfigurable",
+  "name": "Agents",
+  "entries": [
+    {
+      "hit": "Agents"
+    }
+  ]
+}
+{
   "id": "com.android.studio.ml.McpConfigurable",
   "name": "MCP Servers",
   "entries": [
@@ -69,31 +78,52 @@
       "hit": "750 ms"
     },
     {
-      "hit": "AI inline code completion"
+      "hit": "Add custom instructions to review prompt"
     },
     {
-      "hit": "AI next edit prediction"
+      "hit": "Automatically collapse diff chunks below:"
+    },
+    {
+      "hit": "Change Review"
     },
     {
       "hit": "Configure colors..."
     },
     {
+      "hit": "Don't Collapse"
+    },
+    {
       "hit": "Editor"
     },
     {
-      "hit": "Enable AI predictions"
+      "hit": "Enable AI next edit prediction"
     },
     {
       "hit": "Enable AI smart rename suggestions"
     },
     {
+      "hit": "Enable suggestions away from cursor"
+    },
+    {
+      "hit": "Major"
+    },
+    {
+      "hit": "Minor"
+    },
+    {
       "hit": "Model:"
+    },
+    {
+      "hit": "Moderate"
     },
     {
       "hit": "Next Edit Prediction"
     },
     {
       "hit": "Request delay:"
+    },
+    {
+      "hit": "Show reviewed diff chunks in navigation"
     },
     {
       "hit": "Smart Rename"
@@ -121,9 +151,6 @@
     },
     {
       "hit": "\nBlocked shell commands (none)"
-    },
-    {
-      "hit": "\nLocked by administrator"
     },
     {
       "hit": "Access gitignored files"

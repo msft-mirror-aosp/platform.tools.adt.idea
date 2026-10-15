@@ -22,6 +22,7 @@ import com.android.tools.idea.common.error.SharedIssuePanelProvider
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.testing.ui.createFakeToolWindow
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.NlSupportedActions
@@ -37,6 +38,7 @@ import com.intellij.analysis.problemsView.toolWindow.ProblemsViewToolWindowUtils
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndWait
 import icons.StudioIcons
@@ -49,9 +51,10 @@ import org.junit.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
+@RunsInEdt
 class IssueNotificationActionTest {
 
-  @Rule @JvmField val projectRule = AndroidProjectRule.inMemory()
+  @Rule @JvmField val projectRule = AndroidProjectRule.inMemory().onEdt()
 
   private fun createSurface(issueModel: IssueModel, issueProvider: VisualLintIssueProvider, model: NlModel): NlDesignSurface {
     val surface = mock<NlDesignSurface>()
@@ -78,14 +81,13 @@ class IssueNotificationActionTest {
     whenever(model.virtualFile).thenReturn(mockedFile)
     val surface = createSurface(issueModel, issueProvider, model)
 
-    val actionEvent =
-      TestActionEvent.createTestEvent { dataId ->
-        when {
-          PlatformDataKeys.PROJECT.`is`(dataId) -> projectRule.project
-          DESIGN_SURFACE.`is`(dataId) -> surface
-          else -> null
-        }
+    val actionEvent = TestActionEvent.createTestEvent { dataId ->
+      when {
+        PlatformDataKeys.PROJECT.`is`(dataId) -> projectRule.project
+        DESIGN_SURFACE.`is`(dataId) -> surface
+        else -> null
       }
+    }
 
     val action = IssueNotificationAction()
     action.update(actionEvent)
@@ -143,14 +145,13 @@ class IssueNotificationActionTest {
     whenever(model.virtualFile).thenReturn(mockedFile)
     val surface = createSurface(issueModel, issueProvider, model)
 
-    val actionEvent =
-      TestActionEvent.createTestEvent { dataId ->
-        when {
-          PlatformDataKeys.PROJECT.`is`(dataId) -> projectRule.project
-          DESIGN_SURFACE.`is`(dataId) -> surface
-          else -> null
-        }
+    val actionEvent = TestActionEvent.createTestEvent { dataId ->
+      when {
+        PlatformDataKeys.PROJECT.`is`(dataId) -> projectRule.project
+        DESIGN_SURFACE.`is`(dataId) -> surface
+        else -> null
       }
+    }
 
     val action = IssueNotificationAction()
     action.setSelected(actionEvent, true)
@@ -168,14 +169,13 @@ class IssueNotificationActionTest {
     whenever(surface.project).thenReturn(projectRule.project)
     whenever(surface.supportedActions).thenReturn(ImmutableSet.of())
 
-    val actionEvent =
-      TestActionEvent.createTestEvent { dataId ->
-        when {
-          PlatformDataKeys.PROJECT.`is`(dataId) -> projectRule.project
-          DESIGN_SURFACE.`is`(dataId) -> surface
-          else -> null
-        }
+    val actionEvent = TestActionEvent.createTestEvent { dataId ->
+      when {
+        PlatformDataKeys.PROJECT.`is`(dataId) -> projectRule.project
+        DESIGN_SURFACE.`is`(dataId) -> surface
+        else -> null
       }
+    }
     val action = IssueNotificationAction()
     action.update(actionEvent)
     assertFalse(actionEvent.presentation.isVisible)

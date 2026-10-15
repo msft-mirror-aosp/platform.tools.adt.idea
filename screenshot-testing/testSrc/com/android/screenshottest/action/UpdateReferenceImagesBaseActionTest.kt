@@ -23,7 +23,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndWait
-import org.junit.Assert.assertEquals
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 
@@ -31,12 +31,15 @@ class UpdateReferenceImagesBaseActionTest {
 
   @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
+  @After
+  fun tearDown() {
+    UpdateReferenceImagesDialogManager.getInstance(projectRule.project).resetForTests()
+  }
+
   @Test
   fun testDialogNotCreatedWhenNoScreenshotTestConfiguration() = runInEdtAndWait {
     val manager = UpdateReferenceImagesDialogManager.getInstance(projectRule.project)
-    var dialogsCreated = 0
     manager.dialogFactory = {
-      dialogsCreated++
       error("Dialog should not be created without a Screenshot Tests configuration")
     }
 
@@ -45,7 +48,5 @@ class UpdateReferenceImagesBaseActionTest {
     val dataContext =
       SimpleDataContext.builder().add(CommonDataKeys.PROJECT, projectRule.project).add(Location.DATA_KEY, PsiLocation(file)).build()
     action.actionPerformed(TestActionEvent.createTestEvent(action, dataContext))
-
-    assertEquals(0, dialogsCreated)
   }
 }

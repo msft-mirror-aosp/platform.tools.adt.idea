@@ -827,6 +827,13 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -841,6 +848,13 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -854,6 +868,13 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -875,6 +896,13 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -889,6 +917,13 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -903,6 +938,13 @@ MODULE                        : project.app
                     AssetsDirectories             : <ROOT>/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -923,6 +965,13 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
         BuildType
             Name                          : benchmark
             IsDebuggable                  : false
@@ -944,6 +993,13 @@ MODULE                        : project.app
             AssetsDirectories             : <ROOT>/app/src/benchmark/assets [-]
             JniLibsDirectories            : <ROOT>/app/src/benchmark/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/benchmark/baselineProfiles [-]
+            ApiConfigurationName          : benchmarkApi
+            CompileOnlyConfigurationName  : benchmarkCompileOnly
+            CompileOnlyApiConfigurationName         : benchmarkApi
+            ImplementationConfigurationName         : benchmarkImplementation
+            RuntimeOnlyConfigurationName  : benchmarkRuntimeOnly
+            AnnotationProcessorConfigurationName    : benchmarkAnnotationProcessor
+            KaptConfigurationName         : kaptBenchmark
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1268,6 +1324,13 @@ MODULE                        : project.benchmark
             AssetsDirectories             : <ROOT>/benchmark/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/benchmark/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/benchmark/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
     BuildTypes
         BuildType
@@ -1301,6 +1364,13 @@ MODULE                        : project.benchmark
             AssetsDirectories             : <ROOT>/benchmark/src/benchmark/assets [-]
             JniLibsDirectories            : <ROOT>/benchmark/src/benchmark/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/benchmark/src/benchmark/baselineProfiles [-]
+            ApiConfigurationName          : benchmarkApi
+            CompileOnlyConfigurationName  : benchmarkCompileOnly
+            CompileOnlyApiConfigurationName         : benchmarkApi
+            ImplementationConfigurationName         : benchmarkImplementation
+            RuntimeOnlyConfigurationName  : benchmarkRuntimeOnly
+            AnnotationProcessorConfigurationName    : benchmarkAnnotationProcessor
+            KaptConfigurationName         : kaptBenchmark
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1781,6 +1851,13 @@ MODULE                        : project.test
             AssetsDirectories             : <ROOT>/test/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/test/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/test/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
     BuildTypes
         BuildType
@@ -1803,6 +1880,13 @@ MODULE                        : project.test
             AssetsDirectories             : <ROOT>/test/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/test/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/test/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -2282,6 +2366,13 @@ MODULE                        : project.test2
             AssetsDirectories             : <ROOT>/test2/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/test2/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/test2/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
     BuildTypes
         BuildType
@@ -2304,6 +2395,13 @@ MODULE                        : project.test2
             AssetsDirectories             : <ROOT>/test2/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/test2/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/test2/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
     SigningConfigs
         SigningConfig
             Name                          : debug

@@ -719,6 +719,13 @@ MODULE                        : My_First_App.app
             AssetsDirectories             : <ROOT>/firstapp/app/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/firstapp/app/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/firstapp/app/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -733,6 +740,13 @@ MODULE                        : My_First_App.app
                     AssetsDirectories             : <ROOT>/firstapp/app/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/firstapp/app/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/firstapp/app/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -746,6 +760,13 @@ MODULE                        : My_First_App.app
                     AssetsDirectories             : <ROOT>/firstapp/app/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/firstapp/app/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/firstapp/app/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -767,6 +788,13 @@ MODULE                        : My_First_App.app
             AssetsDirectories             : <ROOT>/firstapp/app/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/firstapp/app/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/firstapp/app/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -781,6 +809,13 @@ MODULE                        : My_First_App.app
                     AssetsDirectories             : <ROOT>/firstapp/app/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/firstapp/app/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/firstapp/app/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -795,6 +830,13 @@ MODULE                        : My_First_App.app
                     AssetsDirectories             : <ROOT>/firstapp/app/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/firstapp/app/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/firstapp/app/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>/firstapp/app/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-9.0.0 [-]
@@ -817,6 +859,13 @@ MODULE                        : My_First_App.app
             AssetsDirectories             : <ROOT>/firstapp/app/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/firstapp/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/firstapp/app/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
     SigningConfigs
         SigningConfig
             Name                          : debug
@@ -1779,6 +1828,13 @@ MODULE                        : My_First_App.app.mysharedlibrary
             AssetsDirectories             : <ROOT>/shared/mysharedlibrary/src/main/assets [-]
             JniLibsDirectories            : <ROOT>/shared/mysharedlibrary/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/shared/mysharedlibrary/src/main/baselineProfiles [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : api
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1793,6 +1849,13 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     AssetsDirectories             : <ROOT>/shared/mysharedlibrary/src/androidTest/assets [-]
                     JniLibsDirectories            : <ROOT>/shared/mysharedlibrary/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/shared/mysharedlibrary/src/androidTest/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1806,6 +1869,13 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     AssetsDirectories             : <ROOT>/shared/mysharedlibrary/src/test/assets [-]
                     JniLibsDirectories            : <ROOT>/shared/mysharedlibrary/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/shared/mysharedlibrary/src/test/baselineProfiles [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -1827,6 +1897,13 @@ MODULE                        : My_First_App.app.mysharedlibrary
             AssetsDirectories             : <ROOT>/shared/mysharedlibrary/src/debug/assets [-]
             JniLibsDirectories            : <ROOT>/shared/mysharedlibrary/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/shared/mysharedlibrary/src/debug/baselineProfiles [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1841,6 +1918,13 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     AssetsDirectories             : <ROOT>/shared/mysharedlibrary/src/androidTestDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/shared/mysharedlibrary/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/shared/mysharedlibrary/src/androidTestDebug/baselineProfiles [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1855,6 +1939,13 @@ MODULE                        : My_First_App.app.mysharedlibrary
                     AssetsDirectories             : <ROOT>/shared/mysharedlibrary/src/testDebug/assets [-]
                     JniLibsDirectories            : <ROOT>/shared/mysharedlibrary/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/shared/mysharedlibrary/src/testDebug/baselineProfiles [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>/shared/mysharedlibrary/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-9.0.0 [-]
@@ -1877,6 +1968,13 @@ MODULE                        : My_First_App.app.mysharedlibrary
             AssetsDirectories             : <ROOT>/shared/mysharedlibrary/src/release/assets [-]
             JniLibsDirectories            : <ROOT>/shared/mysharedlibrary/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/shared/mysharedlibrary/src/release/baselineProfiles [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
     SigningConfigs
         SigningConfig
             Name                          : debug

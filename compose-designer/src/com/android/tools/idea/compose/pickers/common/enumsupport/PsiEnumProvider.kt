@@ -26,8 +26,12 @@ import com.android.tools.idea.compose.pickers.preview.enumsupport.Wallpaper
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.CutoutEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.DensityEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.DimensionUnitEnumSupport
+import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.KeyboardKindEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.NavigationEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.OrientationEnumSupport
+import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.PointerPrecisionEnumSupport
+import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.ViewingDistanceEnumSupport
+import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.WindowPostureEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.createDeviceEnumSupport
 import com.android.tools.preview.config.PARAMETER_API_LEVEL
 import com.android.tools.preview.config.PARAMETER_DEVICE
@@ -40,6 +44,10 @@ import com.android.tools.preview.config.PARAMETER_HARDWARE_DIM_UNIT
 import com.android.tools.preview.config.PARAMETER_HARDWARE_NAVIGATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_ORIENTATION
 import com.android.tools.preview.config.PARAMETER_LOCALE
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_DISTANCE
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_KEYBOARD
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_POINTER
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_WINDOW_POSTURE
 import com.android.tools.preview.config.PARAMETER_UI_MODE
 import com.android.tools.preview.config.PARAMETER_WALLPAPER
 import com.android.tools.property.panel.api.EnumSupport
@@ -106,6 +114,10 @@ class PsiEnumProvider(private val enumSupportValuesProvider: EnumSupportValuesPr
       PARAMETER_HARDWARE_ORIENTATION -> OrientationEnumSupport
       PARAMETER_HARDWARE_CUTOUT -> CutoutEnumSupport
       PARAMETER_HARDWARE_NAVIGATION -> NavigationEnumSupport
+      PARAMETER_MEDIA_QUERY_WINDOW_POSTURE -> WindowPostureEnumSupport
+      PARAMETER_MEDIA_QUERY_POINTER -> PointerPrecisionEnumSupport
+      PARAMETER_MEDIA_QUERY_KEYBOARD -> KeyboardKindEnumSupport
+      PARAMETER_MEDIA_QUERY_DISTANCE -> ViewingDistanceEnumSupport
       PARAMETER_WALLPAPER ->
         EnumSupportWithConstantData(enumSupportValuesProvider, property.name) { stringValue ->
           // Safely attempt to parse stringValue as an integer, preventing NumberFormatException for non-numeric class references

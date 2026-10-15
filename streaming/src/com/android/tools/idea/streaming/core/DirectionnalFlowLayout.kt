@@ -23,9 +23,13 @@ import java.awt.Point
 
 /**
  * Lays out child components in a row or column depending on [direction] with the given [gap] between them. In the orthogonal direction the
- * child components occupy all available space of the container.
+ * child components occupy all available space of the container if [fillOrthogonal] is true, or use their preferred size otherwise.
  */
-class DirectionalFlowLayout(val direction: Direction = Direction.LEFT_TO_RIGHT, val gap: Int = 0) : AbstractLayoutManager() {
+class DirectionalFlowLayout(
+  val direction: Direction = Direction.LEFT_TO_RIGHT,
+  val gap: Int = 0,
+  val fillOrthogonal: Boolean = true,
+) : AbstractLayoutManager() {
 
   override fun layoutContainer(container: Container) {
     val insets = container.insets
@@ -33,30 +37,38 @@ class DirectionalFlowLayout(val direction: Direction = Direction.LEFT_TO_RIGHT, 
       Direction.LEFT_TO_RIGHT -> {
         val offset = Point(insets.left, insets.top)
         for (child in container.components) {
-          child.setBounds(offset.x, offset.y, child.preferredSize.width, container.height - insets.top - insets.bottom)
-          offset.x += child.preferredSize.width + gap
+          val size = child.preferredSize
+          val height = if (fillOrthogonal) container.height - insets.top - insets.bottom else size.height
+          child.setBounds(offset.x, offset.y, size.width, height)
+          offset.x += size.width + gap
         }
       }
       Direction.RIGHT_TO_LEFT -> {
         val offset = Point(container.width - insets.right, insets.top)
         for (child in container.components) {
-          offset.x -= child.preferredSize.width
-          child.setBounds(offset.x, offset.y, child.preferredSize.width, container.height - insets.top - insets.bottom)
+          val size = child.preferredSize
+          val height = if (fillOrthogonal) container.height - insets.top - insets.bottom else size.height
+          offset.x -= size.width
+          child.setBounds(offset.x, offset.y, size.width, height)
           offset.x -= gap
         }
       }
       Direction.TOP_TO_BOTTOM -> {
         val offset = Point(insets.left, insets.top)
         for (child in container.components) {
-          child.setBounds(offset.x, offset.y, container.width - insets.left - insets.right, child.preferredSize.height)
-          offset.y += child.preferredSize.height + gap
+          val size = child.preferredSize
+          val width = if (fillOrthogonal) container.width - insets.left - insets.right else size.width
+          child.setBounds(offset.x, offset.y, width, size.height)
+          offset.y += size.height + gap
         }
       }
       Direction.BOTTOM_TO_TOP -> {
         val offset = Point(insets.left, container.height - insets.bottom)
         for (child in container.components) {
-          offset.y -= child.preferredSize.height
-          child.setBounds(offset.x, offset.y, container.width - insets.left - insets.right, child.preferredSize.height)
+          val size = child.preferredSize
+          val width = if (fillOrthogonal) container.width - insets.left - insets.right else size.width
+          offset.y -= size.height
+          child.setBounds(offset.x, offset.y, width, size.height)
           offset.y -= gap
         }
       }

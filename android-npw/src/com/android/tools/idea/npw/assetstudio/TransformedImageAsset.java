@@ -17,6 +17,7 @@ package com.android.tools.idea.npw.assetstudio;
 
 import static com.android.ide.common.util.AssetUtil.NO_EFFECTS;
 import static com.android.tools.idea.npw.assetstudio.AssetStudioUtils.roundToInt;
+import static com.android.tools.idea.rendering.VectorDrawableTransformer.getSizeDp;
 import static com.android.tools.idea.rendering.VectorDrawableTransformer.transform;
 
 import com.android.annotations.concurrency.GuardedBy;
@@ -53,6 +54,7 @@ public final class TransformedImageAsset {
   private final double myOpacity;
   private final boolean myIsClipart;
   private final boolean myIsTrimmed;
+  private final boolean myIsCropped;
   @NotNull private final String myLineSeparator;
   @NotNull private final Dimension myTargetSize;
   @Nullable private Rectangle2D myTrimRectangle;
@@ -87,6 +89,27 @@ public final class TransformedImageAsset {
                                @Nullable Color tint,
                                @NotNull GraphicGeneratorContext context,
                                @NotNull String lineSeparator) {
+    this(asset, targetSize, scaleFactor, false, tint, context, lineSeparator);
+  }
+
+  /**
+   * Initializes a new transformed image asset.
+   *
+   * @param asset the source image or text asset, also supplies opacity factor, and trimming flag
+   * @param targetSize the size of the transformed image
+   * @param scaleFactor the scale factor to be applied to the image
+   * @param isCropped if true, scales the asset to cover the target size (center-crop); otherwise shrinks to fit inside
+   * @param tint the tint to apply to the image, or null to preserve original colors
+   * @param context the trim rectangle calculator
+   * @param lineSeparator the line separator the XML text should use
+   */
+  public TransformedImageAsset(@NotNull BaseAsset asset,
+                               @NotNull Dimension targetSize,
+                               double scaleFactor,
+                               boolean isCropped,
+                               @Nullable Color tint,
+                               @NotNull GraphicGeneratorContext context,
+                               @NotNull String lineSeparator) {
     myDrawableFuture = asset instanceof ImageAsset ? ((ImageAsset)asset).getXmlDrawable() :
                        asset instanceof TextAsset ? ((TextAsset)asset).getXmlDrawable() : null;
     myImageFuture = myDrawableFuture == null ? asset.toImage() : null;
@@ -94,6 +117,7 @@ public final class TransformedImageAsset {
     myOpacity = asset instanceof TextAsset ? 1 : asset.opacityPercent().get() / 100.;
     myIsClipart = asset.isClipart();
     myIsTrimmed = asset.trimmed().get();
+    myIsCropped = isCropped;
     myTargetSize = targetSize;
     myScaleFactor = scaleFactor;
     myContext = context;
@@ -158,7 +182,7 @@ public final class TransformedImageAsset {
           xmlDrawable = LINE_ENDING_PATTERN.matcher(xmlDrawable).replaceAll(myLineSeparator);
           Rectangle2D clipRectangle = myIsTrimmed ? getTrimRectangle(xmlDrawable) : null;
           myTransformedDrawable =
-            transform(xmlDrawable, myTargetSize, myGravity, myScaleFactor, clipRectangle, myShift, myTint, myOpacity, false);
+            transform(xmlDrawable, myTargetSize, myGravity, myScaleFactor, clipRectangle, myShift, myTint, myOpacity, false, myIsCropped);
         }
         return myTransformedDrawable;
       }
@@ -216,8 +240,12 @@ public final class TransformedImageAsset {
     double x;
     double y;
     synchronized (myLock) {
-      double scaleFactor = Math.min(imageSize.getWidth() * myScaleFactor / sourceImage.getWidth(),
-                                    imageSize.getHeight() * myScaleFactor / sourceImage.getHeight());
+      // Compute the scale factors required to fit the source image to the target width and height, adjusted by myScaleFactor.
+      // Use the larger factor when cropping (center-crop) so the image fills the entire target area along both axes, or the
+      // smaller factor when shrinking to fit (center-inside) so the entire source image fits within the target bounds.
+      double scaleFactorX = imageSize.getWidth() * myScaleFactor / sourceImage.getWidth();
+      double scaleFactorY = imageSize.getHeight() * myScaleFactor / sourceImage.getHeight();
+      double scaleFactor = myIsCropped ? Math.max(scaleFactorX, scaleFactorY) : Math.min(scaleFactorX, scaleFactorY);
       width = roundToInt(sourceImage.getWidth() * scaleFactor);
       height = roundToInt(sourceImage.getHeight() * scaleFactor);
 
@@ -291,14 +319,28 @@ public final class TransformedImageAsset {
 
   @NotNull
   private Rectangle2D calculateTrimRectangle(@NotNull String xmlDrawable) {
-    Future<BufferedImage> futureImage = myContext.renderDrawable(xmlDrawable, myTargetSize);
+    Dimension drawableSize = getSizeDp(xmlDrawable);
+    Dimension renderSize = myTargetSize;
+    if (drawableSize != null && drawableSize.width > 0 && drawableSize.height > 0) {
+      // Render at the drawable's native aspect ratio so VectorDrawableTransformer does not distort or clip the content
+      // before measuring its non-transparent bounds. Ensure the smaller dimension is at least maxTargetDimension to avoid
+      // pixel quantization error on high-aspect-ratio drawables (e.g., TextAsset), while capping the larger dimension at 1024px.
+      int maxTargetDimension = Math.max(myTargetSize.width, myTargetSize.height);
+      int minDrawableDimension = Math.min(drawableSize.width, drawableSize.height);
+      int maxDrawableDimension = Math.max(drawableSize.width, drawableSize.height);
+      double renderScale = Math.max(1.0, (double)maxTargetDimension / minDrawableDimension);
+      renderScale = Math.min(renderScale, 1024.0 / maxDrawableDimension);
+      renderSize = new Dimension(Math.max(1, roundToInt(drawableSize.width * renderScale)),
+                                 Math.max(1, roundToInt(drawableSize.height * renderScale)));
+    }
+    Future<BufferedImage> futureImage = myContext.renderDrawable(xmlDrawable, renderSize);
     Future<Rectangle2D> rectangleFuture = Futures.lazyTransform(futureImage, (BufferedImage image) -> {
       Rectangle bounds = ImageUtils.getCropBounds(image, ImageUtils::isTransparentPixel, null);
       if (bounds == null) {
-        return new Rectangle(myTargetSize);  // Do not trim a completely transparent image.
+        return new Rectangle2D.Double(0, 0, 1, 1);  // Do not trim a completely transparent image.
       }
-      double width = myTargetSize.getWidth();
-      double height = myTargetSize.getHeight();
+      double width = image.getWidth();
+      double height = image.getHeight();
       return new Rectangle2D.Double(bounds.getX() / width, bounds.getY() / height,
                                     bounds.getWidth() / width, bounds.getHeight() / height);
     });
@@ -307,7 +349,7 @@ public final class TransformedImageAsset {
       return rectangleFuture.get();
     }
     catch (InterruptedException | ExecutionException e) {
-      return new Rectangle(myTargetSize);
+      return new Rectangle2D.Double(0, 0, 1, 1);
     }
   }
 }

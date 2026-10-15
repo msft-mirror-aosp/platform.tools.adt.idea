@@ -20,16 +20,22 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.MouseButton
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.unit.dp
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
+import com.android.tools.idea.compose.meshgradient.components.toHexString
 import com.android.tools.idea.compose.preview.message
 import com.intellij.testFramework.ApplicationRule
 import org.junit.Assert.assertEquals
@@ -179,5 +185,49 @@ class GradientCanvasTest {
     vertexNode(row = 0, col = 0).performSemanticsAction(SemanticsActions.OnClick)
 
     assertEquals(listOf(VertexIndex(0, 0)), clickedVertices)
+  }
+
+  @OptIn(ExperimentalTestApi::class)
+  @Test
+  fun vertexSemanticsExposeStateAndSupportKeyboardSelectionAndMovement() {
+    val state = GradientEditorState().apply { constrainEdgePoints = true }
+    val initialCenter = state.meshPoints[1][1].position
+    setCanvas(state)
+
+    val corner = vertexNode(row = 0, col = 0)
+    val center = vertexNode(row = 1, col = 1)
+    assertEquals(
+      "${state.meshPoints[0][0].color.toHexString()}, (0, 0), pinned",
+      corner.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
+    )
+    assertEquals(
+      "${state.meshPoints[1][1].color.toHexString()}, (${formatFloat(initialCenter.x)}, ${formatFloat(initialCenter.y)})",
+      center.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
+    )
+
+    // Pinned corner can be selected with Enter/Space, but arrow keys do not move it.
+    corner.performSemanticsAction(SemanticsActions.RequestFocus)
+    corner.performKeyInput {
+      pressKey(Key.DirectionRight)
+      pressKey(Key.Enter)
+    }
+    composeTestRule.waitForIdle()
+    assertEquals(Offset.Zero, state.meshPoints[0][0].position)
+    assertEquals(listOf(VertexIndex(0, 0)), clickedVertices)
+
+    // Movable vertex moves with arrow keys.
+    center.performSemanticsAction(SemanticsActions.RequestFocus)
+    center.performKeyInput {
+      pressKey(Key.DirectionRight)
+      pressKey(Key.DirectionUp)
+    }
+    composeTestRule.waitForIdle()
+    assertEquals(initialCenter.x + VERTEX_KEYBOARD_STEP, state.meshPoints[1][1].position.x, 1e-4f)
+    assertEquals(initialCenter.y - VERTEX_KEYBOARD_STEP, state.meshPoints[1][1].position.y, 1e-4f)
+
+    // Changing the number of columns preserves focus on the same (row, col) vertex rather than shifting by flat index.
+    state.updateCols(state.cols + 1)
+    composeTestRule.waitForIdle()
+    center.assertIsFocused()
   }
 }

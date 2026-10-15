@@ -16,7 +16,9 @@
 package com.android.screenshottest.run
 
 import com.android.flags.junit.FlagRule
+import com.android.screenshottest.action.withNonDebuggableBuildTypes
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.onEdt
@@ -26,6 +28,7 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.impl.ActionManagerImpl
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil.findFileByIoFile
 import com.intellij.psi.PsiElement
@@ -35,13 +38,14 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.RunsInEdt
 import java.io.File
-import org.jetbrains.android.AndroidTestCase.assertNotNull
 import org.jetbrains.kotlin.idea.core.util.toPsiFile
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Rule
@@ -128,7 +132,7 @@ class ScreenshotTestRunLineMarkerContributorTest {
     file = virtualFile.toPsiFile(projectRule.project)
     val function1 = file!!.findFunctionIdentifier("GreetingAndroid")
     val function2 = file!!.findFunctionIdentifier("GreetingPreview")
-    val classElement = file!!.findClassdentifier("PreviewScreenshotTest")
+    val classElement = file!!.findClassIdentifier("PreviewScreenshotTest")
     assertNull(contributor.getSlowInfo(function1))
     assertNull(contributor.getSlowInfo(function2))
     assertNull(contributor.getSlowInfo(classElement))
@@ -166,7 +170,7 @@ class ScreenshotTestRunLineMarkerContributorTest {
     file = virtualFile.toPsiFile(projectRule.project)
     val function1 = file!!.findFunctionIdentifier("GreetingAndroid")
     val function2 = file!!.findFunctionIdentifier("GreetingPreview")
-    val classElement = file!!.findClassdentifier("PreviewScreenshotTest")
+    val classElement = file!!.findClassIdentifier("PreviewScreenshotTest")
     val fun1Info = contributor.getSlowInfo(function1)
     val fun2Info = contributor.getSlowInfo(function2)
     val classInfo = contributor.getSlowInfo(classElement)
@@ -212,7 +216,7 @@ class ScreenshotTestRunLineMarkerContributorTest {
     file = virtualFile.toPsiFile(projectRule.project)
     val function1 = file!!.findFunctionIdentifier("GreetingAndroid")
     val function2 = file!!.findFunctionIdentifier("GreetingPreview")
-    val classElement = file!!.findClassdentifier("PreviewScreenshotTest")
+    val classElement = file!!.findClassIdentifier("PreviewScreenshotTest")
     val fun1Info = contributor.getSlowInfo(function1)
     val fun2Info = contributor.getSlowInfo(function2)
     val classInfo = contributor.getSlowInfo(classElement)
@@ -251,7 +255,7 @@ class ScreenshotTestRunLineMarkerContributorTest {
     file = virtualFile.toPsiFile(projectRule.project)
     val function1 = file!!.findFunctionIdentifier("GreetingAndroid")
     val function2 = file!!.findFunctionIdentifier("GreetingPreview")
-    val classElement = file!!.findClassdentifier("PreviewScreenshotTest")
+    val classElement = file!!.findClassIdentifier("PreviewScreenshotTest")
     val fun1Info = contributor.getSlowInfo(function1)
     val fun2Info = contributor.getSlowInfo(function2)
     val classInfo = contributor.getSlowInfo(classElement)
@@ -295,7 +299,7 @@ class ScreenshotTestRunLineMarkerContributorTest {
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
     file = virtualFile.toPsiFile(projectRule.project)
     val function1 = file!!.findFunctionIdentifier("GreetingAndroid")
-    val classElement = file!!.findClassdentifier("PreviewScreenshotTest")
+    val classElement = file!!.findClassIdentifier("PreviewScreenshotTest")
     val fun1Info = contributor.getSlowInfo(function1)
     val classInfo = contributor.getSlowInfo(classElement)
     val lastAction1 = fun1Info!!.actions.lastOrNull()
@@ -334,7 +338,7 @@ class ScreenshotTestRunLineMarkerContributorTest {
     file = virtualFile.toPsiFile(projectRule.project)
     val function1 = file!!.findFunctionIdentifier("GreetingAndroid")
     val function2 = file!!.findFunctionIdentifier("GreetingPreview")
-    val classElement = file!!.findClassdentifier("PreviewScreenshotTest")
+    val classElement = file!!.findClassIdentifier("PreviewScreenshotTest")
     assertNull(contributor.getSlowInfo(function1))
     assertNull(contributor.getSlowInfo(function2))
     assertNull(contributor.getSlowInfo(classElement))
@@ -357,7 +361,7 @@ class ScreenshotTestRunLineMarkerContributorTest {
     val screenshotDir = virtualFile!!.parent.parent.parent.parent.parent
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
     file = virtualFile.toPsiFile(projectRule.project)
-    val classElement = file!!.findClassdentifier("PreviewScreenshotTest")
+    val classElement = file!!.findClassIdentifier("PreviewScreenshotTest")
     assertNull(contributor.getSlowInfo(classElement))
   }
 
@@ -384,7 +388,7 @@ class ScreenshotTestRunLineMarkerContributorTest {
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir!!, true)
     file = virtualFile.toPsiFile(projectRule.project)
 
-    val classIdentifier = file!!.findClassdentifier("IconsTest")
+    val classIdentifier = file!!.findClassIdentifier("IconsTest")
     val methodIdentifier = file!!.findFunctionIdentifier("TestMethod")
 
     val classInfo = contributor.getSlowInfo(classIdentifier)
@@ -398,6 +402,120 @@ class ScreenshotTestRunLineMarkerContributorTest {
     assertEquals(AllIcons.RunConfigurations.TestState.Run, methodInfo!!.icon)
   }
 
+  @Test
+  @RunsInEdt
+  fun testRunLineMarkerContributorTopLevelFunctions() {
+    val cFile =
+      createRelativeFilewithContent(
+        "app/src/screenshotTest/java/com/example/runlinemarker/TopLevelScreenshotTest.kt",
+        """
+        $SRC_FILE_HEADER
+        @PreviewTest
+        @Preview(showBackground = true)
+        @Composable
+        fun TopLevelPreviewTestWithPreview() {
+            println("Hello")
+        }
+
+        @PreviewTest
+        @Composable
+        fun TopLevelOnlyPreviewTest() {
+            println("Hi")
+        }
+
+        @Preview(showBackground = true)
+        @Composable
+        fun TopLevelWithoutPreviewTest() {
+            println("Not a screenshot test")
+        }
+        """
+          .trimIndent(),
+      )
+    val virtualFile = findFileByIoFile(cFile, true)!!
+    val screenshotDir = projectRule.fixture.tempDirFixture.findOrCreateDir("app/src/screenshotTest")
+    PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir, true)
+    file = virtualFile.toPsiFile(projectRule.project)
+
+    val topLevelWithPreview = file!!.findFunctionIdentifier("TopLevelPreviewTestWithPreview")
+    val topLevelOnlyPreviewTest = file!!.findFunctionIdentifier("TopLevelOnlyPreviewTest")
+    val topLevelWithoutPreviewTest = file!!.findFunctionIdentifier("TopLevelWithoutPreviewTest")
+
+    val info1 = contributor.getSlowInfo(topLevelWithPreview)
+    val info2 = contributor.getSlowInfo(topLevelOnlyPreviewTest)
+    val info3 = contributor.getSlowInfo(topLevelWithoutPreviewTest)
+
+    assertNull(contributor.getInfo(topLevelWithPreview))
+    assertNull(contributor.getSlowInfo(topLevelWithPreview.parent))
+
+    assertNotNull(info1)
+    assertEquals(AllIcons.RunConfigurations.TestState.Run, info1!!.icon)
+    assertEquals("Run screenshot tests", info1.tooltipProvider.apply(topLevelWithPreview))
+    assertEquals(updateReferenceImagesAction, info1.actions.lastOrNull())
+    assertEquals("Add/Update Reference Images...", info1.actions.lastOrNull()!!.templateText)
+
+    assertNotNull(info2)
+    assertEquals(AllIcons.RunConfigurations.TestState.Run, info2!!.icon)
+    assertEquals(updateReferenceImagesAction, info2.actions.lastOrNull())
+    assertEquals("Add/Update Reference Images...", info2.actions.lastOrNull()!!.templateText)
+
+    assertNull(info3)
+  }
+
+  @Test
+  @RunsInEdt
+  fun testRunLineMarkerContributorNonDebuggableVariant() {
+    val cFile =
+      createRelativeFilewithContent(
+        "app/src/screenshotTest/java/com/example/runlinemarker/PreviewScreenshotTest.kt",
+        """
+        $SRC_FILE_HEADER
+        @PreviewTest
+        @Preview(showBackground = true)
+        @Composable
+        fun TopLevelPreview() {
+            println("Top level")
+        }
+
+        class PreviewScreenshotTest {
+           @PreviewTest
+           @Preview(showBackground = true)
+           @Composable
+           fun GreetingAndroid() {
+               println("Hello")
+           }
+        }
+        """
+          .trimIndent(),
+      )
+    val virtualFile = findFileByIoFile(cFile, true)!!
+    val screenshotDir = projectRule.fixture.tempDirFixture.findOrCreateDir("app/src/screenshotTest")
+    PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotDir, true)
+    file = virtualFile.toPsiFile(projectRule.project)
+
+    val topLevelFunction = file!!.findFunctionIdentifier("TopLevelPreview")
+    val memberFunction = file!!.findFunctionIdentifier("GreetingAndroid")
+    val classElement = file!!.findClassIdentifier("PreviewScreenshotTest")
+
+    // Verify markers are present when the variant is debuggable
+    assertNotNull(contributor.getSlowInfo(topLevelFunction))
+    assertNotNull(contributor.getSlowInfo(memberFunction))
+    assertNotNull(contributor.getSlowInfo(classElement))
+
+    withNonDebuggableBuildTypes(projectRule.project) {
+      val module = ModuleUtilCore.findModuleForPsiElement(classElement)!!
+      assertFalse(module.getModuleSystem().isDebuggable)
+
+      assertNull(contributor.getSlowInfo(topLevelFunction))
+      assertNull(contributor.getSlowInfo(memberFunction))
+      assertNull(contributor.getSlowInfo(classElement))
+    }
+
+    // Verify markers are restored once debuggable build types are restored
+    assertNotNull(contributor.getSlowInfo(topLevelFunction))
+    assertNotNull(contributor.getSlowInfo(memberFunction))
+    assertNotNull(contributor.getSlowInfo(classElement))
+  }
+
   private fun PsiFile.findFunctionIdentifier(name: String): PsiElement {
     val function = PsiTreeUtil.findChildrenOfType(this, KtNamedFunction::class.java).first { it.name == name }
     return PsiTreeUtil.getChildrenOfType(function, LeafPsiElement::class.java)?.first {
@@ -405,7 +523,7 @@ class ScreenshotTestRunLineMarkerContributorTest {
     }!!
   }
 
-  private fun PsiFile.findClassdentifier(name: String): PsiElement {
+  private fun PsiFile.findClassIdentifier(name: String): PsiElement {
     val function = PsiTreeUtil.findChildrenOfType(this, KtClass::class.java).first { it.name == name }
     return PsiTreeUtil.getChildrenOfType(function, LeafPsiElement::class.java)?.first {
       it.node.elementType == KtTokens.IDENTIFIER

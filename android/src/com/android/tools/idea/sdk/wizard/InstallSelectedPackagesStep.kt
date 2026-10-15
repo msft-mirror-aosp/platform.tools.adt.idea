@@ -67,6 +67,7 @@ import javax.swing.SwingConstants
 import javax.swing.text.BadLocationException
 import javax.swing.text.MutableAttributeSet
 import javax.swing.text.StyleConstants
+import kotlinx.coroutines.Job
 import org.jetbrains.android.util.AndroidBundle
 
 /**
@@ -110,6 +111,7 @@ class InstallSelectedPackagesStep(
       }
 
   private var logger: ProgressIndicator? = null
+  private var installJob: Job? = null
   private val backgroundAction = BackgroundAction()
   private var outputStyle: MutableAttributeSet? = null
 
@@ -201,6 +203,7 @@ class InstallSelectedPackagesStep(
       // If we're backgrounded, don't cancel when the window closes; allow the operation to continue.
       if (!backgroundAction.isBackgrounded) {
         logger?.cancel()
+        installJob?.cancel()
       }
     }
   }
@@ -209,12 +212,7 @@ class InstallSelectedPackagesStep(
     val customLogger = CustomLogger()
     // The install can outlive this step: the user can send it to the background, which closes the wizard. Keep the output so that we can
     // still show it when the install finishes.
-    val activeLogger =
-      synchronized(LOGGER_LOCK) {
-        val log = LogCollectingProgressIndicator(if (throttleProgress) ThrottledProgressWrapper(customLogger) else customLogger)
-        logger = log
-        log
-      }
+    val activeLogger = LogCollectingProgressIndicator(if (throttleProgress) ThrottledProgressWrapper(customLogger) else customLogger)
 
     val task =
       InstallTask(
@@ -252,7 +250,10 @@ class InstallSelectedPackagesStep(
         },
       )
 
-    task.runAsync()
+    synchronized(LOGGER_LOCK) {
+      logger = activeLogger
+      installJob = task.runAsync()
+    }
   }
 
   private fun createContentPanel(): JPanel {

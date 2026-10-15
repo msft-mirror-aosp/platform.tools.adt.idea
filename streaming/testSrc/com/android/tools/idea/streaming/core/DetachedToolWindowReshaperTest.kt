@@ -91,7 +91,7 @@ class DetachedToolWindowReshaperTest {
   fun testResizeDetachedWindowOnRotationAndDimensionChange() {
     val (phone, phoneView, ui) = startPhone(Dimension(500, 500))
 
-    // 1. Detached (WINDOWED) with empty space: rotating should NOT resize the window and should reset zoom.
+    // Detached (WINDOWED) with empty space: rotating should NOT resize the window and should reset zoom.
     toolWindow.setType(ToolWindowType.WINDOWED, null)
     dispatchAllInvocationEventsInIdeEventQueue() // Wait for the asynchronous tool window size optimization triggered by the type change.
     toolWindow.decorator.size = Dimension(500, 500)
@@ -123,7 +123,7 @@ class DetachedToolWindowReshaperTest {
     val targetScaleSubOne = roundDownToNaturalNumberOrNearestSmallFraction(phoneView.scale)
     assertThat(targetScaleSubOne).isLessThan(1.0)
 
-    // 2. Detached (WINDOWED) with no empty space and scale < 1.0: rotating preserves zoom scale and resizes viewport to match aspect ratio.
+    // Detached (WINDOWED) with no empty space and scale < 1.0: rotating preserves zoom scale and resizes viewport to match aspect ratio.
     phone.displayRotation = SkinRotation.LANDSCAPE
     phoneView.displayOrientationQuadrants = 1
     waitForCondition(5.seconds) {
@@ -147,7 +147,7 @@ class DetachedToolWindowReshaperTest {
     assertThat(roundDownToNaturalNumberOrNearestSmallFraction(phoneView.scale)).isEqualTo(targetScaleSubOne)
     assertMatchesAspectRatio(phoneView)
 
-    // 3. Docked mode even with no empty space: rotating should NOT resize the tool window.
+    // Docked mode even with no empty space: rotating should NOT resize the tool window.
     toolWindow.setType(ToolWindowType.DOCKED, null)
     toolWindow.setAnchor(ToolWindowAnchor.RIGHT, null)
     val dockedSizeBefore = Dimension(toolWindow.decorator.size)
@@ -160,7 +160,7 @@ class DetachedToolWindowReshaperTest {
     }
     assertThat(toolWindow.decorator.size).isEqualTo(dockedSizeBefore)
 
-    // 4. Detached (FLOATING) with scale > 1.0 (fractional from ZoomType.FIT and integer 2.0 from ZoomType.IN).
+    // Detached (FLOATING) with scale > 1.0 (fractional from ZoomType.FIT and integer 2.0 from ZoomType.IN).
     toolWindow.setType(ToolWindowType.FLOATING, null)
     phone.displayRotation = SkinRotation.PORTRAIT
     phoneView.displayOrientationQuadrants = 0
@@ -218,7 +218,7 @@ class DetachedToolWindowReshaperTest {
     assertThat(scrollPane.verticalScrollBar.isVisible).isFalse()
     assertThat(scrollPane.horizontalScrollBar.isVisible).isFalse()
 
-    // 5. Folding/unfolding a foldable device (non-rotation display dimension change) in detached WINDOWED mode with no empty space.
+    // Folding/unfolding a foldable device (non-rotation display dimension change) in detached WINDOWED mode with no empty space.
     val foldable = emulatorRule.newEmulator(FakeEmulator.createFoldableAvd(emulatorRule.avdRoot))
     foldable.start()
     runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
@@ -246,6 +246,46 @@ class DetachedToolWindowReshaperTest {
     }
     assertMatchesAspectRatio(foldableView)
     assertThat(roundDownToNaturalNumberOrNearestSmallFraction(foldableView.scale)).isEqualTo(unfoldedTargetScale)
+  }
+
+  @Test
+  fun testResizeDetachedWindowOnRotationWithVerticalToolbar() {
+    val (phone, phoneView, ui) = startPhone(Dimension(500, 500))
+    val devicePanel = phoneView.findAncestor<AbstractDevicePanel<*>>()!!
+    devicePanel.toolbarPlacement = ToolbarPlacement.VERTICAL
+    ui.layoutAndDispatchEvents()
+
+    toolWindow.setType(ToolWindowType.WINDOWED, null)
+    dispatchAllInvocationEventsInIdeEventQueue()
+    toolWindow.decorator.size = Dimension(500, 500)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    assertMatchesAspectRatio(phoneView)
+    val targetScale = roundDownToNaturalNumberOrNearestSmallFraction(phoneView.scale)
+
+    phone.displayRotation = SkinRotation.LANDSCAPE
+    phoneView.displayOrientationQuadrants = 1
+    waitForCondition(5.seconds) {
+      ui.layoutAndDispatchEvents()
+      renderAndGetFrameNumber(ui, phoneView)
+      phoneView.displayOrientationQuadrants == 1
+    }
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(phoneView.scale)).isEqualTo(targetScale)
+    assertMatchesAspectRatio(phoneView)
+    val landscapeViewSize = Dimension(phoneView.size)
+
+    phone.displayRotation = SkinRotation.PORTRAIT
+    phoneView.displayOrientationQuadrants = 0
+    waitForCondition(5.seconds) {
+      ui.layoutAndDispatchEvents()
+      renderAndGetFrameNumber(ui, phoneView)
+      phoneView.displayOrientationQuadrants == 0
+    }
+    assertThat(phoneView.size).isEqualTo(Dimension(landscapeViewSize.height, landscapeViewSize.width))
+    assertThat(roundDownToNaturalNumberOrNearestSmallFraction(phoneView.scale)).isEqualTo(targetScale)
+    assertMatchesAspectRatio(phoneView)
   }
 
   private fun renderAndGetFrameNumber(fakeUi: FakeUi, displayView: AbstractDisplayView): UInt {

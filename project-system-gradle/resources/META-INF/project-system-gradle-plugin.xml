@@ -403,10 +403,6 @@
     <action id="NewVersionCatalogFile" class="com.android.tools.idea.actions.NewVersionCatalogAction">
       <add-to-group group-id="NewGroup" anchor="last"/>
     </action>
-    <action id="AndroidMigrateToResourceNamespacesAction" class="org.jetbrains.android.refactoring.namespaces.MigrateToResourceNamespacesAction" text="Migrate to Resource Namespaces..."
-            description="Migrates to resource namespaces">
-      <add-to-group group-id="RefactoringMenu"/>
-    </action>
     <action id="AndroidMigrateToNonTransitiveRClassesAction"
             class="org.jetbrains.android.refactoring.namespaces.MigrateToNonTransitiveRClassesAction"
             text="Migrate to Non-Transitive R Classes..."

@@ -37,6 +37,35 @@ intellij_plugin(
     ],
 )
 
+# sherlock-sdk builds, split by host OS, so as-driver only depends on the Sherlock zip
+# it can actually run.
+#
+# Studio needs no such split: it depends on "android-studio_files", the host-only
+# unpacked tree exposed by studio.bzl, and AndroidStudioInstallation.fromDir() copies it
+# directly. Sherlock exposes the same tree as "sherlock.stable_files", but
+# SherlockInstallation only has fromZip(), which reads sherlock.stable.<os>.zip, and the
+# zips are produced for all three OSes regardless of host. Picking the right one therefore
+# has to happen here. Bazel does not allow nesting a select() inside a select() branch,
+# hence the dedicated config_settings. Once SherlockInstallation gains a fromDir(), this
+# can collapse to a single "sherlock.stable_files" entry like Studio's.
+config_setting(
+    name = "sherlock-sdk-linux",
+    constraint_values = ["@platforms//os:linux"],
+    flag_values = {"//tools/base/intellij-bazel:intellij_platform": "sherlock-sdk"},
+)
+
+config_setting(
+    name = "sherlock-sdk-macos",
+    constraint_values = ["@platforms//os:macos"],
+    flag_values = {"//tools/base/intellij-bazel:intellij_platform": "sherlock-sdk"},
+)
+
+config_setting(
+    name = "sherlock-sdk-windows",
+    constraint_values = ["@platforms//os:windows"],
+    flag_values = {"//tools/base/intellij-bazel:intellij_platform": "sherlock-sdk"},
+)
+
 # managed by go/iml_to_build
 iml_module(
     name = "as-driver.utils",
@@ -46,7 +75,9 @@ iml_module(
         "//tools/base/threading-agent:threading_agent.jar",
     ] + select({
         "@intellij//:studio-sdk": ["//tools/adt/idea/studio:android-studio_files"],
-        "@intellij//:sherlock-sdk": ["//tools/profiler/sherlock-plugin:sherlock.stable"],
+        ":sherlock-sdk-linux": ["//tools/profiler/sherlock-plugin:sherlock.stable.linux.zip"],
+        ":sherlock-sdk-macos": ["//tools/profiler/sherlock-plugin:sherlock.stable.darwin.zip"],
+        ":sherlock-sdk-windows": ["//tools/profiler/sherlock-plugin:sherlock.stable.windows.zip"],
         "//conditions:default": ["@intellij//:distribution-zip"],
     }),
     iml_files = ["utils/as-driver.utils.iml"],

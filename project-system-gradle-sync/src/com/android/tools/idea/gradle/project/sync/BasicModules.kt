@@ -107,7 +107,8 @@ enum class ModelFeature(
   HAS_MISSING_DIMENSION_STRATEGY(ModelVersion(21, 0)),
   HAS_TEST_SUITES_SOURCES(ModelVersion(21, 1)),
   HAS_KEEP_RULES_SOURCES(ModelVersion(22, 0)),
-  HAS_AAR_KEEP_RULES_SOURCES(ModelVersion(23, 0));
+  HAS_AAR_KEEP_RULES_SOURCES(ModelVersion(23, 0)),
+  HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES(ModelVersion(24, 0));
 
   init {
     check(!enabledForModelVersions.isEmpty) { "All features should be enabled for some model versions" }
@@ -166,7 +167,8 @@ fun getLegacyAndroidGradlePluginProperties(
       modelVersions[ModelFeature.HAS_DATA_BINDING] &&
       modelVersions[ModelFeature.HAS_R8_MAPPING_FILE_PATH] &&
       modelVersions[ModelFeature.HAS_MATCHING_FALLBACKS] &&
-      modelVersions[ModelFeature.HAS_MISSING_DIMENSION_STRATEGY]
+      modelVersions[ModelFeature.HAS_MISSING_DIMENSION_STRATEGY] &&
+      modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]
   )
     return null // Only fetch the model if it is needed.
   return controller.findModel(
@@ -180,6 +182,7 @@ fun getLegacyAndroidGradlePluginProperties(
     it.mappingFile = !modelVersions[ModelFeature.HAS_R8_MAPPING_FILE_PATH]
     it.matchingFallbacks = !modelVersions[ModelFeature.HAS_MATCHING_FALLBACKS]
     it.missingDimensionStrategies = !modelVersions[ModelFeature.HAS_MISSING_DIMENSION_STRATEGY]
+    it.sourceProvidersConfigurationNames = !modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]
   }
 }
 

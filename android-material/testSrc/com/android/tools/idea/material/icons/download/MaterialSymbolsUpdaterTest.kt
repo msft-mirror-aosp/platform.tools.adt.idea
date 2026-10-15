@@ -16,6 +16,7 @@
 package com.android.tools.idea.material.icons.download
 
 import com.android.testutils.truth.PathSubject.assertThat
+import com.android.tools.idea.material.icons.common.MaterialSymbolsUrlProvider
 import com.android.tools.idea.material.icons.common.SymbolConfiguration
 import com.android.tools.idea.material.icons.common.Symbols
 import com.android.tools.idea.material.icons.common.SymbolsSdkUrlProvider
@@ -270,6 +271,11 @@ class MaterialSymbolsUpdaterTest {
     assertEquals(NEW_FILE_CONTENT, fontFile.readText())
   }
 
+  private fun testUrlProvider(): MaterialSymbolsUrlProvider =
+    object : MaterialSymbolsUrlProvider by SymbolsSdkUrlProvider() {
+      override fun getLocalSymbolsPath(): File = downloadDir.toFile()
+    }
+
   @Test
   fun downloadMetadataFile() {
     val downloadUrl = "https://fonts.google.com/metadata/icons?key=material_symbols&incomplete=true"
@@ -284,7 +290,7 @@ class MaterialSymbolsUpdaterTest {
     assertEquals(OLD_FILE_CONTENT, fontFile.readText())
     fontFile.delete()
 
-    MaterialSymbolsUpdater.downloadMetadataFile(SymbolsSdkUrlProvider())
+    MaterialSymbolsUpdater.downloadMetadataFile(testUrlProvider())
 
     val updatedFontFile = downloadDir.resolve(finalDownloadName)
     assertThat(updatedFontFile).exists()
@@ -304,7 +310,7 @@ class MaterialSymbolsUpdaterTest {
     val fontFile = downloadDir.resolve(tempDownloadName)
     assertEquals(OLD_FILE_CONTENT, fontFile.readText())
 
-    MaterialSymbolsUpdater.downloadMetadataFile(SymbolsSdkUrlProvider())
+    MaterialSymbolsUpdater.downloadMetadataFile(testUrlProvider())
 
     val updatedFontFile = downloadDir.resolve(finalDownloadName)
     assertThat(updatedFontFile).exists()
@@ -335,7 +341,7 @@ class MaterialSymbolsUpdaterTest {
     assertEquals(OLD_FILE_CONTENT, fontFile.readText())
     fontFile.delete()
 
-    MaterialSymbolsUpdater.downloadVdIcon(symbolConfiguration, symbolName, SymbolsSdkUrlProvider())
+    MaterialSymbolsUpdater.downloadVdIcon(symbolConfiguration, symbolName, testUrlProvider())
 
     val updatedFontFile = downloadDir.resolve("${downloadPathDir}/${downloadName}")
     assertThat(updatedFontFile).exists()
@@ -366,7 +372,7 @@ class MaterialSymbolsUpdaterTest {
     assertEquals(OLD_FILE_CONTENT, fontFile.readText())
     fontFile.delete()
 
-    MaterialSymbolsUpdater.downloadVdIcon(symbolConfiguration, symbolName, SymbolsSdkUrlProvider())
+    MaterialSymbolsUpdater.downloadVdIcon(symbolConfiguration, symbolName, testUrlProvider())
 
     val updatedFontFile = downloadDir.resolve("${downloadPathDir}/${downloadName}")
     assertThat(updatedFontFile).exists()
@@ -395,5 +401,57 @@ class MaterialSymbolsUpdaterTest {
     assertEquals("favorite_24px.xml", unFilledConfig.toFileName("favorite"))
     assertEquals("favorite_fill1_24px.xml", filledConfig.toFileName("favorite"))
     assertEquals("favorite_wght700grad200fill1_48px.xml", customConfig.toFileName("favorite"))
+  }
+
+  @Test
+  fun downloadVdIconRejectsPathTraversal() {
+    val mockDownloadableFileService = Mockito.mock(DownloadableFileService::class.java)
+    ApplicationManager.getApplication()
+      .registerOrReplaceServiceInstance(
+        DownloadableFileService::class.java,
+        mockDownloadableFileService,
+        projectRule.fixture.testRootDisposable,
+      )
+
+    val symbolConfiguration = SymbolConfiguration.DEFAULT
+    val urlProvider = SymbolsSdkUrlProvider()
+    val invalidNames = listOf("../../outside", "..\\..\\outside", "nested/symbol", ".", "")
+
+    invalidNames.forEach { invalidName ->
+      MaterialSymbolsUpdater.downloadVdIcon(symbolConfiguration, invalidName, urlProvider)
+    }
+
+    Mockito.verifyNoInteractions(mockDownloadableFileService)
+  }
+
+  @Test
+  fun downloadVdIconDeletesEscapedDownloadedFile() {
+    val symbolConfiguration = SymbolConfiguration.DEFAULT
+    val symbolName = "10k"
+    val outsideDir = testDirectory.resolve("outside_symbols").apply { createDirectories() }
+    val escapedTempFile = outsideDir.resolve("escaped.tmp")
+
+    val mockDownloadableFileService = Mockito.mock(DownloadableFileService::class.java)
+    ApplicationManager.getApplication()
+      .registerOrReplaceServiceInstance(
+        DownloadableFileService::class.java,
+        mockDownloadableFileService,
+        projectRule.fixture.testRootDisposable,
+      )
+    val descriptor =
+      DownloadableFileDescriptionImpl(symbolConfiguration.toUrlString(symbolName), "escaped", "tmp")
+    whenever(mockDownloadableFileService.createFileDescription(Mockito.anyString(), Mockito.anyString()))
+      .thenReturn(descriptor)
+    val mockDownloader = Mockito.mock(FileDownloader::class.java)
+    whenever(mockDownloader.download(Mockito.any())).thenAnswer {
+      escapedTempFile.writeText(NEW_FILE_CONTENT)
+      listOf(Pair<File, DownloadableFileDescription>(escapedTempFile.toFile(), descriptor))
+    }
+    whenever(mockDownloadableFileService.createDownloader(Mockito.any(), Mockito.eq("PickedMaterialSymbol")))
+      .thenReturn(mockDownloader)
+
+    MaterialSymbolsUpdater.downloadVdIcon(symbolConfiguration, symbolName, testUrlProvider())
+
+    assertThat(escapedTempFile).doesNotExist()
   }
 }

@@ -49,6 +49,7 @@ import com.intellij.util.concurrency.EdtExecutorService
 import java.awt.Dimension
 import javax.swing.JComboBox
 import javax.swing.JTable
+import org.jetbrains.ide.PooledThreadExecutor
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
@@ -195,7 +196,7 @@ class SqliteEvaluatorViewImplTest : LightPlatformTestCase() {
     val sqliteFile = createAdHocSqliteDatabase()
     realDatabaseConnection =
       pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, sqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
+        getJdbcDatabaseConnection(testRootDisposable, sqliteFile, FutureCallbackExecutor.wrap(PooledThreadExecutor.INSTANCE))
       )
 
     val database = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(sqliteFile))
@@ -283,7 +284,7 @@ class SqliteEvaluatorViewImplTest : LightPlatformTestCase() {
     val sqliteFile = createAdHocSqliteDatabase()
     realDatabaseConnection =
       pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, sqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
+        getJdbcDatabaseConnection(testRootDisposable, sqliteFile, FutureCallbackExecutor.wrap(PooledThreadExecutor.INSTANCE))
       )
 
     val database = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(sqliteFile))

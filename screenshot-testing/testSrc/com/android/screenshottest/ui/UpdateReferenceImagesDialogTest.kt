@@ -26,7 +26,6 @@ import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.runInEdtAndWait
-import com.intellij.ui.CheckboxTree
 import com.intellij.ui.CheckedTreeNode
 import com.intellij.util.ui.UIUtil
 import java.io.File
@@ -88,7 +87,7 @@ class UpdateReferenceImagesDialogTest {
     dialog.updateDialogWithTestResult(details, isChecked = true)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-    val tree = findTree(dialog)
+    val tree = dialog.tree
     val root = tree.model.root as CheckedTreeNode
 
     // Root -> Class -> Method -> Preview
@@ -154,7 +153,7 @@ class UpdateReferenceImagesDialogTest {
     assertTrue("OK enabled initially", dialog.isOKActionEnabled)
 
     // Uncheck the node
-    val tree = findTree(dialog)
+    val tree = dialog.tree
     val root = tree.model.root as CheckedTreeNode
     val classNode = root.firstChild as CheckedTreeNode
     val methodNode = classNode.firstChild as CheckedTreeNode
@@ -422,9 +421,10 @@ class UpdateReferenceImagesDialogTest {
     assertNull(dialog.progressText)
     assertFalse("The dialog should stay open with the rendered previews", dialog.isDisposed)
     assertTrue("The rendered previews should be addable", dialog.isOKActionEnabled)
-    val failureEvent = metricsTrackerRule.testTracker.usages.find {
-      it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_BUILD_FAILURE
-    }
+    val failureEvent =
+      metricsTrackerRule.testTracker.usages.find {
+        it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_BUILD_FAILURE
+      }
     assertNull(failureEvent)
   }
 
@@ -505,7 +505,7 @@ class UpdateReferenceImagesDialogTest {
     recreateDialog(refreshDelayMs = 60_000)
     dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-    val tree = findTree(dialog)
+    val tree = dialog.tree
     val root = tree.model.root as CheckedTreeNode
     val leaf = (root.firstChild as CheckedTreeNode).firstChild.let { (it as CheckedTreeNode).firstChild as CheckedTreeNode }
     tree.selectionPath = TreePath(leaf.path)
@@ -540,12 +540,6 @@ class UpdateReferenceImagesDialogTest {
     val panel = field.get(dialog) as PreviewDetailsPanel
     val list = UIUtil.findComponentOfType(panel, JList::class.java)!!
     return (0 until list.model.size).sumOf { (list.model.getElementAt(it) as MethodGroup).previews.size }
-  }
-
-  private fun findTree(dialog: UpdateReferenceImagesDialog): CheckboxTree {
-    val field = UpdateReferenceImagesDialog::class.java.getDeclaredField("tree")
-    field.isAccessible = true
-    return field.get(dialog) as CheckboxTree
   }
 
   private fun callUpdateOkButtonState(dialog: UpdateReferenceImagesDialog) {

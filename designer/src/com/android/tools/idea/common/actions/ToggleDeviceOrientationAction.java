@@ -46,7 +46,7 @@ public class ToggleDeviceOrientationAction extends AnAction {
       return;
     }
     DesignSurface<?> surface = e.getData(DesignerDataKeys.DESIGN_SURFACE);
-    if (surface != null && surface.getConfigurations().stream().allMatch(config -> Device.isWear(config.getDevice()))) {
+    if (surface != null && surface.getConfigurations().stream().allMatch(config -> Device.isWear(config.getCachedDevice()))) {
       // If all devices are wear device, disable this action because the orientation is fixed for wear devices.
       e.getPresentation().setEnabled(false);
       return;
@@ -60,7 +60,9 @@ public class ToggleDeviceOrientationAction extends AnAction {
     if (surface == null) return;
     surface.getConfigurations()
       .forEach(configuration -> {
-        if (Device.isWear(configuration.getDevice())) {
+        // Use getCachedDevice() to avoid calling getDevice() on the EDT, which can trigger slow computation.
+        Device device = configuration.getCachedDevice();
+        if (device == null || Device.isWear(device)) {
           // Wear device cannot toggle orientation.
           return;
         }

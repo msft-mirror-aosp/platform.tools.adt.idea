@@ -35,6 +35,7 @@ import com.google.common.util.concurrent.Futures.immediateFuture
 import com.intellij.CommonBundle
 import com.intellij.execution.runners.ExecutionUtil.getLiveIndicator
 import com.intellij.ide.ActivityTracker
+import com.intellij.ide.setToolTipText
 import com.intellij.ide.ui.LafManagerListener
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionToolbarPosition
@@ -55,6 +56,7 @@ import com.intellij.openapi.util.DimensionService
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.openapi.util.io.NioFiles
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.ui.BooleanTableCellEditor
 import com.intellij.ui.BooleanTableCellRenderer
 import com.intellij.ui.DoubleClickListener
@@ -275,7 +277,6 @@ internal class ManageSnapshotsDialog(private val emulator: EmulatorController, p
     }
   }
 
-  @Suppress("UnstableApiUsage")
   @NlsSafe
   private fun Color.toHtmlString(): String {
     return (rgb and 0xFFFFFF).toString(16)
@@ -1051,7 +1052,7 @@ internal class ManageSnapshotsDialog(private val emulator: EmulatorController, p
           font = font.deriveFont(Font.ITALIC)
         }
         if (!snapshot.isCompatible) {
-          toolTipText = message("manage.snapshots.incompatible.configuration")
+          setToolTipText(HtmlChunk.text(message("manage.snapshots.incompatible.configuration")))
         }
       }
     }

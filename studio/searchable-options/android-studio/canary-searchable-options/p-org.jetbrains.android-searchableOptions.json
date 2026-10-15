@@ -731,6 +731,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Cellular",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Change Gradle JDK Location",
       "path": "ActionManager"
     },
@@ -788,6 +792,10 @@
     },
     {
       "hit": "Compile/Debug Actions",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Configure Displays",
       "path": "ActionManager"
     },
     {
@@ -903,6 +911,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Displays",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Dragging mouse and arrow keys controls the view direction. The WASDQE keys control location in the virtual space.",
       "path": "ActionManager"
     },
@@ -960,6 +972,10 @@
     },
     {
       "hit": "Extended Controls",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Extended emulator controls",
       "path": "ActionManager"
     },
     {
@@ -1175,19 +1191,11 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Migrate to Resource Namespaces...",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Migrates the project to default targetSdk to compileSdk while preserving current behavior.",
       "path": "ActionManager"
     },
     {
       "hit": "Migrates the project to use Non-Transitive R classes",
-      "path": "ActionManager"
-    },
-    {
-      "hit": "Migrates to resource namespaces",
       "path": "ActionManager"
     },
     {
@@ -1279,10 +1287,6 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Open Build Analyzer on a past build's results",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Open Project Actions",
       "path": "ActionManager"
     },
@@ -1296,6 +1300,10 @@
     },
     {
       "hit": "Open Wear Health Services panel",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open cellular settings",
       "path": "ActionManager"
     },
     {
@@ -1616,10 +1624,6 @@
     },
     {
       "hit": "Show Logcat",
-      "path": "ActionManager"
-    },
-    {
-      "hit": "Show Results Analysis of Previous Builds",
       "path": "ActionManager"
     },
     {

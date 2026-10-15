@@ -51,6 +51,7 @@ import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.runInEdtAndWait
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
@@ -308,7 +309,8 @@ class LayoutInspectorRule(
       }
     }
 
-    inspectorModel.updateConnection(DisconnectedClient)
+    // Connection listeners update Swing components, so notify them on the EDT.
+    runInEdtAndWait { inspectorModel.updateConnection(DisconnectedClient) }
   }
 
   private fun after() {

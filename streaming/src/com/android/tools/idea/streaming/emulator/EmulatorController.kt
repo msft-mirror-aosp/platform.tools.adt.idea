@@ -18,6 +18,12 @@ package com.android.tools.idea.streaming.emulator
 import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.GuardedBy
 import com.android.annotations.concurrency.Slow
+import com.android.emulation.control.incubating.ActiveCalls
+import com.android.emulation.control.incubating.Call
+import com.android.emulation.control.incubating.CellInfo
+import com.android.emulation.control.incubating.ModemGrpc
+import com.android.emulation.control.incubating.PhoneEvent
+import com.android.emulation.control.incubating.SmsMessage
 import com.android.emulator.control.AudioPacket
 import com.android.emulator.control.CameraList
 import com.android.emulator.control.ClipData
@@ -156,6 +162,9 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
   val uiControllerStub: UiControllerGrpc.UiControllerStub
     get() = connectionReference.get()?.uiControllerStub ?: throwNotYetConnected()
 
+  val modemStub: ModemGrpc.ModemStub
+    get() = connectionReference.get()?.modemStub ?: throwNotYetConnected()
+
   init {
     Disposer.register(parentDisposable, this)
   }
@@ -293,19 +302,22 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     val emulatorControllerStub: EmulatorControllerGrpc.EmulatorControllerStub
     val snapshotServiceStub: SnapshotServiceGrpc.SnapshotServiceStub
     val uiControllerStub: UiControllerGrpc.UiControllerStub
+    val modemStub: ModemGrpc.ModemStub
     val token = emulatorId.grpcToken
     if (token == null) {
       emulatorControllerStub = EmulatorControllerGrpc.newStub(channel)
       snapshotServiceStub = SnapshotServiceGrpc.newStub(channel)
       uiControllerStub = UiControllerGrpc.newStub(channel)
+      modemStub = ModemGrpc.newStub(channel)
     } else {
       val credentials = TokenCallCredentials(token)
       emulatorControllerStub = EmulatorControllerGrpc.newStub(channel).withCallCredentials(credentials)
       snapshotServiceStub = SnapshotServiceGrpc.newStub(channel).withCallCredentials(credentials)
       uiControllerStub = UiControllerGrpc.newStub(channel).withCallCredentials(credentials)
+      modemStub = ModemGrpc.newStub(channel).withCallCredentials(credentials)
     }
 
-    val connection = Connection(channel, maxInboundMessageSize, emulatorControllerStub, snapshotServiceStub, uiControllerStub)
+    val connection = Connection(channel, maxInboundMessageSize, emulatorControllerStub, snapshotServiceStub, uiControllerStub, modemStub)
 
     val connectivityStateWatcher =
       object : Runnable {
@@ -998,6 +1010,204 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     observer.getResult()
   }
 
+  /**
+   * Sets the current cell info, returning the active cell info state.
+   *
+   * @param cellInfo the cell info to set
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun setCellInfo(cellInfo: CellInfo, streamObserver: StreamObserver<CellInfo>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("setCellInfo(${shortDebugString(cellInfo)})")
+    }
+    modemStub.setCellInfo(cellInfo, DelegatingStreamObserver(streamObserver, ModemGrpc.getSetCellInfoMethod()))
+  }
+
+  /**
+   * Sets the current cell info, returning the active cell info state.
+   *
+   * @param cellInfo the cell info to set
+   */
+  suspend fun setCellInfo(cellInfo: CellInfo): CellInfo {
+    val observer = SuspendingStreamObserver<CellInfo>()
+    setCellInfo(cellInfo, observer)
+    return observer.getResult()
+  }
+
+  /**
+   * Gets the current cell info.
+   *
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun getCellInfo(streamObserver: StreamObserver<CellInfo>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("getCellInfo()")
+    }
+    modemStub.getCellInfo(EMPTY_PROTO, DelegatingStreamObserver(streamObserver, ModemGrpc.getGetCellInfoMethod()))
+  }
+
+  /** Gets the current cell info. */
+  suspend fun getCellInfo(): CellInfo {
+    val observer = SuspendingStreamObserver<CellInfo>()
+    getCellInfo(observer)
+    return observer.getResult()
+  }
+
+  /**
+   * Creates a new call object, resulting in the emulator receiving a new incoming call.
+   *
+   * @param call the call to create
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun createCall(call: Call, streamObserver: StreamObserver<Call>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("createCall(${shortDebugString(call)})")
+    }
+    modemStub.createCall(call, DelegatingStreamObserver(streamObserver, ModemGrpc.getCreateCallMethod()))
+  }
+
+  /**
+   * Creates a new call object, resulting in the emulator receiving a new incoming call.
+   *
+   * @param call the call to create
+   */
+  suspend fun createCall(call: Call): Call {
+    val observer = SuspendingStreamObserver<Call>()
+    createCall(call, observer)
+    return observer.getResult()
+  }
+
+  /**
+   * Updates the state of the given call. The unique number identifying the call must exist.
+   *
+   * @param call the call to update
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun updateCall(call: Call, streamObserver: StreamObserver<Call>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("updateCall(${shortDebugString(call)})")
+    }
+    modemStub.updateCall(call, DelegatingStreamObserver(streamObserver, ModemGrpc.getUpdateCallMethod()))
+  }
+
+  /**
+   * Updates the state of the given call. The unique number identifying the call must exist.
+   *
+   * @param call the call to update
+   */
+  suspend fun updateCall(call: Call): Call {
+    val observer = SuspendingStreamObserver<Call>()
+    updateCall(call, observer)
+    return observer.getResult()
+  }
+
+  /**
+   * Removes the active call, disconnecting the call.
+   *
+   * @param call the call to delete
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun deleteCall(call: Call, streamObserver: StreamObserver<Empty>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("deleteCall(${shortDebugString(call)})")
+    }
+    modemStub.deleteCall(call, DelegatingStreamObserver(streamObserver, ModemGrpc.getDeleteCallMethod()))
+  }
+
+  /**
+   * Removes the active call, disconnecting the call.
+   *
+   * @param call the call to delete
+   */
+  suspend fun deleteCall(call: Call) {
+    val observer = SuspendingStreamObserver<Empty>()
+    deleteCall(call, observer)
+    observer.getResult()
+  }
+
+  /**
+   * Lists all the calls that are currently active in the modem.
+   *
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun listCalls(streamObserver: StreamObserver<ActiveCalls>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("listCalls()")
+    }
+    modemStub.listCalls(EMPTY_PROTO, DelegatingStreamObserver(streamObserver, ModemGrpc.getListCallsMethod()))
+  }
+
+  /** Lists all the calls that are currently active in the modem. */
+  suspend fun listCalls(): ActiveCalls {
+    val observer = SuspendingStreamObserver<ActiveCalls>()
+    listCalls(observer)
+    return observer.getResult()
+  }
+
+  /**
+   * Sends an SMS message to the emulator.
+   *
+   * @param smsMessage the SMS message to send
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun receiveSms(smsMessage: SmsMessage, streamObserver: StreamObserver<Empty>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("receiveSms(${shortDebugString(smsMessage)})")
+    }
+    modemStub.receiveSms(smsMessage, DelegatingStreamObserver(streamObserver, ModemGrpc.getReceiveSmsMethod()))
+  }
+
+  /**
+   * Sends an SMS message to the emulator.
+   *
+   * @param smsMessage the SMS message to send
+   */
+  suspend fun receiveSms(smsMessage: SmsMessage) {
+    val observer = SuspendingStreamObserver<Empty>()
+    receiveSms(smsMessage, observer)
+    observer.getResult()
+  }
+
+  /**
+   * Updates the modem clock.
+   *
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun updateClock(streamObserver: StreamObserver<Empty>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("updateClock()")
+    }
+    modemStub.updateClock(EMPTY_PROTO, DelegatingStreamObserver(streamObserver, ModemGrpc.getUpdateClockMethod()))
+  }
+
+  /** Updates the modem clock. */
+  suspend fun updateClock() {
+    val observer = SuspendingStreamObserver<Empty>()
+    updateClock(observer)
+    observer.getResult()
+  }
+
+  /**
+   * Listens for events in the modem service as they arrive.
+   *
+   * @param streamObserver a stream observer to receive phone events
+   */
+  private fun receivePhoneEvents(streamObserver: StreamObserver<PhoneEvent>): Cancelable {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("receivePhoneEvents()")
+    }
+    val method = ModemGrpc.getReceivePhoneEventsMethod()
+    val call = modemStub.channel.newCall(method, modemStub.callOptions)
+    ClientCalls.asyncServerStreamingCall(call, EMPTY_PROTO, DelegatingStreamObserver(streamObserver, method))
+    return CancelableClientCall(call)
+  }
+
+  /** Listens for events in the modem service as they arrive. */
+  fun receivePhoneEvents(): Flow<PhoneEvent> = callbackFlow {
+    val cancelable = receivePhoneEvents(FlowStreamObserver(this))
+    awaitClose { cancelable.cancel() }
+  }
+
   private fun sendKeepAlive() {
     if (emulatorState.get() == EmulatorState.SHUTDOWN_REQUESTED) {
       sendShutdown()
@@ -1058,6 +1268,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     val emulatorControllerStub: EmulatorControllerGrpc.EmulatorControllerStub,
     val snapshotServiceStub: SnapshotServiceGrpc.SnapshotServiceStub,
     val uiControllerStub: UiControllerGrpc.UiControllerStub,
+    val modemStub: ModemGrpc.ModemStub,
   )
 
   /** The state of the [EmulatorController]. */

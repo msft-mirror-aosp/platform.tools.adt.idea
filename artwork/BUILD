@@ -19,13 +19,19 @@ iml_module(
 
 filegroup(
     name = "device-art-resources",
-    srcs = glob(["resources/device-art-resources/**"]),
+    srcs = glob(
+        ["resources/device-art-resources/**"],
+        exclude = ["resources/device-art-resources/**/README.md"],
+    ),
     visibility = ["//visibility:public"],
 )
 
 studio_data(
     name = "device-art-resources-bundle",
-    files = glob(["resources/device-art-resources/**"]),
+    files = glob(
+        ["resources/device-art-resources/**"],
+        exclude = ["resources/device-art-resources/**/README.md"],
+    ),
     mappings = {
         "tools/adt/idea/artwork/resources/": "",
     },

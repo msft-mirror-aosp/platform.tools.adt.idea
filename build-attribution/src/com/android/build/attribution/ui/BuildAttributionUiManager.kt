@@ -123,9 +123,6 @@ class BuildAttributionUiManagerImpl(private val project: Project) : BuildAttribu
   }
 
   override fun showBuildAnalysisReportById(buildID: String) {
-    // Should not be called if the flag is off, but guard just in case anyway.
-    if (!StudioFlags.BUILD_ANALYZER_HISTORY.get()) return
-    val buildResults = BuildAnalyzerStorageManager.getInstance(project).getHistoricBuildResultByID(buildID).get()
     // TODO (mlazeba): historical UI is not implemented now
   }
 

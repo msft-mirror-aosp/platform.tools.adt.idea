@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.junit.Assert
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -85,5 +86,43 @@ class SingleThreadExecutorServiceTest {
       }
       .get()
     assertFalse(executor.hasSpawnedCurrentThread())
+    executor.shutdown()
+  }
+
+  @Test
+  fun testRemove() {
+    val executor = SingleThreadExecutorService.create("Test thread", threadProfileSettings = ThreadProfileSettings.disabled)
+    val executing = CountDownLatch(1)
+    val unblock = CountDownLatch(1)
+    val queuedExecuted = CountDownLatch(1)
+    val drained = CountDownLatch(1)
+    fun comparableRunnable(block: () -> Unit) =
+      object : Runnable, Comparable<Runnable> {
+        override fun run() = block()
+
+        override fun compareTo(other: Runnable): Int = 0
+      }
+    try {
+      executor.execute(
+        comparableRunnable {
+          executing.countDown()
+          unblock.await(5, TimeUnit.SECONDS)
+        }
+      )
+      assertTrue(executing.await(5, TimeUnit.SECONDS))
+
+      val queuedRunnable = comparableRunnable { queuedExecuted.countDown() }
+      executor.execute(queuedRunnable)
+      assertTrue(executor.remove(queuedRunnable))
+      assertFalse(executor.remove(queuedRunnable))
+
+      executor.execute(comparableRunnable { drained.countDown() })
+      unblock.countDown()
+      assertTrue(drained.await(5, TimeUnit.SECONDS))
+      assertEquals(1, queuedExecuted.count)
+    } finally {
+      unblock.countDown()
+      executor.shutdown()
+    }
   }
 }

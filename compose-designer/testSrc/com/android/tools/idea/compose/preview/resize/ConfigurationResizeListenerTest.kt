@@ -15,8 +15,6 @@
  */
 package com.android.tools.idea.compose.preview.resize
 
-import android.view.View
-import android.view.ViewGroup
 import com.android.ide.common.resources.Locale
 import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.resources.Density
@@ -46,14 +44,12 @@ import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.dispatchAllEventsInIdeEventQueue
-import java.util.concurrent.CompletableFuture
-import kotlin.test.assertEquals
-import kotlinx.coroutines.CompletableDeferred
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.future.asCompletableFuture
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
-import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.Test
@@ -73,7 +69,9 @@ class ConfigurationResizeListenerTest {
   @get:Rule val edtRule = EdtRule()
   @get:Rule val applicationRule = ApplicationRule()
 
-  private val layoutlibSceneManagerConfiguration = mock<LayoutlibSceneRenderConfiguration>()
+  private val needsInflation = AtomicBoolean(false)
+  private val layoutlibSceneManagerConfiguration =
+    mock<LayoutlibSceneRenderConfiguration>().also { whenever(it.needsInflation).thenReturn(needsInflation) }
   val configurationSettings = TestConfigurationSettingsImpl()
 
   private var showDecoration = false
@@ -92,13 +90,13 @@ class ConfigurationResizeListenerTest {
     listener.changed(CFG_NIGHT_MODE or CFG_ACTIVITY) // No CFG_DEVICE
     advanceUntilIdle()
 
-    verify(sceneManager, never()).viewObject
     verify(sceneManager, never()).requestRenderWithNewSize(any(), any())
     Disposer.dispose(sceneManager)
   }
 
-  private fun createSceneManager(showDecorations: Boolean, isCanvasResizing: Boolean = true): LayoutlibSceneManager {
+  private fun createSceneManager(showDecorations: Boolean = true, isCanvasResizing: Boolean = true): LayoutlibSceneManager {
     this.showDecoration = showDecorations
+    needsInflation.set(false)
     return mock<LayoutlibSceneManager>().also {
       whenever(it.sceneRenderConfiguration).thenReturn(layoutlibSceneManagerConfiguration)
       val surface = mock<NlDesignSurface>()
@@ -106,6 +104,7 @@ class ConfigurationResizeListenerTest {
       whenever(surface.zoomController).thenReturn(zoomController)
       whenever(surface.isCanvasResizing).thenReturn(isCanvasResizing)
       whenever(it.designSurface).thenReturn(surface)
+      whenever(it.renderResult).thenReturn(mock<RenderResult>())
     }
   }
 
@@ -121,6 +120,7 @@ class ConfigurationResizeListenerTest {
     configuration.updateScreenSize(700, 800)
     advanceUntilIdle()
 
+    assertTrue(needsInflation.get())
     verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
     Disposer.dispose(sceneManager)
   }
@@ -161,19 +161,9 @@ class ConfigurationResizeListenerTest {
   }
 
   @Test
-  fun `listener modifies LayoutParams and triggers render with showDecoration false`() = runTest {
+  fun `listener triggers render with showDecoration false`() = runTest {
     val sceneManager = createSceneManager(false)
     val configuration = createConfiguration(500, 600)
-    val testView = mock<View>()
-    val layoutParams = ViewGroup.LayoutParams(500, 600)
-    whenever(testView.layoutParams).thenReturn(layoutParams)
-
-    whenever(sceneManager.viewObject).thenReturn(testView)
-    whenever(sceneManager.executeInRenderSessionAsync(any(), any(), any())).then {
-      val callback = it.getArgument(0, Runnable::class.java)
-      callback.run()
-      CompletableFuture.completedFuture(null)
-    }
 
     val listener =
       ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
@@ -183,9 +173,8 @@ class ConfigurationResizeListenerTest {
     configuration.updateScreenSize(700, 800)
     advanceUntilIdle()
 
+    assertTrue(needsInflation.get())
     verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
-    assertEquals(700, testView.layoutParams.width) // Check width changed by reflection
-    assertEquals(800, testView.layoutParams.height) // Check height changed by reflection
     Disposer.dispose(sceneManager)
   }
 
@@ -204,8 +193,7 @@ class ConfigurationResizeListenerTest {
 
     advanceUntilIdle()
 
-    verify(sceneManager, times(1)).viewObject
-    verify(sceneManager, never()).executeInRenderSessionAsync(any(), any(), any())
+    assertTrue(needsInflation.get())
     verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
     Disposer.dispose(sceneManager)
   }
@@ -225,67 +213,8 @@ class ConfigurationResizeListenerTest {
 
     advanceUntilIdle()
 
-    verify(sceneManager, never()).executeInRenderSessionAsync(any(), any(), any())
+    assertFalse(needsInflation.get())
     verify(sceneManager, never()).requestRenderWithNewSize(any(), any())
-    Disposer.dispose(sceneManager)
-  }
-
-  @Test
-  fun `listener still renders when updating the LayoutParams fails`() = runTest {
-    val sceneManager = createSceneManager(false)
-    val configuration = createConfiguration(500, 600)
-    whenever(sceneManager.viewObject).thenReturn(mock<View>())
-    whenever(sceneManager.executeInRenderSessionAsync(any(), any(), any()))
-      .thenReturn(CompletableFuture.failedFuture(IllegalStateException("No render session")))
-
-    val listener =
-      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
-    configuration.addListener(listener)
-    configuration.updateScreenSize(700, 800)
-
-    advanceUntilIdle()
-
-    verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
-    Disposer.dispose(sceneManager)
-  }
-
-  @Test
-  fun `executeInRenderSession cancels on rapid updates test`() = runTest {
-    val sceneManager = createSceneManager(false)
-    val configuration = createConfiguration(500, 600)
-    val testView = mock<View>()
-    val layoutParams = ViewGroup.LayoutParams(500, 600)
-    whenever(testView.layoutParams).thenReturn(layoutParams)
-    val firstRenderBlockStarted = CompletableDeferred<Unit>()
-    val allowFirstRenderToComplete = CompletableDeferred<Unit>()
-
-    whenever(sceneManager.executeInRenderSessionAsync(any(), any(), any())).thenAnswer {
-      val callback = it.getArgument<Runnable>(0)
-      if (!firstRenderBlockStarted.isCompleted) {
-        firstRenderBlockStarted.complete(Unit) // Signal that the block has started.
-      }
-      callback.run()
-      allowFirstRenderToComplete.asCompletableFuture()
-    }
-
-    whenever(sceneManager.viewObject).thenReturn(testView)
-
-    val listener =
-      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
-
-    configuration.addListener(listener)
-
-    // Simulate multiple, rapid device changes.
-    configuration.updateScreenSize(700, 800)
-    runCurrent()
-    firstRenderBlockStarted.await()
-    configuration.updateScreenSize(900, 1000)
-    allowFirstRenderToComplete.complete(Unit)
-    advanceUntilIdle()
-
-    verify(sceneManager, times(2)).executeInRenderSessionAsync(any(), any(), any())
-    verify(sceneManager, never()).requestRenderWithNewSize(700, 800)
-    verify(sceneManager, times(1)).requestRenderWithNewSize(900, 1000)
     Disposer.dispose(sceneManager)
   }
 
@@ -324,7 +253,6 @@ class ConfigurationResizeListenerTest {
     Disposer.dispose(sceneManager) // Simulate disposal
     configuration.updateScreenSize(12, 12)
     advanceUntilIdle()
-    verify(sceneManager, never()).viewObject
     verify(sceneManager, never()).requestRenderWithNewSize(any(), any())
     Disposer.dispose(sceneManager)
   }
@@ -403,6 +331,139 @@ class ConfigurationResizeListenerTest {
     dispatchAllEventsInIdeEventQueue()
 
     // Verify that zoom-to-fit was not triggered because the scale does not differ significantly.
+    verify(zoomController, never()).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener does not trigger zoom-to-fit when preview is only moderately larger than viewport`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = false)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+
+    // Required scale 0.8 (preview is 1.25x viewport, not more than double).
+    whenever(zoomController.getFitScale()).thenReturn(0.8)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, never()).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener does not trigger zoom-to-fit during canvas resizing even if scale differs significantly`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = true)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+    // Required scale 0.1 (much smaller than current scale 1.0).
+    whenever(zoomController.getFitScale()).thenReturn(0.1)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, never()).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener triggers zoom-to-fit when preview is more than double the viewport`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = false)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+    // Required scale 0.45 (current scale 1.0 > 0.45 * 2.0 = 0.9, preview is >2x viewport)
+    whenever(zoomController.getFitScale()).thenReturn(0.45)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, times(1)).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener triggers zoom-to-fit when preview is less than half the viewport`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = false)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+    // Required scale 2.5 (required scale 2.5 > 1.0 * 2.0 = 2.0, preview is <0.5x viewport)
+    whenever(zoomController.getFitScale()).thenReturn(2.5)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, times(1)).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener does not trigger zoom-to-fit when preview is moderately smaller than viewport`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = false)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+    // Required scale 1.8 (within 0.5x to 2.0x range)
+    whenever(zoomController.getFitScale()).thenReturn(1.8)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
+    verify(zoomController, never()).zoomToFit()
+    Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener does not trigger zoom-to-fit when requiredScale is invalid`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = true, isCanvasResizing = false)
+    val zoomController = sceneManager.designSurface.zoomController
+    whenever(zoomController.scale).thenReturn(1.0)
+    // Scale 0.0 is considered invalid
+    whenever(zoomController.getFitScale()).thenReturn(0.0)
+
+    val configuration = createConfiguration(500, 600)
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+    configuration.addListener(listener)
+
+    configuration.updateScreenSize(700, 800)
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+
     verify(zoomController, never()).zoomToFit()
     Disposer.dispose(sceneManager)
   }

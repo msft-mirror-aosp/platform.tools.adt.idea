@@ -50,6 +50,10 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.common.ThreadLeakTracker
 import com.intellij.testFramework.registerExtension
 import com.intellij.testFramework.replaceService
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -217,35 +221,39 @@ class TemplateEngineProjectWizardTest {
       FakePluginPromotionTemplate("Promo Plugin 1", "promo-1", TemplateFormFactor.Mobile),
       FakePluginPromotionTemplate("Gemini AI Starter", "gemini-ai-starter-sample", TemplateFormFactor.Mobile),
     )
-    val mockExternal1 =
-      ExternalTemplateSpec(
-        id = "ext-1",
-        title = "External Template 1",
-        description = "External plugin contributed",
-        formFactor = FormFactor.MOBILE,
-      )
-    val mockExternal2 =
-      ExternalTemplateSpec(
-        id = "external-sample-template",
-        title = "Sample External Template",
-        description = "External plugin sample",
-        formFactor = FormFactor.MOBILE,
+    val externalZip =
+      createTemplateZip(
+        mapOf(
+          "external-b" to """{"name": "External Template B", "short-name": "external-b", "tags": ["agp-9"]}""",
+          "external-a" to """{"name": "External Template A", "short-name": "external-a", "tags": ["agp-9"]}""",
+          "external-wear" to """{"name": "External Wear", "short-name": "external-wear", "tags": ["agp-9", "wear"]}""",
+        )
       )
 
     val mockContributor =
       object : TemplateEngineProjectWizardContributor {
         override val id = "test-contributor"
-        override val priority = 1
+        // A very high priority must not move external templates ahead of built-in templates or promotion cards
+        override val priority = 5000
 
-        override fun getExternalTemplates() = listOf(mockExternal1, mockExternal2)
+        override fun getExternalTemplates() = listOf(ExternalTemplateSpec.ZipFile(externalZip))
+      }
+    val lowPriorityZip =
+      createTemplateZip(mapOf("external-c" to """{"name": "External Template C", "short-name": "external-c", "tags": ["agp-9"]}"""))
+    val lowPriorityContributor =
+      object : TemplateEngineProjectWizardContributor {
+        override val id = "low-priority-contributor"
+        override val priority = 0
+
+        override fun getExternalTemplates() = listOf(ExternalTemplateSpec.ZipFile(lowPriorityZip))
       }
 
     ApplicationManager.getApplication().registerExtension(TemplateEngineProjectWizardContributor.EP_NAME, mockContributor, disposable)
+    ApplicationManager.getApplication()
+      .registerExtension(TemplateEngineProjectWizardContributor.EP_NAME, lowPriorityContributor, disposable)
 
     val registry = TemplateRegistryService.getInstance()
-    if (registry.getTemplateDefinitions().isEmpty()) {
-      registry.loadTemplatesAndResources()
-    }
+    registry.loadTemplatesAndResources()
     val viewModel = ChooseProjectViewModel(registry)
     val gridEntries = viewModel.categories.filterIsInstance<TemplateEngineTemplateGridProjectEntry>()
 
@@ -259,17 +267,27 @@ class TemplateEngineProjectWizardTest {
     assertThat(promotions).hasSize(2)
     assertThat(promotions.map { it.spec.id }).containsExactly("promo-1", "gemini-ai-starter-sample")
 
-    // Verify External templates are at the end, sorted alphabetically (ext-1 ->
-    // external-sample-template)
+    // Verify External templates are at the end, by contributor priority then alphabetically, and backed by a real template definition
     val externals = mobileTab.items.filterIsInstance<TemplateGalleryItem.External>()
-    assertThat(externals).hasSize(2)
-    assertThat(externals[0].spec.id).isEqualTo("ext-1")
-    assertThat(externals[1].spec.id).isEqualTo("external-sample-template")
+    assertThat(externals.map { it.definition.shortName }).containsExactly("external-a", "external-b", "external-c").inOrder()
+    assertThat(mobileTab.items.takeLast(3)).containsExactlyElementsIn(externals).inOrder()
+    assertThat(externals.map { it.template.contributorId })
+      .containsExactly("test-contributor", "test-contributor", "low-priority-contributor")
+      .inOrder()
 
-    // The default selection must point to the empty compose activity (first standard template)
+    // External templates are grouped by form factor using their tags, like built-in templates
+    val wearTab = gridEntries.first { it.formFactor == FormFactor.WEAR }
+    assertThat(wearTab.templates.map { it.shortName }).contains("external-wear")
+
+    // The default selection must point to the empty compose activity (first built-in template)
     val selectedItem = mobileTab.selectedItem
     assertThat(selectedItem).isInstanceOf(TemplateGalleryItem.Standard::class.java)
     assertThat((selectedItem as TemplateGalleryItem.Standard).definition.shortName).isEqualTo("empty-activity")
+
+    // Selecting an external template makes it the template rendered by the wizard
+    mobileTab.selectedItem = externals.first()
+    viewModel.selectedCategory = mobileTab
+    assertThat(viewModel.selectedTemplate?.shortName).isEqualTo("external-a")
   }
 
   @Test
@@ -344,6 +362,30 @@ class TemplateEngineProjectWizardTest {
     assertThat(selectedEntry.formFactor).isEqualTo(FormFactor.MOBILE)
   }
 
+  @Test
+  fun testPromotionTemplateStateSelectsExternalTemplate() {
+    // After installing a promoted plugin, the wizard reopens with the template it contributes selected.
+    val externalZip =
+      createTemplateZip(mapOf("promoted" to """{"name": "Promoted Template", "short-name": "promoted", "tags": ["agp-9"]}"""))
+    val contributor =
+      object : TemplateEngineProjectWizardContributor {
+        override val id = PROMOTION_PLUGIN_ID
+
+        override fun getExternalTemplates() = listOf(ExternalTemplateSpec.ZipFile(externalZip))
+      }
+    ApplicationManager.getApplication().registerExtension(TemplateEngineProjectWizardContributor.EP_NAME, contributor, disposable)
+    PromotionTemplateStateService.getInstance()
+      .requestNpwReopenOnNextStartup(PROMOTION_PLUGIN_ID, "Promoted Template", TemplateFormFactor.Mobile)
+
+    val registry = TemplateRegistryService.getInstance()
+    registry.loadTemplatesAndResources()
+    val viewModel = ChooseProjectViewModel(registry)
+
+    val selectedEntry = viewModel.selectedCategory as TemplateEngineTemplateGridProjectEntry
+    assertThat(selectedEntry.selectedItem).isInstanceOf(TemplateGalleryItem.External::class.java)
+    assertThat(selectedEntry.selectedTemplate?.shortName).isEqualTo("promoted")
+  }
+
   private fun registerPromotionTemplates(vararg templates: PluginPromotionTemplate) {
     ExtensionTestUtil.maskExtensions(
       PROMOTION_EP_NAME,
@@ -354,6 +396,20 @@ class TemplateEngineProjectWizardTest {
 
   private fun createTemplate(name: String, tags: List<String>, shortName: String = name.lowercase().replace(" ", "-")): TemplateDefinition {
     return TemplateEngineTestUtils.createTestTemplateDefinition(name = name, shortName = shortName, tags = tags)
+  }
+
+  /** Creates a template zip, deleted on [disposable] disposal, containing one template per entry of [definitionJsonByDir]. */
+  private fun createTemplateZip(definitionJsonByDir: Map<String, String>): Path {
+    val zipFile = Files.createTempFile("external_templates", ".zip")
+    Disposer.register(disposable) { Files.deleteIfExists(zipFile) }
+    ZipOutputStream(Files.newOutputStream(zipFile)).use { zos ->
+      for ((dir, json) in definitionJsonByDir) {
+        zos.putNextEntry(ZipEntry("$dir/.template/template-definition.json"))
+        zos.write(json.toByteArray())
+        zos.closeEntry()
+      }
+    }
+    return zipFile
   }
 }
 

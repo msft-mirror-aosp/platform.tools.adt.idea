@@ -75,6 +75,54 @@ internal fun evenMeshPosition(row: Int, col: Int, rowCount: Int, colCount: Int):
 
 private fun evenFraction(index: Int, count: Int): Float = if (count > 1) index.toFloat() / (count - 1) else 0f
 
+/**
+ * Pairs the rows and columns of [target] with the rows and columns of [initial] they come from, so that the vertices moved by
+ * [resizeMeshGrid] can be told apart from the ones it inserts.
+ *
+ * Each axis is aligned either by index, or as [resizeMeshGrid] does: the last row (column) is paired with the last one and the others by
+ * index. The combination that pairs the most equal vertices is used, preferring the alignment by index on ties, so meshes grown or shrunk
+ * at the end, rather than with [resizeMeshGrid], are aligned by index.
+ *
+ * @param byIndexOnly whether both axes must be aligned by index.
+ * @return for each row and column of [target], the index of the row or column of [initial] it comes from, or null if it has none.
+ */
+internal fun alignMeshGrids(
+  initial: List<List<MeshGradientPoint>>,
+  target: List<List<MeshGradientPoint>>,
+  byIndexOnly: Boolean = false,
+): Pair<List<Int?>, List<Int?>> {
+  val rowAlignments = axisAlignments(initial.size, target.size, byIndexOnly)
+  val colAlignments = axisAlignments(initial.firstOrNull()?.size ?: 0, target.firstOrNull()?.size ?: 0, byIndexOnly)
+  var best = rowAlignments.first() to colAlignments.first()
+  var bestMatches = -1
+  for (rowSources in rowAlignments) {
+    for (colSources in colAlignments) {
+      val matches =
+        rowSources.indices.sumOf { r ->
+          colSources.indices.count { c ->
+            val sourceRow = rowSources[r]
+            val sourceCol = colSources[c]
+            sourceRow != null && sourceCol != null && initial[sourceRow].getOrNull(sourceCol) == target[r].getOrNull(c)
+          }
+        }
+      if (matches > bestMatches) {
+        best = rowSources to colSources
+        bestMatches = matches
+      }
+    }
+  }
+  return best
+}
+
+/** Returns the candidate alignments of an axis resized from [initialSize] to [targetSize], the alignment by index first. */
+private fun axisAlignments(initialSize: Int, targetSize: Int, byIndexOnly: Boolean): List<List<Int?>> {
+  val byIndex = List(targetSize) { i -> i.takeIf { it < initialSize } }
+  if (byIndexOnly || initialSize == targetSize || initialSize == 0 || targetSize == 0) return listOf(byIndex)
+  val keptIndices = minOf(initialSize, targetSize) - 1
+  val keepingLast = List(targetSize) { i -> if (i == targetSize - 1) initialSize - 1 else i.takeIf { it < keptIndices } }
+  return listOf(byIndex, keepingLast)
+}
+
 private fun <T> resizeKeepingEnds(items: List<T>, newSize: Int, interpolate: (T, T, Float) -> T): List<T> {
   val size = items.size
   return when {

@@ -23,8 +23,6 @@ import com.android.ide.common.gradle.Component;
 import com.android.ide.common.gradle.Dependency;
 import com.android.ide.common.gradle.Version;
 import com.android.ide.common.repository.GoogleMavenArtifactId;
-import com.android.ide.common.repository.GoogleMavenRepositoryV2;
-import com.android.ide.common.repository.FakeGoogleMavenRepositoryV2Host;
 import com.android.ide.common.repository.StubGoogleMavenRepository;
 import com.android.repository.api.RemotePackage;
 import com.android.repository.api.RepoManager;
@@ -103,15 +101,10 @@ public class RepositoryUrlManagerTest {
                     "com/android/support/group-index.xml", SUPPORT_GROUP,
                     "com/android/support/constraint/group-index.xml", CONTRAINT_GROUP);
 
-  private final GoogleMavenRepositoryV2 googleMavenRepositoryV2 =
-    GoogleMavenRepositoryV2.Companion.create(new FakeGoogleMavenRepositoryV2Host());
-
   @Before
   public void setup() throws Exception {
     myRepositoryUrlManager = new RepositoryUrlManager(new StubGoogleMavenRepository(OFFLINE_CACHE),
                                                       new StubGoogleMavenRepository(OFFLINE_CACHE),
-                                                      googleMavenRepositoryV2,
-                                                      googleMavenRepositoryV2,
                                                       true /* use embedded studio repo */);
     mySdkHandler = new AndroidSdkHandler(myRoot.resolve(SDK_DIR), myRoot.resolve(ANDROID_PREFS_ROOT));
     AndroidSdkData sdk = Mockito.mock(AndroidSdkData.class);

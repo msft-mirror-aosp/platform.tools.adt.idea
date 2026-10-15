@@ -130,6 +130,7 @@ kotlin_test(
         "testSrc/com/android/tools/idea/profilers/performance/CpuProfilerPerfettoCaptureTest.kt",
         "testSrc/com/android/tools/idea/profilers/performance/MemoryClassifierViewFindSuperSetNodeTest.kt",
         "testSrc/com/android/tools/idea/profilers/performance/MemoryProfilerHeapDumpTest.kt",
+        "testSrc/com/android/tools/idea/profilers/performance/MemoryProfilerHeapDumpTraceProcessorTest.kt",
         "testSrc/com/android/tools/idea/profilers/performance/TraceProcessorDaemonBenchmarkTest.kt",
     ],
     data = [

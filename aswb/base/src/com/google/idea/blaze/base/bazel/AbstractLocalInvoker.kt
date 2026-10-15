@@ -30,6 +30,7 @@ import com.google.idea.blaze.base.console.BlazeConsoleLineProcessorProvider
 import com.google.idea.blaze.base.logging.utils.querysync.BuildDepsStatsScope
 import com.google.idea.blaze.base.logging.utils.querysync.SyncQueryStatsScope
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
+import com.google.idea.blaze.base.run.processhandler.ScopedBlazeProcessHandler.ProcessTerminator
 import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.base.scope.output.IssueOutput
 import com.google.idea.blaze.common.PrintOutput
@@ -108,6 +109,7 @@ protected constructor(
         command,
         WorkspaceRoot.fromProject(project),
         environment,
+        ProcessTerminator.Local,
       ) {
         try {
           getBepStream(outputFile).use { streamProvider ->
