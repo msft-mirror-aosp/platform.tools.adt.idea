@@ -16,6 +16,7 @@
 package com.android.tools.idea.sdk
 
 import com.android.repository.impl.manager.LocalRepoLoaderImpl
+import com.android.sdklib.repository.targets.SystemImageManager
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.avdmanager.AvdScannerService
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
@@ -105,7 +106,6 @@ class AndroidSdkWatcherServiceTest {
     watcherService.registerProject(projectRule.project, sdkDir)
 
     val avdScanner = AvdScannerService(testScope)
-    disposableRule.register { avdScanner.dispose() }
     avdScanner.onSdkPathChanged(sdkDir)
 
     val scanCount = AtomicInteger(0)
@@ -116,8 +116,9 @@ class AndroidSdkWatcherServiceTest {
     waitForCondition(5.seconds) { scanCount.get() >= 1 }
     val initialCount = scanCount.get()
 
-    // Create package on disk to trigger file watcher -> RepoManager -> AvdScannerService.rescanAsync()
+    // Create package with a system image on disk to trigger file watcher -> RepoManager -> SystemImageManager -> AvdScannerService
     val pkgDir = Files.createDirectories(sdkDir.resolve("platforms").resolve("android-35"))
+    Files.createFile(pkgDir.resolve(SystemImageManager.SYS_IMG_NAME))
     Files.writeString(
       pkgDir.resolve(LocalRepoLoaderImpl.PACKAGE_XML_FN),
       createPackageXml("platforms;android-35", "Android SDK Platform 35", 35),
