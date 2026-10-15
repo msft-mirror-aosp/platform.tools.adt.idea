@@ -8,12 +8,6 @@ iml_module(
     javacopts_from_jps = [
         "--add-exports",
         "java.desktop/sun.swing=ALL-UNNAMED",
-        "--add-exports",
-        "java.desktop/java.awt.peer=ALL-UNNAMED",
-        "--add-exports",
-        "java.desktop/sun.awt=ALL-UNNAMED",
-        "--add-exports",
-        "java.desktop/sun.java2d.pipe=ALL-UNNAMED",
     ],
     lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
