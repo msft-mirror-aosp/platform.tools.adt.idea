@@ -7,7 +7,6 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.Button
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -111,8 +110,6 @@ class FullscreenFragment : Fragment() {
         activity?.window?.let { window ->
             WindowCompat.setDecorFitsSystemWindows(window, true)
         }
-
-        // Clear the systemUiVisibility flag
         show()
     }
 
