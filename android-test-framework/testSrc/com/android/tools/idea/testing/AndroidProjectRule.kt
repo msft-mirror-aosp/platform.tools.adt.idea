@@ -369,7 +369,7 @@ interface AndroidProjectRule : TestRule {
 internal interface TestEnvironmentRule : TestRule
 
 /**
- * The inner rule in the default implementation of the [AndroidProjectRule] chain of rules.
+ * An inner rule in the default implementation of the [AndroidProjectRule] chain of rules.
  *
  * [FixtureRule] is supposed to set up the project and code insight fixtures used by the test. .
  */
@@ -402,7 +402,7 @@ private fun <T : CodeInsightTestFixture, H> chain(
   edtRule: EdtRule? = null,
   tools: H? = null,
 ): AndroidProjectRule.Typed<T, H> {
-  val chain = RuleChain.outerRule(testEnvironmentRule).maybeAround(edtRule).around(fixtureRule).around(projectEnvironmentRule)
+  val chain = RuleChain.outerRule(testEnvironmentRule).around(fixtureRule).maybeAround(edtRule).around(projectEnvironmentRule)
   return object : AndroidProjectRule.Typed<T, H>, TestRule by chain {
     override val testRootDisposable: Disposable
       get() = fixtureRule.testRootDisposable

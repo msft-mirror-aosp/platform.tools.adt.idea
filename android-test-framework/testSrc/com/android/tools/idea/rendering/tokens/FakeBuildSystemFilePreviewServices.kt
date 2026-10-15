@@ -33,6 +33,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors.directExecutor
 import com.google.common.util.concurrent.SettableFuture
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -87,7 +88,9 @@ class FakeBuildSystemFilePreviewServices(
   ) {
     val buildResult = BuildListener.BuildResult(buildStatus, EverythingGlobalScope())
     val buildResultFuture = SettableFuture.create<BuildListener.BuildResult>()
-    synchronized(listeners) { listeners.toList() }.forEach { listener -> listener.buildStarted(buildMode, buildResultFuture) }
+    // Production notifies the build listeners on the EDT (see GradleBuildSystemFilePreviewServices), so do the same here.
+    val currentListeners = synchronized(listeners) { listeners.toList() }
+    invokeAndWaitIfNeeded { currentListeners.forEach { listener -> listener.buildStarted(buildMode, buildResultFuture) } }
     lastStatus = buildStatus
     completion.addListener({ buildResultFuture.set(buildResult) }, directExecutor())
   }
