@@ -19,9 +19,14 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.saveable.SaveableStateRegistry
+import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -37,9 +42,11 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.intellij.testFramework.ProjectRule
+import java.awt.image.BufferedImage
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -462,6 +469,70 @@ class NavigationControlsPanelUiTest {
     // Clicking a previous item (Screen1) navigates back to that state
     composeTestRule.onNodeWithText("Screen1").assertIsDisplayed().performClick()
     assertEquals("Screen1", backToStateTarget)
+  }
+
+  @Test
+  fun testVisualStackItemShowsFocusOnClick() {
+    // Enable the visual back stack feature flag for the test
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
+    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    var historyList = listOf("Screen1", "Screen2", "Screen3")
+
+    composeTestRule.setContent {
+      NavigationControlsPanel(
+        isEdgeNavigationImplemented = { true },
+        getNavigationHistory = { historyList },
+        canBackPress = { true },
+        onBackPress = {},
+        onBackPressStart = {},
+        onBackPressProgress = { _, _ -> },
+        onBackPressTrackProgress = {},
+        onEdgeDropdownPress = {},
+        fpsUpdater = fpsUpdater,
+      )
+    }
+
+    // Verify the clickable back stack items are not focused initially and capture the baseline panel image
+    composeTestRule.onNodeWithText("Screen1").assertIsNotFocused()
+    composeTestRule.onNodeWithText("Screen2").assertIsNotFocused()
+    val idlePanelImage = composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.panel).captureToImage().toAwtImage()
+
+    // Click on the current active item (Screen3); it is disabled so it should not change appearance
+    composeTestRule.onNodeWithText("Screen3").performMouseInput { click() }
+    composeTestRule.waitForIdle()
+    val activeItemClickedImage = composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.panel).captureToImage().toAwtImage()
+    assertTrue(
+      "Clicking the current active item should not render a focus outline",
+      areImagesIdentical(idlePanelImage, activeItemClickedImage),
+    )
+
+    // Click on a non-current item (Screen2) and verify it gains focus and renders a focus outline
+    composeTestRule.onNodeWithText("Screen2").performMouseInput { click() }
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText("Screen2").assertIsFocused()
+    val focusedItemImage = composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.panel).captureToImage().toAwtImage()
+    assertFalse("Clicking a non-current item should render a visible focus outline", areImagesIdentical(idlePanelImage, focusedItemImage))
+
+    // Pop Screen3 so Screen2 becomes the active item and verify Screen1 does not inherit focus at the shifted reversed index
+    historyList = listOf("Screen1", "Screen2")
+    fpsUpdater.tryEmit(Unit)
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText("Screen1").assertIsNotFocused()
+  }
+
+  private fun areImagesIdentical(firstImage: BufferedImage, secondImage: BufferedImage): Boolean {
+    // Compare dimensions before checking individual pixel RGB values
+    if (firstImage.width != secondImage.width || firstImage.height != secondImage.height) {
+      return false
+    }
+    for (pixelX in 0 until firstImage.width) {
+      for (pixelY in 0 until firstImage.height) {
+        if (firstImage.getRGB(pixelX, pixelY) != secondImage.getRGB(pixelX, pixelY)) {
+          return false
+        }
+      }
+    }
+    return true
   }
 
   @Test
