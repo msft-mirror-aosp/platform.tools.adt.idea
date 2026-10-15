@@ -16,7 +16,6 @@
 package com.android.tools.idea.npw.templateengine.services
 
 import com.android.annotations.concurrency.GuardedBy
-import com.android.repository.api.RepoManager
 import com.android.template.engine.DefaultTemplateMessageSink
 import com.android.template.engine.TemplateDefinition
 import com.android.template.engine.TemplateEngineFactory
@@ -25,14 +24,10 @@ import com.android.template.engine.TemplateMessageSink
 import com.android.template.engine.copyAndLoadExtraFiles
 import com.android.tools.idea.npw.template.WizardPluginPromotionTemplateProvider
 import com.android.tools.idea.npw.template.toPromotionCardSpec
-import com.android.tools.idea.npw.templateengine.WizardConstants
 import com.android.tools.idea.npw.templateengine.api.ExternalTemplateSpec
 import com.android.tools.idea.npw.templateengine.api.PromotionCardSpec
 import com.android.tools.idea.npw.templateengine.api.TemplateEngineProjectWizardContributor
-import com.android.tools.idea.progress.StudioLoggerProgressIndicator
-import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.util.StudioPathManager
-import com.android.tools.sdk.AndroidSdkData
 import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
@@ -40,8 +35,6 @@ import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.extensions.PluginId
-import com.intellij.openapi.project.Project
-import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -49,17 +42,13 @@ import java.util.zip.ZipException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 
 @Service(Service.Level.APP)
 class TemplateRegistryService
 @JvmOverloads
-constructor(private val coroutineScope: CoroutineScope, private val zipPathProvider: (Path?) -> Path = ::getDefaultZipPath) {
+constructor(private val coroutineScope: CoroutineScope, private val zipPathProvider: () -> Path = ::getDefaultZipPath) {
 
   private val logger = logger<TemplateRegistryService>()
   private val lock = Any()
@@ -68,55 +57,14 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
 
   @GuardedBy("lock") private var lastErrorMessage: String? = null
 
-  @GuardedBy("lock") private var currentRepoManager: RepoManager? = null
-
-  @GuardedBy("lock") private var currentSdkPath: Path? = null
-
   @GuardedBy("lock") private var externalTemplates: List<ExternalTemplate> = emptyList()
-
-  private val localChangeListener = RepoManager.RepoLoadedListener {
-    logger.debug("SDK packages changed, reloading templates")
-    coroutineScope.launch(Dispatchers.IO) { loadTemplatesAndResources() }
-  }
-
-  private val sdkPathFlow = MutableSharedFlow<Path>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
   init {
     TemplateEngineProjectWizardContributor.EP_NAME.addChangeListener(coroutineScope) {
       logger.debug("Template contributors changed, reloading external templates")
       coroutineScope.launch(Dispatchers.IO) { loadExternalTemplates() }
     }
-    coroutineScope.launch {
-      val initialSdkPath = IdeSdks.getInstance().androidSdkPath?.toPath()
-      if (initialSdkPath != null) {
-        synchronized(lock) { currentSdkPath = initialSdkPath }
-        sdkPathFlow.emit(initialSdkPath)
-      } else {
-        withContext(Dispatchers.IO) { loadTemplatesAndResources() }
-      }
-      sdkPathFlow.distinctUntilChanged().collect { path ->
-        synchronized(lock) {
-          currentSdkPath = path
-          currentRepoManager?.removeLocalChangeListener(localChangeListener)
-          currentRepoManager = null
-
-          val sdkData = AndroidSdkData.getSdkData(path)
-          if (sdkData != null) {
-            val progress = StudioLoggerProgressIndicator(TemplateRegistryService::class.java)
-            val repoManager = sdkData.sdkHandler.getRepoManager(progress)
-            repoManager.addLocalChangeListener(localChangeListener)
-            currentRepoManager = repoManager
-          } else {
-            logger.warn("Could not get SdkData for $path, TemplateRegistry won't receive package updates")
-          }
-        }
-        withContext(Dispatchers.IO) { loadTemplatesAndResources() }
-      }
-    }
-  }
-
-  fun onSdkPathChanged(newSdkPath: Path) {
-    sdkPathFlow.tryEmit(newSdkPath)
+    coroutineScope.launch(Dispatchers.IO) { loadTemplatesAndResources() }
   }
 
   fun getTemplateList(): TemplateList = synchronized(lock) { templateList }
@@ -134,15 +82,14 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
 
   fun loadTemplatesAndResources() {
     try {
-      val sdkPath = synchronized(lock) { currentSdkPath }
-      val zipPath = zipPathProvider(sdkPath)
+      val zipPath = zipPathProvider()
       val loadedList = loadTemplatesFromZip(zipPath)
       synchronized(lock) {
         templateList = loadedList
         lastErrorMessage = null
       }
     } catch (e: ZipException) {
-      val error = "Corrupt template package: ${e.message}. Run 'android sdk install build/templates' in SDK Manager."
+      val error = "Corrupt template package: ${e.message}."
       logger.warn(error)
       synchronized(lock) {
         lastErrorMessage = error
@@ -229,20 +176,14 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
     @TestOnly
     fun createForTest(
       coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Default),
-      zipPathProvider: (Path?) -> Path = ::getDefaultZipPath,
+      zipPathProvider: () -> Path = ::getDefaultZipPath,
     ): TemplateRegistryService = TemplateRegistryService(coroutineScope, zipPathProvider)
-  }
-}
-
-class TemplateRegistrySdkEventListener : IdeSdks.AndroidSdkEventListener {
-  override fun afterSdkPathChange(sdkPath: File, project: Project) {
-    TemplateRegistryService.getInstance().onSdkPathChanged(sdkPath.toPath())
   }
 }
 
 data class ExternalTemplate(val definition: TemplateDefinition, val contributorId: String, val contributorPriority: Int)
 
-private fun getDefaultZipPath(sdkPath: Path?): Path {
+private fun getDefaultZipPath(): Path {
   // 1. Check bundled plugin resources first
   val plugin = PluginManagerCore.getPlugin(PluginId.getId("org.jetbrains.android"))
   val pluginPath = plugin?.pluginPath
@@ -263,19 +204,5 @@ private fun getDefaultZipPath(sdkPath: Path?): Path {
     }
   }
 
-  // 3. Fall back to SDK path if configured
-  if (sdkPath != null) {
-    val sdkZip = sdkPath.resolve(WizardConstants.RELATIVE_PATH_TEMPLATES_ZIP)
-    if (Files.exists(sdkZip)) {
-      return sdkZip
-    }
-  }
-
-  val message =
-    if (sdkPath == null) {
-      "Bundled templates were not found and Android SDK path is not configured."
-    } else {
-      "Templates package not found in bundled plugin resources or at ${sdkPath.resolve(WizardConstants.RELATIVE_PATH_TEMPLATES_ZIP)}."
-    }
-  throw IllegalStateException(message)
+  throw IllegalStateException("Bundled templates package not found.")
 }

@@ -29,9 +29,6 @@ object WizardConstants {
   const val FINISH_BUTTON_TEXT = "Finish"
   const val TASK_TITLE = "Creating Project"
 
-  // SDK Template Payload Relative Subpath
-  const val RELATIVE_PATH_TEMPLATES_ZIP = "build/templates/android-project-templates.zip"
-
   // Project Parameter Defaults
   const val DEFAULT_APPLICATION_NAME = "My Application"
   const val DEFAULT_PACKAGE_PREFIX = "com.example."
