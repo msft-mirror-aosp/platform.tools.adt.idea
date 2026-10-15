@@ -125,13 +125,17 @@ class MemoryProfilerHeapDumpTraceProcessorTest {
   }
 
   /**
-   * Runs [work] [QUERY_SAMPLES] times and logs every run, in microseconds, as a sample of the same metric. Perfgate aggregates the samples
-   * of each run by their median, so a single slow query (e.g. the first, cold one) doesn't skew the result.
+   * Runs [work] [QUERY_WARMUPS] times to warm up, then [QUERY_SAMPLES] times timed, logging every timed run, in microseconds, as a sample
+   * of the same metric. Warming up keeps one-time costs (e.g. the first, cold query) out of the samples.
+   *
+   * Perfgate aggregates the samples of each run by their minimum: interference from other work on the machine, such as other tests running
+   * on the same CI host, only ever adds time, so the fastest sample is the most stable estimate of the query's cost.
    *
    * Each result is checked with [validate], outside the timed block, before its sample is logged. A failed Trace Processor query doesn't
-   * throw: it logs a warning and quickly returns an empty result, which would skew the median.
+   * throw: it logs a warning and quickly returns an empty result, which would become the minimum.
    */
   private fun <T> timeQuery(name: String, query: String, validate: (T) -> Unit, work: () -> T) {
+    repeat(QUERY_WARMUPS) { validate(work()) }
     val metric = Metric("$name-$query-Query")
     // Samples are keyed by timestamp in the perfgate output, so give each one a distinct timestamp: queries can finish within the same
     // millisecond and would otherwise overwrite each other.
@@ -149,11 +153,12 @@ class MemoryProfilerHeapDumpTraceProcessorTest {
   private companion object {
     // Mirrors LazyMemoryObjectTreeNode.NUM_CHILDREN_PER_PAGE (package-private), the page size the heap dump view requests.
     const val INSTANCES_PAGE_SIZE = 100
-    const val QUERY_SAMPLES = 5
+    const val QUERY_WARMUPS = 2
+    const val QUERY_SAMPLES = 20
 
     val QUERY_ANALYZER: WindowDeviationAnalyzer =
       WindowDeviationAnalyzer.Builder()
-        .setMetricAggregate(Analyzer.MetricAggregate.MEDIAN)
+        .setMetricAggregate(Analyzer.MetricAggregate.MIN)
         .addMedianTolerance(WindowDeviationAnalyzer.MedianToleranceParams.Builder().build())
         .build()
   }
