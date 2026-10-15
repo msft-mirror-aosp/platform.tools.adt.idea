@@ -16,11 +16,6 @@
 package com.android.tools.idea.streaming.actions
 
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.streaming.emulator.actions.EmulatorBatteryAction
-import com.android.tools.idea.streaming.emulator.actions.EmulatorCellularAction
-import com.android.tools.idea.streaming.emulator.actions.EmulatorDisplaysAction
-import com.android.tools.idea.streaming.emulator.actions.EmulatorExtendedControlsActionGroup
-import com.android.tools.idea.streaming.emulator.actions.EmulatorShowExtendedControlsAction
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionStubBase
 import com.intellij.openapi.actionSystem.AnAction
@@ -49,22 +44,14 @@ internal class StreamingKeymapExtension : KeymapExtension {
     val keymapGroup = KeymapGroupFactory.getInstance().createGroup(KEYMAP_SECTION_NAME)
 
     val actionManager = ActionManager.getInstance()
+    val extendedControlsInStudio = StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.get()
     for (action in ActionsTreeUtil.getActions(ACTION_GROUP)) {
       val id = (action as? ActionStubBase)?.id ?: actionManager.getId(action)
-      val extendedControlsInStudio = StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.get()
-      if (
-        (action is EmulatorExtendedControlsActionGroup ||
-          action is EmulatorDisplaysAction ||
-          action is EmulatorCellularAction ||
-          action is EmulatorBatteryAction ||
-          id == EXTENDED_CONTROLS_GROUP_ID ||
-          id == DISPLAYS_ACTION_ID ||
-          id == CELLULAR_ACTION_ID ||
-          id == BATTERY_ACTION_ID) && !extendedControlsInStudio
-      ) {
-        continue
-      }
-      if ((action is EmulatorShowExtendedControlsAction || id == SHOW_EXTENDED_CONTROLS_ACTION_ID) && extendedControlsInStudio) {
+      if (extendedControlsInStudio) {
+        if (id == SHOW_EXTENDED_CONTROLS_ACTION_ID) {
+          continue
+        }
+      } else if (id == EXTENDED_CONTROLS_GROUP_ID || id == DISPLAYS_ACTION_ID || id == CELLULAR_ACTION_ID || id == BATTERY_ACTION_ID) {
         continue
       }
       ActionsTreeUtil.addAction(keymapGroup, action, filtered)
