@@ -225,10 +225,10 @@ class BackStackPanel(val model: BackStackPanelModel) : JPanel(BorderLayout()), T
   private fun buildItemRow(item: String, isActive: Boolean): JComponent {
     val rowPanel =
       JPanel(BorderLayout()).apply {
-        background = if (isActive) Banner.SUCCESS_BACKGROUND else UIUtil.getTextFieldBackground()
+        background = if (isActive) Banner.INFO_BACKGROUND else UIUtil.getTextFieldBackground()
         border =
           BorderFactory.createCompoundBorder(
-            LineBorder(if (isActive) Banner.SUCCESS_BORDER_COLOR else JBColor.border(), 1, true),
+            LineBorder(if (isActive) Banner.INFO_BORDER_COLOR else JBColor.border(), 1, true),
             JBUI.Borders.empty(4, 8),
           )
         alignmentX = LEFT_ALIGNMENT
@@ -281,7 +281,7 @@ class BackStackPanel(val model: BackStackPanelModel) : JPanel(BorderLayout()), T
       foreground = Banner.FOREGROUND
       border =
         BorderFactory.createCompoundBorder(
-          LineBorder(Banner.SUCCESS_BORDER_COLOR, 1, true),
+          LineBorder(Banner.INFO_BORDER_COLOR, 1, true),
           JBUI.Borders.empty(1, 4),
         )
     }
