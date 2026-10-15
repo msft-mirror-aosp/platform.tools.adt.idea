@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.android.sdklib.AndroidApiLevel
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.NameDetails
 import com.android.sdklib.getApiNameAndDetails
@@ -55,14 +56,17 @@ fun ApiFilter(
     Row {
       Dropdown(
         menuContent = {
-          val apiLevels = apiLevels.map { AndroidVersionSelection(it) } + AndroidVersionSelection(null)
-          repeat(apiLevels.size) { index ->
+          val versionSelections = apiLevels.map { AndroidVersionSelection.forVersion(it) }.distinct() + AndroidVersionSelection.Any
+          repeat(versionSelections.size) { index ->
             // Add a separator before the final "Show All"
-            if (index == apiLevels.size - 1) {
+            if (index == versionSelections.size - 1) {
               separator()
             }
-            selectableItem(selected = apiLevels[index] == selectedApiLevel, onClick = { onApiLevelChange(apiLevels[index]) }) {
-              ApiLevel(apiLevels[index])
+            selectableItem(
+              selected = versionSelections[index] == selectedApiLevel,
+              onClick = { onApiLevelChange(versionSelections[index]) },
+            ) {
+              ApiLevel(versionSelections[index])
             }
           }
         }
@@ -110,14 +114,47 @@ fun ApiLevel(apiLevel: AndroidVersionSelection) {
   }
 }
 
-data class AndroidVersionSelection(private val androidVersion: AndroidVersion?) {
-  init {
-    require(androidVersion == null || androidVersion.isBaseExtension)
-  }
-
-  val nameDetails: NameDetails
-    get() = androidVersion?.getApiNameAndDetails(includeReleaseName = true, includeCodeName = true) ?: NameDetails("Show All", null)
+sealed class AndroidVersionSelection {
+  abstract val nameDetails: NameDetails
 
   /** Checks if the given version matches this selection; extension levels are not considered. */
-  fun matches(version: AndroidVersion) = androidVersion == null || androidVersion == version.withBaseExtensionLevel()
+  abstract fun matches(version: AndroidVersion): Boolean
+
+  object Any : AndroidVersionSelection() {
+    override val nameDetails = NameDetails("Show All", null)
+
+    override fun matches(version: AndroidVersion): Boolean = true
+  }
+
+  object Canary : AndroidVersionSelection() {
+    override val nameDetails = NameDetails("API Canary Preview", null)
+
+    override fun matches(version: AndroidVersion): Boolean = version.canaryNumber != null
+  }
+
+  data class Beta(val apiLevel: AndroidApiLevel) : AndroidVersionSelection() {
+    override val nameDetails = NameDetails("API $apiLevel Beta", null)
+
+    override fun matches(version: AndroidVersion): Boolean = version.betaNumber != null && version.androidApiLevel == apiLevel
+  }
+
+  data class Version(val androidVersion: AndroidVersion) : AndroidVersionSelection() {
+    init {
+      require(androidVersion.isBaseExtension)
+    }
+
+    override val nameDetails: NameDetails
+      get() = androidVersion.getApiNameAndDetails(includeReleaseName = true, includeCodeName = true)
+
+    override fun matches(version: AndroidVersion): Boolean = androidVersion == version.withBaseExtensionLevel()
+  }
+
+  companion object {
+    fun forVersion(version: AndroidVersion): AndroidVersionSelection =
+      when {
+        version.canaryNumber != null -> Canary
+        version.betaNumber != null -> Beta(version.androidApiLevel)
+        else -> Version(version.withBaseExtensionLevel())
+      }
+  }
 }

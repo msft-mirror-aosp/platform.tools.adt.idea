@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.avd
 
+import com.android.sdklib.AndroidApiLevel
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
+import com.android.sdklib.NameDetails
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,7 +45,7 @@ class SystemImageFilterStateTest {
     val image = mockSystemImage(AndroidVersion(36, 2))
     val images = listOf(mockSystemImage(AndroidVersion(36)), mockSystemImage(AndroidVersion(36, 1)), image)
 
-    val state = SystemImageFilterState(AndroidVersionSelection(AndroidVersion(36, 2)), null, showUnsupportedSystemImages = true)
+    val state = SystemImageFilterState(AndroidVersionSelection.forVersion(AndroidVersion(36, 2)), null, showUnsupportedSystemImages = true)
 
     assertEquals(listOf(image), state.filter(images))
   }
@@ -66,10 +68,43 @@ class SystemImageFilterStateTest {
     val images = listOf(mockSystemImage(AndroidVersion(35, "Baklava", 15, true)), mockSystemImage(AndroidVersion(35, "Baklava", 16, true)))
 
     // Act
-    val state = SystemImageFilterState(AndroidVersionSelection(AndroidVersion(35, "Baklava")), null, showUnsupportedSystemImages = true)
+    val state =
+      SystemImageFilterState(AndroidVersionSelection.forVersion(AndroidVersion(35, "Baklava")), null, showUnsupportedSystemImages = true)
 
     // Assert
     assertEquals(images, state.filter(images))
+  }
+
+  @Test
+  fun systemImageFilterStateCanary() {
+    val canary1 = mockSystemImage(AndroidVersion(35, 0).withCanaryNumber(20250101))
+    val canary2 = mockSystemImage(AndroidVersion(36, 0).withCanaryNumber(20250201))
+    val stable = mockSystemImage(AndroidVersion(36, 0))
+    val images = listOf(canary1, canary2, stable)
+
+    val selection = AndroidVersionSelection.forVersion(AndroidVersion(35, 0).withCanaryNumber(20250101))
+    assertEquals(AndroidVersionSelection.Canary, selection)
+
+    val state = SystemImageFilterState(selection, null, showUnsupportedSystemImages = true)
+
+    assertEquals(listOf(canary1, canary2), state.filter(images))
+  }
+
+  @Test
+  fun systemImageFilterStateBeta() {
+    val beta37_1 = mockSystemImage(AndroidVersion(37, 0).withBetaNumber(1))
+    val beta37_2 = mockSystemImage(AndroidVersion(37, 0).withBetaNumber(2))
+    val beta36 = mockSystemImage(AndroidVersion(36, 1).withBetaNumber(1))
+    val stable37 = mockSystemImage(AndroidVersion(37, 0))
+    val images = listOf(beta37_1, beta37_2, beta36, stable37)
+
+    val selection = AndroidVersionSelection.forVersion(AndroidVersion(37, 0).withBetaNumber(1))
+    assertEquals(AndroidVersionSelection.Beta(AndroidApiLevel(37, 0)), selection)
+    assertEquals(NameDetails("API 37.0 Beta", null), selection.nameDetails)
+
+    val state = SystemImageFilterState(selection, null, showUnsupportedSystemImages = true)
+
+    assertEquals(listOf(beta37_1, beta37_2), state.filter(images))
   }
 
   @Test
@@ -107,18 +142,23 @@ class SystemImageFilterStateTest {
 
     val images = listOf(api36, api36ext, api36_1, api36_1ext)
 
-    val stateWithoutExtensions = SystemImageFilterState(AndroidVersionSelection(null), null, showUnsupportedSystemImages = true)
+    val stateWithoutExtensions = SystemImageFilterState(AndroidVersionSelection.Any, null, showUnsupportedSystemImages = true)
 
     assertEquals(listOf(api36, api36_1), stateWithoutExtensions.filter(images))
 
     val state =
-      SystemImageFilterState(AndroidVersionSelection(null), null, showSdkExtensionSystemImages = true, showUnsupportedSystemImages = true)
+      SystemImageFilterState(
+        AndroidVersionSelection.Any,
+        null,
+        showSdkExtensionSystemImages = true,
+        showUnsupportedSystemImages = true,
+      )
 
     assertEquals(images, state.filter(images))
   }
 
   private companion object {
-    private val API = AndroidVersionSelection(AndroidVersion(34).withBaseExtensionLevel())
+    private val API = AndroidVersionSelection.forVersion(AndroidVersion(34))
 
     private fun mockSystemImage(version: AndroidVersion): ISystemImage {
       val image = mock<ISystemImage>()
