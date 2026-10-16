@@ -31,13 +31,13 @@ import com.intellij.openapi.vfs.VirtualFile
 import java.util.concurrent.TimeUnit
 import org.jetbrains.android.ComponentStack
 import org.junit.rules.ExternalResource
-import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.eq
 import org.mockito.Mockito
 import org.mockito.Mockito.anyBoolean
 import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.whenever
 
 private const val TIMEOUT = 10L // seconds
@@ -72,18 +72,19 @@ class FileOpenCaptureRule(private val projectRule: AndroidProjectRule) : Externa
     unit: TimeUnit = TimeUnit.SECONDS,
   ): FileEditorNavigatable {
     waitForCondition(timeout, unit) { Mockito.mockingDetails(fileManager!!).invocations.any { it.method.name == "openFileEditor" } }
-    val file = ArgumentCaptor.forClass(FileEditorNavigatable::class.java)
+    // FileEditorManager is written in Kotlin, so its parameters are non-null; use the mockito-kotlin captor.
+    val file = argumentCaptor<FileEditorNavigatable>()
     verify(fileManager!!).openFileEditor(file.capture(), eq(focusEditor))
-    val descriptor = file.value
+    val descriptor = file.lastValue
     assertThat(descriptor.file.name).isEqualTo(fileName)
     return descriptor
   }
 
   fun checkFileOpened(fileName: String, focusEditor: Boolean, timeout: Long = TIMEOUT, unit: TimeUnit = TimeUnit.SECONDS) {
     waitForCondition(timeout, unit) { Mockito.mockingDetails(fileManager!!).invocations.any { it.method.name == "openFile" } }
-    val file = ArgumentCaptor.forClass(VirtualFile::class.java)
+    val file = argumentCaptor<VirtualFile>()
     verify(fileManager!!).openFile(file.capture(), eq(focusEditor))
-    val vFile = file.value
+    val vFile = file.lastValue
     assertThat(vFile.name).isEqualTo(fileName)
   }
 
