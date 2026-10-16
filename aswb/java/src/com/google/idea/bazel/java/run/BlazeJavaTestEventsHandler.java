@@ -141,13 +141,12 @@ public class BlazeJavaTestEventsHandler implements BlazeTestEventsHandler {
               : TestFilterSyntax.JUNIT_3;
       Collection<Location<?>> methods = entry.getValue();
       if (methods.isEmpty()) {
-        testSelectors.add(new TestSelector(className, null, null, version));
+        testSelectors.add(new TestSelector(className, null, version));
       } else {
         for (Location<?> loc : methods) {
           PsiElement psi = loc.getPsiElement();
           if (psi instanceof PsiMethod) {
-            testSelectors.add(
-                new TestSelector(className, ((PsiMethod) psi).getName(), null, version));
+            testSelectors.add(new TestSelector(className, ((PsiMethod) psi).getName(), version));
           }
         }
       }

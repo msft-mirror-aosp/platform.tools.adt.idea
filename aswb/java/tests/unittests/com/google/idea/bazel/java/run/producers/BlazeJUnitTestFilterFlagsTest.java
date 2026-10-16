@@ -21,6 +21,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.idea.bazel.java.run.producers.BlazeJUnitTestFilterFlags.JUnitVersion;
 import com.google.idea.bazel.java.run.producers.JUnitParameterizedClassHeuristic.ParameterizedTestInfo;
 import com.google.idea.blaze.base.BlazeTestCase;
+import com.google.idea.blaze.base.run.producers.TestFilterSyntax;
+import com.google.idea.blaze.base.run.producers.TestSelector;
 import com.google.idea.common.experiments.ExperimentService;
 import com.google.idea.common.experiments.MockExperimentService;
 import org.jetbrains.annotations.NotNull;
@@ -150,5 +152,29 @@ public class BlazeJUnitTestFilterFlagsTest extends BlazeTestCase {
                 ImmutableList.of("testMethod1", "testMethod2"),
                 parameterizedTestInfo))
         .isEqualTo("com.google.idea.ClassName\\[MY_SUFFIX\\]#(testMethod1|testMethod2)$");
+  }
+
+  @Test
+  public void testFilterForSelectors_jUnit4ClassAndMethod_acceptsBracketAndParenthesisSuffixes() {
+    String classFilter =
+        BlazeJUnitTestFilterFlags.testFilterForSelectors(
+            ImmutableList.of(
+                new TestSelector("com.google.idea.ClassName", null, TestFilterSyntax.JUNIT_4)));
+    assertThat(classFilter).isEqualTo("com.google.idea.ClassName(\\[.*\\])?(\\(.*\\))?#");
+
+    String methodFilter =
+        BlazeJUnitTestFilterFlags.testFilterForSelectors(
+            ImmutableList.of(
+                new TestSelector(
+                    "com.google.idea.ClassName", "testMethod1", TestFilterSyntax.JUNIT_4)));
+    assertThat(methodFilter)
+        .isEqualTo(
+            "com.google.idea.ClassName(\\[.*\\])?(\\(.*\\))?#testMethod1(\\[.*\\])?(\\(.*\\))?$");
+    assertThat("com.google.idea.ClassName#testMethod1").matches(methodFilter);
+    assertThat("com.google.idea.ClassName#testMethod1[param]").matches(methodFilter);
+    assertThat("com.google.idea.ClassName#testMethod1(param)").matches(methodFilter);
+    assertThat("com.google.idea.ClassName[classParam]#testMethod1[param]").matches(methodFilter);
+    assertThat("com.google.idea.ClassName(classParam)#testMethod1(param)").matches(methodFilter);
+    assertThat("com.google.idea.ClassName#testMethod1Other").doesNotMatch(methodFilter);
   }
 }

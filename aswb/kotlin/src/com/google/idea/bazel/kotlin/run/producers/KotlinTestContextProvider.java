@@ -76,7 +76,7 @@ class KotlinTestContextProvider implements TestContextProvider {
         testClass.getFqName() != null ? testClass.getFqName().asString() : fqName.asString();
     String methodName = testMethod != null ? testMethod.getName() : null;
     TestSelector testSelector =
-        new TestSelector(className, methodName, null, TestFilterSyntax.RULES_KOTLIN);
+        new TestSelector(className, methodName, TestFilterSyntax.RULES_KOTLIN);
     PsiElement contextElement = testMethod != null ? testMethod : testClass;
 
     return Optional.of(

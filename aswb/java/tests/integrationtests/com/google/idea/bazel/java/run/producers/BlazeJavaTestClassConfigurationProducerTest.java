@@ -92,7 +92,8 @@ public class BlazeJavaTestClassConfigurationProducerTest
     assertThat(config.getName()).isEqualTo("Bazel test TestClass");
     performFirstRun(config, context);
     assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:TestClass");
-    assertThat(getTestFilterContents(config)).isEqualTo("--test_filter=com.google.test.TestClass#");
+    assertThat(getTestFilterContents(config))
+        .isEqualTo("--test_filter=com.google.test.TestClass(\\[.*\\])?(\\(.*\\))?#");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
   }
 
@@ -128,7 +129,8 @@ public class BlazeJavaTestClassConfigurationProducerTest
     assertThat(config.getName()).isEqualTo("Bazel test TestClass");
     performFirstRun(config, context);
     assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:TestClass");
-    assertThat(getTestFilterContents(config)).isEqualTo("--test_filter=com.google.test.TestClass#");
+    assertThat(getTestFilterContents(config))
+        .isEqualTo("--test_filter=com.google.test.TestClass(\\[.*\\])?(\\(.*\\))?#");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
   }
 
@@ -170,7 +172,7 @@ public class BlazeJavaTestClassConfigurationProducerTest
     assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:OuterClass");
     assertThat(getTestFilterContents(config))
         .isEqualTo(
-            "--test_filter=\"com.google.test.OuterClass#|com.google.test.OuterClass.InnerClass#\"");
+            "--test_filter=\"com.google.test.OuterClass(\\[.*\\])?(\\(.*\\))?#|com.google.test.OuterClass.InnerClass(\\[.*\\])?(\\(.*\\))?#\"");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
   }
 

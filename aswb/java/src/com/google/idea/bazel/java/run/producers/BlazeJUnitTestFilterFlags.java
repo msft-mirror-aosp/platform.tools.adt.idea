@@ -42,6 +42,8 @@ import javax.annotation.Nullable;
 /** Utilities for building test filter flags for JUnit tests. */
 public final class BlazeJUnitTestFilterFlags {
 
+  private static final String PARAMETER_SUFFIX_REGEX = "(\\[.*\\])?(\\(.*\\))?";
+
   /** A version of JUnit to generate test filter flags for. */
   public enum JUnitVersion {
     JUNIT_3,
@@ -264,17 +266,19 @@ public final class BlazeJUnitTestFilterFlags {
     for (Entry<String, List<TestSelector>> entry : selectorsByClass.entrySet()) {
       String className = entry.getKey();
       List<TestSelector> classSelectors = entry.getValue();
+      TestFilterSyntax version = classSelectors.get(0).getTestFilterSyntax();
+      JUnitVersion jv =
+          version == TestFilterSyntax.JUNIT_4 ? JUnitVersion.JUNIT_4 : JUnitVersion.JUNIT_3;
+      String classFilter =
+          jv == JUnitVersion.JUNIT_4 ? className + PARAMETER_SUFFIX_REGEX : className;
       List<String> methodFilters =
           classSelectors.stream()
               .map(TestSelector::getMethodName)
               .filter(Objects::nonNull)
+              .map(method -> jv == JUnitVersion.JUNIT_4 ? method + PARAMETER_SUFFIX_REGEX : method)
               .collect(Collectors.toList());
 
-      TestFilterSyntax version = classSelectors.get(0).getTestFilterSyntax();
-      JUnitVersion jv =
-          version == TestFilterSyntax.JUNIT_4 ? JUnitVersion.JUNIT_4 : JUnitVersion.JUNIT_3;
-
-      String filter = testFilterForClassAndMethods(className, jv, methodFilters, null);
+      String filter = testFilterForClassAndMethods(classFilter, jv, methodFilters, null);
       if (filter != null) {
         classTestFilters.add(filter);
       }

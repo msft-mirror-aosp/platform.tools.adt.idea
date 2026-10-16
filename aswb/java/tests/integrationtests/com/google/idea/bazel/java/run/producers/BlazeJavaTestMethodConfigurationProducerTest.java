@@ -96,7 +96,8 @@ public class BlazeJavaTestMethodConfigurationProducerTest
     performFirstRun(config, context);
     assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:TestClass");
     assertThat(getTestFilterContents(config))
-        .isEqualTo("--test_filter=com.google.test.TestClass#testMethod1$");
+        .isEqualTo(
+            "--test_filter=com.google.test.TestClass(\\[.*\\])?(\\(.*\\))?#testMethod1(\\[.*\\])?(\\(.*\\))?$");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
 
     BlazeCommandRunConfigurationCommonState state =

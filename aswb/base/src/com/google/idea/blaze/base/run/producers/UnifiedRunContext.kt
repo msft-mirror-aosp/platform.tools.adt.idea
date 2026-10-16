@@ -33,8 +33,8 @@ enum class TestFilterSyntax {
   RULES_KOTLIN,
 }
 
-/** Identifies an individual test entity (class, method, parameter) in pure domain terms, independent of CLI flag syntax. */
-data class TestSelector(val className: String, val methodName: String?, val parameterName: String?, val testFilterSyntax: TestFilterSyntax)
+/** Identifies an individual test entity (class, method) in pure domain terms, independent of CLI flag syntax. */
+data class TestSelector(val className: String, val methodName: String?, val testFilterSyntax: TestFilterSyntax)
 
 /** Encapsulates test selection scope and UI naming hints. Null testFilter indicates target-wide execution of all tests. */
 data class TestFilterComponent(val testSelectors: List<TestSelector>, val appendFilteredSuffix: Boolean)

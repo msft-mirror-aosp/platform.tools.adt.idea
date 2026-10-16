@@ -135,10 +135,10 @@ class JavaTestContextProvider implements TestContextProvider {
             : TestFilterSyntax.JUNIT_3;
 
     List<TestSelector> testSelectors = new ArrayList<>();
-    testSelectors.add(new TestSelector(qualifiedName, null, null, version));
+    testSelectors.add(new TestSelector(qualifiedName, null, version));
     for (PsiClass inner : innerClasses) {
       if (inner.getQualifiedName() != null) {
-        testSelectors.add(new TestSelector(inner.getQualifiedName(), null, null, version));
+        testSelectors.add(new TestSelector(inner.getQualifiedName(), null, version));
       }
     }
 
@@ -186,7 +186,7 @@ class JavaTestContextProvider implements TestContextProvider {
 
     List<TestSelector> testSelectors =
         selectedMethods.stream()
-            .map(m -> new TestSelector(qualifiedName, m.getName(), null, version))
+            .map(m -> new TestSelector(qualifiedName, m.getName(), version))
             .collect(Collectors.toList());
 
     TestSize testSize = TestSizeFinder.getTestSize(firstMethod);
