@@ -18,11 +18,17 @@ package com.android.tools.idea.streaming.emulator
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.annotations.concurrency.UiThread
 import com.android.emulation.control.incubating.ActiveCalls
+import com.android.emulation.control.incubating.AnimationState
 import com.android.emulation.control.incubating.Call
 import com.android.emulation.control.incubating.CellInfo
 import com.android.emulation.control.incubating.ModemGrpc
 import com.android.emulation.control.incubating.PhoneEvent
+import com.android.emulation.control.incubating.Poster
+import com.android.emulation.control.incubating.PosterList
+import com.android.emulation.control.incubating.ReloadEnvironmentRequest
+import com.android.emulation.control.incubating.ReloadEnvironmentResponse
 import com.android.emulation.control.incubating.SmsMessage as ModemSmsMessage
+import com.android.emulation.control.incubating.VirtualSceneServiceGrpc
 import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraList
 import com.android.emulator.control.CameraNotification
@@ -108,6 +114,7 @@ import com.android.tools.idea.io.grpc.StatusRuntimeException
 import com.android.tools.idea.io.grpc.inprocess.InProcessServerBuilder
 import com.android.tools.idea.io.grpc.stub.StreamObserver
 import com.android.tools.idea.protobuf.ByteString
+import com.android.tools.idea.protobuf.BytesValue
 import com.android.tools.idea.protobuf.CodedOutputStream
 import com.android.tools.idea.protobuf.Empty
 import com.android.tools.idea.protobuf.MessageOrBuilder
@@ -201,6 +208,13 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile var activeCalls: List<Call> = emptyList()
   @Volatile var receivedSms: List<ModemSmsMessage> = emptyList()
   @Volatile var fingerprint: Fingerprint = Fingerprint.getDefaultInstance()
+  @Volatile
+  var posters: Map<String, Poster> =
+    mapOf(
+      "wall" to Poster.newBuilder().setName("wall").setMinWidth(0.2f).setMaxWidth(2.0f).setScale(1.0f).build(),
+      "table" to Poster.newBuilder().setName("table").setMinWidth(0.2f).setMaxWidth(1.0f).setScale(1.0f).build(),
+    )
+  @Volatile var animationState: AnimationState = AnimationState.newBuilder().setTvOn(true).build()
 
   @Volatile
   var devicePosture: PostureValue? = config.postures.lastOrNull()?.posture
@@ -508,6 +522,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       .addService(ServerInterceptors.intercept(EmulatorSnapshotService(executor), LoggingInterceptor()))
       .addService(ServerInterceptors.intercept(UiControllerService(executor), LoggingInterceptor()))
       .addService(ServerInterceptors.intercept(ModemService(executor), LoggingInterceptor()))
+      .addService(ServerInterceptors.intercept(VirtualSceneService(executor), LoggingInterceptor()))
       .build()
       .start()
   }
@@ -1191,6 +1206,60 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         notifyActiveCallsChanged()
       }
       .get()
+  }
+
+  private inner class VirtualSceneService(private val executor: ExecutorService) : VirtualSceneServiceGrpc.VirtualSceneServiceImplBase() {
+
+    override fun listPosters(request: Empty, responseObserver: StreamObserver<PosterList>) {
+      executor.execute {
+        sendResponse(responseObserver, PosterList.newBuilder().addAllPosters(posters.values).build())
+      }
+    }
+
+    override fun setPoster(request: Poster, responseObserver: StreamObserver<Poster>) {
+      executor.execute {
+        val existing = posters[request.name] ?: Poster.newBuilder().setName(request.name).setMinWidth(0.2f).setMaxWidth(2.0f).build()
+        val builder = existing.toBuilder().setScale(request.scale)
+        val fileName = if (request.hasFileName()) request.fileName.value else null
+        if (fileName != null && fileName.isEmpty() && !request.hasImage()) {
+          builder.clearFileName()
+          builder.clearImage()
+        } else {
+          if (request.hasFileName()) {
+            builder.fileName = request.fileName
+          }
+          if (request.hasImage()) {
+            builder.image = request.image
+          } else if (fileName != null) {
+            try {
+              builder.image = BytesValue.of(ByteString.copyFrom(Files.readAllBytes(Path.of(fileName))))
+            } catch (_: Exception) {}
+          }
+        }
+        val updated = builder.build()
+        posters = posters + (request.name to updated)
+        sendResponse(responseObserver, updated)
+      }
+    }
+
+    override fun getAnimationState(request: Empty, responseObserver: StreamObserver<AnimationState>) {
+      executor.execute {
+        sendResponse(responseObserver, animationState)
+      }
+    }
+
+    override fun setAnimationState(request: AnimationState, responseObserver: StreamObserver<AnimationState>) {
+      executor.execute {
+        animationState = request
+        sendResponse(responseObserver, animationState)
+      }
+    }
+
+    override fun reloadEnvironment(request: ReloadEnvironmentRequest, responseObserver: StreamObserver<ReloadEnvironmentResponse>) {
+      executor.execute {
+        sendResponse(responseObserver, ReloadEnvironmentResponse.getDefaultInstance())
+      }
+    }
   }
 
   private inner class LoggingInterceptor : ServerInterceptor {

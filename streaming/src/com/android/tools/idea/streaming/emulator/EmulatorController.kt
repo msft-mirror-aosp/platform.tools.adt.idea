@@ -19,11 +19,15 @@ import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.GuardedBy
 import com.android.annotations.concurrency.Slow
 import com.android.emulation.control.incubating.ActiveCalls
+import com.android.emulation.control.incubating.AnimationState
 import com.android.emulation.control.incubating.Call
 import com.android.emulation.control.incubating.CellInfo
 import com.android.emulation.control.incubating.ModemGrpc
 import com.android.emulation.control.incubating.PhoneEvent
+import com.android.emulation.control.incubating.Poster
+import com.android.emulation.control.incubating.PosterList
 import com.android.emulation.control.incubating.SmsMessage
+import com.android.emulation.control.incubating.VirtualSceneServiceGrpc
 import com.android.emulator.control.AudioPacket
 import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraList
@@ -167,6 +171,9 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
   val modemStub: ModemGrpc.ModemStub
     get() = connectionReference.get()?.modemStub ?: throwNotYetConnected()
 
+  val virtualSceneStub: VirtualSceneServiceGrpc.VirtualSceneServiceStub
+    get() = connectionReference.get()?.virtualSceneStub ?: throwNotYetConnected()
+
   init {
     Disposer.register(parentDisposable, this)
   }
@@ -305,21 +312,33 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     val snapshotServiceStub: SnapshotServiceGrpc.SnapshotServiceStub
     val uiControllerStub: UiControllerGrpc.UiControllerStub
     val modemStub: ModemGrpc.ModemStub
+    val virtualSceneStub: VirtualSceneServiceGrpc.VirtualSceneServiceStub
     val token = emulatorId.grpcToken
     if (token == null) {
       emulatorControllerStub = EmulatorControllerGrpc.newStub(channel)
       snapshotServiceStub = SnapshotServiceGrpc.newStub(channel)
       uiControllerStub = UiControllerGrpc.newStub(channel)
       modemStub = ModemGrpc.newStub(channel)
+      virtualSceneStub = VirtualSceneServiceGrpc.newStub(channel)
     } else {
       val credentials = TokenCallCredentials(token)
       emulatorControllerStub = EmulatorControllerGrpc.newStub(channel).withCallCredentials(credentials)
       snapshotServiceStub = SnapshotServiceGrpc.newStub(channel).withCallCredentials(credentials)
       uiControllerStub = UiControllerGrpc.newStub(channel).withCallCredentials(credentials)
       modemStub = ModemGrpc.newStub(channel).withCallCredentials(credentials)
+      virtualSceneStub = VirtualSceneServiceGrpc.newStub(channel).withCallCredentials(credentials)
     }
 
-    val connection = Connection(channel, maxInboundMessageSize, emulatorControllerStub, snapshotServiceStub, uiControllerStub, modemStub)
+    val connection =
+      Connection(
+        channel,
+        maxInboundMessageSize,
+        emulatorControllerStub,
+        snapshotServiceStub,
+        uiControllerStub,
+        modemStub,
+        virtualSceneStub,
+      )
 
     val connectivityStateWatcher =
       object : Runnable {
@@ -1264,6 +1283,98 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     awaitClose { cancelable.cancel() }
   }
 
+  /**
+   * Sets the poster for a specific position in the virtual scene.
+   *
+   * @param poster the poster details including name, image, filename, width, and scale
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun setPoster(poster: Poster, streamObserver: StreamObserver<Poster>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("setPoster(${shortDebugString(poster)})")
+    }
+    virtualSceneStub.setPoster(poster, DelegatingStreamObserver(streamObserver, VirtualSceneServiceGrpc.getSetPosterMethod()))
+  }
+
+  /**
+   * Sets the poster for a specific position in the virtual scene.
+   *
+   * @param poster the poster details including name, image, filename, width, and scale
+   */
+  suspend fun setPoster(poster: Poster): Poster {
+    val observer = SuspendingStreamObserver<Poster>()
+    setPoster(poster, observer)
+    return observer.getResult()
+  }
+
+  /**
+   * Lists all the posters currently set in the virtual scene.
+   *
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun listPosters(streamObserver: StreamObserver<PosterList>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("listPosters()")
+    }
+    virtualSceneStub.listPosters(EMPTY_PROTO, DelegatingStreamObserver(streamObserver, VirtualSceneServiceGrpc.getListPostersMethod()))
+  }
+
+  /** Lists all the posters currently set in the virtual scene. */
+  suspend fun listPosters(): PosterList {
+    val observer = SuspendingStreamObserver<PosterList>()
+    listPosters(observer)
+    return observer.getResult()
+  }
+
+  /**
+   * Sets the animation state of the virtual scene.
+   *
+   * @param animationState the new animation state
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun setAnimationState(animationState: AnimationState, streamObserver: StreamObserver<AnimationState>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("setAnimationState(${shortDebugString(animationState)})")
+    }
+    virtualSceneStub.setAnimationState(
+      animationState,
+      DelegatingStreamObserver(streamObserver, VirtualSceneServiceGrpc.getSetAnimationStateMethod()),
+    )
+  }
+
+  /**
+   * Sets the animation state of the virtual scene.
+   *
+   * @param animationState the new animation state
+   */
+  suspend fun setAnimationState(animationState: AnimationState): AnimationState {
+    val observer = SuspendingStreamObserver<AnimationState>()
+    setAnimationState(animationState, observer)
+    return observer.getResult()
+  }
+
+  /**
+   * Gets the current animation state of the virtual scene.
+   *
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun getAnimationState(streamObserver: StreamObserver<AnimationState>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("getAnimationState()")
+    }
+    virtualSceneStub.getAnimationState(
+      EMPTY_PROTO,
+      DelegatingStreamObserver(streamObserver, VirtualSceneServiceGrpc.getGetAnimationStateMethod()),
+    )
+  }
+
+  /** Gets the current animation state of the virtual scene. */
+  suspend fun getAnimationState(): AnimationState {
+    val observer = SuspendingStreamObserver<AnimationState>()
+    getAnimationState(observer)
+    return observer.getResult()
+  }
+
   private fun sendKeepAlive() {
     if (emulatorState.get() == EmulatorState.SHUTDOWN_REQUESTED) {
       sendShutdown()
@@ -1325,6 +1436,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     val snapshotServiceStub: SnapshotServiceGrpc.SnapshotServiceStub,
     val uiControllerStub: UiControllerGrpc.UiControllerStub,
     val modemStub: ModemGrpc.ModemStub,
+    val virtualSceneStub: VirtualSceneServiceGrpc.VirtualSceneServiceStub,
   )
 
   /** The state of the [EmulatorController]. */

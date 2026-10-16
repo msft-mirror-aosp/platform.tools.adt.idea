@@ -1306,6 +1306,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Open camera settings",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Open cellular settings",
       "path": "ActionManager"
     },

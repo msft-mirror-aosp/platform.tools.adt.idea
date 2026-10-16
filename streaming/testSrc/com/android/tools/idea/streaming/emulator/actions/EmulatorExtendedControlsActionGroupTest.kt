@@ -62,6 +62,7 @@ class EmulatorExtendedControlsActionGroupTest {
     val displaysActionId = "android.emulator.displays"
     val cellularActionId = "android.emulator.cellular"
     val batteryActionId = "android.emulator.battery"
+    val cameraActionId = "android.emulator.camera"
     val phoneActionId = "android.emulator.phone"
     val fingerprintActionId = "android.emulator.fingerprint"
 
@@ -81,6 +82,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val batteryDisabled = updateAndGetActionPresentation(batteryActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(batteryDisabled.isVisible).isFalse()
     assertThat(batteryDisabled.isEnabled).isFalse()
+
+    val cameraDisabled = updateAndGetActionPresentation(cameraActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(cameraDisabled.isVisible).isFalse()
+    assertThat(cameraDisabled.isEnabled).isFalse()
 
     val phoneDisabled = updateAndGetActionPresentation(phoneActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(phoneDisabled.isVisible).isFalse()
@@ -107,6 +112,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(batteryEnabled.isVisible).isTrue()
     assertThat(batteryEnabled.isEnabled).isTrue()
 
+    val cameraEnabled = updateAndGetActionPresentation(cameraActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(cameraEnabled.isVisible).isTrue()
+    assertThat(cameraEnabled.isEnabled).isTrue()
+
     val phoneEnabled = updateAndGetActionPresentation(phoneActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(phoneEnabled.isVisible).isTrue()
     assertThat(phoneEnabled.isEnabled).isTrue()
@@ -119,6 +128,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val batteryAutomotive = updateAndGetActionPresentation(batteryActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(batteryAutomotive.isVisible).isFalse()
     assertThat(batteryAutomotive.isEnabled).isFalse()
+
+    val cameraAutomotive = updateAndGetActionPresentation(cameraActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(cameraAutomotive.isVisible).isFalse()
+    assertThat(cameraAutomotive.isEnabled).isFalse()
 
     val api22View =
       emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createPhoneAvd(path, androidVersion = AndroidVersion(22, 0)) })
@@ -138,7 +151,7 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(5)
+    assertThat(children).hasLength(6)
     val displaysAction = children[0]
     assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
     assertThat(displaysAction.templatePresentation.icon).isEqualTo(StagingIcons.DISPLAYS)
@@ -151,11 +164,15 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(batteryAction.templatePresentation.text).isEqualTo("Battery")
     assertThat(batteryAction.templatePresentation.icon).isEqualTo(StagingIcons.BATTERY)
 
-    val phoneAction = children[3]
+    val cameraAction = children[3]
+    assertThat(cameraAction.templatePresentation.text).isEqualTo("Camera")
+    assertThat(cameraAction.templatePresentation.icon).isEqualTo(StagingIcons.CAMERA)
+
+    val phoneAction = children[4]
     assertThat(phoneAction.templatePresentation.text).isEqualTo("Phone")
     assertThat(phoneAction.templatePresentation.icon).isEqualTo(StagingIcons.PHONE)
 
-    val fingerprintAction = children[4]
+    val fingerprintAction = children[5]
     assertThat(fingerprintAction.templatePresentation.text).isEqualTo("Fingerprint")
     assertThat(fingerprintAction.templatePresentation.icon).isEqualTo(StagingIcons.FINGERPRINT)
 
@@ -181,8 +198,14 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(batteryDlg.title).isEqualTo("Battery ($avdName)")
     assertThat(modelessDialogs).containsExactly(batteryDlg)
 
-    executeAction(phoneAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    executeAction(cameraAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
     assertThat(batteryDlg.isShowing).isFalse()
+    val cameraDlg = findModelessDialog<DialogWrapper>()!!
+    assertThat(cameraDlg.title).isEqualTo("Camera ($avdName)")
+    assertThat(modelessDialogs).containsExactly(cameraDlg)
+
+    executeAction(phoneAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    assertThat(cameraDlg.isShowing).isFalse()
     val phoneDlg = findModelessDialog<DialogWrapper>()!!
     assertThat(phoneDlg.title).isEqualTo("Phone ($avdName)")
     assertThat(modelessDialogs).containsExactly(phoneDlg)
