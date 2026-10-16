@@ -26,6 +26,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.openapi.ui.DialogWrapper.IdeModalityType
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.openapi.util.DimensionService
 import com.intellij.openapi.util.Disposer
@@ -71,7 +72,14 @@ internal abstract class AbstractExtendedControlsDialog(
 
   /** An invisible text field used to trigger clearing of the error messages. See the [clearError] function. */
   private val validationText = JTextField()
-  private var dialogWrapper: DialogWrapper? = null
+  var dialogWrapper: DialogWrapper? = null
+    private set
+
+  var project: Project? = null
+    private set
+
+  var parent: Component? = null
+    private set
 
   /** Creates contents of the dialog. */
   protected abstract fun createPanel(): DialogPanel
@@ -201,6 +209,9 @@ internal abstract class AbstractExtendedControlsDialog(
 
   /** Creates the dialog wrapper. */
   open fun createWrapper(project: Project? = null, parent: Component? = null): DialogWrapper {
+    openDialogs[emulator]?.takeIf { it !== this }?.close()
+    this.project = project
+    this.parent = parent
     val dimensionServiceKey = "#${this::class.qualifiedName}"
     uiUpdaters.clear()
     val dialogPanel = createPanel()
@@ -210,10 +221,13 @@ internal abstract class AbstractExtendedControlsDialog(
         panel = dialogPanel,
         project = project,
         parent = parent,
+        modality = IdeModalityType.MODELESS,
         createActions = { listOf(CloseDialogAction(dialogPanel, isDefault = true)) },
       )
       .apply {
+        isModal = false
         dialogWrapper = this
+        openDialogs[emulator] = this@AbstractExtendedControlsDialog
 
         setInitialLocationCallback {
           val dimensionService = DimensionService.getInstance()
@@ -225,6 +239,7 @@ internal abstract class AbstractExtendedControlsDialog(
         }
 
         Disposer.register(disposable) {
+          openDialogs.remove(emulator, this@AbstractExtendedControlsDialog)
           dialogWrapper = null
           for (callback in disposeCallbacks) {
             callback()
@@ -237,7 +252,40 @@ internal abstract class AbstractExtendedControlsDialog(
   }
 
   /** Creates and shows the dialog. */
-  fun show(project: Project? = null, parent: Component? = null) {
-    createWrapper(project, parent).show()
+  fun show(project: Project? = null, parent: Component? = null): DialogWrapper = createWrapper(project, parent).apply { show() }
+
+  /** Closes the dialog if it is currently open. */
+  fun close() {
+    dialogWrapper?.close(DialogWrapper.CLOSE_EXIT_CODE)
+  }
+
+  companion object {
+    private val openDialogs = mutableMapOf<EmulatorController, AbstractExtendedControlsDialog>()
+
+    /** Returns the currently open extended controls dialog for [emulator], or null if none is open. */
+    fun findOpenDialog(emulator: EmulatorController): AbstractExtendedControlsDialog? = openDialogs[emulator]
+
+    /**
+     * Shows an extended controls dialog of type [T] for [emulator]. If a dialog of the same type and [project] is already open for
+     * [emulator], brings it to the front instead of creating a new one; otherwise closes any other open extended controls dialog for
+     * [emulator] and opens a new one created by [dialogCreator].
+     */
+    internal inline fun <reified T : AbstractExtendedControlsDialog> showDialog(
+      emulator: EmulatorController,
+      project: Project? = null,
+      parent: Component? = null,
+      dialogCreator: (EmulatorController) -> T,
+    ): DialogWrapper {
+      val existingDialog = findOpenDialog(emulator)
+      if (existingDialog is T && existingDialog.project == project) {
+        val existingWrapper = existingDialog.dialogWrapper
+        if (existingWrapper != null && existingWrapper.isShowing) {
+          existingWrapper.toFront()
+          return existingWrapper
+        }
+      }
+      existingDialog?.close()
+      return dialogCreator(emulator).show(project, parent)
+    }
   }
 }

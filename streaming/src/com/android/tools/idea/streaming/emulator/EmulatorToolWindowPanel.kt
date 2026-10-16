@@ -48,6 +48,7 @@ import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionSt
 import com.android.tools.idea.streaming.emulator.actions.findManageSnapshotDialog
 import com.android.tools.idea.streaming.emulator.actions.showExtendedControls
 import com.android.tools.idea.streaming.emulator.actions.showManageSnapshotsDialog
+import com.android.tools.idea.streaming.emulator.dialogs.AbstractExtendedControlsDialog
 import com.android.tools.idea.ui.screenrecording.ScreenRecordingParameters
 import com.android.utils.HashCodes
 import com.intellij.execution.runners.ExecutionUtil
@@ -238,6 +239,7 @@ internal class EmulatorToolWindowPanel(
       if (uiState.extendedControlsShown) {
         showExtendedControls(emulator, project)
       }
+      uiState.extendedControlsDialogRestorer?.invoke()
     }
   }
 
@@ -257,6 +259,13 @@ internal class EmulatorToolWindowPanel(
     val manageSnapshotsDialog = primaryDisplayView?.let { findManageSnapshotDialog(it) }
     uiState.manageSnapshotsDialogShown = manageSnapshotsDialog != null
     manageSnapshotsDialog?.close(DialogWrapper.CLOSE_EXIT_CODE)
+
+    val extendedControlsDialog = AbstractExtendedControlsDialog.findOpenDialog(emulator)?.takeIf { it.project == project }
+    if (extendedControlsDialog != null) {
+      val dialogConstructor = extendedControlsDialog::class.java.getDeclaredConstructor(EmulatorController::class.java)
+      uiState.extendedControlsDialogRestorer = { dialogConstructor.newInstance(emulator).show(project) }
+      extendedControlsDialog.close()
+    }
 
     if (connected) {
       emulator.closeExtendedControls(
@@ -438,6 +447,7 @@ internal class EmulatorToolWindowPanel(
   class EmulatorUiState : UiState {
     var manageSnapshotsDialogShown = false
     var extendedControlsShown = false
+    var extendedControlsDialogRestorer: (() -> Unit)? = null
     val zoomScrollState = Int2ObjectRBTreeMap<ZoomablePanel.ZoomScrollState>()
   }
 

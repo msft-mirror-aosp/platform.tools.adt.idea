@@ -18,7 +18,8 @@ package com.android.tools.idea.streaming.emulator.actions
 import com.android.tools.adtui.actions.executeAction
 import com.android.tools.adtui.actions.updateAndGetActionPresentation
 import com.android.tools.adtui.swing.HeadlessDialogRule
-import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
+import com.android.tools.adtui.swing.findModelessDialog
+import com.android.tools.adtui.swing.modelessDialogs
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.StagingIcons
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
@@ -114,6 +115,7 @@ class EmulatorExtendedControlsActionGroupTest {
   fun testChildrenAndOpenDialogs() {
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
     val view = emulatorViewRule.newEmulatorView()
+    val avdName = view.emulator.emulatorId.avdName
 
     val actionManager = ActionManager.getInstance()
     val group = actionManager.getAction("android.emulator.extended.controls") as DefaultActionGroup
@@ -137,24 +139,43 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(phoneAction.templatePresentation.text).isEqualTo("Phone")
     assertThat(phoneAction.templatePresentation.icon).isEqualTo(StagingIcons.PHONE)
 
-    createModalDialogAndInteractWithIt({ executeAction(displaysAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
-      assertThat(dlg.title).isEqualTo("Displays (${view.emulator.emulatorId.avdName})")
-      dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
-    }
+    executeAction(displaysAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    val displaysDlg = findModelessDialog<DialogWrapper>()!!
+    assertThat(displaysDlg.title).isEqualTo("Displays ($avdName)")
+    assertThat(modelessDialogs).containsExactly(displaysDlg)
 
-    createModalDialogAndInteractWithIt({ executeAction(cellularAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
-      assertThat(dlg.title).isEqualTo("Cellular (${view.emulator.emulatorId.avdName})")
-      dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
-    }
+    // Executing the same action again reuses the existing open dialog instead of opening a second one.
+    executeAction(displaysAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    assertThat(modelessDialogs).containsExactly(displaysDlg)
 
-    createModalDialogAndInteractWithIt({ executeAction(batteryAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
-      assertThat(dlg.title).isEqualTo("Battery (${view.emulator.emulatorId.avdName})")
-      dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
-    }
+    // Executing another extended controls action for the same AVD closes the previous dialog.
+    executeAction(cellularAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    assertThat(displaysDlg.isShowing).isFalse()
+    val cellularDlg = findModelessDialog<DialogWrapper>()!!
+    assertThat(cellularDlg.title).isEqualTo("Cellular ($avdName)")
+    assertThat(modelessDialogs).containsExactly(cellularDlg)
 
-    createModalDialogAndInteractWithIt({ executeAction(phoneAction, view, emulatorViewRule.project, ActionPlaces.POPUP) }) { dlg ->
-      assertThat(dlg.title).isEqualTo("Phone (${view.emulator.emulatorId.avdName})")
-      dlg.close(DialogWrapper.CLOSE_EXIT_CODE)
-    }
+    executeAction(batteryAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    assertThat(cellularDlg.isShowing).isFalse()
+    val batteryDlg = findModelessDialog<DialogWrapper>()!!
+    assertThat(batteryDlg.title).isEqualTo("Battery ($avdName)")
+    assertThat(modelessDialogs).containsExactly(batteryDlg)
+
+    executeAction(phoneAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    assertThat(batteryDlg.isShowing).isFalse()
+    val phoneDlg = findModelessDialog<DialogWrapper>()!!
+    assertThat(phoneDlg.title).isEqualTo("Phone ($avdName)")
+    assertThat(modelessDialogs).containsExactly(phoneDlg)
+
+    // A second AVD can have its own extended controls dialog open concurrently.
+    val view2 = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createAutomotiveAvd(path) })
+    val avdName2 = view2.emulator.emulatorId.avdName
+    executeAction(cellularAction, view2, emulatorViewRule.project, ActionPlaces.POPUP)
+    val cellularDlg2 = findModelessDialog<DialogWrapper> { it.title == "Cellular ($avdName2)" }!!
+    assertThat(modelessDialogs).containsExactly(phoneDlg, cellularDlg2)
+
+    phoneDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
+    cellularDlg2.close(DialogWrapper.CLOSE_EXIT_CODE)
+    assertThat(modelessDialogs).isEmpty()
   }
 }

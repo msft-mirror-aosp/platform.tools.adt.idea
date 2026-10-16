@@ -16,6 +16,7 @@
 package com.android.tools.idea.streaming.emulator.actions
 
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.streaming.emulator.dialogs.AbstractExtendedControlsDialog.Companion.showDialog
 import com.android.tools.idea.streaming.emulator.dialogs.DisplaysDialog
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -33,7 +34,7 @@ internal class EmulatorDisplaysAction : AbstractEmulatorAction() {
 
   override fun actionPerformed(event: AnActionEvent) {
     val emulatorController = getEmulatorController(event) ?: return
-    DisplaysDialog.showDisplaysDialog(emulatorController, event.project)
+    showDialog(emulatorController, event.project, dialogCreator = ::DisplaysDialog)
   }
 
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT

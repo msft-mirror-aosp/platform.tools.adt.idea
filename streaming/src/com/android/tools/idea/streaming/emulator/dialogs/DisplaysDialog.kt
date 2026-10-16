@@ -143,15 +143,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
     val w = width ?: defaultType.width
     val h = height ?: defaultType.height
     val d = dpi ?: defaultType.dpi
-    val item =
-      DisplayItem(
-        displayId = displayId,
-        isConfigurable = true,
-        width = w,
-        height = h,
-        dpi = d,
-        description = findMatchingType(displayId, w, h, d).shortName,
-      )
+    val item = DisplayItem(displayId, isConfigurable = true, w, h, d, findMatchingType(displayId, w, h, d).shortName)
     displaysMap[displayId] = item
     stateModified = true
     updateTableFromState(selectItem = item)
@@ -170,15 +162,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
       item.dpi = dpi
       item.description = description
     } else {
-      displaysMap[displayId] =
-        DisplayItem(
-          displayId = displayId,
-          isConfigurable = true,
-          width = width,
-          height = height,
-          dpi = dpi,
-          description = description,
-        )
+      displaysMap[displayId] = DisplayItem(displayId, isConfigurable = true, width, height, dpi, description)
     }
     stateModified = true
     updateTableFromState(selectItem = displaysMap[displayId])
@@ -200,16 +184,14 @@ internal class DisplaysDialog(emulator: EmulatorController) :
     displayConfigurationsChannel.trySend(updated)
   }
 
-  private fun findNextDisplayId(): Int {
-    return (1..maxSecondaryDisplays).firstOrNull { it !in displaysMap } ?: -1
-  }
+  private fun findNextDisplayId(): Int = (1..maxSecondaryDisplays).firstOrNull { it !in displaysMap } ?: -1
 
   private fun updateFromDisplayConfigurations(config: DisplayConfigurations) {
     maxSecondaryDisplays = config.userConfigurable
     updateFromDisplayList(config.displaysList)
   }
 
-  internal fun updateFromDisplayList(displayConfigs: List<DisplayConfiguration>) {
+  private fun updateFromDisplayList(displayConfigs: List<DisplayConfiguration>) {
     val presetClusterId =
       if (emulator.emulatorConfig.deviceType == DeviceType.AUTOMOTIVE) {
         displayConfigs
@@ -237,15 +219,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
           !isConfigurable -> message("displays.dialog.display.preset")
           else -> findMatchingType(types, display.width, display.height, dpi).shortName
         }
-      newDisplays[displayId] =
-        DisplayItem(
-          displayId = displayId,
-          isConfigurable = isConfigurable,
-          width = display.width,
-          height = display.height,
-          dpi = dpi,
-          description = description,
-        )
+      newDisplays[displayId] = DisplayItem(displayId, isConfigurable, display.width, display.height, dpi, description)
     }
     if (newDisplays == displaysMap) {
       return
@@ -255,9 +229,8 @@ internal class DisplaysDialog(emulator: EmulatorController) :
     updateTableFromState()
   }
 
-  private fun getSortedDisplayItems(): List<DisplayItem> {
-    return displaysMap.values.sortedWith(compareBy<DisplayItem> { it.isConfigurable }.thenBy { it.displayId })
-  }
+  private fun getSortedDisplayItems(): List<DisplayItem> =
+    displaysMap.values.sortedWith(compareBy<DisplayItem> { it.isConfigurable }.thenBy { it.displayId })
 
   private fun updateTableFromState(selectItem: DisplayItem? = null) {
     val selectedDisplayId = selectItem?.displayId ?: displayTable.selectedObject?.displayId
@@ -424,9 +397,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
       hasFocus: Boolean,
       row: Int,
       column: Int,
-    ): Component {
-      return super.getTableCellRendererComponent(table, value, isSelected, false, row, column)
-    }
+    ): Component = super.getTableCellRendererComponent(table, value, isSelected, false, row, column)
   }
 
   private class DisplayTable(tableModel: DisplayTableModel) : TableView<DisplayItem>(tableModel) {
@@ -528,11 +499,6 @@ internal class DisplaysDialog(emulator: EmulatorController) :
         height > 0 &&
         ((width <= MAX_RESOLUTION_LONG && height <= MAX_RESOLUTION_SHORT) ||
           (width <= MAX_RESOLUTION_SHORT && height <= MAX_RESOLUTION_LONG))
-    }
-
-    /** Shows the [DisplaysDialog] for the given [emulator]. */
-    fun showDisplaysDialog(emulator: EmulatorController, project: Project? = null, parent: Component? = null) {
-      DisplaysDialog(emulator).show(project, parent)
     }
   }
 }

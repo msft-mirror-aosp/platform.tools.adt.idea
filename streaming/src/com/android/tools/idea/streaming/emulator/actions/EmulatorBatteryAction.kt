@@ -16,6 +16,7 @@
 package com.android.tools.idea.streaming.emulator.actions
 
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.streaming.emulator.dialogs.AbstractExtendedControlsDialog.Companion.showDialog
 import com.android.tools.idea.streaming.emulator.dialogs.BatteryDialog
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -33,7 +34,7 @@ internal class EmulatorBatteryAction : AbstractEmulatorAction(configFilter = { i
 
   override fun actionPerformed(event: AnActionEvent) {
     val emulatorController = getEmulatorController(event) ?: return
-    BatteryDialog.showBatteryDialog(emulatorController, event.project)
+    showDialog(emulatorController, event.project, dialogCreator = ::BatteryDialog)
   }
 
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT

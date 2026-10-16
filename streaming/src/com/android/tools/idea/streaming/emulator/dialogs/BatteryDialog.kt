@@ -18,7 +18,6 @@ package com.android.tools.idea.streaming.emulator.dialogs
 import com.android.emulator.control.BatteryState
 import com.android.tools.idea.streaming.StreamingBundle.message
 import com.android.tools.idea.streaming.emulator.EmulatorController
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.AlignY
@@ -27,7 +26,6 @@ import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.gridLayout.UnscaledGaps
 import com.intellij.ui.scale.JBUIScale
-import java.awt.Component
 import java.awt.Dimension
 import javax.swing.SwingConstants
 
@@ -157,11 +155,6 @@ internal class BatteryDialog(emulator: EmulatorController) :
   companion object {
     private const val COMBO_BOX_WIDTH = 180
     private const val SLIDER_WIDTH = 120
-
-    /** Shows the [BatteryDialog] for the given [emulator]. */
-    fun showBatteryDialog(emulator: EmulatorController, project: Project? = null, parent: Component? = null) {
-      BatteryDialog(emulator).show(project, parent)
-    }
 
     /** Converts [BatteryInfo] to the [BatteryState] proto message. */
     private fun BatteryInfo.toBatteryState(): BatteryState {

@@ -22,7 +22,6 @@ import com.android.emulator.control.BatteryState.BatteryStatus
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
-import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.FakeEmulator
@@ -75,30 +74,27 @@ class BatteryDialogTest {
 
   @Test
   fun testInitialStateFromDefaults() {
-    val dialog = BatteryDialog(emulatorController)
-    val dialogWrapper = dialog.createWrapper()
+    val dialog = BatteryDialog(emulatorController).show()
+    val rootPane = dialog.rootPane
+    val ui = FakeUi(rootPane)
 
-    createModalDialogAndInteractWithIt(dialogWrapper::show) { dlg ->
-      val rootPane = dlg.rootPane
-      val ui = FakeUi(rootPane)
+    val chargeLevelSlider = ui.getComponent<JSlider> { it.name == "chargeLevelSlider" }
+    val chargeLevelField = ui.getComponent<JTextField> { it.name == "chargeLevelField" }
+    val chargerBox = ui.getComponent<ComboBox<*>> { it.name == "chargerComboBox" }
+    val healthBox = ui.getComponent<ComboBox<*>> { it.name == "healthComboBox" }
+    val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
 
-      val chargeLevelSlider = ui.getComponent<JSlider> { it.name == "chargeLevelSlider" }
-      val chargeLevelField = ui.getComponent<JTextField> { it.name == "chargeLevelField" }
-      val chargerBox = ui.getComponent<ComboBox<*>> { it.name == "chargerComboBox" }
-      val healthBox = ui.getComponent<ComboBox<*>> { it.name == "healthComboBox" }
-      val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
+    assertThat(chargeLevelSlider.value).isEqualTo(100)
+    assertThat(chargeLevelField.text).isEqualTo("100%")
+    assertThat(chargerBox.selectedItem?.toString()).isEqualTo("None")
+    assertThat(healthBox.selectedItem?.toString()).isEqualTo("Good")
+    assertThat(statusBox.selectedItem?.toString()).isEqualTo("Charging")
 
-      assertThat(chargeLevelSlider.value).isEqualTo(100)
-      assertThat(chargeLevelField.text).isEqualTo("100%")
-      assertThat(chargerBox.selectedItem?.toString()).isEqualTo("None")
-      assertThat(healthBox.selectedItem?.toString()).isEqualTo("Good")
-      assertThat(statusBox.selectedItem?.toString()).isEqualTo("Charging")
+    assertThat(healthBox.width).isEqualTo(chargerBox.width)
+    assertThat(statusBox.width).isEqualTo(chargerBox.width)
 
-      assertThat(healthBox.width).isEqualTo(chargerBox.width)
-      assertThat(statusBox.width).isEqualTo(chargerBox.width)
-
-      ui.clickOn(rootPane.defaultButton)
-    }
+    ui.clickOn(rootPane.defaultButton)
+    assertThat(dialog.isShowing).isFalse()
   }
 
   @Test
@@ -113,76 +109,65 @@ class BatteryDialogTest {
         .setStatus(BatteryStatus.DISCHARGING)
         .build()
 
-    val dialog = BatteryDialog(emulatorController)
-    val dialogWrapper = dialog.createWrapper()
+    val dialog = BatteryDialog(emulatorController).show()
+    val rootPane = dialog.rootPane
+    val ui = FakeUi(rootPane)
 
-    createModalDialogAndInteractWithIt(dialogWrapper::show) { dlg ->
-      val rootPane = dlg.rootPane
-      val ui = FakeUi(rootPane)
+    val chargeLevelSlider = ui.getComponent<JSlider> { it.name == "chargeLevelSlider" }
+    val chargeLevelField = ui.getComponent<JTextField> { it.name == "chargeLevelField" }
+    val chargerBox = ui.getComponent<ComboBox<*>> { it.name == "chargerComboBox" }
+    val healthBox = ui.getComponent<ComboBox<*>> { it.name == "healthComboBox" }
+    val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
 
-      val chargeLevelSlider = ui.getComponent<JSlider> { it.name == "chargeLevelSlider" }
-      val chargeLevelField = ui.getComponent<JTextField> { it.name == "chargeLevelField" }
-      val chargerBox = ui.getComponent<ComboBox<*>> { it.name == "chargerComboBox" }
-      val healthBox = ui.getComponent<ComboBox<*>> { it.name == "healthComboBox" }
-      val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
-
-      waitForCondition(5.seconds) {
-        chargeLevelSlider.value == 42 &&
-          chargeLevelField.text == "42%" &&
-          chargerBox.selectedItem?.toString() == "AC charger" &&
-          healthBox.selectedItem?.toString() == "Overheated" &&
-          statusBox.selectedItem?.toString() == "Discharging"
-      }
-
-      ui.clickOn(rootPane.defaultButton)
+    waitForCondition(5.seconds) {
+      chargeLevelSlider.value == 42 &&
+        chargeLevelField.text == "42%" &&
+        chargerBox.selectedItem?.toString() == "AC charger" &&
+        healthBox.selectedItem?.toString() == "Overheated" &&
+        statusBox.selectedItem?.toString() == "Discharging"
     }
+
+    ui.clickOn(rootPane.defaultButton)
+    assertThat(dialog.isShowing).isFalse()
   }
 
   @Test
   fun testDialogUiInteraction() {
-    val dialog = BatteryDialog(emulatorController)
-    val dialogWrapper = dialog.createWrapper()
+    val dialog = BatteryDialog(emulatorController).show()
+    val rootPane = dialog.rootPane
+    val ui = FakeUi(rootPane)
 
-    createModalDialogAndInteractWithIt(dialogWrapper::show) { dlg ->
-      val rootPane = dlg.rootPane
-      val ui = FakeUi(rootPane)
+    val chargeLevelSlider = ui.getComponent<JSlider> { it.name == "chargeLevelSlider" }
+    val chargeLevelField = ui.getComponent<JTextField> { it.name == "chargeLevelField" }
+    val chargerBox = ui.getComponent<ComboBox<*>> { it.name == "chargerComboBox" }
+    val healthBox = ui.getComponent<ComboBox<*>> { it.name == "healthComboBox" }
+    val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
 
-      val chargeLevelSlider = ui.getComponent<JSlider> { it.name == "chargeLevelSlider" }
-      val chargeLevelField = ui.getComponent<JTextField> { it.name == "chargeLevelField" }
-      val chargerBox = ui.getComponent<ComboBox<*>> { it.name == "chargerComboBox" }
-      val healthBox = ui.getComponent<ComboBox<*>> { it.name == "healthComboBox" }
-      val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
+    assertThat(chargeLevelSlider.value).isEqualTo(100)
+    assertThat(chargeLevelField.text).isEqualTo("100%")
+    assertThat(chargerBox.selectedItem?.toString()).isEqualTo("None")
+    assertThat(healthBox.selectedItem?.toString()).isEqualTo("Good")
+    assertThat(statusBox.selectedItem?.toString()).isEqualTo("Charging")
 
-      assertThat(chargeLevelSlider.value).isEqualTo(100)
-      assertThat(chargeLevelField.text).isEqualTo("100%")
-      assertThat(chargerBox.selectedItem?.toString()).isEqualTo("None")
-      assertThat(healthBox.selectedItem?.toString()).isEqualTo("Good")
-      assertThat(statusBox.selectedItem?.toString()).isEqualTo("Charging")
+    chargeLevelSlider.value = 75
+    assertThat(chargeLevelField.text).isEqualTo("75%")
+    chargerBox.selectItem("AC charger")
+    healthBox.selectItem("Overvoltage")
+    statusBox.selectItem("Not charging")
 
-      chargeLevelSlider.value = 75
-      assertThat(chargeLevelField.text).isEqualTo("75%")
-      chargerBox.selectItem("AC charger")
-      healthBox.selectItem("Overvoltage")
-      statusBox.selectItem("Not charging")
-
-      waitForCondition(5.seconds) {
-        fakeEmulator.batteryStatus.hasBattery &&
-          fakeEmulator.batteryStatus.isPresent &&
-          fakeEmulator.batteryStatus.chargeLevel == 75 &&
-          fakeEmulator.batteryStatus.charger == BatteryCharger.AC &&
-          fakeEmulator.batteryStatus.health == BatteryHealth.OVERVOLTAGE &&
-          fakeEmulator.batteryStatus.status == BatteryStatus.NOT_CHARGING
-      }
-
-      chargeLevelSlider.value = 15
-      chargerBox.selectItem("None")
-      healthBox.selectItem("Unknown")
-      statusBox.selectItem("Discharging")
-
-      val closeButton = rootPane.defaultButton
-      assertThat(closeButton.text).isEqualTo("Close")
-      ui.clickOn(closeButton)
+    waitForCondition(5.seconds) {
+      fakeEmulator.batteryStatus.hasBattery &&
+        fakeEmulator.batteryStatus.isPresent &&
+        fakeEmulator.batteryStatus.chargeLevel == 75 &&
+        fakeEmulator.batteryStatus.charger == BatteryCharger.AC &&
+        fakeEmulator.batteryStatus.health == BatteryHealth.OVERVOLTAGE &&
+        fakeEmulator.batteryStatus.status == BatteryStatus.NOT_CHARGING
     }
+
+    chargeLevelSlider.value = 15
+    chargerBox.selectItem("None")
+    healthBox.selectItem("Unknown")
+    statusBox.selectItem("Discharging")
 
     waitForCondition(5.seconds) {
       fakeEmulator.batteryStatus.chargeLevel == 15 &&
@@ -190,6 +175,11 @@ class BatteryDialogTest {
         fakeEmulator.batteryStatus.healthValue == 5 &&
         fakeEmulator.batteryStatus.status == BatteryStatus.DISCHARGING
     }
+
+    val closeButton = rootPane.defaultButton
+    assertThat(closeButton.text).isEqualTo("Close")
+    ui.clickOn(closeButton)
+    assertThat(dialog.isShowing).isFalse()
   }
 
   private fun ComboBox<*>.selectItem(text: String) {

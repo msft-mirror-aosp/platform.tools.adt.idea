@@ -19,12 +19,10 @@ import com.android.emulation.control.incubating.CellInfo
 import com.android.emulation.control.incubating.CellSignalStrength
 import com.android.tools.idea.streaming.StreamingBundle.message
 import com.android.tools.idea.streaming.emulator.EmulatorController
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.AlignY
 import com.intellij.ui.dsl.builder.panel
-import java.awt.Component
 
 /** Dialog for configuring emulator cellular network settings, providing functionality similar to the Cellular page in extended controls. */
 internal class CellularDialog(emulator: EmulatorController) :
@@ -117,11 +115,6 @@ internal class CellularDialog(emulator: EmulatorController) :
 
   companion object {
     private const val COMBO_BOX_WIDTH = 220
-
-    /** Shows the [CellularDialog] for the given [emulator]. */
-    fun showCellularDialog(emulator: EmulatorController, project: Project? = null, parent: Component? = null) {
-      CellularDialog(emulator).show(project, parent)
-    }
 
     /** Converts [CellularState] to Modem service's [CellInfo] proto message. */
     private fun CellularState.toCellInfo(): CellInfo {

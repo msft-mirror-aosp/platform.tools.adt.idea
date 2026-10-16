@@ -20,7 +20,6 @@ import com.android.emulation.control.incubating.CellSignalStrength
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
-import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.FakeEmulator
@@ -71,27 +70,24 @@ class CellularDialogTest {
 
   @Test
   fun testInitialStateFromDefaults() {
-    val dialog = CellularDialog(emulatorController)
-    val dialogWrapper = dialog.createWrapper()
+    val dialog = CellularDialog(emulatorController).show()
+    val rootPane = dialog.rootPane
+    val ui = FakeUi(rootPane)
 
-    createModalDialogAndInteractWithIt(dialogWrapper::show) { dlg ->
-      val rootPane = dlg.rootPane
-      val ui = FakeUi(rootPane)
+    val networkTypeBox = ui.getComponent<ComboBox<*>> { it.name == "networkTypeComboBox" }
+    val signalStrengthBox = ui.getComponent<ComboBox<*>> { it.name == "signalStrengthComboBox" }
+    val voiceStatusBox = ui.getComponent<ComboBox<*>> { it.name == "voiceStatusComboBox" }
+    val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
+    val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
 
-      val networkTypeBox = ui.getComponent<ComboBox<*>> { it.name == "networkTypeComboBox" }
-      val signalStrengthBox = ui.getComponent<ComboBox<*>> { it.name == "signalStrengthComboBox" }
-      val voiceStatusBox = ui.getComponent<ComboBox<*>> { it.name == "voiceStatusComboBox" }
-      val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
-      val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
+    assertThat(networkTypeBox.selectedItem?.toString()).isEqualTo("Full")
+    assertThat(signalStrengthBox.selectedItem?.toString()).isEqualTo("Moderate")
+    assertThat(voiceStatusBox.selectedItem?.toString()).isEqualTo("Home")
+    assertThat(dataStatusBox.selectedItem?.toString()).isEqualTo("Home")
+    assertThat(meterStatusBox.selectedItem?.toString()).isEqualTo("Metered")
 
-      assertThat(networkTypeBox.selectedItem?.toString()).isEqualTo("Full")
-      assertThat(signalStrengthBox.selectedItem?.toString()).isEqualTo("Moderate")
-      assertThat(voiceStatusBox.selectedItem?.toString()).isEqualTo("Home")
-      assertThat(dataStatusBox.selectedItem?.toString()).isEqualTo("Home")
-      assertThat(meterStatusBox.selectedItem?.toString()).isEqualTo("Metered")
-
-      ui.clickOn(rootPane.defaultButton)
-    }
+    ui.clickOn(rootPane.defaultButton)
+    assertThat(dialog.isShowing).isFalse()
   }
 
   @Test
@@ -105,76 +101,65 @@ class CellularDialogTest {
         .setCellMeterStatus(CellInfo.CellMeterStatus.CELL_METER_STATUS_TEMPORARILY_NOT_METERED)
         .build()
 
-    val dialog = CellularDialog(emulatorController)
-    val dialogWrapper = dialog.createWrapper()
+    val dialog = CellularDialog(emulatorController).show()
+    val rootPane = dialog.rootPane
+    val ui = FakeUi(rootPane)
 
-    createModalDialogAndInteractWithIt(dialogWrapper::show) { dlg ->
-      val rootPane = dlg.rootPane
-      val ui = FakeUi(rootPane)
+    val networkTypeBox = ui.getComponent<ComboBox<*>> { it.name == "networkTypeComboBox" }
+    val signalStrengthBox = ui.getComponent<ComboBox<*>> { it.name == "signalStrengthComboBox" }
+    val voiceStatusBox = ui.getComponent<ComboBox<*>> { it.name == "voiceStatusComboBox" }
+    val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
+    val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
 
-      val networkTypeBox = ui.getComponent<ComboBox<*>> { it.name == "networkTypeComboBox" }
-      val signalStrengthBox = ui.getComponent<ComboBox<*>> { it.name == "signalStrengthComboBox" }
-      val voiceStatusBox = ui.getComponent<ComboBox<*>> { it.name == "voiceStatusComboBox" }
-      val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
-      val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
-
-      waitForCondition(5.seconds) {
-        networkTypeBox.selectedItem?.toString() == "LTE" &&
-          signalStrengthBox.selectedItem?.toString() == "Good" &&
-          voiceStatusBox.selectedItem?.toString() == "Roaming" &&
-          dataStatusBox.selectedItem?.toString() == "Searching" &&
-          meterStatusBox.selectedItem?.toString() == "Temporarily not metered"
-      }
-
-      ui.clickOn(rootPane.defaultButton)
+    waitForCondition(5.seconds) {
+      networkTypeBox.selectedItem?.toString() == "LTE" &&
+        signalStrengthBox.selectedItem?.toString() == "Good" &&
+        voiceStatusBox.selectedItem?.toString() == "Roaming" &&
+        dataStatusBox.selectedItem?.toString() == "Searching" &&
+        meterStatusBox.selectedItem?.toString() == "Temporarily not metered"
     }
+
+    ui.clickOn(rootPane.defaultButton)
+    assertThat(dialog.isShowing).isFalse()
   }
 
   @Test
   fun testDialogUiInteraction() {
-    val dialog = CellularDialog(emulatorController)
-    val dialogWrapper = dialog.createWrapper()
+    val dialog = CellularDialog(emulatorController).show()
+    val rootPane = dialog.rootPane
+    val ui = FakeUi(rootPane)
 
-    createModalDialogAndInteractWithIt(dialogWrapper::show) { dlg ->
-      val rootPane = dlg.rootPane
-      val ui = FakeUi(rootPane)
+    val networkTypeBox = ui.getComponent<ComboBox<*>> { it.name == "networkTypeComboBox" }
+    val signalStrengthBox = ui.getComponent<ComboBox<*>> { it.name == "signalStrengthComboBox" }
+    val voiceStatusBox = ui.getComponent<ComboBox<*>> { it.name == "voiceStatusComboBox" }
+    val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
+    val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
 
-      val networkTypeBox = ui.getComponent<ComboBox<*>> { it.name == "networkTypeComboBox" }
-      val signalStrengthBox = ui.getComponent<ComboBox<*>> { it.name == "signalStrengthComboBox" }
-      val voiceStatusBox = ui.getComponent<ComboBox<*>> { it.name == "voiceStatusComboBox" }
-      val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
-      val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
+    assertThat(networkTypeBox.selectedItem?.toString()).isEqualTo("Full")
+    assertThat(signalStrengthBox.selectedItem?.toString()).isEqualTo("Moderate")
+    assertThat(voiceStatusBox.selectedItem?.toString()).isEqualTo("Home")
+    assertThat(dataStatusBox.selectedItem?.toString()).isEqualTo("Home")
+    assertThat(meterStatusBox.selectedItem?.toString()).isEqualTo("Metered")
 
-      assertThat(networkTypeBox.selectedItem?.toString()).isEqualTo("Full")
-      assertThat(signalStrengthBox.selectedItem?.toString()).isEqualTo("Moderate")
-      assertThat(voiceStatusBox.selectedItem?.toString()).isEqualTo("Home")
-      assertThat(dataStatusBox.selectedItem?.toString()).isEqualTo("Home")
-      assertThat(meterStatusBox.selectedItem?.toString()).isEqualTo("Metered")
+    networkTypeBox.selectItem("5G")
+    signalStrengthBox.selectItem("Great")
+    voiceStatusBox.selectItem("Denied (emergency calls only)")
+    dataStatusBox.selectItem("Unregistered (off)")
+    meterStatusBox.selectItem("Temporarily not metered")
 
-      networkTypeBox.selectItem("5G")
-      signalStrengthBox.selectItem("Great")
-      voiceStatusBox.selectItem("Denied (emergency calls only)")
-      dataStatusBox.selectItem("Unregistered (off)")
-      meterStatusBox.selectItem("Temporarily not metered")
-
-      waitForCondition(5.seconds) {
-        fakeEmulator.cellInfo.cellStandard == CellInfo.CellStandard.CELL_STANDARD_5G &&
-          fakeEmulator.cellInfo.cellSignalStrength.level == CellSignalStrength.CellSignalLevel.SIGNAL_STRENGTH_GREAT &&
-          fakeEmulator.cellInfo.cellStatusVoice == CellInfo.CellStatus.CELL_STATUS_DENIED &&
-          fakeEmulator.cellInfo.cellStatusData == CellInfo.CellStatus.CELL_STATUS_UNREGISTERED &&
-          fakeEmulator.cellInfo.cellMeterStatus == CellInfo.CellMeterStatus.CELL_METER_STATUS_TEMPORARILY_NOT_METERED
-      }
-
-      networkTypeBox.selectItem("GSM")
-      signalStrengthBox.selectItem("Poor")
-      voiceStatusBox.selectItem("Roaming")
-      dataStatusBox.selectItem("Denied (emergency calls only)")
-      meterStatusBox.selectItem("Temporarily not metered")
-
-      val closeButton = rootPane.defaultButton
-      assertThat(closeButton.text).isEqualTo("Close")
-      ui.clickOn(closeButton)
+    waitForCondition(5.seconds) {
+      fakeEmulator.cellInfo.cellStandard == CellInfo.CellStandard.CELL_STANDARD_5G &&
+        fakeEmulator.cellInfo.cellSignalStrength.level == CellSignalStrength.CellSignalLevel.SIGNAL_STRENGTH_GREAT &&
+        fakeEmulator.cellInfo.cellStatusVoice == CellInfo.CellStatus.CELL_STATUS_DENIED &&
+        fakeEmulator.cellInfo.cellStatusData == CellInfo.CellStatus.CELL_STATUS_UNREGISTERED &&
+        fakeEmulator.cellInfo.cellMeterStatus == CellInfo.CellMeterStatus.CELL_METER_STATUS_TEMPORARILY_NOT_METERED
     }
+
+    networkTypeBox.selectItem("GSM")
+    signalStrengthBox.selectItem("Poor")
+    voiceStatusBox.selectItem("Roaming")
+    dataStatusBox.selectItem("Denied (emergency calls only)")
+    meterStatusBox.selectItem("Temporarily not metered")
 
     waitForCondition(5.seconds) {
       fakeEmulator.cellInfo.cellStandard == CellInfo.CellStandard.CELL_STANDARD_GSM &&
@@ -183,6 +168,11 @@ class CellularDialogTest {
         fakeEmulator.cellInfo.cellStatusData == CellInfo.CellStatus.CELL_STATUS_DENIED &&
         fakeEmulator.cellInfo.cellMeterStatus == CellInfo.CellMeterStatus.CELL_METER_STATUS_TEMPORARILY_NOT_METERED
     }
+
+    val closeButton = rootPane.defaultButton
+    assertThat(closeButton.text).isEqualTo("Close")
+    ui.clickOn(closeButton)
+    assertThat(dialog.isShowing).isFalse()
   }
 
   private fun ComboBox<*>.selectItem(text: String) {

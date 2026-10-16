@@ -38,6 +38,7 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
 import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
+import com.android.tools.adtui.swing.findModelessDialog
 import com.android.tools.adtui.swing.popup.FakeJBPopup
 import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.adblib.AdbLibApplicationService
@@ -59,6 +60,7 @@ import com.android.tools.idea.streaming.emulator.EmulatorView
 import com.android.tools.idea.streaming.emulator.FakeEmulator
 import com.android.tools.idea.streaming.emulator.FakeEmulatorRule
 import com.android.tools.idea.streaming.emulator.RunningEmulatorCatalog
+import com.android.tools.idea.streaming.emulator.dialogs.BatteryDialog
 import com.android.tools.idea.streaming.emulator.getEmptyObserver
 import com.android.tools.idea.streaming.emulator.sendKeyEvent
 import com.android.tools.idea.testing.AndroidExecutorsRule
@@ -82,6 +84,7 @@ import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowType
@@ -320,17 +323,22 @@ class StreamingToolWindowManagerTest {
     // Wait for the extended controls to show.
     waitForCondition(2.seconds) { emulator.extendedControlsVisible }
 
+    val batteryDialog = BatteryDialog(emulatorController).show(project)
+    assertThat(batteryDialog.isShowing).isTrue()
+
     val panel = contentManager.contents[0].component as EmulatorToolWindowPanel
 
     toolWindow.hide()
-    // Wait for the extended controls to close.
-    waitForCondition(4.seconds) { !emulator.extendedControlsVisible }
+    // Wait for the extended controls and the extended controls dialog to close.
+    waitForCondition(4.seconds) { !emulator.extendedControlsVisible && !batteryDialog.isShowing }
     // Wait for the prior visibility state of the extended controls to propagate to Studio.
     waitForCondition(2.seconds) { panel.lastUiState?.extendedControlsShown ?: false }
 
     toolWindow.show()
-    // Wait for the extended controls to show.
-    waitForCondition(2.seconds) { emulator.extendedControlsVisible }
+    // Wait for the extended controls and the extended controls dialog to show.
+    waitForCondition(2.seconds) { emulator.extendedControlsVisible && findModelessDialog<DialogWrapper>() != null }
+    val restoredDialog = findModelessDialog<DialogWrapper>()!!
+    assertThat(restoredDialog.title).isEqualTo("Battery (${emulator.avdName})")
   }
 
   @Test

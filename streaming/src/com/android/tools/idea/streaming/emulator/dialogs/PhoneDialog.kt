@@ -23,7 +23,6 @@ import com.android.tools.idea.streaming.StreamingBundle.message
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.utils.throwIfCancellation
 import com.intellij.ide.util.PropertiesComponent
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.ui.ValidationInfo
@@ -363,11 +362,6 @@ internal class PhoneDialog(emulator: EmulatorController) :
 
     @NonNls private val DEFAULT_PHONE_NUMBERS = arrayOf("(650) 555-1212", "+1 650 555-6789")
     @NonNls private const val DEFAULT_SMS_MESSAGE = "Android is always a sweet treat!"
-
-    /** Shows the [PhoneDialog] for the given [emulator]. */
-    fun showPhoneDialog(emulator: EmulatorController, project: Project? = null, parent: Component? = null) {
-      PhoneDialog(emulator).show(project, parent)
-    }
 
     private fun getInitialPhoneNumbers(): Array<String> {
       val savedNumbers = PropertiesComponent.getInstance().getList(RECENT_NUMBERS_PROPERTY)
