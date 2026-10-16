@@ -25,6 +25,7 @@ import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
 import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
+import com.android.tools.adtui.validation.Validator
 import com.android.tools.fonts.DownloadableFontCacheService
 import com.android.tools.fonts.DownloadableFontCacheServiceImpl
 import com.android.tools.fonts.FontDownloader
@@ -40,6 +41,7 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.SearchTextField
+import com.intellij.ui.SimpleColoredComponent
 import com.intellij.ui.components.JBList
 import com.intellij.util.ui.UIUtil
 import java.io.File
@@ -317,6 +319,89 @@ class MoreFontsDialogTest {
         assertThat(fontList.selectedValue.fontSource).isEqualTo(FontSource.PROJECT)
         assertThat(fontList.selectedValue.name).isEqualTo("customfont")
         assertThat(detailList.selectedValue).isNotNull()
+        // A valid font is previewed in its own font.
+        val familyCell =
+          fontList.cellRenderer.getListCellRendererComponent(fontList, fontList.selectedValue, fontList.selectedIndex, false, false)
+        assertThat(familyCell.font.family).isNotEqualTo(fontList.font.family)
+        dialog.clickDefaultButton()
+      }
+      assertThat(dialog.isOK).isTrue()
+      assertThat(dialog.resultingFont).isEqualTo("@font/customfont")
+    }
+  }
+
+  @Test
+  fun testModalDialogUpdatesPreviewWhenSelectingInvalidFontAfterValidFont() {
+    // The same style of two fonts must not share a preview: the invalid font must not be shown in the font of the valid one.
+    projectRule.fixture.addFileToProject("res/font/badfont.ttf", "corrupt font data")
+    projectRule.fixture.copyFileToProject("fonts/customfont.ttf", "res/font/customfont.ttf")
+    invokeAndWaitIfNeeded {
+      val dialog = MoreFontsDialog(facet, "@font/customfont", true)
+      createModalDialogAndInteractWithIt({ dialog.show() }) {
+        val ui = FakeUi(dialog.contentPane)
+        @Suppress("UNCHECKED_CAST") val fontList = ui.findComponent<JBList<*>> { it.name == "Font list" } as JBList<FontFamily>
+        @Suppress("UNCHECKED_CAST") val detailList = ui.findComponent<JBList<*>> { it !== fontList } as JBList<FontDetail>
+        waitForCondition(5.seconds) {
+          fontList.emptyText.text == "No fonts available" && fontList.selectedValue?.name == "customfont" && detailList.model.size > 0
+        }
+        val validCell =
+          detailList.cellRenderer.getListCellRendererComponent(detailList, detailList.selectedValue, detailList.selectedIndex, false, false)
+        assertThat(validCell.font.family).isNotEqualTo(detailList.font.family)
+        val selectedValidCell =
+          detailList.cellRenderer.getListCellRendererComponent(detailList, detailList.selectedValue, detailList.selectedIndex, true, false)
+        assertThat((selectedValidCell as SimpleColoredComponent).icon).isNotSameAs(Validator.Severity.ERROR.icon)
+
+        selectFontFamily(fontList, "badfont")
+        waitForCondition(5.seconds) {
+          UIUtil.dispatchAllInvocationEvents()
+          detailList.selectedValue?.family?.name == "badfont"
+        }
+        val invalidCell =
+          detailList.cellRenderer.getListCellRendererComponent(detailList, detailList.selectedValue, detailList.selectedIndex, false, false)
+        assertThat(invalidCell.font.family).isEqualTo(detailList.font.family)
+        assertThat((invalidCell as SimpleColoredComponent).getCharSequence(false).toString()).isEqualTo("Invalid font")
+        // A selected invalid font is marked with the error icon instead of a checkmark.
+        val selectedInvalidCell =
+          detailList.cellRenderer.getListCellRendererComponent(detailList, detailList.selectedValue, detailList.selectedIndex, true, false)
+        assertThat((selectedInvalidCell as SimpleColoredComponent).icon).isSameAs(Validator.Severity.ERROR.icon)
+        assertThat(dialog.isOKActionEnabled).isFalse()
+        dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
+      }
+    }
+  }
+
+  @Test
+  fun testModalDialogShowsInvalidProjectFontAndDisablesOk() {
+    // A corrupt font is still listed, and the preview shows why it cannot be previewed. It cannot be used, so OK is disabled until a valid
+    // font is selected.
+    projectRule.fixture.addFileToProject("res/font/badfont.ttf", "corrupt font data")
+    projectRule.fixture.copyFileToProject("fonts/customfont.ttf", "res/font/customfont.ttf")
+    invokeAndWaitIfNeeded {
+      val dialog = MoreFontsDialog(facet, "@font/badfont", true)
+      createModalDialogAndInteractWithIt({ dialog.show() }) {
+        val ui = FakeUi(dialog.contentPane)
+        @Suppress("UNCHECKED_CAST") val fontList = ui.findComponent<JBList<*>> { it.name == "Font list" } as JBList<FontFamily>
+        @Suppress("UNCHECKED_CAST") val detailList = ui.findComponent<JBList<*>> { it !== fontList } as JBList<FontDetail>
+
+        waitForCondition(5.seconds) {
+          fontList.emptyText.text == "No fonts available" && fontList.selectedValue?.name == "badfont" && detailList.model.size > 0
+        }
+
+        val family = fontList.selectedValue
+        val familyCell = fontList.cellRenderer.getListCellRendererComponent(fontList, family, fontList.selectedIndex, false, false)
+        assertThat(familyCell.font.family).isEqualTo(fontList.font.family)
+        assertThat((familyCell as SimpleColoredComponent).getCharSequence(false).toString()).isEqualTo("badfont")
+        val detailCell =
+          detailList.cellRenderer.getListCellRendererComponent(detailList, detailList.selectedValue, detailList.selectedIndex, false, false)
+        assertThat(detailCell.font.family).isEqualTo(detailList.font.family)
+        assertThat((detailCell as SimpleColoredComponent).getCharSequence(false).toString()).isEqualTo("Invalid font")
+        assertThat(dialog.isOKActionEnabled).isFalse()
+
+        selectFontFamily(fontList, "customfont")
+        waitForCondition(5.seconds) {
+          UIUtil.dispatchAllInvocationEvents()
+          detailList.selectedValue?.family?.name == "customfont" && dialog.isOKActionEnabled
+        }
         dialog.clickDefaultButton()
       }
       assertThat(dialog.isOK).isTrue()

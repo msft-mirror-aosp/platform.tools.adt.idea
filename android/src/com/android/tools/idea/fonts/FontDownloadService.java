@@ -18,20 +18,23 @@ package com.android.tools.idea.fonts;
 import com.android.ide.common.fonts.FontDetail;
 import com.android.ide.common.fonts.FontFamily;
 import com.android.tools.fonts.DownloadableFontCacheServiceImpl;
-import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.ui.MessageType;
+import com.intellij.util.ExceptionUtil;
 import com.intellij.util.download.DownloadableFileDescription;
 import com.intellij.util.download.DownloadableFileService;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 /**
  * {@link FontDownloadService} is a service for downloading individual font (*.ttf) files.
@@ -41,8 +44,8 @@ import java.util.List;
  * The menu font file is usually a smaller font file (~4k).
  */
 public class FontDownloadService {
-  private static final NotificationGroup PROBLEM_NOTIFICATION_GROUP =
-    NotificationGroupManager.getInstance().getNotificationGroup("Font Downloading Problems");
+  private static final String PROBLEM_NOTIFICATION_GROUP_ID = "Font Downloading Problems";
+  private static final AtomicBoolean ourSanitizerUnavailableNotified = new AtomicBoolean(false);
 
   private final DownloadableFontCacheServiceImpl myCacheService;
   private final File myFontPath;
@@ -108,23 +111,57 @@ public class FontDownloadService {
   }
 
   private static boolean performSingleFileDownloads(@NotNull File fontPath, @NotNull List<DownloadableFileDescription> files) {
-    boolean success = true;
+    return performSingleFileDownloads(
+      files,
+      file -> new FontFileDownloader(Collections.singletonList(file)).download(fontPath),
+      message -> ApplicationManager.getApplication().invokeLater(() ->
+        NotificationGroupManager.getInstance().getNotificationGroup(PROBLEM_NOTIFICATION_GROUP_ID)
+          .createNotification(message, MessageType.WARNING).notify(null)
+      ),
+      ourSanitizerUnavailableNotified);
+  }
+
+  @VisibleForTesting
+  interface SingleFileDownload {
+    void download(@NotNull DownloadableFileDescription file) throws Exception;
+  }
+
+  /**
+   * Downloads {@code files} one by one. Failures are combined into a single notification. If the font sanitizer is not available, all
+   * downloads would fail the same way, so the remaining downloads are skipped and only one notification is shown per session.
+   *
+   * @return true if all files were downloaded
+   */
+  @VisibleForTesting
+  static boolean performSingleFileDownloads(@NotNull List<DownloadableFileDescription> files,
+                                            @NotNull SingleFileDownload download,
+                                            @NotNull Consumer<String> showProblem,
+                                            @NotNull AtomicBoolean sanitizerUnavailableNotified) {
+    List<String> failedUrls = new ArrayList<>();
     for (DownloadableFileDescription file : files) {
-      FontFileDownloader downloader = new FontFileDownloader(Collections.singletonList(file));
       try {
-        downloader.download(fontPath);
+        download.download(file);
       }
       catch (Exception ex) {
-        String errorMessage = "Unable to download: " + file.getDownloadUrl();
-        Logger.getInstance(FontDownloadService.class).warn(errorMessage, ex);
-
-        ApplicationManager.getApplication().invokeLater(() ->
-          PROBLEM_NOTIFICATION_GROUP.createNotification(errorMessage, MessageType.WARNING).notify(null)
-        );
-        success = false;
+        if (ExceptionUtil.findCause(ex, FontSanitizerUnavailableException.class) != null) {
+          String message = "Fonts cannot be downloaded: the font sanitizer is not available";
+          Logger.getInstance(FontDownloadService.class).warn(message, ex);
+          if (sanitizerUnavailableNotified.compareAndSet(false, true)) {
+            showProblem.accept(message);
+          }
+          return false;
+        }
+        Logger.getInstance(FontDownloadService.class).warn("Unable to download: " + file.getDownloadUrl(), ex);
+        failedUrls.add(file.getDownloadUrl());
       }
     }
-    return success;
+    if (failedUrls.isEmpty()) {
+      return true;
+    }
+    showProblem.accept(failedUrls.size() == 1
+                       ? "Unable to download: " + failedUrls.get(0)
+                       : "Unable to download " + failedUrls.size() + " font files");
+    return false;
   }
 
   private boolean cachedFileExists(@NotNull String relativeCachedPath) {

@@ -17,17 +17,25 @@ package com.android.tools.idea.ui.resourcemanager.rendering
 
 import com.android.ide.common.fonts.FontFamily
 import com.android.tools.fonts.ProjectFonts
+import com.android.tools.idea.fonts.FontSanitizer
+import com.android.tools.idea.fonts.FontSanitizerUnavailableException
+import com.android.tools.idea.fonts.InvalidFontException
 import com.android.tools.idea.fonts.StudioDownloadableFontCacheService
 import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.ui.resourcemanager.model.Asset
 import com.intellij.util.ui.JBUI
 import java.awt.Component
+import java.awt.Dimension
 import java.awt.Font
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
 import java.awt.geom.Rectangle2D
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 import javax.swing.Icon
+import javax.swing.ImageIcon
 import org.jetbrains.android.facet.AndroidFacet
 
 /**
@@ -44,6 +52,9 @@ class FontIconProvider(facet: AndroidFacet) : AssetIconProvider {
 
   override val supportsTransparency: Boolean = false
 
+  /** [getIcon] is called on every paint, so the icons for fonts that cannot be previewed are reused. */
+  private val failedIcons = ConcurrentHashMap<FailedIconKey, Icon>()
+
   override fun getIcon(
     assetToRender: Asset,
     width: Int,
@@ -57,10 +68,26 @@ class FontIconProvider(facet: AndroidFacet) : AssetIconProvider {
 
     fontIcon.width = width
     fontIcon.height = height
-    fontIcon.setFontFamily(fontFamily)
+    val failure = fontIcon.setFontFamily(fontFamily)
+    if (failure != null) {
+      val message = failure.toPreviewMessage()
+      return failedIcons.computeIfAbsent(FailedIconKey(width, height, message)) {
+        ImageIcon(createFailedIcon(Dimension(width, height), message))
+      }
+    }
     return fontIcon
   }
 }
+
+private data class FailedIconKey(val width: Int, val height: Int, val message: String)
+
+/** A short message for a font that cannot be previewed. */
+private fun IOException.toPreviewMessage(): String =
+  when (this) {
+    is InvalidFontException -> "Invalid font"
+    is FontSanitizerUnavailableException -> "Cannot verify font"
+    else -> "Failed preview"
+  }
 
 /** Creates an Icon that draws samples of each style within a [FontFamily]. */
 private class FontFamilyIcon : Icon {
@@ -70,11 +97,49 @@ private class FontFamilyIcon : Icon {
   private var fonts: List<FontIconData> = emptyList()
   private val fontService = StudioDownloadableFontCacheService.getInstance()
 
-  fun setFontFamily(fontFamily: FontFamily) {
+  /**
+   * The sanitized fonts, or the reason they could not be loaded, by font file. [setFontFamily] is called on every paint, so this avoids
+   * reading and sanitizing the font files each time. A changed file is loaded again.
+   */
+  private val loadedFonts = ConcurrentHashMap<File, LoadedFont>()
+
+  /**
+   * Loads the sanitized fonts of [fontFamily]. Fonts that are not downloaded yet are skipped.
+   *
+   * @return the first failure if none of the fonts could be loaded, or `null` otherwise
+   */
+  fun setFontFamily(fontFamily: FontFamily): IOException? {
+    var failure: IOException? = null
     fonts =
       fontFamily.fonts.mapNotNull { fontDetail ->
-        fontService.loadDetailFont(fontDetail)?.let { font -> FontIconData(fontDetail.styleName, font) }
+        val file = fontService.getCachedFontFile(fontDetail)?.takeIf { it.exists() } ?: return@mapNotNull null
+        loadFont(file)
+          .fold(
+            onSuccess = { FontIconData(fontDetail.styleName, it) },
+            onFailure = {
+              failure = failure ?: it as IOException
+              null
+            },
+          )
       }
+    return if (fonts.isEmpty()) failure else null
+  }
+
+  private fun loadFont(file: File): Result<Font> {
+    val lastModified = file.lastModified()
+    val length = file.length()
+    val cached = loadedFonts[file]
+    if (cached != null && cached.lastModified == lastModified && cached.length == length) {
+      return cached.font
+    }
+    val font =
+      try {
+        Result.success(FontSanitizer.createFont(file.toPath()))
+      } catch (e: IOException) {
+        Result.failure(e)
+      }
+    loadedFonts[file] = LoadedFont(lastModified, length, font)
+    return font
   }
 
   override fun getIconWidth(): Int = width
@@ -125,6 +190,9 @@ private class FontFamilyIcon : Icon {
 }
 
 private data class FontIconData(val name: String, val font: Font)
+
+/** A font loaded from a file with the given [lastModified] time and [length], or the [IOException] thrown while loading it. */
+private class LoadedFont(val lastModified: Long, val length: Long, val font: Result<Font>)
 
 private fun FontIconData.getFontBounds(g: Graphics, fontSize: Float): Rectangle2D {
   return g.getFontMetrics(font.deriveFont(fontSize)).getStringBounds(name, g)

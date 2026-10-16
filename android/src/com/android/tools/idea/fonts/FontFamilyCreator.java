@@ -95,15 +95,24 @@ public class FontFamilyCreator {
     myService = StudioDownloadableFontCacheService.getInstance();
   }
 
+  /**
+   * Creates the font resource files for {@code font} and returns a reference to the new font resource.
+   *
+   * @throws InvalidFontException if {@code downloadable} is false and the downloaded font file is invalid
+   * @throws FontSanitizerUnavailableException if {@code downloadable} is false and the downloaded font file cannot be verified
+   */
   @NotNull
-  public String createFontFamily(@NotNull FontDetail font, @NotNull String fontName, boolean downloadable) {
+  public String createFontFamily(@NotNull FontDetail font, @NotNull String fontName, boolean downloadable) throws IOException {
     Project project = myFacet.getModule().getProject();
+    // The font is sanitized before the reference is returned, so that a font which cannot be embedded is reported to the caller
+    // instead of leaving a reference to a font resource that is never created.
+    EmbeddedFont embeddedFont = downloadable ? null : loadEmbeddedFont(font);
     final ThrowableRunnable<IOException> throwableRunnable = () -> {
       if (downloadable) {
         createDownloadableFont(font, fontName);
       }
-      else {
-        createEmbeddedFont(font, fontName);
+      else if (embeddedFont != null) {
+        createEmbeddedFont(embeddedFont, fontName);
       }
     };
     ApplicationManager.getApplication().invokeLater(
@@ -132,12 +141,26 @@ public class FontFamilyCreator {
     FileDocumentManager.getInstance().saveAllDocuments();
   }
 
-  private void createEmbeddedFont(@NotNull FontDetail font, @NotNull String fontName) throws IOException {
-    VirtualFile fontFolder = getResourceFolder(ResourceFolderType.FONT);
+  /** A sanitized font file that is ready to be embedded in the project. */
+  private record EmbeddedFont(@NotNull String extension, byte @NotNull [] content) {}
+
+  /** Loads and sanitizes the downloaded font file, or returns null if the font is not downloaded. */
+  @Nullable
+  private EmbeddedFont loadEmbeddedFont(@NotNull FontDetail font) throws IOException {
     File cachedFile = myService.getCachedFontFile(font);
-    if (cachedFile != null && cachedFile.exists()) {
-      saveContent(fontFolder, fontName + "." + FileUtilRt.getExtension(cachedFile.getName()), FileUtil.loadFileBytes(cachedFile));
+    if (cachedFile == null || !cachedFile.exists()) {
+      return null;
     }
+    if (cachedFile.length() > FontSanitizer.MAX_FONT_SIZE) {
+      throw new InvalidFontException("Font file exceeds the maximum allowed size: " + cachedFile);
+    }
+    byte[] sanitizedBytes = FontSanitizer.sanitize(FileUtil.loadFileBytes(cachedFile));
+    return new EmbeddedFont(FileUtilRt.getExtension(cachedFile.getName()), sanitizedBytes);
+  }
+
+  private void createEmbeddedFont(@NotNull EmbeddedFont font, @NotNull String fontName) throws IOException {
+    VirtualFile fontFolder = getResourceFolder(ResourceFolderType.FONT);
+    saveContent(fontFolder, fontName + "." + font.extension(), font.content());
   }
 
   private void saveContent(@NotNull VirtualFile folder, @NotNull String fileName, byte[] content) throws IOException {

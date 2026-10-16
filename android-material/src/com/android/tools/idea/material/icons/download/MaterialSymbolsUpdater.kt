@@ -16,6 +16,7 @@
 package com.android.tools.idea.material.icons.download
 
 import com.android.annotations.concurrency.Slow
+import com.android.tools.idea.fonts.FontSanitizer
 import com.android.tools.idea.material.icons.common.MaterialSymbolsUrlProvider
 import com.android.tools.idea.material.icons.common.SymbolConfiguration
 import com.android.tools.idea.material.icons.common.Symbols
@@ -199,7 +200,16 @@ class MaterialSymbolsUpdater {
           return
         }
 
-        Files.move(downloadedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        try {
+          if (FontSanitizer.isFontFile(finalFileName)) {
+            FontSanitizer.move(downloadedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+          } else {
+            Files.move(downloadedFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+          }
+        } finally {
+          // A successful move already removed the downloaded file. This only deletes it if the move failed, e.g. for an invalid font.
+          FileUtil.delete(downloadedFile)
+        }
       } catch (e: Throwable) {
         LOG.warn("Download failed for $finalFileName with error: $e")
       }

@@ -16,6 +16,7 @@
 
 package com.android.tools.idea.editors.fonts;
 
+import com.android.tools.idea.fonts.FontSanitizer;
 import com.intellij.codeHighlighting.BackgroundEditorHighlighter;
 import com.intellij.codeInsight.template.emmet.generators.LoremGenerator;
 import com.intellij.ide.structureView.StructureViewBuilder;
@@ -120,7 +121,7 @@ class FontEditor implements FileEditor {
 
     try {
       // Derive the font and set it to large
-      Font font = Font.createFont(Font.TRUETYPE_FONT, file.getInputStream()).deriveFont(myCurrentFontSize);
+      Font font = FontSanitizer.createFont(file).deriveFont(myCurrentFontSize);
 
       myFontNameLabel.setText(font.getFontName());
       if (font.canDisplayUpTo(font.getFontName()) == -1) {
@@ -144,13 +145,13 @@ class FontEditor implements FileEditor {
       }
       myRootPanel.addMouseWheelListener(this::onMouseWheelEvent);
     }
-    catch (FontFormatException | IOException e) {
+    catch (IOException e) {
       String message = "Unable to open font " + file.getName();
 
       myTextArea.setFont(StartupUiUtil.getLabelFont());
       myTextArea.setEditable(false);
       myTextArea.setText(message);
-      LOG.warn(message ,e);
+      LOG.warn(message, e);
     }
     myRootPanel.add(myFontNameLabel, BorderLayout.NORTH);
     // The JTextArea needs to be put inside a scroll pane,

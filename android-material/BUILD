@@ -25,6 +25,8 @@ iml_module(
     test_class = "com.android.tools.idea.MaterialTestSuite",
     test_data = [
         "//prebuilts/studio/sdk:platforms/latest",
+        "//prebuilts/tools/common/ots:ots-jni",
+        "//tools/adt/idea/android/testData",
     ],
     # do not sort: must match IML order
     test_deps = [

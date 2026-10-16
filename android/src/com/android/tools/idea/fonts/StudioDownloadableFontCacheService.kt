@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.fonts
 
+import com.android.ide.common.fonts.FontDetail
 import com.android.ide.common.fonts.FontFamily
 import com.android.ide.common.fonts.FontLoader
 import com.android.ide.common.fonts.FontProvider
@@ -24,7 +25,10 @@ import com.android.tools.fonts.FontDirectoryDownloader
 import com.android.tools.fonts.FontDownloader
 import com.android.tools.idea.sdk.AndroidSdks
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
+import java.awt.Font
 import java.io.File
+import java.io.IOException
 
 /** Studio specific version of [DownloadableFontCacheService]. */
 class StudioDownloadableFontCacheService :
@@ -41,7 +45,26 @@ class StudioDownloadableFontCacheService :
     },
     { AndroidSdks.getInstance().tryToChooseSdkHandler().location?.toFile() },
   ) {
+
+  // These overrides make sure that the base implementation, which loads fonts without sanitizing them, is never used in Studio.
+  // MoreFontsDialog and FontIconProvider use FontSanitizer directly, because they need to know why a font cannot be loaded.
+  override fun loadMenuFont(fontFamily: FontFamily): Font? = loadFont(getCachedMenuFile(fontFamily))
+
+  override fun loadDetailFont(fontDetail: FontDetail): Font? = loadFont(getCachedFontFile(fontDetail))
+
+  private fun loadFont(file: File?): Font? {
+    if (file == null || !file.exists()) return null
+    return try {
+      FontSanitizer.createFont(file.toPath())
+    } catch (e: IOException) {
+      LOG.debug("Could not load font $file", e)
+      null
+    }
+  }
+
   companion object {
+    private val LOG = Logger.getInstance(StudioDownloadableFontCacheService::class.java)
+
     @JvmStatic
     fun getInstance(): DownloadableFontCacheServiceImpl =
       ApplicationManager.getApplication().getService(DownloadableFontCacheService::class.java) as DownloadableFontCacheServiceImpl

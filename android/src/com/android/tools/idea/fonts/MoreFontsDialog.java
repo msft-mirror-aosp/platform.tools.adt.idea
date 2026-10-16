@@ -27,6 +27,7 @@ import com.android.tools.adtui.validation.ValidatorPanel;
 import com.android.tools.fonts.DownloadableFontCacheService;
 import com.android.tools.fonts.ProjectFonts;
 import com.android.tools.idea.observable.BindingsManager;
+import com.android.tools.idea.observable.core.BoolValueProperty;
 import com.android.tools.idea.observable.core.StringProperty;
 import com.android.tools.idea.observable.core.StringValueProperty;
 import com.android.tools.idea.observable.ui.SelectedListValueProperty;
@@ -65,8 +66,12 @@ import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.font.FontRenderContext;
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 import static com.android.ide.common.fonts.FontFamilyKt.FILE_PROTOCOL_START;
@@ -101,12 +106,16 @@ public class MoreFontsDialog extends DialogWrapper {
   private JBLabel myFontName;
   private JPanel myDownloadable;
   private JRadioButton myMakeDownloadable;
+  private JRadioButton myAddToProject;
   private ValidatorPanel myValidatorPanel;
   private HyperlinkLabel myLicenseLabel;
   private FontFamily myLastSelectedFont;
   private String myResultingFont;
   private String myInitialFontName;
   private final ModalityState myModalityState;
+  private final BoolValueProperty myPreviewsUnavailable = new BoolValueProperty(false);
+  private final BoolValueProperty mySelectedFontInvalid = new BoolValueProperty(false);
+  private final FontPreviewLoader myPreviewLoader = new FontPreviewLoader(this::previewsUnavailable);
 
   private void createUIComponents() {
     myContentPanel = new JPanel();
@@ -133,7 +142,7 @@ public class MoreFontsDialog extends DialogWrapper {
     myCreateParams.setLayout(createGroupLayoutForCreateParams());
     myFontNameEditor.setVisible(false);
     myDownloadable.setVisible(false);
-    myFontList.setCellRenderer(new FontFamilyRenderer());
+    myFontList.setCellRenderer(new FontFamilyRenderer(myPreviewLoader));
     // We want to set fixed cell height and width. This makes the list render much faster.
     myFontList.setFixedCellHeight(computeFontHeightInFontList(myFontList));
     myFontList.setFixedCellWidth(getMinFontListWidth() + JBUI.scale(getDescenderSpace()));
@@ -142,7 +151,7 @@ public class MoreFontsDialog extends DialogWrapper {
     JScrollBar scrollBar = myFontListScrollPane.getVerticalScrollBar();
     scrollBar.setUnitIncrement(VERTICAL_SCROLLING_UNIT_INCREMENT);
     scrollBar.setBlockIncrement(VERTICAL_SCROLLING_BLOCK_INCREMENT);
-    myFontDetailList.setCellRenderer(new FontDetailRenderer());
+    myFontDetailList.setCellRenderer(new FontDetailRenderer(myPreviewLoader));
     myFontDetailList.setModel(myDetailModel);
 
     mySearchField.addDocumentListener(new DocumentAdapter() {
@@ -214,12 +223,24 @@ public class MoreFontsDialog extends DialogWrapper {
     }
     catch (Exception ex) {
       Logger.getInstance(MoreFontsDialog.class).warn("Could not create font resource file", ex);
-      Messages.showErrorDialog(myContentPanel, ex instanceof FontFamilyCreator.UpdateManifestFileException
-                                               ? ex.getMessage()
-                                               : "Could not create font resource file");
+      Messages.showErrorDialog(myContentPanel, getCreateFontErrorMessage(ex));
       return;
     }
     super.doOKAction();  // close dialog
+  }
+
+  @NotNull
+  private static String getCreateFontErrorMessage(@NotNull Exception ex) {
+    if (ex instanceof FontFamilyCreator.UpdateManifestFileException) {
+      return ex.getMessage();
+    }
+    if (ex instanceof InvalidFontException) {
+      return "The font file is invalid and cannot be added to the project";
+    }
+    if (ex instanceof FontSanitizerUnavailableException) {
+      return "The font file cannot be verified, so it cannot be added to the project. Create a downloadable font instead.";
+    }
+    return "Could not create font resource file";
   }
 
   @Override
@@ -316,9 +337,9 @@ public class MoreFontsDialog extends DialogWrapper {
     myDownloadable.add(myMakeDownloadable, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                                                                GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                                GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-    final JRadioButton radioButton1 = new JRadioButton();
-    radioButton1.setText("Add font to project");
-    myDownloadable.add(radioButton1, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+    myAddToProject = new JRadioButton();
+    myAddToProject.setText("Add font to project");
+    myDownloadable.add(myAddToProject, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                                                          GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                          GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     final JBScrollPane jBScrollPane1 = new JBScrollPane();
@@ -328,7 +349,7 @@ public class MoreFontsDialog extends DialogWrapper {
     ButtonGroup buttonGroup;
     buttonGroup = new ButtonGroup();
     buttonGroup.add(myMakeDownloadable);
-    buttonGroup.add(radioButton1);
+    buttonGroup.add(myAddToProject);
   }
 
   private Font getFont(String fontName, int style, int size, Font currentFont) {
@@ -386,7 +407,50 @@ public class MoreFontsDialog extends DialogWrapper {
   private void addValidators() {
     myValidatorPanel.registerValidator(myNewFontName, this::checkFontName);
     myValidatorPanel.registerValidator(mySelectedFontFamily, this::checkSelectedFontFamily);
+    myValidatorPanel.registerValidator(myPreviewsUnavailable, this::checkPreviewsAvailable);
+    myValidatorPanel.registerValidator(mySelectedFontInvalid, this::checkSelectedFontValid);
     myValidatorPanel.registerValidator(myValidatorPanel.hasErrors(), this::updateOkButton);
+  }
+
+  @NotNull
+  private Result checkSelectedFontValid(@NotNull Boolean selectedFontInvalid) {
+    return selectedFontInvalid ? new Result(Severity.ERROR, "The selected font is invalid and cannot be used") : Result.OK;
+  }
+
+  /**
+   * Checks the selected font, so that an invalid font cannot be selected. A font that is not downloaded yet, or that cannot be verified
+   * because the font sanitizer is not available, is not reported as invalid.
+   */
+  private void updateSelectedFontValidity() {
+    FontDetail detail = myFontDetailList.getSelectedValue();
+    mySelectedFontInvalid.set(
+      detail != null && myPreviewLoader.isInvalid(StudioDownloadableFontCacheService.getInstance().getCachedFontFile(detail)));
+  }
+
+  @NotNull
+  private Result checkPreviewsAvailable(@NotNull Boolean previewsUnavailable) {
+    return previewsUnavailable
+           ? new Result(Severity.WARNING, "Font previews are unavailable: the font sanitizer could not be loaded. " +
+                                          "Fonts can still be added as downloadable fonts.")
+           : Result.OK;
+  }
+
+  /**
+   * Called when the font sanitizer is not available. Fonts cannot be previewed or embedded in the project without it, but they can still
+   * be added as downloadable fonts, since that does not require Studio to load the font files.
+   */
+  private void previewsUnavailable() {
+    // ModalityState.any(): this can be called from a pooled thread while the dialog is still being constructed (the font list renderer
+    // warms up its cache in the background), before myModalityState is known. The runnable only updates this dialog's own components
+    // and is skipped once the dialog is disposed, so it is safe to run even while another modal dialog is shown.
+    ApplicationManager.getApplication().invokeLater(() -> {
+      myPreviewsUnavailable.set(true);
+      myMakeDownloadable.setSelected(true);
+      myAddToProject.setEnabled(false);
+      myAddToProject.setToolTipText("Fonts cannot be added to the project because the font sanitizer could not be loaded");
+      myFontList.repaint();
+      myFontDetailList.repaint();
+    }, ModalityState.any(), o -> isDisposed());
   }
 
   @NotNull
@@ -430,6 +494,7 @@ public class MoreFontsDialog extends DialogWrapper {
       myFontNameEditor.setVisible(false);
       myDownloadable.setVisible(false);
       myDetailModel.clear();
+      updateSelectedFontValidity();
       setOKActionEnabled(false);
     }
     else {
@@ -477,9 +542,11 @@ public class MoreFontsDialog extends DialogWrapper {
     if (!familyLoaded.getFonts().isEmpty()) {
       myFontDetailList.setSelectedIndex(0);
     }
+    updateSelectedFontValidity();
   }
 
   private void fontDetailSelectionChanged() {
+    updateSelectedFontValidity();
     if (!myFontNameEditor.isVisible()) {
       return;
     }
@@ -555,14 +622,16 @@ public class MoreFontsDialog extends DialogWrapper {
 
   private static class FontFamilyRenderer extends ColoredListCellRenderer<FontFamily> {
     private final DownloadableFontCacheService myFontService;
+    private final FontPreviewLoader myPreviewLoader;
     private final JLabel myTitle;
     private final Cache<FontFamily, Font> myMenuFontCache = CacheBuilder.newBuilder()
       .softValues()
       .build();
 
 
-    private FontFamilyRenderer() {
+    private FontFamilyRenderer(@NotNull FontPreviewLoader previewLoader) {
       myFontService = StudioDownloadableFontCacheService.getInstance();
+      myPreviewLoader = previewLoader;
       myTitle = new HeaderLabel();
       myTitle.setBorder(JBUI.Borders.empty(0, 35, 0, 5));
 
@@ -592,7 +661,7 @@ public class MoreFontsDialog extends DialogWrapper {
     private Font getMenuFontFromFamily(@NotNull FontFamily fontFamily) {
       Font font = myMenuFontCache.getIfPresent(fontFamily);
       if (font == null) {
-        font = myFontService.loadMenuFont(fontFamily);
+        font = myPreviewLoader.loadFont(myFontService.getCachedMenuFile(fontFamily));
         String text = fontFamily.getMenuName();
         if (font != null && font.canDisplayUpTo(text) < 0) {
           font = font.deriveFont(getFontSizeInList());
@@ -651,22 +720,29 @@ public class MoreFontsDialog extends DialogWrapper {
 
   private static class FontDetailRenderer extends ColoredListCellRenderer<FontDetail> {
     private final DownloadableFontCacheService myFontService;
-    private final Cache<FontDetail, Font> myFontCache = CacheBuilder.newBuilder()
+    private final FontPreviewLoader myPreviewLoader;
+    // Keyed by font file: FontDetail.equals only compares the style, so the same style of two different fonts would be equal.
+    private final Cache<File, Font> myFontCache = CacheBuilder.newBuilder()
       .softValues()
       .build();
 
-    private FontDetailRenderer() {
+    private FontDetailRenderer(@NotNull FontPreviewLoader previewLoader) {
       myFontService = StudioDownloadableFontCacheService.getInstance();
+      myPreviewLoader = previewLoader;
     }
 
     @Nullable
     private Font getFontFromDetail(@NotNull FontDetail fontDetail) {
-      Font font = myFontCache.getIfPresent(fontDetail);
+      File file = myFontService.getCachedFontFile(fontDetail);
+      if (file == null) {
+        return null;
+      }
+      Font font = myFontCache.getIfPresent(file);
       if (font == null) {
-        font = myFontService.loadDetailFont(fontDetail);
+        font = myPreviewLoader.loadFont(file);
         if (font != null) {
           font = font.deriveFont(getFontSizeInList());
-          myFontCache.put(fontDetail, font);
+          myFontCache.put(file, font);
         }
       }
       return font;
@@ -677,21 +753,102 @@ public class MoreFontsDialog extends DialogWrapper {
                                          @NotNull FontDetail fontDetail, int index, boolean selected, boolean hasFocus) {
       String text = fontDetail.getStyleName();
       Font font = getFontFromDetail(fontDetail);
+      boolean invalid = false;
       if (font != null) {
         setFont(font);
         text = findDisplayableTextForFont(font, text);
+      }
+      else {
+        // The font cannot be shown, so show why instead, in the default font of the list.
+        File file = myFontService.getCachedFontFile(fontDetail);
+        String failure = myPreviewLoader.getFailure(file);
+        if (failure != null) {
+          text = failure;
+        }
+        invalid = myPreviewLoader.isInvalid(file);
       }
       mySelectionForeground = myForeground;
       setBackground(null);
       append(text);
       if (selected) {
-        setIcon(LafIconLookup.getIcon("checkmark"));
+        // An invalid font cannot be used (the OK button is disabled), so it is marked with the icon of the error shown for it instead.
+        setIcon(invalid ? Severity.ERROR.getIcon() : LafIconLookup.getIcon("checkmark"));
         setBorderInsets(new JBInsets(0, 0, 0, 0));
       }
       else {
         //noinspection UseDPIAwareInsets
         setBorderInsets(new Insets(0, AllIcons.Actions.Checked.getIconWidth() + getIconTextGap(), 0, 0));
       }
+    }
+  }
+
+  /**
+   * Loads the sanitized fonts used for the previews in this dialog.
+   *
+   * <p>A font that is not downloaded yet, or that cannot be loaded, is shown without a preview. For a font that cannot be loaded,
+   * {@link #getFailure} returns a short reason to show instead. If the font sanitizer is not available, no font can be previewed: the dialog
+   * is notified once and no further fonts are loaded.
+   */
+  private static class FontPreviewLoader {
+    private static final String SANITIZER_UNAVAILABLE = "Cannot verify font";
+
+    private final Runnable myOnSanitizerUnavailable;
+    private final AtomicBoolean mySanitizerUnavailable = new AtomicBoolean(false);
+    private final Map<File, String> myFailures = new ConcurrentHashMap<>();
+    private final Set<File> myInvalidFiles = ConcurrentHashMap.newKeySet();
+
+    private FontPreviewLoader(@NotNull Runnable onSanitizerUnavailable) {
+      myOnSanitizerUnavailable = onSanitizerUnavailable;
+    }
+
+    @Nullable
+    private Font loadFont(@Nullable File file) {
+      if (file == null || mySanitizerUnavailable.get() || myFailures.containsKey(file) || !file.exists()) {
+        return null;
+      }
+      try {
+        return FontSanitizer.createFont(file.toPath());
+      }
+      catch (FontSanitizerUnavailableException e) {
+        if (mySanitizerUnavailable.compareAndSet(false, true)) {
+          Logger.getInstance(MoreFontsDialog.class).warn("Font previews are unavailable", e);
+          myOnSanitizerUnavailable.run();
+        }
+        return null;
+      }
+      catch (IOException e) {
+        // Do not try to load this font again for every repaint of the list.
+        if (e instanceof InvalidFontException) {
+          myInvalidFiles.add(file);
+        }
+        myFailures.put(file, e instanceof InvalidFontException ? "Invalid font" : "Failed preview");
+        Logger.getInstance(MoreFontsDialog.class).warn("Could not load font " + file, e);
+        return null;
+      }
+    }
+
+    /** Returns true if the font in {@code file} was rejected by the font sanitizer. The font is loaded first if it was not loaded yet. */
+    private boolean isInvalid(@Nullable File file) {
+      if (file == null) {
+        return false;
+      }
+      if (!myFailures.containsKey(file)) {
+        loadFont(file);
+      }
+      return myInvalidFiles.contains(file);
+    }
+
+    /** Returns why the font in {@code file} cannot be previewed, or null if it was loaded or is not downloaded yet. */
+    @Nullable
+    private String getFailure(@Nullable File file) {
+      if (file == null) {
+        return null;
+      }
+      String failure = myFailures.get(file);
+      if (failure == null && mySanitizerUnavailable.get() && file.exists()) {
+        return SANITIZER_UNAVAILABLE;
+      }
+      return failure;
     }
   }
 

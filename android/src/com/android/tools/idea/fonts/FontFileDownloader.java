@@ -152,7 +152,22 @@ public class FontFileDownloader {
         FileUtil.delete(pair.getFirst());
         continue;
       }
-      FileUtil.rename(pair.getFirst(), toFile);
+
+      File sourceFile = pair.getFirst();
+      if (FontSanitizer.isFontFile(fileName)) {
+        // The file name can include directories (e.g. a directory per font family), which FontSanitizer.move does not create.
+        FileUtil.createParentDirs(toFile);
+        try {
+          FontSanitizer.move(sourceFile.toPath(), toFile.toPath());
+        }
+        catch (IOException e) {
+          FileUtil.delete(sourceFile);
+          throw e;
+        }
+      }
+      else {
+        FileUtil.rename(sourceFile, toFile);
+      }
       result.add(Pair.create(toFile, description));
     }
     return result;

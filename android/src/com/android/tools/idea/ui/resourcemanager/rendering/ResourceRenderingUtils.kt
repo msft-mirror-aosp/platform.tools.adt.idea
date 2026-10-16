@@ -48,11 +48,11 @@ internal fun createIcon(color: Color?): BufferedImage =
     }
   }
 
-internal fun createFailedIcon(dimension: Dimension): BufferedImage {
+internal fun createFailedIcon(dimension: Dimension, text: String = "Failed preview"): BufferedImage {
   @Suppress("UndesirableClassUsage") // Dimensions for BufferedImage are pre-scaled.
   val image = BufferedImage(dimension.width, dimension.height, BufferedImage.TYPE_INT_ARGB)
   val label =
-    JBLabel("Failed preview", StudioIcons.Common.WARNING, SwingConstants.CENTER).apply {
+    JBLabel(text, StudioIcons.Common.WARNING, SwingConstants.CENTER).apply {
       verticalTextPosition = SwingConstants.BOTTOM
       horizontalTextPosition = SwingConstants.CENTER
       foreground = AdtUiUtils.DEFAULT_FONT_COLOR

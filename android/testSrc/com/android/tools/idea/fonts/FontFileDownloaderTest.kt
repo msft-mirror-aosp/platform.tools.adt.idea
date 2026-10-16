@@ -15,12 +15,15 @@
  */
 package com.android.tools.idea.fonts
 
+import com.android.testutils.TestUtils
 import com.intellij.openapi.util.Pair
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.download.DownloadableFileDescription
 import java.io.File
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -37,7 +40,8 @@ class FontFileDownloaderTest {
   fun testMoveToDir_Normal() {
     val targetDir = tempFolder.newFolder("target")
     val tempFile = tempFolder.newFile("temp_font.ttf")
-    FileUtil.writeToFile(tempFile, "font data")
+    val validFontFile = TestUtils.resolveWorkspacePath("tools/adt/idea/android/testData/fonts/Roboto-Black.ttf").toFile()
+    FileUtil.copy(validFontFile, tempFile)
 
     val description = mock(DownloadableFileDescription::class.java)
     // generateFileName takes a Condition/Predicate. In Java it might be com.intellij.openapi.util.Condition.
@@ -52,8 +56,44 @@ class FontFileDownloaderTest {
     val expectedFile = File(targetDir, "safe_font.ttf").canonicalFile
     assertEquals(expectedFile, result[0].first)
     assertTrue(expectedFile.exists())
-    assertEquals("font data", FileUtil.loadFile(expectedFile))
+    assertArrayEquals(FontSanitizer.sanitize(validFontFile.readBytes()), expectedFile.readBytes())
     assertFalse(tempFile.exists()) // original temp file should be moved/deleted
+  }
+
+  @Test
+  fun testMoveToDir_CreatesMissingSubdirectories() {
+    // Fonts are cached in a directory per font family and version, which does not exist before the first download.
+    val targetDir = tempFolder.newFolder("target")
+    val tempFile = tempFolder.newFile("temp_font.ttf")
+    val validFontFile = TestUtils.resolveWorkspacePath("tools/adt/idea/android/testData/fonts/Roboto-Black.ttf").toFile()
+    FileUtil.copy(validFontFile, tempFile)
+
+    val description = mock(DownloadableFileDescription::class.java)
+    `when`(description.generateFileName(any())).thenReturn("fonts/roboto/v1/safe_font.ttf")
+
+    val result = FontFileDownloader.moveToDir(listOf(Pair.create(tempFile, description)), targetDir)
+
+    val expectedFile = File(targetDir, "fonts/roboto/v1/safe_font.ttf").canonicalFile
+    assertEquals(expectedFile, result.single().first)
+    assertArrayEquals(FontSanitizer.sanitize(validFontFile.readBytes()), expectedFile.readBytes())
+    assertFalse(tempFile.exists())
+  }
+
+  @Test
+  fun testMoveToDir_CorruptFontRejected() {
+    val targetDir = tempFolder.newFolder("target")
+    val tempFile = tempFolder.newFile("temp_font.ttf")
+    FileUtil.writeToFile(tempFile, "corrupt font data")
+
+    val description = mock(DownloadableFileDescription::class.java)
+    `when`(description.generateFileName(any())).thenReturn("safe_font.ttf")
+
+    val downloadedFiles = listOf(Pair.create(tempFile, description))
+
+    assertThrows(InvalidFontException::class.java) { FontFileDownloader.moveToDir(downloadedFiles, targetDir) }
+
+    assertFalse(File(targetDir, "safe_font.ttf").exists())
+    assertFalse(tempFile.exists()) // temp file deleted
   }
 
   @Test
@@ -111,5 +151,26 @@ class FontFileDownloaderTest {
 
     assertTrue(result.isEmpty()) // Should refuse to move and return empty
     assertFalse(tempFile.exists()) // Temp file should have been deleted for cleanup
+  }
+
+  @Test
+  fun testMoveToDir_NonFontFileAllowedWithoutSanitization() {
+    val targetDir = tempFolder.newFolder("target")
+    val tempFile = tempFolder.newFile("temp_metadata.xml")
+    FileUtil.writeToFile(tempFile, "<font-metadata>test</font-metadata>")
+
+    val description = mock(DownloadableFileDescription::class.java)
+    `when`(description.generateFileName(any())).thenReturn("metadata.xml")
+
+    val downloadedFiles = listOf(Pair.create(tempFile, description))
+
+    val result = FontFileDownloader.moveToDir(downloadedFiles, targetDir)
+
+    assertEquals(1, result.size)
+    val expectedFile = File(targetDir, "metadata.xml").canonicalFile
+    assertEquals(expectedFile, result[0].first)
+    assertTrue(expectedFile.exists())
+    assertEquals("<font-metadata>test</font-metadata>", FileUtil.loadFile(expectedFile))
+    assertFalse(tempFile.exists())
   }
 }

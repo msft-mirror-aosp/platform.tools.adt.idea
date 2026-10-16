@@ -35,18 +35,17 @@ import com.android.tools.lint.checks.FontDetector
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
-import java.io.ByteArrayInputStream
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
-import java.io.InputStream
-import java.nio.charset.StandardCharsets
 import kotlin.time.Duration.Companion.seconds
 import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.facet.ResourceFolderManager
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -254,12 +253,22 @@ class FontFamilyCreatorTest {
 
   @Test
   fun testCreateEmbeddedFont() {
-    addFontFileToFontCache("raleway", "v6", "other.ttf")
+    addFontFileToFontCache("raleway", "v6", "other.ttf", validFontBytes())
     val font = FontTestUtils.createFontDetail("Raleway", 700, 100f, ITALICS)
     val newValue = creator.createFontFamily(font, "raleway_bold_italic", false)
     waitForFontReady()
     assertThat(newValue).isEqualTo("@font/raleway_bold_italic")
-    assertThat(getFontFileContent("raleway_bold_italic.ttf")).isEqualTo("TrueType file")
+    assertArrayEquals(FontSanitizer.sanitize(validFontBytes()), getFontFileBytes("raleway_bold_italic.ttf"))
+  }
+
+  @Test
+  fun testCreateEmbeddedFontWithInvalidCachedFontThrowsAndDoesNotCreateFontFile() {
+    addFontFileToFontCache("raleway", "v6", "other.ttf", "corrupt font data".toByteArray(Charsets.UTF_8))
+    val font = FontTestUtils.createFontDetail("Raleway", 700, 100f, ITALICS)
+    assertThrows(InvalidFontException::class.java) { creator.createFontFamily(font, "raleway_bold_italic", false) }
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    @Suppress("DEPRECATION") val resourceDirectory = ResourceFolderManager.getInstance(facet).primaryFolder
+    assertThat(resourceDirectory?.findChild(ResourceFolderType.FONT.getName())?.findChild("raleway_bold_italic.ttf")).isNull()
   }
 
   @Test
@@ -270,6 +279,13 @@ class FontFamilyCreatorTest {
 
   private fun getFontFileContent(fontFileName: String): String {
     return FontTestUtils.getResourceFileContent(facet, ResourceFolderType.FONT, fontFileName)
+  }
+
+  private fun getFontFileBytes(fontFileName: String): ByteArray {
+    @Suppress("DEPRECATION") val resourceDirectory = ResourceFolderManager.getInstance(facet).primaryFolder!!
+    val file = resourceDirectory.findChild(ResourceFolderType.FONT.getName())!!.findChild(fontFileName)!!
+    file.refresh(false, false)
+    return file.contentsToByteArray()
   }
 
   private fun getValuesFileContent(valuesFileName: String): String {
@@ -283,13 +299,14 @@ class FontFamilyCreatorTest {
 
   @Suppress("SameParameterValue")
   @Throws(IOException::class)
-  private fun addFontFileToFontCache(fontFolder: String, versionFolder: String, fontFileName: String) {
+  private fun addFontFileToFontCache(fontFolder: String, versionFolder: String, fontFileName: String, content: ByteArray) {
     val folder = FontTestCase.makeFile(fontPath, GOOGLE_FONT_AUTHORITY, "fonts", fontFolder, versionFolder)
     FileUtil.ensureExists(folder)
-    val file = File(folder, fontFileName)
-    val inputStream: InputStream = ByteArrayInputStream("TrueType file".toByteArray(charset(StandardCharsets.UTF_8.toString())))
-    FileOutputStream(file).use { outputStream -> FileUtil.copy(inputStream, outputStream) }
+    File(folder, fontFileName).writeBytes(content)
   }
+
+  private fun validFontBytes(): ByteArray =
+    TestUtils.resolveWorkspacePath("tools/adt/idea/android/testData/fonts/Roboto-Black.ttf").toFile().readBytes()
 
   private fun createProjectBuilder(): AndroidProjectBuilder =
     AndroidProjectBuilder(

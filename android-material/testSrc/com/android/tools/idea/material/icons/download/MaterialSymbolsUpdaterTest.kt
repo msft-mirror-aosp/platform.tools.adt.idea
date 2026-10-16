@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.material.icons.download
 
+import com.android.testutils.TestUtils
 import com.android.testutils.truth.PathSubject.assertThat
+import com.android.tools.idea.fonts.FontSanitizer
 import com.android.tools.idea.material.icons.common.MaterialSymbolsUrlProvider
 import com.android.tools.idea.material.icons.common.SymbolConfiguration
 import com.android.tools.idea.material.icons.common.Symbols
@@ -34,8 +36,11 @@ import com.intellij.util.io.delete
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.createTempDirectory
+import kotlin.io.path.readBytes
 import kotlin.io.path.readText
+import kotlin.io.path.writeBytes
 import kotlin.io.path.writeText
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -46,7 +51,13 @@ import org.mockito.kotlin.whenever
 private const val OLD_FILE_CONTENT = "old" // For this test, it doesn't matter if it's a valid Vector Drawable file
 private const val NEW_FILE_CONTENT = "new"
 
-private data class FakeDownloadWithContent(val url: String, val downloadPath: String, val destinationPath: String, val content: String)
+private data class FakeDownloadWithContent(
+  val url: String,
+  val downloadPath: String,
+  val destinationPath: String,
+  val content: String = NEW_FILE_CONTENT,
+  val bytes: ByteArray? = null,
+)
 
 class MaterialSymbolsUpdaterTest {
   @get:Rule val projectRule = AndroidProjectRule.withSdk()
@@ -117,7 +128,6 @@ class MaterialSymbolsUpdaterTest {
         val downloadFolder = downloadInvocation.arguments[0] as File
         val results = descriptions.map { desc ->
           val matchingDownload = downloads.find { it.url == desc.downloadUrl }
-          val content = matchingDownload?.content ?: NEW_FILE_CONTENT
           val fileName = matchingDownload?.downloadPath ?: desc.defaultFileName
           val downloadedFile =
             downloadFolder
@@ -125,7 +135,12 @@ class MaterialSymbolsUpdaterTest {
               .resolve(fileName)
               .apply {
                 parent.createDirectories()
-                writeText(content)
+                if (matchingDownload?.bytes != null) {
+                  writeBytes(matchingDownload.bytes)
+                } else {
+                  val content = matchingDownload?.content ?: NEW_FILE_CONTENT
+                  writeText(content)
+                }
               }
               .toFile()
           Pair<File, DownloadableFileDescription>(downloadedFile, desc)
@@ -145,71 +160,55 @@ class MaterialSymbolsUpdaterTest {
   @Test
   fun updateFontFile() {
     val testStyle = Symbols.OUTLINED
+    val fontFile = createOldFontFile(testStyle)
+    val fontBytes = validFontBytes()
+    mockFontDownload(testStyle, fontBytes)
 
-    val cssUrl = "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-25..200"
-    val fontUrl =
-      "https://fonts.gstatic.com/s/materialsymbolsoutlined/v344/kJF1BvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oDMzByHX9rA6RzaxHMPdY43zj-jCxv3fzvRNU22ZXGJpEpjC_1v-p_4MrImHCIJIZrDCvHOem.ttf"
-    val cssContent =
-      """
-      @font-face {
-        font-family: 'Material Symbols Outlined';
-        font-style: normal;
-        font-weight: 400;
-        src: url($fontUrl) format('truetype');
-      }
-
-      .material-symbols-outlined {
-        font-family: 'Material Symbols Outlined';
-        font-weight: normal;
-        font-style: normal;
-        font-size: 24px;
-        line-height: 1;
-        letter-spacing: normal;
-        text-transform: none;
-        display: inline-block;
-        white-space: nowrap;
-        word-wrap: normal;
-        direction: ltr;
-      }
-      """
-        .trimIndent()
-
-    val urlProvider = SymbolsSdkUrlProvider()
-    val fontFile = urlProvider.getLocalFontFile(testStyle)!!
-    fontFile.parentFile.mkdirs()
-    fontFile.writeText(OLD_FILE_CONTENT)
-
-    val downloadPathDir = "variablefont/${testStyle.localName}"
-
-    mockDownloadServiceWithContent(
-      listOf(
-        FakeDownloadWithContent(
-          url = cssUrl,
-          downloadPath = "temp_font_css.css.tmp",
-          destinationPath = "${downloadPathDir}/temp_font_css.css.tmp",
-          content = cssContent,
-        ),
-        FakeDownloadWithContent(
-          url = fontUrl,
-          downloadPath = testStyle.remoteFileName,
-          destinationPath = "${downloadPathDir}/${testStyle.remoteFileName}",
-          content = NEW_FILE_CONTENT,
-        ),
-      )
-    )
-
-    assertEquals(OLD_FILE_CONTENT, fontFile.readText())
-
-    MaterialSymbolsUpdater.downloadFontFiles(testStyle, urlProvider)
+    MaterialSymbolsUpdater.downloadFontFiles(testStyle, SymbolsSdkUrlProvider())
 
     assertThat(fontFile).exists()
-    assertEquals(NEW_FILE_CONTENT, fontFile.readText())
+    assertContentEquals(FontSanitizer.sanitize(fontBytes), fontFile.readBytes())
+  }
+
+  @Test
+  fun updateFontFileWithInvalidFontKeepsExistingFont() {
+    val testStyle = Symbols.OUTLINED
+    val fontFile = createOldFontFile(testStyle)
+    mockFontDownload(testStyle, "corrupt font data".toByteArray(Charsets.UTF_8))
+
+    MaterialSymbolsUpdater.downloadFontFiles(testStyle, SymbolsSdkUrlProvider())
+
+    assertEquals(OLD_FILE_CONTENT, fontFile.readText())
+    // Neither the rejected download nor temporary files from sanitization are left behind
+    assertThat(File(fontFile.parentFile, testStyle.remoteFileName)).doesNotExist()
+    assertEquals(emptyList(), fontFile.parentFile.list()!!.filter { it.startsWith("${fontFile.name}.") })
   }
 
   @Test
   fun downloadFontFile() {
     val testStyle = Symbols.OUTLINED
+    val fontFile = createOldFontFile(testStyle)
+    fontFile.delete()
+    val fontBytes = validFontBytes()
+    mockFontDownload(testStyle, fontBytes)
 
+    MaterialSymbolsUpdater.downloadFontFiles(testStyle, SymbolsSdkUrlProvider())
+
+    assertThat(fontFile).exists()
+    assertContentEquals(FontSanitizer.sanitize(fontBytes), fontFile.readBytes())
+  }
+
+  private fun createOldFontFile(testStyle: Symbols): File {
+    val fontFile = SymbolsSdkUrlProvider().getLocalFontFile(testStyle)!!
+    fontFile.parentFile.mkdirs()
+    fontFile.writeText(OLD_FILE_CONTENT)
+    return fontFile
+  }
+
+  private fun validFontBytes(): ByteArray =
+    TestUtils.resolveWorkspacePath("tools/adt/idea/android/testData/fonts/Roboto-Black.ttf").readBytes()
+
+  private fun mockFontDownload(testStyle: Symbols, fontBytes: ByteArray) {
     val cssUrl = "https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-25..200"
     val fontUrl =
       "https://fonts.gstatic.com/s/materialsymbolsoutlined/v344/kJF1BvYX7BgnkSrUwT8OhrdQw4oELdPIeeII9v6oDMzByHX9rA6RzaxHMPdY43zj-jCxv3fzvRNU22ZXGJpEpjC_1v-p_4MrImHCIJIZrDCvHOem.ttf"
@@ -237,12 +236,6 @@ class MaterialSymbolsUpdaterTest {
       }
       """
         .trimIndent()
-
-    val urlProvider = SymbolsSdkUrlProvider()
-    val fontFile = urlProvider.getLocalFontFile(testStyle)!!
-    fontFile.parentFile.mkdirs()
-    fontFile.writeText(OLD_FILE_CONTENT)
-
     val downloadPathDir = "variablefont/${testStyle.localName}"
 
     mockDownloadServiceWithContent(
@@ -257,18 +250,10 @@ class MaterialSymbolsUpdaterTest {
           url = fontUrl,
           downloadPath = testStyle.remoteFileName,
           destinationPath = "${downloadPathDir}/${testStyle.remoteFileName}",
-          content = NEW_FILE_CONTENT,
+          bytes = fontBytes,
         ),
       )
     )
-
-    assertEquals(OLD_FILE_CONTENT, fontFile.readText())
-    fontFile.delete()
-
-    MaterialSymbolsUpdater.downloadFontFiles(testStyle, urlProvider)
-
-    assertThat(fontFile).exists()
-    assertEquals(NEW_FILE_CONTENT, fontFile.readText())
   }
 
   private fun testUrlProvider(): MaterialSymbolsUrlProvider =
@@ -438,17 +423,14 @@ class MaterialSymbolsUpdaterTest {
         mockDownloadableFileService,
         projectRule.fixture.testRootDisposable,
       )
-    val descriptor =
-      DownloadableFileDescriptionImpl(symbolConfiguration.toUrlString(symbolName), "escaped", "tmp")
-    whenever(mockDownloadableFileService.createFileDescription(Mockito.anyString(), Mockito.anyString()))
-      .thenReturn(descriptor)
+    val descriptor = DownloadableFileDescriptionImpl(symbolConfiguration.toUrlString(symbolName), "escaped", "tmp")
+    whenever(mockDownloadableFileService.createFileDescription(Mockito.anyString(), Mockito.anyString())).thenReturn(descriptor)
     val mockDownloader = Mockito.mock(FileDownloader::class.java)
     whenever(mockDownloader.download(Mockito.any())).thenAnswer {
       escapedTempFile.writeText(NEW_FILE_CONTENT)
       listOf(Pair<File, DownloadableFileDescription>(escapedTempFile.toFile(), descriptor))
     }
-    whenever(mockDownloadableFileService.createDownloader(Mockito.any(), Mockito.eq("PickedMaterialSymbol")))
-      .thenReturn(mockDownloader)
+    whenever(mockDownloadableFileService.createDownloader(Mockito.any(), Mockito.eq("PickedMaterialSymbol"))).thenReturn(mockDownloader)
 
     MaterialSymbolsUpdater.downloadVdIcon(symbolConfiguration, symbolName, testUrlProvider())
 
