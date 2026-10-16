@@ -297,6 +297,8 @@
                 icon="com.android.tools.idea.streaming.StagingIcons.BATTERY" text="Battery" description="Open battery settings"/>
         <action id="android.emulator.phone" class="com.android.tools.idea.streaming.emulator.actions.EmulatorPhoneAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.PHONE" text="Phone" description="Open phone controls"/>
+        <action id="android.emulator.fingerprint" class="com.android.tools.idea.streaming.emulator.actions.EmulatorFingerprintAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.FINGERPRINT" text="Fingerprint" description="Open fingerprint controls"/>
       </group>
     </group>
 

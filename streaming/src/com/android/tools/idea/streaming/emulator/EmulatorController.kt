@@ -35,6 +35,7 @@ import com.android.emulator.control.EmulatorControllerGrpc
 import com.android.emulator.control.EmulatorStatus
 import com.android.emulator.control.Environment
 import com.android.emulator.control.ExtendedControlsStatus
+import com.android.emulator.control.Fingerprint
 import com.android.emulator.control.Image
 import com.android.emulator.control.ImageFormat
 import com.android.emulator.control.InputEvent
@@ -850,6 +851,24 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     val observer = SuspendingStreamObserver<BatteryState>()
     getBattery(observer)
     return observer.getResult()
+  }
+
+  /** Sends a fingerprint touch event to the emulator. */
+  private fun sendFingerprint(fingerprint: Fingerprint, streamObserver: StreamObserver<Empty>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("sendFingerprint(${shortDebugString(fingerprint)})")
+    }
+    emulatorControllerStub.sendFingerprint(
+      fingerprint,
+      DelegatingStreamObserver(streamObserver, EmulatorControllerGrpc.getSendFingerprintMethod()),
+    )
+  }
+
+  /** Sends a fingerprint touch event to the emulator. */
+  suspend fun sendFingerprint(fingerprint: Fingerprint) {
+    val observer = SuspendingStreamObserver<Empty>()
+    sendFingerprint(fingerprint, observer)
+    observer.getResult()
   }
 
   /**

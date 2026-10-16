@@ -999,6 +999,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Fingerprint",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Fold/Unfold",
       "path": "ActionManager"
     },
@@ -1312,6 +1316,10 @@
     },
     {
       "hit": "Open cellular settings",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open fingerprint controls",
       "path": "ActionManager"
     },
     {

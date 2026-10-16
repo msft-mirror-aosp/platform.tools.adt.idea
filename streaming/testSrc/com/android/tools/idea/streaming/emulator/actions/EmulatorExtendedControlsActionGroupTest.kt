@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.streaming.emulator.actions
 
+import com.android.sdklib.AndroidVersion
 import com.android.tools.adtui.actions.executeAction
 import com.android.tools.adtui.actions.updateAndGetActionPresentation
 import com.android.tools.adtui.swing.HeadlessDialogRule
@@ -62,6 +63,7 @@ class EmulatorExtendedControlsActionGroupTest {
     val cellularActionId = "android.emulator.cellular"
     val batteryActionId = "android.emulator.battery"
     val phoneActionId = "android.emulator.phone"
+    val fingerprintActionId = "android.emulator.fingerprint"
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
     val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -84,6 +86,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(phoneDisabled.isVisible).isFalse()
     assertThat(phoneDisabled.isEnabled).isFalse()
 
+    val fingerprintDisabled = updateAndGetActionPresentation(fingerprintActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(fingerprintDisabled.isVisible).isFalse()
+    assertThat(fingerprintDisabled.isEnabled).isFalse()
+
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
     val presentationEnabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(presentationEnabled.isVisible).isTrue()
@@ -105,10 +111,20 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(phoneEnabled.isVisible).isTrue()
     assertThat(phoneEnabled.isEnabled).isTrue()
 
+    val fingerprintEnabled = updateAndGetActionPresentation(fingerprintActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(fingerprintEnabled.isVisible).isTrue()
+    assertThat(fingerprintEnabled.isEnabled).isTrue()
+
     val automotiveView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createAutomotiveAvd(path) })
     val batteryAutomotive = updateAndGetActionPresentation(batteryActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(batteryAutomotive.isVisible).isFalse()
     assertThat(batteryAutomotive.isEnabled).isFalse()
+
+    val api22View =
+      emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createPhoneAvd(path, androidVersion = AndroidVersion(22, 0)) })
+    val fingerprintApi22 = updateAndGetActionPresentation(fingerprintActionId, api22View, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(fingerprintApi22.isVisible).isFalse()
+    assertThat(fingerprintApi22.isEnabled).isFalse()
   }
 
   @Test
@@ -122,7 +138,7 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(4)
+    assertThat(children).hasLength(5)
     val displaysAction = children[0]
     assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
     assertThat(displaysAction.templatePresentation.icon).isEqualTo(StagingIcons.DISPLAYS)
@@ -138,6 +154,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val phoneAction = children[3]
     assertThat(phoneAction.templatePresentation.text).isEqualTo("Phone")
     assertThat(phoneAction.templatePresentation.icon).isEqualTo(StagingIcons.PHONE)
+
+    val fingerprintAction = children[4]
+    assertThat(fingerprintAction.templatePresentation.text).isEqualTo("Fingerprint")
+    assertThat(fingerprintAction.templatePresentation.icon).isEqualTo(StagingIcons.FINGERPRINT)
 
     executeAction(displaysAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
     val displaysDlg = findModelessDialog<DialogWrapper>()!!
@@ -167,14 +187,20 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(phoneDlg.title).isEqualTo("Phone ($avdName)")
     assertThat(modelessDialogs).containsExactly(phoneDlg)
 
+    executeAction(fingerprintAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    assertThat(phoneDlg.isShowing).isFalse()
+    val fingerprintDlg = findModelessDialog<DialogWrapper>()!!
+    assertThat(fingerprintDlg.title).isEqualTo("Fingerprint ($avdName)")
+    assertThat(modelessDialogs).containsExactly(fingerprintDlg)
+
     // A second AVD can have its own extended controls dialog open concurrently.
     val view2 = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createAutomotiveAvd(path) })
     val avdName2 = view2.emulator.emulatorId.avdName
     executeAction(cellularAction, view2, emulatorViewRule.project, ActionPlaces.POPUP)
     val cellularDlg2 = findModelessDialog<DialogWrapper> { it.title == "Cellular ($avdName2)" }!!
-    assertThat(modelessDialogs).containsExactly(phoneDlg, cellularDlg2)
+    assertThat(modelessDialogs).containsExactly(fingerprintDlg, cellularDlg2)
 
-    phoneDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
+    fingerprintDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
     cellularDlg2.close(DialogWrapper.CLOSE_EXIT_CODE)
     assertThat(modelessDialogs).isEmpty()
   }

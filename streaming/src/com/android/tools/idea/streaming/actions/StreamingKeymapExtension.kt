@@ -37,6 +37,7 @@ private const val DISPLAYS_ACTION_ID = "android.emulator.displays"
 private const val CELLULAR_ACTION_ID = "android.emulator.cellular"
 private const val BATTERY_ACTION_ID = "android.emulator.battery"
 private const val PHONE_ACTION_ID = "android.emulator.phone"
+private const val FINGERPRINT_ACTION_ID = "android.emulator.fingerprint"
 
 /** Adds the Settings -> Keymap > Running Devices section. */
 internal class StreamingKeymapExtension : KeymapExtension {
@@ -57,7 +58,8 @@ internal class StreamingKeymapExtension : KeymapExtension {
           id == DISPLAYS_ACTION_ID ||
           id == CELLULAR_ACTION_ID ||
           id == BATTERY_ACTION_ID ||
-          id == PHONE_ACTION_ID
+          id == PHONE_ACTION_ID ||
+          id == FINGERPRINT_ACTION_ID
       ) {
         continue
       }

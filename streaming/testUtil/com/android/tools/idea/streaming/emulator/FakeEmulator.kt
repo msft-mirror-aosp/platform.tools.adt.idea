@@ -200,6 +200,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile var cellInfo: CellInfo = CellInfo.getDefaultInstance()
   @Volatile var activeCalls: List<Call> = emptyList()
   @Volatile var receivedSms: List<ModemSmsMessage> = emptyList()
+  @Volatile var fingerprint: Fingerprint = Fingerprint.getDefaultInstance()
 
   @Volatile
   var devicePosture: PostureValue? = config.postures.lastOrNull()?.posture
@@ -807,7 +808,10 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     }
 
     override fun sendFingerprint(request: Fingerprint, responseObserver: StreamObserver<Empty>) {
-      executor.execute { sendEmptyResponse(responseObserver) }
+      executor.execute {
+        fingerprint = request
+        sendEmptyResponse(responseObserver)
+      }
     }
 
     override fun setClipboard(request: ClipData, responseObserver: StreamObserver<Empty>) {
