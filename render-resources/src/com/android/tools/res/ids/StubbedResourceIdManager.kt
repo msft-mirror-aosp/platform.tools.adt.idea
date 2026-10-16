@@ -23,6 +23,6 @@ package com.android.tools.res.ids
  */
 open class StubbedResourceIdManager
 internal constructor(useRBytecodeParsing: Boolean, frameworkResourceIdsProvider: FrameworkResourceIdsProvider) :
-  ResourceIdManagerBase(ResourceIdManagerModelModule.noNamespacingApp(useRBytecodeParsing), false, frameworkResourceIdsProvider) {
+  ResourceIdManagerBase(ResourceIdManagerModelModule.appModule(useRBytecodeParsing), false, frameworkResourceIdsProvider) {
   constructor(useRBytecodeParsing: Boolean) : this(useRBytecodeParsing, FrameworkResourceIdsProvider.getInstance())
 }

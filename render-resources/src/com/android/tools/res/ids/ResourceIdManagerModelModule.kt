@@ -28,7 +28,7 @@ interface ResourceIdManagerModelModule {
   companion object {
     @JvmOverloads
     @JvmStatic
-    fun noNamespacingApp(useRBytecodeParsing: Boolean = true): ResourceIdManagerModelModule =
+    fun appModule(useRBytecodeParsing: Boolean = true): ResourceIdManagerModelModule =
       object : ResourceIdManagerModelModule {
         override val isAppOrFeature: Boolean = true
         override val useRBytecodeParsing: Boolean = useRBytecodeParsing

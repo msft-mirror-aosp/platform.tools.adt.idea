@@ -44,7 +44,7 @@ class ResourceClassRegistryTest {
 
   private val registry = ResourceClassRegistry(1.days) // Not testing the TimeoutCachedValue
   private val disposable = Disposer.newDisposable()
-  private val idManager by lazy { ResourceIdManagerBase(ResourceIdManagerModelModule.noNamespacingApp()) }
+  private val idManager by lazy { ResourceIdManagerBase(ResourceIdManagerModelModule.appModule()) }
   private val repository: ResourceRepository = mock()
   private val disposableRepository: ResourceRepository = mock(extraInterfaces = arrayOf(Disposable::class))
   private val manager: ResourceRepositoryManager = mock {
