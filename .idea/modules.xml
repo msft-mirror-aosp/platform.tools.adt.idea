@@ -292,6 +292,8 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/base/asfp.base.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/base/asfp.base.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/cxx/asfp.cxx.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/cxx/asfp.cxx.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/cxx/asfp.cxx.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/cxx/asfp.cxx.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/soong-model/asfp.soong-model.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/soong-model/asfp.soong-model.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/soong-model/asfp.soong-model.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/soong-model/asfp.soong-model.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/external/core/asfp.external.core.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/external/core/asfp.external.core.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/external/core/asfp.external.core.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/external/core/asfp.external.core.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/asfp/external/gemini/asfp.external.gemini.iml" filepath="$PROJECT_DIR$/../../vendor/google/asfp/external/gemini/asfp.external.gemini.iml" />
