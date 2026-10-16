@@ -6,7 +6,7 @@
  * You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ *aalbert
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,35 +15,36 @@
  */
 package com.android.tools.idea.debug.childrenrenderer
 
-import com.android.tools.idea.flags.StudioFlags
 import com.intellij.debugger.engine.evaluation.EvaluationContext
-import com.intellij.debugger.ui.impl.watch.ValueDescriptorImpl
-import com.intellij.debugger.ui.tree.DebuggerTreeNode
-import com.intellij.debugger.ui.tree.NodeDescriptorFactory
-import com.intellij.debugger.ui.tree.NodeManager
+import com.intellij.debugger.ui.tree.render.ChildrenBuilder
 import com.intellij.debugger.ui.tree.render.ClassRenderer
 import com.sun.jdi.Field
+import com.sun.jdi.Method
 import com.sun.jdi.ObjectReference
-import java.util.concurrent.CompletableFuture
 import org.jetbrains.kotlin.idea.debugger.KotlinClassRenderer
+import org.jetbrains.kotlin.idea.debugger.core.render.GetterDescriptor
 
-/**
- * A [ClassRenderer] that sorts fields based on declaration order
- *
- * TODO: Support sorting getters (blocked on https://github.com/JetBrains/intellij-community/pull/3679)
- */
+/** A [ClassRenderer] that sorts fields based on declaration order */
 internal class AndroidKotlinClassRenderer : KotlinClassRenderer() {
 
-  override fun createNodesToShow(
-    fields: List<Field>,
+  override fun buildChildren(
+    value: ObjectReference,
+    builder: ChildrenBuilder,
     evaluationContext: EvaluationContext,
-    parentDescriptor: ValueDescriptorImpl,
-    nodeManager: NodeManager,
-    nodeDescriptorFactory: NodeDescriptorFactory,
-    objRef: ObjectReference,
-  ): CompletableFuture<List<DebuggerTreeNode>> {
-    StudioFlags.SORT_OBJECT_PROPERTIES.override(true)
-    val fields = AndroidPropertySorter(evaluationContext.project).sortFields(fields)
-    return super.createNodesToShow(fields, evaluationContext, parentDescriptor, nodeManager, nodeDescriptorFactory, objRef)
+    fields: List<Field>,
+    getters: List<Method>,
+  ) {
+    val project = evaluationContext.project
+    val fieldNames = fields.mapTo(HashSet()) { it.name() }
+    val sorter = AndroidPropertySorter(project)
+    val fields = sorter.sortFields(fields)
+
+    val (withField, withoutField) =
+      getters.partition {
+        GetterDescriptor(value, it, project).name in fieldNames
+      }
+
+    val getters = withField + sorter.sortGetters(withoutField)
+    super.buildChildren(value, builder, evaluationContext, fields, getters)
   }
 }

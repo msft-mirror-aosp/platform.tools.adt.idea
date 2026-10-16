@@ -36,8 +36,6 @@ _tests = [
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInInlineFunction",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testFrameObject",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testIdea352803",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testSourcePositionForGetter",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testSourcePositionForGetterWithDiamondInterfaces",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testLambdaOnSecondLine",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testOneLineFunctionalExpression",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testOneLineLambda",
@@ -158,8 +156,6 @@ ART_K2_FAILING = ["include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test
 
 _tests_with_order_related_failure = [
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInInlineFunction",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testSourcePositionForGetter",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testSourcePositionForGetterWithDiamondInterfaces",
     "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesInSuspendContexts",
 ]
 TESTS_WITH_ORDER_RELATED_FAILURE = ["include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test.cases." + test.replace("$", "\\$").replace(".", "#") for test in _tests_with_order_related_failure]
