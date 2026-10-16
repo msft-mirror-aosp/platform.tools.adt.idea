@@ -23,10 +23,6 @@ iml_module(
     name = "intellij.android.core",
     srcs = ["src"],
     iml_files = ["intellij.android.core.iml"],
-    javacopts_from_jps = [
-        "--add-exports",
-        "jdk.attach/sun.tools.attach=ALL-UNNAMED",
-    ],
     lint_baseline = "lint_baseline.xml",
     lint_timeout = "long",
     resources = ["resources"],

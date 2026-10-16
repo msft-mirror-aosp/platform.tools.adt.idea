@@ -120,14 +120,10 @@ import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.messages.MessageBusConnection;
-import com.sun.tools.attach.AttachNotSupportedException;
-import com.sun.tools.attach.VirtualMachine;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -163,7 +159,6 @@ import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.PropertyKey;
-import sun.tools.attach.HotSpotVirtualMachine;
 
 /**
  * Extension to System Health Monitor that includes Android Studio-specific code.
@@ -392,46 +387,27 @@ public final class AndroidStudioSystemHealthMonitor {
     return Paths.get(PathManager.getLogPath(), dirName);
   }
 
-  private static long getMyPID() {
-    String pidAndMachineName = ManagementFactory.getRuntimeMXBean().getName();
-    String[] split = pidAndMachineName.split("@");
-    long pid = -1;
-    if (split.length == 2) {
-      try {
-        pid = Long.parseLong(split[0]);
-      } catch (NumberFormatException ignore) {
-      }
-    }
-    return pid;
-  }
-
   private static String getHistogram() throws UnsupportedOperationException {
-    StringBuilder sb = new StringBuilder();
-    VirtualMachine vm;
+    String fullHistogram;
     try {
-      vm = VirtualMachine.attach(Long.toString(getMyPID()));
-      if (!(vm instanceof HotSpotVirtualMachine)) {
-        throw new UnsupportedOperationException();
-      }
-      HotSpotVirtualMachine hotSpotVM = (HotSpotVirtualMachine) vm;
-      char[] chars = new char[1024];
-      try (BufferedReader reader = new BufferedReader(new InputStreamReader(hotSpotVM.heapHisto("-live"), Charsets.UTF_8))) {
-        int read;
-        while ((read = reader.read(chars)) != -1) {
-          sb.append(chars, 0, read);
-        }
-      }
-    } catch (AttachNotSupportedException | IOException e) {
+      MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
+      ObjectName diagnostics = new ObjectName("com.sun.management:type=DiagnosticCommand");
+      fullHistogram =
+        (String) mBeanServer.invoke(
+          diagnostics,
+          "gcClassHistogram",
+          new Object[]{new String[0]},
+          new String[]{"[Ljava.lang.String;"});
+    } catch (Exception e) {
       throw new UnsupportedOperationException(e);
     }
-    String fullHistogram = sb.toString();
     String[] lines = fullHistogram.split("\r?\n");
     final int TOP_LINES = 103;
     final int BOTTOM_LINES = 1;
     if (lines.length <= TOP_LINES + BOTTOM_LINES) {
-      return sb.toString();
+      return fullHistogram;
     }
-    sb.setLength(0);
+    StringBuilder sb = new StringBuilder();
     for (int i = 0; i < TOP_LINES; i++) {
       sb.append(lines[i]).append("\n");
     }
