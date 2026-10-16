@@ -23,7 +23,7 @@ import com.android.tools.idea.testing.loadNewFile
 import com.android.tools.idea.testing.moveCaret
 import com.android.tools.idea.ui.resourcemanager.rendering.MultipleColorIcon
 import com.google.common.truth.Truth.assertThat
-import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerImpl
+import com.intellij.codeInsight.daemon.impl.LineMarkersPass
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.testFramework.EdtRule
@@ -526,7 +526,7 @@ class ComposeColorLineMarkerProviderDescriptorTest {
 
     myFixture.doHighlighting()
     val highlightInfo = runReadAction {
-      DaemonCodeAnalyzerImpl.getLineMarkers(myFixture.editor.document, myFixture.project).single { lineMarkerInfo ->
+      LineMarkersPass.getDisplayedLineMarkers(myFixture.editor.document, myFixture.project).single { lineMarkerInfo ->
         lineMarkerInfo.navigationHandler is ColorIconRenderer && lineMarkerInfo.element == element
       }
     }
@@ -541,7 +541,7 @@ class ComposeColorLineMarkerProviderDescriptorTest {
   private fun checkGutterIconInfos(expectedColorIcons: List<Color>) {
     myFixture.doHighlighting()
     val highlightInfos = runReadAction {
-      DaemonCodeAnalyzerImpl.getLineMarkers(myFixture.editor.document, myFixture.project)
+      LineMarkersPass.getDisplayedLineMarkers(myFixture.editor.document, myFixture.project)
         .filter { lineMarkerInfo -> lineMarkerInfo.navigationHandler is ColorIconRenderer }
         .sortedBy { it.startOffset }
     }

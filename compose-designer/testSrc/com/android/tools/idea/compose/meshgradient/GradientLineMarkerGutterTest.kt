@@ -20,7 +20,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.intellij.codeInsight.daemon.LineMarkerInfo
-import com.intellij.codeInsight.daemon.impl.DaemonCodeAnalyzerImpl
+import com.intellij.codeInsight.daemon.impl.LineMarkersPass
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.testFramework.DumbModeTestUtils
@@ -180,7 +180,7 @@ class GradientLineMarkerGutterTest {
     fixture.configureByText("Test.kt", code)
     fixture.doHighlighting()
 
-    val infos = DaemonCodeAnalyzerImpl.getLineMarkers(fixture.editor.document, projectRule.project).filter { it.isGradientMarker() }
+    val infos = LineMarkersPass.getDisplayedLineMarkers(fixture.editor.document, projectRule.project).filter { it.isGradientMarker() }
 
     assertEquals(
       listOf("linearGradient", "radialGradient", "sweepGradient").map { code.indexOf(it) },
@@ -360,7 +360,7 @@ class GradientLineMarkerGutterTest {
   private fun gradientMarkers(code: String): List<Marker> {
     fixture.configureByText("Test.kt", code.trimIndent())
     fixture.doHighlighting()
-    return DaemonCodeAnalyzerImpl.getLineMarkers(fixture.editor.document, projectRule.project).filter { it.isGradientMarker() }.toMarkers()
+    return LineMarkersPass.getDisplayedLineMarkers(fixture.editor.document, projectRule.project).filter { it.isGradientMarker() }.toMarkers()
   }
 
   private fun LineMarkerInfo<*>.isGradientMarker(): Boolean = this is GradientLineMarkerInfo
