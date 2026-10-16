@@ -19,4 +19,5 @@
   <MultipleInstancesAllowed value="false"/>
   <Category value="some category" />
   <AvailableInRetail value="true" />
+  <FlavorsSupported value="true" />
 </WatchFaceInfo>
