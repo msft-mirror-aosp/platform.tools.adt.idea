@@ -16,8 +16,12 @@
 package com.android.tools.idea.progress
 
 import com.android.annotations.concurrency.AnyThread
+import com.android.repository.api.Downloader
 import com.android.repository.api.NullProgressIndicator
 import com.android.repository.api.ProgressRunner
+import com.android.repository.api.RepoManager
+import com.android.repository.api.RepoManager.RepoLoadedListener
+import com.android.repository.api.SettingsController
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.Service
@@ -84,4 +88,31 @@ class StudioProgressRunnerService(val coroutineScope: CoroutineScope) {
   companion object {
     fun getInstance(): StudioProgressRunnerService = service<StudioProgressRunnerService>()
   }
+}
+
+/**
+ * Loads packages using this progress runner. This allows [RepoManager.loadSynchronously] to be called from @AnyThread, since the
+ * [StudioProgressRunner] will switch threads and show a progress indicator dialog if needed.
+ */
+@AnyThread
+fun StudioProgressRunner.loadPackages(
+  repoManager: RepoManager,
+  cacheExpirationMs: Long,
+  onLocalComplete: RepoLoadedListener? = null,
+  onSuccess: RepoLoadedListener? = null,
+  onError: Runnable? = null,
+  downloader: Downloader? = null,
+  settings: SettingsController? = null,
+) {
+  // Because we're using StudioProgressRunner, it's OK to invoke this @Slow method in any context.
+  @Suppress("WrongThread")
+  repoManager.loadSynchronously(
+    runner = this,
+    cacheExpirationMs = cacheExpirationMs,
+    onLocalComplete = onLocalComplete,
+    onSuccess = onSuccess,
+    onError = onError,
+    downloader = downloader,
+    settings = settings,
+  )
 }
