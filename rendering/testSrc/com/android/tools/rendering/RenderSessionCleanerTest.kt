@@ -15,6 +15,7 @@
  */
 package com.android.tools.rendering
 
+import com.android.SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER
 import com.android.ide.common.rendering.api.RenderSession
 import com.android.tools.rendering.classloading.ClassTransform
 import com.android.tools.rendering.classloading.ModuleClassLoader
@@ -23,6 +24,7 @@ import com.android.tools.rendering.classloading.NopModuleClassLoadedDiagnostics
 import com.android.tools.rendering.classloading.loadClassBytes
 import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
 import com.android.tools.rendering.classloading.loaders.StaticLoader
+import com.google.common.truth.Truth.assertThat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -346,6 +348,106 @@ class RenderSessionCleanerTest {
     @Suppress("UNCHECKED_CAST") val updatedLastValue = lastValueField.get(listenerGroupInstance) as List<Any>
     assertEquals(listOf<Any>(activeView), updatedLastValue)
     assertEquals(listOf<Any>(activeView), staleLastValueList)
+  }
+
+  /**
+   * Regression test for b/405654908: Verify that disposing a session when AndroidUiDispatcher is
+   * loaded but AndroidUiDispatcher.Main has not been initialized does not trigger the lazy
+   * delegate initializer off the UI thread (which would cause a deadlock).
+   */
+  @Test
+  fun testDisposeSkipsUninitializedAndroidUiDispatcherMain() {
+    val uiDispatcherFqn = "androidx.compose.ui.platform.AndroidUiDispatcher"
+    val uiDispatcherCompanionFqn = "androidx.compose.ui.platform.AndroidUiDispatcher" + '$' + "Companion"
+    val combinedContextFqn = "_layoutlib_._internal_.kotlin.coroutines.CombinedContext"
+
+    val definedClasses =
+      createTestDefinedClasses(
+        mapOf(
+          CLASS_COMPOSE_VIEW_ADAPTER to FakeComposeViewAdapter::class.java,
+          uiDispatcherFqn to FakeAndroidUiDispatcher::class.java,
+          uiDispatcherCompanionFqn to FakeAndroidUiDispatcher.Companion::class.java,
+          combinedContextFqn to FakeCombinedContext::class.java,
+        )
+      )
+
+    val moduleClassLoader = TestModuleClassLoader(FakeAndroidUiDispatcher::class.java.classLoader, definedClasses)
+    val uiDispatcherClass = moduleClassLoader.loadClass(uiDispatcherFqn)
+    moduleClassLoader.loadClass(uiDispatcherCompanionFqn)
+
+    val dummySession = object : RenderSession() {}
+    dummySession.dispose(moduleClassLoader).get()
+
+    val mainInitializerCalledField = uiDispatcherClass.getDeclaredField("mainInitializerCalled").apply { isAccessible = true }
+    assertThat(mainInitializerCalledField.getBoolean(null)).isFalse()
+  }
+
+  /**
+   * Verify that when AndroidUiDispatcher.Main has already been initialized prior to disposal,
+   * findToRunTrampolined retrieves the toRunTrampolined collection and clears it during disposal.
+   */
+  @Test
+  fun testDisposeClearsToRunTrampolinedWhenAndroidUiDispatcherMainInitialized() {
+    val uiDispatcherFqn = "androidx.compose.ui.platform.AndroidUiDispatcher"
+    val uiDispatcherCompanionFqn = "androidx.compose.ui.platform.AndroidUiDispatcher" + '$' + "Companion"
+    val combinedContextFqn = "_layoutlib_._internal_.kotlin.coroutines.CombinedContext"
+
+    val definedClasses =
+      createTestDefinedClasses(
+        mapOf(
+          CLASS_COMPOSE_VIEW_ADAPTER to FakeComposeViewAdapter::class.java,
+          uiDispatcherFqn to FakeAndroidUiDispatcher::class.java,
+          uiDispatcherCompanionFqn to FakeAndroidUiDispatcher.Companion::class.java,
+          combinedContextFqn to FakeCombinedContext::class.java,
+        )
+      )
+
+    val moduleClassLoader = TestModuleClassLoader(FakeAndroidUiDispatcher::class.java.classLoader, definedClasses)
+    val uiDispatcherClass = moduleClassLoader.loadClass(uiDispatcherFqn)
+    val uiDispatcherCompanionClass = moduleClassLoader.loadClass(uiDispatcherCompanionFqn)
+    val combinedContextClass = moduleClassLoader.loadClass(combinedContextFqn)
+
+    // Initialize AndroidUiDispatcher.Main prior to disposal
+    val companionInstance = uiDispatcherClass.getDeclaredField("Companion").get(null)
+    val mainObj = uiDispatcherCompanionClass.getDeclaredMethod("getMain").apply { isAccessible = true }.invoke(companionInstance)
+    val uiDispatcherInstance = combinedContextClass.getDeclaredField("element").apply { isAccessible = true }.get(mainObj)
+    @Suppress("UNCHECKED_CAST")
+    val toRunTrampolined =
+      uiDispatcherClass.getDeclaredField("toRunTrampolined").apply { isAccessible = true }.get(uiDispatcherInstance) as List<*>
+    assertThat(toRunTrampolined).containsExactly("trampolinedTask")
+
+    val dummySession = object : RenderSession() {}
+    dummySession.dispose(moduleClassLoader).get()
+
+    assertThat(toRunTrampolined).isEmpty()
+  }
+}
+
+/** Stand-in for `androidx.compose.ui.tooling.ComposeViewAdapter` remapped into test [ModuleClassLoader]. */
+@Suppress("unused")
+class FakeComposeViewAdapter {
+  fun dispose() {}
+}
+
+/** Stand-in for `kotlin.coroutines.CombinedContext` holding the [FakeAndroidUiDispatcher] element. */
+@Suppress("unused")
+class FakeCombinedContext(@JvmField val element: Any)
+
+/**
+ * Stand-in for `androidx.compose.ui.platform.AndroidUiDispatcher` with a lazy `Companion.Main`
+ * property (`Main$delegate`) and `toRunTrampolined` collection.
+ */
+@Suppress("unused")
+class FakeAndroidUiDispatcher {
+  @JvmField val toRunTrampolined: MutableList<Any> = mutableListOf("trampolinedTask")
+
+  companion object {
+    @JvmField var mainInitializerCalled: Boolean = false
+
+    val Main: Any by lazy {
+      mainInitializerCalled = true
+      FakeCombinedContext(FakeAndroidUiDispatcher())
+    }
   }
 }
 

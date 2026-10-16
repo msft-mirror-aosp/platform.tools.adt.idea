@@ -167,6 +167,9 @@ private fun findToRunTrampolined(classLoader: ModuleClassLoader): MutableCollect
     }
     // This is very hacky, but it might allow us to avoid calling getMain when it has never been
     // called before.
+    // In older Compose versions, Main was a singleton initialized in Main$2. If INSTANCE is null,
+    // AndroidUiDispatcher.Main was never accessed; skip calling getMain to avoid initializing it
+    // on this background thread.
     val ANDROID_UI_DISPATCHER_COMPANION_VALUE_FQN = "$ANDROID_UI_DISPATCHER_COMPANION_FQN\$Main\$2"
     if (classLoader.hasLoadedClass(ANDROID_UI_DISPATCHER_COMPANION_VALUE_FQN)) {
       val uiDispatcherCompanionValue = classLoader.loadClass(ANDROID_UI_DISPATCHER_COMPANION_VALUE_FQN)
@@ -174,9 +177,23 @@ private fun findToRunTrampolined(classLoader: ModuleClassLoader): MutableCollect
         val instanceField = uiDispatcherCompanionValue.getField("INSTANCE")
         if (instanceField[null] == null) {
           LOG.warn("Unexpected: uninitialized AndroidUiDispatcher.Main")
+          return null
         }
       } catch (ignore: ReflectiveOperationException) {}
     }
+    // In Compose versions where AndroidUiDispatcher.Main is a lazy property (e.g. `val Main by lazy`),
+    // accessing getMain() triggers lazy initialization. If it has not been initialized yet on the UI
+    // thread, evaluating it here from the cleaner thread deadlocks in runBlocking(Dispatchers.Main).
+    // Inspect Main$delegate to ensure it is already initialized before invoking getMain().
+    try {
+      val mainDelegateField = uiDispatcher.getDeclaredField("Main\$delegate").apply { isAccessible = true }
+      val mainDelegate = mainDelegateField[null]
+      val isInitializedMethod = mainDelegate?.javaClass?.getMethod("isInitialized")?.apply { isAccessible = true }
+      if (mainDelegate == null || isInitializedMethod?.invoke(mainDelegate) == false) {
+        LOG.warn("Unexpected: uninitialized AndroidUiDispatcher.Main")
+        return null
+      }
+    } catch (ignore: ReflectiveOperationException) {}
     val uiDispatcherCompanion = classLoader.loadClass(ANDROID_UI_DISPATCHER_COMPANION_FQN)
     val uiDispatcherCompanionField = uiDispatcher.getDeclaredField("Companion")
     val uiDispatcherCompanionObj = uiDispatcherCompanionField[null]
