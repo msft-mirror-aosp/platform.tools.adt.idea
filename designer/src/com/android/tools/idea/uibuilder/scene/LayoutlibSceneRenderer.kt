@@ -229,9 +229,11 @@ class LayoutlibSceneRenderer(
           if (isActive.get()) {
             val doubleRender = sceneRenderConfiguration.doubleRender.getAndSet(false)
             val executeCallbacks = sceneRenderConfiguration.executeCallbacksAfterRender.getAndSet(false)
-            doRender(it, executeCallbacks)
+            // If double-rendering, defer disabling the layout scanner until after the second render pass
+            // finishes so that scanner validation runs against the final rendered state.
+            doRender(it, executeCallbacks, disableLayoutScannerAfterRender = !doubleRender)
             if (doubleRender) {
-              doRender(it, executeCallbacks)
+              doRender(it, executeCallbacks, disableLayoutScannerAfterRender = true)
             }
           } else {
             log.info("Render skipped due to deactivated LayoutlibSceneRenderer (model = $model)")
@@ -302,7 +304,11 @@ class LayoutlibSceneRenderer(
    * or when [renderTask] is null).
    */
   @RequiresBackgroundThread
-  private suspend fun doRender(request: RenderRequest, executeCallbacks: Boolean) {
+  private suspend fun doRender(
+    request: RenderRequest,
+    executeCallbacks: Boolean,
+    disableLayoutScannerAfterRender: Boolean = true,
+  ) {
     var result: RenderResult? = null
     val renderStartTimeMs = System.currentTimeMillis()
 
@@ -329,12 +335,14 @@ class LayoutlibSceneRenderer(
         result = it.render().await() // await is the suspendable version of join
         if (result?.renderResult?.isSuccess == true) {
           lastRenderQuality = quality
-          // After the first successful render of a render task, layout validation doesn't need to
-          // be executed again for this render task.
-          renderTask?.setEnableLayoutScanner(false)
-          // When the layout was inflated in this same call, we do not have to update the hierarchy
-          // again
-          if (inflateResult == null) updateHierarchy(result)
+          if (disableLayoutScannerAfterRender) {
+            // After the first successful render of a render task (or after the second pass if double-rendered),
+            // layout validation doesn't need to be executed again for this render task.
+            renderTask?.setEnableLayoutScanner(false)
+          }
+          // Always update the hierarchy on a successful render to ensure the scene components reflect
+          // the latest render result across both inflating and non-inflating passes.
+          updateHierarchy(result)
           // After a render, execute callbacks if indicated, to be ready for the next render.
           if (executeCallbacks) executeAllCallbacks()
         }

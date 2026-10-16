@@ -37,6 +37,7 @@ import com.android.tools.rendering.RenderService.RenderTaskBuilder
 import com.android.tools.rendering.RenderTask
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
+import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
@@ -71,6 +72,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 class LayoutlibSceneRendererTest {
@@ -423,6 +426,16 @@ class LayoutlibSceneRendererTest {
     assertTrue(resultWithViews.defaultProperties.isEmpty())
     assertTrue(resultWithViews.defaultStyles.isEmpty())
     assertNull(resultWithViews.validatorResult)
+  }
+
+  @Test
+  fun testDoubleRenderDisablesLayoutScannerOnlyAfterSecondRender(): Unit = runBlocking {
+    renderer.sceneRenderConfiguration.doubleRender.set(true)
+    renderer.requestRenderAndWait(trigger = null)
+
+    assertThat(taskInflateCount.get()).isEqualTo(1)
+    assertThat(taskRenderCount.get()).isEqualTo(2)
+    verify(renderTaskMock, times(1)).setEnableLayoutScanner(false)
   }
 
   private fun blockInflationAndRequestRender() = runBlocking {

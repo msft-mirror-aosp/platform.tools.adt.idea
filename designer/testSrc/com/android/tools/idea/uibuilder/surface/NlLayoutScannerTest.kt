@@ -22,8 +22,10 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneRenderConfiguration
 import com.android.tools.idea.validator.LayoutValidator
 import com.android.tools.idea.validator.ValidatorData
+import com.android.tools.idea.validator.ValidatorHierarchy
 import com.android.tools.idea.validator.ValidatorResult
 import com.android.tools.rendering.RenderResult
+import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.vfs.VirtualFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -249,5 +251,44 @@ class NlLayoutScannerTest {
     assertEquals(3, validatorResultReceived!!.issues.size)
     assertTrue("Issue from Validator Result must be filtered.", scanner.issues.isEmpty())
     assertTrue("Maps must be cleaned after the scan.", scanner.isParserCleaned())
+  }
+
+  @Test
+  fun validateSubsequentRenderWithoutValidatorHierarchyPreservesIssues() {
+    val scanner = createScanner()
+    val helper = ScannerTestHelper()
+    val componentSize = 3
+    val model = helper.buildModel(componentSize)
+    val initialRenderResult = helper.mockRenderResult(model)
+    Mockito.mock(VirtualFile::class.java).also { Mockito.`when`(model.virtualFile).thenReturn(it) }
+
+    scanner.updateLint(initialRenderResult.validatorResult as ValidatorResult, model)
+    assertThat(scanner.issues).hasSize(componentSize)
+
+    val scannerConfig = LayoutScannerEnabled()
+    val renderConfig =
+      Mockito.mock(LayoutlibSceneRenderConfiguration::class.java).also { Mockito.`when`(it.layoutScannerConfig).thenReturn(scannerConfig) }
+    val manager =
+      Mockito.mock(LayoutlibSceneManager::class.java).also {
+        Mockito.`when`(it.sceneRenderConfiguration).thenReturn(renderConfig)
+        Mockito.`when`(it.model).thenReturn(model)
+      }
+    // Simulate a subsequent non-inflating render where enableLayoutScanner was disabled after the first render.
+    val subsequentRenderResult = Mockito.mock(RenderResult::class.java)
+
+    scanner.validateAndUpdateLint(mapOf(manager to subsequentRenderResult))
+
+    assertThat(scanner.issues).hasSize(componentSize)
+    assertThat(scanner.isParserCleaned()).isTrue()
+
+    // Simulate a subsequent non-inflating render that still carries the already-consumed ValidatorHierarchy.
+    val consumedHierarchy = ValidatorHierarchy()
+    val subsequentResultWithConsumedHierarchy =
+      Mockito.mock(RenderResult::class.java).also { Mockito.`when`(it.validatorResult).thenReturn(consumedHierarchy) }
+
+    scanner.validateAndUpdateLint(mapOf(manager to subsequentResultWithConsumedHierarchy))
+
+    assertThat(scanner.issues).hasSize(componentSize)
+    assertThat(scanner.isParserCleaned()).isTrue()
   }
 }
