@@ -43,7 +43,9 @@ import java.io.File
 import java.net.URL
 import java.nio.file.Path
 import java.util.Objects
+import java.util.concurrent.ConcurrentHashMap
 import javax.swing.JButton
+import javax.swing.JCheckBox
 import javax.swing.JComboBox
 import javax.swing.JSlider
 import javax.swing.JTable
@@ -412,9 +414,9 @@ class SymbolPickerDialogTest {
         }
       assertTrue(waitOk.isConditionRealized)
 
-      val refreshButton =
-        UIUtil.findComponentsOfType(dialog.createCenterPanel(), JButton::class.java).find { it.icon == AllIcons.General.Refresh }
-      refreshButton!!.doClick()
+      // Filter out all icons so no icon remains selected and verify the OK button becomes disabled
+      val searchField = UIUtil.findComponentOfType(dialog.createCenterPanel(), SearchTextField::class.java)!!
+      searchField.text = "Day"
       val waitOkDisabled =
         object : WaitFor(3000) {
           override fun condition(): Boolean {
@@ -497,6 +499,140 @@ class SymbolPickerDialogTest {
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     assertThat(packCount).isEqualTo(countBeforeAction)
+  }
+
+  @Test
+  fun testSelectionPreservedAfterRefreshAndPropertyUpdates() = runTest {
+    val testDirectory = createTempDirectory()
+    // Use a thread-safe map with a single mock VdIcon instance per (SymbolConfiguration, symbolName) pair.
+    val loadedIconsByConfiguration = ConcurrentHashMap<Pair<SymbolConfiguration, String>, VdIcon>()
+    val dialog =
+      SymbolPickerDialog(
+        projectRule.fixture.testRootDisposable,
+        TestSymbolsUrlProvider(testDirectory),
+        TestSymbolsMetadataUrlProvider,
+        vdIconLoader = { configuration, metadataIcon, _, _ ->
+          loadedIconsByConfiguration.computeIfAbsent(configuration to metadataIcon.name) { mock(VdIcon::class.java) }
+        },
+      )
+
+    try {
+      // Initialize the dialog and select the second icon ("My Icon 2") at row 0, column 1.
+      getInitializedIconPickerDialog(dialog)
+      val centerPanel = dialog.createCenterPanel()
+      val table = UIUtil.findComponentOfType(centerPanel, JBTable::class.java)!!
+      table.setRowSelectionInterval(0, 0)
+      table.setColumnSelectionInterval(1, 1)
+
+      // Wait for the initial selection to load and enable the OK button.
+      val waitInitialSelection =
+        object : WaitFor(3000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            return dialog.isOKActionEnabled
+          }
+        }
+      assertTrue(waitInitialSelection.isConditionRealized)
+      assertEquals(0, table.selectedRow)
+      assertEquals(1, table.selectedColumn)
+
+      // Click the Refresh button and verify the icon remains selected and the OK button remains enabled.
+      val refreshButton = UIUtil.findComponentsOfType(centerPanel, JButton::class.java).find { it.icon == AllIcons.General.Refresh }!!
+      refreshButton.doClick()
+      val waitRefreshFinished =
+        object : WaitFor(3000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            return dialog.isRefreshButtonEnabled() && dialog.isOKActionEnabled
+          }
+        }
+      assertTrue(waitRefreshFinished.isConditionRealized)
+      assertEquals(0, table.selectedRow)
+      assertEquals(1, table.selectedColumn)
+
+      // Update Weight, Grade, Optical Size sliders and Filled checkbox and verify selection and VdIcon update.
+      val sliders = UIUtil.findComponentsOfType(centerPanel, JSlider::class.java)
+      val weightSlider = sliders[0]
+      val gradeSlider = sliders[1]
+      val opticalSizeSlider = sliders[2]
+      val filledCheckBox = UIUtil.findComponentOfType(centerPanel, JCheckBox::class.java)!!
+
+      weightSlider.value = 6
+      gradeSlider.value = 2
+      opticalSizeSlider.value = 3
+      filledCheckBox.isSelected = true
+
+      val expectedUpdatedConfig = SymbolConfiguration(type = Symbols.OUTLINED, weight = 700, grade = 200, opticalSize = 48, filled = true)
+      val waitUpdatedIconLoaded =
+        object : WaitFor(3000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            val expectedVdIcon = loadedIconsByConfiguration[expectedUpdatedConfig to "my_icon_2"]
+            return expectedVdIcon != null && dialog.getSelectedIcon() === expectedVdIcon && dialog.isOKActionEnabled
+          }
+        }
+      assertTrue(waitUpdatedIconLoaded.isConditionRealized)
+      assertEquals(0, table.selectedRow)
+      assertEquals(1, table.selectedColumn)
+
+      // Change the Style dropdown to Rounded and verify selection is preserved and VdIcon updates to Rounded.
+      val stylesBox =
+        UIUtil.findComponentsOfType(centerPanel, JComboBox::class.java).first {
+          it.selectedItem?.toString() == Symbols.OUTLINED.displayName
+        }
+      stylesBox.selectedIndex = 1
+      val expectedRoundedConfig = SymbolConfiguration(type = Symbols.ROUNDED, weight = 700, grade = 200, opticalSize = 48, filled = true)
+      val waitRoundedIconLoaded =
+        object : WaitFor(3000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            val expectedVdIcon = loadedIconsByConfiguration[expectedRoundedConfig to "my_icon_2"]
+            return expectedVdIcon != null && dialog.getSelectedIcon() === expectedVdIcon && dialog.isOKActionEnabled
+          }
+        }
+      assertTrue(waitRoundedIconLoaded.isConditionRealized)
+      assertEquals(0, table.selectedRow)
+      assertEquals(1, table.selectedColumn)
+
+      // Click the Reset button and verify the icon remains selected with reset slider values.
+      val resetButton = UIUtil.findComponentsOfType(centerPanel, JButton::class.java).find { it.icon == AllIcons.General.Reset }!!
+      resetButton.doClick()
+      val expectedResetConfig = SymbolConfiguration(type = Symbols.ROUNDED, weight = 400, grade = 0, opticalSize = 24, filled = true)
+      val waitResetIconLoaded =
+        object : WaitFor(3000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            val expectedVdIcon = loadedIconsByConfiguration[expectedResetConfig to "my_icon_2"]
+            return expectedVdIcon != null && dialog.getSelectedIcon() === expectedVdIcon && dialog.isOKActionEnabled
+          }
+        }
+      assertTrue(waitResetIconLoaded.isConditionRealized)
+      assertEquals(0, table.selectedRow)
+      assertEquals(1, table.selectedColumn)
+
+      // Filter by "Category3" (where "My Icon 2" moves to row 0, column 0) and verify selection tracks its new cell.
+      val categoriesBox = UIUtil.findComponentsOfType(centerPanel, JComboBox::class.java).first { it.selectedItem?.toString() == "All" }
+      categoriesBox.selectedIndex = 3
+      val waitCategoryFilteredSelection =
+        object : WaitFor(3000) {
+          override fun condition(): Boolean {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            return dialog.isOKActionEnabled
+          }
+        }
+      assertTrue(waitCategoryFilteredSelection.isConditionRealized)
+      assertEquals(0, table.selectedRow)
+      assertEquals(0, table.selectedColumn)
+
+      // Filter by "Category2" (which does not contain "My Icon 2") and verify selection is cleared and OK is disabled.
+      categoriesBox.selectedIndex = 2
+      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+      assertEquals(-1, table.selectedRow)
+      assertEquals(-1, table.selectedColumn)
+      assertThat(dialog.isOKActionEnabled).isFalse()
+    } finally {
+      dialog.close(0)
+    }
   }
 
   private fun getInitializedIconPickerDialog(dialog: SymbolPickerDialog): SymbolPickerDialog {
