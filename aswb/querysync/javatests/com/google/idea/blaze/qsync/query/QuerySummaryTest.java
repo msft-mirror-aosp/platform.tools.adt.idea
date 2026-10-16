@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.idea.blaze.qsync.query.QuerySummaryTestUtil.createProtoForPackages;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.devtools.build.lib.query2.proto.proto2api.Build;
@@ -364,18 +365,145 @@ public class QuerySummaryTest {
   }
 
   @Test
-  public void testWithPackageStamps_noChanges_returnsSameInstance() {
+  public void testBuildPackage_subincludeStampPreservedInSerialization() {
+    Query.Summary summaryProto =
+        Query.Summary.newBuilder()
+            .setVersion(QuerySummaryImpl.PROTO_VERSION)
+            .setStringStorage(
+                Query.StringStorage.newBuilder()
+                    .addIndexedStrings("")
+                    .addIndexedStrings("pkg")
+                    .build())
+            .addBuildPackages(
+                Query.StoredBuildPackage.newBuilder()
+                    .setWorkspace(0)
+                    .setBuildPackage(1)
+                    .setStamp(12345L)
+                    .setSubincludeStamp(67890L)
+                    .build())
+            .build();
+
+    QuerySummary qs = QuerySummaryImpl.create(summaryProto);
+    QuerySummary.BuildPackage buildPackage = qs.getBuildPackage(Label.of("//pkg:pkg"));
+    assertThat(buildPackage).isNotNull();
+    assertThat(buildPackage.getSubincludeStamp()).isEqualTo(67890L);
+
+    Query.Summary serialized =
+        QuerySummaryImpl.newBuilder()
+            .putAllPackages(qs.getBuildPackages())
+            .build()
+            .protoForSerializationOnly();
+    assertThat(serialized.getBuildPackages(0).getSubincludeStamp()).isEqualTo(67890L);
+    QuerySummary.BuildPackage deserializedPackage =
+        QuerySummaryImpl.create(serialized).getBuildPackage(Label.of("//pkg:pkg"));
+    assertThat(deserializedPackage).isNotNull();
+    assertThat(deserializedPackage.getStamp()).isEqualTo(12345L);
+    assertThat(deserializedPackage.getSubincludeStamp()).isEqualTo(67890L);
+  }
+
+  @Test
+  public void testCreate_subincludeStampIsZero() throws IOException {
+    QuerySummary qs =
+        QuerySummaryImpl.create(
+            QuerySpec.QueryStrategy.PLAIN,
+            TestData.BUILDINCLUDES_QUERY.getQueryOutputPath().toFile());
+    QuerySummary.BuildPackage buildPackage =
+        qs.getBuildPackage(Label.of(TestData.ROOT_PACKAGE + "/buildincludes:BUILD"));
+    assertThat(buildPackage).isNotNull();
+    assertThat(buildPackage.getSubincludes()).isNotEmpty();
+    assertThat(buildPackage.getSubincludeStamp()).isEqualTo(0L);
+  }
+
+  @Test
+  public void testBuilder_putSubincludeStamp_changesOnlyGivenPackage() {
+    Label defsBzl = Label.of("//defs:defs.bzl");
+    QuerySummary qs =
+        QuerySummaryImpl.newBuilder()
+            .putSourceFiles(
+                new QueryData.SourceFile(Label.of("//a:BUILD"), ImmutableList.of(defsBzl)))
+            .putSourceFiles(
+                new QueryData.SourceFile(Label.of("//b:BUILD"), ImmutableList.of(defsBzl)))
+            .putPackageStamp(Label.of("//a:BUILD"), 7L)
+            .putSubincludeStamp(Label.of("//a:BUILD"), 42L)
+            .build();
+
+    QuerySummary.BuildPackage a = qs.getBuildPackage(Label.of("//a:BUILD"));
+    assertThat(a).isNotNull();
+    assertThat(a.getSubincludeStamp()).isEqualTo(42L);
+    assertThat(a.getStamp()).isEqualTo(7L);
+    assertThat(a.getSubincludes()).containsExactly(defsBzl);
+    QuerySummary.BuildPackage b = qs.getBuildPackage(Label.of("//b:BUILD"));
+    assertThat(b).isNotNull();
+    assertThat(b.getSubincludeStamp()).isEqualTo(0L);
+  }
+
+  @Test
+  public void testWithPackageAndSubincludeStamps_updatesOnlyChangedPackages() {
     QuerySummary qs =
         QuerySummaryImpl.create(createProtoForPackages("//pkg1:rule1", "//pkg2:rule2"));
-    QuerySummary stamped = qs.withPackageStamps(pkg -> null);
+    Label pkg1 = Label.of("//pkg1:pkg1");
+    Label pkg2 = Label.of("//pkg2:pkg2");
+    QuerySummary.BuildPackage origPkg2 = qs.getBuildPackage(pkg2);
+
+    QuerySummary stamped =
+        qs.withPackageAndSubincludeStamps(
+            pkg -> null, pkg -> pkg.getPackageLabel().equals(pkg1.getPackageLabel()) ? 42L : null);
+
+    QuerySummary.BuildPackage stampedPkg1 = stamped.getBuildPackage(pkg1);
+    assertThat(stampedPkg1).isNotNull();
+    assertThat(stampedPkg1.getSubincludeStamp()).isEqualTo(42L);
+    assertThat(stamped.getBuildPackage(pkg2)).isSameInstanceAs(origPkg2);
+    QuerySummary.BuildPackage deserializedPkg1 =
+        QuerySummaryImpl.create(stamped.protoForSerializationOnly()).getBuildPackage(pkg1);
+    assertThat(deserializedPkg1).isNotNull();
+    assertThat(deserializedPkg1.getSubincludeStamp()).isEqualTo(42L);
+  }
+
+  @Test
+  public void testWithPackageAndSubincludeStamps_setsBoth() {
+    QuerySummary qs = QuerySummaryImpl.create(createProtoForPackages("//pkg1:rule1"));
+
+    QuerySummary stamped = qs.withPackageAndSubincludeStamps(pkg -> 7L, pkg -> 42L);
+
+    QuerySummary.BuildPackage stampedPkg1 = stamped.getBuildPackage(Label.of("//pkg1:pkg1"));
+    assertThat(stampedPkg1).isNotNull();
+    assertThat(stampedPkg1.getStamp()).isEqualTo(7L);
+    assertThat(stampedPkg1.getSubincludeStamp()).isEqualTo(42L);
+    Query.StoredBuildPackage storedPkg1 = stamped.protoForSerializationOnly().getBuildPackages(0);
+    assertThat(storedPkg1.getStamp()).isEqualTo(7L);
+    assertThat(storedPkg1.getSubincludeStamp()).isEqualTo(42L);
+  }
+
+  @Test
+  public void testWithPackageAndSubincludeStamps_nullKeepsSubincludeStamp() {
+    QuerySummary qs =
+        QuerySummaryImpl.create(createProtoForPackages("//pkg1:rule1"))
+            .withPackageAndSubincludeStamps(pkg -> null, pkg -> 42L);
+
+    QuerySummary stamped = qs.withPackageAndSubincludeStamps(pkg -> 7L, pkg -> null);
+
+    QuerySummary.BuildPackage stampedPkg1 = stamped.getBuildPackage(Label.of("//pkg1:pkg1"));
+    assertThat(stampedPkg1).isNotNull();
+    assertThat(stampedPkg1.getStamp()).isEqualTo(7L);
+    assertThat(stampedPkg1.getSubincludeStamp()).isEqualTo(42L);
+    assertThat(stamped.protoForSerializationOnly().getBuildPackages(0).getSubincludeStamp())
+        .isEqualTo(42L);
+  }
+
+  @Test
+  public void testWithPackageAndSubincludeStamps_noChanges_returnsSameInstance() {
+    QuerySummary qs =
+        QuerySummaryImpl.create(createProtoForPackages("//pkg1:rule1", "//pkg2:rule2"));
+    QuerySummary stamped = qs.withPackageAndSubincludeStamps(pkg -> null, pkg -> null);
     assertThat(stamped).isSameInstanceAs(qs);
 
-    QuerySummary stampedSame = qs.withPackageStamps(pkg -> pkg.getStamp());
+    QuerySummary stampedSame =
+        qs.withPackageAndSubincludeStamps(pkg -> pkg.getStamp(), pkg -> pkg.getSubincludeStamp());
     assertThat(stampedSame).isSameInstanceAs(qs);
   }
 
   @Test
-  public void testWithPackageStamps_updatesStamps_andSharesCollections() {
+  public void testWithPackageAndSubincludeStamps_updatesStamps_andSharesCollections() {
     QuerySummary qs =
         QuerySummaryImpl.create(createProtoForPackages("//pkg1:rule1", "//pkg2:rule2"));
     Label pkg1 = Label.of("//pkg1:pkg1");
@@ -388,13 +516,14 @@ public class QuerySummaryTest {
     assertThat(origPkg1.getStamp()).isEqualTo(0L);
 
     QuerySummary stamped =
-        qs.withPackageStamps(
+        qs.withPackageAndSubincludeStamps(
             pkg -> {
               if (pkg.getPackageLabel().equals(origPkg1.getPackageLabel())) {
                 return 9999L;
               }
               return null;
-            });
+            },
+            pkg -> null);
 
     assertThat(stamped).isNotSameInstanceAs(qs);
 
@@ -425,7 +554,7 @@ public class QuerySummaryTest {
   }
 
   @Test
-  public void testWithPackageStamps_preservesTestRule() {
+  public void testWithPackageAndSubincludeStamps_preservesTestRule() {
     Query.Summary protoWithTestRule =
         Query.Summary.newBuilder()
             .setVersion(QuerySummaryImpl.PROTO_VERSION)
@@ -464,7 +593,7 @@ public class QuerySummaryTest {
     assertThat(origRule).isNotNull();
     assertThat(origRule.testRule()).isEqualTo(Label.of("//pkg:test_rule"));
 
-    QuerySummary stamped = qs.withPackageStamps(pkg -> 12345L);
+    QuerySummary stamped = qs.withPackageAndSubincludeStamps(pkg -> 12345L, pkg -> null);
     QueryData.Rule stampedRule = QuerySummaryKt.getRule(stamped, Label.of("//pkg:my_rule"));
     assertThat(stampedRule).isNotNull();
     assertThat(stampedRule.testRule()).isEqualTo(Label.of("//pkg:test_rule"));

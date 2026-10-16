@@ -65,13 +65,14 @@ public class FullProjectUpdate implements RefreshOperation {
   @Override
   public PostQuerySyncData createPostQuerySyncData(QuerySummary output) {
     QuerySummary stamped =
-        output.withPackageStamps(
+        output.withPackageAndSubincludeStamps(
             pkg -> {
               Path pkgPath = pkg.getPackageLabel().getBuildPackagePath();
               BuildPackage structPkg =
                   ProjectStructureDataKt.getBuildPackage(projectStructureData, pkgPath);
               return structPkg != null ? structPkg.getStamp() : null;
-            });
+            },
+            pkg -> null);
     return PostQuerySyncData.builder().setQuerySummary(stamped).build();
   }
 }

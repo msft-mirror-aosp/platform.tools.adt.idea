@@ -74,4 +74,9 @@ message StoredBuildPackage {
 
   bool has_error = 5;
   int64 stamp = 6;
+
+  // Hash of the last-modified times that this package's subincludes in the main
+  // repository and in local repositories had when the package was last queried.
+  // 0 if the package loads no such file, or if nothing was recorded.
+  int64 subinclude_stamp = 7;
 }
