@@ -1464,6 +1464,13 @@ public final class StudioFlags {
     "If enabled, the change review guided walkthrough is available."
   );
 
+  public static final Flag<Boolean> EDITOR_ENABLE_CHANGE_REVIEW_DIFF_NARRATION = new BooleanFlag(
+    EDITOR, "enable.change.review.diff.narration",
+    "Enable step-by-step diff narration in Change Review.",
+    "If enabled, change review diffs are labeled with a description of the edits (moves, renames, ...) and can be played back step " +
+    "by step, and code moved or duplicated across files is linked."
+  );
+
   //endregion
 
   //region Testing
