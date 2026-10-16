@@ -2369,6 +2369,9 @@ iml_module(
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     runtime_deps = [
+        "@intellij//:com.intellij.modules.compose",
+        "@intellij//:com.intellij.modules.jna",
+        "@intellij//:com.intellij.modules.pty4j",
         "@intellij//:intellij.c.core",
         "@intellij//:intellij.c.core.base",
         "@intellij//:intellij.c.debugger",

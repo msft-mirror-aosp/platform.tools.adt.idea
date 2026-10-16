@@ -94,6 +94,11 @@ def write_xml_files(workspace, sdk, ides):
     jars = sorted(set.union(*sets))
     if len(jars) == 1 and ("/modules/" in jars[0] or jars[0].startswith("/lib/")):
       v2_modules.add(plugin)
+    # Since IntelliJ 2026.3, some libraries that used to be on the core classpath (Compose/Skiko, JNA, pty4j)
+    # are content modules of small host plugins such as com.intellij.modules.pty4j. A content module is only
+    # resolved if its host plugin is loaded too, so treat these descriptor-only host plugins like v2 modules.
+    elif plugin.startswith("com.intellij.modules.") and len(jars) == 1 and jars[0].endswith("-plugin.jar"):
+      v2_modules.add(plugin)
     paths = [ rel_workspace + sdk + f"/$SDK_PLATFORM$" + j for j in jars]
     gen_lib(project_dir, "studio-plugin-" + plugin, paths, [workspace + sdk + "/android-studio-sources.zip"])
 

@@ -3,6 +3,9 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.modules.compose" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.modules.jna" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="studio-plugin-com.intellij.modules.pty4j" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-intellij.c.core" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-intellij.c.core.base" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="studio-plugin-intellij.c.debugger" level="project" />

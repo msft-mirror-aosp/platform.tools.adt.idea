@@ -834,7 +834,7 @@ def _get_external_attributes(all_files):
         "bin/studio.sh",
         "Contents/MacOS/studio",
         "Contents/bin/printenv",
-        "lib/pty4j/darwin/pty4j-unix-spawn-helper",
+        "plugins/pty4j-plugin/lib/pty4j/darwin/pty4j-unix-spawn-helper",
     ]
     for zip_path in all_files:
         if zip_path.endswith("Info.plist"):
