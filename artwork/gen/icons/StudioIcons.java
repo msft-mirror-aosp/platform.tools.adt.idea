@@ -182,8 +182,9 @@ public final class StudioIcons {
     /** 32x32 */ public static final @NotNull Icon NESW_RESIZE = load("studio/icons/cursors/nesw-resize.svg", 709726714, 0);
     /** 32x32 */ public static final @NotNull Icon NS_RESIZE = load("studio/icons/cursors/ns-resize.svg", -399012321, 0);
     /** 32x32 */ public static final @NotNull Icon NWSE_RESIZE = load("studio/icons/cursors/nwse-resize.svg", -5364369, 0);
-    /** 32x32 */ public static final @NotNull Icon XR_EYE_INPUT = load("studio/icons/cursors/xr-eye-input.svg", 1616768245, 0);
-    /** 32x32 */ public static final @NotNull Icon XR_HAND_INPUT_PINCH = load("studio/icons/cursors/xr-hand-input-pinch.svg", -584816725, 0);
+    /** 32x32 */ public static final @NotNull Icon XR_EYE_INPUT_PRESSED = load("studio/icons/cursors/xr-eye-input-pressed.svg", -2019179640, 0);
+    /** 34x34 */ public static final @NotNull Icon XR_EYE_INPUT = load("studio/icons/cursors/xr-eye-input.svg", -1833252058, 0);
+    /** 32x32 */ public static final @NotNull Icon XR_HAND_INPUT_PRESSED = load("studio/icons/cursors/xr-hand-input-pressed.svg", -1482721606, 0);
     /** 32x32 */ public static final @NotNull Icon XR_HAND_INPUT = load("studio/icons/cursors/xr-hand-input.svg", -355981126, 0);
   }
 

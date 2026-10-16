@@ -1374,9 +1374,11 @@ internal class EmulatorView(
       when {
         mouseCoordinates?.let { isInsideDisplayAndMouseInputSupported(it) } != true -> null
         xrInputController?.inputMode == XrInputMode.HAND ->
-          if (mouseListener.currentButtons and BUTTON1_DOWN_MASK != 0) AdtUiCursorType.XR_HAND_INPUT_PINCH
+          if (mouseListener.currentButtons and BUTTON1_DOWN_MASK != 0) AdtUiCursorType.XR_HAND_INPUT_PRESSED
           else AdtUiCursorType.XR_HAND_INPUT
-        xrInputController?.inputMode == XrInputMode.EYE -> AdtUiCursorType.XR_EYE_INPUT
+        xrInputController?.inputMode == XrInputMode.EYE ->
+          if (mouseListener.currentButtons and BUTTON1_DOWN_MASK != 0) AdtUiCursorType.XR_EYE_INPUT_PRESSED
+          else AdtUiCursorType.XR_EYE_INPUT
         else -> null
       }
     val newCursor = cursorType?.let { AdtUiCursorsProvider.getInstance().getCursor(it) }

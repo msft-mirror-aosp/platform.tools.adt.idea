@@ -44,8 +44,9 @@ enum class AdtUiCursorType(val icon: Icon, internal val hotSpotMapFun: (Buffered
   W_RESIZE(StudioIcons.Cursors.EW_RESIZE),
   E_RESIZE(StudioIcons.Cursors.EW_RESIZE),
   XR_EYE_INPUT(StudioIcons.Cursors.XR_EYE_INPUT),
+  XR_EYE_INPUT_PRESSED(StudioIcons.Cursors.XR_EYE_INPUT_PRESSED),
   XR_HAND_INPUT(StudioIcons.Cursors.XR_HAND_INPUT),
-  XR_HAND_INPUT_PINCH(StudioIcons.Cursors.XR_HAND_INPUT_PINCH),
+  XR_HAND_INPUT_PRESSED(StudioIcons.Cursors.XR_HAND_INPUT_PRESSED),
 }
 
 /** The service provides the custom cursors of Studio. */

@@ -787,11 +787,13 @@ class EmulatorToolWindowPanelTest {
 
     ApplicationManager.getApplication().replaceService(AdtUiCursorsProvider::class.java, TestAdtUiCursorsProvider(), testRootDisposable)
     val handCursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-    val pinchCursor = Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+    val handPressedCursor = Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
     val eyeCursor = Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR)
+    val eyePressedCursor = Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
     replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_HAND_INPUT, handCursor)
-    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_HAND_INPUT_PINCH, pinchCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_HAND_INPUT_PRESSED, handPressedCursor)
     replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_EYE_INPUT, eyeCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_EYE_INPUT_PRESSED, eyePressedCursor)
 
     val pointerInfo = mock<PointerInfo>()
     whenever(pointerInfo.location).thenAnswer { Point(100, 100) }
@@ -809,8 +811,8 @@ class EmulatorToolWindowPanelTest {
     val xrInputController = EmulatorXrInputController.getInstance(project, emulatorView.emulator)
     val testCases =
       listOf(
-        Triple(XrInputMode.HAND, "xr_hand_event", handCursor to pinchCursor),
-        Triple(XrInputMode.EYE, "xr_eye_event", eyeCursor to eyeCursor),
+        Triple(XrInputMode.HAND, "xr_hand_event", handCursor to handPressedCursor),
+        Triple(XrInputMode.EYE, "xr_eye_event", eyeCursor to eyePressedCursor),
         Triple(XrInputMode.MOUSE, "mouse_event", Cursor.getDefaultCursor() to Cursor.getDefaultCursor()),
       )
     var streamInputCall: GrpcCallRecord? = null
