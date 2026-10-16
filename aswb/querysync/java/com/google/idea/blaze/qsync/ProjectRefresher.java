@@ -46,13 +46,18 @@ public class ProjectRefresher {
   }
 
   public RefreshOperation startFullUpdate(
-      Context<?> context, ProjectDefinition spec, ProjectStructureData projectStructureData) {
-    return new FullProjectUpdate(context, workspaceRoot, spec, queryStrategy, projectStructureData);
+      Context<?> context,
+      ProjectDefinition spec,
+      ProjectStructureData projectStructureData,
+      CachingFileMtimeReader mtimeReader) {
+    return new FullProjectUpdate(
+        context, workspaceRoot, spec, queryStrategy, projectStructureData, mtimeReader);
   }
 
   public RefreshOperation startPartialRefresh(RefreshParameters params, Context<?> context) {
     if (params.requireFullSync.invoke(context)) {
-      return startFullUpdate(context, params.projectDefinition, params.projectStructureData);
+      return startFullUpdate(
+          context, params.projectDefinition, params.projectStructureData, params.mtimeReader);
     }
     AffectedPackages affected = params.calculateAffectedPackages();
 
@@ -73,6 +78,7 @@ public class ProjectRefresher {
         params.lastQuery,
         affected.getModifiedPackages(),
         affected.getDeletedPackages(),
-        params.projectStructureData);
+        params.projectStructureData,
+        params.mtimeReader);
   }
 }

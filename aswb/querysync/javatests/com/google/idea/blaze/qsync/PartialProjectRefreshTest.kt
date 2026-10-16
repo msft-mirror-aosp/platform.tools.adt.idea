@@ -38,6 +38,8 @@ import org.junit.runners.JUnit4
 
 @RunWith(JUnit4::class)
 class PartialProjectRefreshTest {
+  private val mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/workspace/root")))
+
   @Test
   fun testApplyDelta_replacePackage() {
     val base =
@@ -75,6 +77,7 @@ class PartialProjectRefreshTest {
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ImmutableSet.of(),
         ProjectStructureData.EMPTY,
+        mtimeReader,
       )
     val applied = refresh.applyDelta(delta)
     Truth.assertThat(applied.rulesMapForTests.keys)
@@ -115,6 +118,7 @@ class PartialProjectRefreshTest {
         ImmutableSet.of(),
         /* deletedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ProjectStructureData.EMPTY,
+        mtimeReader,
       )
     Truth8.assertThat(queryStrategy.getQuerySpec()).isEmpty()
     val applied = queryStrategy.applyDelta(QuerySummary.EMPTY)
@@ -152,6 +156,7 @@ class PartialProjectRefreshTest {
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package2")),
         ImmutableSet.of(),
         ProjectStructureData.EMPTY,
+        mtimeReader,
       )
     val applied = queryStrategy.applyDelta(delta)
     Truth.assertThat(applied.rulesMapForTests.keys)
@@ -196,6 +201,7 @@ class PartialProjectRefreshTest {
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package2")),
         ImmutableSet.of(),
         ProjectStructureData.EMPTY,
+        mtimeReader,
       )
     val applied = queryStrategy.applyDelta(delta)
     Truth.assertThat(applied.packagesWithErrors).containsExactly(Path.of("my/build/package1"), Path.of("my/build/package2"))
@@ -243,6 +249,7 @@ class PartialProjectRefreshTest {
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package2")),
         ImmutableSet.of(),
         projectStructureData,
+        mtimeReader,
       )
     val applied = queryStrategy.applyDelta(delta)
     Truth.assertThat(applied.getBuildPackage(Label.of("//my/build/package1:package1"))?.stamp).isEqualTo(100L)
@@ -286,6 +293,7 @@ class PartialProjectRefreshTest {
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ImmutableSet.of(),
         projectStructureData,
+        mtimeReader,
       )
     val applied = refresh.applyDelta(delta)
     Truth.assertThat(applied.getBuildPackage(Label.of("//my/build/package1:package1"))?.stamp).isEqualTo(300L)
@@ -323,6 +331,7 @@ class PartialProjectRefreshTest {
         /* modifiedPackages= */ ImmutableSet.of(),
         /* deletedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         projectStructureData,
+        mtimeReader,
       )
     val applied = refresh.applyDelta(QuerySummary.EMPTY)
     Truth.assertThat(applied.getBuildPackage(Label.of("//my/build/package1:package1"))).isNull()
@@ -339,6 +348,7 @@ class PartialProjectRefreshTest {
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ImmutableSet.of(),
         ProjectStructureData.EMPTY,
+        mtimeReader,
       )
     val querySpec = refresh.getQuerySpec()
     Truth8.assertThat(querySpec).isPresent()
@@ -373,9 +383,42 @@ class PartialProjectRefreshTest {
         /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
         ImmutableSet.of(),
         projectStructureData,
+        mtimeReader,
       )
     val postQuerySyncData = refresh.createPostQuerySyncData(delta)
     Truth.assertThat(postQuerySyncData.querySummary().getBuildPackage(Label.of("//my/build/package1:package1"))?.stamp).isEqualTo(500L)
+  }
+
+  @Test
+  fun testCreatePostQuerySyncData_stampsQueriedPackagesAndKeepsOthers() {
+    val defsBzl = Label.of("//defs:defs.bzl")
+    val base =
+      QuerySummaryImpl.newBuilder()
+        .putSourceFiles(QueryData.SourceFile(Label.of("//my/build/package1:BUILD"), listOf(defsBzl)))
+        .putSourceFiles(QueryData.SourceFile(Label.of("//my/build/package2:BUILD"), listOf(defsBzl)))
+        .putSubincludeStamp(Label.of("//my/build/package1:BUILD"), 1L)
+        .putSubincludeStamp(Label.of("//my/build/package2:BUILD"), 2L)
+        .build()
+    val baseProject = PostQuerySyncData.EMPTY.toBuilder().setQuerySummary(base).build()
+    val delta =
+      QuerySummaryImpl.newBuilder().putSourceFiles(QueryData.SourceFile(Label.of("//my/build/package1:BUILD"), listOf(defsBzl))).build()
+
+    val refresh =
+      PartialProjectRefresh(
+        Path.of("/workspace/root"),
+        baseProject,
+        /* modifiedPackages= */ ImmutableSet.of(Path.of("my/build/package1")),
+        ImmutableSet.of(),
+        ProjectStructureData.EMPTY,
+        mtimeReader,
+      )
+    val summary = refresh.createPostQuerySyncData(delta).querySummary()
+
+    // The re-queried package is stamped. defs.bzl doesn't exist under the workspace root, so it's hashed as missing.
+    val package1 = summary.getBuildPackage(Label.of("//my/build/package1:BUILD"))!!
+    Truth.assertThat(package1.subincludeStamp).isEqualTo(package1.calculateSubincludeStamp { MISSING_MTIME })
+    // The other package keeps its stamp.
+    Truth.assertThat(summary.getBuildPackage(Label.of("//my/build/package2:BUILD"))?.subincludeStamp).isEqualTo(2L)
   }
 
   private fun <T : Any> listOf(vararg list: T): ImmutableList<T> = ImmutableList.copyOf(list)

@@ -21,13 +21,19 @@ import com.google.idea.blaze.qsync.project.ProjectDefinition
 import com.google.idea.blaze.qsync.project.ProjectStructureData
 import java.nio.file.Path
 
-/** Input parameters to a project refresh, and logic to determine what sort of refresh is required. */
+/**
+ * Input parameters to a project refresh, and logic to determine what sort of refresh is required.
+ *
+ * [mtimeReader] is stateful and not thread-safe: it caches the mtimes that it reads for the whole sync.
+ */
 class RefreshParameters(
   @JvmField val lastQuery: PostQuerySyncData,
   @JvmField val projectDefinition: ProjectDefinition,
   @JvmField val projectStructureData: ProjectStructureData,
   @JvmField val requestedPackages: Set<Path>,
   @JvmField val requireFullSync: (Context<*>) -> Boolean,
+  /** Reads the mtimes of subincluded files for this refresh. */
+  @JvmField val mtimeReader: CachingFileMtimeReader,
 ) {
 
   fun calculateAffectedPackages(): AffectedPackages {

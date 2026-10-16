@@ -24,6 +24,7 @@ import com.google.idea.blaze.qsync.project.ProjectDefinition
 import com.google.idea.blaze.qsync.project.ProjectStructureData
 import com.google.idea.blaze.qsync.project.ProjectStructureRoot
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage
+import com.google.idea.blaze.qsync.query.QueryData
 import com.google.idea.blaze.qsync.query.QuerySpec
 import com.google.idea.blaze.qsync.query.QuerySummary
 import com.google.idea.blaze.qsync.query.QuerySummaryImpl
@@ -70,6 +71,7 @@ class ProjectRefresherTest {
             projectStructureData = ProjectStructureData.EMPTY,
             requestedPackages = emptySet(),
             requireFullSync = { true },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -90,6 +92,7 @@ class ProjectRefresherTest {
             projectStructureData = ProjectStructureData.EMPTY,
             requestedPackages = emptySet(),
             requireFullSync = { false },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -110,6 +113,7 @@ class ProjectRefresherTest {
             projectStructureData = ProjectStructureData.EMPTY,
             requestedPackages = emptySet(),
             requireFullSync = { false },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -150,6 +154,7 @@ class ProjectRefresherTest {
             projectStructureData = projectStructureData,
             requestedPackages = setOf(Path.of("package/path")),
             requireFullSync = { false },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -186,6 +191,7 @@ class ProjectRefresherTest {
             projectStructureData = projectStructureData,
             requestedPackages = setOf(Path.of("package/newpkg")),
             requireFullSync = { false },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -230,6 +236,7 @@ class ProjectRefresherTest {
             projectStructureData = projectStructureData,
             requestedPackages = setOf(Path.of("package/parent/child")),
             requireFullSync = { false },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -271,6 +278,7 @@ class ProjectRefresherTest {
             projectStructureData = projectStructureData,
             requestedPackages = emptySet(),
             requireFullSync = { false },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -315,6 +323,7 @@ class ProjectRefresherTest {
             projectStructureData = projectStructureData,
             requestedPackages = setOf(Path.of("package/mod")),
             requireFullSync = { false },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -356,6 +365,7 @@ class ProjectRefresherTest {
             projectStructureData = projectStructureData,
             requestedPackages = setOf(Path.of("other/package")),
             requireFullSync = { false },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -394,6 +404,7 @@ class ProjectRefresherTest {
             projectStructureData = projectStructureData,
             requestedPackages = setOf(Path.of("package/path")),
             requireFullSync = { false },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -416,6 +427,7 @@ class ProjectRefresherTest {
             projectStructureData = projectStructureData,
             requestedPackages = setOf(Path.of("package/nonexistent")),
             requireFullSync = { false },
+            mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
           ),
           QuerySyncTestUtils.LOGGING_CONTEXT,
         )
@@ -436,12 +448,42 @@ class ProjectRefresherTest {
         setOf(QuerySyncLanguage.JVM),
       )
 
-    val update = createRefresher().startFullUpdate(QuerySyncTestUtils.LOGGING_CONTEXT, projectDef, projectStructureData)
+    val update =
+      createRefresher()
+        .startFullUpdate(
+          QuerySyncTestUtils.LOGGING_CONTEXT,
+          projectDef,
+          projectStructureData,
+          CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
+        )
     Truth.assertThat(update).isInstanceOf(FullProjectUpdate::class.java)
 
     val querySummary = QuerySummaryTestUtil.createProtoForPackages("//package/path:rule")
     val postQuerySyncData = update.createPostQuerySyncData(QuerySummaryImpl.create(querySummary))
     val pkg = postQuerySyncData.querySummary().getBuildPackage(Label.of("//package/path:path"))
     Truth.assertThat(pkg?.stamp).isEqualTo(12345L)
+  }
+
+  @Test
+  fun testFullProjectUpdate_stampsSubincludes() {
+    val update =
+      createRefresher()
+        .startFullUpdate(
+          QuerySyncTestUtils.LOGGING_CONTEXT,
+          projectDef,
+          ProjectStructureData.EMPTY,
+          CachingFileMtimeReader(BlazeSubincludeFileResolver(Path.of("/"))),
+        )
+    val querySummary =
+      QuerySummaryImpl.newBuilder()
+        .putSourceFiles(QueryData.SourceFile(Label.of("//package/path:BUILD"), listOf(Label.of("//defs:defs.bzl"))))
+        .build()
+
+    val postQuerySyncData = update.createPostQuerySyncData(querySummary)
+
+    // defs.bzl doesn't exist under the workspace root, so it's hashed as missing.
+    val pkg = postQuerySyncData.querySummary().getBuildPackage(Label.of("//package/path:BUILD"))!!
+    Truth.assertThat(pkg.subincludeStamp).isNotEqualTo(0L)
+    Truth.assertThat(pkg.subincludeStamp).isEqualTo(pkg.calculateSubincludeStamp { MISSING_MTIME })
   }
 }

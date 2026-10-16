@@ -39,18 +39,21 @@ public class FullProjectUpdate implements RefreshOperation {
   private final ProjectDefinition projectDefinition;
   private final QuerySpec.QueryStrategy queryStrategy;
   private final ProjectStructureData projectStructureData;
+  private final CachingFileMtimeReader mtimeReader;
 
   public FullProjectUpdate(
       Context<?> context,
       Path workspaceRoot,
       ProjectDefinition definition,
       QuerySpec.QueryStrategy queryStrategy,
-      ProjectStructureData projectStructureData) {
+      ProjectStructureData projectStructureData,
+      CachingFileMtimeReader mtimeReader) {
     this.context = context;
     this.workspaceRoot = workspaceRoot;
     this.projectDefinition = definition;
     this.queryStrategy = queryStrategy;
     this.projectStructureData = projectStructureData;
+    this.mtimeReader = mtimeReader;
   }
 
   @Override
@@ -72,7 +75,7 @@ public class FullProjectUpdate implements RefreshOperation {
                   ProjectStructureDataKt.getBuildPackage(projectStructureData, pkgPath);
               return structPkg != null ? structPkg.getStamp() : null;
             },
-            pkg -> null);
+            mtimeReader::subincludeStampOf);
     return PostQuerySyncData.builder().setQuerySummary(stamped).build();
   }
 }

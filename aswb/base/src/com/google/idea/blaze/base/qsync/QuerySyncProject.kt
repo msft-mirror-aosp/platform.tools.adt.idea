@@ -23,10 +23,12 @@ import com.google.common.io.MoreFiles
 import com.google.common.util.concurrent.Uninterruptibles
 import com.google.idea.blaze.base.async.executor.BlazeExecutor
 import com.google.idea.blaze.base.bazel.BuildSystem
+import com.google.idea.blaze.base.command.info.BlazeInfo
 import com.google.idea.blaze.base.logging.utils.querysync.BuildDepsStatsScope
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
 import com.google.idea.blaze.base.plugin.BuildSystemVersionChecker
 import com.google.idea.blaze.base.scope.BlazeContext
+import com.google.idea.blaze.base.settings.BuildSystemName
 import com.google.idea.blaze.base.sync.projectview.WorkspaceLanguageSettings
 import com.google.idea.blaze.base.sync.workspace.WorkspacePathResolver
 import com.google.idea.blaze.base.util.SaveUtil
@@ -37,7 +39,10 @@ import com.google.idea.blaze.common.PrintOutput
 import com.google.idea.blaze.common.artifact.BuildArtifactCache
 import com.google.idea.blaze.common.vcs.VcsState
 import com.google.idea.blaze.exception.BuildException
+import com.google.idea.blaze.qsync.BazelSubincludeFileResolver
 import com.google.idea.blaze.qsync.BlazeQueryParser
+import com.google.idea.blaze.qsync.BlazeSubincludeFileResolver
+import com.google.idea.blaze.qsync.CachingFileMtimeReader
 import com.google.idea.blaze.qsync.ProjectBuilder
 import com.google.idea.blaze.qsync.ProjectStructureReader
 import com.google.idea.blaze.qsync.RefreshParameters
@@ -109,7 +114,7 @@ class QuerySyncProject(
   val protoRules: BuildGraphData.ProtoRules,
   private val projectStructureReader: ProjectStructureReader,
   val vcsHandler: BlazeVcsHandler?,
-  val bazelVersionProvider: BazelVersionHandler,
+  val bazelInfoProvider: BazelInfoProvider,
 ) : ReadonlyQuerySyncProject {
   override val projectData: QuerySyncProjectData
     get() {
@@ -131,7 +136,7 @@ class QuerySyncProject(
 
   fun getBazelVersion(context: BlazeContext): String? {
     return try {
-      bazelVersionProvider.getBazelVersion(context).orElse(null)
+      bazelInfoProvider.getBazelVersion(context).orElse(null)
     } catch (e: BuildException) {
       context.handleExceptionAsWarning("Could not get bazel version", e)
       null
@@ -166,10 +171,42 @@ class QuerySyncProject(
         projectStructureData,
         requestedPackages = requestedPackages,
         requireFullSync = { ctx -> requireFullSync(ctx, lastQuery, vcsState, bazelVersion) },
+        mtimeReader = createMtimeReader(context),
       )
     val postQuerySyncData = projectQuerier.update(refreshParameters, context)
     return postQuerySyncData
   }
+
+  /**
+   * Returns the reader of the files that packages load, for one sync. Blaze projects only load files from the main repository. Bazel
+   * projects can also load files from local repositories, which needs the directories that `bazel info` gives. They come from
+   * [bazelInfoProvider], which keeps the output of the `bazel info` that sync ran for the Bazel version, so it doesn't run again.
+   */
+  private fun createMtimeReader(context: BlazeContext): CachingFileMtimeReader {
+    val subincludeFileResolver =
+      when (buildSystem.name) {
+        BuildSystemName.Blaze -> BlazeSubincludeFileResolver(workspaceRoot.path())
+        BuildSystemName.Bazel -> {
+          val blazeInfo = runCatching {
+            bazelInfoProvider.getBlazeInfo(context)
+          }
+            .onFailure {
+              context.output(PrintOutput.log("Could not get bazel info, so changes to files in other repositories are not detected"))
+            }
+            .getOrNull()
+          BazelSubincludeFileResolver(
+            workspaceRoot.path(),
+            outputBase = blazeInfo?.outputBase?.toPath(),
+            installBase = blazeInfo?.pathOf(BlazeInfo.INSTALL_BASE_KEY),
+            repositoryCache = blazeInfo?.pathOf(BlazeInfo.REPOSITORY_CACHE_KEY),
+          )
+        }
+      }
+    return CachingFileMtimeReader(subincludeFileResolver)
+  }
+
+  /** Returns the path that `bazel info` gives for [key], or null if it gives none. */
+  private fun BlazeInfo.pathOf(key: String): Path? = get(key)?.takeIf { it.isNotEmpty() }?.let { Path.of(it) }
 
   fun requireFullSync(context: Context<*>, lastQuery: PostQuerySyncData?, latestVcsState: VcsState?, latestBazelVersion: String?): Boolean {
     val currentProject = lastQuery ?: PostQuerySyncData.EMPTY

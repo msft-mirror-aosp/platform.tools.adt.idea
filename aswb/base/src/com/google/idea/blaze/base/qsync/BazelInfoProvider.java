@@ -17,29 +17,37 @@ package com.google.idea.blaze.base.qsync;
 
 import com.google.idea.blaze.base.bazel.BuildSystem;
 import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker;
+import com.google.idea.blaze.base.command.info.BlazeInfo;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.sync.SyncScope.SyncFailedException;
 import com.google.idea.blaze.exception.BuildException;
 import java.util.Optional;
 
 /**
- * Helps to collect bazel version by using {@link BuildSystem} and {@link BuildInvoker}. Handle
- * exception casting to avoid sync runner to handle too many exceptions.
+ * Provides the output of {@code bazel info} for query sync: the Bazel version, and the other values
+ * that sync needs, such as the output base. It gets them from one {@link BuildInvoker}, which runs
+ * {@code bazel info} once and keeps the output. Handle exception casting to avoid sync runner to
+ * handle too many exceptions.
  */
-public class BazelVersionHandler {
-  BuildSystem buildSystem;
-  BuildInvoker buildInvoker;
+public class BazelInfoProvider {
+  private final BuildSystem buildSystem;
+  private final BuildInvoker buildInvoker;
 
-  public BazelVersionHandler(BuildSystem buildSystem, BuildInvoker buildInvoker) {
+  public BazelInfoProvider(BuildSystem buildSystem, BuildInvoker buildInvoker) {
     this.buildSystem = buildSystem;
     this.buildInvoker = buildInvoker;
   }
 
   public Optional<String> getBazelVersion(BlazeContext blazeContext) throws BuildException {
+    return buildSystem.getBazelVersionString(getBlazeInfo(blazeContext));
+  }
+
+  /** Returns the output of {@code bazel info}. */
+  public BlazeInfo getBlazeInfo(BlazeContext blazeContext) throws BuildException {
     try {
-      return buildSystem.getBazelVersionString(buildInvoker.getBlazeInfo(blazeContext));
+      return buildInvoker.getBlazeInfo(blazeContext);
     } catch (SyncFailedException e) {
-      throw new BuildException("Could not get bazel version", e);
+      throw new BuildException("Could not get bazel info", e);
     }
   }
 }
