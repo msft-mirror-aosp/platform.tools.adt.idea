@@ -65,7 +65,6 @@ iml_module(
     test_data = [
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//tools/adt/idea/render-resources/testData",
-        "//tools/base/resource-repository/test/resources",
     ],
     # do not sort: must match IML order
     test_deps = [
@@ -79,7 +78,6 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/base/apkparser/analyzer:studio.android.sdktools.analyzer",
         "//tools/adt/idea/layoutlib:intellij.android.layoutlib",
-        "//tools/base/resource-repository:studio.android.sdktools.resource-repository.tests",
     ],
     test_friends = ["//tools/adt/idea/render-resources:intellij.android.render-resources"],
     test_srcs = ["testSrc"],
@@ -100,7 +98,6 @@ kotlin_test(
     data = [
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//tools/adt/idea/render-resources/testData",
-        "//tools/base/resource-repository/test/resources",
     ],
     friends = [":tools.render-resources"],
     jvm_flags = ["-Dtest.suite.jar=tools.render-resources.tests.jar"],
@@ -109,7 +106,6 @@ kotlin_test(
     deps = [
         ":tools.render-resources",
         "//prebuilts/tools/common/lint-psi/intellij-core",
-        "//tools/adt/idea/.idea/libraries:aapt-proto",
         "//tools/adt/idea/layoutlib:tools.layoutlib",
         "//tools/adt/idea/layoutlib-loader:tools.layoutlib-loader",
         "//tools/analytics-library/shared:tools.analytics-shared",
@@ -117,7 +113,6 @@ kotlin_test(
         "//tools/base/common:tools.common",
         "//tools/base/layoutlib-api:tools.layoutlib-api",
         "//tools/base/resource-repository:tools.resource-repository",
-        "//tools/base/resource-repository:tools.resource-repository.test.util",
         "//tools/base/sdk-common:tools.sdk-common",
         "//tools/base/sdklib:tools.sdklib",
         "//tools/base/testutils:tools.testutils",
