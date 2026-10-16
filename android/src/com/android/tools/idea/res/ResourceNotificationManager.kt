@@ -208,6 +208,16 @@ class ResourceNotificationManager private constructor(private val project: Proje
      */
     get() = field.takeIf { moduleToObserverMap.isNotEmpty() }
 
+  /**
+   * Schedules a notification for changes in [file] when the change was not triggered via a PSI event
+   * (e.g. non-PSI document changes or disk modifications handled via [FileDocumentManagerListener]).
+   */
+  internal fun notifyFileChanged(file: VirtualFile) {
+    if (moduleToObserverMap.isNotEmpty()) {
+      notice(if (isRelevantFile(file)) Reason.EDIT else Reason.RESOURCE_EDIT, file)
+    }
+  }
+
   /** Something happened. Either schedule a notification or if one is already pending, do nothing. */
   private fun notice(reason: Reason, source: VirtualFile?) {
     synchronized(events) { events.add(reason) }

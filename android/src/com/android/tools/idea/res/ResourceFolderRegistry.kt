@@ -145,16 +145,26 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     cache.invalidateAll()
   }
 
-  fun dispatchToRepositories(file: VirtualFile, handler: BiConsumer<ResourceFolderRepository, VirtualFile>) {
+  /**
+   * Dispatches a file change to any cached [ResourceFolderRepository] registered for [file] or its parent directories.
+   *
+   * @return true if the event was dispatched to at least one cached repository, false otherwise.
+   */
+  fun dispatchToRepositories(file: VirtualFile, handler: BiConsumer<ResourceFolderRepository, VirtualFile>): Boolean {
     ResourceUpdateTracer.log {
       "ResourceFolderRegistry.dispatchToRepositories(${ResourceUpdateTracer.getInstance().pathForLogging(file)}, ...) VFS change"
     }
     ApplicationManager.getApplication().assertWriteAccessAllowed()
+    var dispatched = false
     var dir = if (file.isDirectory) file else file.parent
     while (dir != null) {
-      cache.getIfPresent(dir)?.let { handler.accept(it, file) }
+      cache.getIfPresent(dir)?.let {
+        dispatched = true
+        handler.accept(it, file)
+      }
       dir = dir.parent
     }
+    return dispatched
   }
 
   fun dispatchToRepositories(file: VirtualFile, invokeCallback: Consumer<PsiTreeChangeListener>) {
@@ -256,7 +266,13 @@ private class ResourceFolderDocumentListener(private val project: Project, priva
       val virtualFile = FileDocumentManager.getInstance().getFile(document) ?: return
       if (virtualFile is LightVirtualFile || !isRelevantFile(virtualFile)) return
 
-      runInWriteAction { registry.dispatchToRepositories(virtualFile) { repo, f -> repo.scheduleScan(f) } }
+      runInWriteAction {
+        // Document changes without a cached PSI file bypass PsiTreeChangeListener, so notify
+        // ResourceNotificationManager when a repository handles this change.
+        if (registry.dispatchToRepositories(virtualFile) { repo, f -> repo.scheduleScan(f) }) {
+          ResourceNotificationManager.getInstance(project).notifyFileChanged(virtualFile)
+        }
+      }
     }
   }
 
@@ -343,6 +359,11 @@ private class ResourceFolderVfsListener(private val registry: ResourceFolderRegi
 
 private class ResourceFolderFileDocumentManagerListener(private val registry: ResourceFolderRegistry) : FileDocumentManagerListener {
   override fun fileWithNoDocumentChanged(file: VirtualFile) {
-    registry.dispatchToRepositories(file) { repo, f -> repo.scheduleScan(f) }
+    // When a file without an associated Document is modified on disk (e.g. from an external build task),
+    // dispatch the scan to the relevant repository and notify ResourceNotificationManager so that
+    // listeners are notified when the pending repository updates finish.
+    if (registry.dispatchToRepositories(file) { repo, f -> repo.scheduleScan(f) }) {
+      ResourceNotificationManager.getInstance(registry.project).notifyFileChanged(file)
+    }
   }
 }
