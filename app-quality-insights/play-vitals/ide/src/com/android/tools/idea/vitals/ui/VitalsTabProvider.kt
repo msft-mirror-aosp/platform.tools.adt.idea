@@ -36,7 +36,7 @@ import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.updateSettings.impl.UpdateChecker
+import com.intellij.openapi.updateSettings.impl.UpdateCheckerFacade
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.util.ui.StatusText
 import icons.StudioIllustrations
@@ -84,7 +84,7 @@ class VitalsTabProvider : AppInsightsTabProvider {
               runInEdt {
                 tabPanel.clearDeprecatedBanner()
                 tabPanel.setComponent(
-                  ServiceUnsupportedPanel(scope, activeTabFlow, tracker, deprecationData) { UpdateChecker.updateAndShowResult(project) }
+                  ServiceUnsupportedPanel(scope, activeTabFlow, tracker, deprecationData) { UpdateCheckerFacade.getInstance().updateAndShowResult(project) }
                 )
               }
             }

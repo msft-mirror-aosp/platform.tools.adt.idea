@@ -25,7 +25,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.updateSettings.impl.UpdateChecker
+import com.intellij.openapi.updateSettings.impl.UpdateCheckerFacade
 import com.intellij.ui.HyperlinkLabel
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.panels.VerticalLayout
@@ -145,7 +145,7 @@ class InsightDeprecatedPanel(
         JButton("Update Android Studio").apply {
           addActionListener {
             logEvent(userClickedUpdate = true)
-            UpdateChecker.updateAndShowResult(project)
+            UpdateCheckerFacade.getInstance().updateAndShowResult(project)
           }
         }
       add(button)
