@@ -75,7 +75,8 @@ enum class CompatibleGradleVersion(val version: GradleVersion) {
         AgpVersion.parse("9.2.0") to VERSION_9_4_1,
         AgpVersion.parse("9.3.0") to VERSION_9_5_0,
         AgpVersion.parse("9.4.0") to VERSION_9_6_0,
-        AgpVersion.parse("9.5.0") to VERSION_FOR_DEV,
+        AgpVersion.parse("9.5.0") to VERSION_9_6_0,
+        AgpVersion.parse("9.6.0") to VERSION_FOR_DEV,
       )
 
     private fun getAssociatedGradleVersion(agpVersion: AgpVersion): CompatibleGradleVersion {
