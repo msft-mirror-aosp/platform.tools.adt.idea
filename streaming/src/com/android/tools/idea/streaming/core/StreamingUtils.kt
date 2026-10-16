@@ -61,7 +61,6 @@ import javax.swing.JEditorPane
 import javax.swing.SwingUtilities
 import javax.swing.event.HyperlinkEvent
 import javax.swing.event.HyperlinkListener
-import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log2
@@ -179,17 +178,6 @@ internal fun Int.scaledUnbiased(fromRange: Int, toRange: Int): Int = ((this * 2L
 
 internal fun Point.scaledUnbiased(fromDim: Dimension, toDim: Dimension): Point =
   Point(x.scaledUnbiased(fromDim.width, toDim.width), y.scaledUnbiased(fromDim.height, toDim.height))
-
-/**
- * Checks if the ratio between [width1] and [height1] is the same as the ratio between [width2] and [height2] within the given relative
- * [tolerance].
- */
-internal fun isSameAspectRatio(width1: Int, height1: Int, width2: Int, height2: Int, tolerance: Double): Boolean {
-  val a = width1.toDouble() * height2
-  val b = width2.toDouble() * height1
-  val d = a - b
-  return abs(d) <= tolerance * abs(a + b) / 2
-}
 
 /**
  * Returns this Dimension if both its components are not greater than the [maximumValue], otherwise returns this Dimension scaled down to
