@@ -659,8 +659,6 @@ MODULE                        : My_First_App.app
     GroupId                       : My First App
     Namespace                     : com.example.firstapp
     TestNamespace                 : com.example.firstapp.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -1714,8 +1712,6 @@ MODULE                        : My_First_App.app.mysharedlibrary
     GroupId                       : My First App.app
     Namespace                     : com.example.mysharedlibrary
     TestNamespace                 : com.example.mysharedlibrary.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

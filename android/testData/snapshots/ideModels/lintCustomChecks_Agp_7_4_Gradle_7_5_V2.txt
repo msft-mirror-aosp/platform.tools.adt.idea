@@ -481,8 +481,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : com.example.app
     TestNamespace                 : com.example.app.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -884,8 +882,6 @@ MODULE                        : project.library
     GroupId                       : project
     Namespace                     : com.example.library
     TestNamespace                 : com.example.library.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -1256,8 +1252,6 @@ MODULE                        : project.library-remote
     GroupId                       : com.example.google
     Namespace                     : com.example.library
     TestNamespace                 : com.example.library.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

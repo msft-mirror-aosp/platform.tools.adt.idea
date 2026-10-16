@@ -32,7 +32,6 @@ data class IdeAndroidProjectImpl(
   override val compileTarget: String,
   override val bootClasspath: List<String>,
   override val signingConfigs: List<IdeSigningConfigImpl>,
-  override val aaptOptions: IdeAaptOptionsImpl,
   override val lintOptions: IdeLintOptionsImpl?,
   override val javaCompileOptions: IdeJavaCompileOptionsImpl?,
   override val buildFolder: FileImpl,
@@ -67,7 +66,6 @@ data class IdeAndroidProjectImpl(
       compileTarget,
       bootClasspath,
       signingConfigs,
-      aaptOptions,
       lintOptions,
       javaCompileOptions,
       buildFolder,
@@ -103,7 +101,6 @@ data class IdeAndroidProjectImpl(
     compileTarget: String,
     bootClasspath: List<String>,
     signingConfigs: List<IdeSigningConfigImpl>,
-    aaptOptions: IdeAaptOptionsImpl,
     lintOptions: IdeLintOptionsImpl?,
     javaCompileOptions: IdeJavaCompileOptionsImpl?,
     buildFolder: File,
@@ -138,7 +135,6 @@ data class IdeAndroidProjectImpl(
     compileTarget,
     bootClasspath,
     signingConfigs,
-    aaptOptions,
     lintOptions,
     javaCompileOptions,
     buildFolder.toImpl(),
@@ -184,7 +180,6 @@ data class IdeAndroidProjectImpl(
     if (compileTarget != other.compileTarget) return false
     if (bootClasspath != other.bootClasspath) return false
     if (signingConfigs != other.signingConfigs) return false
-    if (aaptOptions != other.aaptOptions) return false
     if (lintOptions != other.lintOptions) return false
     if (javaCompileOptions != other.javaCompileOptions) return false
     if (buildFolder != other.buildFolder) return false
@@ -222,7 +217,6 @@ data class IdeAndroidProjectImpl(
       compileTarget,
       bootClasspath,
       signingConfigs,
-      aaptOptions,
       lintOptions,
       javaCompileOptions,
       buildFolder,
@@ -259,7 +253,6 @@ data class IdeAndroidProjectImpl(
       compileTarget: String,
       bootClasspath: List<String>,
       signingConfigs: List<IdeSigningConfigImpl>,
-      aaptOptions: IdeAaptOptionsImpl,
       lintOptions: IdeLintOptionsImpl?,
       javaCompileOptions: IdeJavaCompileOptionsImpl?,
       buildFolder: FileImpl,
@@ -295,7 +288,6 @@ data class IdeAndroidProjectImpl(
       result = 31 * result + compileTarget.hashCode()
       result = 31 * result + bootClasspath.hashCode()
       result = 31 * result + signingConfigs.hashCode()
-      result = 31 * result + aaptOptions.hashCode()
       result = 31 * result + (lintOptions?.hashCode() ?: 0)
       result = 31 * result + (javaCompileOptions?.hashCode() ?: 0)
       result = 31 * result + buildFolder.hashCode()

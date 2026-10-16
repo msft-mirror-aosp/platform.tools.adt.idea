@@ -1301,8 +1301,6 @@ MODULE                        : NonStandardSourceSetDependencies.app
     GroupId                       : NonStandardSourceSetDependencies
     Namespace                     : me.monori.studioclasspathissue
     TestNamespace                 : me.monori.studioclasspathissue.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -2374,8 +2372,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
     GroupId                       : NonStandardSourceSetDependencies
     Namespace                     : me.monori.feature.a
     TestNamespace                 : me.monori.feature.a.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -3426,8 +3422,6 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
     GroupId                       : NonStandardSourceSetDependencies
     Namespace                     : me.monori.feature.b
     TestNamespace                 : me.monori.feature.b.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -4500,8 +4494,6 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
     GroupId                       : NonStandardSourceSetDependencies.kmp-java
     Namespace                     : test
     TestNamespace                 : test.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -4872,8 +4864,6 @@ MODULE                        : NonStandardSourceSetDependencies.lib
     GroupId                       : NonStandardSourceSetDependencies
     Namespace                     : com.example.lib
     TestNamespace                 : com.example.lib.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

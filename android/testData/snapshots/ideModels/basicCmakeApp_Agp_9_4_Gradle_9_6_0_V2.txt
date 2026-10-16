@@ -101,8 +101,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : com.example.basiccmakeapp
     TestNamespace                 : com.example.basiccmakeapp.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

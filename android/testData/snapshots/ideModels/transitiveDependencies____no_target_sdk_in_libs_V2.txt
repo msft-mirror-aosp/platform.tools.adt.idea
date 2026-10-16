@@ -946,8 +946,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : com.example.alruiz.transitive_dependencies
     TestNamespace                 : com.example.alruiz.transitive_dependencies.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -2194,8 +2192,6 @@ MODULE                        : project.library1
     GroupId                       : project
     Namespace                     : com.example.library1
     TestNamespace                 : com.example.library1.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -3415,8 +3411,6 @@ MODULE                        : project.library2
     GroupId                       : project
     Namespace                     : com.example.library2
     TestNamespace                 : com.example.library2.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

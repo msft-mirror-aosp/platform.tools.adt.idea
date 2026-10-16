@@ -865,8 +865,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : google.simpleapplication
     TestNamespace                 : google.simpleapplication.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -2072,8 +2070,6 @@ MODULE                        : project.lib
     GroupId                       : project
     Namespace                     : com.example.lib
     TestNamespace                 : com.example.lib.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

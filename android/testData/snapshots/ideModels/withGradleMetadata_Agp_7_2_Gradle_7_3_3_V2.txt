@@ -134,8 +134,6 @@ MODULE                        : withGradleMetadata.app
     GroupId                       : withGradleMetadata
     Namespace                     : come.example.with.gradle.metadata
     TestNamespace                 : come.example.with.gradle.metadata.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

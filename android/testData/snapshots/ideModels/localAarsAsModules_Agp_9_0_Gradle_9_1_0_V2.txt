@@ -157,8 +157,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : com.android.test.localaarsasmodules
     TestNamespace                 : com.android.test.localaarsasmodules.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -636,8 +634,6 @@ MODULE                        : project.library
     GroupId                       : project
     Namespace                     : com.android.test.library
     TestNamespace                 : com.android.test.library.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

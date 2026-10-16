@@ -148,8 +148,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : com.example.app
     TestNamespace                 : com.example.app.test
-    AaptOptions
-        NameSpacing                   : REQUIRED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -534,8 +532,6 @@ MODULE                        : project.lib
     GroupId                       : project
     Namespace                     : com.example.lib
     TestNamespace                 : com.example.lib.test
-    AaptOptions
-        NameSpacing                   : REQUIRED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -904,8 +900,6 @@ MODULE                        : project.otherlib
     GroupId                       : project
     Namespace                     : com.example.otherlib
     TestNamespace                 : com.example.otherlib.test
-    AaptOptions
-        NameSpacing                   : REQUIRED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

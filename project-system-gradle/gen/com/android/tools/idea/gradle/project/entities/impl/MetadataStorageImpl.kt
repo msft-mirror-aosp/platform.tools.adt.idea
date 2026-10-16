@@ -2104,45 +2104,6 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                           isComputable = false,
                                           isKey = false,
                                           isOpen = false,
-                                          name = "aaptOptions",
-                                          valueType =
-                                            ValueTypeMetadata.SimpleType.CustomType(
-                                              isNullable = false,
-                                              typeMetadata =
-                                                FinalClassMetadata.ClassMetadata(
-                                                  fqName = "com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl",
-                                                  properties =
-                                                    listOf(
-                                                      OwnPropertyMetadata(
-                                                        isComputable = false,
-                                                        isKey = false,
-                                                        isOpen = false,
-                                                        name = "namespacing",
-                                                        valueType =
-                                                          ValueTypeMetadata.SimpleType.CustomType(
-                                                            isNullable = false,
-                                                            typeMetadata =
-                                                              FinalClassMetadata.EnumClassMetadata(
-                                                                fqName = "com.android.tools.idea.gradle.model.IdeAaptOptions\$Namespacing",
-                                                                properties = listOf(),
-                                                                supertypes =
-                                                                  listOf("java.io.Serializable", "kotlin.Comparable", "kotlin.Enum"),
-                                                                values = listOf("DISABLED", "REQUIRED"),
-                                                              ),
-                                                          ),
-                                                        withDefault = false,
-                                                      )
-                                                    ),
-                                                  supertypes =
-                                                    listOf("com.android.tools.idea.gradle.model.IdeAaptOptions", "java.io.Serializable"),
-                                                ),
-                                            ),
-                                          withDefault = false,
-                                        ),
-                                        OwnPropertyMetadata(
-                                          isComputable = false,
-                                          isKey = false,
-                                          isOpen = false,
                                           name = "agpFlags",
                                           valueType =
                                             ValueTypeMetadata.SimpleType.CustomType(
@@ -7079,24 +7040,6 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
                                     ),
                                   ),
                                 primitive = primitiveTypeMapNotNullable,
-                              ),
-                            withDefault = false,
-                          ),
-                          OwnPropertyMetadata(
-                            isComputable = false,
-                            isKey = false,
-                            isOpen = false,
-                            name = "namespacing",
-                            valueType =
-                              ValueTypeMetadata.SimpleType.CustomType(
-                                isNullable = false,
-                                typeMetadata =
-                                  FinalClassMetadata.EnumClassMetadata(
-                                    fqName = "com.android.tools.idea.model.Namespacing",
-                                    properties = listOf(),
-                                    supertypes = listOf("java.io.Serializable", "kotlin.Comparable", "kotlin.Enum"),
-                                    values = listOf("DISABLED", "REQUIRED"),
-                                  ),
                               ),
                             withDefault = false,
                           ),
@@ -13541,8 +13484,6 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.TestComponentType\$HostTest", metadataHash = -1391885428)
     addMetadataHash(typeFqn = "com.android.tools.idea.projectsystem.CommonTestType\$HostTest", metadataHash = -2078241399)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl", metadataHash = -112164028)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl", metadataHash = 1606052470)
-    addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.IdeAaptOptions\$Namespacing", metadataHash = -976234809)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl", metadataHash = 730983063)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeBasicVariantImpl", metadataHash = -1818980688)
     addMetadataHash(typeFqn = "com.android.tools.idea.gradle.model.impl.IdeVariantCoreSerializable", metadataHash = -44131731)
@@ -13600,7 +13541,6 @@ internal object MetadataStorageImpl : MetadataStorageBase() {
     )
     addMetadataHash(typeFqn = "com.android.tools.lint.detector.api.Desugaring", metadataHash = -1307312824)
     addMetadataHash(typeFqn = "com.android.sdklib.AndroidVersion", metadataHash = 1650380424)
-    addMetadataHash(typeFqn = "com.android.tools.idea.model.Namespacing", metadataHash = 866211896)
     addMetadataHash(typeFqn = "com.android.projectmodel.DynamicResourceValue", metadataHash = -1418688792)
     addMetadataHash(typeFqn = "com.android.resources.ResourceType", metadataHash = 223320696)
     addMetadataHash(typeFqn = "com.android.sdklib.devices.Abi", metadataHash = 1474563559)

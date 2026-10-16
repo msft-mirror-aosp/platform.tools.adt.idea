@@ -616,8 +616,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : com.example.dependentmodules.app
     TestNamespace                 : com.example.dependentmodules.app.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -1934,8 +1932,6 @@ MODULE                        : project.lib
     GroupId                       : project
     Namespace                     : com.example.dependentmodules.lib
     TestNamespace                 : com.example.dependentmodules.lib.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

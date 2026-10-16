@@ -725,8 +725,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : google.simpleapplication
     TestNamespace                 : google.simpleapplication.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

@@ -22,7 +22,6 @@ import com.android.builder.model.v2.dsl.ClassField
 import com.android.builder.model.v2.dsl.DependenciesInfo
 import com.android.builder.model.v2.dsl.ProductFlavor
 import com.android.builder.model.v2.dsl.SigningConfig
-import com.android.builder.model.v2.ide.AaptOptions
 import com.android.builder.model.v2.ide.AndroidArtifact
 import com.android.builder.model.v2.ide.AndroidGradlePluginProjectFlags
 import com.android.builder.model.v2.ide.ApiVersion
@@ -63,7 +62,6 @@ import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.tools.idea.gradle.model.ClasspathType
 import com.android.tools.idea.gradle.model.CodeShrinker
-import com.android.tools.idea.gradle.model.IdeAaptOptions
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toPrintableName
@@ -85,7 +83,6 @@ import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
 import com.android.tools.idea.gradle.model.IdeTestSuiteSource
 import com.android.tools.idea.gradle.model.IdeUnknownLibraryImpl
 import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
-import com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
@@ -1579,18 +1576,6 @@ fun modelCacheV2Impl(
     )
   }
 
-  fun convertNamespacing(namespacing: AaptOptions.Namespacing): IdeAaptOptions.Namespacing {
-    return when (namespacing) {
-      AaptOptions.Namespacing.DISABLED -> IdeAaptOptions.Namespacing.DISABLED
-      AaptOptions.Namespacing.REQUIRED -> IdeAaptOptions.Namespacing.REQUIRED
-      else -> throw IllegalStateException("Unknown namespacing option: $namespacing")
-    }
-  }
-
-  fun aaptOptionsFrom(original: AaptOptions): IdeAaptOptionsImpl {
-    return IdeAaptOptionsImpl(namespacing = convertNamespacing(original.namespacing))
-  }
-
   fun ideVariantBuildInformationFrom(variant: Variant): IdeVariantBuildInformationImpl {
     return IdeVariantBuildInformationImpl(
       variantName = variant.name,
@@ -1820,7 +1805,6 @@ fun modelCacheV2Impl(
     val signingConfigsCopy: Collection<IdeSigningConfigImpl> = androidDsl.signingConfigs.map { signingConfigFrom(it) }
     val lintOptionsCopy: IdeLintOptionsImpl? = androidDsl?.lintOptions?.let { lintOptionsFrom(it) }
     val javaCompileOptionsCopy = javaCompileOptionsFrom(project.javaCompileOptions)
-    val aaptOptionsCopy = aaptOptionsFrom(androidDsl.aaptOptions)
     val dynamicFeaturesCopy: Collection<String> = project.dynamicFeatures?.deduplicateStrings() ?: listOf()
     val variantBuildInformation = createVariantBuildInformation(project)
     val viewBindingOptionsCopy: IdeViewBindingOptionsImpl? = project.viewBindingOptions?.let { viewBindingOptionsFrom(it) }
@@ -1859,7 +1843,6 @@ fun modelCacheV2Impl(
         lintOptions = lintOptionsCopy,
         lintChecksJars = lintChecksJarsCopy,
         javaCompileOptions = javaCompileOptionsCopy,
-        aaptOptions = aaptOptionsCopy,
         buildFolder = basicProject.buildFolder,
         dynamicFeatures = dynamicFeaturesCopy.toList(),
         baseFeature = null,

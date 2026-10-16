@@ -68,8 +68,6 @@ MODULE                        : gradle_project.app
     GroupId                       : gradle_project
     Namespace                     : google.simpleapplication
     TestNamespace                 : google.simpleapplication.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

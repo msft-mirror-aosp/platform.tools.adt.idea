@@ -31,7 +31,6 @@ import com.android.tools.idea.gradle.model.ARTIFACT_NAME_MAIN
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_SCREENSHOT_TEST
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_TEST_FIXTURES
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_UNIT_TEST
-import com.android.tools.idea.gradle.model.IdeAaptOptions
 import com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactName
@@ -41,7 +40,6 @@ import com.android.tools.idea.gradle.model.IdeLibraryModelResolver
 import com.android.tools.idea.gradle.model.IdePreResolvedModuleLibraryImpl
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeTestOptions
-import com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
@@ -1473,7 +1471,6 @@ fun AndroidProjectStubBuilder.buildAndroidProjectStub(): IdeAndroidProjectImpl {
     compileTarget = getLatestAndroidPlatform(),
     bootClasspath = listOf(),
     signingConfigs = listOf(),
-    aaptOptions = IdeAaptOptionsImpl(IdeAaptOptions.Namespacing.DISABLED),
     lintOptions = IdeLintOptionsImpl(),
     javaCompileOptions =
       IdeJavaCompileOptionsImpl(

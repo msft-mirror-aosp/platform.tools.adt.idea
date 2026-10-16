@@ -85,8 +85,6 @@ MODULE                        : project_sm_src.app
     GroupId                       : project_sm_src
     Namespace                     : google.simpleapplication
     TestNamespace                 : google.simpleapplication.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

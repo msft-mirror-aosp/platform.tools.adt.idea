@@ -1184,8 +1184,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : com.example.projectwithappandlib.app
     TestNamespace                 : com.example.projectwithappandlib.app.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -2916,8 +2914,6 @@ MODULE                        : project.dyn_feature
     GroupId                       : project
     Namespace                     : com.example.dyn_feature
     TestNamespace                 : com.example.dyn_feature.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -4252,8 +4248,6 @@ MODULE                        : project.lib
     GroupId                       : project
     Namespace                     : com.example.projectwithappandlib.lib
     TestNamespace                 : com.example.projectwithappandlib.lib.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -5334,8 +5328,6 @@ MODULE                        : project.nested1
     GroupId                       : project
     Namespace                     : com.example.nested1
     TestNamespace                 : com.example.nested1.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -5696,8 +5688,6 @@ MODULE                        : project.nested1.deep
     GroupId                       : project.nested1
     Namespace                     : com.example.nested1.deep
     TestNamespace                 : com.example.nested1.deep.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -6072,8 +6062,6 @@ MODULE                        : project.nested2
     GroupId                       : project
     Namespace                     : com.example.nested2
     TestNamespace                 : com.example.nested2.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -6640,8 +6628,6 @@ MODULE                        : project.nested2.deep
     GroupId                       : project.nested2
     Namespace                     : com.example.nested2.deep
     TestNamespace                 : com.example.nested2.deep.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -7016,8 +7002,6 @@ MODULE                        : project.nested2.trans.deep2
     GroupId                       : project.nested2.trans
     Namespace                     : com.example.nested2.trans.deep2
     TestNamespace                 : com.example.nested2.trans.deep2.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

@@ -662,8 +662,6 @@ MODULE                        : MultiFlavor.app
     GroupId                       : MultiFlavor
     Namespace                     : com.example.multiflavor
     TestNamespace                 : com.example.multiflavor.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

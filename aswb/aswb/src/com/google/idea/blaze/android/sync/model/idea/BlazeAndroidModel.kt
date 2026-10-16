@@ -16,7 +16,6 @@
 package com.google.idea.blaze.android.sync.model.idea
 
 import com.android.tools.idea.model.AndroidModel
-import com.android.tools.idea.model.Namespacing
 import com.intellij.openapi.project.Project
 
 /** Blaze model for an android project */
@@ -24,9 +23,6 @@ class BlazeAndroidModel(
   project: Project,
   minSdkVersion: Int,
 ) : BlazeAndroidModelBase(project, minSdkVersion) {
-  override val namespacing: Namespacing
-    get() = Namespacing.DISABLED
-
   override fun uninitializedApplicationId(): String {
     return AndroidModel.UNINITIALIZED_APPLICATION_ID
   }

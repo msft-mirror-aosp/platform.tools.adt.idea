@@ -1073,8 +1073,6 @@ MODULE                        : navgraph.app
     GroupId                       : navgraph
     Namespace                     : com.example.navgraph
     TestNamespace                 : com.example.navgraph.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -2554,8 +2552,6 @@ MODULE                        : navgraph.lib
     GroupId                       : navgraph
     Namespace                     : com.example.lib
     TestNamespace                 : com.example.lib.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

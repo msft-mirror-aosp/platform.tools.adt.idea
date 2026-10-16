@@ -30,7 +30,6 @@ constructor(
   override val allApplicationIds: Set<String> = setOf(applicationId),
   val overridesManifestPackage: Boolean = false,
   override val isDebuggable: Boolean = false,
-  override val namespacing: Namespacing = Namespacing.DISABLED,
   override val desugaring: Set<Desugaring> = Desugaring.DEFAULT,
   override val lintRuleJarsOverride: ImmutableList<File>? = null,
 ) : AndroidModel {

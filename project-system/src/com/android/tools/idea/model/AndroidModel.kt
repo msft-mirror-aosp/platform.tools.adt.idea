@@ -66,8 +66,6 @@ interface AndroidModel {
   val supportedAbis: EnumSet<Abi>
     get() = EnumSet.allOf<Abi>(Abi::class.java)
 
-  val namespacing: Namespacing
-
   /** @return the set of desugaring capabilities of the build system in use. */
   val desugaring: Set<Desugaring>
 

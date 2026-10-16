@@ -23,7 +23,6 @@ import com.android.tools.idea.gradle.model.IdeJavaLibraryImpl
 import com.android.tools.idea.gradle.model.IdePreResolvedModuleLibraryImpl
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.impl.FileImpl
-import com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactOutputImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
@@ -209,8 +208,6 @@ class ModelSerializationTest {
    * END LEVEL2 DEPENDENCY MODELS
    * BEGIN OTHER SHARED (IDE+LINT) MODELS
    */
-
-  @Test fun testAaptOptions() = Truth.assertThat(IdeAaptOptionsImpl::class.java).isAssignableTo(Serializable::class.java)
 
   @Test fun testAndroidArtifactCore() = Truth.assertThat(IdeAndroidArtifactCoreImpl::class.java).isAssignableTo(Serializable::class.java)
 

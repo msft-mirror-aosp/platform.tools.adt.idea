@@ -684,8 +684,6 @@ MODULE                        : kotlinMultiPlatform.app
     GroupId                       : kotlinMultiPlatform
     Namespace                     : com.example.android.kotlin
     TestNamespace                 : com.example.android.kotlin.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -1780,8 +1778,6 @@ MODULE                        : kotlinMultiPlatform.module2
     GroupId                       : kotlinMultiPlatform
     Namespace                     : com.example.test.multiproject.module2
     TestNamespace                 : com.example.test.multiproject.module2.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

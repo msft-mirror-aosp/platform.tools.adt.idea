@@ -66,9 +66,6 @@ interface IdeAndroidProject : Serializable {
   /** Returns a list of [IdeSigningConfig]. */
   val signingConfigs: Collection<IdeSigningConfig>
 
-  /** Returns the aapt options. */
-  val aaptOptions: IdeAaptOptions
-
   /** Returns the lint options. */
   val lintOptions: IdeLintOptions?
 

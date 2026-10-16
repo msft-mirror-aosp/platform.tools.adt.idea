@@ -546,8 +546,6 @@ MODULE                        : Kotlin_Multiplatform.androidLib
     GroupId                       : Kotlin Multiplatform
     Namespace                     : com.example.androidlib
     TestNamespace                 : com.example.androidlib.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -1147,8 +1145,6 @@ MODULE                        : Kotlin_Multiplatform.app
     GroupId                       : Kotlin Multiplatform
     Namespace                     : com.example.app
     TestNamespace                 : com.example.app.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -1603,8 +1599,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
     GroupId                       : Kotlin Multiplatform
     Namespace                     : com.example.kmpfirstlib
     TestNamespace                 : com.example.kmpfirstlib.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -2358,8 +2352,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
     IsBaseSplit                   : false
     GroupId                       : Kotlin Multiplatform
     Namespace                     : com.example.kmpsecondlib
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -2756,8 +2748,6 @@ MODULE                        : build-logic.lib-foo
     GroupId                       : build-logic
     Namespace                     : com.buildlogic.lib.foo
     TestNamespace                 : com.buildlogic.lib.foo.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

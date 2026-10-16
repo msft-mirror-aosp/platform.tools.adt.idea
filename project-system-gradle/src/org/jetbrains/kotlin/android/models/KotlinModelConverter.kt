@@ -34,7 +34,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_ANDROID_TEST
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_UNIT_TEST
 import com.android.tools.idea.gradle.model.CodeShrinker
-import com.android.tools.idea.gradle.model.IdeAaptOptions
 import com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactName
@@ -45,7 +44,6 @@ import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeTestOptions
 import com.android.tools.idea.gradle.model.LibraryReference
 import com.android.tools.idea.gradle.model.ResolverType
-import com.android.tools.idea.gradle.model.impl.IdeAaptOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
@@ -670,7 +668,6 @@ class KotlinModelConverter {
         compileTarget = mainAndroidCompilation.mainInfo.compileSdkTarget,
         bootClasspath = targetInfo.bootClasspathList.map { it.absolutePath.deduplicate() },
         signingConfigs = listOfNotNull(androidTestAndroidCompilation?.instrumentedTestInfo?.signingConfig?.convert()),
-        aaptOptions = IdeAaptOptionsImpl(IdeAaptOptions.Namespacing.DISABLED),
         lintOptions = IdeLintOptionsImpl(), // TODO(b/269755640): support lint in the IDE
         javaCompileOptions =
           IdeJavaCompileOptionsImpl(

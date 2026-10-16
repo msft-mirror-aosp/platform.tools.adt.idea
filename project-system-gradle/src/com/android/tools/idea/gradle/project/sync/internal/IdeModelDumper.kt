@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.sync.internal
 
 import com.android.sdklib.AndroidVersion
-import com.android.tools.idea.gradle.model.IdeAaptOptions
 import com.android.tools.idea.gradle.model.IdeAndroidArtifactCore
 import com.android.tools.idea.gradle.model.IdeAndroidGradlePluginProjectFlags
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
@@ -290,7 +289,6 @@ private fun ideModelDumper(projectDumper: ProjectDumper) =
         prop("GroupId") { ideAndroidModel.groupId }
         prop("Namespace") { ideAndroidModel.namespace }
         prop("TestNamespace") { ideAndroidModel.testNamespace }
-        dump(ideAndroidModel.aaptOptions)
         ideAndroidModel.lintOptions?.let { dump(it) }
         ideAndroidModel.javaCompileOptions?.let { dump(it) }
         dump(ideAndroidModel.agpFlags)
@@ -740,11 +738,6 @@ private fun ideModelDumper(projectDumper: ProjectDumper) =
           prop("KeyAlias") { ideSigningConfig.keyAlias }
           prop("IsSigningReady") { ideSigningConfig.isSigningReady.toString() }
         }
-      }
-
-      private fun dump(aaptOptions: IdeAaptOptions) {
-        head("AaptOptions")
-        nest { prop("NameSpacing") { aaptOptions.namespacing.toString() } }
       }
 
       private fun dump(lintOptions: IdeLintOptions) {

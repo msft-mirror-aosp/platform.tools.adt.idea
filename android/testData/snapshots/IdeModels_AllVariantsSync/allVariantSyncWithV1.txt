@@ -10,8 +10,6 @@ IsBaseSplit                   : true
 GroupId                       : project
 Namespace                     : com.example.projectwithappandlib.app
 TestNamespace                 : com.example.projectwithappandlib.app.test
-AaptOptions
-    NameSpacing                   : DISABLED
 LintOptions
     IsCheckTestSources            : false
     IsCheckDependencies           : false

@@ -20,7 +20,6 @@ import com.android.projectmodel.DynamicResourceValue
 import com.android.resources.ResourceType
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.devices.Abi
-import com.android.tools.idea.gradle.model.IdeAaptOptions
 import com.android.tools.idea.gradle.model.IdeAndroidArtifactCore
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
@@ -44,7 +43,6 @@ import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.util.BaselineProfileUtil.getGenerateBaselineProfileTaskName
 import com.android.tools.idea.model.AndroidModel
-import com.android.tools.idea.model.Namespacing
 import com.android.tools.idea.model.TestExecutionOption
 import com.android.tools.idea.model.TestOptions
 import com.android.tools.idea.projectsystem.TestComponentType
@@ -302,13 +300,6 @@ data class GradleAndroidModelImpl(val data: GradleAndroidModelData) : GradleAndr
         }
           .also { overridesManifestPackageField = it }
     }
-
-  override val namespacing: Namespacing
-    get() =
-      when (androidProject.aaptOptions.namespacing) {
-        IdeAaptOptions.Namespacing.DISABLED -> Namespacing.DISABLED
-        IdeAaptOptions.Namespacing.REQUIRED -> Namespacing.REQUIRED
-      }
 
   override val desugaring: Set<Desugaring>
     get() =

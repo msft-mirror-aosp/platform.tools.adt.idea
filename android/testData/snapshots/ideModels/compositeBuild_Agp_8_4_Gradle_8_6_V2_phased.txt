@@ -980,8 +980,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : com.test.compositeapp
     TestNamespace                 : com.test.compositeapp.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -2040,8 +2038,6 @@ MODULE                        : project.lib
     GroupId                       : com.test.composite
     Namespace                     : com.test.composite0
     TestNamespace                 : com.test.composite0.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -3101,8 +3097,6 @@ MODULE                        : includedLib1.app
     GroupId                       : com.test.composite1
     Namespace                     : com.test.composite1
     TestNamespace                 : com.test.composite1.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -4159,8 +4153,6 @@ MODULE                        : includedLib1.lib
     GroupId                       : com.test.composite1
     Namespace                     : com.test.composite1.lib
     TestNamespace                 : com.test.composite1.lib.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -5343,8 +5335,6 @@ MODULE                        : TestCompositeLib3.app
     GroupId                       : TestCompositeLib3
     Namespace                     : com.test.composite3
     TestNamespace                 : com.test.composite3.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -6381,8 +6371,6 @@ MODULE                        : TestCompositeLib3.lib
     GroupId                       : com.test.composite3
     Namespace                     : com.test.composite3.lib
     TestNamespace                 : com.test.composite3.lib.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

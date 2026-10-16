@@ -748,8 +748,6 @@ MODULE                        : project.app
     GroupId                       : project
     Namespace                     : com.example.android.app
     TestNamespace                 : com.example.android.app.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -1211,8 +1209,6 @@ MODULE                        : project.benchmark
     IsBaseSplit                   : false
     GroupId                       : project
     Namespace                     : com.example.android.benchmark
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -1700,8 +1696,6 @@ MODULE                        : project.test
     IsBaseSplit                   : false
     GroupId                       : project
     Namespace                     : com.example.android.app.benchmark
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
@@ -2179,8 +2173,6 @@ MODULE                        : project.test2
     IsBaseSplit                   : false
     GroupId                       : project
     Namespace                     : com.example.android.test2
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false

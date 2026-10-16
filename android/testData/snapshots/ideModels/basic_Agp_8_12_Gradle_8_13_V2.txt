@@ -578,8 +578,6 @@ MODULE                        : project
     GroupId                       :
     Namespace                     : com.android.tests.basic
     TestNamespace                 : com.android.tests.basic.test
-    AaptOptions
-        NameSpacing                   : DISABLED
     LintOptions
         IsCheckTestSources            : false
         IsCheckDependencies           : false
