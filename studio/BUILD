@@ -1095,6 +1095,7 @@ studio_plugin(
         "@intellij//:intellij.libraries.kotlinc.analysis.api",
         "@intellij//:intellij.libraries.kotlinc.symbol.light.classes",
         "@intellij//:intellij.kotlin.base.projectStructure",
+        "@intellij//:intellij.kotlin.base.psi",
         "@intellij//:kotlin.fir.frontend-independent",
         "@intellij//:org.intellij.groovy",
         "@intellij//:org.jetbrains.kotlin",

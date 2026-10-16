@@ -37,6 +37,7 @@ import com.intellij.util.concurrency.annotations.RequiresWriteLock
 import com.intellij.util.text.nullize
 import java.util.concurrent.Callable
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.idea.base.psi.deleteValueArgument
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtConstantExpression
 import org.jetbrains.kotlin.psi.KtExpression
@@ -228,7 +229,7 @@ internal open class PsiCallParameterPropertyItem(
         } else {
           // Removing an argument would shift the positional arguments after it into other parameters.
           if (!nameFollowingPositionalArguments(argList, arg)) return
-          argList.removeArgument(arg)
+          argList.deleteValueArgument(arg)
         }
       }
     }

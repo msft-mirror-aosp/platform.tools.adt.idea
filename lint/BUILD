@@ -13,6 +13,7 @@ iml_module(
         "@intellij//:intellij.kotlin.base.analysis",
         "@intellij//:intellij.kotlin.base.analysis.utils",
         "@intellij//:intellij.kotlin.base.codeInsight",
+        "@intellij//:intellij.kotlin.base.psi",
         "@intellij//:intellij.kotlin.base.util",
         "@intellij//:intellij.libraries.kotlinc.analysis.api",
         "@intellij//:kotlin.fir.frontend-independent",
