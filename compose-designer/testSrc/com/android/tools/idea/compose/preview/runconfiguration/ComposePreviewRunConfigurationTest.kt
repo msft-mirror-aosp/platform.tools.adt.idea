@@ -17,6 +17,10 @@ package com.android.tools.idea.compose.preview.runconfiguration
 
 import com.android.AndroidProjectTypes
 import com.android.tools.idea.compose.ComposeProjectRule
+import com.android.tools.idea.compose.preview.message
+import com.android.tools.idea.run.ApkProvisionException
+import com.android.tools.idea.run.ApplicationIdProvider
+import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.ComposeDeployEvent
 import com.intellij.openapi.util.JDOMUtil
 import org.jdom.Element
@@ -122,5 +126,45 @@ class ComposePreviewRunConfigurationTest {
 
     facet.configuration.setProjectType(AndroidProjectTypes.PROJECT_TYPE_LIBRARY)
     assertTrue(runConfiguration.isTestConfiguration)
+  }
+
+  @Test
+  fun testValidateLibraryModuleWithoutAndroidTest() {
+    val factory = ComposePreviewRunConfigurationType().configurationFactories[0]
+    val configurationWithoutTestPackage =
+      object : ComposePreviewRunConfiguration(project, factory) {
+        override fun getApplicationIdProvider(): ApplicationIdProvider =
+          object : ApplicationIdProvider {
+            override fun getPackageName(): String = throw ApkProvisionException("Unable to obtain test package.")
+
+            override fun getTestPackageName(): String = throw ApkProvisionException("Unable to obtain test package.")
+          }
+      }
+    configurationWithoutTestPackage.setModule(projectRule.module)
+    val facet = AndroidFacet.getInstance(projectRule.module)!!
+    facet.configuration.projectType = AndroidProjectTypes.PROJECT_TYPE_LIBRARY
+
+    val errors = configurationWithoutTestPackage.validate(null)
+    assertThat(errors.map { it.message }).contains(message("run.configuration.library.no.android.test"))
+  }
+
+  @Test
+  fun testValidateLibraryModuleWithAndroidTest() {
+    val factory = ComposePreviewRunConfigurationType().configurationFactories[0]
+    val configurationWithTestPackage =
+      object : ComposePreviewRunConfiguration(project, factory) {
+        override fun getApplicationIdProvider(): ApplicationIdProvider =
+          object : ApplicationIdProvider {
+            override fun getPackageName(): String = "com.example.lib.test"
+
+            override fun getTestPackageName(): String = "com.example.lib.test"
+          }
+      }
+    configurationWithTestPackage.setModule(projectRule.module)
+    val facet = AndroidFacet.getInstance(projectRule.module)!!
+    facet.configuration.projectType = AndroidProjectTypes.PROJECT_TYPE_LIBRARY
+
+    val errors = configurationWithTestPackage.validate(null)
+    assertThat(errors.map { it.message }).doesNotContain(message("run.configuration.library.no.android.test"))
   }
 }

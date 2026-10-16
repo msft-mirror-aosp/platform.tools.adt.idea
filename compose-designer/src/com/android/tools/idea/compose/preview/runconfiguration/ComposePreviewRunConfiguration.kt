@@ -20,7 +20,7 @@ import com.android.tools.idea.compose.preview.hasPreviewElements
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.execution.common.stats.RunStats
 import com.android.tools.idea.run.AndroidRunConfiguration
-import com.android.tools.idea.run.AndroidRunConfigurationBase
+import com.android.tools.idea.run.ApkProvisionException
 import com.android.tools.idea.run.ValidationError
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.ComposeDeployEvent
@@ -63,10 +63,21 @@ open class ComposePreviewRunConfiguration(
   AndroidRunConfiguration(project, factory, false) {
 
   /**
-   * To be able to support deploying compose preview to devices for library projects, the android test artifact and .apk is used. The
-   * validations needed to make sure that is possible to provide this support are already part of [AndroidRunConfigurationBase.validate]
+   * To be able to support deploying compose preview to devices for library projects, the android test artifact and .apk is used.
    */
-  override fun supportsRunningLibraryProjects(facet: AndroidFacet): Pair<Boolean, String?> = Pair(java.lang.Boolean.TRUE, null)
+  override fun supportsRunningLibraryProjects(facet: AndroidFacet): Pair<Boolean, String?> {
+    val hasTestPackage =
+      try {
+        !applicationIdProvider?.testPackageName.isNullOrEmpty()
+      } catch (_: ApkProvisionException) {
+        false
+      }
+    return if (hasTestPackage) {
+      Pair(java.lang.Boolean.TRUE, null)
+    } else {
+      Pair(java.lang.Boolean.FALSE, message("run.configuration.library.no.android.test"))
+    }
+  }
 
   override fun isTestConfiguration(): Boolean {
     val facet = getAndroidFacet() ?: return super.isTestConfiguration
