@@ -18,7 +18,6 @@ package com.android.tools.idea.preview
 import com.android.tools.compile.fast.CompilationResult
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.preview.essentials.PreviewEssentialsModeManager
-import com.android.tools.idea.preview.mvvm.PreviewViewModel
 import com.android.tools.idea.rendering.BuildListener
 import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.rendering.setupBuildListener
@@ -34,8 +33,6 @@ import org.jetbrains.annotations.VisibleForTesting
  * Class responsible for setting up a Project System build listener, and also a fast preview compilation listener when
  * [isFastPreviewSupported] is true, that will update the preview state according to the build events by calling [invalidate], [refresh] and
  * [requestVisibilityAndNotificationsUpdate].
- *
- * TODO(b/328056861): remove [requestVisibilityAndNotificationsUpdate] once Compose Preview starts using [PreviewViewModel].
  */
 class PreviewBuildListenersManager(
   private val isFastPreviewSupported: Boolean,
