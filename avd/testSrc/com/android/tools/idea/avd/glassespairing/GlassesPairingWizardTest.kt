@@ -21,7 +21,16 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.android.adblib.ConnectedDevice
+import com.android.adblib.DeviceInfo
+import com.android.adblib.DeviceList
+import com.android.adblib.DeviceSelector
+import com.android.adblib.DeviceState as AdbDeviceState
+import com.android.adblib.connectedDevicesTracker
+import com.android.adblib.testing.FakeAdbSession
+import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
+import com.android.adblib.tools.aiglasses.AiGlassesPairing
+import com.android.adblib.waitForDevice
 import com.android.sdklib.AndroidTargetHash
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.deviceprovisioner.AbstractAvdScanner
@@ -58,6 +67,7 @@ import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.runInEdtAndWait
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.ExperimentalTime
@@ -71,6 +81,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
@@ -79,6 +90,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.testTimeSource
 import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
@@ -91,8 +103,19 @@ class GlassesPairingWizardTest {
   /** [GlassesPairingWizard.showCore] is @UiThread and production calls it on the EDT, so run the test body there. */
   private fun runTestOnEdt(testBody: suspend TestScope.() -> Unit) = runInEdtAndWait { runTest(testBody = testBody) }
 
+  @Before
+  fun setUp() {
+    AiGlassesPairing.setDelaysForTest(
+      foregroundDelay = Duration.ZERO,
+      pairingCommandDelay = Duration.ZERO,
+      pollingInterval = Duration.ZERO,
+      pollingTimeout = 5.seconds,
+    )
+  }
+
   @After
   fun tearDown() {
+    AiGlassesPairing.setDelaysForTest()
     GlassesPairingWizard.resetForTesting()
   }
 
@@ -1163,6 +1186,72 @@ class GlassesPairingWizardTest {
       UsageTracker.cleanAfterTesting()
     }
   }
+
+  @Test
+  fun testPairGlassesToPhone_enablesGlassesBluetoothAndWaitsForAddress() = runBlockingWithTimeout {
+    AiGlassesPairing.setPollingIntervalForTest(10.milliseconds)
+    UsageTracker.setWriterForTest(TestTracker())
+    val adbSession = FakeAdbSession()
+    try {
+      val (glasses, phone) = connectPairingDevices(adbSession, glassesBluetoothAddress = "null\n")
+      val glassesSelector = DeviceSelector.fromSerialNumber(GLASSES_SERIAL)
+
+      var retrievedMac: String? = null
+      val statesDeferred = async {
+        pairGlassesToPhone(glasses, phone, launchFlow = { emptyFlow() }, onMacRetrieved = { retrievedMac = it }).toList()
+      }
+
+      yieldUntil { adbSession.shellCommandsSentTo(GLASSES_SERIAL).contains("settings get secure bluetooth_address") }
+      adbSession.deviceServices.configureShellCommand(glassesSelector, "settings get secure bluetooth_address", "$GLASSES_MAC\n")
+
+      val states = statesDeferred.await()
+
+      assertThat(retrievedMac).isEqualTo(GLASSES_MAC)
+      assertThat(states.last()).isEqualTo(PairingState.Complete("Google Pixel 9", "Google Audio glasses"))
+      val glassesCommands = adbSession.shellCommandsSentTo(GLASSES_SERIAL)
+      assertThat(glassesCommands.take(4))
+        .containsExactly(
+          "cmd location set-location-enabled true",
+          "cmd bluetooth_manager enable",
+          "cmd bluetooth_manager wait-for-state:STATE_ON",
+          "dumpsys bluetooth_manager | grep 'Bonded devices:'",
+        )
+        .inOrder()
+      assertThat(glassesCommands.drop(4).toSet()).containsExactly("settings get secure bluetooth_address")
+      assertThat(glassesCommands.count { it == "settings get secure bluetooth_address" }).isAtLeast(2)
+    } finally {
+      adbSession.closeAndJoin()
+      UsageTracker.cleanAfterTesting()
+    }
+  }
+
+  @Test
+  fun testPairGlassesToPhone_reportsErrorWhenGlassesBluetoothAddressTimesOut() = runBlockingWithTimeout {
+    AiGlassesPairing.setPollingTimeoutForTest(Duration.ZERO)
+    val tracker = TestTracker()
+    UsageTracker.setWriterForTest(tracker)
+    val adbSession = FakeAdbSession()
+    try {
+      val (glasses, phone) = connectPairingDevices(adbSession, glassesBluetoothAddress = "null\n")
+
+      val states = pairGlassesToPhone(glasses, phone, launchFlow = { emptyFlow() }, onMacRetrieved = {}).toList()
+
+      assertThat(states.last()).isEqualTo(PairingState.Error("Failed to retrieve Bluetooth address of Google Audio glasses."))
+      assertThat(tracker.events).contains(GlassesPairingEvent.EventKind.PAIRING_ERROR_BLUETOOTH_ADDRESS)
+      assertThat(adbSession.shellCommandsSentTo(GLASSES_SERIAL))
+        .containsExactly(
+          "cmd location set-location-enabled true",
+          "cmd bluetooth_manager enable",
+          "cmd bluetooth_manager wait-for-state:STATE_ON",
+          "dumpsys bluetooth_manager | grep 'Bonded devices:'",
+          "settings get secure bluetooth_address",
+        )
+        .inOrder()
+    } finally {
+      adbSession.closeAndJoin()
+      UsageTracker.cleanAfterTesting()
+    }
+  }
 }
 
 private class TestWizardController : WizardController {
@@ -1256,4 +1345,105 @@ private class FakeGlassesInteractivePairableDeviceHandle(
   override fun isUnpairGlassesEnabled() = unpairEnabled
 
   override suspend fun unpairGlasses(parent: java.awt.Component?) {}
+}
+
+private const val PHONE_SERIAL = "emulator-5554"
+private const val GLASSES_SERIAL = "emulator-5556"
+private const val GLASSES_MAC = "AA:BB:CC:DD:EE:FF"
+private const val COMPANION_PKG = "com.google.android.glasses.companion"
+private const val UNPAIR_COMMAND = "am broadcast -a $COMPANION_PKG.UNPAIR --es address \"$GLASSES_MAC\" -p $COMPANION_PKG"
+private const val ASSISTED_PAIR_COMMAND =
+  "am broadcast -a $COMPANION_PKG.ASSISTED_PAIR --es address \"$GLASSES_MAC\" --ez auto_cdm true --ez force true -p $COMPANION_PKG"
+
+private fun FakeAdbSession.shellCommandsSentTo(serialNumber: String): List<String> {
+  val selector = DeviceSelector.fromSerialNumber(serialNumber).toString()
+  return (deviceServices.shellRequests + deviceServices.shellV2Requests).filter { it.deviceSelector == selector }.map { it.command }
+}
+
+private data class PairingDevices(val glasses: DeviceHandle, val phone: DeviceHandle)
+
+private suspend fun connectPairingDevices(adbSession: FakeAdbSession, glassesBluetoothAddress: String): PairingDevices {
+  adbSession.hostServices.devices =
+    DeviceList(listOf(DeviceInfo(PHONE_SERIAL, AdbDeviceState.ONLINE), DeviceInfo(GLASSES_SERIAL, AdbDeviceState.ONLINE)), emptyList())
+  val glassesSelector = DeviceSelector.fromSerialNumber(GLASSES_SERIAL)
+  val phoneSelector = DeviceSelector.fromSerialNumber(PHONE_SERIAL)
+
+  adbSession.deviceServices.configureShellCommand(glassesSelector, "cmd location set-location-enabled true", "")
+  adbSession.deviceServices.configureShellCommand(glassesSelector, "cmd bluetooth_manager enable", "")
+  adbSession.deviceServices.configureShellCommand(glassesSelector, "cmd bluetooth_manager wait-for-state:STATE_ON", "")
+  adbSession.deviceServices.configureShellCommand(
+    glassesSelector,
+    "dumpsys bluetooth_manager | grep 'Bonded devices:'",
+    "Bonded devices: 0\n",
+  )
+  adbSession.deviceServices.configureShellCommand(glassesSelector, "settings get secure bluetooth_address", glassesBluetoothAddress)
+
+  adbSession.deviceServices.configureShellCommand(
+    phoneSelector,
+    "pm list packages com.google.android.glasses",
+    "package:$COMPANION_PKG\npackage:com.google.android.glasses.core\n",
+  )
+  adbSession.deviceServices.configureShellCommand(phoneSelector, "settings get secure bluetooth_address", "11:22:33:44:55:66\n")
+  listOf(
+      "pm grant $COMPANION_PKG android.permission.NEARBY_WIFI_DEVICES",
+      "pm grant $COMPANION_PKG android.permission.BLUETOOTH_CONNECT",
+      "pm grant com.google.android.glasses.core android.permission.ACCESS_FINE_LOCATION",
+      "cmd location set-location-enabled true",
+      "cmd bluetooth_manager enable",
+      "cmd bluetooth_manager wait-for-state:STATE_ON",
+      "monkey -p $COMPANION_PKG -c android.intent.category.LAUNCHER 1",
+      UNPAIR_COMMAND,
+      ASSISTED_PAIR_COMMAND,
+    )
+    .forEach { adbSession.deviceServices.configureShellCommand(phoneSelector, it, "") }
+  adbSession.deviceServices.configureShellCommand(
+    phoneSelector,
+    "dumpsys window displays",
+    "  mCurrentFocus=Window{1 u0 $COMPANION_PKG/$COMPANION_PKG.MainActivity}\n",
+  )
+  adbSession.deviceServices.configureShellCommand(
+    phoneSelector,
+    "am broadcast -a $COMPANION_PKG.GET_PAIRING_STATE -p $COMPANION_PKG",
+    "Broadcast completed: result=-1, data=\"state=PAIRED\"\n",
+  )
+
+  val phone =
+    FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+      "p1",
+      adbSession.scope,
+      DeviceState.Connected(
+        properties =
+          DeviceProperties.buildForTest {
+            icon = EmptyIcon.DEFAULT
+            manufacturer = "Google"
+            model = "Pixel 9"
+            deviceType = DeviceType.HANDHELD
+            androidVersion = AndroidVersion(36, 1)
+          },
+        isTransitioning = false,
+        isReady = true,
+        status = "Connected",
+        connectedDevice = adbSession.connectedDevicesTracker.waitForDevice(PHONE_SERIAL),
+      ),
+    )
+  val glasses =
+    FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+      "g1",
+      adbSession.scope,
+      DeviceState.Connected(
+        properties =
+          DeviceProperties.buildForTest {
+            icon = EmptyIcon.DEFAULT
+            manufacturer = "Google"
+            model = "Audio glasses"
+            deviceType = DeviceType.AI_GLASSES
+            androidVersion = AndroidVersion(36, 1)
+          },
+        isTransitioning = false,
+        isReady = true,
+        status = "Connected",
+        connectedDevice = adbSession.connectedDevicesTracker.waitForDevice(GLASSES_SERIAL),
+      ),
+    )
+  return PairingDevices(glasses = glasses, phone = phone)
 }

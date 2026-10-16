@@ -1014,6 +1014,7 @@ private suspend fun FlowCollector<PairingState>.runPairingSequence(
   onMacRetrieved: (String) -> Unit,
 ) {
   with(AiGlassesPairing(phoneDevice.session)) {
+    glassesDevice.ensureBluetoothAndLocationEnabled()
     val glassesPairedCount =
       try {
         glassesDevice.getPairedBluetoothDeviceCount() ?: 0
@@ -1042,10 +1043,9 @@ private suspend fun FlowCollector<PairingState>.runPairingSequence(
 
     emit(PairingState.Pairing("Initiating pairing with $phoneName and $glassesName..."))
 
-    glassesDevice.ensureBluetoothAndLocationEnabled()
     val glassesBluetoothAddress =
       try {
-        glassesDevice.getBluetoothAddress()
+        glassesDevice.waitForBluetoothAddress()
       } catch (e: ShellCommandException) {
         throw ShellCommandException("Getting Bluetooth address of $glassesName failed: ${e.message}")
       }
