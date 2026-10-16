@@ -18,9 +18,9 @@
 package com.android.tools.idea.testing
 
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.NlsContexts
+import com.intellij.platform.ide.progress.BackgroundTaskOwner
 import com.intellij.platform.ide.progress.ModalTaskOwner
 import com.intellij.platform.ide.progress.TaskCancellation
 import com.intellij.platform.ide.progress.TaskSupport
@@ -51,7 +51,7 @@ class HeadlessTaskSupportRule : ExternalResource() {
 private class HeadlessTaskSupport : TaskSupport {
 
   override suspend fun <T> withBackgroundProgressInternal(
-    project: Project,
+    owner: BackgroundTaskOwner,
     title: @NlsContexts.ProgressTitle String,
     cancellation: TaskCancellation,
     suspender: TaskSuspender?,
