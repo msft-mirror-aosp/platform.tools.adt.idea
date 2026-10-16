@@ -24,6 +24,7 @@ import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiFileSystemItem
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiTreeChangeEvent
 import com.intellij.psi.PsiTreeChangeListener
@@ -46,9 +47,24 @@ class AndroidPsiTreeChangeListener(private val project: Project) : PsiTreeChange
   private val sampleDataListener
     get() = SampleDataListener.getInstanceIfCreated(project)
 
+  /**
+   * Returns whether [event] affects a PSI element belonging to this [project].
+   *
+   * Used to ignore listening to changes outside the project (such as when multiple projects are
+   * open, or when files in another project are modified), preventing non-project PSI changes from
+   * triggering resource updates and marking previews as out-of-date.
+   */
+  private fun isInProject(event: PsiTreeChangeEvent): Boolean {
+    val psiManager = PsiManager.getInstance(project)
+    return sequenceOf(event.file, event.parent, event.oldParent, event.newParent, event.child, event.element)
+      .filterIsInstance<PsiFileSystemItem>()
+      .any { it.isValid && it.project == project && psiManager.isInProject(it) }
+  }
+
   override fun beforeChildAddition(event: PsiTreeChangeEvent) {}
 
   override fun childAdded(event: PsiTreeChangeEvent) {
+    if (!isInProject(event)) return
     val psiFile = event.file
     when {
       psiFile == null -> {
@@ -70,6 +86,7 @@ class AndroidPsiTreeChangeListener(private val project: Project) : PsiTreeChange
   override fun beforeChildRemoval(event: PsiTreeChangeEvent) {}
 
   override fun childRemoved(event: PsiTreeChangeEvent) {
+    if (!isInProject(event)) return
     val psiFile = event.file
 
     when {
@@ -95,6 +112,7 @@ class AndroidPsiTreeChangeListener(private val project: Project) : PsiTreeChange
   override fun beforeChildReplacement(event: PsiTreeChangeEvent) {}
 
   override fun childReplaced(event: PsiTreeChangeEvent) {
+    if (!isInProject(event)) return
     val psiFile = event.file
     if (psiFile == null) {
       val parent = event.parent as? PsiDirectory ?: return
@@ -115,6 +133,7 @@ class AndroidPsiTreeChangeListener(private val project: Project) : PsiTreeChange
   }
 
   override fun beforeChildrenChange(event: PsiTreeChangeEvent) {
+    if (!isInProject(event)) return
     event.file?.takeIf(::isRelevantFile)?.let { dispatchBeforeChildrenChange(event, it.virtualFile) }
   }
 
@@ -123,6 +142,7 @@ class AndroidPsiTreeChangeListener(private val project: Project) : PsiTreeChange
   }
 
   override fun childrenChanged(event: PsiTreeChangeEvent) {
+    if (!isInProject(event)) return
     val psiFile = event.file ?: return
     val file = psiFile.virtualFile
 
@@ -138,6 +158,7 @@ class AndroidPsiTreeChangeListener(private val project: Project) : PsiTreeChange
   override fun beforeChildMovement(event: PsiTreeChangeEvent) {}
 
   override fun childMoved(event: PsiTreeChangeEvent) {
+    if (!isInProject(event)) return
     val psiFile = event.file
     if (psiFile == null) {
       val child = (event.child as? PsiFile)?.takeIf(::isRelevantFile) ?: return
@@ -168,6 +189,7 @@ class AndroidPsiTreeChangeListener(private val project: Project) : PsiTreeChange
   }
 
   override fun beforePropertyChange(event: PsiTreeChangeEvent) {
+    if (!isInProject(event)) return
     if (PsiTreeChangeEvent.PROP_FILE_NAME == event.propertyName) {
       (event.child as? PsiFile)?.takeIf(::isRelevantFile)?.let { dispatchBeforePropertyChange(event, it.virtualFile) }
     }
@@ -178,6 +200,7 @@ class AndroidPsiTreeChangeListener(private val project: Project) : PsiTreeChange
   }
 
   override fun propertyChanged(event: PsiTreeChangeEvent) {
+    if (!isInProject(event)) return
     if (PsiTreeChangeEvent.PROP_FILE_NAME == event.propertyName) {
       (event.element as? PsiFile)?.takeIf(::isRelevantFile)?.let { dispatchPropertyChanged(event, it.virtualFile) }
     }
