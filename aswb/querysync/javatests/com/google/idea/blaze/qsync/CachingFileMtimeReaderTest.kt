@@ -149,6 +149,7 @@ class CachingFileMtimeReaderTest {
     writeFile(defsBzl, mtimeMs = givenSyncStartMs - 60_000L)
 
     assertThat(reader.getMtimeOrSyncStartTime(defsBzl)).isNull()
+    assertThat(reader.filesRead).isEqualTo(0)
   }
 
   @Test
@@ -201,6 +202,7 @@ class CachingFileMtimeReaderTest {
 
     assertThat(reader.getMtimeOrSyncStartTime(defsBzl)).isEqualTo(mtimeMs)
     assertThat(reader.getMtimeOrSyncStartTime(utilBzl)).isEqualTo(mtimeMs)
+    assertThat(reader.filesRead).isEqualTo(2)
   }
 
   @Test

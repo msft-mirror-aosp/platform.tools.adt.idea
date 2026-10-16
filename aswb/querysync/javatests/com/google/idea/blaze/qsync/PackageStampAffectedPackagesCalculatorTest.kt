@@ -32,6 +32,7 @@ class PackageStampAffectedPackagesCalculatorTest {
         latestBuildGraphDataPackageStamp = mapOf(Path.of("a/b/c") to 100L),
         packagesToUpdate = listOf(Path.of("a/b/c")),
         projectScope = { true },
+        haveSubincludesChanged = { false },
       )
 
     assertThat(affected.modifiedPackages).isEmpty()
@@ -46,6 +47,7 @@ class PackageStampAffectedPackagesCalculatorTest {
         latestBuildGraphDataPackageStamp = mapOf(Path.of("a/b/c") to 100L),
         packagesToUpdate = listOf(Path.of("a/b/c")),
         projectScope = { true },
+        haveSubincludesChanged = { false },
       )
 
     assertThat(affected.modifiedPackages).containsExactly(Path.of("a/b/c"))
@@ -59,6 +61,7 @@ class PackageStampAffectedPackagesCalculatorTest {
         latestBuildGraphDataPackageStamp = mapOf(Path.of("a/b/c") to 100L),
         packagesToUpdate = emptyList(),
         projectScope = { true },
+        haveSubincludesChanged = { false },
       )
 
     assertThat(affected.deletedPackages).containsExactly(Path.of("a/b/c"))
@@ -72,6 +75,7 @@ class PackageStampAffectedPackagesCalculatorTest {
         latestBuildGraphDataPackageStamp = mapOf(Path.of("a/b/c") to 100L),
         packagesToUpdate = emptyList(),
         projectScope = { false },
+        haveSubincludesChanged = { false },
       )
 
     assertThat(affected.deletedPackages).isEmpty()
@@ -85,6 +89,7 @@ class PackageStampAffectedPackagesCalculatorTest {
         latestBuildGraphDataPackageStamp = emptyMap(),
         packagesToUpdate = listOf(Path.of("a/b/c")),
         projectScope = { true },
+        haveSubincludesChanged = { false },
       )
 
     assertThat(affected.modifiedPackages).containsExactly(Path.of("a/b/c"))
@@ -98,6 +103,7 @@ class PackageStampAffectedPackagesCalculatorTest {
         latestBuildGraphDataPackageStamp = mapOf(Path.of("a") to 50L),
         packagesToUpdate = listOf(Path.of("a/b")),
         projectScope = { true },
+        haveSubincludesChanged = { false },
       )
 
     assertThat(affected.modifiedPackages).containsExactly(Path.of("a/b"), Path.of("a"))
@@ -111,6 +117,7 @@ class PackageStampAffectedPackagesCalculatorTest {
         latestBuildGraphDataPackageStamp = mapOf(Path.of("a") to 50L),
         packagesToUpdate = listOf(Path.of("a/b")),
         projectScope = { true },
+        haveSubincludesChanged = { false },
       )
 
     assertThat(affected.modifiedPackages).containsExactly(Path.of("a/b"), Path.of("a"))
@@ -124,6 +131,7 @@ class PackageStampAffectedPackagesCalculatorTest {
         latestBuildGraphDataPackageStamp = mapOf(Path.of("a") to 50L),
         packagesToUpdate = listOf(Path.of("a/b/c")),
         projectScope = { true },
+        haveSubincludesChanged = { false },
       )
 
     assertThat(affected.modifiedPackages).containsExactly(Path.of("a/b/c"), Path.of("a"))
@@ -137,6 +145,7 @@ class PackageStampAffectedPackagesCalculatorTest {
         latestBuildGraphDataPackageStamp = mapOf(Path.of("") to 100L),
         packagesToUpdate = listOf(Path.of("a")),
         projectScope = { true },
+        haveSubincludesChanged = { false },
       )
 
     assertThat(affected.modifiedPackages).containsExactly(Path.of("a"), Path.of(""))
@@ -150,8 +159,81 @@ class PackageStampAffectedPackagesCalculatorTest {
         latestBuildGraphDataPackageStamp = emptyMap(),
         packagesToUpdate = listOf(Path.of("a/b")),
         projectScope = { true },
+        haveSubincludesChanged = { false },
       )
 
     assertThat(affected.modifiedPackages).containsExactly(Path.of("a/b"), Path.of("a"))
+  }
+
+  @Test
+  fun testChangedSubincludes_requestedPackageModified() {
+    val affected =
+      calculatePackageStampAffectedPackages(
+        latestProjectDataPackageStamp = mapOf(Path.of("a") to 100L, Path.of("b") to 100L),
+        latestBuildGraphDataPackageStamp = mapOf(Path.of("a") to 100L, Path.of("b") to 100L),
+        packagesToUpdate = listOf(Path.of("a"), Path.of("b")),
+        projectScope = { true },
+        haveSubincludesChanged = { it == Path.of("a") },
+      )
+
+    assertThat(affected.modifiedPackages).containsExactly(Path.of("a"))
+    assertThat(affected.deletedPackages).isEmpty()
+  }
+
+  @Test
+  fun testChangedSubincludes_packageNotRequested_notModified() {
+    val affected =
+      calculatePackageStampAffectedPackages(
+        latestProjectDataPackageStamp = mapOf(Path.of("a") to 100L, Path.of("b") to 100L),
+        latestBuildGraphDataPackageStamp = mapOf(Path.of("a") to 100L, Path.of("b") to 100L),
+        packagesToUpdate = listOf(Path.of("b")),
+        projectScope = { true },
+        haveSubincludesChanged = { it == Path.of("a") },
+      )
+
+    assertThat(affected.modifiedPackages).isEmpty()
+  }
+
+  @Test
+  fun testChangedSubincludes_packageStampChanged_modifiedWithoutCheckingSubincludes() {
+    val affected =
+      calculatePackageStampAffectedPackages(
+        latestProjectDataPackageStamp = mapOf(Path.of("a") to 200L),
+        latestBuildGraphDataPackageStamp = mapOf(Path.of("a") to 100L),
+        packagesToUpdate = listOf(Path.of("a")),
+        projectScope = { true },
+        haveSubincludesChanged = { error("Unexpected check of $it") },
+      )
+
+    assertThat(affected.modifiedPackages).containsExactly(Path.of("a"))
+  }
+
+  @Test
+  fun testChangedSubincludes_outsideProjectScope_notChecked() {
+    val affected =
+      calculatePackageStampAffectedPackages(
+        latestProjectDataPackageStamp = mapOf(Path.of("a") to 100L),
+        latestBuildGraphDataPackageStamp = mapOf(Path.of("a") to 100L),
+        packagesToUpdate = listOf(Path.of("a")),
+        projectScope = { false },
+        haveSubincludesChanged = { error("Unexpected check of $it") },
+      )
+
+    assertThat(affected.modifiedPackages).isEmpty()
+  }
+
+  @Test
+  fun testChangedSubincludes_deletedPackage_onlyDeleted() {
+    val affected =
+      calculatePackageStampAffectedPackages(
+        latestProjectDataPackageStamp = emptyMap(),
+        latestBuildGraphDataPackageStamp = mapOf(Path.of("a") to 100L),
+        packagesToUpdate = listOf(Path.of("a")),
+        projectScope = { true },
+        haveSubincludesChanged = { error("Unexpected check of $it") },
+      )
+
+    assertThat(affected.modifiedPackages).isEmpty()
+    assertThat(affected.deletedPackages).containsExactly(Path.of("a"))
   }
 }

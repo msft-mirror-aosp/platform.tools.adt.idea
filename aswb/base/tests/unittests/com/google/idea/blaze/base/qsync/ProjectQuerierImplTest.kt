@@ -21,6 +21,7 @@ import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.qsync.BlazeSubincludeFileResolver
 import com.google.idea.blaze.qsync.CachingFileMtimeReader
+import com.google.idea.blaze.qsync.MTIME_MARGIN_MS
 import com.google.idea.blaze.qsync.ProjectRefresher
 import com.google.idea.blaze.qsync.QuerySyncProjectSnapshot
 import com.google.idea.blaze.qsync.RefreshParameters
@@ -79,13 +80,19 @@ class ProjectQuerierImplTest {
   /** The packages that each query included. */
   private val queries = mutableListOf<Set<Path>>()
 
-  /** A fake query, which returns each queried package with its [subincludes]. */
+  /**
+   * A fake query, which returns each queried package with its [subincludes]. Like Bazel, it returns nothing for a package that loads a file
+   * that doesn't exist.
+   */
   private val queryRunner = QueryRunner { spec, _ ->
     val packages = Regex("//([^:]+):\\*").findAll(spec.queryExpression.get()).map { Path.of(it.groupValues[1]) }.toSet()
     queries.add(packages)
     val result = QuerySummaryImpl.newBuilder()
     for (path in packages) {
-      result.putSourceFiles(QueryData.SourceFile(buildFile(path), subincludes.getValue(path)))
+      val loads = subincludes.getValue(path)
+      if (loads.all { Files.exists(tempDir.root.toPath().resolve(it.toFilePath())) }) {
+        result.putSourceFiles(QueryData.SourceFile(buildFile(path), loads))
+      }
     }
     result.build()
   }
@@ -225,5 +232,119 @@ class ProjectQuerierImplTest {
     assertThat(a.stamp).isEqualTo(2L)
     // B also loads defs.bzl, but it wasn't queried, so it keeps the stamp from the first sync.
     assertThat(second.buildPackage(pathB).subincludeStamp).isEqualTo(first.buildPackage(pathB).subincludeStamp)
+  }
+
+  @Test
+  fun update_bzlChanged_requeriesOnlyRequestedLoaders() {
+    val first = firstSync()
+    setMtime(defsBzl, oldMtimeMs + 60_000L)
+
+    val second = sync(first, setOf(pathA))
+
+    assertThat(queries).containsExactly(setOf(pathA))
+    val a = second.buildPackage(pathA)
+    assertThat(a.subincludeStamp).isEqualTo(a.calculateSubincludeStamp { oldMtimeMs + 60_000L })
+    // B also loads defs.bzl, but it wasn't requested, so it keeps the stamp from the first sync.
+    assertThat(second.buildPackage(pathB).subincludeStamp).isEqualTo(first.buildPackage(pathB).subincludeStamp)
+  }
+
+  @Test
+  fun update_bzlChanged_requestedPackageDoesNotLoadIt_noQuery() {
+    val first = firstSync()
+    setMtime(defsBzl, oldMtimeMs + 60_000L)
+
+    sync(first, setOf(pathC))
+
+    assertThat(queries).isEmpty()
+  }
+
+  @Test
+  fun update_bzlChanged_allPackagesRequested_requeriesItsLoaders() {
+    val first = firstSync()
+    setMtime(defsBzl, oldMtimeMs + 60_000L)
+
+    sync(first, setOf(pathA, pathB, pathC))
+
+    assertThat(queries).containsExactly(setOf(pathA, pathB))
+  }
+
+  @Test
+  fun update_bzlLoadedByOnePackageChanged_requeriesOnlyThatPackage() {
+    val first = firstSync()
+    setMtime(otherBzl, oldMtimeMs + 60_000L)
+
+    sync(first, setOf(pathA, pathB, pathC))
+
+    // Only B loads other.bzl.
+    assertThat(queries).containsExactly(setOf(pathB))
+  }
+
+  @Test
+  fun update_bzlReverted_requeried() {
+    val first = firstSync()
+    setMtime(defsBzl, oldMtimeMs + 60_000L)
+    val second = sync(first, setOf(pathA))
+    // g4 revert restores the old mtime.
+    setMtime(defsBzl, oldMtimeMs)
+
+    sync(second, setOf(pathA))
+
+    assertThat(queries).containsExactly(setOf(pathA), setOf(pathA))
+  }
+
+  @Test
+  fun update_bzlDeleted_requeriedUntilRestored() {
+    val first = firstSync()
+    Files.delete(tempDir.root.toPath().resolve(defsBzl.toFilePath()))
+
+    // A fails to load, so the query returns nothing for it, and A keeps its data and its stamp from the first sync.
+    val second = sync(first, setOf(pathA))
+    val third = sync(second, setOf(pathA))
+    // g4 revert restores the old mtime.
+    setMtime(defsBzl, oldMtimeMs)
+    val fourth = sync(third, setOf(pathA))
+
+    assertThat(queries).containsExactly(setOf(pathA), setOf(pathA))
+    assertThat(fourth.buildPackage(pathA).subincludeStamp).isEqualTo(first.buildPackage(pathA).subincludeStamp)
+  }
+
+  @Test
+  fun update_bzlChangedRightBeforeSync_requeriedOnceMore() {
+    val first = firstSync()
+    // defs.bzl is saved less than 2 s before the next sync starts, so that sync records its start time for it.
+    val editMs = oldMtimeMs + 60_000L
+    setMtime(defsBzl, editMs)
+
+    val second = sync(first, setOf(pathA), mtimeReader = readerStartingAt(editMs + 500L))
+    // Once the edit is more than 2 s old, a sync reads its real mtime, which differs from that start time.
+    val third = sync(second, setOf(pathA), mtimeReader = readerStartingAt(editMs + MTIME_MARGIN_MS + 1_000L))
+    sync(third, setOf(pathA), mtimeReader = readerStartingAt(editMs + MTIME_MARGIN_MS + 2_000L))
+
+    assertThat(queries).containsExactly(setOf(pathA), setOf(pathA))
+  }
+
+  @Test
+  fun update_bzlChangedDuringQuery_requeriedNextTime() {
+    val first = firstSync()
+    val syncStartMs = oldMtimeMs + 60_000L
+    // defs.bzl is edited while the query runs, after Bazel read it, so its mtime is after the sync start.
+    val editingQueryRunner = QueryRunner { spec, context ->
+      val result = queryRunner.runQuery(spec, context)
+      setMtime(defsBzl, syncStartMs + 1_000L)
+      result
+    }
+
+    // A's BUILD file changed, so A is queried without checking its .bzl files, which are first read after the query.
+    val second =
+      sync(
+        first,
+        setOf(pathA),
+        projectStructure(stampOfA = 2L),
+        mtimeReader = readerStartingAt(syncStartMs),
+        queryRunner = editingQueryRunner,
+      )
+    sync(second, setOf(pathA), projectStructure(stampOfA = 2L), mtimeReader = readerStartingAt(syncStartMs + 10_000L))
+
+    assertThat(queries).containsExactly(setOf(pathA), setOf(pathA))
   }
 }

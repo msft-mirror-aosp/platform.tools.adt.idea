@@ -29,14 +29,23 @@ import com.google.idea.blaze.qsync.query.QuerySpec
 import com.google.idea.blaze.qsync.query.QuerySummary
 import com.google.idea.blaze.qsync.query.QuerySummaryImpl
 import com.google.idea.blaze.qsync.query.QuerySummaryTestUtil
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.FileTime
 import java.util.Optional
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 
 @RunWith(JUnit4::class)
 class ProjectRefresherTest {
+  @get:Rule val tempDir = TemporaryFolder()
+
+  /** The mtime of the .bzl file in the subinclude tests, long before the tests run, in whole seconds. */
+  private val defsBzlMtimeMs = 1_700_000_000_000L
+
   private fun createRefresher(existingSnapshot: QuerySyncProjectSnapshot? = QuerySyncProjectSnapshot.EMPTY): ProjectRefresher {
     return ProjectRefresher(
       Path.of("/"),
@@ -163,6 +172,71 @@ class ProjectRefresherTest {
     val partialQuery = update as PartialProjectRefresh
     Truth.assertThat(partialQuery.deletedPackages).isEmpty()
     Truth.assertThat(partialQuery.modifiedPackages).containsExactly(Path.of("package/path"))
+  }
+
+  /**
+   * Starts a partial refresh that requests package/path, whose BUILD file is unchanged and loads //defs:defs.bzl. The last query recorded
+   * the subinclude stamp that [subincludeStamp] returns for the package.
+   */
+  private fun startRefreshOfPackageLoadingDefsBzl(subincludeStamp: (QuerySummary.BuildPackage) -> Long): RefreshOperation {
+    val defsBzl = tempDir.root.toPath().resolve("defs/defs.bzl")
+    Files.createDirectories(defsBzl.parent)
+    Files.writeString(defsBzl, "")
+    Files.setLastModifiedTime(defsBzl, FileTime.fromMillis(defsBzlMtimeMs))
+    val buildFile = Label.of("//package/path:BUILD")
+    val queried = QuerySummaryImpl.newBuilder().putSourceFiles(QueryData.SourceFile(buildFile, listOf(Label.of("//defs:defs.bzl")))).build()
+    val querySummary =
+      QuerySummaryImpl.newBuilder()
+        .putAllPackages(queried.buildPackages)
+        .putPackageStamp(buildFile, 1L)
+        .putSubincludeStamp(buildFile, subincludeStamp(queried.getBuildPackage(buildFile)!!))
+        .build()
+    val project = PostQuerySyncData.EMPTY.toBuilder().setQuerySummary(querySummary).build()
+
+    val projectStructureData =
+      ProjectStructureData.create(
+        listOf(
+          ProjectStructureRoot(
+            Path.of("package"),
+            mapOf(Path.of("package/path") to BuildPackage(Path.of("package/path"), emptyList(), stamp = 1L)),
+          )
+        ),
+        setOf(QuerySyncLanguage.JVM),
+      )
+
+    val existingSnapshot = QuerySyncProjectSnapshot.EMPTY.withProjectDefinition(projectDef)
+    return createRefresher(existingSnapshot)
+      .startPartialRefresh(
+        RefreshParameters(
+          lastQuery = project,
+          projectDefinition = projectDef,
+          projectStructureData = projectStructureData,
+          requestedPackages = setOf(Path.of("package/path")),
+          requireFullSync = { false },
+          mtimeReader = CachingFileMtimeReader(BlazeSubincludeFileResolver(tempDir.root.toPath())),
+        ),
+        QuerySyncTestUtils.LOGGING_CONTEXT,
+      )
+  }
+
+  @Test
+  @Throws(Exception::class)
+  fun testStartPartialRefresh_subincludesChanged_packageModified() {
+    // The last query saw an older version of defs.bzl.
+    val update = startRefreshOfPackageLoadingDefsBzl { it.calculateSubincludeStamp { defsBzlMtimeMs - 60_000L } }
+
+    Truth.assertThat(update).isInstanceOf(PartialProjectRefresh::class.java)
+    val partialQuery = update as PartialProjectRefresh
+    Truth.assertThat(partialQuery.deletedPackages).isEmpty()
+    Truth.assertThat(partialQuery.modifiedPackages).containsExactly(Path.of("package/path"))
+  }
+
+  @Test
+  @Throws(Exception::class)
+  fun testStartPartialRefresh_subincludesUnchanged_returnsNoop() {
+    val update = startRefreshOfPackageLoadingDefsBzl { it.calculateSubincludeStamp { defsBzlMtimeMs } }
+
+    Truth.assertThat(update).isInstanceOf(NoopProjectRefresh::class.java)
   }
 
   @Test

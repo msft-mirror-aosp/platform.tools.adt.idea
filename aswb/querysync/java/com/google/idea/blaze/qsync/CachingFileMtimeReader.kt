@@ -62,6 +62,10 @@ constructor(private val subincludeFileResolver: SubincludeFileResolver, private 
   /** The stamp of each file looked up so far in this sync, or null for a file that isn't tracked. */
   private val stampByLoadedFile = HashMap<Label, LoadedFileStamp?>()
 
+  /** The number of files whose mtime was read so far. */
+  var filesRead: Int = 0
+    private set
+
   /**
    * Returns the mtime value hashed for [file], or null if it isn't tracked.
    *
@@ -90,6 +94,7 @@ constructor(private val subincludeFileResolver: SubincludeFileResolver, private 
   }
 
   private fun readMtime(path: Path): Long {
+    filesRead++
     return try {
       Files.getLastModifiedTime(path).toMillis()
     } catch (e: NoSuchFileException) {

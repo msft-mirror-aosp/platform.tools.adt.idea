@@ -59,7 +59,7 @@ public class ProjectRefresher {
       return startFullUpdate(
           context, params.projectDefinition, params.projectStructureData, params.mtimeReader);
     }
-    AffectedPackages affected = params.calculateAffectedPackages();
+    AffectedPackages affected = params.calculateAffectedPackages(context);
 
     if (affected.isEmpty()) {
       // No consequential changes since last sync
