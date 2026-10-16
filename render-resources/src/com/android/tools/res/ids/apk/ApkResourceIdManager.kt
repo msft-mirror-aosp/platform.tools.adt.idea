@@ -17,7 +17,6 @@ package com.android.tools.res.ids.apk
 
 import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.rendering.api.ResourceReference
-import com.android.tools.res.apk.extractNameAndNamespace
 import com.android.tools.res.apk.forEveryResource
 import com.android.tools.res.ids.ResourceIdManager
 import com.android.tools.res.ids.ResourceIdManagerBase
@@ -46,7 +45,7 @@ class ApkResourceIdManager : ResourceIdManagerBase(ResourceIdManagerModelModule.
 
   fun loadApkResources(apkPath: String) {
     forEveryResource(apkPath) { _, resType, _, resId, typeChunkEntry ->
-      val (_, name) = extractNameAndNamespace(typeChunkEntry.key())
+      val name = typeChunkEntry.key()
       apkResources.fromIdMap.put(resId, resType to name)
       apkResources.toIdMap.getOrPut(resType, ::Object2IntOpenHashMap).put(name, resId)
     }

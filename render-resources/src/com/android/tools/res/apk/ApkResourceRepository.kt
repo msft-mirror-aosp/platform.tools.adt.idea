@@ -43,34 +43,23 @@ import java.util.EnumMap
 class ApkResourceRepository(apkPath: String, private val resourceIdResolver: (Int) -> ResourceReference?) :
   AbstractResourceRepository(), CacheableResourceRepository {
 
-  private val resourceMap =
-    EnumMap<ResourceType, MutableMap<ResourceNamespace, ListMultimap<String, ResourceItem>>>(ResourceType::class.java)
+  private val resourceMap = EnumMap<ResourceType, ListMultimap<String, ResourceItem>>(ResourceType::class.java)
 
   init {
     forEveryResource(apkPath) { stringPool, resType, folderConfig, _, typeChunkEntry ->
-      val namespacedName = typeChunkEntry.key()
-      val (namespace, name) = extractNameAndNamespace(namespacedName)
-      val resRef = ResourceReference(namespace, resType, name)
+      val name = typeChunkEntry.key()
+      val resRef = ResourceReference(ResourceNamespace.RES_AUTO, resType, name)
       val resValue = typeChunkEntry.createResValue(resRef, apkPath, stringPool) { resId -> resourceIdResolver.invoke(resId) }
 
       val resourceItem = ApkResourceItem(resRef, folderConfig, resValue)
 
-      resourceMap
-        .computeIfAbsent(resType) { mutableMapOf() }
-        .computeIfAbsent(namespace) { ArrayListMultimap.create() }
-        .put(name, resourceItem)
+      resourceMap.computeIfAbsent(resType) { ArrayListMultimap.create() }.put(name, resourceItem)
     }
   }
 
   override fun accept(visitor: ResourceVisitor): ResourceVisitor.VisitResult {
-    for ((_, u) in resourceMap) {
-      for (resTypeCollection in u.values) {
-        for (item in resTypeCollection.values()) {
-          if (visitor.visit(item) == ResourceVisitor.VisitResult.ABORT) {
-            return ResourceVisitor.VisitResult.ABORT
-          }
-        }
-      }
+    if (visitor.shouldVisitNamespace(ResourceNamespace.RES_AUTO)) {
+      return acceptByResources(resourceMap, visitor)
     }
     return ResourceVisitor.VisitResult.CONTINUE
   }
@@ -80,7 +69,7 @@ class ApkResourceRepository(apkPath: String, private val resourceIdResolver: (In
   }
 
   override fun getNamespaces(): MutableSet<ResourceNamespace> {
-    return resourceMap.flatMap { it.value.keys }.toMutableSet()
+    return if (resourceMap.isEmpty()) mutableSetOf() else mutableSetOf(ResourceNamespace.RES_AUTO)
   }
 
   override fun getLeafResourceRepositories(): MutableCollection<SingleNamespaceResourceRepository> = mutableListOf()
@@ -88,7 +77,11 @@ class ApkResourceRepository(apkPath: String, private val resourceIdResolver: (In
   override val modificationCount: Long = 0
 
   override fun getResourcesInternal(namespace: ResourceNamespace, resourceType: ResourceType): ListMultimap<String, ResourceItem> {
-    return resourceMap[resourceType]?.get(namespace) ?: ArrayListMultimap.create()
+    return if (namespace == ResourceNamespace.RES_AUTO) {
+      resourceMap[resourceType] ?: ArrayListMultimap.create()
+    } else {
+      ArrayListMultimap.create()
+    }
   }
 }
 
@@ -216,17 +209,6 @@ private fun BinaryResourceValue.isNullOrEmpty(): Boolean =
     BinaryResourceValue.Type.DYNAMIC_REFERENCE -> data() == 0
     else -> false
   }
-
-internal fun extractNameAndNamespace(namespacedName: String): Pair<ResourceNamespace, String> {
-  // In the namespaced case the namespace and the name are separated by $ symbol
-  val separatorIdx = namespacedName.indexOf('$')
-  // If it is the first character, there is still no namespace
-  return if (separatorIdx > 0) {
-    ResourceNamespace.fromPackageName(namespacedName.substring(0, separatorIdx)) to namespacedName.substring(separatorIdx + 1)
-  } else {
-    ResourceNamespace.RES_AUTO to namespacedName
-  }
-}
 
 private class UnresolvedResourceIdException(resId: Int) : IllegalArgumentException("Could not resolve resource id $resId")
 
