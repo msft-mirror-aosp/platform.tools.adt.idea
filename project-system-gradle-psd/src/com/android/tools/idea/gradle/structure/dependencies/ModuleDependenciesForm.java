@@ -34,7 +34,6 @@ import com.intellij.util.ui.JBUI;
 import java.awt.Insets;
 import java.util.ArrayList;
 import kotlin.Unit;
-import org.jdesktop.swingx.JXLabel;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -54,7 +53,7 @@ class ModuleDependenciesForm {
 
   private JPanel myMainPanel;
   private JBScrollPane myModulesScrollPane;
-  private JXLabel myModulesLabel;
+  private JBLabel myModulesLabel;
 
   ModuleDependenciesForm(@NotNull PsModule module) {
     setupUI();
@@ -130,7 +129,7 @@ class ModuleDependenciesForm {
     myMainPanel.add(jBLabel1, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
                                                   GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
                                                   false));
-    myModulesLabel = new JXLabel();
+    myModulesLabel = new JBLabel();
     myModulesLabel.putClientProperty("html.disable", Boolean.TRUE);
     myMainPanel.add(myModulesLabel, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
                                                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,

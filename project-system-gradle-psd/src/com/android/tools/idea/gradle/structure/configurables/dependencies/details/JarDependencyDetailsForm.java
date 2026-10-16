@@ -26,14 +26,13 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.UIManager;
-import org.jdesktop.swingx.JXLabel;
 
 public abstract class JarDependencyDetailsForm implements ConfigurationDependencyDetails {
   protected JPanel myMainPanel;
-  protected JXLabel myNameText;
-  protected JXLabel myIncludesText;
+  protected JBLabel myNameText;
+  protected JBLabel myIncludesText;
   protected JBLabel myExcludesLabel;
-  protected JXLabel myExcludesText;
+  protected JBLabel myExcludesText;
   protected JBLabel myNameLabel;
   protected JBLabel myIncludesLabel;
   protected JBLabel myConfigurationLabel;
@@ -58,7 +57,7 @@ public abstract class JarDependencyDetailsForm implements ConfigurationDependenc
     myMainPanel.add(myNameLabel, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                                                      GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null,
                                                      0, false));
-    myNameText = new JXLabel();
+    myNameText = new JBLabel();
     myNameText.putClientProperty("html.disable", Boolean.TRUE);
     Font myNameTextFont = UIManager.getFont("Tree.font");
     if (myNameTextFont != null) myNameText.setFont(myNameTextFont);
@@ -73,7 +72,7 @@ public abstract class JarDependencyDetailsForm implements ConfigurationDependenc
     myMainPanel.add(myIncludesLabel, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                                                          GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null,
                                                          null, 0, false));
-    myIncludesText = new JXLabel();
+    myIncludesText = new JBLabel();
     myIncludesText.putClientProperty("html.disable", Boolean.TRUE);
     Font myIncludesTextFont = UIManager.getFont("Tree.font");
     if (myIncludesTextFont != null) myIncludesText.setFont(myIncludesTextFont);
@@ -89,7 +88,7 @@ public abstract class JarDependencyDetailsForm implements ConfigurationDependenc
     myMainPanel.add(myExcludesLabel, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                                                          GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null,
                                                          null, 0, false));
-    myExcludesText = new JXLabel();
+    myExcludesText = new JBLabel();
     myExcludesText.putClientProperty("html.disable", Boolean.TRUE);
     Font myExcludesTextFont = UIManager.getFont("Tree.font");
     if (myExcludesTextFont != null) myExcludesText.setFont(myExcludesTextFont);

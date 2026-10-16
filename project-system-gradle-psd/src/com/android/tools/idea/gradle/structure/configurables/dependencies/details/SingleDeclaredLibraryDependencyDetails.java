@@ -27,7 +27,6 @@ import java.awt.BorderLayout;
 import java.awt.Font;
 import java.awt.Insets;
 import kotlin.Unit;
-import org.jdesktop.swingx.JXLabel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,8 +35,8 @@ import javax.swing.*;
 public class SingleDeclaredLibraryDependencyDetails implements ConfigurationDependencyDetails {
   private JPanel myMainPanel;
 
-  private JXLabel myGroupIdLabel;
-  private JXLabel myArtifactNameLabel;
+  private JBLabel myGroupIdLabel;
+  private JBLabel myArtifactNameLabel;
   private JPanel myRequestedVersion;
   private JPanel myConfigurationPanel;
 
@@ -134,7 +133,7 @@ public class SingleDeclaredLibraryDependencyDetails implements ConfigurationDepe
     myMainPanel.add(jBLabel2, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                                                   GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
                                                   false));
-    myGroupIdLabel = new JXLabel();
+    myGroupIdLabel = new JBLabel();
     myGroupIdLabel.putClientProperty("html.disable", Boolean.TRUE);
     Font myGroupIdLabelFont = UIManager.getFont("Tree.font");
     if (myGroupIdLabelFont != null) myGroupIdLabel.setFont(myGroupIdLabelFont);
@@ -142,7 +141,7 @@ public class SingleDeclaredLibraryDependencyDetails implements ConfigurationDepe
                                                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null,
                                                         null, null, 0, false));
-    myArtifactNameLabel = new JXLabel();
+    myArtifactNameLabel = new JBLabel();
     myArtifactNameLabel.putClientProperty("html.disable", Boolean.TRUE);
     Font myArtifactNameLabelFont = UIManager.getFont("Tree.font");
     if (myArtifactNameLabelFont != null) myArtifactNameLabel.setFont(myArtifactNameLabelFont);
