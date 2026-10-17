@@ -37,7 +37,8 @@ import org.junit.Rule
 import org.junit.Test
 
 class MemoryProfilerHeapDumpTest {
-  private val benchmark = benchmarkMemoryAndTime("Heap Dump", "Load-Capture", analyzer = HEAP_DUMP_ANALYZER)
+  private val benchmark =
+    benchmarkMemoryAndTime("Heap Dump", "Load-Capture", memoryAnalyzer = HEAP_DUMP_MEMORY_ANALYZER, timeAnalyzer = HEAP_DUMP_TIME_ANALYZER)
   private val ideServices = FakeIdeProfilerServices()
   private val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)

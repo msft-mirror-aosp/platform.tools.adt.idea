@@ -34,30 +34,42 @@ fun ensureGc() {
 }
 
 /**
- * Regression check for the heap dump benchmarks. CI runs on two machine pools, one about 20% slower than the other, so the pool alone can
- * move a run's result by 20%: only flag regressions of more than 25% of the historic median, plus its MAD. Each run is aggregated by its
- * minimum, which only matters for metrics that log several samples per run.
+ * Regression check for the heap dump time benchmarks. The CI machine a run lands on scales every heap dump timing in that run by the same
+ * factor, by up to 1.6x between runs, so only flag regressions of more than 60% of the historic median, plus its MAD.
  */
-val HEAP_DUMP_ANALYZER: Analyzer =
+val HEAP_DUMP_TIME_ANALYZER: Analyzer = medianToleranceAnalyzer(medianCoeff = 0.6)
+
+/** Regression check for the heap dump memory benchmarks, which don't depend on the CI machine: flag regressions of more than 10%. */
+val HEAP_DUMP_MEMORY_ANALYZER: Analyzer = medianToleranceAnalyzer(medianCoeff = 0.1)
+
+/**
+ * Flags a regression when the median of the recent runs exceeds the historic median by more than [medianCoeff] times it, plus the historic
+ * MAD. Each run is aggregated by its minimum, which only matters for metrics that log several samples per run.
+ */
+private fun medianToleranceAnalyzer(medianCoeff: Double): Analyzer =
   WindowDeviationAnalyzer.Builder()
     .setMetricAggregate(Analyzer.MetricAggregate.MIN)
-    .addMedianTolerance(WindowDeviationAnalyzer.MedianToleranceParams.Builder().setMedianCoeff(0.25).build())
+    .addMedianTolerance(WindowDeviationAnalyzer.MedianToleranceParams.Builder().setMedianCoeff(medianCoeff).build())
     .build()
 
 interface BenchmarkRunner {
   operator fun <A : Any> invoke(tag: String, work: () -> A): A
 }
 
-/** Create a runner that runs each given (tagged) action in a memory benchmark and a time benchmark, both checked by [analyzer] if set. */
+/**
+ * Create a runner that runs each given (tagged) action in a memory benchmark and a time benchmark, checked by [memoryAnalyzer] and
+ * [timeAnalyzer] respectively, if set.
+ */
 fun benchmarkMemoryAndTime(
   graphTitlePrefix: String,
   legendTitleSuffix: String,
   memUnit: MemoryUnit = MemoryUnit.MB,
   timeUnit: TimeUnit = TimeUnit.MS,
-  analyzer: Analyzer? = null,
+  memoryAnalyzer: Analyzer? = null,
+  timeAnalyzer: Analyzer? = null,
 ): BenchmarkRunner {
-  val logTime = makeLogger("$graphTitlePrefix Time (${timeUnit.title})", legendTitleSuffix, analyzer)
-  val logMem = makeLogger("$graphTitlePrefix Memory (${memUnit.title})", "$legendTitleSuffix-Used", analyzer)
+  val logTime = makeLogger("$graphTitlePrefix Time (${timeUnit.title})", legendTitleSuffix, timeAnalyzer)
+  val logMem = makeLogger("$graphTitlePrefix Memory (${memUnit.title})", "$legendTitleSuffix-Used", memoryAnalyzer)
   return object : BenchmarkRunner {
     override fun <A : Any> invoke(tag: String, work: () -> A): A {
       lateinit var ans: A
