@@ -30,7 +30,9 @@ import kotlin.system.measureTimeMillis
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.After
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class TraceProcessorDaemonBenchmarkTest {
   private val tpdQueryTimeBenchmark =
@@ -38,22 +40,23 @@ class TraceProcessorDaemonBenchmarkTest {
   private val tpdQueryResponseSizeBenchmark =
     Benchmark.Builder("TraceProcessorDaemon Query Response Size (kb)").setProject("Android Studio Profilers").build()
 
+  @get:Rule val tempFolder = TemporaryFolder()
   private val tpdClient: TraceProcessorDaemonClient = TraceProcessorDaemonClient(Ticker.systemTicker())
   private val fakeTracker = FakeFeatureTracker()
 
-  private enum class TestCase(val traceFile: File, val tradeId: Long, val processes: List<Int>) {
+  private enum class TestCase(val traceFileName: String, val tradeId: Long, val processes: List<Int>) {
     TRACE_10S(
-      CpuProfilerTestUtils.getTraceFile("performance/perfetto_10s_tanks.trace"),
+      "performance/perfetto_10s_tanks.trace",
       10L,
       listOf(7366 /* com.google.android.tanks */, 606 /* surfaceflinger */),
     ),
     TRACE_60S(
-      CpuProfilerTestUtils.getTraceFile("performance/perfetto_60s_tanks.trace"),
+      "performance/perfetto_60s_tanks.trace.gz",
       60L,
       listOf(9796 /* com.google.android.tanks */, 645 /* surfaceflinger */),
     ),
     TRACE_120S(
-      CpuProfilerTestUtils.getTraceFile("performance/perfetto_120s_tanks.trace"),
+      "performance/perfetto_120s_tanks.trace.gz",
       120L,
       listOf(10679 /* com.google.android.tanks */, 626 /* surfaceflinger */),
     ),
@@ -80,13 +83,18 @@ class TraceProcessorDaemonBenchmarkTest {
   }
 
   private fun runBenchmark(case: TestCase) {
+    // Gzipped traces are decompressed into this test's temp folder before anything is timed.
+    val traceFile =
+      if (case.traceFileName.endsWith(".gz")) CpuProfilerTestUtils.decompressTraceFile(case.traceFileName, tempFolder.root)
+      else CpuProfilerTestUtils.getTraceFile(case.traceFileName)
+
     // We start by making sure the daemon is up with an empty load request:
     val warmupLoadResponse = tpdClient.loadTrace(TraceProcessor.LoadTraceRequest.getDefaultInstance(), fakeTracker)
     assertTrue(warmupLoadResponse.completed)
     assertFalse(warmupLoadResponse.response!!.ok) // We should not have loaded anything here.
 
     // Now we measure the time to load a trace:
-    val loadTraceProto = genLoadTraceRequestProto(case.traceFile, case.tradeId)
+    val loadTraceProto = genLoadTraceRequestProto(traceFile, case.tradeId)
     lateinit var loadResponse: TraceProcessorDaemonQueryResult<TraceProcessor.LoadTraceResponse>
     tpdQueryTimeBenchmark.log(
       "${case.name}-TraceLoad",

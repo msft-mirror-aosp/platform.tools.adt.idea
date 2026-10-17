@@ -37,8 +37,11 @@ import org.junit.Test
  * This test verifies that our serialized TPD model used for unit tests and stored in profilers/testData are updated and consistent with
  * what is produced with the real execution of TPD.
  *
- * If you're seeing failures from this test, run `regen TPD model files` test method from inside the IDE and models inside testData will be
- * updated.
+ * If you're seeing failures from this test, regenerate the models with the `regen TPD model files` test method:
+ * 1. Remove its `@Ignore`.
+ * 2. Run it. The IDE updates testData directly; under Bazel, copy the files from its test.outputs (outputs.zip by default) into
+ *    profilers/testData/cputraces.
+ * 3. Add the `@Ignore` back.
  */
 class SerializedTraceProcessorModelForTestsVerifier {
   private val fakeIdeProfilerServices = FakeIdeProfilerServices()
@@ -68,10 +71,10 @@ class SerializedTraceProcessorModelForTestsVerifier {
       it.getSafeProcessName().endsWith(SystemTraceSurfaceflingerManager.SURFACEFLINGER_PROCESS_NAME)
     }
 
-    // We load the serialized model map and check that all processes are present.
+    // We load the serialized model map and check that the processes used by tests are present.
     val serializedModelMap = loadSerializedModelMap(CpuProfilerTestUtils.getTraceFile("perfetto.trace_tpd_model"))
 
-    for (process in realProcessList) {
+    for (process in realProcessList.filter { it.id in PERFETTO_TRACE_PIDS }) {
       val pid = process.id
       val processesToQuery = mutableListOf(process)
       sfProcessId?.let(processesToQuery::add)
@@ -97,10 +100,10 @@ class SerializedTraceProcessorModelForTestsVerifier {
       it.getSafeProcessName().endsWith(SystemTraceSurfaceflingerManager.SURFACEFLINGER_PROCESS_NAME)
     }
 
-    // We load the serialized model map and check that all processes are present.
+    // We load the serialized model map and check that the processes used by tests are present.
     val serializedModelMap = loadSerializedModelMap(CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage.trace_tpd_model"))
 
-    for (process in realProcessList) {
+    for (process in realProcessList.filter { it.id in PERFETTO_CPU_USAGE_TRACE_PIDS }) {
       val pid = process.id
       val processesToQuery = mutableListOf(process)
       sfProcessId?.let(processesToQuery::add)
@@ -157,8 +160,8 @@ class SerializedTraceProcessorModelForTestsVerifier {
   @Ignore("To be invoked manually to regenerate _process_list and _tpd_model for perfetto traces in testData")
   fun `regen TPD model files`() {
     // Use different trace IDs to keep one from overwriting another in TPD. These IDs don't persist outside of this method.
-    produceAndWriteModelsFor(CpuProfilerTestUtils.getTraceFile("perfetto.trace"), 1)
-    produceAndWriteModelsFor(CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage.trace"), 2)
+    produceAndWriteModelsFor(CpuProfilerTestUtils.getTraceFile("perfetto.trace"), 1, pids = PERFETTO_TRACE_PIDS)
+    produceAndWriteModelsFor(CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage.trace"), 2, pids = PERFETTO_CPU_USAGE_TRACE_PIDS)
     produceAndWriteModelsFor(CpuProfilerTestUtils.getTraceFile("perfetto_frame_lifecycle.trace"), 3, "android.com.java.profilertester")
     produceAndWriteModelsFor(
       CpuProfilerTestUtils.getTraceFile("perfetto_cpu_compose.trace"),
@@ -168,7 +171,7 @@ class SerializedTraceProcessorModelForTestsVerifier {
     produceAndWriteModelsFor(CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage_with_power.trace"), 5, "com.android.systemui")
   }
 
-  private fun produceAndWriteModelsFor(traceFile: File, traceId: Long, selectedProcessName: String = "") {
+  private fun produceAndWriteModelsFor(traceFile: File, traceId: Long, selectedProcessName: String = "", pids: Set<Int> = emptySet()) {
     val loadOk = service.loadTrace(traceId, traceFile, fakeIdeProfilerServices)
     assertThat(loadOk).isTrue()
 
@@ -178,8 +181,8 @@ class SerializedTraceProcessorModelForTestsVerifier {
 
     val modelMapBuilder = ImmutableMap.builder<Int, SystemTraceModelAdapter>()
     if (selectedProcessName.isEmpty()) {
-      // Generate model for every process.
-      for (process in processList) {
+      // Generate a model only for the processes tests load, see PERFETTO_TRACE_PIDS.
+      for (process in processList.filter { it.id in pids }) {
         val pid = process.id
         val processesToQuery = mutableListOf(process)
         sfProcessId?.let(processesToQuery::add)
@@ -194,9 +197,11 @@ class SerializedTraceProcessorModelForTestsVerifier {
       modelMapBuilder.put(selectedProcess.id, model)
     }
 
-    val processListModelFile = File(traceFile.parentFile, "${traceFile.name}_process_list")
+    // Under Bazel, testData is read-only, so write to the test's undeclared outputs dir; copy the files from there into testData.
+    val outputDir = System.getenv("TEST_UNDECLARED_OUTPUTS_DIR")?.let(::File) ?: traceFile.parentFile
+    val processListModelFile = File(outputDir, "${traceFile.name}_process_list")
     writeObjectToFile(processListModelFile, processList)
-    val modelMapFile = File(traceFile.parentFile, "${traceFile.name}_tpd_model")
+    val modelMapFile = File(outputDir, "${traceFile.name}_tpd_model")
     writeObjectToFile(modelMapFile, modelMapBuilder.build())
   }
 
@@ -207,5 +212,27 @@ class SerializedTraceProcessorModelForTestsVerifier {
     oos.writeObject(serializableObject)
     oos.flush()
     oos.close()
+  }
+
+  companion object {
+    /**
+     * Processes whose models are serialized for perfetto.trace and perfetto_cpu_usage.trace, i.e. the ones unit tests load through
+     * FakeTraceProcessorService. Serializing every process made these files hundreds of MB. To load another process in a test, add its pid
+     * here and run `regen TPD model files`.
+     */
+    private val PERFETTO_TRACE_PIDS =
+      setOf(
+        0, // processList[0], see FakeTraceProcessorServiceTest
+        709, // /system/bin/surfaceflinger
+        1001, // /system/bin/adbd
+        1236, // system_server
+        2515, // com.android.phone
+        3275, // com.android.traceur
+      )
+    private val PERFETTO_CPU_USAGE_TRACE_PIDS =
+      setOf(
+        1534, // system_server
+        2051, // com.android.systemui
+      )
   }
 }

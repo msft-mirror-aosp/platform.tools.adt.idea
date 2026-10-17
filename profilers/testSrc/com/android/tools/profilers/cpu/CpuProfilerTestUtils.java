@@ -33,11 +33,13 @@ import com.android.tools.profilers.sessions.SessionsManager;
 import com.android.tools.profilers.tasks.analytics.TaskTracker;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPInputStream;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -69,6 +71,20 @@ public class CpuProfilerTestUtils {
 
   public static File getTraceFile(@NotNull String filename) {
     return TestUtils.resolveWorkspacePath(CPU_TRACES_DIR + filename).toFile();
+  }
+
+  /**
+   * Decompresses a gzipped trace in testData, e.g. "performance/perfetto_60s_tanks.trace.gz", into {@code destDir}, named like the original
+   * trace. Large traces are stored gzipped to keep testData small.
+   */
+  @NotNull
+  public static File decompressTraceFile(@NotNull String gzipFilename, @NotNull File destDir) throws IOException {
+    File gzipFile = getTraceFile(gzipFilename);
+    File trace = new File(destDir, gzipFile.getName().replaceFirst("\\.gz$", ""));
+    try (InputStream fileIn = Files.newInputStream(gzipFile.toPath()); InputStream in = new GZIPInputStream(fileIn, 1 << 16)) {
+      Files.copy(in, trace.toPath());
+    }
+    return trace;
   }
 
   public static CpuCapture getValidCapture(StudioProfilers profilers) throws ExecutionException, InterruptedException {

@@ -17,11 +17,14 @@ package com.android.tools.idea.profilers.performance
 
 import com.android.tools.idea.profilers.perfetto.traceprocessor.TraceProcessorServiceImpl
 import com.android.tools.profilers.FakeIdeProfilerServices
+import com.android.tools.profilers.cpu.CpuProfilerTestUtils.decompressTraceFile
 import com.android.tools.profilers.cpu.CpuProfilerTestUtils.getTraceFile
 import com.intellij.openapi.util.Disposer
 import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 /**
  * Perfgate test for measuring the memory overhead of loading / parsing a perfetto capture with TraceProcessorService backend. Note: This
@@ -29,6 +32,7 @@ import org.junit.Test
  * memory results of this test. Without any way to force the GC this is the only reliable way to get a stable memory record.
  */
 class CpuProfilerPerfettoCaptureTest : CpuProfilerMemoryLoadTestBase() {
+  @get:Rule val tempFolder = TemporaryFolder()
   lateinit var traceProcessorService: TraceProcessorServiceImpl
 
   @Before
@@ -56,12 +60,14 @@ class CpuProfilerPerfettoCaptureTest : CpuProfilerMemoryLoadTestBase() {
   @Test
   fun measureMemoryOfImportPerfettoWithTPD_60s() {
     myIdeServices.setShouldProceedYesNoDialog(true) // Because the trace file is larger than 100 Mb, it triggers the dialog
-    loadCaptureAndReport("Perfetto-TPD-60-sec", getTraceFile("performance/perfetto_60s_tanks.trace"), "com.google.android.tanks", 9796)
+    val traceFile = decompressTraceFile("performance/perfetto_60s_tanks.trace.gz", tempFolder.root)
+    loadCaptureAndReport("Perfetto-TPD-60-sec", traceFile, "com.google.android.tanks", 9796)
   }
 
   @Test
   fun measureMemoryOfImportPerfettoWithTPD_120s() {
     myIdeServices.setShouldProceedYesNoDialog(true) // Because the trace file is larger than 100 Mb, it triggers the dialog
-    loadCaptureAndReport("Perfetto-TPD-120-sec", getTraceFile("performance/perfetto_120s_tanks.trace"), "com.google.android.tanks", 10679)
+    val traceFile = decompressTraceFile("performance/perfetto_120s_tanks.trace.gz", tempFolder.root)
+    loadCaptureAndReport("Perfetto-TPD-120-sec", traceFile, "com.google.android.tanks", 10679)
   }
 }
