@@ -16,6 +16,7 @@
 package com.google.idea.blaze.base.run.producers
 
 import com.google.idea.blaze.base.command.BlazeCommandName
+import com.google.idea.blaze.base.command.BlazeFlags
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration
 import com.google.idea.blaze.base.run.BlazeCommandRunConfigurationType
 import com.google.idea.blaze.base.run.smrunner.BlazeTestEventsHandler
@@ -42,11 +43,18 @@ class BlazeFilterExistingRunConfigurationProducer :
     val testEventsHandler = BlazeTestEventsHandler.getHandlerForTargets(context.project, patterns).orElse(null) ?: return null
     val testSelectors = testEventsHandler.getTestSelectors(context.project, selectedElements) ?: return null
 
+    val extraFlags =
+      if (SmRunnerUtils.countSelectedTestCases(context) == 1) {
+        listOf(BlazeFlags.DISABLE_TEST_SHARDING)
+      } else {
+        emptyList()
+      }
+
     return UnifiedRunContext(
       sourceElement = psi,
       target = TargetSpecification.ExplicitPatterns(patterns),
       testFilter = TestFilterComponent(testSelectors, true),
-      command = CommandComponent(BlazeCommandName.TEST, emptyList()),
+      command = CommandComponent(BlazeCommandName.TEST, extraFlags),
     )
   }
 }

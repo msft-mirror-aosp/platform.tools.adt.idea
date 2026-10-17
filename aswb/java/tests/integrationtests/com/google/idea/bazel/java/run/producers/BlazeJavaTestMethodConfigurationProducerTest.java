@@ -17,6 +17,7 @@ package com.google.idea.bazel.java.run.producers;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.common.util.concurrent.Futures;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeFlags;
 import com.google.idea.blaze.base.dependencies.TargetInfo;
@@ -24,16 +25,31 @@ import com.google.idea.blaze.base.lang.buildfile.psi.util.PsiUtils;
 import com.google.idea.blaze.base.model.primitives.Label;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
+import com.google.idea.blaze.base.run.BlazeCommandRunConfigurationType;
+import com.google.idea.blaze.base.run.producers.BlazeFilterExistingRunConfigurationProducer;
 import com.google.idea.blaze.base.run.producers.BlazeRunConfigurationProducerTestCase;
 import com.google.idea.blaze.base.run.producers.TestContextRunConfigurationProducer;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
+import com.google.idea.blaze.base.run.targetfinder.TargetFinder;
+import com.intellij.execution.Location;
+import com.intellij.execution.RunManager;
 import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.actions.ConfigurationContext;
 import com.intellij.execution.actions.ConfigurationFromContext;
+import com.intellij.execution.configurations.RunConfiguration;
+import com.intellij.execution.junit2.PsiMemberParameterizedLocation;
+import com.intellij.execution.testframework.sm.runner.SMTestProxy;
+import com.intellij.execution.testframework.sm.runner.ui.SMTRunnerTestTreeView;
+import com.intellij.openapi.actionSystem.CommonDataKeys;
+import com.intellij.openapi.actionSystem.DataContext;
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext;
+import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiMethod;
+import com.intellij.psi.search.GlobalSearchScope;
 import java.util.ArrayList;
 import java.util.List;
+import javax.swing.tree.TreePath;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -176,6 +192,95 @@ public class BlazeJavaTestMethodConfigurationProducerTest
 
     // Assert
     assertThat(isConfigFromContext).isFalse();
+  }
+
+  @Test
+  public void testFilteredConfigurationFromParameterizedTestTreeElement() throws Throwable {
+    // Arrange
+    PsiMethod method = setupGenericJunitTestClassAndBlazeTarget();
+    TargetInfo targetInfo =
+        new TargetInfo(Label.create("//java/com/google/test:TestClass"), "java_test");
+    registerExtension(
+        TargetFinder.EP_NAME, (project, label) -> Futures.immediateFuture(targetInfo));
+
+    RunManager runManager = RunManager.getInstance(getProject());
+    RunnerAndConfigurationSettings baseSettings =
+        runManager.createConfiguration(
+            "Bazel test TestClass", BlazeCommandRunConfigurationType.getInstance().getFactory());
+    BlazeCommandRunConfiguration baseConfig =
+        (BlazeCommandRunConfiguration) baseSettings.getConfiguration();
+    baseConfig.setTargetInfo(targetInfo);
+    baseConfig.setName("Bazel test TestClass");
+    runManager.addConfiguration(baseSettings);
+    runManager.setSelectedConfiguration(baseSettings);
+
+    Location<?> parameterizedLocation =
+        runReadAction(
+            () ->
+                new PsiMemberParameterizedLocation(
+                    getProject(), method, method.getContainingClass(), "[param]"));
+    SMTestProxy testProxy =
+        new SMTestProxy(
+            "testMethod1[param]",
+            false,
+            "java:test://com.google.test.TestClass/testMethod1[param]") {
+          @Override
+          public Location<?> getLocation(Project project, GlobalSearchScope searchScope) {
+            return parameterizedLocation;
+          }
+        };
+    TreePath selectionPath = new TreePath(new Object[] {"root", testProxy});
+    SMTRunnerTestTreeView treeView =
+        new SMTRunnerTestTreeView() {
+          @Override
+          public TreePath[] getSelectionPaths() {
+            return new TreePath[] {selectionPath};
+          }
+
+          @Override
+          public boolean isPathSelected(TreePath path) {
+            return selectionPath.equals(path);
+          }
+
+          @Override
+          public SMTestProxy getSelectedTest(TreePath path) {
+            return selectionPath.equals(path) ? testProxy : null;
+          }
+        };
+
+    DataContext dataContext =
+        SimpleDataContext.builder()
+            .add(CommonDataKeys.PROJECT, getProject())
+            .add(Location.DATA_KEY, parameterizedLocation)
+            .add(RunConfiguration.DATA_KEY, baseConfig)
+            .add(SMTRunnerTestTreeView.SM_TEST_RUNNER_VIEW, treeView)
+            .build();
+    ConfigurationContext context =
+        runReadAction(() -> ConfigurationContext.getFromContext(dataContext));
+
+    // Act
+    BlazeFilterExistingRunConfigurationProducer producer =
+        new BlazeFilterExistingRunConfigurationProducer();
+    ConfigurationFromContext fromContext =
+        runReadAction(() -> producer.createConfigurationFromContext(context));
+    assertThat(fromContext).isNotNull();
+    BlazeCommandRunConfiguration config =
+        (BlazeCommandRunConfiguration) fromContext.getConfiguration();
+    assertThat(config.getName()).isEqualTo("Bazel test TestClass (filtered)");
+
+    performFirstRun(producer, config, context);
+
+    // Assert
+    assertThat(config.getName()).isEqualTo("Bazel test TestClass (filtered)");
+    assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:TestClass");
+    assertThat(getTestFilterContents(config))
+        .isEqualTo(
+            "--test_filter=com.google.test.TestClass(\\[.*\\])?(\\(.*\\))?#testMethod1\\[param\\]$");
+    assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
+
+    BlazeCommandRunConfigurationCommonState state =
+        config.getHandlerStateIfType(BlazeCommandRunConfigurationCommonState.class);
+    assertThat(state.getBlazeFlagsState().getRawFlags()).contains(BlazeFlags.DISABLE_TEST_SHARDING);
   }
 
   /**

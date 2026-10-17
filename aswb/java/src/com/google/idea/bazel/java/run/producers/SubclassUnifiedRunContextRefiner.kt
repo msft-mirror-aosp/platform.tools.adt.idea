@@ -61,7 +61,7 @@ class SubclassUnifiedRunContextRefiner : UnifiedRunContextRefiner {
         RefinedInfo(className, methodName, version, newTargetSpec)
       } ?: return runContext
 
-    val testSelector = TestSelector(refinedInfo.className, refinedInfo.methodName, refinedInfo.version)
+    val testSelector = TestSelector(refinedInfo.className, refinedInfo.methodName, null, refinedInfo.version)
     val newTestFilter = TestFilterComponent(listOf(testSelector), runContext.testFilter?.appendFilteredSuffix ?: false)
 
     return runContext.copy(

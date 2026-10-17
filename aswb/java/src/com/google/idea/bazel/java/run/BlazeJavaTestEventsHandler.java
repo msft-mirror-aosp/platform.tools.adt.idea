@@ -27,6 +27,8 @@ import com.google.idea.blaze.base.run.smrunner.BlazeXmlSchema.TestSuite;
 import com.google.idea.blaze.common.Label;
 import com.intellij.execution.Location;
 import com.intellij.execution.junit.JUnitUtil;
+import com.intellij.execution.junit2.PsiMemberParameterizedLocation;
+import com.intellij.execution.junit2.info.MethodLocation;
 import com.intellij.execution.testframework.JavaTestLocator;
 import com.intellij.execution.testframework.sm.runner.SMTestLocator;
 import com.intellij.openapi.project.Project;
@@ -35,6 +37,7 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
 import com.intellij.util.io.URLUtil;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -130,7 +133,7 @@ public class BlazeJavaTestEventsHandler implements BlazeTestEventsHandler {
     for (Location<?> location : testLocations) {
       appendTest(failedClassesAndMethods, location);
     }
-    List<TestSelector> testSelectors = new java.util.ArrayList<>();
+    List<TestSelector> testSelectors = new ArrayList<>();
     for (Map.Entry<PsiClass, Collection<Location<?>>> entry : failedClassesAndMethods.entrySet()) {
       PsiClass psiClass = entry.getKey();
       String className = psiClass.getQualifiedName();
@@ -141,12 +144,19 @@ public class BlazeJavaTestEventsHandler implements BlazeTestEventsHandler {
               : TestFilterSyntax.JUNIT_3;
       Collection<Location<?>> methods = entry.getValue();
       if (methods.isEmpty()) {
-        testSelectors.add(new TestSelector(className, null, version));
+        testSelectors.add(new TestSelector(className, null, null, version));
       } else {
         for (Location<?> loc : methods) {
           PsiElement psi = loc.getPsiElement();
           if (psi instanceof PsiMethod) {
-            testSelectors.add(new TestSelector(className, ((PsiMethod) psi).getName(), version));
+            String parameterFilterRegex =
+                loc instanceof PsiMemberParameterizedLocation
+                    ? StringUtil.escapeToRegexp(
+                        ((PsiMemberParameterizedLocation) loc).getParamSetName())
+                    : null;
+            testSelectors.add(
+                new TestSelector(
+                    className, ((PsiMethod) psi).getName(), parameterFilterRegex, version));
           }
         }
       }
@@ -163,10 +173,24 @@ public class BlazeJavaTestEventsHandler implements BlazeTestEventsHandler {
     if (!(psi instanceof PsiMethod)) {
       return;
     }
-    PsiClass psiClass = ((PsiMethod) psi).getContainingClass();
+    PsiClass psiClass = getContainingClass((PsiMethod) psi, location);
     if (psiClass == null) {
       return;
     }
     map.computeIfAbsent(psiClass, k -> new HashSet<>()).add(location);
+  }
+
+  @Nullable
+  private static PsiClass getContainingClass(PsiMethod method, Location<?> location) {
+    if (location instanceof PsiMemberParameterizedLocation) {
+      PsiClass containingClass = ((PsiMemberParameterizedLocation) location).getContainingClass();
+      if (containingClass != null) {
+        return containingClass;
+      }
+    }
+    if (location instanceof MethodLocation) {
+      return ((MethodLocation) location).getContainingClass();
+    }
+    return method.getContainingClass();
   }
 }

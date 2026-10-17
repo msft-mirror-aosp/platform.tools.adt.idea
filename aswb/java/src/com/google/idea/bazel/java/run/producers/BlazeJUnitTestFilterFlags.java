@@ -35,7 +35,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 
@@ -273,9 +272,20 @@ public final class BlazeJUnitTestFilterFlags {
           jv == JUnitVersion.JUNIT_4 ? className + PARAMETER_SUFFIX_REGEX : className;
       List<String> methodFilters =
           classSelectors.stream()
-              .map(TestSelector::getMethodName)
-              .filter(Objects::nonNull)
-              .map(method -> jv == JUnitVersion.JUNIT_4 ? method + PARAMETER_SUFFIX_REGEX : method)
+              .filter(selector -> selector.getMethodName() != null)
+              .map(
+                  selector -> {
+                    String method = selector.getMethodName();
+                    if (jv != JUnitVersion.JUNIT_4) {
+                      return method;
+                    }
+                    String parameterSuffix =
+                        selector.getParameterFilterRegex() != null
+                            ? selector.getParameterFilterRegex()
+                            : PARAMETER_SUFFIX_REGEX;
+                    return method + parameterSuffix;
+                  })
+              .sorted()
               .collect(Collectors.toList());
 
       String filter = testFilterForClassAndMethods(classFilter, jv, methodFilters, null);

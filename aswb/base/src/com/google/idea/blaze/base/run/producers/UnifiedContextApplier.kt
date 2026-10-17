@@ -16,7 +16,6 @@
 package com.google.idea.blaze.base.run.producers
 
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration
-import com.google.idea.blaze.base.run.BlazeConfigurationNameBuilder
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState
 
 /** Orchestrates Stage 3 application and matching of UnifiedRunContext to BlazeCommandRunConfiguration. */
@@ -44,20 +43,8 @@ object UnifiedContextApplier {
       applied = true
     }
 
-    if (context.testFilter?.appendFilteredSuffix == true) {
-      config.name = config.name + " (filtered)"
-      config.setNameChangedByUser(true)
-    } else if (context.testFilter != null) {
-      val description = getFilterDescription(context.testFilter.testSelectors)
-      if (description != null) {
-        val nameBuilder = BlazeConfigurationNameBuilder(config)
-        context.command?.command?.let { nameBuilder.setCommandName(it.toString()) }
-        nameBuilder.setTargetString(description)
-        config.name = nameBuilder.build()
-        config.setNameChangedByUser(true)
-      } else if (applied) {
-        config.setGeneratedName()
-      }
+    if (applied) {
+      context.setupConfigurationName(config)
     }
     return applied
   }

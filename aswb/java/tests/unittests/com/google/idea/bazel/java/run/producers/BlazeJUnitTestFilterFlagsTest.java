@@ -159,14 +159,15 @@ public class BlazeJUnitTestFilterFlagsTest extends BlazeTestCase {
     String classFilter =
         BlazeJUnitTestFilterFlags.testFilterForSelectors(
             ImmutableList.of(
-                new TestSelector("com.google.idea.ClassName", null, TestFilterSyntax.JUNIT_4)));
+                new TestSelector(
+                    "com.google.idea.ClassName", null, null, TestFilterSyntax.JUNIT_4)));
     assertThat(classFilter).isEqualTo("com.google.idea.ClassName(\\[.*\\])?(\\(.*\\))?#");
 
     String methodFilter =
         BlazeJUnitTestFilterFlags.testFilterForSelectors(
             ImmutableList.of(
                 new TestSelector(
-                    "com.google.idea.ClassName", "testMethod1", TestFilterSyntax.JUNIT_4)));
+                    "com.google.idea.ClassName", "testMethod1", null, TestFilterSyntax.JUNIT_4)));
     assertThat(methodFilter)
         .isEqualTo(
             "com.google.idea.ClassName(\\[.*\\])?(\\(.*\\))?#testMethod1(\\[.*\\])?(\\(.*\\))?$");
@@ -176,5 +177,43 @@ public class BlazeJUnitTestFilterFlagsTest extends BlazeTestCase {
     assertThat("com.google.idea.ClassName[classParam]#testMethod1[param]").matches(methodFilter);
     assertThat("com.google.idea.ClassName(classParam)#testMethod1(param)").matches(methodFilter);
     assertThat("com.google.idea.ClassName#testMethod1Other").doesNotMatch(methodFilter);
+  }
+
+  @Test
+  public void testFilterForSelectors_jUnit4ParameterizedMethod_usesParameterFilterRegex() {
+    String singleParamFilter =
+        BlazeJUnitTestFilterFlags.testFilterForSelectors(
+            ImmutableList.of(
+                new TestSelector(
+                    "com.google.idea.ClassName",
+                    "testMethod1",
+                    "\\[param1\\]",
+                    TestFilterSyntax.JUNIT_4)));
+    assertThat(singleParamFilter)
+        .isEqualTo("com.google.idea.ClassName(\\[.*\\])?(\\(.*\\))?#testMethod1\\[param1\\]$");
+    assertThat("com.google.idea.ClassName#testMethod1[param1]").matches(singleParamFilter);
+    assertThat("com.google.idea.ClassName[classParam]#testMethod1[param1]")
+        .matches(singleParamFilter);
+    assertThat("com.google.idea.ClassName#testMethod1[param2]").doesNotMatch(singleParamFilter);
+
+    String multiParamFilter =
+        BlazeJUnitTestFilterFlags.testFilterForSelectors(
+            ImmutableList.of(
+                new TestSelector(
+                    "com.google.idea.ClassName",
+                    "testMethod1",
+                    "\\[param2\\]",
+                    TestFilterSyntax.JUNIT_4),
+                new TestSelector(
+                    "com.google.idea.ClassName",
+                    "testMethod1",
+                    "\\[param1\\]",
+                    TestFilterSyntax.JUNIT_4)));
+    assertThat(multiParamFilter)
+        .isEqualTo(
+            "com.google.idea.ClassName(\\[.*\\])?(\\(.*\\))?#(testMethod1\\[param1\\]|testMethod1\\[param2\\])$");
+    assertThat("com.google.idea.ClassName#testMethod1[param1]").matches(multiParamFilter);
+    assertThat("com.google.idea.ClassName#testMethod1[param2]").matches(multiParamFilter);
+    assertThat("com.google.idea.ClassName#testMethod1[param3]").doesNotMatch(multiParamFilter);
   }
 }

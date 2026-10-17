@@ -33,8 +33,16 @@ enum class TestFilterSyntax {
   RULES_KOTLIN,
 }
 
-/** Identifies an individual test entity (class, method) in pure domain terms, independent of CLI flag syntax. */
-data class TestSelector(val className: String, val methodName: String?, val testFilterSyntax: TestFilterSyntax)
+/**
+ * Identifies an individual test entity (class, method, and optional parameter filter pattern) in domain terms. A null
+ * [parameterFilterRegex] indicates that all parameter combinations of the method (if any) are selected.
+ */
+data class TestSelector(
+  val className: String,
+  val methodName: String?,
+  val parameterFilterRegex: String?,
+  val testFilterSyntax: TestFilterSyntax,
+)
 
 /** Encapsulates test selection scope and UI naming hints. Null testFilter indicates target-wide execution of all tests. */
 data class TestFilterComponent(val testSelectors: List<TestSelector>, val appendFilteredSuffix: Boolean)
@@ -67,7 +75,9 @@ data class UnifiedRunContext(
 
   override fun setupConfigurationName(config: BlazeCommandRunConfiguration) {
     if (testFilter?.appendFilteredSuffix == true) {
-      config.name = config.name + " (filtered)"
+      if (!config.name.endsWith(" (filtered)")) {
+        config.name = config.name + " (filtered)"
+      }
       config.setNameChangedByUser(true)
     } else if (testFilter != null) {
       val description = UnifiedContextApplier.getFilterDescription(testFilter.testSelectors)
