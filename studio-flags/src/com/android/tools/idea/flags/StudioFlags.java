@@ -2809,6 +2809,11 @@ public final class StudioFlags {
                     "Enable past conversation search",
                     "Enables a conversational search feature inside the Studio Bot tool window to allow users to search their historical chat histories.");
 
+  public static final Flag<Boolean> STUDIOBOT_OPEN_UI_ENABLED =
+    new BooleanFlag(STUDIOBOT, "openui.enabled",
+                    "Enable OpenUI 1.0 rendering and catalog",
+                    "When enabled, renders openui-lang blocks as interactive Compose surfaces and provides the OpenUI prompt and skill.");
+
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI

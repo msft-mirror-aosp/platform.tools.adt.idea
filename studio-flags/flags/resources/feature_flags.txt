@@ -237,6 +237,7 @@ studiobot.new.project.agent=COMPLETE:2026
 studiobot.new.subagent.mode=COMPLETE:2026
 studiobot.npa.onboarding.enabled=COMPLETE:2026
 studiobot.open.files.context=PREVIEW
+studiobot.openui.enabled=INTERNAL
 studiobot.permission.request.in.query.box=COMPLETE:2026
 studiobot.project.facts.context.enabled=INTERNAL
 studiobot.prompt.library.chat.lookup=COMPLETE:2025
