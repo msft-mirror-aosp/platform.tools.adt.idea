@@ -92,7 +92,6 @@
       <action internal="true" id="Android.EditFlags" class="com.android.tools.idea.flags.ShowStudioFlagsDialogAction"/>
       <action internal="true" id="Android.ServerFlags" class="com.android.tools.idea.serverflags.ServerFlagsMenuAction" />
       <action internal="true" id="Android.ShowRoomSchema" class="com.android.tools.idea.actions.ShowRoomSchemaAction"/>
-      <action internal="true" id="Android.SwingProfiler" class="com.android.tools.adtui.actions.EnableSwingProfilerAction"/>
       <action internal="true" id="IdeaNewProject" class="com.intellij.ide.actions.NewProjectAction" text="IDEA New Project..."/>
       <action internal="true" id="IdeaNewModule" class="com.intellij.openapi.roots.ui.configuration.actions.NewModuleAction" text="IDEA New Module..."/>
       <action internal="true" id="Android.IdeaProjectStructure" class="com.android.tools.idea.structure.IdeaProjectStructureAction"/>

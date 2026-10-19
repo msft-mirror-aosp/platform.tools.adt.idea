@@ -371,7 +371,6 @@ filegroup(
         "//tools/adt/idea/streaming/screen-sharing-agent:bundle",
         "//tools/adt/idea/studio:default_user_jvm_args",
         "//tools/adt/idea/studio:required_jvm_args",
-        "//tools/adt/idea/swingp:swing-instrumenter_deploy.jarjar.jar",
         "//tools/base/adb-proxy/reverse-daemon:daemon",
         "//tools/base/build-system:gradle-api_neverlink",  # Provided when run in Gradle.
         "//tools/base/ddmlib-studio:adb-server-proto",
