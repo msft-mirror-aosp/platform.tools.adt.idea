@@ -25,8 +25,7 @@ abstract class PluginsHelper {
     fun withModel(projectModel: ProjectBuildModel): PluginsInserter =
       when (calculateAddDependencyPolicy(projectModel)) {
         AddDependencyPolicy.VERSION_CATALOG -> CatalogPluginsInserter(projectModel)
-        AddDependencyPolicy.BUILD_FILE,
-        AddDependencyPolicy.DECLARATIVE -> CommonPluginsInserter(projectModel)
+        AddDependencyPolicy.BUILD_FILE -> CommonPluginsInserter(projectModel)
       }
   }
 }

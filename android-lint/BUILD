@@ -125,7 +125,6 @@ iml_module(
         "//tools/base/lint/libs/lint-tests:studio.android.sdktools.lint.testinfrastructure",
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
-        "//tools/adt/idea/gradle-dsl-flags:intellij.android.gradle.dsl.flags",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common.tests",
         "//tools/base/repository:studio.android.sdktools.repository.tests",

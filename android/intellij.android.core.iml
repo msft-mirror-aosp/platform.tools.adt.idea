@@ -107,7 +107,6 @@
     <orderEntry type="module" module-name="android.sdktools.backup" />
     <orderEntry type="library" name="studio-plugin-com.intellij.modules.json" level="project" />
     <orderEntry type="module" module-name="intellij.android.testartifacts" />
-    <orderEntry type="module" module-name="intellij.android.gradle.dsl.flags" />
     <orderEntry type="library" name="studio-plugin-intellij.spellchecker" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.spellchecker.xml" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.analysis.impl" level="project" />

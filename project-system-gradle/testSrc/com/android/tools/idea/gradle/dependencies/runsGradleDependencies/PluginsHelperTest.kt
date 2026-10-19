@@ -37,7 +37,6 @@ import com.android.tools.idea.testing.TestProjectPaths.SINGLE_MODULE_VERSION_CAT
 import com.android.tools.idea.testing.findModule
 import com.android.tools.idea.testing.getTextForFile
 import com.android.tools.idea.testing.hasModule
-import com.android.tools.idea.testing.withDeclarative
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.util.io.FileUtil
@@ -53,7 +52,7 @@ import org.junit.runners.JUnit4
 @RunWith(JUnit4::class)
 class PluginsHelperTest {
 
-  @get:Rule val projectRule = AndroidGradleProjectRule().withDeclarative()
+  @get:Rule val projectRule = AndroidGradleProjectRule()
   private val fixture
     get() = projectRule.fixture
 

@@ -22,12 +22,10 @@ import static com.android.SdkConstants.FD_GRADLE_WRAPPER;
 import static com.android.SdkConstants.FD_RES_CLASS;
 import static com.android.SdkConstants.FD_SOURCE_GEN;
 import static com.android.SdkConstants.FN_BUILD_GRADLE;
-import static com.android.SdkConstants.FN_BUILD_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.FN_BUILD_GRADLE_KTS;
 import static com.android.SdkConstants.FN_GRADLE_PROPERTIES;
 import static com.android.SdkConstants.FN_GRADLE_WRAPPER_PROPERTIES;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE;
-import static com.android.SdkConstants.FN_SETTINGS_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE_KTS;
 import static com.android.SdkConstants.GRADLE_LATEST_VERSION;
 import static com.android.SdkConstants.GRADLE_PATH_SEPARATOR;
@@ -47,7 +45,6 @@ import static org.jetbrains.plugins.gradle.settings.DistributionType.LOCAL;
 import com.android.ide.common.repository.AgpVersion;
 import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.StudioFlags;
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport;
 import com.android.tools.idea.gradle.model.IdeAndroidProject;
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType;
 import com.android.tools.idea.gradle.model.IdeBaseArtifactCore;
@@ -432,9 +429,6 @@ public class GradleProjectSystemUtil {
       else if (buildFileName.endsWith(DOT_KTS)) {
         result.add(BuildFileType.KOTLIN_SCRIPT);
       }
-      else if (DeclarativeStudioSupport.isEnabled() && buildFileName.endsWith(DOT_DECLARATIVE)) {
-        result.add(BuildFileType.DECLARATIVE);
-      }
     }
   }
 
@@ -684,9 +678,6 @@ public class GradleProjectSystemUtil {
    */
   @Nullable
   public static VirtualFile findGradleBuildFile(@NotNull VirtualFile parentDir) {
-    if (DeclarativeStudioSupport.isEnabled()) {
-      return findFileWithNames(parentDir, FN_BUILD_GRADLE, FN_BUILD_GRADLE_KTS, FN_BUILD_GRADLE_DECLARATIVE);
-    }
     return findFileWithNames(parentDir, FN_BUILD_GRADLE, FN_BUILD_GRADLE_KTS);
   }
 
@@ -699,9 +690,6 @@ public class GradleProjectSystemUtil {
    */
   @Nullable
   public static VirtualFile findGradleSettingsFile(@NotNull VirtualFile parentDir) {
-    if (DeclarativeStudioSupport.isEnabled()) {
-      return findFileWithNames(parentDir, FN_SETTINGS_GRADLE, FN_SETTINGS_GRADLE_KTS, FN_SETTINGS_GRADLE_DECLARATIVE);
-    }
     return findFileWithNames(parentDir, FN_SETTINGS_GRADLE, FN_SETTINGS_GRADLE_KTS);
   }
 

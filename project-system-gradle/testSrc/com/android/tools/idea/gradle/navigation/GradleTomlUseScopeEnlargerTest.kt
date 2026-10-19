@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.navigation
 
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
@@ -101,41 +100,9 @@ class GradleTomlUseScopeEnlargerTest {
     val ep = ExtensionPointName.create<GradleVersionCatalogHandler>("org.jetbrains.plugins.gradle.externallyHandledExtensions")
     ExtensionTestUtil.maskExtensions(ep, listOf(testExtension), projectRule.testRootDisposable)
 
-    DeclarativeStudioSupport.clearOverride()
-
     val tomlElement = PsiTreeUtil.findChildOfType(catalogFile, TomlElement::class.java)!!
     val scope = enlarger.getAdditionalUseScope(tomlElement)
 
     assertThat(scope).isInstanceOf(GradleBuildscriptSearchScope::class.java)
-  }
-
-  @Test
-  fun testVersionCatalogElementWithDeclarativeSupportIncludesDeclarativeScope() {
-    val catalogFile =
-      projectRule.fixture.addFileToProject(
-        "gradle/libs.versions.toml",
-        "[libraries]\nguava = 'com.google.guava:guava:30.0'",
-      )
-
-    val testExtension =
-      object : GradleVersionCatalogHandler {
-        override fun getVersionCatalogFiles(project: Project): Map<String, VirtualFile> = mapOf("libs" to catalogFile.virtualFile)
-
-        override fun getVersionCatalogFiles(module: Module): Map<String, VirtualFile> = mapOf("libs" to catalogFile.virtualFile)
-
-        override fun getExternallyHandledExtension(project: Project): Set<String> = setOf("libs")
-      }
-    val ep = ExtensionPointName.create<GradleVersionCatalogHandler>("org.jetbrains.plugins.gradle.externallyHandledExtensions")
-    ExtensionTestUtil.maskExtensions(ep, listOf(testExtension), projectRule.testRootDisposable)
-
-    DeclarativeStudioSupport.override(false)
-    try {
-      val tomlElement = PsiTreeUtil.findChildOfType(catalogFile, TomlElement::class.java)!!
-      val scope = enlarger.getAdditionalUseScope(tomlElement)
-
-      assertThat(scope).isNotNull()
-    } finally {
-      DeclarativeStudioSupport.clearOverride()
-    }
   }
 }

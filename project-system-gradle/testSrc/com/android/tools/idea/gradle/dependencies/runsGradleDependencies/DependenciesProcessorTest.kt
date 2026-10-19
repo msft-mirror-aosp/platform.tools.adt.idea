@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 The Android Open Source Project
+ * Copyright (C) 2026 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths.SIMPLE_APPLICATION
 import com.android.tools.idea.testing.findModule
 import com.android.tools.idea.testing.getTextForFile
-import com.android.tools.idea.testing.withDeclarative
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import org.assertj.core.api.Assertions.assertThat
@@ -36,7 +35,7 @@ import org.junit.runners.JUnit4
 @RunWith(JUnit4::class)
 class DependenciesProcessorTest {
 
-  @get:Rule val projectRule = AndroidGradleProjectRule().withDeclarative()
+  @get:Rule val projectRule = AndroidGradleProjectRule()
   private val project
     get() = projectRule.project
 

@@ -121,7 +121,6 @@ iml_module(
         "//tools/base/backup:studio.android.sdktools.backup",
         "@intellij//:com.intellij.modules.json",
         "//tools/adt/idea/testartifacts:intellij.android.testartifacts",
-        "//tools/adt/idea/gradle-dsl-flags:intellij.android.gradle.dsl.flags",
         "@intellij//:intellij.spellchecker",
         "@intellij//:intellij.spellchecker.xml",
         "@intellij//:intellij.java.analysis.impl",

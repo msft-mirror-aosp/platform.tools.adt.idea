@@ -130,9 +130,7 @@ open class LintIdeProject protected constructor(client: LintClient, dir: File, r
 
       project.ideaProject = module.project
       project.isGradleRootHolder =
-        File(project.dir, SdkConstants.FN_SETTINGS_GRADLE).exists() ||
-          File(project.dir, SdkConstants.FN_SETTINGS_GRADLE_KTS).exists() ||
-          File(project.dir, SdkConstants.FN_SETTINGS_GRADLE_DECLARATIVE).exists()
+        File(project.dir, SdkConstants.FN_SETTINGS_GRADLE).exists() || File(project.dir, SdkConstants.FN_SETTINGS_GRADLE_KTS).exists()
       projects.add(project)
       moduleMap[module] = project
       projectMap[project] = module
