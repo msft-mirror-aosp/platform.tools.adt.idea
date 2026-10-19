@@ -17,6 +17,7 @@ package com.android.tools.idea.preview.modes
 
 import com.android.tools.idea.common.layout.SurfaceLayoutOption
 import com.android.tools.idea.preview.Colors
+import com.android.tools.idea.preview.findMatchingElement
 import com.android.tools.preview.PreviewElement
 import com.google.common.base.Objects
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewToolWindowUtils
@@ -209,19 +210,12 @@ sealed class PreviewMode {
       // That is a trivial case. When the selected key is present, keep the selection.
       if (newElements.contains(selected)) return this
 
-      // Try to guess which exactly element was updated. Select the only element what changed.
-      // For example: the element what was selected before was updated. In this case only one
-      // element has changed compare to previously available elements. So we are trying to find
-      // this updated element.
+      // Try to find the element matching the selected one in newElements (see [findMatchingElement]). If there is none, try to guess
+      // which element was updated from (newElements subtract previousElements), and fall back to the first available element.
       val newSelected =
-        (newElements subtract previousElements).singleOrNull()
-          // Find the element that has the same annotation definition point (i.e. the name @Preview
-          // in source).
-          ?: newElements.singleOrNull { selected != null && it.previewElementDefinition == selected.previewElementDefinition }
-          // We couldn't find any best match. Default to the first key.
-          ?: newElements.firstOrNull()
+        newElements.findMatchingElement(selected) ?: (newElements subtract previousElements).singleOrNull() ?: newElements.firstOrNull()
 
-      // TODO(b/292482974): Find the correct key when there are Multipreview changes
+      // TODO(b/292482974): Find the correct key when MultiPreview leaves are added or removed
 
       return Focus(newSelected)
     }

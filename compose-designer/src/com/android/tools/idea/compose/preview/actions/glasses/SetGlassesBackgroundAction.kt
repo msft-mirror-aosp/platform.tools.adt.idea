@@ -27,8 +27,7 @@ import com.intellij.openapi.actionSystem.ToggleAction
 class SetGlassesBackgroundAction(val glassesBackground: GlassesBackground) : ToggleAction(glassesBackground.displayName, null, null) {
 
   override fun isSelected(e: AnActionEvent): Boolean {
-    val composePreviewElementInstance = e.dataContext.previewElement() ?: return false
-    val previewElement = composePreviewElementInstance.previewBody ?: return false
+    val previewElement = e.dataContext.previewElement() ?: return false
     val backgroundManager = BackgroundManager.getInstance(e.project ?: return false)
     val currentBackground = backgroundManager.getBackground(previewElement)
 
@@ -42,8 +41,7 @@ class SetGlassesBackgroundAction(val glassesBackground: GlassesBackground) : Tog
   }
 
   override fun setSelected(e: AnActionEvent, state: Boolean) {
-    val composePreviewElementInstance = e.dataContext.previewElement() ?: return
-    val previewElement = composePreviewElementInstance.previewBody ?: return
+    val previewElement = e.dataContext.previewElement() ?: return
     val backgroundManager = BackgroundManager.getInstance(e.project ?: return)
     // When selecting "No Background" (or unselecting the current background), clear the entry
     // in BackgroundManager to null so standard window background rendering applies.

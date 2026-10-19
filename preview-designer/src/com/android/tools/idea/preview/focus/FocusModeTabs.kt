@@ -252,8 +252,6 @@ internal class FocusModeTabs<Key : FocusKey>(
       val allGroups = keys.findOrganizationGroups()
       labelActions.clear()
       keys.forEach { labelActions[it] = TabLabelAction(it, allGroups.contains(it.settings.organizationGroup)) }
-      // Remove previous toolbar if exists.
-      previousToolbar?.let { centerPanel.remove(it) }
       // Create new toolbar.
       val toolbar =
         createToolbarWithNavigation(root, "Focus Tabs", FocusModeActionGroup(labelActions.values.toList())).component.apply {
@@ -290,8 +288,11 @@ internal class FocusModeTabs<Key : FocusKey>(
         }
 
       updateToolbarExecutor.execute {
+        previousToolbar?.let { centerPanel.remove(it) }
         centerPanel.add(toolbar, BorderLayout.CENTER)
         previousToolbar = toolbar
+        centerPanel.revalidate()
+        centerPanel.repaint()
       }
     }
   }

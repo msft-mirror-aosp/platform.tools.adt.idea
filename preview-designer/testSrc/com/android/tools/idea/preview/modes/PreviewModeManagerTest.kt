@@ -17,6 +17,7 @@ package com.android.tools.idea.preview.modes
 
 import com.android.tools.idea.preview.TestBasePreviewElement
 import com.android.tools.idea.preview.TestPreviewElement
+import com.android.tools.preview.PreviewDisplaySettings
 import com.intellij.openapi.project.Project
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -103,6 +104,31 @@ class PreviewModeManagerTest {
       )
     val newMode = mode.newMode(newElements = newElements, previousElements = emptySet())
     assertEquals(newSelected, newMode.selected)
+  }
+
+  @Test
+  fun newModePreservesSelectedMultiPreviewLeafWhenAllElementsAreUpdated() {
+    // The leaves of a MultiPreview share the definition and, by default, the instance id. All of them are updated, e.g. after a background
+    // change.
+    val newBackground = PreviewDisplaySettings.Background.Color("#111111")
+    val lightOld = TestPreviewElementString("Preview - Light", previewElementDefinition = "multiPreview")
+    val darkOld = TestPreviewElementString("Preview - Dark", previewElementDefinition = "multiPreview")
+    val lightNew = TestPreviewElementString("Preview - Light", previewElementDefinition = "multiPreview", background = newBackground)
+    val darkNew = TestPreviewElementString("Preview - Dark", previewElementDefinition = "multiPreview", background = newBackground)
+
+    val newMode = PreviewMode.Focus(darkOld).newMode(newElements = listOf(lightNew, darkNew), previousElements = setOf(lightOld, darkOld))
+    assertEquals(darkNew, newMode.selected)
+  }
+
+  @Test
+  fun newModeSelectsRenamedMultiPreviewLeaf() {
+    // When the selected leaf is renamed, no element matches it unambiguously, so the only element that changed is selected.
+    val light = TestPreviewElementString("Preview - Light", previewElementDefinition = "multiPreview")
+    val dark = TestPreviewElementString("Preview - Dark", previewElementDefinition = "multiPreview")
+    val night = TestPreviewElementString("Preview - Night", previewElementDefinition = "multiPreview")
+
+    val newMode = PreviewMode.Focus(dark).newMode(newElements = listOf(light, night), previousElements = setOf(light, dark))
+    assertEquals(night, newMode.selected)
   }
 
   @Test

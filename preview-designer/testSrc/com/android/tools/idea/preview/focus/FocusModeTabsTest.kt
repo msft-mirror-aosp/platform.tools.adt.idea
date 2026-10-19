@@ -264,6 +264,67 @@ class FocusModeTabsTest {
     assertNotEquals(toolbar, updatedToolbar)
   }
 
+  @Test
+  fun `toolbar swap removes previous toolbar inside executor`() {
+    val providedKeys = mutableSetOf(TestKey(simpleSettings.copy(name = "First Tab")), TestKey(simpleSettings.copy(name = "Second Tab")))
+    val tabs = FocusModeTabs(rootComponent, { providedKeys.first() }, { providedKeys }) { _, _ -> }
+    val ui = FakeUi(tabs)
+    ui.updateNestedActions()
+    // Make sure the initial toolbar swap has been executed.
+    UIUtil.dispatchAllInvocationEvents()
+    val centerPanel = findCenterPanel(tabs)
+    val initialToolbar = centerPanel.getComponent(0)
+
+    // Intercept executor so we can inspect centerPanel before and after executor runs
+    val pendingCommands = mutableListOf<Runnable>()
+    tabs.setUpdateToolbarExecutorForTests { command -> pendingCommands.add(command) }
+
+    // Trigger updateKeys with new set of keys
+    providedKeys.add(TestKey(simpleSettings.copy(name = "Third Tab")))
+    ui.updateNestedActions()
+
+    // The initial toolbar should still be present in the hierarchy before executor runs
+    assertEquals(1, centerPanel.componentCount)
+    assertEquals(initialToolbar, centerPanel.getComponent(0))
+
+    // Run the executor command
+    pendingCommands.single().run()
+
+    // Now the new toolbar should be present
+    assertEquals(1, centerPanel.componentCount)
+    assertNotEquals(initialToolbar, centerPanel.getComponent(0))
+  }
+
+  @Test
+  fun `only one toolbar is kept when several updates are pending`() {
+    val providedKeys = mutableSetOf(TestKey(simpleSettings.copy(name = "First Tab")))
+    val tabs = FocusModeTabs(rootComponent, { providedKeys.first() }, { providedKeys }) { _, _ -> }
+    val ui = FakeUi(tabs)
+    ui.updateNestedActions()
+    UIUtil.dispatchAllInvocationEvents()
+    val centerPanel = findCenterPanel(tabs)
+
+    val pendingCommands = mutableListOf<Runnable>()
+    tabs.setUpdateToolbarExecutorForTests { command -> pendingCommands.add(command) }
+
+    // Update the keys twice before any of the toolbar updates is executed.
+    providedKeys.add(TestKey(simpleSettings.copy(name = "Second Tab")))
+    ui.updateNestedActions()
+    providedKeys.add(TestKey(simpleSettings.copy(name = "Third Tab")))
+    ui.updateNestedActions()
+    assertEquals(2, pendingCommands.size)
+
+    pendingCommands.forEach { it.run() }
+
+    // Only the last toolbar is kept in the panel. Previously, the second update could not remove the toolbar added by the first one.
+    assertEquals(1, centerPanel.componentCount)
+  }
+
+  private fun findCenterPanel(tabs: FocusModeTabs<*>): JPanel {
+    val scrollPane = tabs.components.filterIsInstance<JBScrollPane>().single()
+    return scrollPane.viewport.view as JPanel
+  }
+
   @Ignore
   @Test
   /**

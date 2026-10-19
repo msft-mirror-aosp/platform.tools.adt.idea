@@ -23,6 +23,7 @@ import com.android.tools.idea.preview.modes.FOCUS_MODE_LAYOUT_OPTION
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.preview.PreviewDisplaySettings
 import com.android.tools.preview.PreviewElement
 import com.android.tools.preview.SingleComposePreviewElementInstance
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
@@ -113,6 +114,64 @@ class FocusModeTest() {
     assertEquals(newSelected, focus.selectedKey!!.element)
     assertEquals(newSelected, (previewModeManager.mode.value as PreviewMode.Focus).selected)
   }
+
+  @Test
+  fun tabSelectionResolvesStaleElementAgainstCurrentPreviews() {
+    val (staleElements, currentElements) = staleAndCurrentElements()
+    val previewFlowManager = previewFlowManagerFor(currentElements)
+    previewModeManager.setMode(PreviewMode.Focus(currentElements[0]))
+    val (focus, _) = setupFocusMode { previewFlowManager }
+    val selectedElements = mutableListOf<PreviewElement<*>?>()
+    focus.addSelectionListener { selectedElements.add(it) }
+
+    // Select the tab with the stale key of the second preview. Since these elements have no definition, they are matched by their
+    // display name and instance id.
+    focus.triggerSelectionChange(contextFor(previewFlowManager), staleElements[1])
+
+    // Both the mode and the additional listeners receive the current element instead of the stale one.
+    assertEquals(currentElements[1], (previewModeManager.mode.value as PreviewMode.Focus).selected)
+    assertEquals(listOf(currentElements[1]), selectedElements)
+  }
+
+  @Test
+  fun tabSelectionIsIgnoredWhenElementCanNotBeResolved() {
+    val (staleElements, currentElements) = staleAndCurrentElements()
+    val previewFlowManager = previewFlowManagerFor(currentElements)
+    previewModeManager.setMode(PreviewMode.Focus(currentElements[0]))
+    val (focus, _) = setupFocusMode { previewFlowManager }
+    val selectedElements = mutableListOf<PreviewElement<*>?>()
+    focus.addSelectionListener { selectedElements.add(it) }
+
+    // Select an element that is no longer available.
+    val removedElement = SingleComposePreviewElementInstance.forTesting<Unit>("RemovedMethod", displayName = "Removed")
+    focus.triggerSelectionChange(contextFor(previewFlowManager), removedElement)
+
+    // The selection does not change since using the removed element would filter out all the previews.
+    assertEquals(currentElements[0], (previewModeManager.mode.value as PreviewMode.Focus).selected)
+    assertEquals(emptyList<PreviewElement<*>?>(), selectedElements)
+    // The stale elements are still resolved.
+    focus.triggerSelectionChange(contextFor(previewFlowManager), staleElements[1])
+    assertEquals(currentElements[1], (previewModeManager.mode.value as PreviewMode.Focus).selected)
+  }
+
+  /**
+   * Returns two previews and the same previews recreated with a different background. The recreated previews are not equal to the original
+   * ones, like the ones recreated when the background is changed in the [com.android.tools.idea.preview.BackgroundManager].
+   */
+  private fun staleAndCurrentElements(): Pair<List<PreviewElement<*>>, List<PreviewElement<*>>> {
+    val staleElements =
+      listOf(
+        SingleComposePreviewElementInstance.forTesting<Unit>("PreviewMethod1", displayName = "Preview1"),
+        SingleComposePreviewElementInstance.forTesting<Unit>("PreviewMethod2", displayName = "Preview2"),
+      )
+    val currentElements = staleElements.map {
+      it.createDerivedInstance(it.displaySettings.copy(background = PreviewDisplaySettings.Background.Color("#FFFFFF")), it.configuration)
+    }
+    return staleElements to currentElements
+  }
+
+  private fun contextFor(previewFlowManager: PreviewFlowManager<PreviewElement<*>>) =
+    SimpleDataContext.builder().add(PreviewModeManager.KEY, previewModeManager).add(PreviewFlowManager.KEY, previewFlowManager).build()
 
   private fun setupFocusMode(previewFlowManager: () -> PreviewFlowManager<PreviewElement<*>>): Pair<FocusMode, () -> Unit> {
     val focus = FocusMode(JPanel())

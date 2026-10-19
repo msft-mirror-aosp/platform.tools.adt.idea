@@ -34,13 +34,13 @@ typealias PsiComposePreviewElementInstance = ComposePreviewElementInstance<Smart
  * Method that applies a background to the given [PsiComposePreviewElementInstance] if any has been set in the [BackgroundManager]. This is
  * used to allow individual previews having a custom background. Currently used in glasses to have a Compose background.
  */
-private fun applyBackground(it: PsiComposePreviewElementInstance): PsiComposePreviewElementInstance {
-  val project = it.previewBody?.project ?: return it
-  val background = BackgroundManager.getInstance(project).getBackground(it.previewBody!!)
+private fun applyBackground(instance: PsiComposePreviewElementInstance): PsiComposePreviewElementInstance {
+  val project = (instance.previewElementDefinition ?: instance.previewBody)?.project ?: return instance
+  val background = BackgroundManager.getInstance(project).getBackground(instance)
   if (background != null) {
-    return it.createDerivedInstance(it.displaySettings.copy(background = background), it.configuration)
+    return instance.createDerivedInstance(instance.displaySettings.copy(background = background), instance.configuration)
   }
-  return it
+  return instance
 }
 
 /**

@@ -42,7 +42,8 @@ import com.intellij.testFramework.TestActionEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito.mock
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 class GlassesBlendDropdownActionTest {
@@ -83,31 +84,8 @@ class GlassesBlendDropdownActionTest {
 
   @Test
   fun `selecting No Background clears background in BackgroundManager`() {
-    val previewBody = mock<SmartPsiElementPointer<PsiElement>>()
-    whenever(previewBody.project).thenReturn(projectRule.project)
-    val previewElement: PsiComposePreviewElementInstance =
-      SingleComposePreviewElementInstance(
-        methodFqn = "TestKt.Preview",
-        displaySettings =
-          PreviewDisplaySettings(
-            name = "Preview",
-            baseName = "Preview",
-            parameterName = null,
-            group = null,
-            showDecoration = false,
-            background = PreviewDisplaySettings.Background.Default,
-            organizationGroup = "",
-            organizationName = "",
-          ),
-        previewElementDefinition = null,
-        previewBody = previewBody,
-        configuration = PreviewConfiguration.cleanAndGet(),
-      )
-    val dataContext =
-      SimpleDataContext.builder()
-        .add(CommonDataKeys.PROJECT, projectRule.project)
-        .add(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE, previewElement)
-        .build()
+    val previewElement = glassesPreview("Preview", definition = null, body = pointer())
+    val dataContext = contextFor(previewElement)
 
     val noneAction = SetGlassesBackgroundAction(GlassesBackground.NONE)
     val lightAction = SetGlassesBackgroundAction(GlassesBackground.LIGHT_BACKGROUND)
@@ -119,16 +97,71 @@ class GlassesBlendDropdownActionTest {
 
     // Selecting LIGHT_BACKGROUND stores Background.Image in BackgroundManager.
     lightAction.setSelected(TestActionEvent.createTestEvent(lightAction, dataContext), true)
-    assertThat(backgroundManager.getBackground(previewBody)?.image).isEqualTo(GlassesBackground.LIGHT_BACKGROUND.imageTransform)
+    assertThat(backgroundManager.getBackground(previewElement)?.image).isEqualTo(GlassesBackground.LIGHT_BACKGROUND.imageTransform)
     assertThat(lightAction.isSelected(TestActionEvent.createTestEvent(lightAction, dataContext))).isTrue()
     assertThat(noneAction.isSelected(TestActionEvent.createTestEvent(noneAction, dataContext))).isFalse()
 
     // Selecting NONE removes the background entry from BackgroundManager so default showBackground is restored.
     noneAction.setSelected(TestActionEvent.createTestEvent(noneAction, dataContext), true)
-    assertThat(backgroundManager.getBackground(previewBody)).isNull()
+    assertThat(backgroundManager.getBackground(previewElement)).isNull()
     assertThat(noneAction.isSelected(TestActionEvent.createTestEvent(noneAction, dataContext))).isTrue()
     assertThat(lightAction.isSelected(TestActionEvent.createTestEvent(lightAction, dataContext))).isFalse()
   }
+
+  @Test
+  fun `selecting background does not affect other previews in the same function`() {
+    val body = pointer()
+    val multiPreview = pointer()
+    val previews =
+      listOf(
+        // Two separate @Preview annotations in the same function with the same name, e.g. if no name parameter is used.
+        glassesPreview("Glasses Preview", definition = pointer(), body = body),
+        glassesPreview("Glasses Preview", definition = pointer(), body = body),
+        // Two leaves of the same MultiPreview, which share the definition.
+        glassesPreview("Glasses Preview - Light", definition = multiPreview, body = body),
+        glassesPreview("Glasses Preview - Dark", definition = multiPreview, body = body),
+      )
+    val lightAction = SetGlassesBackgroundAction(GlassesBackground.LIGHT_BACKGROUND)
+    fun isLightSelected(preview: PsiComposePreviewElementInstance) =
+      lightAction.isSelected(TestActionEvent.createTestEvent(lightAction, contextFor(preview)))
+
+    // Select LIGHT_BACKGROUND for the first preview and for the last MultiPreview leaf.
+    lightAction.setSelected(TestActionEvent.createTestEvent(lightAction, contextFor(previews[0])), true)
+    lightAction.setSelected(TestActionEvent.createTestEvent(lightAction, contextFor(previews[3])), true)
+
+    assertThat(previews.map { isLightSelected(it) }).containsExactly(true, false, false, true).inOrder()
+  }
+
+  private fun pointer(): SmartPsiElementPointer<PsiElement> = mock { on { project } doReturn projectRule.project }
+
+  private fun glassesPreview(
+    name: String,
+    definition: SmartPsiElementPointer<PsiElement>?,
+    body: SmartPsiElementPointer<PsiElement>,
+  ): PsiComposePreviewElementInstance =
+    SingleComposePreviewElementInstance(
+      methodFqn = "TestKt.Preview",
+      displaySettings =
+        PreviewDisplaySettings(
+          name = name,
+          baseName = "Preview",
+          parameterName = null,
+          group = null,
+          showDecoration = false,
+          background = PreviewDisplaySettings.Background.Default,
+          organizationGroup = "",
+          organizationName = "",
+        ),
+      previewElementDefinition = definition,
+      previewBody = body,
+      configuration = PreviewConfiguration.cleanAndGet(),
+    )
+
+  private fun contextFor(previewElement: PsiComposePreviewElementInstance) =
+    SimpleDataContext.builder()
+      .add(CommonDataKeys.PROJECT, projectRule.project)
+      .add(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE, previewElement)
+      .build()
 
   /**
    * Sets up a data context containing a screen view that has a device passed as an argument. Then, create an [AnActionEvent] and calls

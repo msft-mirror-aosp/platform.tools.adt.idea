@@ -16,10 +16,13 @@
 package com.android.tools.idea.preview
 
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.preview.PreviewConfiguration
 import com.android.tools.preview.PreviewDisplaySettings
+import com.android.tools.preview.SingleComposePreviewElementInstance
 import com.intellij.openapi.application.readAction
-import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.SmartPsiElementPointer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -34,11 +37,38 @@ class BackgroundManagerTest {
   private val project
     get() = projectRule.project
 
+  private suspend fun createPointer(fileName: String = "Test.kt"): SmartPsiElementPointer<PsiElement> {
+    val psiFile = projectRule.fixture.addFileToProject(fileName, "fun test() {}")
+    return readAction { SmartPointerManager.getInstance(project).createSmartPsiElementPointer<PsiElement>(psiFile) }
+  }
+
+  private fun previewElement(
+    name: String,
+    definition: SmartPsiElementPointer<PsiElement>?,
+    body: SmartPsiElementPointer<PsiElement>? = null,
+  ): PsiPreviewElement =
+    SingleComposePreviewElementInstance(
+      methodFqn = "TestKt.Preview",
+      displaySettings =
+        PreviewDisplaySettings(
+          name = name,
+          baseName = "Preview",
+          parameterName = null,
+          group = null,
+          showDecoration = false,
+          background = PreviewDisplaySettings.Background.None,
+          organizationGroup = "",
+          organizationName = "",
+        ),
+      previewElementDefinition = definition,
+      previewBody = body,
+      configuration = PreviewConfiguration.cleanAndGet(),
+    )
+
   @Test
   fun `setBackground and getBackground work correctly`() = runTest {
     val manager = BackgroundManager.getInstance(project)
-    val psiFile = projectRule.fixture.addFileToProject("Test.kt", "fun test() {}")
-    val element = readAction { SmartPointerManager.getInstance(project).createSmartPsiElementPointer<PsiFile>(psiFile) }
+    val element = previewElement("Preview", createPointer())
     val background = PreviewDisplaySettings.Background.Image {}
 
     manager.setBackground(element, background)
@@ -48,8 +78,7 @@ class BackgroundManagerTest {
   @Test
   fun `setBackground with null removes the background`() = runTest {
     val manager = BackgroundManager.getInstance(project)
-    val psiFile = projectRule.fixture.addFileToProject("Test.kt", "fun test() {}")
-    val element = readAction { SmartPointerManager.getInstance(project).createSmartPsiElementPointer<PsiFile>(psiFile) }
+    val element = previewElement("Preview", createPointer())
     val background = PreviewDisplaySettings.Background.Image {}
 
     manager.setBackground(element, background)
@@ -62,13 +91,11 @@ class BackgroundManagerTest {
   @Test
   fun `modificationTracker updates on background changes`() = runTest {
     val manager = BackgroundManager.getInstance(project)
-    val psiFile = projectRule.fixture.addFileToProject("Test.kt", "fun test() {}")
-    val element = readAction { SmartPointerManager.getInstance(project).createSmartPsiElementPointer<PsiFile>(psiFile) }
+    val element = previewElement("Preview", createPointer())
     val background1 = PreviewDisplaySettings.Background.Image {}
     val background2 = PreviewDisplaySettings.Background.Image {}
 
     val initialCount = manager.modificationTracker.modificationCount
-    println(">> $initialCount")
 
     // Set for the first time
     manager.setBackground(element, background1)
@@ -96,8 +123,7 @@ class BackgroundManagerTest {
   @Test
   fun `modificationFlow emits on background changes`() = runTest {
     val manager = BackgroundManager.getInstance(project)
-    val psiFile = projectRule.fixture.addFileToProject("Test.kt", "fun test() {}")
-    val element = readAction { SmartPointerManager.getInstance(project).createSmartPsiElementPointer<PsiFile>(psiFile) }
+    val element = previewElement("Preview", createPointer())
     val background = PreviewDisplaySettings.Background.Image {}
 
     val initialCount = manager.modificationFlow.first()
@@ -109,5 +135,51 @@ class BackgroundManagerTest {
     manager.setBackground(element, null)
     val countAfterRemove = manager.modificationFlow.first()
     assertEquals(initialCount + 2, countAfterRemove)
+  }
+
+  @Test
+  fun `backgrounds are scoped to each preview`() = runTest {
+    val manager = BackgroundManager.getInstance(project)
+    val body = createPointer("Body.kt")
+    // Two @Preview annotations in the same function. They have the same name, e.g. if no name parameter is used.
+    val annotation1 = previewElement("Preview", createPointer("Annotation1.kt"), body)
+    val annotation2 = previewElement("Preview", createPointer("Annotation2.kt"), body)
+    // Two leaves of a MultiPreview, which share the definition.
+    val multiPreview = createPointer("MultiPreview.kt")
+    val light = previewElement("Preview - Light", multiPreview, body)
+    val dark = previewElement("Preview - Dark", multiPreview, body)
+    val background = PreviewDisplaySettings.Background.Image {}
+
+    manager.setBackground(annotation1, background)
+    manager.setBackground(dark, background)
+    assertEquals(background, manager.getBackground(annotation1))
+    assertNull(manager.getBackground(annotation2))
+    assertNull(manager.getBackground(light))
+    assertEquals(background, manager.getBackground(dark))
+
+    manager.setBackground(dark, null)
+    assertNull(manager.getBackground(dark))
+    assertEquals(background, manager.getBackground(annotation1))
+  }
+
+  @Test
+  fun `previewBody is used when there is no definition`() = runTest {
+    val manager = BackgroundManager.getInstance(project)
+    val body = createPointer()
+    val background = PreviewDisplaySettings.Background.Image {}
+
+    manager.setBackground(previewElement("Preview", definition = null, body = body), background)
+    assertEquals(background, manager.getBackground(previewElement("Preview", definition = null, body = body)))
+  }
+
+  @Test
+  fun `preview without definition nor body is ignored`() = runTest {
+    val manager = BackgroundManager.getInstance(project)
+    val element = previewElement("Preview", definition = null)
+    val initialCount = manager.modificationTracker.modificationCount
+
+    manager.setBackground(element, PreviewDisplaySettings.Background.Image {})
+    assertNull(manager.getBackground(element))
+    assertEquals(initialCount, manager.modificationTracker.modificationCount)
   }
 }
