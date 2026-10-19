@@ -87,6 +87,7 @@ class SetupSdkApplicationServiceTest {
               createFakeRemotePackageWithLicense("platform-tools"),
               createFakeRemotePackageWithLicense("platforms"),
               createFakeRemotePackageWithLicense("emulator"),
+              createFakeRemotePackageWithLicense("emulators;latest"),
               createFakeRemotePackageWithLicense("platforms;android-35"),
             ),
           )
