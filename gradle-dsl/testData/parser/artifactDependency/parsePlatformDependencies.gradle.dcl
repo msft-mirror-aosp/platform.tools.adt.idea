@@ -1,5 +1,0 @@
-androidApp {
-  dependencies {
-    implementation(enforcedPlatform("group:name:3.1415"))
-  }
-}

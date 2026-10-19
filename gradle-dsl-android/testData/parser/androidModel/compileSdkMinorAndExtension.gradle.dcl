@@ -1,4 +1,0 @@
-androidApp {
-  compileSdkMinor = 3
-  compileSdkExtension = 5
-}

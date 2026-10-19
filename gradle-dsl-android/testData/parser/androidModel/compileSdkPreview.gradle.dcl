@@ -1,3 +1,0 @@
-androidApp {
-  compileSdkPreview = "Baklava"
-}

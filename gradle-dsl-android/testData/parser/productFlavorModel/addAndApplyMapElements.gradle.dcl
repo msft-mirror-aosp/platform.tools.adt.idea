@@ -1,4 +1,0 @@
-androidApp {
-  defaultConfig {
-  }
-}
