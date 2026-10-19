@@ -15,11 +15,18 @@
  */
 package com.android.tools.adtui.stdui.menu
 
+import com.android.testutils.ImageDiffUtil
 import com.android.tools.adtui.model.stdui.CommonAction
+import com.android.tools.adtui.swing.FakeUi
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
+import icons.StudioIcons
+import java.awt.event.KeyEvent
+import java.awt.image.BufferedImage
 import java.beans.PropertyChangeListener
 import java.util.Arrays
+import javax.swing.KeyStroke
+import org.junit.Assert.assertThrows
 import org.junit.ClassRule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -91,4 +98,59 @@ class CommonDropDownButtonTest {
     childMenu3 = dropdown.findMenuRecursive(popup, child3)!!
     assertThat(childMenu3.action).isEqualTo(child3)
   }
+
+  @Test
+  fun testMenuAndMenuItemLayoutAndPaint() {
+    val menuAction = CommonAction("Submenu", StudioIcons.Common.FILTER)
+    menuAction.isSelected = true
+    val leafAction = CommonAction("Item", StudioIcons.Common.ADD)
+    leafAction.isSelected = true
+    menuAction.addChildrenActions(leafAction)
+
+    val popup = CommonPopupMenu()
+    val menu = CommonMenu(menuAction)
+    val menuItem = CommonMenuItem(leafAction)
+    menuItem.accelerator = KeyStroke.getKeyStroke(KeyEvent.VK_A, KeyEvent.CTRL_DOWN_MASK)
+    popup.add(menu)
+    popup.add(menuItem)
+
+    val menuPrefSize = menu.preferredSize
+    assertThat(menuPrefSize.width).isGreaterThan(0)
+    assertThat(menuPrefSize.height).isGreaterThan(0)
+
+    val itemPrefSize = menuItem.preferredSize
+    assertThat(itemPrefSize.width).isGreaterThan(0)
+    assertThat(itemPrefSize.height).isGreaterThan(0)
+
+    menu.setBounds(0, 0, menuPrefSize.width, menuPrefSize.height)
+    menuItem.setBounds(0, 0, itemPrefSize.width, itemPrefSize.height)
+
+    val menuUi = FakeUi(menu)
+    val unarmedMenuImage = menuUi.render()
+    assertThat(unarmedMenuImage.width).isEqualTo(menuPrefSize.width)
+    assertThat(unarmedMenuImage.height).isEqualTo(menuPrefSize.height)
+
+    menu.isSelected = true
+    val armedMenuImage = menuUi.render()
+    assertThrows(AssertionError::class.java) { assertSameImage(unarmedMenuImage, armedMenuImage) }
+
+    menu.isSelected = false
+    assertSameImage(unarmedMenuImage, menuUi.render())
+
+    val menuItemUi = FakeUi(menuItem)
+    val unarmedItemImage = menuItemUi.render()
+    assertThat(unarmedItemImage.width).isEqualTo(itemPrefSize.width)
+    assertThat(unarmedItemImage.height).isEqualTo(itemPrefSize.height)
+
+    menuItem.isArmed = true
+    val armedItemImage = menuItemUi.render()
+    assertThrows(AssertionError::class.java) { assertSameImage(unarmedItemImage, armedItemImage) }
+
+    menuItem.isArmed = false
+    assertSameImage(unarmedItemImage, menuItemUi.render())
+  }
+}
+
+private fun assertSameImage(image1: BufferedImage, image2: BufferedImage) {
+  ImageDiffUtil.assertImageSimilar("menu", image1, image2, 0.0, 0)
 }

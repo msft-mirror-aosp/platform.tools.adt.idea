@@ -17,10 +17,10 @@ package com.android.tools.adtui.stdui.menu;
 
 import com.android.tools.adtui.stdui.StandardColors;
 import com.android.tools.adtui.stdui.StandardDimensions;
+import com.intellij.util.ui.MenuItemLayoutHelper;
 import icons.StudioIcons;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import sun.swing.MenuItemLayoutHelper;
 
 import javax.swing.*;
 import javax.swing.border.Border;

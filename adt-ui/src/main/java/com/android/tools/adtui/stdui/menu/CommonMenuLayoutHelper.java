@@ -15,7 +15,7 @@
  */
 package com.android.tools.adtui.stdui.menu;
 
-import sun.swing.MenuItemLayoutHelper;
+import com.intellij.util.ui.MenuItemLayoutHelper;
 
 import javax.swing.*;
 import java.awt.*;

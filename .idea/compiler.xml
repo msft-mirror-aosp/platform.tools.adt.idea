@@ -27,7 +27,6 @@
     <option name="PREFER_TARGET_JDK_COMPILER" value="false" />
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="intellij.android.adt.swingp" options="--add-exports java.desktop/sun.java2d=ALL-UNNAMED --add-exports java.desktop/sun.awt.image=ALL-UNNAMED" />
-      <module name="intellij.android.adt.ui" options="--add-exports java.desktop/sun.swing=ALL-UNNAMED" />
       <module name="intellij.android.adt.ui.tests" options="--add-exports java.desktop/java.awt.peer=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d.pipe=ALL-UNNAMED" />
     </option>
   </component>

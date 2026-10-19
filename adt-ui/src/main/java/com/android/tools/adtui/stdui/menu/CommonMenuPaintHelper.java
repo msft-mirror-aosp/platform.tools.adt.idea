@@ -18,9 +18,9 @@ package com.android.tools.adtui.stdui.menu;
 import com.android.tools.adtui.stdui.GraphicsUtilKt;
 import com.android.tools.adtui.stdui.StandardColors;
 import com.android.tools.adtui.stdui.StandardDimensions;
+import com.intellij.util.ui.MenuItemLayoutHelper;
 import com.intellij.util.ui.UIUtilities;
 import org.jetbrains.annotations.NotNull;
-import sun.swing.MenuItemLayoutHelper;
 
 import javax.swing.*;
 import java.awt.*;

@@ -5,10 +5,6 @@ iml_module(
     name = "intellij.android.adt.ui",
     srcs = ["src/main/java"],
     iml_files = ["intellij.android.adt.ui.iml"],
-    javacopts_from_jps = [
-        "--add-exports",
-        "java.desktop/sun.swing=ALL-UNNAMED",
-    ],
     lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
     visibility = ["//visibility:public"],
