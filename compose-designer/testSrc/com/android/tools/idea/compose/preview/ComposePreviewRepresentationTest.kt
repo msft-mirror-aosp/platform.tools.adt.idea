@@ -1471,82 +1471,6 @@ class ComposePreviewRepresentationTest {
     }
   }
 
-  @Test
-  fun previewPagination() {
-    StudioFlags.PREVIEW_PAGINATION.overrideForTest(true, projectRule.fixture.testRootDisposable)
-    val testPsiFile =
-      fixture.addFileToProjectAndInvalidate(
-        "Test.kt",
-        // language=kotlin
-        """
-        import androidx.compose.ui.tooling.preview.Preview
-        import androidx.compose.runtime.Composable
-
-        @Composable
-        @Preview(name = "1")
-        @Preview(name = "2")
-        @Preview(name = "3")
-        @Preview(name = "4")
-        @Preview(name = "5")
-        fun MyFun() {
-        }
-        """
-          .trimIndent(),
-      )
-
-    runComposePreviewRepresentationTest(testPsiFile) {
-      val preview = createPreviewAndCompile()
-      delayUntilCondition(delayPerIterationMs = 100) {
-        """
-        1 - MyFun
-        2 - MyFun
-        3 - MyFun
-        4 - MyFun
-        5 - MyFun
-        """
-          .trimIndent() == preview.getRenderedPreviewNames()
-      }
-
-      preview.composePreviewFlowManager.previewFlowPaginator.pageSize = 2
-      delayUntilCondition(delayPerIterationMs = 100) {
-        """
-        1 - MyFun
-        2 - MyFun
-        """
-          .trimIndent() == preview.getRenderedPreviewNames()
-      }
-
-      preview.composePreviewFlowManager.previewFlowPaginator.selectedPage = 1
-      delayUntilCondition(delayPerIterationMs = 100) {
-        """
-        3 - MyFun
-        4 - MyFun
-        """
-          .trimIndent() == preview.getRenderedPreviewNames()
-      }
-
-      preview.composePreviewFlowManager.previewFlowPaginator.selectedPage = 2
-      delayUntilCondition(delayPerIterationMs = 100) {
-        """
-        5 - MyFun
-        """
-          .trimIndent() == preview.getRenderedPreviewNames()
-      }
-
-      // Increasing page size from 2 to 3 will make the page 2 (0-indexed) disappear, so the
-      // selectedPage should automatically change to 1.
-      preview.composePreviewFlowManager.previewFlowPaginator.pageSize = 3
-      delayUntilCondition(delayPerIterationMs = 100) {
-        """
-        4 - MyFun
-        5 - MyFun
-        """
-          .trimIndent() == preview.getRenderedPreviewNames()
-      }
-      assertEquals(1, preview.composePreviewFlowManager.previewFlowPaginator.selectedPage)
-    }
-  }
-
   // Regression test for b/448050227
   @Test
   fun composeViewShouldAlwaysHaveContentIfThereArePreviews() {
@@ -1803,7 +1727,4 @@ class ComposePreviewRepresentationTest {
       }
     }
   }
-
-  private fun ComposePreviewRepresentation.getRenderedPreviewNames() =
-    renderedPreviewElementsInstancesFlowForTest().value.asCollection().joinToString("\n") { it.displaySettings.name }
 }

@@ -17,7 +17,6 @@ package com.android.tools.idea.preview.focus
 
 import com.android.tools.idea.concurrency.FlowableCollection
 import com.android.tools.idea.preview.flow.PreviewFlowManager
-import com.android.tools.idea.preview.flow.PreviewFlowPaginator
 import com.android.tools.idea.preview.groups.PreviewGroup
 import com.android.tools.idea.preview.modes.CommonPreviewModeManager
 import com.android.tools.idea.preview.modes.FOCUS_MODE_LAYOUT_OPTION
@@ -134,8 +133,6 @@ class FocusModeTest() {
   private fun previewFlowManagerFor(previewElements: Collection<PreviewElement<*>>) =
     object : PreviewFlowManager<PreviewElement<*>> {
       override val allPreviewElementsFlow = MutableStateFlow(FlowableCollection.Present(previewElements))
-      override val previewFlowPaginator: PreviewFlowPaginator<PreviewElement<*>> =
-        PreviewFlowPaginator(MutableStateFlow(FlowableCollection.Uninitialized))
 
       override val toRenderPreviewElementsFlow = MutableStateFlow(FlowableCollection.Uninitialized)
 
