@@ -64,7 +64,6 @@ iml_module(
         "//tools/adt/idea/native-symbolizer",
         "//tools/adt/idea/native-symbolizer/gradle:native-symbolizer.gradle",
         "//tools/adt/idea/gradle-dsl-android:intellij.android.gradle.dsl.android",
-        "//tools/vendor/google/focus-plugin:declarative-gradle.focus-plugin",
         "//tools/adt/idea/avd:intellij.android.avd",
         "//tools/studio/google/cloud/testing/test-recorder/gradle:test-recorder.gradle",
         "//tools/vendor/google/url-assistant/gradle:url-assistant.gradle",

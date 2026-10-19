@@ -332,7 +332,6 @@ studio_plugin(
             "//tools/adt/idea/settings-sync:intellij.android.settings-sync",
             "//tools/adt/idea/testartifacts:intellij.android.testartifacts",
             "//tools/vendor/google/android-keys:android-keys",
-            "//tools/vendor/google/focus-plugin:declarative-gradle.focus-plugin",
             "//tools/vendor/google/marketing:marketing",
             "//tools/adt/idea/app-publishing:intellij.android.app-publishing",
             "//tools/vendor/google/play-client/metadata:intellij.android.play-client.metadata",

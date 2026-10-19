@@ -13,7 +13,6 @@ directories:
   -tools/vendor/google/asfp
   -tools/vendor/google/bazel
   -tools/vendor/google/flamegraph-extractor
-  -tools/vendor/google/focus-plugin
   -tools/vendor/google/game-tools
   -tools/vendor/google/layoutlib-prebuilt
   -tools/vendor/google/scripts

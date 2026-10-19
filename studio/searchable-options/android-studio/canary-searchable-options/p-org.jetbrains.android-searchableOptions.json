@@ -77,10 +77,6 @@
   ]
 }
 {
-  "id": "DeclarativeFocus",
-  "name": "Gradle Declarative Focus"
-}
-{
   "id": "build.tools",
   "name": "Build Tools",
   "entries": [
