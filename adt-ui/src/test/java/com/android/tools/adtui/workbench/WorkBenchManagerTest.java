@@ -33,7 +33,6 @@ import org.junit.Test;
 import org.junit.rules.RuleChain;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import sun.awt.AWTAccessor;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.*;
@@ -159,9 +158,9 @@ public class WorkBenchManagerTest {
   private Pair<AttachedToolWindow<?>, Component> createToolWindowUnder(@NotNull WorkBench<?> workbench) {
     Component component = new JPanel();
     AttachedToolWindow<?> toolWindow = mock(AttachedToolWindow.class);
-    AttachedToolWindowPanel panel = new AttachedToolWindowPanel(toolWindow);
+    AttachedToolWindowPanel panel = spy(new AttachedToolWindowPanel(toolWindow));
     panel.add(component);
-    AWTAccessor.getComponentAccessor().setParent(panel, workbench);
+    when(panel.getParent()).thenReturn(workbench);
     return Pair.pair(toolWindow, component);
   }
 }

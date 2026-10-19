@@ -25,6 +25,7 @@ import com.intellij.util.ui.JBUI
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
+import java.awt.Toolkit
 import java.awt.Window
 import java.awt.event.WindowFocusListener
 import javax.swing.JComponent
@@ -49,7 +50,7 @@ private fun wrapInFakeWindow(mockWindow: Window, root: JComponent, parentDisposa
   val components = arrayOf(root)
   val windowFocusListeners = mutableListOf<WindowFocusListener>()
   whenever(mockWindow.treeLock).thenCallRealMethod()
-  whenever(mockWindow.toolkit).thenReturn(fakeToolkit)
+  whenever(mockWindow.toolkit).thenReturn(Toolkit.getDefaultToolkit())
   whenever(mockWindow.isShowing).thenReturn(true)
   whenever(mockWindow.isActive).thenReturn(true)
   whenever(mockWindow.isVisible).thenReturn(true)
@@ -145,6 +146,5 @@ private fun Disposable.addWindow(window: Window) {
   }
 }
 
-private val fakeToolkit = FakeUiToolkit()
 private val windows = mutableListOf<Window>()
 private var windowStatic: MockedStatic<Window>? = null
