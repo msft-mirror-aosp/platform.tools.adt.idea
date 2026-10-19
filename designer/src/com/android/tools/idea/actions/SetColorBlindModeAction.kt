@@ -18,7 +18,7 @@ package com.android.tools.idea.actions
 import com.android.tools.configurations.Configuration
 import com.android.tools.idea.common.model.ChangeType
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
-import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode
+import com.android.tools.visuallint.colorblindmode.ColorBlindMode
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ToggleAction

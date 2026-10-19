@@ -26,12 +26,12 @@ import com.android.tools.idea.uibuilder.lint.createDefaultHyperLinkListener
 import com.android.tools.idea.uibuilder.lint.getTextRange
 import com.android.tools.idea.uibuilder.visual.analytics.VisualLintOrigin
 import com.android.tools.idea.uibuilder.visual.analytics.VisualLintUsageTracker
-import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode
 import com.android.tools.rendering.parsers.TagSnapshot
 import com.android.tools.visuallint.VisualLintAnalyzer.VisualLintIssueContent
 import com.android.tools.visuallint.VisualLintErrorType
 import com.android.tools.visuallint.analyzers.describe
 import com.android.tools.visuallint.analyzers.isLowContrast
+import com.android.tools.visuallint.colorblindmode.ColorBlindMode
 import com.android.utils.HtmlBuilder
 import com.intellij.codeInsight.daemon.HighlightDisplayKey
 import com.intellij.designer.model.EmptyXmlTag

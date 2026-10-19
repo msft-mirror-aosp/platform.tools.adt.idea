@@ -22,7 +22,7 @@ import com.android.tools.idea.preview.mvvm.PreviewViewModelStatus
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
-import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode
+import com.android.tools.visuallint.colorblindmode.ColorBlindMode
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.TestActionEvent

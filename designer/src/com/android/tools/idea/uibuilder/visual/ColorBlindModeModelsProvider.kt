@@ -23,7 +23,7 @@ import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.rendering.AndroidBuildTargetReference
 import com.android.tools.idea.uibuilder.model.NlComponentRegistrar
 import com.android.tools.idea.uibuilder.type.LayoutFileType
-import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode
+import com.android.tools.visuallint.colorblindmode.ColorBlindMode
 import com.intellij.openapi.Disposable
 import com.intellij.psi.PsiFile
 

@@ -29,6 +29,7 @@ import com.android.tools.idea.uibuilder.visual.verifyNightModeReflected
 import com.android.tools.idea.uibuilder.visual.verifyTargetReflected
 import com.android.tools.idea.uibuilder.visual.verifyThemeReflected
 import com.android.tools.idea.uibuilder.visual.verifyUiModeReflected
+import com.android.tools.visuallint.colorblindmode.ColorBlindMode
 import org.intellij.lang.annotations.Language
 
 class ColorBlindModeModelsProviderTest : LayoutTestCase() {

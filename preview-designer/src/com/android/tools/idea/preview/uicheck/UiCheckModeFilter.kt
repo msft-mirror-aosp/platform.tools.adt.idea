@@ -25,9 +25,9 @@ import com.android.tools.idea.concurrency.FlowableCollection
 import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.preview.PreviewBundle.message
 import com.android.tools.idea.preview.groups.PreviewGroup
-import com.android.tools.idea.uibuilder.visual.colorblindmode.ColorBlindMode
 import com.android.tools.preview.PreviewElementInstance
 import com.android.tools.preview.config.referenceDeviceIds
+import com.android.tools.visuallint.colorblindmode.ColorBlindMode
 
 private const val DEVICE_CLASS_LANDSCAPE_PHONE_ID = "$DEVICE_CLASS_PHONE_ID-landscape"
 private val idToName =
