@@ -21,6 +21,7 @@ import com.android.ide.common.rendering.api.Result
 import com.android.ide.common.rendering.api.ViewInfo
 import com.android.testutils.delayUntilCondition
 import com.android.tools.idea.common.SyncNlModel
+import com.android.tools.idea.common.model.NlModelUpdaterInterface
 import com.android.tools.idea.common.surface.LayoutScannerConfiguration
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -71,9 +72,10 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.verifyNoMoreInteractions
 import org.mockito.kotlin.whenever
 
 class LayoutlibSceneRendererTest {
@@ -428,14 +430,31 @@ class LayoutlibSceneRendererTest {
     assertNull(resultWithViews.validatorResult)
   }
 
+  // Regression test for b/575353489
   @Test
-  fun testDoubleRenderDisablesLayoutScannerOnlyAfterSecondRender(): Unit = runBlocking {
+  fun testDoubleRenderDisablesLayoutScannerAfterFirstRender(): Unit = runBlocking {
+    val modelUpdater = mock<NlModelUpdaterInterface>()
+    nlModel.setModelUpdater(modelUpdater)
     renderer.sceneRenderConfiguration.doubleRender.set(true)
     renderer.requestRenderAndWait(trigger = null)
 
     assertThat(taskInflateCount.get()).isEqualTo(1)
     assertThat(taskRenderCount.get()).isEqualTo(2)
-    verify(renderTaskMock, times(1)).setEnableLayoutScanner(false)
+    // Hierarchy should be updated on inflate and on the non-inflating second render pass,
+    // not redundantly on the first render pass that already inflated.
+    inOrder(renderTaskMock, modelUpdater) {
+      verify(renderTaskMock).inflate()
+      verify(modelUpdater).updateFromTagSnapshot(any(), any(), any())
+      verify(modelUpdater).updateFromViewInfo(any(), any())
+      verify(renderTaskMock).render()
+      verify(renderTaskMock).setEnableLayoutScanner(false)
+      verify(renderTaskMock).render()
+      verify(renderTaskMock).setEnableLayoutScanner(false)
+      verify(modelUpdater).updateFromTagSnapshot(any(), any(), any())
+      verify(modelUpdater).updateFromViewInfo(any(), any())
+      verifyNoMoreInteractions()
+    }
+    verifyNoMoreInteractions(modelUpdater)
   }
 
   private fun blockInflationAndRequestRender() = runBlocking {
