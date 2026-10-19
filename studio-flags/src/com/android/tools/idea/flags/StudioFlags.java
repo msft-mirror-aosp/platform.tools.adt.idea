@@ -1539,12 +1539,6 @@ public final class StudioFlags {
     "If enabled, Preview Essentials Mode will be enabled."
   );
 
-  public static final Flag<Boolean> PREVIEW_FILTER = new BooleanFlag(
-    PREVIEW_COMMON, "filter",
-    "Support filtering the previews",
-    "If enabled, the user can find the filter actions to filter the visible previews"
-  );
-
   public static final Flag<Boolean> RENDER_SANDBOX =
     new BooleanFlag(
       PREVIEW_COMMON,

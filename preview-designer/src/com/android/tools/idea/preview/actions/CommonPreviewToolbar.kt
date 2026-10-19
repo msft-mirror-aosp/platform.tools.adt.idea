@@ -15,11 +15,8 @@
  */
 package com.android.tools.idea.preview.actions
 
-import com.android.flags.ifEnabled
 import com.android.tools.idea.common.editor.ToolbarActionGroups
 import com.android.tools.idea.common.surface.DesignSurface
-import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.preview.PreviewViewSingleWordFilter
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 
@@ -27,15 +24,11 @@ class CommonPreviewToolbar(surface: DesignSurface<*>) : ToolbarActionGroups(surf
 
   override fun getNorthGroup(): ActionGroup {
     return DefaultActionGroup(
-      listOfNotNull(
-        StopInteractivePreviewAction(isDisabled = { isPreviewRefreshing(it.dataContext) }),
-        StopAnimationInspectorAction(isDisabled = { isPreviewRefreshing(it.dataContext) }),
-        // TODO(b/292057010) Enable group filtering for Gallery mode.
-        GroupSwitchAction(isEnabled = { !isPreviewRefreshing(it.dataContext) }).visibleOnlyInDefaultPreview(),
-        CommonViewControlAction().visibleOnlyInStaticPreview(),
-        StudioFlags.PREVIEW_FILTER.ifEnabled { PreviewFilterShowHistoryAction().visibleOnlyInStaticPreview() },
-        StudioFlags.PREVIEW_FILTER.ifEnabled { PreviewFilterTextAction(PreviewViewSingleWordFilter()).visibleOnlyInStaticPreview() },
-      )
+      StopInteractivePreviewAction(isDisabled = { isPreviewRefreshing(it.dataContext) }),
+      StopAnimationInspectorAction(isDisabled = { isPreviewRefreshing(it.dataContext) }),
+      // TODO(b/292057010) Enable group filtering for Gallery mode.
+      GroupSwitchAction(isEnabled = { !isPreviewRefreshing(it.dataContext) }).visibleOnlyInDefaultPreview(),
+      CommonViewControlAction().visibleOnlyInStaticPreview(),
     )
   }
 
