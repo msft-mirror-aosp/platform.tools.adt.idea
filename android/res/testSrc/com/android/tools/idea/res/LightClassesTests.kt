@@ -605,6 +605,7 @@ class SingleModuleLightClassesTest {
   @Test
   fun modificationTracking() {
     myFixture.addFileToProject("res/drawable/foo.xml", vectorDrawable)
+    waitForResourceRepositoryUpdates(myFacet)
 
     myFixture.loadNewFile(
       "src/p1/p2/MainActivity.java",
@@ -626,6 +627,7 @@ class SingleModuleLightClassesTest {
       """
         .trimIndent(),
     )
+    waitForResourceRepositoryUpdates(myFacet)
 
     // Sanity check:
     myFixture.checkHighlighting()
