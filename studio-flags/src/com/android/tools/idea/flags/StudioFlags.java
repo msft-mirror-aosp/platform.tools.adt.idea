@@ -1539,18 +1539,6 @@ public final class StudioFlags {
     "If enabled, Preview Essentials Mode will be enabled."
   );
 
-  public static final Flag<Boolean> FIND_PREVIEWS_FROM_PREVIEW_SOURCESET = new BooleanFlag(
-    PREVIEW_COMMON, "find.previews.from.sourceset",
-    "Find previews from a file and also from preview-sourceset",
-    "If enabled, the process to find previews for a file will also search in its associated files from the preview-sourceset"
-  );
-
-  public static final Flag<Boolean> PREVIEW_SOURCESET_UI = new BooleanFlag(
-    PREVIEW_COMMON, "preview.sourceset.ui",
-    "Enable UI for preview-sourseset",
-    "If enabled, the UI specific to preview-sourceset will be enabled."
-  );
-
   public static final Flag<Boolean> PREVIEW_FILTER = new BooleanFlag(
     PREVIEW_COMMON, "filter",
     "Support filtering the previews",
