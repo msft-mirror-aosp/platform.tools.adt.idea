@@ -40,11 +40,11 @@ import com.android.testutils.file.recordExistingFile
 import com.android.testutils.file.someRoot
 import com.android.tools.adtui.compose.LocalFileSystem
 import com.android.tools.adtui.compose.LocalProject
-import com.android.tools.analytics.CommonMetricsData
 import com.android.tools.sdk.DeviceManagers
+import com.android.utils.CpuArchitecture
 import com.android.utils.ILogger
 import com.android.utils.StdLogger
-import com.google.wireless.android.sdk.stats.ProductDetails.CpuArchitecture
+import com.android.utils.osArchitecture
 import com.intellij.util.io.createDirectories
 import java.nio.file.FileSystem
 import java.nio.file.Files
@@ -153,8 +153,8 @@ class SdkFixture(
 }
 
 fun recommendedAbiForHost() =
-  when (CommonMetricsData.osArchitecture) {
+  when (osArchitecture) {
     CpuArchitecture.X86_64 -> Abi.X86_64.toString()
     CpuArchitecture.ARM -> Abi.ARM64_V8A.toString()
-    else -> throw IllegalStateException("Unexpected host architecture: ${CommonMetricsData.osArchitecture}")
+    else -> throw IllegalStateException("Unexpected host architecture: $osArchitecture")
   }

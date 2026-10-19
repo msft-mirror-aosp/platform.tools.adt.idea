@@ -13,7 +13,6 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "@intellij//:com.intellij.java",
         "@intellij//:intellij-sdk",
-        "//tools/analytics-library/shared:analytics-shared",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/base/adblib:studio.android.sdktools.adblib",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
@@ -47,7 +46,6 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "@intellij//:intellij-sdk",
-        "//tools/analytics-library/shared:analytics-shared",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
         "//tools/base/flags:studio.android.sdktools.flags",
