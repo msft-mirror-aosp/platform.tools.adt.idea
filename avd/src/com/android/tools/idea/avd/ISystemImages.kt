@@ -24,9 +24,9 @@ import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
 import com.android.utils.CpuArchitecture
+import com.android.utils.OperatingSystem
 import com.android.utils.osArchitecture
 import com.intellij.openapi.diagnostic.thisLogger
-import com.intellij.openapi.util.SystemInfo
 import kotlin.time.Duration.Companion.days
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.PersistentList
@@ -138,9 +138,10 @@ private fun ISystemImage.incompatibleArchitectureWarning(): String? =
     CpuArchitecture.X86_ON_ARM,
     CpuArchitecture.ARM ->
       when (Abi.getEnum(primaryAbiType)) {
-        Abi.ARM64_V8A -> null
+        Abi.ARM64_V8A ->
+          if (OperatingSystem.isWindows() && has16KbPageSize()) "Windows on ARM does not support images with 16 KB page size." else null
         in listOf(Abi.ARMEABI, Abi.ARMEABI_V7A) ->
-          if (SystemInfo.isMac) "32-bit ARM images are not supported on Apple Silicon."
+          if (OperatingSystem.isMac()) "32-bit ARM images are not supported on Apple Silicon."
           else "Compatibility with $primaryAbiType images is unknown."
         in listOf(Abi.X86_64, Abi.X86) -> "$primaryAbiType images are not supported on ARM hosts."
         else -> "Compatibility with $primaryAbiType images is unknown."
