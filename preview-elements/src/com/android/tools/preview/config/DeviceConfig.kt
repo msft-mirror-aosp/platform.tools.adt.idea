@@ -38,11 +38,14 @@ import com.android.tools.preview.config.Preview.DeviceSpec.OPERATOR
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_CHIN_SIZE
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_CUTOUT
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_DPI
+import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_EXPAND
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_HAS_CAMERA
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_HAS_MICROPHONE
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_ID
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_IS_ROUND
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_KEYBOARD_KIND
+import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_MAX_HEIGHT
+import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_MAX_WIDTH
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_NAVIGATION
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_ORIENTATION
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_PARENT
@@ -52,6 +55,7 @@ import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_WINDOW_POST
 import com.android.tools.preview.config.Preview.DeviceSpec.SEPARATOR
 import com.android.tools.res.FrameworkOverlay
 import com.google.common.base.Objects
+import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.properties.ObservableProperty
 import kotlin.reflect.KProperty
@@ -79,6 +83,9 @@ val referenceDeviceIds =
  * @param dimUnit Determines the unit of the given [width] and [height]. Ie: For [DimUnit.px] they will be considered as pixels.
  * @param shape Shape of the device screen, may affect how the screen behaves, or it may add a cutout (like with wearables).
  * @param chinSize For round devices only, defines the height of the flat surface on a screen, measured from the bottom.
+ * @param expand Axis of the render area that grows to fit scrollable content, null if the render area has a fixed size.
+ * @param maxHeight Maximum height, in [dimUnit], of the render area when [expand] is [ExpandAxis.vertical]. Null to use the default.
+ * @param maxWidth Maximum width, in [dimUnit], of the render area when [expand] is [ExpandAxis.horizontal]. Null to use the default.
  * @param parentDeviceId ID of the parent device used as template for this configuration.
  * @param parentDevice Optional parent [Device] instance used as template for this configuration when preserving inherent hardware state.
  */
@@ -99,6 +106,9 @@ open class DeviceConfig(
   open val hasCamera: Boolean = true,
   open val hasMicrophone: Boolean = true,
   open val viewingDistance: ViewingDistance = ViewingDistance.near,
+  open val expand: ExpandAxis? = null,
+  open val maxHeight: Float? = null,
+  open val maxWidth: Float? = null,
   open val parentDeviceId: String? = null,
   open val parentDevice: Device? = null,
 ) {
@@ -125,6 +135,22 @@ open class DeviceConfig(
    */
   val chinSizeString: String
     get() = formatDimension(chinSize)
+
+  /**
+   * String representation of the maxHeight as it is used in DeviceSpec Language, null if [maxHeight] is not set.
+   *
+   * @see convertToDeviceSpecDimension
+   */
+  val maxHeightString: String?
+    get() = maxHeight?.let { formatDimension(it) }
+
+  /**
+   * String representation of the maxWidth as it is used in DeviceSpec Language, null if [maxWidth] is not set.
+   *
+   * @see convertToDeviceSpecDimension
+   */
+  val maxWidthString: String?
+    get() = maxWidth?.let { formatDimension(it) }
 
   /**
    * Formats a dimension value for DeviceSpec strings and the Preview Configuration Picker. Pixel dimensions are rounded to the nearest
@@ -161,9 +187,12 @@ open class DeviceConfig(
         keyboardKind == KeyboardKind.virtual &&
         hasCamera &&
         hasMicrophone &&
-        viewingDistance == ViewingDistance.near
+        viewingDistance == ViewingDistance.near &&
+        expand == null &&
+        maxHeight == null &&
+        maxWidth == null
     ) {
-      // If the spec value has a parent but none of orientation, navigation, cutout, and media query attributes are different from
+      // If the spec value has a parent but none of orientation, navigation, cutout, media query and expand attributes are different from
       // default value, return id:<device-id>
       return "$DEVICE_BY_ID_PREFIX$parentDeviceId"
     }
@@ -205,6 +234,7 @@ open class DeviceConfig(
         builder.appendSeparator()
         builder.appendParamValue(PARAMETER_VIEWING_DISTANCE, viewingDistance.name)
       }
+      builder.addExpandIfNeeded()
       return builder.toString()
     }
     builder.appendParamValue(PARAMETER_WIDTH, widthString + dimUnit.name)
@@ -257,7 +287,24 @@ open class DeviceConfig(
       builder.appendSeparator()
       builder.appendParamValue(PARAMETER_VIEWING_DISTANCE, viewingDistance.name)
     }
+    builder.addExpandIfNeeded()
     return builder.toString()
+  }
+
+  /** Adds the [expand], [maxHeight] and [maxWidth] parameters if they are set. */
+  private fun StringBuilder.addExpandIfNeeded() {
+    expand?.let {
+      appendSeparator()
+      appendParamValue(PARAMETER_EXPAND, it.name)
+    }
+    maxHeightString?.let {
+      appendSeparator()
+      appendParamValue(PARAMETER_MAX_HEIGHT, it + dimUnit.name)
+    }
+    maxWidthString?.let {
+      appendSeparator()
+      appendParamValue(PARAMETER_MAX_WIDTH, it + dimUnit.name)
+    }
   }
 
   /**
@@ -290,6 +337,9 @@ open class DeviceConfig(
       hasCamera == other.hasCamera &&
       hasMicrophone == other.hasMicrophone &&
       viewingDistance == other.viewingDistance &&
+      expand == other.expand &&
+      maxHeight == other.maxHeight &&
+      maxWidth == other.maxWidth &&
       parentDeviceId == other.parentDeviceId
   }
 
@@ -311,6 +361,9 @@ open class DeviceConfig(
       hasCamera,
       hasMicrophone,
       viewingDistance,
+      expand,
+      maxHeight,
+      maxWidth,
       parentDeviceId,
     )
   }
@@ -438,6 +491,41 @@ open class DeviceConfig(
           null
         }
 
+      val expand =
+        if (params[PARAMETER_EXPAND] != null) {
+          ExpandAxis.fromSpecValue(params.getOrDefault(PARAMETER_EXPAND, "")) ?: return null
+        } else {
+          null
+        }
+
+      // Unlike custom specs (where width, height, and chinSize are specified in the spec and must all
+      // share the same unit), a parent spec inherits width, height, chinSize, dimUnit (px), and dpi
+      // from the parent Device (`initialConfig`). maxHeight and maxWidth are the only dimension
+      // parameters allowed alongside `parent`, and accept either dp or px as long as they match each
+      // other.
+      val maxHeightDimension =
+        if (params[PARAMETER_MAX_HEIGHT] != null) {
+          parseMaxSizeOrNull(params[PARAMETER_MAX_HEIGHT]) ?: return null
+        } else {
+          null
+        }
+
+      val maxWidthDimension =
+        if (params[PARAMETER_MAX_WIDTH] != null) {
+          parseMaxSizeOrNull(params[PARAMETER_MAX_WIDTH]) ?: return null
+        } else {
+          null
+        }
+
+      if (maxHeightDimension != null && maxWidthDimension != null && maxHeightDimension.unit != maxWidthDimension.unit) {
+        return null
+      }
+
+      // DeviceConfig stores all dimensions in a single `dimUnit`, so convert maxHeight and maxWidth to
+      // the parent configuration's unit (`initialConfig.dimUnit`) using the parent device's density.
+      val maxHeight = maxHeightDimension?.toUnit(initialConfig.dimUnit, initialConfig.dpi)
+      val maxWidth = maxWidthDimension?.toUnit(initialConfig.dimUnit, initialConfig.dpi)
+
       if (
         orientation != null ||
           navigation != null ||
@@ -447,7 +535,10 @@ open class DeviceConfig(
           keyboardKind != null ||
           hasCamera != null ||
           hasMicrophone != null ||
-          viewingDistance != null
+          viewingDistance != null ||
+          expand != null ||
+          maxHeight != null ||
+          maxWidth != null
       ) {
         return initialConfig
           .toMutableConfig()
@@ -461,6 +552,9 @@ open class DeviceConfig(
             hasCamera?.let { this.hasCamera = it }
             hasMicrophone?.let { this.hasMicrophone = it }
             viewingDistance?.let { this.viewingDistance = it }
+            expand?.let { this.expand = it }
+            maxHeight?.let { this.maxHeight = it }
+            maxWidth?.let { this.maxWidth = it }
           }
           .toImmutableConfig()
       }
@@ -472,11 +566,21 @@ open class DeviceConfig(
       val width = parseAndroidNumberOrNull(params[PARAMETER_WIDTH]) ?: return null
       val height = parseAndroidNumberOrNull(params[PARAMETER_HEIGHT]) ?: return null
       val chinSize = parseAndroidNumberOrNull(params[PARAMETER_CHIN_SIZE]) // Chin size is optional
+      val maxHeight = parseMaxSizeOrNull(params[PARAMETER_MAX_HEIGHT]) // Max height is optional
+      val maxWidth = parseMaxSizeOrNull(params[PARAMETER_MAX_WIDTH]) // Max width is optional
       if (width.unit != height.unit) {
         // We currently require the units of all dimensions to match
         return null
       } else if (params[PARAMETER_CHIN_SIZE] != null && (chinSize == null || chinSize.unit != width.unit)) {
         // If chinSize is present, but parsing failed (chinSize == null) or it doesn't match the
+        // width & height unit
+        return null
+      } else if (params[PARAMETER_MAX_HEIGHT] != null && (maxHeight == null || maxHeight.unit != width.unit)) {
+        // If maxHeight is present, but parsing failed (maxHeight == null) or it doesn't match the
+        // width & height unit
+        return null
+      } else if (params[PARAMETER_MAX_WIDTH] != null && (maxWidth == null || maxWidth.unit != width.unit)) {
+        // If maxWidth is present, but parsing failed (maxWidth == null) or it doesn't match the
         // width & height unit
         return null
       }
@@ -574,6 +678,13 @@ open class DeviceConfig(
           ViewingDistance.near
         }
 
+      val expand =
+        if (params[PARAMETER_EXPAND] != null) {
+          ExpandAxis.fromSpecValue(params.getOrDefault(PARAMETER_EXPAND, "")) ?: return null
+        } else {
+          null
+        }
+
       return DeviceConfig(
         deviceId = params[PARAMETER_ID],
         width = width.value,
@@ -591,6 +702,9 @@ open class DeviceConfig(
         hasCamera = hasCamera,
         hasMicrophone = hasMicrophone,
         viewingDistance = viewingDistance,
+        expand = expand,
+        maxHeight = maxHeight?.value,
+        maxWidth = maxWidth?.value,
         parentDeviceId = null, // Not supported when explicitly declaring width, height, dpi, chinSize
       )
     }
@@ -619,6 +733,9 @@ class MutableDeviceConfig(
   initialHasCamera: Boolean = true,
   initialHasMicrophone: Boolean = true,
   initialViewingDistance: ViewingDistance = ViewingDistance.near,
+  initialExpand: ExpandAxis? = null,
+  initialMaxHeight: Float? = null,
+  initialMaxWidth: Float? = null,
   initialBackingDeviceId: String? = null,
   initialParentDevice: Device? = null,
 ) :
@@ -639,6 +756,9 @@ class MutableDeviceConfig(
     initialHasCamera,
     initialHasMicrophone,
     initialViewingDistance,
+    initialExpand,
+    initialMaxHeight,
+    initialMaxWidth,
     initialBackingDeviceId,
     initialParentDevice,
   ) {
@@ -706,6 +826,8 @@ class MutableDeviceConfig(
         width *= dpiFactor
         height *= dpiFactor
         chinSize *= dpiFactor
+        maxHeight = maxHeight?.times(dpiFactor)
+        maxWidth = maxWidth?.times(dpiFactor)
       }
     }
 
@@ -724,6 +846,12 @@ class MutableDeviceConfig(
   override var hasMicrophone: Boolean = initialHasMicrophone
 
   override var viewingDistance: ViewingDistance = initialViewingDistance
+
+  override var expand: ExpandAxis? = initialExpand
+
+  override var maxHeight: Float? = initialMaxHeight
+
+  override var maxWidth: Float? = initialMaxWidth
 
   /** Returns a property delegate that nullifies [parentDeviceId] and [parentDevice] whenever the property sees a different value. */
   private fun <T> invalidateIdOnPropertyChangeDelegate(initialValue: T) =
@@ -754,6 +882,9 @@ internal fun MutableDeviceConfig.toImmutableConfig(): DeviceConfig =
     hasCamera = this.hasCamera,
     hasMicrophone = this.hasMicrophone,
     viewingDistance = this.viewingDistance,
+    expand = this.expand,
+    maxHeight = this.maxHeight,
+    maxWidth = this.maxWidth,
     parentDeviceId = this.parentDeviceId,
     parentDevice = this.parentDevice,
   )
@@ -776,12 +907,23 @@ fun DeviceConfig.toMutableConfig(): MutableDeviceConfig =
     initialHasCamera = this.hasCamera,
     initialHasMicrophone = this.hasMicrophone,
     initialViewingDistance = this.viewingDistance,
+    initialExpand = this.expand,
+    initialMaxHeight = this.maxHeight,
+    initialMaxWidth = this.maxWidth,
     initialBackingDeviceId = this.parentDeviceId,
     initialParentDevice = this.parentDevice,
   )
 
 /** Convenience class to define an Android dimension by its number [value] and [unit]. */
-private class AndroidDimension(val value: Float, val unit: DimUnit)
+private class AndroidDimension(val value: Float, val unit: DimUnit) {
+  /** Returns the [value] converted to [targetUnit], using [dpi] as the screen density. */
+  fun toUnit(targetUnit: DimUnit, dpi: Int): Float =
+    when {
+      unit == targetUnit -> value
+      targetUnit == DimUnit.px -> value * dpi / Density.MEDIUM.dpiValue
+      else -> value * Density.MEDIUM.dpiValue / dpi
+    }
+}
 
 private fun parseAndroidNumberOrNull(text: String?): AndroidDimension? {
   if (text == null) return null
@@ -790,6 +932,10 @@ private fun parseAndroidNumberOrNull(text: String?): AndroidDimension? {
   val value = text.dropLast(2).toFloatOrNull() ?: return null
   return AndroidDimension(value = value, unit = dimUnit)
 }
+
+/** Parses the value of [PARAMETER_MAX_HEIGHT] or [PARAMETER_MAX_WIDTH]. Returns null if it's not a valid, positive dimension. */
+private fun parseMaxSizeOrNull(text: String?): AndroidDimension? =
+  parseAndroidNumberOrNull(text?.lowercase(Locale.US))?.takeIf { it.value.isFinite() && it.value.roundToInt() >= 1 }
 
 /**
  * Parses the parameters of a DeviceSpec Language string (without the `spec:` prefix) into a name-value map. Malformed parameters are
@@ -800,6 +946,50 @@ private fun parseDeviceSpecParameters(configString: String): Map<String, String>
     .split(SEPARATOR)
     .filter { it.length >= 3 && it.contains(OPERATOR) }
     .associate { paramString -> Pair(paramString.substringBefore(OPERATOR).trim(), paramString.substringAfter(OPERATOR).trim()) }
+
+/**
+ * Parses the [ExpandSettings] of the given [deviceSpec]. Returns null if the [deviceSpec] is not a DeviceSpec Language string (`spec:...`),
+ * if it doesn't have a valid [PARAMETER_EXPAND] parameter, or if its max size parameters are invalid.
+ *
+ * Unlike [DeviceConfig.toDeviceConfigOrNull], this does not need the list of available devices, so it can be used to configure the render
+ * of a preview. Only the max size parameter matching the axis ([PARAMETER_MAX_HEIGHT] for [ExpandAxis.vertical] and [PARAMETER_MAX_WIDTH]
+ * for [ExpandAxis.horizontal]) is returned in [ExpandSettings].
+ */
+fun parseExpandSettings(deviceSpec: String): ExpandSettings? {
+  if (!deviceSpec.startsWith(DEVICE_BY_SPEC_PREFIX) || !deviceSpec.contains(PARAMETER_EXPAND)) return null
+  val params = parseDeviceSpecParameters(deviceSpec.substringAfter(DEVICE_BY_SPEC_PREFIX))
+  val axis = params[PARAMETER_EXPAND]?.let(ExpandAxis::fromSpecValue) ?: return null
+  val maxHeight =
+    if (params[PARAMETER_MAX_HEIGHT] != null) {
+      parseMaxSizeOrNull(params[PARAMETER_MAX_HEIGHT]) ?: return null
+    } else {
+      null
+    }
+  val maxWidth =
+    if (params[PARAMETER_MAX_WIDTH] != null) {
+      parseMaxSizeOrNull(params[PARAMETER_MAX_WIDTH]) ?: return null
+    } else {
+      null
+    }
+  if (maxHeight != null && maxWidth != null && maxHeight.unit != maxWidth.unit) {
+    return null
+  }
+  if (params[PARAMETER_PARENT] == null) {
+    val width = parseAndroidNumberOrNull(params[PARAMETER_WIDTH]) ?: return null
+    val height = parseAndroidNumberOrNull(params[PARAMETER_HEIGHT]) ?: return null
+    if (
+      width.unit != height.unit || (maxHeight != null && maxHeight.unit != width.unit) || (maxWidth != null && maxWidth.unit != width.unit)
+    ) {
+      return null
+    }
+  }
+  val maxSize =
+    when (axis) {
+      ExpandAxis.vertical -> maxHeight
+      ExpandAxis.horizontal -> maxWidth
+    }
+  return ExpandSettings(axis = axis, maxSize = maxSize?.value, unit = maxSize?.unit)
+}
 
 private fun StringBuilder.appendParamValue(parameterName: String, value: String): StringBuilder = append("$parameterName$OPERATOR$value")
 
@@ -858,4 +1048,15 @@ enum class ViewingDistance {
   near,
   medium,
   far,
+}
+
+/** Axis of the render area that grows to fit scrollable content, set with [PARAMETER_EXPAND]. */
+enum class ExpandAxis {
+  vertical,
+  horizontal;
+
+  companion object {
+    /** Parses a [PARAMETER_EXPAND] value, or returns null if it's not a supported axis. */
+    fun fromSpecValue(value: String): ExpandAxis? = enumValueOfOrNull<ExpandAxis>(value.lowercase(Locale.US))
+  }
 }

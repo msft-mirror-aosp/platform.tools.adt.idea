@@ -28,6 +28,7 @@ import com.android.sdklib.devices.State
 import kotlin.test.assertNotNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -252,6 +253,170 @@ internal class DeviceUtilsKtTest {
     modifiedConfig.parentDevice = null
     assertNull(modifiedConfig.parentDeviceId)
     assertNull(modifiedConfig.parentDevice)
+  }
+
+  @Test
+  fun deviceSpecWithExpandParameters() {
+    val verticalSpec = "spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000dp"
+    val verticalConfig = DeviceConfig.toDeviceConfigOrNull(verticalSpec, emptyList())
+    assertNotNull(verticalConfig)
+    assertEquals(ExpandAxis.vertical, verticalConfig!!.expand)
+    assertEquals(2000f, verticalConfig.maxHeight)
+    assertNull(verticalConfig.maxWidth)
+    assertEquals(verticalSpec, verticalConfig.deviceSpec())
+
+    val horizontalSpec = "spec:width=1080px,height=1920px,dpi=440,expand=horizontal,maxWidth=5000px"
+    val horizontalConfig = DeviceConfig.toDeviceConfigOrNull(horizontalSpec, emptyList())
+    assertNotNull(horizontalConfig)
+    assertEquals(ExpandAxis.horizontal, horizontalConfig!!.expand)
+    assertNull(horizontalConfig.maxHeight)
+    assertEquals(5000f, horizontalConfig.maxWidth)
+    assertEquals(horizontalSpec, horizontalConfig.deviceSpec())
+
+    // Max size is optional
+    val noMaxSpec = "spec:width=411dp,height=891dp,expand=vertical"
+    val noMaxConfig = DeviceConfig.toDeviceConfigOrNull(noMaxSpec, emptyList())
+    assertNotNull(noMaxConfig)
+    assertEquals(ExpandAxis.vertical, noMaxConfig!!.expand)
+    assertNull(noMaxConfig.maxHeight)
+    assertEquals(noMaxSpec, noMaxConfig.deviceSpec())
+
+    // Case-insensitive axis value
+    val mixedCaseConfig = DeviceConfig.toDeviceConfigOrNull("spec:width=411dp,height=891dp,expand=Vertical", emptyList())
+    assertNotNull(mixedCaseConfig)
+    assertEquals(ExpandAxis.vertical, mixedCaseConfig!!.expand)
+    assertEquals("spec:width=411dp,height=891dp,expand=vertical", mixedCaseConfig.deviceSpec())
+
+    // Not expanded by default
+    val defaultConfig = DeviceConfig.toDeviceConfigOrNull("spec:width=411dp,height=891dp", emptyList())
+    assertNotNull(defaultConfig)
+    assertNull(defaultConfig!!.expand)
+    assertNull(defaultConfig.maxHeight)
+    assertNull(defaultConfig.maxWidth)
+    assertEquals("spec:width=411dp,height=891dp", defaultConfig.deviceSpec())
+
+    assertNotEquals(defaultConfig, noMaxConfig)
+    assertNotEquals(noMaxConfig, verticalConfig)
+    assertEquals(verticalConfig, DeviceConfig.toDeviceConfigOrNull(verticalSpec, emptyList()))
+    assertEquals(verticalConfig.hashCode(), DeviceConfig.toDeviceConfigOrNull(verticalSpec, emptyList()).hashCode())
+  }
+
+  @Test
+  fun deviceSpecWithInvalidExpandParameters() {
+    val invalidSpecs =
+      listOf(
+        // Unknown axis
+        "spec:width=411dp,height=891dp,expand=both",
+        // Missing unit
+        "spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000",
+        // Mixed units
+        "spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000px",
+        "spec:width=1080px,height=1920px,expand=horizontal,maxWidth=2000dp",
+        // Not a number
+        "spec:width=411dp,height=891dp,expand=vertical,maxHeight=abcdp",
+        // Not positive (>= 1 when rounded)
+        "spec:width=411dp,height=891dp,expand=vertical,maxHeight=0dp",
+        "spec:width=1080px,height=1920px,expand=vertical,maxHeight=0px",
+        "spec:width=1080px,height=1920px,expand=vertical,maxHeight=0.2px",
+        "spec:width=411dp,height=891dp,expand=horizontal,maxWidth=-10dp",
+        // Invalid values with a parent device
+        "spec:parent=id1,expand=both",
+        "spec:parent=id1,expand=vertical,maxHeight=2000",
+        "spec:parent=id1,expand=vertical,maxHeight=1000dp,maxWidth=3000px",
+      )
+    val existingDevices = buildMockDevices()
+    invalidSpecs.forEach {
+      assertNull(it, DeviceConfig.toDeviceConfigOrNull(it, existingDevices))
+      assertNull(it, parseExpandSettings(it))
+    }
+  }
+
+  @Test
+  fun parentDeviceSpecWithExpandParameters() {
+    val existingDevices = buildMockDevices()
+
+    val spec = "spec:parent=id1,expand=vertical"
+    val config = DeviceConfig.toDeviceConfigOrNull(spec, existingDevices)
+    assertNotNull(config)
+    assertEquals(ExpandAxis.vertical, config!!.expand)
+    assertNull(config.maxHeight)
+    assertEquals(spec, config.deviceSpec())
+
+    // Parent devices use px, so the same unit is kept
+    val pxSpec = "spec:parent=id1,orientation=landscape,expand=horizontal,maxWidth=3000px"
+    val pxConfig = DeviceConfig.toDeviceConfigOrNull(pxSpec, existingDevices)
+    assertNotNull(pxConfig)
+    assertEquals(ExpandAxis.horizontal, pxConfig!!.expand)
+    assertEquals(3000f, pxConfig.maxWidth)
+    assertEquals(pxSpec, pxConfig.deviceSpec())
+
+    // dp values are accepted with a parent device, and converted to px using the density of the parent (640dpi)
+    val dpConfig = DeviceConfig.toDeviceConfigOrNull("spec:parent=id1,expand=vertical,maxHeight=1000dp", existingDevices)
+    assertNotNull(dpConfig)
+    assertEquals(ExpandAxis.vertical, dpConfig!!.expand)
+    assertEquals(4000f, dpConfig.maxHeight)
+    assertEquals("spec:parent=id1,expand=vertical,maxHeight=4000px", dpConfig.deviceSpec())
+  }
+
+  @Test
+  fun mutableDeviceConfigWithExpandParameters() {
+    val config = DeviceConfig.toMutableDeviceConfigOrNull("spec:parent=id1,expand=vertical,maxHeight=4000px", buildMockDevices())
+    assertNotNull(config)
+
+    config!!.expand = ExpandAxis.horizontal
+    config.maxHeight = null
+    config.maxWidth = 3000f
+    // Expand parameters don't affect the parent device
+    assertEquals("id1", config.parentDeviceId)
+    assertEquals("spec:parent=id1,expand=horizontal,maxWidth=3000px", config.deviceSpec())
+
+    // Changing the unit also converts the max size, using the density of the device (640dpi)
+    config.dimUnit = DimUnit.dp
+    assertEquals(750f, config.maxWidth!!, 0.01f)
+    assertNull(config.maxHeight)
+  }
+
+  @Test
+  fun parseExpandSettingsFromDeviceSpec() {
+    assertNull(parseExpandSettings(""))
+    assertNull(parseExpandSettings("id:pixel_7"))
+    assertNull(parseExpandSettings("spec:width=411dp,height=891dp"))
+    assertNull(parseExpandSettings("spec:parent=pixel_7,maxHeight=2000dp"))
+    assertNull(parseExpandSettings("spec:width=411dp,height=891dp,expand=both"))
+
+    assertEquals(ExpandSettings(ExpandAxis.vertical), parseExpandSettings("spec:parent=pixel_7,expand=vertical"))
+    assertEquals(ExpandSettings(ExpandAxis.horizontal), parseExpandSettings("spec:parent=pixel_7, expand = horizontal "))
+    assertEquals(
+      ExpandSettings(ExpandAxis.vertical, 1200f, DimUnit.dp),
+      parseExpandSettings("spec:parent=wearos_large_round,expand=vertical,maxHeight=1200dp"),
+    )
+    assertEquals(
+      ExpandSettings(ExpandAxis.horizontal, 5000f, DimUnit.px),
+      parseExpandSettings("spec:width=1080px,height=1920px,expand=horizontal,maxWidth=5000px,maxHeight=100px"),
+    )
+    // Case-insensitive axis values and units, case-sensitive parameter keys
+    assertEquals(
+      ExpandSettings(ExpandAxis.vertical, 1200f, DimUnit.dp),
+      parseExpandSettings("spec:parent=wearos_large_round,expand=Vertical,maxHeight=1200DP"),
+    )
+    assertEquals(
+      ExpandSettings(ExpandAxis.horizontal, 5000f, DimUnit.px),
+      parseExpandSettings("spec:parent=pixel_7,expand=HORIZONTAL,maxWidth=5000PX"),
+    )
+    assertNull(parseExpandSettings("spec:parent=wearos_large_round,EXPAND=vertical"))
+    assertEquals(
+      ExpandSettings(ExpandAxis.vertical),
+      parseExpandSettings("spec:parent=wearos_large_round,expand=vertical,MAXHEIGHT=1200dp"),
+    )
+    // Only the max size of the expanded axis is used
+    assertEquals(ExpandSettings(ExpandAxis.vertical), parseExpandSettings("spec:width=411dp,height=891dp,expand=vertical,maxWidth=100dp"))
+    // Invalid max sizes and mixed units are rejected
+    assertNull(parseExpandSettings("spec:width=411dp,height=891dp,expand=vertical,maxHeight=100"))
+    assertNull(parseExpandSettings("spec:width=411dp,height=891dp,expand=vertical,maxHeight=0dp"))
+    assertNull(parseExpandSettings("spec:width=411dp,height=891dp,expand=vertical,maxHeight=0px"))
+    assertNull(parseExpandSettings("spec:width=411dp,height=891dp,expand=vertical,maxHeight=0.2px"))
+    assertNull(parseExpandSettings("spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000px"))
+    assertNull(parseExpandSettings("spec:parent=pixel_7,expand=vertical,maxHeight=1000dp,maxWidth=3000px"))
   }
 }
 

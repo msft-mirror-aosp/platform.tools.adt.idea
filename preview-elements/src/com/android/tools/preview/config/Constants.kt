@@ -91,7 +91,17 @@ object Preview {
     const val PARAMETER_HAS_CAMERA = "hasCamera"
     const val PARAMETER_HAS_MICROPHONE = "hasMicrophone"
     const val PARAMETER_VIEWING_DISTANCE = "viewingDistance"
+
+    /** Axis of the render area that grows to fit scrollable content. See [ExpandAxis]. */
+    const val PARAMETER_EXPAND = "expand"
+    /** Maximum height of the render area when [PARAMETER_EXPAND] is [ExpandAxis.vertical]. */
+    const val PARAMETER_MAX_HEIGHT = "maxHeight"
+    /** Maximum width of the render area when [PARAMETER_EXPAND] is [ExpandAxis.horizontal]. */
+    const val PARAMETER_MAX_WIDTH = "maxWidth"
     // endregion
+
+    /** Maximum size, in pixels, of the expanded axis when [PARAMETER_MAX_HEIGHT] or [PARAMETER_MAX_WIDTH] are not set. */
+    const val DEFAULT_EXPAND_MAX_SIZE_PX: Int = 4096
 
     // Set those values first as they are referenced by ReferencePhoneConfig
     const val DEFAULT_DPI: Int = 420
@@ -115,7 +125,9 @@ object Preview {
       when (parameterName) {
         PARAMETER_WIDTH,
         PARAMETER_HEIGHT,
-        PARAMETER_CHIN_SIZE -> true
+        PARAMETER_CHIN_SIZE,
+        PARAMETER_MAX_HEIGHT,
+        PARAMETER_MAX_WIDTH -> true
         else -> false
       }
   }
