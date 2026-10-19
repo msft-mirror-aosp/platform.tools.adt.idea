@@ -32,7 +32,9 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.AnActionHolder
 import com.intellij.openapi.util.NlsContexts
+import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.ui.ComponentUtil
 import com.intellij.ui.dsl.builder.HyperlinkEventAction
 import com.intellij.ui.dsl.builder.MAX_LINE_LENGTH_WORD_WRAP
@@ -45,7 +47,9 @@ import java.awt.Component
 import java.awt.Container
 import java.awt.Dimension
 import java.awt.Graphics
+import java.awt.HeadlessException
 import java.awt.KeyboardFocusManager
+import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.event.MouseEvent
@@ -54,12 +58,15 @@ import java.nio.ByteBuffer
 import java.nio.file.Path
 import javax.swing.Icon
 import javax.swing.JEditorPane
+import javax.swing.SwingUtilities
 import javax.swing.event.HyperlinkEvent
 import javax.swing.event.HyperlinkListener
-import kotlin.math.abs
 import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.round
 import kotlin.math.roundToInt
 
 fun ByteBuffer.getUInt(): UInt = getInt().toUInt()
@@ -71,6 +78,10 @@ fun ByteBuffer.putUInt(value: UInt): ByteBuffer = putInt(value.toInt())
  * component associated with the given action belonging to the Running Devices tool window.
  */
 fun AnActionEvent.findComponentForAction(action: AnAction): Component? = findComponentForAction(action, RUNNING_DEVICES_TOOL_WINDOW_ID)
+
+/** Returns true if the tool window is detached ([ToolWindowType.WINDOWED] or [ToolWindowType.FLOATING]). */
+internal val ToolWindow.isDetached: Boolean
+  get() = type == ToolWindowType.WINDOWED || type == ToolWindowType.FLOATING
 
 /**
  * If this [AnActionEvent] is associated with an [ActionButtonComponent], returns that component. Otherwise, returns the first found
@@ -126,6 +137,23 @@ internal val AvdInfo.icon: Icon
     }
   }
 
+/**
+ * Rounds the given value down to an integer if it is above 1, or to the nearest multiple of a small fraction that is close to `value/128`
+ * and has the form of `1/2^n`.
+ */
+internal fun roundDownToNaturalNumberOrNearestSmallFraction(value: Double): Double {
+  require(value >= 0.0)
+  if (value == 0.0) {
+    return value
+  }
+  if (value >= 1.0) {
+    return floor(value)
+  }
+  val n = (-log2(value)).roundToInt() + 7
+  val multiplier = (1 shl n.coerceIn(0, 30)).toDouble()
+  return round(value * multiplier) / multiplier
+}
+
 /** Returns this integer multiplied by [scale] and rounded down towards zero. */
 internal fun Int.scaledDown(scale: Double): Int = (this * scale).toInt()
 
@@ -140,8 +168,8 @@ internal fun Int.scaledUp(scale: Double): Int = ceil(this * scale).roundToInt()
 internal fun Int.scaledDown(numerator: Int, denominator: Int): Int = ((this.toLong() * numerator) / denominator).toInt()
 
 /**
- * Converts this value from the `[0, fromRange-1]` interval to the `[0, toRange - 1]`interval by scaling by the [toRange]/[fromRange] factor
- * while maintaining symmetry with respect to the centers of the two intervals.
+ * Converts this value from the `[0, fromRange-1]` interval to the `[0, toRange - 1]`interval by scaling by the `[toRange]/[fromRange]`
+ * factor while maintaining symmetry with respect to the centers of the two intervals.
  *
  * The conversion is reversible, i.e. if `fromRange <= toRange`, then for every `i` in the `[0, fromRange-1]` interval
  * `i.scaledUnbiased(fromRange, toRange).scaledUnbiased(toRange, fromRange) = i`.
@@ -150,17 +178,6 @@ internal fun Int.scaledUnbiased(fromRange: Int, toRange: Int): Int = ((this * 2L
 
 internal fun Point.scaledUnbiased(fromDim: Dimension, toDim: Dimension): Point =
   Point(x.scaledUnbiased(fromDim.width, toDim.width), y.scaledUnbiased(fromDim.height, toDim.height))
-
-/**
- * Checks if the ratio between [width1] and [height1] is the same as the ratio between [width2] and [height2] within the given relative
- * [tolerance].
- */
-internal fun isSameAspectRatio(width1: Int, height1: Int, width2: Int, height2: Int, tolerance: Double): Boolean {
-  val a = width1.toDouble() * height2
-  val b = width2.toDouble() * height1
-  val d = a - b
-  return abs(d) <= tolerance * abs(a + b) / 2
-}
 
 /**
  * Returns this Dimension if both its components are not greater than the [maximumValue], otherwise returns this Dimension scaled down to
@@ -236,6 +253,32 @@ internal fun Component.containsFocus(): Boolean {
   }
   return false
 }
+
+/** Checks if the mouse pointer is inside this [Component]. */
+fun Component.isMouseInside(): Boolean = mouseLocation() != null
+
+/** Returns the mouse pointer location in this [Component]'s coordinate space if the mouse is inside it, or null otherwise. */
+fun Component.mouseLocation(): Point? {
+  // Ensure the component is showing on the screen before converting screen coordinates.
+  if (!isShowing) {
+    return null
+  }
+  // Get the current mouse pointer location on the screen.
+  val pointerInfo =
+    try {
+      MouseInfo.getPointerInfo()
+    } catch (_: HeadlessException) {
+      null
+    } ?: return null
+  val mouseLocation = pointerInfo.location
+  // Convert the screen coordinates to the component's coordinate space.
+  SwingUtilities.convertPointFromScreen(mouseLocation, this)
+  // Check if the converted point is inside the component.
+  return if (contains(mouseLocation)) mouseLocation else null
+}
+
+/** Checks if the point with the given coordinates in this [Container]'s coordinate space is inside any of its visible child components. */
+internal fun Container.anyVisibleChildContains(x: Int, y: Int): Boolean = components.any { it.isVisible && it.contains(x - it.x, y - it.y) }
 
 internal inline fun <reified T : Any> Component.findAncestor(): T? = ComponentUtil.getStrictParentOfType(T::class.java, this)
 

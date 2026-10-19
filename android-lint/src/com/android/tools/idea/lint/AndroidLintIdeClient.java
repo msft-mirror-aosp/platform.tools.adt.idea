@@ -34,6 +34,7 @@ import com.android.sdklib.repository.AndroidSdkHandler;
 import com.android.tools.apk.analyzer.ResourceIdResolver;
 import com.android.tools.idea.editors.manifest.ManifestUtils;
 import com.android.tools.idea.flags.StudioFlags;
+import com.android.tools.idea.gradle.plugin.AgpVersions;
 import com.android.tools.idea.gradle.repositories.IdeGoogleMavenRepository;
 import com.android.tools.idea.lint.common.LintIdeClient;
 import com.android.tools.idea.lint.common.LintResult;
@@ -218,7 +219,7 @@ public class AndroidLintIdeClient extends LintIdeClient {
   @Override
   public @Nullable Object getClientProperty(@NotNull String key) {
     if (key.equals(KEY_IDE_AGP_VERSION)) {
-      return ANDROID_GRADLE_PLUGIN_VERSION;
+      return AgpVersions.getLatestKnown();
     }
     return super.getClientProperty(key);
   }
@@ -282,7 +283,7 @@ public class AndroidLintIdeClient extends LintIdeClient {
   public File getCacheDir(@Nullable String name, boolean create) {
     if (MAVEN_GOOGLE_CACHE_DIR_KEY.equals(name)) {
       // Share network cache with existing implementation
-      Path cacheDir = IdeGoogleMavenRepository.INSTANCE.getCacheDir();
+      Path cacheDir = IdeGoogleMavenRepository.getInstance().getCacheDir();
       return cacheDir == null ? null : cacheDir.toFile();
     }
 

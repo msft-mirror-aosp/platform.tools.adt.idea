@@ -15,38 +15,44 @@
  */
 package com.android.tools.idea.uibuilder.actions;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.android.tools.idea.uibuilder.api.ViewHandler;
 import com.android.tools.idea.uibuilder.handlers.ViewHandlerManager;
 import com.android.tools.idea.uibuilder.palette.Palette;
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.project.Project;
-import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.TextFieldWithAutoCompletion;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.dsl.listCellRenderer.LcrJavaHelper;
+import com.intellij.ui.dsl.listCellRenderer.RendererPresentation;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.util.Consumer;
 import com.intellij.util.textCompletion.TextFieldWithCompletion;
+import com.intellij.xml.util.XmlUtil;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
-import java.util.Locale;
-import javax.swing.plaf.FontUIResource;
-import javax.swing.text.StyleContext;
-import org.apache.xerces.util.XMLChar;
-import org.jetbrains.android.dom.layout.AndroidLayoutUtil;
-import org.jetbrains.android.facet.AndroidFacet;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import javax.swing.*;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyEvent;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.KeyStroke;
+import javax.swing.ListSelectionModel;
+import javax.swing.plaf.FontUIResource;
+import javax.swing.text.StyleContext;
+import org.jetbrains.android.dom.layout.AndroidLayoutUtil;
+import org.jetbrains.android.facet.AndroidFacet;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Form for the {@link MorphComponentAction} dialog
@@ -97,15 +103,17 @@ public class MorphPanel extends JPanel {
     mySuggestionsList.setModel(model);
     mySuggestionsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
     mySuggestionsList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
-    mySuggestionsList.setCellRenderer(SimpleListCellRenderer.create((label, value, index) -> {
-      String name = value.getTagName();
-      int i = name.lastIndexOf('.');
-      if (i > -1 && i < name.length() - 1) {
-        name = name.substring(i + 1);
+    mySuggestionsList.setCellRenderer(LcrJavaHelper.create(
+      "",
+      value -> {
+        String name = value.getTagName();
+        int i = name.lastIndexOf('.');
+        if (i > -1 && i < name.length() - 1) {
+          name = name.substring(i + 1);
+        }
+        return new RendererPresentation(value.getIcon(), name);
       }
-      label.setText(name);
-      label.setIcon(value.getIcon());
-    }));
+    ));
     mySuggestionsList.setBackground(getBackground().brighter());
     mySuggestionsList.setVisibleRowCount(5);
     int oldTagPos = suggestions.indexOf(oldTag);
@@ -153,7 +161,7 @@ public class MorphPanel extends JPanel {
       @Override
       public void documentChanged(@NotNull DocumentEvent e) {
         String tagName = e.getDocument().getText();
-        if (XMLChar.isValidName(tagName)) {
+        if (isValidTagName(tagName)) {
           myOkButton.setEnabled(true);
           myOkButton.setToolTipText(null);
 
@@ -167,6 +175,22 @@ public class MorphPanel extends JPanel {
         }
       }
     };
+  }
+
+  private static boolean isValidTagName(@NotNull String name) {
+    if (name.isEmpty()) {
+      return false;
+    }
+    char first = name.charAt(0);
+    if (!Character.isLetter(first) && first != '_' && first != ':') {
+      return false;
+    }
+    for (int i = 1; i < name.length(); i++) {
+      if (!XmlUtil.isValidTagNameChar(name.charAt(i))) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public void createUIComponents() {

@@ -185,8 +185,11 @@ class RootPanel(private val parentDisposable: Disposable, private val componentT
         }
 
         override fun onStopLoading() {
-          // Never stop loading, the loading panel will be removed automatically when the UI is
-          // updated.
+          // If the connection was already established (or finished before onStartLoading was
+          // processed on the EDT), ensure the UI state transitions to SHOW_TREE once loading finishes.
+          if (layoutInspector.currentClient?.isConnected == true) {
+            updateUiState(UiState.SHOW_TREE)
+          }
         }
       }
     )

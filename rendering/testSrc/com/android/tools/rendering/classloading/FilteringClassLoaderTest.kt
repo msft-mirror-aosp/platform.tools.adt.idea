@@ -96,4 +96,55 @@ class FilteringClassLoaderTest {
       } catch (_: ClassNotFoundException) {}
     }
   }
+
+  @Test
+  fun `test prefix filtering with disallowed prefixes`() {
+    val filteringClassLoader =
+      FilteringClassLoader.allowedPrefixes(
+        parentClassLoader,
+        listOf("com.android.tools.rendering.classloading."),
+        listOf("com.android.tools.rendering.classloading.prefix.A2"),
+      )
+
+    filteringClassLoader.loadClass(com.android.tools.rendering.classloading.prefix.A1::class.java.name)
+
+    try {
+      filteringClassLoader.loadClass(com.android.tools.rendering.classloading.prefix.A2::class.java.name)
+      fail("ClassNotFoundException expected for disallowed prefix")
+    } catch (_: ClassNotFoundException) {}
+  }
+
+  @Test
+  fun `test prefix filtering with disallowed and exempt prefixes`() {
+    val filteringClassLoader =
+      FilteringClassLoader.allowedPrefixes(
+        parentClassLoader,
+        listOf("com.android.tools.rendering.classloading."),
+        listOf("com.android.tools.rendering.classloading.prefix."),
+        listOf("com.android.tools.rendering.classloading.prefix.A1"),
+      )
+
+    filteringClassLoader.loadClass(com.android.tools.rendering.classloading.prefix.A1::class.java.name)
+
+    try {
+      filteringClassLoader.loadClass(com.android.tools.rendering.classloading.prefix.A2::class.java.name)
+      fail("ClassNotFoundException expected for disallowed prefix")
+    } catch (_: ClassNotFoundException) {}
+  }
+
+  @Test
+  fun `test exempt prefixes cannot bypass allowed prefixes`() {
+    val filteringClassLoader =
+      FilteringClassLoader.allowedPrefixes(
+        parentClassLoader,
+        listOf("com.android.tools.rendering.classloading.prefix."),
+        listOf("com.android.tools.rendering.classloading.prefix.A2"),
+        listOf(A1::class.java.name),
+      )
+
+    try {
+      filteringClassLoader.loadClass(A1::class.java.name)
+      fail("ClassNotFoundException expected because A1 is not in allowed prefixes")
+    } catch (_: ClassNotFoundException) {}
+  }
 }

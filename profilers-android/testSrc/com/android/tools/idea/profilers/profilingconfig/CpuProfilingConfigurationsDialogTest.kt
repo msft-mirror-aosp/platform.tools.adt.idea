@@ -35,6 +35,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.CommonActionsPanel
 import com.intellij.ui.JBSplitter
 import javax.swing.JComponent
@@ -89,17 +90,16 @@ class CpuProfilingConfigurationsDialogTest(private val deviceLevel: Int) {
 
   @Test
   fun testApplyButtonNotAvailableForTaskBasedUx() {
-    val a =
-      SwingUtilities.invokeAndWait {
-        myIdeServices.enableTaskBasedUx(true)
-        val cpuProfilingConfigurationsDialog =
-          CpuProfilingConfigurationsDialog(project, deviceLevel, model, {}, featureTracker, myIdeServices)
-        try {
-          assertEquals(3, cpuProfilingConfigurationsDialog.createActions().size) // ok, cancel, help
-        } finally {
-          Disposer.dispose(cpuProfilingConfigurationsDialog.disposable)
-        }
+    val a = SwingUtilities.invokeAndWait {
+      myIdeServices.enableTaskBasedUx(true)
+      val cpuProfilingConfigurationsDialog =
+        CpuProfilingConfigurationsDialog(project, deviceLevel, model, {}, featureTracker, myIdeServices)
+      try {
+        assertEquals(3, cpuProfilingConfigurationsDialog.createActions().size) // ok, cancel, help
+      } finally {
+        Disposer.dispose(cpuProfilingConfigurationsDialog.disposable)
       }
+    }
   }
 
   @Test
@@ -133,6 +133,7 @@ class CpuProfilingConfigurationsDialogTest(private val deviceLevel: Int) {
   }
 
   @Test
+  @RunsInEdt
   fun testGetDisplayNameWithoutTaskBasedUx() {
     myIdeServices.enableTaskBasedUx(false)
     configurations = CpuProfilingConfigurationsDialog.ProfilingConfigurable(project, model, deviceLevel, featureTracker, myIdeServices)
@@ -140,6 +141,7 @@ class CpuProfilingConfigurationsDialogTest(private val deviceLevel: Int) {
   }
 
   @Test
+  @RunsInEdt
   fun nonTaskBasedUxHasNoTaskHeader() {
     myIdeServices.enableTaskBasedUx(false)
     configurations = CpuProfilingConfigurationsDialog.ProfilingConfigurable(project, model, deviceLevel, featureTracker, myIdeServices)
@@ -169,6 +171,7 @@ class CpuProfilingConfigurationsDialogTest(private val deviceLevel: Int) {
   }
 
   @Test
+  @RunsInEdt
   fun configDialogIconWhenTaskBasedUxDisabled() {
     myIdeServices.enableTaskBasedUx(false)
     configurations = CpuProfilingConfigurationsDialog.ProfilingConfigurable(project, model, deviceLevel, featureTracker, myIdeServices)
@@ -198,6 +201,7 @@ class CpuProfilingConfigurationsDialogTest(private val deviceLevel: Int) {
   }
 
   @Test
+  @RunsInEdt
   fun setupConfigWhenTaskBasedDisabled() {
     myIdeServices.enableTaskBasedUx(false)
     configurations = CpuProfilingConfigurationsDialog.ProfilingConfigurable(project, model, deviceLevel, featureTracker, myIdeServices)
@@ -210,6 +214,7 @@ class CpuProfilingConfigurationsDialogTest(private val deviceLevel: Int) {
   }
 
   @Test
+  @RunsInEdt
   fun userConfigGettingSavedInApply() {
     myIdeServices.enableTaskBasedUx(false)
     configurations = CpuProfilingConfigurationsDialog.ProfilingConfigurable(project, model, deviceLevel, featureTracker, myIdeServices)
@@ -252,6 +257,7 @@ class CpuProfilingConfigurationsDialogTest(private val deviceLevel: Int) {
   }
 
   @Test
+  @RunsInEdt
   fun savingUserConfigInProjectForNonTaskBasedUx() {
     myIdeServices.enableTaskBasedUx(false)
     configurations = CpuProfilingConfigurationsDialog.ProfilingConfigurable(project, model, deviceLevel, featureTracker, myIdeServices)

@@ -39,8 +39,6 @@ import com.intellij.ui.OnePixelSplitter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.util.concurrency.AppExecutorUtil
-import com.intellij.util.ui.JBImageIcon
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.CardLayout
@@ -49,6 +47,8 @@ import java.awt.Dimension
 import java.awt.FlowLayout
 import java.awt.Font
 import java.io.File
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Future
 import javax.imageio.ImageIO
 import javax.swing.BorderFactory
 import javax.swing.BoundedRangeModel
@@ -64,6 +64,7 @@ import javax.swing.ListSelectionModel
 import javax.swing.SwingUtilities
 import javax.swing.event.ChangeEvent
 import javax.swing.event.ChangeListener
+import kotlin.math.min
 
 // Keys for the CardLayout switching between single and multiple preview modes.
 private const val MULTIPLE_PREVIEWS_PANEL = "MULTIPLE_PREVIEWS_PANEL"
@@ -78,15 +79,20 @@ private val LOG = Logger.getInstance(PreviewDetailsPanel::class.java)
  * A panel that displays detailed views of screenshot previews. It can show a single preview with extensive details or a list of previews
  * grouped by test method.
  */
-class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLayout()) {
+class PreviewDetailsPanel(
+  private val project: Project? = null,
+  private val thumbnailLoader: ThumbnailLoader = ThumbnailLoader(),
+  private val imageLoadExecutor: ExecutorService = ThumbnailLoader.createDecodeExecutor(),
+) : JPanel(CardLayout()) {
 
   @VisibleForTesting val screenshotAttributesView = ScreenshotAttributesView()
   private val multiplePreviewsPanel = JPanel(BorderLayout())
   private val singlePreviewPanel = JPanel(BorderLayout())
 
   private val listModel = DefaultListModel<MethodGroup>()
-  private val methodGroupRenderer = MethodGroupRenderer(project)
-  // Use JBList for virtualization: only visible rows are rendered, which is essential for scalability.
+  private val methodGroupRenderer = MethodGroupRenderer(project, thumbnailLoader)
+  // Use JBList for virtualization: only visible rows are rendered, which is essential for
+  // scalability.
   private val multiplePreviewsList =
     JBList(listModel).apply {
       selectionMode = ListSelectionModel.SINGLE_SELECTION
@@ -97,13 +103,23 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     }
 
   private val toolbarAnalytics = ScreenshotToolbarAnalytics(project)
-  private val loadingFutures = mutableMapOf<ImageWithToolbarPanel, java.util.concurrent.Future<*>>()
+  private val loadingFutures = mutableMapOf<ImageWithToolbarPanel, Future<*>>()
 
   // Panels for the "All" view (3-way split) in single preview mode.
   private val newImagePanel =
-    ImageWithToolbarPanel(ScreenshotViewType.NEW, showToolbar = false, showTitle = true, onActionTriggered = toolbarAnalytics::logAction)
+    ImageWithToolbarPanel(
+      ScreenshotViewType.NEW,
+      showToolbar = false,
+      showTitle = true,
+      onActionTriggered = toolbarAnalytics::logAction,
+    )
   private val diffImagePanel =
-    ImageWithToolbarPanel(ScreenshotViewType.DIFF, showToolbar = false, showTitle = true, onActionTriggered = toolbarAnalytics::logAction)
+    ImageWithToolbarPanel(
+      ScreenshotViewType.DIFF,
+      showToolbar = false,
+      showTitle = true,
+      onActionTriggered = toolbarAnalytics::logAction,
+    )
   private val refImagePanel =
     ImageWithToolbarPanel(
       ScreenshotViewType.REFERENCE,
@@ -116,9 +132,19 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
 
   // Panels for the individual tabbed views in single preview mode.
   private val newImagePanelSingle =
-    ImageWithToolbarPanel(ScreenshotViewType.NEW, showToolbar = true, showTitle = false, onActionTriggered = toolbarAnalytics::logAction)
+    ImageWithToolbarPanel(
+      ScreenshotViewType.NEW,
+      showToolbar = true,
+      showTitle = false,
+      onActionTriggered = toolbarAnalytics::logAction,
+    )
   private val diffImagePanelSingle =
-    ImageWithToolbarPanel(ScreenshotViewType.DIFF, showToolbar = true, showTitle = false, onActionTriggered = toolbarAnalytics::logAction)
+    ImageWithToolbarPanel(
+      ScreenshotViewType.DIFF,
+      showToolbar = true,
+      showTitle = false,
+      onActionTriggered = toolbarAnalytics::logAction,
+    )
   private val refImagePanelSingle =
     ImageWithToolbarPanel(
       ScreenshotViewType.REFERENCE,
@@ -231,6 +257,14 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
       }
     multiplePreviewsPanel.add(scrollPane, BorderLayout.CENTER)
 
+    // Link scrollbars for a synchronized experience across side-by-side panels.
+    val horizontalModels = multiViewPanels.map { it.scrollPane.horizontalScrollBar.model }
+    val verticalModels = multiViewPanels.map { it.scrollPane.verticalScrollBar.model }
+    val horizontalSyncListener = SyncListener(horizontalModels)
+    val verticalSyncListener = SyncListener(verticalModels)
+    horizontalModels.forEach { it.addChangeListener(horizontalSyncListener) }
+    verticalModels.forEach { it.addChangeListener(verticalSyncListener) }
+
     add(multiplePreviewsPanel, MULTIPLE_PREVIEWS_PANEL)
     add(singlePreviewPanel, SINGLE_PREVIEW_PANEL)
   }
@@ -244,7 +278,13 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
    * @param viewType The current view type (e.g., New, Diff, All) to show.
    * @param previewToolbar The shared toolbar component, visible in single-preview mode.
    */
-  fun displayPreviews(previewsToShow: List<PreviewDetails>, viewType: ScreenshotViewType, previewToolbar: JComponent?) {
+  fun displayPreviews(
+    previewsToShow: List<PreviewDetails>,
+    viewType: ScreenshotViewType,
+    previewToolbar: JComponent?,
+  ) {
+    loadingFutures.values.forEach { it.cancel(true) }
+    loadingFutures.clear()
     val cardLayout = layout as CardLayout
     if (previewsToShow.size == 1 && previewToolbar != null) {
       displaySinglePreviewDetails(previewsToShow.first(), viewType, previewToolbar)
@@ -259,7 +299,11 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
    * Configures and displays the detailed view for a single screenshot preview. This view includes the image(s), metadata attributes, and a
    * toolbar.
    */
-  private fun displaySinglePreviewDetails(previewData: PreviewDetails, viewType: ScreenshotViewType, previewToolbar: JComponent) {
+  private fun displaySinglePreviewDetails(
+    previewData: PreviewDetails,
+    viewType: ScreenshotViewType,
+    previewToolbar: JComponent,
+  ) {
     singlePreviewPanel.removeAll()
 
     val topContent =
@@ -275,7 +319,10 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
         alignmentX = JComponent.LEFT_ALIGNMENT
         isOpaque = false
         val methodNameLabel = JBLabel(previewData.methodName)
-        val previewNameLabel = JBLabel(previewData.previewName).apply { foreground = UIUtil.getLabelDisabledForeground() }
+        val previewNameLabel =
+          JBLabel(previewData.previewName).apply {
+            foreground = UIUtil.getLabelDisabledForeground()
+          }
         add(methodNameLabel)
         add(Box.createRigidArea(Dimension(4, 0)))
         add(previewNameLabel)
@@ -332,24 +379,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
         secondComponent = rightSplit
       }
 
-    // Link scrollbars for a synchronized experience.
-    val horizontalModels = multiViewPanels.map { it.scrollPane.horizontalScrollBar.model }
-    val verticalModels = multiViewPanels.map { it.scrollPane.verticalScrollBar.model }
-    val horizontalSyncListener = SyncListener(horizontalModels)
-    val verticalSyncListener = SyncListener(verticalModels)
-    horizontalModels.forEach { it.addChangeListener(horizontalSyncListener) }
-    verticalModels.forEach { it.addChangeListener(verticalSyncListener) }
-
-    val diffPlaceholder =
-      if (previewData.testResult == AndroidTestCaseResult.PASSED) {
-        NO_DIFFERENCE_TEXT
-      } else if (previewData.isSizeMismatch) {
-        previewData.sizeMismatchMessage?.let { msg ->
-          "<html><div style='text-align: center;'>" + msg.split(". ").joinToString("<br>") + "</div></html>"
-        } ?: SIZE_MISMATCH_TEXT
-      } else {
-        NO_DIFF_IMAGE_TEXT
-      }
+    val diffPlaceholder = getDiffPlaceholderText(previewData)
     loadImageAsync(previewData.srcImagePath, newImagePanel, NO_NEW_IMAGE_TEXT)
     loadImageAsync(previewData.diffImagePath, diffImagePanel, diffPlaceholder)
     loadImageAsync(previewData.destImagePath, refImagePanel, NO_REF_IMAGE_TEXT)
@@ -363,24 +393,31 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     return allImagesPanel
   }
 
+  /** Computes the placeholder text for diff images based on result status and size mismatch info. */
+  private fun getDiffPlaceholderText(previewData: PreviewDetails): String {
+    return if (previewData.testResult == AndroidTestCaseResult.PASSED) {
+      NO_DIFFERENCE_TEXT
+    } else if (previewData.isSizeMismatch) {
+      previewData.sizeMismatchMessage?.let { msg ->
+        "<html><div style='text-align: center;'>${msg.split(". ").joinToString("<br>")}</div></html>"
+      } ?: SIZE_MISMATCH_TEXT
+    } else {
+      NO_DIFF_IMAGE_TEXT
+    }
+  }
+
   /** Sets up a single image view that can be switched via a [CardLayout]. Each view has its own dedicated toolbar. */
-  private fun setupSingleImageView(previewData: PreviewDetails, viewType: ScreenshotViewType): JComponent {
+  private fun setupSingleImageView(
+    previewData: PreviewDetails,
+    viewType: ScreenshotViewType,
+  ): JComponent {
     val imageContainer = JPanel(CardLayout())
     imageContainer.add(newImagePanelSingle, ScreenshotViewType.NEW.displayText)
     imageContainer.add(diffImagePanelSingle, ScreenshotViewType.DIFF.displayText)
     imageContainer.add(refImagePanelSingle, ScreenshotViewType.REFERENCE.displayText)
 
     val cardLayout = imageContainer.layout as CardLayout
-    val diffPlaceholder =
-      if (previewData.testResult == AndroidTestCaseResult.PASSED) {
-        NO_DIFFERENCE_TEXT
-      } else if (previewData.isSizeMismatch) {
-        previewData.sizeMismatchMessage?.let { msg ->
-          "<html><div style='text-align: center;'>" + msg.split(". ").joinToString("<br>") + "</div></html>"
-        } ?: SIZE_MISMATCH_TEXT
-      } else {
-        NO_DIFF_IMAGE_TEXT
-      }
+    val diffPlaceholder = getDiffPlaceholderText(previewData)
 
     when (viewType) {
       ScreenshotViewType.NEW -> loadImageAsync(previewData.srcImagePath, newImagePanelSingle, NO_NEW_IMAGE_TEXT)
@@ -409,21 +446,28 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
     }
   }
 
-  private fun loadImageAsync(filePath: String?, targetPanel: ImageWithToolbarPanel, placeholder: String) {
+  private fun loadImageAsync(
+    filePath: String?,
+    targetPanel: ImageWithToolbarPanel,
+    placeholder: String,
+  ) {
     targetPanel.setPlaceholder(placeholder)
     loadingFutures[targetPanel]?.cancel(true)
     if (filePath == null) {
       targetPanel.setImage(null)
       if (placeholder == NO_NEW_IMAGE_TEXT) {
         // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event if image doesn't exist
-        logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
+        logScreenshotTestEvent(
+          ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE,
+          project,
+        )
       }
       loadingFutures.remove(targetPanel)
       return
     }
-    var future: java.util.concurrent.Future<*>? = null
+    var future: Future<*>? = null
     future =
-      AppExecutorUtil.getAppExecutorService().submit {
+      imageLoadExecutor.submit {
         val image =
           try {
             val file = File(filePath)
@@ -431,13 +475,19 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
               ImageIO.read(file)
             } else {
               // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event if file doesn't exist
-              logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
+              logScreenshotTestEvent(
+                ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE,
+                project,
+              )
               null
             }
           } catch (e: Exception) {
             LOG.error("Error loading screenshot image from path: $filePath", e)
             // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event on exception
-            logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
+            logScreenshotTestEvent(
+              ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE,
+              project,
+            )
             null // Log the error, the placeholder text will be shown.
           }
         UIUtil.invokeLaterIfNeeded {
@@ -460,7 +510,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
         previewData.methodName
       }
 
-    val refImagePath = previewData.destImagePath?.let { if (File(it).exists()) it else null }
+    val refImagePath = previewData.destImagePath?.takeIf { previewData.destImageExists }
 
     screenshotAttributesView.updateData(
       refImagePath = refImagePath,
@@ -473,43 +523,67 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
   }
 
   /** Displays multiple screenshot previews, grouped by function, in a horizontal scrolling view. */
-  private fun displayMultiplePreviews(previewsToShow: List<PreviewDetails>, viewType: ScreenshotViewType) {
+  private fun displayMultiplePreviews(
+    previewsToShow: List<PreviewDetails>,
+    viewType: ScreenshotViewType,
+  ) {
     val previewsByClassAndMethod = previewsToShow.groupBy { "${it.className}.${it.methodName}" }
     val previewsGroupedByMethodName = previewsToShow.groupBy { it.methodName }
 
-    val methodGroups =
-      previewsByClassAndMethod.map { (_, previews) ->
-        val first = previews.first()
-        val methodName = first.methodName.ifBlank { UNNAMED_FUNCTION_TEXT }
-        val className = first.className
-        val labelText =
-          if ((previewsGroupedByMethodName[methodName]?.size ?: 0) > previews.size) {
-            "${className.substringAfterLast('.')}.$methodName" // SimpleClassName.MethodName
-          } else {
-            methodName
-          }
-        MethodGroup(className, methodName, labelText, previews)
-      }
+    val methodGroups = previewsByClassAndMethod.map { (_, previews) ->
+      val first = previews.first()
+      val methodName = first.methodName.ifBlank { UNNAMED_FUNCTION_TEXT }
+      val className = first.className
+      val labelText =
+        if ((previewsGroupedByMethodName[methodName]?.size ?: 0) > previews.size) {
+          "${className.substringAfterLast('.')}.$methodName" // SimpleClassName.MethodName
+        } else {
+          methodName
+        }
+      MethodGroup(className, methodName, labelText, previews)
+    }
 
-    listModel.clear()
-    methodGroups.forEach { listModel.addElement(it) }
-    methodGroupRenderer.viewType = viewType
+    if (methodGroupRenderer.viewType != viewType) {
+      // Row heights depend on the view type, so force the list to measure every row again.
+      methodGroupRenderer.viewType = viewType
+      listModel.clear()
+    }
+    updateListModel(methodGroups)
 
     multiplePreviewsPanel.revalidate()
     multiplePreviewsPanel.repaint()
   }
 
   /**
+   * Makes [listModel] match [methodGroups] with the fewest model events.
+   *
+   * Results stream in one at a time, so usually only the last row changes or a row is appended. Unchanged rows keep their measured size and
+   * are not rendered again.
+   */
+  private fun updateListModel(methodGroups: List<MethodGroup>) {
+    val commonSize = min(listModel.size, methodGroups.size)
+    for (i in 0 until commonSize) {
+      if (listModel.getElementAt(i) != methodGroups[i]) {
+        listModel.set(i, methodGroups[i])
+      }
+    }
+    if (listModel.size > methodGroups.size) {
+      listModel.removeRange(methodGroups.size, listModel.size - 1)
+    }
+    if (methodGroups.size > commonSize) {
+      listModel.addAll(methodGroups.subList(commonSize, methodGroups.size))
+    }
+  }
+
+  /**
    * A renderer for a group of previews belonging to the same test method. This renderer uses a "rubber stamp" pattern, reusing the same
    * panel instance for all rows to optimize memory and performance.
    */
-  private class MethodGroupRenderer(private val project: Project?) : JPanel(), ListCellRenderer<MethodGroup> {
+  private class MethodGroupRenderer(
+    private val project: Project?,
+    private val thumbnailLoader: ThumbnailLoader,
+  ) : JPanel(), ListCellRenderer<MethodGroup> {
     var viewType: ScreenshotViewType = ScreenshotViewType.NEW
-    // Shared cache for scaled thumbnails to prevent redundant disk I/O and memory pressure.
-    private val thumbnailCache =
-      object : LinkedHashMap<String, JBImageIcon>(200, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, JBImageIcon>?): Boolean = size > 200
-      }
 
     private val functionNameLabel =
       JBLabel().apply {
@@ -517,6 +591,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
         border = BorderFactory.createEmptyBorder(15, 5, 5, 5)
         alignmentX = JComponent.LEFT_ALIGNMENT
       }
+    private val separator = JSeparator().apply { alignmentX = JComponent.LEFT_ALIGNMENT }
     private val horizontalPreviewsPanel =
       JPanel(FlowLayout(FlowLayout.LEFT, 10, 0)).apply {
         border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
@@ -533,6 +608,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
       layout = BoxLayout(this, BoxLayout.Y_AXIS)
       isOpaque = true
       add(functionNameLabel)
+      add(separator)
       add(horizontalPreviewsPanel)
     }
 
@@ -570,7 +646,7 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
       // Manage the pool of PreviewItemPanels to match the current row's preview count.
       while (previewPanelPool.size < previews.size) {
         val dummyData = previews[0] // Use any data for initial creation
-        val panel = PreviewItemPanel(dummyData, project, showDetails = true, thumbnailCache = thumbnailCache)
+        val panel = PreviewItemPanel(dummyData, project, showDetails = true, thumbnailLoader = thumbnailLoader)
         previewPanelPool.add(panel)
         horizontalPreviewsPanel.add(panel)
       }
@@ -578,7 +654,8 @@ class PreviewDetailsPanel(private val project: Project? = null) : JPanel(CardLay
       previewPanelPool.forEachIndexed { i, panel ->
         if (i < previews.size) {
           panel.isVisible = true
-          // Update the panel with the current row's data. If the image is cached, it renders immediately.
+          // Update the panel with the current row's data. If the image is cached, it renders
+          // immediately.
           // Otherwise, it triggers an async load and repaints the list upon completion.
           panel.updateData(previews[i], viewType) { list.repaint() }
         } else {

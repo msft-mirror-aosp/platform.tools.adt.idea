@@ -32,6 +32,7 @@ import com.android.tools.profilers.cpu.analysis.CpuAnalysisPanel
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.system.measureNanoTime
@@ -39,6 +40,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class CpuAnalysisPanelLeakTest {
   private val log = makeLogger("Range change time (ns)", "selection")
   private val timer = FakeTimer()

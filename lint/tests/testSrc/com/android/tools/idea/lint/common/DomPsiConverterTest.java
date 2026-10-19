@@ -25,9 +25,11 @@ import com.android.utils.PositionXmlParser;
 import com.android.utils.XmlUtils;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.testFramework.UsefulTestCase;
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
@@ -42,6 +44,7 @@ import org.w3c.dom.Attr;
 import org.w3c.dom.Comment;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -395,5 +398,93 @@ public class DomPsiConverterTest extends UsefulTestCase {
     assertNotNull(comment);
     assertEquals(Node.COMMENT_NODE, comment.getNodeType());
     assertEquals(" my comment ", comment.getNodeValue());
+  }
+
+  public void testConversionSharedUntilPsiChanges() {
+    var xmlFile = (XmlFile)myFixture.configureByText("AndroidManifest.xml", MANIFEST);
+    var document = DomPsiConverter.convert(xmlFile);
+    assertNotNull(document);
+
+    // The tree is cached on the file, and every lookup hands out the same nodes
+    assertSame(document, DomPsiConverter.convert(xmlFile));
+    var root = document.getDocumentElement();
+    assertNotNull(root);
+    assertSame(root, document.getFirstChild());
+    var application = document.getElementsByTagName("application").item(0);
+    assertSame(application, DomPsiConverter.findNodeAt(document, MANIFEST.indexOf("<application") + 1));
+    assertSame(application.getAttributes(), application.getAttributes());
+
+    // A PSI change invalidates the tree
+    WriteCommandAction.runWriteCommandAction(getProject(), () -> {
+      myFixture.getEditor().getDocument().insertString(MANIFEST.indexOf("<application"), "<uses-sdk />\n");
+      PsiDocumentManager.getInstance(getProject()).commitAllDocuments();
+    });
+    var updated = DomPsiConverter.convert(xmlFile);
+    assertNotSame(document, updated);
+    assertEquals(1, updated.getElementsByTagName("uses-sdk").getLength());
+  }
+
+  public void testFindNodeAtExhaustive() {
+    // findNodeAt uses a binary search over the children; make sure it agrees with a
+    // straightforward reverse linear scan (the previous implementation) for every
+    // offset in the document, including sibling boundaries, attribute regions and
+    // offsets inside the open/close tag markup
+    String xml = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                 "<!-- header comment -->\n" +
+                 "<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
+                 "    android:orientation=\"vertical\" >\n" +
+                 "    <Button\n" +
+                 "        android:id=\"@+id/button1\"\n" +
+                 "        android:text=\"Button\" />\n" +
+                 "    <TextView android:text=\"abc\"/><TextView android:text=\"def\"/>\n" +
+                 "    <!-- my comment -->\n" +
+                 "    some text\n" +
+                 "    <empty></empty>\n" +
+                 "</LinearLayout>\n";
+
+    XmlFile xmlFile = (XmlFile)myFixture.configureByText("test.xml", xml);
+    final Document psiDocument = DomPsiConverter.convert(xmlFile);
+    assertNotNull(psiDocument);
+
+    for (int offset = 0; offset <= xml.length(); offset++) {
+      assertSame("offset " + offset, referenceFindNodeAt(psiDocument, offset), DomPsiConverter.findNodeAt(psiDocument, offset));
+    }
+  }
+
+  /** Reverse linear scan reference implementation of {@link DomPsiConverter#findNodeAt} */
+  private static Node referenceFindNodeAt(Node node, int offset) {
+    if (node instanceof Document) {
+      node = ((Document)node).getDocumentElement();
+      if (node == null) {
+        return null;
+      }
+    }
+    if (!DomPsiConverter.getTextRange(node).containsOffset(offset)) {
+      return null;
+    }
+
+    Node child = node.getLastChild();
+    if (child == null) {
+      if (node instanceof Element) {
+        NamedNodeMap attributes = node.getAttributes();
+        for (int i = 0; i < attributes.getLength(); i++) {
+          Node attribute = attributes.item(i);
+          if (DomPsiConverter.getTextRange(attribute).containsOffset(offset)) {
+            return attribute;
+          }
+        }
+      }
+      return node;
+    }
+
+    while (child != null) {
+      Node match = referenceFindNodeAt(child, offset);
+      if (match != null) {
+        return match;
+      }
+      child = child.getPreviousSibling();
+    }
+
+    return node;
   }
 }

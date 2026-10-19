@@ -21,3 +21,10 @@ The content of `apk-all-resources.ap_` was produced bby the following steps:
 
 1. running `./gradlew :lib:testDebugUnitTest` in the `Allresources`
 2. copying `Allresources/lib/build/intermediates/apk_for_local_test/debugUnitTest/apk-for-local-test.ap_` to `apk-all-resources.ap_`
+
+The content of `apk-resource-aliases.ap_` was produced by the following steps (using `aapt2` from
+`prebuilts/studio/sdk/linux/build-tools/36.0.0`):
+
+1. `aapt2 compile --dir ResourceAliases/res -o compiled.zip`
+2. `aapt2 link --manifest ResourceAliases/AndroidManifest.xml -o out.apk compiled.zip`
+3. copying `resources.arsc` from `out.apk` into `apk-resource-aliases.ap_` with `zip -X apk-resource-aliases.ap_ resources.arsc`

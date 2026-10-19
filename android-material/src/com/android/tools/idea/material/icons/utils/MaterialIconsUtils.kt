@@ -19,9 +19,13 @@ import com.android.tools.idea.material.icons.metadata.MaterialIconsMetadata
 import com.android.tools.idea.material.icons.utils.MaterialIconsUtils.METADATA_FILE_NAME
 import com.android.tools.idea.sdk.AndroidSdks
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.util.io.FileUtil
+import com.intellij.util.PathUtilRt
 import java.io.File
+import java.io.IOException
 import java.net.URL
 import java.nio.file.Files
+import java.nio.file.Path
 import java.util.Locale
 
 /** Set of common functions and values used when reading/writing Material Icons files. */
@@ -51,6 +55,34 @@ object MaterialIconsUtils {
    * Eg: 'Material Icons Outlined' -> 'materialiconsoutlined'
    */
   fun String.toDirFormat(): String = this.lowercase(Locale.US).replace(" ", "")
+
+  /**
+   * Harden against path traversal: the resolved segment must be a single valid filename component across platforms (rejecting empty
+   * strings, `.` / `..`, path separators, Windows device names, and control characters such as `\u0000`).
+   */
+  fun isValidPathSegment(segment: String): Boolean =
+    PathUtilRt.isValidFileName(segment, PathUtilRt.Platform.WINDOWS, /* strict = */ true, /* cs = */ null)
+
+  /**
+   * Returns `true` if the canonical path of [target] is strictly contained within the canonical path of [baseDir], returning `false` if
+   * canonicalization fails with an [IOException].
+   */
+  fun isWithinDirectory(baseDir: File, target: File): Boolean =
+    try {
+      FileUtil.isAncestor(baseDir.canonicalFile, target.canonicalFile, true)
+    } catch (e: IOException) {
+      LOG.warn("Failed to resolve canonical path for containment check ($target within $baseDir)", e)
+      false
+    }
+
+  /**
+   * Resolves [relativePath] against this [Path] and returns the resolved [Path] only if its canonical location is strictly contained
+   * within this directory, or `null` otherwise.
+   */
+  fun Path.resolveWithin(relativePath: String): Path? {
+    val resolved = resolve(relativePath)
+    return if (isWithinDirectory(this.toFile(), resolved.toFile())) resolved else null
+  }
 
   /**
    * The Android/Sdk path where Material Icons are expected to be stored.

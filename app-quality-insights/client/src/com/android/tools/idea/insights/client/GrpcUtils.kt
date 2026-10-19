@@ -16,9 +16,6 @@
 package com.android.tools.idea.insights.client
 
 import com.android.tools.idea.insights.LoadingState
-import com.google.api.client.auth.oauth2.TokenResponseException
-import com.google.api.client.googleapis.json.GoogleJsonResponseException
-import com.google.api.client.http.HttpStatusCodes
 import io.grpc.Status
 import io.grpc.StatusRuntimeException
 import io.grpc.protobuf.StatusProto
@@ -139,18 +136,8 @@ suspend fun <T> runGrpcCatching(
       }
     } catch (exception: IOException) {
       when (exception) {
-        is TokenResponseException -> LoadingState.Unauthorized("$SUGGEST_FOR_UNAUTHORIZED ${exception.message}", exception)
-
         is UnknownHostException,
         is SocketException -> LoadingState.NetworkFailure(exception.message, exception)
-
-        is GoogleJsonResponseException -> {
-          if (exception.statusCode == HttpStatusCodes.STATUS_CODE_FORBIDDEN) {
-            LoadingState.PermissionDenied(exception.message, exception)
-          } else {
-            LoadingState.ServerFailure(exception)
-          }
-        }
 
         else -> LoadingState.UnknownFailure(exception.message, exception)
       }

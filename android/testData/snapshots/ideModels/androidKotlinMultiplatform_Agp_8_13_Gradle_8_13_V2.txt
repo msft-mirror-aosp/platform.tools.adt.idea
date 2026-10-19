@@ -932,6 +932,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             StoreFile                     : debug.keystore
             StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : typeoneModeoneDebug
@@ -1345,6 +1346,7 @@ MODULE                        : Kotlin_Multiplatform.app
             StoreFile                     : debug.keystore
             StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : debug
@@ -1691,6 +1693,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
             StoreFile                     : debug.keystore
             StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : androidMain
@@ -1881,6 +1884,8 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :kmpFirstLib:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : deviceTest (KotlinCompilationImpl)
                 - allSourceSets               : commonTest (KotlinSourceSetImpl)
@@ -1933,7 +1938,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     moduleName                    : Kotlin Multiplatform:kmpFirstLib_deviceTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -1997,7 +2001,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     moduleName                    : Kotlin Multiplatform:kmpFirstLib_hostTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2070,7 +2073,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     moduleName                    : Kotlin Multiplatform:kmpFirstLib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2150,6 +2152,8 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :kmpJvmOnly:integrateLinkagePackage [-]
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2195,7 +2199,6 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     moduleName                    : Kotlin Multiplatform:kmpJvmOnly
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2277,7 +2280,6 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     moduleName                    : Kotlin Multiplatform:kmpJvmOnly_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2481,6 +2483,8 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :kmpSecondLib:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2525,7 +2529,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     moduleName                    : Kotlin Multiplatform:kmpSecondLib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2589,7 +2592,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     moduleName                    : Kotlin Multiplatform:kmpSecondLib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2671,7 +2673,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     moduleName                    : Kotlin Multiplatform:kmpSecondLib_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2842,6 +2843,7 @@ MODULE                        : build-logic.lib-foo
             StoreFile                     : debug.keystore
             StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : androidMain
@@ -2962,6 +2964,8 @@ MODULE                        : build-logic.lib-foo
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :lib-foo:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : deviceTest (KotlinCompilationImpl)
                 - allSourceSets               : androidDeviceTest (KotlinSourceSetImpl)
@@ -2994,7 +2998,6 @@ MODULE                        : build-logic.lib-foo
                     moduleName                    : build-logic:lib-foo_deviceTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3073,7 +3076,6 @@ MODULE                        : build-logic.lib-foo
                     moduleName                    : build-logic:lib-foo_hostTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3146,7 +3148,6 @@ MODULE                        : build-logic.lib-foo
                     moduleName                    : build-logic:lib-foo
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

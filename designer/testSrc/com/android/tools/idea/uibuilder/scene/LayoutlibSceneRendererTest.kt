@@ -16,12 +16,16 @@
 package com.android.tools.idea.uibuilder.scene
 
 import com.android.SdkConstants
+import com.android.ide.common.rendering.api.RecyclableImage
 import com.android.ide.common.rendering.api.Result
+import com.android.ide.common.rendering.api.ViewInfo
 import com.android.testutils.delayUntilCondition
+import com.android.tools.idea.common.SyncNlModel
 import com.android.tools.idea.common.surface.LayoutScannerConfiguration
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.NlModelBuilderUtil.model
+import com.android.tools.idea.uibuilder.model.viewInfo
 import com.android.tools.idea.uibuilder.property.testutils.ComponentUtil.component
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.rendering.ExecuteCallbacksResult
@@ -31,10 +35,9 @@ import com.android.tools.rendering.RenderResult
 import com.android.tools.rendering.RenderResultStats
 import com.android.tools.rendering.RenderService.RenderTaskBuilder
 import com.android.tools.rendering.RenderTask
-import com.android.tools.rendering.imagepool.ImagePool
-import com.android.tools.rendering.imagepool.NonPooledImage
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
+import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
@@ -69,12 +72,15 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 class LayoutlibSceneRendererTest {
   private val projectRule = AndroidProjectRule.withSdk().initAndroid(true)
 
   @get:Rule val chain = RuleChain(projectRule, EdtRule())
+  private lateinit var nlModel: SyncNlModel
   private lateinit var renderer: LayoutlibSceneRenderer
   private val renderTaskBuilderMock = mock<RenderTaskBuilder>()
   private val renderTaskMock = mock<RenderTask>()
@@ -98,13 +104,20 @@ class LayoutlibSceneRendererTest {
       taskInflateCount.incrementAndGet()
       CompletableFuture.completedFuture(simulatedInflateResult)
     }
-    val model = model(projectRule, "layout", "layout.xml", component(SdkConstants.TAG_LAYOUT).withBounds(0, 0, 1000, 1000)).build()
+    nlModel =
+      model(
+          projectRule,
+          "layout",
+          "layout.xml",
+          component(SdkConstants.TAG_LAYOUT).withBounds(0, 0, 1000, 1000),
+        )
+        .build()
     renderer =
       LayoutlibSceneRenderer(
         projectRule.testRootDisposable,
         EdtExecutorService.getInstance(),
-        model,
-        model.surface as NlDesignSurface,
+        nlModel,
+        nlModel.surface as NlDesignSurface,
         LayoutScannerConfiguration.DISABLED,
       )
     whenever(renderTaskBuilderMock.build(any())).thenReturn(CompletableFuture.completedFuture(renderTaskMock))
@@ -178,7 +191,7 @@ class LayoutlibSceneRendererTest {
     assertNotEquals(renderer.renderResult, simulatedRenderResult)
     assertFalse(renderer.renderResult!!.renderResult.isSuccess)
     assertEquals(myCancellationException, renderer.renderResult!!.renderResult.exception)
-    assertNotEquals(ImagePool.NULL_POOLED_IMAGE, renderer.renderResult!!.renderedImage)
+    assertNotEquals(RecyclableImage.NULL, renderer.renderResult!!.renderedImage)
     checkImage(renderer.renderResult!!.renderedImage)
 
     // After the exception, everything should still work normally
@@ -374,6 +387,57 @@ class LayoutlibSceneRendererTest {
     )
   }
 
+  // Regression test for b/566451352
+  @Test
+  fun testDeactivateClearsViewInfoAndRenderResultViews(): Unit = runBlocking {
+    val rootComponent = nlModel.treeReader.components.single()
+    val fakeViewObject = Any()
+    val fakeViewInfo = ViewInfo(SdkConstants.TAG_LAYOUT, null, 0, 0, 100, 100, fakeViewObject, null, null)
+    rootComponent.viewInfo = fakeViewInfo
+
+    val resultWithViews =
+      RenderResult(
+        { projectRule.fixture.file },
+        projectRule.project,
+        { projectRule.module },
+        RenderLogger(projectRule.project),
+        null,
+        false,
+        Result.Status.SUCCESS.createResult(),
+        ImmutableList.of(fakeViewInfo),
+        ImmutableList.of(fakeViewInfo),
+        getTestImage(),
+        ImmutableMap.of(fakeViewObject, emptyMap()),
+        ImmutableMap.of(),
+        fakeViewObject,
+        Dimension(100, 100),
+        RenderResultStats.EMPTY,
+      )
+    renderer.renderResult = resultWithViews
+    assertNotNull(rootComponent.viewInfo)
+    assertEquals(1, resultWithViews.rootViews.size)
+
+    renderer.deactivate()
+
+    assertNull(rootComponent.viewInfo)
+    assertNull(renderer.renderResult)
+    assertTrue(resultWithViews.rootViews.isEmpty())
+    assertTrue(resultWithViews.systemRootViews.isEmpty())
+    assertTrue(resultWithViews.defaultProperties.isEmpty())
+    assertTrue(resultWithViews.defaultStyles.isEmpty())
+    assertNull(resultWithViews.validatorResult)
+  }
+
+  @Test
+  fun testDoubleRenderDisablesLayoutScannerOnlyAfterSecondRender(): Unit = runBlocking {
+    renderer.sceneRenderConfiguration.doubleRender.set(true)
+    renderer.requestRenderAndWait(trigger = null)
+
+    assertThat(taskInflateCount.get()).isEqualTo(1)
+    assertThat(taskRenderCount.get()).isEqualTo(2)
+    verify(renderTaskMock, times(1)).setEnableLayoutScanner(false)
+  }
+
   private fun blockInflationAndRequestRender() = runBlocking {
     inflateLatch = CountDownLatch(1)
     renderer.sceneRenderConfiguration.needsInflation.set(true)
@@ -398,7 +462,7 @@ class LayoutlibSceneRendererTest {
       t.let { result.createResult("test-custom-throwable", t) } ?: result.createResult(),
       ImmutableList.of(),
       ImmutableList.of(),
-      if (result == Result.Status.SUCCESS) getTestImage() else ImagePool.NULL_POOLED_IMAGE,
+      if (result == Result.Status.SUCCESS) getTestImage() else RecyclableImage.NULL,
       ImmutableMap.of(),
       ImmutableMap.of(),
       null,
@@ -410,13 +474,13 @@ class LayoutlibSceneRendererTest {
   private val imageWidth = 10
   private val imageHeight = 10
 
-  private fun checkImage(image: ImagePool.Image) {
+  private fun checkImage(image: RecyclableImage) {
     assertEquals(imageHeight, image.height)
     assertEquals(imageHeight, image.width)
   }
 
-  private fun getTestImage(): ImagePool.Image {
-    val imageHQ = NonPooledImage.create(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB)
+  private fun getTestImage(): RecyclableImage {
+    val imageHQ = RecyclableImage.create(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB)
     imageHQ.paint { g ->
       g.stroke = BasicStroke(10F)
       g.color = Color.WHITE

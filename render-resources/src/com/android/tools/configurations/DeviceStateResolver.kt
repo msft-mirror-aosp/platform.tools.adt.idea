@@ -24,6 +24,7 @@ import com.android.sdklib.devices.State
 import com.android.tools.configurations.ConfigurationListener.CFG_DEVICE
 import com.android.tools.configurations.ConfigurationListener.CFG_DEVICE_STATE
 import java.util.ArrayList
+import java.util.IdentityHashMap
 
 /** Manages the specific hardware constraints and orientation matching logic for a Configuration. */
 class DeviceStateResolver(private val context: Context) {
@@ -227,13 +228,16 @@ class DeviceStateResolver(private val context: Context) {
     private fun getClosestMatch(oldConfig: FolderConfiguration, states: List<State>): String? {
       val list1 = ArrayList(states)
       val list2 = ArrayList<State>(states.size)
+      val stateConfigs = IdentityHashMap<State, FolderConfiguration?>(states.size)
+      for (s in states) {
+        stateConfigs[s] = DeviceConfigHelper.getFolderConfig(s)
+      }
 
       val count = FolderConfiguration.getQualifierCount()
       for (i in 0 until count) {
+        val oldQualifier = oldConfig.getQualifier(i)
         for (s in list1) {
-          val oldQualifier = oldConfig.getQualifier(i)
-          val folderConfig = DeviceConfigHelper.getFolderConfig(s)
-          val newQualifier = folderConfig?.getQualifier(i)
+          val newQualifier = stateConfigs[s]?.getQualifier(i)
 
           if (oldQualifier == null) {
             if (newQualifier == null) {

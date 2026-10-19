@@ -101,7 +101,7 @@ class AndroidModuleDescriptorsTest {
       assertThat(targetCompatibility.resolved.asTestValue(), equalTo(LanguageLevel.JDK_11))
       assertThat(targetCompatibility.parsedValue.asTestValue(), nullValue())
 
-      assertThat(kotlinJvmTarget.resolved.asTestValue(), nullValue())
+      assertThat(kotlinJvmTarget.resolved.asTestValue(), equalTo(LanguageLevel.JDK_11))
       assertThat(kotlinJvmTarget.parsedValue.asTestValue(), nullValue())
 
       assertThat(viewBindingEnabled.resolved.asTestValue(), equalTo(false))
@@ -336,7 +336,7 @@ class AndroidModuleDescriptorsTest {
     preparedProject.open(updateOptions = OpenPreparedProjectOptions::withoutKtsRelatedIndexing) { resolvedProject ->
       val expectedValues =
         listOf(
-          "${'$'}myVariable",
+          "${'$'}{project.extra[\"myVariable\"]}",
           "${'$'}{project.extra[\"versionVal\"]}",
           "${'$'}{localList[0]}",
           "${'$'}{rootProject.extra[\"dependencyVersion\"]}",
@@ -354,7 +354,7 @@ class AndroidModuleDescriptorsTest {
           root
             .resolve("app/build.gradle.kts")
             .replaceInContent(
-              "compileSdkVersion($latestAgpCompileSdk)",
+              "compileSdk = $latestAgpCompileSdk",
               "compileSdk {\n version = " + "release(${latestAgpCompileSdk}) {\n  minorApiLevel = 0\n" + "sdkExtension = 0\n}\n}",
             )
         }
@@ -430,7 +430,7 @@ class AndroidModuleDescriptorsTest {
         AndroidCoreTestProject.PSD_SAMPLE_KOTLIN.withAdditionalPatch { root ->
           root
             .resolve("app/build.gradle.kts")
-            .replaceInContent("compileSdkVersion($latestAgpCompileSdk)", "compileSdk = $latestAgpCompileSdk" + "\ncompileSdkExtension = 2")
+            .replaceInContent("compileSdk = $latestAgpCompileSdk", "compileSdk = $latestAgpCompileSdk" + "\ncompileSdkExtension = 2")
         }
       )
     preparedProject.open(updateOptions = OpenPreparedProjectOptions::withoutKtsRelatedIndexing) { resolvedProject ->
@@ -516,7 +516,7 @@ class AndroidModuleDescriptorsTest {
           root
             .resolve("app/build.gradle.kts")
             .replaceInContent(
-              "compileSdkVersion($latestAgpCompileSdk)",
+              "compileSdk = $latestAgpCompileSdk",
               "compileSdk {\n version = " + "release(${latestAgpCompileSdk}) {\n  minorApiLevel = 0\n" + "sdkExtension = 0\n}\n}",
             )
         }

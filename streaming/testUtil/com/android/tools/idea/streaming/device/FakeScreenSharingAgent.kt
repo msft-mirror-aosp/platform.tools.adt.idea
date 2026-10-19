@@ -19,9 +19,13 @@ import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.annotations.concurrency.UiThread
 import com.android.fakeadbserver.DeviceState as FakeDeviceState
 import com.android.fakeadbserver.ShellV2Protocol
+import com.android.io.readImage
 import com.android.sdklib.AndroidVersionUtil
 import com.android.sdklib.deviceprovisioner.DeviceType
+import com.android.testutils.TestUtils
 import com.android.tools.adtui.ImageUtils
+import com.android.tools.adtui.ImageUtils.getCroppedImage
+import com.android.tools.adtui.ImageUtils.scale
 import com.android.tools.adtui.util.rotatedByQuadrants
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.concurrency.createCoroutineScope
@@ -45,6 +49,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectFunction
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import java.awt.Color
 import java.awt.Dimension
+import java.awt.Rectangle
 import java.awt.RenderingHints
 import java.awt.geom.Path2D
 import java.awt.image.BufferedImage
@@ -69,6 +74,7 @@ import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 import kotlin.math.sin
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -94,6 +100,7 @@ import org.bytedeco.ffmpeg.global.avcodec.av_packet_alloc
 import org.bytedeco.ffmpeg.global.avcodec.av_packet_free
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_alloc_context3
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_find_encoder
+import org.bytedeco.ffmpeg.global.avcodec.avcodec_find_encoder_by_name
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_free_context
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_open2
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_receive_packet
@@ -102,6 +109,7 @@ import org.bytedeco.ffmpeg.global.avutil.AVERROR_EAGAIN
 import org.bytedeco.ffmpeg.global.avutil.AVERROR_EOF
 import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
 import org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_BGR24
+import org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_YUV420P
 import org.bytedeco.ffmpeg.global.avutil.AV_SAMPLE_FMT_S16
 import org.bytedeco.ffmpeg.global.avutil.av_frame_alloc
 import org.bytedeco.ffmpeg.global.avutil.av_frame_free
@@ -137,10 +145,16 @@ class FakeScreenSharingAgent(
   private var audioChannel: SuspendingSocketChannel? = null
   private var controller: Controller? = null
   private val displayStreamers = Int2ObjectOpenHashMap<DisplayStreamer>()
+  private val cameraStreamers = Int2ObjectOpenHashMap<CameraStreamer>()
   private var audioStreamer: AudioStreamer? = null
 
-  private val codecName = nullize(StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.get()) ?: "vp8"
+  private var codecName = nullize(StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.get()) ?: "vp8"
   private val videoEncoder: AVCodec by lazy {
+    if (codecName == "av01") {
+      avcodec_find_encoder_by_name("libsvtav1")?.let {
+        return@lazy it
+      }
+    }
     // Use avcodec_find_encoder instead of avcodec_find_encoder_by_name because the names of encoders and decoders don't match.
     val codecId =
       when (codecName) {
@@ -217,7 +231,7 @@ class FakeScreenSharingAgent(
     get() = audioStreamer != null
 
   @Volatile var crashOnStart: Boolean = false
-  @Volatile var startDelayMillis: Long = 0
+  @Volatile var startDelay: Duration = Duration.ZERO
   @Volatile
   var bitRate: Int = VIDEO_DEFAULT_BIT_RATE
     set(value) {
@@ -225,6 +239,9 @@ class FakeScreenSharingAgent(
       agentsScope.launch {
         for (displayStreamer in displayStreamers.values) {
           displayStreamer.bitRate = value
+        }
+        for (cameraStreamer in cameraStreamers.values) {
+          cameraStreamer.bitRate = value
         }
       }
     }
@@ -267,7 +284,7 @@ class FakeScreenSharingAgent(
   private var maxVideoResolution = Dimension(Int.MAX_VALUE, Int.MAX_VALUE)
   private var agentFlags = 0
   private var deviceOrientation = 0
-  private var displays = listOf(DisplayDescriptor(PRIMARY_DISPLAY_ID, displaySize, 0, DisplayType.INTERNAL))
+  private var displays = listOf(Display(PRIMARY_DISPLAY_ID, displaySize, 0, DisplayType.INTERNAL))
 
   private var shellProtocol: ShellV2Protocol? = null
 
@@ -296,20 +313,12 @@ class FakeScreenSharingAgent(
       terminateAgent(139)
       return
     }
-    if (startDelayMillis > 0) {
-      delay(startDelayMillis)
+    if (startDelay.isPositive()) {
+      delay(startDelay)
     }
     sendVideoChannelHeader(videoChannel)
     audioChannel?.write(ByteBuffer.wrap("A".toByteArray()))
     controlChannel.write(ByteBuffer.wrap("C".toByteArray()))
-    if ((agentFlags and START_VIDEO_STREAM) != 0) {
-      val displayStreamer = DisplayStreamer(PRIMARY_DISPLAY_ID, maxVideoResolution, true, bitRate, videoChannel)
-      displayStreamers.put(displayStreamer.displayId, displayStreamer)
-      displayStreamer.renderDisplay()
-    }
-    if (audioChannel != null && (agentFlags and STREAM_AUDIO) != 0) {
-      audioStreamer = AudioStreamer(audioChannel)
-    }
     val controller = Controller(controlChannel)
     this.controller = controller
     this.fakeDeviceState.deleteFile("$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_SO_NAME")
@@ -319,6 +328,14 @@ class FakeScreenSharingAgent(
       shutdownChannels()
     } else {
       isRunning = true
+      if ((agentFlags and START_VIDEO_STREAM) != 0) {
+        val displayStreamer = DisplayStreamer(PRIMARY_DISPLAY_ID, maxVideoResolution, true, bitRate, videoChannel)
+        displayStreamers.put(displayStreamer.displayId, displayStreamer)
+        agentsScope.launch { displayStreamer.renderDisplay() }
+      }
+      if (audioChannel != null && (agentFlags and STREAM_AUDIO) != 0) {
+        audioStreamer = AudioStreamer(audioChannel)
+      }
       try {
         controller.run()
       } finally {
@@ -350,11 +367,11 @@ class FakeScreenSharingAgent(
   }
 
   /** Adds a device display. */
-  fun addDisplay(displayId: Int, width: Int, height: Int, displayType: DisplayType) {
+  fun addDisplay(displayId: Int, displaySize: Dimension, displayType: DisplayType) {
     executor.execute {
       if (displays.find { it.displayId == displayId } == null) {
-        displays = (displays + DisplayDescriptor(displayId, width, height, 0, displayType)).sortedBy { it.displayId }
-        sendNotificationOrResponse(DisplayAddedOrChangedNotification(displayId, width, height, 0, displayType.ordinal))
+        displays = (displays + Display(displayId, displaySize, 0, displayType)).sortedBy { it.displayId }
+        sendNotificationOrResponse(DisplayAddedOrChangedNotification(displayId, displaySize, 0, displayType.ordinal))
       } else {
         thisLogger().error("Display $displayId already exists")
       }
@@ -377,11 +394,20 @@ class FakeScreenSharingAgent(
     withContext(singleThreadedDispatcher) { shellProtocol?.writeStderr(message) }
   }
 
-  fun getFrameNumber(displayId: Int = PRIMARY_DISPLAY_ID): UInt {
+  fun getFrameNumber(displayId: Int): UInt {
     return displayStreamers[displayId]?.frameNumber ?: 0u
   }
 
+  fun getCameraFrameNumber(displayId: Int): UInt {
+    return cameraStreamers[displayId]?.frameNumber ?: 0u
+  }
+
+  fun hasAssociatedCamera(displayId: Int): Boolean {
+    return displays.find { it.displayId == displayId }?.type == DisplayType.GLASSES_PROJECTION
+  }
+
   private fun parseArgs(command: String) {
+    codecName = nullize(StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.get()) ?: "vp8"
     val args = command.split(Regex("\\s+"))
     for (arg in args) {
       when {
@@ -398,6 +424,10 @@ class FakeScreenSharingAgent(
 
         arg.startsWith("--flags=") -> {
           agentFlags = arg.substring("--flags=".length).toInt()
+        }
+
+        arg.startsWith("--codec=") -> {
+          codecName = arg.substring("--codec=".length)
         }
       }
     }
@@ -434,6 +464,7 @@ class FakeScreenSharingAgent(
       controller = null
     }
     displayStreamers.clear()
+    cameraStreamers.clear()
   }
 
   suspend fun renderDisplay(displayId: Int) {
@@ -492,6 +523,10 @@ class FakeScreenSharingAgent(
   @UiThread
   fun clearCommandLog() {
     commandLog.clear()
+  }
+
+  private val environmentImage: BufferedImage by lazy {
+    loadEnvironmentImage(Dimension(1200, 900))
   }
 
   private fun drawDisplayImage(size: Dimension, imageFlavor: Int, displayId: Int): BufferedImage {
@@ -555,11 +590,27 @@ class FakeScreenSharingAgent(
     return image
   }
 
+  private fun loadEnvironmentImage(size: Dimension): BufferedImage {
+    val environmentFile =
+      TestUtils.resolveWorkspacePathUnchecked("tools/adt/idea/artwork/resources/device-art-resources/ai_glasses_device/study-360.jpg")
+    val image = environmentFile.readImage()
+    val w = size.width
+    val h = size.height
+    val scale = max(w.toDouble() / image.width, h.toDouble() / image.height)
+    val scaledImage = scale(image, scale)
+    return getCroppedImage(
+      scaledImage,
+      Rectangle((scaledImage.width - w) / 2, (scaledImage.height - h) / 2, w, h),
+      BufferedImage.TYPE_3BYTE_BGR,
+    )
+  }
+
   private suspend fun setDeviceOrientation(message: SetDeviceOrientationMessage) {
     deviceOrientation = message.orientation
     for (display in displays) {
       if (display.type == DisplayType.INTERNAL) {
         displayStreamers[display.displayId]?.renderDisplay()
+        cameraStreamers[display.displayId]?.renderCamera()
       }
     }
   }
@@ -568,9 +619,11 @@ class FakeScreenSharingAgent(
     if (message.displayId == PRIMARY_DISPLAY_ID) {
       maxVideoResolution = message.maxVideoSize
     }
-    val displayStreamer = displayStreamers[message.displayId] ?: return
-    displayStreamer.maxVideoResolution = message.maxVideoSize
-    displayStreamer.renderDisplay()
+    displayStreamers[message.displayId]?.apply {
+      maxVideoResolution = message.maxVideoSize
+      renderDisplay()
+    }
+    cameraStreamers[message.displayId]?.renderCamera()
   }
 
   private fun setPassthroughCoefficient(message: XrSetPassthroughCoefficientMessage) {
@@ -593,6 +646,9 @@ class FakeScreenSharingAgent(
         for (displayStreamer in displayStreamers.values) {
           displayStreamer.renderDisplay()
         }
+        for (cameraStreamer in cameraStreamers.values) {
+          cameraStreamer.renderCamera()
+        }
       }
     }
   }
@@ -600,6 +656,9 @@ class FakeScreenSharingAgent(
   private suspend fun produceNewFrame() {
     for (streamer in displayStreamers.values) {
       streamer.renderDisplay()
+    }
+    for (streamer in cameraStreamers.values) {
+      streamer.renderCamera()
     }
   }
 
@@ -616,12 +675,24 @@ class FakeScreenSharingAgent(
           DisplayStreamer(dispId, message.maxVideoSize, rotatedWithDevice = display.type == DisplayType.INTERNAL, bitRate, videoChannel!!)
         },
       )
+    if ((agentFlags and MIRROR_GLASSES_DISPLAY) != 0 && display.type == DisplayType.GLASSES_PROJECTION) {
+      displayStreamer.accompaniedByCamera = true
+      val cameraStreamer =
+        cameraStreamers.computeIfAbsent(
+          displayId,
+          Int2ObjectFunction { dispId ->
+            CameraStreamer(dispId, bitRate, videoChannel!!)
+          },
+        )
+      cameraStreamer.renderCamera()
+    }
     displayStreamer.renderDisplay()
     assert(videoStreamActive)
   }
 
   private fun stopVideoStream(message: StopVideoStreamMessage) {
     displayStreamers.remove(message.displayId)
+    cameraStreamers.remove(message.displayId)
   }
 
   private fun startAudioStream() {
@@ -737,6 +808,12 @@ class FakeScreenSharingAgent(
         packetHeader.bitRate = value
       }
 
+    var accompaniedByCamera: Boolean
+      get() = packetHeader.accompaniedByCamera
+      set(value) {
+        packetHeader.accompaniedByCamera = value
+      }
+
     private var presentationTimestampOffset = 0L
     private var lastImageFlavor: Int = 0
     var displayOrientationCorrection: Int = 0
@@ -763,8 +840,10 @@ class FakeScreenSharingAgent(
           time_base(av_make_q(1, 1000))
           framerate(av_make_q(VIDEO_FRAME_RATE, 1))
           gop_size(2)
-          max_b_frames(1)
-          pix_fmt(videoEncoder.pix_fmts().get())
+          if (codecName == "vp8") {
+            max_b_frames(1)
+          }
+          pix_fmt(AV_PIX_FMT_YUV420P)
           width(videoSize.width)
           height(videoSize.height)
         } ?: throw RuntimeException("Could not allocate video encoder context")
@@ -786,7 +865,8 @@ class FakeScreenSharingAgent(
       }
 
       val orientation = if (rotatedWithDevice) deviceOrientation else 0
-      val image = drawDisplayImage(size.rotatedByQuadrants(-orientation), imageFlavor, displayId).rotatedByQuadrants(orientation)
+      val unrotatedSize = size.rotatedByQuadrants(-orientation)
+      val image = drawDisplayImage(unrotatedSize, imageFlavor, displayId).rotatedByQuadrants(orientation)
 
       val rgbFrame =
         av_frame_alloc().apply {
@@ -921,7 +1001,8 @@ class FakeScreenSharingAgent(
     private fun computeDisplayImageSize(): Dimension {
       // The same logic as in ComputeVideoSize in display_streamer.cc except for rounding of height.
       val size = getFoldedDisplaySize()
-      val rotatedDisplaySize = if (displays[displayId].type == DisplayType.INTERNAL) size.rotatedByQuadrants(deviceOrientation) else size
+      val display = displays.first { it.displayId == displayId }
+      val rotatedDisplaySize = if (display.type == DisplayType.INTERNAL) size.rotatedByQuadrants(deviceOrientation) else size
       val displayWidth = rotatedDisplaySize.width.toDouble()
       val displayHeight = rotatedDisplaySize.height.toDouble()
       val maxResolutionWidth = min(max(maxVideoResolution.width, rotatedDisplaySize.width / 2), maxVideoEncoderResolution)
@@ -937,7 +1018,7 @@ class FakeScreenSharingAgent(
     }
 
     private fun getFoldedDisplaySize(): Dimension {
-      val display = displays[displayId]
+      val display = displays.first { it.displayId == displayId }
       return when (displayId) {
         PRIMARY_DISPLAY_ID ->
           when (deviceState?.name) {
@@ -948,13 +1029,177 @@ class FakeScreenSharingAgent(
         else -> display.size
       }
     }
-
-    private fun Int.roundUpToMultipleOf8(): Int = (this + 7) and 7.inv()
-
-    private fun Int.roundUpToMultipleOf2(): Int = (this + 1) and 1.inv()
   }
 
-  private class VideoPacketHeader(val displayId: Int, val displaySize: Dimension, bitRate: Int, val roundDisplay: Boolean = false) {
+  private fun Int.roundUpToMultipleOf8(): Int = (this + 7) and 7.inv()
+
+  private fun Int.roundUpToMultipleOf2(): Int = (this + 1) and 1.inv()
+
+  private inner class CameraStreamer(
+    val displayId: Int,
+    initialBitRate: Int,
+    private val channel: SuspendingSocketChannel,
+  ) {
+
+    private val packetHeader =
+      VideoPacketHeader(
+        displayId,
+        Dimension(environmentImage.width, environmentImage.height),
+        initialBitRate,
+        isCamera = true,
+      )
+    var bitRate: Int
+      get() = packetHeader.bitRate
+      set(value) {
+        packetHeader.bitRate = value
+      }
+
+    private var presentationTimestampOffset = 0L
+    @Volatile
+    var frameNumber: UInt = 0u
+      private set
+
+    suspend fun renderCamera() {
+      val image = environmentImage.rotatedByQuadrants(1)
+      val size = Dimension(image.width, image.height)
+      val videoSize = Dimension(size.width, size.height.roundUpToMultipleOf8())
+      val encoderContext =
+        avcodec_alloc_context3(videoEncoder)?.apply {
+          bit_rate(8000000L)
+          time_base(av_make_q(1, 1000))
+          framerate(av_make_q(VIDEO_FRAME_RATE, 1))
+          gop_size(2)
+          if (codecName == "vp8") {
+            max_b_frames(1)
+          }
+          pix_fmt(AV_PIX_FMT_YUV420P)
+          width(videoSize.width)
+          height(videoSize.height)
+        } ?: throw RuntimeException("Could not allocate video encoder context")
+
+      if (avcodec_open2(encoderContext, videoEncoder, null as AVDictionary?) < 0) {
+        throw RuntimeException("avcodec_open2 failed")
+      }
+      val encodingFrame =
+        av_frame_alloc().apply {
+          format(encoderContext.pix_fmt())
+          width(videoSize.width)
+          height(videoSize.height)
+        }
+      if (av_frame_get_buffer(encodingFrame, 1) < 0) {
+        throw RuntimeException("av_frame_get_buffer failed")
+      }
+      if (av_frame_make_writable(encodingFrame) < 0) {
+        throw RuntimeException("av_frame_make_writable failed")
+      }
+
+      val rgbFrame =
+        av_frame_alloc().apply {
+          format(AV_PIX_FMT_BGR24)
+          width(videoSize.width)
+          height(videoSize.height)
+        }
+      if (av_frame_get_buffer(rgbFrame, 1) < 0) {
+        throw RuntimeException("Could not allocate the video frame data")
+      }
+
+      // Copy the image to the frame with conversion to the destination format.
+      val dataBufferByte = image.raster.dataBuffer as DataBufferByte
+      val numBytes = av_image_get_buffer_size(rgbFrame.format(), rgbFrame.width(), rgbFrame.height(), 1)
+      val byteBuffer = rgbFrame.data(0).asByteBufferOfSize(numBytes)
+      val y = (videoSize.height - size.height) / 2
+      // Fill the extra strip at the top with black three bytes per pixel.
+      byteBuffer.fill(0.toByte(), y * rgbFrame.width() * 3)
+      byteBuffer.put(dataBufferByte.data)
+      // Fill the extra strip at the bottom with black three bytes per pixel.
+      byteBuffer.fill(0.toByte(), (videoSize.height - y - size.height) * rgbFrame.width() * 3)
+      val swsContext =
+        sws_getContext(
+          rgbFrame.width(),
+          rgbFrame.height(),
+          rgbFrame.format(),
+          encodingFrame.width(),
+          encodingFrame.height(),
+          encodingFrame.format(),
+          SWS_BICUBIC,
+          null,
+          null,
+          null as DoublePointer?,
+        )!!
+      sws_scale(swsContext, rgbFrame.data(), rgbFrame.linesize(), 0, rgbFrame.height(), encodingFrame.data(), encodingFrame.linesize())
+      sws_freeContext(swsContext)
+      av_frame_free(rgbFrame)
+
+      val timestamp = System.currentTimeMillis()
+      encodingFrame.pts(timestamp)
+
+      val packet = av_packet_alloc()
+
+      try {
+        sendFrame(encoderContext, encodingFrame, packet)
+        sendFrame(encoderContext, null, packet) // Process delayed frames.
+      } finally {
+        av_packet_free(packet)
+        av_frame_free(encodingFrame)
+        avcodec_free_context(encoderContext)
+      }
+    }
+
+    private suspend fun sendFrame(encoderContext: AVCodecContext, frame: AVFrame?, packet: AVPacket) {
+      if (avcodec_send_frame(encoderContext, frame) < 0) {
+        throw RuntimeException("avcodec_send_frame failed")
+      }
+
+      while (true) {
+        val ret = avcodec_receive_packet(encoderContext, packet)
+        if (ret != 0) {
+          if (ret != AVERROR_EAGAIN() && ret != AVERROR_EOF()) {
+            throw RuntimeException("avcodec_receive_packet returned $ret")
+          }
+          break
+        }
+
+        val pts = packet.pts()
+        if (pts == AV_NOPTS_VALUE) {
+          packetHeader.presentationTimestampUs = 0
+        } else {
+          val ptsUs = pts * 1000
+          if (presentationTimestampOffset == 0L) {
+            presentationTimestampOffset = ptsUs - 1
+          }
+          packetHeader.presentationTimestampUs = ptsUs - presentationTimestampOffset
+        }
+        packetHeader.originationTimestampUs = System.currentTimeMillis() * 1000
+        packetHeader.displaySize.size = Dimension(environmentImage.width, environmentImage.height)
+        packetHeader.displayOrientation = 1
+        packetHeader.displayOrientationCorrection = 0
+        packetHeader.frameNumber = ++frameNumber
+        val packetSize = packet.size()
+        val packetData = packet.data().asByteBufferOfSize(packetSize)
+        packetHeader.packetSize = packetSize
+        val buffer = VideoPacketHeader.createBuffer(packetSize)
+        packetHeader.serialize(buffer)
+        buffer.put(packetData)
+        buffer.flip()
+        try {
+          channel.writeFully(buffer)
+        } catch (e: IOException) {
+          if (!isLostConnection(e)) {
+            throw e
+          }
+        }
+      }
+    }
+  }
+
+  private class VideoPacketHeader(
+    val displayId: Int,
+    val displaySize: Dimension,
+    bitRate: Int,
+    val roundDisplay: Boolean = false,
+    var accompaniedByCamera: Boolean = false,
+    val isCamera: Boolean = false,
+  ) {
 
     var displayOrientation: Int = 0
     var displayOrientationCorrection: Int = 0
@@ -978,7 +1223,13 @@ class FakeScreenSharingAgent(
       buffer.putInt(displaySize.height)
       buffer.put(displayOrientation.toByte())
       buffer.put(displayOrientationCorrection.toByte())
-      buffer.putShort(((if (roundDisplay) FLAG_DISPLAY_ROUND else 0) or (if (bitRateReduced) FLAG_BIT_RATE_REDUCED else 0)).toShort())
+      buffer.putShort(
+        ((if (roundDisplay) FLAG_DISPLAY_ROUND else 0) or
+            (if (bitRateReduced) FLAG_BIT_RATE_REDUCED else 0) or
+            (if (accompaniedByCamera) FLAG_ACCOMPANIED_BY_CAMERA else 0) or
+            (if (isCamera) FLAG_CAMERA else 0))
+          .toShort()
+      )
       buffer.putInt(bitRate)
       buffer.putUInt(frameNumber)
       buffer.putLong(originationTimestampUs)
@@ -996,6 +1247,10 @@ class FakeScreenSharingAgent(
       private const val FLAG_DISPLAY_ROUND = 0x01
       /** Bit rate reduced compared to the previous frame or, for the very first flame, to the initial value. */
       private const val FLAG_BIT_RATE_REDUCED = 0x02
+      /** Display video frame that should be overlaid on top of the camera video frame. */
+      private const val FLAG_ACCOMPANIED_BY_CAMERA = 0x04
+      /** Video frame originated from camera. */
+      private const val FLAG_CAMERA = 0x08
 
       private const val WIRE_SIZE =
         4 + // displayId
@@ -1242,7 +1497,7 @@ class FakeScreenSharingAgent(
                 return@launch
               }
             }
-            delay(100)
+            delay(100.milliseconds)
           }
         }
     }
@@ -1255,6 +1510,11 @@ class FakeScreenSharingAgent(
   companion object {
     @JvmStatic val defaultControlMessageFilter = ControlMessageFilter(DisplayConfigurationRequest.TYPE)
   }
+}
+
+private class Display(val displayId: Int, val size: Dimension, val orientation: Int, val type: DisplayType) {
+  val descriptor: DisplayDescriptor
+    get() = DisplayDescriptor(displayId, size, orientation, type)
 }
 
 private fun isLostConnection(exception: IOException): Boolean {
@@ -1276,10 +1536,10 @@ private fun ByteBuffer.fill(b: Byte, count: Int) {
 
 private fun Pointer.asByteBufferOfSize(size: Int): ByteBuffer = BytePointer(this).apply { capacity(size.toLong()) }.asByteBuffer()
 
-private fun DisplayDescriptor.withDeviceOrientation(orientation: Int): DisplayDescriptor =
-  if (type != DisplayType.INTERNAL || orientation == this.orientation) this else DisplayDescriptor(displayId, size, orientation, type)
+private fun Display.withDeviceOrientation(orientation: Int): DisplayDescriptor =
+  if (type != DisplayType.INTERNAL || orientation == this.orientation) descriptor else DisplayDescriptor(displayId, size, orientation, type)
 
-private fun List<DisplayDescriptor>.withDeviceOrientation(orientation: Int) = map { it.withDeviceOrientation(orientation) }
+private fun List<Display>.withDeviceOrientation(orientation: Int) = map { it.withDeviceOrientation(orientation) }
 
 private fun BufferedImage.rotatedByQuadrants(quadrants: Int): BufferedImage = ImageUtils.rotateByQuadrants(this, quadrants)
 

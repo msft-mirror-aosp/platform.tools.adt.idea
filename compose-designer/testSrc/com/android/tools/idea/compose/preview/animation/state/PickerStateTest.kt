@@ -13,14 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.android.tools.idea.compose.preview.animation.state
+
 import com.android.testutils.delayUntilCondition
 import com.android.tools.idea.compose.preview.animation.NoopComposeAnimationTracker
-import com.android.tools.idea.compose.preview.animation.state.PickerButtonAction
-import com.android.tools.idea.compose.preview.animation.state.PickerState
 import com.android.tools.idea.preview.animation.AnimationUnit
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.TestActionEvent
+import java.lang.ref.WeakReference
+import javax.swing.JButton
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
@@ -80,5 +84,40 @@ class PickerStateTest {
   fun testChangeStateActions_PickerButtonAction() {
     val pickerState = PickerState(tracker, null, null)
     assertThat(pickerState.changeStateActions[1] is PickerButtonAction)
+  }
+
+  @Test
+  fun testPickerButtonActionComponentTextUpdate() {
+    val action = PickerButtonAction(tracker)
+    action.state.value = AnimationUnit.IntUnit(1) to AnimationUnit.IntUnit(2)
+    val button = action.createCustomComponent(Presentation(), ActionPlaces.TOOLBAR) as JButton
+    assertThat(button.text).isEqualTo("1 to 2")
+    action.swapStates()
+    assertThat(button.text).isEqualTo("2 to 1")
+  }
+
+  @Test
+  fun testPickerButtonActionPrunesClearedWeakReferences() {
+    val action = PickerButtonAction(tracker)
+    action.state.value = AnimationUnit.IntUnit(1) to AnimationUnit.IntUnit(2)
+    val button = action.createCustomComponent(Presentation(), ActionPlaces.TOOLBAR) as JButton
+    // Add a cleared weak reference simulating a garbage-collected JButton
+    action.buttons.add(WeakReference(null))
+    assertThat(action.buttons).hasSize(2)
+
+    // Verify swapStates completes safely and prunes cleared entries
+    action.swapStates()
+    assertThat(action.buttons).hasSize(1)
+    assertThat(action.buttons.first().get()).isSameAs(button)
+    assertThat(button.text).isEqualTo("2 to 1")
+
+    // Add another cleared weak reference
+    action.buttons.add(WeakReference(null))
+    assertThat(action.buttons).hasSize(2)
+
+    // Creating another component should also prune cleared references
+    val button2 = action.createCustomComponent(Presentation(), ActionPlaces.TOOLBAR) as JButton
+    assertThat(action.buttons).hasSize(2)
+    assertThat(action.buttons.map { it.get() }).containsExactly(button, button2)
   }
 }

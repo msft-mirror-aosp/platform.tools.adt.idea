@@ -29,7 +29,10 @@ import com.intellij.openapi.vfs.LocalFileSystem
 class OpenFileHandler : CliActionHandler {
   override val type: Int = CommandType.OPEN_FILE.number
 
-  override fun handle(project: Project, request: ByteArray): ByteArray {
+  override fun handle(projectLookup: () -> Project, request: ByteArray): ByteArray {
+    // Look up project here to ensure correct exception handling if no suitable project
+    val project = projectLookup()
+
     val parsedRequest =
       try {
         OpenFileRequest.parseFrom(request)
@@ -37,12 +40,12 @@ class OpenFileHandler : CliActionHandler {
         throw Exception("Failed to parse request", e)
       }
 
-    val file = parsedRequest.filePath
+    // Refresh before switching to the EDT: refreshing hits the disk, and the file may not be in the VFS cache yet if it was
+    // created outside of Studio.
+    val file = LocalFileSystem.getInstance().refreshAndFindFileByPath(parsedRequest.filePath) ?: throw Exception("File not found")
     try {
       ApplicationManager.getApplication().invokeAndWait {
-        val editors =
-          FileEditorManager.getInstance(project)
-            .openFile(LocalFileSystem.getInstance().findFileByPath(file) ?: throw Exception("File not found"))
+        val editors = FileEditorManager.getInstance(project).openFile(file)
         val editor = editors.getOrNull(0) as? TextEditorWithPreview ?: return@invokeAndWait
         editor.setLayout(TextEditorWithPreview.Layout.SHOW_EDITOR_AND_PREVIEW)
       }

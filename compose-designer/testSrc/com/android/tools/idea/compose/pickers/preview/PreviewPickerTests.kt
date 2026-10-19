@@ -24,6 +24,7 @@ import com.android.tools.idea.compose.pickers.base.property.PsiCallParameterProp
 import com.android.tools.idea.compose.pickers.base.property.PsiPropertyItem
 import com.android.tools.idea.compose.pickers.base.tracking.ComposePickerTracker
 import com.android.tools.idea.compose.pickers.common.tracking.NoOpTracker
+import com.android.tools.idea.compose.pickers.preview.enumsupport.FontScale
 import com.android.tools.idea.compose.pickers.preview.enumsupport.UiModeWithNightMaskEnumValue
 import com.android.tools.idea.compose.pickers.preview.enumsupport.Wallpaper
 import com.android.tools.idea.compose.pickers.preview.model.PreviewPickerPropertiesModel
@@ -160,6 +161,82 @@ class PreviewPickerTests {
         .trimIndent()
 
     assertUpdatingModelUpdatesPsiCorrectly(emptyAnnotation)
+
+    // Avoid duplicate `()` if parentheses already exist but are empty, e.g. `@Preview()`.
+    val emptyAnnotationWithParentheses =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview()
+      fun PreviewNoParameters() {
+      }
+      """
+        .trimIndent()
+
+    assertUpdatingModelUpdatesPsiCorrectly(emptyAnnotationWithParentheses)
+
+    // Case when we have spaces within the parentheses
+    @Language("kotlin")
+    val emptyAnnotationWithWhitespaceInParentheses =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview(   )
+      fun PreviewNoParameters() {
+      }
+      """
+        .trimIndent()
+
+    assertUpdatingModelUpdatesPsiCorrectly(emptyAnnotationWithWhitespaceInParentheses)
+  }
+
+  @Test
+  fun `updating empty parentheses annotation does not add duplicate parentheses`() = runBlocking {
+    // Start with an annotation that already has empty parentheses @Preview() (b/414544459)
+    @Language("kotlin")
+    val emptyParenthesesPreviewContent =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview()
+      fun PreviewWithEmptyParentheses() {
+      }
+      """
+        .trimIndent()
+
+    val propertiesModel = getFirstModel(emptyParenthesesPreviewContent)
+    val previewElement =
+      AnnotationFilePreviewElementFinder.findPreviewElements(
+          fixture.project,
+          fixture.findFileInTempDir("Test.kt"),
+        )
+        .first()
+
+    // Setting "name" triggers PsiCallParameterPropertyItem.writeNewValue it must reuse the existing "()" rather than appending a second
+    // "()".
+    runModificationInEdtWaitAndDispatch {
+      propertiesModel.properties["", "name"].value = "MyPreview"
+    }
+    assertEquals("@Preview(name = \"MyPreview\")", previewElement.annotationText())
+
+    // Clear the parameters by setting "name" to null it should delete the now-empty KtValueArgumentList "()" from the PSI tree.
+    runModificationInEdtWaitAndDispatch {
+      propertiesModel.properties["", "name"].value = null
+    }
+    assertEquals("@Preview", previewElement.annotationText())
+
+    // Re-add the parameter now that @Preview has no parentheses by setting "name" again triggers KtCallElement.addNewValueArgument when
+    // valueArgumentList == null.
+    runModificationInEdtWaitAndDispatch {
+      propertiesModel.properties["", "name"].value = "MyPreview"
+    }
+    assertEquals("@Preview(name = \"MyPreview\")", previewElement.annotationText())
   }
 
   @Test
@@ -236,6 +313,45 @@ class PreviewPickerTests {
   }
 
   @Test
+  fun `switching dimension unit from px to dp and back to px preserves pixel dimensions`() = runBlocking {
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview(name = "Test")
+      fun PreviewNoParameters() {
+      }
+    """
+        .trimIndent()
+
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val model = getFirstModel(fileContent)
+
+    // Verify initial default pixel dimensions (pixel_5: 1080 x 2340 px at 440 dpi).
+    runInEdtAndWait {
+      assertEquals("1080", model.properties["", "Width"].value)
+      assertEquals("2340", model.properties["", "Height"].value)
+    }
+
+    // Switch DimensionUnit from px to dp.
+    runModificationInEdtWaitAndDispatch { model.properties["", "DimensionUnit"].value = "dp" }
+    runInEdtAndWait {
+      assertEquals("392.7", model.properties["", "Width"].value)
+      assertEquals("850.9", model.properties["", "Height"].value)
+    }
+
+    // Switch DimensionUnit back from dp to px.
+    runModificationInEdtWaitAndDispatch { model.properties["", "DimensionUnit"].value = "px" }
+    runInEdtAndWait {
+      assertEquals("1080", model.properties["", "Width"].value)
+      assertEquals("2340", model.properties["", "Height"].value)
+    }
+  }
+
+  @Test
   fun fontScaleEditing() = runBlocking {
     @Language("kotlin")
     val fileContent =
@@ -300,6 +416,26 @@ class PreviewPickerTests {
     assertValidationError("11")
     assertValidationError("Infinity")
     assertValidationError("NaN")
+  }
+
+  @Test
+  fun fontScaleEnumValues() {
+    val fontScaleValues = FontScale.entries
+    assertEquals(7, fontScaleValues.size)
+    assertEquals("100% (1.0f)", fontScaleValues[0].display)
+    assertEquals("1.0f", fontScaleValues[0].value)
+    assertEquals("85% (0.85f)", fontScaleValues[1].display)
+    assertEquals("0.85f", fontScaleValues[1].value)
+    assertEquals("115% (1.15f)", fontScaleValues[2].display)
+    assertEquals("1.15f", fontScaleValues[2].value)
+    assertEquals("130% (1.3f)", fontScaleValues[3].display)
+    assertEquals("1.3f", fontScaleValues[3].value)
+    assertEquals("150% (1.5f)", fontScaleValues[4].display)
+    assertEquals("1.5f", fontScaleValues[4].value)
+    assertEquals("180% (1.8f)", fontScaleValues[5].display)
+    assertEquals("1.8f", fontScaleValues[5].value)
+    assertEquals("200% (2.0f)", fontScaleValues[6].display)
+    assertEquals("2.0f", fontScaleValues[6].value)
   }
 
   @Test

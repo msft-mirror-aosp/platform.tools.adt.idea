@@ -94,7 +94,7 @@ fun shouldRecommendPluginUpgrade(project: Project): Recommendation {
   // If we don't know the current plugin version then we don't upgrade.
   val current = project.findPluginInfo()?.pluginVersion ?: return Recommendation(false, false)
   val latestKnown = AgpVersions.latestKnown
-  val published = IdeGoogleMavenRepository.getAgpVersions()
+  val published = IdeGoogleMavenRepository.getInstance().getAgpVersions()
   return shouldRecommendPluginUpgrade(project, current, latestKnown, published)
 }
 
@@ -163,7 +163,7 @@ fun performRecommendedPluginUpgrade(
 
   LOG.info("Gradle model version: $currentVersion, latest known version for IDE: $latestKnown")
 
-  val published = IdeGoogleMavenRepository.getAgpVersions()
+  val published = IdeGoogleMavenRepository.getInstance().getAgpVersions()
   val state = computeGradlePluginUpgradeState(currentVersion, latestKnown, published)
 
   LOG.info("Gradle upgrade state: $state")
@@ -225,7 +225,7 @@ fun shouldForcePluginUpgrade(project: Project): Boolean {
   // If we don't know the current plugin version then we don't upgrade
   val current = project.findPluginInfo()?.pluginVersion ?: return false
   val latestKnown = AgpVersions.latestKnown
-  val published = IdeGoogleMavenRepository.getAgpVersions()
+  val published = IdeGoogleMavenRepository.getInstance().getAgpVersions()
   return shouldForcePluginUpgrade(project, current, latestKnown, published)
 }
 
@@ -255,7 +255,8 @@ fun performForcedPluginUpgrade(
   project: Project,
   currentPluginVersion: AgpVersion,
   newPluginVersion: AgpVersion =
-    computeGradlePluginUpgradeState(currentPluginVersion, AgpVersions.latestKnown, IdeGoogleMavenRepository.getAgpVersions()).target,
+    computeGradlePluginUpgradeState(currentPluginVersion, AgpVersions.latestKnown, IdeGoogleMavenRepository.getInstance().getAgpVersions())
+      .target,
 ) {
   // Note: we retrieve a RefactoringProcessorInstantiator as a project service for the convenience of tests.
   val refactoringProcessorInstantiator = project.getService(RefactoringProcessorInstantiator::class.java)

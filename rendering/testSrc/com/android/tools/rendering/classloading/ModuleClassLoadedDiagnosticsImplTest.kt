@@ -15,6 +15,7 @@
  */
 package com.android.tools.rendering.classloading
 
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -24,17 +25,33 @@ internal class ModuleClassLoadedDiagnosticsImplTest {
   fun testCounters() {
     val diagnostics = ModuleClassLoadedDiagnosticsImpl()
     diagnostics.classFindStart("A")
-    diagnostics.classFindEnd("A", true, 1000)
-    diagnostics.classRewritten("A", 50, 1000)
+    diagnostics.classFindEnd("A", true, TimeUnit.MICROSECONDS.toNanos(1000_500))
+    diagnostics.classRewritten("A", 50, TimeUnit.MILLISECONDS.toNanos(1000))
     diagnostics.classFindStart("B")
-    diagnostics.classFindEnd("B", true, 300)
-    diagnostics.classRewritten("B", 50, 200)
+    diagnostics.classFindEnd("B", true, TimeUnit.MICROSECONDS.toNanos(300_200))
+    diagnostics.classRewritten("B", 50, TimeUnit.MILLISECONDS.toNanos(200))
     diagnostics.classFindStart("C")
-    diagnostics.classFindEnd("C", true, 500)
+    diagnostics.classFindEnd("C", true, TimeUnit.MICROSECONDS.toNanos(500_100))
 
     assertEquals(3, diagnostics.classesFound)
     assertEquals(1800, diagnostics.accumulatedFindTimeMs)
+    assertEquals(1800_800, diagnostics.accumulatedFindTimeUs)
     assertEquals(1200, diagnostics.accumulatedRewriteTimeMs)
+  }
+
+  @Test
+  fun testUnfoundClassesIgnored() {
+    val diagnostics = ModuleClassLoadedDiagnosticsImpl()
+    diagnostics.classFindStart("A")
+    diagnostics.classFindStart("MissingChild")
+    diagnostics.classFindEnd("MissingChild", false, TimeUnit.MICROSECONDS.toNanos(200))
+    diagnostics.classFindEnd("A", true, TimeUnit.MICROSECONDS.toNanos(500))
+
+    diagnostics.classFindStart("TopLevelMissing")
+    diagnostics.classFindEnd("TopLevelMissing", false, TimeUnit.MICROSECONDS.toNanos(400))
+
+    assertEquals(1, diagnostics.classesFound)
+    assertEquals(300, diagnostics.accumulatedFindTimeUs)
   }
 
   @Test

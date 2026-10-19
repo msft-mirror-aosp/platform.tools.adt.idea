@@ -26,15 +26,18 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.swing.findDescendant
+import com.android.tools.adtui.swing.popup.ActionPopupMenuRule
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
 import com.android.tools.idea.streaming.actions.ToggleFloatingXrToolbarAction
+import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.core.DeviceDisplayListener
 import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.streaming.core.DisplayView
+import com.android.tools.idea.streaming.core.FloatingToolbarContainer
+import com.android.tools.idea.streaming.core.FloatingToolbarState
 import com.android.tools.idea.streaming.core.ZoomType
 import com.android.tools.idea.streaming.core.expandFloatingToolbar
 import com.android.tools.idea.streaming.device.AndroidKeyEventActionType.ACTION_DOWN
@@ -65,6 +68,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RuleChain
@@ -131,15 +135,25 @@ class DeviceToolWindowPanelTest {
   }
 
   private val agentRule = FakeScreenSharingAgentRule()
+  private val popupRule = ActionPopupMenuRule()
   private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/DeviceToolWindowPanelTest/golden")
 
   @get:Rule
-  val ruleChain = RuleChain(agentRule, ClipboardSynchronizationDisablementRule(), PortableUiFontRule(), goldenImageRule, EdtRule())
+  val ruleChain =
+    RuleChain(
+      ApplicationRule(),
+      ClipboardSynchronizationDisablementRule(),
+      agentRule,
+      popupRule,
+      PortableUiFontRule(),
+      goldenImageRule,
+      EdtRule(),
+    )
 
   private lateinit var device: FakeDevice
   private val panel: DeviceToolWindowPanel by lazy { createToolWindowPanel() }
   // Fake window is necessary for the toolbars to be rendered.
-  private val fakeUi: FakeUi by lazy { FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable) }
+  private val fakeUi: FakeUi by lazy { FakeUi(panel, parentDisposable = testRootDisposable) }
   private val project
     get() = agentRule.project
 
@@ -194,9 +208,9 @@ class DeviceToolWindowPanelTest {
     for (case in pushButtonCases) {
       val button = fakeUi.getComponent<ActionButton> { it.action.templateText == case.first }
       fakeUi.mousePressOn(button)
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, case.second, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, case.second, 0, PRIMARY_DISPLAY_ID))
       fakeUi.mouseRelease()
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0, PRIMARY_DISPLAY_ID))
     }
 
     // Check DevicePowerButtonAction invoked by a keyboard shortcut.
@@ -204,15 +218,15 @@ class DeviceToolWindowPanelTest {
     var keyEvent = KeyEvent(panel, KEY_RELEASED, System.currentTimeMillis(), CTRL_DOWN_MASK, VK_P, KeyEvent.CHAR_UNDEFINED)
     val dataContext = DataManager.getInstance().getDataContext(panel.primaryDisplayView)
     executeAction(action, createEvent(action, dataContext, null, ActionPlaces.KEYBOARD_SHORTCUT, ActionUiKind.NONE, keyEvent))
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, AKEYCODE_POWER, 0))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, AKEYCODE_POWER, 0, PRIMARY_DISPLAY_ID))
 
     // Check DevicePowerAndVolumeUpButtonAction invoked by a keyboard shortcut.
     action = ActionManager.getInstance().getAction("android.device.power.and.volume.up.button")
     keyEvent = KeyEvent(panel, KEY_RELEASED, System.currentTimeMillis(), CTRL_DOWN_MASK or SHIFT_DOWN_MASK, VK_P, KeyEvent.CHAR_UNDEFINED)
     executeAction(action, createEvent(action, dataContext, null, ActionPlaces.KEYBOARD_SHORTCUT, ActionUiKind.NONE, keyEvent))
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, AKEYCODE_VOLUME_UP, 0))
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, AKEYCODE_POWER, 0))
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, AKEYCODE_VOLUME_UP, 0))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, AKEYCODE_VOLUME_UP, 0, PRIMARY_DISPLAY_ID))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, AKEYCODE_POWER, 0, PRIMARY_DISPLAY_ID))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, AKEYCODE_VOLUME_UP, 0, PRIMARY_DISPLAY_ID))
 
     // Check that the Wear OS-specific buttons are hidden.
     assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Button 1" }).isNull()
@@ -244,9 +258,9 @@ class DeviceToolWindowPanelTest {
     for (case in pushButtonCases) {
       val button = fakeUi.getComponent<ActionButton> { it.action.templateText == case.first }
       fakeUi.mousePressOn(button)
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, case.second, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, case.second, 0, PRIMARY_DISPLAY_ID))
       fakeUi.mouseRelease()
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0, PRIMARY_DISPLAY_ID))
     }
 
     // Check keypress actions.
@@ -254,7 +268,7 @@ class DeviceToolWindowPanelTest {
     for (case in keypressCases) {
       val button = fakeUi.getComponent<ActionButton> { it.action.templateText == case.first }
       fakeUi.mouseClickOn(button)
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, case.second, 0))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, case.second, 0, PRIMARY_DISPLAY_ID))
     }
 
     // Check that the buttons not applicable to Wear OS 3 are hidden.
@@ -326,9 +340,9 @@ class DeviceToolWindowPanelTest {
 
     val button = fakeUi.getComponent<ActionButton> { it.action.templateText == "Home" }
     fakeUi.mousePressOn(button)
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, AKEYCODE_ALL_APPS, 0))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, AKEYCODE_ALL_APPS, 0, PRIMARY_DISPLAY_ID))
     fakeUi.mouseRelease()
-    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, AKEYCODE_ALL_APPS, 0))
+    assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, AKEYCODE_ALL_APPS, 0, PRIMARY_DISPLAY_ID))
 
     fakeUi.mouseClickOn(fakeUi.getComponent<ActionButton> { it.action.templateText == "Reset View" })
     assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(XrRecenterMessage())
@@ -365,7 +379,7 @@ class DeviceToolWindowPanelTest {
 
     val xrInputController = DeviceXrInputController.getInstance(project, displayView.deviceClient)
     assertThat(xrInputController.inputMode).isEqualTo(XrInputMode.VIEW_DIRECTION)
-    assertThat(project.service<HardwareInputStateStorage>().isHardwareInputEnabled(displayView.deviceId)).isFalse()
+    assertThat(HardwareInputStateStorage.getInstance(project).isHardwareInputEnabled(displayView.deviceId)).isFalse()
 
     fakeUi.keyboard.setFocus(displayView)
     fakeUi.keyboard.press(VK_ENTER)
@@ -495,7 +509,7 @@ class DeviceToolWindowPanelTest {
     fakeUi.expandFloatingToolbar()
     fakeUi.mouseClickOn(fakeUi.getComponent<ActionButton> { it.action.templateText == "Move Forward/Backward" })
     assertThat(xrInputController.inputMode).isEqualTo(XrInputMode.LOCATION_IN_SPACE_Z)
-    assertThat(project.service<HardwareInputStateStorage>().isHardwareInputEnabled(displayView.deviceId)).isFalse()
+    assertThat(HardwareInputStateStorage.getInstance(project).isHardwareInputEnabled(displayView.deviceId)).isFalse()
 
     fakeUi.mouse.press(50, 70)
     fakeUi.mouse.dragTo(100, 200)
@@ -589,7 +603,7 @@ class DeviceToolWindowPanelTest {
     waitForFrame()
 
     val secondaryDisplayId = 1
-    agent.addDisplay(secondaryDisplayId, 1080, 1920, DisplayType.EXTERNAL)
+    agent.addDisplay(secondaryDisplayId, Dimension(1080, 1920), DisplayType.EXTERNAL)
     waitForCondition(2.seconds) { fakeUi.findAllComponents<DeviceView>().size == 2 }
     assertThat(displayIds).containsExactly(PRIMARY_DISPLAY_ID, secondaryDisplayId)
     waitForFrame(displayId = PRIMARY_DISPLAY_ID)
@@ -748,6 +762,55 @@ class DeviceToolWindowPanelTest {
     waitForCondition(1.seconds) { !agent.audioStreamActive }
   }
 
+  @Test
+  fun testFloatingToolbarOrientation() {
+    val toolbarState = FloatingToolbarState.getInstance()
+    toolbarState::zoomToolbarHorizontal.override(false, testRootDisposable)
+    toolbarState::xrToolbarHorizontal.override(false, testRootDisposable)
+    device = agentRule.connectDevice("Pixel 4", 31, Dimension(1080, 2280))
+    panel.createContent(false)
+    fakeUi.layoutAndDispatchEvents()
+    waitForCondition(10.seconds) { agent.isRunning && panel.isConnected }
+    waitForFrame()
+    fakeUi.layoutAndDispatchEvents()
+
+    val zoomToolbarVertical = fakeUi.getComponent<FloatingToolbarContainer>()
+    assertThat(zoomToolbarVertical).isNotNull()
+    assertThat(zoomToolbarVertical.width).isLessThan(zoomToolbarVertical.height)
+
+    // Expand the toolbar and right-click on the collapser button to switch to horizontal orientation.
+    fakeUi.expandFloatingToolbar()
+    val collapserButtonVertical = fakeUi.getComponent<ActionButton> { it.action is FloatingToolbarContainer.CollapserAction }
+    val posVertical = fakeUi.getPosition(collapserButtonVertical)
+    fakeUi.mouse.rightClick(posVertical.x, posVertical.y)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val popupActions = popupRule.lastPopupActions
+    assertThat(popupActions.map { it.templateText }).containsExactly("Vertical", "Horizontal").inOrder()
+
+    executeAction(popupActions.first { it.templateText == "Horizontal" }, collapserButtonVertical)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(toolbarState.zoomToolbarHorizontal).isTrue()
+    assertThat(toolbarState.xrToolbarHorizontal).isFalse()
+
+    val zoomToolbarHorizontal = fakeUi.getComponent<FloatingToolbarContainer>()
+    assertThat(zoomToolbarHorizontal.width).isGreaterThan(zoomToolbarHorizontal.height)
+    assertThat(zoomToolbarHorizontal.isActive).isTrue()
+
+    // Right-click on the collapser button again and switch back to vertical orientation.
+    val collapserButtonHorizontal = fakeUi.getComponent<ActionButton> { it.action is FloatingToolbarContainer.CollapserAction }
+    val posHorizontal = fakeUi.getPosition(collapserButtonHorizontal)
+    fakeUi.mouse.rightClick(posHorizontal.x, posHorizontal.y)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    executeAction(popupRule.lastPopupActions.first { it.templateText == "Vertical" }, collapserButtonHorizontal)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(toolbarState.zoomToolbarHorizontal).isFalse()
+
+    val zoomToolbarBackToVertical = fakeUi.getComponent<FloatingToolbarContainer>()
+    assertThat(zoomToolbarBackToVertical.height).isGreaterThan(zoomToolbarBackToVertical.width)
+  }
+
   private fun FakeUi.mousePressOn(component: Component) {
     val location: Point = getPosition(component)
     mouse.press(location.x, location.y)
@@ -766,7 +829,7 @@ class DeviceToolWindowPanelTest {
   }
 
   private fun createToolWindowPanel(): DeviceToolWindowPanel {
-    val deviceClient = DeviceClient(device.serialNumber, device.configuration, device.deviceState.cpuAbi)
+    val deviceClient = DeviceClient(device.handle.id, device.serialNumber, device.configuration, device.deviceState.cpuAbi)
     Disposer.register(testRootDisposable, deviceClient)
     val panel = DeviceToolWindowPanel(testRootDisposable, project, device.handle, deviceClient)
     panel.size = Dimension(310, 300)

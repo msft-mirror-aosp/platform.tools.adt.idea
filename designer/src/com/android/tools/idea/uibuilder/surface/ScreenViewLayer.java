@@ -17,8 +17,8 @@ package com.android.tools.idea.uibuilder.surface;
 
 import com.android.tools.idea.common.surface.Layer;
 import com.android.tools.rendering.RenderResult;
-import com.android.tools.rendering.imagepool.ImagePool;
-import com.android.tools.rendering.imagepool.ImagePoolImageDisposer;
+import com.android.ide.common.rendering.api.RecyclableImage;
+import com.android.tools.rendering.imagepool.RecyclableImageDisposer;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.google.common.collect.ImmutableMap;
 import com.intellij.openapi.Disposable;
@@ -37,6 +37,7 @@ import java.awt.Transparency;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -79,6 +80,8 @@ public class ScreenViewLayer extends Layer {
   private final Rectangle myCachedScreenViewDisplayRect = new Rectangle();
   private double myLastScale;
 
+  private final AtomicBoolean myIsDisposed = new AtomicBoolean(false);
+
   /**
    * Create a new ScreenViewLayer for the given screenView.
    * @param screenView The screenView containing the model to render
@@ -100,7 +103,7 @@ public class ScreenViewLayer extends Layer {
    */
   @NotNull
   private static BufferedImage getPreviewImage(@NotNull GraphicsConfiguration configuration,
-                                               @NotNull ImagePool.Image renderedImage,
+                                               @NotNull RecyclableImage renderedImage,
                                                int screenViewX, int screenViewY,
                                                @NotNull Rectangle screenViewVisibleSize,
                                                double xScaleFactor, double yScaleFactor,
@@ -145,6 +148,9 @@ public class ScreenViewLayer extends Layer {
 
   @Override
   public void paint(@NotNull Graphics2D graphics2D) {
+    if (myIsDisposed.get()) {
+      return;
+    }
     myScreenView.getScaledContentSize(myScreenViewSize);
     // Calculate the portion of the screen view that it's visible
     myScreenViewVisibleRect.setBounds(myScreenView.getX(), myScreenView.getY(),
@@ -182,8 +188,8 @@ public class ScreenViewLayer extends Layer {
     //noinspection FloatingPointEquality
     if (drawNewImg || currentScale != myLastScale || !myScreenViewVisibleRect.equals(myCachedScreenViewDisplayRect)) {
       if (myLastRenderResult != null) {
-        ImagePool.Image image = myLastRenderResult.getRenderedImage();
-        ImagePoolImageDisposer.runWithDisposeLock(image, theImage -> {
+        RecyclableImage image = myLastRenderResult.getRenderedImage();
+        RecyclableImageDisposer.runWithDisposeLock(image, theImage -> {
           if (theImage.isValid()) {
             int resultImageWidth = theImage.getWidth();
             int resultImageHeight = theImage.getHeight();
@@ -242,5 +248,6 @@ public class ScreenViewLayer extends Layer {
   public void dispose() {
     super.dispose();
     myLastRenderResult = null;
+    myIsDisposed.set(true);
   }
 }

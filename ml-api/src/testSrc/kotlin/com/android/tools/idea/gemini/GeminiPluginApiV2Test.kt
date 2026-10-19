@@ -20,15 +20,16 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.testFramework.registerExtension
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 
 private class FakeGeminiPluginApiV2 : GeminiPluginApiV2 {
-  var available = true
+  override val availability = MutableStateFlow(true)
 
-  override fun isAvailable(): Boolean = available
+  var available: Boolean by availability::value
 
   var editorQuery: String? = null
   var toolWindowQuery: String? = null

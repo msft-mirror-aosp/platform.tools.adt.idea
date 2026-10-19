@@ -16,29 +16,30 @@
 package com.android.tools.idea.devicemanagerv2.details
 
 import com.android.sdklib.deviceprovisioner.DeviceHandle
-import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.SetChange
 import com.android.sdklib.deviceprovisioner.trackSetChanges
 import com.android.tools.adtui.categorytable.RowKey
 import com.android.tools.adtui.stdui.CommonButton
-import com.android.tools.idea.devicemanagerv2.DeviceManagerBundle
 import com.android.tools.idea.devicemanagerv2.PairingStatus
-import com.android.tools.idea.wearpairing.WearDevicePairingWizard
 import com.android.tools.idea.wearpairing.WearPairingManager
 import com.intellij.icons.AllIcons
-import com.intellij.openapi.project.Project
+import com.intellij.ide.DataManager
+import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.ui.MessageDialogBuilder
+import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.components.JBScrollPane
 import java.awt.BorderLayout
 import javax.swing.Box
 import javax.swing.JPanel
 import kotlin.coroutines.CoroutineContext
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -61,17 +62,37 @@ private suspend fun trackDevices(devicesFlow: Flow<List<DeviceHandle>>, tracker:
 
 internal class PairedDevicesPanel
 private constructor(
-  private val pairingManager: PairingManager,
+  private val pairingDelegates: List<PairingDelegate>,
   scope: CoroutineScope,
   private val uiContext: CoroutineContext,
   val handle: DeviceHandle,
-  private val subjectWearPairingId: String,
 ) : JPanel() {
 
   val addButton =
-    CommonButton(AllIcons.General.Add).also {
-      it.toolTipText = "Add"
-      it.addActionListener { pairingManager.showPairDeviceWizard(subjectWearPairingId) }
+    CommonButton(AllIcons.General.Add).also { button ->
+      button.toolTipText = "Add"
+      button.addActionListener {
+        val supportedDelegates = pairingDelegates.filter { it.isPairDeviceWizardSupported(handle) }
+        when (supportedDelegates.size) {
+          0 -> {}
+          1 -> scope.launch(uiContext) { supportedDelegates.single().showPairDeviceWizard(this@PairedDevicesPanel, handle) }
+          else -> {
+            val actions =
+              DefaultActionGroup(
+                supportedDelegates.map { delegate ->
+                  object : DumbAwareAction(delegate.addMenuItemTitle) {
+                    override fun actionPerformed(e: AnActionEvent) {
+                      scope.launch(uiContext) { delegate.showPairDeviceWizard(this@PairedDevicesPanel, handle) }
+                    }
+                  }
+                }
+              )
+            JBPopupFactory.getInstance()
+              .createActionGroupPopup(null, actions, DataManager.getInstance().getDataContext(button), false, null, 10)
+              .showUnderneathOf(button)
+          }
+        }
+      }
     }
 
   val removeButton =
@@ -96,100 +117,144 @@ private constructor(
     )
     add(scrollPane)
 
-    scope.launch(uiContext) { pairingsTable.selection.asFlow().collect { removeButton.isEnabled = it.isNotEmpty() } }
+    scope.launch(uiContext) {
+      handle.stateFlow.collect {
+        val supportedCount = pairingDelegates.count { delegate -> delegate.isPairDeviceWizardSupported(handle) }
+        addButton.isEnabled = supportedCount > 0
+        updateRemoveButtonState()
+      }
+    }
+
+    scope.launch(uiContext) {
+      pairingsTable.selection.asFlow().collectLatest {
+        val pairedDevice = selectedPairedDevice
+        if (pairedDevice != null) {
+          pairedDevice.stateFlow.collect { updateRemoveButtonState() }
+        } else {
+          updateRemoveButtonState()
+        }
+      }
+    }
+  }
+
+  val selectedPairedDevice: DeviceHandle?
+    get() {
+      val selected = pairingsTable.selection.selectedKeys().firstOrNull() ?: return null
+      // We don't enable grouping so this will always be a ValueRowKey; removeRowByKey does not
+      // clear selection, so verify the handle is still present in pairingsTable.values.
+      val device = (selected as RowKey.ValueRowKey).key as DeviceHandle
+      return device.takeIf { pairingsTable.values.any { row -> row.handle == it } }
+    }
+
+  private fun getDelegateForPairedDevice(pairedDevice: DeviceHandle): PairingDelegate? = pairingDelegates.find {
+    it.isDelegateForDevice(handle, pairedDevice)
   }
 
   fun updatePairedDeviceData(pairedDeviceData: PairedDeviceData) {
-    when (pairedDeviceData.state) {
-      WearPairingManager.PairingState.UNKNOWN -> pairingsTable.removeRowByKey(pairedDeviceData.handle)
-      else -> pairingsTable.addOrUpdateRow(pairedDeviceData)
+    when (pairedDeviceData.pairingState) {
+      WearPairingManager.PairingState.UNKNOWN -> removeDevice(pairedDeviceData.handle)
+      else -> {
+        pairingsTable.addOrUpdateRow(pairedDeviceData)
+        syncSelectionWithRows()
+      }
     }
   }
 
   fun removeDevice(handle: DeviceHandle) {
     pairingsTable.removeRowByKey(handle)
+    syncSelectionWithRows()
+  }
+
+  private fun syncSelectionWithRows() {
+    if (selectedPairedDevice == null) {
+      val firstRow = pairingsTable.values.firstOrNull()
+      if (firstRow == null) {
+        pairingsTable.selection.clear()
+      } else {
+        pairingsTable.selection.selectRow(RowKey.ValueRowKey(firstRow.handle))
+      }
+    }
+  }
+
+  private fun updateRemoveButtonState() {
+    val pairedDevice = selectedPairedDevice
+    val presentation = pairedDevice?.let { device -> getDelegateForPairedDevice(device)?.getRemovePresentation(handle, device) }
+    removeButton.isEnabled = presentation?.isEnabled == true
   }
 
   fun removeSelectedPairing() {
-    val selected = pairingsTable.selection.selectedKeys().firstOrNull() ?: return
-    // We don't enable grouping so this will always be a ValueRowKey
-    val selectedHandle = ((selected as RowKey.ValueRowKey).key as DeviceHandle)
-    val (phoneHandle, wearHandle) =
-      when (selectedHandle.state.properties.deviceType) {
-        DeviceType.WEAR -> Pair(handle, selectedHandle)
-        else -> Pair(selectedHandle, handle)
-      }
-    val phoneName = phoneHandle.state.properties.title
-    val wearName = wearHandle.state.properties.title
+    val pairedDevice = selectedPairedDevice ?: return
+    val delegate = getDelegateForPairedDevice(pairedDevice) ?: return
+
+    val presentation = delegate.getRemovePresentation(handle, pairedDevice)
+    if (!presentation.isEnabled) return
 
     val disconnect =
-      MessageDialogBuilder.okCancel(
-          DeviceManagerBundle.message("pairedDevices.remove.title", wearName, phoneName),
-          DeviceManagerBundle.message("pairedDevices.remove.message", wearName, phoneName),
-        )
+      MessageDialogBuilder.okCancel(presentation.confirmationTitle, presentation.confirmationMessage)
         .asWarning()
         .yesText("Disconnect")
         .ask(this)
 
     if (disconnect) {
-      phoneHandle.scope.launch {
-        pairingManager.removeDevice(
-          phoneHandle.state.properties.wearPairingId ?: return@launch,
-          wearHandle.state.properties.wearPairingId ?: return@launch,
-        )
-      }
+      handle.scope.launch { delegate.removeDevice(this@PairedDevicesPanel, handle, pairedDevice) }
     }
   }
 
   /** Updates the PairedDevicesPanel based on the provided flows. */
-  private suspend fun trackPairedDevices(devicesFlow: Flow<List<DeviceHandle>>, pairedDevicesFlow: Flow<Map<String, List<PairingStatus>>>) {
+  private suspend fun trackPairedDevices(
+    devicesFlow: Flow<List<DeviceHandle>>,
+    combinedPairedDevicesFlow: Flow<Map<String, List<PairingStatus>>>,
+  ) {
     trackDevices(devicesFlow) { device ->
       try {
-        val pairingId = device.state.properties.wearPairingId
-        pairedDevicesFlow
-          .map { it[subjectWearPairingId]?.find { it.id == pairingId } }
+        combinedPairedDevicesFlow
+          .map { statusMap ->
+            val delegate = pairingDelegates.find { it.isDelegateForDevice(handle, device) }
+            val subjectId = delegate?.getPairingId(handle)
+            val targetId = delegate?.getPairingId(device)
+            if (subjectId != null && targetId != null) {
+              statusMap[subjectId]?.find { it.id == targetId }
+            } else null
+          }
           .distinctUntilChanged()
           .combine(device.stateFlow) { pairingStatus, deviceState ->
             PairedDeviceData.create(device, deviceState, pairingStatus?.state ?: WearPairingManager.PairingState.UNKNOWN)
           }
           .distinctUntilChanged()
           .collect { withContext(uiContext) { updatePairedDeviceData(it) } }
-      } catch (e: CancellationException) {
+      } finally {
         withContext(NonCancellable + uiContext) { removeDevice(device) }
       }
     }
   }
 
-  /** Interface for injecting dependencies to PairedDevicesPanel. */
-  interface PairingManager {
-    fun showPairDeviceWizard(pairingId: String)
-
-    suspend fun removeDevice(phonePairingId: String, wearPairingId: String)
-  }
-
-  class StudioPairingManager(val project: Project?) : PairingManager {
-    override fun showPairDeviceWizard(pairingId: String) {
-      WearDevicePairingWizard().show(project, pairingId)
-    }
-
-    override suspend fun removeDevice(phonePairingId: String, wearPairingId: String) {
-      WearPairingManager.getInstance().removePairedDevices(phonePairingId, wearPairingId, true)
-    }
-  }
-
   companion object {
     fun create(
-      pairingManager: PairingManager,
+      pairingDelegates: List<PairingDelegate>,
       scope: CoroutineScope,
       uiContext: CoroutineContext,
       handle: DeviceHandle,
       devicesFlow: Flow<List<DeviceHandle>>,
-      pairedDevicesFlow: Flow<Map<String, List<PairingStatus>>>,
     ): PairedDevicesPanel {
-      val subjectDevicePairingId = checkNotNull(handle.state.properties.wearPairingId)
+      val flows = pairingDelegates.map { it.pairedDevicesFlow(handle, devicesFlow) }
+      val combinedFlow: Flow<Map<String, List<PairingStatus>>> =
+        combine(flows) { maps ->
+          buildMap {
+            for (map in maps) {
+              for ((key, statusList) in map) {
+                val existing = get(key)
+                if (existing == null) {
+                  put(key, statusList)
+                } else {
+                  put(key, existing + statusList)
+                }
+              }
+            }
+          }
+        }
 
-      return PairedDevicesPanel(pairingManager, scope, uiContext, handle, subjectDevicePairingId).also {
-        scope.launch { it.trackPairedDevices(devicesFlow, pairedDevicesFlow) }
+      return PairedDevicesPanel(pairingDelegates, scope, uiContext, handle).also {
+        scope.launch { it.trackPairedDevices(devicesFlow, combinedFlow) }
       }
     }
   }

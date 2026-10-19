@@ -20,6 +20,8 @@ import com.google.common.collect.ImmutableMap
 import com.google.common.collect.ImmutableSet
 import com.google.common.io.ByteSource
 import com.google.common.io.MoreFiles
+import com.google.common.util.concurrent.Uninterruptibles
+import com.google.idea.blaze.base.async.executor.BlazeExecutor
 import com.google.idea.blaze.base.bazel.BuildSystem
 import com.google.idea.blaze.base.logging.utils.querysync.BuildDepsStatsScope
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
@@ -28,6 +30,7 @@ import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.base.sync.projectview.WorkspaceLanguageSettings
 import com.google.idea.blaze.base.sync.workspace.WorkspacePathResolver
 import com.google.idea.blaze.base.util.SaveUtil
+import com.google.idea.blaze.base.vcs.BlazeVcsHandlerProvider.BlazeVcsHandler
 import com.google.idea.blaze.common.Context
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.common.PrintOutput
@@ -37,8 +40,8 @@ import com.google.idea.blaze.exception.BuildException
 import com.google.idea.blaze.qsync.BlazeQueryParser
 import com.google.idea.blaze.qsync.ProjectBuilder
 import com.google.idea.blaze.qsync.ProjectStructureReader
+import com.google.idea.blaze.qsync.RefreshParameters
 import com.google.idea.blaze.qsync.deps.ArtifactTracker
-import com.google.idea.blaze.qsync.java.PackageReader
 import com.google.idea.blaze.qsync.project.BuildGraphData
 import com.google.idea.blaze.qsync.project.PostQuerySyncData
 import com.google.idea.blaze.qsync.project.ProjectDefinition
@@ -50,7 +53,7 @@ import com.intellij.openapi.project.Project
 import java.io.IOException
 import java.nio.file.Path
 import java.util.Optional
-import java.util.function.Supplier
+import java.util.concurrent.ExecutionException
 import kotlin.jvm.optionals.getOrNull
 
 /**
@@ -105,8 +108,8 @@ class QuerySyncProject(
   val handledRuleKinds: Set<String>,
   val protoRules: BuildGraphData.ProtoRules,
   private val projectStructureReader: ProjectStructureReader,
-  val packageReader: PackageReader,
-  val parallelPackageReader: PackageReader.ParallelReader,
+  val vcsHandler: BlazeVcsHandler?,
+  val bazelVersionProvider: BazelVersionHandler,
 ) : ReadonlyQuerySyncProject {
   override val projectData: QuerySyncProjectData
     get() {
@@ -126,11 +129,96 @@ class QuerySyncProject(
     return QueryCoreSyncResult(postQuerySyncData, graph)
   }
 
-  fun runQueryAndComputePostQuerySyncData(context: BlazeContext, lastQuery: PostQuerySyncData?): PostQuerySyncData {
-    val postQuerySyncData =
-      if (lastQuery == null) projectQuerier.fullQuery(projectDefinition, context)
-      else projectQuerier.update(projectDefinition, lastQuery, context)
+  fun getBazelVersion(context: BlazeContext): String? {
+    return try {
+      bazelVersionProvider.getBazelVersion(context).orElse(null)
+    } catch (e: BuildException) {
+      context.handleExceptionAsWarning("Could not get bazel version", e)
+      null
+    }
+  }
+
+  fun getVcsState(context: BlazeContext): VcsState? {
+    val stateFuture = vcsHandler?.getVcsState(context, BlazeExecutor.getInstance().executor) ?: return null
+    if (stateFuture.isEmpty()) {
+      return null
+    }
+    return try {
+      Uninterruptibles.getUninterruptibly(stateFuture.get())
+    } catch (e: ExecutionException) {
+      context.handleExceptionAsWarning("WARNING: Could not get VCS state, future updates may be suboptimal", e.cause)
+      null
+    }
+  }
+
+  fun runQueryAndComputePostQuerySyncData(
+    context: BlazeContext,
+    lastQuery: PostQuerySyncData?,
+    vcsState: VcsState?,
+    bazelVersion: String?,
+    projectStructureData: ProjectStructureData,
+    requestedPackages: Set<Path>,
+  ): PostQuerySyncData {
+    val refreshParameters =
+      RefreshParameters(
+        lastQuery ?: PostQuerySyncData.EMPTY,
+        projectDefinition,
+        projectStructureData,
+        requestedPackages = requestedPackages,
+        requireFullSync = { ctx -> requireFullSync(ctx, lastQuery, vcsState, bazelVersion) },
+      )
+    val postQuerySyncData = projectQuerier.update(refreshParameters, context)
     return postQuerySyncData
+  }
+
+  fun requireFullSync(context: Context<*>, lastQuery: PostQuerySyncData?, latestVcsState: VcsState?, latestBazelVersion: String?): Boolean {
+    val currentProject = lastQuery ?: PostQuerySyncData.EMPTY
+    val currentSnapshot = snapshotHolder.current.getOrNull()
+    val currentProjectDefinition = currentSnapshot?.projectDefinition ?: projectDefinition
+    val snapshotVcsState = currentSnapshot?.vcsState
+    val snapshotBazelVersion = currentSnapshot?.bazelVersion
+
+    if (!currentProject.querySummary().isCompatibleWithCurrentPluginVersion) {
+      context.output(PrintOutput.output("IDE has updated since last sync; performing full query"))
+      return true
+    }
+    if (currentProjectDefinition != projectDefinition) {
+      context.output(PrintOutput.output("Project definition has changed; performing full query"))
+      return true
+    }
+    if (snapshotVcsState == null) {
+      context.output(PrintOutput.output("No VCS state from last sync: performing full query"))
+      return true
+    }
+    if (latestVcsState == null) {
+      context.output(PrintOutput.output("VCS doesn't support delta updates: performing full query"))
+      return true
+    }
+    if (snapshotVcsState.workspaceId != latestVcsState.workspaceId) {
+      context.output(
+        PrintOutput.output(
+          "Workspace has changed %s -> %s: performing full query",
+          snapshotVcsState.workspaceId,
+          latestVcsState.workspaceId,
+        )
+      )
+      return true
+    }
+    if (snapshotVcsState.upstreamRevision != latestVcsState.upstreamRevision) {
+      context.output(
+        PrintOutput.output(
+          "Upstream revision has changed %s -> %s: performing full query",
+          snapshotVcsState.upstreamRevision,
+          latestVcsState.upstreamRevision,
+        )
+      )
+      return true
+    }
+    if (snapshotBazelVersion != latestBazelVersion) {
+      context.output(PrintOutput.output("Bazel version has changed %s -> %s", snapshotBazelVersion, latestBazelVersion))
+      return true
+    }
+    return false
   }
 
   fun computeProjectStructureData(context: BlazeContext, lastProjectStructureData: ProjectStructureData?): ProjectStructureData {
@@ -151,13 +239,13 @@ class QuerySyncProject(
   override fun getWorkingSet(context: BlazeContext): Set<Path> {
     SaveUtil.saveAllFiles()
     val vcsState: VcsState
-    val computed = projectQuerier.getVcsState(context)
-    if (computed.isPresent) {
-      vcsState = computed.get()
+    val computed = getVcsState(context)
+    if (computed != null) {
+      vcsState = computed
     } else {
       context.output(PrintOutput("Failed to compute working set. Falling back on sync data"))
       val snapshot = snapshotHolder.current.orElseThrow()
-      vcsState = snapshot.queryData.vcsState().orElseThrow(Supplier { BuildException("No VCS state, cannot calculate affected targets") })
+      vcsState = snapshot.vcsState ?: throw BuildException("No VCS state, cannot calculate affected targets")
     }
     return vcsState.modifiedFiles()
   }
@@ -273,7 +361,7 @@ class QuerySyncProject(
       return Optional.of<Boolean>(false)
     }
 
-    val snapshotPath = snapshotHolder.current.flatMap { it.queryData.vcsState() }.flatMap { it.workspaceSnapshotPath }
+    val snapshotPath = snapshotHolder.current.map { it.vcsState }.flatMap { it?.workspaceSnapshotPath }
 
     return snapshotPath.map { !it.resolve(workspaceRelative).toFile().exists() }
   }

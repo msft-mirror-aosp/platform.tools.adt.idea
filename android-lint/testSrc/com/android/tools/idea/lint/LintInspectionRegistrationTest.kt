@@ -112,7 +112,7 @@ class LintInspectionRegistrationTest : AndroidTestCase() {
         val envRoot = System.getenv("LINT_UPDATE_IN_PLACE_ROOT")
         if (envRoot != null && envRoot.isNotEmpty()) {
           val result = File(envRoot)
-          val workspaceFile = result.resolve("WORKSPACE")
+          val workspaceFile = result.resolve("MODULE.bazel")
           if (!workspaceFile.exists()) {
             throw IllegalStateException("LINT_UPDATE_IN_PLACE_ROOT is set, but cannot find ${workspaceFile.path}")
           }

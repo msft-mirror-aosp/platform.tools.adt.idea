@@ -1,2 +1,0 @@
-Change the background color from light yellow to RGB (172, 255, 153) (light green).
-com.ibm.google.onboardingandauthentication.ui.screen.PermissionScreenKt.PermissionScreenPreview

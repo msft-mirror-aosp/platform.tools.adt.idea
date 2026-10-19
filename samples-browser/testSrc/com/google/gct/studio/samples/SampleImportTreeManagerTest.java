@@ -53,19 +53,19 @@ public class SampleImportTreeManagerTest {
   @Test
   public void testFormatName_emptyFormat() {
     assertThat(SampleImportTreeManager.formatName("  ")).isEqualTo("Unnamed");
-    assertThat(SampleImportTreeManager.formatName("").equals("Unnamed"));
-    assertThat(SampleImportTreeManager.formatName(null).equals("Unnamed"));
+    assertThat(SampleImportTreeManager.formatName("")).isEqualTo("Unnamed");
+    assertThat(SampleImportTreeManager.formatName(null)).isEqualTo("Unnamed");
   }
 
   @Test
   public void testFormatName_format() {
-    assertThat(SampleImportTreeManager.formatName("GooseMoose").equals("Goose Moose"));
-    assertThat(SampleImportTreeManager.formatName("goosemoose").equals("goosemoose"));
-    assertThat(SampleImportTreeManager.formatName("GooseMoose-Juice").equals("Goose Moose - Juice"));
-    assertThat(SampleImportTreeManager.formatName("GooseMoose - Juice").equals("Goose Moose - Juice"));
-    assertThat(SampleImportTreeManager.formatName("Goose        Moose  - Juice         ").equals("Goose Moose - Juice"));
-    assertThat(SampleImportTreeManager.formatName("TV Input Framework (TIF)").equals("TV Input Framework (TIF)"));
-    assertThat(SampleImportTreeManager.formatName("(TIF)").equals("(TIF)"));
+    assertThat(SampleImportTreeManager.formatName("GooseMoose")).isEqualTo("Goose Moose");
+    assertThat(SampleImportTreeManager.formatName("goosemoose")).isEqualTo("goosemoose");
+    assertThat(SampleImportTreeManager.formatName("GooseMoose-Juice")).isEqualTo("Goose Moose - Juice");
+    assertThat(SampleImportTreeManager.formatName("GooseMoose - Juice")).isEqualTo("Goose Moose - Juice");
+    assertThat(SampleImportTreeManager.formatName("Goose        Moose  - Juice         ")).isEqualTo("Goose Moose - Juice");
+    assertThat(SampleImportTreeManager.formatName("TV Input Framework (TIF)")).isEqualTo("TV Input Framework (TIF)");
+    assertThat(SampleImportTreeManager.formatName("(TIF)")).isEqualTo("(TIF)");
   }
 
   @Test

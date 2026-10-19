@@ -18,9 +18,13 @@ package com.android.tools.idea.preview.util.device.check
 import com.android.ide.common.util.enumValueOfOrNull
 import com.android.tools.idea.preview.util.device.check.ParameterRule.Companion.simpleParameterRule
 import com.android.tools.preview.config.Cutout
+import com.android.tools.preview.config.KeyboardKind
 import com.android.tools.preview.config.Navigation
 import com.android.tools.preview.config.Orientation
+import com.android.tools.preview.config.PointerPrecision
 import com.android.tools.preview.config.Preview.DeviceSpec
+import com.android.tools.preview.config.ViewingDistance
+import com.android.tools.preview.config.WindowPosture
 
 /**
  * Parameter rules for the language based DeviceSpec.
@@ -72,5 +76,59 @@ internal object LanguageParameterRule {
       defaultValue = DeviceSpec.DEFAULT_NAVIGATION.name,
     ) {
       enumValueOfOrNull<Navigation>(it) != null
+    }
+
+  val windowPosture =
+    simpleParameterRule(
+      name = DeviceSpec.PARAMETER_WINDOW_POSTURE,
+      expectedType = ExpectedWindowPosture,
+      defaultValue = WindowPosture.flat.name,
+    ) {
+      enumValueOfOrNull<WindowPosture>(it) != null
+    }
+
+  val pointerPrecision =
+    simpleParameterRule(
+      name = DeviceSpec.PARAMETER_POINTER_PRECISION,
+      expectedType = ExpectedPointerPrecision,
+      defaultValue = PointerPrecision.coarse.name,
+    ) {
+      enumValueOfOrNull<PointerPrecision>(it) != null
+    }
+
+  val keyboardKind =
+    simpleParameterRule(
+      name = DeviceSpec.PARAMETER_KEYBOARD_KIND,
+      expectedType = ExpectedKeyboardKind,
+      defaultValue = KeyboardKind.virtual.name,
+    ) {
+      enumValueOfOrNull<KeyboardKind>(it) != null
+    }
+
+  val hasCamera =
+    simpleParameterRule(
+      name = DeviceSpec.PARAMETER_HAS_CAMERA,
+      expectedType = ExpectedStrictBoolean,
+      defaultValue = true.toString(),
+    ) {
+      it.toBooleanStrictOrNull() != null
+    }
+
+  val hasMicrophone =
+    simpleParameterRule(
+      name = DeviceSpec.PARAMETER_HAS_MICROPHONE,
+      expectedType = ExpectedStrictBoolean,
+      defaultValue = true.toString(),
+    ) {
+      it.toBooleanStrictOrNull() != null
+    }
+
+  val viewingDistance =
+    simpleParameterRule(
+      name = DeviceSpec.PARAMETER_VIEWING_DISTANCE,
+      expectedType = ExpectedViewingDistance,
+      defaultValue = ViewingDistance.near.name,
+    ) {
+      enumValueOfOrNull<ViewingDistance>(it) != null
     }
 }

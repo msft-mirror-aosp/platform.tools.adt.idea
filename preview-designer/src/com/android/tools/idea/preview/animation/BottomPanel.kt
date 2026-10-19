@@ -36,6 +36,7 @@ import javax.swing.border.MatteBorder
 /** Bottom control panel. */
 class BottomPanel(rootComponent: JComponent) : JPanel(BorderLayout()) {
 
+  @Volatile
   var clockTimeMs: Int = 0
     set(value) {
       field = value

@@ -16,6 +16,7 @@
 package com.android.tools.idea.ui.resourcemanager.actions
 
 import com.android.SdkConstants.FN_ANDROID_MANIFEST_XML
+import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
 import com.android.tools.idea.res.addAndroidModule
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.loadNewFile
@@ -29,6 +30,7 @@ import com.android.tools.idea.ui.resourcemanager.model.designAssets
 import com.android.tools.idea.ui.resourcemanager.waitAndAssert
 import com.android.tools.idea.ui.resourcemanager.widget.SectionList
 import com.android.tools.idea.util.androidFacet
+import com.google.common.util.concurrent.Futures
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -43,7 +45,9 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.UIUtil
+import java.util.concurrent.Callable
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -154,7 +158,10 @@ class ShowFileInResourceManagerActionTest {
   private fun checkActionWithFile(resourceManagerAction: ShowFileInResourceManagerAction, virtualFile: VirtualFile?): AnActionEvent {
     val dataContext = createDataContext(virtualFile)
     val testActionEvent = TestActionEvent.createTestEvent(resourceManagerAction, dataContext)
-    runInEdtAndWait { resourceManagerAction.update(testActionEvent) }
+    // The action's update thread is BGT, so the platform calls update() on a background thread under a read action.
+    pumpEventsAndWaitForFuture(
+      Futures.submit(Callable { runReadAction { resourceManagerAction.update(testActionEvent) } }, AppExecutorUtil.getAppExecutorService())
+    )
     return testActionEvent
   }
 

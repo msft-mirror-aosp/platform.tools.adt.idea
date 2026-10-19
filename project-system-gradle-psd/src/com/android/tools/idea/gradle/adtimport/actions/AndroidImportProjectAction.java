@@ -129,7 +129,7 @@ public class AndroidImportProjectAction extends AnAction {
     VirtualFile toSelect = null;
     String lastLocation = PropertiesComponent.getInstance().getValue(LAST_IMPORTED_LOCATION);
     if (lastLocation != null) {
-      toSelect = LocalFileSystem.getInstance().refreshAndFindFileByPath(lastLocation);
+      toSelect = LocalFileSystem.getInstance().findFileByPath(lastLocation);
     }
     VirtualFile[] files = chooser.choose(project, toSelect);
     if (files.length == 0) {

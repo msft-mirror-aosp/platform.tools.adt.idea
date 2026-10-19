@@ -181,6 +181,6 @@ public class GradleBuildOutputParser implements BuildOutputParser {
     int endLine = position.getEndLine();
     int startColumn = position.getStartColumn();
     int endColumn = position.getEndColumn();
-    return new FilePosition(sourceFile, startLine, startColumn, endLine, endColumn);
+    return new FilePosition(sourceFile.toPath(), startLine, startColumn, endLine, endColumn);
   }
 }

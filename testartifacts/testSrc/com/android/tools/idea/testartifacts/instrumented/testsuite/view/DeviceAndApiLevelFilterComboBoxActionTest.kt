@@ -30,6 +30,9 @@ import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import icons.StudioIcons
+import javax.swing.JLabel
+import javax.swing.plaf.basic.BasicHTML
+import javax.swing.text.View
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -214,6 +217,70 @@ class DeviceAndApiLevelFilterComboBoxActionTest {
     assertThat(actionEvent.presentation.isVisible).isTrue()
   }
 
+  @Test
+  fun hostileDeviceNameIsRenderedAsLiteralTextInDropDown() {
+    val comboBox =
+      DeviceAndApiLevelFilterComboBoxAction().apply {
+        addDevice(AndroidDevice("id1", HOSTILE_NAME, "", AndroidDeviceType.LOCAL_PHYSICAL_DEVICE, AndroidVersion(28)))
+        addDevice(AndroidDevice("id2", "device2", "device2", AndroidDeviceType.LOCAL_EMULATOR, AndroidVersion(29)))
+      }
+
+    val rendered = comboBox.createActionGroup().flattenedActions().mapNotNull { it.templateText }.map(::renderedBySwing).toList()
+
+    assertThat(rendered).contains(HOSTILE_NAME)
+    assertThat(rendered).contains("All devices")
+  }
+
+  @Test
+  fun hostileDeviceNameIsRenderedAsLiteralTextOnComboBoxButton() {
+    val comboBox = DeviceAndApiLevelFilterComboBoxAction()
+    val hostileDevice = AndroidDevice("id1", HOSTILE_NAME, "", AndroidDeviceType.LOCAL_PHYSICAL_DEVICE, AndroidVersion(28))
+    comboBox.addDevice(hostileDevice)
+    comboBox.addDevice(AndroidDevice("id2", "device2", "device2", AndroidDeviceType.LOCAL_EMULATOR, AndroidVersion(29)))
+
+    // Selecting the hostile device (index 4: after "All devices", separator, "API level", separator)
+    // copies its name onto the combo box button.
+    comboBox.createActionGroup().getChildren(null)[4].actionPerformed(TestActionEvent.createTestEvent())
+
+    val actionEvent = TestActionEvent.createTestEvent()
+    comboBox.update(actionEvent)
+
+    assertThat(renderedBySwing(checkNotNull(actionEvent.presentation.text))).isEqualTo(HOSTILE_NAME)
+    assertThat(comboBox.filter(hostileDevice)).isTrue()
+  }
+
+  @Test
+  fun ordinaryDeviceNameIsDisplayedVerbatim() {
+    val name = "AT&T Pixel_8"
+    val comboBox = DeviceAndApiLevelFilterComboBoxAction()
+    comboBox.addDevice(AndroidDevice("id1", name, "", AndroidDeviceType.LOCAL_PHYSICAL_DEVICE, AndroidVersion(28)))
+    comboBox.addDevice(AndroidDevice("id2", "device2", "device2", AndroidDeviceType.LOCAL_EMULATOR, AndroidVersion(29)))
+
+    val deviceAction = comboBox.createActionGroup().getChildren(null)[4]
+    assertThat(deviceAction.templateText).isEqualTo(name)
+    deviceAction.actionPerformed(TestActionEvent.createTestEvent())
+
+    val actionEvent = TestActionEvent.createTestEvent()
+    comboBox.update(actionEvent)
+
+    // Neither HTML-escaped nor mnemonic-mangled: '&' and '_' must survive all the way to the screen.
+    assertThat(actionEvent.presentation.text).isEqualTo(name)
+    assertThat(renderedBySwing(name)).isEqualTo(name)
+  }
+
+  /**
+   * Returns the text a Swing label actually draws for [text].
+   *
+   * If Swing decides [text] is markup it builds a view hierarchy for it, because an `<img src=...>` in that hierarchy is fetched eagerly.
+   * Reading the text back out of that hierarchy therefore checks both halves of the fix at once: the payload must survive as literal
+   * characters, and it must not have become a tag.
+   */
+  private fun renderedBySwing(text: String): String {
+    val label = JLabel().apply { this.text = text }
+    val view = label.getClientProperty(BasicHTML.propertyKey) as? View ?: return text
+    return view.document.let { it.getText(0, it.length) }.trim()
+  }
+
   private fun ActionGroup.flattenedActions(): Sequence<AnAction> = sequence {
     getChildren(null).forEach {
       if (it is ActionGroup) {
@@ -222,5 +289,9 @@ class DeviceAndApiLevelFilterComboBoxActionTest {
         yield(it)
       }
     }
+  }
+
+  companion object {
+    private const val HOSTILE_NAME = """<html><img src="http://attacker.example/probe">"""
   }
 }

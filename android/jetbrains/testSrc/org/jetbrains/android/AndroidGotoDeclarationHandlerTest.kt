@@ -22,7 +22,6 @@ import com.android.resources.ResourceType
 import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.res.TransitiveAarRClass
 import com.android.tools.idea.res.addAarDependency
-import com.android.tools.idea.res.addBinaryAarDependency
 import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.goToElementAtCaret
 import com.android.tools.idea.testing.moveCaret
@@ -45,7 +44,6 @@ import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
 import org.jetbrains.android.augment.ResourceLightField
 import org.jetbrains.android.dom.AndroidValueResourcesTest
 import org.jetbrains.android.dom.manifest.Manifest
-import org.jetbrains.android.facet.AndroidFacet
 
 /**
  * Note: There are some additional tests for goto declaration in [AndroidValueResourcesTest] such as
@@ -1004,70 +1002,4 @@ class AndroidGotoDeclarationHandlerTestNonNamespaced : AndroidGotoDeclarationHan
       goToElementAtCaret()
       assertThat(elementAtCurrentOffset.parentOfType<XmlAttribute>()!!.text).isEqualTo("name=\"Theme.Panel\"")
     }
-}
-
-class AndroidGotoDeclarationHandlerTestNamespaced : AndroidGotoDeclarationHandlerTestBase() {
-  override fun setUp() {
-    super.setUp()
-    enableNamespacing(myFacet, "p1.p2")
-    enableNamespacing(AndroidFacet.getInstance(getAdditionalModuleByName("lib")!!)!!, "p1.p2.lib")
-  }
-
-  fun testGotoStringFromLib_ownRClass() {
-    // Add some lib string resources.
-    myFixture.copyFileToProject(basePath + "strings.xml", "additionalModules/lib/res/values/strings.xml")
-    myFixture.copyFileToProject(basePath + "layout.xml", "additionalModules/lib/res/layout/layout.xml")
-
-    val file =
-      myFixture.addFileToProject(
-        "src/p1/p2/LibString.java",
-        // language=java
-        """
-      package p1.p2;
-
-      public class LibString {
-          public void f() {
-              int id1 = R.string.hel${caret}lo;
-          }
-      }
-      """
-          .trimIndent(),
-      )
-
-    assertEmpty(getDeclarationsFrom(file.virtualFile))
-  }
-
-  override fun addAarDependencyToMyModule() {
-    addBinaryAarDependency(myModule)
-  }
-
-  override fun testGotoAarResourceFromCode_libRClass() {
-    addAarDependencyToMyModule()
-
-    val file =
-      myFixture.addFileToProject(
-        "src/p1/p2/AarString.java",
-        // language=java
-        """
-      package p1.p2;
-
-      public class AarString {
-          public void f() {
-              int id1 = com.example.mylibrary.R.string.my_aar_str${caret}ing;
-          }
-      }
-      """
-          .trimIndent(),
-      )
-
-    assertThat(describeElements(getDeclarationsFrom(file.virtualFile)).trimEnd())
-      .isEqualTo(
-        """
-        values/strings.xml:3:
-          <string name="my_aar_string">This string came from an AARv2</string>
-                       ~|~~~~~~~~~~~~~~
-        """
-          .trimIndent()
-      )
-  }
 }

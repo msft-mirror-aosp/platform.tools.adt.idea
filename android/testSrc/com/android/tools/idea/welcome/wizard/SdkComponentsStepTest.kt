@@ -73,7 +73,10 @@ class SdkComponentsStepTest {
       SdkComponentCategoryTreeNode(
         "Root",
         "Root node that is not supposed to appear in the UI",
-        listOf(FakeOptionalInstallableSdkComponent("Optional component"), FakeOptionalInstallableSdkComponent("Another optional component")),
+        listOf(
+          FakeOptionalInstallableSdkComponent("Optional component"),
+          FakeOptionalInstallableSdkComponent("Another optional component"),
+        ),
       )
     whenever(model.componentTree).thenReturn(root)
   }
@@ -103,7 +106,7 @@ class SdkComponentsStepTest {
   private fun runInWizardDialog(sdkComponentsStep: SdkComponentsStep, action: (fakeUi: FakeUi) -> Unit) {
     val modelWizardDialog = wrapInWizardDialog(sdkComponentsStep)
     createModalDialogAndInteractWithIt({ modelWizardDialog.show() }) {
-      val fakeUi = FakeUi(modelWizardDialog.contentPane, createFakeWindow = true)
+      val fakeUi = FakeUi(modelWizardDialog.contentPane, parentDisposable = projectRule.testRootDisposable)
       action(fakeUi)
     }
   }

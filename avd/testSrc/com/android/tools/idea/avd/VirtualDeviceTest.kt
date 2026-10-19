@@ -48,6 +48,7 @@ class VirtualDeviceTest {
       assertThat(ram).isEqualTo(EmulatedProperties.defaultRamSize(deviceProfile).toStorageCapacity())
       assertThat(vmHeapSize).isEqualTo(EmulatedProperties.defaultVmHeapSize(deviceProfile).toStorageCapacity())
       assertThat(internalStorage).isEqualTo(EmulatedProperties.defaultInternalStorage(deviceProfile).toStorageCapacity())
+      assertThat(expandedStorage).isEqualTo(None)
     }
   }
 

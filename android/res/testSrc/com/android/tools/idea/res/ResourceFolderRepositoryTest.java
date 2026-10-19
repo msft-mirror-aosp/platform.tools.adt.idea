@@ -220,6 +220,22 @@ public class ResourceFolderRepositoryTest {
     return Objects.requireNonNull(ProjectUtil.guessProjectDir(myProject));
   }
 
+  private @NotNull VirtualFile copyFile(@NotNull String sourcePath, @NotNull String targetPath) throws IOException {
+    // TODO: Make this work with copyFileToProject.
+    // copyFileToProject now creates an empty file first which triggers a childAdded event w/ an empty file (so no IDs are parsed).
+    // It then it copies the contents over and triggers a childrenChanged event but in a way that is unlike typing in content,
+    // so we don't re-parse the XML for IDs.
+    //VirtualFile file2 = myFixture.copyFileToProject(sourcePath, targetPath);
+
+    File fromFile = new File(myFixture.getTestDataPath(), sourcePath);
+    File targetFile = new File(myFixture.getTempDirFixture().getTempDirPath(), targetPath);
+    FileUtil.createParentDirs(targetFile);
+    FileUtil.copy(fromFile, targetFile);
+    VirtualFile file = VfsUtil.findFileByIoFile(targetFile, true);
+    assertThat(file).isNotNull();
+    return file;
+  }
+
   /**
    * Checks that two repositories contain the same data.
    */
@@ -343,7 +359,7 @@ public class ResourceFolderRepositoryTest {
 
   /** Tests handling of xliff markup. */
   @Test
-  public void xliff() {
+  public void xliff() throws Exception {
     VirtualFile file1 = myFixture.copyFileToProject(XLIFF, "res/values/myvalues.xml");
     PsiFile psiFile1 = PsiManager.getInstance(myProject).findFile(file1);
     assertThat(psiFile1).isNotNull();
@@ -352,13 +368,41 @@ public class ResourceFolderRepositoryTest {
     assertThat(
       (Object)repository.getResources(RES_AUTO, ResourceType.STRING, "share_with_application").get(0).getResourceValue().getValue()).isEqualTo(
       "Share your score of (1337) with (Bluetooth)!");
+    assertThat(
+      repository.getResources(RES_AUTO, ResourceType.STRING, "share_with_application").get(0).getResourceValue().getRenderingValue()).isEqualTo(
+      "\n        Share your score of %1$s\n        with %2$s!\n    ");
     assertThat(repository.getResources(RES_AUTO, ResourceType.STRING, "description_call").get(0).getResourceValue().getValue()).isEqualTo(
       "Call ${name}");
+    assertThat(repository.getResources(RES_AUTO, ResourceType.STRING, "description_call").get(0).getResourceValue().getRenderingValue()).isEqualTo(
+      "Call %1$s");
     assertThat(
       (Object)repository.getResources(RES_AUTO, ResourceType.STRING, "callDetailsDurationFormat").get(0).getResourceValue().getValue()).isEqualTo(
       "(42) mins (28) secs");
+    assertThat(
+      repository.getResources(RES_AUTO, ResourceType.STRING, "callDetailsDurationFormat").get(0).getResourceValue().getRenderingValue()).isEqualTo(
+      "%s mins %s secs");
     assertThat(repository.getResources(RES_AUTO, ResourceType.STRING, "other").get(0).getResourceValue().getValue()).isEqualTo(
       "${number_of_sessions} sessions removed from your schedule");
+    assertThat(repository.getResources(RES_AUTO, ResourceType.STRING, "other").get(0).getResourceValue().getRenderingValue()).isEqualTo(
+      "%1$s sessions removed from your schedule");
+
+    // Also verify PsiResourceItem handling of xliff and HTML tags after a PSI edit.
+    PsiDocumentManager documentManager = PsiDocumentManager.getInstance(myProject);
+    Document document = documentManager.getDocument(psiFile1);
+    assertThat(document).isNotNull();
+    WriteCommandAction.runWriteCommandAction(null, () -> {
+      int offset = document.getText().indexOf("</resources>");
+      document.insertString(offset, "<string name=\"styled_xliff\"><b><xliff:g id=\"minutes\" example=\"1\">%1$02d</xliff:g></b></string>\n");
+      documentManager.commitDocument(document);
+    });
+    waitForUpdates(repository);
+    assertThat(
+      repository.getResources(RES_AUTO, ResourceType.STRING, "share_with_application").get(0).getResourceValue().getRenderingValue()).isEqualTo(
+      "\n        Share your score of %1$s\n        with %2$s!\n    ");
+    ResourceItem styledItem = getOnlyItem(repository, ResourceType.STRING, "styled_xliff");
+    assertThat(styledItem).isInstanceOf(PsiResourceItem.class);
+    assertThat(styledItem.getResourceValue().getValue()).isEqualTo("(1)");
+    assertThat(styledItem.getResourceValue().getRenderingValue()).isEqualTo("<b>%1$02d</b>");
   }
 
   @Test
@@ -481,18 +525,7 @@ public class ResourceFolderRepositoryTest {
     // Try adding and then deleting a drawable file with IDs too.
     generation = repository.getModificationCount();
 
-    // TODO: Make this work with copyFileToProject.
-    // copyFileToProject now creates an empty file first which triggers a childAdded event w/ an empty file (so no IDs are parsed).
-    // It then it copies the contents over and triggers a childrenChanged event but in a way that is unlike typing in content,
-    // so we don't re-parse the XML for IDs.
-    //VirtualFile file2 = myFixture.copyFileToProject(DRAWABLE_ID_SCAN, "res/drawable-v21/drawable_with_ids.xml");
-    File fromFile = new File(myFixture.getTestDataPath(), DRAWABLE_ID_SCAN);
-    assertThat(fromFile.exists()).isTrue();
-    File targetFile = new File(myFixture.getTempDirFixture().getTempDirPath(), "res/drawable-v21/drawable_with_ids.xml");
-    assertThat(targetFile.exists()).isFalse();
-    FileUtil.copy(fromFile, targetFile);
-    VirtualFile file2 = VfsUtil.findFileByIoFile(targetFile, true);
-    assertThat(file2).isNotNull();
+    VirtualFile file2 = copyFile(DRAWABLE_ID_SCAN, "res/drawable-v21/drawable_with_ids.xml");
     waitForUpdates(repository);
 
     PsiFile psiFile2 = PsiManager.getInstance(myProject).findFile(file2);
@@ -4725,7 +4758,7 @@ public class ResourceFolderRepositoryTest {
 
   @Test
   public void getFolderConfigurations() throws Exception {
-    VirtualFile stringsFile = myFixture.copyFileToProject(STRINGS, "res/values/strings.xml");
+    VirtualFile stringsFile = copyFile(STRINGS, "res/values/strings.xml");
     assertThat(PsiManager.getInstance(myProject).findFile(stringsFile)).isNotNull();
 
     ResourceFolderRepository repository = createRegisteredRepository();
@@ -4735,9 +4768,9 @@ public class ResourceFolderRepositoryTest {
     assertThat(repository.getFolderConfigurations(ResourceType.LAYOUT)).isEmpty();
 
     // Add three new string files with locales, but only the non-empty files should be returned below.
-    VirtualFile stringsDeFile = myFixture.copyFileToProject(STRINGS, "res/values-de/strings.xml");
-    VirtualFile stringsFrFile = myFixture.copyFileToProject(STRINGS, "res/values-fr/strings.xml");
-    VirtualFile stringsEsFile = myFixture.copyFileToProject(VALUES_EMPTY, "res/values-es/strings.xml");
+    VirtualFile stringsDeFile = copyFile(STRINGS, "res/values-de/strings.xml");
+    VirtualFile stringsFrFile = copyFile(STRINGS, "res/values-fr/strings.xml");
+    VirtualFile stringsEsFile = copyFile(VALUES_EMPTY, "res/values-es/strings.xml");
     assertThat(PsiManager.getInstance(myProject).findFile(stringsDeFile)).isNotNull();
     assertThat(PsiManager.getInstance(myProject).findFile(stringsFrFile)).isNotNull();
     assertThat(PsiManager.getInstance(myProject).findFile(stringsEsFile)).isNotNull();
@@ -4745,26 +4778,26 @@ public class ResourceFolderRepositoryTest {
 
     assertThat(repository.getFolderConfigurations(ResourceType.STRING)).containsExactly(
       new FolderConfiguration(),
-      FolderConfiguration.getConfig(new String[] { "values", "de" }),
-      FolderConfiguration.getConfig(new String[] { "values", "fr" })
+      FolderConfiguration.getConfigForFolder("values-de"),
+      FolderConfiguration.getConfigForFolder("values-fr")
     );
     assertThat(repository.getFolderConfigurations(ResourceType.LAYOUT)).isEmpty();
 
     // Add two layout files. This should affect the folders returned for layouts, but not strings.
-    VirtualFile layoutFile = myFixture.copyFileToProject(LAYOUT1, "res/layout/layout1.xml");
-    VirtualFile layoutFileFr = myFixture.copyFileToProject(LAYOUT1, "res/layout-fr/layout1.xml");
+    VirtualFile layoutFile = copyFile(LAYOUT1, "res/layout/layout1.xml");
+    VirtualFile layoutFileFr = copyFile(LAYOUT1, "res/layout-fr/layout1.xml");
     assertThat(PsiManager.getInstance(myProject).findFile(layoutFile)).isNotNull();
     assertThat(PsiManager.getInstance(myProject).findFile(layoutFileFr)).isNotNull();
     commitAndWaitForUpdates(repository);
 
     assertThat(repository.getFolderConfigurations(ResourceType.STRING)).containsExactly(
       new FolderConfiguration(),
-      FolderConfiguration.getConfig(new String[] { "values", "de" }),
-      FolderConfiguration.getConfig(new String[] { "values", "fr" })
+      FolderConfiguration.getConfigForFolder("values-de"),
+      FolderConfiguration.getConfigForFolder("values-fr")
     );
     assertThat(repository.getFolderConfigurations(ResourceType.LAYOUT)).containsExactly(
       new FolderConfiguration(),
-      FolderConfiguration.getConfig(new String[] { "values", "fr" })
+      FolderConfiguration.getConfigForFolder("layout-fr")
     );
   }
 

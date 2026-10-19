@@ -67,7 +67,6 @@ import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
 import org.jetbrains.kotlin.config.IKotlinFacetSettings
 import org.jetbrains.kotlin.config.KotlinFacetSettings
 import org.jetbrains.kotlin.config.KotlinModuleKind
-import org.jetbrains.kotlin.idea.base.plugin.KotlinPluginModeProvider.Companion.isK2Mode
 import org.jetbrains.kotlin.idea.facet.KotlinFacetType
 import org.jetbrains.kotlin.idea.fir.extensions.KotlinK2BundledCompilerPlugins
 import org.jetbrains.kotlin.idea.serialization.KotlinFacetSettingsWorkspaceModel
@@ -496,7 +495,7 @@ private fun updatePluginOptions(
     parseCommandLineArguments(kotlinCompilerFlags, commonArguments)
   }
 
-  if (isK2Mode() && !qsyncDisableCompose.value) {
+  if (!qsyncDisableCompose.value) {
     // Register the bundled directly, as KtCompilerPluginsProviderIdeImpl consistently replaces
     // user's plugin class path with it.
     // Note: This implementation may need updating if the Kotlin plugin alters its provider

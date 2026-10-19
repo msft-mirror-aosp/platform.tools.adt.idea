@@ -15,6 +15,9 @@
  */
 package com.android.tools.profilers.taskbased.tabs.task.leakcanary
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
@@ -29,6 +32,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import androidx.compose.ui.test.withKeyDown
+import androidx.compose.ui.unit.dp
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
@@ -43,6 +47,8 @@ import com.android.tools.profilers.leakcanary.LeakCanaryModel
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import com.android.tools.profilers.taskbased.tabs.task.leakcanary.leakdetails.copyLeakToClipboard
 import com.google.common.truth.Truth
+import com.intellij.testFramework.ApplicationRule
+import kotlinx.coroutines.Dispatchers
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -50,6 +56,8 @@ import org.junit.Test
 import org.mockito.kotlin.mock
 
 class LeakCanaryScreenTest : WithFakeTimer {
+  @get:org.junit.Rule val applicationRule = ApplicationRule()
+
   override val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
 
@@ -63,9 +71,9 @@ class LeakCanaryScreenTest : WithFakeTimer {
 
   @Before
   fun setup() {
-    ideProfilerServices = FakeIdeProfilerServices()
+    ideProfilerServices = FakeIdeProfilerServices().apply { enableLeakCanaryOccurrences(true) }
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
-    leakCanaryModel = LeakCanaryModel(profilers)
+    leakCanaryModel = LeakCanaryModel(profilers, null, Dispatchers.Unconfined)
   }
 
   @After
@@ -484,5 +492,24 @@ class LeakCanaryScreenTest : WithFakeTimer {
 
     // Verify that our fake clipboard function was called with the correct text
     Truth.assertThat(capturedClipboardText).isEqualTo(selectedLeak.toString())
+  }
+
+  @Test
+  fun `test leak canary screen renders correctly in narrow vertical layout`() {
+    val analysis = getMultipleLeaksAnalysis()
+    Truth.assertThat(analysis).isNotNull()
+    leakCanaryModel.addLeaks((analysis as AnalysisSuccess).leaks)
+    leakCanaryModel.onLeakSelection(leakCanaryModel.leaks.value[0])
+
+    composeTestRule.setContent {
+      Box(modifier = Modifier.size(width = 500.dp, height = 800.dp)) {
+        LeakCanaryScreen(leakCanaryModel = leakCanaryModel, ideProfilerComponents = mock())
+      }
+    }
+
+    composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_LEAK_HEADER_TEXT).isDisplayed()
+    composeTestRule.onAllNodesWithTag("leakListRow", useUnmergedTree = true).assertCountEquals(2)
+    composeTestRule.onNodeWithTag("dalvik.system.PathClassLoader").isDisplayed()
+    composeTestRule.onNodeWithTag("com.amaze.filemanager.ui.fragments.TabFragment").isDisplayed()
   }
 }

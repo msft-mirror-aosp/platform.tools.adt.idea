@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.appinspection.ide.analytics
 
-import com.android.ide.common.util.isMdnsAutoConnectTls
-import com.android.ide.common.util.isMdnsAutoConnectUnencrypted
 import com.android.sdklib.AndroidVersion
+import com.android.tools.analytics.isMdnsAutoConnectTls
+import com.android.tools.analytics.isMdnsAutoConnectUnencrypted
 import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
 import com.android.tools.idea.stats.AnonymizerUtil
 import com.google.wireless.android.sdk.stats.DeviceInfo

@@ -25,7 +25,6 @@ import com.android.tools.idea.compose.preview.animation.validation.IntValidation
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.preview.animation.AnimationUnit
 import com.intellij.ui.ColorUtil
-import java.awt.Color
 import java.lang.reflect.Method
 
 /** Compose units represented as multi-dimensional properties. */
@@ -62,8 +61,9 @@ object ComposeUnit {
 
     abstract fun create(property: Any): ComposeUnit<A>
 
-    open fun createProperties(prefix: String): List<AnimatedPropertyItem> =
-      components.mapIndexed { index, component -> AnimatedPropertyItem(componentNames[index], "$component", { EDITOR_NO_ERROR }, "Any") }
+    open fun createProperties(prefix: String): List<AnimatedPropertyItem> = components.mapIndexed { index, component ->
+      AnimatedPropertyItem(componentNames[index], "$component", { EDITOR_NO_ERROR }, "Any")
+    }
   }
 
   /** Parses and creates a [AnimationUnit.Unit] */

@@ -21,6 +21,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.idea.bazel.java.run.producers.BlazeJUnitTestFilterFlags.JUnitVersion;
 import com.google.idea.bazel.java.run.producers.JUnitParameterizedClassHeuristic.ParameterizedTestInfo;
 import com.google.idea.blaze.base.BlazeTestCase;
+import com.google.idea.blaze.base.run.producers.TestFilterSyntax;
+import com.google.idea.blaze.base.run.producers.TestSelector;
 import com.google.idea.common.experiments.ExperimentService;
 import com.google.idea.common.experiments.MockExperimentService;
 import org.jetbrains.annotations.NotNull;
@@ -150,5 +152,68 @@ public class BlazeJUnitTestFilterFlagsTest extends BlazeTestCase {
                 ImmutableList.of("testMethod1", "testMethod2"),
                 parameterizedTestInfo))
         .isEqualTo("com.google.idea.ClassName\\[MY_SUFFIX\\]#(testMethod1|testMethod2)$");
+  }
+
+  @Test
+  public void testFilterForSelectors_jUnit4ClassAndMethod_acceptsBracketAndParenthesisSuffixes() {
+    String classFilter =
+        BlazeJUnitTestFilterFlags.testFilterForSelectors(
+            ImmutableList.of(
+                new TestSelector(
+                    "com.google.idea.ClassName", null, null, TestFilterSyntax.JUNIT_4)));
+    assertThat(classFilter).isEqualTo("com.google.idea.ClassName(\\[.*\\])?(\\(.*\\))?#");
+
+    String methodFilter =
+        BlazeJUnitTestFilterFlags.testFilterForSelectors(
+            ImmutableList.of(
+                new TestSelector(
+                    "com.google.idea.ClassName", "testMethod1", null, TestFilterSyntax.JUNIT_4)));
+    assertThat(methodFilter)
+        .isEqualTo(
+            "com.google.idea.ClassName(\\[.*\\])?(\\(.*\\))?#testMethod1(\\[.*\\])?(\\(.*\\))?$");
+    assertThat("com.google.idea.ClassName#testMethod1").matches(methodFilter);
+    assertThat("com.google.idea.ClassName#testMethod1[param]").matches(methodFilter);
+    assertThat("com.google.idea.ClassName#testMethod1(param)").matches(methodFilter);
+    assertThat("com.google.idea.ClassName[classParam]#testMethod1[param]").matches(methodFilter);
+    assertThat("com.google.idea.ClassName(classParam)#testMethod1(param)").matches(methodFilter);
+    assertThat("com.google.idea.ClassName#testMethod1Other").doesNotMatch(methodFilter);
+  }
+
+  @Test
+  public void testFilterForSelectors_jUnit4ParameterizedMethod_usesParameterFilterRegex() {
+    String singleParamFilter =
+        BlazeJUnitTestFilterFlags.testFilterForSelectors(
+            ImmutableList.of(
+                new TestSelector(
+                    "com.google.idea.ClassName",
+                    "testMethod1",
+                    "\\[param1\\]",
+                    TestFilterSyntax.JUNIT_4)));
+    assertThat(singleParamFilter)
+        .isEqualTo("com.google.idea.ClassName(\\[.*\\])?(\\(.*\\))?#testMethod1\\[param1\\]$");
+    assertThat("com.google.idea.ClassName#testMethod1[param1]").matches(singleParamFilter);
+    assertThat("com.google.idea.ClassName[classParam]#testMethod1[param1]")
+        .matches(singleParamFilter);
+    assertThat("com.google.idea.ClassName#testMethod1[param2]").doesNotMatch(singleParamFilter);
+
+    String multiParamFilter =
+        BlazeJUnitTestFilterFlags.testFilterForSelectors(
+            ImmutableList.of(
+                new TestSelector(
+                    "com.google.idea.ClassName",
+                    "testMethod1",
+                    "\\[param2\\]",
+                    TestFilterSyntax.JUNIT_4),
+                new TestSelector(
+                    "com.google.idea.ClassName",
+                    "testMethod1",
+                    "\\[param1\\]",
+                    TestFilterSyntax.JUNIT_4)));
+    assertThat(multiParamFilter)
+        .isEqualTo(
+            "com.google.idea.ClassName(\\[.*\\])?(\\(.*\\))?#(testMethod1\\[param1\\]|testMethod1\\[param2\\])$");
+    assertThat("com.google.idea.ClassName#testMethod1[param1]").matches(multiParamFilter);
+    assertThat("com.google.idea.ClassName#testMethod1[param2]").matches(multiParamFilter);
+    assertThat("com.google.idea.ClassName#testMethod1[param3]").doesNotMatch(multiParamFilter);
   }
 }

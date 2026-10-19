@@ -26,7 +26,6 @@ import com.android.tools.profilers.cpu.FakeTracePreProcessor;
 import com.android.tools.profilers.cpu.TracePreProcessor;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfigurationLegacy;
-import com.android.tools.profilers.cpu.config.ArtSampledConfiguration;
 import com.android.tools.profilers.cpu.config.ArtSampledConfigurationLegacy;
 import com.android.tools.profilers.cpu.config.AtraceConfiguration;
 import com.android.tools.profilers.cpu.config.PerfettoNativeAllocationsConfiguration;
@@ -37,16 +36,19 @@ import com.android.tools.profilers.cpu.config.SimpleperfConfiguration;
 import com.android.tools.profilers.cpu.config.UnspecifiedConfiguration;
 import com.android.tools.profilers.perfetto.traceprocessor.TraceProcessorService;
 import com.android.tools.profilers.stacktrace.NativeFrameSymbolizer;
-import com.android.tools.profilers.taskbased.home.TaskHomeTabModel;
 import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.google.common.collect.ImmutableList;
+import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Executor;
@@ -72,6 +74,8 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   public static final String FAKE_NATIVE_ALLOCATIONS_NAME = "Native Allocations";
 
   public static final String FAKE_SYMBOL_DIR = "/fake/sym/dir/";
+
+  public static final String FAKE_BUNDLED_TRACE = "bundled trace";
 
   public static final ProfilingConfiguration ART_SAMPLED_CONFIG = new ArtSampledConfigurationLegacy(FAKE_ART_SAMPLED_NAME);
   public static final ProfilingConfiguration ART_INSTRUMENTED_CONFIG = new ArtInstrumentedConfigurationLegacy(FAKE_ART_INSTRUMENTED_NAME);
@@ -110,6 +114,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
    * Whether long trace files should be parsed.
    */
   private boolean myShouldProceedYesNoDialog = false;
+  private boolean myShouldProceedOkCancelDialog = true;
 
   /**
    * Whether the task-based UX should be visible.
@@ -128,6 +133,10 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
    */
   private boolean myLeakCanaryEnabled = true;
 
+  private boolean myLeakCanaryOccurrencesEnabled = false;
+
+  private boolean myUseTraceProcessorForHprofEnabled = true;
+
   private boolean mySystemTraceInEditorEnabled = false;
 
   private boolean myMethodTraceInEditorEnabled = false;
@@ -139,6 +148,12 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   private boolean myNativeAllocationsTraceInEditorEnabled = true;
 
   private boolean myJavaKotlinAllocationsLegacyTraceInEditorEnabled = true;
+
+  private boolean myLiveTelemetryInEditorEnabled = true;
+
+  private boolean myJavaKotlinAllocationsInEditorEnabled = true;
+
+  private boolean myLeakCanaryInEditorEnabled = true;
 
   public void setSystemTraceInEditorEnabled(boolean enabled) {
     mySystemTraceInEditorEnabled = enabled;
@@ -164,7 +179,24 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myJavaKotlinAllocationsLegacyTraceInEditorEnabled = enabled;
   }
 
+  public void setLiveTelemetryInEditorEnabled(boolean enabled) {
+    myLiveTelemetryInEditorEnabled = enabled;
+  }
+
+  public void setJavaKotlinAllocationsInEditorEnabled(boolean enabled) {
+    myJavaKotlinAllocationsInEditorEnabled = enabled;
+  }
+
+  public void setLeakCanaryInEditorEnabled(boolean enabled) {
+    myLeakCanaryInEditorEnabled = enabled;
+  }
+
   private boolean myProfilerHomeTabV2Enabled = true;
+  private boolean myDeobfuscationForNativeAllocationsEnabled = true;
+
+  public void enableDeobfuscationForNativeAllocations(boolean enabled) {
+    myDeobfuscationForNativeAllocationsEnabled = enabled;
+  }
 
   private String myLastLeakRawTrace;
   private Leak myLastLeak;
@@ -296,6 +328,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       }
 
       @Override
+      public boolean isDeobfuscationForNativeAllocationsEnabled() {
+        return myDeobfuscationForNativeAllocationsEnabled;
+      }
+
+      @Override
       public boolean isTestingModeEnabled() {
         return false;
       }
@@ -321,8 +358,18 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       }
 
       @Override
+      public boolean isLeakCanaryOccurrencesEnabled() {
+        return myLeakCanaryOccurrencesEnabled;
+      }
+
+      @Override
       public boolean isLeakCanaryStudioBotEnabled() {
         return myLeakCanaryStudioBotEnabled;
+      }
+
+      @Override
+      public boolean isUseTraceProcessorForHprofEnabled() {
+        return myUseTraceProcessorForHprofEnabled;
       }
 
       @Override
@@ -354,6 +401,21 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       public boolean isJavaKotlinAllocationsLegacyTraceInEditorEnabled() {
         return myJavaKotlinAllocationsLegacyTraceInEditorEnabled;
       }
+
+      @Override
+      public boolean isLiveTelemetryInEditorEnabled() {
+        return myLiveTelemetryInEditorEnabled;
+      }
+
+      @Override
+      public boolean isJavaKotlinAllocationsInEditorEnabled() {
+        return myJavaKotlinAllocationsInEditorEnabled;
+      }
+
+      @Override
+      public boolean isLeakCanaryInEditorEnabled() {
+        return myLeakCanaryInEditorEnabled;
+      }
     };
   }
 
@@ -376,7 +438,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   @Override
   public boolean openOkCancelDialog(@NotNull String message, @NotNull String title, @NotNull Consumer<Boolean> okCallback) {
-    return true;
+    return myShouldProceedOkCancelDialog;
   }
 
 
@@ -423,10 +485,14 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myShouldProceedYesNoDialog = shouldProceedYesNoDialog;
   }
 
+  public void setShouldProceedOkCancelDialog(boolean shouldProceedOkCancelDialog) {
+    myShouldProceedOkCancelDialog = shouldProceedOkCancelDialog;
+  }
+
   public void addCustomProfilingConfiguration(String name, TraceType type) {
     ProfilingConfiguration config;
     if (type == TraceType.ART) {
-      config = ArtSampledConfiguration.create(name, getFeatureConfig().isMethodTraceInEditorEnabled());
+      config = ArtInstrumentedConfiguration.create(name, getFeatureConfig().isMethodTraceInEditorEnabled());
     }
     else if (type == TraceType.SIMPLEPERF) {
       config = new SimpleperfConfiguration(name);
@@ -504,10 +570,21 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myNotification = notification;
   }
 
+  private List<String> myNativeSymbolsDirectories = Collections.singletonList(FAKE_SYMBOL_DIR);
+  private Map<String, String> myProguardMappings = Collections.emptyMap();
+
   @NotNull
   @Override
   public List<String> getNativeSymbolsDirectories() {
-    return Collections.singletonList(FAKE_SYMBOL_DIR);
+    return myNativeSymbolsDirectories;
+  }
+
+  public void setNativeSymbolsDirectories(@NotNull List<String> dirs) {
+    myNativeSymbolsDirectories = dirs;
+  }
+
+  public void setProguardMappings(@NotNull Map<String, String> mappings) {
+    myProguardMappings = mappings;
   }
 
   @NotNull
@@ -566,6 +643,10 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myLeakCanaryEnabled = enabled;
   }
 
+  public void enableLeakCanaryOccurrences(boolean enabled) {
+    myLeakCanaryOccurrencesEnabled = enabled;
+  }
+
   public void enableSystemTraceInEditor(boolean enabled) {
     mySystemTraceInEditorEnabled = enabled;
   }
@@ -580,6 +661,10 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   public void enableProfilerHomeTabV2(boolean enabled) {
     myProfilerHomeTabV2Enabled = enabled;
+  }
+
+  public void setUseTraceProcessorForHprofEnabled(boolean enabled) {
+    myUseTraceProcessorForHprofEnabled = enabled;
   }
 
   @Override
@@ -612,5 +697,91 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   @Override
   public kotlinx.coroutines.flow.Flow<String> fetchLeakInsight(@NotNull String rawTrace) {
     return kotlinx.coroutines.flow.FlowKt.emptyFlow();
+  }
+
+  private boolean myIsAiAvailable = true;
+  private boolean myShowAiOnboardingCalled = false;
+
+  public void setIsAiAvailable(boolean isAiAvailable) {
+    myIsAiAvailable = isAiAvailable;
+  }
+
+  @Override
+  public boolean isAiAvailable() {
+    return myIsAiAvailable;
+  }
+
+  @Override
+  public void showAiOnboarding() {
+    myShowAiOnboardingCalled = true;
+  }
+
+  public boolean isShowAiOnboardingCalled() {
+    return myShowAiOnboardingCalled;
+  }
+
+  private boolean myTraceSymbolizedAndDeobfuscated = false;
+  private boolean mySymbolizeAndDeobfuscateFails = false;
+  private boolean myIsAppDeployedByStudio = true;
+  @Nullable private String myLastRequestedProguardMappingDeviceSerial = null;
+  @Nullable private String myLastRequestedProguardMappingPackageName = null;
+  @NotNull private Map<String, String> myLastBundledProguardMaps = Collections.emptyMap();
+
+  public void setSymbolizeAndDeobfuscateFails(boolean fails) {
+    mySymbolizeAndDeobfuscateFails = fails;
+  }
+
+  public void setAppDeployedByStudio(boolean isAppDeployedByStudio) {
+    myIsAppDeployedByStudio = isAppDeployedByStudio;
+  }
+
+  @Nullable
+  public String getLastRequestedProguardMappingDeviceSerial() {
+    return myLastRequestedProguardMappingDeviceSerial;
+  }
+
+  @Nullable
+  public String getLastRequestedProguardMappingPackageName() {
+    return myLastRequestedProguardMappingPackageName;
+  }
+
+  @Nullable
+  @Override
+  public String getProguardMappingForApp(@NotNull String deviceSerial, @NotNull String packageName) {
+    myLastRequestedProguardMappingDeviceSerial = deviceSerial;
+    myLastRequestedProguardMappingPackageName = packageName;
+    if (!myIsAppDeployedByStudio || deviceSerial.isEmpty()) {
+      return null;
+    }
+    return myProguardMappings.get(packageName);
+  }
+
+  @NotNull
+  public Map<String, String> getLastBundledProguardMaps() {
+    return myLastBundledProguardMaps;
+  }
+
+  @Nullable
+  @Override
+  public File symbolizeAndDeobfuscateTrace(@NotNull File traceFile,
+                                          @NotNull List<String> symbolDirs,
+                                          @NotNull Map<String, String> proguardMaps) {
+    myTraceSymbolizedAndDeobfuscated = true;
+    myLastBundledProguardMaps = proguardMaps;
+    if (mySymbolizeAndDeobfuscateFails) {
+      return null;
+    }
+    try {
+      File bundledFile = FileUtil.createTempFile("bundled", ".heapprofd", true);
+      FileUtil.writeToFile(bundledFile, FAKE_BUNDLED_TRACE.getBytes(StandardCharsets.UTF_8));
+      return bundledFile;
+    }
+    catch (IOException e) {
+      return traceFile;
+    }
+  }
+
+  public boolean isTraceSymbolizedAndDeobfuscated() {
+    return myTraceSymbolizedAndDeobfuscated;
   }
 }

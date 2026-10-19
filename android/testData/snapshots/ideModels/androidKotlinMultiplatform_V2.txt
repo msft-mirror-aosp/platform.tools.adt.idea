@@ -893,14 +893,6 @@ MODULE                        : Kotlin_Multiplatform
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedTypeoneModeoneDebugAndroidTest : connectedTypeoneModeoneDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :androidLib:connectedTypeoneModeoneDebugAndroidTest
-                        connectedTypeoneModetwoDebugAndroidTest : connectedTypeoneModetwoDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :androidLib:connectedTypeoneModetwoDebugAndroidTest
-                        connectedTypetwoModeoneDebugAndroidTest : connectedTypetwoModeoneDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :androidLib:connectedTypetwoModeoneDebugAndroidTest
-                        connectedTypetwoModetwoDebugAndroidTest : connectedTypetwoModetwoDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :androidLib:connectedTypetwoModetwoDebugAndroidTest
                         testTypeoneModeoneDebugUnitTest         : testTypeoneModeoneDebugUnitTest (DefaultExternalTask)
                             qName                         : :androidLib:testTypeoneModeoneDebugUnitTest
                         testTypeoneModetwoDebugUnitTest         : testTypeoneModetwoDebugUnitTest (DefaultExternalTask)
@@ -926,8 +918,6 @@ MODULE                        : Kotlin_Multiplatform
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
             build-logic                   : :build-logic (DefaultExternalProject)
@@ -965,15 +955,11 @@ MODULE                        : Kotlin_Multiplatform
                             - additionalArtifacts         : <ROOT>/build-logic/lib-foo/build/libs/lib-foo-metadata.jar [-]
                         taskModel                     : DefaultGradleTaskModel
                             tasks
-                                connectedAndroidDeviceTest    : connectedAndroidDeviceTest (DefaultExternalTask)
-                                    qName                         : :lib-foo:connectedAndroidDeviceTest
                                 testAndroidHostTest           : testAndroidHostTest (DefaultExternalTask)
                                     qName                         : :lib-foo:testAndroidHostTest
                 sourceSetModel                : DefaultGradleSourceSetModel
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedAndroidDeviceTest    : connectedAndroidDeviceTest (DefaultExternalTask)
-                            qName                         : :lib-foo:connectedAndroidDeviceTest
                         testAndroidHostTest           : testAndroidHostTest (DefaultExternalTask)
                             qName                         : :lib-foo:testAndroidHostTest
             kmpFirstLib                   : :kmpFirstLib (DefaultExternalProject)
@@ -1000,8 +986,6 @@ MODULE                        : Kotlin_Multiplatform
                     - additionalArtifacts         : <ROOT>/kmpFirstLib/build/libs/kmpFirstLib-metadata.jar [-]
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedAndroidDeviceTest    : connectedAndroidDeviceTest (DefaultExternalTask)
-                            qName                         : :kmpFirstLib:connectedAndroidDeviceTest
                         testAndroidHostTest           : testAndroidHostTest (DefaultExternalTask)
                             qName                         : :kmpFirstLib:testAndroidHostTest
             kmpJvmOnly                    : :kmpJvmOnly (DefaultExternalProject)
@@ -1176,18 +1160,6 @@ MODULE                        : Kotlin_Multiplatform
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedAndroidDeviceTest    : connectedAndroidDeviceTest (DefaultExternalTask)
-                    qName                         : :kmpFirstLib:connectedAndroidDeviceTest
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
-                connectedTypeoneModeoneDebugAndroidTest : connectedTypeoneModeoneDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :androidLib:connectedTypeoneModeoneDebugAndroidTest
-                connectedTypeoneModetwoDebugAndroidTest : connectedTypeoneModetwoDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :androidLib:connectedTypeoneModetwoDebugAndroidTest
-                connectedTypetwoModeoneDebugAndroidTest : connectedTypetwoModeoneDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :androidLib:connectedTypetwoModeoneDebugAndroidTest
-                connectedTypetwoModetwoDebugAndroidTest : connectedTypetwoModetwoDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :androidLib:connectedTypetwoModetwoDebugAndroidTest
                 jvmTest                       : jvmTest (DefaultExternalTask)
                     qName                         : :kmpJvmOnly:jvmTest
                 testAndroidHostTest           : testAndroidHostTest (DefaultExternalTask)
@@ -1212,10 +1184,6 @@ MODULE                        : Kotlin_Multiplatform.androidLib
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedTypeoneModeoneDebugAndroidTest
-        - taskNames                   : connectedTypeoneModetwoDebugAndroidTest
-        - taskNames                   : connectedTypetwoModeoneDebugAndroidTest
-        - taskNames                   : connectedTypetwoModetwoDebugAndroidTest
         - taskNames                   : testTypeoneModeoneDebugUnitTest
         - taskNames                   : testTypeoneModetwoDebugUnitTest
         - taskNames                   : testTypetwoModeoneDebugUnitTest
@@ -1279,6 +1247,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : typeoneModeoneDebug
         testApplicationId             : com.example.androidlib.test
         buildType                     : debug
@@ -1325,6 +1294,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             BaselineProfileDirectories    : <ROOT>/androidLib/src/main/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/androidLib/src/main/keepRules [-]
             AarKeepRulesDirectories       : <ROOT>/androidLib/src/main/aarKeepRules [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : compileOnlyApi
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1341,6 +1317,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTest/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/androidTest/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/androidTest/aarKeepRules [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1356,6 +1339,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/test/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/test/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/test/aarKeepRules [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testCompileOnlyApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -1379,6 +1369,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             BaselineProfileDirectories    : <ROOT>/androidLib/src/debug/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/androidLib/src/debug/keepRules [-]
             AarKeepRulesDirectories       : <ROOT>/androidLib/src/debug/aarKeepRules [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugCompileOnlyApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1395,6 +1392,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestDebug/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/androidTestDebug/aarKeepRules [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -1411,6 +1415,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/testDebug/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/testDebug/aarKeepRules [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugCompileOnlyApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -1433,6 +1444,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             BaselineProfileDirectories    : <ROOT>/androidLib/src/release/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/androidLib/src/release/keepRules [-]
             AarKeepRulesDirectories       : <ROOT>/androidLib/src/release/aarKeepRules [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseCompileOnlyApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
     ProductFlavors
         ProductFlavor
             Name                          : typeone
@@ -1451,6 +1469,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             BaselineProfileDirectories    : <ROOT>/androidLib/src/typeone/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/androidLib/src/typeone/keepRules [-]
             AarKeepRulesDirectories       : <ROOT>/androidLib/src/typeone/aarKeepRules [-]
+            ApiConfigurationName          : typeoneApi
+            CompileOnlyConfigurationName  : typeoneCompileOnly
+            CompileOnlyApiConfigurationName         : typeoneCompileOnlyApi
+            ImplementationConfigurationName         : typeoneImplementation
+            RuntimeOnlyConfigurationName  : typeoneRuntimeOnly
+            AnnotationProcessorConfigurationName    : typeoneAnnotationProcessor
+            KaptConfigurationName         : kaptTypeone
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1467,6 +1492,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestTypeone/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestTypeone/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/androidTestTypeone/aarKeepRules [-]
+                    ApiConfigurationName          : androidTestTypeoneApi
+                    CompileOnlyConfigurationName  : androidTestTypeoneCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestTypeoneCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestTypeoneImplementation
+                    RuntimeOnlyConfigurationName  : androidTestTypeoneRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestTypeoneAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestTypeone
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1482,6 +1514,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testTypeone/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/testTypeone/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/testTypeone/aarKeepRules [-]
+                    ApiConfigurationName          : testTypeoneApi
+                    CompileOnlyConfigurationName  : testTypeoneCompileOnly
+                    CompileOnlyApiConfigurationName         : testTypeoneCompileOnlyApi
+                    ImplementationConfigurationName         : testTypeoneImplementation
+                    RuntimeOnlyConfigurationName  : testTypeoneRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testTypeoneAnnotationProcessor
+                    KaptConfigurationName         : kaptTestTypeone
         ProductFlavor
             Name                          : typetwo
             Dimension                     : type
@@ -1499,6 +1538,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             BaselineProfileDirectories    : <ROOT>/androidLib/src/typetwo/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/androidLib/src/typetwo/keepRules [-]
             AarKeepRulesDirectories       : <ROOT>/androidLib/src/typetwo/aarKeepRules [-]
+            ApiConfigurationName          : typetwoApi
+            CompileOnlyConfigurationName  : typetwoCompileOnly
+            CompileOnlyApiConfigurationName         : typetwoCompileOnlyApi
+            ImplementationConfigurationName         : typetwoImplementation
+            RuntimeOnlyConfigurationName  : typetwoRuntimeOnly
+            AnnotationProcessorConfigurationName    : typetwoAnnotationProcessor
+            KaptConfigurationName         : kaptTypetwo
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1515,6 +1561,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestTypetwo/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestTypetwo/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/androidTestTypetwo/aarKeepRules [-]
+                    ApiConfigurationName          : androidTestTypetwoApi
+                    CompileOnlyConfigurationName  : androidTestTypetwoCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestTypetwoCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestTypetwoImplementation
+                    RuntimeOnlyConfigurationName  : androidTestTypetwoRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestTypetwoAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestTypetwo
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1530,6 +1583,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testTypetwo/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/testTypetwo/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/testTypetwo/aarKeepRules [-]
+                    ApiConfigurationName          : testTypetwoApi
+                    CompileOnlyConfigurationName  : testTypetwoCompileOnly
+                    CompileOnlyApiConfigurationName         : testTypetwoCompileOnlyApi
+                    ImplementationConfigurationName         : testTypetwoImplementation
+                    RuntimeOnlyConfigurationName  : testTypetwoRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testTypetwoAnnotationProcessor
+                    KaptConfigurationName         : kaptTestTypetwo
         ProductFlavor
             Name                          : modeone
             Dimension                     : mode
@@ -1547,6 +1607,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             BaselineProfileDirectories    : <ROOT>/androidLib/src/modeone/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/androidLib/src/modeone/keepRules [-]
             AarKeepRulesDirectories       : <ROOT>/androidLib/src/modeone/aarKeepRules [-]
+            ApiConfigurationName          : modeoneApi
+            CompileOnlyConfigurationName  : modeoneCompileOnly
+            CompileOnlyApiConfigurationName         : modeoneCompileOnlyApi
+            ImplementationConfigurationName         : modeoneImplementation
+            RuntimeOnlyConfigurationName  : modeoneRuntimeOnly
+            AnnotationProcessorConfigurationName    : modeoneAnnotationProcessor
+            KaptConfigurationName         : kaptModeone
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1563,6 +1630,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestModeone/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestModeone/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/androidTestModeone/aarKeepRules [-]
+                    ApiConfigurationName          : androidTestModeoneApi
+                    CompileOnlyConfigurationName  : androidTestModeoneCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestModeoneCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestModeoneImplementation
+                    RuntimeOnlyConfigurationName  : androidTestModeoneRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestModeoneAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestModeone
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1578,6 +1652,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testModeone/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/testModeone/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/testModeone/aarKeepRules [-]
+                    ApiConfigurationName          : testModeoneApi
+                    CompileOnlyConfigurationName  : testModeoneCompileOnly
+                    CompileOnlyApiConfigurationName         : testModeoneCompileOnlyApi
+                    ImplementationConfigurationName         : testModeoneImplementation
+                    RuntimeOnlyConfigurationName  : testModeoneRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testModeoneAnnotationProcessor
+                    KaptConfigurationName         : kaptTestModeone
         ProductFlavor
             Name                          : modetwo
             Dimension                     : mode
@@ -1595,6 +1676,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
             BaselineProfileDirectories    : <ROOT>/androidLib/src/modetwo/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/androidLib/src/modetwo/keepRules [-]
             AarKeepRulesDirectories       : <ROOT>/androidLib/src/modetwo/aarKeepRules [-]
+            ApiConfigurationName          : modetwoApi
+            CompileOnlyConfigurationName  : modetwoCompileOnly
+            CompileOnlyApiConfigurationName         : modetwoCompileOnlyApi
+            ImplementationConfigurationName         : modetwoImplementation
+            RuntimeOnlyConfigurationName  : modetwoRuntimeOnly
+            AnnotationProcessorConfigurationName    : modetwoAnnotationProcessor
+            KaptConfigurationName         : kaptModetwo
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1611,6 +1699,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestModetwo/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestModetwo/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/androidTestModetwo/aarKeepRules [-]
+                    ApiConfigurationName          : androidTestModetwoApi
+                    CompileOnlyConfigurationName  : androidTestModetwoCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestModetwoCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestModetwoImplementation
+                    RuntimeOnlyConfigurationName  : androidTestModetwoRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestModetwoAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestModetwo
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1626,12 +1721,19 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testModetwo/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/testModetwo/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/testModetwo/aarKeepRules [-]
+                    ApiConfigurationName          : testModetwoApi
+                    CompileOnlyConfigurationName  : testModetwoCompileOnly
+                    CompileOnlyApiConfigurationName         : testModetwoCompileOnlyApi
+                    ImplementationConfigurationName         : testModetwoImplementation
+                    RuntimeOnlyConfigurationName  : testModetwoRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testModetwoAnnotationProcessor
+                    KaptConfigurationName         : kaptTestModetwo
     SigningConfigs
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : typeoneModeoneDebug
@@ -1684,6 +1786,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateTypeoneModetwoDebugSources
                 GeneratedSourceFolders        : <ROOT>/androidLib/build/generated/ap_generated_sources/typeoneModetwoDebug/out [-]
+                ClassesFolder                 : <ROOT>/androidLib/build/intermediates/built_in_kotlinc/typeoneModetwoDebug/compileTypeoneModetwoDebugKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/androidLib/build/intermediates/compile_r_class_jar/typeoneModetwoDebug/generateTypeoneModetwoDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/androidLib/build/intermediates/javac/typeoneModetwoDebug/compileTypeoneModetwoDebugJavaWithJavac/classes [-]
                 VariantSourceProvider
@@ -1699,6 +1802,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/typeoneModetwoDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/typeoneModetwoDebug/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/typeoneModetwoDebug/aarKeepRules [-]
+                    ApiConfigurationName          : typeoneModetwoDebugApi
+                    CompileOnlyConfigurationName  : typeoneModetwoDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : typeoneModetwoDebugCompileOnlyApi
+                    ImplementationConfigurationName         : typeoneModetwoDebugImplementation
+                    RuntimeOnlyConfigurationName  : typeoneModetwoDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : typeoneModetwoDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTypeoneModetwoDebug
                 MultiFlavorSourceProvider
                     Name                          : typeoneModetwo
                     Manifest                      : <ROOT>/androidLib/src/typeoneModetwo/AndroidManifest.xml [-]
@@ -1712,9 +1822,22 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/typeoneModetwo/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/typeoneModetwo/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/typeoneModetwo/aarKeepRules [-]
+                    ApiConfigurationName          : typeoneModetwoApi
+                    CompileOnlyConfigurationName  : typeoneModetwoCompileOnly
+                    CompileOnlyApiConfigurationName         : typeoneModetwoCompileOnlyApi
+                    ImplementationConfigurationName         : typeoneModetwoImplementation
+                    RuntimeOnlyConfigurationName  : typeoneModetwoRuntimeOnly
+                    AnnotationProcessorConfigurationName    : typeoneModetwoAnnotationProcessor
+                    KaptConfigurationName         : kaptTypeoneModetwo
                 Dependencies
                     compileClasspath
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                     runtimeClasspath
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                 IsSigned                      : false
                 CodeShrinker                  : null
                 BuildTasksAndOutputInformation
@@ -1731,6 +1854,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateTypeoneModetwoDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/androidLib/build/generated/ap_generated_sources/typeoneModetwoDebugAndroidTest/out [-]
+                ClassesFolder                 : <ROOT>/androidLib/build/intermediates/built_in_kotlinc/typeoneModetwoDebugAndroidTest/compileTypeoneModetwoDebugAndroidTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/androidLib/build/intermediates/compile_r_class_jar/typeoneModetwoDebugAndroidTest/generateTypeoneModetwoDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/androidLib/build/intermediates/javac/typeoneModetwoDebugAndroidTest/compileTypeoneModetwoDebugAndroidTestJavaWithJavac/classes [-]
                 VariantSourceProvider
@@ -1745,6 +1869,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     JniLibsDirectories            : <ROOT>/androidLib/src/androidTestTypeoneModetwoDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestTypeoneModetwoDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestTypeoneModetwoDebug/keepRules [-]
+                    ApiConfigurationName          : androidTestTypeoneModetwoDebugApi
+                    CompileOnlyConfigurationName  : androidTestTypeoneModetwoDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestTypeoneModetwoDebugCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestTypeoneModetwoDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestTypeoneModetwoDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestTypeoneModetwoDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestTypeoneModetwoDebug
                 MultiFlavorSourceProvider
                     Name                          : androidTestTypeoneModetwo
                     Manifest                      : <ROOT>/androidLib/src/androidTestTypeoneModetwo/AndroidManifest.xml [-]
@@ -1758,11 +1889,26 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/androidTestTypeoneModetwo/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/androidTestTypeoneModetwo/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/androidTestTypeoneModetwo/aarKeepRules [-]
+                    ApiConfigurationName          : androidTestTypeoneModetwoApi
+                    CompileOnlyConfigurationName  : androidTestTypeoneModetwoCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestTypeoneModetwoCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestTypeoneModetwoImplementation
+                    RuntimeOnlyConfigurationName  : androidTestTypeoneModetwoRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestTypeoneModetwoAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestTypeoneModetwo
                 Dependencies
                     compileClasspath
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         module                        : <ROOT>-:androidLib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         module                        : <ROOT>-:androidLib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 ApplicationId                 : com.example.androidlib.test
                 SigningConfigName             : debug
                 IsSigned                      : true
@@ -1786,6 +1932,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/androidLib/build/generated/ap_generated_sources/typeoneModetwoDebugUnitTest/out [-]
+                ClassesFolder                 : <ROOT>/androidLib/build/intermediates/built_in_kotlinc/typeoneModetwoDebugUnitTest/compileTypeoneModetwoDebugUnitTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/androidLib/build/intermediates/compile_and_runtime_r_class_jar/typeoneModetwoDebugUnitTest/generateTypeoneModetwoDebugUnitTestStubRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/androidLib/build/intermediates/javac/typeoneModetwoDebugUnitTest/compileTypeoneModetwoDebugUnitTestJavaWithJavac/classes [-]
                 VariantSourceProvider
@@ -1799,6 +1946,13 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     JniLibsDirectories            : <ROOT>/androidLib/src/testTypeoneModetwoDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testTypeoneModetwoDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/testTypeoneModetwoDebug/keepRules [-]
+                    ApiConfigurationName          : testTypeoneModetwoDebugApi
+                    CompileOnlyConfigurationName  : testTypeoneModetwoDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testTypeoneModetwoDebugCompileOnlyApi
+                    ImplementationConfigurationName         : testTypeoneModetwoDebugImplementation
+                    RuntimeOnlyConfigurationName  : testTypeoneModetwoDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testTypeoneModetwoDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestTypeoneModetwoDebug
                 MultiFlavorSourceProvider
                     Name                          : testTypeoneModetwo
                     Manifest                      : <ROOT>/androidLib/src/testTypeoneModetwo/AndroidManifest.xml [-]
@@ -1812,12 +1966,100 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     BaselineProfileDirectories    : <ROOT>/androidLib/src/testTypeoneModetwo/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/androidLib/src/testTypeoneModetwo/keepRules [-]
                     AarKeepRulesDirectories       : <ROOT>/androidLib/src/testTypeoneModetwo/aarKeepRules [-]
+                    ApiConfigurationName          : testTypeoneModetwoApi
+                    CompileOnlyConfigurationName  : testTypeoneModetwoCompileOnly
+                    CompileOnlyApiConfigurationName         : testTypeoneModetwoCompileOnlyApi
+                    ImplementationConfigurationName         : testTypeoneModetwoImplementation
+                    RuntimeOnlyConfigurationName  : testTypeoneModetwoRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testTypeoneModetwoAnnotationProcessor
+                    KaptConfigurationName         : kaptTestTypeoneModetwo
                 Dependencies
                     compileClasspath
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         module                        : <ROOT>-:androidLib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
+                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                        javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         module                        : <ROOT>-:androidLib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+    kotlinGradleModel             : KotlinGradleModelImpl
+        additionalVisibleSourceSets
+            typeoneModetwoDebug           : <empty>
+            typeoneModetwoDebugAndroidTest          : <empty>
+            typeoneModetwoDebugUnitTest   : <empty>
+        compilerArgumentsBySourceSet
+            typeoneModetwoDebug
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/androidLib/build/intermediates/built_in_kotlinc/typeoneModetwoDebug/compileTypeoneModetwoDebugKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : androidLib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            typeoneModetwoDebugAndroidTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/androidLib/build/intermediates/built_in_kotlinc/typeoneModetwoDebugAndroidTest/compileTypeoneModetwoDebugAndroidTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : androidLib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            typeoneModetwoDebugUnitTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/androidLib/build/intermediates/built_in_kotlinc/typeoneModetwoDebugUnitTest/compileTypeoneModetwoDebugUnitTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : androidLib
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+        gradleUserHome                : <GRADLE>
+        hasKotlinPlugin               : true
+        kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
+            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+        kotlinTarget                  : kotlin-android
+        kotlinTaskProperties
+            typeoneModetwoDebug           : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            typeoneModetwoDebugAndroidTest          : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            typeoneModetwoDebugUnitTest   : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
     externalProject               : :androidLib (DefaultExternalProject) (*seen*)
 MODULE                        : Kotlin_Multiplatform.androidLib.androidTest
 MODULE                        : Kotlin_Multiplatform.androidLib.main
@@ -1832,7 +2074,6 @@ MODULE                        : Kotlin_Multiplatform.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
         - taskNames                   : testDebugUnitTest
     CurrentVariantReportedVersions
         minSdk
@@ -1893,6 +2134,7 @@ MODULE                        : Kotlin_Multiplatform.app
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : debug
         applicationId                 : com.example.app
         testApplicationId             : com.example.app.test
@@ -1932,6 +2174,13 @@ MODULE                        : Kotlin_Multiplatform.app
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/app/src/main/keepRules [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : compileOnlyApi
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1947,6 +2196,13 @@ MODULE                        : Kotlin_Multiplatform.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/app/src/androidTest/keepRules [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -1961,6 +2217,13 @@ MODULE                        : Kotlin_Multiplatform.app
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/app/src/test/keepRules [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testCompileOnlyApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -1983,6 +2246,13 @@ MODULE                        : Kotlin_Multiplatform.app
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/app/src/debug/keepRules [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugCompileOnlyApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -1998,6 +2268,13 @@ MODULE                        : Kotlin_Multiplatform.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/app/src/androidTestDebug/keepRules [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -2013,6 +2290,13 @@ MODULE                        : Kotlin_Multiplatform.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/app/src/testDebug/keepRules [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugCompileOnlyApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             IsDebuggable                  : false
@@ -2034,12 +2318,19 @@ MODULE                        : Kotlin_Multiplatform.app
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/app/src/release/keepRules [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseCompileOnlyApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
     SigningConfigs
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : debug
@@ -2078,6 +2369,7 @@ MODULE                        : Kotlin_Multiplatform.app
                 IsTestArtifact                : false
                 IdeSetupTaskNames             : generateDebugSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debug/out [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes [-]
                 Dependencies
@@ -2090,6 +2382,7 @@ MODULE                        : Kotlin_Multiplatform.app
                             module                        : <ROOT>-:androidLib-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:androidLib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
@@ -2104,6 +2397,7 @@ MODULE                        : Kotlin_Multiplatform.app
                             module                        : <ROOT>-:kmpJvmOnly-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:androidLib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:kmpSecondLib-androidMain
                         module                        : <ROOT>-:kmpSecondLib-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -2134,6 +2428,7 @@ MODULE                        : Kotlin_Multiplatform.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : generateDebugAndroidTestSources
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugAndroidTest/out [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
                 Dependencies
@@ -2142,11 +2437,13 @@ MODULE                        : Kotlin_Multiplatform.app
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         module                        : <ROOT>-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:kmpFirstLib-androidMain
                         module                        : <ROOT>-:kmpFirstLib-commonMain
                             module                        : <ROOT>-:androidLib-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:androidLib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                 ProvidedDependencies
                     - provided                    : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
@@ -2174,6 +2471,7 @@ MODULE                        : Kotlin_Multiplatform.app
                 IsTestArtifact                : true
                 IdeSetupTaskNames             : createMockableJar
                 GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugUnitTest/out [-]
+                ClassesFolder                 : <ROOT>/app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/compile_and_runtime_r_class_jar/debug/processDebugResources/R.jar [-]
                 ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes [-]
                 Dependencies
@@ -2209,11 +2507,13 @@ MODULE                        : Kotlin_Multiplatform.app
                         javaLibrary                   : com.googlecode.java-diff-utils:diffutils:1.3.0@jar
                         javaLibrary                   : com.google.auto.value:auto-value-annotations:1.6.3@jar
                         module                        : <ROOT>-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:kmpFirstLib-androidMain
                         module                        : <ROOT>-:kmpFirstLib-commonMain
                             module                        : <ROOT>-:androidLib-MAIN
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:androidLib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                     runtimeClasspath
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
@@ -2246,6 +2546,7 @@ MODULE                        : Kotlin_Multiplatform.app
                         javaLibrary                   : com.googlecode.java-diff-utils:diffutils:1.3.0@jar
                         javaLibrary                   : com.google.auto.value:auto-value-annotations:1.6.3@jar
                         module                        : <ROOT>-:app-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             module                        : <ROOT>-:kmpFirstLib-androidMain
                             module                        : <ROOT>-:kmpFirstLib-commonMain
                         module                        : <ROOT>-:kmpFirstLib-androidMain
@@ -2258,6 +2559,7 @@ MODULE                        : Kotlin_Multiplatform.app
                             module                        : <ROOT>-:kmpJvmOnly-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:androidLib-MAIN
+                            javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                         module                        : <ROOT>-:kmpSecondLib-androidMain
                         module                        : <ROOT>-:kmpSecondLib-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -2266,6 +2568,80 @@ MODULE                        : Kotlin_Multiplatform.app
                         module                        : <ROOT>-:kmpJvmOnly-commonMain
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
+    kotlinGradleModel             : KotlinGradleModelImpl
+        additionalVisibleSourceSets
+            debug                         : <empty>
+            debugAndroidTest              : <empty>
+            debugUnitTest                 : <empty>
+        compilerArgumentsBySourceSet
+            debug
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/app/build/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugAndroidTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/app/build/intermediates/built_in_kotlinc/debugAndroidTest/compileDebugAndroidTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+            debugUnitTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/app/build/intermediates/built_in_kotlinc/debugUnitTest/compileDebugUnitTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : disable
+                    useFirLT                      : true
+        gradleUserHome                : <GRADLE>
+        hasKotlinPlugin               : true
+        kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
+            versionString                 : <KOTLIN_VERSION_FOR_TESTS>
+        kotlinTarget                  : kotlin-android
+        kotlinTaskProperties
+            debug                         : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugAndroidTest              : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugUnitTest                 : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
     externalProject               : :app (DefaultExternalProject) (*seen*)
 MODULE                        : Kotlin_Multiplatform.app.androidTest
 MODULE                        : Kotlin_Multiplatform.app.main
@@ -2279,7 +2655,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedAndroidDeviceTest
         - taskNames                   : testAndroidHostTest
     CurrentVariantReportedVersions
         minSdk
@@ -2340,6 +2715,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
         AndroidResourcesEnabled       : true
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : androidMain
         testApplicationId             : com.example.kmpfirstlib.test
         buildType                     :
@@ -2391,8 +2767,9 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
+            StorePassword                 :
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : androidMain
@@ -2782,6 +3159,8 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :kmpFirstLib:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : deviceTest (KotlinCompilationImpl)
                 - allSourceSets               : commonTest (KotlinSourceSetImpl)
@@ -2834,7 +3213,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     moduleName                    : Kotlin Multiplatform:kmpFirstLib_deviceTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2898,7 +3276,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     moduleName                    : Kotlin Multiplatform:kmpFirstLib_hostTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2971,7 +3348,6 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     moduleName                    : Kotlin Multiplatform:kmpFirstLib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3054,6 +3430,8 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :kmpJvmOnly:integrateLinkagePackage [-]
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -3099,7 +3477,6 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     moduleName                    : Kotlin Multiplatform:kmpJvmOnly
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3181,7 +3558,6 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     moduleName                    : Kotlin Multiplatform:kmpJvmOnly_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3297,6 +3673,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
         AndroidResourcesEnabled       : false
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : androidMain
         buildType                     :
     BootClassPath                 : <ANDROID_SDK>/platforms/android-34/android.jar
@@ -3391,6 +3768,8 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :kmpSecondLib:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -3436,7 +3815,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     moduleName                    : Kotlin Multiplatform:kmpSecondLib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3500,7 +3878,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     moduleName                    : Kotlin Multiplatform:kmpSecondLib
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3582,7 +3959,6 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     moduleName                    : Kotlin Multiplatform:kmpSecondLib_test
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3643,7 +4019,6 @@ MODULE                        : build-logic.lib-foo
         rootFolderPath                : <ROOT>/build-logic
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedAndroidDeviceTest
         - taskNames                   : testAndroidHostTest
     CurrentVariantReportedVersions
         minSdk
@@ -3704,6 +4079,7 @@ MODULE                        : build-logic.lib-foo
         AndroidResourcesEnabled       : false
         DataBindingEnabled            : false
         GenerateManifestClass         : false
+        BuiltInKotlinDefaultEnabled   : true
     - basicVariant:               : androidMain
         testApplicationId             : com.buildlogic.lib.foo.test
         buildType                     :
@@ -3752,8 +4128,9 @@ MODULE                        : build-logic.lib-foo
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
+            StorePassword                 :
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : androidMain
@@ -3881,6 +4258,8 @@ MODULE                        : build-logic.lib-foo
         kotlinGradlePluginVersion
             versionString                 : <KOTLIN_VERSION_FOR_TESTS>
         swiftExport                   : KotlinSwiftExportModelImpl
+        swiftPMImportModel            : KotlinMultiplatformLinkedPackage (KotlinSwiftPMImportModelImpl)
+            integrateLinkagePackageTaskPath         : :lib-foo:integrateLinkagePackage [-]
         - targets                     : android (KotlinTargetImpl)
             - compilations                : deviceTest (KotlinCompilationImpl)
                 - allSourceSets               : androidDeviceTest (KotlinSourceSetImpl)
@@ -3913,7 +4292,6 @@ MODULE                        : build-logic.lib-foo
                     moduleName                    : build-logic:lib-foo_deviceTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -3992,7 +4370,6 @@ MODULE                        : build-logic.lib-foo
                     moduleName                    : build-logic:lib-foo_hostTest
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -4065,7 +4442,6 @@ MODULE                        : build-logic.lib-foo
                     moduleName                    : build-logic:lib-foo
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

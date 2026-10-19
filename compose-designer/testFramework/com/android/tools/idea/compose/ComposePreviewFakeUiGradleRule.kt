@@ -28,7 +28,7 @@ import com.android.tools.idea.editors.build.RenderingBuildStatus
 import com.android.tools.idea.editors.fast.FastPreviewConfiguration
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.preview.PreviewRefreshManager
-import com.android.tools.idea.testing.AndroidGradleProjectRule
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.NamedExternalResource
 import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.intellij.openapi.application.EDT
@@ -37,6 +37,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.runInEdtAndGet
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.image.BufferedImage
@@ -64,7 +65,7 @@ class ComposePreviewFakeUiGradleRule(
   projectPath: String,
   private val previewFilePath: String,
   testDataPath: String = TEST_DATA_PATH,
-  projectRule: AndroidGradleProjectRule = AndroidGradleProjectRule(),
+  projectRule: AndroidProjectRule = AndroidProjectRule.testProject(createComposeTestProject(projectPath, testDataPath)),
 ) : ComposeGradleProjectRule(projectPath, testDataPath, projectRule) {
 
   // The logger must be initialized later since at this point the logger framework is not ready yet
@@ -119,7 +120,7 @@ class ComposePreviewFakeUiGradleRule(
             size = Dimension(1000, 800)
             add(previewView, BorderLayout.CENTER)
           },
-          true,
+          parentDisposable = fixture.testRootDisposable,
         )
       fakeUi.root.validate()
     }
@@ -216,8 +217,8 @@ class ComposePreviewFakeUiGradleRule(
   }
 
   /** Finds the render result of the [SceneViewPeerPanel] with the given [name]. */
-  fun findSceneViewRenderWithName(@Suppress("SameParameterValue") name: String): BufferedImage {
+  fun findSceneViewRenderWithName(@Suppress("SameParameterValue") name: String): BufferedImage = runInEdtAndGet {
     val sceneViewPanel = fakeUi.findComponent<SceneViewPeerPanel> { it.displayName == name }!!
-    return fakeUi.render().getSubimage(sceneViewPanel.x, sceneViewPanel.y, sceneViewPanel.width, sceneViewPanel.height)
+    fakeUi.render().getSubimage(sceneViewPanel.x, sceneViewPanel.y, sceneViewPanel.width, sceneViewPanel.height)
   }
 }

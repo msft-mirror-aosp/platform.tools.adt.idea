@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package google.play.androidpublisher.v3;
+
+import "google/protobuf/timestamp.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "VitalsAnomalyFindingDataProto";
+option java_package = "com.google.play.androidpublisher.v3";
+
+// Data for Vitals Anomaly findings (finding type
+// [Finding.Type.VITALS_ANOMALY][google.play.androidpublisher.v3.Finding.Type.VITALS_ANOMALY]).
+message VitalsAnomalyFindingData {
+  // The metric set as defined by the Play Developer Reporting API that contains
+  // the anomalous metric, for example "vitals.crashrate".
+  // See: https://developers.google.com/play/developer/reporting/metricset-intro
+  //
+  // Optional.
+  string metric_set = 1;
+
+  // The name of the metric in the metric set that contains anomalous data.
+  // For reference, see
+  // https://developers.google.com/play/developer/reporting/metricset-intro
+  //
+  // Optional.
+  string metric = 2;
+
+  // The date/time of the anomaly. Always set.
+  oneof anomaly_time {
+    // For daily anomalies, the date of the anomaly.
+    google.type.Date daily_date = 3;
+
+    // For hourly anomalies, the timestamp of the anomaly.
+    google.protobuf.Timestamp hourly_time = 4;
+  }
+
+  // The anomalous metric value detected at the time of the anomaly.
+  // The value is in the range [0, 1].
+  // Optional.
+  double metric_value = 5;
+}

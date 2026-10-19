@@ -22,6 +22,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 
 @Service(Service.Level.PROJECT)
@@ -40,13 +41,11 @@ class UpdateReferenceImagesDialogManager(private val project: Project) : Disposa
     if (existingDialog != null && existingDialog.isVisible) {
       existingDialog.toFront()
       // Log that the user tried to open the dialog but it was already open
-      logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_ALREADY_OPEN, project)
+      logScreenshotTestEvent(
+        ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_ALREADY_OPEN,
+        project,
+      )
       return null
-    }
-
-    // Clean up dead reference if any
-    if (existingDialog != null && !existingDialog.isVisible) {
-      activeDialog = null
     }
 
     val newDialog = dialogFactory(project)
@@ -65,6 +64,14 @@ class UpdateReferenceImagesDialogManager(private val project: Project) : Disposa
     return newDialog
   }
 
+  @TestOnly
+  @Synchronized
+  fun resetForTests() {
+    activeDialog = null
+    dialogFactory = { UpdateReferenceImagesDialog(it) }
+  }
+
+  @Synchronized
   override fun dispose() {
     activeDialog = null
   }

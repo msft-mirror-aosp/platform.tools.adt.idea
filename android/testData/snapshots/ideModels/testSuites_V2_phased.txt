@@ -685,29 +685,25 @@ MODULE                        : project
                     configurationArtifacts        : <CONFIGURATIONS_WITH_EMPTY_ARTIFACTS>
                 taskModel                     : DefaultGradleTaskModel
                     tasks
-                        connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                            qName                         : :app:connectedDebugAndroidTest
+                        testDebugFirstT1TestSuite     : testDebugFirstT1TestSuite (DefaultExternalTask)
+                            qName                         : :app:testDebugFirstT1TestSuite
+                        testDebugSecondT1TestSuite    : testDebugSecondT1TestSuite (DefaultExternalTask)
+                            qName                         : :app:testDebugSecondT1TestSuite
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                             qName                         : :app:testDebugUnitTest
-                        testFirstT1DebugTestSuite     : testFirstT1DebugTestSuite (DefaultExternalTask)
-                            qName                         : :app:testFirstT1DebugTestSuite
-                        testSecondT1DebugTestSuite    : testSecondT1DebugTestSuite (DefaultExternalTask)
-                            qName                         : :app:testSecondT1DebugTestSuite
-                        testThirdT1ReleaseTestSuite   : testThirdT1ReleaseTestSuite (DefaultExternalTask)
-                            qName                         : :app:testThirdT1ReleaseTestSuite
+                        testReleaseThirdT1TestSuite   : testReleaseThirdT1TestSuite (DefaultExternalTask)
+                            qName                         : :app:testReleaseThirdT1TestSuite
         sourceSetModel                : DefaultGradleSourceSetModel
         taskModel                     : DefaultGradleTaskModel
             tasks
-                connectedDebugAndroidTest     : connectedDebugAndroidTest (DefaultExternalTask)
-                    qName                         : :app:connectedDebugAndroidTest
+                testDebugFirstT1TestSuite     : testDebugFirstT1TestSuite (DefaultExternalTask)
+                    qName                         : :app:testDebugFirstT1TestSuite
+                testDebugSecondT1TestSuite    : testDebugSecondT1TestSuite (DefaultExternalTask)
+                    qName                         : :app:testDebugSecondT1TestSuite
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
                     qName                         : :app:testDebugUnitTest
-                testFirstT1DebugTestSuite     : testFirstT1DebugTestSuite (DefaultExternalTask)
-                    qName                         : :app:testFirstT1DebugTestSuite
-                testSecondT1DebugTestSuite    : testSecondT1DebugTestSuite (DefaultExternalTask)
-                    qName                         : :app:testSecondT1DebugTestSuite
-                testThirdT1ReleaseTestSuite   : testThirdT1ReleaseTestSuite (DefaultExternalTask)
-                    qName                         : :app:testThirdT1ReleaseTestSuite
+                testReleaseThirdT1TestSuite   : testReleaseThirdT1TestSuite (DefaultExternalTask)
+                    qName                         : :app:testReleaseThirdT1TestSuite
 MODULE                        : project.app
     GradleModuleModel
         agpVersion                    : <AGP_VERSION>
@@ -718,11 +714,10 @@ MODULE                        : project.app
         rootFolderPath                : <ROOT>
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
-        - taskNames                   : connectedDebugAndroidTest
+        - taskNames                   : testDebugFirstT1TestSuite
+        - taskNames                   : testDebugSecondT1TestSuite
         - taskNames                   : testDebugUnitTest
-        - taskNames                   : testFirstT1DebugTestSuite
-        - taskNames                   : testSecondT1DebugTestSuite
-        - taskNames                   : testThirdT1ReleaseTestSuite
+        - taskNames                   : testReleaseThirdT1TestSuite
     CurrentVariantReportedVersions
         minSdk
             ApiLevel                      : 19
@@ -870,6 +865,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/main/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/main/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/app/src/main/keepRules [-]
+            ApiConfigurationName          : api
+            CompileOnlyConfigurationName  : compileOnly
+            CompileOnlyApiConfigurationName         : compileOnlyApi
+            ImplementationConfigurationName         : implementation
+            RuntimeOnlyConfigurationName  : runtimeOnly
+            AnnotationProcessorConfigurationName    : annotationProcessor
+            KaptConfigurationName         : kapt
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -885,6 +887,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTest/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTest/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/app/src/androidTest/keepRules [-]
+                    ApiConfigurationName          : androidTestApi
+                    CompileOnlyConfigurationName  : androidTestCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestImplementation
+                    RuntimeOnlyConfigurationName  : androidTestRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTest
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
                 SourceProvider
@@ -899,6 +908,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/test/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/test/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/app/src/test/keepRules [-]
+                    ApiConfigurationName          : testApi
+                    CompileOnlyConfigurationName  : testCompileOnly
+                    CompileOnlyApiConfigurationName         : testCompileOnlyApi
+                    ImplementationConfigurationName         : testImplementation
+                    RuntimeOnlyConfigurationName  : testRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testAnnotationProcessor
+                    KaptConfigurationName         : kaptTest
     BuildTypes
         BuildType
             Name                          : debug
@@ -921,6 +937,13 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/debug/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/debug/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/app/src/debug/keepRules [-]
+            ApiConfigurationName          : debugApi
+            CompileOnlyConfigurationName  : debugCompileOnly
+            CompileOnlyApiConfigurationName         : debugCompileOnlyApi
+            ImplementationConfigurationName         : debugImplementation
+            RuntimeOnlyConfigurationName  : debugRuntimeOnly
+            AnnotationProcessorConfigurationName    : debugAnnotationProcessor
+            KaptConfigurationName         : kaptDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _android_test_
@@ -936,6 +959,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/androidTestDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/androidTestDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/app/src/androidTestDebug/keepRules [-]
+                    ApiConfigurationName          : androidTestDebugApi
+                    CompileOnlyConfigurationName  : androidTestDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : androidTestDebugCompileOnlyApi
+                    ImplementationConfigurationName         : androidTestDebugImplementation
+                    RuntimeOnlyConfigurationName  : androidTestDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : androidTestDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptAndroidTestDebug
         ExtraSourceProviders
             ExtraSourceProvider
                 ArtifactName                  : _unit_test_
@@ -951,6 +981,13 @@ MODULE                        : project.app
                     JniLibsDirectories            : <ROOT>/app/src/testDebug/jniLibs [-]
                     BaselineProfileDirectories    : <ROOT>/app/src/testDebug/baselineProfiles [-]
                     KeepRulesDirectories          : <ROOT>/app/src/testDebug/keepRules [-]
+                    ApiConfigurationName          : testDebugApi
+                    CompileOnlyConfigurationName  : testDebugCompileOnly
+                    CompileOnlyApiConfigurationName         : testDebugCompileOnlyApi
+                    ImplementationConfigurationName         : testDebugImplementation
+                    RuntimeOnlyConfigurationName  : testDebugRuntimeOnly
+                    AnnotationProcessorConfigurationName    : testDebugAnnotationProcessor
+                    KaptConfigurationName         : kaptTestDebug
         BuildType
             Name                          : release
             ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-<AGP_VERSION> [-]
@@ -974,12 +1011,19 @@ MODULE                        : project.app
             JniLibsDirectories            : <ROOT>/app/src/release/jniLibs [-]
             BaselineProfileDirectories    : <ROOT>/app/src/release/baselineProfiles [-]
             KeepRulesDirectories          : <ROOT>/app/src/release/keepRules [-]
+            ApiConfigurationName          : releaseApi
+            CompileOnlyConfigurationName  : releaseCompileOnly
+            CompileOnlyApiConfigurationName         : releaseCompileOnlyApi
+            ImplementationConfigurationName         : releaseImplementation
+            RuntimeOnlyConfigurationName  : releaseRuntimeOnly
+            AnnotationProcessorConfigurationName    : releaseAnnotationProcessor
+            KaptConfigurationName         : kaptRelease
     SigningConfigs
         SigningConfig
             Name                          : debug
             StoreFile                     : debug.keystore
-            StorePassword                 : android
             KeyAlias                      : AndroidDebugKey
+            IsSigningReady                : true
     VariantBuildInformation
         VariantBuildInformation
             VariantName                   : debug
@@ -1811,13 +1855,13 @@ MODULE                        : project.app
                 Targets
                     TestSuiteTarget
                         TargetName                    : t1
-                        TestTaskName                  : testFirstT1DebugTestSuite
+                        TestTaskName                  : testDebugFirstT1TestSuite
             secondTestSuiteArtifact
                 TargetedVariantName           : debug
                 Targets
                     TestSuiteTarget
                         TargetName                    : t1
-                        TestTaskName                  : testSecondT1DebugTestSuite
+                        TestTaskName                  : testDebugSecondT1TestSuite
     kotlinGradleModel             : KotlinGradleModelImpl
         additionalVisibleSourceSets
             debug                         : <empty>
@@ -1834,7 +1878,6 @@ MODULE                        : project.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1853,7 +1896,6 @@ MODULE                        : project.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     useInlineScopesNumbers        : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
@@ -1872,7 +1914,6 @@ MODULE                        : project.app
                     moduleName                    : app
                     noReflect                     : true
                     noStdlib                      : true
-                    serializeIr                   : none
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable

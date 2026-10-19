@@ -39,6 +39,8 @@ import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.ui.UIUtil
+import java.awt.BorderLayout
+import java.awt.Container
 import java.io.File
 import java.util.Base64
 import javax.swing.JPanel
@@ -47,6 +49,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.mockito.Answers
@@ -54,6 +57,7 @@ import org.mockito.Mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 
 /** Unit tests for [DetailsViewContentView]. */
@@ -63,12 +67,13 @@ class DetailsViewContentViewTest {
 
   private val projectRule = ProjectRule()
   private val disposableRule = DisposableRule()
+  private val temporaryFolder = TemporaryFolder()
   private val headerActions = emptyList<AnAction>()
   @Mock lateinit var mockLogger: AndroidTestSuiteLogger
 
   @Mock(answer = Answers.RETURNS_DEEP_STUBS) lateinit var mockTestResults: AndroidTestResults
 
-  @get:Rule val rules: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule()).around(disposableRule)
+  @get:Rule val rules: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule()).around(disposableRule).around(temporaryFolder)
 
   private val createdViews = mutableListOf<DetailsViewContentView>()
 
@@ -81,6 +86,7 @@ class DetailsViewContentViewTest {
   @Before
   fun setup() {
     MockitoAnnotations.openMocks(this)
+    whenever(mockTestResults.getLogcatFile(any())).thenReturn(null)
     createdViews.clear()
   }
 
@@ -89,6 +95,13 @@ class DetailsViewContentViewTest {
     try {
       createdViews.forEach { view ->
         view.pathResolutionFuture?.let {
+          try {
+            PlatformTestUtil.waitForFuture(it)
+          } catch (e: Exception) {
+            // Ignore expected CancellationExceptions or other failures during cleanup.
+          }
+        }
+        view.logLoadingFuture?.let {
           try {
             PlatformTestUtil.waitForFuture(it)
           } catch (e: Exception) {
@@ -164,6 +177,90 @@ class DetailsViewContentViewTest {
 
     assertThat(view.myDeviceTestResultLabel.text).isEqualTo("<html>&lt;device name&gt;</html>")
     assertThat(view.myTestResultLabel.text).isEqualTo("<html><font color='#b81708'>Failed</font> &lt;ErrorStackTrace&gt;</html>")
+    assertThat(view.myTestResultLabel.toolTipText).isEqualTo("&lt;ErrorStackTrace&gt;")
+  }
+
+  @Test
+  fun testResultLabelSetsTooltipAndRetainsFirstLineOnLongErrorMessage() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    val longMessage = "Images differ by 12.34% ${"x".repeat(500)}"
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.FAILED)
+    whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("$longMessage\nat Foo.bar(Foo.kt:1)")
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertThat(view.myTestResultLabel.text).isEqualTo("<html><font color='#b81708'>Failed</font> $longMessage</html>")
+    assertThat(view.myTestResultLabel.toolTipText).isEqualTo(longMessage)
+  }
+
+  @Test
+  fun testResultLabelHasNoTooltipWhenNotFailing() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.PASSED)
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertThat(view.myTestResultLabel.toolTipText).isNull()
+  }
+
+  @Test
+  fun testResultLabelSkipsTooltipWhenFailureMessageStartsWithHtml() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.FAILED)
+    whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("<html><b>injected</b></html>\n\tat Foo.bar(Foo.kt:1)")
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertThat(view.myTestResultLabel.toolTipText).isNull()
+  }
+
+  /** Regression test for b/466299079: a long failure message must not make the header taller or wider. */
+  @Test
+  fun headerHeightIsIndependentOfErrorMessageLength() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.FAILED)
+    whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("short")
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    val header = (view.rootPanel.layout as BorderLayout).getLayoutComponent(BorderLayout.NORTH) as JPanel
+    val shortMessageHeight = layoutHeaderAndGetPreferredHeight(header)
+    val shortMessageWidth = header.preferredSize.width
+
+    whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("Images differ by 12.34% ${"x".repeat(2000)}")
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    assertThat(layoutHeaderAndGetPreferredHeight(header)).isEqualTo(shortMessageHeight)
+    assertThat(header.preferredSize.width).isEqualTo(shortMessageWidth)
+  }
+
+  /**
+   * Lays out [header] (and its children) at a realistic width so that the preferred size of the nested scroll pane reflects the actual
+   * extent, then returns the header's preferred height.
+   */
+  private fun layoutHeaderAndGetPreferredHeight(header: JPanel): Int {
+    header.setSize(500, 100)
+    layoutRecursively(header)
+    return header.preferredSize.height
+  }
+
+  private fun layoutRecursively(container: Container) {
+    container.doLayout()
+    container.components.filterIsInstance<Container>().forEach { layoutRecursively(it) }
   }
 
   @Test
@@ -357,7 +454,7 @@ class DetailsViewContentViewTest {
     val view = createView()
     val testDevice = device("device id", "device name")
     whenever(mockTestResults.getAdditionalTestArtifacts(testDevice))
-      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage").canonicalPath))
+      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage.png").canonicalPath))
 
     view.setResults(testDevice, mockTestResults)
     view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
@@ -373,7 +470,7 @@ class DetailsViewContentViewTest {
     val view = createView()
     val testDevice = device("device id", "device name")
     whenever(mockTestResults.getAdditionalTestArtifacts(testDevice))
-      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage").canonicalPath))
+      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage.png").canonicalPath))
     whenever(mockTestResults.getBenchmark(testDevice)).thenReturn(BenchmarkOutput.Empty)
 
     view.setResults(testDevice, mockTestResults)
@@ -388,7 +485,7 @@ class DetailsViewContentViewTest {
     val view = createView()
     val testDevice = device("device id", "device name")
     whenever(mockTestResults.getAdditionalTestArtifacts(testDevice))
-      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage").canonicalPath))
+      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage.png").canonicalPath))
     whenever(mockTestResults.getBenchmark(testDevice)).thenReturn(BenchmarkOutput.Empty)
 
     // Force select Device Info tab first
@@ -406,7 +503,7 @@ class DetailsViewContentViewTest {
     val view = createView()
     val testDevice = device("device id", "device name")
     whenever(mockTestResults.getAdditionalTestArtifacts(testDevice))
-      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage").canonicalPath))
+      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage.png").canonicalPath))
 
     // Simulate user selecting logs tab
     view.lastTabSelectedByUser = view.logsTab
@@ -424,7 +521,7 @@ class DetailsViewContentViewTest {
     val view = createView()
     val testDevice = device("device id", "device name")
     whenever(mockTestResults.getAdditionalTestArtifacts(testDevice))
-      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage").canonicalPath))
+      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage.png").canonicalPath))
     whenever(mockTestResults.getLogcat(testDevice)).thenReturn("")
     whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("")
     view.setResults(testDevice, mockTestResults)
@@ -558,7 +655,7 @@ class DetailsViewContentViewTest {
     assertThat(view.tabs.selectedInfo).isEqualTo(view.myDeviceInfoTab)
 
     whenever(mockTestResults.getAdditionalTestArtifacts(testDevice))
-      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage").canonicalPath))
+      .thenReturn(mapOf("PreviewScreenshot.newImagePath" to File(projectRule.project.basePath, "newImage.png").canonicalPath))
 
     view.setResults(testDevice, mockTestResults)
     view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
@@ -615,6 +712,30 @@ class DetailsViewContentViewTest {
     assertThat(view.myErrorStackTrace).isEmpty()
   }
 
+  /** Regression test for b/446684393: the view must not retain an unbounded amount of log text. */
+  @Test
+  fun logsAreTruncatedToMaxRetainedLogChars() {
+    val view = DetailsViewContentView(disposableRule.disposable, projectRule.project, mockLogger, headerActions, maxRetainedLogChars = 10)
+    createdViews.add(view)
+    val testDevice = device("device id", "device name")
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.FAILED)
+    whenever(mockTestResults.getLogcat(testDevice)).thenReturn("0123456789abcdefghij")
+    whenever(mockTestResults.getErrorStackTrace(testDevice)).thenReturn("0123456789abcdefghij")
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+    view.myLogsView.waitAllRequests()
+
+    // The tail of the logcat is kept: that is the most recent output and the part the console shows.
+    assertThat(view.myLogcat).endsWith("abcdefghij")
+    assertThat(view.myLogcat).doesNotContain("0123456789a")
+    // The head of the stack trace is kept: its first line is displayed in the test result label.
+    assertThat(view.myErrorStackTrace).startsWith("0123456789")
+    assertThat(view.myErrorStackTrace).doesNotContain("abcdefghij")
+    assertThat(view.myLogsView.text).doesNotContain("0123456789a")
+  }
+
   /** Verifies that the "Logs" tab doesn't contain a redundant internal heading label. The tab title itself is sufficient. */
   @Test
   fun logsTabShouldNotHaveRedundantHeadingLabel() {
@@ -623,6 +744,92 @@ class DetailsViewContentViewTest {
 
     val labels = UIUtil.findComponentsOfType(tabComponent, javax.swing.JLabel::class.java)
     assertThat(labels.map { it.text }).doesNotContain("Logs")
+  }
+
+  @Test
+  fun fileBackedLogsLoadedAsynchronously() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    val logcatFile =
+      temporaryFolder.newFile("async-logcat.txt").apply {
+        writeText("file logcat message\nsecond line")
+      }
+    whenever(mockTestResults.getLogcatFile(testDevice)).thenReturn(logcatFile)
+
+    view.setResults(testDevice, mockTestResults)
+
+    // Wait for the background task to complete and invokeLater events to flush
+    view.logLoadingFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    view.myLogsView.waitAllRequests()
+    assertThat(view.isLoadingLogs).isFalse()
+    assertThat(view.myLogsView.text).contains("file logcat message\nsecond line")
+  }
+
+  @Test
+  fun placeholderDisplayedWhenLoadingLogs() {
+    val view = createView()
+    view.isLoadingLogs = true
+    view.refreshLogsView()
+    view.myLogsView.waitAllRequests()
+    assertThat(view.myLogsView.text).isEqualTo("Loading logs...")
+  }
+
+  @Test
+  fun changingSelectionCancelsPendingLogcatLoading() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    val mockFuture = org.mockito.Mockito.mock(java.util.concurrent.Future::class.java)
+    view.logLoadingFuture = mockFuture
+
+    // Immediately switch to in-memory result (or different test)
+    val otherResults = org.mockito.Mockito.mock(AndroidTestResults::class.java, org.mockito.Answers.RETURNS_DEEP_STUBS)
+    whenever(otherResults.getLogcat(testDevice)).thenReturn("new in-memory logcat")
+    whenever(otherResults.getLogcatFile(testDevice)).thenReturn(null)
+
+    view.setResults(testDevice, otherResults)
+
+    org.mockito.Mockito.verify(mockFuture).cancel(true)
+    assertThat(view.isLoadingLogs).isFalse()
+    view.myLogsView.waitAllRequests()
+    assertThat(view.myLogsView.text).isEqualTo("new in-memory logcat\n")
+  }
+
+  @Test
+  fun emptyFileBackedLogsDisplaysNoLogsAvailable() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    val logcatFile = temporaryFolder.newFile("empty-logcat.txt")
+    whenever(mockTestResults.getLogcatFile(testDevice)).thenReturn(logcatFile)
+
+    view.setResults(testDevice, mockTestResults)
+
+    // Wait for the background task to complete and invokeLater events to flush
+    view.logLoadingFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    view.myLogsView.waitAllRequests()
+    assertThat(view.isLoadingLogs).isFalse()
+    assertThat(view.myLogsView.text).isEqualTo("No logs available")
+  }
+
+  @Test
+  fun nonExistentFileBackedLogsHandledGracefully() {
+    val view = createView()
+    val testDevice = device("device id", "device name")
+    val nonExistentFile = temporaryFolder.root.resolve("non-existent-logcat.txt")
+    whenever(mockTestResults.getLogcatFile(testDevice)).thenReturn(nonExistentFile)
+
+    view.setResults(testDevice, mockTestResults)
+
+    // Wait for the background task to complete and invokeLater events to flush
+    view.logLoadingFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    UIUtil.dispatchAllInvocationEvents()
+
+    view.myLogsView.waitAllRequests()
+    assertThat(view.isLoadingLogs).isFalse()
+    assertThat(view.myLogsView.text).isEqualTo("No logs available")
   }
 
   private fun createEncodedJourneyArtifact(): String {

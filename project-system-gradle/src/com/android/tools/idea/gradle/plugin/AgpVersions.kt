@@ -125,7 +125,7 @@ object AgpVersions {
 
   @Slow
   fun getAvailableVersions(): Set<AgpVersion> {
-    return IdeGoogleMavenRepository.getAgpVersions().union(getLocalAndSnapshotVersions().map { it.version })
+    return IdeGoogleMavenRepository.getInstance().getAgpVersions().union(getLocalAndSnapshotVersions().map { it.version })
   }
 
   data class NewProjectWizardAgpVersion(
@@ -153,7 +153,7 @@ object AgpVersions {
   fun getNewProjectWizardVersions(): List<NewProjectWizardAgpVersion> {
     return getNewProjectWizardVersions(
       latestKnown = latestKnown,
-      gmavenVersions = IdeGoogleMavenRepository.getAgpVersions(),
+      gmavenVersions = IdeGoogleMavenRepository.getInstance().getAgpVersions(),
       localAndSnapshotVersions = getLocalAndSnapshotVersions(),
       includeHistoricalAgpVersions = StudioFlags.NPW_INCLUDE_ALL_COMPATIBLE_ANDROID_GRADLE_PLUGIN_VERSIONS.get(),
     )

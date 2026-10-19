@@ -29,7 +29,6 @@ import com.google.idea.blaze.base.model.primitives.WorkspaceRoot
 import com.google.idea.blaze.base.projectview.ProjectViewSet
 import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager
-import com.google.idea.blaze.base.vcs.BlazeVcsHandlerProvider
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.common.Label.Companion.of
 import com.google.idea.blaze.qsync.artifacts.MockArtifactCache
@@ -42,7 +41,6 @@ import com.intellij.util.application
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
-import java.util.Optional
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -84,6 +82,7 @@ class BazelDependencyBuilderTest : BlazeIntegrationTestCase() {
           languageClasses = emptySet(),
           testSources = emptySet(),
           systemExcludes = emptySet(),
+          supportsNestedWorkspaces = true,
         ),
         snapshotHolder,
         WorkspaceRoot(temporaryFolder.getRoot()),
@@ -155,6 +154,7 @@ class BazelDependencyBuilderTest : BlazeIntegrationTestCase() {
           languageClasses = emptySet(),
           testSources = emptySet(),
           systemExcludes = emptySet(),
+          supportsNestedWorkspaces = true,
         ),
         snapshotHolder,
         WorkspaceRoot(temporaryFolder.getRoot()),

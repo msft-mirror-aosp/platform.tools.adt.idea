@@ -1,4 +1,4 @@
-load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION", "KOTLIN_VERSION_FOR_TESTS")
+load("//tools/adt/idea/android/integration:build_defs.bzl", "INTEGRATION_TEST_GRADLE_VERSION", "KOTLIN_ARTIFACTS_FOR_TESTS", "KOTLIN_VERSION_FOR_TESTS")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
 
@@ -11,17 +11,6 @@ iml_module(
     kotlin_use_compose = True,
     lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/analytics-library/testing:android.sdktools.analytics-testing",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-    ],
-    test_srcs = ["testFramework"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -71,6 +60,37 @@ iml_module(
 
 # managed by go/iml_to_build
 iml_module(
+    name = "intellij.android.designer.testFramework",
+    enable_tests = False,
+    iml_files = ["intellij.android.designer.testFramework.iml"],
+    # do not sort: must match IML order
+    test_deps = [
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/designer:intellij.android.designer",
+        "//tools/adt/idea/android:intellij.android.core",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
+        "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
+        "//tools/analytics-library/tracker:analytics-tracker",
+        "//tools/analytics-library/shared:analytics-shared",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/analytics-library/testing:android.sdktools.analytics-testing",
+        "//tools/adt/idea/.idea/libraries:layoutlib",
+        "//tools/adt/idea/render-resources:intellij.android.render-resources",
+        "//tools/adt/idea/rendering:intellij.android.rendering",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+    ],
+    test_friends = ["//tools/adt/idea/designer:intellij.android.designer"],
+    test_srcs = ["testFramework"],
+    visibility = ["//visibility:public"],
+    # do not sort: must match IML order
+    deps = ["@intellij//:intellij-sdk"],
+)
+
+# managed by go/iml_to_build
+iml_module(
     name = "intellij.android.designer.tests",
     iml_files = ["intellij.android.designer.tests.iml"],
     kotlin_use_compose = True,
@@ -79,6 +99,13 @@ iml_module(
             "test_filter": "com.android.tools.idea.common",
         },
         "visual": {
+            "data": [
+                "//prebuilts/studio/sdk:build-tools/latest",
+                "//tools/base/build-system:android_gradle_plugin.zip",
+                "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
+                "//tools/base/build-system:gradle-distrib",
+                "//tools/base/third_party/kotlin:kotlin-m2repository",
+            ],
             "test_filter": "com.android.tools.idea.uibuilder.visual",
         },
         "designer": {
@@ -89,19 +116,13 @@ iml_module(
     test_class = "com.android.tools.idea.DesignerTestSuite",
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
-        "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/annotations",
         "//tools/adt/idea/android/lib:sampleData",
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/designer/testData",
-        "//tools/base/build-system:android_gradle_plugin.zip",
-        "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
-        "//tools/base/build-system:gradle-distrib",
-        "//tools/base/third_party/kotlin:kotlin-m2repository",
     ],
     # do not sort: must match IML order
     test_deps = [
@@ -142,6 +163,10 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/visual-lint:intellij.android.visual-lint",
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose.tests",
+        "//tools/adt/idea/designer:intellij.android.designer.testFramework",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/adt/idea/layout-ui:intellij.android.layout-ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/designer:intellij.android.designer"],
     test_resources = ["testResources"],
@@ -214,9 +239,7 @@ iml_module(
 
 layout_editor_data = [
     ":layout_preview_deps",
-    "//prebuilts/studio/sdk:build-tools/33.0.1",
-    "//prebuilts/studio/sdk:emulator",
-    "//prebuilts/studio/sdk:platform-tools",
+    "//prebuilts/studio/sdk:build-tools/36.0.0",
     "//tools/adt/idea/designer/testData:simpleApplication",
     "//tools/adt/idea/designer/testData:visualLintApplication",
     INTEGRATION_TEST_GRADLE_VERSION,
@@ -228,15 +251,13 @@ maven_repository(
     artifacts = [
         "@maven//:androidx.appcompat.appcompat_1.3.0",
         "@maven//:androidx.constraintlayout.constraintlayout_2.1.3",
-        "@maven//:com.android.tools.build.aapt2_8.1.0-10154469",
-        "@maven//:com.android.tools.build.gradle_8.1.0",
+        "@maven//:com.android.application.com.android.application.gradle.plugin_9.0.0",
+        "@maven//:com.android.tools.build.aapt2_9.0.0-14304508",
+        "@maven//:com.android.tools.build.gradle_9.0.0",
         "@maven//:com.google.android.material.material_1.5.0",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_" + KOTLIN_VERSION_FOR_TESTS,
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_" + KOTLIN_VERSION_FOR_TESTS,
-        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8_" + KOTLIN_VERSION_FOR_TESTS,
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.4.1",
         "@maven//:org.jetbrains.markdown_0.2.1",
-    ],
+    ] + KOTLIN_ARTIFACTS_FOR_TESTS,
 )
 
 iml_test(

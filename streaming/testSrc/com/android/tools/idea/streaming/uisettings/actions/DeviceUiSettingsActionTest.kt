@@ -24,6 +24,7 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
 import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.adtui.swing.popup.JBPopupRule
+import com.android.tools.idea.streaming.core.DisplayType
 import com.android.tools.idea.streaming.device.DeviceClient
 import com.android.tools.idea.streaming.device.DeviceDisplayPanel
 import com.android.tools.idea.streaming.device.DeviceView
@@ -139,11 +140,21 @@ class DeviceUiSettingsActionTest {
   }
 
   private fun createDeviceView(device: FakeDevice, parentDisposable: Disposable): DeviceView {
-    val deviceClient = DeviceClient(device.serialNumber, device.configuration, device.deviceState.cpuAbi)
+    val deviceClient = DeviceClient(device.handle.id, device.serialNumber, device.configuration, device.deviceState.cpuAbi)
     Disposer.register(parentDisposable, deviceClient)
-    val panel = DeviceDisplayPanel(parentDisposable, deviceClient, PRIMARY_DISPLAY_ID, UNKNOWN_ORIENTATION, project, false)
+    val panel =
+      DeviceDisplayPanel(
+        parentDisposable,
+        deviceClient,
+        PRIMARY_DISPLAY_ID,
+        DisplayType.INTERNAL,
+        displaySize = device.displaySize,
+        initialDisplayOrientation = UNKNOWN_ORIENTATION,
+        project = project,
+        zoomToolbarVisible = false,
+      )
     panel.setBounds(0, 0, 600, 800)
-    FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable)
+    FakeUi(panel, parentDisposable = testRootDisposable)
     return panel.displayView
   }
 

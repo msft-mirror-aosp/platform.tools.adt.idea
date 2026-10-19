@@ -425,4 +425,59 @@ class PreviewAnnotationRoundTripTest {
           .trimIndent()
       )
   }
+
+  @Test
+  fun `toPreviewAnnotationText round-trips a Preview with escaped quotes in name and group`() = runTest {
+    // Define a @Preview annotation containing escaped double quotes in both name and group.
+    @Language("kotlin")
+    val composeFileContent =
+      """
+      import androidx.compose.ui.tooling.preview.Preview
+      import androidx.compose.runtime.Composable
+
+      @androidx.compose.ui.tooling.preview.Preview(
+          name = "8\" Fold-out",
+          group = "Foldable \"8 inch\" Group",
+          widthDp = 200,
+          heightDp = 300
+      )
+      @Composable
+      fun MyComposable() {
+      }
+      """
+        .trimIndent()
+
+    val composeTestFile = projectRule.fixture.addFileToProject("src/Test.kt", composeFileContent)
+
+    // Parse the preview element from the file (UAST evaluates string literals to unescaped text).
+    val previewElements =
+      AnnotationFilePreviewElementFinder.findPreviewElements(projectRule.project, composeTestFile.virtualFile).flatMap { previewElement ->
+        previewElement.resolve()
+      }
+    assertThat(previewElements).hasSize(1)
+
+    val resolvedPreviewElement = previewElements.first()
+    val targetConfiguration = createConfiguration(width = 200, height = 300)
+
+    // Generate the annotation text from the parsed preview element and verify quotes remain escaped.
+    val generatedAnnotationText =
+      toPreviewAnnotationText(
+        resolvedPreviewElement,
+        targetConfiguration,
+        resolvedPreviewElement.displaySettings.parameterName!!,
+      )
+
+    assertThat(generatedAnnotationText)
+      .isEqualTo(
+        """
+        @androidx.compose.ui.tooling.preview.Preview(
+            name = "8\" Fold-out",
+            group = "Foldable \"8 inch\" Group",
+            widthDp = 200,
+            heightDp = 300
+        )
+        """
+          .trimIndent()
+      )
+  }
 }

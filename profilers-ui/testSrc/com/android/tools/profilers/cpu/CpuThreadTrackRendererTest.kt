@@ -40,6 +40,8 @@ import com.android.tools.profilers.cpu.systemtrace.CpuSystemTraceData
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import javax.swing.JComponent
 import org.junit.Before
 import org.junit.Rule
@@ -47,6 +49,7 @@ import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 
+@RunsInEdt
 class CpuThreadTrackRendererTest {
   private val timer = FakeTimer()
   private val services = FakeIdeProfilerServices()
@@ -58,6 +61,7 @@ class CpuThreadTrackRendererTest {
   @get:Rule val applicationRule = ApplicationRule()
 
   @get:Rule val disposableRule = DisposableRule()
+  @get:Rule val myEdtRule = EdtRule()
 
   private lateinit var profilers: StudioProfilers
   private lateinit var profilersView: StudioProfilersView

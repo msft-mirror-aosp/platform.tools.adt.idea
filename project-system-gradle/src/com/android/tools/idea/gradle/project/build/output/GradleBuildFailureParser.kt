@@ -35,6 +35,7 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.util.ui.NamedColorUtil
 import java.io.File
+import java.nio.file.Path
 import java.util.function.Consumer
 import java.util.regex.Pattern
 import kotlin.math.max
@@ -87,7 +88,7 @@ abstract class GradleBuildFailureParser(
       }
 
     val location: FilePosition?
-      get() = filter?.let { fileFilter -> FilePosition(File(fileFilter.filteredFileName), fileFilter.filteredLineNumber - 1, 0) }
+      get() = filter?.let { fileFilter -> FilePosition(Path.of(fileFilter.filteredFileName), fileFilter.filteredLineNumber - 1, 0) }
 
     val description: String
       get() = buildString {

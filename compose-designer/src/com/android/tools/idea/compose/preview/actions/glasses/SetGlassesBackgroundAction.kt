@@ -30,15 +30,29 @@ class SetGlassesBackgroundAction(val glassesBackground: GlassesBackground) : Tog
     val composePreviewElementInstance = e.dataContext.previewElement() ?: return false
     val previewElement = composePreviewElementInstance.previewBody ?: return false
     val backgroundManager = BackgroundManager.getInstance(e.project ?: return false)
+    val currentBackground = backgroundManager.getBackground(previewElement)
 
-    return backgroundManager.getBackground(previewElement)?.image == glassesBackground.imageTransform
+    // "No Background" is selected either when no background has been explicitly set in
+    // BackgroundManager (the default state) or when it explicitly matches GlassesBackground.NONE.
+    return if (glassesBackground == GlassesBackground.NONE) {
+      currentBackground == null || currentBackground.image == glassesBackground.imageTransform
+    } else {
+      currentBackground?.image == glassesBackground.imageTransform
+    }
   }
 
   override fun setSelected(e: AnActionEvent, state: Boolean) {
     val composePreviewElementInstance = e.dataContext.previewElement() ?: return
     val previewElement = composePreviewElementInstance.previewBody ?: return
     val backgroundManager = BackgroundManager.getInstance(e.project ?: return)
-    val background = if (state) PreviewDisplaySettings.Background.Image(glassesBackground.imageTransform) else null
+    // When selecting "No Background" (or unselecting the current background), clear the entry
+    // in BackgroundManager to null so standard window background rendering applies.
+    val background =
+      if (state && glassesBackground != GlassesBackground.NONE) {
+        PreviewDisplaySettings.Background.Image(glassesBackground.imageTransform)
+      } else {
+        null
+      }
 
     backgroundManager.setBackground(previewElement, background)
   }

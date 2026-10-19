@@ -28,7 +28,9 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.replaceService
+import com.intellij.util.concurrency.EdtExecutorService
 import java.sql.DriverManager
+import org.jetbrains.ide.PooledThreadExecutor
 
 internal fun List<Any?>.toSqliteValues() = this.map { SqliteValue.fromAny(it) }
 
@@ -42,6 +44,19 @@ internal fun getJdbcDatabaseConnection(
     val connection = DriverManager.getConnection(url)
     JdbcDatabaseConnection(rootDisposable, connection, sqliteFile, executor)
   }
+}
+
+/**
+ * Executor for [getJdbcDatabaseConnection] in tests that run UI code on the EDT and wait for JDBC work by draining the EDT queue (e.g. with
+ * [com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue]).
+ *
+ * Like [EdtExecutorService], each task is queued on the EDT, so it keeps its order relative to the other EDT events of the test. The task
+ * itself runs on a pooled thread while the EDT waits for it, as required by the `@WorkerThread` JDBC code (e.g.
+ * [com.android.tools.idea.sqlite.databaseConnection.jdbc.JdbcSqliteResultSet]). Tests that only wait on futures should use
+ * [PooledThreadExecutor] instead.
+ */
+internal val edtSequencedWorkerExecutor: FutureCallbackExecutor = FutureCallbackExecutor.wrap { task ->
+  EdtExecutorService.getInstance().execute { PooledThreadExecutor.INSTANCE.submit(task).get() }
 }
 
 /** Sets `adb` location in the project (needed when using `adb` in e.g. [com.intellij.testFramework.LightPlatformTestCase]) */

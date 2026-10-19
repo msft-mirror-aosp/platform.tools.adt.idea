@@ -17,6 +17,7 @@ package com.android.tools.idea.profilers.capture.unified
 
 import com.android.tools.idea.profilers.AndroidProfilerToolWindowFactory
 import com.android.tools.idea.profilers.IntellijProfilerComponents
+import com.android.tools.profilers.MinWidthScrollPane
 import com.android.tools.profilers.StageView
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
@@ -24,18 +25,26 @@ import com.android.tools.sherlock.common.system.editor.PerfettoFileEditor
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorLocation
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
+import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.UserDataHolderBase
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.beans.PropertyChangeListener
 import java.io.File
+import java.util.concurrent.TimeUnit
+import javax.swing.JComponent
 import javax.swing.JPanel
+import javax.swing.LayoutFocusTraversalPolicy
 import org.jetbrains.annotations.Nls
+import org.jetbrains.annotations.VisibleForTesting
 
 /** A [com.intellij.openapi.fileEditor.FileEditor] for displaying profiler captures in a main editor tab. */
 class UnifiedProfilerFileEditor(private val project: Project, private val file: VirtualFile) : UserDataHolderBase(), FileEditor {
@@ -47,52 +56,127 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
     }
 
   private var offlineProfilers: StudioProfilers? = null
+
+  /** Holds the recording's UI: the profiler views, or the component of [delegate]. */
   private val component: JPanel = JPanel(BorderLayout())
+
+  /** The component shown in the editor tab: [component], laid out at no less than [MIN_CONTENT_WIDTH] and scrolled when narrower. */
+  private val rootComponent = MinWidthScrollPane(component) { JBUI.scale(MIN_CONTENT_WIDTH) }
+
   // Strong references to prevent garbage collection of AspectObservers
   private var profilersView: StudioProfilersView? = null
   private var profilerStageView: StageView<*>? = null
 
   init {
-    if (delegate != null) {
-      component.add(delegate.component, BorderLayout.CENTER)
-      offlineProfilers = null
+    when {
+      delegate != null -> component.add(delegate.component, BorderLayout.CENTER)
+      file is ProfilerVirtualFile -> initializeLiveTaskEditor()
+      else -> initializeOfflineSessionEditor()
+    }
 
+    if (delegate == null) {
+      installFocusTraversalPolicy()
+    }
+
+    if (file !is ProfilerVirtualFile) {
       ApplicationManager.getApplication().executeOnPooledThread {
         val localFile = File(file.path)
         if (localFile.exists() && localFile.length() > 0L) {
           ApplicationManager.getApplication().invokeLater { importFileIntoAndroidProfiler(project, file) }
         }
       }
-    } else {
-      OfflineProfilerSessionFactory.buildSessionAsync(
-        project,
-        file,
-        component,
-        this,
-        { ideServices -> IntellijProfilerComponents(project, this, ideServices.featureTracker) },
-      ) { session ->
-        offlineProfilers = session.profilers
-        profilersView = session.profilersView
-        profilerStageView = session.stageView
-        session.stageView?.let { component.add(it.component, BorderLayout.CENTER) }
-        component.revalidate()
-        component.repaint()
-
-        ApplicationManager.getApplication().executeOnPooledThread {
-          val localFile = File(file.path)
-          if (localFile.exists() && localFile.length() > 0L) {
-            ApplicationManager.getApplication().invokeLater { importFileIntoAndroidProfiler(project, file) }
-          }
-        }
-      }
     }
   }
 
-  override fun getComponent() = component
+  /**
+   * Initializes the editor for Live Tasks (e.g. Live Telemetry, Java/Kotlin Allocations).
+   *
+   * Because live profiling sessions share a single centralized UI component ([AndroidProfilerToolWindow.profilersPanel]) across the IDE,
+   * this method embeds that panel into the editor tab. To ensure layout consistency and prevent UI cloning across split editor panes, this
+   * method enforces a strict singleton policy by closing any older editor tabs for this file after layout transitions settle.
+   */
+  private fun initializeLiveTaskEditor() {
+    val profilerToolWindow = AndroidProfilerToolWindowFactory.getProfilerToolWindow(project) ?: return
+    component.add(profilerToolWindow.profilersPanel, BorderLayout.CENTER)
 
-  override fun getPreferredFocusedComponent() = delegate?.preferredFocusedComponent ?: component
+    // Enforce singleton tab: close any other editors for this file across all windows.
+    // We delay this check to allow native IDE actions (like "Move to New Window")
+    // to finish their layout shifts, avoiding 'Already disposed' exceptions.
+    AppExecutorUtil.getAppScheduledExecutorService()
+      .schedule(
+        {
+          ApplicationManager.getApplication().invokeLater {
+            if (project.isDisposed) return@invokeLater
+            val fileEditorManager = FileEditorManagerEx.getInstanceEx(project)
 
-  @Nls(capitalization = Nls.Capitalization.Title) override fun getName() = "Profiler Capture"
+            // Find all windows containing this file
+            val openWindows = fileEditorManager.windows.filter { it.isFileOpen(file) }
+            if (openWindows.size <= 1) return@invokeLater
+
+            // If there are multiple windows with this file open, it was a Split or a Drag & Drop.
+            // We keep the newly created window (which is always appended to the end of the windows array)
+            // and close the file in all older windows. This avoids the `currentWindow` race condition.
+            val windowToKeep = openWindows.last()
+            openWindows.forEach { window ->
+              if (window != windowToKeep) {
+                window.closeFile(file)
+              }
+            }
+          }
+        },
+        TAB_TRANSITION_DEBOUNCE_DELAY_MS,
+        TimeUnit.MILLISECONDS,
+      )
+
+    component.revalidate()
+    component.repaint()
+  }
+
+  /**
+   * Initializes the editor for offline sessions (e.g. Heap Dumps, traditional traces) by building a standard StudioProfilers session
+   * asynchronously.
+   */
+  private fun initializeOfflineSessionEditor() {
+    OfflineProfilerSessionFactory.buildSessionAsync(
+      project,
+      file,
+      component,
+      this,
+      { ideServices -> IntellijProfilerComponents(project, this, ideServices.featureTracker) },
+    ) { session ->
+      offlineProfilers = session.profilers
+      profilersView = session.profilersView
+      profilerStageView = session.stageView
+      session.stageView?.let { component.add(session.profilersView.component, BorderLayout.CENTER) }
+      component.revalidate()
+      component.repaint()
+    }
+  }
+
+  /**
+   * Makes [component] its own focus cycle root, so that Tab / Shift+Tab move between the profiler's panels (e.g. a Heap Dump's class list,
+   * instance list and fields) in layout order, as they do in the Profiler tool window.
+   *
+   * Without this, an offline capture's nearest focus cycle root is the platform's editor composite panel, whose traversal policy resolves
+   * every Tab / Shift+Tab to [getPreferredFocusedComponent], trapping focus on a single component.
+   */
+  private fun installFocusTraversalPolicy() {
+    component.isFocusCycleRoot = true
+    component.isFocusTraversalPolicyProvider = true
+    component.focusTraversalPolicy = LayoutFocusTraversalPolicy()
+  }
+
+  override fun getComponent(): JComponent = rootComponent
+
+  override fun getPreferredFocusedComponent(): JComponent {
+    if (delegate != null) return delegate.preferredFocusedComponent ?: component
+    // Prefer a focusable descendant over the root panel: the editor composite panel resolves Tab on the root panel back to this component,
+    // so returning the root panel would trap focus there. Falls back to the root panel while the content is still loading.
+    return component.focusTraversalPolicy?.getDefaultComponent(component) as? JComponent ?: component
+  }
+
+  @Nls(capitalization = Nls.Capitalization.Title)
+  override fun getName() = if (file is ProfilerVirtualFile) file.name else "Profiler Capture"
 
   override fun setState(state: FileEditorState) {
     delegate?.setState(state)
@@ -138,6 +222,47 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
 
   override fun dispose() {
     delegate?.let { Disposer.dispose(it) }
-    offlineProfilers?.stop()
+    if (file is ProfilerVirtualFile) {
+      val sessionId = file.sessionId
+
+      // When tabs are split or moved, IntelliJ may dispose the old editor before creating the new one.
+      // We delay the teardown check to allow a new editor to be instantiated and claim the UI panel
+      // if this is a "Move Tab" operation.
+      AppExecutorUtil.getAppScheduledExecutorService()
+        .schedule(
+          {
+            ApplicationManager.getApplication().invokeLater {
+              if (project.isDisposed) return@invokeLater
+
+              val profilerToolWindow = AndroidProfilerToolWindowFactory.getProfilerToolWindow(project)
+              val fileEditorManager = FileEditorManager.getInstance(project)
+
+              // Get all currently open editors for this file
+              val openEditors = fileEditorManager.getAllEditors(file).filterIsInstance<UnifiedProfilerFileEditor>()
+
+              // If no editor remains open, the user explicitly closed the task
+              if (openEditors.isEmpty()) {
+                profilerToolWindow?.notifyEditorTabClosed(sessionId)
+              }
+            }
+          },
+          TAB_TRANSITION_DEBOUNCE_DELAY_MS,
+          TimeUnit.MILLISECONDS,
+        )
+    }
+  }
+
+  companion object {
+    /**
+     * Delay in milliseconds to allow native IDE window/tab transitions (such as Drag & Drop, Split Tab, Move to New Window) to complete
+     * before disposing or tearing down the singleton live task panel.
+     */
+    @VisibleForTesting const val TAB_TRANSITION_DEBOUNCE_DELAY_MS = 500L
+
+    /**
+     * Minimum width, in unscaled pixels, at which the recording's UI is laid out. When the editor tab is narrower, it scrolls horizontally.
+     * Visible components marked with [MinWidthScrollPane.KEEP_PREFERRED_WIDTH] can raise it.
+     */
+    @VisibleForTesting const val MIN_CONTENT_WIDTH = 480
   }
 }

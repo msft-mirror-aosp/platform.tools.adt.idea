@@ -15,12 +15,11 @@
  */
 plugins {
   alias(libs.plugins.android.application)
-  alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
 }
 
 android {
-  namespace 'google.simpleapplication'
+  namespace = 'google.simpleapplication'
   compileSdk 35 // compileSdk version will be replaced by AndroidGradleTestCase
 
   defaultConfig {
@@ -43,8 +42,10 @@ android {
     sourceCompatibility JavaVersion.VERSION_11
     targetCompatibility JavaVersion.VERSION_11
   }
-  kotlinOptions {
-    jvmTarget = '11'
+  kotlin {
+    compilerOptions {
+      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    }
   }
 }
 

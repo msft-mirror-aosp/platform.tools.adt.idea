@@ -8,7 +8,6 @@ import com.android.resources.ResourceType
 import com.android.tools.idea.project.DefaultModuleSystem
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.res.addAarDependency
-import com.android.tools.idea.res.addBinaryAarDependency
 import com.android.tools.idea.res.psi.ResourceReferencePsiElement
 import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.loadNewFile
@@ -2418,12 +2417,6 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
     doTestCompletion()
   }
 
-  fun testAarDependencyHighlightingNamespaced() {
-    enableNamespacing("myapp")
-    addBinaryAarDependency(myModule)
-    doTestHighlighting()
-  }
-
   // Regression test for http://b/37128688
   fun testToolsCompletion() {
     // Don't offer tools: completion for the mockup editor yet.
@@ -2853,6 +2846,63 @@ class AndroidLayoutDomTest : AndroidDomTestCase("dom/layout") {
 
   fun testIncludeInMerge() {
     doTestHighlighting("include_in_merge.xml")
+  }
+
+  fun testUnknownAppAttributeHighlighting() {
+    val layout =
+      myFixture.addFileToProject(
+        "res/layout/unknown_app_attr.xml",
+        // language=xml
+        """
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                <warning descr="Unknown attribute app:unknownAttribute">app:unknownAttribute</warning>="value" />
+
+        </LinearLayout>
+        """
+          .trimIndent(),
+      )
+
+    myFixture.configureFromExistingVirtualFile(layout.virtualFile)
+    myFixture.checkHighlighting()
+  }
+
+  fun testUnknownAppAttributeInConstraintLayout_b79968470() {
+    setAndroidx()
+    myFixture.addClass(constraintLayout)
+    myFixture.addFileToProject("res/values/values.xml", constraintLayoutResources)
+
+    val layout =
+      myFixture.addFileToProject(
+        "res/layout/activity_main.xml",
+        // language=xml
+        """
+        <androidx.constraintlayout.widget.ConstraintLayout
+            xmlns:android="http://schemas.android.com/apk/res/android"
+            xmlns:app="http://schemas.android.com/apk/res-auto"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView
+                android:id="@+id/styledText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                <warning descr="Unknown attribute app:layout_constraintRight_toStartOf">app:layout_constraintRight_toStartOf</warning>="parent"
+                app:constraint_referenced_ids="styledText" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+        """
+          .trimIndent(),
+      )
+
+    myFixture.configureFromExistingVirtualFile(layout.virtualFile)
+    myFixture.checkHighlighting()
   }
 
   private fun doTestAttrReferenceCompletion(textToType: String) {

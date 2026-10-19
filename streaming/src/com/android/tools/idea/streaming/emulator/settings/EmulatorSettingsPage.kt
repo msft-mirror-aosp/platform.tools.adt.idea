@@ -25,11 +25,11 @@ import com.android.tools.idea.streaming.StreamingBundle.message
 import com.intellij.openapi.options.BoundConfigurable
 import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.ui.EnumComboBoxModel
-import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.dsl.builder.bindItem
 import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 
 /** Implementation of the Settings > Tools > Emulator preference page. */
 class EmulatorSettingsPage : BoundConfigurable(DISPLAY_NAME), SearchableConfigurable {
@@ -62,7 +62,7 @@ class EmulatorSettingsPage : BoundConfigurable(DISPLAY_NAME), SearchableConfigur
         row {
           comboBox(
               EnumComboBoxModel(CameraVelocityControls::class.java),
-              renderer = SimpleListCellRenderer.create(DEFAULT_CAMERA_VELOCITY_CONTROLS.label) { it.label },
+              renderer = textListCellRenderer(DEFAULT_CAMERA_VELOCITY_CONTROLS.label) { it.label },
             )
             .bindItem({ state.cameraVelocityControls }, { state.cameraVelocityControls = it!! })
         }
@@ -74,7 +74,7 @@ class EmulatorSettingsPage : BoundConfigurable(DISPLAY_NAME), SearchableConfigur
           row {
             comboBox(
                 EnumComboBoxModel(SnapshotAutoDeletionPolicy::class.java),
-                renderer = SimpleListCellRenderer.create(DEFAULT_SNAPSHOT_AUTO_DELETION_POLICY.displayName) { it.displayName },
+                renderer = textListCellRenderer(DEFAULT_SNAPSHOT_AUTO_DELETION_POLICY.displayName) { it.displayName },
               )
               .bindItem({ state.snapshotAutoDeletionPolicy }, { state.snapshotAutoDeletionPolicy = it!! })
           }

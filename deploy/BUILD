@@ -6,21 +6,6 @@ iml_module(
     srcs = ["src"],
     iml_files = ["intellij.android.deploy.iml"],
     resources = ["resources"],
-    test_class = "com.android.tools.idea.run.DeployTestSuite",
-    test_data = glob(["testData/**"]) + ["//prebuilts/studio/sdk:platform-tools"],
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/base/fakeadbserver:studio.android.sdktools.fakeadbserver",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-        "//tools/base/common:studio.android.sdktools.common",
-        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
-        "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility",
-    ],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -41,7 +26,37 @@ iml_module(
         "//tools/adt/idea/android-adb:intellij.android.adb",
         "@intellij//:intellij.java.debugger.impl",
         "@intellij//:intellij.java.execution",
-        "@intellij//:intellij.java.debugger.impl.backend",
         "@intellij//:intellij.java.debugger",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.deploy.tests",
+    iml_files = ["intellij.android.deploy.tests.iml"],
+    test_class = "com.android.tools.idea.run.DeployTestSuite",
+    test_data = glob(["testData/**"]) + ["//prebuilts/studio/sdk:platform-tools"],
+    # do not sort: must match IML order
+    test_deps = [
+        "@intellij//:intellij-sdk",
+        "//tools/adt/idea/deploy:intellij.android.deploy",
+        "//tools/base/deploy/deployer:studio.android.sdktools.deployer",
+        "//tools/adt/idea/build-common:intellij.android.buildCommon",
+        "//tools/adt/idea/project-system:intellij.android.projectSystem",
+        "//tools/adt/idea/android-adb:intellij.android.adb",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/base/fakeadbserver:studio.android.sdktools.fakeadbserver",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/common:studio.android.sdktools.common",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility",
+        "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility.tests",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+    ],
+    test_friends = ["//tools/adt/idea/deploy:intellij.android.deploy"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )

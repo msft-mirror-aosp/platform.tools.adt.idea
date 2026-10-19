@@ -44,7 +44,7 @@ class EnableUiCheckAction :
     val modelDataContext = e.dataContext
     val manager = modelDataContext.getData(PreviewModeManager.KEY) ?: return
     val instance = modelDataContext.previewElement() ?: return
-    val device = modelDataContext.getData(SCENE_VIEW)?.configuration?.device
+    val device = modelDataContext.getData(SCENE_VIEW)?.configuration?.cachedDevice
     val isWearDevice = Device.isWear(device)
     manager.setMode(PreviewMode.UiCheck(baseInstance = UiCheckInstance(instance, isWearDevice)))
 

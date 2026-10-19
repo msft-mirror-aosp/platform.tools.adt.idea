@@ -26,7 +26,6 @@ import java.util.function.Consumer
 import org.gradle.tooling.BuildException
 import org.jetbrains.plugins.gradle.issue.GradleIssueChecker
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
-import org.jetbrains.plugins.gradle.service.execution.GradleExecutionErrorHandler
 
 /** Replaces href for more information related to duplicate classes to the id of an [OpenLinkQuickFix] so the IDE can open the link */
 class DuplicateClassIssueChecker : GradleIssueChecker {
@@ -36,11 +35,12 @@ class DuplicateClassIssueChecker : GradleIssueChecker {
   private val DUPLICATE_CLASS = "Duplicate class "
 
   override fun check(issueData: GradleIssueData): BuildIssue? {
-    if (issueData.error !is BuildException) {
+    if (issueData.failure.className?.contains(BuildException::class.java.name) == false) {
       return null
     }
-    val rootCause = GradleExecutionErrorHandler.getRootCauseAndLocation(issueData.error).first
-    if (rootCause !is RuntimeException) {
+    val rootCause = issueData.failure.rootCause
+    val rootCauseClassName = rootCause.className ?: return null
+    if (!rootCauseClassName.contains(RuntimeException::class.java.name)) {
       return null
     }
     var message = rootCause.message ?: return null

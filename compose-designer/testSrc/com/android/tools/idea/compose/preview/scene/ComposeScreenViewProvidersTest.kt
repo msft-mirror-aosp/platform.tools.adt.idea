@@ -38,6 +38,7 @@ import java.awt.geom.Ellipse2D
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -90,5 +91,90 @@ class ComposeScreenViewProvidersTest {
         override fun getData(dataId: String): Any? = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
       }
     assertTrue(composeScreenViewProvider.createPrimarySceneView(surface, surface.getSceneManager(model)!!).screenShape is Rectangle)
+  }
+
+  // Regression test for b/530122673
+  @Test
+  fun `shape policy dynamically updates when toggling showDecorations on existing scene view`() = runBlocking {
+    val model =
+      withContext(Dispatchers.EDT) {
+        NlModelBuilderUtil.model(
+            AndroidBuildTargetReference.gradleOnly(projectRule.module.androidFacet!!),
+            projectRule.fixture,
+            SdkConstants.FD_RES_LAYOUT,
+            "model.xml",
+            ComponentDescriptor("LinearLayout"),
+          )
+          .build()
+      }
+    val surface = NlSurfaceBuilder.build(projectRule.project, projectRule.testRootDisposable, false)
+    surface.addModelsWithoutRender(listOf(model))
+
+    // Create a device with round shape
+    val deviceWithRoundFrame =
+      DeviceConfig(width = 600f, height = 600f, dimUnit = DimUnit.px, dpi = 480, shape = Shape.Round).createDeviceInstance()
+    model.configuration.setDevice(deviceWithRoundFrame, false)
+
+    var previewElement =
+      SingleComposePreviewElementInstance.forTesting<SmartPsiElementPointer<PsiElement>>(
+        "TestMethod",
+        displayName = "displayName",
+        showDecorations = true,
+      )
+    model.dataProvider =
+      object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+        override fun getData(dataId: String): Any? = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+      }
+
+    val composeScreenViewProvider = ComposeScreenViewProvider(NopComposePreviewManager())
+    val screenView = composeScreenViewProvider.createPrimarySceneView(surface, surface.getSceneManager(model)!!)
+
+    // When showDecorations is true, the scene view should use the round device shape.
+    assertTrue(screenView.screenShape is Ellipse2D)
+
+    // When showDecorations is toggled to false, the same scene view instance should dynamically update to use a square shape
+    previewElement = SingleComposePreviewElementInstance.forTesting("TestMethod", displayName = "displayName", showDecorations = false)
+    model.dataProvider =
+      object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+        override fun getData(dataId: String): Any? = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+      }
+    assertTrue(screenView.screenShape is Rectangle)
+
+    // When showDecorations is toggled back to true, the same scene view instance should dynamically update back to round
+    previewElement = SingleComposePreviewElementInstance.forTesting("TestMethod", displayName = "displayName", showDecorations = true)
+    model.dataProvider =
+      object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+        override fun getData(dataId: String): Any? = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+      }
+    assertTrue(screenView.screenShape is Ellipse2D)
+  }
+
+  // Regression test for b/332997031
+  @Test
+  fun `scene layer is not shown on hover initially`() = runBlocking {
+    val model =
+      withContext(Dispatchers.EDT) {
+        NlModelBuilderUtil.model(
+            AndroidBuildTargetReference.gradleOnly(projectRule.module.androidFacet!!),
+            projectRule.fixture,
+            SdkConstants.FD_RES_LAYOUT,
+            "model.xml",
+            ComponentDescriptor("LinearLayout"),
+          )
+          .build()
+      }
+    val surface = NlSurfaceBuilder.build(projectRule.project, projectRule.testRootDisposable, false)
+    surface.addModelsWithoutRender(listOf(model))
+
+    val composeScreenViewProvider = ComposeScreenViewProvider(NopComposePreviewManager())
+    val screenView = composeScreenViewProvider.createPrimarySceneView(surface, surface.getSceneManager(model)!!)
+    val getLayersMethod =
+      com.android.tools.idea.common.surface.SceneView::class.java.getDeclaredMethod("getLayers").apply {
+        isAccessible = true
+      }
+    val layers = getLayersMethod.invoke(screenView) as List<*>
+    val sceneLayer = layers.filterIsInstance<com.android.tools.idea.common.surface.SceneLayer>().single()
+
+    assertFalse(sceneLayer.isShowOnHover)
   }
 }

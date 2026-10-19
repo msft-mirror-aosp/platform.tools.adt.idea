@@ -88,8 +88,6 @@ import org.mockito.Mockito;
 
 /**
  * Tests for code editor features when working with resources under res/values.
- *
- * @see AndroidNamespacedValueResourcesDomTest
  */
 @RunWith(JUnit4.class)
 @RunsInEdt

@@ -36,7 +36,7 @@ import com.android.tools.idea.streaming.core.PanelState
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
 import com.android.tools.idea.streaming.core.SplitNode
 import com.android.tools.idea.streaming.core.SplitPanel
-import com.android.tools.idea.streaming.core.StreamingDeviceId
+import com.android.tools.idea.streaming.core.ToolbarPlacement
 import com.android.tools.idea.streaming.core.ZoomablePanel
 import com.android.tools.idea.streaming.core.computeBestLayout
 import com.android.tools.idea.streaming.core.htmlColored
@@ -48,6 +48,7 @@ import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionSt
 import com.android.tools.idea.streaming.emulator.actions.findManageSnapshotDialog
 import com.android.tools.idea.streaming.emulator.actions.showExtendedControls
 import com.android.tools.idea.streaming.emulator.actions.showManageSnapshotsDialog
+import com.android.tools.idea.streaming.emulator.dialogs.AbstractExtendedControlsDialog
 import com.android.tools.idea.ui.screenrecording.ScreenRecordingParameters
 import com.android.utils.HashCodes
 import com.intellij.execution.runners.ExecutionUtil
@@ -72,6 +73,7 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 import com.intellij.util.xmlb.annotations.Property
 import icons.StudioIcons
 import it.unimi.dsi.fastutil.ints.Int2ObjectRBTreeMap
+import java.awt.Dimension
 import java.awt.EventQueue
 import javax.swing.Icon
 import javax.swing.JComponent
@@ -81,11 +83,15 @@ import kotlinx.coroutines.launch
 import org.jetbrains.annotations.TestOnly
 
 /** Provides view of one AVD in the Running Devices tool window. */
-internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val project: Project, val emulator: EmulatorController) :
-  AbstractDevicePanel<EmulatorDisplayPanel>(StreamingDeviceId.ofEmulator(emulator.emulatorId), EMULATOR_MAIN_TOOLBAR_ID),
-  ConnectionStateListener {
+internal class EmulatorToolWindowPanel(
+  disposableParent: Disposable,
+  private val project: Project,
+  val emulator: EmulatorController,
+  initialToolbarPlacement: ToolbarPlacement = ToolbarPlacement.HORIZONTAL,
+) :
+  AbstractDevicePanel<EmulatorDisplayPanel>(emulator.deviceId, EMULATOR_MAIN_TOOLBAR_ID, initialToolbarPlacement), ConnectionStateListener {
 
-  val log = Logger.getInstance("EmulatorToolWindowPanel: ${emulator.emulatorId.avdName}")
+  private val log = Logger.getInstance("EmulatorToolWindowPanel: ${emulator.emulatorId.avdName}")
 
   private val displayConfigurator = DisplayConfigurator(project)
   private var contentDisposable: Disposable? = null
@@ -143,8 +149,10 @@ internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val
   init {
     Disposer.register(disposableParent, this)
 
-    if (deviceType == DeviceType.AI_GLASSES) {
-      addTopPanel(GlassesInputPanel(emulator, this))
+    when (deviceType) {
+      DeviceType.AI_GLASSES -> addTopPanel(EmulatorGlassesInputPanel(emulator, this))
+      DeviceType.TV -> addBottomPanel(TvRemotePanel(emulator, project, this))
+      else -> {}
     }
 
     // Start Adb ready service for context menu actions.
@@ -185,11 +193,11 @@ internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val
     primaryDisplayView = emulatorView
     installFileDropHandler(this, id.serialNumber, emulatorView, project)
     val coroutineScope = disposable.createCoroutineScope()
-    val notificationReceiver = NotificationReceiver.forEmulator(emulator)
-    coroutineScope.launch(Dispatchers.EDT) { notificationReceiver.currentPosture.collect { ActivityTracker.getInstance().inc() } }
-    coroutineScope.launch(Dispatchers.EDT) { notificationReceiver.currentPosture.collect { ActivityTracker.getInstance().inc() } }
+    val notificationTracker = NotificationTracker.forEmulator(emulator)
+    coroutineScope.launch(Dispatchers.EDT) { notificationTracker.currentPosture.collect { ActivityTracker.getInstance().inc() } }
+    coroutineScope.launch(Dispatchers.EDT) { notificationTracker.currentPosture.collect { ActivityTracker.getInstance().inc() } }
     coroutineScope.launch(Dispatchers.EDT) {
-      notificationReceiver.displayConfigurations.collect { displayConfigs ->
+      notificationTracker.displayConfigurations.collect { displayConfigs ->
         if (displayConfigs != null) {
           displayConfigurator.displayConfigurationReceived(displayConfigs)
         }
@@ -231,6 +239,7 @@ internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val
       if (uiState.extendedControlsShown) {
         showExtendedControls(emulator, project)
       }
+      uiState.extendedControlsDialogRestorer?.invoke()
     }
   }
 
@@ -250,6 +259,13 @@ internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val
     val manageSnapshotsDialog = primaryDisplayView?.let { findManageSnapshotDialog(it) }
     uiState.manageSnapshotsDialogShown = manageSnapshotsDialog != null
     manageSnapshotsDialog?.close(DialogWrapper.CLOSE_EXIT_CODE)
+
+    val extendedControlsDialog = AbstractExtendedControlsDialog.findOpenDialog(emulator)?.takeIf { it.project == project }
+    if (extendedControlsDialog != null) {
+      val dialogConstructor = extendedControlsDialog::class.java.getDeclaredConstructor(EmulatorController::class.java)
+      uiState.extendedControlsDialogRestorer = { dialogConstructor.newInstance(emulator).show(project) }
+      extendedControlsDialog.close()
+    }
 
     if (connected) {
       emulator.closeExtendedControls(
@@ -431,6 +447,7 @@ internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val
   class EmulatorUiState : UiState {
     var manageSnapshotsDialogShown = false
     var extendedControlsShown = false
+    var extendedControlsDialogRestorer: (() -> Unit)? = null
     val zoomScrollState = Int2ObjectRBTreeMap<ZoomablePanel.ZoomScrollState>()
   }
 
@@ -545,4 +562,4 @@ internal class EmulatorToolWindowPanel(disposableParent: Disposable, private val
   }
 }
 
-private fun DisplayConfiguration.toDisplayDescriptor(): DisplayDescriptor = DisplayDescriptor(display, width, height)
+private fun DisplayConfiguration.toDisplayDescriptor(): DisplayDescriptor = DisplayDescriptor(display, Dimension(width, height))

@@ -1,4 +1,13 @@
 {
+  "id": "com.android.studio.ml.AcpConfigurable",
+  "name": "Agents",
+  "entries": [
+    {
+      "hit": "Agents"
+    }
+  ]
+}
+{
   "id": "com.android.studio.ml.McpConfigurable",
   "name": "MCP Servers",
   "entries": [
@@ -27,9 +36,6 @@
       "hit": "Context Compression"
     },
     {
-      "hit": "Enable pre-bundled skills"
-    },
-    {
       "hit": "Gemini requires a signed-in Google account."
     },
     {
@@ -40,9 +46,6 @@
     },
     {
       "hit": "Sign in"
-    },
-    {
-      "hit": "Skills"
     },
     {
       "hit": "Tokens:"
@@ -75,28 +78,55 @@
       "hit": "750 ms"
     },
     {
-      "hit": "AI inline code completion"
+      "hit": "Add custom instructions to review prompt"
     },
     {
-      "hit": "AI next edit prediction"
+      "hit": "Automatically collapse diff chunks below:"
+    },
+    {
+      "hit": "Change Review"
     },
     {
       "hit": "Configure colors..."
     },
     {
+      "hit": "Don't Collapse"
+    },
+    {
       "hit": "Editor"
     },
     {
-      "hit": "Enable AI predictions"
+      "hit": "Enable AI next edit prediction"
     },
     {
       "hit": "Enable AI smart rename suggestions"
     },
     {
+      "hit": "Enable suggestions away from cursor"
+    },
+    {
+      "hit": "Major"
+    },
+    {
+      "hit": "Minor"
+    },
+    {
       "hit": "Model:"
     },
     {
+      "hit": "Moderate"
+    },
+    {
+      "hit": "Next Edit Prediction"
+    },
+    {
       "hit": "Request delay:"
+    },
+    {
+      "hit": "Show reviewed diff chunks in navigation"
+    },
+    {
+      "hit": "Smart Rename"
     }
   ]
 }
@@ -123,9 +153,6 @@
       "hit": "\nBlocked shell commands (none)"
     },
     {
-      "hit": "\nLocked by administrator"
-    },
-    {
       "hit": "Access gitignored files"
     },
     {
@@ -142,6 +169,9 @@
     },
     {
       "hit": "Automatically run safe shell commands"
+    },
+    {
+      "hit": "Customize..."
     },
     {
       "hit": "Delete or rename files in the project"
@@ -285,6 +315,9 @@
       "hit": "IDE"
     },
     {
+      "hit": "More"
+    },
+    {
       "hit": "Project"
     },
     {
@@ -332,10 +365,6 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Document Code",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Explain Code",
       "path": "ActionManager"
     },
@@ -348,15 +377,27 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Generate Code\u2026",
-      "path": "ActionManager"
-    },
-    {
       "hit": "Generate Jetpack Compose code from the attached image",
       "path": "ActionManager"
     },
     {
       "hit": "Generate Preview for Composable",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Import a non-Android project and convert it to Android using Gemini.",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Import and Convert",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Import and Convert\u2026",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Inline Edit",
       "path": "ActionManager"
     },
     {
@@ -380,7 +421,23 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Manage Agent Skills",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Merge Conflicts with Agent",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Migrate Layout XML to Jetpack Compose using AI.",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Migrate Project to Compose",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Migrate to Compose",
       "path": "ActionManager"
     },
     {
@@ -416,15 +473,15 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Predict Now",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Previous Chat",
       "path": "ActionManager"
     },
     {
       "hit": "Prompt Library",
-      "path": "ActionManager"
-    },
-    {
-      "hit": "Quick Edit",
       "path": "ActionManager"
     },
     {
@@ -448,11 +505,11 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Review Commit with AI",
+      "hit": "Review Changes with AI",
       "path": "ActionManager"
     },
     {
-      "hit": "Review Pending Changes with AI",
+      "hit": "Review Commit with AI",
       "path": "ActionManager"
     },
     {
@@ -460,11 +517,15 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Start a code review of the selected commit(s) using the AI agent",
+      "hit": "Start a review of the selected commit(s) using the AI agent",
       "path": "ActionManager"
     },
     {
-      "hit": "Start a code review of your pending changes using the AI agent",
+      "hit": "Start a review of your pending changes using the AI agent",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Starts the migration of the project to Compose.",
       "path": "ActionManager"
     },
     {
@@ -480,7 +541,7 @@
       "path": "ActionManager"
     },
     {
-      "hit": "Transform Selected Code\u2026",
+      "hit": "Triggers Next Edit Prediction manually at the current caret position.",
       "path": "ActionManager"
     },
     {
@@ -557,6 +618,9 @@
       "hit": "Refresh"
     },
     {
+      "hit": "Show Gemma in the model picker when no models are downloaded"
+    },
+    {
       "hit": "Sign in"
     },
     {
@@ -620,6 +684,18 @@
       "path": "Available Models"
     },
     {
+      "hit": "Update",
+      "path": "Available Models"
+    },
+    {
+      "hit": "0 (Disabled)",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "1 draft token",
+      "path": "Host Configuration"
+    },
+    {
       "hit": "10 minutes of no requests",
       "path": "Host Configuration"
     },
@@ -628,11 +704,31 @@
       "path": "Host Configuration"
     },
     {
+      "hit": "2 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "3 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
       "hit": "30 minutes of no requests",
       "path": "Host Configuration"
     },
     {
+      "hit": "4 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "5 draft tokens",
+      "path": "Host Configuration"
+    },
+    {
       "hit": "5 minutes of no requests",
+      "path": "Host Configuration"
+    },
+    {
+      "hit": "6 draft tokens",
       "path": "Host Configuration"
     },
     {
@@ -648,11 +744,11 @@
       "path": "Host Configuration"
     },
     {
-      "hit": "Never",
+      "hit": "Multi-Token Prediction (MTP) draft tokens:",
       "path": "Host Configuration"
     },
     {
-      "hit": "Parallel request processing",
+      "hit": "Never",
       "path": "Host Configuration"
     }
   ]
@@ -710,6 +806,10 @@
     },
     {
       "hit": "Refresh",
+      "path": "Model Providers"
+    },
+    {
+      "hit": "Show Gemma in the model picker when no models are downloaded",
       "path": "Model Providers"
     },
     {
@@ -781,6 +881,18 @@
       "path": "Model Providers.Available Models"
     },
     {
+      "hit": "Update",
+      "path": "Model Providers.Available Models"
+    },
+    {
+      "hit": "0 (Disabled)",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "1 draft token",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
       "hit": "10 minutes of no requests",
       "path": "Model Providers.Host Configuration"
     },
@@ -789,11 +901,31 @@
       "path": "Model Providers.Host Configuration"
     },
     {
+      "hit": "2 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "3 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
       "hit": "30 minutes of no requests",
       "path": "Model Providers.Host Configuration"
     },
     {
+      "hit": "4 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "5 draft tokens",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
       "hit": "5 minutes of no requests",
+      "path": "Model Providers.Host Configuration"
+    },
+    {
+      "hit": "6 draft tokens",
       "path": "Model Providers.Host Configuration"
     },
     {
@@ -809,11 +941,11 @@
       "path": "Model Providers.Host Configuration"
     },
     {
-      "hit": "Never",
+      "hit": "Multi-Token Prediction (MTP) draft tokens:",
       "path": "Model Providers.Host Configuration"
     },
     {
-      "hit": "Parallel request processing",
+      "hit": "Never",
       "path": "Model Providers.Host Configuration"
     }
   ]

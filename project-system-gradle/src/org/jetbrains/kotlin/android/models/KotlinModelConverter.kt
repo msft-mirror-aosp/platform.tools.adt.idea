@@ -101,9 +101,20 @@ class KotlinModelConverter {
 
     internal fun KotlinSourceSet.getJavaSourceDirectories() = sourceDirs.map { File(it.parentFile, "java") }
 
-    internal fun KotlinSourceSet.getResSourceDirectories() = sourceDirs.map { File(it.parentFile, "res") }
+    /**
+     * Returns the android res directories of this sourceSet: the conventional `res` directory next to each kotlin source directory, plus
+     * the extra res directories reported by AGP in [sourceProvider] (e.g. added with `variant.sources.res.addStaticSourceDirectory()`).
+     */
+    internal fun KotlinSourceSet.getResSourceDirectories(sourceProvider: SourceProvider?) =
+      sourceDirs.map { File(it.parentFile, "res") } + sourceProvider?.extraResDirectoriesList.orEmpty().map { File(it.absolutePath) }
 
-    internal fun KotlinSourceSet.getAssetsSourceDirectories() = sourceDirs.map { File(it.parentFile, "assets") }
+    /**
+     * Returns the android assets directories of this sourceSet: the conventional `assets` directory next to each kotlin source directory,
+     * plus the extra assets directories reported by AGP in [sourceProvider] (e.g. added with
+     * `variant.sources.assets.addStaticSourceDirectory()`).
+     */
+    internal fun KotlinSourceSet.getAssetsSourceDirectories(sourceProvider: SourceProvider?) =
+      sourceDirs.map { File(it.parentFile, "assets") } + sourceProvider?.extraAssetsDirectoriesList.orEmpty().map { File(it.absolutePath) }
   }
 
   private val interner = WeakInterner(lock = null) // No need for a lock since the resolution happens sequentially.
@@ -140,6 +151,7 @@ class KotlinModelConverter {
       }
     return IdeTestOptionsImpl(
       animationsDisabled = animationsDisabled,
+      instrumentInPrivateComputeCore = instrumentInPrivateComputeCore,
       execution = executionOption,
       instrumentedTestTaskName = instrumentedTestTaskName.deduplicate(),
     )
@@ -162,8 +174,8 @@ class KotlinModelConverter {
         } else emptyList(),
       aidlDirectories = emptyList(),
       renderscriptDirectories = emptyList(),
-      resDirectories = sourceSet.getResSourceDirectories().makeRelativeAndDeduplicate(),
-      assetsDirectories = sourceSet.getAssetsSourceDirectories().makeRelativeAndDeduplicate(),
+      resDirectories = sourceSet.getResSourceDirectories(this).makeRelativeAndDeduplicate(),
+      assetsDirectories = sourceSet.getAssetsSourceDirectories(this).makeRelativeAndDeduplicate(),
       jniLibsDirectories = emptyList(),
       shadersDirectories = emptyList(),
       mlModelsDirectories = emptyList(),
@@ -223,6 +235,7 @@ class KotlinModelConverter {
       storeFile = storeFile?.convertAndDeduplicate(),
       storePassword = storePassword?.deduplicate(),
       keyAlias = keyAlias?.deduplicate(),
+      isSigningReady = isSigningReady,
     )
 
   private fun computeForCoordinatesIfAbsent(
@@ -509,73 +522,71 @@ class KotlinModelConverter {
         mappingR8PartitionFile = null,
       )
 
-    val unitTestArtifact =
-      unitTestAndroidCompilation?.let {
-        IdeJavaArtifactCoreImpl(
-          name = IdeArtifactName.UNIT_TEST,
-          compileTaskName = unitTestAndroidCompilation.kotlinCompileTaskName,
-          assembleTaskName = unitTestAndroidCompilation.assembleTaskName,
-          classesFolder =
-            (unitTestKotlinCompilation?.output?.classesDirs?.toList() ?: emptyList()) +
-              unitTestAndroidCompilation.extraClassesFoldersList.convertAndDeduplicate(),
-          variantSourceProvider = null,
-          multiFlavorSourceProvider = null,
-          ideSetupTaskNames = emptyList(), // For now, there is no source generation tasks
-          generatedSourceFolders = unitTestAndroidCompilation.generatedSourceFoldersList.convertAndDeduplicate(),
-          isTestArtifact = true,
-          compileClasspathCore = IdeDependenciesCoreDirect(dependencies = unitTestSourceSetCompileDependencies ?: emptyList()),
-          runtimeClasspathCore = IdeDependenciesCoreDirect(dependencies = unitTestSourceSetRuntimeDependencies ?: emptyList()),
-          unresolvedDependencies = emptyList(),
-          mockablePlatformJar = unitTestAndroidCompilation.unitTestInfo.mockablePlatformJar.convertAndDeduplicate(),
-          generatedClassPaths = emptyMap(),
-          bytecodeTransforms = null,
-        )
-      }
+    val unitTestArtifact = unitTestAndroidCompilation?.let {
+      IdeJavaArtifactCoreImpl(
+        name = IdeArtifactName.UNIT_TEST,
+        compileTaskName = unitTestAndroidCompilation.kotlinCompileTaskName,
+        assembleTaskName = unitTestAndroidCompilation.assembleTaskName,
+        classesFolder =
+          (unitTestKotlinCompilation?.output?.classesDirs?.toList() ?: emptyList()) +
+            unitTestAndroidCompilation.extraClassesFoldersList.convertAndDeduplicate(),
+        variantSourceProvider = null,
+        multiFlavorSourceProvider = null,
+        ideSetupTaskNames = emptyList(), // For now, there is no source generation tasks
+        generatedSourceFolders = unitTestAndroidCompilation.generatedSourceFoldersList.convertAndDeduplicate(),
+        isTestArtifact = true,
+        compileClasspathCore = IdeDependenciesCoreDirect(dependencies = unitTestSourceSetCompileDependencies ?: emptyList()),
+        runtimeClasspathCore = IdeDependenciesCoreDirect(dependencies = unitTestSourceSetRuntimeDependencies ?: emptyList()),
+        unresolvedDependencies = emptyList(),
+        mockablePlatformJar = unitTestAndroidCompilation.unitTestInfo.mockablePlatformJar.convertAndDeduplicate(),
+        generatedClassPaths = emptyMap(),
+        bytecodeTransforms = null,
+      )
+    }
 
-    val androidTestArtifact =
-      androidTestAndroidCompilation?.let {
-        IdeAndroidArtifactCoreImpl(
-          name = IdeArtifactName.ANDROID_TEST,
-          compileTaskName = androidTestAndroidCompilation.kotlinCompileTaskName,
-          assembleTaskName = androidTestAndroidCompilation.assembleTaskName,
-          classesFolder =
-            (androidTestKotlinCompilation?.output?.classesDirs?.toList() ?: emptyList()) +
-              androidTestAndroidCompilation.extraClassesFoldersList.convertAndDeduplicate(),
-          variantSourceProvider = null,
-          multiFlavorSourceProvider = null,
-          ideSetupTaskNames = emptyList(), // For now, there is no source generation tasks
-          generatedSourceFolders = androidTestAndroidCompilation.generatedSourceFoldersList.convertAndDeduplicate(),
-          isTestArtifact = true,
-          compileClasspathCore = IdeDependenciesCoreDirect(dependencies = androidTestSourceSetCompileDependencies ?: emptyList()),
-          runtimeClasspathCore = IdeDependenciesCoreDirect(dependencies = androidTestSourceSetRuntimeDependencies ?: emptyList()),
-          unresolvedDependencies = emptyList(),
-          applicationId = androidTestAndroidCompilation.instrumentedTestInfo.namespace,
-          signingConfigName = androidTestAndroidCompilation.instrumentedTestInfo.signingConfig?.name,
-          isSigned = androidTestAndroidCompilation.instrumentedTestInfo.signingConfig != null,
-          generatedResourceFolders =
-            androidTestAndroidCompilation.instrumentedTestInfo?.generatedResourceFoldersList?.convertAndDeduplicate() ?: emptyList(),
-          additionalRuntimeApks = emptyList(),
-          testOptions = targetInfo.testInfo.convert(),
-          abiFilters = emptySet(),
-          buildInformation =
-            IdeBuildTasksAndOutputInformationImpl(
-              assembleTaskName = androidTestAndroidCompilation.assembleTaskName,
-              assembleTaskOutputListingFile =
-                androidTestAndroidCompilation.instrumentedTestInfo.assembleTaskOutputListingFile.absolutePath.deduplicate(),
-              bundleTaskName = null,
-              bundleTaskOutputListingFile = null,
-              apkFromBundleTaskName = null,
-              apkFromBundleTaskOutputListingFile = null,
-            ),
-          codeShrinker = mainArtifact.codeShrinker,
-          desugaredMethodsFiles = targetInfo.desugaredMethodsFilesList.convertAndDeduplicate(),
-          generatedClassPaths = emptyMap(),
-          bytecodeTransforms = null,
-          generatedAssetFolders = androidTestAndroidCompilation.instrumentedTestInfo.generatedAssetFoldersList.convertAndDeduplicate(),
-          mappingR8TextFile = null,
-          mappingR8PartitionFile = null,
-        )
-      }
+    val androidTestArtifact = androidTestAndroidCompilation?.let {
+      IdeAndroidArtifactCoreImpl(
+        name = IdeArtifactName.ANDROID_TEST,
+        compileTaskName = androidTestAndroidCompilation.kotlinCompileTaskName,
+        assembleTaskName = androidTestAndroidCompilation.assembleTaskName,
+        classesFolder =
+          (androidTestKotlinCompilation?.output?.classesDirs?.toList() ?: emptyList()) +
+            androidTestAndroidCompilation.extraClassesFoldersList.convertAndDeduplicate(),
+        variantSourceProvider = null,
+        multiFlavorSourceProvider = null,
+        ideSetupTaskNames = emptyList(), // For now, there is no source generation tasks
+        generatedSourceFolders = androidTestAndroidCompilation.generatedSourceFoldersList.convertAndDeduplicate(),
+        isTestArtifact = true,
+        compileClasspathCore = IdeDependenciesCoreDirect(dependencies = androidTestSourceSetCompileDependencies ?: emptyList()),
+        runtimeClasspathCore = IdeDependenciesCoreDirect(dependencies = androidTestSourceSetRuntimeDependencies ?: emptyList()),
+        unresolvedDependencies = emptyList(),
+        applicationId = androidTestAndroidCompilation.instrumentedTestInfo.namespace,
+        signingConfigName = androidTestAndroidCompilation.instrumentedTestInfo.signingConfig?.name,
+        isSigned = androidTestAndroidCompilation.instrumentedTestInfo.signingConfig != null,
+        generatedResourceFolders =
+          androidTestAndroidCompilation.instrumentedTestInfo?.generatedResourceFoldersList?.convertAndDeduplicate() ?: emptyList(),
+        additionalRuntimeApks = emptyList(),
+        testOptions = targetInfo.testInfo.convert(),
+        abiFilters = emptySet(),
+        buildInformation =
+          IdeBuildTasksAndOutputInformationImpl(
+            assembleTaskName = androidTestAndroidCompilation.assembleTaskName,
+            assembleTaskOutputListingFile =
+              androidTestAndroidCompilation.instrumentedTestInfo.assembleTaskOutputListingFile.absolutePath.deduplicate(),
+            bundleTaskName = null,
+            bundleTaskOutputListingFile = null,
+            apkFromBundleTaskName = null,
+            apkFromBundleTaskOutputListingFile = null,
+          ),
+        codeShrinker = mainArtifact.codeShrinker,
+        desugaredMethodsFiles = targetInfo.desugaredMethodsFilesList.convertAndDeduplicate(),
+        generatedClassPaths = emptyMap(),
+        bytecodeTransforms = null,
+        generatedAssetFolders = androidTestAndroidCompilation.instrumentedTestInfo.generatedAssetFoldersList.convertAndDeduplicate(),
+        mappingR8TextFile = null,
+        mappingR8PartitionFile = null,
+      )
+    }
 
     val androidMainVariant =
       IdeVariantCoreImpl(

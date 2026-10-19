@@ -35,15 +35,20 @@ public class PackageStatementParser implements PackageReader {
   private static final Pattern PACKAGE_PATTERN = Pattern.compile("^\\s*package\\s+([\\w\\.]+)");
   private static final Pattern SINGLE_LINE_PACKAGE_PATTERN =
       Pattern.compile("\\bpackage\\s+([^;]+);");
+  private static final Pattern SAFE_PACKAGE_PATTERN = Pattern.compile("^\\w+(\\.\\w+)*$");
+
+  private static boolean isSafePackage(String packageName) {
+    return packageName != null && SAFE_PACKAGE_PATTERN.matcher(packageName).matches();
+  }
 
   @Override
   @Nullable
   public String readPackage(Context<?> context, Path path) {
     try (InputStream in = new FileInputStream(path.toFile())) {
       return readPackage(in);
-    }
-    catch (IOException ex) {
-      context.output(PrintOutput.error("Cannot read file '%s': %s".formatted(path, ex.getMessage())));
+    } catch (IOException ex) {
+      context.output(
+          PrintOutput.error("Cannot read file '%s': %s".formatted(path, ex.getMessage())));
       return null;
     }
   }
@@ -60,14 +65,16 @@ public class PackageStatementParser implements PackageReader {
       linesRead++;
       Matcher packageMatch = PACKAGE_PATTERN.matcher(javaLine);
       if (packageMatch.find()) {
-        return packageMatch.group(1);
+        String packageName = packageMatch.group(1);
+        return isSafePackage(packageName) ? packageName : "";
       }
     }
     // A special case for generated sources files with no newlines in them:
     if (linesRead == 1) {
       Matcher packageMatch = SINGLE_LINE_PACKAGE_PATTERN.matcher(firstLine);
       if (packageMatch.find()) {
-        return packageMatch.group(1);
+        String packageName = packageMatch.group(1);
+        return isSafePackage(packageName) ? packageName : "";
       }
     }
     return "";

@@ -73,8 +73,18 @@ class ExistingProjectModelData(
   override val dslLanguage: ObjectValueProperty<DslLanguage> = ObjectValueProperty(project.dslLanguageUsage())
   override val useVersionCatalog = BoolValueProperty(determineVersionCatalogUseForNewModule(project, isNewProject = false))
   override val viewBindingSupport = OptionalValueProperty<ViewBindingSupport>(project.isViewBindingSupported())
-  override val templateRendererStrategy: OptionalValueProperty<TemplateRendererStrategy> =
-    OptionalValueProperty.fromNullable(TemplateRendererStrategy.EP_NAME.extensions.firstOrNull { it.isProjectApplicable(project) })
+  @Suppress("UNCHECKED_CAST") // Ugly generics here make the extension point itself slightly neater
+  override val templateRendererStrategy: OptionalValueProperty<TemplateRendererStrategy<TemplateRendererStrategy.AdditionalUserSettings>> =
+    OptionalValueProperty.fromNullable(
+      TemplateRendererStrategy.EP_NAME.extensions.firstOrNull { it.isProjectApplicable(project) }
+        as? TemplateRendererStrategy<TemplateRendererStrategy.AdditionalUserSettings>
+    )
+  @Suppress("UNCHECKED_CAST") // Ugly generics here make the extension point itself slightly neater
+  override val templateRenderStrategyAdditionalUserSettings:
+    Map<TemplateRendererStrategy<TemplateRendererStrategy.AdditionalUserSettings>, TemplateRendererStrategy.AdditionalUserSettings> =
+    TemplateRendererStrategy.EP_NAME.extensions.associateWith { it.createAdditionalUserSettings() }
+      as Map<TemplateRendererStrategy<TemplateRendererStrategy.AdditionalUserSettings>, TemplateRendererStrategy.AdditionalUserSettings>
+
   override val isNewProject = false
   override val language: OptionalValueProperty<Language> = OptionalValueProperty(getInitialSourceLanguage(project))
   override val agpVersionSelector =
@@ -92,9 +102,6 @@ class ExistingProjectModelData(
   override val modelId = StringValueProperty("")
   override val displayText = StringValueProperty("")
   override val imageAttachments: ObjectValueProperty<List<VirtualFile>> = ObjectValueProperty(listOf())
-  override val sourceProjectType = ObjectValueProperty(SourceProjectType.UNKNOWN)
-  override val importSourcePath = StringValueProperty("")
-  override val userSkillDirectories: ObjectValueProperty<List<java.io.File>> = ObjectValueProperty(listOf())
 
   private fun runRenderer(renderer: (Project) -> Unit) {
     object : Task.Modal(project, message("android.compile.messages.generating.r.java.content.name"), false) {
@@ -182,47 +189,49 @@ class NewAndroidModuleModel(
         val generateStandardFiles = customStrategy?.generateStandardAndroidModuleFiles ?: true
         return when (formFactor.get()) {
           FormFactor.Mobile -> { data: TemplateData ->
-              generateAndroidModule(
-                data = data as ModuleTemplateData,
-                appTitle = applicationName.get(),
-                hasCustomRenderer = hasCustomRenderer,
-                generateStandardFiles = generateStandardFiles,
-              )
-            }
+            generateAndroidModule(
+              data = data as ModuleTemplateData,
+              appTitle = applicationName.get(),
+              hasCustomRenderer = hasCustomRenderer,
+              generateStandardFiles = generateStandardFiles,
+            )
+          }
           FormFactor.Wear -> { data: TemplateData ->
-              generateWearModule(
-                data = data as ModuleTemplateData,
-                appTitle = applicationName.get(),
-                hasCustomRenderer = hasCustomRenderer,
-                generateStandardFiles = generateStandardFiles,
-              )
-            }
+            generateWearModule(
+              data = data as ModuleTemplateData,
+              appTitle = applicationName.get(),
+              hasCustomRenderer = hasCustomRenderer,
+              generateStandardFiles = generateStandardFiles,
+            )
+          }
           FormFactor.Car -> { data: TemplateData ->
-              generateAutomotiveModule(
-                data = data as ModuleTemplateData,
-                appTitle = applicationName.get(),
-                hasCustomRenderer = hasCustomRenderer,
-                generateStandardFiles = generateStandardFiles,
-              )
-            }
+            generateAutomotiveModule(
+              data = data as ModuleTemplateData,
+              appTitle = applicationName.get(),
+              hasCustomRenderer = hasCustomRenderer,
+              generateStandardFiles = generateStandardFiles,
+            )
+          }
           FormFactor.Tv -> { data: TemplateData ->
-              generateTvModule(
-                data = data as ModuleTemplateData,
-                appTitle = applicationName.get(),
-                hasCustomRenderer = hasCustomRenderer,
-                generateStandardFiles = generateStandardFiles,
-              )
-            }
+            generateTvModule(
+              data = data as ModuleTemplateData,
+              appTitle = applicationName.get(),
+              hasCustomRenderer = hasCustomRenderer,
+              generateStandardFiles = generateStandardFiles,
+            )
+          }
           FormFactor.XR,
           FormFactor.AiGlasses -> { data: TemplateData ->
-              generateXRModule(
-                data = data as ModuleTemplateData,
-                appTitle = applicationName.get(),
-                hasCustomRenderer = hasCustomRenderer,
-                generateStandardFiles = generateStandardFiles,
-              )
-            }
-          FormFactor.Generic -> { data: TemplateData -> generateGenericModule(data as ModuleTemplateData) }
+            generateXRModule(
+              data = data as ModuleTemplateData,
+              appTitle = applicationName.get(),
+              hasCustomRenderer = hasCustomRenderer,
+              generateStandardFiles = generateStandardFiles,
+            )
+          }
+          FormFactor.Generic -> { data: TemplateData ->
+            generateGenericModule(data as ModuleTemplateData)
+          }
         }
       }
 

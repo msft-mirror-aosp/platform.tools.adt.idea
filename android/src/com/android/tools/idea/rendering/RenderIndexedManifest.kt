@@ -24,18 +24,12 @@ import com.android.tools.idea.model.AndroidManifestIndex
 import com.android.tools.idea.model.AndroidManifestRawText
 import com.android.tools.idea.model.MergedManifestSnapshotFactory.ManifestResourceValue
 import com.android.tools.idea.model.NamespacedValueRawText
-import com.android.tools.idea.projectsystem.getModuleSystem
-import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.rendering.api.RenderModelManifest
-import com.android.tools.res.ResourceNamespacing
 import com.android.xml.AndroidManifest.ATTRIBUTE_ICON
 import com.android.xml.AndroidManifest.ATTRIBUTE_LABEL
 import org.jetbrains.android.facet.AndroidFacet
 
 class RenderIndexedManifest(val facet: AndroidFacet) : RenderModelManifest {
-  private val contributors = facet.module.getModuleSystem().getMergedManifestContributors()
-  private val primaryData: AndroidManifestRawText? =
-    contributors.primaryManifest?.let { AndroidManifestIndex.getDataForManifestFile(facet.module.project, it) }
   private val data: List<AndroidManifestRawText> = AndroidManifestIndex.getDataForMergedManifestContributors(facet).toList()
   override val isRtlSupported: Boolean = data.firstNotNullOfOrNull { it.supportsRtl }?.equals("true") ?: false
   override val applicationLabel: ResourceValue? =
@@ -43,28 +37,17 @@ class RenderIndexedManifest(val facet: AndroidFacet) : RenderModelManifest {
   override val applicationIcon: ResourceValue? =
     data.firstNotNullOfOrNull { it.icon }?.toResourceValue(ResourceType.DRAWABLE, ATTRIBUTE_ICON)
 
-  private val packageName: String
-    get() =
-      facet.module.getModuleSystem().getPackageName() ?: primaryData?.packageName ?: throw IllegalStateException("missing packageName")
-
-  private val namespace: ResourceNamespace
-    get() =
-      when (StudioResourceRepositoryManager.getInstance(facet).namespacing) {
-        ResourceNamespacing.DISABLED -> ResourceNamespace.RES_AUTO
-        else -> ResourceNamespace.fromPackageName(packageName)
-      }
-
   private fun NamespacedValueRawText.toResourceValue(resourceType: ResourceType, name: String) =
     ResourceUrl.parse(value)
       ?.resolve(
-        namespace,
+        ResourceNamespace.RES_AUTO,
         object : ResourceNamespace.Resolver {
           override fun prefixToUri(prefix: String) = namespaces.firstOrNull { it.name == prefix }?.url
 
           override fun uriToPrefix(namespaceUri: String) = namespaces.firstOrNull { it.url == namespaceUri }?.name
         },
       )
-      ?.let { ManifestResourceValue(namespace, resourceType, name, value, it) }
+      ?.let { ManifestResourceValue(ResourceNamespace.RES_AUTO, resourceType, name, value, it) }
 
   override fun getActivityAttributes(activity: String): ActivityAttributesSnapshot? =
     data

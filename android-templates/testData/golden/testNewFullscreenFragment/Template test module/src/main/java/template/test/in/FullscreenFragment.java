@@ -17,7 +17,6 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -69,8 +68,6 @@ public class FullscreenFragment extends Fragment {
 
         }
     };
-    private View mContentView;
-    private View mControlsView;
     private final Runnable mShowPart2Runnable = new Runnable() {
         @Override
         public void run() {
@@ -82,7 +79,6 @@ public class FullscreenFragment extends Fragment {
             mControlsView.setVisibility(View.VISIBLE);
         }
     };
-    private boolean mVisible;
     private final Runnable mHideRunnable = new Runnable() {
         @Override
         public void run() {
@@ -103,7 +99,9 @@ public class FullscreenFragment extends Fragment {
             return false;
         }
     };
-
+    private View mContentView;
+    private View mControlsView;
+    private boolean mVisible;
     private FragmentFullscreenBinding binding;
 
     @Nullable

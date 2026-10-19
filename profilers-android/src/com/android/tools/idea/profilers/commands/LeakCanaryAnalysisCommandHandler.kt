@@ -25,8 +25,9 @@ import com.intellij.openapi.diagnostic.Logger
 import java.util.concurrent.BlockingDeque
 
 /**
- * Handles the SEND_LEAKCANARY_ANALYSIS command from Studio, converting the payload into a LEAKCANARY_ANALYSIS event and adding it to the
- * event queue for persistence.
+ * Handles the SEND_LEAKCANARY_ANALYSIS command from Studio, forwarding the [LeakCanaryAnalysisData] payload (either structured Protobuf
+ * when `isLeakCanaryOccurrencesEnabled` is true, or legacy string when false) into a LEAKCANARY_ANALYSIS event and adding it to the event
+ * queue for persistence in the `.asdb` Transport Database.
  */
 class LeakCanaryAnalysisCommandHandler(
   private val transportStub: TransportServiceGrpc.TransportServiceBlockingStub,
@@ -37,8 +38,7 @@ class LeakCanaryAnalysisCommandHandler(
   override fun shouldHandle(command: Commands.Command) = command.type == Commands.Command.CommandType.SEND_LEAKCANARY_ANALYSIS
 
   override fun execute(command: Commands.Command): Transport.ExecuteResponse {
-    logger.info("Received SEND_LEAKCANARY_ANALYSIS command.")
-    val leakCanaryEvent = LeakCanaryAnalysisData.newBuilder().setData(command.sendLeakcanaryAnalysis.data).build()
+    logger.info("Received SEND_LEAKCANARY_ANALYSIS command (hasStructuredSuccess=${command.sendLeakcanaryAnalysis.hasSuccess()}).")
 
     val event =
       Common.Event.newBuilder()
@@ -46,7 +46,7 @@ class LeakCanaryAnalysisCommandHandler(
         .setPid(command.pid)
         .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS)
         .setTimestamp(transportStub.getCurrentTime(Transport.TimeRequest.getDefaultInstance()).timestampNs)
-        .setLeakcanaryAnalysis(leakCanaryEvent)
+        .setLeakcanaryAnalysis(command.sendLeakcanaryAnalysis)
         .build()
     eventQueue.offer(event)
     logger.info("Sent LEAKCANARY_ANALYSIS event to queue.")

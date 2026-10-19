@@ -18,15 +18,17 @@ package com.android.tools.idea.editors.fast
 import com.android.tools.compile.fast.CompilationResult
 import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.run.deployment.liveedit.LiveEditUpdateException
-import com.android.tools.idea.run.deployment.liveedit.getCompilerConfiguration
+import com.android.tools.idea.run.deployment.liveedit.configureCompilerOptions
 import com.android.tools.idea.run.deployment.liveedit.isKotlinPluginBundled
 import com.android.tools.idea.run.deployment.liveedit.k2.OutputFileForKtCompiledFile
 import com.android.tools.idea.run.deployment.liveedit.k2.backendCodeGenForK2
 import com.android.tools.idea.run.deployment.liveedit.runWithCompileLock
 import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.util.ProgressWrapper
@@ -50,7 +52,6 @@ import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.components.KaCompiledFile
 import org.jetbrains.kotlin.backend.common.output.OutputFile
-import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.psi.KtFile
 
 private fun Throwable?.isCompilationError(): Boolean = this is LiveEditUpdateException && this.isCompilationError()
@@ -108,34 +109,36 @@ private constructor(
     withContext(Dispatchers.Default) {
       log.debug("compileModuleKtFiles($inputs, $outputDirectory)")
 
+      val pathToCompileOutput = mutableMapOf<String, OutputFileForKtCompiledFile>()
+      val filesAlreadyCompiled = mutableSetOf<VirtualFile>()
+
       readAction {
-        // Verify that the files are valid and the module has not been disposed.
         if (moduleForAllInputs.isDisposed) throw LiveEditUpdateException.moduleIsDisposed(moduleForAllInputs)
         inputs.forEach {
           if (!it.isValid) throw LiveEditUpdateException.fileNotValid(it)
-          it.module?.let { module -> if (module.isDisposed) throw LiveEditUpdateException.moduleIsDisposed(module) }
-        }
-
-        val pathToCompileOutput = mutableMapOf<String, OutputFileForKtCompiledFile>()
-        val filesAlreadyCompiled = mutableSetOf<VirtualFile>()
-        runWithCompileLock {
-          beforeCompilationStarts()
-          log.debug("backCodeGen")
-          inputs.forEach { inputFile ->
-            if (inputFile.virtualFile in filesAlreadyCompiled) return@forEach
-
-            val configuration = getCompilerConfiguration(moduleForAllInputs, inputFile)
-
-            @OptIn(KaExperimentalApi::class) val result = backendCodeGenForK2(inputFile, moduleForAllInputs, configuration)
-            log.debug("backCodeGen for ${inputFile.virtualFilePath} completed")
-            @OptIn(KaExperimentalApi::class) addIfNotDuplicated(pathToCompileOutput, result.output.map { OutputFileForKtCompiledFile(it) })
-
-            filesAlreadyCompiled.addAll(result.output.getSourceVirtualFiles())
+          ModuleUtilCore.findModuleForFile(it)?.let { module ->
+            if (module.isDisposed) throw LiveEditUpdateException.moduleIsDisposed(module)
           }
         }
-
-        pathToCompileOutput.forEach { (_, output) -> output.writeTo(outputDirectory) }
       }
+
+      runWithCompileLock {
+        beforeCompilationStarts()
+        log.debug("backCodeGen")
+        inputs.forEach { inputFile ->
+          if (inputFile.virtualFile in filesAlreadyCompiled) return@forEach
+
+          @OptIn(KaExperimentalApi::class)
+          val result = backendCodeGenForK2(inputFile, moduleForAllInputs) { configureCompilerOptions(moduleForAllInputs, inputFile) }
+          log.debug("backCodeGen for ${inputFile.virtualFilePath} completed")
+          @OptIn(KaExperimentalApi::class) addIfNotDuplicated(pathToCompileOutput, result.output.map { OutputFileForKtCompiledFile(it) })
+
+          val sourceVirtualFiles = ReadAction.computeCancellable<List<VirtualFile>, Throwable> { result.output.getSourceVirtualFiles() }
+          filesAlreadyCompiled.addAll(sourceVirtualFiles)
+        }
+      }
+
+      pathToCompileOutput.forEach { (_, output) -> output.writeTo(outputDirectory) }
     }
 
   @OptIn(KaExperimentalApi::class)
@@ -195,7 +198,7 @@ private constructor(
 
       try {
         allKtInputs
-          .groupBy { readAction { it.module } }
+          .groupBy { readAction { ModuleUtilCore.findModuleForFile(it) } }
           .forEach { (module, inputs) ->
             if (module == null) {
               throw LiveEditUpdateException.internalErrorMultiModule(emptySet())

@@ -19,6 +19,7 @@ import com.android.annotations.concurrency.UiThread
 import com.android.emulator.control.PaneEntry
 import com.android.emulator.control.PaneEntry.PaneIndex
 import com.android.emulator.control.WindowPosition
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.protobuf.Empty
 import com.android.tools.idea.streaming.emulator.EmptyStreamObserver
 import com.android.tools.idea.streaming.emulator.EmulatorController
@@ -32,6 +33,14 @@ import com.intellij.openapi.wm.WindowManager
 
 /** Shows the emulator extended controls. */
 class EmulatorShowExtendedControlsAction : AbstractEmulatorAction() {
+
+  override fun update(event: AnActionEvent) {
+    if (StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.get()) {
+      event.presentation.isEnabledAndVisible = false
+      return
+    }
+    super.update(event)
+  }
 
   override fun actionPerformed(event: AnActionEvent) {
     val emulatorController = getEmulatorController(event) ?: return

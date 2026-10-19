@@ -656,7 +656,7 @@ public class RenderSecurityManagerTest {
     assertNull(RenderSecurityManager.getCurrent());
 
     RenderSecurityManager manager = RenderSecurityManager.createForTests(null, null, false, () -> true);
-    RenderSecurityManager.sEnabled = false;
+    RenderSecurityManager.setEnabledForTest(false);
     try {
       assertNull(RenderSecurityManager.getCurrent());
       manager.setActive(true, myCredential);
@@ -672,7 +672,7 @@ public class RenderSecurityManagerTest {
       fail("Should have been disabled");
     }
     finally {
-      RenderSecurityManager.sEnabled = true;
+      RenderSecurityManager.setEnabledForTest(true);
       manager.dispose(myCredential);
       assertNull(RenderSecurityManager.getCurrent());
       assertNull(System.getSecurityManager());
@@ -977,7 +977,7 @@ public class RenderSecurityManagerTest {
   }
 
   /**
-   * Regression test for b/223219330.
+   * Regression test for b/557280599: write access to log dir must be denied.
    */
   @Test
   public void testLogDir() {
@@ -988,8 +988,13 @@ public class RenderSecurityManagerTest {
       String logPath = PathManager.getLogPath();
       assertNotNull(logPath);
 
-      manager.checkPermission(new FilePermission(logPath + separator + "fake.log", "read,write"));
-
+      try {
+        manager.checkPermission(new FilePermission(logPath + separator + "fake.log", "write"));
+        fail("Write access to log directory should not be allowed");
+      }
+      catch (SecurityException expected) {
+        // pass
+      }
     }
     finally {
       manager.dispose(myCredential);

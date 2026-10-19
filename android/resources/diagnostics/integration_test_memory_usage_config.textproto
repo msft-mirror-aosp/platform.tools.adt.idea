@@ -25,6 +25,7 @@ categories: {
     package_names: "androidx"
     package_names: "com.android.tools.idea.rendering"
     package_names: "com.android.tools.rendering"
+    package_names: "org.jetbrains.android.uipreview"
   }
   components: {
     label: "imagepool"

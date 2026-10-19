@@ -43,6 +43,7 @@ import com.android.sdklib.internal.avd.ConfigKey
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
+import com.android.tools.idea.adddevicedialog.FormFactors
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.sdk.AndroidSdks
@@ -77,7 +78,7 @@ class AddDeviceWizardTest {
   fun addDeviceDefaultPath() {
     with(SdkFixture()) {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
-      repoPackages.setLocalPkgInfos(listOf(api34))
+      setLocalPackages(api34)
 
       val source = createAddDeviceWizard()
 
@@ -115,7 +116,7 @@ class AddDeviceWizardTest {
     with(SdkFixture()) {
       val api34Ext9Auto =
         createLocalSystemImage("android-automotive", listOf(SystemImageTags.AUTOMOTIVE_TAG), AndroidVersion(34, null, 9, false))
-      repoPackages.setLocalPkgInfos(listOf(api34Ext9Auto))
+      setLocalPackages(api34Ext9Auto)
 
       val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
@@ -159,7 +160,7 @@ class AddDeviceWizardTest {
       ApplicationManager.getApplication()?.registerOrReplaceServiceInstance(AndroidSdks::class.java, androidSdks, disposableRule.disposable)
 
       val api36Glasses = createLocalSystemImage("ai-glasses", listOf(SystemImageTags.AI_GLASSES_TAG), AndroidVersion(36, null, 9, false))
-      repoPackages.setLocalPkgInfos(listOf(api36Glasses))
+      setLocalPackages(api36Glasses)
 
       val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
@@ -202,7 +203,7 @@ class AddDeviceWizardTest {
           listOf(SystemImageTags.XR_GLASSES_TAG, SystemImageTags.XR_HEADSET_TAG),
           AndroidVersion(34, null, 9, false),
         )
-      repoPackages.setLocalPkgInfos(listOf(api34XrOst))
+      setLocalPackages(api34XrOst)
 
       val source = createAddDeviceWizard()
       val wizard = createTestAddDeviceWizard(source)
@@ -217,9 +218,7 @@ class AddDeviceWizardTest {
 
       composeTestRule.onNodeWithText(api34XrOst.displayName).assertIsSelected()
       composeTestRule.onNodeWithText("Additional settings").performClick()
-      // XR Glasses have skin, not background.
-      composeTestRule.onNodeWithText("Background").assertDoesNotExist()
-      composeTestRule.onNodeWithText("Device skin").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Device skin").assertDoesNotExist()
       // We need to disable the external storage, since we can't run mksdcard.
       composeTestRule.onNode(hasText("None") and hasParent(hasTestTag("StorageGroup"))).performClick()
 
@@ -239,7 +238,7 @@ class AddDeviceWizardTest {
   fun accelerationErrorCode() {
     with(SdkFixture()) {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
-      repoPackages.setLocalPkgInfos(listOf(api34))
+      setLocalPackages(api34)
 
       val wizard = TestComposeWizard {
         with(createAddDeviceWizard(accelerationCheck = { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
@@ -259,7 +258,7 @@ class AddDeviceWizardTest {
   fun statePreservation() {
     with(SdkFixture()) {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
-      repoPackages.setLocalPkgInfos(listOf(api34))
+      setLocalPackages(api34)
 
       val phone = deviceManager.getDevice("medium_phone", "Generic")!!
       for (letter in 'A'..'Z') {
@@ -307,7 +306,7 @@ class AddDeviceWizardTest {
   fun noSystemImage() {
     with(SdkFixture()) {
       val api34 = createLocalSystemImage("google_apis", listOf(), AndroidVersion(34))
-      repoPackages.setLocalPkgInfos(listOf(api34))
+      setLocalPackages(api34)
 
       val wizard = TestComposeWizard {
         with(createAddDeviceWizard(accelerationCheck = { AccelerationErrorCode.NO_EMULATOR_INSTALLED })) { DeviceGridPage() }
@@ -333,7 +332,7 @@ class AddDeviceWizardTest {
   fun noSupportedSystemImage() {
     with(SdkFixture()) {
       val api34 = createLocalSystemImage("google_atd", listOf(SystemImageTags.GOOGLE_ATD_TAG), AndroidVersion(34))
-      repoPackages.setLocalPkgInfos(listOf(api34))
+      setLocalPackages(api34)
 
       val source = createAddDeviceWizard()
 
@@ -361,6 +360,20 @@ class AddDeviceWizardTest {
 
       composeTestRule.onNodeWithText("Pixel 8").assertIsDisplayed()
       composeTestRule.onNodeWithText("Pixel 7").assertDoesNotExist()
+    }
+  }
+
+  @Test
+  fun virtualDeviceFilter_nonDefaultFormFactor() {
+    with(SdkFixture()) {
+      val wizard = TestComposeWizard {
+        with(createAddDeviceWizard(virtualDeviceFilter = { it.formFactor == FormFactors.AI_GLASSES })) { DeviceGridPage() }
+      }
+      composeTestRule.setContentWithSdkLocals { wizard.Content() }
+
+      composeTestRule.onNodeWithText("XR").assertIsSelected()
+      composeTestRule.onNodeWithText("Audio Glasses").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Display Glasses").assertIsDisplayed()
     }
   }
 }

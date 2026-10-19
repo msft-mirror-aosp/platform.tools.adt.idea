@@ -108,22 +108,18 @@ private constructor(
       mergingUpdateQueue = MergingUpdateQueue("queue", 1000, true, MergingUpdateQueue.ANY_COMPONENT, this, null, false),
     )
 
-  private var resourceVersion: ResourceNotificationManager.ResourceVersion? = null
+  @Volatile private var resourceVersion: ResourceNotificationManager.ResourceVersion? = null
 
-  private val resourceNotificationManager =
-    ResourceNotificationManager.getInstance(defaultFacet.module.project).apply {
-      resourceVersion = getCurrentVersion(defaultFacet, null, null)
-    }
+  private val resourceNotificationManager = ResourceNotificationManager.getInstance(defaultFacet.module.project)
 
-  private val resourceNotificationListener =
-    ResourceNotificationManager.ResourceChangeListener { reason ->
-      if (reason.size == 1 && reason.contains(ResourceNotificationManager.Reason.EDIT)) {
-        // We don't want to update all resources for every resource file edit.
-        // TODO cache the resources, notify the view to only update the rendering of the edited resource.
-        return@ResourceChangeListener
-      }
-      refreshOnResourcesChange()
+  private val resourceNotificationListener = ResourceNotificationManager.ResourceChangeListener { reason ->
+    if (reason.size == 1 && reason.contains(ResourceNotificationManager.Reason.EDIT)) {
+      // We don't want to update all resources for every resource file edit.
+      // TODO cache the resources, notify the view to only update the rendering of the edited resource.
+      return@ResourceChangeListener
     }
+    refreshOnResourcesChange()
+  }
 
   /** View callback for when the ResourceType has changed. */
   var updateResourceTabCallback: (() -> Unit) = {}
@@ -198,7 +194,17 @@ private constructor(
     val configurationFuture = getConfiguration(facet, contextFileForConfiguration)
     return getResourceResolver(facet, configurationFuture)
       .thenApplyAsync(
-        Function { resourceResolver ->
+        { resourceResolver ->
+          // Initialize resourceVersion on a background thread before creating the list view model.
+          if (!facet.isDisposed && !Disposer.isDisposed(this)) {
+            resourceVersion = resourceNotificationManager.getCurrentVersion(facet, null, null)
+          }
+          resourceResolver
+        },
+        AppExecutorUtil.getAppExecutorService(),
+      )
+      .thenApplyAsync(
+        { resourceResolver ->
           ResourceExplorerListViewModelImpl(
               facet,
               contextFileForConfiguration,
@@ -360,44 +366,41 @@ private class ViewModelState(
   selectedModuleName: String? = null,
 ) {
 
-  private val defaultFilterParams: FilterOptionsParams =
-    kotlin.run {
-      return@run if (saveParams != null) {
-        val filterKey = "${saveParams.preferencesKey}.$FILTER_PARAMS_KEY"
-        val propertiesComponent = PropertiesComponent.getInstance(saveParams.project)
-        val localModules = propertiesComponent.getBoolean("$filterKey.$LOCAL_MODULE_FILTER_KEY")
-        val libraries = propertiesComponent.getBoolean("$filterKey.$LIBRARIES_FILTER_KEY")
-        val framework = propertiesComponent.getBoolean("$filterKey.$FRAMEWORK_FILTER_KEY")
-        val themeAttr = propertiesComponent.getBoolean("$filterKey.$THEME_ATTR_FILTER_KEY")
-        FilterOptionsParams(
-          moduleDependenciesInitialValue = localModules,
-          librariesInitialValue = libraries,
-          androidResourcesInitialValue = framework,
-          themeAttributesInitialValue = themeAttr,
-          showSampleData = filterParams.showSampleData,
-        )
-      } else {
-        filterParams
-      }
+  private val defaultFilterParams: FilterOptionsParams = kotlin.run {
+    return@run if (saveParams != null) {
+      val filterKey = "${saveParams.preferencesKey}.$FILTER_PARAMS_KEY"
+      val propertiesComponent = PropertiesComponent.getInstance(saveParams.project)
+      val localModules = propertiesComponent.getBoolean("$filterKey.$LOCAL_MODULE_FILTER_KEY")
+      val libraries = propertiesComponent.getBoolean("$filterKey.$LIBRARIES_FILTER_KEY")
+      val framework = propertiesComponent.getBoolean("$filterKey.$FRAMEWORK_FILTER_KEY")
+      val themeAttr = propertiesComponent.getBoolean("$filterKey.$THEME_ATTR_FILTER_KEY")
+      FilterOptionsParams(
+        moduleDependenciesInitialValue = localModules,
+        librariesInitialValue = libraries,
+        androidResourcesInitialValue = framework,
+        themeAttributesInitialValue = themeAttr,
+        showSampleData = filterParams.showSampleData,
+      )
+    } else {
+      filterParams
     }
+  }
 
-  private val defaultSelectedResourceType: ResourceType =
-    kotlin.run {
-      return@run if (saveParams != null) {
-        PropertiesComponent.getInstance(saveParams.project).getValue("${saveParams.preferencesKey}.$RESOURCE_TYPE_KEY")?.let {
-          ResourceType.valueOf(it)
-        } ?: selectedResourceType
-      } else {
-        selectedResourceType
-      }
+  private val defaultSelectedResourceType: ResourceType = kotlin.run {
+    return@run if (saveParams != null) {
+      PropertiesComponent.getInstance(saveParams.project).getValue("${saveParams.preferencesKey}.$RESOURCE_TYPE_KEY")?.let {
+        ResourceType.valueOf(it)
+      } ?: selectedResourceType
+    } else {
+      selectedResourceType
     }
+  }
 
-  private val defaultSelectedModuleName: String? =
-    kotlin.run {
-      return@run saveParams?.let {
-        PropertiesComponent.getInstance(saveParams.project).getValue("${saveParams.preferencesKey}.$MODULE_NAME_KEY")
-      } ?: selectedModuleName
-    }
+  private val defaultSelectedModuleName: String? = kotlin.run {
+    return@run saveParams?.let {
+      PropertiesComponent.getInstance(saveParams.project).getValue("${saveParams.preferencesKey}.$MODULE_NAME_KEY")
+    } ?: selectedModuleName
+  }
 
   var filterParams: FilterOptionsParams by
     Delegates.observable(defaultFilterParams) { _, _, newValue ->

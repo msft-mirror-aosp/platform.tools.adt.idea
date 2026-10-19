@@ -22,11 +22,14 @@ import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import javax.swing.JComponent
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class StageViewTest {
   @get:Rule val applicationRule = ApplicationRule()
 
@@ -36,6 +39,7 @@ class StageViewTest {
   private val transportService = FakeTransportService(timer, false)
 
   @get:Rule var grpcServer = FakeGrpcServer.createFakeGrpcServer("StageViewTest", transportService)
+  @get:Rule val myEdtRule = EdtRule()
 
   @Test
   fun testSelectionTimeLabel() {

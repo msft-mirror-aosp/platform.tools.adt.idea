@@ -19,12 +19,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCaseResult
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.runInEdtAndWait
 import java.io.File
 import org.jetbrains.jewel.foundation.theme.LocalColorPalette
 import org.jetbrains.jewel.foundation.theme.ThemeColorPalette
@@ -54,6 +57,19 @@ class ScreenshotAttributesViewTest {
    */
   @Test
   fun screenshotAttributesUi_doesNotCrash_withEmptyColorPalette() {
+    val refFile = File.createTempFile("ref", ".png").apply { deleteOnExit() }
+    val newFile = File.createTempFile("new", ".png").apply { deleteOnExit() }
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = refFile.absolutePath,
+        newImagePath = newFile.absolutePath,
+        testMethodName = "myMethod",
+        testClassName = "MyClass",
+        result = AndroidTestCaseResult.PASSED,
+        diffPercent = null,
+      )
+    }
+
     val emptyPalette =
       ThemeColorPalette(
         gray = emptyList(),
@@ -65,6 +81,7 @@ class ScreenshotAttributesViewTest {
         purple = emptyList(),
         teal = emptyList(),
         rawMap = emptyMap(),
+        isIslands = false,
       )
 
     composeTestRule.setContent {
@@ -81,14 +98,16 @@ class ScreenshotAttributesViewTest {
   fun updateData_withPassedResult_setsPassedState() {
     val refFile = File.createTempFile("ref", ".png").apply { deleteOnExit() }
     val newFile = File.createTempFile("new", ".png").apply { deleteOnExit() }
-    view.updateData(
-      refImagePath = refFile.absolutePath,
-      newImagePath = newFile.absolutePath,
-      testMethodName = "myMethod",
-      testClassName = "MyClass",
-      result = AndroidTestCaseResult.PASSED,
-      diffPercent = null,
-    )
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = refFile.absolutePath,
+        newImagePath = newFile.absolutePath,
+        testMethodName = "myMethod",
+        testClassName = "MyClass",
+        result = AndroidTestCaseResult.PASSED,
+        diffPercent = null,
+      )
+    }
     assertThat(view.state.matchPercentage).isNull()
     assertThat(view.state.testResult).isEqualTo(AndroidTestCaseResult.PASSED)
     assertThat(view.state.refLocation).isEqualTo(refFile.absolutePath)
@@ -102,14 +121,16 @@ class ScreenshotAttributesViewTest {
   fun updateData_withFailedResultAndValidDiff_setsFailedState() {
     val refFile = File.createTempFile("ref", ".png").apply { deleteOnExit() }
     val newFile = File.createTempFile("new", ".png").apply { deleteOnExit() }
-    view.updateData(
-      refImagePath = refFile.absolutePath,
-      newImagePath = newFile.absolutePath,
-      testMethodName = "myMethod",
-      testClassName = "MyClass",
-      result = AndroidTestCaseResult.FAILED,
-      diffPercent = 0.2550,
-    )
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = refFile.absolutePath,
+        newImagePath = newFile.absolutePath,
+        testMethodName = "myMethod",
+        testClassName = "MyClass",
+        result = AndroidTestCaseResult.FAILED,
+        diffPercent = 0.2550,
+      )
+    }
     assertThat(view.state.matchPercentage).isEqualTo("74.50%")
     assertThat(view.state.testResult).isEqualTo(AndroidTestCaseResult.FAILED)
     assertThat(view.state.refLocation).isEqualTo(refFile.absolutePath)
@@ -125,14 +146,16 @@ class ScreenshotAttributesViewTest {
   fun updateData_withFailedResultAndNullDiff_setsFailedState() {
     val refFile = File.createTempFile("ref", ".png").apply { deleteOnExit() }
     val newFile = File.createTempFile("new", ".png").apply { deleteOnExit() }
-    view.updateData(
-      refImagePath = refFile.absolutePath,
-      newImagePath = newFile.absolutePath,
-      testMethodName = "myMethod",
-      testClassName = "MyClass",
-      result = AndroidTestCaseResult.FAILED,
-      diffPercent = null,
-    )
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = refFile.absolutePath,
+        newImagePath = newFile.absolutePath,
+        testMethodName = "myMethod",
+        testClassName = "MyClass",
+        result = AndroidTestCaseResult.FAILED,
+        diffPercent = null,
+      )
+    }
     assertThat(view.state.matchPercentage).isNull()
     assertThat(view.state.testResult).isEqualTo(AndroidTestCaseResult.FAILED)
     assertThat(view.state.refLocation).isEqualTo(refFile.absolutePath)
@@ -144,14 +167,16 @@ class ScreenshotAttributesViewTest {
   /** Verifies that fields are set to "N/A" when they are null. This implicitly tests that the summary color is gray. */
   @Test
   fun updateData_withNullValues_setsNotAvailable() {
-    view.updateData(
-      refImagePath = null,
-      newImagePath = null,
-      testMethodName = null,
-      testClassName = null,
-      result = null,
-      diffPercent = null,
-    )
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = null,
+        newImagePath = null,
+        testMethodName = null,
+        testClassName = null,
+        result = null,
+        diffPercent = null,
+      )
+    }
     assertThat(view.state.refLocation).isEqualTo("N/A")
     assertThat(view.state.newLocation).isEqualTo("N/A")
     assertThat(view.state.methodName).isEqualTo("N/A")
@@ -164,14 +189,16 @@ class ScreenshotAttributesViewTest {
   @Test
   fun updateData_withNonExistentRefImagePath_setsRefLocationToNotAvailable() {
     val newFile = File.createTempFile("new", ".png").apply { deleteOnExit() }
-    view.updateData(
-      refImagePath = "non_existent_ref.png",
-      newImagePath = newFile.absolutePath,
-      testMethodName = "myMethod",
-      testClassName = "MyClass",
-      result = AndroidTestCaseResult.FAILED,
-      diffPercent = 0.1,
-    )
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = "non_existent_ref.png",
+        newImagePath = newFile.absolutePath,
+        testMethodName = "myMethod",
+        testClassName = "MyClass",
+        result = AndroidTestCaseResult.FAILED,
+        diffPercent = 0.1,
+      )
+    }
     assertThat(view.state.refLocation).isEqualTo("N/A")
     assertThat(view.state.newLocation).isEqualTo(newFile.absolutePath)
   }
@@ -179,14 +206,16 @@ class ScreenshotAttributesViewTest {
   @Test
   fun clickingPreviewName_triggersScrollToDetails() {
     val refFile = File.createTempFile("ref", ".png").apply { deleteOnExit() }
-    view.updateData(
-      refImagePath = refFile.absolutePath,
-      newImagePath = null,
-      testMethodName = "myMethod",
-      testClassName = "MyClass",
-      result = AndroidTestCaseResult.PASSED,
-      diffPercent = null,
-    )
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = refFile.absolutePath,
+        newImagePath = null,
+        testMethodName = "myMethod",
+        testClassName = "MyClass",
+        result = AndroidTestCaseResult.PASSED,
+        diffPercent = null,
+      )
+    }
 
     composeTestRule.setContent { Box(modifier = Modifier.height(100.dp)) { view.ScreenshotAttributesUi(view.state) } }
 
@@ -200,14 +229,16 @@ class ScreenshotAttributesViewTest {
   @Test
   fun clickableFileLink_isClickable() {
     val refFile = File.createTempFile("ref", ".png").apply { deleteOnExit() }
-    view.updateData(
-      refImagePath = refFile.absolutePath,
-      newImagePath = null,
-      testMethodName = "myMethod",
-      testClassName = "MyClass",
-      result = AndroidTestCaseResult.PASSED,
-      diffPercent = null,
-    )
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = refFile.absolutePath,
+        newImagePath = null,
+        testMethodName = "myMethod",
+        testClassName = "MyClass",
+        result = AndroidTestCaseResult.PASSED,
+        diffPercent = null,
+      )
+    }
 
     composeTestRule.setContent { view.ScreenshotAttributesUi(view.state) }
 
@@ -217,5 +248,23 @@ class ScreenshotAttributesViewTest {
     // Verify it is clickable by performing a click.
     composeTestRule.onNodeWithText(refFile.absolutePath).performClick()
     composeTestRule.waitForIdle()
+  }
+
+  @Test
+  fun screenshotAttributesUi_withNoReferenceImage_displaysNewMatch() {
+    runInEdtAndWait {
+      view.updateData(
+        refImagePath = null,
+        newImagePath = "path/to/new.png",
+        testMethodName = "myMethod",
+        testClassName = "MyClass",
+        result = AndroidTestCaseResult.FAILED,
+        diffPercent = null,
+      )
+    }
+
+    composeTestRule.setContent { view.ScreenshotAttributesUi(view.state) }
+
+    composeTestRule.onNodeWithTag("match_status").assertIsDisplayed().assertTextEquals("New")
   }
 }

@@ -91,6 +91,20 @@ class SplitLayoutOptimizerTest {
     assertThat(layout.splitRatio).isWithin(0.001f).of(0.3074f)
   }
 
+  @Test
+  fun testVerticalToolbarLayout() {
+    // Both panels have vertical toolbars on the left (x = 30, y = 0).
+    val panel1 = createMockPanel(Dimension(1200, 900), 1.0, 30, 0)
+    val panel2 = createMockPanel(Dimension(1472, 3111), 1.0, 30, 0)
+    val contentManager = createMockContentManager(1424, 1552, 8, 47)
+
+    val layout = computeOptimalSplitLayout(contentManager, panel1, panel2) ?: fail("Layout was not computed")
+
+    assertThat(layout.side).isEqualTo(PairLayout.RIGHT)
+    assertThat(layout.splitRatio).isGreaterThan(0.0f)
+    assertThat(layout.splitRatio).isLessThan(1.0f)
+  }
+
   private fun createMockPanel(contentSize: Dimension, scalingFactor: Double, x: Int, y: Int): EmulatorToolWindowPanel {
     val panel = mock<EmulatorToolWindowPanel>()
     val displayView = mock<EmulatorView>()

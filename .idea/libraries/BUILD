@@ -12,6 +12,7 @@ jvm_import(
 jvm_import(
     name = "javax-inject",
     jars = ["//prebuilts/tools/common/m2:javax-inject_files"],
+    srcjar = "//prebuilts/tools/common/m2:javax-inject_srcjar",
     visibility = ["//visibility:public"],
 )
 
@@ -41,6 +42,7 @@ jvm_import(
 jvm_import(
     name = "jimfs",
     jars = ["//prebuilts/tools/common/m2:jimfs_files"],
+    srcjar = "//prebuilts/tools/common/m2:jimfs_srcjar",
     visibility = ["//visibility:public"],
 )
 
@@ -48,6 +50,7 @@ jvm_import(
 jvm_import(
     name = "truth-java8-extension",
     jars = ["//prebuilts/tools/common/m2:truth-java8-extension_files"],
+    srcjar = "//prebuilts/tools/common/m2:truth-java8-extension_srcjar",
     visibility = ["//visibility:public"],
 )
 
@@ -69,6 +72,7 @@ jvm_import(
 jvm_import(
     name = "kxml2",
     jars = ["//prebuilts/tools/common/m2:kxml2_files"],
+    srcjar = "//prebuilts/tools/common/m2:kxml2_srcjar",
     visibility = ["//visibility:public"],
 )
 
@@ -104,6 +108,7 @@ jvm_import(
 jvm_import(
     name = "zxing-core",
     jars = ["//prebuilts/tools/common/m2:zxing-core_files"],
+    srcjar = "//prebuilts/tools/common/m2:zxing-core_srcjar",
     visibility = ["//visibility:public"],
 )
 
@@ -132,13 +137,7 @@ jvm_import(
 jvm_import(
     name = "guava-testlib",
     jars = ["//prebuilts/tools/common/m2:guava-testlib_files"],
-    visibility = ["//visibility:public"],
-)
-
-# managed by go/iml_to_build
-jvm_import(
-    name = "android-test-plugin-host-device-info-proto",
-    jars = ["//tools/base/utp/android-test-plugin-host-device-info-proto:libstudio.android-test-plugin-host-device-info-proto.jar"],
+    srcjar = "//prebuilts/tools/common/m2:guava-testlib_srcjar",
     visibility = ["//visibility:public"],
 )
 
@@ -208,6 +207,7 @@ jvm_import(
 jvm_import(
     name = "jetbrains.kotlinx.coroutines.test",
     jars = ["//prebuilts/tools/common/m2:jetbrains.kotlinx.coroutines.test_files"],
+    srcjar = "//prebuilts/tools/common/m2:jetbrains.kotlinx.coroutines.test_srcjar",
     visibility = ["//visibility:public"],
 )
 
@@ -363,5 +363,19 @@ jvm_import(
 jvm_import(
     name = "androidx-tracing",
     jars = ["//prebuilts/tools/common/m2:androidx-tracing_files"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "protobuf-java-util",
+    jars = ["//prebuilts/tools/common/m2:protobuf-java-util_files"],
+    visibility = ["//visibility:public"],
+)
+
+# managed by go/iml_to_build
+jvm_import(
+    name = "r8",
+    jars = ["//prebuilts/tools/common/m2:r8.jar"],
     visibility = ["//visibility:public"],
 )

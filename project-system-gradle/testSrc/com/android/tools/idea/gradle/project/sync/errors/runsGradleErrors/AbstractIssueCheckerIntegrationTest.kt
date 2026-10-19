@@ -35,6 +35,28 @@ abstract class AbstractIssueCheckerIntegrationTest : AbstractSyncFailureIntegrat
     expectedFailureReported: AndroidStudioEvent.GradleSyncFailure,
     expectedPhasesReported: String?,
     expectedFailureDetailsString: String?,
+  ) =
+    runSyncAndCheckBuildIssuesFailure(
+      preparedProject = preparedProject,
+      overrideGradleJdkPath = overrideGradleJdkPath,
+      verifyBuildIssues = { p, issues ->
+        if (issues.size > 1) {
+          expect.fail("There is more than a single failure issue:\n${issues.descriptions()}")
+        }
+        issues.verifyIssueSafely(0, { verifyBuildIssue(p, it) })
+      },
+      expectedFailuresReported = listOf(expectedFailureReported),
+      expectedPhasesReported = expectedPhasesReported,
+      expectedFailureDetailsString = expectedFailureDetailsString,
+    )
+
+  protected fun runSyncAndCheckBuildIssuesFailure(
+    preparedProject: PreparedTestProject,
+    overrideGradleJdkPath: File? = null,
+    verifyBuildIssues: (Project, List<BuildIssue?>) -> Unit,
+    expectedFailuresReported: List<AndroidStudioEvent.GradleSyncFailure>,
+    expectedPhasesReported: String?,
+    expectedFailureDetailsString: String?,
   ) {
     runSyncAndCheckGeneralFailure(
       preparedProject = preparedProject,
@@ -46,19 +68,33 @@ abstract class AbstractIssueCheckerIntegrationTest : AbstractSyncFailureIntegrat
         // This Failure is reported to SyncView via finish event failure result failures.
         buildEvents.filterIsInstance<FinishBuildEvent>().single().let { finishBuildEvent ->
           (finishBuildEvent.result as FailureResult).failures.let { failures ->
-            expect.that(failures).hasSize(1)
-            (failures.firstOrNull()?.error as? BuildIssueException)?.let { verifyBuildIssue(project, it.buildIssue) }
-              ?: expect.fail("%s not found in %s", BuildIssueException::class.java.name, FinishBuildEvent::class.java.name)
+            val failureIssues: List<BuildIssue?> = failures.map { it.error as BuildIssueException }.distinct().flatMap { it.buildIssues }
+            if (failureIssues.isEmpty()) {
+              expect.fail("%s not found in %s", BuildIssueException::class.java.name, FinishBuildEvent::class.java.name)
+            } else {
+              verifyBuildIssues(project, failureIssues)
+            }
           }
         }
       },
       verifyFailureReported = {
-        expect.that(it.gradleSyncFailure).isEqualTo(expectedFailureReported)
+        expect.that(it.gradleFailureDetails.detectedGradleSyncFailuresList).isEqualTo(expectedFailuresReported)
         expect.that(it.buildOutputWindowStats.buildErrorMessagesList).isEmpty()
         if (expectedPhasesReported != null) expect.that(it.gradleSyncStats.printPhases()).isEqualTo(expectedPhasesReported)
         if (expectedFailureDetailsString != null)
           Truth.assertThat(it.gradleFailureDetails.toTestString()).isEqualTo(expectedFailureDetailsString)
       },
     )
+  }
+
+  fun List<BuildIssue?>.descriptions() =
+    this.joinToString(separator = "\n---\n") { it?.let { i -> "${i.title}:\n${i.description}" } ?: "<null>" }
+
+  fun List<BuildIssue?>.verifyIssueSafely(issueIndex: Int, verifyBuildIssue: (BuildIssue) -> Unit) {
+    if (!this.indices.contains(issueIndex)) {
+      expect.fail("Requested issue index $issueIndex is out of bounds ${this.indices}. Issues: ${descriptions()}")
+    } else {
+      this[issueIndex]?.let { verifyBuildIssue(it) } ?: expect.fail("Issue is null.")
+    }
   }
 }

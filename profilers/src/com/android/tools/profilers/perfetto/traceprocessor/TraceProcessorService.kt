@@ -15,6 +15,11 @@
  */
 package com.android.tools.profilers.perfetto.traceprocessor
 
+import com.android.tools.profiler.perfetto.proto.TraceProcessor.GetPrimitiveFieldsResult
+import com.android.tools.profiler.perfetto.proto.TraceProcessor.GetReferencesResult
+import com.android.tools.profiler.perfetto.proto.TraceProcessor.HeapDumpInstancesResult
+import com.android.tools.profiler.perfetto.proto.TraceProcessor.HeapDumpResult
+import com.android.tools.profiler.perfetto.proto.TraceProcessor.QueryParameters.HeapDumpInstancesParameters
 import com.android.tools.profilers.IdeProfilerServices
 import com.android.tools.profilers.cpu.systemtrace.ProcessModel
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceModelAdapter
@@ -35,6 +40,12 @@ interface TraceProcessorService {
    */
   fun loadTrace(traceId: Long, traceFile: File, ideProfilerServices: IdeProfilerServices): Boolean
 
+  /**
+   * Unloads a trace and terminates its corresponding Trace Processor Daemon process. This should be called when the trace is no longer
+   * needed to prevent memory leaks and dangling processes.
+   */
+  fun unloadTrace(traceId: Long) {}
+
   /** Query the Perfetto trace processor processes and threads information available in a trace. */
   fun getProcessMetadata(traceId: Long, ideProfilerServices: IdeProfilerServices): List<ProcessModel>
 
@@ -54,7 +65,7 @@ interface TraceProcessorService {
   /**
    * Query the Perfetto trace processor for Heapprofd data and populate the profiler {@link NativeMemoryHeapSet} object with the results.
    */
-  fun loadMemoryData(traceId: Long, abi: String, memorySet: NativeMemoryHeapSet, ideProfilerServices: IdeProfilerServices)
+  fun loadNativeMemoryData(traceId: Long, abi: String, memorySet: NativeMemoryHeapSet, ideProfilerServices: IdeProfilerServices)
 
   /**
    * Query the trace metadata from the metadata table. https://perfetto.dev/docs/analysis/sql-tables#metadata If the metadataName is blank
@@ -62,4 +73,25 @@ interface TraceProcessorService {
    * list is returned.
    */
   fun getTraceMetadata(traceId: Long, metadataName: String, ideProfilerServices: IdeProfilerServices): List<String>
+
+  /** Query the Perfetto trace processor for heap dump data. */
+  fun loadHeapDumpData(traceId: Long, ideProfilerServices: IdeProfilerServices): HeapDumpResult
+
+  /** Request instances for a specific class lazily or by ID. */
+  fun getInstances(traceId: Long, request: HeapDumpInstancesParameters, ideProfilerServices: IdeProfilerServices): HeapDumpInstancesResult
+
+  /** Request instances for a list of class names lazily. */
+  fun getInstancesForClasses(traceId: Long, classNames: List<String>, ideProfilerServices: IdeProfilerServices): HeapDumpInstancesResult
+
+  /** Request primitive fields for given instance IDs. */
+  fun getPrimitiveFields(traceId: Long, instanceIds: List<Long>, ideProfilerServices: IdeProfilerServices): GetPrimitiveFieldsResult
+
+  /** Request references for given instance IDs. */
+  fun getReferences(
+    traceId: Long,
+    instanceIds: List<Long>,
+    fetchForward: Boolean,
+    fetchReverse: Boolean,
+    ideProfilerServices: IdeProfilerServices,
+  ): GetReferencesResult
 }

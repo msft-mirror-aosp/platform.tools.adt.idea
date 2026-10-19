@@ -25,16 +25,22 @@ import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.KeepPopupOnPerform
 import com.intellij.openapi.actionSystem.Presentation
+import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.Toggleable.SELECTED_KEY
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
 import com.intellij.openapi.actionSystem.toolbarLayout.ToolbarLayoutStrategy
+import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.IdeGlassPaneUtil
 import com.intellij.openapi.wm.impl.IdeGlassPaneEx
+import com.intellij.ui.JBColor
+import com.intellij.ui.PopupHandler
 import com.intellij.util.ui.AbstractLayoutManager
 import com.intellij.util.ui.Animator
 import com.intellij.util.ui.GraphicsUtil.disableAAPainting
@@ -43,6 +49,7 @@ import com.intellij.util.ui.JBDimension
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.JBUI.CurrentTheme.Toolbar.SEPARATOR_COLOR
 import com.intellij.util.ui.components.BorderLayoutPanel
+import java.awt.AWTEvent
 import java.awt.AlphaComposite
 import java.awt.Component
 import java.awt.Container
@@ -53,7 +60,9 @@ import java.awt.Insets
 import java.awt.Point
 import java.awt.Rectangle
 import java.awt.Shape
+import java.awt.Toolkit
 import java.awt.Transparency
+import java.awt.event.AWTEventListener
 import java.awt.event.HierarchyEvent
 import java.awt.event.HierarchyListener
 import java.awt.event.MouseAdapter
@@ -97,6 +106,18 @@ internal class FloatingToolbarContainer(
   private var deactivationAnimator: Animator? = null
   private var pendingDeactivation = false
 
+  private val awtListener = AWTEventListener { event ->
+    val component = (event as HierarchyEvent).component
+    if (
+      event.changeFlags.toInt() and HierarchyEvent.SHOWING_CHANGED != 0 &&
+        (component == this || component.findAncestor<FloatingToolbarContainer>() == this@FloatingToolbarContainer) &&
+        component.background == JBUI.CurrentTheme.ToolWindow.background()
+    ) {
+      // Restore the original background modified by the IslandsUICustomization class.
+      component.background = JBColor.PanelBackground
+    }
+  }
+
   val isActive: Boolean
     get() = (activationFactor > 0 || activationAnimator != null) && !pendingDeactivation && deactivationAnimator == null
 
@@ -139,6 +160,7 @@ internal class FloatingToolbarContainer(
 
   init {
     require(inactiveAlpha in 0.0..1.0)
+    background = JBColor.PanelBackground
     isOpaque = false
     layout = Layout()
 
@@ -148,6 +170,23 @@ internal class FloatingToolbarContainer(
       }
     }
   }
+
+  override fun addNotify() {
+    Toolkit.getDefaultToolkit().addAWTEventListener(awtListener, AWTEvent.HIERARCHY_EVENT_MASK)
+    super.addNotify()
+  }
+
+  override fun removeNotify() {
+    Toolkit.getDefaultToolkit().removeAWTEventListener(awtListener)
+    super.removeNotify()
+  }
+
+  /**
+   * Since FloatingToolbarContainer stretches across the full orthogonal dimension of its parent container while its child [ToolbarPanel]s
+   * only occupy part of that strip, return true only over visible child panels so that AWT's cursor lookup [Container.findComponentAt]) and
+   * mouse hit-testing pass through the empty area to the underlying [DisplayView].
+   */
+  override fun contains(x: Int, y: Int): Boolean = anyVisibleChildContains(x, y)
 
   /** Adds a floating toolbar. */
   fun addToolbar(@NonNls place: String, actionGroup: ActionGroup) {
@@ -340,7 +379,6 @@ internal class FloatingToolbarContainer(
 
     init {
       isOpaque = false
-      background = JBUI.CurrentTheme.Popup.toolbarPanelColor()
       layout = Layout()
       toolbar.component.addHierarchyListener(hierarchyListener)
       add(toolbar.component)
@@ -522,8 +560,14 @@ internal class FloatingToolbarContainer(
     return false
   }
 
-  /** Action that triggers collapse of the floating toolbar. */
-  class CollapserAction : DumbAwareAction(AllIcons.Actions.ArrowExpand), CustomComponentAction {
+  /**
+   * Action that triggers collapse of the floating toolbar. The value of the [horizontal] parameter must match orientation of the containing
+   * toolbar.
+   */
+  class CollapserAction(
+    private val horizontal: Boolean,
+    private val onOrientationChange: ((Boolean) -> Unit)? = null,
+  ) : DumbAwareAction(if (horizontal) AllIcons.Actions.ArrowExpand else AllIcons.Actions.FindAndShowNextMatches), CustomComponentAction {
 
     override fun actionPerformed(event: AnActionEvent) {
       triggerDeactivation(event)
@@ -531,8 +575,52 @@ internal class FloatingToolbarContainer(
 
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
-    override fun createCustomComponent(presentation: Presentation, place: String): JComponent =
-      ActionButton(this, presentation, place, JBDimension(0, DEFAULT_MINIMUM_BUTTON_SIZE.height, true))
+    override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
+      val minimumSize =
+        if (horizontal) {
+          JBDimension(0, DEFAULT_MINIMUM_BUTTON_SIZE.height, true)
+        } else {
+          JBDimension(DEFAULT_MINIMUM_BUTTON_SIZE.width, 0, true)
+        }
+      return ActionButton(this, presentation, place, minimumSize).apply {
+        if (onOrientationChange != null) {
+          addMouseListener(createPopupHandler(place))
+        }
+      }
+    }
+
+    private fun createPopupHandler(place: String): PopupHandler =
+      object : PopupHandler() {
+        override fun invokePopup(comp: Component?, x: Int, y: Int) {
+          val group =
+            DefaultActionGroup(
+              OrientationAction("Vertical", orientationHorizontal = false),
+              OrientationAction("Horizontal", orientationHorizontal = true),
+            )
+          val popupMenu = ActionManager.getInstance().createActionPopupMenu(place, group)
+          if (comp is JComponent) {
+            popupMenu.setTargetComponent(comp)
+          }
+          popupMenu.component.show(comp, x, y)
+        }
+      }
+
+    private inner class OrientationAction(text: String, private val orientationHorizontal: Boolean) : ToggleAction(text), DumbAware {
+
+      init {
+        templatePresentation.keepPopupOnPerform = KeepPopupOnPerform.Never // Don't keep the popup open after toggling.
+      }
+
+      override fun isSelected(event: AnActionEvent): Boolean = horizontal == orientationHorizontal
+
+      override fun setSelected(event: AnActionEvent, state: Boolean) {
+        if (state) {
+          onOrientationChange?.invoke(orientationHorizontal)
+        }
+      }
+
+      override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+    }
   }
 
   companion object {

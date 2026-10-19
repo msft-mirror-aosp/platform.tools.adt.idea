@@ -17,9 +17,12 @@ package com.google.idea.bazel.java.run;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.idea.blaze.base.BlazeIntegrationTestCase;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
+import com.google.idea.blaze.base.run.producers.TestFilterSyntax;
+import com.google.idea.blaze.base.run.producers.TestSelector;
 import com.google.idea.blaze.common.Label;
 import com.intellij.execution.Location;
 import com.intellij.openapi.vfs.VirtualFileManager;
@@ -28,6 +31,7 @@ import com.intellij.psi.PsiClassOwner;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.search.GlobalSearchScope;
+import java.util.List;
 import javax.annotation.Nullable;
 import org.junit.Before;
 import org.junit.Test;
@@ -109,6 +113,59 @@ public class BlazeJavaTestEventsHandlerTest extends BlazeIntegrationTestCase {
             "com.google.lib.JavaClass");
     Location<?> location = getLocation(url);
     assertThat(location.getPsiElement()).isEqualTo(method);
+  }
+
+  @Test
+  public void testInheritedParameterizedMethodLocationUsesConcreteSubclassInSelectors() {
+    workspace.createPsiFile(
+        new WorkspacePath("org/junit/Test.java"),
+        "package org.junit;",
+        "public @interface Test {}");
+    workspace.createPsiFile(
+        new WorkspacePath("java/com/google/lib/BaseTest.java"),
+        "package com.google.lib;",
+        "public abstract class BaseTest {",
+        "  @org.junit.Test",
+        "  public void testMethod() {}",
+        "}");
+    workspace.createPsiFile(
+        new WorkspacePath("java/com/google/lib/ConcreteTest.java"),
+        "package com.google.lib;",
+        "public class ConcreteTest extends com.google.lib.BaseTest {}");
+
+    String parameterizedUrl =
+        handler.testLocationUrl(
+            Label.of("//java/com/google/lib:ConcreteTest"),
+            null,
+            "testMethod",
+            "[0] true (testMethod)",
+            "com.google.lib.ConcreteTest");
+    Location<?> parameterizedLocation = getLocation(parameterizedUrl);
+    assertThat(parameterizedLocation).isNotNull();
+
+    List<TestSelector> parameterizedSelectors =
+        handler.getTestSelectors(getProject(), ImmutableList.of(parameterizedLocation));
+    assertThat(parameterizedSelectors)
+        .containsExactly(
+            new TestSelector(
+                "com.google.lib.ConcreteTest", "testMethod", "\\[0\\]", TestFilterSyntax.JUNIT_4));
+
+    String unparameterizedUrl =
+        handler.testLocationUrl(
+            Label.of("//java/com/google/lib:ConcreteTest"),
+            null,
+            null,
+            "testMethod",
+            "com.google.lib.ConcreteTest");
+    Location<?> unparameterizedLocation = getLocation(unparameterizedUrl);
+    assertThat(unparameterizedLocation).isNotNull();
+
+    List<TestSelector> unparameterizedSelectors =
+        handler.getTestSelectors(getProject(), ImmutableList.of(unparameterizedLocation));
+    assertThat(unparameterizedSelectors)
+        .containsExactly(
+            new TestSelector(
+                "com.google.lib.ConcreteTest", "testMethod", null, TestFilterSyntax.JUNIT_4));
   }
 
   @Nullable

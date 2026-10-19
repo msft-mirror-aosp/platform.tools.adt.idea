@@ -28,6 +28,7 @@ import com.intellij.usages.UsageTargetUtil
 import com.intellij.usages.impl.rules.UsageType
 import com.intellij.usages.impl.rules.UsageTypeProvider
 import com.intellij.usages.impl.rules.UsageTypeProviderEx
+import org.jetbrains.android.AndroidResourcesFindUsagesTest
 import org.jetbrains.android.AndroidTestCase
 
 /** Tests for custom [UsageTypeProvider]s from UsageTypeProviders.kt */
@@ -182,7 +183,7 @@ class UsageTypeProvidersTest : AndroidTestCase() {
     val psiElement = CommonDataKeys.PSI_ELEMENT.getData(dataContext)
     val targets = UsageTargetUtil.findUsageTargets(editor, psiFile, psiElement)
     assert(targets != null && targets.isNotEmpty() && targets[0] is PsiElementUsageTarget)
-    return myFixture.findUsages((targets!![0] as PsiElementUsageTarget).element)
+    return AndroidResourcesFindUsagesTest.findUsagesInBackground(myFixture, (targets!![0] as PsiElementUsageTarget).element, null)
   }
 
   private fun getUsageType(element: PsiElement): UsageType? {

@@ -32,6 +32,7 @@ import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.pom.Navigatable
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
@@ -108,7 +109,7 @@ class ResourceLookup(private val project: Project) {
     process: ProcessDescriptor,
   ): ResourceLookupResolver? {
     val facet = ReadAction.compute<AndroidFacet?, RuntimeException> { findFacetFromPackage(project, process.packageName) } ?: return null
-    val themeStyle = mapReference(facet, theme)?.resourceUrl?.toString() ?: return null
+    val themeStyle = mapReference(theme)?.resourceUrl?.toString() ?: return null
     val mgr = ConfigurationManager.getOrCreateInstance(facet.module)
     val cache = mgr.resolverCache
     val resourceResolver = cache.getResourceResolver(mgr.target, themeStyle, folderConfig, emptyList())
@@ -149,6 +150,12 @@ class ResourceLookup(private val project: Project) {
     startLine: Int,
     endLine: Int,
   ): SourceLocation = readAction { composeResolver.findLambdaLocation(packageName, fileName, lambdaName, functionName, startLine, endLine) }
+
+  /** Find the source virtual file of a composable function. */
+  @Slow
+  suspend fun findComposableFile(composable: ComposeViewNode): VirtualFile? = readAction {
+    composeResolver.findComposableFile(composable)
+  }
 
   /** Find the source navigatable of a composable function. */
   @Slow

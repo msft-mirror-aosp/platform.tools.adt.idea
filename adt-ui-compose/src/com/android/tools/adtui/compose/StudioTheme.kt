@@ -30,6 +30,7 @@ import org.jetbrains.jewel.markdown.extensions.LocalMarkdownStyling
 import org.jetbrains.jewel.markdown.processing.MarkdownProcessor
 import org.jetbrains.jewel.markdown.rendering.MarkdownBlockRenderer
 
+@Suppress("UnstableApiUsage")
 @OptIn(ExperimentalJewelApi::class)
 @Composable
 fun StudioTheme(content: @Composable () -> Unit) {
@@ -38,13 +39,13 @@ fun StudioTheme(content: @Composable () -> Unit) {
     val defaultTextStyle = JewelTheme.defaultTextStyle
     val editorTextStyle = JewelTheme.editorTextStyle
     val markdownStyling =
-      remember(JewelTheme.name, provider, defaultTextStyle, editorTextStyle) {
+      remember(JewelTheme.instanceUuid, provider, defaultTextStyle, editorTextStyle) {
         provider.createDefaultStyling(defaultTextStyle, editorTextStyle)
       }
-    val processorExtensions = getDefaultMarkdownProcessors()
+    val processorExtensions = getDefaultMarkdownProcessorExtensions()
     val markdownProcessor = remember { MarkdownProcessor(processorExtensions) }
-    val renderExtensions = getDefaultRenderExtensions(markdownStyling)
-    val blockRenderer = remember(markdownStyling) { MarkdownBlockRenderer.create(markdownStyling, renderExtensions) }
+    val renderExtensions = getDefaultMarkdownRenderExtensions(markdownStyling)
+    val blockRenderer = remember(markdownStyling, renderExtensions) { MarkdownBlockRenderer.create(markdownStyling, renderExtensions) }
 
     CompositionLocalProvider(
       LocalMarkdownFactory provides provider,

@@ -52,7 +52,7 @@ abstract class ComposeSupportedAnimationManager(
   tracker: ComposeAnimationTracker,
   protected val animationClock: AnimationClock,
   private val maxDurationPerIteration: StateFlow<Long>,
-  getCurrentTime: () -> Int,
+  protected val getCurrentTime: () -> Int,
   protected val executeInRenderSession: suspend (longTimeout: Boolean, requestRender: Boolean, () -> Unit) -> Unit,
   tabbedPane: AnimationTabs,
   rootComponent: JComponent,

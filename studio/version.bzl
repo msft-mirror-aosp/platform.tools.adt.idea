@@ -1,5 +1,6 @@
 """Version information for Android Studio."""
 visibility([
+    "//tools/adt/idea/native/installer",
     "//tools/adt/idea/studio",
     "//tools/vendor/google/asfp/studio",
     "//tools/vendor/google/aswb",
@@ -7,8 +8,8 @@ visibility([
     "//tools/vendor/google/aswb/searchable-options",
 ])
 
-STUDIO_CODENAME = "Quail 4"
+STUDIO_CODENAME = "Rabbit 3"
 STUDIO_CONFIG = "canary"
 STUDIO_VERSION = "Canary"
-STUDIO_MICRO_PATCH = "4.1"
+STUDIO_MICRO_PATCH = "3.1"
 STUDIO_RELEASE_NUMBER = 1

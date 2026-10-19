@@ -145,7 +145,8 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
                 ?.let { helper.addRepositoryFor(version, it)?.let { file -> changedFiles.storeOriginalFileContent(file) } }
         }
         if (file.project.isAndroidx()) {
-            val ktxCoreVersion = IdeGoogleMavenRepository.findVersion(ANDROIDX_CORE_KTX.mavenGroupId, ANDROIDX_CORE_KTX.mavenArtifactId)
+            val ktxCoreVersion =
+                IdeGoogleMavenRepository.getInstance().findVersion(ANDROIDX_CORE_KTX.mavenGroupId, ANDROIDX_CORE_KTX.mavenArtifactId)
             val richVersion = ktxCoreVersion?.let { RichVersion.require(it) } ?: RichVersion.parse("+")
             (addDependency(projectBuildModel, moduleBuildModel, ANDROIDX_CORE_KTX, richVersion) +
                     addKtxDependenciesFromMap(projectBuildModel, module, moduleBuildModel, androidxKtxLibraryMap))
@@ -313,10 +314,6 @@ class KotlinAndroidGradleModuleConfigurator : KotlinWithGradleConfigurator() {
     override fun configureSettingsFile(file: PsiFile, version: IdeKotlinVersion, changedFiles: ChangedConfiguratorFiles): Boolean {
         // This is just a stub, for Android its own implementation is done in the fun addToPluginsManagementBlock
         return false
-    }
-
-    override fun queueSyncIfNeeded(project: Project) {
-        // Do nothing; we queue syncs for Gradle and Maven projects for Kotlin stdlib to be loaded before Java to Kotlin conversion
     }
 
     companion object {

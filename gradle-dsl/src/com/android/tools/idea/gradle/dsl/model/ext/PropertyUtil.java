@@ -22,8 +22,11 @@ import com.android.tools.idea.gradle.dsl.parser.GradleReferenceInjection;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelEffectDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyDescription;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.Computable;
 import com.intellij.psi.PsiElement;
+import com.intellij.util.concurrency.annotations.RequiresReadLock;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -229,61 +232,55 @@ public class PropertyUtil {
     return e instanceof GradlePropertiesDslElement && !(e instanceof GradleDslExpressionList);
   }
 
-  /**
-   * Requires READ_ACCESS.
-   */
   public static boolean isElementModified(@NotNull GradleDslElement oldElement, @NotNull GradleDslElement newElement) {
-    return checkForModifiedValue(oldElement, newElement) || checkForModifiedName(oldElement, newElement);
+    Computable<Boolean> computable = () -> checkForModifiedValue(oldElement, newElement) || checkForModifiedName(oldElement, newElement);
+    return ApplicationManager.getApplication().runReadAction(computable);
   }
 
-  /**
-   * Requires READ_ACCESS.
-   */
   static boolean isModelElementModified(@NotNull GradleDslElement oldRawElement,
                                         @NotNull GradleDslElement newRawElement,
                                         @NotNull GradleDslElement oldTransformedElement,
                                         @NotNull GradleDslElement newTransformedElement) {
-    return checkForModifiedValue(oldTransformedElement, newTransformedElement) || checkForModifiedName(oldRawElement, newRawElement);
+    Computable<Boolean> computable = () -> checkForModifiedValue(oldTransformedElement, newTransformedElement) || checkForModifiedName(oldRawElement, newRawElement);
+    return ApplicationManager.getApplication().runReadAction(computable);
   }
 
-  /**
-   * Requires READ_ACCESS.
-   */
   @Nullable
   public static GradleDslElement findOriginalElement(@NotNull GradleDslElement parent, @NotNull GradleDslElement element) {
-    GradleDslElement parentHolder = parent instanceof GradleDslMethodCall ? ((GradleDslMethodCall)parent).getArgumentsElement() : parent;
-    if (parentHolder instanceof GradlePropertiesDslElement holder) {
-      if (holder instanceof GradleDslExpressionList || holder instanceof GradleDslElementList) {
-        // get all elements that are loaded from file
-        List<GradleDslElement> originalElements = holder.getOriginalElements();
-        // get all effective elements (with new and without deleted)
-        List<GradleDslElement> elements = holder.getAllPropertyElements();
-        int index = elements.indexOf(element);
-        // return original element unless it's new
-        // if new - return same position original element as it can be deleted and same value be added.
-        return (originalElements.contains(element)) ? element :
-               (index >= 0 && originalElements.size() > index) ? originalElements.get(index) : null;
+    Computable<GradleDslElement> computable = () -> {
+      GradleDslElement parentHolder = parent instanceof GradleDslMethodCall ? ((GradleDslMethodCall)parent).getArgumentsElement() : parent;
+      if (parentHolder instanceof GradlePropertiesDslElement holder) {
+        if (holder instanceof GradleDslExpressionList || holder instanceof GradleDslElementList) {
+          // get all elements that are loaded from file
+          List<GradleDslElement> originalElements = holder.getOriginalElements();
+          // get all effective elements (with new and without deleted)
+          List<GradleDslElement> elements = holder.getAllPropertyElements();
+          int index = elements.indexOf(element);
+          // return original element unless it's new
+          // if new - return same position original element as it can be deleted and same value be added.
+          return (originalElements.contains(element)) ? element :
+                 (index >= 0 && originalElements.size() > index) ? originalElements.get(index) : null;
+        }
+        else {
+          return holder.getOriginalElementForNameAndType(element.getName(), element.getElementType());
+        }
       }
-      else {
-        return holder.getOriginalElementForNameAndType(element.getName(), element.getElementType());
-      }
-    }
-    return null;
+      return null;
+    };
+    return ApplicationManager.getApplication().runReadAction(computable);
   }
 
-  /**
-   * Requires READ_ACCESS.
-   */
   public static boolean isFakeElementModified(@NotNull FakeElement element) {
-    GradleDslElement realExpression = element.getRealExpression();
-    GradleDslElement realParent = realExpression.getParent();
-    GradleDslElement oldRealExpression = realParent == null ? null : findOriginalElement(realParent, realExpression);
-    return oldRealExpression == null || isElementModified(oldRealExpression, realExpression);
+    Computable<Boolean> computable = () -> {
+      GradleDslElement realExpression = element.getRealExpression();
+      GradleDslElement realParent = realExpression.getParent();
+      GradleDslElement oldRealExpression = realParent == null ? null : findOriginalElement(realParent, realExpression);
+      return oldRealExpression == null || isElementModified(oldRealExpression, realExpression);
+    };
+    return ApplicationManager.getApplication().runReadAction(computable);
   }
 
-  /**
-   * Requires READ_ACCESS.
-   */
+  @RequiresReadLock
   private static boolean checkForModifiedValue(@NotNull GradleDslElement oldElement, @NotNull GradleDslElement newElement) {
     if (!(oldElement.getClass().equals(newElement.getClass()))) {
       return true;
@@ -344,9 +341,7 @@ public class PropertyUtil {
     return oldPsi == null || newPsi == null || !Objects.equals(oldPsi.getText(), newPsi.getText());
   }
 
-  /**
-   * Requires READ_ACCESS.
-   */
+  @RequiresReadLock
   private static boolean checkForModifiedName(@NotNull GradleDslElement originalElement, @NotNull GradleDslElement newElement) {
     ModelEffectDescription oEffect = originalElement.getModelEffect();
     ModelEffectDescription nEffect = newElement.getModelEffect();

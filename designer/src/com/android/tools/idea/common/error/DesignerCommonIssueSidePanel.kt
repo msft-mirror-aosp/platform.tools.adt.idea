@@ -19,6 +19,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.rendering.errors.ui.MessageTip
 import com.android.tools.idea.uibuilder.error.RenderIssueProvider.NlRenderIssueWrapper
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
+import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionToolbar
@@ -28,10 +29,6 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.actionSystem.ex.ActionUtil
-import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.editor.EditorFactory
-import com.intellij.openapi.fileEditor.FileEditorManager
-import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -69,23 +66,11 @@ class DesignerCommonIssueSidePanel(
 ) : JPanel(BorderLayout()), Disposable {
 
   private val splitter = OnePixelSplitter(true, 0.5f, 0.1f, 0.9f)
-  private val fileToEditorMap = mutableMapOf<VirtualFile, Editor>()
 
   init {
     Disposer.register(parentDisposable, this)
     splitter.setResizeEnabled(true)
     add(splitter, BorderLayout.CENTER)
-
-    project.messageBus
-      .connect(this)
-      .subscribe(
-        FileEditorManagerListener.FILE_EDITOR_MANAGER,
-        object : FileEditorManagerListener {
-          override fun fileClosed(source: FileEditorManager, file: VirtualFile) {
-            fileToEditorMap.remove(file)?.let { EditorFactory.getInstance().releaseEditor(it) }
-          }
-        },
-      )
   }
 
   /** Load the data from the given [issueNode]. Return true if there is any content to display, or false otherwise. */
@@ -95,10 +80,7 @@ class DesignerCommonIssueSidePanel(
     return splitter.firstComponent != null
   }
 
-  override fun dispose() {
-    fileToEditorMap.values.forEach { EditorFactory.getInstance().releaseEditor(it) }
-    fileToEditorMap.clear()
-  }
+  override fun dispose() {}
 
   @TestOnly fun hasFirstComponent() = splitter.firstComponent != null
 
@@ -146,7 +128,8 @@ private class DesignerCommonIssueDetailPanel(
 
     // Not a visual lint issue.
     val contentPanel = JPanel(VerticalLayout(0))
-    if (issue is NlRenderIssueWrapper && StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.get()) {
+    // Check the feature flag first before evaluating render issue type and ERROR severity.
+    if (StudioFlags.COMPOSE_RENDER_ERROR_FIX_WITH_AI.get() && issue is NlRenderIssueWrapper && issue.severity == HighlightSeverity.ERROR) {
       addFixWithAiButton(contentPanel, offSetBottom = true)
     }
     contentPanel.add(descriptionPane)

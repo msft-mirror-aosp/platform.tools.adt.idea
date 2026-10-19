@@ -237,8 +237,9 @@ class WearPairingManager(
     pairingStatusListeners.forEach { it.pairingStatusChanged(phoneWearPair) }
   }
 
-  fun getPairsForDevice(deviceID: String): List<PhoneWearPair> =
-    pairedDevicesList.filter { it.phone.deviceID == deviceID || it.wear.deviceID == deviceID }
+  fun getPairsForDevice(deviceID: String): List<PhoneWearPair> = pairedDevicesList.filter {
+    it.phone.deviceID == deviceID || it.wear.deviceID == deviceID
+  }
 
   suspend fun createPairedDeviceBridge(
     phone: PairingDevice,
@@ -267,6 +268,11 @@ class WearPairingManager(
           phoneDevice.createForward(hostPort, 5601)
           wearDevice.createReverse(5601, hostPort)
           wearDevice.refreshEmulatorConnection()
+          if (wearDevice.getCompanionAppIdForWatch() == PIXEL_COMPANION_APP_ID) {
+            // android.permission.BLUETOOTH_CONNECT is required for the companion app to pair and communicate with the watch.
+            // This permission can be removed by "pm clear" calls.
+            phoneDevice.grantPermission(PIXEL_COMPANION_APP_ID, "android.permission.BLUETOOTH_CONNECT")
+          }
           updateDeviceStatus(phoneWearPair, phoneDevice, wearDevice)
         } catch (ex: Throwable) {
           throw IOException(ex)
@@ -320,7 +326,7 @@ class WearPairingManager(
             if (wearDevice?.getCompanionAppIdForWatch() == PIXEL_COMPANION_APP_ID) {
               // The Pixel OEM app will re-connect via CloudSync even if we unpair. This will ensure
               // that the data for the Companion app is cleared forcing unpair to happen.
-              runShellCommand("pm clear com.google.android.apps.wear.companion")
+              runShellCommand("pm clear $PIXEL_COMPANION_APP_ID")
             }
           }
         }

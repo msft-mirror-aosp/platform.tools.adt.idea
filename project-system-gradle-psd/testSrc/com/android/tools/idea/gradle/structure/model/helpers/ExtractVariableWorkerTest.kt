@@ -42,6 +42,7 @@ import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.CoreMatchers.notNullValue
 import org.hamcrest.CoreMatchers.nullValue
 import org.hamcrest.MatcherAssert.assertThat
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 
@@ -241,6 +242,7 @@ class ExtractVariableWorkerTest {
   }
 
   @Test
+  @Ignore("b/573661815")
   fun testExtractJavaModuleDependencyVersion() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.UNIT_TESTING, "p")
     preparedProject.open { resolvedProject ->

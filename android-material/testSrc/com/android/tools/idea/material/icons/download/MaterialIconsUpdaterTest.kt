@@ -23,6 +23,7 @@ import com.android.tools.idea.material.icons.utils.MaterialIconsUtils.toDirForma
 import com.android.tools.idea.testing.disposable
 import com.android.utils.SdkUtils
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.util.Pair
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.ProjectRule
@@ -276,6 +277,430 @@ class MaterialIconsUpdaterTest {
 
     assertThat(existingIcon1).exists()
     assertThat(existingIcon2).exists()
+  }
+
+  @Test
+  fun cancellationDuringDownloadPreservesExistingMetadata() {
+    val mockDownloadableFileService = Mockito.mock(DownloadableFileService::class.java)
+    ApplicationManager.getApplication()
+      .registerOrReplaceServiceInstance(DownloadableFileService::class.java, mockDownloadableFileService, projectRule.disposable)
+    val mockDownloader = Mockito.mock(FileDownloader::class.java)
+    whenever(mockDownloader.download(Mockito.any())).thenThrow(ProcessCanceledException())
+    whenever(mockDownloadableFileService.createDownloader(Mockito.any(), Mockito.eq("Material Icons"))).thenReturn(mockDownloader)
+    val descriptor = DownloadableFileDescriptionImpl("url", "path", "tmp")
+    whenever(mockDownloadableFileService.createFileDescription(Mockito.any(), Mockito.any())).thenReturn(descriptor)
+
+    val loadExistingMetadata: () -> MaterialIconsMetadata = {
+      MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    }
+
+    val testDownloadedMetadataFile = testDirectory.resolve("downloaded_metadata.txt").apply { writeText(NEW_METADATA_CONTENT) }.toFile()
+    val loadTestDownloadedMetadata: () -> MaterialIconsMetadata = {
+      MaterialIconsMetadata.parse(SdkUtils.fileToUrl(testDownloadedMetadataFile)).getOrThrow()
+    }
+
+    val result =
+      updateIconsAtDir(
+        existingMetadata = loadExistingMetadata(),
+        newMetadata = loadTestDownloadedMetadata(),
+        targetDir = downloadDir,
+        iconsUrlProvider = iconsUrlProvider,
+      )
+
+    assertFalse(result)
+    // Metadata on disk must still contain the existing icons and not be wiped or emptied!
+    val currentMetadata = loadExistingMetadata()
+    assertEquals(2, currentMetadata.icons.size)
+    assertTrue(currentMetadata.icons.any { it.name == "my_icon_1" })
+    assertTrue(currentMetadata.icons.any { it.name == "my_icon_2" })
+  }
+
+  @Test
+  fun emptyExistingMetadataDoesNotDeleteIconsOnDisk() {
+    val existingIcon1 = downloadDir.resolve("style1/my_icon_1/style1_my_icon_1_24.xml")
+    val existingIcon2 = downloadDir.resolve("style1/my_icon_2/style1_my_icon_2_24.xml")
+    assertThat(existingIcon1).exists()
+    assertThat(existingIcon2).exists()
+
+    val result =
+      updateIconsAtDir(
+        existingMetadata = MaterialIconsMetadata.EMPTY,
+        newMetadata = MaterialIconsMetadata.EMPTY,
+        targetDir = downloadDir,
+        iconsUrlProvider = iconsUrlProvider,
+      )
+
+    assertFalse(result)
+    // Existing icons must not be cleaned up or deleted when existing metadata is empty
+    assertThat(existingIcon1).exists()
+    assertThat(existingIcon2).exists()
+  }
+
+  @Test
+  fun partialCancellationWithNewFamilyMarksUndownloadedIconsUnsupported() {
+    val newMetadataWithSymbols =
+      """)]}'
+{
+  "host": "$HOST",
+  "asset_url_pattern": "$PATTERN",
+  "families": [
+    "Style 1",
+    "Material Symbols Outlined"
+  ],
+  "icons": [
+    {
+      "name": "my_icon_1",
+      "version": 1,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59530
+    },
+    {
+      "name": "my_icon_2",
+      "version": 1,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59574
+    }
+  ],
+  "categories": []
+}
+"""
+    val mockDownloadableFileService = Mockito.mock(DownloadableFileService::class.java)
+    ApplicationManager.getApplication()
+      .registerOrReplaceServiceInstance(DownloadableFileService::class.java, mockDownloadableFileService, projectRule.disposable)
+    whenever(mockDownloadableFileService.createFileDescription(Mockito.anyString(), Mockito.anyString())).thenAnswer { invocation ->
+      val url = invocation.getArgument<String>(0)
+      val fileName = invocation.getArgument<String>(1)
+      DownloadableFileDescriptionImpl(url, fileName.removeSuffix(".tmp"), "tmp")
+    }
+    var downloadCallCount = 0
+    whenever(mockDownloadableFileService.createDownloader(Mockito.any(), Mockito.eq("Material Icons"))).thenAnswer { invocation ->
+      val descriptions = invocation.getArgument<List<DownloadableFileDescriptionImpl>>(0)
+      val mockDownloader = Mockito.mock(FileDownloader::class.java)
+      whenever(mockDownloader.download(Mockito.any())).thenAnswer {
+        downloadCallCount++
+        if (downloadCallCount > 1) {
+          throw ProcessCanceledException()
+        }
+        descriptions.map { desc ->
+          val downloadedFile =
+            downloadDir
+              .resolve(desc.defaultFileName)
+              .apply {
+                parent.createDirectories()
+                writeText(NEW_VD)
+              }
+              .toFile()
+          Pair(downloadedFile, desc)
+        }
+      }
+      mockDownloader
+    }
+
+    val loadExistingMetadata: () -> MaterialIconsMetadata = {
+      MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    }
+    val testDownloadedMetadataFile = testDirectory.resolve("downloaded_metadata.txt").apply { writeText(newMetadataWithSymbols) }.toFile()
+    val loadTestDownloadedMetadata: () -> MaterialIconsMetadata = {
+      MaterialIconsMetadata.parse(SdkUtils.fileToUrl(testDownloadedMetadataFile)).getOrThrow()
+    }
+
+    // First run downloads my_icon_1 and cancels on my_icon_2
+    val firstRunResult =
+      updateIconsAtDir(
+        existingMetadata = loadExistingMetadata(),
+        newMetadata = loadTestDownloadedMetadata(),
+        targetDir = downloadDir,
+        iconsUrlProvider = iconsUrlProvider,
+      )
+
+    assertTrue(firstRunResult)
+    val partialMetadata = loadExistingMetadata()
+    assertEquals(listOf("Style 1"), partialMetadata.families.toList())
+    assertEquals(2, partialMetadata.icons.size)
+    val icon1AfterCancel = partialMetadata.icons.first { it.name == "my_icon_1" }
+    val icon2AfterCancel = partialMetadata.icons.first { it.name == "my_icon_2" }
+    assertTrue(icon1AfterCancel.unsupportedFamilies.isEmpty())
+    assertEquals(listOf("Material Symbols Outlined"), icon2AfterCancel.unsupportedFamilies.toList())
+    assertThat(downloadDir.resolve("materialsymbolsoutlined/my_icon_1/outline_my_icon_1_24.xml")).exists()
+    assertThat(downloadDir.resolve("materialsymbolsoutlined/my_icon_2/outline_my_icon_2_24.xml")).doesNotExist()
+  }
+
+  @Test
+  fun resumeAfterPartialCancellationDownloadsRemainingIconsForNewFamily() {
+    val newMetadataWithSymbols =
+      """)]}'
+{
+  "host": "$HOST",
+  "asset_url_pattern": "$PATTERN",
+  "families": [
+    "Style 1",
+    "Material Symbols Outlined"
+  ],
+  "icons": [
+    {
+      "name": "my_icon_1",
+      "version": 1,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59530
+    },
+    {
+      "name": "my_icon_2",
+      "version": 399,
+      "unsupported_families": [
+        "Style 1"
+      ],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59574
+    },
+    {
+      "name": "my_icon_2",
+      "version": 1,
+      "unsupported_families": [
+        "Material Symbols Outlined"
+      ],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59574
+    }
+  ],
+  "categories": []
+}
+"""
+    val mockDownloadableFileService = Mockito.mock(DownloadableFileService::class.java)
+    ApplicationManager.getApplication()
+      .registerOrReplaceServiceInstance(DownloadableFileService::class.java, mockDownloadableFileService, projectRule.disposable)
+    whenever(mockDownloadableFileService.createFileDescription(Mockito.anyString(), Mockito.anyString())).thenAnswer { invocation ->
+      val url = invocation.getArgument<String>(0)
+      val fileName = invocation.getArgument<String>(1)
+      DownloadableFileDescriptionImpl(url, fileName.removeSuffix(".tmp"), "tmp")
+    }
+    var shouldCancelSecondIcon = true
+    var downloadCallCount = 0
+    whenever(mockDownloadableFileService.createDownloader(Mockito.any(), Mockito.eq("Material Icons"))).thenAnswer { invocation ->
+      val descriptions = invocation.getArgument<List<DownloadableFileDescriptionImpl>>(0)
+      val mockDownloader = Mockito.mock(FileDownloader::class.java)
+      whenever(mockDownloader.download(Mockito.any())).thenAnswer {
+        downloadCallCount++
+        if (shouldCancelSecondIcon && downloadCallCount > 1) {
+          throw ProcessCanceledException()
+        }
+        descriptions.map { desc ->
+          val downloadedFile =
+            downloadDir
+              .resolve(desc.defaultFileName)
+              .apply {
+                parent.createDirectories()
+                writeText(NEW_VD)
+              }
+              .toFile()
+          Pair(downloadedFile, desc)
+        }
+      }
+      mockDownloader
+    }
+
+    val loadExistingMetadata: () -> MaterialIconsMetadata = {
+      MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    }
+    val testDownloadedMetadataFile = testDirectory.resolve("downloaded_metadata.txt").apply { writeText(newMetadataWithSymbols) }.toFile()
+    val loadTestDownloadedMetadata: () -> MaterialIconsMetadata = {
+      MaterialIconsMetadata.parse(SdkUtils.fileToUrl(testDownloadedMetadataFile)).getOrThrow()
+    }
+
+    // First run cancels after downloading my_icon_1
+    assertTrue(
+      updateIconsAtDir(
+        existingMetadata = loadExistingMetadata(),
+        newMetadata = loadTestDownloadedMetadata(),
+        targetDir = downloadDir,
+        iconsUrlProvider = iconsUrlProvider,
+      )
+    )
+
+    // Second run resumes without cancellation and completes downloading my_icon_2 for Material Symbols Outlined
+    shouldCancelSecondIcon = false
+    downloadCallCount = 0
+    assertTrue(
+      updateIconsAtDir(
+        existingMetadata = loadExistingMetadata(),
+        newMetadata = loadTestDownloadedMetadata(),
+        targetDir = downloadDir,
+        iconsUrlProvider = iconsUrlProvider,
+      )
+    )
+
+    assertEquals(1, downloadCallCount)
+    val completedMetadata = loadExistingMetadata()
+    assertEquals(listOf("Style 1", "Material Symbols Outlined"), completedMetadata.families.toList())
+    assertEquals(3, completedMetadata.icons.size)
+    val icon2Entries = completedMetadata.icons.filter { it.name == "my_icon_2" }
+    assertEquals(2, icon2Entries.size)
+    assertTrue(icon2Entries.any { it.version == 1 && it.unsupportedFamilies.contentEquals(arrayOf("Material Symbols Outlined")) })
+    assertTrue(icon2Entries.any { it.version == 399 && it.unsupportedFamilies.contentEquals(arrayOf("Style 1")) })
+    assertThat(downloadDir.resolve("materialsymbolsoutlined/my_icon_1/outline_my_icon_1_24.xml")).exists()
+    assertThat(downloadDir.resolve("materialsymbolsoutlined/my_icon_2/outline_my_icon_2_24.xml")).exists()
+    assertThat(downloadDir.resolve("style1/my_icon_2/style1_my_icon_2_24.xml")).exists()
+  }
+
+  @Test
+  fun pathTraversalInMetadataIsRejected() {
+    val outsideDir = testDirectory.resolve("outside_dir").apply { createDirectories() }
+    val secretFile = outsideDir.resolve("secret.txt").apply { writeText("do_not_delete") }
+
+    val maliciousMetadataContent =
+      """)]}'
+{
+  "host": "$HOST",
+  "asset_url_pattern": "$PATTERN",
+  "families": [
+    "Style 1",
+    "../../escaped_family",
+    "..\\..\\escaped_backslash"
+  ],
+  "icons": [
+    {
+      "name": "my_icon_1",
+      "version": 2,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59530
+    },
+    {
+      "name": "../../outside_dir",
+      "version": 1,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59531
+    },
+    {
+      "name": "..\\..\\outside_dir",
+      "version": 1,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59532
+    }
+  ],
+  "categories": []
+}
+"""
+    mockDownloadService(
+      listOf(
+        FakeDownload(
+          url = "https://my.host.com/s/i/style1/my_icon_1/v2/24px.xml",
+          downloadPath = "style1/my_icon_1/my_icon_1",
+          destinationPath = "style1/my_icon_1/style1_my_icon_1_24.tmp",
+        )
+      )
+    )
+
+    val existingMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    val maliciousMetadataFile = testDirectory.resolve("malicious_metadata.txt").apply { writeText(maliciousMetadataContent) }.toFile()
+    val maliciousMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(maliciousMetadataFile)).getOrThrow()
+
+    assertTrue(
+      updateIconsAtDir(
+        existingMetadata = existingMetadata,
+        newMetadata = maliciousMetadata,
+        targetDir = downloadDir,
+        iconsUrlProvider = iconsUrlProvider,
+      )
+    )
+
+    // Traversed directories must not be created and sibling files outside downloadDir must not be deleted
+    assertThat(testDirectory.resolve("escaped_family")).doesNotExist()
+    assertThat(secretFile).exists()
+    assertEquals("do_not_delete", secretFile.readText())
+    assertEquals(1, outsideDir.toFile().listFiles()!!.size)
+
+    // Valid icon should still update normally, and invalid families/icons must not be persisted
+    assertEquals(NEW_VD, downloadDir.resolve("style1/my_icon_1/style1_my_icon_1_24.xml").readText())
+    val updatedMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    assertEquals(listOf("Style 1"), updatedMetadata.families.toList())
+    assertEquals(listOf("my_icon_1"), updatedMetadata.icons.map { it.name })
+  }
+
+  @Test
+  fun allInvalidIconsInMetadataDoesNotWipeExistingIcons() {
+    val maliciousMetadataContent =
+      """)]}'
+{
+  "host": "$HOST",
+  "asset_url_pattern": "$PATTERN",
+  "families": [
+    "Style 1"
+  ],
+  "icons": [
+    {
+      "name": "../../outside_dir",
+      "version": 1,
+      "unsupported_families": [],
+      "categories": [],
+      "tags": [],
+      "codepoint": 59531
+    }
+  ],
+  "categories": []
+}
+"""
+    val maliciousMetadataFile = testDirectory.resolve("all_malicious_icons.txt").apply { writeText(maliciousMetadataContent) }.toFile()
+    val parseResult = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(maliciousMetadataFile))
+    assertTrue(parseResult.isFailure)
+
+    val currentMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    assertEquals(2, currentMetadata.icons.size)
+    assertThat(downloadDir.resolve("style1/my_icon_1/style1_my_icon_1_24.xml")).exists()
+    assertThat(downloadDir.resolve("style1/my_icon_2/style1_my_icon_2_24.xml")).exists()
+  }
+
+  @Test
+  fun downloadedFileEscapingTargetDirIsDeletedAndNotCleanedUp() {
+    val outsideDir = testDirectory.resolve("outside_dir").apply { createDirectories() }
+    val secretFile = outsideDir.resolve("secret.txt").apply { writeText("do_not_delete") }
+    val traversedTempFile = outsideDir.resolve("traversed.tmp")
+
+    val mockDownloadableFileService = Mockito.mock(DownloadableFileService::class.java)
+    ApplicationManager.getApplication()
+      .registerOrReplaceServiceInstance(DownloadableFileService::class.java, mockDownloadableFileService, projectRule.disposable)
+    val descriptor =
+      DownloadableFileDescriptionImpl(
+        "https://my.host.com/s/i/style1/my_icon_1/v2/24px.xml",
+        FileUtil.toSystemDependentName("style1/my_icon_1/style1_my_icon_1_24"),
+        "tmp",
+      )
+    whenever(mockDownloadableFileService.createFileDescription(Mockito.anyString(), Mockito.anyString())).thenReturn(descriptor)
+    val mockDownloader = Mockito.mock(FileDownloader::class.java)
+    whenever(mockDownloader.download(Mockito.any())).thenAnswer {
+      traversedTempFile.writeText(NEW_VD)
+      listOf(Pair(traversedTempFile.toFile(), descriptor))
+    }
+    whenever(mockDownloadableFileService.createDownloader(Mockito.any(), Mockito.eq("Material Icons"))).thenReturn(mockDownloader)
+
+    val existingMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(existingMetadataFile)).getOrThrow()
+    val testDownloadedMetadataFile = testDirectory.resolve("downloaded_metadata.txt").apply { writeText(NEW_METADATA_CONTENT) }.toFile()
+    val newMetadata = MaterialIconsMetadata.parse(SdkUtils.fileToUrl(testDownloadedMetadataFile)).getOrThrow()
+
+    updateIconsAtDir(
+      existingMetadata = existingMetadata,
+      newMetadata = newMetadata,
+      targetDir = downloadDir,
+      iconsUrlProvider = iconsUrlProvider,
+    )
+
+    // Traversed temp file should be deleted, not renamed, and sibling files in outsideDir must remain intact
+    assertThat(traversedTempFile).doesNotExist()
+    assertThat(secretFile).exists()
+    assertEquals("do_not_delete", secretFile.readText())
+    assertEquals(1, outsideDir.toFile().listFiles()!!.size)
   }
 
   private fun String.toExpectedJsonFormat(): String {

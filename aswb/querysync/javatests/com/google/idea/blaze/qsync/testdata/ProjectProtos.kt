@@ -52,6 +52,7 @@ object ProjectProtos {
             isAndroidWorkspace = true,
             languageClasses = setOf(QuerySyncLanguage.JVM),
             deriveTargetsFromDirectories = false,
+            supportsNestedWorkspaces = true,
           ),
       )
     val update = ProjectProtoUpdate(ProjectProto.Project.getDefaultInstance())

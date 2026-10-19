@@ -53,11 +53,15 @@ import com.android.tools.idea.testing.ModuleModelBuilder;
 import com.android.tools.rendering.classloading.ModuleClassLoader;
 import com.android.tools.rendering.classloading.ModuleClassLoaderManager;
 import com.android.tools.rendering.classloading.NopModuleClassLoadedDiagnostics;
+import com.android.tools.res.ids.ResourceIdManager;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.components.ComponentManagerEx;
+import com.intellij.openapi.components.TestMutableComponentManager;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.impl.ModuleImpl;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.CompilerModuleExtension;
 import com.intellij.openapi.roots.CompilerProjectExtension;
@@ -66,7 +70,10 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.serviceContainer.ComponentManagerImpl;
 import com.intellij.testFramework.PsiTestUtil;
+import com.intellij.testFramework.ServiceContainerUtil;
+import com.intellij.workspaceModel.ide.impl.legacyBridge.module.ModuleBridgeImpl;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -144,22 +151,14 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
   /**
    * Verifies that the AAR generated R classes are given priority vs the build generated files. This is important in cases like support
    * library upgrades/downgrades. In those cases, the build generated file, will be outdated so it shouldn't be used by the ModuleClassLoader.
-   * By preferring the AAR geneated versions, we make sure we are always up-to-date.
+   * By preferring the AAR generated versions, we make sure we are always up-to-date.
    * See <a href="http://b.android.com/229382">229382</a>
    */
   public void testAARPriority() throws Exception {
-    doTestAARPriority();
-  }
-
-  public void testAARPriorityNamespaced() throws Exception {
-    enableNamespacing("test");
-    doTestAARPriority();
-  }
-
-  private void doTestAARPriority() throws IOException {
-    testResourceIdManager = TestResourceIdManager.Companion.getManager(myModule);
-    testResourceIdManager.setFinalIdsUsed(false);
     Module module = myFixture.getModule();
+    testResourceIdManager = TestResourceIdManager.Companion.createManagerForTest();
+    ServiceContainerUtil.replaceService(module, ResourceIdManager.class, testResourceIdManager, myFixture.getTestRootDisposable());
+    testResourceIdManager.setFinalIdsUsed(false);
     File tmpDir = Files.createTempDirectory("testProject").toFile();
     File outputDir = new File(tmpDir, CompilerModuleExtension.PRODUCTION + "/" + module.getName() + "/test");
     assertTrue(FileUtil.createDirectory(outputDir));
@@ -231,20 +230,41 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
     StudioModuleClassLoaderManager.get().release(loaderReference);
   }
 
-  public void testNotUsedLoaderCouldBeOutOfDate() throws Exception {
+  public void testNotUsedLoaderSurvivesOverlayChange() throws Exception {
+    // This test relies on the class loader being built with an overlay loader in its pipeline, which only happens when Fast Preview is on.
+    assertTrue(FastPreviewConfiguration.Companion.getInstance().isEnabled());
     ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderReference =
       StudioModuleClassLoaderManager.get().getShared(null, StudioModuleRenderContext.forModule(myModule));
     StudioModuleClassLoader loader = loaderReference.getClassLoader();
     Path overlayTestDir = Files.createDirectories(Files.createTempDirectory("overlayTest"));
     assertTrue(loader.isUserCodeUpToDate());
-    // New overlay will make the code out-of-date, even if the class loader hasn't been used to load any class
+    // The class loader has not loaded any project class, so nothing it has already defined can be shadowed by the new overlay. It stays
+    // usable and any class loaded from now on is resolved against the new overlay contents.
+    ModuleClassLoaderOverlays.getInstance(BuildTargetReference.gradleOnly(myModule)).pushOverlayPath(overlayTestDir);
+    assertTrue(loader.isUserCodeUpToDate());
+    StudioModuleClassLoaderManager.get().release(loaderReference);
+  }
+
+  public void testLoaderBuiltWithoutOverlaySupportIsOutOfDateAfterOverlayChange() throws Exception {
+    // A class loader created while Fast Preview is disabled has no overlay loader in its pipeline, so it can never resolve the pushed
+    // classes. It must be discarded even though it has not loaded any project class, otherwise the preview would be permanently stale.
+    ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderReference;
+    FastPreviewConfiguration.Companion.getInstance().setEnabled(false);
+    try {
+      loaderReference = StudioModuleClassLoaderManager.get().getShared(null, StudioModuleRenderContext.forModule(myModule));
+    }
+    finally {
+      FastPreviewConfiguration.Companion.getInstance().resetDefault();
+    }
+    StudioModuleClassLoader loader = loaderReference.getClassLoader();
+    Path overlayTestDir = Files.createDirectories(Files.createTempDirectory("overlayTest"));
+    assertTrue(loader.isUserCodeUpToDate());
     ModuleClassLoaderOverlays.getInstance(BuildTargetReference.gradleOnly(myModule)).pushOverlayPath(overlayTestDir);
     assertFalse(loader.isUserCodeUpToDate());
     StudioModuleClassLoaderManager.get().release(loaderReference);
   }
 
   private void doTestLibRClass(boolean finalIdsUsed) throws Exception {
-
     setupTestProjectFromAndroidModel(
       getProject(),
       new File(Objects.requireNonNull(getProject().getBasePath())),
@@ -253,7 +273,8 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
         "debug",
         createAndroidProjectBuilderForDefaultTestProjectStructure(IdeAndroidProjectType.PROJECT_TYPE_LIBRARY, "p1.p2")));
     final var mainModule = getMainModule(gradleModule(getProject(), ":"));
-    testResourceIdManager = TestResourceIdManager.Companion.getManager(mainModule);
+    testResourceIdManager = TestResourceIdManager.Companion.createManagerForTest();
+    ServiceContainerUtil.replaceService(mainModule, ResourceIdManager.class, testResourceIdManager, myFixture.getTestRootDisposable());
     testResourceIdManager.setFinalIdsUsed(finalIdsUsed);
     final var mainFacet = AndroidFacet.getInstance(mainModule);
     SourceProviders sourceProviderManager = SourceProviderManager.getInstance(mainFacet);
@@ -397,6 +418,60 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
     StudioModuleClassLoaderManager.get().release(loaderRef);
   }
 
+  public void testNotUpToDate_whenDependenciesContainDuplicatesWithSameCount() throws IOException {
+    File basePath = new File(Objects.requireNonNull(getProject().getBasePath()));
+    File gradleFolder = basePath.toPath().resolve(".gradle").toFile();
+    String libFolder = "libraryFolder";
+    String libJarA = "fileA.jar";
+    String libJarB = "fileB.jar";
+    File libFolderFile = gradleFolder.toPath().resolve(libFolder).toFile();
+    assertTrue(libFolderFile.exists() || libFolderFile.mkdirs());
+    Files.createFile(libFolderFile.toPath().resolve(libJarA));
+    Files.createFile(libFolderFile.toPath().resolve(libJarB));
+
+    AndroidLibraryDependency libA = ideAndroidLibrary(gradleFolder, "com.example:libraryA:1.0", libFolder, libJarA);
+    AndroidLibraryDependency libB = ideAndroidLibrary(gradleFolder, "com.example:libraryB:1.0", libFolder, libJarB);
+
+    ModuleModelBuilder appModuleBuilder =
+      new AndroidModuleModelBuilder(
+        ":app",
+        "debug",
+        new AndroidProjectBuilder()
+          .withAndroidLibraryDependencyList((it, variant) -> ImmutableList.of(libA, libB)));
+
+    setupTestProjectFromAndroidModel(
+      getProject(),
+      basePath,
+      JavaModuleModelBuilder.getRootModuleBuilder(),
+      appModuleBuilder
+    );
+
+    Module appModule = gradleModule(getProject(), ":app");
+    ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderRef = StudioModuleClassLoaderManager.get()
+      .getPrivate(null, StudioModuleRenderContext.forModule(Objects.requireNonNull(appModule)));
+    StudioModuleClassLoader loader = loaderRef.getClassLoader();
+    assertTrue(loader.areDependenciesUpToDate());
+
+    // Update dependencies so total element count is still 2, but libB was replaced with duplicate libA: [libA, libA]
+    ModuleModelBuilder updatedAppModuleBuilder =
+      new AndroidModuleModelBuilder(
+        ":app",
+        "debug",
+        new AndroidProjectBuilder()
+          .withAndroidLibraryDependencyList((it, variant) -> ImmutableList.of(libA, libA)));
+
+    updateTestProjectFromAndroidModel(
+      getProject(),
+      basePath,
+      JavaModuleModelBuilder.getRootModuleBuilder(),
+      updatedAppModuleBuilder
+    );
+
+    assertFalse(loader.areDependenciesUpToDate());
+
+    StudioModuleClassLoaderManager.get().release(loaderRef);
+  }
+
   public void testModuleClassLoaderCopy() {
     ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderRef = StudioModuleClassLoaderManager.get()
       .getPrivate(null, StudioModuleRenderContext.forModule(Objects.requireNonNull(myFixture.getModule())));
@@ -441,6 +516,52 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
         "symbolFile",
         it -> it
       ));
+  }
+
+  public void testDisallowedPackagesFromPlugin() {
+    Module module = myFixture.getModule();
+    ApplicationManager.getApplication().runReadAction(() -> {
+      try (ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderReference = StudioModuleClassLoaderManager.get()
+        .getShared(StudioModuleClassLoaderTest.class.getClassLoader(), StudioModuleRenderContext.forModule(module))) {
+        StudioModuleClassLoader classLoader = loaderReference.getClassLoader();
+        try {
+          classLoader.loadClass("com.android.tools.rendering.RenderService");
+          fail("ClassNotFoundException expected for com.android.tools.rendering.RenderService");
+        }
+        catch (ClassNotFoundException expected) {
+        }
+        try {
+          classLoader.loadClass("org.jetbrains.android.uipreview.StudioRenderSandbox");
+          fail("ClassNotFoundException expected for org.jetbrains.android.uipreview.StudioRenderSandbox");
+        }
+        catch (ClassNotFoundException expected) {
+        }
+        try {
+          classLoader.loadClass("org.jetbrains.android.uipreview.StudioRenderSecurity");
+          fail("ClassNotFoundException expected for org.jetbrains.android.uipreview.StudioRenderSecurity");
+        }
+        catch (ClassNotFoundException expected) {
+        }
+        try {
+          classLoader.loadClass("sun.misc.Signal");
+          fail("ClassNotFoundException expected for sun.misc.Signal");
+        }
+        catch (ClassNotFoundException expected) {
+        }
+        try {
+          classLoader.loadClass("com.android.tools.rendering.security.RenderSandbox");
+          fail("ClassNotFoundException expected for com.android.tools.rendering.security.RenderSandbox");
+        }
+        catch (ClassNotFoundException expected) {
+        }
+        try {
+          assertNotNull(classLoader.loadClass("com.android.tools.rendering.security.RenderSandboxTransformTrampoline"));
+        }
+        catch (ClassNotFoundException e) {
+          fail("RenderSandboxTransformTrampoline should be loadable from plugin: " + e.getMessage());
+        }
+      }
+    });
   }
 
   /**

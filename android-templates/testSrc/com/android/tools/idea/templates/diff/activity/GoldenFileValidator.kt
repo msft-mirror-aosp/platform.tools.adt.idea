@@ -91,18 +91,6 @@ class GoldenFileValidator(template: Template, goldenDirName: String, private val
           "This declaration overrides a deprecated member but is not marked as deprecated itself. Add the '@Deprecated' annotation or suppress the diagnostic.",
         ),
 
-      // TODO: b/390509936
-      "testNewFullscreenFragmentWithKotlin" to
-        setOf(
-          "'static field SYSTEM_UI_FLAG_LOW_PROFILE: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_FULLSCREEN: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_STABLE: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_IMMERSIVE_STICKY: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_HIDE_NAVIGATION: Int' is deprecated. Deprecated in Java.",
-          "'var systemUiVisibility: Int' is deprecated. Deprecated in Java.",
-          "'static field SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: Int' is deprecated. Deprecated in Java.",
-        ),
       // TODO: b/390510577
       "testNewPrimaryDetailFlowWithKotlin" to
         setOf("'fun startDrag(p0: ClipData!, p1: View.DragShadowBuilder!, p2: Any!, p3: Int): Boolean' is deprecated. Deprecated in Java."),

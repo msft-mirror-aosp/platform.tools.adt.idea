@@ -23,10 +23,9 @@ import com.intellij.psi.PsiPrimitiveType
 import com.intellij.psi.PsiType
 import com.intellij.psi.PsiTypes
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.util.io.IOUtil
 import java.io.DataInput
 import java.io.DataOutput
-import org.jetbrains.kotlin.idea.core.script.v1.readString
-import org.jetbrains.kotlin.idea.core.script.v1.writeString
 import org.jetbrains.kotlin.idea.stubindex.KotlinTypeAliasByExpansionShortNameIndex
 import org.jetbrains.kotlin.name.ClassId
 
@@ -90,17 +89,17 @@ internal fun getIndexKeys(psiType: PsiType, project: Project, scope: GlobalSearc
   val aliasSimpleNames = simpleNamesCanHaveAlias.flatMap { getAliasSimpleNames(it, project, scope) }
 
   return buildList {
-      // Fully-qualified name should go first, since it's most specific.
-      if (includeFqName) add(fqName)
+    // Fully-qualified name should go first, since it's most specific.
+    if (includeFqName) add(fqName)
 
-      // All simple names next.
-      addAll(simpleNamesCanHaveAlias)
-      addAll(simpleNamesCannotHaveAlias)
-      addAll(aliasSimpleNames)
+    // All simple names next.
+    addAll(simpleNamesCanHaveAlias)
+    addAll(simpleNamesCannotHaveAlias)
+    addAll(aliasSimpleNames)
 
-      // The unknown type last, since it's most generic.
-      add("")
-    }
+    // The unknown type last, since it's most generic.
+    add("")
+  }
     .distinct()
 }
 
@@ -145,7 +144,7 @@ private fun PsiPrimitiveType.getKotlinPrimitiveArrayName(): String? {
 }
 
 internal fun DataOutput.writeClassId(classId: ClassId) {
-  writeString(classId.asString())
+  IOUtil.writeUTF(this, classId.asString())
 }
 
-internal fun DataInput.readClassId(): ClassId = ClassId.fromString(this.readString())
+internal fun DataInput.readClassId(): ClassId = ClassId.fromString(IOUtil.readUTF(this))

@@ -15,18 +15,16 @@
  */
 package com.android.tools.idea.avd
 
-import com.android.repository.api.RepoManager.RepoLoadedListener
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.SystemImageSupplier
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Abi
 import com.android.sdklib.repository.AndroidSdkHandler
-import com.android.tools.idea.log.LogWrapper
+import com.android.tools.analytics.CommonMetricsData
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
-import com.android.utils.CpuArchitecture
-import com.android.utils.osArchitecture
+import com.google.wireless.android.sdk.stats.ProductDetails.CpuArchitecture
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.util.SystemInfo
 import kotlin.time.Duration.Companion.days
@@ -37,9 +35,9 @@ import kotlinx.collections.immutable.plus
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toPersistentList
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
@@ -67,53 +65,45 @@ internal object ISystemImages {
   fun systemImageFlow(sdkHandler: AndroidSdkHandler): Flow<SystemImageState> {
     val indicator = StudioLoggerProgressIndicator(ISystemImages::class.java)
     val repoManager = sdkHandler.getRepoManager(indicator)
-
-    fun systemImages(): ImmutableList<ISystemImage> {
-      // The SystemImageManager gets destroyed and recreated every time the packages change; do
-      // not cache it.
-      return SystemImageSupplier(
-          repoManager,
-          sdkHandler.getSystemImageManager(indicator),
-          LogWrapper(ISystemImages.thisLogger<ISystemImages>()),
-        )
-        .get()
-        .toImmutableList()
-    }
+    val systemImageManager = sdkHandler.getSystemImageManager(indicator)
+    val imageSupplier = SystemImageSupplier(repoManager, systemImageManager)
 
     var state = SystemImageState.INITIAL
 
     // Load local and remote packages and emit the corresponding SystemImageState.
-    return callbackFlow<SystemImageLoadingEvent> {
+    return channelFlow {
         launch {
           try {
             repoManager.loadLocalPackages(indicator, 1.days)
-            trySend(LocalImagesLoaded)
+            send(LocalImagesLoaded)
           } catch (e: Exception) {
             thisLogger().warn("Loading local images", e)
-            trySend(Error)
+            send(Error)
           }
         }
 
         launch {
           try {
             repoManager.loadRemotePackages(indicator, StudioDownloader(), StudioSettingsController.getInstance())
-            trySend(RemoteImagesLoaded)
+            send(RemoteImagesLoaded)
           } catch (e: Exception) {
             thisLogger().warn("Loading remote images", e)
-            trySend(Error)
+            send(Error)
           }
         }
 
         // If local packages change again, say, after downloading an image, send an update.
-        val listener = RepoLoadedListener { trySend(LocalImagesLoaded) }
-        repoManager.addLocalChangeListener(listener)
-        awaitClose { repoManager.removeLocalChangeListener(listener) }
+        launch {
+          systemImageManager.systemImageFlow.drop(1).collect {
+            send(LocalImagesLoaded)
+          }
+        }
       }
       .transform { event ->
         state =
           when (event) {
-            is LocalImagesLoaded -> state.copy(hasLocal = true, images = systemImages())
-            is RemoteImagesLoaded -> state.copy(hasRemote = true, images = systemImages())
+            is LocalImagesLoaded -> state.copy(hasLocal = true, images = imageSupplier.get().toImmutableList())
+            is RemoteImagesLoaded -> state.copy(hasRemote = true, images = imageSupplier.get().toImmutableList())
             is Error -> state.copy(error = "Error loading system images.")
           }
         emit(state)
@@ -137,7 +127,7 @@ internal fun ISystemImage.getServices(): Services {
 internal fun ISystemImage.isSupported(): Boolean = imageWarnings().isEmpty()
 
 private fun ISystemImage.incompatibleArchitectureWarning(): String? =
-  when (osArchitecture) {
+  when (CommonMetricsData.osArchitecture) {
     CpuArchitecture.X86_64 ->
       when (Abi.getEnum(primaryAbiType)) {
         in listOf(Abi.X86_64, Abi.X86) -> null

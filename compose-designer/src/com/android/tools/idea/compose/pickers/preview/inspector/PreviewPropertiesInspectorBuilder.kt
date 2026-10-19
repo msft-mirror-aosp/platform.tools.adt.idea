@@ -38,6 +38,12 @@ import com.android.tools.preview.config.PARAMETER_HARDWARE_ORIENTATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_WIDTH
 import com.android.tools.preview.config.PARAMETER_HEIGHT_DP
 import com.android.tools.preview.config.PARAMETER_LOCALE
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_CAMERA
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_DISTANCE
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_KEYBOARD
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_MIC
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_POINTER
+import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_WINDOW_POSTURE
 import com.android.tools.preview.config.PARAMETER_NAME
 import com.android.tools.preview.config.PARAMETER_SHOW_BACKGROUND
 import com.android.tools.preview.config.PARAMETER_SHOW_DECORATION
@@ -82,6 +88,12 @@ internal class PreviewPropertiesInspectorBuilder(enumSupportValuesProvider: Enum
         allProps.remove(PARAMETER_HARDWARE_CHIN_SIZE)?.let { put(PARAMETER_HARDWARE_CHIN_SIZE, it) }
         allProps.remove(PARAMETER_HARDWARE_CUTOUT)?.let { put(PARAMETER_HARDWARE_CUTOUT, it) }
         allProps.remove(PARAMETER_HARDWARE_NAVIGATION)?.let { put(PARAMETER_HARDWARE_NAVIGATION, it) }
+        allProps.remove(PARAMETER_MEDIA_QUERY_WINDOW_POSTURE)?.let { put(PARAMETER_MEDIA_QUERY_WINDOW_POSTURE, it) }
+        allProps.remove(PARAMETER_MEDIA_QUERY_POINTER)?.let { put(PARAMETER_MEDIA_QUERY_POINTER, it) }
+        allProps.remove(PARAMETER_MEDIA_QUERY_KEYBOARD)?.let { put(PARAMETER_MEDIA_QUERY_KEYBOARD, it) }
+        allProps.remove(PARAMETER_MEDIA_QUERY_DISTANCE)?.let { put(PARAMETER_MEDIA_QUERY_DISTANCE, it) }
+        allProps.remove(PARAMETER_MEDIA_QUERY_CAMERA)?.let { put(PARAMETER_MEDIA_QUERY_CAMERA, it) }
+        allProps.remove(PARAMETER_MEDIA_QUERY_MIC)?.let { put(PARAMETER_MEDIA_QUERY_MIC, it) }
       }
     val remainingProperties = allProps.values
 
@@ -112,9 +124,15 @@ private object PreviewControlTypeProvider : PsiPropertyItemControlTypeProvider {
       PARAMETER_WALLPAPER,
       PARAMETER_HARDWARE_CUTOUT,
       PARAMETER_HARDWARE_NAVIGATION,
+      PARAMETER_MEDIA_QUERY_WINDOW_POSTURE,
+      PARAMETER_MEDIA_QUERY_POINTER,
+      PARAMETER_MEDIA_QUERY_KEYBOARD,
+      PARAMETER_MEDIA_QUERY_DISTANCE,
       PARAMETER_DEVICE -> ControlType.DROPDOWN
       PARAMETER_BACKGROUND_COLOR -> ControlType.COLOR_EDITOR
       PARAMETER_HARDWARE_IS_ROUND,
+      PARAMETER_MEDIA_QUERY_CAMERA,
+      PARAMETER_MEDIA_QUERY_MIC,
       PARAMETER_SHOW_DECORATION,
       PARAMETER_SHOW_SYSTEM_UI,
       PARAMETER_SHOW_BACKGROUND -> ControlType.BOOLEAN

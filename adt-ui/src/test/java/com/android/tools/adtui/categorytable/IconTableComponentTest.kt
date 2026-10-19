@@ -102,7 +102,7 @@ class IconTableComponentTest {
 
     // If we want to test that rendering actually happens repeatedly, we can do the
     // following, but it depends on an experimental API:
-    //  val fakeUi = FakeUi(panel, createFakeWindow = true)
+    //  val fakeUi = FakeUi(panel, disposableRule.disposable)
     //  val renders = AtomicInteger()
     //  iconLabel.putClientProperty(AnimatedIcon.REFRESH_DELEGATE, Runnable {
     // renders.incrementAndGet(); fakeUi.render() })

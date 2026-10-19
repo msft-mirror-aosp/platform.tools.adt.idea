@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.insights.ui
 
-import com.android.tools.adtui.common.primaryContentBackground
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.insights.AppInsightsCrashController
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
@@ -38,12 +37,9 @@ import com.intellij.execution.filters.FileHyperlinkInfo
 import com.intellij.execution.filters.HyperlinkInfo
 import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.ui.ConsoleViewContentType
-import com.intellij.ide.ui.LafManager
-import com.intellij.ide.ui.laf.isDefaultForTheme
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.readAction
-import com.intellij.openapi.editor.colors.EditorColorsManager
 import com.intellij.openapi.editor.event.EditorMouseEvent
 import com.intellij.openapi.editor.event.EditorMouseListener
 import com.intellij.openapi.editor.ex.EditorEx
@@ -53,8 +49,6 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.ui.SimpleTextAttributes
-import com.intellij.ui.components.JBScrollPane
-import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.CardLayout
 import java.awt.Graphics
@@ -103,7 +97,7 @@ class StackTraceConsole(
       .distinctUntilChanged()
       .stateIn(scope, SharingStarted.Eagerly, StackTraceConsoleState())
 
-  val consoleView: ConsoleViewImpl = createStackPanel()
+  val consoleView: StackTraceConsoleView = createStackPanel()
   var onStackPrintedListener: (() -> Unit)? = null
 
   private var currentEvent: Event? = null
@@ -172,19 +166,10 @@ class StackTraceConsole(
     stackPanel.add(emptyStatePane, EMPTY_STATE_PANEL)
     stackPanel.add(noStackTracePane, NO_STACK_TRACE_PANEL)
     cardLayout.show(stackPanel, CONSOLE_VIEW)
-
-    consoleView.editor!!.setBorder(JBUI.Borders.empty())
-    updateUI()
   }
 
   fun updateUI() {
-    (consoleView.editor as? EditorEx)?.apply {
-      if (EditorColorsManager.getInstance().globalScheme.isDefaultForTheme(LafManager.getInstance().currentUIThemeLookAndFeel)) {
-        backgroundColor = primaryContentBackground
-      } else {
-        backgroundColor = EditorColorsManager.getInstance().globalScheme.defaultBackground
-      }
-    }
+    consoleView.updateEditorBackground()
   }
 
   fun clearStackTrace() =
@@ -192,8 +177,7 @@ class StackTraceConsole(
       if (consoleView.text.isEmpty()) {
         return@synchronized
       }
-      consoleView.flushDeferredText()
-      consoleView.editor!!.document.setText("")
+      consoleView.clearConsoleText()
       currentEvent = null
     }
 
@@ -203,17 +187,14 @@ class StackTraceConsole(
     DumbService.getInstance(project).smartInvokeLater { synchronized(CONSOLE_LOCK) { consoleView.rehighlightHyperlinksAndFoldings() } }
   }
 
-  private fun printStack(issue: AppInsightsCrash, event: Event, connection: Connection?, consoleView: ConsoleViewImpl) {
+  private fun printStack(issue: AppInsightsCrash, event: Event, connection: Connection?, consoleView: StackTraceConsoleView) {
     if (event == currentEvent) {
       return
     }
     var startOfOtherThreads = 0
     synchronized(CONSOLE_LOCK) {
       currentEvent = null
-      // ConsoleViewImpl.clear() clears non-deferred text asynchronously, causing a race condition
-      // when setting the new text below, so here we manually flush and then set the text to empty.
-      consoleView.flushDeferredText()
-      consoleView.editor!!.document.setText("")
+      consoleView.clearConsoleText()
       consoleView.putClientProperty(VCS_INFO_OF_SELECTED_CRASH, event.appVcsInfo)
       consoleView.putClientProperty(CONNECTION_OF_SELECTED_CRASH, connection)
 
@@ -295,24 +276,13 @@ class StackTraceConsole(
     }
   }
 
-  private fun createStackPanel(): ConsoleViewImpl {
-    val builder = StackTraceConsoleBuilder(project)
-    val consoleView = builder.console as ConsoleViewImpl
-    consoleView.initConsole()
-    return consoleView
-  }
+  private fun createStackPanel(): StackTraceConsoleView = StackTraceConsoleBuilder(project).console.apply { initConsole() }
 
   private fun ConsoleViewImpl.initConsole() {
     component // causes editor to be created
     addMessageFilter(InsightsAttachInlayDiffLinkFilter(resolvedInfoCache, this, tracker))
     val listener = ListenerForTracking(this, tracker, project, stackTraceConsoleState, scope)
-    (editor as EditorEx).apply {
-      contentComponent.isFocusCycleRoot = false
-      contentComponent.isFocusable = true
-      setCaretEnabled(false)
-      scrollPane.verticalScrollBarPolicy = JBScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
-      addEditorMouseListener(listener, this@StackTraceConsole)
-    }
+    (editor as EditorEx).addEditorMouseListener(listener, this@StackTraceConsole)
   }
 
   override fun dispose() = Unit

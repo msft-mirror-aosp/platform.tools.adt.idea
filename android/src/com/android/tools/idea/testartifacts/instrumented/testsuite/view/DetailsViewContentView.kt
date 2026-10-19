@@ -24,6 +24,7 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.Journey
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark.BenchmarkLinkListener
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.benchmark.BenchmarkOutput
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.getName
+import com.android.tools.idea.testartifacts.instrumented.testsuite.model.readLogcatFromFile
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.ScreenshotTestUtils
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.logScreenshotTestEvent
 import com.google.common.annotations.VisibleForTesting
@@ -63,6 +64,7 @@ import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
+import java.io.File
 import java.util.Locale
 import java.util.concurrent.Callable
 import java.util.concurrent.Future
@@ -78,6 +80,8 @@ open class DetailsViewContentView(
   logger: AndroidTestSuiteLogger,
   headerActions: List<AnAction>,
   messageBus: MessageBus = ApplicationManager.getApplication().messageBus,
+  /** Upper bound of the log text retained by this view. See [MAX_RETAINED_LOG_CHARS]. */
+  private val maxRetainedLogChars: Int = MAX_RETAINED_LOG_CHARS,
 ) : Disposable {
 
   /** Returns the root panel. */
@@ -111,6 +115,9 @@ open class DetailsViewContentView(
   @get:VisibleForTesting
   var myErrorStackTrace: String = ""
     private set
+
+  @VisibleForTesting var logLoadingFuture: Future<*>? = null
+  @VisibleForTesting var isLoadingLogs: Boolean = false
 
   private var needsRefreshLogsView: Boolean = true
 
@@ -229,7 +236,7 @@ open class DetailsViewContentView(
           border = JBUI.Borders.compound(JBUI.Borders.customLine(JBColor.border(), 0, 0, 1, 0), JBUI.Borders.empty(10))
 
           // The labels are placed in a sub-panel in the center.
-          // Use BorderLayout to allow the error label (CENTER) to scroll
+          // Use BorderLayout to let the error label (CENTER) be clipped
           // while keeping the device label (WEST) fixed.
           add(
             NonOpaquePanel().apply {
@@ -247,13 +254,23 @@ open class DetailsViewContentView(
               // Add a rigid area to force the row height to match the separator's 24px height.
               errorLabelContainer.add(javax.swing.Box.createRigidArea(Dimension(0, com.intellij.ui.scale.JBUIScale.scale(24))))
 
-              // Wrap the error label container in a scroll pane
+              // Wrap the error label container in a scroll pane that only clips. Scrollbars are
+              // disabled on purpose: an "as needed" horizontal scrollbar adds its height to the
+              // header's preferred size as soon as the message overflows, which makes the header
+              // height depend on the failure text and pushes the tab strip and the header toolbar
+              // out of place (b/466299079). A zero preferred width ensures BorderLayout.CENTER
+              // clips the label instead of expanding the header past the EAST toolbar, while
+              // keeping the full first line in myTestResultLabel.text (for UI driver tests) and
+              // in toolTipText.
               val scrollPane =
-                JBScrollPane(
-                  errorLabelContainer,
-                  ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
-                  ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED,
-                )
+                object :
+                  JBScrollPane(
+                    errorLabelContainer,
+                    ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
+                    ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER,
+                  ) {
+                  override fun getPreferredSize(): Dimension = Dimension(0, super.getPreferredSize().height)
+                }
               scrollPane.border = JBUI.Borders.empty()
               scrollPane.viewport.isOpaque = false
               scrollPane.isOpaque = false
@@ -295,8 +312,14 @@ open class DetailsViewContentView(
   }
 
   private fun setLogs(logcat: String?, errorStackTrace: String?) {
-    val nonNullLogcat = logcat.orEmpty()
-    val nonNullError = errorStackTrace.orEmpty()
+    logLoadingFuture?.cancel(true)
+    logLoadingFuture = null
+    isLoadingLogs = false
+    // Keep only a bounded amount of text alive: a single test case can emit hundreds of megabytes of logcat output (b/446684393).
+    // The tail of the logcat is kept because that is the part the console displays, while the head of the stack trace is kept because
+    // its first line is shown in the test result label.
+    val nonNullLogcat = logcat.orEmpty().keepLastChars(maxRetainedLogChars)
+    val nonNullError = errorStackTrace.orEmpty().keepFirstChars(maxRetainedLogChars)
     val logcatChanged = myLogcat != nonNullLogcat
     val errorChanged = myErrorStackTrace != nonNullError
     if (needsRefreshLogsView || logcatChanged || errorChanged) {
@@ -310,28 +333,55 @@ open class DetailsViewContentView(
     }
   }
 
-  private fun setBenchmarkText(benchmarkText: BenchmarkOutput) {
+  private fun setLogsAsync(logcatFile: File, errorStackTrace: String?) {
+    logLoadingFuture?.cancel(true)
+    val nonNullError = errorStackTrace.orEmpty().keepFirstChars(maxRetainedLogChars)
+    val errorChanged = myErrorStackTrace != nonNullError
+    myErrorStackTrace = nonNullError
+    if (errorChanged) {
+      refreshTestResultLabel()
+    }
+    myLogcat = ""
+    isLoadingLogs = true
+    needsRefreshLogsView = false
+    refreshLogsView()
+
+    var currentFuture: Future<*>? = null
+    currentFuture =
+      AppExecutorUtil.getAppExecutorService().submit {
+        val content = readLogcatFromFile(logcatFile)
+        invokeLater(ModalityState.any()) {
+          if (Disposer.isDisposed(this)) return@invokeLater
+          if (logLoadingFuture !== currentFuture) return@invokeLater
+          logLoadingFuture = null
+          isLoadingLogs = false
+          myLogcat = content.keepLastChars(maxRetainedLogChars)
+          refreshLogsView()
+        }
+      }
+    logLoadingFuture = currentFuture
+  }
+
+  private fun setBenchmarkText(benchmarkText: BenchmarkOutput?) {
     myBenchmarkView.clear()
-    for (line in benchmarkText.lines) {
+    for (line in benchmarkText?.lines.orEmpty()) {
       line.print(myBenchmarkView, ConsoleViewContentType.NORMAL_OUTPUT, BenchmarkLinkListener(project))
     }
-    val benchmarkOutputIsEmpty = benchmarkText.lines.isEmpty()
+    val benchmarkOutputIsEmpty = benchmarkText?.lines.isNullOrEmpty()
     myBenchmarkTab.isHidden = benchmarkOutputIsEmpty
   }
 
   @VisibleForTesting var pathResolutionFuture: Future<*>? = null
 
   private fun setAdditionalTestArtifacts(additionalTestArtifacts: Map<String, String>, testResults: AndroidTestResults?) {
-    val className = testResults?.className
-
     // Perform path resolution in background to avoid blocking the UI thread
     pathResolutionFuture?.cancel(true)
     pathResolutionFuture =
       ReadAction.nonBlocking(
           Callable {
-            val newImage = ScreenshotTestUtils.resolvePath(project, className, additionalTestArtifacts["PreviewScreenshot.newImagePath"])
-            val refImage = ScreenshotTestUtils.resolvePath(project, className, additionalTestArtifacts["PreviewScreenshot.refImagePath"])
-            val diffImage = ScreenshotTestUtils.resolvePath(project, className, additionalTestArtifacts["PreviewScreenshot.diffImagePath"])
+            val newImage = ScreenshotTestUtils.resolvePath(project, additionalTestArtifacts["PreviewScreenshot.newImagePath"])
+            val refImage = ScreenshotTestUtils.resolvePath(project, additionalTestArtifacts["PreviewScreenshot.refImagePath"])
+            val diffImage = ScreenshotTestUtils.resolvePath(project, additionalTestArtifacts["PreviewScreenshot.diffImagePath"])
             val diffPercentString = additionalTestArtifacts["PreviewScreenshot.diffPercent"]?.takeIf { it.isNotBlank() }
             val diffPercent: Double? = diffPercentString?.toDoubleOrNull()
             listOf(newImage, refImage, diffImage, diffPercent)
@@ -402,13 +452,20 @@ open class DetailsViewContentView(
   fun setResults(androidDevice: AndroidDevice, testResults: AndroidTestResults) {
     setAndroidDevice(androidDevice)
     setAndroidTestCaseResult(testResults.getTestCaseResult(androidDevice))
-    setLogs(testResults.getLogcat(androidDevice), testResults.getErrorStackTrace(androidDevice))
+    val logcatFile = testResults.getLogcatFile(androidDevice)
+    if (logcatFile != null) {
+      setLogsAsync(logcatFile, testResults.getErrorStackTrace(androidDevice))
+    } else {
+      setLogs(testResults.getLogcat(androidDevice), testResults.getErrorStackTrace(androidDevice))
+    }
     setBenchmarkText(testResults.getBenchmark(androidDevice))
     setAdditionalTestArtifacts(testResults.getAdditionalTestArtifacts(androidDevice), testResults)
   }
 
   @VisibleForTesting
   fun refreshTestResultLabel() {
+    // Cleared up-front so that a tooltip from a previously selected test cannot survive any of the early returns below.
+    myTestResultLabel.toolTipText = null
     val device =
       myAndroidDevice
         ?: run {
@@ -425,6 +482,17 @@ open class DetailsViewContentView(
           return
         }
 
+    // Screenshot test failures carry long assertion messages (image paths, diff percentages). The header scroll pane clips the label
+    // visually so the header height and EAST toolbar stay fixed, while the full first line is exposed as the label's tooltip (and kept in
+    // myTestResultLabel.text for UI driver matchers). See b/466299079.
+    val failureMessage =
+      if (testCaseResult == AndroidTestCaseResult.FAILED) {
+        myErrorStackTrace.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+      } else {
+        ""
+      }
+    setFailureTooltip(failureMessage)
+
     myTestResultLabel.text =
       if (testCaseResult.isTerminalState) {
         val statusColor = getColorFor(testCaseResult) ?: UIUtil.getActiveTextColor()
@@ -432,11 +500,10 @@ open class DetailsViewContentView(
         when (testCaseResult) {
           AndroidTestCaseResult.PASSED -> String.format(Locale.US, "<html><font color='%s'>Passed</font></html>", hexColor)
           AndroidTestCaseResult.FAILED -> {
-            val errorMessage = myErrorStackTrace.lineSequence().firstOrNull { it.isNotBlank() } ?: ""
-            if (errorMessage.isBlank()) {
+            if (failureMessage.isBlank()) {
               String.format(Locale.US, "<html><font color='%s'>Failed</font></html>", hexColor)
             } else {
-              String.format(Locale.US, "<html><font color='%s'>Failed</font> %s</html>", hexColor, errorMessage.htmlEscape())
+              String.format(Locale.US, "<html><font color='%s'>Failed</font> %s</html>", hexColor, failureMessage.htmlEscape())
             }
           }
           AndroidTestCaseResult.SKIPPED -> String.format(Locale.US, "<html><font color='%s'>Skipped</font></html>", hexColor)
@@ -451,10 +518,32 @@ open class DetailsViewContentView(
       }
   }
 
+  private fun setFailureTooltip(failureMessage: String) {
+    if (failureMessage.isBlank() || failureMessage.startsWith("<html>", ignoreCase = true)) {
+      return
+    }
+    // Escape HTML without an "<html>" prefix so Swing treats the tooltip as plain text and never renders HTML.
+    val escapedMessage = failureMessage.htmlEscape()
+    if (escapedMessage.startsWith("<html>", ignoreCase = true)) {
+      return
+    }
+    myTestResultLabel.toolTipText = escapedMessage
+  }
+
   @VisibleForTesting
   open fun refreshLogsView() {
     needsRefreshLogsView = false
     myLogsView.clear()
+
+    if (isLoadingLogs) {
+      logsTab.isHidden = false
+      myLogsView.print("Loading logs...", ConsoleViewContentType.NORMAL_OUTPUT)
+      if (myErrorStackTrace.isNotBlank()) {
+        myLogsView.print("\n", ConsoleViewContentType.NORMAL_OUTPUT)
+        myLogsView.print(myErrorStackTrace, ConsoleViewContentType.ERROR_OUTPUT)
+      }
+      return
+    }
 
     if (myLogcat.isBlank() && myErrorStackTrace.isBlank()) {
       myLogsView.print("No logs available", ConsoleViewContentType.NORMAL_OUTPUT)
@@ -505,6 +594,9 @@ open class DetailsViewContentView(
 
   override fun dispose() {
     pathResolutionFuture?.cancel(true)
+    logLoadingFuture?.cancel(true)
+    logLoadingFuture = null
+    isLoadingLogs = false
     // Clear the logcat message to reduce the impact of the memory leak. b/446684393.
     myLogcat = ""
     myErrorStackTrace = ""
@@ -550,3 +642,26 @@ private fun createAccessibleLabel(
 }
 
 private fun String.htmlEscape(): String = HtmlEscapers.htmlEscaper().escape(this)
+
+/**
+ * The maximum number of characters of logcat output and error stack trace a [DetailsViewContentView] keeps in memory.
+ *
+ * A single instrumentation test case can emit hundreds of megabytes of logcat output, and the details view used to retain all of it
+ * (b/446684393). The logs console can only render the tail of the output anyway (1MB by default, see the IDE console cycle buffer), so
+ * retaining more than this has no user visible benefit.
+ */
+const val MAX_RETAINED_LOG_CHARS: Int = 1024 * 1024
+
+private const val TRUNCATION_NOTICE = "[Android Studio omitted %,d characters of output to limit memory usage]"
+
+/** Returns this string reduced to its last [maxChars] characters, prefixed by a notice if anything was dropped. */
+private fun String.keepLastChars(maxChars: Int): String {
+  if (length <= maxChars) return this
+  return TRUNCATION_NOTICE.format(Locale.US, length - maxChars) + "\n" + substring(length - maxChars)
+}
+
+/** Returns this string reduced to its first [maxChars] characters, followed by a notice if anything was dropped. */
+private fun String.keepFirstChars(maxChars: Int): String {
+  if (length <= maxChars) return this
+  return substring(0, maxChars) + "\n" + TRUNCATION_NOTICE.format(Locale.US, length - maxChars)
+}

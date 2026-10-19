@@ -97,13 +97,6 @@ class RoomReferenceSearchExecutor : QueryExecutorBase<PsiReference, ReferencesSe
     }
   }
 
-  private fun PsiClass.definesSqlTable(): Boolean {
-    return hasAnnotation(RoomAnnotations.ENTITY.oldName()) ||
-      hasAnnotation(RoomAnnotations.ENTITY.newName()) ||
-      hasAnnotation(RoomAnnotations.DATABASE_VIEW.oldName()) ||
-      hasAnnotation(RoomAnnotations.DATABASE_VIEW.newName())
-  }
-
   /**
    * Returns set of words and element for given [AndroidSqlDefinition] to check during search usage process
    *
@@ -116,20 +109,19 @@ class RoomReferenceSearchExecutor : QueryExecutorBase<PsiReference, ReferencesSe
 
     if (names.isEmpty()) return null
 
-    val words =
-      names.map { name ->
-        when {
-          AndroidSqlLexer.needsQuoting(name) -> {
-            // We need to figure out how a reference to this element looks like in the IdIndex.
-            // We find the first "word" in the quoted name and look for it in the index,
-            // as any reference for this table will include this word in its text.
-            val processor = CommonProcessors.FindFirstProcessor<WordOccurrence>()
-            AndroidSqlFindUsagesProvider().wordsScanner.processWords(AndroidSqlLexer.getValidName(name), processor)
-            processor.foundValue?.let { it.baseText.substring(it.start, it.end) } ?: name
-          }
-          else -> name
+    val words = names.map { name ->
+      when {
+        AndroidSqlLexer.needsQuoting(name) -> {
+          // We need to figure out how a reference to this element looks like in the IdIndex.
+          // We find the first "word" in the quoted name and look for it in the index,
+          // as any reference for this table will include this word in its text.
+          val processor = CommonProcessors.FindFirstProcessor<WordOccurrence>()
+          AndroidSqlFindUsagesProvider().wordsScanner.processWords(AndroidSqlLexer.getValidName(name), processor)
+          processor.foundValue?.let { it.baseText.substring(it.start, it.end) } ?: name
         }
+        else -> name
       }
+    }
 
     return Pair(words, definition.resolveTo)
   }

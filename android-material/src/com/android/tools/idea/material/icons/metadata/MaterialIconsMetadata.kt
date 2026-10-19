@@ -16,6 +16,8 @@
 package com.android.tools.idea.material.icons.metadata
 
 import com.android.tools.idea.material.icons.metadata.MaterialIconsMetadata.Companion.EMPTY
+import com.android.tools.idea.material.icons.utils.MaterialIconsUtils.isValidPathSegment
+import com.android.tools.idea.material.icons.utils.MaterialIconsUtils.toDirFormat
 import com.android.utils.HashCodes
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -23,6 +25,7 @@ import com.google.gson.JsonDeserializationContext
 import com.google.gson.JsonDeserializer
 import com.google.gson.JsonElement
 import com.google.gson.JsonIOException
+import com.google.gson.JsonParseException
 import com.google.gson.annotations.SerializedName
 import com.intellij.openapi.diagnostic.Logger
 import java.io.BufferedReader
@@ -31,8 +34,10 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.lang.reflect.Type
 import java.net.URL
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import kotlin.io.path.isDirectory
 
 /** Metadata for the Material design icons, based on the metadata file obtained from http://fonts.google.com/metadata/icons. */
@@ -88,7 +93,24 @@ data class MaterialIconsMetadata(
         return
       }
       try {
-        Files.newBufferedWriter(target, Charsets.UTF_8).use { writer -> getGson().toJson(metadata, writer) }
+        val parent = target.parent
+        if (parent != null) {
+          Files.createDirectories(parent)
+        }
+
+        // Write to a temporary file first and then move it to the target path to ensure the file is updated atomically
+        // and avoid potential corrupted files if the process is interrupted during writing.
+        val tempFile = Files.createTempFile(parent ?: Path.of("."), "icons_metadata", ".tmp")
+        try {
+          Files.newBufferedWriter(tempFile, Charsets.UTF_8).use { writer -> getGson().toJson(metadata, writer) }
+          try {
+            Files.move(tempFile, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+          } catch (_: AtomicMoveNotSupportedException) {
+            Files.move(tempFile, target, StandardCopyOption.REPLACE_EXISTING)
+          }
+        } finally {
+          Files.deleteIfExists(tempFile)
+        }
       } catch (e: Exception) {
         when (e) {
           is IOException,
@@ -176,6 +198,7 @@ data class MaterialMetadataIcon(
 
 /** [JsonDeserializer] for [MaterialIconsMetadata]. */
 private class MetadataDeserializer : JsonDeserializer<MaterialIconsMetadata?> {
+  private val log = Logger.getInstance(MetadataDeserializer::class.java)
   private val hostKey = "host"
   private val urlPatternKey = "asset_url_pattern"
   private val familiesKey = "families"
@@ -186,8 +209,34 @@ private class MetadataDeserializer : JsonDeserializer<MaterialIconsMetadata?> {
     val jsonObject = json.asJsonObject
     val host = jsonObject[hostKey].asString
     val urlPattern = jsonObject[urlPatternKey].asString
-    val families = context.deserialize<Array<String>>(jsonObject[familiesKey], Array<String>::class.java)
-    val icons = context.deserialize<Array<MaterialMetadataIcon>>(jsonObject[iconsKey], Array<MaterialMetadataIcon>::class.java)
+    val rawFamilies = context.deserialize<Array<String>>(jsonObject[familiesKey], Array<String>::class.java)
+    val rawIcons = context.deserialize<Array<MaterialMetadataIcon>>(jsonObject[iconsKey], Array<MaterialMetadataIcon>::class.java)
+    val families =
+      rawFamilies
+        .filter { family ->
+          val isValid = isValidPathSegment(family.toDirFormat())
+          if (!isValid) {
+            log.warn("Refusing to use invalid family name from metadata: $family")
+          }
+          isValid
+        }
+        .toTypedArray()
+    if (families.isEmpty() && rawFamilies.isNotEmpty()) {
+      throw JsonParseException("All family names in metadata are invalid")
+    }
+    val icons =
+      rawIcons
+        .filter { icon ->
+          val isValid = isValidPathSegment(icon.name)
+          if (!isValid) {
+            log.warn("Refusing to use invalid icon name from metadata: ${icon.name}")
+          }
+          isValid
+        }
+        .toTypedArray()
+    if (icons.isEmpty() && rawIcons.isNotEmpty()) {
+      throw JsonParseException("All icon names in metadata are invalid")
+    }
     val categories: Array<String> = icons.flatMap { it.categories.toList() }.distinct().sorted().toTypedArray()
     return MaterialIconsMetadata(host, urlPattern, families, icons, categories)
   }

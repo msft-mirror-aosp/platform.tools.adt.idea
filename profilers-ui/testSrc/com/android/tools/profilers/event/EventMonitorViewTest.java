@@ -44,6 +44,8 @@ import com.android.tools.profilers.StudioProfilersView;
 import com.google.common.truth.Truth;
 import com.intellij.testFramework.ApplicationRule;
 import com.intellij.testFramework.DisposableRule;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.RunsInEdt;
 import com.intellij.ui.components.JBLoadingPanel;
 import com.intellij.ui.components.JBPanel;
 import java.awt.Component;
@@ -59,6 +61,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
+@RunsInEdt
 public class EventMonitorViewTest {
   private final int myFeatureLevel;
   private final FakeTimer myTimer = new FakeTimer();
@@ -78,6 +81,7 @@ public class EventMonitorViewTest {
 
   @Rule
   public final DisposableRule myDisposableRule = new DisposableRule();
+  @Rule public final EdtRule myEdtRule = new EdtRule();
 
   public EventMonitorViewTest(int featureLevel) {
     myFeatureLevel = featureLevel;

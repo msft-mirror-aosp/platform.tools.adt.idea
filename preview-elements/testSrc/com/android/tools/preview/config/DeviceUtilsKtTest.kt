@@ -21,6 +21,7 @@ import com.android.resources.ScreenRound
 import com.android.sdklib.devices.Device
 import kotlin.test.assertNotNull
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -148,6 +149,40 @@ internal class DeviceUtilsKtTest {
     assertEquals(960, screen2.yDimension)
     assertEquals(640, screen2.pixelDensity.dpiValue)
     assertEquals(ScreenOrientation.LANDSCAPE, deviceByParentId.defaultState.orientation)
+  }
+
+  @Test
+  fun deviceSpecWithMediaQueryParameters() {
+    val spec =
+      "spec:width=411dp,height=891dp,windowPosture=tabletop,pointerPrecision=fine,keyboardKind=physical,hasCamera=false,hasMicrophone=false,viewingDistance=far"
+    val config = DeviceConfig.toDeviceConfigOrNull(spec, emptyList())
+    assertNotNull(config)
+    assertEquals(WindowPosture.tabletop, config!!.windowPosture)
+    assertEquals(PointerPrecision.fine, config.pointerPrecision)
+    assertEquals(KeyboardKind.physical, config.keyboardKind)
+    assertFalse(config.hasCamera)
+    assertFalse(config.hasMicrophone)
+    assertEquals(ViewingDistance.far, config.viewingDistance)
+
+    // Round-trip back to deviceSpec string
+    assertEquals(spec, config.deviceSpec())
+  }
+
+  @Test
+  fun parentDeviceSpecWithMediaQueryParameters() {
+    val spec =
+      "spec:parent=id1,windowPosture=tabletop,pointerPrecision=fine,keyboardKind=physical,hasCamera=false,hasMicrophone=false,viewingDistance=far"
+    val existingDevices = buildMockDevices()
+    val config = DeviceConfig.toDeviceConfigOrNull(spec, existingDevices)
+    assertNotNull(config)
+    assertEquals(WindowPosture.tabletop, config!!.windowPosture)
+    assertEquals(PointerPrecision.fine, config.pointerPrecision)
+    assertEquals(KeyboardKind.physical, config.keyboardKind)
+    assertFalse(config.hasCamera)
+    assertFalse(config.hasMicrophone)
+    assertEquals(ViewingDistance.far, config.viewingDistance)
+
+    assertEquals(spec, config.deviceSpec())
   }
 }
 

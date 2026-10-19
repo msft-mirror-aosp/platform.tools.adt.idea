@@ -27,9 +27,6 @@ import com.android.tools.idea.editors.theme.datamodels.ConfiguredThemeEditorStyl
 import com.android.tools.idea.projectsystem.TestProjectSystem;
 import com.android.tools.idea.projectsystem.TestRepositories;
 import com.android.tools.idea.projectsystem.TestVersion;
-import com.android.tools.idea.res.StudioResourceRepositoryManager;
-import com.android.tools.res.ResourceNamespacing;
-import com.android.tools.sdk.CompatibilityRenderTarget;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.vfs.VirtualFile;
 import java.io.IOException;
@@ -88,23 +85,10 @@ public class ThemeResolverTest extends AndroidTestCase {
   }
 
   public void testRecommendedThemesAppcompat() {
-    doTestRecommendedThemesAppcompat();
-  }
-
-  public void testRecommendedThemesAppcompatNamespaced() {
-    enableNamespacing("com.example.app");
-    doTestRecommendedThemesAppcompat();
-  }
-
-  private void doTestRecommendedThemesAppcompat() {
     TestProjectSystem projectSystem = new TestProjectSystem(getProject(), TestRepositories.PLATFORM_SUPPORT_LIBS);
     projectSystem.useInTests();
     projectSystem.addDependency(GoogleMavenArtifactId.ANDROIDX_APPCOMPAT, myModule, TestVersion.create(1, 3));
 
-    ResourceNamespace appcompatNamespace =
-      StudioResourceRepositoryManager.getInstance(myModule).getNamespacing() == ResourceNamespacing.DISABLED
-        ? ResourceNamespace.RES_AUTO
-        : ResourceNamespace.APPCOMPAT;
     VirtualFile layoutFile = myFixture.copyFileToProject("themeEditor/layout.xml", "res/layout/layout.xml");
     ConfigurationManager configurationManager = ConfigurationManager.getOrCreateInstance(myModule);
     Configuration configuration = configurationManager.getConfiguration(layoutFile);
@@ -112,7 +96,7 @@ public class ThemeResolverTest extends AndroidTestCase {
     assertThat(themeResolver.getRecommendedThemes()).containsExactly(
       ResourceReference.style(ResourceNamespace.ANDROID, "Theme.Material.Light.NoActionBar"),
       ResourceReference.style(ResourceNamespace.ANDROID, "Theme.Material.NoActionBar"),
-      ResourceReference.style(appcompatNamespace, "Theme.AppCompat.Light.NoActionBar"),
-      ResourceReference.style(appcompatNamespace, "Theme.AppCompat.NoActionBar"));
+      ResourceReference.style(ResourceNamespace.RES_AUTO, "Theme.AppCompat.Light.NoActionBar"),
+      ResourceReference.style(ResourceNamespace.RES_AUTO, "Theme.AppCompat.NoActionBar"));
   }
 }

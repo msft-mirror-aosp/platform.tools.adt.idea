@@ -43,6 +43,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.awt.BorderLayout
 import javax.swing.JPanel
 import org.junit.Before
@@ -50,6 +51,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
 
+@RunsInEdt
 class LiveCpuUsageViewTest {
 
   private val myTimer = FakeTimer()

@@ -41,5 +41,7 @@
     <orderEntry type="module" module-name="intellij.android.gradle.declarative.lang" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.gradle.declarative.lang.ide" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
+    <orderEntry type="module" module-name="android.sdktools.sdk-common.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.repository.tests" scope="TEST" />
   </component>
 </module>

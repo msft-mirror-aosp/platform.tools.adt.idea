@@ -63,6 +63,9 @@ import com.android.tools.profilers.memory.adapters.classifiers.NativeCallStackSe
 import com.android.tools.profilers.memory.adapters.classifiers.NativeMemoryHeapSet;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.intellij.testFramework.ApplicationRule;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.RunsInEdt;
 import com.intellij.ui.ColoredTreeCellRenderer;
 import icons.StudioIcons;
 import java.io.ByteArrayOutputStream;
@@ -86,12 +89,16 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+@RunsInEdt
 public class MemoryClassifierViewTest {
   private static final int CAPTURE_START_TIME = 0;
   private final FakeTimer myTimer = new FakeTimer();
   private final FakeTransportService myTransportService = new FakeTransportService(myTimer);
   @Rule
+  public final ApplicationRule myApplicationRule = new ApplicationRule();
+  @Rule
   public FakeGrpcChannel myGrpcChannel = new FakeGrpcChannel("MEMORY_TEST_CHANNEL", myTransportService);
+  @Rule public final EdtRule myEdtRule = new EdtRule();
   private FakeIdeProfilerComponents myFakeIdeProfilerComponents;
   private MainMemoryProfilerStage myStage;
   private MemoryClassifierView myClassifierView;
@@ -930,7 +937,7 @@ public class MemoryClassifierViewTest {
     assertThat(columnTreePane).isNotNull();
     ColumnTreeTestInfo treeInfo = new ColumnTreeTestInfo(tree, columnTreePane);
     treeInfo
-      .verifyColumnHeaders("Class Name", "Allocations", "Deallocations", "Total Count", "Native Size", "Shallow Size", "Retained Size",
+      .verifyColumnHeaders("Class Name", "Allocations", "Deallocations", "Total Count", "Native Size", "Shallow Size", "Retained Size", "Retained Native Size",
                            "Allocations Size", "Deallocations Size", "Remaining Size", "Module Name", "Shallow Size Change");
 
     Object root = tree.getModel().getRoot();
@@ -957,6 +964,7 @@ public class MemoryClassifierViewTest {
                                     new String[]{Long.toString(classSet.getTotalNativeSize())},
                                     new String[]{Long.toString(classSet.getTotalShallowSize())},
                                     new String[]{Long.toString(classSet.getTotalRetainedSize())},
+                                    new String[]{Long.toString(classSet.getTotalRetainedNativeSize())},
                                     new String[]{Long.toString(classSet.getAllocationSize())},
                                     new String[]{Long.toString(classSet.getDeallocationSize())},
                                     new String[]{Long.toString(classSet.getTotalRemainingSize())},
@@ -1473,5 +1481,35 @@ public class MemoryClassifierViewTest {
       this.childrenSize = childrenSize;
       this.shallowDiff = shallowDiff;
     }
+  }
+
+  @Test
+  public void renderCellAfterCaptureResetDoesNotThrow() {
+    final String className = "com.android.studio.Foo";
+    FakeCaptureObject captureObject = new FakeCaptureObject.Builder().build();
+    InstanceObject instance =
+      new FakeInstanceObject.Builder(captureObject, 0, className).setName("instanceFoo").setDepth(1).setShallowSize(4)
+        .setRetainedSize(8).build();
+    captureObject.addInstanceObjects(Collections.singleton(instance));
+
+    myStage.selectCaptureDuration(
+      new CaptureDurationData<>(1, false, false, new CaptureEntry<>(new Object(), () -> captureObject)), null);
+    HeapSet heapSet = captureObject.getHeapSet(instance.getHeapId());
+    assertThat(heapSet).isNotNull();
+    myStage.getCaptureSelection().selectHeapSet(heapSet);
+
+    JTree classifierTree = myClassifierView.getTree();
+    assertThat(classifierTree).isNotNull();
+
+    //noinspection unchecked
+    MemoryObjectTreeNode<ClassifierSet> rootNode = (MemoryObjectTreeNode<ClassifierSet>)classifierTree.getModel().getRoot();
+    MemoryObjectTreeNode<ClassifierSet> childNode = rootNode.getChildren().get(0);
+
+    // Reset capture selection (e.g. when closing the Heap Dump editor tab), which sets myTreeRoot to null.
+    myStage.getCaptureSelection().selectCaptureEntry(null);
+    assertThat(myClassifierView.getTree()).isNull();
+
+    // Simulate a late focusLost/repaint event on the detached JTree invoking its cell renderer.
+    classifierTree.getCellRenderer().getTreeCellRendererComponent(classifierTree, childNode, true, false, true, 1, false);
   }
 }

@@ -18,19 +18,43 @@ package com.android.tools.idea.profilers
 import com.android.tools.idea.execution.common.AndroidSessionInfo
 import com.android.tools.idea.profilers.AndroidProfilerToolWindow.Companion.getDeviceDisplayName
 import com.android.tools.idea.profilers.AndroidProfilerToolWindowFactory.Companion.getProfilerToolWindow
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.execution.ExecutionListener
 import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.application.runInEdt
+import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executor
 
-class ProfilerExecutionListener : ExecutionListener {
+class ProfilerExecutionListener
+@VisibleForTesting
+internal constructor(
+  private val mappingLocatorProvider: (Project) -> MappingFilesLocator,
+  private val backgroundExecutor: Executor,
+) : ExecutionListener {
+
+  constructor() :
+    this(
+      { MappingFilesLocator(ProjectR8MappingSource(it)) },
+      AppExecutorUtil.getAppExecutorService(),
+    )
 
   override fun processStarted(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
     val info = AndroidSessionInfo.from(handler) ?: return
     val project = env.project
+
+    backgroundExecutor.execute { recordDeployment(project, info, mappingLocatorProvider(project)) }
 
     if (info.devices.size != 1) {
       return
@@ -70,5 +94,74 @@ class ProfilerExecutionListener : ExecutionListener {
         }
       }
     )
+  }
+
+  companion object {
+    private data class DevicePackageKey(val deviceSerial: String, val packageName: String)
+
+    // Holds nullable mappingPath (null when a non-minified variant is deployed) and its last-modified timestamp at deploy time.
+    private data class DeployedProguardMapping(val mappingPath: String?, val lastModifiedMillis: Long = -1L)
+
+    private val DEPLOYED_PROGUARD_MAPPINGS_KEY =
+      Key.create<ConcurrentHashMap<DevicePackageKey, DeployedProguardMapping>>("Profiler.Deployed.Proguard.Mappings")
+
+    private fun getDeployedProguardMappings(project: Project): ConcurrentHashMap<DevicePackageKey, DeployedProguardMapping> =
+      (project as UserDataHolderEx).putUserDataIfAbsent(DEPLOYED_PROGUARD_MAPPINGS_KEY, ConcurrentHashMap())
+
+    /** Records the R8/Proguard mapping file path for the variant being deployed to each target device. */
+    @VisibleForTesting
+    internal fun recordDeployment(
+      project: Project,
+      info: AndroidSessionInfo,
+      mappingLocator: MappingFilesLocator,
+    ) {
+      val applicationId = info.applicationId
+      if (project.isDisposed || applicationId.isEmpty()) return
+      val mappingPath = mappingLocator.getMappings()[applicationId]
+      val record =
+        mappingPath?.let { path ->
+          getLastModifiedMillis(path)?.let { DeployedProguardMapping(path, it) }
+        } ?: DeployedProguardMapping(null)
+      val mappings = getDeployedProguardMappings(project)
+      for (device in info.devices) {
+        val serial = device.serialNumber
+        if (!serial.isNullOrEmpty()) {
+          mappings[DevicePackageKey(serial, applicationId)] = record
+        }
+      }
+    }
+
+    /**
+     * Returns the Proguard/R8 mapping file path for [packageName] on [deviceSerial] if it was deployed by Android Studio with a
+     * minify-enabled variant during the current project session and the mapping file on disk has not been modified since deployment, or
+     * null otherwise.
+     *
+     * Entries are updated on each Studio deploy and discarded with the Project. They are intentionally not evicted on process termination
+     * (so users can stop a run, restart the app, or record a startup trace and still deobfuscate) or on device disconnect (so transient ADB
+     * reconnects do not drop the mapping).
+     *
+     * Known limitation: if the same package is overwritten outside Studio (e.g. via `adb install`) while the project is open, the last
+     * Studio-deployed record remains until Studio redeploys.
+     */
+    @JvmStatic
+    fun getDeployedAppProguardMapping(project: Project, deviceSerial: String, packageName: String): String? {
+      if (project.isDisposed || deviceSerial.isEmpty() || packageName.isEmpty()) return null
+      val deployedMapping =
+        project.getUserData(DEPLOYED_PROGUARD_MAPPINGS_KEY)?.get(DevicePackageKey(deviceSerial, packageName)) ?: return null
+      val path = deployedMapping.mappingPath ?: return null
+      if (getLastModifiedMillis(path) != deployedMapping.lastModifiedMillis) {
+        Logger.getInstance(ProfilerExecutionListener::class.java)
+          .info("R8 mapping file for $packageName on device '$deviceSerial' was modified or deleted since deployment: $path")
+        return null
+      }
+      return path
+    }
+
+    private fun getLastModifiedMillis(path: String): Long? =
+      try {
+        Files.getLastModifiedTime(Paths.get(path)).toMillis()
+      } catch (_: IOException) {
+        null
+      }
   }
 }

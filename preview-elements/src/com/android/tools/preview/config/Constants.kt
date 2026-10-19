@@ -46,6 +46,16 @@ const val PARAMETER_HARDWARE_CUTOUT = "Cutout"
 const val PARAMETER_HARDWARE_NAVIGATION = "Navigation"
 const val PARAMETER_WALLPAPER = "wallpaper"
 
+// region Media Query
+const val PARAMETER_MEDIA_QUERY_WINDOW_POSTURE = "WindowPosture"
+const val PARAMETER_MEDIA_QUERY_POINTER = "PointerPrecision"
+const val PARAMETER_MEDIA_QUERY_KEYBOARD = "KeyboardKind"
+const val PARAMETER_MEDIA_QUERY_CAMERA = "HasCamera"
+const val PARAMETER_MEDIA_QUERY_MIC = "HasMicrophone"
+const val PARAMETER_MEDIA_QUERY_DISTANCE = "ViewingDistance"
+
+// endregion
+
 // endregion
 
 object Preview {
@@ -74,6 +84,13 @@ object Preview {
     const val PARAMETER_PARENT = "parent"
     const val PARAMETER_CUTOUT = "cutout"
     const val PARAMETER_NAVIGATION = "navigation"
+
+    const val PARAMETER_WINDOW_POSTURE = "windowPosture"
+    const val PARAMETER_POINTER_PRECISION = "pointerPrecision"
+    const val PARAMETER_KEYBOARD_KIND = "keyboardKind"
+    const val PARAMETER_HAS_CAMERA = "hasCamera"
+    const val PARAMETER_HAS_MICROPHONE = "hasMicrophone"
+    const val PARAMETER_VIEWING_DISTANCE = "viewingDistance"
     // endregion
 
     // Set those values first as they are referenced by ReferencePhoneConfig

@@ -68,5 +68,5 @@ internal open class TestClock {
       TransitionInfo("Double", "specType", startTimeMillis = 0, endTimeMillis = 100, values = mapOf(0L to 1.0, 50L to 10.0, 100L to 2.0)),
     )
 
-  fun setClockTimes(clockTimeMillis: Map<ComposeAnimation, Long>) {}
+  open fun setClockTimes(clockTimeMillis: Map<ComposeAnimation, Long>) {}
 }

@@ -81,9 +81,9 @@ class GradleProjectPathIntegrationTest(private val phasedSync: Boolean) {
           .feature-a.main ==> :feature-a/MAIN
           .feature-a.unitTest ==> :feature-a/UNIT_TEST
           .feature-b ==> :feature-b
-          .feature-b.androidTest ==> :feature-b/ANDROID_TEST
-          .feature-b.main ==> :feature-b/MAIN
-          .feature-b.unitTest ==> :feature-b/UNIT_TEST
+          .feature-b.androidMain ==> :feature-b/androidMain
+          .feature-b.commonMain ==> :feature-b/commonMain
+          .feature-b.commonTest ==> :feature-b/commonTest
           .jarWrapperLib ==> :jarWrapperLib
           .javaLibrary ==> :javaLibrary
           .javaLibrary.main ==> :javaLibrary/MAIN

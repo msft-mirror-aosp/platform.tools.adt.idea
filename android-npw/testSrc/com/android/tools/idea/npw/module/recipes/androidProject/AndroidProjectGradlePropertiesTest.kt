@@ -50,17 +50,22 @@ class AndroidProjectGradlePropertiesTest {
 
         # Specifies the JVM arguments used for the daemon process.
         # The setting is particularly useful for tweaking memory settings.
-        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        org.gradle.jvmargs=-Xmx2048m -XX:+UseParallelGC -Dfile.encoding=UTF-8
 
-        # When configured, Gradle will run in incubating parallel mode.
-        # This option should only be used with decoupled projects. For more details, visit
+        # Enables parallel execution of tasks across decoupled projects. For more details, visit
         # https://developer.android.com/r/tools/gradle-multi-project-decoupled-projects
-        # org.gradle.parallel=true
+        org.gradle.parallel=true
+
+        # Enables parallel model fetching during Gradle Sync in Android Studio.
+        org.gradle.tooling.parallel=true
 
         # When enabled, the Configuration Cache allows Gradle to skip the configuration
         # phase entirely if nothing that affects the build configuration (such as build scripts)
         # has changed. Additionally, Gradle applies performance optimizations to task execution.
         org.gradle.configuration-cache=true
+
+        # When enabled, the Gradle build cache saves and reuses task outputs to speed up builds.
+        org.gradle.caching=true
 
         # AndroidX package structure to make it clearer which packages are bundled with the
         # Android operating system, and which are packaged with your app's APK
@@ -102,17 +107,22 @@ class AndroidProjectGradlePropertiesTest {
 
         # Specifies the JVM arguments used for the daemon process.
         # The setting is particularly useful for tweaking memory settings.
-        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        org.gradle.jvmargs=-Xmx2048m -XX:+UseParallelGC -Dfile.encoding=UTF-8
 
-        # When configured, Gradle will run in incubating parallel mode.
-        # This option should only be used with decoupled projects. For more details, visit
+        # Enables parallel execution of tasks across decoupled projects. For more details, visit
         # https://developer.android.com/r/tools/gradle-multi-project-decoupled-projects
-        # org.gradle.parallel=true
+        org.gradle.parallel=true
+
+        # Enables parallel model fetching during Gradle Sync in Android Studio.
+        org.gradle.tooling.parallel=true
 
         # When enabled, the Configuration Cache allows Gradle to skip the configuration
         # phase entirely if nothing that affects the build configuration (such as build scripts)
         # has changed. Additionally, Gradle applies performance optimizations to task execution.
         org.gradle.configuration-cache=true
+
+        # When enabled, the Gradle build cache saves and reuses task outputs to speed up builds.
+        org.gradle.caching=true
 
         # Kotlin code style for this project: "official" or "obsolete":
         kotlin.code.style=official
@@ -149,17 +159,22 @@ class AndroidProjectGradlePropertiesTest {
 
         # Specifies the JVM arguments used for the daemon process.
         # The setting is particularly useful for tweaking memory settings.
-        org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+        org.gradle.jvmargs=-Xmx2048m -XX:+UseParallelGC -Dfile.encoding=UTF-8
 
-        # When configured, Gradle will run in incubating parallel mode.
-        # This option should only be used with decoupled projects. For more details, visit
+        # Enables parallel execution of tasks across decoupled projects. For more details, visit
         # https://developer.android.com/r/tools/gradle-multi-project-decoupled-projects
-        # org.gradle.parallel=true
+        org.gradle.parallel=true
+
+        # Enables parallel model fetching during Gradle Sync in Android Studio.
+        org.gradle.tooling.parallel=true
 
         # When enabled, the Configuration Cache allows Gradle to skip the configuration
         # phase entirely if nothing that affects the build configuration (such as build scripts)
         # has changed. Additionally, Gradle applies performance optimizations to task execution.
         org.gradle.configuration-cache=true
+
+        # When enabled, the Gradle build cache saves and reuses task outputs to speed up builds.
+        org.gradle.caching=true
 
         # Kotlin code style for this project: "official" or "obsolete":
         kotlin.code.style=official

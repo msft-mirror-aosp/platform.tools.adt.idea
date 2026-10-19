@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.emulator
 
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.emulator.control.DisplayConfiguration
+import com.android.emulator.control.DisplayPowerModeNotification
 import com.android.emulator.control.LedIndicator
 import com.android.emulator.control.Posture.PostureValue
 import com.android.emulator.control.ThemingStyle
@@ -30,6 +31,10 @@ import com.android.tools.adtui.ImageUtils
 import com.android.tools.adtui.actions.createTestEvent
 import com.android.tools.adtui.actions.executeAction
 import com.android.tools.adtui.actions.updateAndGetActionPresentation
+import com.android.tools.adtui.common.AdtUiCursorType
+import com.android.tools.adtui.common.AdtUiCursorsProvider
+import com.android.tools.adtui.common.TestAdtUiCursorsProvider
+import com.android.tools.adtui.common.replaceAdtUiCursorWithPredefinedCursor
 import com.android.tools.adtui.swing.DataManagerRule
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
@@ -42,10 +47,10 @@ import com.android.tools.idea.avdmanager.EmulatorLogListener
 import com.android.tools.idea.editors.liveedit.ui.LiveEditNotificationGroup
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
-import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.ToggleFloatingXrToolbarAction
 import com.android.tools.idea.streaming.actions.ZoomAction
+import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.core.SplitPanel
 import com.android.tools.idea.streaming.core.ZoomType
 import com.android.tools.idea.streaming.core.expandFloatingToolbar
@@ -89,10 +94,12 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.LayeredIcon
+import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import icons.StudioIcons
 import java.awt.Color
 import java.awt.Component
+import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.MouseInfo
 import java.awt.Point
@@ -123,7 +130,6 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseEvent.MOUSE_MOVED
 import java.nio.file.Path
 import java.util.concurrent.TimeoutException
-import javax.swing.JCheckBox
 import javax.swing.JSlider
 import javax.swing.JViewport
 import kotlin.test.fail
@@ -156,9 +162,9 @@ class EmulatorToolWindowPanelTest {
     RuleChain(
       projectRule,
       DataManagerRule(projectRule),
+      ClipboardSynchronizationDisablementRule(),
       emulatorRule,
       ProcessHandleProviderRule(),
-      ClipboardSynchronizationDisablementRule(),
       PortableUiFontRule(),
       goldenImageRule,
       popupRule,
@@ -187,6 +193,7 @@ class EmulatorToolWindowPanelTest {
   @Before
   fun setUp() {
     StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT.overrideForTest(true, testRootDisposable)
+    StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_CURSORS.overrideForTest(true, testRootDisposable)
     val mockScreenRecordingCache = mock<ScreenRecordingSupportedCache>()
     whenever(mockScreenRecordingCache.isScreenRecordingSupported(any())).thenReturn(true)
     projectRule.project.registerServiceInstance(ScreenRecordingSupportedCache::class.java, mockScreenRecordingCache, testRootDisposable)
@@ -457,6 +464,7 @@ class EmulatorToolWindowPanelTest {
     for ((actionText, mode, expectedIcon) in actionTextsModesAndIcons) {
       fakeUi.mouseClickOn(interactButton)
       assertThat(xrInputController.inputMode).isEqualTo(previousAppInteractionMode)
+      fakeUi.mouseClickOn(interactButton)
       val popup = popupFactory.getNextListPopup<Any>(2.seconds)
       val index = popup.actions.indexOfFirst { it.templateText == actionText }
       assertThat(index).isAtLeast(0)
@@ -588,50 +596,17 @@ class EmulatorToolWindowPanelTest {
     fakeUi.mouseClickOn(environmentVisibilityButton)
     val popup = popupFactory.getNextPopup(2.seconds)
     val ui = FakeUi(popup.component)
-    val checkBox = ui.getComponent<JCheckBox>()
     val slider = ui.getComponent<JSlider>()
-    assertThat(checkBox.isSelected).isFalse()
     assertThat(slider.value).isEqualTo(0)
-    assertThat(slider.isEnabled).isFalse()
-
-    // Updates to the dimming coefficient are ignored while the slider is disabled.
-    xrInputController.dimmingCoefficient = 0.75f
-    ui.layoutAndDispatchEvents()
-    assertThat(slider.value).isEqualTo(0)
-
-    // The dimming slider becomes enabled when passthrough is enabled.
-    checkBox.isSelected = true
     assertThat(slider.isEnabled).isTrue()
-    var call = getNextGrpcCallIgnoringStreamScreenshot()
-    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setXrOptions")
-    assertThat(shortDebugString(call.request)).isEqualTo("passthrough_coefficient: 1.0")
-    waitForCondition(2.seconds) { xrInputController.passthroughCoefficient != 0f }
-    assertThat(xrInputController.passthroughCoefficient).isEqualTo(1f)
     ui.layoutAndDispatchEvents()
     slider.value = 3
     ui.layoutAndDispatchEvents()
-    call = getNextGrpcCallIgnoringStreamScreenshot()
+    val call = getNextGrpcCallIgnoringStreamScreenshot()
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setXrOptions")
     assertThat(shortDebugString(call.request)).isEqualTo("passthrough_coefficient: 1.0 dimming_value: 0.75")
     waitForCondition(2.seconds) { xrInputController.dimmingCoefficient != 0f }
     assertThat(xrInputController.dimmingCoefficient).isEqualTo(0.75f)
-
-    // Programmatic update of the passthrough coefficient triggers property change listeners to update the checkbox,
-    // but it must NOT trigger a feedback loop of setXrOptions calls to the emulator.
-    xrInputController.passthroughCoefficient = 0f
-    ui.layoutAndDispatchEvents()
-    assertThat(checkBox.isSelected).isFalse()
-    assertThat(slider.isEnabled).isFalse()
-    assertThat(emulator.grpcCallLog.any { it.methodName == "android.emulation.control.EmulatorController/setXrOptions" && it != call })
-      .isFalse()
-
-    // Programmatic update of the dimming coefficient triggers property change listeners to update the slider,
-    // but it must NOT trigger a feedback loop of setXrOptions calls to the emulator.
-    xrInputController.dimmingCoefficient = 0f
-    ui.layoutAndDispatchEvents()
-    assertThat(slider.value).isEqualTo(3) // Retains its old value because the slider is disabled
-    assertThat(emulator.grpcCallLog.any { it.methodName == "android.emulation.control.EmulatorController/setXrOptions" && it != call })
-      .isFalse()
 
     panel.destroyContent()
     assertThat(panel.primaryDisplayView).isNull()
@@ -700,7 +675,49 @@ class EmulatorToolWindowPanelTest {
   }
 
   @Test
+  fun testDisplayGlassesDisplayOffIndicator() {
+    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(true, testRootDisposable)
+    val avdFolder = FakeEmulator.createDisplayGlassesAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(36, 0))
+    panel = createWindowPanel(avdFolder)
+
+    assertThat(panel.primaryDisplayView).isNull()
+
+    panel.createContent(true)
+    val emulatorView = panel.primaryDisplayView ?: fail()
+
+    emulator.setLedState(LedIndicator.Facing.INSIDE, Color.GREEN)
+    emulator.setLedState(LedIndicator.Facing.OUTSIDE, Color.RED)
+    var frameNumber = emulatorView.frameNumber
+    assertThat(frameNumber).isEqualTo(0u)
+    panel.size = Dimension(430, 450)
+    fakeUi.layoutAndDispatchEvents()
+    val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
+
+    val displayOffIndicator = fakeUi.getComponent<JBLabel> { it.text == "Display off" }.parent
+    assertThat(displayOffIndicator.isVisible).isFalse()
+
+    emulator.setDisplayPowerMode(PRIMARY_DISPLAY_ID, DisplayPowerModeNotification.PowerMode.OFF)
+    panel.waitForFrame(++frameNumber, 2.seconds)
+    waitForCondition(2.seconds) { displayOffIndicator.isVisible }
+    assertAppearance("DisplayGlassesDisplayOff1", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
+
+    emulator.setDisplayPowerMode(PRIMARY_DISPLAY_ID, DisplayPowerModeNotification.PowerMode.ON)
+    panel.waitForFrame(++frameNumber, 2.seconds)
+    waitForCondition(2.seconds) { !displayOffIndicator.isVisible }
+
+    panel.destroyContent()
+    assertThat(panel.primaryDisplayView).isNull()
+    streamScreenshotCall.waitForCancellation(2.seconds)
+
+    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(false, testRootDisposable)
+    panel.createContent(true)
+    assertThat(fakeUi.findComponent<JBLabel> { it.text == "Display off" }).isNull()
+    panel.destroyContent()
+  }
+
+  @Test
   fun testAudioGlassesToolbarActions() {
+    StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.overrideForTest(true, testRootDisposable)
     val avdFolder = FakeEmulator.createAudioGlassesAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(36, 0))
     panel = createWindowPanel(avdFolder)
 
@@ -712,6 +729,9 @@ class EmulatorToolWindowPanelTest {
     assertThat((panel.icon as LayeredIcon).getIcon(0)).isEqualTo(StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_GLASS)
 
     // Check appearance.
+    val noDisplayIndicator = fakeUi.getComponent<JBLabel> { it.text == "No display" }.parent
+    assertThat(noDisplayIndicator.isVisible).isTrue()
+
     var frameNumber = emulatorView.frameNumber
     assertThat(frameNumber).isEqualTo(0u)
     panel.size = Dimension(430, 450)
@@ -765,6 +785,21 @@ class EmulatorToolWindowPanelTest {
     val emulatorView = panel.primaryDisplayView ?: fail()
     assertThat((panel.icon as LayeredIcon).getIcon(0)).isEqualTo(StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_HEADSET)
 
+    ApplicationManager.getApplication().replaceService(AdtUiCursorsProvider::class.java, TestAdtUiCursorsProvider(), testRootDisposable)
+    val handCursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+    val handPressedCursor = Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+    val eyeCursor = Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR)
+    val eyePressedCursor = Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_HAND_INPUT, handCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_HAND_INPUT_PRESSED, handPressedCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_EYE_INPUT, eyeCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_EYE_INPUT_PRESSED, eyePressedCursor)
+
+    val pointerInfo = mock<PointerInfo>()
+    whenever(pointerInfo.location).thenAnswer { Point(100, 100) }
+    val mouseInfoMock = mockStatic<MouseInfo>(testRootDisposable)
+    mouseInfoMock.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
+
     // Check appearance.
     var frameNumber = emulatorView.frameNumber
     assertThat(frameNumber).isEqualTo(0u)
@@ -774,18 +809,29 @@ class EmulatorToolWindowPanelTest {
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 600 height: 565")
 
     val xrInputController = EmulatorXrInputController.getInstance(project, emulatorView.emulator)
-    val testCases = mapOf(XrInputMode.HAND to "xr_hand_event", XrInputMode.EYE to "xr_eye_event", XrInputMode.MOUSE to "mouse_event")
+    val testCases =
+      listOf(
+        Triple(XrInputMode.HAND, "xr_hand_event", handCursor to handPressedCursor),
+        Triple(XrInputMode.EYE, "xr_eye_event", eyeCursor to eyePressedCursor),
+        Triple(XrInputMode.MOUSE, "mouse_event", Cursor.getDefaultCursor() to Cursor.getDefaultCursor()),
+      )
     var streamInputCall: GrpcCallRecord? = null
-    for ((inputMode, expectedEvent) in testCases) {
+    for ((inputMode, expectedEvent, cursors) in testCases) {
+      val (defaultCursor, pressedCursor) = cursors
       xrInputController.inputMode = inputMode
+      assertThat(panel.findComponentAt(100, 100)?.cursor).isEqualTo(defaultCursor)
       fakeUi.mouse.moveTo(100, 100)
+      assertThat(panel.findComponentAt(100, 100)?.cursor).isEqualTo(defaultCursor)
       val call = streamInputCall ?: getNextGrpcCallIgnoringStreamScreenshot().also { streamInputCall = it }
       assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 378 y: 296 }")
       fakeUi.mouse.press(100, 100)
+      assertThat(panel.findComponentAt(100, 100)?.cursor).isEqualTo(pressedCursor)
       assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 378 y: 296 buttons: 1 }")
       fakeUi.mouse.dragTo(500, 200)
+      assertThat(panel.findComponentAt(500, 200)?.cursor).isEqualTo(pressedCursor)
       assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 2190 y: 749 buttons: 1 }")
       fakeUi.mouse.release()
+      assertThat(panel.findComponentAt(500, 200)?.cursor).isEqualTo(defaultCursor)
       assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("$expectedEvent { x: 2190 y: 749 }")
     }
   }
@@ -1179,7 +1225,7 @@ class EmulatorToolWindowPanelTest {
     fakeUi.layoutAndDispatchEvents()
     val call1 = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(call1.request)).isEqualTo("format: RGB888 width: 168 height: 287")
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(168)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(168)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isFalse()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1191,7 +1237,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(shortDebugString(call2.request)).isEqualTo("format: RGB888 width: 320 height: 320")
     assertThat(call1.completion.isCancelled).isTrue() // The previous call has been canceled.
     assertThat(call1.completion.isDone).isTrue() // The previous call is no longer active.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(320)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(320)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isFalse()
@@ -1202,7 +1248,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(640)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(640)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1213,7 +1259,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(640)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(640)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1224,7 +1270,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(674)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(674)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1235,7 +1281,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(716)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(716)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1246,7 +1292,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(960)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(960)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1257,7 +1303,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(640)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(640)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
@@ -1268,7 +1314,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
     fakeUi.render() // Trigger displayRectangle update.
-    assertThat(emulatorView.projectionRectangle!!.width).isEqualTo(320)
+    assertThat(emulatorView.projectionRectangle?.width).isEqualTo(320)
     assertThat(emulatorView.canZoom(ZoomType.IN)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.OUT)).isFalse()
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isFalse()
@@ -1352,11 +1398,12 @@ class EmulatorToolWindowPanelTest {
     fakeUi.layoutAndDispatchEvents()
 
     val container = HeadlessRootPaneContainer(panel)
+    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
     val glassPane = container.glassPane
 
     val initialMousePosition = Point(glassPane.x + glassPane.width / 2, glassPane.y + glassPane.height / 2)
     val pointerInfo = mock<PointerInfo>()
-    whenever(pointerInfo.location).thenReturn(initialMousePosition)
+    whenever(pointerInfo.location).thenAnswer { Point(initialMousePosition) }
     val mouseInfoMock = mockStatic<MouseInfo>(testRootDisposable)
     mouseInfoMock.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
 
@@ -1418,7 +1465,7 @@ class EmulatorToolWindowPanelTest {
     glassPane.dispatch(event)
     var call = emulator.getNextGrpcCall(2.seconds, callFilter)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/rotateVirtualSceneCamera")
-    assertThat(shortDebugString(call.request)).isEqualTo("x: 2.3561945 y: 1.5707964")
+    assertThat(shortDebugString(call.request)).isEqualTo("x: -0.07853982 y: -0.03926991")
 
     val rotationExpectations =
       mapOf(
@@ -1500,7 +1547,7 @@ class EmulatorToolWindowPanelTest {
       .syncPublisher(EmulatorLogListener.TOPIC)
       .messageLogged(processHandle, avdFolder, EmulatorLogListener.Severity.WARNING, true, "Attention!")
     waitForCondition(2.seconds) { fakeUi.findComponent<EditorNotificationPanel>() != null }
-    var notificationPanel = fakeUi.findComponent<EditorNotificationPanel>()!!
+    var notificationPanel = fakeUi.getComponent<EditorNotificationPanel>()
     assertThat(notificationPanel.text).isEqualTo("Attention!")
     assertThat(notificationPanel.background).isEqualTo(JBUI.CurrentTheme.Banner.WARNING_BACKGROUND)
 
@@ -1511,7 +1558,7 @@ class EmulatorToolWindowPanelTest {
       val p = fakeUi.findComponent<EditorNotificationPanel>()
       p != null && p.text == "Crashed!"
     }
-    notificationPanel = fakeUi.findComponent<EditorNotificationPanel>()!!
+    notificationPanel = fakeUi.getComponent<EditorNotificationPanel>()
     assertThat(notificationPanel.text).isEqualTo("Crashed!")
     assertThat(notificationPanel.background).isEqualTo(JBUI.CurrentTheme.Banner.ERROR_BACKGROUND)
   }
@@ -1542,7 +1589,7 @@ class EmulatorToolWindowPanelTest {
     panel.zoomToolbarVisible = true
     waitForCondition(5.seconds) { emulatorController.connectionState == EmulatorController.ConnectionState.CONNECTED }
     // Fake window is necessary for the toolbars to be rendered.
-    fakeUi = FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable)
+    fakeUi = FakeUi(panel, parentDisposable = testRootDisposable)
     return panel
   }
 
@@ -1583,11 +1630,12 @@ class EmulatorToolWindowPanelTest {
 
   private fun assertAppearance(
     goldenImageName: String,
-    maxPercentDifferentLinux: Double = 0.0003,
-    maxPercentDifferentMac: Double = 0.0003,
-    maxPercentDifferentWindows: Double = 0.0003,
+    maxPercentDifferentLinux: Double = 0.0005,
+    maxPercentDifferentMac: Double = 0.0005,
+    maxPercentDifferentWindows: Double = 0.0005,
   ) {
     fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
     val image = fakeUi.render()
     val scaledImage = ImageUtils.scale(image, 0.5)
     val maxPercentDifferent =

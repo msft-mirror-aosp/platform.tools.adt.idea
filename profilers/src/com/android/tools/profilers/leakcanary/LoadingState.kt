@@ -15,9 +15,7 @@
  */
 package com.android.tools.profilers.leakcanary
 
-/**
- * A generic container of values that may not yet be ready with a possibility of failure.
- */
+/** A generic container of values that may not yet be ready with a possibility of failure. */
 sealed class LoadingState<out T> {
 
   /** The value is being loaded and is not yet available. */
@@ -25,6 +23,9 @@ sealed class LoadingState<out T> {
 
   /** The value is ready to be used. */
   data class Ready<out T>(val value: T) : LoadingState<T>()
+
+  /** The user is unauthorized or onboarding is required (e.g. Gemini not enabled/signed in). */
+  data class Unauthorized(val message: String = "") : LoadingState<Nothing>()
 
   /** Loading the value failed. */
   data class Failure(val message: String) : LoadingState<Nothing>()

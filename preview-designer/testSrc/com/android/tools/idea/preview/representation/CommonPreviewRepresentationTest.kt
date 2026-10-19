@@ -24,6 +24,8 @@ import com.android.tools.compile.fast.isSuccess
 import com.android.tools.configurations.Configuration
 import com.android.tools.idea.common.model.NlDataProvider
 import com.android.tools.idea.common.model.NlModel
+import com.android.tools.idea.common.surface.DesignSurface
+import com.android.tools.idea.common.surface.DesignSurfaceSettings
 import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.concurrency.awaitStatus
 import com.android.tools.idea.concurrency.createCoroutineScope
@@ -83,9 +85,11 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
 import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.LeakHunter
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.common.waitUntil
 import com.intellij.testFramework.replaceService
@@ -602,6 +606,48 @@ class CommonPreviewRepresentationTest {
     restoredPreviewRepresentation.onDeactivateImmediately()
   }
 
+  // Regression test for b/428143625
+  @Test
+  fun groupFilterIsResetWhenGroupIsRemoved(): Unit = runTest {
+    val initialElement = PsiTestPreviewElement(displayName = "element 1", groupName = "test group")
+    var previewElements = listOf(initialElement)
+    val previewElementProvider =
+      object : PreviewElementProvider<PsiTestPreviewElement> {
+        override suspend fun previewElements(): Sequence<PsiTestPreviewElement> = previewElements.asSequence()
+      }
+    val representation = createPreviewRepresentation(previewElementProvider)
+    representation.compileAndWaitForRefresh()
+
+    // Verify initial setup: element is rendered and "test group" is available
+    retryUntilPassing(2.seconds) {
+      assertThat(representation.renderedPreviewElementsFlowForTest().value.asCollection().toList()).containsExactly(initialElement)
+      assertThat(representation.groupManager.availableGroupsFlow.value).containsExactly(PreviewGroup.namedGroup("test group"))
+    }
+
+    // Filter by "test group"
+    representation.groupManager.groupFilter = PreviewGroup.namedGroup("test group")
+    assertThat(representation.groupManager.groupFilter).isEqualTo(PreviewGroup.namedGroup("test group"))
+
+    // Remove the group from the element
+    val updatedElement = PsiTestPreviewElement(displayName = "element 1")
+    previewElements = listOf(updatedElement)
+
+    // Modify the file to trigger psiFileChangeFlow
+    ApplicationUtils.invokeWriteActionAndWait(ModalityState.defaultModalityState()) {
+      fixture.editor.moveCaretToEnd()
+      fixture.editor.executeAndSave { insertText(" ") }
+    }
+
+    // Wait until groupFilter is reset to All, "test group" is no longer available, and updated element is rendered
+    retryUntilPassing(2.seconds) {
+      assertThat(representation.groupManager.groupFilter).isEqualTo(PreviewGroup.All)
+      assertThat(representation.groupManager.availableGroupsFlow.value).isEmpty()
+      assertThat(representation.renderedPreviewElementsFlowForTest().value.asCollection().toList()).containsExactly(updatedElement)
+    }
+
+    representation.onDeactivateImmediately()
+  }
+
   @Test
   fun `test animation preview is hidden if there is build error in the file`() = runBlocking {
     val animationPreview =
@@ -624,6 +670,53 @@ class CommonPreviewRepresentationTest {
     buildSystemServices.simulateArtifactBuild(ProjectSystemBuildManager.BuildStatus.SUCCESS)
     delayUntilCondition(delayPerIterationMs = 200) { previewRepresentation.previewView.bottomPanel != null }
     previewRepresentation.onDeactivateImmediately()
+  }
+
+  @Test
+  fun testOrganizationGroupDoesNotRetainPsiFileOrSurface() = runTest {
+    val testPsiFile = runWriteActionAndWait {
+      fixture.addFileToProject(
+        "src/OrganizationGroupTest.kt",
+        // language=kotlin
+        """
+        annotation class Preview
+
+        @Preview
+        fun MyFun() {
+          println("Hello world!")
+        }
+        """
+          .trimIndent(),
+      )
+    }
+    val previewElement = PsiTestPreviewElement(displayName = "test element", groupName = "test group")
+    val previewElementProvider = TestPreviewElementProvider(sequenceOf(previewElement))
+    val previewRepresentation = createPreviewRepresentation(previewElementProvider, customPsiFile = testPsiFile)
+    previewRepresentation.compileAndWaitForRefresh()
+
+    val surface = previewView.mainSurface
+    val organizationGroup = surface.models.single().organizationGroup!!
+    val virtualFile = testPsiFile.virtualFile
+    val fileUrl = virtualFile.url
+    val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
+    organizationGroup.setOpened(false)
+    assertEquals(false, surfaceState.getOrganizationGroupState(fileUrl)[organizationGroup.groupId])
+    organizationGroup.setOpened(true)
+    assertEquals(true, surfaceState.getOrganizationGroupState(fileUrl)[organizationGroup.groupId])
+
+    previewRepresentation.onDeactivateImmediately()
+    runInEdtAndWait {
+      Disposer.dispose(previewRepresentation)
+      PsiManager.getInstance(project).dropPsiCaches()
+      clearInvocations(previewViewModelMock)
+      LeakHunter.checkLeak(organizationGroup, PsiFile::class.java) { it === testPsiFile }
+      LeakHunter.checkLeak(organizationGroup, VirtualFile::class.java) { it === virtualFile }
+      LeakHunter.checkLeak(organizationGroup, DesignSurface::class.java) { it === surface }
+    }
+
+    // Verify saving state still works after the preview representation and surface are disposed.
+    organizationGroup.setOpened(false)
+    assertEquals(false, surfaceState.getOrganizationGroupState(fileUrl)[organizationGroup.groupId])
   }
 
   private suspend fun blockRefreshManager(): TestPreviewRefreshRequest {
@@ -655,6 +748,7 @@ class CommonPreviewRepresentationTest {
   private fun createPreviewRepresentation(
     customPreviewElementProvider: PreviewElementProvider<PsiTestPreviewElement>? = null,
     animationPreview: AnimationPreview<*>? = null,
+    customPsiFile: PsiFile = psiFile,
   ): CommonPreviewRepresentation<PsiTestPreviewElement> {
     val previewElementProvider =
       customPreviewElementProvider
@@ -674,7 +768,7 @@ class CommonPreviewRepresentationTest {
       object :
         CommonPreviewRepresentation<PsiTestPreviewElement>(
           adapterViewFqcn = "TestAdapterViewFqcn",
-          psiFile,
+          customPsiFile,
           { previewElementProvider },
           modelAdapter,
           viewConstructor = { project, surfaceBuilder, parentDisposable ->

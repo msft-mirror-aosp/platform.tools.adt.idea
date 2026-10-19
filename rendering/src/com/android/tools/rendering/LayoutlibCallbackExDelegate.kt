@@ -138,8 +138,6 @@ internal class LayoutlibCallbackExDelegate(parentDisposable: Disposable, delegat
 
   override fun hasAndroidXAppCompat(): Boolean = getDelegate()?.hasAndroidXAppCompat() == true
 
-  override fun isResourceNamespacingRequired(): Boolean = getDelegate()?.isResourceNamespacingRequired == true
-
   override fun shouldUseCustomInflater(): Boolean = getDelegate()?.shouldUseCustomInflater() == true
 
   override fun error(message: String, vararg details: String): Unit {

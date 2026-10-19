@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.res;
 
-import static com.android.tools.idea.res.ResourcesTestsUtil.addBinaryAarDependency;
+import static com.android.tools.idea.res.ResourcesTestsUtil.addAarDependency;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.common.truth.Truth.assertWithMessage;
 
@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import kotlin.Unit;
 import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
@@ -51,14 +52,11 @@ public class StudioResourceRepositoryManagerTest extends AndroidTestCase {
    * Checks that adding an AAR dependency is reflected in the result returned by {@link StudioResourceRepositoryManager#getLibraryResources()}.
    */
   public void testLibraryResources() {
-    enableNamespacing("p1.p2");
-
     StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(myFacet);
     assertThat(repositoryManager.getLibraryResources()).isEmpty();
-    ResourceNamespace libraryNamespace = ResourceNamespace.fromPackageName("com.example.mylibrary");
-    addBinaryAarDependency(myModule);
+    addAarDependency(myFixture, myModule, "mylibrary", "com.example.mylibrary", resDir -> Unit.INSTANCE);
     assertThat(repositoryManager.getLibraryResources()).hasSize(1);
-    assertThat(Iterables.getOnlyElement(repositoryManager.getLibraryResources()).getNamespace()).isEqualTo(libraryNamespace);
+    assertThat(Iterables.getOnlyElement(repositoryManager.getLibraryResources()).getNamespace()).isEqualTo(ResourceNamespace.RES_AUTO);
   }
 
   public void testDisposal() {
@@ -75,6 +73,24 @@ public class StudioResourceRepositoryManagerTest extends AndroidTestCase {
           .isFalse();
       }
     }
+  }
+
+  public void testConcurrentGetAppResources() throws Exception {
+    StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(myFacet);
+
+    @SuppressWarnings("unchecked")
+    LocalResourceRepository<VirtualFile>[] repos = new LocalResourceRepository[2];
+    Thread thread1 = new Thread(() -> repos[0] = repositoryManager.getAppResources());
+    Thread thread2 = new Thread(() -> repos[1] = repositoryManager.getAppResources());
+
+    thread1.start();
+    thread2.start();
+    thread1.join();
+    thread2.join();
+
+    assertThat(repos[0]).isNotNull();
+    assertThat(repos[1]).isNotNull();
+    assertThat(repos[0]).isSameAs(repos[1]);
   }
 
   public static class AllRepositoriesDisposedTest extends AndroidTestCase {

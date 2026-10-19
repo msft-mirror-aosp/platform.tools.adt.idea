@@ -196,20 +196,6 @@ public class AndroidResourceRenameTest extends AndroidTestCase {
     myFixture.checkResultByFile("src/p1/p2/MyView.java", BASE_PATH + "MyView4_after.java", true);
   }
 
-
-  public void testRenameDeclareStyleableFromXmlWithNamespaces() throws Throwable {
-    // Like testRenameDeclareStyleableFromJava, but the rename request originates from
-    // the XML declare-styleable reference rather than a Java field reference.
-    createManifest();
-    enableNamespacing("p1.p2");
-    myFixture.copyFileToProject(BASE_PATH + "MyView4.java", "src/p1/p2/MyView.java");
-    final VirtualFile file = myFixture.copyFileToProject(BASE_PATH + "attrs13.xml", "res/values/attrs13.xml");
-    myFixture.configureFromExistingVirtualFile(file);
-    doRename("NewName");
-    myFixture.checkResultByFile(BASE_PATH + "attrs13_after.xml", true);
-    myFixture.checkResultByFile("src/p1/p2/MyView.java", BASE_PATH + "MyView4_after.java", true);
-  }
-
   public void testRenameDeclareStyleableFromJava() throws Throwable {
     // Renaming an R styleable field should update the declare styleable declaration, as well as
     // any field references, including those for the attributes

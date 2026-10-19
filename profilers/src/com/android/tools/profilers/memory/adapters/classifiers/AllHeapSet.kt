@@ -15,6 +15,7 @@
  */
 package com.android.tools.profilers.memory.adapters.classifiers
 
+import com.android.tools.adtui.model.filter.Filter
 import com.android.tools.profilers.memory.ClassGrouping
 import com.android.tools.profilers.memory.adapters.CaptureObject
 import com.android.tools.profilers.memory.adapters.InstanceObject
@@ -22,8 +23,26 @@ import com.android.tools.profilers.memory.adapters.InstanceObject
 /** This class implements an all-"heap" that aggregates multiple separate heaps */
 class AllHeapSet(obj: CaptureObject, private val subHeaps: Array<HeapSet>) : HeapSet(obj, NAME, ID) {
 
+  // Always forward, since a sub-heap may have been regrouped on its own while it was selected. The safe call is needed because the
+  // HeapSet constructor calls this override before subHeaps is assigned.
+  @Suppress("UNNECESSARY_SAFE_CALL")
   override fun setClassGrouping(classGrouping: ClassGrouping) {
     subHeaps?.forEach { it.setClassGrouping(classGrouping) }
+    if (myClassGrouping != classGrouping) {
+      myClassGrouping = classGrouping
+      needsRefiltering = true
+    }
+  }
+
+  override fun selectFilter(filter: Filter) {
+    subHeaps.forEach {
+      if (it.myFilter != filter) {
+        it.myFilter = filter
+        it.forceRefiltering()
+        needsRefiltering = true
+      }
+    }
+    super.selectFilter(filter)
   }
 
   override fun createSubClassifier() = Classifier.of(InstanceObject::getHeapId, { subHeaps.first { h -> h.id == it } })

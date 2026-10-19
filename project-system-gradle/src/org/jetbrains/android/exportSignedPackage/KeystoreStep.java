@@ -4,7 +4,9 @@ package org.jetbrains.android.exportSignedPackage;
 
 import static icons.StudioIcons.Common.WARNING_INLINE;
 
+import com.android.annotations.concurrency.AnyThread;
 import com.android.annotations.concurrency.Slow;
+import com.android.annotations.concurrency.WorkerThread;
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil;
 import com.android.tools.idea.gradle.util.ModuleTypeComparator;
 import com.android.tools.idea.help.AndroidWebHelpProvider;
@@ -21,15 +23,18 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleType;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.ui.CollectionComboBoxModel;
-import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.dsl.listCellRenderer.LcrJavaHelper;
+import com.intellij.ui.dsl.listCellRenderer.RendererPresentation;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import com.intellij.util.ModalityUiUtil;
+import com.intellij.util.concurrency.AppExecutorUtil;
 import java.awt.Dimension;
 import java.awt.Insets;
 import java.io.IOException;
@@ -47,6 +52,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executor;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -90,10 +96,19 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
   AndroidFacet mySelection;
   @VisibleForTesting final List<AndroidFacet> myFacets;
   @VisibleForTesting FileSystem myFileSystem = FileSystems.getDefault();
+  private final Executor myBackgroundExecutor;
 
   public KeystoreStep(@NotNull ExportSignedPackageWizard wizard,
                       @NotNull List<AndroidFacet> facets) {
+    this(wizard, facets, AppExecutorUtil.getAppExecutorService());
+  }
+
+  @VisibleForTesting
+  KeystoreStep(@NotNull ExportSignedPackageWizard wizard,
+               @NotNull List<AndroidFacet> facets,
+               @NotNull Executor backgroundExecutor) {
     setupUI();
+    myBackgroundExecutor = backgroundExecutor;
     myWizard = wizard;
     myFacets = facets;
     Project project = wizard.getProject();
@@ -107,12 +122,13 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
       tryLoadSavedPasswords();
     }
 
-    myModuleCombo.setRenderer(SimpleListCellRenderer.create((label, value, index) -> {
-      if (value == null) return;
-      Module module = value.getModule();
-      label.setText(module.getName());
-      label.setIcon(ModuleType.get(module).getIcon());
-    }));
+    myModuleCombo.setRenderer(LcrJavaHelper.create(
+      "",
+      value -> {
+        Module module = value.getModule();
+        return new RendererPresentation(ModuleType.get(module).getIcon(), module.getName());
+      }
+    ));
     myGradleWarning.setIcon(WARNING_INLINE);
     myGradlePanel.setVisible(false);
     myModuleCombo.addActionListener(e -> updateSelection((AndroidFacet)myModuleCombo.getSelectedItem()));
@@ -332,7 +348,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
   private void tryLoadSavedPasswords() {
     String keyStorePath = myKeyStorePathField.getText();
     String keyAlias = myKeyAliasField.getText();
-    executeInBackground(() -> {
+    myBackgroundExecutor.execute(() -> {
       String keyStorePasswordKey = makePasswordKey(KEY_STORE_PASSWORD_KEY, keyStorePath, null);
       String keyPasswordKey = makePasswordKey(KEY_PASSWORD_KEY, keyStorePath, keyAlias);
       try {
@@ -368,18 +384,6 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
         Logger.getInstance(KeystoreStep.class).error("Unable to use password safe", t);
       }
     });
-  }
-
-  /**
-   * Execute task in background unless it is a unit test. Otherwise testing passwords loading becomes very tricky.
-   */
-  private void executeInBackground(Runnable runnable) {
-    if (ApplicationManager.getApplication().isUnitTestMode()) {
-      runnable.run();
-    }
-    else {
-      ApplicationManager.getApplication().executeOnPooledThread(runnable);
-    }
   }
 
   /**
@@ -527,14 +531,24 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
       throw new CommitStepException(AndroidBundle.message("android.export.package.specify.key.password.error"));
     }
 
-    myWizard.setGradleSigningInfo(new GradleSigningInfo(keyStoreLocation, keyStorePassword, keyAlias, keyPassword));
+    Path keystorePath = myFileSystem.getPath(keyStoreLocation);
 
-    // Validate the keystore information
-    KeyStore keyStore = loadKeyStore(myFileSystem.getPath(keyStoreLocation));
-    if (keyStore == null) {
-      throw new CommitStepException(AndroidBundle.message("android.export.package.keystore.error.title"));
-    }
-    loadKeyAndSaveToWizard(keyStore, keyAlias, keyPassword);
+    // Validate the keystore information with progress
+    ValidatedKeyEntry validatedEntry = ProgressManager.getInstance().runProcessWithProgressSynchronously(
+        () -> {
+          KeyStore keyStore = loadKeyStore(keystorePath, keyStorePassword);
+          if (keyStore == null) {
+            throw new CommitStepException(AndroidBundle.message("android.export.package.keystore.error.title"));
+          }
+          return loadKeyEntry(keyStore, keyAlias, keyPassword);
+        },
+        AndroidBundle.message("android.export.package.loading.keystore.title"),
+        true,
+        myWizard.getProject());
+
+    myWizard.setGradleSigningInfo(new GradleSigningInfo(keyStoreLocation, keyStorePassword, keyAlias, keyPassword));
+    myWizard.setPrivateKey(validatedEntry.privateKey);
+    myWizard.setCertificate(validatedEntry.certificate);
 
     Project project = myWizard.getProject();
     GenerateSignedApkSettings settings = GenerateSignedApkSettings.getInstance(project);
@@ -550,8 +564,17 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
     myWizard.setFacet(getSelectedFacet());
   }
 
-  private KeyStore loadKeyStore(Path keystoreFile) throws CommitStepException {
-    char[] password = myKeyStorePasswordField.getPassword();
+  private static class ValidatedKeyEntry {
+    final PrivateKey privateKey;
+    final X509Certificate certificate;
+
+    ValidatedKeyEntry(@NotNull PrivateKey privateKey, @NotNull X509Certificate certificate) {
+      this.privateKey = privateKey;
+      this.certificate = certificate;
+    }
+  }
+
+  private static KeyStore loadKeyStore(Path keystoreFile, char[] password) throws CommitStepException {
     InputStream fis = null;
     AndroidUtils.checkPassword(password);
     if (!Files.isRegularFile(keystoreFile)) {
@@ -575,12 +598,11 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
         catch (IOException ignored) {
         }
       }
-      Arrays.fill(password, '\0');
     }
     return keyStore;
   }
 
-  private void loadKeyAndSaveToWizard(KeyStore keyStore, String alias, char[] keyPassword) throws CommitStepException {
+  private static ValidatedKeyEntry loadKeyEntry(KeyStore keyStore, String alias, char[] keyPassword) throws CommitStepException {
     KeyStore.PrivateKeyEntry entry;
     try {
       assert keyStore != null;
@@ -597,8 +619,7 @@ class KeystoreStep extends ExportSignedPackageWizardStep implements ApkSigningSe
     if (privateKey == null || certificate == null) {
       throw new CommitStepException(AndroidBundle.message("android.extract.package.cannot.find.key.error", alias));
     }
-    myWizard.setPrivateKey(privateKey);
-    myWizard.setCertificate((X509Certificate)certificate);
+    return new ValidatedKeyEntry(privateKey, (X509Certificate)certificate);
   }
 
   private AndroidFacet getSelectedFacet() {

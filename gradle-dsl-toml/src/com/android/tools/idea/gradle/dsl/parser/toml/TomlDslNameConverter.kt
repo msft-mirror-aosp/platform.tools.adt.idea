@@ -19,7 +19,10 @@ import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement
+import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.diagnostic.ControlFlowException
 import com.intellij.psi.PsiElement
+import java.util.concurrent.CancellationException
 import org.toml.lang.psi.TomlKey
 import org.toml.lang.psi.TomlKeySegment
 import org.toml.lang.psi.TomlPsiFactory
@@ -43,19 +46,20 @@ interface TomlDslNameConverter : GradleDslNameConverter {
       else -> GradleNameElement.escape(element.text)
     }
 
-  override fun convertReferenceText(context: GradleDslElement, referenceText: String): String {
+  override fun convertReferenceText(context: GradleDslElement, referenceText: String): String = runReadAction {
     val literal =
       try {
         TomlPsiFactory(context.dslFile.project, true).createLiteral(referenceText)
       } catch (e: Exception) {
-        throw IllegalStateException("Cannot create reference out of literal $referenceText", e)
+        if ((e is ControlFlowException) || (e is CancellationException)) throw e
+        return@runReadAction referenceText
       }
     val name =
       when (val kind = literal.kind) {
-        is TomlLiteralKind.String -> kind.value
+        is TomlLiteralKind.String -> kind.value ?: referenceText
         else -> referenceText
       }
 
-    return "$name"
+    name
   }
 }

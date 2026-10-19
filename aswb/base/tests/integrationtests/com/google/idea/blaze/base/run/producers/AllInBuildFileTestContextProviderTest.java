@@ -74,7 +74,7 @@ public class AllInBuildFileTestContextProviderTest extends BlazeRunConfiguration
             new WorkspacePath("java/com/google/test/BUILD"), "java_test(name='unit_tests'");
 
     ConfigurationContext context = createContextFromPsi(buildFile);
-    List<ConfigurationFromContext> configurations = context.getConfigurationsFromContext();
+    List<ConfigurationFromContext> configurations = getConfigurationsFromContext(context);
     assertThat(configurations).hasSize(1);
 
     ConfigurationFromContext fromContext = configurations.get(0);
@@ -83,8 +83,8 @@ public class AllInBuildFileTestContextProviderTest extends BlazeRunConfiguration
 
     BlazeCommandRunConfiguration config =
         (BlazeCommandRunConfiguration) fromContext.getConfiguration();
-    assertThat(config.getTargetPatterns())
-        .containsExactly("//java/com/google/test:all");
+    performFirstRun(config, context);
+    assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:all");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
   }
 
@@ -99,7 +99,7 @@ public class AllInBuildFileTestContextProviderTest extends BlazeRunConfiguration
             "I am not a build file!");
 
     List<ConfigurationFromContext> configurations =
-        createContextFromPsi(nonBuildFile).getConfigurationsFromContext();
+        getConfigurationsFromContext(createContextFromPsi(nonBuildFile));
 
     assertThat(configurations).isNull();
   }

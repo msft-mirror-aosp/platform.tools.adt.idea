@@ -208,8 +208,8 @@ private val jbModelDumpers =
         prop("versionString", kotlinGradlePluginVersion.versionString.replaceBuiltInKotlinVersion())
       }
     },
-    SpecializedDumper(property = K2JVMCompilerArguments::configurator),
-    SpecializedDumper(property = K2JVMCompilerArguments::explicitArguments),
+    SpecializedDumper(property = CommonCompilerArguments::configurator),
+    SpecializedDumper(property = CommonCompilerArguments::explicitArguments),
     // Custom dumper to avoid configurations with empty artifacts being printed
     SpecializedDumper<DefaultGradleSourceSetModel> { gradleSourceSet ->
       prop(propertyName, gradleSourceSet::class.simpleName)
@@ -266,7 +266,7 @@ private val jbModelDumpers =
  * Note: Other tests in the IDE (e.g., templates, editor, UI tools, deployment) should not use this constant as they don't need to test
  * against the latest preview version of Kotlin.
  */
-const val KOTLIN_VERSION_FOR_TESTS = "2.4.20-Beta1"
+const val KOTLIN_VERSION_FOR_TESTS = "2.5.0-Beta1"
 
 fun String.replaceKotlinVersionForTests(): String = replace(KOTLIN_VERSION_FOR_TESTS, "<KOTLIN_VERSION_FOR_TESTS>")
 
@@ -689,6 +689,13 @@ private fun ideModelDumper(projectDumper: ProjectDumper) =
         ideSourceProvider.baselineProfileDirectories.forEach { prop("BaselineProfileDirectories") { it.path.toPrintablePath() } }
         ideSourceProvider.keepRulesDirectories.forEach { prop("KeepRulesDirectories") { it.path.toPrintablePath() } }
         ideSourceProvider.aarKeepRulesDirectories.forEach { prop("AarKeepRulesDirectories") { it.path.toPrintablePath() } }
+        ideSourceProvider.apiConfigurationName?.let { prop("ApiConfigurationName") { it } }
+        ideSourceProvider.compileOnlyConfigurationName?.let { prop("CompileOnlyConfigurationName") { it } }
+        ideSourceProvider.compileOnlyApiConfigurationName?.let { prop("CompileOnlyApiConfigurationName") { it } }
+        ideSourceProvider.implementationConfigurationName?.let { prop("ImplementationConfigurationName") { it } }
+        ideSourceProvider.runtimeOnlyConfigurationName?.let { prop("RuntimeOnlyConfigurationName") { it } }
+        ideSourceProvider.annotationProcessorConfigurationName?.let { prop("AnnotationProcessorConfigurationName") { it } }
+        ideSourceProvider.kaptConfigurationName?.let { prop("KaptConfigurationName") { it } }
       }
 
       private fun dump(extraSourceProvider: IdeExtraSourceProvider) {
@@ -731,6 +738,7 @@ private fun ideModelDumper(projectDumper: ProjectDumper) =
           prop("StoreFile") { ideSigningConfig.storeFile?.name }
           prop("StorePassword") { ideSigningConfig.storePassword }
           prop("KeyAlias") { ideSigningConfig.keyAlias }
+          prop("IsSigningReady") { ideSigningConfig.isSigningReady.toString() }
         }
       }
 

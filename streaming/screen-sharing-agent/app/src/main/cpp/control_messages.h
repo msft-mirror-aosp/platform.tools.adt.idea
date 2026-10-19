@@ -151,11 +151,12 @@ private:
 // Represents a key being pressed or released on a keyboard.
 class KeyEventMessage : ControlMessage {
 public:
-  KeyEventMessage(int32_t action, int32_t keycode, uint32_t meta_state)
+  KeyEventMessage(int32_t action, int32_t keycode, uint32_t meta_state, int32_t display_id)
       : ControlMessage(TYPE),
         action_(action),
         keycode_(keycode),
-        meta_state_(meta_state) {
+        meta_state_(meta_state),
+        display_id_(display_id) {
   }
   ~KeyEventMessage() override = default;
 
@@ -166,6 +167,8 @@ public:
   [[nodiscard]] int32_t keycode() const { return keycode_; }
 
   [[nodiscard]] int32_t meta_state() const { return meta_state_; }
+
+  [[nodiscard]] int32_t display_id() const { return display_id_; }
 
   static constexpr int TYPE = 2;
 
@@ -179,6 +182,7 @@ private:
   int32_t action_;
   int32_t keycode_;
   uint32_t meta_state_;
+  int32_t display_id_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyEventMessage);
 };
@@ -738,17 +742,17 @@ private:
 // Notification of an added or a changed display.
 class DisplayAddedOrChangedNotification : public ControlMessage {
 public:
-  explicit DisplayAddedOrChangedNotification(int32_t display_id, Size logical_size, int32_t rotation, int32_t display_type)
+  DisplayAddedOrChangedNotification(int32_t display_id, Size display_size, int32_t rotation, int32_t display_type)
       : ControlMessage(TYPE),
         display_id_(display_id),
-        logical_size_(std::move(logical_size)),
+        display_size_(display_size),
         rotation_(rotation),
         display_type_(display_type) {
   }
   ~DisplayAddedOrChangedNotification() override = default;
 
   [[nodiscard]] int32_t display_id() const { return display_id_; }
-  [[nodiscard]] const Size& logical_size() const { return logical_size_; }
+  [[nodiscard]] const Size& display_size() const { return display_size_; }
   [[nodiscard]] int32_t rotation() const { return rotation_; }
   [[nodiscard]] int32_t display_type() const { return display_type_; }
   [[nodiscard]] std::string ToDebugString() const;
@@ -761,7 +765,7 @@ private:
   friend class ControlMessage;
 
   int32_t display_id_;
-  Size logical_size_;
+  Size display_size_;
   int32_t rotation_;
   int32_t display_type_;
 
@@ -794,7 +798,7 @@ private:
 // Notification of a passthrough coefficient change on an XR device.
 class XrPassthroughCoefficientChangedNotification : public ControlMessage {
 public:
-  explicit XrPassthroughCoefficientChangedNotification(float passthrough_coefficient)
+  XrPassthroughCoefficientChangedNotification(float passthrough_coefficient)
       : ControlMessage(TYPE),
         passthrough_coefficient_(passthrough_coefficient) {
   }

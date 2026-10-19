@@ -14,6 +14,5 @@ iml_module(
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
-        "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
     ],
 )

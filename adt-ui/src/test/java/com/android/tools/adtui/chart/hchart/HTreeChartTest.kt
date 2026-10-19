@@ -58,7 +58,8 @@ class HTreeChartTest {
         .setOrientation(orientation)
         .build()
     val contentHeight =
-      (myChart.defaultFontMetrics.height + HTreeChart.PADDING) * /* Default padding */ treeHeight /* Height of tree node. */
+      (HTreeChart.getDefaultNodeHeight(myChart.defaultFontMetrics.height) + HTreeChart.PADDING) * /* Default padding */
+        treeHeight /* Height of tree node. */
     myTotalHeight = contentHeight + HTreeChart.HEIGHT_PADDING
 
     myChart.size = Dimension(100, myViewHeight)
@@ -349,6 +350,15 @@ class HTreeChartTest {
 
     assertThat(myChart.yRange.min).isWithin(EPSILON).of(18.0)
     assertThat(myChart.yRange.max).isWithin(EPSILON).of(18.0)
+  }
+
+  @Test
+  fun testUpdateUIResetsCanvas() {
+    // Render once to populate canvas
+    myUi.render()
+    myChart.updateUI()
+    // Verify render succeeds after updateUI without error
+    myUi.render()
   }
 
   class FakeRenderer : DefaultHRenderer<String>() {

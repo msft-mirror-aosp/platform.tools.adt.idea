@@ -23,6 +23,8 @@ import com.android.tools.idea.ui.GuiTestingService
 import com.google.common.collect.Maps
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import java.io.InputStream
 import java.nio.file.Path
@@ -33,7 +35,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.future.asCompletableFuture
 
-object IdeGoogleMavenRepository : IdeGoogleMavenRepositoryBase(getCacheDir())
+@Service(Service.Level.APP)
+class IdeGoogleMavenRepository @JvmOverloads constructor(cacheDir: Path? = getCacheDir()) : IdeGoogleMavenRepositoryBase(cacheDir) {
+
+  companion object {
+    @JvmStatic fun getInstance(): IdeGoogleMavenRepository = ApplicationManager.getApplication().service<IdeGoogleMavenRepository>()
+
+    @JvmStatic fun getProductionCacheDir(): Path = Paths.get(PathManager.getSystemPath()).normalize().resolve(MAVEN_GOOGLE_CACHE_DIR_KEY)
+  }
+}
 
 /** A [GoogleMavenRepository] that uses IDE mechanisms (including proxy config) to download data. */
 abstract class IdeGoogleMavenRepositoryBase(cacheDir: Path?) : GoogleMavenRepository(cacheDir) {
@@ -44,10 +54,9 @@ abstract class IdeGoogleMavenRepositoryBase(cacheDir: Path?) : GoogleMavenReposi
     Logger.getInstance(IdeGoogleMavenRepositoryBase::class.java).warn(message, throwable)
   }
 
-  fun getArtifactsForAll(groupIds: List<String>): Map<String, CompletableFuture<Set<String>>> =
-    groupIds.associateWith { groupId ->
-      getPackageMap()[groupId]?.artifacts?.thenApply { it.values.map { it.id }.toSet() } ?: CompletableFuture.completedFuture(emptySet())
-    }
+  fun getArtifactsForAll(groupIds: List<String>): Map<String, CompletableFuture<Set<String>>> = groupIds.associateWith { groupId ->
+    getPackageMap()[groupId]?.artifacts?.thenApply { it.values.map { it.id }.toSet() } ?: CompletableFuture.completedFuture(emptySet())
+  }
 
   private var packageMap: MutableMap<String, PackageInfoAsync>? = null
 
@@ -102,5 +111,5 @@ private fun getCacheDir(): Path? {
   if (ApplicationManager.getApplication().isUnitTestMode || GuiTestingService.getInstance().isGuiTestingMode) {
     return null
   }
-  return Paths.get(PathManager.getSystemPath()).normalize().resolve(MAVEN_GOOGLE_CACHE_DIR_KEY)
+  return IdeGoogleMavenRepository.getProductionCacheDir()
 }

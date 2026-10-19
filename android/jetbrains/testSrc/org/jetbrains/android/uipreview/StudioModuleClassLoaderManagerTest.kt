@@ -22,6 +22,9 @@ import com.android.tools.rendering.classloading.ModuleClassLoaderManager
 import com.android.tools.rendering.classloading.NopModuleClassLoadedDiagnostics
 import com.android.tools.rendering.classloading.toClassTransform
 import com.android.tools.rendering.classloading.useWithClassLoader
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -119,5 +122,78 @@ class StudioModuleClassLoaderManagerTest {
         }
       }
     }
+  }
+
+  @Test
+  fun testConcurrentReleaseDoesNotDoubleDispose() {
+    val manager = StudioModuleClassLoaderManager.get() as StudioModuleClassLoaderManager
+    val context = StudioModuleRenderContext.forModule(project.module)
+    val executor = Executors.newFixedThreadPool(4)
+    try {
+      for (i in 0 until 10) {
+        val ref1 = manager.getShared(null, context)
+        val ref2 = manager.getShared(null, context)
+        assertEquals(ref1.classLoader, ref2.classLoader)
+
+        val latch = CountDownLatch(1)
+        val f1 = executor.submit {
+          latch.await()
+          manager.release(ref1)
+        }
+        val f2 = executor.submit {
+          latch.await()
+          manager.release(ref2)
+        }
+        latch.countDown()
+        f1.get(5, TimeUnit.SECONDS)
+        f2.get(5, TimeUnit.SECONDS)
+        assertTrue(ref1.classLoader.isDisposed)
+      }
+    } finally {
+      executor.shutdownNow()
+      executor.awaitTermination(5, TimeUnit.SECONDS)
+    }
+  }
+
+  @Test
+  fun testClearCacheDoesNotDisposeHeldClassLoader() {
+    val manager = StudioModuleClassLoaderManager.get()
+    val context = StudioModuleRenderContext.forModule(project.module)
+
+    val ref1 = manager.getShared(null, context)
+    val ref2 = manager.getShared(null, context)
+    val initialClassLoader = ref1.classLoader
+    assertEquals(initialClassLoader, ref2.classLoader)
+    assertFalse(initialClassLoader.isDisposed)
+
+    // Clearing the cache while references are actively held should not dispose the in-use class loader,
+    // but should detach it from the cache so subsequent getShared calls get a new instance.
+    manager.clearCache(project.module)
+    assertFalse(initialClassLoader.isDisposed)
+
+    val ref3 = manager.getShared(null, context)
+    val newClassLoader = ref3.classLoader
+    assertNotEquals(initialClassLoader, newClassLoader)
+    assertFalse(newClassLoader.isDisposed)
+
+    // Releasing only the first reference must not dispose initialClassLoader while ref2 is still held.
+    manager.release(ref1)
+    assertFalse(initialClassLoader.isDisposed)
+
+    // Releasing the last reference to initialClassLoader must dispose it without affecting newClassLoader.
+    manager.release(ref2)
+    assertTrue(initialClassLoader.isDisposed)
+    assertFalse(newClassLoader.isDisposed)
+
+    // Releasing ref3 disposes newClassLoader and places an unheld preloaded copy in PRELOADER.
+    manager.release(ref3)
+    assertTrue(newClassLoader.isDisposed)
+
+    val unheldPreloaded = project.module.getUserData(PRELOADER)?.getClassLoader()!!
+    assertFalse(unheldPreloaded.isDisposed)
+
+    // Clearing the cache when no references hold the preloaded class loader must dispose it immediately.
+    manager.clearCache(project.module)
+    assertTrue(unheldPreloaded.isDisposed)
   }
 }

@@ -29,16 +29,12 @@ import static com.android.SdkConstants.TOOLS_URI;
 import static com.android.SdkConstants.URI_PREFIX;
 import static com.android.SdkConstants.XLIFF_PREFIX;
 import static com.android.SdkConstants.XLIFF_URI;
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static org.jetbrains.android.dom.WatchFaceUtilKt.isDeclarativeWatchFaceFile;
 
 import com.android.SdkConstants;
-import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.resources.ResourceFolderType;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.res.IdeResourcesUtil;
-import com.android.tools.idea.res.StudioResourceRepositoryManager;
-import com.google.common.collect.ImmutableSet;
 import com.intellij.lang.xml.XMLLanguage;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.module.Module;
@@ -133,9 +129,7 @@ public class AndroidXmlSchemaProvider extends XmlSchemaProvider {
           result.add(XLIFF_URI);
         }
 
-        result.add(getLocalXmlNamespace(facet));
-
-        result.addAll(getResourceNamespaces(facet));
+        result.add(AUTO_URI);
       }
     }
     return result;
@@ -162,18 +156,5 @@ public class AndroidXmlSchemaProvider extends XmlSchemaProvider {
       return AAPT_PREFIX;
     }
     return null;
-  }
-
-  @NotNull
-  private static String getLocalXmlNamespace(@NotNull AndroidFacet facet) {
-    return StudioResourceRepositoryManager.getInstance(facet).getNamespace().getXmlNamespaceUri();
-  }
-
-  @NotNull
-  private static ImmutableSet<String> getResourceNamespaces(@NotNull AndroidFacet facet) {
-    return StudioResourceRepositoryManager.getAppResources(facet).getNamespaces()
-      .stream()
-      .map(ResourceNamespace::getXmlNamespaceUri)
-      .collect(toImmutableSet());
   }
 }

@@ -18,11 +18,17 @@ package com.android.tools.profilers.cpu
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.model.Range
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import javax.swing.JButton
+import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class StatusPanelTest {
+  @get:Rule val myEdtRule = EdtRule()
+
   @Test
   fun abortButtonCreatedWithRightName() {
     val abortText = "Abort"

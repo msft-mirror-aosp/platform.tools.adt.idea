@@ -20,43 +20,32 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.util.Screensh
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.logScreenshotTestEvent
 import com.android.tools.idea.testartifacts.instrumented.testsuite.view.ScreenshotViewType
 import com.google.wireless.android.sdk.stats.ScreenshotTestComposePreviewEvent
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
-import com.intellij.ui.scale.JBUIScale
-import com.intellij.util.ImageLoader
-import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.ui.AsyncProcessIcon
-import com.intellij.util.ui.ImageUtil
 import com.intellij.util.ui.JBImageIcon
 import java.awt.Dimension
 import java.awt.Font
 import java.awt.Graphics
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
-import java.io.File
-import java.io.IOException
-import java.util.concurrent.ExecutorService
 import javax.swing.BorderFactory
 import javax.swing.BoxLayout
 import javax.swing.JPanel
 
-// Limits the maximum dimension (width or height) of the preview thumbnail
-// to ensure it fits within the list item layout without distorting the UI.
-private val MAX_IMAGE_SIZE: Int
-  get() = JBUIScale.scale(200)
-
-/** A UI panel that displays a single screenshot test preview image. */
+/**
+ * A UI panel that displays a single screenshot test preview image.
+ *
+ * The panel never touches the disk on the EDT: file existence comes from [PreviewDetails] and thumbnails come from [thumbnailLoader].
+ */
 class PreviewItemPanel(
   var previewData: PreviewDetails,
   private val project: Project? = null,
   private val showDetails: Boolean = true,
-  private val thumbnailCache: MutableMap<String, JBImageIcon>? = null,
+  private val thumbnailLoader: ThumbnailLoader = ThumbnailLoader(),
   private val logger: Logger = Logger.getInstance(PreviewItemPanel::class.java),
-  private val appExecutorService: ExecutorService = AppExecutorUtil.getAppExecutorService(),
-  private val createImageIcon: PreviewItemPanel.(String) -> JBImageIcon? = PreviewItemPanel::createImageIconImpl,
 ) : JPanel() {
   private var currentImagePath: String = ""
   private var currentTestId: String = previewData.testId
@@ -108,7 +97,11 @@ class PreviewItemPanel(
     }
   }
 
-  fun updateData(newData: PreviewDetails, viewType: ScreenshotViewType, onImageLoaded: (() -> Unit)? = null) {
+  fun updateData(
+    newData: PreviewDetails,
+    viewType: ScreenshotViewType,
+    onImageLoaded: (() -> Unit)? = null,
+  ) {
     this.previewData = newData
     if (showDetails) {
       updateDetails(newData)
@@ -125,6 +118,24 @@ class PreviewItemPanel(
   }
 
   private fun createMatchPercentageLabel(previewData: PreviewDetails): JPanel {
+    val hasReferenceImage =
+      previewData.destImageExists || previewData.diffPercent != null || previewData.testResult == AndroidTestCaseResult.PASSED
+
+    if (!hasReferenceImage) {
+      return JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.X_AXIS)
+        isOpaque = false
+        alignmentX = LEFT_ALIGNMENT
+
+        add(
+          JBLabel(NEW_TAG_TEXT).apply {
+            foreground = JBColor.GREEN.darker()
+            font = font.deriveFont(Font.BOLD)
+          }
+        )
+      }
+    }
+
     val diffDouble = previewData.diffPercent?.toDoubleOrNull()
     val matchPercentage = ScreenshotTestUtils.calculateMatchPercentage(diffDouble)
     val percentageText = matchPercentage ?: DEFAULT_MATCH_PERCENTAGE
@@ -169,13 +180,16 @@ class PreviewItemPanel(
         previewData.srcImagePath?.let { loadImage(it, previewData.testId, onImageLoaded) }
           ?: run {
             // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event
-            logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
+            logScreenshotTestEvent(
+              ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE,
+              project,
+            )
             showError(NO_NEW_IMAGE_TEXT)
           }
       }
       ScreenshotViewType.DIFF -> {
         val diffPath = previewData.diffImagePath
-        if (diffPath != null && File(diffPath).exists()) {
+        if (diffPath != null && previewData.diffImageExists) {
           loadImage(diffPath, previewData.testId, onImageLoaded)
         } else {
           if (previewData.testResult == AndroidTestCaseResult.PASSED) {
@@ -187,7 +201,7 @@ class PreviewItemPanel(
       }
       ScreenshotViewType.REFERENCE -> {
         val refPath = previewData.destImagePath
-        if (refPath != null && File(refPath).exists()) {
+        if (refPath != null && previewData.destImageExists) {
           loadImage(refPath, previewData.testId, onImageLoaded)
         } else {
           showPlaceholder(NO_REF_IMAGE_TEXT, JBColor.RED)
@@ -196,108 +210,65 @@ class PreviewItemPanel(
     }
   }
 
+  /**
+   * Shows the thumbnail at [newPath].
+   *
+   * Decoded and failed thumbnails are applied synchronously so the panel can be used as a list cell renderer. [onImageLoaded] is invoked
+   * only when a thumbnail finishes decoding in the background, which is when a list that painted the loading state needs to repaint.
+   */
   fun loadImage(newPath: String, testId: String, onImageLoaded: (() -> Unit)? = null) {
-    val simpleClassName = testId.split('.', limit = 2).first()
-
     if (currentImagePath == newPath && currentTestId == testId) {
-      if (isLoadedSuccessfully) {
-        onImageLoaded?.invoke()
-      }
       return
     }
-    // Update tracking fields immediately to ensure subsequent calls can detect if this request becomes stale.
+    // Update tracking fields immediately to ensure subsequent calls can detect if this request
+    // becomes stale.
     currentImagePath = newPath
     currentTestId = testId
 
-    val cachedImage = thumbnailCache?.get(newPath)
+    val cachedImage = thumbnailLoader.getCached(newPath)
     if (cachedImage != null) {
-      imagePanel.setImage(cachedImage)
-      isLoadedSuccessfully = true
-      revalidate()
-      repaint()
-      onImageLoaded?.invoke()
+      showImage(cachedImage)
+      return
+    }
+    if (thumbnailLoader.hasFailed(newPath)) {
+      showLoadFailure()
       return
     }
 
     isLoadedSuccessfully = false
     imagePanel.showLoading()
 
-    appExecutorService.submit {
-      val image = createImageIcon(newPath)
-      if (image != null) {
-        thumbnailCache?.put(newPath, image)
-      }
-
-      ApplicationManager.getApplication().invokeLater {
-        // Double-check if the request is still relevant to this panel instance before updating the UI.
-        if (currentImagePath == newPath && currentTestId == testId) {
-          if (image != null) {
-            imagePanel.setImage(image)
-
-            // The layout is now independent, so we just need to trigger a re-layout.
-            revalidate()
-            repaint()
-
-            isLoadedSuccessfully = true
-            onImageLoaded?.invoke()
-          } else {
-            logger.error("Couldn't load image from path: $newPath")
-            // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event
-            logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE, project)
-            showError(COULD_NOT_LOAD_IMAGE_TEXT)
-            onImageLoaded?.invoke() // To trigger a list repaint
-          }
+    thumbnailLoader.load(newPath) { image ->
+      // The panel may have been reused for another item while the image was decoding.
+      if (currentImagePath == newPath && currentTestId == testId) {
+        if (image != null) {
+          showImage(image)
+        } else {
+          logger.warn("Couldn't load image from path: $newPath")
+          // Log the SCREENSHOT_DIALOG_RENDER_FAILURE event
+          logScreenshotTestEvent(
+            ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_RENDER_FAILURE,
+            project,
+          )
+          showLoadFailure()
         }
       }
+      // Notify even for stale requests so that the parent list repaints and picks the decoded
+      // thumbnail from the loader's cache.
+      onImageLoaded?.invoke()
     }
   }
 
-  private fun createImageIconImpl(path: String): JBImageIcon? {
-    val ioFile = File(path)
-    if (!ioFile.exists()) {
-      logger.warn("Image file not found. Path: $path")
-      return null
-    }
-    if (ioFile.length() == 0L) {
-      logger.warn("Image file is empty. Path: $path")
-      return null
-    }
-    return try {
-      val image = ImageLoader.loadFromBytes(ioFile.readBytes())
-      if (image == null) {
-        logger.warn("ImageLoader failed to parse image data from path: $path")
-        return null
-      }
+  private fun showImage(image: JBImageIcon) {
+    imagePanel.setImage(image)
+    isLoadedSuccessfully = true
+    revalidate()
+    repaint()
+  }
 
-      val w = image.getWidth(null)
-      val h = image.getHeight(null)
-
-      // If the image is already within bounds, no scaling is needed.
-      if (w <= 0 || h <= 0 || (w <= MAX_IMAGE_SIZE && h <= MAX_IMAGE_SIZE)) {
-        return JBImageIcon(image)
-      }
-
-      // Calculate new dimensions while preserving aspect ratio to fit within MAX_IMAGE_SIZE
-      val newW: Int
-      val newH: Int
-      if (w > h) {
-        newW = MAX_IMAGE_SIZE
-        newH = (h.toDouble() * newW / w.toDouble()).toInt()
-      } else {
-        newH = MAX_IMAGE_SIZE
-        newW = (w.toDouble() * newH / h.toDouble()).toInt()
-      }
-
-      // Ensure we don't get zero dimensions for very thin/short images
-      val finalW = newW.coerceAtLeast(1)
-      val finalH = newH.coerceAtLeast(1)
-
-      val scaledImage = ImageUtil.scaleImage(image, finalW, finalH)
-      JBImageIcon(scaledImage)
-    } catch (e: IOException) {
-      logger.error("IOException occurred while loading image from path: $path", e)
-      null
-    }
+  private fun showLoadFailure() {
+    isLoadedSuccessfully = false
+    imagePanel.showText(COULD_NOT_LOAD_IMAGE_TEXT)
   }
 
   /** A self-contained panel that handles its own sizing and rendering to prevent distortion. */
@@ -305,7 +276,7 @@ class PreviewItemPanel(
     private var image: JBImageIcon? = null
     private val loadingIcon = AsyncProcessIcon(WAITING_FOR_IMAGE_TEXT)
     private val initialSize: Dimension
-      get() = Dimension(MAX_IMAGE_SIZE, MAX_IMAGE_SIZE)
+      get() = Dimension(MAX_THUMBNAIL_SIZE, MAX_THUMBNAIL_SIZE)
 
     init {
       // Set an initial fixed size for the loading state.
@@ -316,6 +287,7 @@ class PreviewItemPanel(
     }
 
     fun setImage(newImage: JBImageIcon) {
+      loadingIcon.suspend()
       this.image = newImage
       removeAll() // Remove loading icon or text labels
 
@@ -329,6 +301,7 @@ class PreviewItemPanel(
     }
 
     fun showLoading() {
+      loadingIcon.resume()
       this.image = null
       removeAll()
       add(loadingIcon)
@@ -339,6 +312,7 @@ class PreviewItemPanel(
     }
 
     fun showText(message: String, color: JBColor = JBColor.RED) {
+      loadingIcon.suspend()
       this.image = null
       removeAll()
       add(JBLabel(message).apply { foreground = color })

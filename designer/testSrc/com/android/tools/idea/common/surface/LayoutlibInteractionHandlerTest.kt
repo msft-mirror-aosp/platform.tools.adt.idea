@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.common.surface
 
+import android.view.MotionEvent
 import com.android.tools.adtui.ZoomController
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.idea.DesignSurfaceTestUtil.createZoomControllerFake
@@ -22,6 +23,7 @@ import com.android.tools.idea.common.TestPannable
 import com.android.tools.idea.common.fixtures.KeyEventBuilder
 import com.android.tools.idea.common.scene.Scene
 import com.android.tools.idea.common.scene.SceneManager
+import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.TestSceneView
 import com.android.tools.idea.uibuilder.surface.interaction.PanInteraction
 import com.intellij.openapi.util.Disposer
@@ -49,7 +51,7 @@ private class TestInteractableSurface(private val sceneView: SceneView? = null) 
   override val scene: Scene? = null
   override val focusedSceneView = sceneView
 
-  override fun getSceneViewAt(x: Int, y: Int) = sceneView
+  override fun getSceneViewAt(x: Int, y: Int): SceneView? = if (sceneView != null && x in 0..100 && y in 0..100) sceneView else null
 }
 
 class LayoutlibInteractionHandlerTest {
@@ -72,7 +74,11 @@ class LayoutlibInteractionHandlerTest {
   @Test
   fun testLayoutlibInteractionWhenPressingNonSpaceKeyAndSceneViewExists() {
     val sceneManager = Mockito.mock(SceneManager::class.java)
-    val handler = LayoutlibInteractionHandler(TestInteractableSurface(TestSceneView(100, 100, sceneManager)), TestPannable())
+    val handler =
+      LayoutlibInteractionHandler(
+        TestInteractableSurface(TestSceneView(100, 100, sceneManager)),
+        TestPannable(),
+      )
     val aKeyEvent = KeyEventBuilder(KeyEvent.VK_A, 'a').build()
     val interaction = handler.keyPressedWithoutInteraction(aKeyEvent)
     assertInstanceOf<LayoutlibInteraction>(interaction)
@@ -82,7 +88,11 @@ class LayoutlibInteractionHandlerTest {
   @Test
   fun testLayoutlibInteractionWhenMousePressed() {
     val sceneManager = Mockito.mock(SceneManager::class.java)
-    val handler = LayoutlibInteractionHandler(TestInteractableSurface(TestSceneView(100, 100, sceneManager)), TestPannable())
+    val handler =
+      LayoutlibInteractionHandler(
+        TestInteractableSurface(TestSceneView(100, 100, sceneManager)),
+        TestPannable(),
+      )
     val interaction = handler.createInteractionOnPressed(10, 10, 0)
     assertInstanceOf<LayoutlibInteraction>(interaction)
     Disposer.dispose(sceneManager)
@@ -95,6 +105,82 @@ class LayoutlibInteractionHandlerTest {
     assertEquals(0, surface.hoverCounter)
     handler.stayHovering(10, 10)
     assertEquals(1, surface.hoverCounter)
+  }
+
+  @Test
+  fun testHoverDispatchesEnterMoveAndExitEvents() {
+    val sceneManager = Mockito.mock(LayoutlibSceneManager::class.java)
+    Mockito.`when`(sceneManager.sceneScalingFactor).thenReturn(1.0f)
+    try {
+      val sceneView = TestSceneView(100, 100, sceneManager)
+      val surface = TestInteractableSurface(sceneView)
+      val handler = LayoutlibInteractionHandler(surface, TestPannable())
+
+      // Entering the SceneView triggers ACTION_HOVER_ENTER
+      handler.hoverWhenNoInteraction(20, 30, 0)
+      Mockito.verify(sceneManager).triggerHoverEventAsync(MotionEvent.ACTION_HOVER_ENTER, 20, 30)
+
+      // Moving inside the same SceneView triggers ACTION_HOVER_MOVE
+      handler.hoverWhenNoInteraction(25, 35, 0)
+      Mockito.verify(sceneManager).triggerHoverEventAsync(MotionEvent.ACTION_HOVER_MOVE, 25, 35)
+
+      // Exiting the surface triggers ACTION_HOVER_EXIT
+      handler.mouseExited()
+      Mockito.verify(sceneManager).triggerHoverEventAsync(MotionEvent.ACTION_HOVER_EXIT, -1, -1)
+    } finally {
+      Disposer.dispose(sceneManager)
+    }
+  }
+
+  @Test
+  fun testKeyReleaseFinishesKeyInteractionWithoutSyntheticHoverAndPreservesPointerDrag() {
+    val sceneManager = Mockito.mock(LayoutlibSceneManager::class.java)
+    Mockito.`when`(sceneManager.sceneScalingFactor).thenReturn(1.0f)
+    try {
+      val sceneView = TestSceneView(100, 100, sceneManager)
+      val surface = TestInteractableSurface(sceneView)
+      val handler = LayoutlibInteractionHandler(surface, TestPannable())
+      val sourceComponent = javax.swing.JPanel()
+      val tabPress = KeyEventBuilder(KeyEvent.VK_TAB, '\t').build()
+      val tabRelease =
+        java.awt.event.KeyEvent(
+          sourceComponent,
+          KeyEvent.KEY_RELEASED,
+          tabPress.`when`,
+          tabPress.modifiersEx,
+          KeyEvent.VK_TAB,
+          '\t',
+        )
+
+      // Key-initiated interaction is not a pointer interaction
+      val keyInteraction = handler.keyPressedWithoutInteraction(tabPress) as LayoutlibInteraction
+      keyInteraction.begin(KeyPressedEvent(tabPress, InteractionInformation(20, 30, 0)))
+      assertEquals(false, keyInteraction.isPointerInteraction)
+      keyInteraction.commit(KeyReleasedEvent(tabRelease, InteractionInformation(20, 30, 0)))
+      Mockito.verify(sceneManager, Mockito.never())
+        .triggerHoverEventAsync(Mockito.anyInt(), Mockito.anyInt(), Mockito.anyInt())
+
+      // Pointer-initiated interaction sets isPointerInteraction = true and survives modifier key
+      // release via update()
+      val pointerInteraction = handler.createInteractionOnPressed(20, 30, 0) as LayoutlibInteraction
+      val pressEvent =
+        java.awt.event.MouseEvent(
+          sourceComponent,
+          java.awt.event.MouseEvent.MOUSE_PRESSED,
+          tabPress.`when`,
+          0,
+          20,
+          30,
+          1,
+          false,
+        )
+      pointerInteraction.begin(MousePressedEvent(pressEvent, InteractionInformation(20, 30, 0)))
+      assertTrue(pointerInteraction.isPointerInteraction)
+      pointerInteraction.update(KeyReleasedEvent(tabRelease, InteractionInformation(20, 30, 0)))
+      assertTrue(pointerInteraction.isPointerInteraction)
+    } finally {
+      Disposer.dispose(sceneManager)
+    }
   }
 
   @Test
@@ -124,7 +210,8 @@ class LayoutlibInteractionHandlerTest {
     // Trigger mouse-press interaction.
     val interaction = handler.createInteractionOnPressed(10, 10, 0)
 
-    // Verify that the interaction is blocked (returns null) and the cancellation callback was invoked.
+    // Verify that the interaction is blocked (returns null) and the cancellation callback was
+    // invoked.
     assertNull(interaction)
     assertTrue(interactionStartCalled)
 
@@ -152,7 +239,8 @@ class LayoutlibInteractionHandlerTest {
     // Trigger key-press interaction.
     val interaction = handler.keyPressedWithoutInteraction(aKeyEvent)
 
-    // Verify that the interaction is blocked (returns null) and the cancellation callback was invoked.
+    // Verify that the interaction is blocked (returns null) and the cancellation callback was
+    // invoked.
     assertNull(interaction)
     assertTrue(interactionStartCalled)
 

@@ -7,7 +7,6 @@ iml_module(
     test_class = "com.android.tools.idea.IdeaTestSuite",
     # keep sorted
     test_data = [
-        "//prebuilts/studio/jdk/jdk8:jdk_runtime_files",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/testData",
@@ -25,6 +24,7 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core.tests",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/render-resources:intellij.android.render-resources",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",

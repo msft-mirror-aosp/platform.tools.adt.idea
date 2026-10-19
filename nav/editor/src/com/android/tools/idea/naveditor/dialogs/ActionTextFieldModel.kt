@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.naveditor.dialogs
 
+import com.android.annotations.concurrency.Slow
 import com.android.tools.adtui.model.stdui.DefaultCommonTextFieldModel
 import com.android.tools.adtui.model.stdui.EditingSupport
 import com.android.tools.adtui.model.stdui.EditorCompletion
@@ -23,13 +24,25 @@ import com.intellij.openapi.module.Module
 import org.jetbrains.android.sdk.getInstance
 
 class ActionTextFieldModel : DefaultCommonTextFieldModel("", "e.g. ACTION_SEND") {
-  private lateinit var actions: List<String>
+  private var actions: List<String> = emptyList()
+
+  fun setActions(actions: List<String>) {
+    this.actions = actions
+  }
 
   fun populateCompletions(module: Module) {
-    val platform = getInstance(module) ?: return
-    val targetData = AndroidTargetData.get(platform.sdkData, platform.target)
-    val activityActions = targetData.staticConstantsData.activityActions ?: return
-    actions = activityActions.filter { it.startsWith("android.intent.action.") }.map { "ACTION_${it.substringAfterLast('.')}" }.sorted()
+    actions = loadActions(module)
+  }
+
+  companion object {
+    @Slow
+    @JvmStatic
+    fun loadActions(module: Module): List<String> {
+      val platform = getInstance(module) ?: return emptyList()
+      val targetData = AndroidTargetData.get(platform.sdkData, platform.target)
+      val activityActions = targetData.staticConstantsData.activityActions ?: return emptyList()
+      return activityActions.filter { it.startsWith("android.intent.action.") }.map { "ACTION_${it.substringAfterLast('.')}" }.sorted()
+    }
   }
 
   override val editingSupport =

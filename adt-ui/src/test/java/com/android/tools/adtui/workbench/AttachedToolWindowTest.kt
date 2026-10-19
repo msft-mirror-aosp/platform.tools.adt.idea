@@ -97,7 +97,7 @@ class AttachedToolWindowTest {
 
     workBench = WorkBench(project, "DESIGNER", null, disposable, 0)
     toolWindow = AttachedToolWindow(definition, dragListener, workBench, model, false)
-    FakeUi(toolWindow.component, createFakeWindow = true, parentDisposable = disposable)
+    FakeUi(toolWindow.component, parentDisposable = disposable)
   }
 
   @Test

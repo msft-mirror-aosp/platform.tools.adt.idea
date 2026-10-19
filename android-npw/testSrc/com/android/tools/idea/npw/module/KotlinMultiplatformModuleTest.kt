@@ -37,6 +37,7 @@ import com.android.tools.idea.wizard.template.ThemesData
 import com.android.tools.idea.wizard.template.ViewBindingSupport
 import com.android.utils.FileUtils
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
+import com.intellij.openapi.vfs.newvfs.ManagingFS
 import java.io.File
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.Rule
@@ -160,6 +161,7 @@ class KotlinMultiplatformModuleTest {
       executor.generateMultiplatformModule(data = newModuleTemplateData, useKts = useKts)
       executor.applyChanges()
     }
+    ManagingFS.getInstance().flushPendingUpdates()
 
     return rootDir
   }

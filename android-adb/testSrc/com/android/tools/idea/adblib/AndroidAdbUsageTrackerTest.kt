@@ -18,6 +18,7 @@ package com.android.tools.idea.adblib
 import com.android.adblib.AdbUsageTracker
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.tools.analytics.UsageTrackerRule
+import com.google.wireless.android.sdk.stats.AdbUsageEvent
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -33,5 +34,23 @@ class AndroidAdbUsageTrackerTest {
     tracker.logUsage(AdbUsageTracker.Event(null, null))
 
     assertEquals(1, usageTrackerRule.usages.count { it.studioEvent.kind == AndroidStudioEvent.EventKind.ADB_USAGE_EVENT })
+  }
+
+  @Test
+  fun testAppInfoSupportReason(): Unit = runBlockingWithTimeout {
+    val tracker = AndroidAdbUsageTracker()
+
+    tracker.logUsage(
+      AdbUsageTracker.Event(
+        deviceInfo = null,
+        appInfoSupport = AdbUsageTracker.AppInfoSupportEvent(AdbUsageTracker.AppInfoSupportReason.SUPPORTED),
+      )
+    )
+
+    val usage = usageTrackerRule.usages.single { it.studioEvent.kind == AndroidStudioEvent.EventKind.ADB_USAGE_EVENT }
+    assertEquals(
+      AdbUsageEvent.AppInfoSupportEvent.Reason.SUPPORTED,
+      usage.studioEvent.adbUsageEvent.appInfoSupportEvent.reason,
+    )
   }
 }

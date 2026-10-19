@@ -7,7 +7,6 @@ iml_module(
     test_class = "com.android.tools.idea.IdeaTestSuite",
     # keep sorted
     test_data = [
-        "//prebuilts/studio/jdk/jdk8:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:build.prop",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platform-tools",
@@ -71,6 +70,12 @@ iml_module(
         "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/android-adb:intellij.android.adb.testUtil",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/adblib-ddmlibcompatibility:studio.android.sdktools.adblib.ddmlibcompatibility.tests",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+        "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

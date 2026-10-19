@@ -39,6 +39,7 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.runInEdtAndGet
 import kotlinx.coroutines.test.TestScope
 import org.junit.After
 import org.junit.Before
@@ -194,7 +195,7 @@ class AttachAndroidSdkSourcesNotificationProviderTest {
   ): AttachAndroidSdkSourcesNotificationProvider.MyEditorNotificationPanel? {
     val panelCreationFunction = runReadAction { provider.collectNotificationData(projectRule.project, virtualFile) } ?: return null
 
-    val panel = panelCreationFunction.apply(mockFileEditor)
+    val panel = runInEdtAndGet { panelCreationFunction.apply(mockFileEditor) }
 
     testCoroutineScope.testScheduler.advanceUntilIdle()
     ApplicationManager.getApplication().invokeAndWait {}

@@ -27,7 +27,6 @@ import com.android.tools.idea.common.surface.SceneView;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.ui.designer.overlays.OverlayConfiguration;
 import com.android.tools.idea.ui.designer.overlays.OverlayMenuAction;
-import com.android.tools.idea.uibuilder.actions.ConvertToComposeAction;
 import com.android.tools.idea.uibuilder.actions.ConvertToConstraintLayoutAction;
 import com.android.tools.idea.uibuilder.actions.DisableToolsVisibilityAndPositionInPreviewAction;
 import com.android.tools.idea.uibuilder.actions.MorphComponentAction;
@@ -51,6 +50,7 @@ import com.android.tools.idea.uibuilder.handlers.ViewHandlerManager;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface;
 import com.android.tools.idea.uibuilder.type.LayoutFileType;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.actionSystem.ActionGroup;
@@ -243,7 +243,8 @@ public class NlActionManager extends ActionManager<DesignSurface<LayoutlibSceneM
     return group;
   }
 
-  private void createLayoutOnlyActions(@Nullable NlComponent leafComponent, @NotNull DefaultActionGroup group) {
+  @VisibleForTesting
+  void createLayoutOnlyActions(@Nullable NlComponent leafComponent, @NotNull DefaultActionGroup group) {
     if (leafComponent != null) {
       group.add(new MorphComponentAction(leafComponent));
     }
@@ -251,12 +252,11 @@ public class NlActionManager extends ActionManager<DesignSurface<LayoutlibSceneM
       group.add(new ConvertToConstraintLayoutAction());
     }
     group.add(createRefactoringMenu());
+    for (LayoutEditorAiActionProvider provider : LayoutEditorAiActionProvider.EP_NAME.getExtensionList()) {
+      provider.getContextMenuActions().forEach(group::add);
+    }
 
     group.addSeparator();
-    if (StudioFlags.NELE_XML_TO_COMPOSE.get()) {
-      group.add(new ConvertToComposeAction());
-      group.addSeparator();
-    }
   }
 
   @Nullable

@@ -36,6 +36,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.TestActionEvent
+import com.intellij.testFramework.runInEdtAndWait
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -104,7 +105,7 @@ internal class BackupAppActionTest {
     val action = BackupAppAction(actionHelper, fakeDialogFactory)
     val event = testEvent(project, "serial")
 
-    action.actionPerformed(event)
+    runInEdtAndWait { action.actionPerformed(event) }
 
     fakeBackupManager.waitForBackupInvocations(1)
 

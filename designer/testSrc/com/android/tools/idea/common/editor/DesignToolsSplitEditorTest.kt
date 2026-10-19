@@ -19,6 +19,8 @@ import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.common.analytics.CommonUsageTracker
 import com.android.tools.idea.common.fixtures.ComponentDescriptor
+import com.android.tools.idea.common.model.NlModel
+import com.android.tools.idea.common.surface.navigateToComponent
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.NlModelBuilderUtil
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
@@ -27,18 +29,26 @@ import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.LayoutEditorEvent
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.editor.ex.EditorGutterComponentEx
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.fileEditor.TextEditor
+import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.keymap.impl.IdeKeyEventDispatcher
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.util.ui.UIUtil
+import java.awt.Component
 import java.awt.KeyboardFocusManager
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
 import javax.swing.JComponent
 import javax.swing.JLabel
+import javax.swing.JPanel
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -47,6 +57,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyBoolean
 import org.mockito.Mockito.mock
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.spy
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 @RunsInEdt
@@ -55,6 +70,7 @@ class DesignToolsSplitEditorTest {
 
   @get:Rule val runsInEdt = EdtRule()
 
+  private lateinit var nlModel: NlModel
   private lateinit var splitEditor: DesignToolsSplitEditor
   private lateinit var textEditor: TextEditor
   private lateinit var designerEditor: DesignerEditor
@@ -62,7 +78,7 @@ class DesignToolsSplitEditorTest {
 
   @Before
   fun setUp() {
-    val nlModel =
+    nlModel =
       NlModelBuilderUtil.model(projectRule, "layout", "layout.xml", ComponentDescriptor("LinearLayout")).build().apply {
         Disposer.register(projectRule.testRootDisposable, this)
       }
@@ -77,7 +93,8 @@ class DesignToolsSplitEditorTest {
 
         @UiThread
         override fun createEditorPanel(): DesignerEditorPanel =
-          DesignerEditorPanel(
+          object :
+            DesignerEditorPanel(
               this,
               project,
               file!!,
@@ -88,7 +105,11 @@ class DesignToolsSplitEditorTest {
               { _ -> listOf() },
               { _, _ -> JLabel() },
               DesignerEditorPanel.State.FULL,
-            )
+            ) {
+            override fun initNeleModel() {
+              // No-op in tests: prevent asynchronous model initialization on background thread
+            }
+          }
             .apply { Disposer.register(projectRule.testRootDisposable, this) }
       }
 
@@ -195,7 +216,7 @@ class DesignToolsSplitEditorTest {
     KeyboardFocusManager.setCurrentKeyboardFocusManager(focusManager)
     val dispatcher = IdeKeyEventDispatcher(null)
 
-    splitEditor.selectSplitMode(true)
+    splitEditor.selectSplitMode(userExplicitlyTriggered = true)
     // The circular sequence is ... Code <-> Split <-> Design <-> Code <-> Split <-> Design <-> Code
     // ...
     dispatcher.pressAndRelease(KeyEvent.VK_LEFT, modifiers)
@@ -215,6 +236,79 @@ class DesignToolsSplitEditorTest {
 
     dispatcher.pressAndRelease(KeyEvent.VK_RIGHT, modifiers)
     assertThat(splitEditor.isSplitMode()).isTrue()
+  }
+
+  // Regression test for b/348688204
+  @Test
+  fun testFocusRequestedOnVisibleEditorWhenSwitchingBackFromDesignMode() {
+    var focusRequestedWhileRecursivelyVisible = false
+    val editorContentComponent =
+      object : JPanel() {
+        override fun requestFocusInWindow(): Boolean {
+          focusRequestedWhileRecursivelyVisible =
+            generateSequence<Component>(this) { it.parent }.all { it.isVisible }
+          return focusRequestedWhileRecursivelyVisible
+        }
+      }
+    val editorComponent = JPanel().apply { add(editorContentComponent) }
+    textEditor.component.apply {
+      add(editorComponent)
+      // Simulate PsiAwareTextEditorComponent updating editor.component visibility via ComponentEvents.
+      addComponentListener(
+        object : ComponentAdapter() {
+          override fun componentShown(e: ComponentEvent?) {
+            editorComponent.isVisible = true
+          }
+
+          override fun componentHidden(e: ComponentEvent?) {
+            editorComponent.isVisible = false
+          }
+        }
+      )
+    }
+    whenever(textEditor.preferredFocusedComponent).thenReturn(editorContentComponent)
+    whenever(textEditor.editor.component).thenReturn(editorComponent)
+    whenever(textEditor.editor.contentComponent).thenReturn(editorContentComponent)
+
+    splitEditor.selectDesignMode(true)
+    UIUtil.dispatchAllInvocationEvents()
+    assertThat(editorComponent.isVisible).isFalse()
+
+    focusRequestedWhileRecursivelyVisible = false
+    splitEditor.selectTextMode(true)
+    assertThat(focusRequestedWhileRecursivelyVisible).isTrue()
+  }
+
+  @Test
+  fun testNavigateToSwitchesDesignModeToSplitMode() {
+    splitEditor.selectDesignMode(userExplicitlyTriggered = false)
+    assertThat(splitEditor.isDesignMode()).isTrue()
+
+    val navigatable = OpenFileDescriptor(projectRule.project, nlModel.virtualFile, 0)
+    splitEditor.navigateTo(navigatable)
+
+    assertThat(splitEditor.isSplitMode()).isTrue()
+    verify(textEditor).navigateTo(navigatable)
+  }
+
+  @Test
+  fun testNavigateToComponentWithoutFocusInDesignModeNavigatesTextAndKeepsDesignMode() {
+    val fileEditorManager = spy(FileEditorManagerEx.getInstanceEx(projectRule.project))
+    doReturn(splitEditor).whenever(fileEditorManager).selectedEditor
+    projectRule.replaceProjectService(FileEditorManager::class.java, fileEditorManager)
+    whenever(textEditor.canNavigateTo(any())).thenReturn(true)
+
+    splitEditor.selectDesignMode(userExplicitlyTriggered = false)
+    assertThat(splitEditor.isDesignMode()).isTrue()
+
+    val rootComponent = nlModel.treeReader.components.first()
+    navigateToComponent(rootComponent, false)
+
+    assertThat(splitEditor.isDesignMode()).isTrue()
+    val descriptorCaptor = argumentCaptor<OpenFileDescriptor>()
+    verify(textEditor).navigateTo(descriptorCaptor.capture())
+    assertThat(descriptorCaptor.firstValue.file).isEqualTo(nlModel.virtualFile)
+    assertThat(descriptorCaptor.firstValue.offset).isEqualTo(rootComponent.tagDeprecated!!.textOffset)
   }
 
   private fun IdeKeyEventDispatcher.pressAndRelease(keyCode: Int, modifiers: Int) {

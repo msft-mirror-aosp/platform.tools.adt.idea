@@ -1,7 +1,6 @@
 load("@rules_java//java:defs.bzl", "java_binary")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/base/bazel:jvm_import.bzl", "jvm_import")
-load("//tools/base/bazel:kotlin.bzl", "kotlin_library")
 load("//tools/base/intellij-bazel:intellij.bzl", "intellij_plugin")
 
 java_binary(
@@ -12,16 +11,10 @@ java_binary(
     ],
 )
 
-kotlin_library(
-    name = "wrapper_class_file",
-    srcs = glob(["plugin/src/com/android/tools/asdriver/plugin/*.kt"]),
-)
-
 intellij_plugin(
     name = "asdriver.plugin",
     directory = "asdriver.plugin",
     libs = [
-        "wrapper_class_file",
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/as-driver:asdriver_proto",
         "//tools/adt/idea/.idea/libraries:studio-grpc",
@@ -40,7 +33,37 @@ intellij_plugin(
     plugin_id = "com.android.tools.asdriver",
     deps = [
         "@intellij//:com.jetbrains.performancePlugin",
+        "@intellij//:intellij.performanceTesting.remoteDriver",
     ],
+)
+
+# sherlock-sdk builds, split by host OS, so as-driver only depends on the Sherlock zip
+# it can actually run.
+#
+# Studio needs no such split: it depends on "android-studio_files", the host-only
+# unpacked tree exposed by studio.bzl, and AndroidStudioInstallation.fromDir() copies it
+# directly. Sherlock exposes the same tree as "sherlock.stable_files", but
+# SherlockInstallation only has fromZip(), which reads sherlock.stable.<os>.zip, and the
+# zips are produced for all three OSes regardless of host. Picking the right one therefore
+# has to happen here. Bazel does not allow nesting a select() inside a select() branch,
+# hence the dedicated config_settings. Once SherlockInstallation gains a fromDir(), this
+# can collapse to a single "sherlock.stable_files" entry like Studio's.
+config_setting(
+    name = "sherlock-sdk-linux",
+    constraint_values = ["@platforms//os:linux"],
+    flag_values = {"//tools/base/intellij-bazel:intellij_platform": "sherlock-sdk"},
+)
+
+config_setting(
+    name = "sherlock-sdk-macos",
+    constraint_values = ["@platforms//os:macos"],
+    flag_values = {"//tools/base/intellij-bazel:intellij_platform": "sherlock-sdk"},
+)
+
+config_setting(
+    name = "sherlock-sdk-windows",
+    constraint_values = ["@platforms//os:windows"],
+    flag_values = {"//tools/base/intellij-bazel:intellij_platform": "sherlock-sdk"},
 )
 
 # managed by go/iml_to_build
@@ -52,7 +75,9 @@ iml_module(
         "//tools/base/threading-agent:threading_agent.jar",
     ] + select({
         "@intellij//:studio-sdk": ["//tools/adt/idea/studio:android-studio_files"],
-        "@intellij//:sherlock-sdk": ["//tools/profiler/sherlock-plugin:sherlock.stable"],
+        ":sherlock-sdk-linux": ["//tools/profiler/sherlock-plugin:sherlock.stable.linux.zip"],
+        ":sherlock-sdk-macos": ["//tools/profiler/sherlock-plugin:sherlock.stable.darwin.zip"],
+        ":sherlock-sdk-windows": ["//tools/profiler/sherlock-plugin:sherlock.stable.windows.zip"],
         "//conditions:default": ["@intellij//:distribution-zip"],
     }),
     iml_files = ["utils/as-driver.utils.iml"],
@@ -69,6 +94,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/as-driver:librunfiles",
         "//tools/emulator/testlib:android.sdktools.testlib",
+        "//tools/base/repository:studio.android.sdktools.repository.tests",
     ],
     test_srcs = ["utils/testSrc"],
     visibility = ["//visibility:public"],
@@ -133,6 +159,7 @@ iml_module(
         "//tools/adt/idea/bleak:intellij.android.bleak",
         "//tools/adt/idea/bleak-config:intellij.android.bleak-config",
         "@intellij//:com.jetbrains.performancePlugin",
+        "@intellij//:intellij.performanceTesting.remoteDriver",
     ],
 )
 

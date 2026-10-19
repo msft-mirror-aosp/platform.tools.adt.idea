@@ -1,6 +1,14 @@
 #!/bin/bash -ex
 
 readonly PROG_DIR="$(cd "$(dirname "$0")" && pwd)"
+readonly ICONS_DIR="${PROG_DIR}/resources/icons"
+readonly KT_FILE="${PROG_DIR}/src/com/android/tools/idea/streaming/StagingIcons.kt"
+
+if [ ! -d "$ICONS_DIR" ] || [ -z "$(find "$ICONS_DIR" -type f \( -name '*.svg' -o -name '*.png' \) 2>/dev/null)" ]; then
+  rm -f "$KT_FILE"
+  exit 0
+fi
+
 readonly IDEA_DIR="$(cd "${PROG_DIR}/../../../idea" && pwd)"
 readonly ADT_DIR="$(cd "${PROG_DIR}/.." && pwd)"
 
@@ -21,7 +29,6 @@ unlink "${IDEA_DIR}/android" || true
 
 # Extract icon definitions from the generated Java file and rewrite StagingIcons.kt
 readonly JAVA_FILE="${PROG_DIR}/src/com/intellij/android/streaming/icons/AndroidStreamingIcons.java"
-readonly KT_FILE="${PROG_DIR}/src/com/android/tools/idea/streaming/StagingIcons.kt"
 
 cat << 'EOF' > "$KT_FILE"
 /*
@@ -44,21 +51,19 @@ package com.android.tools.idea.streaming
 import com.intellij.ui.IconManager
 import javax.swing.Icon
 
-/**
- * NOTE THIS FILE IS AUTO-GENERATED.
- * DO NOT EDIT IT BY HAND, run "tools/adt/idea/streaming/generate_icons.sh" to update.
- */
+/** NOTE THIS FILE IS AUTO-GENERATED. DO NOT EDIT IT BY HAND, run "tools/adt/idea/streaming/generate_icons.sh" to update. */
 object StagingIcons {
   private fun load(path: String, cacheKey: Int, flags: Int): Icon {
+    @Suppress("UnstableApiUsage")
     return IconManager.getInstance().loadRasterizedIcon(path, StagingIcons::class.java.classLoader, cacheKey, flags)
   }
 EOF
 
 if [ -f "$JAVA_FILE" ]; then
-    # Parse and convert lines like: public static final @NotNull Icon FitView = load("icons/fit-view.svg", -842529787, 0);
+    # Parse and convert lines like: public static final @NotNull Icon FitView = load("icons/zoom-fit-view.svg", -842529787, 0);
     # To:
     #   @JvmField
-    #   val FIT_VIEW: Icon = load("icons/fit-view.svg", -842529787, 0)
+    #   val FIT_VIEW: Icon = load("icons/zoom-fit-view.svg", -842529787, 0)
     grep 'public static final @NotNull Icon' "$JAVA_FILE" | while read -r line; do
         # Extract the icon name (e.g. FitView)
         icon_name=$(echo "$line" | sed -E 's/.*Icon ([A-Za-z0-9_]+) =.*/\1/')
@@ -66,12 +71,11 @@ if [ -f "$JAVA_FILE" ]; then
         # Convert CamelCase to CONSTANT_CASE
         kt_name=$(echo "$icon_name" | sed -r 's/([a-z0-9])([A-Z])/\1_\2/g' | tr '[:lower:]' '[:upper:]')
 
-        # Extract the load expression (e.g. load("icons/fit-view.svg", -842529787, 0))
+        # Extract the load expression (e.g. load("icons/zoom-fit-view.svg", -842529787, 0))
         load_expr=$(echo "$line" | sed -E 's/.*(load\(.*\));/\1/')
 
         echo "" >> "$KT_FILE"
-        echo "  @JvmField" >> "$KT_FILE"
-        echo "  val $kt_name: Icon = $load_expr" >> "$KT_FILE"
+        echo "  @JvmField val $kt_name: Icon = $load_expr" >> "$KT_FILE"
     done
 
     # Clean up generated Java source

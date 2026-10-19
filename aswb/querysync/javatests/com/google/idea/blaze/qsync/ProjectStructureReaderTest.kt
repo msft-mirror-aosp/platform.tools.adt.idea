@@ -26,10 +26,12 @@ import com.google.idea.blaze.qsync.project.ProjectStructureData
 import com.google.idea.blaze.qsync.project.ProjectStructureRoot
 import com.google.idea.blaze.qsync.project.QuerySyncLanguage
 import com.google.idea.blaze.qsync.project.SourceSet
+import com.google.idea.blaze.qsync.project.getBuildPackage
 import com.google.idea.blaze.qsync.project.testutil.compareFormattedStrings
 import com.google.idea.blaze.qsync.project.testutil.dump
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.FileTime
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 import org.junit.Before
@@ -63,7 +65,11 @@ class ProjectStructureReaderTest {
     workspaceRoot = temporaryFolder.root.toPath()
   }
 
-  private fun createProjectDefinition(includes: Set<String>, excludes: Set<String> = emptySet()): ProjectDefinition {
+  private fun createProjectDefinition(
+    includes: Set<String>,
+    excludes: Set<String> = emptySet(),
+    supportsNestedWorkspaces: Boolean = true,
+  ): ProjectDefinition {
     return ProjectDefinition(
       projectIncludes = includes.map { Path.of(it) }.toSet(),
       projectExcludes = excludes.map { Path.of(it) }.toSet(),
@@ -73,6 +79,7 @@ class ProjectStructureReaderTest {
       languageClasses = emptySet(),
       testSources = emptySet(),
       systemExcludes = emptySet(),
+      supportsNestedWorkspaces = supportsNestedWorkspaces,
     )
   }
 
@@ -103,7 +110,7 @@ class ProjectStructureReaderTest {
             projectStructureRootPath = Path.of(rootPath),
             buildPackages =
               packageMap
-                .mapValues { (pkgPath, sourceSet) -> BuildPackage(path = Path.of(pkgPath), sourceSets = listOf(sourceSet)) }
+                .mapValues { (pkgPath, sourceSet) -> BuildPackage(path = Path.of(pkgPath), sourceSets = listOf(sourceSet), stamp = 0L) }
                 .mapKeys { Path.of(it.key) },
           )
         },
@@ -122,7 +129,7 @@ class ProjectStructureReaderTest {
             projectStructureRootPath = Path.of(rootPath),
             buildPackages =
               packageMap
-                .mapValues { (pkgPath, sourceSets) -> BuildPackage(path = Path.of(pkgPath), sourceSets = sourceSets) }
+                .mapValues { (pkgPath, sourceSets) -> BuildPackage(path = Path.of(pkgPath), sourceSets = sourceSets, stamp = 0L) }
                 .mapKeys { Path.of(it.key) },
           )
         },
@@ -772,5 +779,173 @@ class ProjectStructureReaderTest {
         languages = setOf(QuerySyncLanguage.JVM),
       )
     assertStructureEquals(structure, expected)
+  }
+
+  @Test
+  fun testEmptyPackage_discoveredAndStamped() {
+    createFile("pkg/empty/BUILD")
+
+    val projectDefinition = createProjectDefinition(setOf("pkg"))
+    val structure = reader.read(context, workspaceRoot, projectDefinition)
+
+    val buildPackage = structure.getBuildPackage(Path.of("pkg/empty"))
+    assertThat(buildPackage).isNotNull()
+    assertThat(buildPackage?.path).isEqualTo(Path.of("pkg/empty"))
+    assertThat(buildPackage?.sourceSets).isEmpty()
+    assertThat(buildPackage?.stamp).isNotEqualTo(0L)
+  }
+
+  @Test
+  fun testSubpackageDiscovery_updatesParentStamp() {
+    createFile("pkg/parent/BUILD")
+    createFile("pkg/parent/File.java")
+
+    val projectDefinition = createProjectDefinition(setOf("pkg"))
+    val structure1 = reader.read(context, workspaceRoot, projectDefinition)
+    val parentStampBefore = structure1.getBuildPackage(Path.of("pkg/parent"))?.stamp
+    assertThat(parentStampBefore).isNotNull()
+
+    createFile("pkg/parent/child/BUILD")
+    createFile("pkg/parent/child/Child.java")
+
+    val structure2 = reader.read(context, workspaceRoot, projectDefinition)
+    val parentStampAfter = structure2.getBuildPackage(Path.of("pkg/parent"))?.stamp
+    assertThat(parentStampAfter).isNotNull()
+
+    assertThat(parentStampAfter).isNotEqualTo(parentStampBefore)
+  }
+
+  @Test
+  fun testBuildFileTimestamp_reflectedInPackageStamp() {
+    createFile("pkg/simple/BUILD")
+    createFile("pkg/simple/A.java")
+
+    val buildFile = workspaceRoot.resolve("pkg/simple/BUILD")
+    Files.setLastModifiedTime(buildFile, FileTime.fromMillis(1_000_000_000L))
+
+    val projectDefinition = createProjectDefinition(setOf("pkg"))
+    val structure1 = reader.read(context, workspaceRoot, projectDefinition)
+    val stamp1 = structure1.getBuildPackage(Path.of("pkg/simple"))?.stamp
+    assertThat(stamp1).isNotNull()
+
+    Files.setLastModifiedTime(buildFile, FileTime.fromMillis(2_000_000_000L))
+    val structure2 = reader.read(context, workspaceRoot, projectDefinition)
+    val stamp2 = structure2.getBuildPackage(Path.of("pkg/simple"))?.stamp
+    assertThat(stamp2).isNotNull()
+
+    assertThat(stamp2).isNotEqualTo(stamp1)
+  }
+
+  @Test
+  fun nestedWorkspace_ignoredWhenSupportsNestedWorkspacesFalse() {
+    createFile("java/com/example/astrea/MODULE.bazel")
+    createFile("java/com/example/astrea/WORKSPACE")
+    createFile("java/com/example/astrea/WORKSPACE.bazel")
+    createFile("java/com/example/astrea/BUILD")
+    createFile("java/com/example/astrea/AstreaMain.java")
+    createFile("java/com/example/astrea/sub/BUILD.bazel")
+    createFile("java/com/example/astrea/sub/SubClass.kt")
+
+    val projectDefinition = createProjectDefinition(includes = setOf("java/com/example/astrea"), supportsNestedWorkspaces = false)
+    val structure = reader.read(context, workspaceRoot, projectDefinition)
+
+    val expected =
+      expectedStructure(
+        roots =
+          mapOf(
+            "java/com/example/astrea" to
+              mapOf(
+                "java/com/example/astrea" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/astrea"),
+                    javaSourceFiles = listOf(Path.of("AstreaMain.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+                "java/com/example/astrea/sub" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/astrea/sub"),
+                    javaSourceFiles = listOf(Path.of("SubClass.kt")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  ),
+              )
+          ),
+        languages = setOf(QuerySyncLanguage.JVM),
+      )
+    assertStructureEquals(structure, expected)
+  }
+
+  @Test
+  fun scanDirectories_targetedDirsToScan_scansOnlySpecifiedDirectories() {
+    createFile("java/com/example/one/BUILD")
+    createFile("java/com/example/one/One.java")
+    createFile("java/com/example/two/BUILD")
+    createFile("java/com/example/two/Two.kt")
+
+    val projectDefinition = createProjectDefinition(setOf("java"))
+    val readerImpl = ProjectStructureReaderImpl(FileExtensions()) { _, _ -> "" }
+    val scope =
+      ScanScope(
+        dirsToScan = setOf(Path.of("java/com/example/one")),
+        knownUnmodifiedPackages = emptySet(),
+      )
+    val structure =
+      readerImpl.scanDirectories(
+        context,
+        workspaceRoot,
+        projectDefinition,
+        scope,
+      )
+
+    val expected =
+      expectedStructure(
+        roots =
+          mapOf(
+            "java" to
+              mapOf(
+                "java/com/example/one" to
+                  SourceSet(
+                    rootPath = Path.of("java/com/example/one"),
+                    javaSourceFiles = listOf(Path.of("One.java")),
+                    nonJavaSourceFiles = emptyList(),
+                    javaPackage = "",
+                  )
+              )
+          ),
+        languages = setOf(QuerySyncLanguage.JVM),
+      )
+    assertStructureEquals(structure, expected)
+  }
+
+  @Test
+  fun scanDirectories_knownPackages_skipsTraversalAndRecordsDirectSubpackage() {
+    createFile("pkg/BUILD")
+    createFile("pkg/Parent.java")
+    createFile("pkg/sub/BUILD")
+    createFile("pkg/sub/Child.java")
+
+    val projectDefinition = createProjectDefinition(setOf("pkg"))
+    val readerImpl = ProjectStructureReaderImpl(FileExtensions()) { _, _ -> "" }
+    val fullStructure = readerImpl.read(context, workspaceRoot, projectDefinition)
+
+    val scope =
+      ScanScope(
+        dirsToScan = setOf(Path.of("pkg")),
+        knownUnmodifiedPackages = setOf(Path.of("pkg/sub")),
+      )
+    val targetedStructure =
+      readerImpl.scanDirectories(
+        context,
+        workspaceRoot,
+        projectDefinition,
+        scope,
+      )
+
+    val packages = targetedStructure.roots.single().buildPackages
+    assertThat(packages.keys).containsExactly(Path.of("pkg"))
+    val targetedParentPkg = packages[Path.of("pkg")]
+    val fullParentPkg = fullStructure.roots.single().buildPackages[Path.of("pkg")]
+    assertThat(targetedParentPkg?.stamp).isEqualTo(fullParentPkg?.stamp)
   }
 }

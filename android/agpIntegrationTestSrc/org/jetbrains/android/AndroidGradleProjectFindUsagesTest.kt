@@ -15,22 +15,33 @@
  */
 package org.jetbrains.android
 
+import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.moveCaret
 import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
+import com.google.common.util.concurrent.Futures
+import com.intellij.find.FindManager
+import com.intellij.find.impl.FindManagerBase
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.search.SearchScope
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
 import com.intellij.usageView.UsageInfo
 import com.intellij.usages.PsiElementUsageTarget
 import com.intellij.usages.UsageTargetUtil
+import com.intellij.util.CommonProcessors
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.Collections
+import java.util.concurrent.Callable
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -132,6 +143,8 @@ class AndroidGradleProjectFindUsagesTest {
   }
 
   fun findUsages(file: VirtualFile?, fixture: CodeInsightTestFixture, scope: GlobalSearchScope?): Collection<UsageInfo?> {
+    // configureFromExistingVirtualFile rewrites the file with its disk content, so save typed text first to avoid a memory-disk conflict.
+    FileDocumentManager.getInstance().saveAllDocuments()
     fixture.configureFromExistingVirtualFile(file!!)
     val dataContext = (fixture.editor as EditorEx).dataContext
     val editor = CommonDataKeys.EDITOR.getData(dataContext)
@@ -140,6 +153,27 @@ class AndroidGradleProjectFindUsagesTest {
 
     val targets = UsageTargetUtil.findUsageTargets(editor, psiFile, psiElement)
     assert(targets != null && targets.size > 0 && targets[0] is PsiElementUsageTarget)
-    return (fixture as CodeInsightTestFixtureImpl).findUsages((targets!![0] as PsiElementUsageTarget).element, scope)
+    return findUsagesInBackground(fixture, (targets!![0] as PsiElementUsageTarget).element, scope)
+  }
+
+  /**
+   * Same as [CodeInsightTestFixtureImpl.findUsages], but like FindUsagesManager in production, only sets up the handler on the UI thread
+   * and runs [com.intellij.find.findUsages.FindUsagesHandler.processElementUsages], which is `@WorkerThread` for Android resources, on a
+   * pooled thread while pumping UI events.
+   */
+  private fun findUsagesInBackground(
+    fixture: CodeInsightTestFixture,
+    targetElement: PsiElement,
+    scope: SearchScope?,
+  ): Collection<UsageInfo> {
+    val handler = (FindManager.getInstance(fixture.project) as FindManagerBase).findUsagesManager.getFindUsagesHandler(targetElement, false)
+    requireNotNull(handler) { "Cannot find handler for: $targetElement" }
+    val elements = handler.primaryElements + handler.secondaryElements
+    val options = handler.getFindUsagesOptions(null)
+    if (scope != null) options.searchScope = scope
+    val processor = CommonProcessors.CollectProcessor<UsageInfo>(Collections.synchronizedList(ArrayList()))
+    val search = Callable { elements.forEach { handler.processElementUsages(it, processor, options) } }
+    pumpEventsAndWaitForFuture(Futures.submit(search, AppExecutorUtil.getAppExecutorService()))
+    return processor.results
   }
 }

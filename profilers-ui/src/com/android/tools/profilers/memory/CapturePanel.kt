@@ -22,7 +22,9 @@ import com.android.tools.adtui.flat.FlatSeparator
 import com.android.tools.adtui.model.AspectObserver
 import com.android.tools.adtui.model.Range
 import com.android.tools.adtui.model.StreamingTimeline
+import com.android.tools.adtui.model.formatter.NumberFormatter
 import com.android.tools.profilers.IdeProfilerComponents
+import com.android.tools.profilers.MinWidthScrollPane.Companion.KEEP_PREFERRED_WIDTH
 import com.android.tools.profilers.ProfilerFonts
 import com.android.tools.profilers.ProfilerLayout.FILTER_TEXT_FIELD_TRIGGER_DELAY_MS
 import com.android.tools.profilers.ProfilerLayout.FILTER_TEXT_FIELD_WIDTH
@@ -32,10 +34,12 @@ import com.android.tools.profilers.ProfilerLayout.createToolbarLayout
 import com.android.tools.profilers.StudioProfilersView
 import com.android.tools.profilers.memory.adapters.HeapDumpCaptureObject
 import com.android.tools.profilers.memory.adapters.NativeAllocationSampleCaptureObject
+import com.android.tools.profilers.memory.adapters.classifiers.AllHeapSet
 import com.android.tools.profilers.memory.adapters.classifiers.ClassifierSet
 import com.android.tools.profilers.memory.adapters.classifiers.HeapSet
 import com.android.tools.profilers.memory.adapters.instancefilters.CaptureObjectInstanceFilter
 import com.android.tools.profilers.memory.chart.MemoryVisualizationView
+import com.intellij.ui.ClientProperty
 import com.intellij.ui.components.JBTabbedPane
 import com.intellij.util.ui.JBEmptyBorder
 import com.intellij.util.ui.JBUI
@@ -44,10 +48,12 @@ import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
 import java.awt.FlowLayout
+import java.util.stream.Stream
 import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
+import kotlin.streams.asStream
 
 class CapturePanel(
   profilersView: StudioProfilersView,
@@ -206,67 +212,94 @@ private class CapturePanelUi(
       minimumSize = Dimension(0, minimumSize.height)
     }
 
+  /**
+   * Builds the summary panel bar displaying high-level metrics (classes, leaks, duplicates, count, native/shallow/retained sizes).
+   *
+   * Note: This summary bar is only displayed for static [HeapDumpCaptureObject]s with an active heap selection. For non-heap dump captures
+   * (such as live allocation tracking), this panel remains hidden and skips computations.
+   */
   private fun buildSummaryPanel() =
     JPanel(FlowLayout(FlowLayout.LEFT)).apply {
       border = AdtUiUtils.DEFAULT_TOP_BORDER
+      fun formatStatValue(value: Long): String =
+        if (value == ClassifierSet.NOT_APPLICABLE_SIZE) "-" else NumberFormatter.formatInteger(value)
+
       fun mkLabel(desc: String, action: Runnable? = null) =
-        StatLabel(0L, desc, numFont = ProfilerFonts.H2_FONT, descFont = AdtUiUtils.DEFAULT_FONT.biggerOn(1f), action = action)
+        StatLabel(
+          0L,
+          desc,
+          numFont = ProfilerFonts.H2_FONT,
+          descFont = AdtUiUtils.DEFAULT_FONT.biggerOn(1f),
+          numFormatter = ::formatStatValue,
+          action = action,
+        )
 
       val totalClassLabel = mkLabel("Classes")
       val totalLeakLabel = mkLabel("Leaks")
-      val totalBitmapDuplicatesLabel = mkLabel("Duplicates")
+      val totalBitmapDuplicatesLabel = mkLabel("Duplicate Bitmaps")
       val totalCountLabel = mkLabel("Count")
       val totalNativeSizeLabel = mkLabel("Native Size")
       val totalShallowSizeLabel = mkLabel("Shallow Size")
+      val retainedSizeSeparator = FlatSeparator(6, 36)
+      val totalRetainedNativeSizeLabel = mkLabel("Retained Native Size")
       val totalRetainedSizeLabel = mkLabel("Retained Size")
 
-      // Compute total classes asynchronously because it can take multiple seconds
+      // Compute total classes asynchronously to avoid locking on the UI thread
       fun refreshTotalClassesAsync(heap: HeapSet) =
         profilersView.studioProfilers.ideServices.poolExecutor.execute {
-          // Handle "no filter" case specially, because it recomputes from the current instance stream,
-          // and `ClassifierSet` only considers instances as "matched" if the filter is not empty.
-          // This is analogous to how `MemoryClassifierView` is checking if filter is empty to treat it specially
-          val filterMatches = if (selection.filterHandler.filter.isEmpty) heap.instancesStream else heap.filterMatches
-          // Totals other than class count don't need this, because they are direct fields initialized correctly
-          val count = filterMatches.mapToLong { it.classEntry.classId }.distinct().count()
-          profilersView.studioProfilers.ideServices.mainExecutor.execute { totalClassLabel.numValue = count }
+          val classCount = heap.classSetCount
+          profilersView.studioProfilers.ideServices.mainExecutor.execute {
+            if (selection.selectedHeapSet == heap) {
+              totalClassLabel.numValue = classCount
+            }
+          }
         }
 
       // Compute total retained size asynchronously because it can take multiple seconds
       fun refreshTotalRetainedSizeAsync(heap: HeapSet) =
         profilersView.studioProfilers.ideServices.poolExecutor.execute {
           val retainedSize = heap.totalRetainedSize
-          profilersView.studioProfilers.ideServices.mainExecutor.execute { totalRetainedSizeLabel.numValue = retainedSize }
+          val retainedNativeSize = heap.totalRetainedNativeSize
+          profilersView.studioProfilers.ideServices.mainExecutor.execute {
+            if (selection.selectedHeapSet == heap) {
+              val retainedTooltip = "Retained Size is not available when a filter is applied"
+              totalRetainedSizeLabel.numValue = retainedSize
+              totalRetainedSizeLabel.toolTipText = if (retainedSize == ClassifierSet.NOT_APPLICABLE_SIZE) retainedTooltip else null
+              totalRetainedNativeSizeLabel.numValue = retainedNativeSize
+              totalRetainedNativeSizeLabel.toolTipText =
+                if (retainedNativeSize == ClassifierSet.NOT_APPLICABLE_SIZE) retainedTooltip else null
+            }
+          }
         }
 
       fun refreshSummaries() {
-        selection.selectedHeapSet?.let { heap ->
-          refreshTotalClassesAsync(heap)
-          totalCountLabel.numValue = heap.totalObjectCount.toLong()
-          totalNativeSizeLabel.numValue = heap.totalNativeSize
-          totalShallowSizeLabel.numValue = heap.totalShallowSize
-          refreshTotalRetainedSizeAsync(heap)
-
-          val capture = selection.selectedCapture
-          isVisible = capture is HeapDumpCaptureObject
-          if (capture !is HeapDumpCaptureObject) {
-            totalLeakLabel.isVisible = false
-            totalBitmapDuplicatesLabel.isVisible = false
-            return@let
-          }
-
-          fun updateLabel(label: StatLabel, filter: CaptureObjectInstanceFilter) {
-            // A local val is required for functionality because StatLabel.numValue doesn't store
-            // the value, it just updates the label and can't be used for any other purpose.
-            val count = getFilteredInstanceCount(heap, selection.selectedClassTypeFilter, filter)
-            label.numValue = count
-            label.isVisible = true
-            label.icon = if (count > 0) StudioIcons.Common.WARNING else null
-          }
-
-          updateLabel(totalLeakLabel, capture.activityFragmentLeakFilter)
-          updateLabel(totalBitmapDuplicatesLabel, capture.bitmapDuplicationFilter)
+        val capture = selection.selectedCapture
+        val heap = selection.selectedHeapSet
+        if (capture !is HeapDumpCaptureObject || heap == null) {
+          isVisible = false
+          return
         }
+
+        refreshTotalClassesAsync(heap)
+        totalCountLabel.numValue = heap.totalObjectCount.toLong()
+        totalNativeSizeLabel.numValue = heap.totalNativeSize
+        totalShallowSizeLabel.numValue = heap.totalShallowSize
+        retainedSizeSeparator.isVisible = capture.isTraceProcessor
+        totalRetainedNativeSizeLabel.isVisible = capture.hasRetainedNativeAllocations
+        refreshTotalRetainedSizeAsync(heap)
+
+        fun updateLabel(label: StatLabel, filter: CaptureObjectInstanceFilter) {
+          // A local val is required for functionality because StatLabel.numValue doesn't store
+          // the value, it just updates the label and can't be used for any other purpose.
+          val count = getFilteredInstanceCount(heap, selection.selectedClassTypeFilter, filter)
+          label.numValue = count
+          label.isVisible = true
+          label.icon = if (count > 0) StudioIcons.Common.WARNING else null
+        }
+
+        updateLabel(totalLeakLabel, capture.activityFragmentLeakFilter)
+        updateLabel(totalBitmapDuplicatesLabel, capture.bitmapDuplicationFilter)
+        isVisible = true
       }
 
       selection.aspect
@@ -274,15 +307,22 @@ private class CapturePanelUi(
         .onChange(CaptureSelectionAspect.CURRENT_HEAP_CONTENTS, ::refreshSummaries)
         .onChange(CaptureSelectionAspect.CURRENT_FILTER, ::refreshSummaries)
 
-      add(totalClassLabel)
+      refreshSummaries()
+
       add(totalLeakLabel)
       add(totalBitmapDuplicatesLabel)
       add(FlatSeparator(6, 36))
+      add(totalClassLabel)
       add(totalCountLabel)
       add(totalNativeSizeLabel)
       add(totalShallowSizeLabel)
+      add(retainedSizeSeparator)
+      add(totalRetainedNativeSizeLabel)
       add(totalRetainedSizeLabel)
       alignmentX = Component.LEFT_ALIGNMENT
+      // FlowLayout wraps stats that don't fit onto rows below this panel's height, where they're cut off. MinWidthScrollPane scrolls
+      // instead.
+      ClientProperty.put(this, KEEP_PREFERRED_WIDTH, true)
     }
 
   /**
@@ -298,7 +338,17 @@ private class CapturePanelUi(
     classTypeFilter: CaptureObjectInstanceFilter?,
     instanceFilter: CaptureObjectInstanceFilter,
   ): Long {
-    val baseStream = classTypeFilter?.let { heapSet.instancesStream.filter { classTypeFilter.instanceTest(it) } } ?: heapSet.instancesStream
-    return baseStream.filter { instanceFilter.instanceTest(it) }.count()
+    val capture = selection.selectedCapture
+    val filteredByHeap =
+      if (capture is HeapDumpCaptureObject && capture.isTraceProcessor) {
+        val isAllHeap = heapSet is AllHeapSet
+        (capture.getIssueInstances(instanceFilter)?.asStream() ?: Stream.empty()).filter {
+          isAllHeap || it.heapId == (heapSet as HeapSet).id
+        }
+      } else {
+        heapSet.instancesStream.filter { instanceFilter.instanceTest(it) }
+      }
+    val withClassFilter = classTypeFilter?.let { filteredByHeap.filter { classTypeFilter.instanceTest(it) } } ?: filteredByHeap
+    return withClassFilter.count()
   }
 }

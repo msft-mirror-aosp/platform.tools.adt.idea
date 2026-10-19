@@ -27,7 +27,7 @@ public class AndroidLintDomTest extends AndroidDomTestCase {
   }
 
   public void testIssueAttributeCompletion() throws Throwable {
-    doTestCompletionVariants("issue_tag_attribute.xml", "id", "severity", "in");
+    doTestCompletionVariants("issue_tag_attribute.xml", "id", "severity", "in", "tests");
   }
 
   public void testSeverityValuesCompletion() throws Throwable {
@@ -38,7 +38,7 @@ public class AndroidLintDomTest extends AndroidDomTestCase {
     doTestCompletionVariants("issue_id_completion.xml", "UselessLeaf", "UselessParent");
   }
 
-  // Attributes other than "id", "in" and "severity" are not allowed and should be highlighted in red
+  // Attributes other than "id", "in", "severity" and "tests" are not allowed and should be highlighted in red
   public void testExtraAttributes() throws Throwable {
     doTestHighlighting("issue_extra_attributes.xml");
   }

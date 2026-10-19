@@ -18,16 +18,21 @@ package com.android.tools.idea.gradle.task.runsGradle
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
 import com.android.tools.idea.gradle.task.AndroidGradleTaskManager
+import com.android.tools.idea.testartifacts.testsuite.GradleRunConfigurationExtension.BooleanOptions.SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.hookExecuteTasks
 import com.google.common.truth.Expect
 import com.google.common.truth.Truth.assertThat
+import com.intellij.execution.process.ProcessOutputType
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.externalSystem.model.ExternalSystemException
 import com.intellij.openapi.externalSystem.model.LocationAwareExternalSystemException
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationEvent
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
+import com.intellij.openapi.externalSystem.model.task.event.ExternalSystemTaskExecutionEvent
+import com.intellij.openapi.externalSystem.model.task.event.TestOperationDescriptor
 import com.intellij.openapi.externalSystem.service.ExternalSystemFacadeManager
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.vfs.VfsUtil
@@ -180,6 +185,83 @@ class AndroidGradleTaskManagerTest {
         }
 
       assertThat(exception.message).contains("fails/project/app/build.gradle': 1: Unexpected input: '**' @ line 1, column 1")
+    }
+  }
+
+  /**
+   * Regression test for b/567713204. GradleTasksExecutorImpl must enable built-in (Tooling API) test events for Gradle 7.6+, mirroring
+   * GradleTaskManager.setupBuiltInTestEvents in the IntelliJ Gradle plugin, which Studio bypasses. Without it, test events are only
+   * reported via the legacy init-script test logger, which does not see test tasks in included builds ("Test events were not received").
+   * This verifies that Tooling API test events (with a [TestOperationDescriptor]) are delivered to the notification listener.
+   */
+  @Test
+  fun `enables built-in test events for test executions with Gradle 7_6 and above`() = runBlocking {
+    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
+    preparedProject.open { project ->
+      val executionSettings =
+        ExternalSystemApiUtil.getExecutionSettings<GradleExecutionSettings>(project, project.basePath!!, GradleConstants.SYSTEM_ID).apply {
+          tasks = listOf(":app:testDebugUnitTest", "--tests", "google.simpleapplication.UnitTest.passingTest")
+          isRunAsTest = true
+        }
+
+      val statusEvents = mutableListOf<ExternalSystemTaskNotificationEvent>()
+      AndroidGradleTaskManager()
+        .executeTasks(
+          project.basePath!!,
+          ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project),
+          executionSettings,
+          object : ExternalSystemTaskNotificationListener {
+            override fun onStatusChange(event: ExternalSystemTaskNotificationEvent) {
+              statusEvents.add(event)
+            }
+          },
+        )
+
+      val testEvents =
+        statusEvents.filterIsInstance<ExternalSystemTaskExecutionEvent>().filter { it.progressEvent.descriptor is TestOperationDescriptor }
+      assertThat(testEvents).isNotEmpty()
+    }
+  }
+
+  /**
+   * Runs whose results are shown in AndroidTestSuiteView (e.g. AGP test suites such as Journeys, or screenshot tests) are rendered by
+   * GradleAndroidTestsExecutionConsoleManager, which only parses the legacy `<ijLog>` XML events printed to stdout by the ijTestLogger init
+   * script. Built-in (Tooling API) test events must therefore not be enabled for them, otherwise ijTestLogger is not injected and the view
+   * receives no test events.
+   */
+  @Test
+  fun `does not enable built-in test events when results are shown in Android Test Suite view`() = runBlocking {
+    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
+    preparedProject.open { project ->
+      val executionSettings =
+        ExternalSystemApiUtil.getExecutionSettings<GradleExecutionSettings>(project, project.basePath!!, GradleConstants.SYSTEM_ID).apply {
+          tasks = listOf(":app:testDebugUnitTest", "--tests", "google.simpleapplication.UnitTest.passingTest")
+          isRunAsTest = true
+          putUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey, true)
+        }
+
+      val statusEvents = mutableListOf<ExternalSystemTaskNotificationEvent>()
+      val output = StringBuilder()
+      AndroidGradleTaskManager()
+        .executeTasks(
+          project.basePath!!,
+          ExternalSystemTaskId.create(GradleConstants.SYSTEM_ID, ExternalSystemTaskType.EXECUTE_TASK, project),
+          executionSettings,
+          object : ExternalSystemTaskNotificationListener {
+            override fun onStatusChange(event: ExternalSystemTaskNotificationEvent) {
+              statusEvents.add(event)
+            }
+
+            override fun onTaskOutput(id: ExternalSystemTaskId, text: String, outputType: ProcessOutputType) {
+              output.append(text)
+            }
+          },
+        )
+
+      val testEvents =
+        statusEvents.filterIsInstance<ExternalSystemTaskExecutionEvent>().filter { it.progressEvent.descriptor is TestOperationDescriptor }
+      assertThat(testEvents).isEmpty()
+      assertThat(output.toString()).contains("<ijLog>")
     }
   }
 }

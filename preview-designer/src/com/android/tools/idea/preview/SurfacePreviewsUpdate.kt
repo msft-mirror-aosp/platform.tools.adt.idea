@@ -47,6 +47,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.psi.PsiFile
 import com.jetbrains.rd.util.getOrCreate
+import java.lang.ref.WeakReference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.android.facet.AndroidFacet
@@ -130,12 +131,11 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
 
   // First, remove and dispose pre-existing models that won't be reused.
   // This will happen for example if the user removes one or more previews.
-  val elementsToReusableModels =
-    previewElementsList.mapIndexed { idx, previewElement ->
-      // If model index for this preview element >= 0 then an existing model that can be reused
-      // is found. See matchElementsToModels for more details.
-      previewElement to if (modelIndices[idx] == -1) null else existingModels[modelIndices[idx]]
-    }
+  val elementsToReusableModels = previewElementsList.mapIndexed { idx, previewElement ->
+    // If model index for this preview element >= 0 then an existing model that can be reused
+    // is found. See matchElementsToModels for more details.
+    previewElement to if (modelIndices[idx] == -1) null else existingModels[modelIndices[idx]]
+  }
 
   val notReusedModels = existingModels - elementsToReusableModels.mapNotNull { it.second }.toSet()
   debugLogger?.log("Removing ${notReusedModels.size} model(s)")
@@ -144,8 +144,14 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
   refreshEventBuilder?.withPreviewsCount(elementsToReusableModels.size)
   refreshEventBuilder?.withPreviewsToRefresh(elementsToReusableModels.size)
 
+  // Avoid capturing psiFile, VirtualFile, or this NlDesignSurface in the OrganizationGroup
+  // saveState lambda, as OrganizationGroup instances can be reused across refreshes and outlive
+  // the PsiFile instance.
+  val fileUrl = psiFile.virtualFile.url
+  val projectRef = WeakReference(project)
+
   // Load organization group state.
-  val previousOrganizationState = getInstance(project).surfaceState.getOrganizationGroupState(psiFile.virtualFile)
+  val previousOrganizationState = getInstance(project).surfaceState.getOrganizationGroupState(fileUrl)
 
   // Reuse existing groups.
   val groups = elementsToReusableModels.mapNotNull { (_, model) -> model?.organizationGroup }.associateBy { it.groupId }.toMutableMap()
@@ -188,7 +194,10 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
             ) {
               // Everytime state is changed we need to save it.
               isOpened ->
-              getInstance(project).surfaceState.saveOrganizationGroupState(psiFile.virtualFile, groupId, isOpened)
+              projectRef
+                .get()
+                ?.takeIf { !it.isDisposed }
+                ?.let { proj -> getInstance(proj).surfaceState.saveOrganizationGroupState(fileUrl, groupId, isOpened) }
             }
           }
 

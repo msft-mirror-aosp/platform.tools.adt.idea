@@ -29,6 +29,7 @@ import com.android.tools.idea.run.deployment.liveedit.LiveEditStatus.Companion.P
 import com.android.tools.idea.run.deployment.liveedit.LiveEditStatus.Companion.Priority.REFRESH_NEEDED
 import com.android.tools.idea.run.deployment.liveedit.LiveEditStatus.Companion.Priority.UNRECOVERABLE_ERROR
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import com.intellij.ui.AnimatedIcon
 import javax.swing.Icon
 
@@ -62,18 +63,20 @@ open class LiveEditStatus(
     // A LiveEdit error that is not recoverable.
     @JvmStatic
     fun createErrorStatus(message: String): LiveEditStatus {
-      return LiveEditStatus(AllIcons.General.Error, "Error", message, UNRECOVERABLE_ERROR, notificationText = message)
+      val sanitized = escapePreservingLineBreaks(message)
+      return LiveEditStatus(AllIcons.General.Error, "Error", sanitized, UNRECOVERABLE_ERROR, notificationText = sanitized)
     }
 
     // A LiveEdit error that can be resolved by rerunning.
     @JvmStatic
     fun createRerunnableErrorStatus(message: String): LiveEditStatus {
+      val sanitized = escapePreservingLineBreaks(message)
       return LiveEditStatus(
         null,
         message("le.status.out_of_date.title"),
-        message,
+        sanitized,
         UNRECOVERABLE_ERROR,
-        notificationText = message,
+        notificationText = sanitized,
         redeployMode = RedeployMode.RERUN,
         actionId = "Run",
       )
@@ -82,13 +85,14 @@ open class LiveEditStatus(
     // A composition error that is not recoverable.
     @JvmStatic
     fun createRecomposeErrorStatus(name: String, message: String, recoverable: Boolean): LiveEditStatus {
+      val trimmedMessage = if (message.length > 120) message.substring(0, 120) + "..." else message
       return LiveEditStatus(
         null,
         message("le.status.error.recompose.title"),
         String.format(
           "%s during recomposition and is reverted to last successful composition state:<br>%s",
-          name,
-          if (message.length > 120) message.substring(0, 120) + "..." else message,
+          escapeXmlEntities(name),
+          escapeXmlEntities(trimmedMessage),
         ),
         if (recoverable) RECOVERABLE_ERROR else UNRECOVERABLE_ERROR,
         notificationText = "Live Edit recomposition error",
@@ -102,7 +106,7 @@ open class LiveEditStatus(
       return LiveEditStatus(
         null,
         message("le.status.error.recompose.title"),
-        String.format("%s during recomposition status retrieval.", exception.javaClass.name),
+        String.format("%s during recomposition status retrieval.", escapeXmlEntities(exception.javaClass.name)),
         RECOVERABLE_ERROR,
         notificationText = "Live Edit recomposition error",
         redeployMode = RedeployMode.RERUN,
@@ -112,19 +116,24 @@ open class LiveEditStatus(
 
     @JvmStatic
     fun createComposeVersionError(message: String): LiveEditStatus {
+      val sanitized = escapePreservingLineBreaks(message)
       return LiveEditStatus(
         AllIcons.General.Warning,
         "Compose Version Error",
-        message,
+        sanitized,
         UNRECOVERABLE_ERROR,
-        notificationText = "Live Edit: $message",
+        notificationText = "Live Edit: $sanitized",
       )
     }
 
     @JvmStatic
     fun createPausedStatus(message: String): LiveEditStatus {
-      return LiveEditStatus(AllIcons.General.InspectionsPause, "Paused", message, RECOVERABLE_ERROR)
+      val sanitized = escapePreservingLineBreaks(message)
+      return LiveEditStatus(AllIcons.General.InspectionsPause, "Paused", sanitized, RECOVERABLE_ERROR)
     }
+
+    private fun escapePreservingLineBreaks(str: String): String =
+      str.split(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE)).joinToString("<br>") { escapeXmlEntities(it) }
   }
 
   object Disabled : LiveEditStatus(AllIcons.General.Warning, "Live Edit disabled", "Live Edit is disabled.", DISABLED)

@@ -147,14 +147,15 @@ class PlaybackControls(
     private val ticker =
       ControllableTicker(
         {
-          if (isPlaying) {
-            UIUtil.invokeLaterIfNeeded { clockControl.incrementClockBy(tickPeriod.toMillis().toInt()) }
+          UIUtil.invokeLaterIfNeeded {
+            if (!isPlaying) return@invokeLaterIfNeeded
+            clockControl.incrementClockBy(tickPeriod.toMillis().toInt())
             if (clockControl.isAtEnd()) {
               if (clockControl.playInLoop) {
                 handleLoopEnd()
               } else {
                 pause()
-                UIUtil.invokeLaterIfNeeded { updateActionsAsync() }
+                updateActionsAsync()
               }
             }
           }
@@ -162,6 +163,7 @@ class PlaybackControls(
         tickPeriod,
       )
 
+    @Volatile
     var isPlaying = false
       private set
 
@@ -204,8 +206,9 @@ class PlaybackControls(
       ticker.stop()
     }
 
+    @RequiresEdt
     private fun handleLoopEnd() {
-      UIUtil.invokeLaterIfNeeded { clockControl.jumpToStart() }
+      clockControl.jumpToStart()
     }
 
     override fun dispose() {

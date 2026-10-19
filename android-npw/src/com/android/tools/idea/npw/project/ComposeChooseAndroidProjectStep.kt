@@ -19,8 +19,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -55,26 +56,24 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.onClick
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.android.tools.idea.npw.ui.getTemplateTitle
-import com.android.tools.idea.wizard.template.Template
+import com.android.tools.idea.wizard.template.Thumb
 import com.intellij.openapi.diagnostic.fileLogger
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.UIUtil
 import icons.StudioIllustrationsCompose
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.jewel.bridge.toComposeColor
-import org.jetbrains.jewel.foundation.lazy.SelectableLazyColumn
-import org.jetbrains.jewel.foundation.lazy.SelectableLazyListState
-import org.jetbrains.jewel.foundation.lazy.SelectionMode
+import org.jetbrains.jewel.foundation.lazy.SingleSelectionLazyColumn
+import org.jetbrains.jewel.foundation.lazy.SingleSelectionLazyListState
 import org.jetbrains.jewel.foundation.lazy.itemsIndexed
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
@@ -104,14 +103,14 @@ fun ChooseAndroidProjectStepUI(model: ChooseAndroidProjectStepModel) {
 }
 
 @Composable
-private fun LeftSidePanel(
+internal fun LeftSidePanel(
   entries: List<ChooseAndroidProjectEntry>,
   selectedEntry: ChooseAndroidProjectEntry?,
   updateEntrySelected: (ChooseAndroidProjectEntry?) -> Unit,
 ) {
   val focusRequester = remember { FocusRequester() }
   val stateList = remember {
-    SelectableLazyListState(lazyListState = LazyListState()).apply {
+    SingleSelectionLazyListState(lazyListState = LazyListState(), initialSelectedKey = selectedEntry).apply {
       // Initialize state based on selectedEntry, i.e., restore previous selection state
       val selectedEntryIndex = entries.indexOf(selectedEntry)
       if (selectedEntryIndex >= 0) {
@@ -127,9 +126,8 @@ private fun LeftSidePanel(
       text = "Templates",
       color = JBColor(0x999999, 0x787878).toComposeColor(),
     )
-    SelectableLazyColumn(
+    SingleSelectionLazyColumn(
       modifier = Modifier.testTag(ChooseAndroidProjectStepLayoutTags.LeftPanel.column).focusRequester(focusRequester),
-      selectionMode = SelectionMode.Single,
       onSelectedIndexesChange = { newSelectedList ->
         val newSelectedCell = newSelectedList.firstOrNull()
         updateEntrySelected(if (newSelectedCell != null) entries[newSelectedCell] else null)
@@ -167,21 +165,24 @@ private fun RightSidePanel(selectedEntry: ChooseAndroidProjectEntry?) {
 }
 
 @Composable
-internal fun TemplateGrid(
-  templates: List<Template>,
-  selectedTemplate: Template?,
-  onTemplateClick: (Template?) -> Unit,
-  onTemplateDoubleClick: (Template) -> Unit = {},
+internal fun ItemGrid(
+  gridItems: List<GridItem>,
+  selectedGridItem: GridItem?,
+  onGridItemClick: (GridItem?) -> Unit,
+  onGridItemDoubleClick: (GridItem) -> Unit = {},
 ) {
   val scrollState = rememberLazyGridState()
   var hasFocus by remember { mutableStateOf(false) }
   val gridFocusRequester = remember { FocusRequester() }
 
-  LaunchedEffect(selectedTemplate) {
-    if (selectedTemplate != null) {
-      val index = templates.indexOf(selectedTemplate)
+  LaunchedEffect(selectedGridItem) {
+    if (selectedGridItem != null) {
+      val index = gridItems.indexOf(selectedGridItem)
       if (index != -1) {
-        scrollState.animateScrollToItem(index)
+        val visibleItems = scrollState.layoutInfo.visibleItemsInfo
+        if (visibleItems.isNotEmpty() && !visibleItems.any { it.index == index }) {
+          scrollState.animateScrollToItem(index)
+        }
       }
     }
   }
@@ -200,45 +201,43 @@ internal fun TemplateGrid(
             .focusRequester(gridFocusRequester)
             .focusable()
             .onKeyEvent { event ->
-              if (!hasFocus || selectedTemplate == null) return@onKeyEvent false
-              val currentTemplateIndex = templates.indexOf(selectedTemplate)
+              if (!hasFocus || selectedGridItem == null) return@onKeyEvent false
+              val currentItemIndex = gridItems.indexOf(selectedGridItem)
 
               return@onKeyEvent when {
-                event.type == KeyEventType.KeyUp && event.key == Key.DirectionUp && currentTemplateIndex > columnCount - 1 -> {
-                  onTemplateClick(templates[currentTemplateIndex - columnCount])
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionUp && currentItemIndex > columnCount - 1 -> {
+                  onGridItemClick(gridItems[currentItemIndex - columnCount])
                   true
                 }
-                event.type == KeyEventType.KeyUp &&
-                  event.key == Key.DirectionDown &&
-                  currentTemplateIndex < templates.size - columnCount -> {
-                  onTemplateClick(templates[currentTemplateIndex + columnCount])
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionDown && currentItemIndex < gridItems.size - columnCount -> {
+                  onGridItemClick(gridItems[currentItemIndex + columnCount])
                   true
                 }
-                event.type == KeyEventType.KeyUp && event.key == Key.DirectionLeft && currentTemplateIndex > 0 -> {
-                  onTemplateClick(templates[currentTemplateIndex - 1])
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionLeft && currentItemIndex > 0 -> {
+                  onGridItemClick(gridItems[currentItemIndex - 1])
                   true
                 }
-                event.type == KeyEventType.KeyUp && event.key == Key.DirectionRight && currentTemplateIndex < templates.size - 1 -> {
-                  onTemplateClick(templates[currentTemplateIndex + 1])
+                event.type == KeyEventType.KeyUp && event.key == Key.DirectionRight && currentItemIndex < gridItems.size - 1 -> {
+                  onGridItemClick(gridItems[currentItemIndex + 1])
                   true
                 }
                 else -> false
               }
             },
       ) {
-        itemsIndexed(items = templates) { _, template ->
-          val isSelected = template == selectedTemplate
+        itemsIndexed(items = gridItems) { _, item ->
+          val isSelected = item == selectedGridItem
           val isFocused = hasFocus && isSelected
 
-          Template(
-            template = template,
+          GridItemCell(
+            item = item,
             isSelected = isSelected,
             isFocused = isFocused,
-            onTemplateClick = {
-              onTemplateClick(template)
+            onItemClick = {
+              onGridItemClick(item)
               if (!hasFocus) gridFocusRequester.requestFocus()
             },
-            onTemplateDoubleClick = { onTemplateDoubleClick(template) },
+            onItemDoubleClick = { onGridItemDoubleClick(item) },
           )
         }
       }
@@ -248,71 +247,72 @@ internal fun TemplateGrid(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Template(
-  template: Template,
-  isSelected: Boolean,
-  isFocused: Boolean,
-  onTemplateClick: () -> Unit,
-  onTemplateDoubleClick: () -> Unit,
-) {
+private fun GridItemCell(item: GridItem, isSelected: Boolean, isFocused: Boolean, onItemClick: () -> Unit, onItemDoubleClick: () -> Unit) {
   Column(
     modifier =
-      Modifier.fillMaxSize()
+      Modifier.size(templateCellSize)
         .focusProperties { canFocus = false }
         .border(1.dp, UIUtil.getListBackground(isSelected, isFocused).toComposeColor())
-        .semantics {
-          onClick {
-            onTemplateClick()
-            true
-          }
-        }
-        .pointerInput(Unit) { detectTapGestures(onPress = { onTemplateClick() }, onDoubleTap = { onTemplateDoubleClick() }) },
-    verticalArrangement = Arrangement.Center,
+        .handleClick(onClick = onItemClick, onDoubleClick = onItemDoubleClick),
+    verticalArrangement = Arrangement.SpaceBetween,
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    TemplateImage(template)
-    TemplateText(template, isSelected, isFocused)
+    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { item.Icon() }
+    GridItemText(item, isSelected, isFocused)
+  }
+}
+
+/**
+ * Handles immediate single-click selection (zero delay) and double-click activation without mutual exclusion delay or scrollable container
+ * hit-testing conflicts.
+ */
+private fun Modifier.handleClick(onClick: () -> Unit, onDoubleClick: () -> Unit): Modifier = composed {
+  var lastClickTimeMark by remember { mutableStateOf<TimeMark?>(null) }
+  clickable(interactionSource = null, indication = null) {
+    val now = TimeSource.Monotonic.markNow()
+    onClick()
+    val lastClick = lastClickTimeMark
+    if (lastClick != null && lastClick.elapsedNow() < UIUtil.getMultiClickInterval().milliseconds) {
+      onDoubleClick()
+    }
+    lastClickTimeMark = now
   }
 }
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-private fun TemplateImage(template: Template) {
-  if (template == Template.NoActivity) {
+internal fun GridItemImage(thumb: Thumb) {
+  val imageBitmap by
+    produceState<ImageBitmap?>(initialValue = null, thumb) {
+      value =
+        withContext(Dispatchers.Default) {
+          val iconUrl = thumb.path()
+          try {
+            val bytes = withContext(Dispatchers.IO) { iconUrl.openStream().use { it.readAllBytes() } }
+            bytes.decodeToImageBitmap()
+          } catch (e: Exception) {
+            fileLogger().warn("Failed to load icon: $iconUrl", e)
+            null
+          }
+        }
+    }
+
+  if (imageBitmap == null) {
     Icon(key = StudioIllustrationsCompose.Wizards.NoActivity, contentDescription = "")
   } else {
-    val imageBitmap by
-      produceState<ImageBitmap?>(initialValue = null, template) {
-        value =
-          withContext(Dispatchers.Default) {
-            val iconUrl = template.thumb().path()
-            try {
-              val bytes = withContext(Dispatchers.IO) { iconUrl.openStream().use { it.readAllBytes() } }
-              bytes.decodeToImageBitmap()
-            } catch (e: Exception) {
-              fileLogger().error("Failed to load icon: $iconUrl", e)
-              null
-            }
-          }
-      }
-
-    if (imageBitmap == null) {
-      Icon(key = StudioIllustrationsCompose.Wizards.NoActivity, contentDescription = "")
-    } else {
-      Image(bitmap = imageBitmap!!, contentDescription = "")
-    }
+    Image(bitmap = imageBitmap!!, contentDescription = "")
   }
 }
 
 @Composable
-private fun TemplateText(template: Template, isSelected: Boolean, isFocused: Boolean) {
+private fun GridItemText(item: GridItem, isSelected: Boolean, isFocused: Boolean) {
   Box(
     modifier = Modifier.fillMaxWidth().background(UIUtil.getListBackground(isSelected, isFocused).toComposeColor()),
     contentAlignment = Alignment.Center,
   ) {
     Text(
       modifier = Modifier.padding(vertical = 4.dp),
-      text = getTemplateTitle(template),
+      text = item.title,
       color = UIUtil.getListForeground(isSelected, isFocused).toComposeColor(),
       textAlign = TextAlign.Center,
     )

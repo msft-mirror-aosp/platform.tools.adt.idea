@@ -46,7 +46,6 @@ import org.jetbrains.concurrency.Promise
 @OptIn(ExperimentalCoroutinesApi::class)
 @Suppress("UnstableApiUsage")
 class BazelProjectTaskRunner : ProjectTaskRunner() {
-  override fun canRun(task: ProjectTask): Boolean = error("not expected")
 
   override fun canRun(project: Project, projectTask: ProjectTask, context: ProjectTaskContext?): Boolean {
     if (!project.isBazelProject()) return false

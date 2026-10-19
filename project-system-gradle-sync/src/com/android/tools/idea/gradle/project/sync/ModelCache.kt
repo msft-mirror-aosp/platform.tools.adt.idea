@@ -17,8 +17,6 @@
 
 package com.android.tools.idea.gradle.project.sync
 
-import com.android.build.OutputFile
-import com.android.builder.model.AndroidProject
 import com.android.builder.model.Library
 import com.android.builder.model.Variant
 import com.android.builder.model.v2.ide.BasicVariant
@@ -27,7 +25,6 @@ import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.BasicTestSuite
 import com.android.builder.model.v2.models.VariantDependencies
 import com.android.builder.model.v2.models.ndk.NativeModule
-import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_ANDROID_TEST
@@ -36,9 +33,7 @@ import com.android.tools.idea.gradle.model.ARTIFACT_NAME_SCREENSHOT_TEST
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_TEST_FIXTURES
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_UNIT_TEST
 import com.android.tools.idea.gradle.model.IdeArtifactName
-import com.android.tools.idea.gradle.model.impl.BuildFolderPaths
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
-import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactOutputImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
@@ -53,28 +48,6 @@ import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.jetbrains.annotations.SystemIndependent
 
 interface ModelCache {
-
-  interface V1 : ModelCache {
-    fun variantFrom(
-      androidProject: IdeAndroidProjectImpl,
-      variant: Variant,
-      legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
-      modelVersions: ModelVersions,
-      androidModuleId: ModuleId,
-    ): ModelResult<IdeVariantWithPostProcessor>
-
-    fun androidProjectFrom(
-      rootBuildId: BuildId,
-      buildId: BuildId,
-      projectPath: String,
-      project: AndroidProject,
-      legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
-      gradlePropertiesModel: GradlePropertiesModel,
-      defaultVariantName: String?,
-    ): ModelResult<IdeAndroidProjectImpl>
-
-    fun androidArtifactOutputFrom(output: OutputFile): IdeAndroidArtifactOutputImpl
-  }
 
   interface V2 : ModelCache {
     /**
@@ -120,30 +93,6 @@ interface ModelCache {
   companion object {
     const val LOCAL_AARS = "__local_aars__"
     const val LOCAL_JARS = "__local_jars__"
-
-    @JvmStatic
-    fun createForTests(useV2BuilderModels: Boolean, agpVersion: AgpVersion): ModelCache {
-      val internedModels = InternedModels(null)
-      return if (useV2BuilderModels) {
-        modelCacheV2Impl(
-          internedModels,
-          ModelVersions(
-            agp = agpVersion,
-            modelVersion = ModelVersion(Int.MAX_VALUE, Int.MAX_VALUE, "Fake model for tests"),
-            minimumModelConsumer = null,
-          ),
-          syncTestMode = SyncTestMode.PRODUCTION,
-        )
-      } else {
-        modelCacheV1Impl(internedModels, BuildFolderPaths())
-      }
-    }
-
-    @JvmStatic
-    fun createForPostBuildModels(): V1 {
-      val internedModels = InternedModels(null)
-      return modelCacheV1Impl(internedModels, BuildFolderPaths())
-    }
   }
 }
 

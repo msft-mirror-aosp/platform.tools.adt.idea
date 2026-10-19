@@ -325,14 +325,14 @@ class LayoutInspectorManagerTest {
       waitForCondition(2.seconds) { display.component.allChildren().filterIsInstance<LayoutInspectorRenderer>().isNotEmpty() }
     }
 
-    assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(6)
+    assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(7)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
     setSelectedContent(fakeToolWindow, tab2)
 
     // Since tab1 is still in the existing tabs list, layout inspector and its listeners should still be active for it
     verifyUiInjected<EmbeddedRendererPanel>(tab1)
-    assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(6)
+    assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(7)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
     enableLayoutInspector(tab2, true)
@@ -343,7 +343,7 @@ class LayoutInspectorManagerTest {
     }
 
     // Now layout inspector is running on tab2, completely replacing tab1
-    assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(6)
+    assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(7)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
     verifyUiRemoved(tab1)
@@ -351,7 +351,7 @@ class LayoutInspectorManagerTest {
 
     setSelectedContent(fakeToolWindow, tab1)
 
-    assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(6)
+    assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(7)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
     verifyUiInjected<EmbeddedRendererPanel>(tab1)
@@ -362,7 +362,7 @@ class LayoutInspectorManagerTest {
     verifyUiRemoved(tab1)
     assertThat(layoutInspector.deviceModel?.selectedDevice).isNull()
 
-    assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(6)
+    assertThat(layoutInspector.inspectorModel.selectionListeners.size()).isEqualTo(7)
     assertThat(layoutInspector.processModel?.selectedProcessListeners).hasSize(3)
 
     verifyUiInjected<EmbeddedRendererPanel>(tab2)
@@ -380,7 +380,7 @@ class LayoutInspectorManagerTest {
 
     val toolbar =
       tab1.container.allChildren().filterIsInstance<ActionToolbar>().first { it.component.name == "LayoutInspector.MainToolbar" }
-    FakeUi(toolbar.component, createFakeWindow = true, parentDisposable = displayViewRule.disposable)
+    FakeUi(toolbar.component, parentDisposable = displayViewRule.disposable)
 
     waitForCondition(2.seconds) { toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().any() }
     val toggleDeepInspectAction = toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().first()
@@ -428,7 +428,7 @@ class LayoutInspectorManagerTest {
 
     val toolbar =
       tab1.container.allChildren().filterIsInstance<ActionToolbar>().first { it.component.name == "LayoutInspector.MainToolbar" }
-    FakeUi(toolbar.component, createFakeWindow = true, parentDisposable = displayViewRule.disposable)
+    FakeUi(toolbar.component, parentDisposable = displayViewRule.disposable)
 
     waitForCondition(10.seconds) { toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().any() }
     val toggleDeepInspectAction = toolbar.actions.filterIsInstance<ToggleDeepInspectAction>().first()

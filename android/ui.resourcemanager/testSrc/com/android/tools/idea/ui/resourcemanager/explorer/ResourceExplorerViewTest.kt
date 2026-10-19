@@ -160,6 +160,68 @@ class ResourceExplorerViewTest {
   }
 
   @Test
+  fun clickSearchLinkLabelSwitchesModule() {
+    val module2Name = "app2"
+
+    // Setup
+    runInEdtAndWait {
+      addAndroidModule(module2Name, projectRule.project, "com.example.app2") { resourceDir ->
+        FileUtil.copy(File(getTestDataDirectory() + "/res/values/colors.xml"), resourceDir.resolve("values/colors.xml"))
+      }
+    }
+    val viewModel = createViewModel(projectRule.module)
+    val view = createResourceExplorerView(viewModel)
+    val tabbedPane = UIUtil.findComponentOfType(view, JTabbedPane::class.java)
+    assertNotNull(tabbedPane, "TabbedPane should not be null")
+    runInEdtAndWait {
+      // Change to Color resources tab.
+      tabbedPane.model.selectedIndex = tabbedPane.indexOfTab(ResourceType.COLOR.displayName)
+    }
+
+    // Resource changed triggered, wait for the (empty) list to be available again.
+    waitAndAssert<AssetListView>(view) { it?.model?.size == 0 }
+
+    // Search for "color" so LinkLabelSearchView shows the link label for app2.
+    runInEdtAndWait {
+      viewModel.filterOptions.searchString = "color"
+    }
+
+    var targetLinkLabel: LinkLabel<*>? = null
+    waitAndAssert<LinkLabelSearchView>(view) { searchView ->
+      val linkLabel = searchView?.let {
+        UIUtil.findComponentOfType(it.viewport.view as JComponent, LinkLabel::class.java)
+      }
+      if (linkLabel != null && linkLabel.text.contains(module2Name)) {
+        targetLinkLabel = linkLabel
+        true
+      } else {
+        false
+      }
+    }
+
+    assertNotNull(targetLinkLabel)
+    assertThat(targetLinkLabel!!.text).contains("found in '$module2Name'")
+
+    // Click the LinkLabel to switch modules.
+    runInEdtAndWait {
+      targetLinkLabel!!.doClick()
+    }
+
+    // Verify active module switched to app2.
+    assertThat(viewModel.facet.module.name).isEqualTo(module2Name)
+
+    // Wait for the AssetListView in ResourceExplorerView to populate with colors from app2.
+    waitAndAssert<AssetListView>(view) { listView ->
+      if (listView != null && listView.model.size > 0) {
+        val assetNames = (0 until listView.model.size).map { listView.model.getElementAt(it).name }
+        assetNames.contains("colorPrimary")
+      } else {
+        false
+      }
+    }
+  }
+
+  @Test
   fun openOnEnter() {
     // Setup the test with an image for two configuration
     // so the detail view can be shown.

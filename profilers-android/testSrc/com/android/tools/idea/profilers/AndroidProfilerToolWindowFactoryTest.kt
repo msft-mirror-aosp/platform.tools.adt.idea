@@ -5,6 +5,8 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.sdk.AndroidEnvironmentChecker
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Trace
+import com.android.tools.profilers.LiveViewSessionArtifact
+import com.android.tools.profilers.Stage
 import com.android.tools.profilers.cpu.CpuCaptureSessionArtifact
 import com.android.tools.profilers.cpu.CpuProfilerStage
 import com.android.tools.profilers.memory.HeapProfdSessionArtifact
@@ -14,15 +16,19 @@ import com.android.tools.profilers.taskbased.home.OpenHomeTabListener
 import com.android.tools.profilers.taskbased.pastrecordings.OpenPastRecordingsTabListener
 import com.android.tools.profilers.taskbased.task.OpenProfilerTaskTabListener
 import com.android.tools.profilers.tasks.ProfilerTaskType
+import com.android.tools.profilers.tasks.args.singleartifact.LiveTaskArgs
 import com.android.tools.profilers.tasks.args.singleartifact.cpu.CpuTaskArgs
 import com.android.tools.profilers.tasks.args.singleartifact.memory.NativeAllocationsTaskArgs
 import com.android.tools.profilers.tasks.taskhandlers.TaskModelTestUtils
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ext.LibraryDependentToolWindow
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.toolWindow.ToolWindowHeadlessManagerImpl
+import com.intellij.ui.content.ContentManagerEvent
+import com.intellij.ui.content.ContentManagerListener
 import java.util.concurrent.TimeUnit
 import javax.swing.JPanel
 import kotlin.test.fail
@@ -49,6 +55,7 @@ class AndroidProfilerToolWindowFactoryTest {
   @After
   fun cleanup() {
     StudioFlags.PROFILER_TASK_BASED_UX.clearOverride()
+    StudioFlags.PROFILER_LIVE_TELEMETRY_IN_EDITOR.clearOverride()
   }
 
   @Test
@@ -296,5 +303,145 @@ class AndroidProfilerToolWindowFactoryTest {
     waitForCondition(5L, TimeUnit.SECONDS) {
       toolWindow.contentManager.contentCount == 3 && toolWindow.contentManager.selectedContent == taskTabContent
     }
+  }
+
+  @Test
+  fun `disposing profilerToolWindow removes project from map`() {
+    val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
+    val toolWindowFactory = AndroidProfilerToolWindowFactory()
+    toolWindowFactory.init(toolWindow)
+    toolWindowFactory.createToolWindowContent(project, toolWindow)
+
+    val profilerToolWindow = AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP[project]
+    assertThat(profilerToolWindow).isNotNull()
+
+    Disposer.dispose(profilerToolWindow!!)
+    assertThat(AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP.containsKey(project)).isFalse()
+  }
+
+  @Test
+  fun `disposing toolWindow disposable removes project from map`() {
+    val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
+    val toolWindowFactory = AndroidProfilerToolWindowFactory()
+    toolWindowFactory.init(toolWindow)
+    toolWindowFactory.createToolWindowContent(project, toolWindow)
+
+    assertThat(AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP.containsKey(project)).isTrue()
+
+    Disposer.dispose(toolWindow.disposable)
+    assertThat(AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP.containsKey(project)).isFalse()
+  }
+
+  @Test
+  fun `notifyEditorTabClosed with inactive sessionId is safely ignored`() {
+    val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
+    val toolWindowFactory = AndroidProfilerToolWindowFactory()
+    toolWindowFactory.init(toolWindow)
+    toolWindowFactory.createToolWindowContent(project, toolWindow)
+
+    val profilerToolWindow = AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP[project]!!
+    val sessionsManager = profilerToolWindow.profilers.sessionsManager
+
+    // Calling notifyEditorTabClosed with an inactive sessionId does not reset or alter selection
+    profilerToolWindow.notifyEditorTabClosed(99999L)
+    assertThat(sessionsManager.selectedSession).isEqualTo(Common.Session.getDefaultInstance())
+  }
+
+  @Test
+  fun `createTaskTab for live task does not add tool window content when live task in editor is enabled`() {
+    StudioFlags.PROFILER_LIVE_TELEMETRY_IN_EDITOR.override(true)
+    val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
+    val toolWindowFactory = AndroidProfilerToolWindowFactory()
+    toolWindowFactory.init(toolWindow)
+    toolWindowFactory.createToolWindowContent(project, toolWindow)
+
+    val profilerToolWindow = AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP[project]!!
+
+    val liveArtifact =
+      LiveViewSessionArtifact(
+        profilerToolWindow.profilers,
+        Common.Session.getDefaultInstance(),
+        Common.SessionMetaData.getDefaultInstance(),
+      )
+
+    // Create a live task tab
+    profilerToolWindow.createTaskTab(ProfilerTaskType.LIVE_VIEW, LiveTaskArgs(false, liveArtifact))
+
+    // Should NOT create a tool window content tab since it's hosted in the editor
+    val taskTabTitle = StringUtils.getTaskTabTitle(ProfilerTaskType.LIVE_VIEW, StudioFlags.PROFILER_HOME_TAB_V2.get())
+    assertThat(toolWindow.contentManager.contents.none { it.displayName == taskTabTitle || it.tabName == taskTabTitle }).isTrue()
+  }
+
+  @Test
+  fun `createTaskTab enters task handler and updates stage before selecting content`() {
+    val toolWindow = ToolWindowHeadlessManagerImpl.MockToolWindow(project)
+    val toolWindowFactory = AndroidProfilerToolWindowFactory()
+    toolWindowFactory.init(toolWindow)
+    toolWindowFactory.createToolWindowContent(project, toolWindow)
+
+    waitForCondition(5L, TimeUnit.SECONDS) {
+      toolWindow.contentManager.selectedContent != null && toolWindow.contentManager.selectedContent!!.displayName == "Home"
+    }
+
+    val profilerToolWindow = AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP[project]!!
+    profilerToolWindow.profilers.taskHomeTabModel.processListModel.onDeviceSelection(
+      TaskModelTestUtils.createDevice("FakeDevice", Common.Device.State.ONLINE, "13", 33)
+    )
+
+    // Start with a Native Allocations task
+    profilerToolWindow.createTaskTab(
+      ProfilerTaskType.NATIVE_ALLOCATIONS,
+      NativeAllocationsTaskArgs(
+        false,
+        HeapProfdSessionArtifact(
+          profilerToolWindow.profilers,
+          Common.Session.getDefaultInstance(),
+          Common.SessionMetaData.getDefaultInstance(),
+          Trace.TraceInfo.getDefaultInstance(),
+        ),
+      ),
+    )
+
+    assertThat(profilerToolWindow.profilers.stage).isInstanceOf(MainMemoryProfilerStage::class.java)
+
+    // Switch back to the home tab
+    profilerToolWindow.openHomeTab()
+    assertThat(toolWindow.contentManager.selectedContent!!.displayName).isEqualTo("Home")
+
+    val expectedTaskTabTitle = StringUtils.getTaskTabTitle(ProfilerTaskType.SYSTEM_TRACE, StudioFlags.PROFILER_HOME_TAB_V2.get())
+
+    // Capture the active stage at the exact moment the task tab is selected in ContentManager.
+    // This verifies the execution order: taskHandler.enter() must update the stage before the tab content
+    // is selected and mounted into the Swing hierarchy, preventing expensive EDT traversal on stale views.
+    var stageAtTaskTabSelection: Stage<*>? = null
+    toolWindow.contentManager.addContentManagerListener(
+      object : ContentManagerListener {
+        override fun selectionChanged(event: ContentManagerEvent) {
+          if (event.operation == ContentManagerEvent.ContentOperation.add && event.content.displayName == expectedTaskTabTitle) {
+            stageAtTaskTabSelection = profilerToolWindow.profilers.stage
+          }
+        }
+      }
+    )
+
+    // Now launch a System Trace task from Home
+    profilerToolWindow.createTaskTab(
+      ProfilerTaskType.SYSTEM_TRACE,
+      CpuTaskArgs(
+        false,
+        CpuCaptureSessionArtifact(
+          profilerToolWindow.profilers,
+          Common.Session.getDefaultInstance(),
+          Common.SessionMetaData.getDefaultInstance(),
+          Trace.TraceInfo.getDefaultInstance(),
+        ),
+      ),
+    )
+
+    // Verify that at the exact moment of tab selection, the stage was already transitioned to CpuProfilerStage
+    assertThat(stageAtTaskTabSelection).isNotNull()
+    assertThat(stageAtTaskTabSelection).isInstanceOf(CpuProfilerStage::class.java)
+    assertThat(profilerToolWindow.profilers.stage).isInstanceOf(CpuProfilerStage::class.java)
+    assertThat(toolWindow.contentManager.selectedContent!!.displayName).isEqualTo(expectedTaskTabTitle)
   }
 }

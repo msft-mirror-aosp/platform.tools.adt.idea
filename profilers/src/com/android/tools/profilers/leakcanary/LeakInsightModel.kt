@@ -15,19 +15,21 @@
  */
 package com.android.tools.profilers.leakcanary
 
-import com.android.tools.profilers.IdeProfilerServices
 import com.android.tools.leakcanarylib.data.Leak
+import com.android.tools.profilers.IdeProfilerServices
+import com.android.tools.profilers.tasks.analytics.LeakCanaryUiAction
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.concurrent.ConcurrentHashMap
-import kotlinx.coroutines.CancellationException
 
 class LeakInsightModel(
   private val ideServices: IdeProfilerServices,
-  private val scope: CoroutineScope
+  private val scope: CoroutineScope,
+  private val trackUiAction: (LeakCanaryUiAction) -> Unit = {},
 ) {
   private val _currentInsight = MutableStateFlow<LoadingState<AiInsight?>>(LoadingState.Ready(null))
   val currentInsight = _currentInsight.asStateFlow()
@@ -35,9 +37,8 @@ class LeakInsightModel(
   private val _isInsightVisible = MutableStateFlow(true)
   val isInsightVisible = _isInsightVisible.asStateFlow()
   private var insightJob: Job? = null
-  private val _isInsightAutoGenerateEnabled = MutableStateFlow(
-    ideServices.persistentProfilerPreferences.getBoolean(KEY_LEAKCANARY_INSIGHT_AUTO_GENERATE, false)
-  )
+  private val _isInsightAutoGenerateEnabled =
+    MutableStateFlow(ideServices.persistentProfilerPreferences.getBoolean(KEY_LEAKCANARY_INSIGHT_AUTO_GENERATE, false))
   val isInsightAutoGenerateEnabled = _isInsightAutoGenerateEnabled.asStateFlow()
 
   private val insightCache = ConcurrentHashMap<String, LoadingState<AiInsight?>>()
@@ -47,12 +48,21 @@ class LeakInsightModel(
     _isInsightAutoGenerateEnabled.value = enabled
     ideServices.persistentProfilerPreferences.setBoolean(KEY_LEAKCANARY_INSIGHT_AUTO_GENERATE, enabled)
     if (enabled) {
-      selectedLeak?.let { leak ->
-        val cached = insightCache[leak.signature]
-        if (cached == null || (cached is LoadingState.Ready && cached.value == null)) {
-          fetchInsight(leak)
+      trackUiAction(LeakCanaryUiAction.INSIGHT_AUTO_GENERATE_ENABLED)
+      if (_isInsightVisible.value) {
+        selectedLeak?.let { leak ->
+          val cached = insightCache[leak.signature]
+          if (
+            cached == null ||
+              (cached is LoadingState.Ready && cached.value == null) ||
+              (cached is LoadingState.Unauthorized && isAiAvailable())
+          ) {
+            fetchInsight(leak)
+          }
         }
       }
+    } else {
+      trackUiAction(LeakCanaryUiAction.INSIGHT_AUTO_GENERATE_DISABLED)
     }
   }
 
@@ -60,7 +70,15 @@ class LeakInsightModel(
     selectedLeak = newLeak
     if (_isInsightVisible.value) {
       val cached = newLeak?.let { insightCache[it.signature] }
-      if (cached != null) {
+      if (cached is LoadingState.Unauthorized && isAiAvailable()) {
+        insightCache.remove(newLeak.signature)
+        _currentInsight.value = LoadingState.Ready(null)
+        if (isInsightAutoGenerateEnabled.value) {
+          fetchInsight(newLeak)
+        } else {
+          insightJob?.cancel()
+        }
+      } else if (cached != null) {
         _currentInsight.value = cached
         insightJob?.cancel()
       } else {
@@ -78,43 +96,64 @@ class LeakInsightModel(
   fun setInsightVisible(visible: Boolean) {
     _isInsightVisible.value = visible
     if (visible) {
+      trackUiAction(LeakCanaryUiAction.INSIGHT_PANEL_OPENED)
       val selected = selectedLeak
       if (selected != null) {
         val cached = insightCache[selected.signature]
-        if (cached != null) {
+        if (cached is LoadingState.Unauthorized && isAiAvailable()) {
+          insightCache.remove(selected.signature)
+          _currentInsight.value = LoadingState.Ready(null)
+          if (isInsightAutoGenerateEnabled.value) {
+            fetchInsight(selected)
+          }
+        } else if (cached != null) {
           _currentInsight.value = cached
         } else {
           _currentInsight.value = LoadingState.Ready(null)
-          fetchInsight(selected)
+          if (isInsightAutoGenerateEnabled.value) {
+            fetchInsight(selected)
+          }
         }
       } else {
         _currentInsight.value = LoadingState.Ready(null)
       }
+    } else {
+      trackUiAction(LeakCanaryUiAction.INSIGHT_PANEL_CLOSED)
+      insightJob?.cancel()
     }
   }
 
   fun fetchInsight(leak: Leak) {
+    trackUiAction(LeakCanaryUiAction.INSIGHT_FETCH_TRIGGERED)
+    _isInsightVisible.value = true
+    if (!isAiAvailable()) {
+      ideServices.showAiOnboarding()
+      val unauthorizedState = LoadingState.Unauthorized("AI Assistant is not available.")
+      _currentInsight.value = unauthorizedState
+      insightCache[leak.signature] = unauthorizedState
+      return
+    }
+
     val loadingState = LoadingState.Loading()
     _currentInsight.value = loadingState
     insightCache[leak.signature] = loadingState
-    _isInsightVisible.value = true
 
     insightJob?.cancel()
     insightJob = scope.launch {
       try {
         val flow = ideServices.fetchLeakInsight(leak.toString())
         val result = StringBuilder()
-        flow.collect { chunk ->
-          result.append(chunk)
-        }
+        flow.collect { chunk -> result.append(chunk) }
         val finalResult = result.toString()
         if (finalResult.isEmpty()) {
+          trackUiAction(LeakCanaryUiAction.INSIGHT_FETCH_FAILED)
           val emptyState = LoadingState.Failure("AI Assistant returned an empty response.")
           if (selectedLeak == leak) {
             _currentInsight.value = emptyState
           }
           insightCache[leak.signature] = emptyState
         } else {
+          trackUiAction(LeakCanaryUiAction.INSIGHT_FETCH_SUCCEEDED)
           val readyState = LoadingState.Ready(AiInsight(finalResult))
           if (selectedLeak == leak) {
             _currentInsight.value = readyState
@@ -123,12 +162,26 @@ class LeakInsightModel(
         }
       } catch (e: Exception) {
         if (e is CancellationException) {
+          trackUiAction(LeakCanaryUiAction.INSIGHT_FETCH_CANCELLED)
           if (insightCache[leak.signature] === loadingState) {
             insightCache.remove(leak.signature)
           }
           throw e
         }
-        val failureState = LoadingState.Failure(e.message ?: "Unknown error")
+        trackUiAction(LeakCanaryUiAction.INSIGHT_FETCH_FAILED)
+        val errorMessage =
+          if (isNetworkError(e)) {
+            NETWORK_ERROR_MESSAGE
+          } else {
+            e.message?.takeIf { it.isNotBlank() } ?: DEFAULT_ERROR_MESSAGE
+          }
+        val failureState =
+          if (isUnauthorizedError(e)) {
+            ideServices.showAiOnboarding()
+            LoadingState.Unauthorized(errorMessage)
+          } else {
+            LoadingState.Failure(errorMessage)
+          }
         if (selectedLeak == leak) {
           _currentInsight.value = failureState
         }
@@ -137,13 +190,55 @@ class LeakInsightModel(
     }
   }
 
-  fun submitInsightFeedback(feedback: InsightFeedback) {
+  fun showOnboarding() {
+    if (isAiAvailable()) {
+      selectedLeak?.let { fetchInsight(it) }
+    } else {
+      ideServices.showAiOnboarding()
+    }
+  }
+
+  fun isAiAvailable(): Boolean = ideServices.isAiAvailable
+
+  fun onAiBecameAvailable() {
+    selectedLeak?.let { leak ->
+      val cached = insightCache[leak.signature]
+      if ((cached is LoadingState.Unauthorized || _currentInsight.value is LoadingState.Unauthorized) && isAiAvailable()) {
+        insightCache.remove(leak.signature)
+        fetchInsight(leak)
+      }
+    }
+  }
+
+  fun submitInsightFeedback(feedback: InsightFeedback?) {
     val insight = (_currentInsight.value as? LoadingState.Ready)?.value ?: return
+    val previousFeedback = insight.feedback
+    if (previousFeedback != feedback) {
+      val action =
+        when (feedback) {
+          InsightFeedback.THUMBS_UP -> LeakCanaryUiAction.INSIGHT_SENTIMENT_UP
+          InsightFeedback.THUMBS_DOWN -> LeakCanaryUiAction.INSIGHT_SENTIMENT_DOWN
+          null -> LeakCanaryUiAction.INSIGHT_SENTIMENT_CLEARED
+        }
+      trackUiAction(action)
+    }
     val newInsightState = LoadingState.Ready(insight.copy(feedback = feedback))
     _currentInsight.value = newInsightState
-    selectedLeak?.let { leak ->
-      insightCache[leak.signature] = newInsightState
-    }
+    selectedLeak?.let { leak -> insightCache[leak.signature] = newInsightState }
+  }
+
+  private fun isUnauthorizedError(t: Throwable): Boolean {
+    val keywords = listOf("not available", "unauthorized", "unauthenticated", "permission_denied")
+    return generateSequence(t) { it.cause }
+      .any { cause ->
+        val message = cause.message.orEmpty()
+        keywords.any { message.contains(it, ignoreCase = true) }
+      }
+  }
+
+  private fun isNetworkError(t: Throwable): Boolean {
+    return generateSequence(t) { it.cause }
+      .any { it is java.io.IOException }
   }
 
   fun clearInsights() {
@@ -154,5 +249,7 @@ class LeakInsightModel(
 
   companion object {
     private const val KEY_LEAKCANARY_INSIGHT_AUTO_GENERATE = "leakcanary.insight.auto.generate"
+    const val NETWORK_ERROR_MESSAGE = "Network connection lost. Please check your internet connection and try again."
+    const val DEFAULT_ERROR_MESSAGE = "An unexpected error occurred. Please try again later."
   }
 }

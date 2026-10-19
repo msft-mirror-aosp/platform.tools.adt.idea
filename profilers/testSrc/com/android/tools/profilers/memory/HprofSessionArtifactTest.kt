@@ -71,4 +71,40 @@ class HprofSessionArtifactTest {
       HprofSessionArtifact(myProfilers, Common.Session.getDefaultInstance(), Common.SessionMetaData.getDefaultInstance(), finishedInfo)
     assertThat(finishedCaptureArtifact.subtitle).isEqualTo("00:00:05.000")
   }
+
+  @Test
+  fun testExportExtensionOfImportedRecording() {
+    // An imported recording is named after the file it came from, whatever heap dump format that was.
+    assertThat(artifactOfSessionNamed("memory-20260918T070646.hprof").exportExtension).isEqualTo("hprof")
+    assertThat(artifactOfSessionNamed("capture.prof").exportExtension).isEqualTo("prof")
+    assertThat(artifactOfSessionNamed("memory-20260918T070840.perfetto-java-heap-dump").exportExtension)
+      .isEqualTo("perfetto-java-heap-dump")
+    // Case is not significant, the format is.
+    assertThat(artifactOfSessionNamed("capture.HPROF").exportExtension).isEqualTo("hprof")
+  }
+
+  @Test
+  fun testExportExtensionOfLiveRecording() {
+    // A live recording is named after the process, so there is no format to recover and ART's own is assumed.
+    assertThat(artifactOfSessionNamed("com.example.myapp").exportExtension).isEqualTo("hprof")
+    assertThat(artifactOfSessionNamed("FakeProcess").exportExtension).isEqualTo("hprof")
+    assertThat(
+        HprofSessionArtifact(
+            myProfilers,
+            Common.Session.getDefaultInstance(),
+            Common.SessionMetaData.getDefaultInstance(),
+            HeapDumpInfo.getDefaultInstance(),
+          )
+          .exportExtension
+      )
+      .isEqualTo("hprof")
+  }
+
+  private fun artifactOfSessionNamed(sessionName: String) =
+    HprofSessionArtifact(
+      myProfilers,
+      Common.Session.getDefaultInstance(),
+      Common.SessionMetaData.newBuilder().setSessionName(sessionName).build(),
+      HeapDumpInfo.newBuilder().setStartTime(1).setEndTime(2).build(),
+    )
 }

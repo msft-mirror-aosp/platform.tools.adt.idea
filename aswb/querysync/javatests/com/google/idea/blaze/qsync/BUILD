@@ -74,25 +74,6 @@ aswb_test(
 )
 
 aswb_test(
-    name = "AffectedPackagesTest",
-    size = "small",
-    srcs = ["AffectedPackagesTest.java"],
-    test_class = "com.google.idea.blaze.qsync.AffectedPackagesTest",
-    deps = [
-        ":TestUtils",
-        "//tools/adt/idea/aswb/plugin_api",
-        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
-        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/query",
-        "//tools/adt/idea/aswb/querysync/javatests/com/google/idea/blaze/qsync/query:QuerySummaryTestUtil",
-        "//tools/adt/idea/aswb/shared:vcs",
-        "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
-        "//tools/adt/idea/aswb/third_party/java/junit",
-        "//tools/adt/idea/aswb/third_party/java/truth",
-        "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-    ],
-)
-
-aswb_test(
     name = "ProjectRefresherTest",
     size = "small",
     srcs = ["ProjectRefresherTest.kt"],
@@ -139,6 +120,7 @@ aswb_test(
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/traverser",
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
     ],
@@ -154,7 +136,22 @@ aswb_test(
         "//tools/adt/idea/aswb/shared/javatests/com/google/idea/blaze/common:test_utils",
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
-        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core",
+        "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
+    ],
+)
+
+aswb_test(
+    name = "BazelProjectFilteringProcessorTest",
+    srcs = ["BazelProjectFilteringProcessorTest.kt"],
+    deps = [
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/traverser",
+        "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
+        "//tools/adt/idea/aswb/shared/javatests/com/google/idea/blaze/common:test_utils",
+        "//tools/adt/idea/aswb/third_party/java/junit",
+        "//tools/adt/idea/aswb/third_party/java/truth",
+        "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
     ],
 )
 
@@ -173,5 +170,17 @@ aswb_test(
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/adt/idea/aswb/third_party/java/truth",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
+    ],
+)
+
+aswb_test(
+    name = "PackageStampAffectedPackagesCalculatorTest",
+    size = "small",
+    srcs = ["PackageStampAffectedPackagesCalculatorTest.kt"],
+    deps = [
+        ":TestUtils",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
+        "//tools/adt/idea/aswb/third_party/java/junit",
+        "//tools/adt/idea/aswb/third_party/java/truth",
     ],
 )

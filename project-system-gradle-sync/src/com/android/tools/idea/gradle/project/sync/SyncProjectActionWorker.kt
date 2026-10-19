@@ -38,10 +38,6 @@ internal class SyncProjectActionWorker(
    * 4. Query for the GlobalLibraryMap for the module (we ALWAYS do this regardless of the other two models)
    * 5. (Single Variant Sync only) Work out which variant for which models we need to request, and request them. See
    *    IdeaSelectedVariantChooser for more details.
-   *
-   * If single variant sync is enabled then [findParameterizedAndroidModel] will use Gradle parameterized model builder API in order to stop
-   * Gradle from building the variant. All the requested models are registered back to the external project system via the
-   * [ProjectImportModelProvider.BuildModelConsumer] callback.
    */
   fun populateAndroidModels(
     basicIncompleteModules: List<BasicIncompleteGradleModule>,
@@ -52,8 +48,9 @@ internal class SyncProjectActionWorker(
     val androidModules = modules.filterIsInstance<AndroidModule>()
     androidModules.forEach { androidModulesById[it.id] = it }
 
-    val androidModulesByProjectPath =
-      androidModules.associateBy { (BuildId(it.gradleProject.projectIdentifier.buildIdentifier.rootDir) to it.gradleProject.path) }
+    val androidModulesByProjectPath = androidModules.associateBy {
+      (BuildId(it.gradleProject.projectIdentifier.buildIdentifier.rootDir) to it.gradleProject.path)
+    }
 
     fun resolveAndroidProjectPath(buildId: BuildId, projectPath: String): AndroidModule? =
       androidModulesByProjectPath[buildId to projectPath]

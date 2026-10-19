@@ -120,14 +120,56 @@ public class TagSnapshotTest {
 
   @Test
   public void testComposeViewReplacement() {
-    @Language("XML") final String imageString = "<androidx.compose.ui.platform.ComposeView xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
-                                                "  android:layout_width=\"wrap_content\"\n" +
-                                                "  android:layout_height=\"wrap_content\" />";
+    @Language("XML") final String withComposableName =
+      "<androidx.compose.ui.platform.ComposeView xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
+      "  xmlns:tools=\"http://schemas.android.com/tools\"\n" +
+      "  android:layout_width=\"wrap_content\"\n" +
+      "  android:layout_height=\"wrap_content\"\n" +
+      "  tools:composableName=\"com.example.MyComposableKt.Preview\" />";
+
+    RenderXmlTag tagWithComposableName = XmlParser.parseRootTag(withComposableName);
+    TagSnapshot adapterSnapshot = TagSnapshot.createTagSnapshot(tagWithComposableName, null);
+    assertThat(adapterSnapshot.toString()).isEqualTo(
+      "TagSnapshot{androidx.compose.ui.tooling.ComposeViewAdapter, attributes=[AttributeSnapshot{layout_width=\"wrap_content\"}, AttributeSnapshot{layout_height=\"wrap_content\"}, AttributeSnapshot{composableName=\"com.example.MyComposableKt.Preview\"}], children=\n" +
+      "[]\n" +
+      "}");
+
+    @Language("XML") final String withoutComposableName =
+      "<androidx.compose.ui.platform.ComposeView xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
+      "  android:layout_width=\"wrap_content\"\n" +
+      "  android:layout_height=\"wrap_content\" />";
+
+    RenderXmlTag tagWithoutComposableName = XmlParser.parseRootTag(withoutComposableName);
+    TagSnapshot composeViewSnapshot = TagSnapshot.createTagSnapshot(tagWithoutComposableName, null);
+    assertThat(composeViewSnapshot.toString()).isEqualTo(
+      "TagSnapshot{androidx.compose.ui.platform.ComposeView, attributes=[AttributeSnapshot{layout_width=\"wrap_content\"}, AttributeSnapshot{layout_height=\"wrap_content\"}], children=\n" +
+      "[]\n" +
+      "}");
+  }
+
+  @Test
+  public void testRenderAttributeAndRawAttribute() {
+    @Language("XML") final String imageString = "<ImageView xmlns:tools=\"http://schemas.android.com/tools\"\n" +
+                                                "  tools:srcCompat=\"@tools:sample/avatars\" />";
 
     RenderXmlTag image = XmlParser.parseRootTag(imageString);
-    TagSnapshot button = TagSnapshot.createTagSnapshot(image, null);
-    assertThat(button.toString()).isEqualTo(
-      "TagSnapshot{androidx.compose.ui.tooling.ComposeViewAdapter, attributes=[AttributeSnapshot{layout_width=\"wrap_content\"}, AttributeSnapshot{layout_height=\"wrap_content\"}], children=\n" +
+    TagSnapshot snapshot = TagSnapshot.createTagSnapshot(image, null);
+
+    // Initially, both raw and render attributes match
+    assertThat(snapshot.getAttribute("srcCompat", "http://schemas.android.com/tools")).isEqualTo("@tools:sample/avatars");
+    assertThat(snapshot.getRenderAttribute("srcCompat", "http://schemas.android.com/tools")).isEqualTo("@tools:sample/avatars");
+
+    // When decorating for rendering (e.g. Sample Data resolution)
+    snapshot.setRenderAttribute("srcCompat", "http://schemas.android.com/tools", "tools", "@tools:sample/avatars[0]");
+
+    // Raw attribute for property panel remains unmodified
+    assertThat(snapshot.getAttribute("srcCompat", "http://schemas.android.com/tools")).isEqualTo("@tools:sample/avatars");
+    // Render attribute for Layoutlib reflects the decorated value
+    assertThat(snapshot.getRenderAttribute("srcCompat", "http://schemas.android.com/tools")).isEqualTo("@tools:sample/avatars[0]");
+
+    // toString contains renderValue if set
+    assertThat(snapshot.toString()).isEqualTo(
+      "TagSnapshot{ImageView, attributes=[AttributeSnapshot{srcCompat=\"@tools:sample/avatars\", renderValue=\"@tools:sample/avatars[0]\"}], children=\n" +
       "[]\n" +
       "}");
   }

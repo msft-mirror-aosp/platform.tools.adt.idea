@@ -16,6 +16,7 @@
 
 #include "control_messages.h"
 
+#include "agent.h"
 #include "log.h"
 #include "string_printf.h"
 
@@ -144,7 +145,8 @@ KeyEventMessage* KeyEventMessage::Deserialize(Base128InputStream& stream) {
   int32_t action = stream.ReadInt32();
   int32_t keycode = stream.ReadInt32();
   uint32_t meta_state = stream.ReadUInt32();
-  return new KeyEventMessage(action, keycode, meta_state);
+  int32_t display_id = stream.ReadInt32() + UNSPECIFIED_DISPLAY_ID;
+  return new KeyEventMessage(action, keycode, meta_state, display_id);
 }
 
 TextInputMessage* TextInputMessage::Deserialize(Base128InputStream& stream) {
@@ -333,15 +335,15 @@ void DeviceStateNotification::Serialize(Base128OutputStream& stream) const {
 void DisplayAddedOrChangedNotification::Serialize(Base128OutputStream& stream) const {
   ControlMessage::Serialize(stream);
   stream.WriteInt32(display_id_);
-  stream.WriteInt32(logical_size_.width);
-  stream.WriteInt32(logical_size_.height);
+  stream.WriteInt32(display_size_.width);
+  stream.WriteInt32(display_size_.height);
   stream.WriteInt32(rotation_);
-  stream.WriteInt32(type_);
+  stream.WriteInt32(display_type_);
 }
 
 string DisplayAddedOrChangedNotification::ToDebugString() const {
   return StringPrintf("DisplayAddedOrChangedNotification(%d, %dx%d, %d, type=%d)",
-                      display_id_, logical_size_.width, logical_size_.height, rotation_, type_);
+                      display_id_, display_size_.width, display_size_.height, rotation_, display_type_);
 }
 
 void DisplayRemovedNotification::Serialize(Base128OutputStream& stream) const {

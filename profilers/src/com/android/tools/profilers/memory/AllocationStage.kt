@@ -203,9 +203,12 @@ private constructor(
    * should be started or not. endSession: Boolean which indicates if current session should be ended or not.
    */
   private fun trackAllocations(enable: Boolean, endSession: Boolean) {
-    val listener =
-      MemoryProfiler.trackAllocations(profilers = studioProfilers, session = sessionData, enable = enable, endSession = endSession) { status
-        ->
+    MemoryProfiler.trackAllocations(
+      profilers = studioProfilers,
+      session = sessionData,
+      enable = enable,
+      endSession = endSession,
+      responseHandler = { status ->
         when (status?.status) {
           TrackStatus.Status.SUCCESS -> {
             if (enable) {
@@ -247,18 +250,19 @@ private constructor(
             cleanupFailedCapture()
           }
         }
-      }
-    listener?.let { myListenerTracker.trackListener(it, !enable) }
+      },
+      listenerTracker = { listener -> myListenerTracker.trackListener(listener, !enable) },
+    )
   }
 
   fun stopTracking() {
-    logger.info("PROFILER: Java/Kotlin Allocations capture stop attempted")
     if (!hasEndedTracking) {
+      logger.info("PROFILER: Java/Kotlin Allocations capture stop attempted")
       aspect.removeDependencies(this)
       timeline.dataRange.removeDependencies(this)
       maxTrackingTimeUs = timeline.dataRange.max
+      trackAllocations(enable = false, endSession = true)
     }
-    trackAllocations(false, true)
   }
 
   private fun cleanupFailedCapture() {

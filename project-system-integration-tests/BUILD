@@ -15,9 +15,9 @@ common_data = [
 old_project_app_data = [
     ":oldprojectapp",
     ":oldprojectapp_deps",
-    "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
+    "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
     "//prebuilts/studio/sdk:build-tools/latest",
-    "//tools/base/build-system:gradle-distrib-7.2",
+    "//tools/base/build-system:gradle-distrib-7.3.3",
 ]
 
 # managed by go/iml_to_build
@@ -195,9 +195,9 @@ maven_repository(
     name = "sdkindexproject_deps",
     # keep sorted: for buildifier
     artifacts = [
-        "@maven//:com.android.application.com.android.application.gradle.plugin_8.1.0",
-        "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_1.8.10",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.8.10",
+        "@maven//:com.android.application.com.android.application.gradle.plugin_9.0.0",
+        "@maven//:com.android.tools.build.aapt2_9.0.0-14304508",
+        "@maven//:com.android.tools.build.gradle_9.0.0",
     ],
 )
 
@@ -205,10 +205,11 @@ maven_repository(
     name = "ktsprojectapp_deps",
     # keep sorted: for buildifier
     artifacts = [
-        "@maven//:com.android.application.com.android.application.gradle.plugin_8.1.0",
-        "@maven//:org.jetbrains.kotlin.android.org.jetbrains.kotlin.android.gradle.plugin_2.2.10",
-        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_2.2.10",
-        "@maven//:org.jetbrains.kotlin.kotlin-reflect_1.9.20",
+        "@maven//:com.android.application.com.android.application.gradle.plugin_9.4.0",
+        "@maven//:com.android.tools.build.aapt2_9.4.0-15978811",
+        "@maven//:com.android.tools.build.gradle_9.4.0",
+        "@maven//:org.jetbrains.kotlin.kotlin-reflect_2.3.21",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib_2.3.21",
     ],
 )
 
@@ -216,7 +217,7 @@ maven_repository(
     name = "oldprojectapp_deps",
     # keep sorted: for buildifier
     artifacts = [
-        "@maven//:com.android.tools.build.gradle_7.1.0",
+        "@maven//:com.android.tools.build.gradle_7.2.0",
         "@maven//:org.jetbrains.kotlin.kotlin-compiler_1.7.20",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api_1.7.20",
         "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin_1.7.20",

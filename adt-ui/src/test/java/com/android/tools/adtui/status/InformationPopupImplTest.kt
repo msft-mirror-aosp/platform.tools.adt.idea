@@ -72,7 +72,7 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        true,
+        parentDisposable = disposableRule.disposable,
       )
 
     assertTrue(fakeUi.findComponent(JLabel::class.java) { it.text == "<html>Title</html>" }!!.isVisible)
@@ -101,7 +101,7 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        true,
+        parentDisposable = disposableRule.disposable,
       )
 
     assertTrue(fakeUi.findComponent(JLabel::class.java) { it.text == "<html>Title</html>" }!!.isVisible)
@@ -143,7 +143,7 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        true,
+        parentDisposable = disposableRule.disposable,
       )
 
     assertEquals("Action 1, Action 2", fakeUi.findAllComponents<AnActionLink>().joinToString(", ") { it.text })
@@ -181,7 +181,7 @@ class InformationPopupImplTest {
         add(popup.popupComponent, BorderLayout.CENTER)
       }
 
-    val fakeUi = FakeUi(parent, true)
+    val fakeUi = FakeUi(parent, parentDisposable = disposableRule.disposable)
     popup.showPopup(disposableRule.disposable, parent)
 
     assertEquals("Action 1, Action 2", fakeUi.findAllComponents<AnActionLink>().joinToString(", ") { it.text })
@@ -228,7 +228,7 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        true,
+        parentDisposable = disposableRule.disposable,
       )
 
     fakeUi.updateToolbars()
@@ -256,7 +256,7 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        true,
+        parentDisposable = disposableRule.disposable,
       )
 
     assertFalse(popup.hasEnteredPopup)
@@ -281,7 +281,7 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        true,
+        parentDisposable = disposableRule.disposable,
       )
 
     assertFalse(popup.hasEnteredPopup)
@@ -313,7 +313,7 @@ class InformationPopupImplTest {
           size = Dimension(200, 100)
           add(popup.popupComponent, BorderLayout.CENTER)
         },
-        true,
+        parentDisposable = disposableRule.disposable,
       )
 
     // Move mouse but not inside the popup, callback is not called yet

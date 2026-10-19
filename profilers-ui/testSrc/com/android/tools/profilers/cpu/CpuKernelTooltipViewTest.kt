@@ -21,13 +21,18 @@ import com.android.tools.adtui.model.SeriesData
 import com.android.tools.profilers.cpu.systemtrace.CpuKernelTooltip
 import com.android.tools.profilers.cpu.systemtrace.CpuThreadSliceInfo
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.TimeUnit
 import javax.swing.JLabel
 import javax.swing.JPanel
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class CpuKernelTooltipViewTest {
+  @get:Rule val myEdtRule = EdtRule()
   private val timeline = DefaultTimeline()
   private lateinit var tooltip: CpuKernelTooltip
   private lateinit var tooltipView: FakeCpuKernelTooltipView

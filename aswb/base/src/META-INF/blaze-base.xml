@@ -221,11 +221,12 @@
     <iw.actionProvider implementation="com.google.idea.blaze.base.qsync.QuerySyncInspectionWidgetActionProvider"/>
     <daemon.highlightInfoFilter implementation="com.google.idea.blaze.base.qsync.QuerySyncHighlightingFilter"/>
     <trafficLightRendererContributor implementation="com.google.idea.blaze.base.qsync.QuerySyncTrafficLightRendererContributor"/>
-    <editorNotificationProvider implementation="com.google.idea.blaze.base.qsync.UnsyncedFileEditorNotificationProvider" />
 
 
     <projectService serviceInterface="com.google.idea.blaze.base.run.RuntimeArtifactCache"
                     serviceImplementation="com.google.idea.blaze.base.run.RuntimeArtifactCacheImpl" />
+    <projectService serviceInterface="com.google.idea.blaze.base.run.DeployedApplicationTargetStore"
+                    serviceImplementation="com.google.idea.blaze.base.run.DeployedApplicationTargetStoreImpl" />
     <projectService serviceInterface="com.google.idea.blaze.base.sync.status.BlazeSyncStatus"
                     serviceImplementation="com.google.idea.blaze.base.sync.status.BlazeSyncStatusImpl"/>
     <projectService serviceImplementation="com.google.idea.blaze.base.sync.libraries.ExternalLibraryManager"/>
@@ -318,6 +319,7 @@
     <additionalTextAttributes scheme="Default" file="resources/colorSchemes/BuildDefault.xml"/>
     <typedHandler implementation="com.google.idea.blaze.base.lang.buildfile.completion.BuildCompletionAutoPopupHandler"/>
     <projectViewNodeDecorator implementation="com.google.idea.blaze.base.syncstatus.QuerySyncNodeDecorator"/>
+    <projectViewNodeDecorator implementation="com.google.idea.blaze.base.treeview.WorkspaceSwitcherProjectViewNodeDecorator"/>
     <macro implementation="com.google.idea.blaze.base.actions.WorkspaceRootMacro"/>
     <consoleFilterProvider implementation="com.google.idea.blaze.base.run.filter.GenericFileMessageFilter$Provider"/>
     <consoleFilterProvider implementation="com.google.idea.blaze.base.run.filter.TestLogFilter$Provider"/>
@@ -471,6 +473,8 @@
     <extensionPoint qualifiedName="com.google.idea.blaze.TargetKindProvider" interface="com.google.idea.blaze.base.model.primitives.Kind$Provider"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.TestContextProvider" interface="com.google.idea.blaze.base.run.producers.TestContextProvider"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.BinaryContextProvider" interface="com.google.idea.blaze.base.run.producers.BinaryContextProvider"/>
+    <extensionPoint qualifiedName="com.google.idea.blaze.BlazeCommandRunConfigurationHelper" interface="com.google.idea.blaze.base.run.producers.BlazeCommandRunConfigurationHelper" dynamic="true"/>
+    <extensionPoint qualifiedName="com.google.idea.blaze.UnifiedRunContextRefiner" interface="com.google.idea.blaze.base.run.producers.UnifiedRunContextRefiner" dynamic="true"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.HeuristicTestIdentifier" interface="com.google.idea.blaze.base.run.producers.HeuristicTestIdentifier"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.VcsSyncListener" interface="com.google.idea.blaze.base.vcs.VcsSyncListener"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.CommonMacroContributor" interface="com.google.idea.blaze.base.lang.buildfile.completion.CommonMacroContributor"/>

@@ -128,7 +128,6 @@
         implementationClass="com.android.tools.idea.editors.strings.StringResourceRefactoringSupportProvider"
         language="XML"
         order="first"/>
-    <implicitUsageProvider implementation="org.jetbrains.android.AndroidXmlnsImplicitUsagesProvider"/>
     <gotoDeclarationHandler implementation="org.jetbrains.android.XmlAttributeNameGotoDeclarationHandler" order="last"/>
 
     <!-- Code style: -->

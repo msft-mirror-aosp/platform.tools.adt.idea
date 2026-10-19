@@ -24,10 +24,8 @@ import com.google.wireless.android.sdk.stats.BuildErrorMessage
 import com.intellij.build.events.BuildIssueEvent
 import com.intellij.build.events.MessageEvent
 import org.jetbrains.kotlin.utils.filterIsInstanceAnd
-import org.junit.Ignore
 import org.junit.Test
 
-@Ignore("b/527808983")
 class TomlErrorTest : AbstractSyncFailureIntegrationTest() {
 
   private fun runSyncAndCheckFailure(preparedProject: PreparedTestProject) =
@@ -44,7 +42,9 @@ class TomlErrorTest : AbstractSyncFailureIntegrationTest() {
         expect.that(buildEvents.finishEventFailures()).isEmpty()
       },
       verifyFailureReported = {
-        expect.that(it.gradleSyncFailure).isEqualTo(AndroidStudioEvent.GradleSyncFailure.INVALID_TOML_DEFINITION)
+        expect
+          .that(it.gradleFailureDetails.detectedGradleSyncFailuresList)
+          .isEqualTo(listOf(AndroidStudioEvent.GradleSyncFailure.INVALID_TOML_DEFINITION))
         expect
           .that(it.buildOutputWindowStats.buildErrorMessagesList.map { it.errorShownType })
           .containsExactly(BuildErrorMessage.ErrorType.INVALID_TOML_DEFINITION)
@@ -63,7 +63,7 @@ class TomlErrorTest : AbstractSyncFailureIntegrationTest() {
             failure {
               error {
                 exception: org.gradle.tooling.BuildActionFailureException
-                  at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#run
+                  at: [0]org.gradle.tooling.internal.consumer.connection.PhasedActionAwareConsumerConnection#doRun
                 exception: java.lang.RuntimeException
                   at: [0]org.gradle.api.internal.catalog.DefaultDependenciesAccessors#generateAccessors
                 exception: org.gradle.api.InvalidUserDataException

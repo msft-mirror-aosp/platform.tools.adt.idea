@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.profilers.performance
 
+import com.android.tools.perflogger.Analyzer
 import com.android.tools.perflogger.Benchmark
+import com.android.tools.perflogger.WindowDeviationAnalyzer
 import java.lang.management.ManagementFactory
 import kotlin.system.measureTimeMillis
 
@@ -31,19 +33,31 @@ fun ensureGc() {
   repeat(10) { ManagementFactory.getMemoryMXBean().gc() }
 }
 
+/**
+ * Regression check for the heap dump benchmarks. CI runs on two machine pools, one about 20% slower than the other, so the pool alone can
+ * move a run's result by 20%: only flag regressions of more than 25% of the historic median, plus its MAD. Each run is aggregated by its
+ * minimum, which only matters for metrics that log several samples per run.
+ */
+val HEAP_DUMP_ANALYZER: Analyzer =
+  WindowDeviationAnalyzer.Builder()
+    .setMetricAggregate(Analyzer.MetricAggregate.MIN)
+    .addMedianTolerance(WindowDeviationAnalyzer.MedianToleranceParams.Builder().setMedianCoeff(0.25).build())
+    .build()
+
 interface BenchmarkRunner {
   operator fun <A : Any> invoke(tag: String, work: () -> A): A
 }
 
-/** Create a runner that runs each given (tagged) action in a memory benchmark and a time benchmark. */
+/** Create a runner that runs each given (tagged) action in a memory benchmark and a time benchmark, both checked by [analyzer] if set. */
 fun benchmarkMemoryAndTime(
   graphTitlePrefix: String,
   legendTitleSuffix: String,
   memUnit: MemoryUnit = MemoryUnit.MB,
   timeUnit: TimeUnit = TimeUnit.MS,
+  analyzer: Analyzer? = null,
 ): BenchmarkRunner {
-  val logTime = makeLogger("$graphTitlePrefix Time (${timeUnit.title})", legendTitleSuffix)
-  val logMem = makeLogger("$graphTitlePrefix Memory (${memUnit.title})", "$legendTitleSuffix-Used")
+  val logTime = makeLogger("$graphTitlePrefix Time (${timeUnit.title})", legendTitleSuffix, analyzer)
+  val logMem = makeLogger("$graphTitlePrefix Memory (${memUnit.title})", "$legendTitleSuffix-Used", analyzer)
   return object : BenchmarkRunner {
     override fun <A : Any> invoke(tag: String, work: () -> A): A {
       lateinit var ans: A
@@ -57,9 +71,9 @@ fun benchmarkMemoryAndTime(
   }
 }
 
-fun makeLogger(graphTitle: String, legendSuffix: String): (tag: String, number: Long) -> Unit {
+fun makeLogger(graphTitle: String, legendSuffix: String, analyzer: Analyzer? = null): (tag: String, number: Long) -> Unit {
   val bm = Benchmark.Builder(graphTitle).setProject("Android Studio Profilers").build()
-  return { tag, number -> bm.log("$tag-$legendSuffix", number) }
+  return { tag, number -> bm.log("$tag-$legendSuffix", number, analyzer) }
 }
 
 enum class MemoryUnit(val title: String, val asBytes: Long) {

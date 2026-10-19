@@ -20,20 +20,27 @@ import com.android.tools.rendering.RenderService;
 import com.android.utils.ILogger;
 
 import com.intellij.openapi.application.PathManager;
+import com.intellij.openapi.diagnostic.Logger;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FilePermission;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.NetPermission;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.Permission;
+import java.security.SecurityPermission;
+import java.sql.SQLPermission;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.PropertyPermission;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.TestOnly;
 
 
 import static com.android.SdkConstants.*;
@@ -59,12 +66,65 @@ public class RenderSecurityManager extends SecurityManager {
    * it has been disabled via {@link #setActive(boolean, Object)} (which sets the
    * per-instance mEnabled flag)
    */
-  public static boolean sEnabled = !VALUE_FALSE.equals(System.getProperty(ENABLED_PROPERTY));
+  private static volatile boolean sEnabled = !VALUE_FALSE.equals(System.getProperty(ENABLED_PROPERTY));
+  private static final AtomicInteger sActiveCount = new AtomicInteger(0);
+
+  public static boolean isEnabled() {
+    return sEnabled;
+  }
 
   /**
-   * Secret which must be provided by callers wishing to deactivate the security manager
+   * Disables the render sandbox for the IDE session.
+   * Can only be called when no render security manager is currently installed.
    */
-  private static Object sCredential;
+  public static void disableSandbox() {
+    if (sActiveCount.get() > 0
+        || RenderService.isRenderThread()
+        || System.getSecurityManager() instanceof RenderSecurityManager
+        || RenderSandbox.getRenderSandbox() != AllowAllRenderSandbox.INSTANCE) {
+      throw RenderSecurityException.create("Security", null);
+    }
+    sEnabled = false;
+  }
+
+  @TestOnly
+  static void setEnabledForTest(boolean enabled) {
+    sEnabled = enabled;
+  }
+
+  /**
+   * Increments the active render count and registers the active credential for this thread.
+   * Called by {@link RenderSecurity} implementations (e.g. {@code StudioRenderSecurity})
+   * when a rendering security session begins.
+   */
+  public static void enterActiveSession(@NotNull Object credential) {
+    sActiveCredential.set(credential);
+    sActiveCount.incrementAndGet();
+  }
+
+  /**
+   * Decrements the active render count and unregisters the active credential for this thread.
+   * Called by {@link RenderSecurity} implementations (e.g. {@code StudioRenderSecurity})
+   * when a rendering security session ends.
+   */
+  public static void exitActiveSession(@Nullable Object credential) {
+    Object active = sActiveCredential.get();
+    if (active != null && active == credential) {
+      sActiveCredential.remove();
+      sActiveCount.decrementAndGet();
+    }
+  }
+
+  /**
+   * ThreadLocal tracking the credential of the currently active security session on this thread,
+   * used by {@link #enterSafeRegion(Object)}.
+   */
+  private static final ThreadLocal<Object> sActiveCredential = new ThreadLocal<>();
+
+  /**
+   * Secret which must be provided by callers wishing to deactivate the security manager.
+   */
+  private Object myCredential;
   /**
    * For debugging purposes
    */
@@ -72,7 +132,8 @@ public class RenderSecurityManager extends SecurityManager {
   private final String[] mAllowedPaths;
 
   private boolean mAllowSetSecurityManager;
-  private boolean mDisabled;
+  private boolean mDisabled = true;
+  private int myActivationCount = 0;
   private boolean mUseSandbox;
   private final String mSdkPath;
   private final String mProjectPath;
@@ -168,8 +229,36 @@ public class RenderSecurityManager extends SecurityManager {
   /**
    * Sets an optional application temp directory. Returns this for constructor chaining.
    */
-  public RenderSecurityManager setAppTempDir(@Nullable String appTempDir) {
-    mAppTempDir = appTempDir;
+  @NotNull
+  public synchronized RenderSecurityManager setAppTempDir(@Nullable String appTempDir) {
+    if (System.getSecurityManager() == this || myActivationCount > 0 || isRelevant()) {
+      throw RenderSecurityException.create("Security", null);
+    }
+    if (appTempDir != null) {
+      if (appTempDir.trim().isEmpty()) {
+        throw new IllegalArgumentException("App temp directory cannot be empty");
+      }
+      Path path = Paths.get(appTempDir).toAbsolutePath().normalize();
+      if (path.getNameCount() == 0 || path.equals(path.getRoot())) {
+        throw new IllegalArgumentException("App temp directory cannot be root");
+      }
+      String canonical;
+      try {
+        canonical = canonicalize(appTempDir);
+      }
+      catch (IOException e) {
+        canonical = path.toString();
+      }
+      Path canonicalPath = Paths.get(canonical);
+      if (canonicalPath.getNameCount() == 0 || canonicalPath.equals(canonicalPath.getRoot())
+          || canonical.length() <= 1 || canonical.equals(File.separator)) {
+        throw new IllegalArgumentException("App temp directory cannot be root");
+      }
+      mAppTempDir = canonical.endsWith(File.separator) ? canonical : canonical + File.separator;
+    }
+    else {
+      mAppTempDir = null;
+    }
     return this;
   }
 
@@ -190,28 +279,48 @@ public class RenderSecurityManager extends SecurityManager {
    * @param credential when turning off the security manager, the exact same
    *                   credential passed in to the earlier activation call
    */
-  public void setActive(boolean active, @Nullable Object credential) {
-    if (!mUseSandbox) {
-      SecurityManager current = System.getSecurityManager();
-      boolean isActive = current == this;
-      if (active == isActive) {
-        return;
+  public synchronized void setActive(boolean active, @Nullable Object credential) {
+    if (active) {
+      if (credential == null) {
+        throw new IllegalArgumentException("Credential cannot be null");
       }
-
-      if (active) {
-        // Enable
-        assert !(current instanceof RenderSecurityManager);
-        myPreviousSecurityManager = current;
-        mDisabled = false;
-        System.setSecurityManager(this);
-        //noinspection AssignmentToStaticFieldFromInstanceMethod
-        sCredential = credential;
+      if (myActivationCount == 0) {
+        if (!mUseSandbox) {
+          SecurityManager current = System.getSecurityManager();
+          assert !(current instanceof RenderSecurityManager);
+          myPreviousSecurityManager = current;
+          mDisabled = false;
+          System.setSecurityManager(this);
+        }
+        else {
+          mDisabled = false;
+        }
+        myCredential = credential;
+        sActiveCredential.set(credential);
+        sActiveCount.incrementAndGet();
+        myActivationCount = 1;
       }
       else {
-        if (credential != sCredential) {
+        if (credential != myCredential) {
           throw RenderSecurityException.create("Invalid credential");
         }
+        myActivationCount++;
+      }
+    }
+    else {
+      if (myActivationCount <= 0 || credential != myCredential) {
+        throw RenderSecurityException.create("Invalid credential");
+      }
+      if (myActivationCount > 1) {
+        myActivationCount--;
+        return;
+      }
+      myActivationCount = 0;
+      myCredential = null;
+      sActiveCredential.remove();
+      sActiveCount.decrementAndGet();
 
+      if (!mUseSandbox) {
         // Disable
         mAllowSetSecurityManager = true;
         // Don't set mDisabled and clear sInRenderThread yet: the call
@@ -227,6 +336,7 @@ public class RenderSecurityManager extends SecurityManager {
           // set it back, it will be active when we didn't intend for it to be. That's
           // why there is also the {@code mDisabled} flag, used to ignore any requests
           // later on.
+          SecurityManager current = System.getSecurityManager();
           if (current instanceof RenderSecurityManager) {
             System.setSecurityManager(myPreviousSecurityManager);
           }
@@ -238,6 +348,9 @@ public class RenderSecurityManager extends SecurityManager {
           mDisabled = true;
           mAllowSetSecurityManager = false;
         }
+      }
+      else {
+        mDisabled = true;
       }
     }
   }
@@ -265,7 +378,8 @@ public class RenderSecurityManager extends SecurityManager {
    */
   public static boolean enterSafeRegion(@Nullable Object credential) {
     boolean token = sEnabled;
-    if (credential == sCredential) {
+    Object activeCredential = sActiveCredential.get();
+    if (credential != null && activeCredential != null && credential == activeCredential) {
       sEnabled = false;
     }
     return token;
@@ -278,7 +392,9 @@ public class RenderSecurityManager extends SecurityManager {
    *              {@link #enterSafeRegion(Object)} call
    */
   public static void exitSafeRegion(boolean token) {
-    sEnabled = token;
+    if (token) {
+      sEnabled = true;
+    }
   }
 
   /**
@@ -338,9 +454,18 @@ public class RenderSecurityManager extends SecurityManager {
   @Override
   public void checkPropertiesAccess() {
     if (isRelevant() && !RenderPropertiesAccessUtil.isPropertyAccessAllowed()) {
-      boolean isWithinLogger = Arrays.stream(this.getClassContext())
-        .anyMatch(
-          (clazz) -> "Logger".equals(clazz.getSimpleName()) && "com.intellij.openapi.diagnostic.Logger".equals(clazz.getCanonicalName()));
+      Class<?>[] context = this.getClassContext();
+      boolean isWithinLogger = false;
+      for (Class<?> clazz : context) {
+        if (clazz == RenderSecurityManager.class || clazz.getName().startsWith("java.lang.")) {
+          continue;
+        }
+        if (Logger.class.isAssignableFrom(clazz)
+            && Objects.equals(clazz.getClassLoader(), Logger.class.getClassLoader())) {
+          isWithinLogger = true;
+        }
+        break;
+      }
 
       if (!isWithinLogger) {
         throw RenderSecurityException.create("Property", null);
@@ -689,6 +814,22 @@ public class RenderSecurityManager extends SecurityManager {
         throw RenderSecurityException.create("SymbolicLinks", null);
       }
     } else if (isRelevant()) {
+      if (permission instanceof NetPermission) {
+        throw RenderSecurityException.create("Network", name);
+      }
+      if (permission instanceof SQLPermission) {
+        throw RenderSecurityException.create("SQL", name);
+      }
+      if (permission instanceof SecurityPermission) {
+        throw RenderSecurityException.create("Security", name);
+      }
+      if (name != null && name.startsWith("getenv.")) {
+        throw RenderSecurityException.create("Env", name.substring(name.indexOf('.') + 1));
+      }
+      if ("setIO".equals(name)) {
+        throw RenderSecurityException.create("IO", null);
+      }
+
       String actions = permission.getActions();
       //noinspection PointlessBooleanExpression,ConstantConditions
       if (isRestrictReads && "read".equals(actions)) {
@@ -696,7 +837,7 @@ public class RenderSecurityManager extends SecurityManager {
           throw RenderSecurityException.create("Read", name);
         }
       }
-      else if (!actions.isEmpty() && !actions.equals("read")) {
+      else if (actions != null && !actions.isEmpty() && !actions.equals("read")) {
         // write, execute, delete, readlink
         if (!(permission instanceof FilePermission) || !isWritingAllowed(name)) {
           if (permission instanceof PropertyPermission && isPropertyWriteAllowed(name)) {

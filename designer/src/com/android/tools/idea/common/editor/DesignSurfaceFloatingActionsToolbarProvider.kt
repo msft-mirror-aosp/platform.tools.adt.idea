@@ -23,6 +23,7 @@ import com.android.tools.idea.uibuilder.editor.BasicDesignSurfaceActionGroups
 import com.android.tools.idea.uibuilder.editor.EditableDesignSurfaceActionGroups
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
+import com.intellij.util.ui.UIUtil
 import javax.swing.JComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -41,7 +42,7 @@ class DesignSurfaceFloatingActionsToolbarProvider(
     scope.launch { designSurface.zoomChanged.collect { zoomChanged() } }
     scope.launch { designSurface.panningChanged.collect { panningChanged() } }
     scope.launch { designSurface.modelChanged.collect { withContext(Dispatchers.EDT) { updateToolbar() } } }
-    updateToolbar()
+    UIUtil.invokeLaterIfNeeded { updateToolbar() }
   }
 
   override fun getActionGroups(): EditorActionsToolbarActionGroups {

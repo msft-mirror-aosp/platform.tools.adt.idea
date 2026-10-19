@@ -28,11 +28,8 @@ import com.android.tools.idea.res.ResourceRepositoryRClass
 import com.android.tools.idea.res.ResourceRepositoryRClass.Transitivity
 import com.android.tools.idea.res.ResourceRepositoryRClass.Transitivity.NON_TRANSITIVE
 import com.android.tools.idea.res.ResourceRepositoryRClass.Transitivity.TRANSITIVE
-import com.android.tools.idea.res.SmallAarRClass
-import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.res.TransitiveAarRClass
 import com.android.tools.idea.util.androidFacet
-import com.android.tools.res.ResourceNamespacing
 import com.android.utils.reflection.qualifiedName
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.debug
@@ -56,9 +53,8 @@ import org.jetbrains.android.augment.ManifestClass
 /**
  * A [ResolveScopeEnlarger] that adds the right `R` and `Manifest` light classes to the resolution scope of files within Android modules.
  *
- * This way references can be correctly resolved and offer variants for code completion. Note that for every module and AAR we create two
- * `R` classes: namespaced and non-namespaced. It's through this [ResolveScopeEnlarger] that the right classes are added to the resolution
- * process.
+ * This way references can be correctly resolved and offer variants for code completion. It's through this [ResolveScopeEnlarger] that the
+ * right classes are added to the resolution process.
  *
  * For Kotlin code, this is called with the moduleFile (the `*.iml` file) instead of the source file, because Kotlin scoping works
  * per-module in the IDE plugin. Unless `module.moduleFile` is null (when the iml doesn't exist, e.g. when tests don't create one) in which
@@ -100,7 +96,6 @@ class AndroidResolveScopeEnlarger : ResolveScopeEnlarger() {
       GlobalSearchScope(module.project) {
 
       private val dependentAarAddresses = findDependenciesWithResources(module).keys
-      private val namespacing = StudioResourceRepositoryManager.getInstance(module)?.namespacing
 
       fun isLightVirtualFileFromAccessibleModule(file: LightVirtualFile): Boolean {
         val modulePointer = file.getUserData(MODULE_POINTER_KEY) ?: return false
@@ -140,8 +135,7 @@ class AndroidResolveScopeEnlarger : ResolveScopeEnlarger() {
         return when (file.getUserData(LIGHT_CLASS_KEY)) {
           ModuleRClass::class.java -> isModuleRVirtualFileAccessible(file)
           ManifestClass::class.java -> isLightVirtualFileFromAccessibleModule(file)
-          SmallAarRClass::class.java -> isLightVirtualFileFromAccessibleAar(file) && namespacing == ResourceNamespacing.REQUIRED
-          TransitiveAarRClass::class.java -> isLightVirtualFileFromAccessibleAar(file) && namespacing == ResourceNamespacing.DISABLED
+          TransitiveAarRClass::class.java -> isLightVirtualFileFromAccessibleAar(file)
           ResourceRepositoryRClass::class.java -> {
             // For BlazeRClass which does not take into account test scope or transitivity
             isLightVirtualFileFromAccessibleModule(file)

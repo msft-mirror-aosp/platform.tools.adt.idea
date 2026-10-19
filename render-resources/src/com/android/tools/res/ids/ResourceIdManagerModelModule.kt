@@ -15,13 +15,9 @@
  */
 package com.android.tools.res.ids
 
-import com.android.tools.res.ResourceNamespacing
-
 /** Representation of an Android module required for a [ResourceIdManager]. */
 interface ResourceIdManagerModelModule {
   val isAppOrFeature: Boolean
-
-  val namespacing: ResourceNamespacing
 
   /** When true, the R classes belonging to this Module will be loaded using bytecode parsing and not reflection. */
   val useRBytecodeParsing: Boolean
@@ -35,7 +31,6 @@ interface ResourceIdManagerModelModule {
     fun noNamespacingApp(useRBytecodeParsing: Boolean = true): ResourceIdManagerModelModule =
       object : ResourceIdManagerModelModule {
         override val isAppOrFeature: Boolean = true
-        override val namespacing: ResourceNamespacing = ResourceNamespacing.DISABLED
         override val useRBytecodeParsing: Boolean = useRBytecodeParsing
         override val applicationRClassConstantIds: Boolean = true
       }

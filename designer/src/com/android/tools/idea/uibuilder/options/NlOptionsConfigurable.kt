@@ -28,12 +28,12 @@ import com.intellij.ui.dsl.builder.selected
 import com.intellij.ui.dsl.listCellRenderer.listCellRenderer
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.messages.Topic
-import org.jetbrains.android.uipreview.AndroidEditorSettings
-import org.jetbrains.android.uipreview.AndroidEditorSettings.LayoutType
-import org.jetbrains.annotations.VisibleForTesting
 import java.awt.GraphicsEnvironment
 import javax.swing.JLabel
 import javax.swing.JSlider
+import org.jetbrains.android.uipreview.AndroidEditorSettings
+import org.jetbrains.android.uipreview.AndroidEditorSettings.LayoutType
+import org.jetbrains.annotations.VisibleForTesting
 
 private const val CONFIGURABLE_ID = "nele.options"
 private val DISPLAY_NAME =
@@ -57,6 +57,7 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
   }
 
   private fun fireOptionsChanged() = ApplicationManager.getApplication().messageBus.syncPublisher(Listener.TOPIC).onOptionsChanged()
+
   private lateinit var preferredResourcesEditorMode: ComboBox<AndroidEditorSettings.EditorMode>
   private lateinit var preferredEditorMode: ComboBox<AndroidEditorSettings.EditorMode>
   private lateinit var myPreferredLayoutType: ComboBox<LayoutType>
@@ -70,10 +71,13 @@ class NlOptionsConfigurable : BoundConfigurable(DISPLAY_NAME), SearchableConfigu
   override fun getId() = CONFIGURABLE_ID
 
   private fun Row.editorModeComboBox(): Cell<ComboBox<AndroidEditorSettings.EditorMode>> {
-    return comboBox(AndroidEditorSettings.EditorMode.entries, listCellRenderer("") {
-      icon(value.icon)
-      text(value.displayName)
-    })
+    return comboBox(
+      AndroidEditorSettings.EditorMode.entries,
+      listCellRenderer("") {
+        icon(value.icon)
+        text(value.displayName)
+      },
+    )
   }
 
   private fun Row.editorPreviewLayoutModeComboBox(): Cell<ComboBox<LayoutType>> {

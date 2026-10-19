@@ -65,6 +65,10 @@ class PerfgateComposeAccessibilityTest : ComposeRenderTestBase() {
         SingleComposePreviewElementInstance.forTesting("google.simpleapplication.UiCheckPreviewKt.VisualLintErrorPreview"),
         customViewInfoParser = if (withAccessibilityParser) accessibilityBasedHierarchyParser else null,
       )
-      .get()!!
+      .get()
+      .result!!
+      // The image backing buffer is only returned to layoutlib when the result is disposed. Disposing the render task, which
+      // renderPreviewElementForResult already does, does not release it.
+      .dispose()
   }
 }

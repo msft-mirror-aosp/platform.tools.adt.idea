@@ -17,7 +17,6 @@ package com.android.tools.idea.res
 
 import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.projectmodel.ResourceFolder
-import com.android.resources.aar.AarProtoResourceRepository
 import com.android.resources.aar.AarResourceRepository
 import com.android.resources.aar.AarSourceResourceRepository
 import com.android.resources.aar.CachingData
@@ -33,7 +32,6 @@ import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.diagnostic.thisLogger
 import java.nio.file.Files
 import java.nio.file.NoSuchFileException
-import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.Executor
 import org.jetbrains.kotlin.utils.ThreadSafe
@@ -41,7 +39,6 @@ import org.jetbrains.kotlin.utils.ThreadSafe
 /** Cache of AAR resource repositories. */
 @ThreadSafe
 open class AarResourceRepositoryCache protected constructor() {
-  private val myProtoRepositories = CacheBuilder.newBuilder().softValues().build<Path, AarProtoResourceRepository>()
   private val mySourceRepositories = CacheBuilder.newBuilder().softValues().build<ResourceFolder, AarSourceResourceRepository>()
 
   /**
@@ -63,31 +60,11 @@ open class AarResourceRepositoryCache protected constructor() {
     }
   }
 
-  /**
-   * Returns a cached or a newly created proto resource repository.
-   *
-   * @param library the AAR library
-   * @return the resource repository
-   * @throws IllegalArgumentException if `library` doesn't contain res.apk or its res.apk isn't a file on the local file system
-   */
-  fun getProtoRepository(library: ExternalAndroidLibrary): AarProtoResourceRepository {
-    val resApkPath = library.resApkFile ?: throw IllegalArgumentException("No res.apk for ${library.libraryName()}")
-
-    val resApkFile = resApkPath.toPath() ?: throw IllegalArgumentException("Cannot find $resApkPath for ${library.libraryName()}")
-
-    return getRepository(resApkFile, myProtoRepositories) { AarProtoResourceRepository.create(resApkFile, library.libraryName()) }
-  }
-
-  fun removeProtoRepository(resApkFile: Path) {
-    myProtoRepositories.invalidate(resApkFile)
-  }
-
   fun removeSourceRepository(resourceFolder: ResourceFolder) {
     mySourceRepositories.invalidate(resourceFolder)
   }
 
   fun clear() {
-    myProtoRepositories.invalidateAll()
     mySourceRepositories.invalidateAll()
   }
 

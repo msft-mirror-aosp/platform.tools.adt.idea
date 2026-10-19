@@ -114,14 +114,14 @@ class SurfaceState {
     filePathToDrawableBackgroundType[relativePath] = type
   }
 
-  /** Get saved state for all [OrganizationGroup]s in the [file]. */
-  fun getOrganizationGroupState(file: VirtualFile): ImmutableMap<String, Boolean> {
-    return organizationGroups[file.url]?.toImmutableMap() ?: persistentMapOf()
+  /** Get saved state for all [OrganizationGroup]s in the file with the given [fileUrl]. */
+  fun getOrganizationGroupState(fileUrl: String): ImmutableMap<String, Boolean> {
+    return organizationGroups[fileUrl]?.toImmutableMap() ?: persistentMapOf()
   }
 
-  /** Save state of [OrganizationGroup]s in the [file]. */
-  fun saveOrganizationGroupState(file: VirtualFile, methodFqn: String, isOpened: Boolean) {
-    organizationGroups.getOrCreate(file.url) { HashMap() }[methodFqn] = isOpened
+  /** Save state of [OrganizationGroup]s in the file with the given [fileUrl]. */
+  fun saveOrganizationGroupState(fileUrl: String, methodFqn: String, isOpened: Boolean) {
+    organizationGroups.getOrCreate(fileUrl) { HashMap() }[methodFqn] = isOpened
   }
 
   /**

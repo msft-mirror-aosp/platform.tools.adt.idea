@@ -30,8 +30,7 @@ object InspectorPainter {
     /** Minimum distance between major ticks in the timeline. */
     private const val MINIMUM_TICK_DISTANCE = 150
 
-    private val TICK_INCREMENTS =
-      arrayOf(1_000_000_000, 100_000_000, 10_000_000, 1_000_000, 100_000, 10_000, 10_000, 1_000, 200, 50, 10, 5, 2)
+    private val TICK_INCREMENTS = arrayOf(1_000_000_000, 100_000_000, 10_000_000, 1_000_000, 100_000, 10_000, 1_000, 200, 50, 10, 5, 2)
 
     /**
      * Get the dynamic tick increment for horizontal slider:
@@ -51,10 +50,10 @@ object InspectorPainter {
     private val THUMB_COLOR = JBUI.CurrentTheme.EditorTabs.underlineColor()
 
     /** Half width of the shape used as the handle of the timeline scrubber. */
-    private const val HANDLE_HALF_WIDTH = 5
+    private fun handleHalfWidth() = JBUI.scale(5)
 
     /** Half height of the shape used as the handle of the timeline scrubber. */
-    private const val HANDLE_HALF_HEIGHT = 5
+    private fun handleHalfHeight() = JBUI.scale(5)
 
     /**
      * Paint a thumb for horizontal slider.
@@ -78,9 +77,11 @@ object InspectorPainter {
       // (x + halfWidth, y - Height): top-right point of the scrubber, where there is a right angle
       // (x + halfWidth, y - halfHeight): where the scrubber angled part meets the vertical one
       // (right side)
-      val handleHeight = HANDLE_HALF_HEIGHT * 2
-      val xPoints = intArrayOf(x, x - HANDLE_HALF_WIDTH, x - HANDLE_HALF_WIDTH, x + HANDLE_HALF_WIDTH, x + HANDLE_HALF_WIDTH)
-      val yPoints = intArrayOf(y, y - HANDLE_HALF_HEIGHT, y - handleHeight, y - handleHeight, y - HANDLE_HALF_HEIGHT)
+      val halfWidth = handleHalfWidth()
+      val halfHeight = handleHalfHeight()
+      val handleHeight = halfHeight * 2
+      val xPoints = intArrayOf(x, x - halfWidth, x - halfWidth, x + halfWidth, x + halfWidth)
+      val yPoints = intArrayOf(y, y - halfHeight, y - handleHeight, y - handleHeight, y - halfHeight)
       g.fillPolygon(xPoints, yPoints, xPoints.size)
     }
   }

@@ -158,7 +158,11 @@ fun modelCacheV2Impl(
   fun Collection<File>.deduplicateFiles() = map { it.deduplicateFile() }
 
   /** If AGP has absolute Gradle build path used in [ProjectInfo.buildId], or it uses the Gradle build name that we need to patch. */
-  fun sourceProviderFrom(provider: SourceProvider, buildFolder: File): IdeSourceProvider {
+  fun sourceProviderFrom(
+    provider: SourceProvider,
+    buildFolder: File,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  ): IdeSourceProvider {
     val folder: File? = provider.manifestFile?.let { it.parentFile?.deduplicateFile() }
     fun File.makeRelativeAndDeduplicate(): String = (if (folder != null) relativeToOrSelf(folder) else this).path.deduplicate()
     fun Collection<File>.makeRelativeAndDeduplicate(): List<String> = map { it.makeRelativeAndDeduplicate() }
@@ -198,11 +202,39 @@ fun modelCacheV2Impl(
         if (modelVersions[ModelFeature.HAS_AAR_KEEP_RULES_SOURCES])
           provider.aarKeepRulesDirectories?.makeRelativeAndDeduplicate() ?: mutableListOf()
         else mutableListOf(),
+      apiConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.apiConfigurationName?.deduplicate()
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("apiConfigurationName"),
+      compileOnlyConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.compileOnlyConfigurationName?.deduplicate()
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("compileOnlyConfigurationName"),
+      compileOnlyApiConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.compileOnlyApiConfigurationName?.deduplicate()
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("compileOnlyApiConfigurationName"),
+      implementationConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.implementationConfigurationName?.deduplicate()
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("implementationConfigurationName"),
+      runtimeOnlyConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.runtimeOnlyConfigurationName?.deduplicate()
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("runtimeOnlyConfigurationName"),
+      annotationProcessorConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES])
+          provider.annotationProcessorConfigurationName?.deduplicate()
+        else
+          legacyAndroidGradlePluginProperties
+            ?.sourceProvidersConfigurationNames[provider.name]
+            ?.get("annotationProcessorConfigurationName"),
+      kaptConfigurationName =
+        if (modelVersions[ModelFeature.HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES]) provider.kaptConfigurationName?.deduplicate()
+        else legacyAndroidGradlePluginProperties?.sourceProvidersConfigurationNames[provider.name]?.get("kaptConfigurationName"),
     )
   }
 
-  fun sourceProviderFrom(provider: SourceProvider, assetContext: VariantAssetSourceProviderContext): IdeSourceProvider =
-    sourceProviderFrom(provider, assetContext.buildFolder)
+  fun sourceProviderFrom(
+    provider: SourceProvider,
+    assetContext: VariantAssetSourceProviderContext,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  ): IdeSourceProvider = sourceProviderFrom(provider, assetContext.buildFolder, legacyAndroidGradlePluginProperties)
 
   fun sourceProviderFrom(source: HostJarTestSuiteSource): IdeSourceProvider {
     val topLevel: File =
@@ -279,7 +311,11 @@ fun modelCacheV2Impl(
   /**
    * We recombine all the test sources into a single collection since they can be disambiguated using the [IdeTestSuiteSource.type] field.
    */
-  fun collectAllTestSuiteSources(basicTestSuite: BasicTestSuite, buildFolder: File): List<IdeTestSuiteSourceImpl> {
+  fun collectAllTestSuiteSources(
+    basicTestSuite: BasicTestSuite,
+    buildFolder: File,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  ): List<IdeTestSuiteSourceImpl> {
     return basicTestSuite.assets
       .map { source: AssetsTestSuiteSource ->
         IdeTestSuiteSourceImpl(source.name, IdeTestSuiteSource.SourceType.ASSETS, sourceProviderFrom(source))
@@ -294,7 +330,7 @@ fun modelCacheV2Impl(
           IdeTestSuiteSourceImpl(
             source.name,
             IdeTestSuiteSource.SourceType.TEST_APK,
-            sourceProviderFrom(source.sourceProvider, buildFolder),
+            sourceProviderFrom(source.sourceProvider, buildFolder, legacyAndroidGradlePluginProperties),
           )
         }
       )
@@ -324,6 +360,7 @@ fun modelCacheV2Impl(
       storeFile = config.storeFile?.deduplicateFile(),
       storePassword = config.storePassword?.deduplicate(),
       keyAlias = config.keyAlias?.deduplicate(),
+      isSigningReady = config.isSigningReady,
     )
   }
 
@@ -460,7 +497,11 @@ fun modelCacheV2Impl(
     )
   }
 
-  fun sourceProviderContainerFrom(container: SourceProvider, buildFolder: File): IdeExtraSourceProviderImpl {
+  fun sourceProviderContainerFrom(
+    container: SourceProvider,
+    buildFolder: File,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  ): IdeExtraSourceProviderImpl {
     return IdeExtraSourceProviderImpl(
       // As we no longer have ArtifactMetaData, we use hardcoded values for androidTests, unitTests and testFixtures artifacts.
 
@@ -471,7 +512,7 @@ fun modelCacheV2Impl(
           container.name.startsWith("screenshotTest") -> "_screenshot_test_"
           else -> "_unit_test_"
         },
-      sourceProvider = sourceProviderFrom(container, buildFolder),
+      sourceProvider = sourceProviderFrom(container, buildFolder, legacyAndroidGradlePluginProperties),
     )
   }
 
@@ -483,42 +524,78 @@ fun modelCacheV2Impl(
   ): IdeProductFlavorContainerImpl {
     return IdeProductFlavorContainerImpl(
       productFlavor = productFlavorFrom(productFlavor, legacyAndroidGradlePluginProperties),
-      sourceProvider = container?.sourceProvider?.let { it: SourceProvider -> sourceProviderFrom(it, buildFolder) },
+      sourceProvider =
+        container?.sourceProvider?.let { it: SourceProvider -> sourceProviderFrom(it, buildFolder, legacyAndroidGradlePluginProperties) },
       extraSourceProviders =
         mutableListOf<IdeExtraSourceProviderImpl>().apply {
           if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
             container?.deviceTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
             container?.hostTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
           } else {
-            container?.androidTestSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
-            container?.unitTestSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
+            container?.androidTestSourceProvider?.let { it: SourceProvider ->
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
+            }
+            container?.unitTestSourceProvider?.let { it: SourceProvider ->
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
+            }
           }
-          container?.testFixturesSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
+          container?.testFixturesSourceProvider?.let { it: SourceProvider ->
+            this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
+          }
         },
     )
   }
 
-  fun sourceProviderContainerFrom(container: SourceSetContainer?, buildFolder: File): IdeSourceProviderContainerImpl {
+  fun sourceProviderContainerFrom(
+    container: SourceSetContainer?,
+    buildFolder: File,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  ): IdeSourceProviderContainerImpl {
     return IdeSourceProviderContainerImpl(
-      sourceProvider = container?.sourceProvider?.let { it: SourceProvider -> sourceProviderFrom(it, buildFolder) },
+      sourceProvider =
+        container?.sourceProvider?.let { it: SourceProvider -> sourceProviderFrom(it, buildFolder, legacyAndroidGradlePluginProperties) },
       extraSourceProviders =
         mutableListOf<IdeExtraSourceProviderImpl>().apply {
           if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
             container?.deviceTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
             container?.hostTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
           } else {
-            container?.androidTestSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
-            container?.unitTestSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
+            container?.androidTestSourceProvider?.let { it: SourceProvider ->
+              this.add(
+                sourceProviderContainerFrom(
+                  it,
+                  buildFolder,
+                  legacyAndroidGradlePluginProperties,
+                )
+              )
+            }
+            container?.unitTestSourceProvider?.let { it: SourceProvider ->
+              this.add(
+                sourceProviderContainerFrom(
+                  it,
+                  buildFolder,
+                  legacyAndroidGradlePluginProperties,
+                )
+              )
+            }
           }
-          container?.testFixturesSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
+          container?.testFixturesSourceProvider?.let { it: SourceProvider ->
+            this.add(
+              sourceProviderContainerFrom(
+                it,
+                buildFolder,
+                legacyAndroidGradlePluginProperties,
+              )
+            )
+          }
         },
     )
   }
@@ -564,21 +641,45 @@ fun modelCacheV2Impl(
   ): IdeBuildTypeContainerImpl {
     return IdeBuildTypeContainerImpl(
       buildType = buildTypeFrom(buildType, legacyAndroidGradlePluginProperties),
-      sourceProvider = container?.sourceProvider?.let { sourceProviderFrom(it, buildFolder) },
+      sourceProvider = container?.sourceProvider?.let { sourceProviderFrom(it, buildFolder, legacyAndroidGradlePluginProperties) },
       extraSourceProviders =
         mutableListOf<IdeExtraSourceProviderImpl>().apply {
           if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
             container?.deviceTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
             container?.hostTestSourceProviders?.values?.forEach { it: SourceProvider ->
-              this.add(sourceProviderContainerFrom(it, buildFolder))
+              this.add(sourceProviderContainerFrom(it, buildFolder, legacyAndroidGradlePluginProperties))
             }
           } else {
-            container?.androidTestSourceProvider?.let { this.add(sourceProviderContainerFrom(it, buildFolder)) }
-            container?.unitTestSourceProvider?.let { this.add(sourceProviderContainerFrom(it, buildFolder)) }
+            container?.androidTestSourceProvider?.let {
+              this.add(
+                sourceProviderContainerFrom(
+                  it,
+                  buildFolder,
+                  legacyAndroidGradlePluginProperties,
+                )
+              )
+            }
+            container?.unitTestSourceProvider?.let {
+              this.add(
+                sourceProviderContainerFrom(
+                  it,
+                  buildFolder,
+                  legacyAndroidGradlePluginProperties,
+                )
+              )
+            }
           }
-          container?.testFixturesSourceProvider?.let { it: SourceProvider -> this.add(sourceProviderContainerFrom(it, buildFolder)) }
+          container?.testFixturesSourceProvider?.let { it: SourceProvider ->
+            this.add(
+              sourceProviderContainerFrom(
+                it,
+                buildFolder,
+                legacyAndroidGradlePluginProperties,
+              )
+            )
+          }
         },
     )
   }
@@ -590,243 +691,242 @@ fun modelCacheV2Impl(
     bootClasspath: Collection<String>,
     androidProjectPathResolver: AndroidProjectPathResolver,
     buildPathMap: Map<String, BuildId>,
-  ): ModelResult<IdeModelWithPostProcessor<IdeDependenciesCoreImpl>> =
-    ModelResult.create {
+  ): ModelResult<IdeModelWithPostProcessor<IdeDependenciesCoreImpl>> = ModelResult.create {
 
-      // The key can be either a v2 library key or a file path in case the library comes from the boot classpath
-      val keyToIdentityMap = mutableMapOf<String, LibraryIdentity>()
-      data class LibraryWithDependencies(val library: Library, val dependencies: List<String>)
+    // The key can be either a v2 library key or a file path in case the library comes from the boot classpath
+    val keyToIdentityMap = mutableMapOf<String, LibraryIdentity>()
+    data class LibraryWithDependencies(val library: Library, val dependencies: List<String>)
 
-      fun populateProjectDependencies(
-        libraries: List<LibraryWithDependencies>,
-        seenDependencies: MutableMap<LibraryIdentity, List<String>>,
-      ) {
-        libraries.forEach { (library, dependencies) ->
-          val ideModel = modelFactory.moduleLibraryFrom(library, androidProjectPathResolver, buildPathMap)
-          if (ideModel == null)
-            if (lenientModuleResolution) {
-              return@forEach
-            } else {
-              error("Cannot find project dependency: ${library.projectInfo?.displayName}")
-            }
-          val identity = LibraryIdentity.fromIdeModel(ideModel)
-          keyToIdentityMap[library.key] = identity
-          if (!seenDependencies.contains(identity)) {
-            seenDependencies[identity] = dependencies
-            internedModels.internModuleLibrary(identity) { ideModel }
+    fun populateProjectDependencies(
+      libraries: List<LibraryWithDependencies>,
+      seenDependencies: MutableMap<LibraryIdentity, List<String>>,
+    ) {
+      libraries.forEach { (library, dependencies) ->
+        val ideModel = modelFactory.moduleLibraryFrom(library, androidProjectPathResolver, buildPathMap)
+        if (ideModel == null)
+          if (lenientModuleResolution) {
+            return@forEach
+          } else {
+            error("Cannot find project dependency: ${library.projectInfo?.displayName}")
+          }
+        val identity = LibraryIdentity.fromIdeModel(ideModel)
+        keyToIdentityMap[library.key] = identity
+        if (!seenDependencies.contains(identity)) {
+          seenDependencies[identity] = dependencies
+          internedModels.internModuleLibrary(identity) { ideModel }
+        }
+      }
+    }
+
+    fun populateJavaLibraries(
+      javaLibraries: Collection<LibraryWithDependencies>,
+      seenDependencies: MutableMap<LibraryIdentity, List<String>>,
+    ) {
+      javaLibraries.forEach { (javaLibrary, dependencies) ->
+        val identity = LibraryIdentity.fromLibrary(javaLibrary)
+        keyToIdentityMap[javaLibrary.key] = identity
+        if (!seenDependencies.contains(identity)) {
+          seenDependencies[identity] = dependencies
+          internedModels.internJavaLibraryV2(javaLibrary) { modelFactory.javaLibraryFrom(javaLibrary) }
+        }
+      }
+    }
+
+    fun populateOptionalSdkLibrariesLibraries(
+      bootClasspath: Collection<String>,
+      seenDependencies: MutableMap<LibraryIdentity, List<String>>,
+    ) {
+      getUsefulBootClasspathLibraries(bootClasspath).forEach { jarFile ->
+        val identity = LibraryIdentity.fromFile(jarFile)
+        keyToIdentityMap[jarFile.path] = identity
+        if (!seenDependencies.contains(identity)) { // Any unique key identifying the library  is suitable.
+          seenDependencies[identity] = listOf()
+          internedModels.internJavaLibrary(LibraryIdentity.fromFile(jarFile)) {
+            IdeJavaLibraryImpl("${ModelCache.LOCAL_JARS}:" + jarFile.path + ":unspecified", null, "", jarFile, listOf(), null)
           }
         }
       }
+    }
 
-      fun populateJavaLibraries(
-        javaLibraries: Collection<LibraryWithDependencies>,
-        seenDependencies: MutableMap<LibraryIdentity, List<String>>,
-      ) {
-        javaLibraries.forEach { (javaLibrary, dependencies) ->
-          val identity = LibraryIdentity.fromLibrary(javaLibrary)
-          keyToIdentityMap[javaLibrary.key] = identity
-          if (!seenDependencies.contains(identity)) {
-            seenDependencies[identity] = dependencies
-            internedModels.internJavaLibraryV2(javaLibrary) { modelFactory.javaLibraryFrom(javaLibrary) }
-          }
-        }
+    class LibrariesByType(
+      val androidLibraries: List<LibraryWithDependencies>,
+      val javaLibraries: List<LibraryWithDependencies>,
+      val projectLibraries: List<LibraryWithDependencies>,
+      val unknownLibraries: List<LibraryWithDependencies>,
+    )
+
+    fun getTypedLibraries(dependencies: List<LibraryWithDependencies>): LibrariesByType {
+      val androidLibraries: MutableList<LibraryWithDependencies> = mutableListOf()
+      val javaLibraries: MutableList<LibraryWithDependencies> = mutableListOf()
+      val projectLibraries: MutableList<LibraryWithDependencies> = mutableListOf()
+      val unknownLibraries: MutableList<LibraryWithDependencies> = mutableListOf()
+
+      dependencies.forEach { dep ->
+        when (dep.library.type) {
+          LibraryType.ANDROID_LIBRARY -> androidLibraries
+          LibraryType.PROJECT -> projectLibraries
+          LibraryType.JAVA_LIBRARY -> javaLibraries
+          LibraryType.RELOCATED -> unknownLibraries
+          LibraryType.NO_ARTIFACT_FILE -> unknownLibraries
+        }.add(dep)
       }
 
-      fun populateOptionalSdkLibrariesLibraries(
-        bootClasspath: Collection<String>,
-        seenDependencies: MutableMap<LibraryIdentity, List<String>>,
-      ) {
-        getUsefulBootClasspathLibraries(bootClasspath).forEach { jarFile ->
-          val identity = LibraryIdentity.fromFile(jarFile)
-          keyToIdentityMap[jarFile.path] = identity
-          if (!seenDependencies.contains(identity)) { // Any unique key identifying the library  is suitable.
-            seenDependencies[identity] = listOf()
-            internedModels.internJavaLibrary(LibraryIdentity.fromFile(jarFile)) {
-              IdeJavaLibraryImpl("${ModelCache.LOCAL_JARS}:" + jarFile.path + ":unspecified", null, "", jarFile, listOf(), null)
-            }
-          }
-        }
-      }
-
-      class LibrariesByType(
-        val androidLibraries: List<LibraryWithDependencies>,
-        val javaLibraries: List<LibraryWithDependencies>,
-        val projectLibraries: List<LibraryWithDependencies>,
-        val unknownLibraries: List<LibraryWithDependencies>,
+      return LibrariesByType(
+        androidLibraries = androidLibraries,
+        javaLibraries = javaLibraries,
+        projectLibraries = projectLibraries,
+        unknownLibraries = unknownLibraries,
       )
+    }
 
-      fun getTypedLibraries(dependencies: List<LibraryWithDependencies>): LibrariesByType {
-        val androidLibraries: MutableList<LibraryWithDependencies> = mutableListOf()
-        val javaLibraries: MutableList<LibraryWithDependencies> = mutableListOf()
-        val projectLibraries: MutableList<LibraryWithDependencies> = mutableListOf()
-        val unknownLibraries: MutableList<LibraryWithDependencies> = mutableListOf()
+    /*
+     Flattens a direct acyclic graph of dependencies into a list that includes each node only once and is the result of traversal in the
+     depth-first pre-order order.
+    */
+    fun List<GraphItem>.toFlatLibraryList(): List<LibraryWithDependencies> {
+      val result = mutableListOf<LibraryWithDependencies>()
+      // We process items in the order that the recursive depth-first pre-order traversal would achieve. This is for compatibility
+      // with v1 models and will change soon when we start exposing graphs to the IDE.
+      val seenGraphItemLibraryKeys = HashSet<String>()
+      val queue = ArrayDeque(this@toFlatLibraryList.asReversed())
+      while (queue.isNotEmpty()) {
+        val item = queue.removeLast()
+        if (seenGraphItemLibraryKeys.add(item.key)) {
+          queue.addAll(item.dependencies.asReversed().asSequence().filter { !seenGraphItemLibraryKeys.contains(it.key) })
+          val library = libraries[item.key]
+          if (library != null) {
+            result.add(LibraryWithDependencies(library, item.dependencies.map { it.key }))
+          }
+        }
+      }
+      return result
+    }
 
-        dependencies.forEach { dep ->
-          when (dep.library.type) {
-            LibraryType.ANDROID_LIBRARY -> androidLibraries
-            LibraryType.PROJECT -> projectLibraries
-            LibraryType.JAVA_LIBRARY -> javaLibraries
-            LibraryType.RELOCATED -> unknownLibraries
-            LibraryType.NO_ARTIFACT_FILE -> unknownLibraries
-          }.add(dep)
+    fun List<Edge>.toFlatLibraryList(): List<LibraryWithDependencies> {
+      val result = LinkedHashMap<String, MutableList<String>>()
+      forEach {
+        result
+          .computeIfAbsent(it.from) { mutableListOf() }
+          .apply {
+            // Self-dependencies are used to denote just the existence of a node.
+            if (it.from != it.to) {
+              add(it.to)
+            }
+          }
+      }
+
+      return result.map { LibraryWithDependencies(libraries[it.key]!!, it.value) }
+    }
+
+    fun populateAndroidLibraries(
+      androidLibraries: Collection<LibraryWithDependencies>,
+      seenDependencies: MutableMap<LibraryIdentity, List<String>>,
+    ) {
+      androidLibraries.forEach { (library, dependencies) ->
+        val identity = LibraryIdentity.fromLibrary(library)
+        keyToIdentityMap[library.key] = identity
+        if (!seenDependencies.contains(identity)) {
+          seenDependencies[identity] = dependencies
+          internedModels.internAndroidLibraryV2(library) { modelFactory.androidLibraryFrom(library) { internedModels.intern(this) } }
+        }
+      }
+    }
+
+    fun populateUnknownDependencies(
+      libraries: List<LibraryWithDependencies>,
+      seenDependencies: MutableMap<LibraryIdentity, List<String>>,
+    ) {
+      libraries.forEach { (unknownLibrary, dependencies) ->
+        val identity = LibraryIdentity.fromLibrary(unknownLibrary)
+        keyToIdentityMap[unknownLibrary.key] = identity
+        if (!seenDependencies.contains(identity)) {
+          seenDependencies[identity] = dependencies
+          internedModels.internUnknownLibraryV2(unknownLibrary) { IdeUnknownLibraryImpl(unknownLibrary.key) }
+        }
+      }
+    }
+
+    fun createIdeDependencies(artifactAddressesAndDependencies: MutableMap<LibraryIdentity, List<String>>): IdeDependenciesCoreImpl {
+      val dependencyList = mutableListOf<IdeDependencyCoreImpl>()
+      val indexed = mutableMapOf<LibraryIdentity, Int>()
+
+      /* Collect the list of indexes for Project dependencies in order that they be potentially referred to by other modules */
+      val projectIdToIndex: MutableMap<ClasspathIdentifier, Int> = HashMap()
+
+      artifactAddressesAndDependencies.onEachIndexed { index, entry -> indexed[entry.key] = index }
+
+      artifactAddressesAndDependencies.forEach { (key, deps) ->
+        val libraryReference = internedModels.getLibraryByKey(key)!!
+
+        val library = internedModels.lookup(libraryReference)
+        if (library is IdePreResolvedModuleLibraryImpl) {
+          val id = ClasspathIdentifier(BuildId(File(library.buildId)), library.projectPath, library.sourceSet, classpathId.classpathType)
+          projectIdToIndex[id] =
+            checkNotNull(indexed[key]) {
+              "Artifact ($key) not in indices map $indexed. Known artifacts and dependencies: $artifactAddressesAndDependencies"
+            }
         }
 
-        return LibrariesByType(
-          androidLibraries = androidLibraries,
-          javaLibraries = javaLibraries,
-          projectLibraries = projectLibraries,
-          unknownLibraries = unknownLibraries,
+        dependencyList.add(
+          IdeDependencyCoreImpl(
+            libraryReference,
+            deps.mapNotNull {
+              val identity = keyToIdentityMap[it]
+              if (identity == null && lenientModuleResolution) {
+                return@mapNotNull null
+              }
+              indexed[checkNotNull(identity) { "Dependency ($it) not in known identities by key: $keyToIdentityMap" }]
+            },
+          )
         )
       }
 
-      /*
-       Flattens a direct acyclic graph of dependencies into a list that includes each node only once and is the result of traversal in the
-       depth-first pre-order order.
-      */
-      fun List<GraphItem>.toFlatLibraryList(): List<LibraryWithDependencies> {
-        val result = mutableListOf<LibraryWithDependencies>()
-        // We process items in the order that the recursive depth-first pre-order traversal would achieve. This is for compatibility
-        // with v1 models and will change soon when we start exposing graphs to the IDE.
-        val seenGraphItemLibraryKeys = HashSet<String>()
-        val queue = ArrayDeque(this@toFlatLibraryList.asReversed())
-        while (queue.isNotEmpty()) {
-          val item = queue.removeLast()
-          if (seenGraphItemLibraryKeys.add(item.key)) {
-            queue.addAll(item.dependencies.asReversed().asSequence().filter { !seenGraphItemLibraryKeys.contains(it.key) })
-            val library = libraries[item.key]
-            if (library != null) {
-              result.add(LibraryWithDependencies(library, item.dependencies.map { it.key }))
-            }
-          }
-        }
-        return result
-      }
-
-      fun List<Edge>.toFlatLibraryList(): List<LibraryWithDependencies> {
-        val result = LinkedHashMap<String, MutableList<String>>()
-        forEach {
-          result
-            .computeIfAbsent(it.from) { mutableListOf() }
-            .apply {
-              // Self-dependencies are used to denote just the existence of a node.
-              if (it.from != it.to) {
-                add(it.to)
-              }
-            }
-        }
-
-        return result.map { LibraryWithDependencies(libraries[it.key]!!, it.value) }
-      }
-
-      fun populateAndroidLibraries(
-        androidLibraries: Collection<LibraryWithDependencies>,
-        seenDependencies: MutableMap<LibraryIdentity, List<String>>,
-      ) {
-        androidLibraries.forEach { (library, dependencies) ->
-          val identity = LibraryIdentity.fromLibrary(library)
-          keyToIdentityMap[library.key] = identity
-          if (!seenDependencies.contains(identity)) {
-            seenDependencies[identity] = dependencies
-            internedModels.internAndroidLibraryV2(library) { modelFactory.androidLibraryFrom(library) { internedModels.intern(this) } }
-          }
+      val ideDependenciesCore = IdeDependenciesCoreDirect(dependencyList)
+      /* If we are computing the runtime classpath then save references to any module dependencies within the graph */
+      if (classpathId.classpathType == ClasspathType.RUNTIME) {
+        projectIdToIndex.forEach { (id, index) ->
+          // Don't override stored classpath references, preferring the first classpath that we come across instead of the last.
+          internedModels.addProjectReferenceToArtifactClasspath(id, ideDependenciesCore to index)
         }
       }
 
-      fun populateUnknownDependencies(
-        libraries: List<LibraryWithDependencies>,
-        seenDependencies: MutableMap<LibraryIdentity, List<String>>,
-      ) {
-        libraries.forEach { (unknownLibrary, dependencies) ->
-          val identity = LibraryIdentity.fromLibrary(unknownLibrary)
-          keyToIdentityMap[unknownLibrary.key] = identity
-          if (!seenDependencies.contains(identity)) {
-            seenDependencies[identity] = dependencies
-            internedModels.internUnknownLibraryV2(unknownLibrary) { IdeUnknownLibraryImpl(unknownLibrary.key) }
-          }
-        }
-      }
-
-      fun createIdeDependencies(artifactAddressesAndDependencies: MutableMap<LibraryIdentity, List<String>>): IdeDependenciesCoreImpl {
-        val dependencyList = mutableListOf<IdeDependencyCoreImpl>()
-        val indexed = mutableMapOf<LibraryIdentity, Int>()
-
-        /* Collect the list of indexes for Project dependencies in order that they be potentially referred to by other modules */
-        val projectIdToIndex: MutableMap<ClasspathIdentifier, Int> = HashMap()
-
-        artifactAddressesAndDependencies.onEachIndexed { index, entry -> indexed[entry.key] = index }
-
-        artifactAddressesAndDependencies.forEach { (key, deps) ->
-          val libraryReference = internedModels.getLibraryByKey(key)!!
-
-          val library = internedModels.lookup(libraryReference)
-          if (library is IdePreResolvedModuleLibraryImpl) {
-            val id = ClasspathIdentifier(BuildId(File(library.buildId)), library.projectPath, library.sourceSet, classpathId.classpathType)
-            projectIdToIndex[id] =
-              checkNotNull(indexed[key]) {
-                "Artifact ($key) not in indices map $indexed. Known artifacts and dependencies: $artifactAddressesAndDependencies"
-              }
-          }
-
-          dependencyList.add(
-            IdeDependencyCoreImpl(
-              libraryReference,
-              deps.mapNotNull {
-                val identity = keyToIdentityMap[it]
-                if (identity == null && lenientModuleResolution) {
-                  return@mapNotNull null
-                }
-                indexed[checkNotNull(identity) { "Dependency ($it) not in known identities by key: $keyToIdentityMap" }]
-              },
-            )
-          )
-        }
-
-        val ideDependenciesCore = IdeDependenciesCoreDirect(dependencyList)
-        /* If we are computing the runtime classpath then save references to any module dependencies within the graph */
-        if (classpathId.classpathType == ClasspathType.RUNTIME) {
-          projectIdToIndex.forEach { (id, index) ->
-            // Don't override stored classpath references, preferring the first classpath that we come across instead of the last.
-            internedModels.addProjectReferenceToArtifactClasspath(id, ideDependenciesCore to index)
-          }
-        }
-
-        return ideDependenciesCore
-      }
-
-      fun createIdeDependenciesInstance(): IdeDependenciesCoreImpl {
-        val seenDependencies = mutableMapOf<LibraryIdentity, List<String>>()
-        val dependencyList =
-          when (dependencies) {
-            is DependencyGraphCompat.AdjacencyList -> dependencies.edges.toFlatLibraryList()
-            is DependencyGraphCompat.GraphItemList -> dependencies.graphItems.toFlatLibraryList()
-            is DependencyGraphCompat.FlatList ->
-              dependencies.libraryKeys.map {
-                LibraryWithDependencies(libraries[it]!!, emptyList()) // There are no nested dependencies in the flat list model
-              }
-            null -> emptyList()
-          }
-        val typedLibraries = getTypedLibraries(dependencyList)
-
-        populateAndroidLibraries(typedLibraries.androidLibraries, seenDependencies)
-        populateJavaLibraries(typedLibraries.javaLibraries, seenDependencies)
-        populateOptionalSdkLibrariesLibraries(bootClasspath, seenDependencies)
-        populateProjectDependencies(typedLibraries.projectLibraries, seenDependencies)
-        populateUnknownDependencies(typedLibraries.unknownLibraries, seenDependencies)
-        return createIdeDependencies(seenDependencies)
-      }
-
-      fun createDependencyRef(): IdeDependenciesCoreRef? {
-        val classpathToIndex = internedModels.getProjectReferenceToArtifactClasspath(classpathId) ?: return null
-        return IdeDependenciesCoreRef(classpathToIndex.first, classpathToIndex.second)
-      }
-
-      val dependenciesCore = createIdeDependenciesInstance()
-
-      IdeModelWithPostProcessor(
-        dependenciesCore,
-        postProcessor = { if (dependencies == null) createDependencyRef() ?: dependenciesCore else dependenciesCore },
-      )
+      return ideDependenciesCore
     }
+
+    fun createIdeDependenciesInstance(): IdeDependenciesCoreImpl {
+      val seenDependencies = mutableMapOf<LibraryIdentity, List<String>>()
+      val dependencyList =
+        when (dependencies) {
+          is DependencyGraphCompat.AdjacencyList -> dependencies.edges.toFlatLibraryList()
+          is DependencyGraphCompat.GraphItemList -> dependencies.graphItems.toFlatLibraryList()
+          is DependencyGraphCompat.FlatList ->
+            dependencies.libraryKeys.map {
+              LibraryWithDependencies(libraries[it]!!, emptyList()) // There are no nested dependencies in the flat list model
+            }
+          null -> emptyList()
+        }
+      val typedLibraries = getTypedLibraries(dependencyList)
+
+      populateAndroidLibraries(typedLibraries.androidLibraries, seenDependencies)
+      populateJavaLibraries(typedLibraries.javaLibraries, seenDependencies)
+      populateOptionalSdkLibrariesLibraries(bootClasspath, seenDependencies)
+      populateProjectDependencies(typedLibraries.projectLibraries, seenDependencies)
+      populateUnknownDependencies(typedLibraries.unknownLibraries, seenDependencies)
+      return createIdeDependencies(seenDependencies)
+    }
+
+    fun createDependencyRef(): IdeDependenciesCoreRef? {
+      val classpathToIndex = internedModels.getProjectReferenceToArtifactClasspath(classpathId) ?: return null
+      return IdeDependenciesCoreRef(classpathToIndex.first, classpathToIndex.second)
+    }
+
+    val dependenciesCore = createIdeDependenciesInstance()
+
+    IdeModelWithPostProcessor(
+      dependenciesCore,
+      postProcessor = { if (dependencies == null) createDependencyRef() ?: dependenciesCore else dependenciesCore },
+    )
+  }
 
   /** Create [IdeDependencies] from [ArtifactDependencies]. */
   fun dependenciesFrom(
@@ -858,6 +958,7 @@ fun modelCacheV2Impl(
   fun testOptionsFrom(testOptions: TestInfo): IdeTestOptionsImpl {
     return IdeTestOptionsImpl(
       animationsDisabled = testOptions.animationsDisabled,
+      instrumentInPrivateComputeCore = safeGet({ testOptions.instrumentInPrivateComputeCore }, false),
       execution = convertV2Execution(testOptions.execution),
       instrumentedTestTaskName = testOptions.instrumentedTestTaskName,
     )
@@ -934,8 +1035,10 @@ fun modelCacheV2Impl(
       classesFolder = artifact.classesFolders.toList(),
       ideSetupTaskNames = artifact.ideSetupTaskNames.toList(),
       generatedSourceFolders = artifact.generatedSourceFolders.deduplicateFiles().distinct(),
-      variantSourceProvider = basicArtifact.variantSourceProvider?.let { sourceProviderFrom(it, assetContext) },
-      multiFlavorSourceProvider = basicArtifact.multiFlavorSourceProvider?.let { sourceProviderFrom(it, assetContext) },
+      variantSourceProvider =
+        basicArtifact.variantSourceProvider?.let { sourceProviderFrom(it, assetContext, legacyAndroidGradlePluginProperties) },
+      multiFlavorSourceProvider =
+        basicArtifact.multiFlavorSourceProvider?.let { sourceProviderFrom(it, assetContext, legacyAndroidGradlePluginProperties) },
       compileClasspathCore = throwingIdeDependencies(),
       runtimeClasspathCore = throwingIdeDependencies(),
       unresolvedDependencies = emptyList(),
@@ -1020,6 +1123,7 @@ fun modelCacheV2Impl(
     basicArtifact: BasicArtifact,
     artifact: JavaArtifact,
     assetContext: VariantAssetSourceProviderContext,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
   ): IdeJavaArtifactCoreImpl {
     return IdeJavaArtifactCoreImpl(
       name = name,
@@ -1028,8 +1132,10 @@ fun modelCacheV2Impl(
       classesFolder = artifact.classesFolders.toList(),
       ideSetupTaskNames = artifact.ideSetupTaskNames.deduplicateStrings().toList(),
       generatedSourceFolders = artifact.generatedSourceFolders.deduplicateFiles().distinct(),
-      variantSourceProvider = basicArtifact.variantSourceProvider?.let { sourceProviderFrom(it, assetContext) },
-      multiFlavorSourceProvider = basicArtifact.multiFlavorSourceProvider?.let { sourceProviderFrom(it, assetContext) },
+      variantSourceProvider =
+        basicArtifact.variantSourceProvider?.let { sourceProviderFrom(it, assetContext, legacyAndroidGradlePluginProperties) },
+      multiFlavorSourceProvider =
+        basicArtifact.multiFlavorSourceProvider?.let { sourceProviderFrom(it, assetContext, legacyAndroidGradlePluginProperties) },
       compileClasspathCore = throwingIdeDependencies(),
       runtimeClasspathCore = throwingIdeDependencies(),
       unresolvedDependencies = emptyList(),
@@ -1111,33 +1217,41 @@ fun modelCacheV2Impl(
     variant: Variant,
     basicVariant: BasicVariant,
     assetContext: VariantAssetSourceProviderContext,
+    legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
   ): List<IdeJavaArtifactCoreImpl> {
     return if (modelVersions[ModelFeature.TEST_ARTIFACTS_AND_SOURCE_SETS_IN_MAPS]) {
       variant.hostTestArtifacts.map { (k, v) ->
-        javaArtifactFrom(convertArtifactName(k), basicVariant.hostTestArtifacts[k]!!, v, assetContext)
+        javaArtifactFrom(convertArtifactName(k), basicVariant.hostTestArtifacts[k]!!, v, assetContext, legacyAndroidGradlePluginProperties)
       }
     } else {
       variant.unitTestArtifact?.let { it: JavaArtifact ->
-        listOf(javaArtifactFrom(IdeArtifactName.UNIT_TEST, basicVariant.unitTestArtifact!!, it, assetContext))
+        listOf(
+          javaArtifactFrom(
+            IdeArtifactName.UNIT_TEST,
+            basicVariant.unitTestArtifact!!,
+            it,
+            assetContext,
+            legacyAndroidGradlePluginProperties,
+          )
+        )
       } ?: emptyList()
     }
   }
 
   fun testSuiteArtifactsFrom(variant: Variant, testSuites: Collection<BasicTestSuite>): Collection<IdeTestSuiteVariantTargetImpl> {
     return if (modelVersions[ModelFeature.HAS_TEST_SUITES]) {
-      val suitesForThisVariant =
-        testSuites.map { testSuite ->
-          testSuite.targetsByVariant
-            .filter { variantTarget -> variantTarget.targetedVariant == variant.name }
-            .map { target ->
-              IdeTestSuiteVariantTargetImpl(
-                suiteName = testSuite.name,
-                targetedVariantName = target.targetedVariant,
-                targets =
-                  target.targets.map { target -> IdeTestSuiteTargetImpl(target.name, target.testTaskName, target.targetedDevices.toList()) },
-              )
-            }
-        }
+      val suitesForThisVariant = testSuites.map { testSuite ->
+        testSuite.targetsByVariant
+          .filter { variantTarget -> variantTarget.targetedVariant == variant.name }
+          .map { target ->
+            IdeTestSuiteVariantTargetImpl(
+              suiteName = testSuite.name,
+              targetedVariantName = target.targetedVariant,
+              targets =
+                target.targets.map { target -> IdeTestSuiteTargetImpl(target.name, target.testTaskName, target.targetedDevices.toList()) },
+            )
+          }
+      }
       suitesForThisVariant.flatten()
     } else emptyList()
   }
@@ -1227,7 +1341,7 @@ fun modelCacheV2Impl(
           projectType == IdeAndroidProjectType.PROJECT_TYPE_TEST,
         ),
       // If AndroidArtifact isn't null, then same goes for the ArtifactDependencies.
-      hostTestArtifacts = hostTestArtifactsFrom(variant, basicVariant, assetContext),
+      hostTestArtifacts = hostTestArtifactsFrom(variant, basicVariant, assetContext, legacyAndroidGradlePluginProperties),
       deviceTestArtifacts =
         deviceTestArtifactsFrom(
           variant,
@@ -1607,7 +1721,7 @@ fun modelCacheV2Impl(
   ): ModelResult<IdeAndroidProjectImpl> {
     val defaultConfigCopy: IdeProductFlavorImpl = productFlavorFrom(androidDsl.defaultConfig, legacyAndroidGradlePluginProperties)
     val defaultConfigSourcesCopy: IdeSourceProviderContainerImpl =
-      sourceProviderContainerFrom(basicProject.mainSourceSet, basicProject.buildFolder)
+      sourceProviderContainerFrom(basicProject.mainSourceSet, basicProject.buildFolder, legacyAndroidGradlePluginProperties)
     val buildTypesCopy: Collection<IdeBuildTypeContainerImpl> =
       zip(
         androidDsl.buildTypes,
@@ -1671,7 +1785,7 @@ fun modelCacheV2Impl(
       if (modelVersions[ModelFeature.HAS_TEST_SUITES]) {
         basicProject.testSuites.map { basicTestSuite ->
           val testSuite = project.testSuites.first { it.name == basicTestSuite.name }
-          val sources = collectAllTestSuiteSources(basicTestSuite, basicProject.buildFolder)
+          val sources = collectAllTestSuiteSources(basicTestSuite, basicProject.buildFolder, legacyAndroidGradlePluginProperties)
           IdeTestSuiteImpl(
             name = basicTestSuite.name,
             sources = sources,
@@ -1777,21 +1891,20 @@ fun modelCacheV2Impl(
       testSuites: Collection<BasicTestSuite>,
       androidDsl: AndroidDsl,
       basicProject: BasicAndroidProject,
-    ): ModelResult<IdeVariantCoreImpl> =
-      ModelResult.create {
-        val assetContext = createAssetContext(basicVariant, androidDsl, basicProject)
+    ): ModelResult<IdeVariantCoreImpl> = ModelResult.create {
+      val assetContext = createAssetContext(basicVariant, androidDsl, basicProject)
 
-        // Currently, all plugins going through the model cache v2 building will be of multi-variant type
-        variantCoreFrom(
-          androidProject.projectType,
-          androidProject.multiVariantData!!,
-          basicVariant,
-          variant,
-          legacyAndroidGradlePluginProperties,
-          testSuites,
-          assetContext,
-        )
-      }
+      // Currently, all plugins going through the model cache v2 building will be of multi-variant type
+      variantCoreFrom(
+        androidProject.projectType,
+        androidProject.multiVariantData!!,
+        basicVariant,
+        variant,
+        legacyAndroidGradlePluginProperties,
+        testSuites,
+        assetContext,
+      )
+    }
 
     override fun variantFrom(
       ownerBuildId: BuildId,

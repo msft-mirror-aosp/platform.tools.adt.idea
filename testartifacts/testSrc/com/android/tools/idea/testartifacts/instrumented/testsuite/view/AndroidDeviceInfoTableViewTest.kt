@@ -23,6 +23,8 @@ import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
+import javax.swing.JComponent
+import javax.swing.plaf.basic.BasicHTML
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -82,5 +84,33 @@ class AndroidDeviceInfoTableViewTest {
     assertThat(model.getValueAt(1, 1)).isEqualTo("29")
     assertThat(model.getValueAt(2, 0)).isEqualTo("Manufacturer")
     assertThat(model.getValueAt(2, 1)).isEqualTo("mock manufacturer name")
+  }
+
+  @Test
+  fun deviceInfoCellsDoNotRenderDeviceSuppliedHtml() {
+    val table = AndroidDeviceInfoTableView()
+
+    // A malicious device can return arbitrary bytes from `adb shell getprop ro.product.*`, and an
+    // imported test-result.pb carries attacker-authored device info. Neither may be rendered as
+    // Swing HTML: an <img src> would make the IDE issue an outbound request (SMB on Windows).
+    val maliciousValue = "<html><img src=\"file://attacker.example/probe\">"
+    val device =
+      AndroidDevice(
+        "mock device id",
+        "mock device name",
+        "mock device name",
+        AndroidDeviceType.LOCAL_EMULATOR,
+        AndroidVersion(29),
+        mutableMapOf("Manufacturer" to maliciousValue),
+      )
+    table.setAndroidDevice(device)
+
+    val view = table.myTableView
+    val row = (0 until view.model.rowCount).first { view.model.getValueAt(it, 0) == "Manufacturer" }
+    val rendered = view.prepareRenderer(view.getCellRenderer(row, 1), row, 1) as JComponent
+
+    // BasicHTML stashes a parsed View under this client property when, and only when, the component
+    // is rendering its text as HTML.
+    assertThat(rendered.getClientProperty(BasicHTML.propertyKey)).isNull()
   }
 }

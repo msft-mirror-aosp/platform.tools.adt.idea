@@ -29,13 +29,19 @@ public interface FeatureConfig {
   boolean isTraceboxEnabled();
   boolean isLeakCanaryEnabled();
   boolean isLeakCanaryStudioBotEnabled();
+  boolean isLeakCanaryOccurrencesEnabled();
+  boolean isUseTraceProcessorForHprofEnabled();
   boolean isSystemTraceInEditorEnabled();
   boolean isMethodTraceInEditorEnabled();
   boolean isCallstackSampleTraceInEditorEnabled();
   boolean isHeapDumpTraceInEditorEnabled();
   boolean isNativeAllocationsTraceInEditorEnabled();
   boolean isJavaKotlinAllocationsLegacyTraceInEditorEnabled();
+  boolean isLiveTelemetryInEditorEnabled();
+  boolean isJavaKotlinAllocationsInEditorEnabled();
+  boolean isLeakCanaryInEditorEnabled();
   boolean isProfilerHomeTabV2Enabled();
+  boolean isDeobfuscationForNativeAllocationsEnabled();
 
   PowerProfilerDisplayMode getSystemTracePowerProfilerDisplayMode();
   // Add new features alphabetically instead of at the end of the list

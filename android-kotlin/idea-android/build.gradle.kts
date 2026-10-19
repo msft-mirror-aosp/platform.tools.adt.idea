@@ -1,7 +1,5 @@
-
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 apply { plugin("kotlin") }
+
 apply { plugin("jps-compatible") }
 
 dependencies {
@@ -21,7 +19,19 @@ dependencies {
     compile(androidDxJar())
 
     compileOnly(project(":kotlin-android-extensions-runtime"))
-    compileOnly(intellijDep()) { includeJars("openapi", "java-api", "java-impl", "idea", "extensions", "util", "guava", "android-base-common", rootProject = rootProject) }
+    compileOnly(intellijDep()) {
+        includeJars(
+            "openapi",
+            "java-api",
+            "java-impl",
+            "idea",
+            "extensions",
+            "util",
+            "guava",
+            "android-base-common",
+            rootProject = rootProject,
+        )
+    }
     compileOnly(intellijPluginDep("android")) {
         includeJars("android", "android-common", "sdk-common", "sdklib", "sdk-tools", "layoutlib-api")
     }
@@ -59,7 +69,7 @@ dependencies {
     testRuntime(intellijPluginDep("java-decompiler"))
     testRuntime(intellijPluginDep("java-i18n"))
     testRuntime(intellijPluginDep("junit"))
-    //testRuntime(intellijPluginDep("maven"))
+    // testRuntime(intellijPluginDep("maven"))
     testRuntime(intellijPluginDep("testng"))
 }
 
@@ -77,4 +87,3 @@ projectTest {
 }
 
 testsJar {}
-

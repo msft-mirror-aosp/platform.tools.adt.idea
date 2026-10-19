@@ -22,15 +22,20 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.Android
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCaseResult
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestSuite
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RunsInEdt
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers
+import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
@@ -41,12 +46,20 @@ class UpdateScreenshotTestResultsListenerTest {
 
   @get:Rule val edtRule = EdtRule()
 
+  /**
+   * Runs [task] on a pooled thread, like the listener's default executor, and waits for it while dispatching EDT events. The listener's
+   * tasks call @WorkerThread code ([PreviewDetails.withResolvedImageFiles]), so they must not run on the EDT.
+   */
+  private fun runOnWorkerThread(task: Runnable) {
+    PlatformTestUtil.waitForFuture(ApplicationManager.getApplication().executeOnPooledThread(task))
+  }
+
   /** Verifies that the listener correctly extracts all fields from the AndroidTestCase when all relevant artifacts are present. */
   @Test
   fun testOnTestCaseFinished_extractsDataCorrectly() {
     val dialog = mock(UpdateReferenceImagesDialog::class.java)
     `when`(dialog.project).thenReturn(projectRule.project)
-    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
 
     val mockDevice = mock(AndroidDevice::class.java)
     val mockSuite = mock(AndroidTestSuite::class.java)
@@ -99,7 +112,7 @@ class UpdateScreenshotTestResultsListenerTest {
   @Test
   fun testOnTestCaseFinished_cleansPreviewName() {
     val dialog = mock(UpdateReferenceImagesDialog::class.java)
-    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
     val mockDevice = mock(AndroidDevice::class.java)
     val mockSuite = mock(AndroidTestSuite::class.java)
 
@@ -132,6 +145,40 @@ class UpdateScreenshotTestResultsListenerTest {
     assertEquals("com.example.TestClass.testMethod.MyProvider", details.testId)
   }
 
+  /** Verifies that cleanPreviewName handles multiple parameters correctly. */
+  @Test
+  fun testOnTestCaseFinished_cleansMultipleParameters() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
+    val mockDevice = mock(AndroidDevice::class.java)
+    val mockSuite = mock(AndroidTestSuite::class.java)
+
+    val artifacts =
+      mutableMapOf(
+        "PreviewScreenshot.methodName" to "testMethod",
+        "PreviewScreenshot.previewName" to "[{provider=com.example.ProviderA, provider=com.example.ProviderB}]_0",
+      )
+
+    val testCase =
+      AndroidTestCase(
+        id = "test_multi_param",
+        methodName = "ignored",
+        className = "com.example.TestClass",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.PASSED,
+        additionalTestArtifacts = artifacts,
+      )
+
+    listener.onTestCaseFinished(mockDevice, mockSuite, testCase)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val captor = ArgumentCaptor.forClass(PreviewDetails::class.java)
+    verify(dialog).updateDialogWithTestResult(capturePreviewDetails(captor), ArgumentMatchers.eq(true))
+
+    val details = captor.value
+    assertEquals("ProviderA_ProviderB_0", details.previewName)
+  }
+
   /**
    * Verifies that the listener handles cases where the artifacts map is empty, providing safe default values instead of crashing or
    * returning nulls where strings are expected.
@@ -139,7 +186,7 @@ class UpdateScreenshotTestResultsListenerTest {
   @Test
   fun testOnTestCaseFinished_handlesMissingArtifacts() {
     val dialog = mock(UpdateReferenceImagesDialog::class.java)
-    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
 
     val mockDevice = mock(AndroidDevice::class.java)
     val mockSuite = mock(AndroidTestSuite::class.java)
@@ -177,14 +224,18 @@ class UpdateScreenshotTestResultsListenerTest {
   fun testOnTestCaseFinished_partialArtifacts() {
     val dialog = mock(UpdateReferenceImagesDialog::class.java)
     `when`(dialog.project).thenReturn(projectRule.project)
-    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
     val mockDevice = mock(AndroidDevice::class.java)
     val mockSuite = mock(AndroidTestSuite::class.java)
 
     val refPath = File(projectRule.project.basePath, "ref.png").canonicalPath
 
     // Only method name and one image path are present
-    val artifacts = mutableMapOf("PreviewScreenshot.methodName" to "partialMethod", "PreviewScreenshot.refImagePath" to refPath)
+    val artifacts =
+      mutableMapOf(
+        "PreviewScreenshot.methodName" to "partialMethod",
+        "PreviewScreenshot.refImagePath" to refPath,
+      )
 
     val testCase =
       AndroidTestCase(
@@ -214,7 +265,7 @@ class UpdateScreenshotTestResultsListenerTest {
   @Test
   fun testOnTestCaseFinished_propagatesTestResult() {
     val dialog = mock(UpdateReferenceImagesDialog::class.java)
-    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
     val mockDevice = mock(AndroidDevice::class.java)
     val mockSuite = mock(AndroidTestSuite::class.java)
 
@@ -242,7 +293,7 @@ class UpdateScreenshotTestResultsListenerTest {
   @Test
   fun testOnTestSuiteFinished() {
     val dialog = mock(UpdateReferenceImagesDialog::class.java)
-    val listener = UpdateScreenshotTestResultsListener(dialog) { it.run() }
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
     val mockDevice = mock(AndroidDevice::class.java)
     val mockSuite = mock(AndroidTestSuite::class.java)
 
@@ -251,6 +302,149 @@ class UpdateScreenshotTestResultsListenerTest {
     // Flush EDT to ensure invokeLater block from listener runs before verification.
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     verify(dialog).onTestSuiteFinished()
+  }
+
+  /** Verifies that the start of the suite is reported to the dialog as the start of rendering. */
+  @Test
+  fun testOnTestSuiteStarted_notifiesRenderingStarted() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
+
+    listener.onTestSuiteStarted(mock(AndroidDevice::class.java), mock(AndroidTestSuite::class.java))
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    verify(dialog).onRenderingStarted()
+  }
+
+  /** Verifies that suite and test events reach the dialog in the order they were received. */
+  @Test
+  fun testEventsAreDeliveredInOrder() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    val tasks = ArrayDeque<Runnable>()
+    val listener = UpdateScreenshotTestResultsListener(dialog) { tasks.add(it) }
+    val device = mock(AndroidDevice::class.java)
+    val suite = mock(AndroidTestSuite::class.java)
+    val testCase =
+      AndroidTestCase(
+        id = "test1",
+        methodName = "ignored",
+        className = "com.example.TestClass",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.PASSED,
+        additionalTestArtifacts = mutableMapOf("PreviewScreenshot.methodName" to "m", "PreviewScreenshot.previewName" to "p"),
+      )
+
+    listener.onTestSuiteStarted(device, suite)
+    listener.onTestCaseFinished(device, suite, testCase)
+    listener.onTestSuiteFinished(device, suite)
+    while (tasks.isNotEmpty()) runOnWorkerThread(tasks.removeFirst())
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val inOrder = inOrder(dialog)
+    inOrder.verify(dialog).onRenderingStarted()
+    inOrder
+      .verify(dialog)
+      .updateDialogWithTestResult(capturePreviewDetails(ArgumentCaptor.forClass(PreviewDetails::class.java)), ArgumentMatchers.eq(true))
+    inOrder.verify(dialog).onTestSuiteFinished()
+  }
+
+  /** Verifies that the listener records which images exist so the dialog doesn't have to check the disk. */
+  @Test
+  fun testOnTestCaseFinished_resolvesImageFileExistence() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    `when`(dialog.project).thenReturn(projectRule.project)
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
+
+    val refFile =
+      File(projectRule.project.basePath, "existing_ref.png").canonicalFile.apply {
+        parentFile.mkdirs()
+        writeText("ref")
+      }
+    val diffPath = File(projectRule.project.basePath, "missing_diff.png").canonicalPath
+    val testCase =
+      AndroidTestCase(
+        id = "test1",
+        methodName = "ignored",
+        className = "com.example.TestClass",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.FAILED,
+        additionalTestArtifacts =
+          mutableMapOf(
+            "PreviewScreenshot.methodName" to "m",
+            "PreviewScreenshot.previewName" to "p",
+            "PreviewScreenshot.refImagePath" to refFile.path,
+            "PreviewScreenshot.diffImagePath" to diffPath,
+          ),
+      )
+
+    listener.onTestCaseFinished(mock(AndroidDevice::class.java), mock(AndroidTestSuite::class.java), testCase)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val captor = ArgumentCaptor.forClass(PreviewDetails::class.java)
+    verify(dialog).updateDialogWithTestResult(capturePreviewDetails(captor), ArgumentMatchers.eq(true))
+    assertTrue(captor.value.destImageExists)
+    assertFalse(captor.value.diffImageExists)
+  }
+
+  /** Verifies that size mismatch errors in the stack trace are detected and parsed correctly. */
+  @Test
+  fun testOnTestCaseFinished_extractsSizeMismatch() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
+    val mockDevice = mock(AndroidDevice::class.java)
+    val mockSuite = mock(AndroidTestSuite::class.java)
+
+    val testCase =
+      AndroidTestCase(
+        id = "test_size_mismatch",
+        methodName = "ignored",
+        className = "com.example.TestClass",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.FAILED,
+        additionalTestArtifacts = mutableMapOf(),
+        errorStackTrace =
+          "java.lang.AssertionError: Size Mismatch: Expected 100x100 but was 200x200\n\tat com.example.TestClass.test(TestClass.kt:42)",
+      )
+
+    listener.onTestCaseFinished(mockDevice, mockSuite, testCase)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val captor = ArgumentCaptor.forClass(PreviewDetails::class.java)
+    verify(dialog).updateDialogWithTestResult(capturePreviewDetails(captor), ArgumentMatchers.eq(true))
+
+    val details = captor.value
+    assertTrue(details.isSizeMismatch)
+    assertEquals("Size Mismatch: Expected 100x100 but was 200x200", details.sizeMismatchMessage)
+  }
+
+  /** Verifies that ordinary failure stack traces without size mismatch do not flag isSizeMismatch. */
+  @Test
+  fun testOnTestCaseFinished_noSizeMismatchForOtherErrors() {
+    val dialog = mock(UpdateReferenceImagesDialog::class.java)
+    val listener = UpdateScreenshotTestResultsListener(dialog) { runOnWorkerThread(it) }
+    val mockDevice = mock(AndroidDevice::class.java)
+    val mockSuite = mock(AndroidTestSuite::class.java)
+
+    val testCase =
+      AndroidTestCase(
+        id = "test_other_failure",
+        methodName = "ignored",
+        className = "com.example.TestClass",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.FAILED,
+        additionalTestArtifacts = mutableMapOf(),
+        errorStackTrace = "java.lang.AssertionError: Images differ by 5.2%\n\tat com.example.TestClass.test(TestClass.kt:42)",
+      )
+
+    listener.onTestCaseFinished(mockDevice, mockSuite, testCase)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val captor = ArgumentCaptor.forClass(PreviewDetails::class.java)
+    verify(dialog).updateDialogWithTestResult(capturePreviewDetails(captor), ArgumentMatchers.eq(true))
+
+    val details = captor.value
+    assertFalse(details.isSizeMismatch)
+    assertNull(details.sizeMismatchMessage)
   }
 
   /**

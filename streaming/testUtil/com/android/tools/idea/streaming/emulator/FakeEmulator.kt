@@ -17,6 +17,12 @@ package com.android.tools.idea.streaming.emulator
 
 import com.android.SdkConstants.PRIMARY_DISPLAY_ID
 import com.android.annotations.concurrency.UiThread
+import com.android.emulation.control.incubating.ActiveCalls
+import com.android.emulation.control.incubating.Call
+import com.android.emulation.control.incubating.CellInfo
+import com.android.emulation.control.incubating.ModemGrpc
+import com.android.emulation.control.incubating.PhoneEvent
+import com.android.emulation.control.incubating.SmsMessage as ModemSmsMessage
 import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraList
 import com.android.emulator.control.CameraNotification
@@ -25,6 +31,7 @@ import com.android.emulator.control.DisplayConfiguration
 import com.android.emulator.control.DisplayConfigurations
 import com.android.emulator.control.DisplayConfigurationsChangedNotification
 import com.android.emulator.control.DisplayMode as DisplayModeMessage
+import com.android.emulator.control.DisplayPowerModeNotification
 import com.android.emulator.control.EmulatorControllerGrpc
 import com.android.emulator.control.EmulatorStatus
 import com.android.emulator.control.Environment
@@ -181,18 +188,26 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile private var screenshotStreamObserver: StreamObserver<Image>? = null
   @Volatile private var clipboardStreamObserver: StreamObserver<ClipData>? = null
   @Volatile private var notificationStreamObserver: StreamObserver<Notification>? = null
-  private var displays = listOf(DisplayConfiguration.newBuilder().setWidth(config.displayWidth).setHeight(config.displayHeight).build())
+  @Volatile private var phoneEventStreamObserver: StreamObserver<PhoneEvent>? = null
+  @Volatile
+  var displays =
+    listOf(DisplayConfiguration.newBuilder().setWidth(config.displayWidth).setHeight(config.displayHeight).setDpi(config.density).build())
+    private set
+
   @Volatile
   var batteryStatus: BatteryState = BatteryState.newBuilder().setChargeLevel(100).setStatus(BatteryState.BatteryStatus.CHARGING).build()
   @Volatile var gpsLocation: GpsState = GpsState.newBuilder().setLatitude(0.0).setLongitude(0.0).setAltitude(0.0).build()
+  @Volatile var cellInfo: CellInfo = CellInfo.getDefaultInstance()
+  @Volatile var activeCalls: List<Call> = emptyList()
+  @Volatile var receivedSms: List<ModemSmsMessage> = emptyList()
 
   @Volatile
   var devicePosture: PostureValue? = config.postures.lastOrNull()?.posture
     private set(value) {
       if (value != null && value != field) {
         field = value
-        notificationStreamObserver?.sendStreamingResponse(createPostureNotification(value))
         foldedDisplay = if (value == PostureValue.POSTURE_CLOSED) foldedDisplayRegion else null
+        executor.execute { notificationStreamObserver?.sendStreamingResponse(createPostureNotification(value)) }
       }
     }
 
@@ -201,7 +216,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     private set(value) {
       if (value != field) {
         field = value
-        notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setXrOptions(value).build())
+        executor.execute { notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setXrOptions(value).build()) }
       }
     }
 
@@ -210,7 +225,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     private set(value) {
       if (value != field) {
         field = value
-        notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setMicrophoneState(value).build())
+        executor.execute { notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setMicrophoneState(value).build()) }
       }
     }
 
@@ -226,8 +241,27 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     }
     val led = ledBuilder.build()
     ledStates = ledStates + (facing to led)
-    notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setLedIndicator(led).build())
+    executor.execute { notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setLedIndicator(led).build()) }
   }
+
+  var displayPowerModes: Map<Int, DisplayPowerModeNotification> = emptyMap()
+    private set
+
+  fun setDisplayPowerMode(displayId: Int, powerMode: DisplayPowerModeNotification.PowerMode) {
+    val notification = DisplayPowerModeNotification.newBuilder().setDisplay(displayId).setPowerMode(powerMode).build()
+    displayPowerModes = displayPowerModes + (displayId to notification)
+    executor.execute {
+      notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setDisplayPowerMode(notification).build())
+      val screenshotObserver = screenshotStreamObserver
+      val request = screenshotStreamRequest
+      if (screenshotObserver != null && request != null) {
+        sendScreenshot(request, screenshotObserver)
+      }
+    }
+  }
+
+  fun isDisplayOff(displayId: Int = PRIMARY_DISPLAY_ID): Boolean =
+    displayPowerModes[displayId]?.powerMode == DisplayPowerModeNotification.PowerMode.OFF
 
   private var foldedDisplay: FoldedDisplay? = null
     set(value) {
@@ -403,26 +437,35 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       thisLogger().error("Interrupted while waiting for the emulator gRPC server to terminate")
     }
     grpcServer = null
+    screenshotStreamObserver = null
+    screenshotStreamRequest = null
+    clipboardStreamObserver = null
+    notificationStreamObserver = null
+    phoneEventStreamObserver = null
   }
 
   /** Adds, removes, updates secondary displays. */
   suspend fun changeSecondaryDisplays(secondaryDisplays: List<DisplayConfiguration>) {
     coroutineDispatcher.invoke {
-      val newDisplays = ArrayList<DisplayConfiguration>(secondaryDisplays.size + 1)
-      newDisplays.add(displays[0])
-      for (display in secondaryDisplays) {
-        if (display.display != PRIMARY_DISPLAY_ID) {
-          newDisplays.add(display)
-        }
+      updateSecondaryDisplays(secondaryDisplays)
+    }
+  }
+
+  private fun updateSecondaryDisplays(secondaryDisplays: List<DisplayConfiguration>) {
+    val newDisplays = ArrayList<DisplayConfiguration>(secondaryDisplays.size + 1)
+    newDisplays.add(displays[0])
+    for (display in secondaryDisplays) {
+      if (display.display != PRIMARY_DISPLAY_ID) {
+        newDisplays.add(display)
       }
-      if (newDisplays != displays) {
-        displays = newDisplays
-        val notificationObserver = notificationStreamObserver ?: return@invoke
-        val displayConfigurations = DisplayConfigurations.newBuilder().addAllDisplays(displays)
-        val notification = DisplayConfigurationsChangedNotification.newBuilder().setDisplayConfigurations(displayConfigurations)
-        val response = Notification.newBuilder().setDisplayConfigurationsChangedNotification(notification).build()
-        notificationObserver.sendStreamingResponse(response)
-      }
+    }
+    if (newDisplays != displays) {
+      displays = newDisplays
+      val notificationObserver = notificationStreamObserver ?: return
+      val displayConfigurations = DisplayConfigurations.newBuilder().addAllDisplays(displays).setUserConfigurable(3).setMaxDisplays(11)
+      val notification = DisplayConfigurationsChangedNotification.newBuilder().setDisplayConfigurations(displayConfigurations)
+      val response = Notification.newBuilder().setDisplayConfigurationsChangedNotification(notification).build()
+      notificationObserver.sendStreamingResponse(response)
     }
   }
 
@@ -463,12 +506,13 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       .addService(ServerInterceptors.intercept(EmulatorControllerService(executor), LoggingInterceptor()))
       .addService(ServerInterceptors.intercept(EmulatorSnapshotService(executor), LoggingInterceptor()))
       .addService(ServerInterceptors.intercept(UiControllerService(executor), LoggingInterceptor()))
+      .addService(ServerInterceptors.intercept(ModemService(executor), LoggingInterceptor()))
       .build()
       .start()
   }
 
   private fun loadEnvironmentImage(size: Dimension): BufferedImage {
-    val environmentFile = getDeviceArtFolder().resolve("ai_glasses_device/indoor-study-dark.jpg")
+    val environmentFile = getDeviceArtFolder().resolve("ai_glasses_device/study-360.jpg")
     val image = environmentFile.readImage()
     val w = size.width
     val h = size.height
@@ -795,12 +839,23 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         for (led in ledStates.values) {
           responseObserver.sendStreamingResponse(Notification.newBuilder().setLedIndicator(led).build())
         }
+        for (powerMode in displayPowerModes.values) {
+          responseObserver.sendStreamingResponse(Notification.newBuilder().setDisplayPowerMode(powerMode).build())
+        }
       }
     }
 
     override fun getDisplayConfigurations(request: Empty, responseObserver: StreamObserver<DisplayConfigurations>) {
       executor.execute {
-        val response = DisplayConfigurations.newBuilder().addAllDisplays(displays).build()
+        val response = DisplayConfigurations.newBuilder().addAllDisplays(displays).setUserConfigurable(3).setMaxDisplays(11).build()
+        sendResponse(responseObserver, response)
+      }
+    }
+
+    override fun setDisplayConfigurations(request: DisplayConfigurations, responseObserver: StreamObserver<DisplayConfigurations>) {
+      executor.execute {
+        updateSecondaryDisplays(request.displaysList)
+        val response = DisplayConfigurations.newBuilder().addAllDisplays(displays).setUserConfigurable(3).setMaxDisplays(11).build()
         sendResponse(responseObserver, response)
       }
     }
@@ -908,7 +963,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     val size = computeConstrainedSize(environmentImage.width, environmentImage.height, 0, request.width, request.height)
     val blendedImage = rotateByQuadrantsAndScale(environmentImage, 0, size.width, size.height)
     val scale = max(blendedImage.width, blendedImage.height).toDouble() / max(environmentImage.width, environmentImage.height)
-    if (config.displayWidth > 0 && config.displayHeight > 0) {
+    if (config.displayWidth > 0 && config.displayHeight > 0 && !isDisplayOff()) {
       val displayImageSize = config.displaySize.scaled(scale)
       val displayImage = drawDisplayImage(displayImageSize, PRIMARY_DISPLAY_ID)
       val x = (blendedImage.width - displayImageSize.width) / 2
@@ -1041,6 +1096,97 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     override fun setUiTheme(themingStyle: ThemingStyle, responseObserver: StreamObserver<Empty>) {
       executor.execute { sendEmptyResponse(responseObserver) }
     }
+  }
+
+  private inner class ModemService(private val executor: ExecutorService) : ModemGrpc.ModemImplBase() {
+
+    override fun setCellInfo(request: CellInfo, responseObserver: StreamObserver<CellInfo>) {
+      executor.execute {
+        cellInfo = request
+        sendResponse(responseObserver, request)
+      }
+    }
+
+    override fun getCellInfo(request: Empty, responseObserver: StreamObserver<CellInfo>) {
+      executor.execute {
+        sendResponse(responseObserver, cellInfo)
+      }
+    }
+
+    override fun createCall(request: Call, responseObserver: StreamObserver<Call>) {
+      executor.execute {
+        val createdCall =
+          Call.newBuilder()
+            .setNumber(request.number)
+            .setDirection(Call.CallDirection.CALL_DIRECTION_INBOUND)
+            .setState(Call.CallState.CALL_STATE_INCOMING)
+            .build()
+        activeCalls = activeCalls.filter { it.number != request.number } + createdCall
+        sendResponse(responseObserver, createdCall)
+        notifyActiveCallsChanged()
+      }
+    }
+
+    override fun updateCall(request: Call, responseObserver: StreamObserver<Call>) {
+      executor.execute {
+        val existing = activeCalls.find { it.number == request.number }
+        if (existing == null) {
+          responseObserver.onError(StatusRuntimeException(Status.NOT_FOUND.withDescription("Unable to find call ${request.number}")))
+          return@execute
+        }
+        val updated = existing.toBuilder().setState(request.state).build()
+        activeCalls = activeCalls.map { if (it.number == request.number) updated else it }
+        sendResponse(responseObserver, updated)
+        notifyActiveCallsChanged()
+      }
+    }
+
+    override fun deleteCall(request: Call, responseObserver: StreamObserver<Empty>) {
+      executor.execute {
+        activeCalls = activeCalls.filter { it.number != request.number }
+        sendEmptyResponse(responseObserver)
+        notifyActiveCallsChanged()
+      }
+    }
+
+    override fun listCalls(request: Empty, responseObserver: StreamObserver<ActiveCalls>) {
+      executor.execute {
+        sendResponse(responseObserver, ActiveCalls.newBuilder().addAllCalls(activeCalls).build())
+      }
+    }
+
+    override fun receiveSms(request: ModemSmsMessage, responseObserver: StreamObserver<Empty>) {
+      executor.execute {
+        receivedSms = receivedSms + request
+        sendEmptyResponse(responseObserver)
+      }
+    }
+
+    override fun receivePhoneEvents(request: Empty, responseObserver: StreamObserver<PhoneEvent>) {
+      executor.execute {
+        phoneEventStreamObserver = responseObserver
+      }
+    }
+  }
+
+  private fun notifyActiveCallsChanged() {
+    val observer = phoneEventStreamObserver ?: return
+    val event =
+      PhoneEvent.newBuilder()
+        .setType(PhoneEvent.PhoneEventType.PHONE_EVENT_TYPE_ACTIVE)
+        .setActive(ActiveCalls.newBuilder().addAllCalls(activeCalls))
+        .build()
+    observer.sendStreamingResponse(event)
+  }
+
+  /** Simulates the device hanging up all active calls. */
+  fun endAllCallsOnDevice() {
+    executor
+      .submit {
+        activeCalls = emptyList()
+        notifyActiveCallsChanged()
+      }
+      .get()
   }
 
   private inner class LoggingInterceptor : ServerInterceptor {
@@ -2303,7 +2449,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         """
           .trimIndent()
 
-      val advancedFeatures = "LedIndicators = on\n"
+      val advancedFeatures = "XrStatusLed = on\n"
 
       createSystemImage(systemImageFolder, androidVersion, sourceProperties, advancedFeatures)
       return createAvd(avdId, avdFolder, configIni, hardwareIni)
@@ -2416,7 +2562,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         """
           .trimIndent()
 
-      val advancedFeatures = "LedIndicators = on\n"
+      val advancedFeatures = "XrStatusLed = on\n"
 
       createSystemImage(systemImageFolder, androidVersion, sourceProperties, advancedFeatures)
       return createAvd(avdId, avdFolder, configIni, hardwareIni)

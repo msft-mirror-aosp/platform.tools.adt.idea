@@ -34,6 +34,7 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.TestRun
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.runInEdtAndGet
 import java.io.File
 import org.junit.Before
 import org.junit.Rule
@@ -632,11 +633,12 @@ class GradleTestResultAdapterTest {
     lateinit var capturedMessage: String
     val adapter = runAndUtpFailsWithApkInstallationError()
 
-    val result =
+    val result = runInEdtAndGet {
       adapter.showRerunWithUninstallIncompatibleApkOptionDialog(projectRule.project) { message ->
         capturedMessage = message
         true
       }
+    }
 
     assertThat(result).isTrue()
     assertThat(capturedMessage).contains("The device already has an application with the same package but a different signature.")
@@ -648,7 +650,9 @@ class GradleTestResultAdapterTest {
   fun showRerunWithUninstallIncompatibleApkOptionDialogAndDecline() {
     val adapter = runAndUtpFailsWithApkInstallationError()
 
-    val result = adapter.showRerunWithUninstallIncompatibleApkOptionDialog(projectRule.project) { false }
+    val result = runInEdtAndGet {
+      adapter.showRerunWithUninstallIncompatibleApkOptionDialog(projectRule.project) { false }
+    }
 
     assertThat(result).isFalse()
   }

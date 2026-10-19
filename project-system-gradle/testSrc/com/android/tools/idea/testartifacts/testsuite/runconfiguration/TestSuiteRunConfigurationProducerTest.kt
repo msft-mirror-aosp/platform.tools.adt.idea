@@ -29,6 +29,7 @@ import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.JavaModuleModelBuilder
 import com.android.tools.idea.testing.createMainSourceProviderForDefaultTestProjectStructure
+import com.android.tools.idea.testing.onEdt
 import com.intellij.execution.Location
 import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
@@ -38,6 +39,7 @@ import com.intellij.openapi.util.Ref
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.RunsInEdt
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -47,44 +49,50 @@ import org.junit.Test
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 
+@RunsInEdt
 class TestSuiteRunConfigurationProducerTest {
 
   val projectRule =
     AndroidProjectRule.withAndroidModels(
-      JavaModuleModelBuilder.rootModuleBuilder,
-      AndroidModuleModelBuilder(
-        gradlePath = ":app",
-        selectedBuildVariant = "debug",
-        projectBuilder =
-          AndroidProjectBuilder(
-            projectType = { IdeAndroidProjectType.PROJECT_TYPE_APP },
-            namespace = { "com.example.app" },
-            mainSourceProvider = { createMainSourceProviderForDefaultTestProjectStructure() },
-            testSuites = {
-              listOf(
-                IdeTestSuiteImpl(
-                  name = "myTestSuite",
-                  sources = listOf(createAssetsTestSuiteSource(testSuitePath = moduleBasePath.resolve("src/myTestSuite"))),
-                  junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("engine1")),
-                  targetedVariants = listOf("debug"),
+        JavaModuleModelBuilder.rootModuleBuilder,
+        AndroidModuleModelBuilder(
+          gradlePath = ":app",
+          selectedBuildVariant = "debug",
+          projectBuilder =
+            AndroidProjectBuilder(
+              projectType = { IdeAndroidProjectType.PROJECT_TYPE_APP },
+              namespace = { "com.example.app" },
+              mainSourceProvider = { createMainSourceProviderForDefaultTestProjectStructure() },
+              testSuites = {
+                listOf(
+                  IdeTestSuiteImpl(
+                    name = "myTestSuite",
+                    sources = listOf(createAssetsTestSuiteSource(testSuitePath = moduleBasePath.resolve("src/myTestSuite"))),
+                    junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("engine1")),
+                    targetedVariants = listOf("debug"),
+                  )
                 )
-              )
-            },
-            testSuiteArtifactsStub = {
-              listOf(
-                IdeTestSuiteVariantTargetImpl(
-                  suiteName = "myTestSuite",
-                  targetedVariantName = "debug",
-                  targets =
-                    listOf(
-                      IdeTestSuiteTargetImpl(targetName = "connectedTest", testTaskName = "myTestSuiteTaskName", targetedDevices = listOf())
-                    ),
+              },
+              testSuiteArtifactsStub = {
+                listOf(
+                  IdeTestSuiteVariantTargetImpl(
+                    suiteName = "myTestSuite",
+                    targetedVariantName = "debug",
+                    targets =
+                      listOf(
+                        IdeTestSuiteTargetImpl(
+                          targetName = "connectedTest",
+                          testTaskName = "myTestSuiteTaskName",
+                          targetedDevices = listOf(),
+                        )
+                      ),
+                  )
                 )
-              )
-            },
-          ),
-      ),
-    )
+              },
+            ),
+        ),
+      )
+      .onEdt()
 
   @get:Rule val ruleChain = RuleChain(projectRule, FlagRule(StudioFlags.AGP_TEST_SUITES_ENABLED, true))
 

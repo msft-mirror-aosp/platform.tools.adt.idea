@@ -18,7 +18,6 @@ package com.android.tools.idea.sqlite.ui
 import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.getDescendant
-import com.android.tools.idea.concurrency.FutureCallbackExecutor
 import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
 import com.android.tools.idea.sqlite.controllers.TableController
 import com.android.tools.idea.sqlite.databaseConnection.DatabaseConnection
@@ -45,6 +44,7 @@ import com.android.tools.idea.sqlite.ui.tableView.TableViewImpl.RemoveRowsAction
 import com.android.tools.idea.sqlite.ui.tableView.TableViewImpl.SetNullAction
 import com.android.tools.idea.sqlite.ui.tableView.ViewColumn
 import com.android.tools.idea.sqlite.utils.SqliteTestUtil
+import com.android.tools.idea.sqlite.utils.edtSequencedWorkerExecutor
 import com.android.tools.idea.sqlite.utils.findTable
 import com.android.tools.idea.sqlite.utils.getJdbcDatabaseConnection
 import com.android.tools.idea.sqlite.utils.toViewColumn
@@ -470,9 +470,7 @@ class TableViewImplTest : BasePlatformTestCase() {
         insertStatement = "INSERT INTO t1 (pk, c1) VALUES (42, 1)",
       )
     realDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, edtSequencedWorkerExecutor))
     val databaseRepository = DatabaseRepositoryImpl(project, EdtExecutorService.getInstance())
     val databaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(databaseId, realDatabaseConnection!!) }
@@ -520,9 +518,7 @@ class TableViewImplTest : BasePlatformTestCase() {
         insertStatement = "INSERT INTO t1 (c1, c2) VALUES (42, 1)",
       )
     realDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, edtSequencedWorkerExecutor))
     val databaseRepository = DatabaseRepositoryImpl(project, EdtExecutorService.getInstance())
     val databaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(databaseId, realDatabaseConnection!!) }
@@ -570,9 +566,7 @@ class TableViewImplTest : BasePlatformTestCase() {
         insertStatement = "INSERT INTO t1 (pk, c1) VALUES (42, 1)",
       )
     realDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, edtSequencedWorkerExecutor))
     val databaseRepository = DatabaseRepositoryImpl(project, EdtExecutorService.getInstance())
     val databaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(databaseId, realDatabaseConnection!!) }
@@ -620,9 +614,7 @@ class TableViewImplTest : BasePlatformTestCase() {
         insertStatement = "INSERT INTO t1 (pk, c1) VALUES (42, 1)",
       )
     realDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, edtSequencedWorkerExecutor))
     val databaseRepository = DatabaseRepositoryImpl(project, EdtExecutorService.getInstance())
     val databaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(databaseId, realDatabaseConnection!!) }
@@ -906,9 +898,7 @@ class TableViewImplTest : BasePlatformTestCase() {
         insertStatement = "INSERT INTO t1 (pk, c1) VALUES (42, 1)",
       )
     realDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, edtSequencedWorkerExecutor))
     val databaseRepository = DatabaseRepositoryImpl(project, EdtExecutorService.getInstance())
     val databaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(databaseId, realDatabaseConnection!!) }

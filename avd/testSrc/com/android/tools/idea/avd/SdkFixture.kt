@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import com.android.SdkConstants
+import com.android.repository.api.LocalPackage
 import com.android.repository.impl.meta.RepositoryPackages
 import com.android.repository.impl.meta.TypeDetails
 import com.android.repository.testframework.FakePackage
@@ -39,11 +40,11 @@ import com.android.testutils.file.recordExistingFile
 import com.android.testutils.file.someRoot
 import com.android.tools.adtui.compose.LocalFileSystem
 import com.android.tools.adtui.compose.LocalProject
+import com.android.tools.analytics.CommonMetricsData
 import com.android.tools.sdk.DeviceManagers
-import com.android.utils.CpuArchitecture
 import com.android.utils.ILogger
 import com.android.utils.StdLogger
-import com.android.utils.osArchitecture
+import com.google.wireless.android.sdk.stats.ProductDetails.CpuArchitecture
 import com.intellij.util.io.createDirectories
 import java.nio.file.FileSystem
 import java.nio.file.Files
@@ -63,12 +64,20 @@ class SdkFixture(
   val deviceManager: DeviceManager = DeviceManagers.getDeviceManager(sdkHandler),
   val avdManager: AvdManager = AvdManager.createInstance(sdkHandler, avdRoot, deviceManager, logger),
 ) {
+  fun setLocalPackages(vararg packages: LocalPackage) {
+    repoManager.setLocalPackages(*packages)
+  }
+
+  fun setLocalPackages(packages: Collection<LocalPackage>) {
+    repoManager.setLocalPackages(packages)
+  }
+
   internal fun systemImageState(hasLocal: Boolean = true, hasRemote: Boolean = true, error: String? = null) =
     SystemImageState(
       hasLocal = hasLocal,
       hasRemote = hasRemote,
       error = error,
-      images = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator()), logger).get().toImmutableList(),
+      images = SystemImageSupplier(repoManager, sdkHandler.getSystemImageManager(FakeProgressIndicator())).get().toImmutableList(),
     )
 
   fun createLocalSystemImage(
@@ -105,7 +114,7 @@ class SdkFixture(
     val fullPath = "system-images;android-${androidVersion.apiStringWithExtension};$path;${abis[0]}"
     val pkg =
       if (isRemote) {
-        FakeRemotePackage(fullPath)
+        FakeRemotePackage(fullPath).apply { setCompleteUrl("https://example.com/sys-img.zip") }
       } else {
         val location = sdkRoot.resolve(fullPath.replace(";", "/"))
         location.resolve(SystemImageManager.SYS_IMG_NAME).recordExistingFile()
@@ -144,8 +153,8 @@ class SdkFixture(
 }
 
 fun recommendedAbiForHost() =
-  when (osArchitecture) {
+  when (CommonMetricsData.osArchitecture) {
     CpuArchitecture.X86_64 -> Abi.X86_64.toString()
     CpuArchitecture.ARM -> Abi.ARM64_V8A.toString()
-    else -> throw IllegalStateException("Unexpected host architecture: $osArchitecture")
+    else -> throw IllegalStateException("Unexpected host architecture: ${CommonMetricsData.osArchitecture}")
   }

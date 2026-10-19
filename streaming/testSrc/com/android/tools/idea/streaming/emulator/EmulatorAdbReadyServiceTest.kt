@@ -165,7 +165,7 @@ class EmulatorAdbReadyServiceTest {
   }
 
   private fun createUi(panel: EmulatorToolWindowPanel, fakeEmulator: FakeEmulator): FakeUi {
-    val ui = FakeUi(panel, createFakeWindow = true, parentDisposable = disposable)
+    val ui = FakeUi(panel, parentDisposable = disposable)
     panel.createContent(true)
     panel.size = Dimension(200, 400)
     ui.layoutAndDispatchEvents()
@@ -183,7 +183,7 @@ class EmulatorAdbReadyServiceTest {
     waitForCondition(TIMEOUT) {
       view.emulator.connectionState == EmulatorController.ConnectionState.CONNECTED &&
         view.displayOrientationQuadrants == fakeEmulator.displayRotation.number &&
-        NotificationReceiver.forEmulator(view.emulator).currentPosture.value?.posture == fakeEmulator.devicePosture
+        NotificationTracker.forEmulator(view.emulator).currentPosture.value?.posture == fakeEmulator.devicePosture
       fakeEmulator.frameNumber > 0u && renderAndGetFrameNumber(ui, view) == fakeEmulator.frameNumber && settingsButtonIsVisible(ui)
     }
   }

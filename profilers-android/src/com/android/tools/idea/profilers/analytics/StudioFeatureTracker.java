@@ -15,8 +15,8 @@
  */
 package com.android.tools.idea.profilers.analytics;
 
-import static com.android.ide.common.util.DeviceUtils.isMdnsAutoConnectTls;
-import static com.android.ide.common.util.DeviceUtils.isMdnsAutoConnectUnencrypted;
+import static com.android.tools.analytics.UsageTrackerUtils.isMdnsAutoConnectTls;
+import static com.android.tools.analytics.UsageTrackerUtils.isMdnsAutoConnectUnencrypted;
 
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.ShellCommandUnresponsiveException;
@@ -661,7 +661,7 @@ public final class StudioFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackTraceProcessorMemoryData(
+  public void trackTraceProcessorNativeMemoryData(
     @NotNull TraceProcessorDaemonQueryStats.QueryReturnStatus queryStatus, long methodTimeMs, long queryTimeMs) {
     TraceProcessorDaemonQueryStats stats = TraceProcessorDaemonQueryStats.newBuilder()
       .setQueryStatus(queryStatus)
@@ -670,6 +670,18 @@ public final class StudioFeatureTracker implements FeatureTracker {
       .build();
 
     newTracker(AndroidProfilerEvent.Type.TPD_QUERY_LOAD_MEMORY_DATA).setTraceProcessorDaemonQueryStats(stats).track();
+  }
+
+  @Override
+  public void trackTraceProcessorHeapDumpData(
+    @NotNull TraceProcessorDaemonQueryStats.QueryReturnStatus queryStatus, long methodTimeMs, long queryTimeMs) {
+    TraceProcessorDaemonQueryStats stats = TraceProcessorDaemonQueryStats.newBuilder()
+      .setQueryStatus(queryStatus)
+      .setMethodDurationMs(methodTimeMs)
+      .setGrpcQueryDurationMs(queryTimeMs)
+      .build();
+
+    newTracker(AndroidProfilerEvent.Type.TPD_QUERY_LOAD_HEAP_DUMP_DATA).setTraceProcessorDaemonQueryStats(stats).track();
   }
 
   @Override
@@ -832,9 +844,15 @@ public final class StudioFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackTaskEntered(com.android.tools.profilers.tasks.analytics.@NotNull TaskMetadata taskMetadata) {
-    newTracker(AndroidProfilerEvent.Type.TASK_ENTERED).setTaskEnteredMetadata(TaskEnteredMetadata.newBuilder().setTaskData(
-      buildStatsTaskMetadata(taskMetadata)).build()).track();
+  public void trackTaskEntered(com.android.tools.profilers.tasks.analytics.@NotNull TaskMetadata taskMetadata, int profilerTabsCount) {
+    TaskEnteredMetadata.Builder metadataBuilder = TaskEnteredMetadata.newBuilder()
+      .setTaskData(buildStatsTaskMetadata(taskMetadata));
+
+    if (profilerTabsCount > 0) {
+      metadataBuilder.setProfilerTabsCount(profilerTabsCount);
+    }
+
+    newTracker(AndroidProfilerEvent.Type.TASK_ENTERED).setTaskEnteredMetadata(metadataBuilder.build()).track();
   }
 
   @Override

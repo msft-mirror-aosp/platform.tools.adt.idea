@@ -15,11 +15,20 @@
  */
 package com.android.tools.idea.compose.preview
 
+import com.android.resources.Density
+import com.android.resources.ScreenOrientation
+import com.android.sdklib.devices.Device
+import com.android.sdklib.devices.Hardware
+import com.android.sdklib.devices.Screen
+import com.android.sdklib.devices.Software
+import com.android.sdklib.devices.State
 import com.android.testutils.delayUntilCondition
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.analytics.AnalyticsSettings
+import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.idea.common.error.DesignerCommonIssuePanel
+import com.android.tools.idea.common.error.IssueProviderListener
 import com.android.tools.idea.common.error.SharedIssuePanelProvider
 import com.android.tools.idea.common.surface.getDesignSurface
 import com.android.tools.idea.compose.ComposeProjectRule
@@ -63,14 +72,19 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode.So
 import com.android.tools.idea.uibuilder.options.NlOptionsConfigurable
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
+import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
+import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
 import com.android.tools.preview.PreviewDisplaySettings
 import com.android.tools.preview.PreviewDisplaySettings.Background
+import com.android.tools.visuallint.VisualLintErrorType
+import com.android.utils.HtmlBuilder
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.PreviewRefreshEvent
 import com.intellij.analysis.problemsView.toolWindow.ProblemsView
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewToolWindowUtils
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
+import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.EdtNoGetDataProvider
@@ -101,6 +115,7 @@ import com.intellij.testFramework.runInEdtAndWait
 import java.nio.file.Path
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.test.assertFails
 import kotlin.test.assertNotNull
 import kotlin.time.Duration.Companion.seconds
@@ -122,6 +137,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito.clearInvocations
+import org.mockito.Mockito.never
+import org.mockito.Mockito.spy
+import org.mockito.Mockito.verify
+import org.mockito.kotlin.whenever
 
 /**
  * Utility method for tests that shows the string by splitting [background] into two separate components as it is defined in the `Preview`
@@ -821,6 +841,53 @@ class ComposePreviewRepresentationTest {
   }
 
   @Test
+  fun testInteractivePreviewNavigationPanelAndZoomToFitState() = runComposePreviewRepresentationTest {
+    val composePreviewRepresentation = createPreviewAndCompile(expectedModelCount = 2)
+    val previewElements = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }
+    val selectedPreviewElement = previewElements.first()
+    val interactiveNavigationController = composePreviewRepresentation.getInteractiveNavigationControllerForTestOnly()
+
+    // When interactivePreviewNavigationController.canShowNavigationPanel() is true, starting Interactive Preview mode should automatically
+    // display the bottom navigation panel
+    val composeViewAdapterWithNavigationDisplay = TestComposeViewAdapterViewObj(onBackPressProgressCallback = { _, _ -> })
+    interactiveNavigationController.updateObjects(
+      currentNavigationEventDispatcherOwnerObj = null,
+      currentComposeViewAdapterObj = composeViewAdapterWithNavigationDisplay,
+      hasNavDisplay = true,
+    )
+    assertThat(interactiveNavigationController.canShowNavigationPanel()).isTrue()
+
+    setModeAndWaitForRefresh(PreviewMode.Interactive(selectedPreviewElement))
+
+    assertThat(interactiveNavigationController.canShowNavigationPanel()).isTrue()
+    assertThat(composePreviewRepresentation.getBottomPanelForTestOnly()).isNotNull()
+
+    // Ensure the view to zoom-to-fit (canZoomToFit is false).
+    assertThat(mainSurface.zoomController.canZoomToFit()).isFalse()
+
+    // Switch back to Default mode.
+    setModeAndWaitForRefresh(PreviewMode.Default())
+
+    // When interactivePreviewNavigationController.canShowNavigationPanel() is false starting Interactive Preview mode should keep the
+    // bottom navigation panel null.
+    val composeViewAdapterWithoutNavigationDisplay = TestComposeViewAdapterViewObj(onBackPressProgressCallback = { _, _ -> })
+    interactiveNavigationController.updateObjects(
+      currentNavigationEventDispatcherOwnerObj = null,
+      currentComposeViewAdapterObj = composeViewAdapterWithoutNavigationDisplay,
+      hasNavDisplay = false,
+    )
+    assertThat(interactiveNavigationController.canShowNavigationPanel()).isFalse()
+
+    setModeAndWaitForRefresh(PreviewMode.Interactive(selectedPreviewElement))
+
+    assertThat(interactiveNavigationController.canShowNavigationPanel()).isFalse()
+    assertThat(composePreviewRepresentation.getBottomPanelForTestOnly()).isNull()
+
+    // Ensure the view is in zoom-to-fit (canZoomToFit is false).
+    assertThat(mainSurface.zoomController.canZoomToFit()).isFalse()
+  }
+
+  @Test
   fun testResizePanelIsCreatedInFocusMode_flagTrue() = runComposePreviewRepresentationTest {
     StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
     createPreviewAndCompile()
@@ -893,6 +960,204 @@ class ComposePreviewRepresentationTest {
       assertThat(resizePanel2.getCurrentPreviewElementForTest()).isEqualTo(singleElement)
     }
   }
+
+  // Regression test for b/488754133
+  @Test
+  fun testDeviceSelectionPreservedAcrossRefreshesInFocusMode() {
+    val testFile = runWriteActionAndWait {
+      fixture.addFileToProjectAndInvalidate(
+        "SinglePreview.kt",
+        // language=kotlin
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Composable
+        @Preview
+        fun SinglePreview() {
+        }
+        """
+          .trimIndent(),
+      )
+    }
+
+    return runComposePreviewRepresentationTest(testFile) {
+      StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
+      val previewRep = createPreviewAndCompile(expectedModelCount = 1)
+
+      val previewElements = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }
+      assertThat(mainSurface.models.size).isEqualTo(1)
+      val singleElement = previewElements.single()
+
+      setModeAndWaitForRefresh(PreviewMode.Focus(singleElement), waitForRefresh = false) { composeView.focusMode != null }
+
+      val resizePanel = composeView.focusMode!!.component.findDescendant<ResizePanel>()!!
+      assertThat(resizePanel.getCurrentPreviewElementForTest()).isEqualTo(singleElement)
+
+      val initialDeviceId = mainSurface.models.single().configuration.cachedDevice?.id
+      val newDevice = createTestDesktopDevice()
+
+      resizePanel.selectDeviceForTest(newDevice)
+
+      assertEquals(newDevice.id, mainSurface.models.single().configuration.cachedDevice?.id)
+      assertTrue(resizePanel.hasBeenResized)
+
+      val refreshDone = AtomicBoolean(false)
+      composeView.refreshCompletedListeners.add { refreshDone.set(true) }
+      previewRep.invalidate()
+      previewRep.requestRefreshForTest()
+      delayUntilCondition(250, timeout = 10.seconds) { refreshDone.get() }
+      delayWhileRefreshingOrDumb(previewRep)
+      waitForAllRefreshesToFinish(30.seconds)
+
+      val currentModel = mainSurface.models.single()
+      assertEquals(newDevice.id, currentModel.configuration.cachedDevice?.id)
+      val currentResizePanel = composeView.focusMode!!.component.findDescendant<ResizePanel>()!!
+      assertTrue(currentResizePanel.hasBeenResized)
+
+      // Revert after the invalidated refresh and verify the device is back to the annotation default
+      withContext(Dispatchers.EDT) {
+        currentResizePanel.RevertAction().actionPerformed(TestActionEvent.createTestEvent())
+      }
+      waitForAllRefreshesToFinish(30.seconds)
+      assertEquals(initialDeviceId, currentModel.configuration.cachedDevice?.id)
+      assertFalse(currentResizePanel.hasBeenResized)
+    }
+  }
+
+  @Test
+  fun testQualityRefreshWhileResizedDoesNotSendDeviceChangeEvent() {
+    val testFile = runWriteActionAndWait {
+      fixture.addFileToProjectAndInvalidate(
+        "SinglePreview.kt",
+        // language=kotlin
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Composable
+        @Preview
+        fun SinglePreview() {
+        }
+        """
+          .trimIndent(),
+      )
+    }
+
+    return runComposePreviewRepresentationTest(testFile) {
+      StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
+      val previewRep = createPreviewAndCompile(expectedModelCount = 1)
+
+      val singleElement = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }.single()
+      setModeAndWaitForRefresh(PreviewMode.Focus(singleElement), waitForRefresh = false) { composeView.focusMode != null }
+
+      val resizePanel = composeView.focusMode!!.component.findDescendant<ResizePanel>()!!
+      val newDevice = createTestDesktopDevice()
+
+      resizePanel.selectDeviceForTest(newDevice)
+      assertTrue(resizePanel.hasBeenResized)
+
+      val currentModel = mainSurface.models.single()
+      val deviceChangeFired = AtomicBoolean(false)
+      val listener = ConfigurationListener { flags ->
+        if ((flags and ConfigurationListener.CFG_DEVICE) != 0) {
+          deviceChangeFired.set(true)
+        }
+        true
+      }
+      currentModel.configuration.addListener(listener)
+
+      val refreshDone = AtomicBoolean(false)
+      composeView.refreshCompletedListeners.add { refreshDone.set(true) }
+      // Without invalidate(), requestRefreshForTest takes the existing-previews refresh path.
+      previewRep.requestRefreshForTest()
+      delayUntilCondition(250, timeout = 10.seconds) { refreshDone.get() }
+      delayWhileRefreshingOrDumb(previewRep)
+      waitForAllRefreshesToFinish(30.seconds)
+
+      assertFalse("Quality/existing refresh should not fire CFG_DEVICE", deviceChangeFired.get())
+    }
+  }
+
+  @Test
+  fun testRefreshWhileResizedInFocusModeDoesNotCallZoomToFit() {
+    val testFile = runWriteActionAndWait {
+      fixture.addFileToProjectAndInvalidate(
+        "SinglePreview.kt",
+        // language=kotlin
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Composable
+        @Preview
+        fun SinglePreview() {
+        }
+        """
+          .trimIndent(),
+      )
+    }
+
+    val surface = NlSurfaceBuilder.builder(fixture.project, fixture.testRootDisposable, false).build()
+    val surfaceSpy = spy(surface)
+    Disposer.register(fixture.testRootDisposable, surfaceSpy)
+
+    val zoomControllerSpy = spy(surface.zoomController)
+    whenever(surfaceSpy.zoomController).thenReturn(zoomControllerSpy)
+
+    return runComposePreviewRepresentationTest(testFile, mainSurface = surfaceSpy) {
+      StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
+      val previewRep = createPreviewAndCompile(expectedModelCount = 1)
+
+      val singleElement = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }.single()
+      setModeAndWaitForRefresh(PreviewMode.Focus(singleElement), waitForRefresh = false) { composeView.focusMode != null }
+
+      val resizePanel = composeView.focusMode!!.component.findDescendant<ResizePanel>()!!
+      val newDevice = createTestDesktopDevice()
+
+      resizePanel.selectDeviceForTest(newDevice)
+      assertTrue(resizePanel.hasBeenResized)
+
+      clearInvocations(zoomControllerSpy)
+
+      val refreshDone = AtomicBoolean(false)
+      composeView.refreshCompletedListeners.add { refreshDone.set(true) }
+      previewRep.invalidate()
+      previewRep.requestRefreshForTest()
+      delayUntilCondition(250, timeout = 10.seconds) { refreshDone.get() }
+      delayWhileRefreshingOrDumb(previewRep)
+      waitForAllRefreshesToFinish(30.seconds)
+
+      verify(zoomControllerSpy, never()).zoomToFit()
+    }
+  }
+
+  private fun createTestDesktopDevice(): Device =
+    Device.Builder()
+      .apply {
+        setTagId("")
+        setName("Test Desktop")
+        setId("test_desktop")
+        setManufacturer("Google")
+        addSoftware(Software())
+        addState(
+          State().apply {
+            name = "default"
+            isDefaultState = true
+            orientation = ScreenOrientation.LANDSCAPE
+            hardware =
+              Hardware().apply {
+                screen =
+                  Screen().apply {
+                    xDimension = 1920
+                    yDimension = 1080
+                    pixelDensity = Density.MEDIUM
+                  }
+              }
+          }
+        )
+      }
+      .build()
 
   @Test
   fun testEnterFocusModeDoesRefreshWhenNeeded() {
@@ -1294,6 +1559,123 @@ class ComposePreviewRepresentationTest {
         }
       )
     }
+  }
+
+  // Regression test for b/414550996
+  @Test
+  fun testUiCheckZoomToFitOnIssueUpdate() {
+    val surface = NlSurfaceBuilder.builder(fixture.project, fixture.testRootDisposable, false).build()
+
+    // Use a Mockito spy to keep real DesignSurface behavior, but intercept the zoomController.
+    // A spy is needed here because mocking the entire NlDesignSurface is too complex and would break most of its internal state flows and
+    // lifecycle management required by the preview representation.
+    val surfaceSpy = spy(surface)
+
+    // Register the spy with Disposer to avoid undisposed resource leaks.
+    Disposer.register(fixture.testRootDisposable, surfaceSpy)
+
+    // A Mockito spy is needed for zoomController to verify zoomToFit() call without overriding other zoom behaviors or state transitions of
+    // the real ZoomController.
+    val zoomControllerSpy = spy(surface.zoomController)
+    whenever(surfaceSpy.zoomController).thenReturn(zoomControllerSpy)
+
+    runComposePreviewRepresentationTest(mainSurface = surfaceSpy) {
+      createPreviewAndCompile()
+      val previewElements = surfaceSpy.models.mapNotNull { it.dataProvider?.previewElement() }
+      val uiCheckElement = previewElements.first()
+
+      // Start UI Check mode
+      setModeAndWaitForRefresh(PreviewMode.UiCheck(UiCheckInstance(uiCheckElement, isWearPreview = false)))
+
+      // Clear invocations on the zoomControllerSpy from setting up UI check mode
+      clearInvocations(zoomControllerSpy)
+
+      val model = surfaceSpy.models.first()
+      val issue =
+        VisualLintRenderIssue.builder()
+          .model(model)
+          .summary("Test Visual Lint Issue")
+          .severity(HighlightSeverity.WARNING)
+          .contentDescriptionProvider { HtmlBuilder() }
+          .components(mutableListOf())
+          .type(VisualLintErrorType.BOUNDS)
+          .build()
+
+      surfaceSpy.visualLintIssueProvider.addAllIssues(listOf(issue))
+
+      val issueModel = VisualLintService.getInstance(project).issueModel
+
+      // Associate the issue with the Composable instance ID so the notification is not filtered out.
+      issueModel.uiCheckInstanceId = uiCheckElement.instanceId
+
+      // Trigger issue update notification
+      project.messageBus.syncPublisher(IssueProviderListener.UI_CHECK).issueUpdated(issueModel, listOf(issue))
+
+      // Wait for EDT to process the invokeLater in postIssueUpdateListenerForUiCheck
+      delayUntilCondition(100) {
+        try {
+          verify(zoomControllerSpy).zoomToFit()
+          true
+        } catch (_: Throwable) {
+          false
+        }
+      }
+    }
+  }
+
+  // Regression test for b/487104573
+  @Test
+  fun configureLayoutlibSceneManagerDoesNotSetNeedsInflationWhenOnlyQualityChanges() = runComposePreviewRepresentationTest {
+    createPreviewAndCompile()
+    val sceneManager = mainSurface.sceneManagers.first()
+    sceneManager.sceneRenderConfiguration.needsInflation.set(false)
+
+    // Reconfiguring with a different quality (as happens on zoom changes) should not force re-inflation.
+    configureLayoutlibSceneManager(
+      sceneManager = sceneManager,
+      showDecorations = false,
+      previewMode = PreviewMode.Default(),
+      requestPrivateClassLoader = false,
+      runVisualAnalysis = false,
+      quality = 0.5f,
+      disableAnimation = true,
+      useLoadViewFallbacks = false,
+    )
+
+    assertEquals(0.5f, sceneManager.sceneRenderConfiguration.quality)
+    assertFalse(sceneManager.sceneRenderConfiguration.needsInflation.get())
+
+    // Changing showDecorations should still mark needsInflation as true.
+    configureLayoutlibSceneManager(
+      sceneManager = sceneManager,
+      showDecorations = true,
+      previewMode = PreviewMode.Default(),
+      requestPrivateClassLoader = false,
+      runVisualAnalysis = false,
+      quality = 0.5f,
+      disableAnimation = true,
+      useLoadViewFallbacks = false,
+    )
+    assertTrue(sceneManager.sceneRenderConfiguration.needsInflation.get())
+  }
+
+  // Regression test for b/383596974
+  @Test
+  fun fullRefreshTriggeredWhenRenderedPreviewsDifferEvenIfNotInvalidated() = runComposePreviewRepresentationTest {
+    val preview = createPreviewAndCompile()
+    assertThat(preview.isInvalid()).isFalse()
+    assertThat(preview.renderedPreviewElementsInstancesFlowForTest().value.asCollection()).hasSize(2)
+
+    // Simulate a racing refresh having consumed the invalidated flag while rendering a stale/partial list of previews.
+    preview.composePreviewFlowManager.updateRenderedPreviews(emptyList())
+    assertThat(preview.isInvalid()).isFalse()
+    assertThat(preview.renderedPreviewElementsInstancesFlowForTest().value.asCollection()).isEmpty()
+
+    val refreshDeferred = kotlinx.coroutines.CompletableDeferred<Unit>()
+    preview.requestRefreshForTest(completableDeferred = refreshDeferred)
+    refreshDeferred.await()
+
+    assertThat(preview.renderedPreviewElementsInstancesFlowForTest().value.asCollection()).hasSize(2)
   }
 
   private fun runComposePreviewRepresentationTest(

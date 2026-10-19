@@ -293,4 +293,49 @@ class AddProjectGenSrcsTest {
     Truth.assertThat(newProject.artifactDirectories.directoriesMap.values.flatMap { it.contents.entries }.isEmpty())
     Mockito.verify(context)!!.setHasWarnings()
   }
+
+  @Test
+  @Throws(Exception::class)
+  fun unsafe_package_placed_safely_within_root() {
+    val testData = TestData.JAVA_LIBRARY_EXTERNAL_DEP_QUERY
+    val original = syncer.sync(testData)
+
+    val artifactState =
+      ArtifactTracker.State.forTargets(
+        TargetBuildInfo.forJavaTarget(
+          createJavaArtifactInfo(
+            label = testData.assumedOnlyLabel,
+            genSrcs =
+              setOf(
+                BuildArtifact("gensrcdigest", Path.of("output/path/Evil.java"), testData.assumedOnlyLabel)
+                  .withMetadata(JavaArtifactMetadata.JavaSourcePackage("/tmp/aswb_042_pwned"))
+              ),
+          ),
+          DependencyBuildContext.create("", buildTimestamp),
+        )
+      )
+
+    val addGensrcs = AddProjectGenSrcs(original.projectDefinition, javaSourcePackageExtractor)
+
+    val update = ProjectProtoUpdate(original.project)
+    addGensrcs.update(update, artifactState, context, ProjectPath.ExternalRepositoryFinder.createEmptyForTests())
+    val newProject = update.build()
+
+    Truth.assertThat(newProject.artifactDirectories.directoriesMap)
+      .containsEntry(
+        ArtifactDirectories.JAVA_GEN_SRC,
+        ArtifactDirectoryContents(
+          contents =
+            mapOf(
+              "_tmp_aswb_042_pwned/Evil.java" to
+                ProjectProto.ProjectArtifact(
+                  target = testData.assumedOnlyLabel,
+                  buildArtifact = ProjectProto.BuildArtifact("gensrcdigest"),
+                  fromBuild = buildTimestamp,
+                  transform = ProjectProto.ProjectArtifact.ArtifactTransform.COPY,
+                )
+            )
+        ),
+      )
+  }
 }

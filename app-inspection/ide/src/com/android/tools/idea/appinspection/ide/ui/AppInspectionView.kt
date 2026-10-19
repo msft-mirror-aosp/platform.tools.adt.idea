@@ -56,6 +56,7 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.toolbarLayout.ToolbarLayoutStrategy
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -205,7 +206,8 @@ constructor(
     selectProcessAction = SelectProcessAction(processesModel, onStopAction = { stopInspectors() })
     val group = DefaultActionGroup().apply { add(selectProcessAction) }
     val toolbar = ActionManager.getInstance().createActionToolbar("AppInspection", group, true)
-    toolbar.setTargetComponent(component)
+    toolbar.layoutStrategy = ToolbarLayoutStrategy.NOWRAP_STRATEGY
+    toolbar.targetComponent = component
     component.add(toolbar.component, TabularLayout.Constraint(0, 0))
 
     component.add(
@@ -385,10 +387,9 @@ constructor(
           emptyList()
         }
 
-      val tabs =
-        tabTargetsList.map { tabTargets ->
-          withContext(uiContext) { AppInspectorTabShell(tabTargets) }.also { shell -> launchInspectorForTab(process, shell, force) }
-        }
+      val tabs = tabTargetsList.map { tabTargets ->
+        withContext(uiContext) { AppInspectorTabShell(tabTargets) }.also { shell -> launchInspectorForTab(process, shell, force) }
+      }
 
       withContext(uiContext) {
         inspectorTabs.clear()

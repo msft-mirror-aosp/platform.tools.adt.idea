@@ -28,7 +28,7 @@ import com.android.tools.adtui.swing.findModelessDialog
 import com.android.tools.adtui.swing.optionsAsString
 import com.android.tools.adtui.swing.selectFirstMatch
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
+import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.EmulatorToolWindowPanel
 import com.android.tools.idea.streaming.emulator.EmulatorView
@@ -82,8 +82,8 @@ class EmulatorScreenshotActionTest {
     RuleChain(
       projectRule,
       DataManagerRule(projectRule),
-      emulatorRule,
       ClipboardSynchronizationDisablementRule(),
+      emulatorRule,
       goldenImageRule,
       EdtRule(),
       HeadlessDialogRule(),
@@ -93,7 +93,7 @@ class EmulatorScreenshotActionTest {
   private val emulator: FakeEmulator by lazy { emulatorRule.newEmulator(avdFolder) }
   private val panel: EmulatorToolWindowPanel by lazy { createWindowPanel() }
   // Fake window is necessary for the toolbars to be rendered.
-  private val fakeUi: FakeUi by lazy { FakeUi(panel, createFakeWindow = true, parentDisposable = testRootDisposable) }
+  private val fakeUi: FakeUi by lazy { FakeUi(panel, parentDisposable = testRootDisposable) }
   private val project
     get() = projectRule.project
 

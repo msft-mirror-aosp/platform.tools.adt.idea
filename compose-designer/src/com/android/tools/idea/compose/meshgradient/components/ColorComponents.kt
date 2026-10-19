@@ -15,29 +15,20 @@
  */
 package com.android.tools.idea.compose.meshgradient.components
 
+import androidx.compose.foundation.ContextMenuArea
+import androidx.compose.foundation.ContextMenuItem
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.FocusInteraction
-import androidx.compose.foundation.interaction.HoverInteraction
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,187 +36,255 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.input.InputMode
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.android.tools.adtui.LightCalloutPopup
+import com.android.tools.adtui.MaterialColorPaletteProvider
+import com.android.tools.adtui.stdui.KeyStrokes
 import com.android.tools.idea.compose.meshgradient.toHexStringNoHash
+import com.android.tools.idea.compose.preview.message
+import com.intellij.ui.colorpicker.ColorPickerBuilder
+import com.intellij.ui.colorpicker.MaterialGraphicalColorPipetteProvider
+import java.awt.Color as AwtColor
+import java.awt.GraphicsEnvironment
+import java.awt.MouseInfo
+import java.awt.event.ActionEvent
+import javax.swing.AbstractAction
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.foundation.theme.LocalContentColor
-import org.jetbrains.jewel.foundation.theme.LocalTextStyle
-import org.jetbrains.jewel.ui.Outline
-import org.jetbrains.jewel.ui.component.DropdownState
-import org.jetbrains.jewel.ui.component.MenuScope
-import org.jetbrains.jewel.ui.component.PopupMenu
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.styling.DropdownStyle
-import org.jetbrains.jewel.ui.outline
-import org.jetbrains.jewel.ui.theme.dropdownStyle
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.focusOutline
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
-@Composable
-fun ColorSwatch(color: Color, modifier: Modifier = Modifier) {
-  Box(modifier.clip(RoundedCornerShape(4.dp)).size(16.dp)) {
-    if (color == Color.Transparent) {
-      Spacer(
-        Modifier.drawBehind {
-            drawIntoCanvas {
-              drawPath(
-                path =
-                  Path().apply {
-                    moveTo(0f, 0f)
-                    lineTo(size.width, size.height)
-                    close()
-                  },
-                color = Color.Red,
-                style = Stroke(width = 2f),
-              )
-            }
-          }
-          .border(1.dp, Color.Gray, RoundedCornerShape(4.dp))
-          .fillMaxSize()
-      )
-    } else Spacer(Modifier.fillMaxSize().background(color))
-  }
-}
+/** Shape of a [ColorSwatch], shared by the controls laid out next to swatches. */
+internal val SWATCH_SHAPE = RoundedCornerShape(4.dp)
 
+/** Size of a [ColorSwatch], shared by the controls laid out next to swatches. */
+internal val SWATCH_SIZE = 16.dp
+private val TRANSPARENT_MARK_WIDTH = 1.5.dp
+
+/** Returns the `#AARRGGBB` representation of this color. */
+internal fun Color.toHexString(): String = "#${toHexStringNoHash(includeAlpha = true)}"
+
+/** Returns the accessibility description of a [ColorSwatch] showing [color]. */
+internal fun colorSwatchDescription(color: Color): String = message("gradient.editor.swatch.description", color.toHexString())
+
+/**
+ * A small square preview of [color], outlined so that colors matching the panel background stay visible. Fully transparent colors are drawn
+ * as an empty swatch crossed by a diagonal line. Callers provide the content description, see [colorSwatchDescription].
+ */
 @Composable
-fun ColorDropdown(
-  selectedColor: Color,
-  colors: List<Color>,
-  modifier: Modifier = Modifier,
-  allowTransparency: Boolean = false,
-  onSelected: (Color) -> Unit,
-) {
+internal fun ColorSwatch(color: Color, modifier: Modifier = Modifier) {
+  var isFocused by remember { mutableStateOf(false) }
   val focusManager = LocalFocusManager.current
-
-  DropdownButton(
-    modifier = modifier,
-    menuModifier = Modifier.offset(x = (-2).dp),
-    menuContent = {
-      if (allowTransparency) {
-        selectableItem(
-          selected = selectedColor == Color.Transparent,
-          onClick = {
-            focusManager.clearFocus()
-            onSelected(Color.Transparent)
-          },
-        ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            ColorSwatch(color = Color.Transparent)
-            Spacer(Modifier.width(8.dp))
-            Text("Transparent")
-          }
-        }
-      }
-      colors.forEach { color ->
-        selectableItem(
-          selected = selectedColor == color,
-          onClick = {
-            focusManager.clearFocus()
-            onSelected(color)
-          },
-        ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            ColorSwatch(color = color)
-            Spacer(Modifier.width(8.dp))
-            Text(color.toHexStringNoHash(false))
-          }
-        }
-      }
-    },
-  ) {
-    ColorSwatch(color = selectedColor, modifier = Modifier.padding(vertical = 5.dp, horizontal = 8.dp))
-  }
-}
-
-@Composable
-private fun DropdownButton(
-  modifier: Modifier = Modifier,
-  enabled: Boolean = true,
-  menuModifier: Modifier = Modifier,
-  outline: Outline = Outline.None,
-  interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
-  style: DropdownStyle = JewelTheme.dropdownStyle,
-  menuContent: MenuScope.() -> Unit,
-  content: @Composable BoxScope.() -> Unit,
-) {
-  var expanded by remember { mutableStateOf(false) }
-  var skipNextClick by remember { mutableStateOf(false) }
-
-  var dropdownState by remember(interactionSource) { mutableStateOf(DropdownState.of(enabled = enabled)) }
-
-  LaunchedEffect(enabled) { dropdownState = dropdownState.copy(enabled = enabled) }
-
-  LaunchedEffect(interactionSource) {
-    interactionSource.interactions.collect { interaction ->
-      when (interaction) {
-        is PressInteraction.Press -> dropdownState = dropdownState.copy(pressed = true)
-        is PressInteraction.Cancel,
-        is PressInteraction.Release -> dropdownState = dropdownState.copy(pressed = false)
-        is HoverInteraction.Enter -> dropdownState = dropdownState.copy(hovered = true)
-        is HoverInteraction.Exit -> dropdownState = dropdownState.copy(hovered = false)
-        is FocusInteraction.Focus -> dropdownState = dropdownState.copy(focused = true)
-        is FocusInteraction.Unfocus -> dropdownState = dropdownState.copy(focused = false)
-      }
-    }
-  }
-
-  val colors = style.colors
-  val metrics = style.metrics
-  val minSize = metrics.minSize
-  val shape = RoundedCornerShape(style.metrics.cornerSize)
-
-  var componentWidth by remember { mutableIntStateOf(-1) }
+  val borderColor = JewelTheme.globalColors.borders.normal
+  val transparentMarkColor = JewelTheme.globalColors.text.error
   Box(
     modifier =
-      modifier
-        .clickable(
-          onClick = {
-            if (!skipNextClick) {
-              expanded = !expanded
+      Modifier.focusOutline(showOutline = isFocused, outlineShape = SWATCH_SHAPE)
+        .onFocusChanged { isFocused = it.isFocused }
+        .colorNavigationKeys(focusManager)
+        .size(SWATCH_SIZE)
+        .clip(SWATCH_SHAPE)
+        .then(modifier)
+        .then(
+          if (color.alpha == 0f) {
+            Modifier.drawBehind {
+              drawLine(
+                color = transparentMarkColor,
+                start = Offset.Zero,
+                end = Offset(size.width, size.height),
+                strokeWidth = TRANSPARENT_MARK_WIDTH.toPx(),
+              )
             }
-            skipNextClick = false
-          },
-          enabled = enabled,
-          role = Role.Button,
-          interactionSource = interactionSource,
-          indication = null,
-        )
-        .background(colors.backgroundFor(dropdownState).value, shape)
-        .outline(dropdownState, outline, shape)
-        .defaultMinSize(minHeight = minSize.height)
-        .onSizeChanged { componentWidth = it.width },
-    contentAlignment = Alignment.CenterStart,
-  ) {
-    CompositionLocalProvider(
-      LocalContentColor provides colors.contentFor(dropdownState).value,
-      LocalTextStyle provides LocalTextStyle.current.copy(color = colors.contentFor(dropdownState).value),
-    ) {
-      Box(contentAlignment = Alignment.Center, content = content)
-    }
-
-    if (expanded) {
-      val density = LocalDensity.current
-      PopupMenu(
-        onDismissRequest = {
-          expanded = false
-          if (it == InputMode.Touch && dropdownState.isHovered) {
-            skipNextClick = true
+          } else {
+            Modifier.background(color)
           }
-          true
-        },
-        modifier = menuModifier.focusProperties { canFocus = true }.defaultMinSize(minWidth = with(density) { componentWidth.toDp() }),
-        style = style.menuStyle,
-        horizontalAlignment = Alignment.Start,
-        content = menuContent,
+        )
+        .border(1.dp, borderColor, SWATCH_SHAPE)
+  )
+}
+
+/**
+ * A [ColorSwatch] button that opens a color editor on click and, when [onDelete] is provided, can be deleted from its context menu, with
+ * the Delete/Backspace keys, or through an accessibility action.
+ */
+@Composable
+internal fun EditableColorSwatch(
+  color: Color,
+  contentDescription: String,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  onDelete: (() -> Unit)? = null,
+) {
+  val deleteLabel = message("gradient.editor.brush.delete.color")
+  ContextMenuArea(items = { if (onDelete != null) listOf(ContextMenuItem(deleteLabel, onDelete)) else emptyList() }) {
+    ColorSwatch(
+      color = color,
+      modifier =
+        modifier
+          .semantics {
+            this.contentDescription = contentDescription
+            if (onDelete != null) {
+              customActions =
+                listOf(
+                  CustomAccessibilityAction(deleteLabel) {
+                    onDelete()
+                    true
+                  }
+                )
+            }
+          }
+          .onKeyEvent { event ->
+            if (onDelete != null && event.type == KeyEventType.KeyDown && (event.key == Key.Delete || event.key == Key.Backspace)) {
+              onDelete()
+              true
+            } else {
+              false
+            }
+          }
+          .clickable(role = Role.Button, onClick = onClick),
+    )
+  }
+}
+
+/** A swatch-sized button that adds a new color stop or palette color. */
+@Composable
+internal fun AddColorButton(contentDescription: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  var isFocused by remember { mutableStateOf(false) }
+  val focusManager = LocalFocusManager.current
+  Box(
+    contentAlignment = Alignment.Center,
+    modifier =
+      Modifier.focusOutline(showOutline = isFocused, outlineShape = SWATCH_SHAPE)
+        .onFocusChanged { isFocused = it.isFocused }
+        .colorNavigationKeys(focusManager)
+        .then(modifier)
+        .clip(SWATCH_SHAPE)
+        .size(SWATCH_SIZE)
+        .background(JewelTheme.globalColors.panelBackground)
+        .border(1.dp, JewelTheme.globalColors.borders.normal, SWATCH_SHAPE)
+        .clickable(role = Role.Button, onClick = onClick),
+  ) {
+    Icon(
+      key = AllIconsKeys.General.InlineAdd,
+      iconClass = AllIconsKeys::class.java,
+      contentDescription = contentDescription,
+      modifier = Modifier.size(10.dp),
+    )
+  }
+}
+
+/**
+ * Grid of [palette] color swatches shown inside a color chooser popup. Requests initial focus on the swatch matching [selectedColor] (or
+ * the first swatch if none matches) so keyboard and screen reader users can navigate the palette immediately when the popup opens.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun PaletteSwatchGrid(
+  palette: List<Color>,
+  selectedColor: Color?,
+  onColorSelected: (Color) -> Unit,
+  modifier: Modifier = Modifier,
+  onClickLabel: String? = null,
+) {
+  val initialFocusRequester = remember { FocusRequester() }
+  val initialIndex = remember(palette, selectedColor) { palette.indexOf(selectedColor).coerceAtLeast(0) }
+  LaunchedEffect(palette.isNotEmpty()) {
+    if (palette.isNotEmpty()) {
+      initialFocusRequester.tryRequestFocus()
+    }
+  }
+  FlowRow(
+    horizontalArrangement = Arrangement.spacedBy(6.dp),
+    verticalArrangement = Arrangement.spacedBy(6.dp),
+    modifier = modifier,
+  ) {
+    palette.forEachIndexed { index, color ->
+      val description = colorSwatchDescription(color)
+      val isSelected = color == selectedColor
+      ColorSwatch(
+        color = color,
+        modifier =
+          (if (index == initialIndex) Modifier.focusRequester(initialFocusRequester) else Modifier)
+            .semantics {
+              contentDescription = description
+              selected = isSelected
+            }
+            .clickable(onClickLabel = onClickLabel, role = Role.Button) { onColorSelected(color) },
       )
     }
   }
+}
+
+/** Requests focus on this [FocusRequester], ignoring [IllegalStateException] if the target node is not currently attached. */
+internal fun FocusRequester.tryRequestFocus() {
+  try {
+    requestFocus()
+  } catch (_: IllegalStateException) {}
+}
+
+/** Moves focus between adjacent controls when arrow keys are pressed on a color swatch or add-color button. */
+private fun Modifier.colorNavigationKeys(focusManager: FocusManager): Modifier = onKeyEvent { event ->
+  if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+  when (event.key) {
+    Key.DirectionLeft -> focusManager.moveFocus(FocusDirection.Previous)
+    Key.DirectionRight -> focusManager.moveFocus(FocusDirection.Next)
+    Key.DirectionUp -> focusManager.moveFocus(FocusDirection.Up)
+    Key.DirectionDown -> focusManager.moveFocus(FocusDirection.Down)
+    else -> false
+  }
+}
+
+/**
+ * Shows a color picker popup at the mouse location, starting at [initialColor]. [onColorPicked] is called for every color picked while the
+ * popup is open, and [onClosed] once the popup closes, however it is closed. In a headless environment, or if the mouse location is
+ * unknown, e.g. in some remote sessions, no popup is shown and [onClosed] is called right away.
+ */
+internal fun showColorPicker(initialColor: Color, onColorPicked: (Color) -> Unit, onClosed: () -> Unit = {}) {
+  // MouseInfo.getPointerInfo throws a HeadlessException in a headless environment.
+  if (GraphicsEnvironment.isHeadless()) return onClosed()
+  val location = MouseInfo.getPointerInfo()?.location ?: return onClosed()
+  val popup = LightCalloutPopup(closedCallback = onClosed, cancelCallBack = onClosed)
+  @Suppress("UseJBColor") val initialAwtColor = AwtColor(initialColor.toArgb(), true)
+  val picker =
+    ColorPickerBuilder(showAlpha = true, showAlphaAsPercent = false)
+      .setOriginalColor(initialAwtColor)
+      .addSaturationBrightnessComponent()
+      .addColorAdjustPanel(MaterialGraphicalColorPipetteProvider())
+      .addColorValuePanel()
+      .withFocus()
+      .addSeparator()
+      .addCustomComponent(MaterialColorPaletteProvider)
+      .addColorListener { color, _ -> onColorPicked(Color(color.rgb)) }
+      .focusWhenDisplay(true)
+      .setFocusCycleRoot(true)
+      .addKeyAction(
+        KeyStrokes.ESCAPE,
+        object : AbstractAction() {
+          override fun actionPerformed(event: ActionEvent) {
+            popup.close()
+          }
+        },
+      )
+      .build()
+  popup.show(picker.content, null, location)
 }

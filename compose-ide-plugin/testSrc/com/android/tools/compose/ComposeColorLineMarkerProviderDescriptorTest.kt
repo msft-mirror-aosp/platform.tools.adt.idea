@@ -393,6 +393,96 @@ class ComposeColorLineMarkerProviderDescriptorTest {
   }
 
   @Test
+  fun testColorHsl() {
+    val psiFile =
+      myFixture.addFileToProject(
+        "src/com/android/test/A.kt",
+        // language=kotlin
+        """
+        package com.android.test
+        import androidx.compose.ui.graphics.Color
+        class A {
+          val other = Color.hsl(0f, 1f, 0.5f)
+          fun () {
+            val primary = Color.hsl(120f, 1f, 0.5f, 0.5f)
+            val primaryVariant = Color.hsl(hue = 240f, saturation = 1f, lightness = 0.5f)
+            val secondaryVariant = Color.hsl(lightness = 0.5f, hue = 240f, saturation = 1f, alpha = 0.25f)
+          }
+        }
+        """
+          .trimIndent(),
+      )
+    myFixture.configureFromExistingVirtualFile(psiFile.virtualFile)
+    checkGutterIconInfos(
+      listOf(Color(255, 0, 0, 255), Color(0, 255, 0, 128), Color(0, 0, 255, 255), Color(0, 0, 255, 64))
+    )
+    setNewColor("Color.hs|l(0f, 1f, 0.5f)", Color(0, 255, 0, 255))
+    setNewColor("Color.hs|l(hue = 240f, saturation = 1f, lightness = 0.5f)", Color(0, 255, 0, 255))
+    assertThat(myFixture.editor.document.text)
+      .isEqualTo(
+        // language=kotlin
+        """
+        package com.android.test
+        import androidx.compose.ui.graphics.Color
+        class A {
+          val other = Color.hsl(120.0f, 1.0f, 0.5f, 1.0f)
+          fun () {
+            val primary = Color.hsl(120f, 1f, 0.5f, 0.5f)
+            val primaryVariant = Color.hsl(hue = 120.0f, saturation = 1.0f, lightness = 0.5f, alpha = 1.0f)
+            val secondaryVariant = Color.hsl(lightness = 0.5f, hue = 240f, saturation = 1f, alpha = 0.25f)
+          }
+        }
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
+  fun testColorHsv() {
+    val psiFile =
+      myFixture.addFileToProject(
+        "src/com/android/test/A.kt",
+        // language=kotlin
+        """
+        package com.android.test
+        import androidx.compose.ui.graphics.Color
+        class A {
+          val other = Color.hsv(0f, 1f, 1f)
+          fun () {
+            val primary = Color.hsv(120f, 1f, 1f, 0.5f)
+            val primaryVariant = Color.hsv(hue = 240f, saturation = 1f, value = 1f)
+            val secondaryVariant = Color.hsv(value = 1f, hue = 240f, saturation = 1f, alpha = 0.25f)
+          }
+        }
+        """
+          .trimIndent(),
+      )
+    myFixture.configureFromExistingVirtualFile(psiFile.virtualFile)
+    checkGutterIconInfos(
+      listOf(Color(255, 0, 0, 255), Color(0, 255, 0, 128), Color(0, 0, 255, 255), Color(0, 0, 255, 64))
+    )
+    setNewColor("Color.hs|v(0f, 1f, 1f)", Color(0, 255, 0, 255))
+    setNewColor("Color.hs|v(hue = 240f, saturation = 1f, value = 1f)", Color(0, 255, 0, 255))
+    assertThat(myFixture.editor.document.text)
+      .isEqualTo(
+        // language=kotlin
+        """
+        package com.android.test
+        import androidx.compose.ui.graphics.Color
+        class A {
+          val other = Color.hsv(120.0f, 1.0f, 1.0f, 1.0f)
+          fun () {
+            val primary = Color.hsv(120f, 1f, 1f, 0.5f)
+            val primaryVariant = Color.hsv(hue = 120.0f, saturation = 1.0f, value = 1.0f, alpha = 1.0f)
+            val secondaryVariant = Color.hsv(value = 1f, hue = 240f, saturation = 1f, alpha = 0.25f)
+          }
+        }
+        """
+          .trimIndent()
+      )
+  }
+
+  @Test
   fun testColorReference() {
     val psiFile =
       myFixture.addFileToProject(
@@ -404,9 +494,13 @@ class ComposeColorLineMarkerProviderDescriptorTest {
         import androidx.compose.ui.graphics.colorspace.ColorSpaces
         class A {
           private val other = Color(0xFFC20029)
+          private val hslColor = Color.hsl(0f, 1f, 0.5f)
+          private val hsvColor = Color.hsv(0f, 1f, 1f)
           fun () {
             val reference = other
             val indirect = reference
+            val hslReference = hslColor
+            val hsvReference = hsvColor
           }
         }
         """
@@ -414,7 +508,17 @@ class ComposeColorLineMarkerProviderDescriptorTest {
       )
     myFixture.configureFromExistingVirtualFile(psiFile.virtualFile)
     // No gutter for color space.
-    checkGutterIconInfos(listOf(Color(194, 0, 41), Color(194, 0, 41), Color(194, 0, 41)))
+    checkGutterIconInfos(
+      listOf(
+        Color(194, 0, 41),
+        Color(255, 0, 0),
+        Color(255, 0, 0),
+        Color(194, 0, 41),
+        Color(194, 0, 41),
+        Color(255, 0, 0),
+        Color(255, 0, 0),
+      )
+    )
   }
 
   private fun setNewColor(window: String, newColor: Color) {

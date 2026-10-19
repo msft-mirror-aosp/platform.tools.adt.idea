@@ -275,14 +275,24 @@ interface FeatureTracker {
   fun trackTraceProcessorCpuData(queryStatus: QueryReturnStatus, methodTimeMs: Long, queryTimeMs: Long)
 
   /**
-   * Track a memory data query sent to the Trace Processor Daemon.
+   * Track a native memory data query sent to the Trace Processor Daemon.
    *
    * @param queryStatus tracks the status of the query result: OK - query returned without issues. QUERY_ERROR - query returned but TPD
    *   identified some issues while processing the query. QUERY_FAIL - query failed to reach TPD.
    * @param methodTimeMs how long - in milliseconds - we spent in the whole method (query + business logic).
    * @param queryTimeMs how long - in milliseconds - we spent waiting for the query to return from TPD.
    */
-  fun trackTraceProcessorMemoryData(queryStatus: QueryReturnStatus, methodTimeMs: Long, queryTimeMs: Long)
+  fun trackTraceProcessorNativeMemoryData(queryStatus: QueryReturnStatus, methodTimeMs: Long, queryTimeMs: Long)
+
+  /**
+   * Track a heap dump data query sent to the Trace Processor Daemon.
+   *
+   * @param queryStatus tracks the status of the query result: OK - query returned without issues. QUERY_ERROR - query returned but TPD
+   *   identified some issues while processing the query. QUERY_FAIL - query failed to reach TPD.
+   * @param methodTimeMs how long - in milliseconds - we spent in the whole method (query + business logic).
+   * @param queryTimeMs how long - in milliseconds - we spent waiting for the query to return from TPD.
+   */
+  fun trackTraceProcessorHeapDumpData(queryStatus: QueryReturnStatus, methodTimeMs: Long, queryTimeMs: Long)
 
   /**
    * Track when a track group is moved up.
@@ -348,7 +358,7 @@ interface FeatureTracker {
 
   fun trackTaskSettingsOpened(isSettingsChanged: Boolean)
 
-  fun trackTaskEntered(taskMetadata: TaskMetadata)
+  fun trackTaskEntered(taskMetadata: TaskMetadata, profilerTabsCount: Int = 0)
 
   fun trackTaskFinished(taskMetadata: TaskMetadata, taskFinishedState: TaskFinishedState)
 

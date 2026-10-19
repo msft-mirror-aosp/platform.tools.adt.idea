@@ -96,6 +96,11 @@ class PreCheckRenderSandboxDelegate(private val delegate: RenderSandbox, private
     delegate.checkPrintJob()
   }
 
+  override fun checkImageIo() {
+    if (!check()) return
+    delegate.checkImageIo()
+  }
+
   override fun checkPropertyRead(propertyName: String) {
     if (!check()) return
     delegate.checkPropertyRead(propertyName)
@@ -109,6 +114,21 @@ class PreCheckRenderSandboxDelegate(private val delegate: RenderSandbox, private
   override fun checkReflectionInvoke(owner: String, name: String) {
     if (!check()) return
     delegate.checkReflectionInvoke(owner, name)
+  }
+
+  override fun checkReflectionInvoke(clazz: Class<*>, name: String) {
+    if (!check()) return
+    delegate.checkReflectionInvoke(clazz, name)
+  }
+
+  override fun checkFieldAccess(owner: String, name: String) {
+    if (!check()) return
+    delegate.checkFieldAccess(owner, name)
+  }
+
+  override fun checkFieldAccess(clazz: Class<*>, name: String) {
+    if (!check()) return
+    delegate.checkFieldAccess(clazz, name)
   }
 
   override fun checkUnsafeAccess() {
@@ -129,5 +149,50 @@ class PreCheckRenderSandboxDelegate(private val delegate: RenderSandbox, private
   override fun checkConcurrency() {
     if (!check()) return
     delegate.checkConcurrency()
+  }
+
+  override fun checkSetFactory() {
+    if (!check()) return
+    delegate.checkSetFactory()
+  }
+
+  override fun checkScriptEngine() {
+    if (!check()) return
+    delegate.checkScriptEngine()
+  }
+
+  override fun checkServiceLoader() {
+    if (!check()) return
+    delegate.checkServiceLoader()
+  }
+
+  override fun checkXmlDecoder() {
+    if (!check()) return
+    delegate.checkXmlDecoder()
+  }
+
+  override fun checkCleaner() {
+    if (!check()) return
+    delegate.checkCleaner()
+  }
+
+  override fun checkSignal() {
+    if (!check()) return
+    delegate.checkSignal()
+  }
+
+  override fun checkRenderExecutor() {
+    if (!check()) return
+    delegate.checkRenderExecutor()
+  }
+
+  override fun checkGetClassLoader(clazz: Class<*>) {
+    if (!check()) return
+    delegate.checkGetClassLoader(clazz)
+  }
+
+  override fun checkClassLoaderAccess() {
+    if (!check()) return
+    delegate.checkClassLoaderAccess()
   }
 }

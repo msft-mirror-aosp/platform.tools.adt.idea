@@ -25,12 +25,13 @@ import com.intellij.openapi.diagnostic.thisLogger
 
 /** Synchronizes clipboards between the host and a connected device. */
 internal class DeviceClipboardSynchronizer(disposableParent: Disposable, private val deviceClient: DeviceClient) :
-  AbstractClipboardSynchronizer(disposableParent), DeviceController.DeviceClipboardListener, Disposable {
+  AbstractClipboardSynchronizer(), DeviceController.DeviceClipboardListener, Disposable {
 
   private val deviceController: DeviceController?
     get() = deviceClient.deviceController
 
   init {
+    initialize(disposableParent)
     deviceController?.addDeviceClipboardListener(this)
     // Pass the new value of maxSyncedClipboardLength to the device.
     synchronizeDeviceClipboard(forceSend = true)

@@ -18,6 +18,7 @@ package com.android.tools.idea.common.surface.organization
 import com.android.tools.adtui.swing.FakeUi
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.LeakHunter
 import com.intellij.testFramework.assertInstanceOf
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI.scale
@@ -51,6 +52,17 @@ class SceneViewHeaderTest {
       // Updated size after resize
       assertEquals(scale(370), header.size.width)
       assertEquals(scale(26), header.size.height)
+    }
+  }
+
+  @Test
+  fun removedHeaderIsNotRetainedByParent() {
+    invokeAndWaitIfNeeded {
+      val (parent, header) = setupHeaderAndParent()
+      val group = header.positionableAdapter.organizationGroup
+      parent.remove(header)
+      LeakHunter.checkLeak(parent, SceneViewHeader::class.java) { it === header }
+      LeakHunter.checkLeak(parent, OrganizationGroup::class.java) { it === group }
     }
   }
 

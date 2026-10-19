@@ -76,7 +76,7 @@ class WatchFaceInfoDomTest {
   @Test
   fun `tag completion variants`() {
     assertEquals(
-      listOf("AvailableInRetail", "Category", "Editable", "MultipleInstancesAllowed", "Preview"),
+      listOf("AvailableInRetail", "Category", "Editable", "FlavorsSupported", "MultipleInstancesAllowed", "Preview"),
       domRule.getCompletionResults("watch_face_info_completion_tag_variants.xml"),
     )
   }

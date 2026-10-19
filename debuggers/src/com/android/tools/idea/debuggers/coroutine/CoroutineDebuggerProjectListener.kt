@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.debuggers.coroutine
 
-import com.android.tools.idea.execution.common.AndroidSessionInfo
+import com.android.tools.idea.execution.common.processhandler.AndroidRemoteDebugProcessHandler
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
@@ -44,7 +44,7 @@ private class CoroutineDebuggerListener(private val project: Project) : XDebugge
     }
     // we check the process handler to differentiate between regular JVM processes and Android processes.
     // we don't want to create the panel if the process is regular JVM.
-    if (AndroidSessionInfo.from(debugProcess.processHandler) == null) {
+    if (debugProcess.processHandler !is AndroidRemoteDebugProcessHandler) {
       return
     }
 

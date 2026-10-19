@@ -57,6 +57,7 @@ import com.android.ide.common.resources.ResourceResolver;
 import com.android.ide.common.resources.ResourceVisitor;
 import com.android.ide.common.resources.ResourcesUtil;
 import com.android.ide.common.util.PathString;
+import com.android.resources.ResourceFolderType;
 import com.android.resources.ResourceType;
 import com.android.support.AndroidxName;
 import com.android.tools.fonts.DownloadableFontCacheService;
@@ -74,7 +75,6 @@ import com.android.tools.rendering.parsers.TagSnapshot;
 import com.android.tools.rendering.security.RenderSecurityManager;
 import com.android.tools.res.FileResourceReader;
 import com.android.tools.rendering.parsers.RenderXmlFile;
-import com.android.tools.res.ResourceNamespacing;
 import com.android.tools.res.ids.ResourceIdManagerHelper;
 import com.android.utils.HtmlBuilder;
 import com.android.utils.SdkUtils;
@@ -143,7 +143,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
   private final boolean myHasLegacyAppCompat;
   private final boolean myHasAndroidXAppCompat;
   private final boolean myShouldUseCustomInflater;
-  private final ResourceNamespacing myNamespacing;
   @NotNull private IRenderLogger myLogger;
   @NotNull private final ViewLoader myViewLoader;
   @Nullable private String myLayoutName;
@@ -158,7 +157,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
   private final Map<String, ResourceValue> myFontFamilies;
   private ProjectFonts myProjectFonts;
   @Nullable private final ILayoutPullParserFactory myLayoutPullParserFactory;
-  @NotNull private final ResourceNamespace.Resolver myImplicitNamespaces;
   /**
    * This stores the current sample data offset for sample data to use when parsing a given layout.
    * Each time a layout that contains references to sample data is parsed, we want to use a new sample,
@@ -202,13 +200,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
     myHasLegacyAppCompat = renderModule.getDependencies().dependsOn(GoogleMavenArtifactId.SUPPORT_APPCOMPAT_V7);
     myHasAndroidXAppCompat = renderModule.getDependencies().dependsOn(GoogleMavenArtifactId.ANDROIDX_APPCOMPAT);
     myShouldUseCustomInflater = shouldUseCustomInflater;
-
-    myNamespacing = renderModule.getResourceRepositoryManager().getNamespacing();
-    if (myNamespacing == ResourceNamespacing.DISABLED) {
-      myImplicitNamespaces = ResourceNamespace.Resolver.TOOLS_ONLY;
-    } else {
-      myImplicitNamespaces = ResourceNamespace.Resolver.EMPTY_RESOLVER;
-    }
 
     myFontCacheService = renderModule.getEnvironment().getDownloadableFontCacheService();
     ImmutableMap.Builder<String, ResourceValue> fontBuilder = ImmutableMap.builder();
@@ -370,7 +361,12 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
   @Nullable
   public XmlPullParser createXmlParserForFile(@NotNull String fileName) {
     try {
-      ByteArrayInputStream stream = new ByteArrayInputStream(FileResourceReader.readBytes(fileName));
+      PathString pathString = ResourcesUtil.toFileResourcePathString(fileName);
+      if (pathString == null) {
+        pathString = new PathString(fileName);
+      }
+      ByteArrayInputStream stream = new ByteArrayInputStream(FileResourceReader.readBytes(
+        pathString, ResourceIdManagerHelper.getResolver(myRenderModule.getResourceIdManager())));
       // Instantiate an XML pull parser based on the contents of the stream.
       XmlPullParser parser;
       if (XmlUtils.isProtoXml(stream)) {
@@ -445,25 +441,28 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
 
   @Nullable
   private ILayoutPullParser getParser(@NotNull String layoutName, @NotNull ResourceNamespace namespace, @NotNull PathString xml) {
-    if (myParserFiles != null && myParserFiles.contains(xml)) {
-      if (myParserCount > MAX_PARSER_INCLUDES) {
-        // Unlikely large number of includes. Look for cyclic dependencies in the available files.
-        if (findCycles()) {
-          throw new RuntimeException(
-            String.format("Cycle found (count=%3$d) evaluating '%1$s' with path '%2$s' (parserFiles=%4$s)",
-                          layoutName, xml.toDebugString(), myParserCount, StringUtil.join(myParserFiles, ", ")));
-        }
+    String parentName = xml.getParentFileName();
+    if (parentName != null && ResourceFolderType.getFolderType(parentName) == ResourceFolderType.LAYOUT) {
+      if (myParserFiles != null && myParserFiles.contains(xml)) {
+        if (myParserCount > MAX_PARSER_INCLUDES) {
+          // Unlikely large number of includes. Look for cyclic dependencies in the available files.
+          if (findCycles()) {
+            throw new RuntimeException(
+              String.format("Cycle found (count=%3$d) evaluating '%1$s' with path '%2$s' (parserFiles=%4$s)",
+                            layoutName, xml.toDebugString(), myParserCount, StringUtil.join(myParserFiles, ", ")));
+          }
 
-        // Also reset counter to 0 so we don't check on every subsequent iteration.
-        myParserCount = 0;
+          // Also reset counter to 0 so we don't check on every subsequent iteration.
+          myParserCount = 0;
+        }
+      } else {
+        if (myParserFiles == null) {
+          myParserFiles = new HashSet<>();
+        }
+        myParserFiles.add(xml);
       }
-    } else {
-      if (myParserFiles == null) {
-        myParserFiles = new HashSet<>();
-      }
-      myParserFiles.add(xml);
+      myParserCount++;
     }
-    myParserCount++;
 
     if (myLayoutPullParserFactory != null) {
       ILayoutPullParser parser = myLayoutPullParserFactory.create(
@@ -493,7 +492,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
         myLayoutCounterForSampleData.put(layoutName, sampleDataCounter);
       }
 
-      String parentName = xml.getParentFileName();
       String path = xml.getRawPath();
       // No need to generate a PSI-based parser (which can read edited/unsaved contents) for files in build outputs or
       // layoutlib built-in directories.
@@ -816,7 +814,7 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
   @NotNull
   @Override
   public ResourceNamespace.Resolver getImplicitNamespaces() {
-    return myImplicitNamespaces;
+    return ResourceNamespace.Resolver.TOOLS_ONLY;
   }
 
   @Override
@@ -827,11 +825,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
   @Override
   public boolean hasAndroidXAppCompat() {
     return myHasAndroidXAppCompat;
-  }
-
-  @Override
-  public boolean isResourceNamespacingRequired() {
-    return myNamespacing == ResourceNamespacing.REQUIRED;
   }
 
   @Override

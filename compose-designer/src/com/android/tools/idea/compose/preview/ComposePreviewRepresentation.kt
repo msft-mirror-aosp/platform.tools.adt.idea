@@ -26,6 +26,7 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.model.NlModelUpdaterInterface
 import com.android.tools.idea.common.surface.DelegateInteractionHandler
 import com.android.tools.idea.common.surface.DesignSurface
+import com.android.tools.idea.common.surface.DesignSurfaceZoomController
 import com.android.tools.idea.common.surface.updateSceneViewVisibilities
 import com.android.tools.idea.compose.PsiComposePreviewElement
 import com.android.tools.idea.compose.PsiComposePreviewElementInstance
@@ -86,6 +87,7 @@ import com.android.tools.idea.preview.modes.CommonPreviewModeManager
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.preview.mvvm.PREVIEW_VIEW_MODEL_STATUS
+import com.android.tools.idea.preview.navigation.AbstractPreviewNavigationHandler
 import com.android.tools.idea.preview.pagination.PreviewPaginationManager
 import com.android.tools.idea.preview.refreshExistingPreviewElements
 import com.android.tools.idea.preview.representation.CommonPreviewStateManager
@@ -118,11 +120,11 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.ComposePreviewLiteModeEvent
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewToolWindowUtils
 import com.intellij.ide.ActivityTracker
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.UI
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
@@ -144,6 +146,7 @@ import com.intellij.util.messages.Topic
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JComponent
@@ -267,46 +270,42 @@ fun configureLayoutlibSceneManager(
   quality: Float,
   disableAnimation: Boolean,
   useLoadViewFallbacks: Boolean, // TODO(b/445947658): remove this parameter
-): LayoutlibSceneManager =
-  sceneManager.apply {
-    sceneRenderConfiguration.let { config ->
-      config.useTransparentRendering = !showDecorations
-      config.useShrinkRendering = !showDecorations
-      // When the cache successful render image is enabled, the scene manager will retain the last
-      // valid image even if subsequent renders fail. But do not cache in interactive mode as it
-      // does not help, and it would make unnecessary copies of the bitmap.
-      config.cacheSuccessfulRenderImage = previewMode !is PreviewMode.Interactive
-      config.classesToPreload = if (previewMode is PreviewMode.Interactive) INTERACTIVE_CLASSES_TO_PRELOAD else emptyList()
-      config.sessionClockProvider = {
-        // For static preview use a clock that increments the time by 500ms on each read so that
-        // callbacks are executed in a deterministic way and without needing to actually wait for
-        // the 500ms to pass.
-        if (previewMode.isNormal) SteppingSessionClock(step = 500.milliseconds)
-        // For interactive and animation preview use a "real" clock to better simulate an
-        // interactive session
-        else RealTimeSessionClock()
-      }
-      config.usePrivateClassLoader = requestPrivateClassLoader
-      config.showDecorations = showDecorations
-      // The Compose Preview has its own way to track out of date files so we ask the Layoutlib
-      // Scene Manager to not report it via the regular log.
-      config.reportOutOfDateUserClasses = false
-      config.quality = quality
-      config.customContentHierarchyParser = if (runVisualAnalysis) accessibilityBasedHierarchyParser else null
-      config.layoutScannerConfig.isLayoutScannerEnabled = runVisualAnalysis
-      // During configure of SceneManager, always force re-inflation. This ensures that the
-      // RenderTask is recreated, clearing any old resize data or state.
-      config.needsInflation.set(true)
-      config.disableAnimation = disableAnimation
-      config.useLoadViewFallbacks = useLoadViewFallbacks
+): LayoutlibSceneManager = sceneManager.apply {
+  sceneRenderConfiguration.let { config ->
+    config.useTransparentRendering = !showDecorations
+    config.useShrinkRendering = !showDecorations
+    // When the cache successful render image is enabled, the scene manager will retain the last
+    // valid image even if subsequent renders fail. But do not cache in interactive mode as it
+    // does not help, and it would make unnecessary copies of the bitmap.
+    config.cacheSuccessfulRenderImage = previewMode !is PreviewMode.Interactive
+    config.classesToPreload = if (previewMode is PreviewMode.Interactive) INTERACTIVE_CLASSES_TO_PRELOAD else emptyList()
+    config.sessionClockProvider = {
+      // For static preview use a clock that increments the time by 500ms on each read so that
+      // callbacks are executed in a deterministic way and without needing to actually wait for
+      // the 500ms to pass.
+      if (previewMode.isNormal) SteppingSessionClock(step = 500.milliseconds)
+      // For interactive and animation preview use a "real" clock to better simulate an
+      // interactive session
+      else RealTimeSessionClock()
     }
-    visualLintMode =
-      if (runVisualAnalysis) {
-        VisualLintMode.RUN_ON_PREVIEW_ONLY
-      } else {
-        VisualLintMode.DISABLED
-      }
+    config.usePrivateClassLoader = requestPrivateClassLoader
+    config.showDecorations = showDecorations
+    // The Compose Preview has its own way to track out of date files so we ask the Layoutlib
+    // Scene Manager to not report it via the regular log.
+    config.reportOutOfDateUserClasses = false
+    config.quality = quality
+    config.customContentHierarchyParser = if (runVisualAnalysis) accessibilityBasedHierarchyParser else null
+    config.layoutScannerConfig.isLayoutScannerEnabled = runVisualAnalysis
+    config.disableAnimation = disableAnimation
+    config.useLoadViewFallbacks = useLoadViewFallbacks
   }
+  visualLintMode =
+    if (runVisualAnalysis) {
+      VisualLintMode.RUN_ON_PREVIEW_ONLY
+    } else {
+      VisualLintMode.DISABLED
+    }
+}
 
 /**
  * A [PreviewRepresentation] that provides a compose elements preview representation of the given `psiFile`.
@@ -317,9 +316,21 @@ fun configureLayoutlibSceneManager(
  *
  * @param psiFile [PsiFile] pointing to the Kotlin source containing the code to preview.
  * @param composePreviewViewProvider [ComposePreviewView] provider.
+ * @param navigationHandler [AbstractPreviewNavigationHandler] to handle navigation from the preview to the code. Overridable for testing
+ *   purposes and defaults to [ComposePreviewNavigationHandler].
  */
-class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider: ComposePreviewViewProvider) :
-  PreviewRepresentation, ComposePreviewManagerEx, UserDataHolderEx by UserDataHolderBase(), AndroidCoroutinesAware, FastPreviewSurface {
+class ComposePreviewRepresentation
+@VisibleForTesting
+constructor(
+  psiFile: PsiFile,
+  composePreviewViewProvider: ComposePreviewViewProvider,
+  @VisibleForTesting val navigationHandler: AbstractPreviewNavigationHandler,
+) : PreviewRepresentation, ComposePreviewManagerEx, UserDataHolderEx by UserDataHolderBase(), AndroidCoroutinesAware, FastPreviewSurface {
+
+  constructor(
+    psiFile: PsiFile,
+    composePreviewViewProvider: ComposePreviewViewProvider,
+  ) : this(psiFile, composePreviewViewProvider, ComposePreviewNavigationHandler())
 
   private val log = Logger.getInstance(ComposePreviewRepresentation::class.java)
   private val isDisposed = AtomicBoolean(false)
@@ -415,9 +426,6 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
    */
   val uiCheckFilterFlow
     @VisibleForTesting get() = composePreviewFlowManager.uiCheckFilterFlow
-
-  @VisibleForTesting
-  val navigationHandler = ComposePreviewNavigationHandler().apply { Disposer.register(this@ComposePreviewRepresentation, this) }
 
   // TODO(b/445947658): remove variable and TestOnly setter method below
   // Preview should never rely on fallback mechanisms in production, so it should not rely on them
@@ -596,6 +604,10 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
       usageTrackerProvider = usageTrackerProvider,
       onAfterPanelUpdate = { updateBottomPanelVisibility() },
       fpsUpdater = interactiveManager.fpsUpdater,
+      executeInRenderSessionAsync = { runnable ->
+        surface.sceneManagers.singleOrNull()?.executeInRenderSessionAsync(runnable, 0, TimeUnit.SECONDS)
+          ?: log.warn("Scene manager is missing, dropping execution")
+      },
     )
   }
 
@@ -611,6 +623,17 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
     // Currently it will re-create classloader and will be slower than switch from static
     usageTrackerProvider().logStartupTime((System.currentTimeMillis() - startUpStart).toInt(), peerPreviews)
     interactiveManager.start()
+    withContext(Dispatchers.EDT) {
+      if (interactivePreviewNavigationController.canShowNavigationPanel()) {
+        // When interactive navigation controls can be shown, reset the zoom-to-fit settings
+        // and re-trigger zoomToFit so that the design surface adjusts its viewport and scale
+        // properly to accommodate the bottom navigation controls panel.
+        val zoomController = surface.zoomController as DesignSurfaceZoomController
+        zoomController.resetZoomToFitSettings()
+        interactivePreviewNavigationController.showNavigationControls(instance)
+        zoomController.zoomToFit()
+      }
+    }
     requestVisibilityAndNotificationsUpdate()
     ActivityTracker.getInstance().inc()
   }
@@ -673,6 +696,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
   private fun onInteractivePreviewStop() {
     requestVisibilityAndNotificationsUpdate()
     interactiveManager.stop()
+    interactivePreviewNavigationController.clear()
     invalidate()
   }
 
@@ -834,9 +858,10 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
    * This panel allows modifying the device configuration for the focused preview element. It is `null` when not in Focus mode and its
    * lifecycle (creation/disposal) is tied to entering and exiting [PreviewMode.Focus].
    */
-  private var activeResizePanelInFocusMode: ResizePanel? = null
+  @Volatile private var activeResizePanelInFocusMode: ResizePanel? = null
 
   init {
+    Disposer.register(this, navigationHandler)
     launch {
       // Keep track of the last mode that was set to ensure it is correctly disposed
       var lastMode: PreviewMode? = null
@@ -1001,6 +1026,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
     isDisposed.set(true)
     if (mode.value is PreviewMode.Interactive) {
       interactiveManager.stop()
+      interactivePreviewNavigationController.clear()
     } else if (mode.value is PreviewMode.UiCheck) {
       uiCheckFilterFlow.value.basePreviewInstance?.let { uiCheckPanelCleanup(it.instanceId) }
     }
@@ -1065,8 +1091,9 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
   private fun configureLayoutlibSceneManagerForPreviewElement(
     displaySettings: PreviewDisplaySettings,
     layoutlibSceneManager: LayoutlibSceneManager,
-  ) =
-    configureLayoutlibSceneManager(
+  ): LayoutlibSceneManager {
+    activeResizePanelInFocusMode?.applyOverrides(layoutlibSceneManager)
+    return configureLayoutlibSceneManager(
       layoutlibSceneManager,
       showDecorations = displaySettings.showDecoration,
       previewMode = mode.value,
@@ -1076,6 +1103,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
       disableAnimation = mode.value.isNormal,
       useLoadViewFallbacks = useLoadViewFallbacks,
     )
+  }
 
   private fun onAfterRender(previewsCount: Int) {
     composeWorkBench.hasRendered = true
@@ -1173,50 +1201,58 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
 
     hidePanelsBeforeRender()
 
-    val showingPreviewElements =
-      surface.updatePreviewsAndRefresh(
-        reinflate = !quickRefresh,
-        filteredPreviews,
-        log,
-        psiFile,
-        parentDisposable = this,
-        progressIndicator,
-        previewElementModelAdapter,
-        if (mode.value is PreviewMode.UiCheck) accessibilityModelUpdater else defaultModelUpdater,
-        navigationHandler,
-        this::configureLayoutlibSceneManagerForPreviewElement,
-        refreshEventBuilder,
-      )
+    try {
+      val showingPreviewElements =
+        surface.updatePreviewsAndRefresh(
+          reinflate = !quickRefresh,
+          filteredPreviews,
+          log,
+          psiFile,
+          parentDisposable = this,
+          progressIndicator,
+          previewElementModelAdapter,
+          if (mode.value is PreviewMode.UiCheck) accessibilityModelUpdater else defaultModelUpdater,
+          navigationHandler,
+          this::configureLayoutlibSceneManagerForPreviewElement,
+          refreshEventBuilder,
+        )
 
-    onAfterRender(showingPreviewElements.size)
+      onAfterRender(showingPreviewElements.size)
 
-    if (previewModeManager.mode.value.isFocus) {
-      // We need to get rid of the flickering when switching tabs in focus tabs b/287484743
-      withContext(Dispatchers.EDT) { surface.zoomController.zoomToFit() }
+      if (previewModeManager.mode.value.isFocus && activeResizePanelInFocusMode?.hasBeenResized != true) {
+        // We need to get rid of the flickering when switching tabs in focus tabs b/287484743
+        withContext(Dispatchers.EDT) { surface.zoomController.zoomToFit() }
+      }
+
+      composePreviewFlowManager.updateRenderedPreviews(showingPreviewElements)
+      if (showingPreviewElements.size < numberOfPreviewsToRender) {
+        // Some preview elements did not result in model creations. This could be because of failed
+        // PreviewElements instantiation.
+        // TODO(b/160300892): Add better error handling for failed instantiations.
+        log.warn("Some preview elements have failed")
+      }
+    } finally {
+      // Restoring the surface visibility after render as it may have been hidden in focus mode.
+      withContext(Dispatchers.EDT) {
+        surface.interactionPane.isVisible = true
+        activeResizePanelInFocusMode?.onAfterRenderCompleted()
+      }
     }
-
-    composePreviewFlowManager.updateRenderedPreviews(showingPreviewElements)
-    if (showingPreviewElements.size < numberOfPreviewsToRender) {
-      // Some preview elements did not result in model creations. This could be because of failed
-      // PreviewElements instantiation.
-      // TODO(b/160300892): Add better error handling for failed instantiations.
-      log.warn("Some preview elements have failed")
-    }
-    // Restoring the surface visibility after render as it may have been hidden in focus mode.
-    withContext(Dispatchers.UI) { surface.interactionPane.isVisible = true }
   }
 
   /**
    * Hides the panels before rendering.
    *
-   * We need to hide the interaction panel if in focus mode to avoid the flickering b/287484743. Also, we need to clear the resize panel
-   * before rendering otherwise it will be shown during rendering as configuration can be updated.
+   * We need to hide the interaction panel if in focus mode to avoid the flickering b/287484743. Also, we notify the resize panel before
+   * rendering to detach listeners and disable inputs so edits cannot occur while rendering.
    */
-  private fun hidePanelsBeforeRender() {
-    if (previewModeManager.mode.value.isFocus) {
-      surface.interactionPane.isVisible = false
+  private suspend fun hidePanelsBeforeRender() {
+    withContext(Dispatchers.EDT) {
+      if (previewModeManager.mode.value.isFocus) {
+        surface.interactionPane.isVisible = false
+      }
+      activeResizePanelInFocusMode?.onBeforeRender()
     }
-    activeResizePanelInFocusMode?.clear()
   }
 
   private fun requestRefresh(
@@ -1295,9 +1331,12 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
       RenderUtils.clearCache(surface.configurations)
     }
 
+    if (Disposer.isDisposed(this)) {
+      return CompletableDeferred<Unit>().also { it.completeAlreadyDisposed() }
+    }
+
     val startTime = System.nanoTime()
-    // Start a progress indicator so users are aware that a long task is running. Stop it by calling
-    // processFinish() if returning early.
+    // Start a progress indicator so users are aware that a long task is running.
     val refreshProgressIndicator =
       BackgroundableProcessIndicator(
         project,
@@ -1306,9 +1345,15 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
         "",
         true,
       )
+    // ProgressWindow.dispose() asserts that it is called on the EDT. Wrap its disposal in a Disposable
+    // that schedules disposal on the EDT so that if `this` is already disposed (or disposed later from a
+    // background thread), ObjectTree never invokes ProgressWindow.dispose() off-EDT (see b/562876887).
+    val indicatorDisposable = Disposable {
+      UIUtil.invokeLaterIfNeeded { Disposer.dispose(refreshProgressIndicator) }
+    }
     _refreshIndicatorCallback()
-    if (!Disposer.tryRegister(this, refreshProgressIndicator)) {
-      refreshProgressIndicator.processFinish()
+    if (!Disposer.tryRegister(this, indicatorDisposable)) {
+      UIUtil.invokeLaterIfNeeded { Disposer.dispose(refreshProgressIndicator) }
       return CompletableDeferred<Unit>().also { it.completeAlreadyDisposed() }
     }
 
@@ -1348,7 +1393,14 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
                 return@launchWithProgress
               }
 
-          val needsFullRefresh = refreshRequest.refreshType != ComposePreviewRefreshType.QUALITY && invalidated.getAndSet(false)
+          val renderedPreviews =
+            composePreviewFlowManager.renderedPreviewElementsFlow.value
+              .takeIf { it is FlowableCollection.Present }
+              ?.asCollection()
+              ?.toList()
+          val needsFullRefresh =
+            refreshRequest.refreshType != ComposePreviewRefreshType.QUALITY &&
+              (invalidated.getAndSet(false) || renderedPreviews != previewsToRender)
           invalidateIfCancelled = needsFullRefresh
 
           composeWorkBench.hasContent = previewsToRender.isNotEmpty() || mode.value is PreviewMode.UiCheck
@@ -1402,7 +1454,7 @@ class ComposePreviewRepresentation(psiFile: PsiFile, composePreviewViewProvider:
 
     refreshJob.invokeOnCompletion {
       requestLogger.debug("Completed")
-      launch(Dispatchers.EDT) { Disposer.dispose(refreshProgressIndicator) }
+      launch(Dispatchers.EDT) { Disposer.dispose(indicatorDisposable) }
       if (it is CancellationException) {
         composeWorkBench.onRefreshCancelledByTheUser()
       } else {

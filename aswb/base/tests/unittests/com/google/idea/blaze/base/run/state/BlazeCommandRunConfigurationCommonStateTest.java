@@ -25,9 +25,20 @@ import com.google.idea.blaze.base.settings.BazelImportSettingsManager;
 import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
 import com.google.idea.blaze.base.settings.BuildSystemName;
+import com.google.idea.testing.EdtRule;
+import com.intellij.mock.MockEditorFactory;
+import com.intellij.mock.MockFileDocumentManagerImpl;
+import com.intellij.openapi.command.CommandProcessor;
+import com.intellij.openapi.command.impl.CoreCommandProcessor;
+import com.intellij.openapi.editor.EditorFactory;
+import com.intellij.openapi.editor.impl.DocumentWriteAccessGuard;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.impl.CoreProgressManager;
 import org.jdom.Element;
 import org.jdom.output.Format;
 import org.jdom.output.XMLOutputter;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -35,6 +46,8 @@ import org.junit.runners.JUnit4;
 /** Tests for {@link BlazeCommandRunConfigurationCommonState}. */
 @RunWith(JUnit4.class)
 public class BlazeCommandRunConfigurationCommonStateTest extends BlazeTestCase {
+  @Rule public EdtRule edtRule = new EdtRule();
+
   private static final BlazeCommandName COMMAND = BlazeCommandName.fromString("command");
 
   private BlazeCommandRunConfigurationCommonState state;
@@ -42,6 +55,15 @@ public class BlazeCommandRunConfigurationCommonStateTest extends BlazeTestCase {
   @Override
   protected void initTest(Container applicationServices, Container projectServices) {
     super.initTest(applicationServices, projectServices);
+
+    registerExtensionPoint(DocumentWriteAccessGuard.EP_NAME, DocumentWriteAccessGuard.class);
+    MockEditorFactory mockEditorFactory = new MockEditorFactory();
+    applicationServices.register(EditorFactory.class, mockEditorFactory);
+    applicationServices.register(
+        FileDocumentManager.class,
+        new MockFileDocumentManagerImpl(null, mockEditorFactory::createDocument));
+    applicationServices.register(ProgressManager.class, new CoreProgressManager());
+    applicationServices.register(CommandProcessor.class, new CoreCommandProcessor());
 
     projectServices.register(
         BazelImportSettingsManager.class, new BlazeImportSettingsManager(project));

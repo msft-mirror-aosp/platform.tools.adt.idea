@@ -75,15 +75,7 @@ bool UnicodeCompositionSupported() {
   if (state < 0) {
     state = 0;
     if (Settings::Get(Settings::Table::SECURE, "default_input_method").rfind("com.google.android.inputmethod.latin", 0) == 0) {
-      string output = RTrim(ExecuteShellCommand("dumpsys package com.google.android.inputmethod.latin"));
-      basic_regex version_regex(R"(versionCode=(\d+)\s)");
-      auto iter = sregex_iterator(output.begin(), output.end(), version_regex);
-      if (iter != sregex_iterator()) {
-        int version = ParseInt(iter->str(1), -1);
-        if (version >= 175733006) {
-          state = 1;
-        }
-      }
+      state = 1;
     }
   }
   return state != 0;
@@ -525,7 +517,7 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
     event.display_id = display_id;
     event.action = action;
     event.button_state = message.button_state();
-    event.event_time_millis = duration_cast<milliseconds>(event_time).count();;
+    event.event_time_millis = duration_cast<milliseconds>(event_time).count();
     if (action != AMOTION_EVENT_ACTION_HOVER_MOVE && action != AMOTION_EVENT_ACTION_HOVER_ENTER &&
         action != AMOTION_EVENT_ACTION_HOVER_EXIT && action != AMOTION_EVENT_ACTION_SCROLL) {
       if (action == AMOTION_EVENT_ACTION_DOWN) {
@@ -611,7 +603,7 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
 }
 
 void Controller::ProcessKeyboardEvent(Jni jni, const KeyEventMessage& message) {
-  InjectKeyEvent(message.action(), message.keycode(), message.meta_state());
+  InjectKeyEvent(message.action(), message.keycode(), message.meta_state(), message.display_id());
 }
 
 void Controller::ProcessTextInput(const TextInputMessage& message) {
@@ -646,12 +638,20 @@ void Controller::ProcessTextInput(const TextInputMessage& message) {
 
 void Controller::InjectUnicodeCharacter(uint16_t c) {
   Log::D("InjectUnicodeCharacter('\\u%04X')", c);
-  // Activate unicode composition.
-  InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_CTRL_LEFT, AMETA_CTRL_ON);
-  InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON);
-  InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON);
-  InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON);
-  InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_CTRL_LEFT, 0);
+  // Activate Unicode composition.
+  InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_CTRL_LEFT, AMETA_CTRL_ON, UNSPECIFIED_DISPLAY_ID);
+  InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON, UNSPECIFIED_DISPLAY_ID);
+  if (Agent::feature_level() >= 32) {
+    // Use silent Unicode composition.
+    InjectKeyEvent(AKEY_EVENT_ACTION_DOWN, AKEYCODE_ALT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON | AMETA_ALT_ON, UNSPECIFIED_DISPLAY_ID);
+    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON | AMETA_ALT_ON, UNSPECIFIED_DISPLAY_ID);
+    InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_ALT_LEFT, AMETA_CTRL_ON | AMETA_SHIFT_ON, UNSPECIFIED_DISPLAY_ID);
+  } else {
+    // Cannot use silent Unicode composition due to b/531563251.
+    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_U, AMETA_CTRL_ON | AMETA_SHIFT_ON, UNSPECIFIED_DISPLAY_ID);
+  }
+  InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_SHIFT_LEFT, AMETA_CTRL_ON, UNSPECIFIED_DISPLAY_ID);
+  InjectKeyEvent(AKEY_EVENT_ACTION_UP, AKEYCODE_CTRL_LEFT, 0, UNSPECIFIED_DISPLAY_ID);
   // Enter hexadecimal code of the character.
   bool significant = false;
   for (int i = 12; i >= 0; i -= 4) {
@@ -661,13 +661,13 @@ void Controller::InjectUnicodeCharacter(uint16_t c) {
     }
     significant = true;
     int keycode = d < 10 ? AKEYCODE_0 + d : AKEYCODE_A + d - 10;
-    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, keycode, 0);
+    InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, keycode, 0, UNSPECIFIED_DISPLAY_ID);
   }
   // Finish unicode composition.
-  InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_ENTER, 0);
+  InjectKeyEvent(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_ENTER, 0, UNSPECIFIED_DISPLAY_ID);
 }
 
-void Controller::InjectKeyEvent(int32_t action, int32_t keycode, int32_t meta_state) {
+void Controller::InjectKeyEvent(int32_t action, int32_t keycode, int32_t meta_state, int32_t display_id) {
   if (UseUInputForKeyEvents()) {
     InitializeVirtualKeyboard();
     nanoseconds event_time = UptimeNanos();
@@ -683,6 +683,7 @@ void Controller::InjectKeyEvent(int32_t action, int32_t keycode, int32_t meta_st
     event.code = keycode;
     event.meta_state = meta_state;
     event.source = KeyCharacterMap::VIRTUAL_KEYBOARD;
+    event.display_id = display_id;
     InjectKeyEvent(event);
     if (action == KeyEventMessage::ACTION_DOWN_AND_UP) {
       event.action = AKEY_EVENT_ACTION_UP;
@@ -784,7 +785,7 @@ void Controller::StopAudioStream([[maybe_unused]] const StopAudioStreamMessage& 
 }
 
 void Controller::WakeUpDevice() {
-  ProcessKeyboardEvent(Jvm::GetJni(), KeyEventMessage(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_WAKEUP, 0));
+  ProcessKeyboardEvent(Jvm::GetJni(), KeyEventMessage(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_WAKEUP, 0, UNSPECIFIED_DISPLAY_ID));
 }
 
 bool Controller::ControlDisplayPower(Jni jni, int state) {
@@ -1097,7 +1098,8 @@ void Controller::SendPendingDisplayEvents() {
             it->second.rotation != display_info.rotation || it->second.type != display_info.type;
         current_displays_.insert_or_assign(display_id, display_info);
         if (significant_change) {
-          DisplayAddedOrChangedNotification notification(display_id, display_info.logical_size, display_info.rotation, display_info.type);
+          DisplayAddedOrChangedNotification notification(
+              display_id, display_info.logical_size, display_info.rotation, display_info.type);
           SendControlMessage(notification);
           if (Log::IsEnabled(Log::Level::DEBUG)) {
             Log::D("Sent %s", notification.ToDebugString().c_str());
@@ -1129,7 +1131,7 @@ void Controller::PollDisplays() {
       DisplayManager::OnDisplayAdded(jni_, d1->first);
       DisplayManager::OnDisplayChanged(jni_, d1->first);
       d1++;
-    } else if (d1 == current_displays_.end()) {
+    } else if (d1 == current_displays_.end() || d1->first > d2->first) {
       DisplayManager::OnDisplayRemoved(jni_, d2->first);
       d2++;
     } else if (d1->first < d2->first) {
@@ -1137,9 +1139,6 @@ void Controller::PollDisplays() {
       DisplayManager::OnDisplayAdded(jni_, d1->first);
       DisplayManager::OnDisplayChanged(jni_, d1->first);
       d1++;
-    } else if (d1->first > d2->first) {
-      DisplayManager::OnDisplayRemoved(jni_, d2->first);
-      d2++;
     } else {
       if (d1->second != d2->second) {
         DisplayManager::OnDisplayChanged(jni_, d1->first);

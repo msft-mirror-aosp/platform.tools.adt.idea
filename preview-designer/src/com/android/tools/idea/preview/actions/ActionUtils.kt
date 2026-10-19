@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.preview.actions
 
+import com.android.ide.common.rendering.api.RecyclableImage
 import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.actions.SCENE_VIEW
 import com.android.tools.idea.common.surface.SceneView
@@ -32,8 +33,8 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepres
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.hasRenderErrors
-import com.android.tools.rendering.imagepool.ImagePool
 import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.ActionGroupWrapper
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -42,16 +43,19 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataKey
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.util.concurrency.annotations.RequiresBackgroundThread
+import kotlin.reflect.KClass
 
 /**
- * Helper method that navigates back to the pre`vious [PreviewMode] for all [PreviewModeManager]s in the given [AnActionEvent]'s
+ * Helper method that navigates back to the previous [PreviewMode] for all [PreviewModeManager]s in the given [AnActionEvent]'s
  * [DataContext].
  *
  * @param e the [AnActionEvent] holding the context of the action
  */
+@RequiresBackgroundThread
 fun navigateBack(e: AnActionEvent) {
   e.dataContext.findPreviewManager(PreviewModeManager.KEY)?.restorePrevious()
 }
@@ -169,40 +173,48 @@ fun hasSceneViewErrors(dataContext: DataContext) = dataContext.getData(SCENE_VIE
 private fun hasRenderedImage(dataContext: DataContext): Boolean {
   val sceneView = dataContext.getData(SCENE_VIEW) ?: dataContext.getData(DESIGN_SURFACE)?.focusedSceneView
   val sceneManager = sceneView?.sceneManager as? LayoutlibSceneManager
-  return sceneManager?.renderResult?.renderedImage?.let { image -> image != ImagePool.NULL_POOLED_IMAGE } == true
+  return sceneManager?.renderResult?.renderedImage?.let { image -> image != RecyclableImage.NULL } == true
 }
+
+/**
+ * Makes the given action only visible when the preview is in the [mode] [PreviewMode]. Returns an [AnAction] that handles the visibility.
+ */
+fun <T : PreviewMode> AnAction.visibleOnlyIn(mode: KClass<T>): AnAction =
+  // ActionToolbarImpl checks `action is Separator` directly, so wrap Separator in a
+  // DefaultActionGroup to let ActionUpdater expand it only when visible.
+  when (val action = if (this is Separator) DefaultActionGroup(this) else this) {
+    is ActionGroup ->
+      object : ActionGroupWrapper(action) {
+        override fun update(e: AnActionEvent) {
+          super.update(e)
+          e.presentation.isVisible = e.presentation.isVisible && mode.isInstance(e.getData(PreviewModeManager.KEY)?.mode?.value)
+        }
+
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+      }
+    else ->
+      object : AnActionWrapper(action) {
+        override fun update(e: AnActionEvent) {
+          super.update(e)
+          e.presentation.isVisible = e.presentation.isVisible && mode.isInstance(e.getData(PreviewModeManager.KEY)?.mode?.value)
+        }
+
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+      }
+  }
 
 // TODO(b/292057010) Enable group filtering for Gallery mode.
-private class PreviewDefaultWrapper(actions: List<AnAction>) : DefaultActionGroup(actions) {
-  override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
-
-  override fun update(e: AnActionEvent) {
-    super.update(e)
-
-    e.getData(PreviewModeManager.KEY)?.let { e.presentation.isVisible = it.mode.value is PreviewMode.Default }
-  }
-}
-
 /**
  * Makes the given action only visible when the preview is in the [PreviewMode.Default] mode. Returns an [AnAction] that handles the
  * visibility.
  */
-fun AnAction.visibleOnlyInDefaultPreview(): AnAction = PreviewDefaultWrapper(listOf(this))
+fun AnAction.visibleOnlyInDefaultPreview(): AnAction = visibleOnlyIn(PreviewMode.Default::class)
 
 /** Makes the given action only visible when the preview is in the [PreviewMode.Focus] mode. */
-fun AnAction.visibleOnlyInFocus(): AnAction =
-  object : AnActionWrapper(this) {
-    override fun update(e: AnActionEvent) {
-      super.update(e)
-      e.presentation.isVisible = e.presentation.isVisible && e.getData(PreviewModeManager.KEY)?.mode?.value is PreviewMode.Focus
-    }
-  }
+fun AnAction.visibleOnlyInFocus(): AnAction = visibleOnlyIn(PreviewMode.Focus::class)
 
 /** Makes the given action only visible when the preview is in the [PreviewMode.Interactive] mode. */
-fun AnAction.visibleOnlyInInteractive(): AnAction =
-  object : AnActionWrapper(this) {
-    override fun update(e: AnActionEvent) {
-      super.update(e)
-      e.presentation.isVisible = e.presentation.isVisible && e.getData(PreviewModeManager.KEY)?.mode?.value is PreviewMode.Interactive
-    }
-  }
+fun AnAction.visibleOnlyInInteractive(): AnAction = visibleOnlyIn(PreviewMode.Interactive::class)
+
+/** Makes the given action only visible when the preview is in the [PreviewMode.UiCheck] mode. */
+fun AnAction.visibleOnlyInUiCheck(): AnAction = visibleOnlyIn(PreviewMode.UiCheck::class)

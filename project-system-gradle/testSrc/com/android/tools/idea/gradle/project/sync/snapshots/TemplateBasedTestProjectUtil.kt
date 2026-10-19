@@ -16,10 +16,12 @@
 package com.android.tools.idea.gradle.project.sync.snapshots
 
 import com.android.SdkConstants
+import com.android.tools.idea.gradle.project.sync.internal.KOTLIN_VERSION_FOR_TESTS
 import com.android.tools.idea.gradle.project.sync.model.GradleRoot
 import com.android.tools.idea.gradle.project.sync.utils.ProjectIdeaConfigFilesUtils
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.testing.FileSubject
+import com.android.tools.idea.testing.JdkConstants
 import com.android.utils.FileUtils
 import com.google.common.truth.Truth
 import com.intellij.openapi.util.io.FileUtil
@@ -85,57 +87,99 @@ internal fun patchMppProject(
   addJsModule: Boolean = false,
 ) {
   if (convertAppToKmp) {
-    projectRoot
-      .resolve("app")
-      .resolve("build.gradle")
-      .replaceInContent(
-        """
-        plugins {
-            id 'com.android.application'
-            id 'kotlin-android'
-        }
-        """
-          .trimIndent(),
-        """
-        plugins {
-            id 'com.android.application'
-            id 'kotlin-multiplatform'
-        }
-        kotlin {
-            androidTarget()
-        }
-        """
-          .trimIndent(),
-      )
+    projectRoot.resolve("app").resolve("build.gradle").replaceContent {
+      """
+      plugins {
+          id("org.jetbrains.kotlin.multiplatform")
+          id("com.android.kotlin.multiplatform.library")
+      }
+
+      kotlin {
+          android {
+              namespace = "com.example.android.kotlin"
+              compileSdk = 26
+              minSdk = 15
+              withHostTestBuilder {}.configure {}
+              withDeviceTestBuilder {}.configure {}
+          }
+
+          sourceSets {
+              named("androidMain") {
+                  kotlin.srcDir("src/main/java")
+              }
+              named("androidHostTest") {
+                  kotlin.srcDir("src/test/java")
+                  dependencies {
+                      implementation("junit:junit:4.12")
+                  }
+              }
+              named("androidDeviceTest") {
+                  kotlin.srcDir("src/androidTest/java")
+                  dependencies {
+                      implementation("com.android.support.test:runner:1.0.2")
+                  }
+              }
+              named("commonMain") {
+                  dependencies {
+                      implementation(project(":module2"))
+                  }
+              }
+          }
+      }
+      """
+        .trimIndent()
+    }
   }
   for (module in addJvmTo) {
-    projectRoot.resolve(module).resolve("build.gradle").replaceInContent("androidTarget()", "androidTarget()\njvm()")
+    projectRoot.resolve(module).resolve("build.gradle").replaceContent { content ->
+      if (content.contains("androidTarget()")) {
+        content.replace("androidTarget()", "androidTarget()\njvm()")
+      } else if (content.contains("androidLibrary {")) {
+        content.replace("androidLibrary {", "jvm()\n  androidLibrary {")
+      } else if (content.contains("android {")) {
+        content.replace("android {", "jvm()\n  android {")
+      } else {
+        content
+      }
+    }
   }
   for (module in addIosTo) {
+    projectRoot.resolve(module).resolve("build.gradle").replaceContent { content ->
+      if (content.contains("androidTarget()")) {
+        content.replace("androidTarget()", "androidTarget()\niosX64()\niosSimulatorArm64()\niosArm64()")
+      } else if (content.contains("androidLibrary {")) {
+        content.replace("androidLibrary {", "iosX64()\niosSimulatorArm64()\niosArm64()\n  androidLibrary {")
+      } else if (content.contains("android {")) {
+        content.replace("android {", "iosX64()\niosSimulatorArm64()\niosArm64()\n  android {")
+      } else {
+        content
+      }
+    }
+  }
+  if (addIosTo.isNotEmpty()) {
+    // KMP test projects keep KGP at KOTLIN_VERSION_FOR_TESTS on the buildscript classpath (see AndroidGradleTests), so select the
+    // matching Kotlin/Native distribution.
+    val konanDir = File(FileUtil.getTempDirectory(), ".konan")
+    konanDir.mkdirs()
     projectRoot
-      .resolve(module)
-      .resolve("build.gradle")
-      .replaceInContent("androidTarget()", "androidTarget()\niosX64()\niosSimulatorArm64()\niosArm64()")
+      .resolve("gradle.properties")
+      .appendText("\nkonan.data.dir=${konanDir.path}\nkotlin.native.version=$KOTLIN_VERSION_FOR_TESTS\n")
   }
   for (module in addIntermediateTo) {
-    projectRoot
-      .resolve(module)
-      .resolve("build.gradle")
-      .replaceInContent(
+    projectRoot.resolve(module).resolve("build.gradle").replaceContent { content ->
+      content.replace(
+        "sourceSets {",
         """
-        |sourceSets {
+        sourceSets {
+          create("jvmAndAndroid") {
+            dependsOn(commonMain)
+            androidMain.dependsOn(it)
+            jvmMain.dependsOn(it)
+          }
         """
-          .trimMargin(),
-        """
-        |sourceSets {
-        |  create("jvmAndAndroid") {
-        |    dependsOn(commonMain)
-        |    androidMain.dependsOn(it)
-        |    jvmMain.dependsOn(it)
-        |  }
-        """
-          .trimMargin(),
+          .trimIndent(),
       )
+    }
   }
   if (addJsModule) {
     projectRoot.resolve("settings.gradle").replaceInContent("//include ':jsModule'", "include ':jsModule'")
@@ -148,6 +192,18 @@ internal fun updateProjectJdk(projectRoot: File) {
   val jdk = IdeSdks.getInstance().jdk ?: error("${SyncedProjectTest::class} requires a valid JDK")
   val miscXml = projectRoot.resolve(".idea").resolve("misc.xml")
   miscXml.writeText(miscXml.readText().replace("""project-jdk-name="1.8"""", """project-jdk-name="${jdk.name}""""))
+}
+
+internal fun patchAndroidKotlinMultiplatformJdk(projectRoot: File) {
+  projectRoot.resolve("gradle.properties").replaceContent { content ->
+    content.plus(
+      """
+
+      org.gradle.java.installations.paths=${JdkConstants.JDK_11_PATH}
+      """
+        .trimIndent()
+    )
+  }
 }
 
 internal fun createEmptyGradleSettingsFile(projectRootPath: File) {

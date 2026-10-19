@@ -25,16 +25,20 @@ private fun normalizeDirectoryPath(stringPath: String): String = normalizeDirect
 
 object RenderSecurityManagerDefaults {
   @JvmStatic
-  fun getDefaultAllowedPaths(): Array<String> =
-    arrayOf(
+  fun getDefaultAllowedPaths(): Array<String> {
+    val paths = mutableListOf<String>()
+    try {
       // When loading classes, IntelliJ might sometimes drop a corruption marker
-      normalizeDirectoryPath(PathManager.getIndexRoot()),
-      /*
-        Root of the path where IntelliJ stores the logs. When loading classes,
-        IntelliJ might try to update cache hashes for the loaded files
-      */
-      normalizeDirectoryPath(PathManager.getLogPath()),
+      paths.add(normalizeDirectoryPath(PathManager.getIndexRoot()))
+    } catch (_: Throwable) {
+      // PathManager may fail to find installation home in unit test environments
+    }
+    try {
       // When loading classes, IntelliJ might try to update cache hashes for the loaded files
-      normalizeDirectoryPath(Paths.get(PathManager.getSystemPath(), "caches")),
-    )
+      paths.add(normalizeDirectoryPath(Paths.get(PathManager.getSystemPath(), "caches")))
+    } catch (_: Throwable) {
+      // PathManager may fail to find installation home in unit test environments
+    }
+    return paths.toTypedArray()
+  }
 }

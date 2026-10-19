@@ -22,12 +22,22 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.Android
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCase
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestSuite
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.ScreenshotTestUtils
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.util.concurrent.Executor
 
+private const val ARTIFACT_KEY_METHOD_NAME = "PreviewScreenshot.methodName"
+private const val ARTIFACT_KEY_PREVIEW_NAME = "PreviewScreenshot.previewName"
+private const val ARTIFACT_KEY_REF_IMAGE_PATH = "PreviewScreenshot.refImagePath"
+private const val ARTIFACT_KEY_NEW_IMAGE_PATH = "PreviewScreenshot.newImagePath"
+private const val ARTIFACT_KEY_DIFF_IMAGE_PATH = "PreviewScreenshot.diffImagePath"
+private const val ARTIFACT_KEY_DIFF_PERCENT = "PreviewScreenshot.diffPercent"
+private const val SIZE_MISMATCH_PREFIX = "Size Mismatch"
+
 /**
  * A listener that receives screenshot test results and passes them to the UI dialog.
+ *
+ * Events are forwarded from a single background thread, so they keep their order and slow work such as resolving paths and checking files
+ * stays off the EDT. The dialog moves each event to the EDT itself.
  *
  * @param dialog The dialog to update with the test results.
  */
@@ -36,48 +46,64 @@ class UpdateScreenshotTestResultsListener(
   private val executor: Executor = AppExecutorUtil.createBoundedApplicationPoolExecutor("ScreenshotTestResults", 1),
 ) : AndroidTestResultListener {
 
-  override fun onTestCaseFinished(device: AndroidDevice, testSuite: AndroidTestSuite, testCase: AndroidTestCase) {
+  override fun onTestCaseFinished(
+    device: AndroidDevice,
+    testSuite: AndroidTestSuite,
+    testCase: AndroidTestCase,
+  ) {
     val className = testCase.className
-    val methodName = testCase.additionalTestArtifacts["PreviewScreenshot.methodName"] ?: " "
-    val rawPreviewName = testCase.additionalTestArtifacts["PreviewScreenshot.previewName"] ?: " "
+    val artifacts = testCase.additionalTestArtifacts
+    val methodName = artifacts[ARTIFACT_KEY_METHOD_NAME] ?: " "
+    val rawPreviewName = artifacts[ARTIFACT_KEY_PREVIEW_NAME] ?: " "
     val previewName = cleanPreviewName(rawPreviewName)
     val testId = "$className.$methodName.$previewName"
 
     executor.execute {
       val destPath =
-        ScreenshotTestUtils.resolvePath(dialog.project, className, testCase.additionalTestArtifacts["PreviewScreenshot.refImagePath"])
+        ScreenshotTestUtils.resolvePath(
+          dialog.project,
+          artifacts[ARTIFACT_KEY_REF_IMAGE_PATH],
+        )
       val srcPath =
-        ScreenshotTestUtils.resolvePath(dialog.project, className, testCase.additionalTestArtifacts["PreviewScreenshot.newImagePath"])
+        ScreenshotTestUtils.resolvePath(
+          dialog.project,
+          artifacts[ARTIFACT_KEY_NEW_IMAGE_PATH],
+        )
       val diffPath =
-        ScreenshotTestUtils.resolvePath(dialog.project, className, testCase.additionalTestArtifacts["PreviewScreenshot.diffImagePath"])
+        ScreenshotTestUtils.resolvePath(
+          dialog.project,
+          artifacts[ARTIFACT_KEY_DIFF_IMAGE_PATH],
+        )
 
-      ApplicationManager.getApplication().invokeLater {
-        val errorTrace = (testCase.errorStackTrace as? String) ?: ""
-        val previewDetails =
-          PreviewDetails(
-            testId = testId,
-            className = className,
-            methodName = methodName,
-            previewName = previewName,
-            testResult = testCase.result,
-            destImagePath = destPath,
-            srcImagePath = srcPath,
-            diffImagePath = diffPath,
-            diffPercent = testCase.additionalTestArtifacts["PreviewScreenshot.diffPercent"],
-            isSizeMismatch = errorTrace.contains("Size Mismatch"),
-            sizeMismatchMessage =
-              errorTrace
-                .lineSequence()
-                .firstOrNull { it.contains("Size Mismatch") }
-                ?.let { line -> line.substring(line.indexOf("Size Mismatch")).trim() },
-          )
-        dialog.updateDialogWithTestResult(previewDetails, true)
-      }
+      val errorTrace = (testCase.errorStackTrace as? String) ?: ""
+      val sizeMismatchLine = errorTrace.lineSequence().firstOrNull { it.contains(SIZE_MISMATCH_PREFIX) }
+      val previewDetails =
+        PreviewDetails(
+          testId = testId,
+          className = className,
+          methodName = methodName,
+          previewName = previewName,
+          testResult = testCase.result,
+          destImagePath = destPath,
+          srcImagePath = srcPath,
+          diffImagePath = diffPath,
+          diffPercent = artifacts[ARTIFACT_KEY_DIFF_PERCENT],
+          isSizeMismatch = sizeMismatchLine != null,
+          sizeMismatchMessage = sizeMismatchLine?.let { line -> line.substring(line.indexOf(SIZE_MISMATCH_PREFIX)).trim() },
+        )
+          .withResolvedImageFiles()
+
+      dialog.updateDialogWithTestResult(previewDetails, true)
     }
   }
 
+  override fun onTestSuiteStarted(device: AndroidDevice, testSuite: AndroidTestSuite) {
+    // The suite starts once the project is built, right before the previews are rendered.
+    executor.execute { dialog.onRenderingStarted() }
+  }
+
   override fun onTestSuiteFinished(device: AndroidDevice, testSuite: AndroidTestSuite) {
-    executor.execute { ApplicationManager.getApplication().invokeLater { dialog.onTestSuiteFinished() } }
+    executor.execute { dialog.onTestSuiteFinished() }
   }
 
   /**
@@ -86,11 +112,17 @@ class UpdateScreenshotTestResultsListener(
    * Parses raw strings like "[{provider=com.example.MyProvider}]" into "MyProvider", extracting simple class names for providers.
    */
   private fun cleanPreviewName(name: String): String {
-    if (name.startsWith("[{") && name.contains("}]")) {
-      return name.substringAfter("[{").substringBefore("}]").split(", ").joinToString("_") { part ->
-        if (part.startsWith("provider=")) part.substringAfter("provider=").substringAfterLast('.') else part
-      } + name.substringAfter("}]")
+    if (name.startsWith(PARAM_START) && name.contains(PARAM_END)) {
+      return name.substringAfter(PARAM_START).substringBefore(PARAM_END).split(", ").joinToString("_") { part ->
+        if (part.startsWith(PROVIDER_KEY)) part.substringAfter(PROVIDER_KEY).substringAfterLast('.') else part
+      } + name.substringAfter(PARAM_END)
     }
     return name
+  }
+
+  companion object {
+    private const val PARAM_START = "[{"
+    private const val PARAM_END = "}]"
+    private const val PROVIDER_KEY = "provider="
   }
 }

@@ -26,11 +26,11 @@ import com.android.tools.idea.io.grpc.inprocess.InProcessChannelBuilder
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.AndroidSdksImpl
 import com.android.tools.idea.sdk.IdeAvdManagers
-import com.android.tools.idea.testing.TemporaryDirectoryRule
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.registerOrReplaceServiceInstance
 import java.nio.file.Files
 import java.nio.file.Path
@@ -50,7 +50,7 @@ class FakeEmulatorRule : TestRule {
   private var availableGrpcPort = 8554 + instanceCounter++ // Don't reuse port numbers between tests to avoid interference.
   private var registrationDirectory: Path? = null
   private val savedUserHome = System.getProperty("user.home")
-  private val tempDirectory = TemporaryDirectoryRule()
+  private val tempDirectory = TemporaryDirectory()
   private var disposable: Disposable? = null
   private val root by lazy { Files.createDirectories(tempDirectory.newPath()) }
   private val userHome by lazy { Files.createDirectories(root.resolve("home")) }
@@ -71,14 +71,7 @@ class FakeEmulatorRule : TestRule {
         registrationDirectory = Files.createDirectories(root.resolve("avd/running"))
         emulatorCatalog.overrideRegistrationDirectory(registrationDirectory)
         AvdManagerConnection.setConnectionFactory { sdkHandler, _ -> TestAvdManagerConnection(sdkHandler, avdRoot) }
-        val androidSdks =
-          object : AndroidSdksImpl() {
-            override fun tryToChooseSdkHandler(): AndroidSdkHandler {
-              val sdkRoot = FakeEmulator.getSdkFolder(avdRoot)
-              return AndroidSdkHandler(sdkRoot, sdkRoot)
-            }
-          }
-        ApplicationManager.getApplication()?.registerOrReplaceServiceInstance(AndroidSdks::class.java, androidSdks, disposable)
+        ApplicationManager.getApplication()?.registerOrReplaceServiceInstance(AndroidSdks::class.java, TestAndroidSdks(avdRoot), disposable)
       }
 
       override fun after() {
@@ -92,6 +85,7 @@ class FakeEmulatorRule : TestRule {
             emulator.stop()
           }
         } finally {
+          emulators.clear()
           disposable?.let { Disposer.dispose(it) }
           for (emulator in emulatorControllers) {
             emulator.awaitTermination(1.seconds)
@@ -115,6 +109,15 @@ class FakeEmulatorRule : TestRule {
     val emulator = FakeEmulator(avdFolder, availableGrpcPort++, dir)
     emulators.add(emulator)
     return emulator
+  }
+
+  private class TestAndroidSdks(avdRoot: Path) : AndroidSdksImpl() {
+    private val sdkHandler by lazy {
+      val sdkRoot = FakeEmulator.getSdkFolder(avdRoot)
+      AndroidSdkHandler(sdkRoot, sdkRoot)
+    }
+
+    override fun tryToChooseSdkHandler(): AndroidSdkHandler = sdkHandler
   }
 
   private inner class TestAvdManagerConnection(sdkHandler: AndroidSdkHandler, avdHomeFolder: Path) :

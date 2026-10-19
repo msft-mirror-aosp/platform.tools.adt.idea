@@ -73,6 +73,28 @@
     CUTOUT_HOLE_KEYWORD = 'punch_hole'
     CUTOUT_TALL_KEYWORD = 'tall'
 
+    WINDOW_POSTURE_KEYWORD = 'windowPosture'
+    POINTER_PRECISION_KEYWORD = 'pointerPrecision'
+    KEYBOARD_KIND_KEYWORD = 'keyboardKind'
+    HAS_CAMERA_KEYWORD = 'hasCamera'
+    HAS_MICROPHONE_KEYWORD = 'hasMicrophone'
+    VIEWING_DISTANCE_KEYWORD = 'viewingDistance'
+
+    POSTURE_FLAT_KEYWORD = 'flat'
+    POSTURE_TABLETOP_KEYWORD = 'tabletop'
+    POSTURE_BOOK_KEYWORD = 'book'
+
+    POINTER_COARSE_KEYWORD = 'coarse'
+    POINTER_FINE_KEYWORD = 'fine'
+    POINTER_BLUNT_KEYWORD = 'blunt'
+
+    KEYBOARD_VIRTUAL_KEYWORD = 'virtual'
+    KEYBOARD_PHYSICAL_KEYWORD = 'physical'
+
+    DISTANCE_NEAR_KEYWORD = 'near'
+    DISTANCE_MEDIUM_KEYWORD = 'medium'
+    DISTANCE_FAR_KEYWORD = 'far'
+
     NUMERIC_T = 'regexp:\d+(\.\d)?'
     STRING_T = 'regexp:\p{Alnum}{1}([^:,="\\]|\\.)*'
   ]
@@ -90,6 +112,10 @@ boolean_t ::= TRUE | FALSE
 cutout_t ::= CUTOUT_NONE_KEYWORD | CUTOUT_CORNER_KEYWORD | CUTOUT_DOUBLE_KEYWORD
    | CUTOUT_HOLE_KEYWORD | CUTOUT_TALL_KEYWORD
 navigation_t ::= NAV_BUTTONS_KEYWORD | NAV_GESTURE_KEYWORD
+window_posture_t ::= POSTURE_FLAT_KEYWORD | POSTURE_TABLETOP_KEYWORD | POSTURE_BOOK_KEYWORD
+pointer_precision_t ::= POINTER_COARSE_KEYWORD | POINTER_FINE_KEYWORD | POINTER_BLUNT_KEYWORD | CUTOUT_NONE_KEYWORD
+keyboard_kind_t ::= KEYBOARD_VIRTUAL_KEYWORD | KEYBOARD_PHYSICAL_KEYWORD | CUTOUT_NONE_KEYWORD
+viewing_distance_t ::= DISTANCE_NEAR_KEYWORD | DISTANCE_MEDIUM_KEYWORD | DISTANCE_FAR_KEYWORD
 
 /* Parameter definitions */
 name_param ::= NAME_KEYWORD EQUALS STRING_T
@@ -103,6 +129,12 @@ chin_size_param ::= CHIN_SIZE_KEYWORD EQUALS size_t
 dpi_param ::= DPI_KEYWORD EQUALS NUMERIC_T
 cutout_param ::= CUTOUT_KEYWORD EQUALS cutout_t
 navigation_param ::= NAVIGATION_KEYWORD EQUALS navigation_t
+window_posture_param ::= WINDOW_POSTURE_KEYWORD EQUALS window_posture_t
+pointer_precision_param ::= POINTER_PRECISION_KEYWORD EQUALS pointer_precision_t
+keyboard_kind_param ::= KEYBOARD_KIND_KEYWORD EQUALS keyboard_kind_t
+has_camera_param ::= HAS_CAMERA_KEYWORD EQUALS boolean_t
+has_microphone_param ::= HAS_MICROPHONE_KEYWORD EQUALS boolean_t
+viewing_distance_param ::= VIEWING_DISTANCE_KEYWORD EQUALS viewing_distance_t
 
 /* Top level definitions */
 param ::= parent_param
@@ -115,5 +147,11 @@ param ::= parent_param
    | chin_size_param
    | cutout_param
    | navigation_param
+   | window_posture_param
+   | pointer_precision_param
+   | keyboard_kind_param
+   | has_camera_param
+   | has_microphone_param
+   | viewing_distance_param
    | dpi_param { name="param" }
 spec ::= param (COMMA param)*

@@ -158,7 +158,6 @@ public abstract class AndroidTestCase extends AndroidTestBase {
     myModule = moduleFixtureBuilder.getFixture().getModule();
 
     // TODO(b/418973297): Consolidate all init logic in the different test frameworks
-    WorkspaceModelCacheImpl.forceEnableCaching(getTestRootDisposable());
     GradleSpecificInitializer.initializePhasedSync();
 
     // Must be done before addAndroidFacet, and must always be done, even if a test provides
@@ -469,22 +468,6 @@ public abstract class AndroidTestCase extends AndroidTestBase {
 
   protected final void createManifest() throws IOException {
     myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML);
-  }
-
-  /**
-   * Enables namespacing in the main module and sets the app namespace according to the given package name.
-   */
-  protected void enableNamespacing(@NotNull String appPackageName) {
-    enableNamespacing(myFacet, appPackageName);
-  }
-
-  /**
-   * Enables namespacing in the given module and sets the app namespace according to the given package name.
-   */
-  protected void enableNamespacing(@NotNull AndroidFacet facet, @NotNull String appPackageName) {
-    AndroidModel.setForTests(facet, TestAndroidModel.namespaced(facet));
-    runWriteCommandAction(getProject(), () -> Manifest.getMainManifest(facet).getPackage().setValue(appPackageName));
-    LocalResourceManager.getInstance(facet.getModule()).invalidateAttributeDefinitions();
   }
 
   protected final void createProjectProperties() throws IOException {

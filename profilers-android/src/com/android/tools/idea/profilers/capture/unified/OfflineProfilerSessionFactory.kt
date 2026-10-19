@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.profilers.capture.unified
 
+import com.android.tools.adtui.common.AdtUiUtils
+import com.android.tools.adtui.stdui.TooltipLayeredPane
 import com.android.tools.idea.profilers.IntellijProfilerServices
 import com.android.tools.nativeSymbolizer.ProjectSymbolSource
 import com.android.tools.nativeSymbolizer.SymbolFilesLocator
@@ -27,10 +29,12 @@ import com.android.tools.profilers.IdeProfilerComponents
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.ProfilerContext
 import com.android.tools.profilers.ProfilerFormat
+import com.android.tools.profilers.ProfilerLayout
 import com.android.tools.profilers.StageView
 import com.android.tools.profilers.StageWithToolbarView
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
+import com.android.tools.profilers.TimelineZoomToolbar
 import com.android.tools.profilers.cpu.CpuCaptureStage
 import com.android.tools.profilers.cpu.CpuCaptureStageView
 import com.android.tools.profilers.cpu.config.UnspecifiedConfiguration
@@ -50,6 +54,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.util.ui.JBEmptyBorder
+import java.awt.BorderLayout
+import java.awt.Dimension
 import java.io.File
 import java.util.function.Supplier
 import javax.swing.JComponent
@@ -115,8 +122,11 @@ object OfflineProfilerSessionFactory {
       val localFileEmpty = if (localFileExists) localFile.length() == 0L else true
 
       ideServices.mainExecutor.execute {
+        if (Disposer.isDisposed(parentDisposable)) return@execute
+
         val client = ProfilerClient("OfflineProfiler")
         val profilers = StudioProfilers(client, ideServices, true)
+        Disposer.register(parentDisposable) { profilers.stop() }
         ideServices.codeNavigator.cpuArchSource = Supplier {
           val metadataAbi = offlineMetadata?.sessionMetadata?.processAbi
           if (!metadataAbi.isNullOrEmpty()) {
@@ -129,20 +139,22 @@ object OfflineProfilerSessionFactory {
         val context = OfflineProfilerContext(ideServices, profilers, parentComponent, offlineMetadata)
         val configuration = UnspecifiedConfiguration("")
 
-        val view = createPlaceholderProfilersView(profilers, componentsProvider(ideServices))
-
         var stageView: StageView<*>? = null
+        val view = createPlaceholderProfilersView(profilers, componentsProvider(ideServices)) { stageView }
 
         if (!localFileExists || localFileEmpty) {
           val errorMessage = if (!localFileExists) "The trace file could not be found." else "The trace file is empty."
           context.onParseFailure(errorMessage)
         } else {
+          val traceId = System.nanoTime()
           val stage =
             if (ProfilerFormat.isMemoryFormat(ProfilerFormat.find(file.extension, getLazyTraceType(file)))) {
-              createMemoryCaptureStage(profilers, context, ideServices, file)
+              createMemoryCaptureStage(profilers, context, ideServices, file, traceId)
             } else {
-              CpuCaptureStage(profilers, context, configuration, localFile, 0, null, 0)
+              CpuCaptureStage(profilers, context, configuration, localFile, traceId, null, 0)
             }
+          Disposer.register(parentDisposable) { stage.exit() }
+          profilers.stage = stage
 
           stageView =
             if (stage is MemoryCaptureStage) {
@@ -150,7 +162,23 @@ object OfflineProfilerSessionFactory {
             } else {
               CpuCaptureStageView(view, stage as CpuCaptureStage)
             }
-          stage.enter()
+
+          if (stageView.isToolbarVisible) {
+            val toolbar =
+              JPanel(BorderLayout()).apply {
+                border = AdtUiUtils.DEFAULT_BOTTOM_BORDER
+                preferredSize = Dimension(0, ProfilerLayout.TOOLBAR_HEIGHT)
+                add(stageView.toolbar, BorderLayout.CENTER)
+                if (stage.isInteractingWithTimeline) {
+                  val zoomToolbar =
+                    TimelineZoomToolbar({ stage.timeline }, ideServices.featureTracker, view.stageComponent, parentDisposable)
+                  zoomToolbar.component.border = JBEmptyBorder(0, 0, 0, 2)
+                  add(zoomToolbar.component, BorderLayout.EAST)
+                }
+              }
+            view.stageComponent.add(toolbar, BorderLayout.NORTH)
+          }
+          view.stageComponent.add(stageView.component, BorderLayout.CENTER)
         }
 
         onComplete(OfflineProfilerSession(profilers, view, stageView))
@@ -163,6 +191,7 @@ object OfflineProfilerSessionFactory {
     context: ProfilerContext,
     ideServices: IntellijProfilerServices,
     file: VirtualFile,
+    traceId: Long,
   ): MemoryCaptureStage {
     val loader = CaptureObjectLoader()
     val extension = file.extension?.lowercase()
@@ -171,16 +200,17 @@ object OfflineProfilerSessionFactory {
     val captureObject =
       when (extension) {
         "hprof",
-        "prof" -> {
-          val info = HeapDumpInfo.newBuilder().setStartTime(0).setEndTime(Long.MAX_VALUE).build()
+        "prof",
+        "perfetto-java-heap-dump" -> {
+          val info = HeapDumpInfo.newBuilder().setStartTime(traceId).setEndTime(Long.MAX_VALUE).build()
           HeapDumpCaptureObject(profilers.client, profilers.session, info, null, ideServices.featureTracker, ideServices) { localFile }
         }
         "heapprofd" -> {
-          val info = TraceInfo.newBuilder().setFromTimestamp(System.nanoTime()).setToTimestamp(Long.MAX_VALUE).build()
+          val info = TraceInfo.newBuilder().setFromTimestamp(traceId).setToTimestamp(Long.MAX_VALUE).build()
           NativeAllocationSampleCaptureObject(profilers.client, profilers.session, info, ideServices, "") { localFile }
         }
         else -> {
-          val info = AllocationsInfo.newBuilder().setStartTime(0).setEndTime(Long.MAX_VALUE).setSuccess(true).build()
+          val info = AllocationsInfo.newBuilder().setStartTime(traceId).setEndTime(Long.MAX_VALUE).setSuccess(true).build()
           LegacyAllocationCaptureObject(profilers.client, profilers.session, info, ideServices.featureTracker) { localFile }
         }
       }
@@ -190,16 +220,23 @@ object OfflineProfilerSessionFactory {
     return MemoryCaptureStage(profilers, context, loader, durationData, ideServices.mainExecutor)
   }
 
-  private fun createPlaceholderProfilersView(profilers: StudioProfilers, components: IdeProfilerComponents): StudioProfilersView {
+  private fun createPlaceholderProfilersView(
+    profilers: StudioProfilers,
+    components: IdeProfilerComponents,
+    stageViewSupplier: () -> StageView<*>?,
+  ): StudioProfilersView {
+    val stageComponent = JPanel(BorderLayout())
+    val layeredPane = TooltipLayeredPane(stageComponent)
     return object : StudioProfilersView {
       override val studioProfilers: StudioProfilers = profilers
       override val ideProfilerComponents: IdeProfilerComponents = components
-      override val component: JComponent = JPanel()
+      override val component: JComponent = layeredPane
       override val stageWithToolbarView: StageWithToolbarView
         get() = throw UnsupportedOperationException("Not implemented for placeholder view")
 
-      override val stageComponent: JPanel = JPanel()
-      override val stageView: StageView<*>? = null
+      override val stageComponent: JPanel = stageComponent
+      override val stageView: StageView<*>?
+        get() = stageViewSupplier()
 
       override fun installCommonMenuItems(component: JComponent) {}
 

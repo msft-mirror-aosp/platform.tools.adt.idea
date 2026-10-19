@@ -45,8 +45,14 @@ class InteractivePreviewManager(
   public val fpsUpdater = _fpsUpdater.asSharedFlow()
 
   private val originalInteractionHandler = delegateInteractionHandler.delegate
+  private var originalFocusTraversalKeysEnabled = surface.interactionPane.focusTraversalKeysEnabled
   private val interactiveInteractionHandler =
-    LayoutlibInteractionHandler(surface, surface.pannable, isBackGestureInProgress, onInteractionStart)
+    LayoutlibInteractionHandler(
+      surface,
+      surface.pannable,
+      isBackGestureInProgress,
+      onInteractionStart,
+    )
 
   var fpsLimit = initialFpsLimit
     set(value) {
@@ -72,6 +78,9 @@ class InteractivePreviewManager(
     fpsCounter.resetAndStart()
     ticker.start()
     delegateInteractionHandler.delegate = interactiveInteractionHandler
+    originalFocusTraversalKeysEnabled = surface.interactionPane.focusTraversalKeysEnabled
+    surface.interactionPane.focusTraversalKeysEnabled = false
+    surface.interactionPane.requestFocusInWindow()
 
     // While in interactive mode, display a small ripple when clicking
     surface.enableMouseClickDisplay()
@@ -89,6 +98,8 @@ class InteractivePreviewManager(
   }
 
   fun stop() {
+    interactiveInteractionHandler.mouseExited()
+    surface.interactionPane.focusTraversalKeysEnabled = originalFocusTraversalKeysEnabled
     surface.disableMouseClickDisplay()
     delegateInteractionHandler.delegate = originalInteractionHandler
     ticker.stop()

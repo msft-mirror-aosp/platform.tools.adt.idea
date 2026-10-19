@@ -1,7 +1,7 @@
 """This file contains Bazel build rules for the Android Studio release distribution"""
 
-load("@rules_java//java:defs.bzl", "java_binary")
-load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@rules_java//java:defs.bzl", "JavaInfo", "java_binary")
+load("@rules_python//python:defs.bzl", "py_binary", "py_test")
 load("//build/bazel/rules/gathering:prebuilt_package_metadata.bzl", "prebuilt_package_metadata")
 load("//build/bazel/rules/gathering:write_package_metadata.bzl", "write_package_metadata")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "AppIconInfo", "replace_app_icon")
@@ -56,6 +56,7 @@ _ConfigurationInfo = provider(
         "application_icon": "The application icon to use.",
         "mac_app_name": "The application name on Mac, e.g. 'Android Studio Preview'",
         "vm_options": "Custom vm options per configuration",
+        "properties": "Custom properties per configuration",
     },
 )
 
@@ -123,29 +124,9 @@ def _lnzipper(ctx, desc, filemap, out, attrs = {}, deps = []):
         mnemonic = "lnzipper",
     )
 
-# Bazel does not support attributes of type 'dict of string -> list of labels',
-# and in order to support them we must 'unpack' the dictionary to two lists
-# of keys and value. The following two functions perform the mapping back and forth
-def _dict_to_lists(dict):
-    keys = []
-    values = []
-    for k, vs in dict.items():
-        keys += [k] * len(vs)
-        values += vs
-    return keys, values
-
-def _lists_to_dict(keys, values):
-    dict = {}
-    for k, v in zip(keys, values):
-        if k not in dict:
-            dict[k] = []
-        dict[k].append(v)
-    return dict
-
-def _pack_modules(ctx, jar_names, modules):
-    jars = _lists_to_dict(jar_names, modules)
+def _pack_modules(ctx, modules):
     res_files = []
-    for j, ms in jars.items():
+    for j, ms in modules.items():
         jar_file = ctx.actions.declare_file(j)
         modules_jars = [m[ImlModuleInfo].module_jars for m in ms]
         run_singlejar(ctx, modules_jars, jar_file)
@@ -196,14 +177,15 @@ WIN = struct(
     resource_path = "",
 )
 
-def _resource_deps(res_dirs, res, platform):
+def _resource_deps(resources, platform):
     files = []
-    for dir, dep in zip(res_dirs, res):
-        if StudioDataInfo in dep:
-            dep_data = dep[StudioDataInfo]
-            files += [(dir + "/" + dep_data.mappings[f], f) for f in platform.get(dep_data).to_list()]
-        else:
-            files += [(dir + "/" + f.basename, f) for f in dep.files.to_list()]
+    for dir, deps in resources.items():
+        for dep in deps:
+            if StudioDataInfo in dep:
+                dep_data = dep[StudioDataInfo]
+                files += [(dir + "/" + dep_data.mappings[f], f) for f in platform.get(dep_data).to_list()]
+            else:
+                files += [(dir + "/" + f.basename, f) for f in dep.files.to_list()]
     return files
 
 def _check_plugin(ctx, out, files, kind, id, allow_bundled_updates = False, verify_deps = None):
@@ -233,7 +215,7 @@ def _check_plugin(ctx, out, files, kind, id, allow_bundled_updates = False, veri
 def _studio_plugin_os(ctx, platform, plugin_jars, plugin_dir):
     files = {plugin_dir + "/lib/" + d: f for (d, f) in plugin_jars}
 
-    res = _resource_deps(ctx.attr.resources_dirs, ctx.attr.resources, platform)
+    res = _resource_deps(ctx.attr.resources, platform)
     files.update({plugin_dir + "/" + d: f for (d, f) in res})
 
     return files
@@ -252,7 +234,8 @@ def _label_str(label):
 def _studio_plugin_impl(ctx):
     plugin_id = ctx.attr.name
     plugin_dir = "plugins/" + ctx.attr.directory
-    plugin_jars = _pack_modules(ctx, ctx.attr.jars, ctx.attr.modules)
+    modules = [m for ms in ctx.attr.modules.values() for m in ms]
+    plugin_jars = _pack_modules(ctx, ctx.attr.modules)
     plugin_jars = plugin_jars + [(f.basename, f) for f in ctx.files.libs]
 
     # Ensure plugin id is known at build time
@@ -277,9 +260,9 @@ def _studio_plugin_impl(ctx):
 
     # Check that all modules needed by the modules in this plugin, are either present in the
     # plugin or in its dependencies.
-    need = depset(transitive = [depset(m[ImlModuleInfo].deps) for m in ctx.attr.modules])
+    need = depset(transitive = [depset(m[ImlModuleInfo].deps) for m in modules])
     have = depset(
-        direct = ctx.attr.modules + ctx.attr.libs + [ctx.attr._intellij_sdk],
+        direct = modules + ctx.attr.libs + [ctx.attr._intellij_sdk],
         transitive = [d[PluginInfo].modules for d in ctx.attr.deps] +
                      [d[PluginInfo].libs for d in ctx.attr.deps] +
                      [depset(ctx.attr.deps)],
@@ -301,7 +284,7 @@ def _studio_plugin_impl(ctx):
                 win = plugin_files_win,
             ),
             plugin_metadata = ctx.outputs.plugin_metadata,
-            modules = depset(ctx.attr.modules),
+            modules = depset(modules),
             libs = depset(ctx.attr.libs),
             license_files = depset(ctx.files.license_files),
             overwrite_plugin_version = True,
@@ -315,12 +298,10 @@ def _studio_plugin_impl(ctx):
 
 _studio_plugin = rule(
     attrs = {
-        "modules": attr.label_list(providers = [ImlModuleInfo], allow_empty = True),
+        "modules": attr.label_list_dict(providers = [ImlModuleInfo], allow_empty = True),
         "libs": attr.label_list(allow_files = True),
         "license_files": attr.label_list(allow_files = True),
-        "jars": attr.string_list(),
-        "resources": attr.label_list(allow_files = True),
-        "resources_dirs": attr.string_list(),
+        "resources": attr.label_list_dict(allow_files = True),
         "directory": attr.string(),
         "compress": attr.bool(),
         "deps": attr.label_list(providers = [PluginInfo]),
@@ -422,16 +403,11 @@ def studio_plugin(
         modules = {},
         resources = {},
         **kwargs):
-    jars, modules_list = _dict_to_lists(modules)
-    resources_dirs, resources_list = _dict_to_lists(resources)
-
     _studio_plugin(
         name = name,
         directory = directory,
-        modules = modules_list,
-        jars = jars,
-        resources = resources_list,
-        resources_dirs = resources_dirs,
+        modules = modules,
+        resources = resources,
         compress = is_release(),
         **kwargs
     )
@@ -748,7 +724,11 @@ def _stamp_platform(ctx, platform, platform_files, added_plugins):
         args.add("--version_component", version_component)
         args.add("--replace_build_number")
         args.add("--replace_selector", system_selector)
-        _stamp(ctx, args, [ctx.info_file], info_plist, stamped_info_plist)
+        srcs = [ctx.info_file]
+        if ctx.file.mac_document_types:
+            args.add("--add_document_types", ctx.file.mac_document_types)
+            srcs.append(ctx.file.mac_document_types)
+        _stamp(ctx, args, srcs, info_plist, stamped_info_plist)
 
     if platform == WIN:
         studio_exe, stamped_studio_exe = _declare_stamped_file(ctx, ret, platform, platform.base_path + "bin/studio64.exe")
@@ -827,6 +807,7 @@ def _get_external_attributes(all_files):
         "bin/clangd",
         "plugins/android-ndk/resources/lldb/bin/*",
         "plugins/android-ndk/resources/lldb/android/*/lldb-server",
+        "plugins/android/resources/android-cli/bin/android",
         "plugins/android/resources/simpleperf/*/simpleperf",
         "plugins/android/resources/simpleperf/*/libsimpleperf_report.so",
         "plugins/android/resources/simpleperf/*/libsimpleperf_report.dylib",
@@ -835,6 +816,7 @@ def _get_external_attributes(all_files):
         "plugins/android/resources/perfetto/*/traced_probes",
         "plugins/android/resources/perfetto/*/libperfetto.so",
         "plugins/android/resources/trace_processor_daemon/trace_processor_daemon",
+        "plugins/android/resources/traceconv/traceconv",
         "plugins/android/resources/trace_processor_server/trace-processor",
         "plugins/gemini/resources/llamacpp/llama-server",
         "plugins/gemini/resources/llamacpp/libggml*",
@@ -873,7 +855,7 @@ def _android_studio_os(ctx, platform, added_plugins, out, lst_out):
     platform_prefix = config.mac_app_name + ".app/" if platform in [MAC, MAC_ARM] else "android-studio/"
 
     platform_files = platform.get(ctx.attr.platform[IntellijInfo].base)
-    platform_files = replace_app_icon(ctx, platform.name, platform_files, config.application_icon[AppIconInfo])
+    platform_files = replace_app_icon(ctx, platform.name, platform_files, config.application_icon[AppIconInfo], branding = "android-studio")
     plugin_files = platform.get(ctx.attr.platform[IntellijInfo].plugins)
 
     if ctx.attr.jre:
@@ -896,20 +878,22 @@ def _android_studio_os(ctx, platform, added_plugins, out, lst_out):
 
     suffix = "64" if platform == LINUX else ("64.exe" if platform == WIN else "")
     vm_options_path = platform_prefix + platform.base_path + "bin/studio" + suffix + ".vmoptions"
-    vm_options = config.vm_options + ctx.attr.vm_options + {
+    platform_vm_options = {
         LINUX: ctx.attr.vm_options_linux,
         MAC: ctx.attr.vm_options_mac,
         MAC_ARM: ctx.attr.vm_options_mac_arm,
         WIN: ctx.attr.vm_options_win,
     }[platform]
+    vm_options = ctx.attr.vm_options + platform_vm_options + config.vm_options
     _append(ctx, platform, all_files, vm_options_path, vm_options)
 
-    properties = ctx.attr.properties + {
+    platform_properties = {
         LINUX: ctx.attr.properties_linux,
         MAC: ctx.attr.properties_mac,
         MAC_ARM: ctx.attr.properties_mac_arm,
         WIN: ctx.attr.properties_win,
     }[platform]
+    properties = ctx.attr.properties + platform_properties + config.properties
     _append(ctx, platform, all_files, platform_prefix + platform.base_path + "bin/idea.properties", properties)
 
     license_files = []
@@ -1024,6 +1008,10 @@ _android_studio = rule(
     attrs = {
         "host_platform_name": attr.string(),
         "codesign_entitlements": attr.label(allow_single_file = True),
+        "mac_document_types": attr.label(
+            allow_single_file = [".plist"],
+            doc = "A plist file with an array of CFBundleDocumentTypes entries to add to the macOS Info.plist",
+        ),
         "compress": attr.bool(),
         "essential_plugins": attr.string_list(),
         "jre": attr.label(providers = [StudioDataInfo]),
@@ -1334,6 +1322,7 @@ def _android_studio_configuration_impl(ctx):
         version_suffix = ctx.attr.version_suffix,
         mac_app_name = ctx.attr.mac_app_name,
         vm_options = ctx.attr.vm_options,
+        properties = ctx.attr.properties,
     )]
 
 def android_studio_configuration(
@@ -1341,6 +1330,7 @@ def android_studio_configuration(
         flag_level,
         enable_debug_flags = False,
         vm_options = [],
+        properties = [],
         **kwargs):
     _vm_options = vm_options + [
         "-Dflags.configuration.level=" + flag_level,
@@ -1349,6 +1339,7 @@ def android_studio_configuration(
     _android_studio_configuration(
         name = name,
         vm_options = _vm_options,
+        properties = properties,
         **kwargs
     )
 
@@ -1359,6 +1350,7 @@ _android_studio_configuration = rule(
         "version_suffix": attr.string(),
         "mac_app_name": attr.string(mandatory = True),
         "vm_options": attr.string_list(),
+        "properties": attr.string_list(),
     },
     implementation = _android_studio_configuration_impl,
 )
@@ -1422,8 +1414,7 @@ _intellij_plugin_import = rule(
         "files": attr.label_list(allow_files = True),
         "strip_prefix": attr.string(),
         "target_dir": attr.string(),
-        "resources": attr.label_list(allow_files = True),
-        "resources_dirs": attr.string_list(),
+        "resources": attr.label_list_dict(allow_files = True),
         # buildifier: disable=native-java-info (@rules_java is not usable in this file yet)
         "exports": attr.label_list(providers = [JavaInfo], mandatory = True),
         "compress": attr.bool(),
@@ -1442,14 +1433,12 @@ _intellij_plugin_import = rule(
 
 def intellij_plugin_import(name, target_dir, exports, files = [], strip_prefix = "", resources = {}, overwrite_plugin_version = False, **kwargs):
     """This macro is for prebuilt IntelliJ plugins that are not already part of intellij-sdk."""
-    resources_dirs, resources_list = _dict_to_lists(resources)
     _intellij_plugin_import(
         name = name,
         files = files,
         strip_prefix = strip_prefix,
         target_dir = target_dir,
-        resources = resources_list,
-        resources_dirs = resources_dirs,
+        resources = resources,
         exports = exports,
         compress = is_release(),
         overwrite_plugin_version = overwrite_plugin_version,
@@ -1623,6 +1612,12 @@ def intellij_platform_import(name, spec):
     jvm_import(
         name = name + "-test-framework",
         jars = ["lib/testFramework.jar"],
+        visibility = ["//visibility:public"],
+    )
+
+    jvm_import(
+        name = name + "-nio-fs",
+        jars = ["lib/nio-fs.jar"],
         visibility = ["//visibility:public"],
     )
 
@@ -1809,7 +1804,7 @@ def intellij_platform(
         is_v2_module = len(jars) == 1 and ("/modules/" in jars[0] or jars[0].startswith("lib/"))
         kind = "module" if is_v2_module else "plugin"
         jars_target_name = "%s-plugin-%s_jars" % (name, plugin)
-        _gen_plugin_jars_import_target(jars_target_name, spec, sdk_dirs, plugin, jars)
+        _gen_plugin_jars_import_target(jars_target_name, spec, sdk_dirs, plugin, jars, srcjar = src + "/android-studio-sources.zip")
         _intellij_plugin_import(
             name = name + "-plugin-%s" % plugin,
             id = plugin,
@@ -1833,10 +1828,24 @@ def intellij_platform(
             "//tools/base/bazel/platforms:macos-arm64": [sdk_dirs.darwin_aarch64 + "/Contents/lib/testFramework.jar"],
             "//conditions:default": [sdk_dirs.linux + "/lib/testFramework.jar"],
         }),
+        srcjar = src + "/android-studio-sources.zip",
         visibility = ["@intellij//:__subpackages__"],
     )
 
-def _gen_plugin_jars_import_target(name, spec, sdk_dirs, plugin, jars):
+    # Expose nio-fs.jar separately for bootclasspath and NIO FS dependencies.
+    jvm_import(
+        name = name + "-nio-fs",
+        jars = select({
+            "@platforms//os:windows": [sdk_dirs.windows + "/lib/nio-fs.jar"],
+            "//tools/base/bazel/platforms:macos-x86_64": [sdk_dirs.darwin + "/Contents/lib/nio-fs.jar"],
+            "//tools/base/bazel/platforms:macos-arm64": [sdk_dirs.darwin_aarch64 + "/Contents/lib/nio-fs.jar"],
+            "//conditions:default": [sdk_dirs.linux + "/lib/nio-fs.jar"],
+        }),
+        srcjar = src + "/android-studio-sources.zip",
+        visibility = ["@intellij//:__subpackages__"],
+    )
+
+def _gen_plugin_jars_import_target(name, spec, sdk_dirs, plugin, jars, srcjar):
     """Generates a jvm_import target for the specified plugin."""
     add_windows = spec.plugin_jars_windows[plugin] if plugin in spec.plugin_jars_windows else []
     jars_windows = [sdk_dirs.windows + "/" + jar for jar in jars + add_windows]
@@ -1855,6 +1864,7 @@ def _gen_plugin_jars_import_target(name, spec, sdk_dirs, plugin, jars):
             "//tools/base/bazel/platforms:macos-arm64": jars_darwin_aarch64,
             "//conditions:default": jars_linux,
         }),
+        srcjar = srcjar,
     )
 
 def _studio_project_model_generator_impl(ctx):

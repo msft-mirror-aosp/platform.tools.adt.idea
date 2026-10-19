@@ -6,7 +6,6 @@ iml_module(
     srcs = ["src"],
     iml_files = ["intellij.android.apkanalyzer.iml"],
     resources = ["resources"],
-    test_deps = ["//tools/base/testutils:studio.android.sdktools.testutils"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -28,9 +27,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/base/threading-agent-callback:studio.android.sdktools.threading-agent-callback",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
-        "//prebuilts/r8",
+        "//tools/adt/idea/.idea/libraries:r8",
         "@intellij//:intellij.java.debugger.impl",
-        "@intellij//:intellij.java.debugger.impl.backend",
         "@intellij//:intellij.java.debugger",
         "@intellij//:intellij.platform.uast",
     ],
@@ -57,6 +55,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/apkparser/analyzer:studio.android.sdktools.analyzer.tests",
     ],
     test_friends = ["//tools/adt/idea/apkanalyzer:intellij.android.apkanalyzer"],
     test_resources = ["testSrc/resources"],

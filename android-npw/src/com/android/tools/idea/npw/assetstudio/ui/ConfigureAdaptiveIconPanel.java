@@ -71,11 +71,11 @@ import com.intellij.openapi.components.PersistentStateComponent;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.ui.ColorPanel;
-import com.intellij.ui.SimpleListCellRenderer;
 import com.intellij.ui.TitledSeparator;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.components.JBTabbedPane;
+import com.intellij.ui.dsl.listCellRenderer.BuilderKt;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
@@ -304,6 +304,7 @@ public class ConfigureAdaptiveIconPanel extends JPanel implements Disposable, Co
   private JBLabel myMonochromeColorLabel;
   private JPanel myMonochromeImageOptionsPanel;
   private TitledSeparator myMonochromeScalingTitleSeparator;
+  private JBScrollPane myMonochromeScrollPane;
   private ImmutableMap<MonochromeAssetType, AssetComponent<?>> myMonochromeAssetPanelMap;
   private StringProperty myMonochromeLayerName;
   private OptionalProperty<BaseAsset> myMonochromeActiveAsset;
@@ -409,7 +410,7 @@ public class ConfigureAdaptiveIconPanel extends JPanel implements Disposable, Co
     for (Shape shape : myShapeNames.keySet()) {
       legacyShapesModel.addElement(shape);
     }
-    myLegacyIconShapeComboBox.setRenderer(SimpleListCellRenderer.create("", myShapeNames::get));
+    myLegacyIconShapeComboBox.setRenderer(BuilderKt.textListCellRenderer("", myShapeNames::get));
     myLegacyIconShapeComboBox.setModel(legacyShapesModel);
     myLegacyIconShapeComboBox.setSelectedItem(Shape.SQUARE);
 
@@ -418,6 +419,11 @@ public class ConfigureAdaptiveIconPanel extends JPanel implements Disposable, Co
 
     myBackgroundScrollPane.getVerticalScrollBar().setUnitIncrement(10);
     myBackgroundScrollPane.setBorder(JBUI.Borders.empty());
+
+    if (isMonochromeSupported) {
+      myMonochromeScrollPane.getVerticalScrollBar().setUnitIncrement(10);
+      myMonochromeScrollPane.setBorder(JBUI.Borders.empty());
+    }
 
     myOtherIconsScrollPane.getVerticalScrollBar().setUnitIncrement(10);
     myOtherIconsScrollPane.setBorder(JBUI.Borders.empty());
@@ -1761,15 +1767,15 @@ public class ConfigureAdaptiveIconPanel extends JPanel implements Disposable, Co
     final JPanel panel2 = new JPanel();
     panel2.setLayout(new GridLayoutManager(1, 3, JBUI.emptyInsets(), -1, -1));
     jBTabbedPane1.addTab("Monochrome", panel2);
-    JBScrollPane monochromeScrollPane = new JBScrollPane();
-    monochromeScrollPane.setHorizontalScrollBarPolicy(31);
-    panel2.add(monochromeScrollPane, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+    myMonochromeScrollPane = new JBScrollPane();
+    myMonochromeScrollPane.setHorizontalScrollBarPolicy(31);
+    panel2.add(myMonochromeScrollPane, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
-                                                         null, null, null, 0, false));
+                                                           null, null, null, 0, false));
     myMonochromeAllOptionsPanel = new JPanel();
     myMonochromeAllOptionsPanel.setLayout(new GridLayoutManager(6, 2, JBUI.emptyInsets(), -1, -1));
-    monochromeScrollPane.setViewportView(myMonochromeAllOptionsPanel);
+    myMonochromeScrollPane.setViewportView(myMonochromeAllOptionsPanel);
     JPanel monochromeLayerNamePanel = new JPanel();
     monochromeLayerNamePanel.setLayout(new GridLayoutManager(1, 2, JBUI.emptyInsets(), -1, -1));
     monochromeLayerNamePanel.setVisible(true);
@@ -2203,5 +2209,17 @@ public class ConfigureAdaptiveIconPanel extends JPanel implements Disposable, Co
   @NotNull
   public JTextField getForegroundResizeValueTextField() {
     return myForegroundResizeValueTextField;
+  }
+
+  @VisibleForTesting
+  @NotNull
+  public ImageAssetBrowser getMonochromeImageAssetBrowser() {
+    return myMonochromeImageAssetBrowser;
+  }
+
+  @VisibleForTesting
+  @NotNull
+  public ObjectProperty<Validator.Result> getMonochromeAssetValidityState() {
+    return myMonochromeAssetValidityState;
   }
 }

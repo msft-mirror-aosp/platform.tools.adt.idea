@@ -45,7 +45,6 @@ iml_module(
     test_class = "com.android.tools.idea.mlkit.MlModelBindingTestSuite",
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/latest",
@@ -84,6 +83,7 @@ iml_module(
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
         "//tools/adt/idea/observable:intellij.android.observable",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_resources = ["testData"],
     test_srcs = ["testSrc"],

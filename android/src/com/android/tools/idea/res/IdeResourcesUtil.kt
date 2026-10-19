@@ -81,8 +81,8 @@ import com.android.tools.idea.res.psi.ResourceReferencePsiElement
 import com.android.tools.idea.util.toVirtualFile
 import com.android.tools.lint.detector.api.computeResourceName
 import com.android.tools.lint.detector.api.stripIdPrefix
-import com.android.tools.res.ResourceNamespacing
 import com.android.utils.SdkUtils
+import com.android.utils.XmlUtils
 import com.android.utils.isBindingExpression
 import com.google.common.base.CharMatcher
 import com.google.common.base.Joiner
@@ -93,7 +93,6 @@ import com.intellij.ide.fileTemplates.FileTemplateManager
 import com.intellij.ide.fileTemplates.FileTemplateUtil
 import com.intellij.lang.xml.XMLLanguage
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.CommandProcessor
@@ -137,7 +136,6 @@ import com.intellij.psi.xml.XmlTokenType
 import com.intellij.ui.ColorUtil
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.Processor
-import com.intellij.util.text.nullize
 import com.intellij.util.ui.ColorIcon
 import com.intellij.util.ui.ColorsIcon
 import com.intellij.util.xml.DomManager
@@ -800,35 +798,14 @@ fun findIdUrlsInFile(file: PsiFile): Set<ResourceUrl> {
 
 /** Returns a [ResourceNamespace.Resolver] for the specified tag. */
 fun getNamespaceResolver(element: XmlElement): ResourceNamespace.Resolver {
-  fun withTag(compute: (XmlTag) -> String?): String? {
-    return ReadAction.compute<String, RuntimeException> {
-      if (!element.isValid) {
-        null
-      } else {
-        val tag = PsiTreeUtil.getParentOfType(element, XmlTag::class.java, false)
-        tag?.let(compute).let(StringUtil::nullize)
-      }
-    }
+  if (StudioResourceRepositoryManager.getInstance(element) == null) {
+    return ResourceNamespace.Resolver.EMPTY_RESOLVER
   }
-
-  val repositoryManager = StudioResourceRepositoryManager.getInstance(element) ?: return ResourceNamespace.Resolver.EMPTY_RESOLVER
-
-  return if (repositoryManager.namespacing == ResourceNamespacing.DISABLED) {
-    // In non-namespaced projects, framework is the only namespace, but the resource merger messes
-    // with namespaces at build time, so you
-    // have to use "android" as the prefix, which is equivalent not to defining a prefix at all
-    // (since "android" is the package name of the
-    // framework). We also need to keep in mind we recognize "tools" even without the xmlns
-    // definition in non-namespaced projects.
-    ResourceNamespace.Resolver.TOOLS_ONLY
-  } else {
-    // TODO(b/72688160, namespaces): precompute this to avoid the read lock.
-    object : ResourceNamespace.Resolver {
-      override fun uriToPrefix(namespaceUri: String): String? = withTag { tag -> tag.getPrefixByNamespace(namespaceUri) }
-
-      override fun prefixToUri(namespacePrefix: String): String? = withTag { tag -> tag.getNamespaceByPrefix(namespacePrefix).nullize() }
-    }
-  }
+  // Framework is the only namespace, but the resource merger messes with namespaces at build time,
+  // so you have to use "android" as the prefix, which is equivalent to not defining a prefix at all
+  // (since "android" is the package name of the framework).
+  // We also need to keep in mind we recognize "tools" even without the xmlns definition.
+  return ResourceNamespace.Resolver.TOOLS_ONLY
 }
 
 /** Returns the text content of a given tag */
@@ -840,7 +817,6 @@ fun getTextContentForRendering(tag: XmlTag): String = getTextContent(tag, ignore
 private fun getTextContent(tag: XmlTag, ignoreXliff: Boolean): String {
   // We can't just use tag.getValue().getTrimmedText() here because we need to remove
   // intermediate elements such as <xliff> text:
-  // TODO: Make sure I correct handle HTML content for XML items in <string> nodes!
   // For example, for the following string we want to compute "Share with (Bluetooth)" (for
   // getTextContent) or "Share with %s" (for getTextContentForRendering):
   // <string name="share">Share with <xliff:g id="application_name"
@@ -895,23 +871,41 @@ private fun appendText(sb: StringBuilder, tag: XmlTag, ignoreXliff: Boolean) {
     if (child is XmlText) {
       sb.append(getXmlTextValue(child))
     } else if (child is XmlTag) {
-      // xliff support
-      if (!ignoreXliff && XLIFF_G_TAG == child.localName && child.namespace.startsWith(XLIFF_NAMESPACE_PREFIX)) {
-        val example = child.getAttributeValue(ATTR_EXAMPLE)
-        if (example != null) {
-          // <xliff:g id="number" example="7">%d</xliff:g> minutes => "(7) minutes"
-          sb.append('(').append(example).append(')')
-          continue
-        } else {
-          val id = child.getAttributeValue(ATTR_ID)
-          if (id != null) {
-            // Step <xliff:g id="step_number">%1$d</xliff:g> => Step ${step_number}
-            sb.append('$').append('{').append(id).append('}')
+      val isXliff = XLIFF_G_TAG == child.localName && child.namespace.startsWith(XLIFF_NAMESPACE_PREFIX)
+      if (isXliff) {
+        // xliff support
+        if (!ignoreXliff) {
+          val example = child.getAttributeValue(ATTR_EXAMPLE)
+          if (example != null) {
+            // <xliff:g id="number" example="7">%d</xliff:g> minutes => "(7) minutes"
+            sb.append('(').append(example).append(')')
             continue
+          } else {
+            val id = child.getAttributeValue(ATTR_ID)
+            if (id != null) {
+              // Step <xliff:g id="step_number">%1$d</xliff:g> => Step ${step_number}
+              sb.append('$').append('{').append(id).append('}')
+              continue
+            }
           }
         }
+        appendText(sb, child, ignoreXliff)
+      } else if (ignoreXliff) {
+        sb.append('<').append(child.name)
+        for (attribute in child.attributes) {
+          sb.append(' ').append(attribute.name).append("=\"")
+          val value = attribute.value
+          if (value != null) {
+            XmlUtils.appendXmlAttributeValue(sb, value)
+          }
+          sb.append('"')
+        }
+        sb.append('>')
+        appendText(sb, child, true)
+        sb.append("</").append(child.name).append('>')
+      } else {
+        appendText(sb, child, false)
       }
-      appendText(sb, child, ignoreXliff)
     }
   }
 }
@@ -1059,14 +1053,25 @@ fun packageToRClass(packageName: String): String {
   return packageName + RESOURCE_CLASS_SUFFIX
 }
 
-fun findResourceFields(facet: AndroidFacet, resClassName: String, resourceName: String): Array<PsiField> {
-  return findResourceFields(facet, resClassName, setOf(resourceName))
-}
+@JvmOverloads
+fun findResourceFields(
+  facet: AndroidFacet,
+  resClassName: String,
+  resourceName: String,
+  onlyInOwnPackages: Boolean = false,
+) = findResourceFields(facet, resClassName, setOf(resourceName), onlyInOwnPackages)
 
 /** Like [.findResourceFields] but can match than more than a single field name */
-fun findResourceFields(facet: AndroidFacet, resClassName: String, resourceNames: Collection<String>): Array<PsiField> {
+@JvmOverloads
+fun findResourceFields(
+  facet: AndroidFacet,
+  resClassName: String,
+  resourceNames: Collection<String>,
+  onlyInOwnPackages: Boolean = false,
+): Array<PsiField> {
   val result: MutableList<PsiField> = ArrayList()
-  for (rClass in findRJavaClasses(facet)) {
+  val rClasses = if (onlyInOwnPackages) findRJavaClassesDefinedByModule(facet) else findRJavaClasses(facet)
+  for (rClass in rClasses) {
     findResourceFieldsFromClass(rClass, resClassName, resourceNames, result)
   }
   return result.toTypedArray()
@@ -1135,6 +1140,20 @@ private fun findResourceFieldsFromClass(
 }
 
 /**
+ * Finds R classes defined by the given module.
+ *
+ * @param facet [AndroidFacet] of the module to find classes for
+ */
+private fun findRJavaClassesDefinedByModule(facet: AndroidFacet): Collection<PsiClass> {
+  val module = facet.module
+  if (Manifest.getMainManifest(facet) == null) {
+    return emptySet()
+  }
+  val resourceClassService = facet.module.project.getProjectSystem().getLightResourceClassService()
+  return resourceClassService.getLightRClassesDefinedByModule(module)
+}
+
+/**
  * Finds all R classes that contain fields for resources from the given module.
  *
  * @param facet [AndroidFacet] of the module to find classes for
@@ -1152,7 +1171,7 @@ fun findResourceFieldsForFileResource(file: PsiFile, onlyInOwnPackages: Boolean)
   val facet = AndroidFacet.getInstance(file) ?: return PsiField.EMPTY_ARRAY
   val resourceType = ModuleResourceManagers.getInstance(facet).localResourceManager.getFileResourceType(file) ?: return PsiField.EMPTY_ARRAY
   val resourceName = SdkUtils.fileNameToResourceName(file.name)
-  return findResourceFields(facet, resourceType, resourceName)
+  return findResourceFields(facet, resourceType, resourceName, onlyInOwnPackages)
 }
 
 fun findResourceFieldsForValueResource(tag: XmlTag, onlyInOwnPackages: Boolean): Array<PsiField> {
@@ -1161,7 +1180,7 @@ fun findResourceFieldsForValueResource(tag: XmlTag, onlyInOwnPackages: Boolean):
   val resourceType =
     (if (fileResType == ResourceFolderType.VALUES) getResourceTypeForResourceTag(tag) else null) ?: return PsiField.EMPTY_ARRAY
   val name = tag.getAttributeValue(SdkConstants.ATTR_NAME) ?: return PsiField.EMPTY_ARRAY
-  return findResourceFields(facet, resourceType.getName(), name)
+  return findResourceFields(facet, resourceType.getName(), name, onlyInOwnPackages)
 }
 
 fun getRJavaFieldName(resourceName: String): String {
@@ -1466,6 +1485,7 @@ fun isManifestClass(psiClass: PsiClass): Boolean {
   return psiClass is ManifestClass
 }
 
+@Deprecated(message = "Use createValueResourceAsync instead to avoid calling @Slow operations on the UI thread.")
 fun createValueResource(
   project: Project,
   resDir: VirtualFile,
@@ -1490,6 +1510,7 @@ fun createValueResource(
   }
 }
 
+@Deprecated(message = "Use createValueResourceAsync instead to avoid calling @Slow operations on the UI thread.")
 @JvmOverloads
 fun createValueResource(
   project: Project,
@@ -1501,17 +1522,26 @@ fun createValueResource(
   value: String,
   outTags: MutableList<ResourceElement?>? = null,
 ): Boolean {
-  return createValueResource(project, resDir, resourceName, value, resourceType, fileName, dirNames) { element: ResourceElement ->
-    if (value.isNotEmpty()) {
-      val s = if (resourceType == ResourceType.STRING) normalizeXmlResourceValue(value) else value
-      element.stringValue = s
-    } else if (resourceType == ResourceType.STYLEABLE || resourceType == ResourceType.STYLE) {
-      element.stringValue = "value"
-      element.xmlTag!!.value.text = ""
-    }
-    outTags?.add(element)
-    true
-  }
+  return createValueResource(
+    project,
+    resDir,
+    resourceName,
+    value,
+    resourceType,
+    fileName,
+    dirNames,
+    Processor { element: ResourceElement ->
+      if (value.isNotEmpty()) {
+        val s = if (resourceType == ResourceType.STRING) normalizeXmlResourceValue(value) else value
+        element.stringValue = s
+      } else if (resourceType == ResourceType.STYLEABLE || resourceType == ResourceType.STYLE) {
+        element.stringValue = "value"
+        element.xmlTag!!.value.text = ""
+      }
+      outTags?.add(element)
+      true
+    },
+  )
 }
 
 private fun addValueResource(
@@ -1649,10 +1679,10 @@ fun changeValueResource(
   }
 }
 
-private fun findResourceFile(resDir: VirtualFile, fileName: String, dirName: String): VirtualFile? =
+internal fun findResourceFile(resDir: VirtualFile, fileName: String, dirName: String): VirtualFile? =
   resDir.findChild(dirName)?.findChild(fileName)
 
-private fun findOrCreateResourceFile(project: Project, resDir: VirtualFile, fileName: String, dirName: String): VirtualFile? {
+internal fun findOrCreateResourceFile(project: Project, resDir: VirtualFile, fileName: String, dirName: String): VirtualFile? {
   val dir = AndroidUtils.createChildDirectoryIfNotExist(project, resDir, dirName)
   val dirPath = FileUtil.toSystemDependentName(resDir.path + '/' + dirName)
   if (dir == null) {
@@ -1672,7 +1702,6 @@ private fun findOrCreateResourceFile(project: Project, resDir: VirtualFile, file
 }
 
 fun getReferredResourceOrManifestField(
-  facet: AndroidFacet,
   exp: KtSimpleNameExpression,
   className: String?,
   localOnly: Boolean,
@@ -1704,13 +1733,12 @@ fun getReferredResourceOrManifestField(
   return if (if (fromManifest) !isManifestClass(aClass) else !isRJavaClass(aClass)) {
     null
   } else {
-    ReferredResourceFieldInfo(resClassName, resFieldName, resolvedModule, getRClassNamespace(facet, qName), fromManifest)
+    ReferredResourceFieldInfo(resClassName, resFieldName, resolvedModule, ResourceNamespace.RES_AUTO, fromManifest)
   }
 }
 
 @JvmOverloads
 fun getReferredResourceOrManifestField(
-  facet: AndroidFacet,
   exp: PsiReferenceExpression,
   className: String? = null,
   localOnly: Boolean,
@@ -1744,15 +1772,7 @@ fun getReferredResourceOrManifestField(
   }
   return if (if (fromManifest) !isManifestClass(psiClass) else !isRJavaClass(psiClass)) {
     null
-  } else ReferredResourceFieldInfo(resClassName, resFieldName, resolvedModule, getRClassNamespace(facet, qName), fromManifest)
-}
-
-fun getRClassNamespace(facet: AndroidFacet, qName: String?): ResourceNamespace {
-  return if (StudioResourceRepositoryManager.getInstance(facet).namespacing == ResourceNamespacing.DISABLED) {
-    ResourceNamespace.RES_AUTO
-  } else {
-    ResourceNamespace.fromPackageName(StringUtil.getPackageName(qName!!))
-  }
+  } else ReferredResourceFieldInfo(resClassName, resFieldName, resolvedModule, ResourceNamespace.RES_AUTO, fromManifest)
 }
 
 fun ensureFilesWritable(project: Project, files: Collection<VirtualFile>): Boolean {
@@ -1915,8 +1935,7 @@ fun getViewTag(item: ResourceItem): String? {
         //    <Button a:alignLeft="@+id/target" a:id="@+id/something ...>
         // and this should *not* return "Button" as the view tag for
         // @+id/target!
-        &&
-        id == stripIdPrefix(tag.getAttributeValue(ATTR_ID, SdkConstants.ANDROID_URI))
+        && id == stripIdPrefix(tag.getAttributeValue(ATTR_ID, SdkConstants.ANDROID_URI))
     ) {
       return tag.name
     }

@@ -26,7 +26,9 @@ import com.intellij.ide.lightEdit.LightEdit
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.TransactionGuard
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
@@ -111,6 +113,11 @@ class SourceCodeEditorProvider private constructor(private val providers: Collec
   ): FileEditor {
     val psiDocumentManager = PsiDocumentManager.getInstance(project)
     if (document != null && !psiDocumentManager.isCommitted(document)) {
+      val modalityState =
+        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
+          val current = ModalityState.current()
+          if (TransactionGuard.getInstance().isWriteSafeModality(current)) current else ModalityState.nonModal()
+        }
       val deferred = kotlinx.coroutines.CompletableDeferred<Unit>()
       ApplicationManager.getApplication()
         .invokeLater(
@@ -120,7 +127,7 @@ class SourceCodeEditorProvider private constructor(private val providers: Collec
               deferred.complete(Unit)
             }
           },
-          ModalityState.nonModal(),
+          modalityState,
         )
       deferred.await()
     }

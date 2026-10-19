@@ -28,8 +28,6 @@ import com.google.common.collect.ImmutableSet
 class SingleRepoResourceRepositoryManager(resourcesRepo: CacheableResourceRepository) : ResourceRepositoryManager {
   override val appResources: CacheableResourceRepository = resourcesRepo
   override val projectResources: ResourceRepository = resourcesRepo
-  // TODO(): Support namespaced resources
-  override val namespacing: ResourceNamespacing = ResourceNamespacing.DISABLED
   override val namespace: ResourceNamespace = ResourceNamespace.RES_AUTO
   override val localesInProject: ImmutableList<Locale> = ImmutableList.of()
   override val languagesInProject: ImmutableSet<String> = ImmutableSet.of()

@@ -16,8 +16,8 @@
 package com.android.tools.rendering.classloading
 
 import com.intellij.openapi.diagnostic.Logger
-import java.util.PriorityQueue
 import java.util.Stack
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.LongAdder
 import org.jetbrains.annotations.VisibleForTesting
 
@@ -26,27 +26,19 @@ interface ModuleClassLoaderDiagnosticsRead {
   /** The total number of classes loaded so far by the [ModuleClassLoader]. */
   val classesFound: Long
 
-  /** The total time used finding classes by the [ModuleClassLoader]. */
+  /** The total time used finding classes by the [ModuleClassLoader] in milliseconds. */
   val accumulatedFindTimeMs: Long
 
-  /** The total time used rewriting classes by the [ModuleClassLoader]. */
+  /** The total time used finding classes by the [ModuleClassLoader] in microseconds. */
+  val accumulatedFindTimeUs: Long
+
+  /** The total time used rewriting classes by the [ModuleClassLoader] in milliseconds. */
   val accumulatedRewriteTimeMs: Long
 }
 
 /** Interface for writing [ModuleClassLoader] stats. */
 interface ModuleClassLoaderDiagnosticsWrite : ModuleClassLoaderDiagnosticsRead {
-  /** Called when [ClassLoader.loadClass] stats. */
-  fun classLoadStart(fqn: String)
-
-  /**
-   * Called when [ClassLoader.loadClass] finishes.
-   *
-   * @param fqn the Fully Qualified Name of the class.
-   * @param timeMs time in milliseconds that the load took.
-   */
-  fun classLoadedEnd(fqn: String, timeMs: Long)
-
-  /** Called when [ClassLoader.findClass] stats. */
+  /** Called when [ClassLoader.findClass] starts. */
   fun classFindStart(fqn: String)
 
   /**
@@ -54,35 +46,31 @@ interface ModuleClassLoaderDiagnosticsWrite : ModuleClassLoaderDiagnosticsRead {
    *
    * @param fqn the Fully Qualified Name of the class.
    * @param wasFound true if the class was found or false otherwise.
-   * @param timeMs time in milliseconds that the lookup took.
+   * @param timeNs time in nanoseconds that the lookup took.
    */
-  fun classFindEnd(fqn: String, wasFound: Boolean, timeMs: Long)
+  fun classFindEnd(fqn: String, wasFound: Boolean, timeNs: Long)
 
   /**
    * Called when a class has been rewritten.
    *
    * @param fqn the Fully Qualified Name of the class.
    * @param length size of the original class.
-   * @param timeMs time in milliseconds that the rewrite took.
+   * @param timeNs time in nanoseconds that the rewrite took.
    */
-  fun classRewritten(fqn: String, length: Int, timeMs: Long)
+  fun classRewritten(fqn: String, length: Int, timeNs: Long)
 }
 
 /** Nop implementation of the stats, to use in production. */
-@VisibleForTesting
 object NopModuleClassLoadedDiagnostics : ModuleClassLoaderDiagnosticsWrite {
-  override fun classLoadStart(fqn: String) {}
-
-  override fun classLoadedEnd(fqn: String, timeMs: Long) {}
-
   override fun classFindStart(fqn: String) {}
 
-  override fun classFindEnd(fqn: String, wasFound: Boolean, timeMs: Long) {}
+  override fun classFindEnd(fqn: String, wasFound: Boolean, timeNs: Long) {}
 
-  override fun classRewritten(fqn: String, length: Int, timeMs: Long) {}
+  override fun classRewritten(fqn: String, length: Int, timeNs: Long) {}
 
   override val classesFound: Long = 0
   override val accumulatedFindTimeMs: Long = 0
+  override val accumulatedFindTimeUs: Long = 0
   override val accumulatedRewriteTimeMs: Long = 0
 }
 
@@ -121,57 +109,46 @@ class HierarchicalTimeCounter {
 /** Implementation that records and saves the loading times and counts for classes. */
 @VisibleForTesting
 class ModuleClassLoadedDiagnosticsImpl : ModuleClassLoaderDiagnosticsWrite {
-  /** A single class find report with the name and time. */
-  private data class ClassFoundReport(val fqn: String, val timeMs: Long)
-
-  /** [HierarchicalTimeCounter] for the load time. */
-  private val totalLoadTimeCounterMs = HierarchicalTimeCounter()
   /** [HierarchicalTimeCounter] for the find time. */
-  private val totalFindTimeCounterMs = HierarchicalTimeCounter()
+  private val totalFindTimeCounterNs = HierarchicalTimeCounter()
 
-  /** Captures the total time of the [ModuleClassLoader#loadClass] calls. */
-  private val totalLoadTimeMs = LongAdder()
   /** Captures the total time of the find calls. */
-  private val totalFindTimeMs = LongAdder()
+  private val totalFindTimeNs = LongAdder()
   /** Counts the total number of classes found. */
   private val totalClassesFound = LongAdder()
   /** Counts the total time spent rewriting classes in this class loader. */
-  private val totalRewriteTimeMs = LongAdder()
-  /** Keeps the slowest classes by [ModuleClassLoader#loadClass] found time. */
-  private val foundClasses = PriorityQueue<ClassFoundReport>(100, Comparator.comparing { it.timeMs })
-
-  override fun classLoadStart(fqn: String) {
-    totalLoadTimeCounterMs.start(fqn)
-  }
-
-  override fun classLoadedEnd(fqn: String, timeMs: Long) {
-    try {
-      totalLoadTimeMs.add(totalLoadTimeCounterMs.end(fqn, timeMs))
-    } catch (_: IllegalStateException) {}
-  }
+  private val totalRewriteTimeNs = LongAdder()
 
   override fun classFindStart(fqn: String) {
-    totalFindTimeCounterMs.start(fqn)
+    totalFindTimeCounterNs.start(fqn)
   }
 
-  override fun classFindEnd(fqn: String, wasFoud: Boolean, timeMs: Long) {
-    try {
-      totalFindTimeMs.add(totalFindTimeCounterMs.end(fqn, timeMs))
-    } catch (_: IllegalStateException) {}
-    totalClassesFound.increment()
-    foundClasses.add(ClassFoundReport(fqn, timeMs))
+  override fun classFindEnd(fqn: String, wasFound: Boolean, timeNs: Long) {
+    val selfTimeNs =
+      try {
+        totalFindTimeCounterNs.end(fqn, timeNs)
+      } catch (_: IllegalStateException) {
+        return
+      }
+    if (wasFound) {
+      totalFindTimeNs.add(selfTimeNs)
+      totalClassesFound.increment()
+    }
   }
 
-  override fun classRewritten(fqn: String, length: Int, timeMs: Long) {
-    totalRewriteTimeMs.add(timeMs)
+  override fun classRewritten(fqn: String, length: Int, timeNs: Long) {
+    totalRewriteTimeNs.add(timeNs)
   }
 
   override val classesFound: Long
     get() = totalClassesFound.sum()
 
   override val accumulatedFindTimeMs: Long
-    get() = totalFindTimeMs.sum()
+    get() = TimeUnit.NANOSECONDS.toMillis(totalFindTimeNs.sum())
+
+  override val accumulatedFindTimeUs: Long
+    get() = TimeUnit.NANOSECONDS.toMicros(totalFindTimeNs.sum())
 
   override val accumulatedRewriteTimeMs: Long
-    get() = totalRewriteTimeMs.sum()
+    get() = TimeUnit.NANOSECONDS.toMillis(totalRewriteTimeNs.sum())
 }

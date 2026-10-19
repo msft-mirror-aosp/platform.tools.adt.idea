@@ -33,11 +33,11 @@ public class AndroidResourceQuickFixProvider extends UnresolvedReferenceQuickFix
       return;
     }
 
-    ReferredResourceFieldInfo info = IdeResourcesUtil.getReferredResourceOrManifestField(facet, exp, true);
+    ReferredResourceFieldInfo info = IdeResourcesUtil.getReferredResourceOrManifestField(exp, true);
     if (info == null) {
       final PsiElement parent = exp.getParent();
       if (parent instanceof PsiReferenceExpression) {
-        info = IdeResourcesUtil.getReferredResourceOrManifestField(facet, (PsiReferenceExpression)parent, true);
+        info = IdeResourcesUtil.getReferredResourceOrManifestField((PsiReferenceExpression)parent, true);
       }
     }
     if (info == null || info.isFromManifest()) {

@@ -253,7 +253,7 @@ fun createAndShowResourcePickerPopup(
     CompactResourcePicker(
       facet,
       configuration.virtualFile,
-      configuration.resourceResolver,
+      { configuration.resourceResolver },
       resourceType,
       resourcePickerSources,
       resourcePickedCallback,

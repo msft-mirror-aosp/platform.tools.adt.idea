@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.rendering
 
+import com.android.ide.common.rendering.api.RecyclableImage
 import com.android.tools.idea.diagnostics.heap.HeapSnapshotStatistics
 import com.android.tools.idea.diagnostics.heap.HeapSnapshotTraverseService
 import com.android.tools.idea.validator.ValidatorHierarchy
@@ -24,7 +25,6 @@ import com.android.tools.perflogger.Metric
 import com.android.tools.perflogger.Metric.MetricSample
 import com.android.tools.rendering.RenderResult
 import com.android.tools.rendering.RenderTask
-import com.android.tools.rendering.imagepool.ImagePool
 import com.google.common.collect.LinkedListMultimap
 import com.google.common.math.Quantiles
 import com.google.common.util.concurrent.Futures
@@ -198,8 +198,11 @@ internal class ClassAverageLoadTimeUsMeasurement(metric: Metric) : MetricMeasure
   override fun before() {}
 
   override fun after(result: RenderResult) =
-    if (result.stats.totalClassLoadDurationMs != -1L && result.stats.classesFound > 0)
-      MetricSample(Instant.now().toEpochMilli(), (result.stats.totalClassLoadDurationMs * 1000) / result.stats.classesFound)
+    if (result.stats.totalClassLoadDurationUs != -1L && result.stats.classesFound > 0)
+      MetricSample(
+        Instant.now().toEpochMilli(),
+        result.stats.totalClassLoadDurationUs / result.stats.classesFound,
+      )
     else null // No render time available
 }
 
@@ -283,8 +286,14 @@ internal fun <T> Benchmark.measureOperation(
   val metricSamples: LinkedListMultimap<String, MetricSample> = LinkedListMultimap.create()
   repeat(samplesCount) {
     sortedMeasures.forEach { it.before() }
-    val result = operation()
-    sortedMeasures.forEach { it.after(result)?.let { value -> metricSamples.put(it.metric.metricName, value) } }
+    var result: T? = operation()
+    sortedMeasures.forEach {
+      it.after(result!!)?.let { value -> metricSamples.put(it.metric.metricName, value) }
+    }
+    // Clear the variable to ensure the result can be garbage collected. If we don't do this,
+    // the reference will be kept until the next iteration of the loop, which might affect
+    // the memory measurements of subsequent runs.
+    result = null
     runGC()
   }
 
@@ -380,7 +389,7 @@ fun verifyValidatorResult(result: RenderResult) {
   TestCase.assertTrue(validatorResult is ValidatorHierarchy)
 }
 
-fun ImagePool.Image.getPixel(x: Int, y: Int) = this.getCopy(x, y, 1, 1)!!.getRGB(0, 0)
+fun RecyclableImage.getPixel(x: Int, y: Int) = this.getCopy(x, y, 1, 1)!!.getRGB(0, 0)
 
 /**
  * When [System.gc] is called, a "best effort" garbage collection is triggered, but there is no guarantees on its result. Adding some

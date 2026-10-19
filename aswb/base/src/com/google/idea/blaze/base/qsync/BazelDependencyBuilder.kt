@@ -198,6 +198,10 @@ open class BazelDependencyBuilder(
       val querySummary = snapshotHolder()?.queryData?.querySummary()
       fun addFile(name: String, mapToName: String) = put(name, MoreFiles.asByteSource(getBundledAspectPath(mapToName)))
       fun buildFilePresent(vararg buildFile: Label) = buildFile.any { it in querySummary?.allBuildIncludedFiles.orEmpty() }
+      fun isRepoPresent(repoNamePrefix: String) =
+        querySummary?.allBuildIncludedFiles.orEmpty().any {
+          it.workspace == repoNamePrefix || it.workspace.startsWith("$repoNamePrefix~") || it.workspace.startsWith("$repoNamePrefix+")
+        }
       fun blazeVersionData() = BlazeProjectDataManager.getInstance(project).getBlazeProjectData()!!.getBlazeVersionData()
 
       addFile("build_dependencies_deps.bzl", "build_dependencies_deps.bzl")
@@ -212,15 +216,25 @@ open class BazelDependencyBuilder(
         },
       )
 
-      // Aspects for Java and ImlModule support
+      // Provider aspects for Java support
+      val useRulesJava =
+        blazeVersionData().bazelIsAtLeastVersion(9, 0, 0) ||
+          buildFilePresent(RULES_JAVA_BZL1, RULES_JAVA_BZL2) ||
+          isRepoPresent("rules_java")
       addFile(
-        "build_dependencies_java_deps.bzl",
-        when {
-          buildFilePresent(STUDIO_IML_MODULE_RULE) ->
-            "build_dependencies_iml_module_java_deps.bzl"
-              .also { addFile("build_dependencies_java_deps_wrapped.bzl", "build_dependencies_java_deps.bzl") }
-          else -> "build_dependencies_java_deps.bzl"
-        },
+        "build_dependencies_java_provider_deps.bzl",
+        if (useRulesJava) "build_dependencies_java_rules_provider_deps.bzl" else "build_dependencies_java_native_provider_deps.bzl",
+      )
+
+      // Aspects for Java support
+      addFile("build_dependencies_java_deps.bzl", "build_dependencies_java_deps.bzl")
+
+      // Provider aspects for C++ support
+      val useRulesCc =
+        blazeVersionData().bazelIsAtLeastVersion(9, 0, 0) || buildFilePresent(RULES_CC_BZL1, RULES_CC_BZL2) || isRepoPresent("rules_cc")
+      addFile(
+        "build_dependencies_cc_provider_deps.bzl",
+        if (useRulesCc) "build_dependencies_cc_rules_provider_deps.bzl" else "build_dependencies_cc_native_provider_deps.bzl",
       )
 
       addFile("build_dependencies_cc_deps.bzl", "build_dependencies_cc_deps.bzl")
@@ -368,11 +382,14 @@ open class BazelDependencyBuilder(
     val RULES_ANDROID_RULES_BZL1: Label = Label.of("@@rules_android~//android:rules.bzl")
     val RULES_ANDROID_RULES_BZL2: Label = Label.of("@@rules_android+//android:rules.bzl")
 
+    val RULES_JAVA_BZL1: Label = Label.of("@@rules_java~//java:defs.bzl")
+    val RULES_JAVA_BZL2: Label = Label.of("@@rules_java+//java:defs.bzl")
+
+    val RULES_CC_BZL1: Label = Label.of("@@rules_cc~//cc:defs.bzl")
+    val RULES_CC_BZL2: Label = Label.of("@@rules_cc+//cc:defs.bzl")
+
     val RULES_KOTLIN_BZL1: Label = Label.of("@@rules_kotlin~//kotlin/internal:defs.bzl")
     val RULES_KOTLIN_BZL2: Label = Label.of("@@rules_kotlin+//kotlin/internal:defs.bzl")
-
-    // The following .bzl file defines the iml_module rule used by Android Studio
-    val STUDIO_IML_MODULE_RULE: Label = Label.of("//tools/base/bazel:bazel.bzl")
   }
 }
 
@@ -460,23 +477,21 @@ class BuildDependenciesBazelInvocationInfo(
       throw BuildException(e)
     }
     context.output(PrintOutput.output("Fetched ${artifactInfoFiles.size} info files in ${sw.elapsed().toMillis()}ms"))
-    val artifactFutures =
-      artifactInfoFiles.mapNotNull { outputArtifact ->
-        val result = buildArtifactCache.get(outputArtifact.digest).getOrNull()
-        if (result == null) {
-          context.output(PrintOutput.error("Failed to get artifact future for: ${outputArtifact.digest}"))
-          context.setHasError()
-        }
-        result?.transform(directExecutor()) { cachedArtifact -> outputArtifact.artifactPath to cachedArtifact }
+    val artifactFutures = artifactInfoFiles.mapNotNull { outputArtifact ->
+      val result = buildArtifactCache.get(outputArtifact.digest).getOrNull()
+      if (result == null) {
+        context.output(PrintOutput.error("Failed to get artifact future for: ${outputArtifact.digest}"))
+        context.setHasError()
       }
+      result?.transform(directExecutor()) { cachedArtifact -> outputArtifact.artifactPath to cachedArtifact }
+    }
 
-    val futures =
-      artifactFutures.map { future ->
-        future.transform(FetchExecutor.EXECUTOR) {
-          val transformedArtifact = transform.apply(it.second.byteSource())
-          it.first to transformedArtifact
-        }
+    val futures = artifactFutures.map { future ->
+      future.transform(FetchExecutor.EXECUTOR) {
+        val transformedArtifact = transform.apply(it.second.byteSource())
+        it.first to transformedArtifact
       }
+    }
 
     try {
       return Futures.allAsList(futures).get().toMap()

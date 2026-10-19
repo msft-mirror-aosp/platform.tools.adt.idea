@@ -6,15 +6,6 @@ iml_module(
     srcs = ["src/main/java"],
     iml_files = ["intellij.android.transportDatabase.iml"],
     tags = ["noci:studio-win"],  # b/148697994
-    # do not sort: must match IML order
-    test_deps = [
-        "//tools/adt/idea/.idea/libraries:junit4",
-        "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//tools/adt/idea/.idea/libraries:mockito",
-    ],
-    test_resources = ["testData"],
-    test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -33,4 +24,30 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:transport-proto",
         "//tools/adt/idea/.idea/libraries:perfetto-proto",
     ],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "intellij.android.transportDatabase.tests",
+    iml_files = ["intellij.android.transportDatabase.tests.iml"],
+    tags = ["noci:studio-win"],  # b/148697994
+    test_class = "com.android.tools.datastore.TransportDatabaseTestSuite",
+    # do not sort: must match IML order
+    test_deps = [
+        "@intellij//:intellij-sdk",
+        "//tools/adt/idea/transport-database:intellij.android.transportDatabase",
+        "//tools/adt/idea/.idea/libraries:studio-grpc",
+        "//tools/adt/idea/.idea/libraries:studio-proto",
+        "//tools/adt/idea/.idea/libraries:transport-proto",
+        "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "@intellij//:test-framework",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+    ],
+    test_friends = ["//tools/adt/idea/transport-database:intellij.android.transportDatabase"],
+    test_resources = ["testData"],
+    test_srcs = ["testSrc"],
+    visibility = ["//visibility:public"],
 )

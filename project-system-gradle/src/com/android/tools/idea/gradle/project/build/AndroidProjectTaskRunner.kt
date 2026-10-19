@@ -36,10 +36,6 @@ class AndroidProjectTaskRunner : ProjectTaskRunner() {
 
   override fun canRun(project: Project, projectTask: ProjectTask, context: ProjectTaskContext?): Boolean {
     if (project.getProjectSystem() !is GradleProjectSystem) return false
-    return canRun(projectTask)
-  }
-
-  override fun canRun(projectTask: ProjectTask): Boolean {
     return if (!isAndroidStudio || (projectTask is ModuleBuildTask && projectTask.module.isMultiPlatformModule)) {
       projectTask is ModuleBuildTask && AndroidFacet.getInstance(projectTask.module) != null
     } else {
@@ -72,10 +68,9 @@ class AndroidProjectTaskRunner : ProjectTaskRunner() {
       return resolvedPromise(TaskRunnerResults.FAILURE)
     }
 
-    val requests =
-      tasksGroups.map { (taskGroup, tasks) ->
-        GradleBuildInvoker.Request.builder(project, taskGroup.gradleProjectRoot.toFile(), tasks).setMode(taskGroup.buildMode).build()
-      }
+    val requests = tasksGroups.map { (taskGroup, tasks) ->
+      GradleBuildInvoker.Request.builder(project, taskGroup.gradleProjectRoot.toFile(), tasks).setMode(taskGroup.buildMode).build()
+    }
 
     return gradleBuildInvoker.executeTasks(requests).toPromise { it.toTaskRunnerResults() }
   }

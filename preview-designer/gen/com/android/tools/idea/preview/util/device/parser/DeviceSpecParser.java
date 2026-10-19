@@ -54,9 +54,11 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
   }
 
   public static final TokenSet[] EXTENDS_SETS_ = new TokenSet[] {
-    create_token_set_(CHIN_SIZE_PARAM, CUTOUT_PARAM, DPI_PARAM, HEIGHT_PARAM,
-      ID_PARAM, IS_ROUND_PARAM, NAME_PARAM, NAVIGATION_PARAM,
-      ORIENTATION_PARAM, PARAM, PARENT_PARAM, WIDTH_PARAM),
+    create_token_set_(CHIN_SIZE_PARAM, CUTOUT_PARAM, DPI_PARAM, HAS_CAMERA_PARAM,
+      HAS_MICROPHONE_PARAM, HEIGHT_PARAM, ID_PARAM, IS_ROUND_PARAM,
+      KEYBOARD_KIND_PARAM, NAME_PARAM, NAVIGATION_PARAM, ORIENTATION_PARAM,
+      PARAM, PARENT_PARAM, POINTER_PRECISION_PARAM, VIEWING_DISTANCE_PARAM,
+      WIDTH_PARAM, WINDOW_POSTURE_PARAM),
   };
 
   /* ********************************************************** */
@@ -127,6 +129,32 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
+  // HAS_CAMERA_KEYWORD EQUALS boolean_t
+  public static boolean has_camera_param(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "has_camera_param")) return false;
+    if (!nextTokenIs(b, HAS_CAMERA_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeTokens(b, 0, HAS_CAMERA_KEYWORD, EQUALS);
+    r = r && boolean_t(b, l + 1);
+    exit_section_(b, m, HAS_CAMERA_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // HAS_MICROPHONE_KEYWORD EQUALS boolean_t
+  public static boolean has_microphone_param(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "has_microphone_param")) return false;
+    if (!nextTokenIs(b, HAS_MICROPHONE_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeTokens(b, 0, HAS_MICROPHONE_KEYWORD, EQUALS);
+    r = r && boolean_t(b, l + 1);
+    exit_section_(b, m, HAS_MICROPHONE_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
   // HEIGHT_KEYWORD EQUALS size_t
   public static boolean height_param(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "height_param")) return false;
@@ -161,6 +189,32 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
     r = consumeTokens(b, 0, IS_ROUND_KEYWORD, EQUALS);
     r = r && boolean_t(b, l + 1);
     exit_section_(b, m, IS_ROUND_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // KEYBOARD_KIND_KEYWORD EQUALS keyboard_kind_t
+  public static boolean keyboard_kind_param(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "keyboard_kind_param")) return false;
+    if (!nextTokenIs(b, KEYBOARD_KIND_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeTokens(b, 0, KEYBOARD_KIND_KEYWORD, EQUALS);
+    r = r && keyboard_kind_t(b, l + 1);
+    exit_section_(b, m, KEYBOARD_KIND_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // KEYBOARD_VIRTUAL_KEYWORD | KEYBOARD_PHYSICAL_KEYWORD | CUTOUT_NONE_KEYWORD
+  public static boolean keyboard_kind_t(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "keyboard_kind_t")) return false;
+    boolean r;
+    Marker m = enter_section_(b, l, _NONE_, KEYBOARD_KIND_T, "<keyboard kind t>");
+    r = consumeToken(b, KEYBOARD_VIRTUAL_KEYWORD);
+    if (!r) r = consumeToken(b, KEYBOARD_PHYSICAL_KEYWORD);
+    if (!r) r = consumeToken(b, CUTOUT_NONE_KEYWORD);
+    exit_section_(b, l, m, r, false, null);
     return r;
   }
 
@@ -239,6 +293,12 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
   //    | chin_size_param
   //    | cutout_param
   //    | navigation_param
+  //    | window_posture_param
+  //    | pointer_precision_param
+  //    | keyboard_kind_param
+  //    | has_camera_param
+  //    | has_microphone_param
+  //    | viewing_distance_param
   //    | dpi_param
   public static boolean param(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "param")) return false;
@@ -254,6 +314,12 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
     if (!r) r = chin_size_param(b, l + 1);
     if (!r) r = cutout_param(b, l + 1);
     if (!r) r = navigation_param(b, l + 1);
+    if (!r) r = window_posture_param(b, l + 1);
+    if (!r) r = pointer_precision_param(b, l + 1);
+    if (!r) r = keyboard_kind_param(b, l + 1);
+    if (!r) r = has_camera_param(b, l + 1);
+    if (!r) r = has_microphone_param(b, l + 1);
+    if (!r) r = viewing_distance_param(b, l + 1);
     if (!r) r = dpi_param(b, l + 1);
     exit_section_(b, l, m, r, false, null);
     return r;
@@ -268,6 +334,33 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
     Marker m = enter_section_(b);
     r = consumeTokens(b, 0, PARENT_KEYWORD, EQUALS, STRING_T);
     exit_section_(b, m, PARENT_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // POINTER_PRECISION_KEYWORD EQUALS pointer_precision_t
+  public static boolean pointer_precision_param(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "pointer_precision_param")) return false;
+    if (!nextTokenIs(b, POINTER_PRECISION_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeTokens(b, 0, POINTER_PRECISION_KEYWORD, EQUALS);
+    r = r && pointer_precision_t(b, l + 1);
+    exit_section_(b, m, POINTER_PRECISION_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // POINTER_COARSE_KEYWORD | POINTER_FINE_KEYWORD | POINTER_BLUNT_KEYWORD | CUTOUT_NONE_KEYWORD
+  public static boolean pointer_precision_t(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "pointer_precision_t")) return false;
+    boolean r;
+    Marker m = enter_section_(b, l, _NONE_, POINTER_PRECISION_T, "<pointer precision t>");
+    r = consumeToken(b, POINTER_COARSE_KEYWORD);
+    if (!r) r = consumeToken(b, POINTER_FINE_KEYWORD);
+    if (!r) r = consumeToken(b, POINTER_BLUNT_KEYWORD);
+    if (!r) r = consumeToken(b, CUTOUT_NONE_KEYWORD);
+    exit_section_(b, l, m, r, false, null);
     return r;
   }
 
@@ -373,6 +466,32 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
+  // VIEWING_DISTANCE_KEYWORD EQUALS viewing_distance_t
+  public static boolean viewing_distance_param(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "viewing_distance_param")) return false;
+    if (!nextTokenIs(b, VIEWING_DISTANCE_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeTokens(b, 0, VIEWING_DISTANCE_KEYWORD, EQUALS);
+    r = r && viewing_distance_t(b, l + 1);
+    exit_section_(b, m, VIEWING_DISTANCE_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // DISTANCE_NEAR_KEYWORD | DISTANCE_MEDIUM_KEYWORD | DISTANCE_FAR_KEYWORD
+  public static boolean viewing_distance_t(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "viewing_distance_t")) return false;
+    boolean r;
+    Marker m = enter_section_(b, l, _NONE_, VIEWING_DISTANCE_T, "<viewing distance t>");
+    r = consumeToken(b, DISTANCE_NEAR_KEYWORD);
+    if (!r) r = consumeToken(b, DISTANCE_MEDIUM_KEYWORD);
+    if (!r) r = consumeToken(b, DISTANCE_FAR_KEYWORD);
+    exit_section_(b, l, m, r, false, null);
+    return r;
+  }
+
+  /* ********************************************************** */
   // WIDTH_KEYWORD EQUALS size_t
   public static boolean width_param(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "width_param")) return false;
@@ -382,6 +501,32 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
     r = consumeTokens(b, 0, WIDTH_KEYWORD, EQUALS);
     r = r && size_t(b, l + 1);
     exit_section_(b, m, WIDTH_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // WINDOW_POSTURE_KEYWORD EQUALS window_posture_t
+  public static boolean window_posture_param(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "window_posture_param")) return false;
+    if (!nextTokenIs(b, WINDOW_POSTURE_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeTokens(b, 0, WINDOW_POSTURE_KEYWORD, EQUALS);
+    r = r && window_posture_t(b, l + 1);
+    exit_section_(b, m, WINDOW_POSTURE_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // POSTURE_FLAT_KEYWORD | POSTURE_TABLETOP_KEYWORD | POSTURE_BOOK_KEYWORD
+  public static boolean window_posture_t(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "window_posture_t")) return false;
+    boolean r;
+    Marker m = enter_section_(b, l, _NONE_, WINDOW_POSTURE_T, "<window posture t>");
+    r = consumeToken(b, POSTURE_FLAT_KEYWORD);
+    if (!r) r = consumeToken(b, POSTURE_TABLETOP_KEYWORD);
+    if (!r) r = consumeToken(b, POSTURE_BOOK_KEYWORD);
+    exit_section_(b, l, m, r, false, null);
     return r;
   }
 

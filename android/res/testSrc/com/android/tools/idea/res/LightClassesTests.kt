@@ -25,9 +25,7 @@ import com.android.testutils.TestUtils
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.impl.IdeAndroidGradlePluginProjectFlagsImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
-import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.model.MergedManifestModificationListener
-import com.android.tools.idea.model.TestAndroidModel.Companion.namespaced
 import com.android.tools.idea.res.LightClassesTestBase.Companion.JAVA_RESOURCES_FILE
 import com.android.tools.idea.res.LightClassesTestBase.Companion.KOTLIN_RESOURCE_FILE
 import com.android.tools.idea.res.LightClassesTestBase.Companion.assertNoElementAtCaret
@@ -81,7 +79,6 @@ import org.jetbrains.android.augment.StyleableAttrLightField
 import org.jetbrains.android.completion.AndroidNonTransitiveRClassJavaCompletionContributor
 import org.jetbrains.android.completion.AndroidNonTransitiveRClassKotlinCompletionContributor
 import org.jetbrains.android.facet.AndroidFacet
-import org.jetbrains.android.resourceManagers.LocalResourceManager
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -185,7 +182,7 @@ sealed class LightClassesTestBase : AndroidTestCase() {
 
 @RunWith(JUnit4::class)
 @RunsInEdt
-abstract class SingleModuleLightClassesTestBase {
+class SingleModuleLightClassesTest {
 
   @get:Rule val androidProjectRule = AndroidProjectRule.withSdk().withKotlin().onEdt()
 
@@ -196,8 +193,6 @@ abstract class SingleModuleLightClassesTestBase {
   private val project by lazy { myFixture.project }
   private val myModule by lazy { myFixture.module }
   private val myFacet by lazy { myModule.androidFacet!! }
-
-  abstract val packageNameForNamespacing: String?
 
   @Before
   fun setUp() {
@@ -213,12 +208,6 @@ abstract class SingleModuleLightClassesTestBase {
       """
         .trimIndent(),
     )
-
-    if (packageNameForNamespacing != null) {
-      AndroidModel.setForTests(myFacet, namespaced(myFacet))
-      updatePrimaryManifest(myFacet) { `package`.value = packageNameForNamespacing }
-      LocalResourceManager.getInstance(myFacet.module)!!.invalidateAttributeDefinitions()
-    }
   }
 
   @Test
@@ -752,14 +741,6 @@ abstract class SingleModuleLightClassesTestBase {
     assertThat(rClass).isInstanceOf(ModuleRClass::class.java)
     assertThat((rClass as ModuleRClass).qualifiedName).isEqualTo("p1.p2.R")
   }
-}
-
-class SingleModuleLightClassesTest : SingleModuleLightClassesTestBase() {
-  override val packageNameForNamespacing = null
-}
-
-class SingleModuleNamespacedLightClassesTest : SingleModuleLightClassesTestBase() {
-  override val packageNameForNamespacing = "p1.p2"
 }
 
 @RunWith(JUnit4::class)
@@ -1493,149 +1474,7 @@ class UnrelatedModules : LightClassesTestBase() {
   }
 }
 
-@RunWith(JUnit4::class)
-@RunsInEdt
-class NamespacedModuleWithAarLightClassesTest {
-
-  @get:Rule val androidProjectRule = AndroidProjectRule.withSdk().onEdt()
-
-  private val myFixture by lazy {
-    androidProjectRule.fixture.apply { testDataPath = TestUtils.resolveWorkspacePath("tools/adt/idea/android/testData").toString() }
-  }
-  private val project by lazy { myFixture.project }
-  private val myModule by lazy { myFixture.module }
-  private val myFacet by lazy { myModule.androidFacet!! }
-
-  @Before
-  fun setUp() {
-    myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML)
-
-    AndroidModel.setForTests(myFacet, namespaced(myFacet))
-    updatePrimaryManifest(myFacet) { `package`.value = "p1.p2" }
-    LocalResourceManager.getInstance(myFacet.module)!!.invalidateAttributeDefinitions()
-    addBinaryAarDependency(myModule)
-  }
-
-  @Test
-  fun topLevelClass() {
-    val activity =
-      myFixture.addFileToProject(
-        "/src/p1/p2/MainActivity.java",
-        // language=java
-        """
-      package p1.p2;
-
-      import android.app.Activity;
-      import android.os.Bundle;
-
-      public class MainActivity extends Activity {
-          @Override
-          protected void onCreate(Bundle savedInstanceState) {
-              super.onCreate(savedInstanceState);
-              getResources().getString(com.example.mylibrary.${caret}R.string.my_aar_string);
-          }
-      }
-      """
-          .trimIndent(),
-      )
-
-    myFixture.configureFromExistingVirtualFile(activity.virtualFile)
-    myFixture.checkHighlighting()
-    assertThat(resolveReferenceUnderCaret(myFixture)).isInstanceOf(SmallAarRClass::class.java)
-    myFixture.completeBasic()
-    assertThat(myFixture.lookupElementStrings).containsExactly("R", "BuildConfig")
-  }
-
-  @Test
-  fun resourceNames() {
-    val activity =
-      myFixture.addFileToProject(
-        "/src/p1/p2/MainActivity.java",
-        // language=java
-        """
-      package p1.p2;
-
-      import android.app.Activity;
-      import android.os.Bundle;
-
-      public class MainActivity extends Activity {
-          @Override
-          protected void onCreate(Bundle savedInstanceState) {
-              super.onCreate(savedInstanceState);
-              getResources().getString(com.example.mylibrary.R.string.${caret}my_aar_string);
-          }
-      }
-      """
-          .trimIndent(),
-      )
-
-    myFixture.configureFromExistingVirtualFile(activity.virtualFile)
-    assertThat(resolveReferenceUnderCaret(myFixture)).isInstanceOf(LightElement::class.java)
-    myFixture.completeBasic()
-    assertThat(myFixture.lookupElementStrings).containsExactly("my_aar_string", "class")
-  }
-
-  @Test
-  fun containingClass() {
-    val activity =
-      myFixture.addFileToProject(
-        "/src/p1/p2/MainActivity.java",
-        // language=java
-        """
-      package p1.p2;
-
-      import android.app.Activity;
-      import android.os.Bundle;
-
-      public class MainActivity extends Activity {
-          @Override
-          protected void onCreate(Bundle savedInstanceState) {
-              super.onCreate(savedInstanceState);
-              getResources().getString(com.example.mylibrary.R.string.${caret}my_aar_string);
-          }
-      }
-      """
-          .trimIndent(),
-      )
-
-    myFixture.configureFromExistingVirtualFile(activity.virtualFile)
-    assertThat((resolveReferenceUnderCaret(myFixture) as? PsiField)?.containingClass?.name).isEqualTo("string")
-  }
-
-  @Test
-  fun usageInfos() {
-    val activity =
-      myFixture.addFileToProject(
-        "/src/p1/p2/MainActivity.java",
-        // language=java
-        """
-        package p1.p2;
-
-        import android.app.Activity;
-        import android.os.Bundle;
-
-        public class MainActivity extends Activity {
-            @Override
-            protected void onCreate(Bundle savedInstanceState) {
-                super.onCreate(savedInstanceState);
-                getResources().getString(com.example.mylibrary.R.string.my_aar_string);
-            }
-        }
-        """
-          .trimIndent(),
-      )
-
-    myFixture.configureFromExistingVirtualFile(activity.virtualFile)
-    myFixture.moveCaret("|R.string.my_aar_string")
-    UsageInfo(resolveReferenceUnderCaret(myFixture))
-    myFixture.moveCaret("R.|string.my_aar_string")
-    UsageInfo(resolveReferenceUnderCaret(myFixture))
-    myFixture.moveCaret("R.string.|my_aar_string")
-    UsageInfo(resolveReferenceUnderCaret(myFixture))
-  }
-}
-
-class NonNamespacedModuleWithAar : LightClassesTestBase() {
+class ModuleWithAarLightClassesTest : LightClassesTestBase() {
 
   override fun setUp() {
     super.setUp()

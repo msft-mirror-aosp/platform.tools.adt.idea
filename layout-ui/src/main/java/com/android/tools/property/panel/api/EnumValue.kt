@@ -101,7 +101,21 @@ interface EnumValue {
 
     val DEFAULT_RENDERER: ListCellRenderer<EnumValue> = EnumValueListCellRenderer()
     val EMPTY: EnumValue = ItemEnumValue(null)
-    val SEPARATOR: EnumValue = object : EnumValue, CommonElementSelectability {}
+    /**
+     * A separator line between groups in a ComboBox popup.
+     *
+     * We explicitly override [display] and [toString] to return an empty string. When popups with search capabilities (e.g. IntelliJ's
+     * SpeedSearch or ComboBoxPopup) filter items, ComboBoxPopup.getTextFor() falls back to String.valueOf(item) if the renderer component
+     * is not a JSeparator instance. Without overriding toString(), it returns the default Object.toString() representation (which contains
+     * package names with dots, e.g. "com.android.tools..."). This previously caused speed search for dots (or characters in the class name)
+     * to match all separators and render blank lines (b/372404694).
+     */
+    val SEPARATOR: EnumValue =
+      object : EnumValue, CommonElementSelectability {
+        override val display: String = ""
+
+        override fun toString(): String = ""
+      }
     val LOADING: EnumValue =
       object : EnumValue, CommonElementSelectability {
         override val display = "Loading..."
@@ -123,7 +137,12 @@ interface ActionEnumValue : EnumValue {
  *
  * This element is not selectable.
  */
-class HeaderEnumValue(val header: String, val headerIcon: Icon? = null) : EnumValue, CommonElementSelectability
+class HeaderEnumValue(val header: String, val headerIcon: Icon? = null) : EnumValue, CommonElementSelectability {
+  override val display: String
+    get() = header
+
+  override fun toString(): String = header
+}
 
 /** A callback for notifying the UI controls about a new selected enum value. */
 fun interface NewEnumValueCallback {

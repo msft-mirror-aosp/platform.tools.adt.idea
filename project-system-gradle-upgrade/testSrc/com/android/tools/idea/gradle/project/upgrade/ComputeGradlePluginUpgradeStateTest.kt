@@ -373,10 +373,10 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
         Results(Flags(FUTURE_INCOMPATIBLE) to FORCE.upgradeTo("8.0.4"), Flags(FUTURE_COMPATIBLE) to NO_UPGRADE.upgradeTo("8.1.0")),
       ),
       // Versions at our minimum supported version should strongly recommend an upgrade unless they are previews.
-      VERSION_AT_MIN("7.2.0", "8.0.0", agpVersions("7.2.0", "8.0.0"), STRONGLY_RECOMMEND.upgradeTo("8.0.0")),
-      VERSION_AT_MIN_ALPHA("7.2.0-alpha01", "8.0.0", agpVersions("7.2.0", "8.0.0"), FORCE.upgradeTo("7.2.0")),
-      VERSION_AT_MIN_BETA("7.2.0-beta02", "8.0.0", agpVersions("7.2.0", "8.0.0"), FORCE.upgradeTo("7.2.0")),
-      VERSION_AT_MIN_RC("7.2.0-rc02", "8.0.0", agpVersions("7.2.0", "8.0.0"), STRONGLY_RECOMMEND.upgradeTo("8.0.0")),
+      VERSION_AT_MIN("7.3.0", "8.0.0", agpVersions("7.3.0", "8.0.0"), STRONGLY_RECOMMEND.upgradeTo("8.0.0")),
+      VERSION_AT_MIN_ALPHA("7.3.0-alpha01", "8.0.0", agpVersions("7.3.0", "8.0.0"), FORCE.upgradeTo("7.3.0")),
+      VERSION_AT_MIN_BETA("7.3.0-beta02", "8.0.0", agpVersions("7.3.0", "8.0.0"), FORCE.upgradeTo("7.3.0")),
+      VERSION_AT_MIN_RC("7.3.0-rc02", "8.0.0", agpVersions("7.3.0", "8.0.0"), STRONGLY_RECOMMEND.upgradeTo("8.0.0")),
       // Versions at our next minimum supported version should recommend an upgrade.
       VERSION_AT_NEXT_MIN("8.0.0", "9.0.0", agpVersions("8.0.0", "9.0.0"), RECOMMEND.upgradeTo("9.0.0")),
       VERSION_AT_NEXT_MIN_ALPHA("8.0.0-alpha01", "9.0.0", agpVersions("8.0.0", "9.0.0"), FORCE.upgradeTo("8.0.0")),
@@ -388,8 +388,8 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
       UPGRADE_BELOW_MIN_UPGRADES_TO_MIN(
         "4.1.0",
         "8.0.0",
-        agpVersions("4.2.0", "4.3.0", "4.4.0", "4.5.0", "4.6.0", "7.0.0", "7.1.0", "7.2.0", "8.0.0"),
-        FORCE.upgradeTo("7.2.0"),
+        agpVersions("4.2.0", "4.3.0", "4.4.0", "4.5.0", "4.6.0", "7.0.0", "7.1.0", "7.2.0", "7.3.0", "8.0.0"),
+        FORCE.upgradeTo("7.3.0"),
       ),
       // If we do not know of any published versions earlier than our latestKnown, upgrade to latestKnown
       UPGRADE_FALLS_BACK_TO_LATEST("4.1.0", "7.1.0", agpVersions("7.2.0", "8.0.0"), FORCE.upgradeTo("7.1.0")),
@@ -410,12 +410,16 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
           "7.2.0",
           "7.2.1",
           "7.2.2",
+          "7.3.0",
+          "7.3.1",
+          "7.3.2",
+          "7.3.3",
         ),
-        FORCE.upgradeTo("7.2.2"),
+        FORCE.upgradeTo("7.3.3"),
       ),
       FORCED_UPGRADE_PREFERS_LATEST_WITHIN_SERIES_CAPPED(
         "4.1.0",
-        "7.2.0",
+        "7.3.0",
         agpVersions(
           "7.0.0-alpha01",
           "7.0.0-beta02",
@@ -429,56 +433,60 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
           "7.2.0",
           "7.2.1",
           "7.2.2",
+          "7.3.0",
+          "7.3.1",
+          "7.3.2",
+          "7.3.3",
         ),
-        FORCE.upgradeTo("7.2.0"),
+        FORCE.upgradeTo("7.3.0"),
       ),
       // If we have no available published stable, we will always recommend the latest known version, strongly if the current version
       // is deprecated and the latest known is not.
-      UNKNOWN_PUBLISHED_STATE_RECOMMENDS_LATEST_KNOWN_BOTH_DEPRECATED("7.2.0", "7.2.1", agpVersions(), RECOMMEND.upgradeTo("7.2.1")),
+      UNKNOWN_PUBLISHED_STATE_RECOMMENDS_LATEST_KNOWN_BOTH_DEPRECATED("7.3.0", "7.3.1", agpVersions(), RECOMMEND.upgradeTo("7.3.1")),
       UNKNOWN_PUBLISHED_STATE_RECOMMENDS_LATEST_KNOWN_FROM_DEPRECATED_1(
-        "7.2.0",
+        "7.3.0",
         "8.0.0",
         agpVersions(),
         STRONGLY_RECOMMEND.upgradeTo("8.0.0"),
       ),
       UNKNOWN_PUBLISHED_STATE_RECOMMENDS_LATEST_KNOWN_FROM_DEPRECATED_2(
-        "7.2.0",
+        "7.3.0",
         "8.1.1",
         agpVersions(),
         STRONGLY_RECOMMEND.upgradeTo("8.1.1"),
       ),
       UNKNOWN_PUBLISHED_STATE_RECOMMENDS_LATEST_KNOWN_FROM_DEPRECATED_3(
-        "7.2.0",
+        "7.3.0",
         "8.2.2",
         agpVersions(),
         STRONGLY_RECOMMEND.upgradeTo("8.2.2"),
       ),
       UNKNOWN_PUBLISHED_STATE_RECOMMENDS_LATEST_KNOWN_FROM_DEPRECATED_4(
-        "7.2.0",
+        "7.3.0",
         "9.0.3",
         agpVersions(),
         STRONGLY_RECOMMEND.upgradeTo("9.0.3"),
       ),
       UNKNOWN_PUBLISHED_STATE_RECOMMENDS_LATEST_KNOWN_FROM_DEPRECATED_5(
-        "7.2.0",
+        "7.3.0",
         "9.1.2",
         agpVersions(),
         STRONGLY_RECOMMEND.upgradeTo("9.1.2"),
       ),
       UNKNOWN_PUBLISHED_STATE_RECOMMENDS_LATEST_KNOWN_FROM_DEPRECATED_6(
-        "7.2.0",
+        "7.3.0",
         "9.2.1",
         agpVersions(),
         STRONGLY_RECOMMEND.upgradeTo("9.2.1"),
       ),
       UNKNOWN_PUBLISHED_STATE_RECOMMENDS_LATEST_KNOWN_FROM_DEPRECATED_7(
-        "7.2.0",
+        "7.3.0",
         "9.3.0",
         agpVersions(),
         STRONGLY_RECOMMEND.upgradeTo("9.3.0"),
       ),
       UNKNOWN_PUBLISHED_STATE_RECOMMENDS_LATEST_KNOWN_FROM_DEPRECATED_8(
-        "7.2.0",
+        "7.3.0",
         "10.0.0",
         agpVersions(),
         STRONGLY_RECOMMEND.upgradeTo("10.0.0"),
@@ -492,31 +500,31 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
       // also a deprecated one.)  Exceptionally, if the only non-obsolete version in a series is also the last one, add in some fictitious
       // versions to be able to continue testing the logic; otherwise, remove later minor versions in the same series.
       UPGRADE_INCREMENTALLY_DEPRECATED_WITHIN_SERIES(
-        "7.2.0",
+        "7.3.0",
         "8.0.0",
         publishedVersions.ensureLaterMajorMinor(),
-        STRONGLY_RECOMMEND.upgradeTo("7.3.2"),
+        STRONGLY_RECOMMEND.upgradeTo("7.4.2"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_LAST_MAJOR_MINOR_TO_NEXT_SERIES(
-        "7.2.0",
+        "7.3.0",
         "8.0.0",
         publishedVersions.ensureLastMajorMinor(),
         STRONGLY_RECOMMEND.upgradeTo("8.0.0"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_LAST_MAJOR_MINOR_PATCH_TO_NEXT_SERIES(
-        "7.2.2",
+        "7.3.2",
         "8.0.0",
         publishedVersions.ensureLastMajorMinor(),
         STRONGLY_RECOMMEND.upgradeTo("8.0.0"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_WITHIN_DEPRECATED_SERIES_EVEN_IN_NEWER_VERSION(
-        "7.2.0",
+        "7.3.0",
         "8.1.0",
         publishedVersions.ensureLaterMajorMinor(),
-        STRONGLY_RECOMMEND.upgradeTo("7.3.2"),
+        STRONGLY_RECOMMEND.upgradeTo("7.4.2"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_LAST_MAJOR_MINOR_TO_LATEST_IN_NEXT_SERIES(
-        "7.2.0",
+        "7.3.0",
         "8.1.0",
         publishedVersions.ensureLastMajorMinor(),
         Results(
@@ -525,7 +533,7 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
         ),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_LAST_MAJOR_MINOR_PATCH_TO_LATEST_IN_NEXT_SERIES_SKIP_1(
-        "7.2.2",
+        "7.3.3",
         "8.1.0",
         publishedVersions.ensureLastMajorMinor(),
         Results(
@@ -534,13 +542,13 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
         ),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_WITHIN_SERIES_EVEN_IN_NEWER_VERSION_2(
-        "7.2.0",
+        "7.3.0",
         "8.2.0",
         publishedVersions.ensureLaterMajorMinor(),
-        STRONGLY_RECOMMEND.upgradeTo("7.3.2"),
+        STRONGLY_RECOMMEND.upgradeTo("7.4.2"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_LAST_MAJOR_MINOR_TO_LATEST_IN_NEXT_SERIES_SKIP_2(
-        "7.2.0",
+        "7.3.0",
         "8.2.0",
         publishedVersions.ensureLastMajorMinor(),
         Results(
@@ -549,7 +557,7 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
         ),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_LAST_MAJOR_MINOR_PATCH_TO_LATEST_IN_NEXT_SERIES_SKIP_2(
-        "7.2.2",
+        "7.3.3",
         "8.2.0",
         publishedVersions.ensureLastMajorMinor(),
         Results(
@@ -558,43 +566,43 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
         ),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_WITHIN_SERIES_EVEN_IN_NEWER_VERSION_3(
-        "7.2.0",
+        "7.3.0",
         "8.0.0",
         publishedVersions.ensureLaterMajorMinor(),
-        STRONGLY_RECOMMEND.upgradeTo("7.3.2"),
+        STRONGLY_RECOMMEND.upgradeTo("7.4.2"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_LAST_MAJOR_MINOR_TO_LATEST_IN_NEXT_SERIES_ONE_MAJOR(
-        "7.2.0",
+        "7.3.0",
         "9.0.0",
         publishedVersions.ensureLastMajorMinor(),
         STRONGLY_RECOMMEND.upgradeTo("8.3.2"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_LAST_MAJOR_MINOR_PATCH_TO_LATEST_IN_NEXT_SERIES_SKIP_ALL(
-        "7.2.2",
+        "7.3.3",
         "9.0.0",
         publishedVersions.ensureLastMajorMinor(),
         STRONGLY_RECOMMEND.upgradeTo("8.3.2"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_WITHIN_SERIES_EVEN_IN_NEWER_VERSION_4(
-        "7.2.0",
+        "7.3.0",
         "8.3.0",
         publishedVersions.ensureLaterMajorMinor(),
-        STRONGLY_RECOMMEND.upgradeTo("7.3.2"),
+        STRONGLY_RECOMMEND.upgradeTo("7.4.2"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_LAST_MAJOR_MINOR_TO_LATEST_IN_NEXT_SERIES_ONE_MAJOR_2(
-        "7.2.1",
+        "7.3.1",
         "9.1.0",
         publishedVersions.ensureLastMajorMinor(),
         STRONGLY_RECOMMEND.upgradeTo("8.3.2"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_WITHIN_SERIES_EVEN_IN_NEWER_VERSION_5(
-        "7.2.0",
+        "7.3.0",
         "9.0.0",
         publishedVersions.ensureLaterMajorMinor(),
-        STRONGLY_RECOMMEND.upgradeTo("7.3.2"),
+        STRONGLY_RECOMMEND.upgradeTo("7.4.2"),
       ),
       UPGRADE_INCREMENTALLY_DEPRECATED_LAST_MAJOR_MINOR_TO_LATEST_IN_NEXT_SERIES_ONE_MAJOR_3(
-        "7.2.0",
+        "7.3.0",
         "9.0.1",
         publishedVersions.ensureLastMajorMinor(),
         STRONGLY_RECOMMEND.upgradeTo("8.3.2"),
@@ -704,6 +712,11 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
         "7.2.0",
         "7.2.1",
         "7.2.2",
+        "7.3.0-beta01",
+        "7.3.0",
+        "7.3.1",
+        "7.3.2",
+        "7.3.3",
         "8.0.0-alpha06",
         "8.0.0",
         "8.1.0-beta01",
@@ -730,18 +743,18 @@ class ComputeGradlePluginUpgradeStateTest(val case: Case, val flags: Flags) {
      * Depending on whether the current AGP version is the last major.minor in its major series or not, we might need to add fictitious
      * later versions in the same series, or remove versions that do in fact exist in the same series.
      */
-    private fun Set<AgpVersion>.ensureLastMajorMinor() = this.without72Versions()
+    private fun Set<AgpVersion>.ensureLastMajorMinor() = this.without73Versions()
 
-    private fun Set<AgpVersion>.ensureLaterMajorMinor() = this.with73Versions()
+    private fun Set<AgpVersion>.ensureLaterMajorMinor() = this.with74Versions()
 
     /**
      * Temporary kludge to allow expressing tests involving the semantics of upgrade states for upgrades from deprecated versions, where the
      * only deprecated version is also the last major.minor series of a major version; without some additional fictitious versions, it
      * becomes impossible to maintain distinct tests of upgrades from a deprecated version that is not last in a major series.
      */
-    private fun Set<AgpVersion>.with73Versions() = this.union(agpVersions("7.3.0", "7.3.1", "7.3.2"))
+    private fun Set<AgpVersion>.with74Versions() = this.union(agpVersions("7.4.0", "7.4.1", "7.4.2"))
 
     /** Kludge to allow representing the current deprecated version as the last version of its series. */
-    private fun Set<AgpVersion>.without72Versions() = this.subtract(agpVersions("7.2.0-alpha04", "7.2.0", "7.2.1", "7.2.2"))
+    private fun Set<AgpVersion>.without73Versions() = this.subtract(agpVersions("7.3.0-beta01", "7.3.0", "7.3.1", "7.3.2", "7.3.3"))
   }
 }

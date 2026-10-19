@@ -44,6 +44,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.registerOrReplaceServiceInstance
+import com.intellij.testFramework.runInEdtAndWait
 import java.net.Socket
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -79,13 +80,16 @@ class DeviceMonitorControllerImplTest {
 
   @Before
   fun setup() {
-    processService = DeviceProcessService { _, client, _ -> debugTriggeredForPids.add(client.clientData.pid) }
     ApplicationManager.getApplication()
       .registerOrReplaceServiceInstance(DeviceExplorerSettings::class.java, DeviceExplorerSettings(), androidProjectRule.testRootDisposable)
     packageNameProvider = MockProjectApplicationIdsProvider(project)
-    model = DeviceMonitorModel(processService, packageNameProvider)
-    mockView = MockDeviceMonitorView(project, model)
-    mockView.setup()
+    // DeviceProcessService and DeviceMonitorModel are @UiThread and the view creates Swing components: create them on the EDT.
+    runInEdtAndWait {
+      processService = DeviceProcessService { _, client, _ -> debugTriggeredForPids.add(client.clientData.pid) }
+      model = DeviceMonitorModel(processService, packageNameProvider)
+      mockView = MockDeviceMonitorView(project, model)
+      mockView.setup()
+    }
     testDevice1 = connectDevice("test_device_01")
     addClient(testDevice1, 5)
   }

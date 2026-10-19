@@ -42,7 +42,7 @@ import com.android.tools.idea.testing.buildMainArtifactStub
 import com.android.tools.perflogger.Benchmark
 import com.android.tools.perflogger.Metric
 import com.google.common.base.Stopwatch
-import com.intellij.openapi.application.ex.ApplicationManagerEx
+import com.intellij.testFramework.StressTestRule
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.testFramework.utils.io.createDirectory
 import com.intellij.testFramework.utils.io.createFile
@@ -59,9 +59,9 @@ import kotlin.random.Random
 import org.junit.After
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestRule
 
 private val NUMBER_OF_SAMPLES = 40
 
@@ -167,11 +167,8 @@ class PerfgateSourceSetModuleClassFileFinderTest {
       AndroidProjectBuilder().withMainArtifactStub { buildMainArtifactStub("debug").copy(classesFolder = content.outputRoots.toImpl()) }
     )
 
-  @Before
-  fun setup() {
-    // This is so the IdempotenceChecker does not recalculate cached values on every iteration
-    ApplicationManagerEx.setInStressTest(true)
-  }
+  // This is so the IdempotenceChecker does not recalculate cached values on every iteration
+  @JvmField @Rule val forceStressRule: TestRule = StressTestRule(true)
 
   @After
   fun tearDown() {

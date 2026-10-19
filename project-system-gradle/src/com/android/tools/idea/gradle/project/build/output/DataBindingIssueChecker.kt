@@ -24,14 +24,14 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.io.toCanonicalPath
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.pom.Navigatable
 import java.io.File
-import java.lang.reflect.InvocationTargetException
 import java.util.concurrent.CompletableFuture
 import org.jetbrains.plugins.gradle.issue.GradleIssueChecker
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
-import org.jetbrains.plugins.gradle.service.execution.GradleExecutionErrorHandler
+import org.jetbrains.plugins.gradle.issue.GradleIssueFailure
 
 class DataBindingIssueChecker : GradleIssueChecker {
   private val SEPARATOR = "=".repeat(50)
@@ -40,28 +40,21 @@ class DataBindingIssueChecker : GradleIssueChecker {
   private val gson = Gson()
 
   /**
-   * Example structure of the exception chain returned from Gradle.
+   * Example structure of the exception chain returned from Gradle:
    *
    * BuildException "Could not execute build..." cause - LocationAwareException "Execution failed for task ..." cause -
    * ContextualPlaceholderException "Execution failed for task ..." cause - WorkExecutionException "A failure occurred while executing
    * org.jetbrains.kotlin.gradle.internal.KaptExecution" cause - InvocationTargetException null cause - null target - KaptBaseError
    * "Exception while annotation processing" cause - LoggedErrorException "Found data binding error(s):\n\n[databinding] <JSON>"
+   *
+   * We traverse the cause chain to find any exception containing data binding error messages prefixed with [ERROR_LOG_PREFIX].
    */
   override fun check(issueData: GradleIssueData): BuildIssue? {
-    val rootCause = GradleExecutionErrorHandler.getRootCauseAndLocation(issueData.error).first
-    // getRootCauseAndLocation only takes us down to WorkExecutionException as the InvocationTargetException has a null message.
-    if (rootCause.cause !is InvocationTargetException) return null
-    val baseError = (rootCause.cause as? InvocationTargetException)?.targetException
-    if (baseError?.cause == null) return null
+    val errors = findDataBindingErrors(issueData.failure) ?: return null
 
-    val possibleLoggedErrorException = baseError.cause
-    val errors =
-      possibleLoggedErrorException?.message?.lineSequence()?.filter { line -> line.startsWith(ERROR_LOG_PREFIX) }?.toList() ?: return null
-
-    val buildIssues =
-      errors.mapIndexedNotNull { index, errorJson ->
-        convertToBuildIssue(index, errorJson.removePrefix(ERROR_LOG_PREFIX), issueData.projectPath)
-      }
+    val buildIssues = errors.mapIndexedNotNull { index, errorJson ->
+      convertToBuildIssue(index, errorJson.removePrefix(ERROR_LOG_PREFIX), issueData.projectRoot.toCanonicalPath())
+    }
 
     if (buildIssues.isEmpty()) return null
 
@@ -78,6 +71,21 @@ class DataBindingIssueChecker : GradleIssueChecker {
         override fun getNavigatable(project: Project): Navigatable? = null
       }
     }
+  }
+
+  private fun findDataBindingErrors(cause: GradleIssueFailure?): List<String>? {
+    var currentCause = cause
+    while (currentCause != null) {
+      val message = currentCause.message
+      if (message != null && message.contains(ERROR_LOG_PREFIX)) {
+        val errors = message.lineSequence().filter { line -> line.startsWith(ERROR_LOG_PREFIX) }.toList()
+        if (errors.isNotEmpty()) {
+          return errors
+        }
+      }
+      currentCause = currentCause.causes.singleOrNull() ?: currentCause.rootCause.takeIf { it != currentCause }
+    }
+    return null
   }
 
   private fun convertToBuildIssue(index: Int, errorJson: String, projectPath: String): BuildIssue? {
@@ -97,7 +105,7 @@ class DataBindingIssueChecker : GradleIssueChecker {
         // file unless we feed it the absolute path directly.
         val sourceFile = File(projectPath, msg.filePath).absoluteFile
         val location = msg.locations.first()
-        val filePosition = FilePosition(sourceFile, location.startLine, location.startCol, location.endLine, location.endCol)
+        val filePosition = FilePosition(sourceFile.toPath(), location.startLine, location.startCol, location.endLine, location.endCol)
         val goToFile = OpenFileWithLocationQuickFix("open.file.$index", filePosition)
         return object : BuildIssue {
           override val title: String = summary
@@ -122,7 +130,7 @@ class OpenFileWithLocationQuickFix(uniqueId: String, val myFilePosition: FilePos
 
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
     val projectFile = project.projectFile ?: return CompletableFuture.completedFuture<Any>(null)
-    val filePositionPath = myFilePosition.file?.path ?: return CompletableFuture.completedFuture<Any>(null)
+    val filePositionPath = myFilePosition.path?.toString() ?: return CompletableFuture.completedFuture<Any>(null)
     val future = CompletableFuture<Any>()
     invokeLater {
       val file = projectFile.parent.fileSystem.findFileByPath(filePositionPath)

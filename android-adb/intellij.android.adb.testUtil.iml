@@ -20,5 +20,8 @@
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
     <orderEntry type="module" module-name="android.sdktools.device-provisioner" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.adblib.ddmlibcompatibility" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.adblib.ddmlibcompatibility.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.adblib.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.device-provisioner.tests" scope="TEST" />
   </component>
 </module>

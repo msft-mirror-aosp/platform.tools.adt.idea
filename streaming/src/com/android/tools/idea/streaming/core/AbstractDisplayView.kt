@@ -26,12 +26,10 @@ import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
 import com.android.tools.idea.streaming.actions.StreamingHardwareInputAction
 import com.android.tools.idea.streaming.xr.AbstractXrInputController
 import com.android.tools.idea.streaming.xr.TRANSLATION_STEP_SIZE
-import com.intellij.ide.DataManager
 import com.intellij.ide.KeyboardAwareFocusOwner
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.keymap.KeymapUtil
@@ -78,6 +76,7 @@ import java.awt.event.KeyEvent.VK_CONTROL
 import java.awt.event.KeyEvent.VK_META
 import java.awt.event.KeyEvent.VK_SHIFT
 import java.awt.event.KeyEvent.VK_TAB
+import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
 import java.awt.font.TextHitInfo
@@ -93,9 +92,7 @@ import javax.swing.JComponent
 import javax.swing.KeyStroke
 import javax.swing.SwingUtilities
 import javax.swing.event.HyperlinkListener
-import kotlin.math.log2
 import kotlin.math.max
-import kotlin.math.round
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
@@ -103,8 +100,11 @@ import kotlinx.coroutines.launch
  * Common base class for [com.android.tools.idea.streaming.emulator.EmulatorView] and [com.android.tools.idea.streaming.device.DeviceView].
  */
 @Suppress("UseJBColor")
-internal abstract class AbstractDisplayView(project: Project, override val displayId: Int, contextMenuActionGroupId: String) :
-  ZoomablePanel(), DisplayView, KeyboardAwareFocusOwner {
+internal abstract class AbstractDisplayView(
+  protected val project: Project,
+  override val displayId: Int,
+  contextMenuActionGroupId: String,
+) : ZoomablePanel(), DisplayView, KeyboardAwareFocusOwner {
 
   /** Serial number of the device shown in the view. */
   override val deviceSerialNumber: String
@@ -146,17 +146,21 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
 
   protected val deviceInputListenerManager = project.service<DeviceInputListenerManager>()
 
-  protected open val project: Project?
-    get() = CommonDataKeys.PROJECT.getData(DataManager.getInstance().getDataContext(this))
-
   init {
     background = primaryPanelBackground
     addToCenter(disconnectedStatePanel)
     initializeFocusHandling()
-    if (StudioFlags.DEVICE_MIRRORING_UNICODE_TYPING.get()) {
-      enableInputMethods(true)
-      addInputMethodListener(MyInputMethodListener())
-    }
+    addInputMethodListener(MyInputMethodListener())
+    addMouseListener(
+      object : MouseAdapter() {
+        override fun mouseClicked(event: MouseEvent) {
+          if (event.clickCount == 2 && event.button == MouseEvent.BUTTON1) {
+            event.consume()
+            handleDoubleClick(event)
+          }
+        }
+      }
+    )
   }
 
   /** Sends the given text to the device as if it was typed. */
@@ -267,17 +271,20 @@ internal abstract class AbstractDisplayView(project: Project, override val displ
 
   internal fun findNotificationHolderPanel(): NotificationHolderPanel? = getParentOfType<NotificationHolderPanel>()
 
-  /**
-   * Rounds the given value down to an integer if it is above 1, or to the nearest multiple of a small fraction that is close to `value/128`
-   * and has the form of `1/2^n`.
-   */
-  protected fun roundScale(value: Double): Double {
-    if (value >= 1) {
-      return roundDownIfNecessary(value)
+  protected fun computeRoundedScale(value: Double): Double =
+    if (value >= 1) roundDownIfNecessary(value) else roundDownToNaturalNumberOrNearestSmallFraction(value)
+
+  /** Returns the rectangle occupied by the display image and the device frame (if visible) in physical pixels. */
+  internal open fun computeContentRectangle(): Rectangle? = projectionRectangle
+
+  private fun handleDoubleClick(event: MouseEvent) {
+    if (!isConnected) {
+      return
     }
-    val logScale = -log2(value).roundToInt() + 7
-    val multiplier = 2 shl logScale + 7
-    return round(value * multiplier) / multiplier
+    val contentRect = computeContentRectangle() ?: return
+    if (!contentRect.contains(event.x * screenScalingFactor, event.y * screenScalingFactor)) {
+      ToolWindowSizeOptimizer(this).resizeToolWindowToRemoveEmptySpace()
+    }
   }
 
   protected fun notifyFrameListeners(displayRectangle: Rectangle, frame: BufferedImage) {

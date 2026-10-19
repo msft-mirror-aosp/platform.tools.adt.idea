@@ -6,7 +6,6 @@ iml_module(
     srcs = ["src"],
     iml_files = ["intellij.android.wizard.iml"],
     lint_baseline = "lint_baseline.xml",
-    test_tags = ["manual"],  # no tests
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -40,6 +39,7 @@ iml_module(
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
         "//tools/adt/idea/wizard-model:intellij.android.wizard.model",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

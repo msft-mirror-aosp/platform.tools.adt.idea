@@ -16,6 +16,7 @@
 package com.android.tools.idea.res
 
 import com.android.ide.common.rendering.api.ResourceNamespace
+import com.android.ide.common.rendering.api.ResourceReference
 import com.android.resources.ResourceType
 import com.android.testutils.waitForCondition
 import com.android.tools.configurations.Configuration
@@ -29,21 +30,24 @@ import com.google.common.collect.ImmutableSet
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.util.io.FileUtil
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VfsUtilCore.virtualToIoFile
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiFile
 import com.intellij.psi.xml.XmlFile
 import com.intellij.refactoring.rename.RenameDialog
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.VfsTestUtil
 import com.intellij.util.ui.UIUtil
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.test.assertNotNull
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import org.intellij.lang.annotations.Language
 import org.jetbrains.android.facet.AndroidFacet
-import org.junit.Assert.assertNotEquals
 import org.junit.Rule
 import org.junit.Test
 
@@ -76,7 +80,7 @@ class ResourceNotificationManagerTest {
 </FrameLayout>""",
       ) as XmlFile
     val resourceDir = layout1.parent!!.parent!!.virtualFile
-    assertNotNull(resourceDir)
+    assertThat(resourceDir).isNotNull()
 
     val layout2 =
       fixture.addFileToProject(
@@ -206,7 +210,7 @@ class ResourceNotificationManagerTest {
       replaceText(layout1, "^android:text=", 37, "<!--android:text=\"@string/hello_world\" />-->")
     }
     val version6 = manager.getCurrentVersion(facet, layout1, configuration1)
-    assertNotEquals(version6.toString(), version5, version6)
+    assertWithMessage(version6.toString()).that(version6).isNotEqualTo(version5)
 
     // Next check: Un-mark the comments of the lines between <!--<TextView ... />--> (which we just
     // commented in previous check)
@@ -219,7 +223,7 @@ class ResourceNotificationManagerTest {
       replaceText(layout1, "^<!--android:text=\"@string/hello_world\" />-->", 44, "android:text=\"@string/hello_world\" />")
     }
     val version8 = manager.getCurrentVersion(facet, layout1, configuration1)
-    assertNotEquals(version8.toString(), version7, version8)
+    assertWithMessage(version8.toString()).that(version8).isNotEqualTo(version7)
 
     // Finally check that once we remove the listeners there are no more notifications.
     val listener = MyResourceChangeListener()
@@ -251,7 +255,7 @@ class ResourceNotificationManagerTest {
         "</FrameLayout>"
     val layout1 = fixture.addFileToProject("res/layout/my_layout1.xml", xml) as XmlFile
     val resourceDir = layout1.parent!!.parent!!.virtualFile
-    assertNotNull(resourceDir)
+    assertThat(resourceDir).isNotNull()
 
     val configuration1: Configuration = ConfigurationManager.getOrCreateInstance(module).getConfiguration(layout1.virtualFile)
 
@@ -266,7 +270,7 @@ class ResourceNotificationManagerTest {
     @Language("JAVA") val java = "class Hello {}"
     val javaFile = fixture.addFileToProject("src/hello.java", java)
     val resourceDir = javaFile.parent!!.parent!!.virtualFile
-    assertNotNull(resourceDir)
+    assertThat(resourceDir).isNotNull()
 
     val configuration1: Configuration = ConfigurationManager.getOrCreateInstance(module).getConfiguration(javaFile.virtualFile)
 
@@ -336,6 +340,54 @@ class ResourceNotificationManagerTest {
     assertWithMessage("Reformat of the vector should not have triggered a change").that(resourcesHaveChanged.get()).isFalse()
   }
 
+  @Test
+  fun testFileWithNoDocumentChangedNotifiesListeners() {
+    val layout =
+      fixture.addFileToProject(
+        "res/layout/my_layout1.xml",
+        // language=xml
+        """<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="@string/hello" />
+</FrameLayout>""",
+      ) as XmlFile
+    val resourceDir = layout.parent!!.parent!!.virtualFile
+    val stringsVirtualFile =
+      VfsTestUtil.createFile(
+        resourceDir,
+        "values/strings.xml",
+        // language=xml
+        """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hello">Hello</string>
+</resources>""",
+      )
+    assertThat(FileDocumentManager.getInstance().getCachedDocument(stringsVirtualFile)).isNull()
+
+    val configuration = ConfigurationManager.getOrCreateInstance(module).getConfiguration(layout.virtualFile)
+    val helloRef = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.STRING, "hello")
+    assertThat(configuration.getResourceResolver().getUnresolvedResource(helloRef)?.value).isEqualTo("Hello")
+
+    runEnsuringListenersCalled(ResourceNotificationManager.Reason.RESOURCE_EDIT, layout.virtualFile, configuration) {
+      FileUtil.writeToFile(
+        virtualToIoFile(stringsVirtualFile),
+        // language=xml
+        """<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hello">Updated from external task</string>
+</resources>""",
+      )
+      LocalFileSystem.getInstance().refresh(false)
+    }
+
+    assertThat(configuration.getResourceResolver().getUnresolvedResource(helloRef)?.value).isEqualTo("Updated from external task")
+  }
+
   private fun runEnsuringListenersNotCalled(file: VirtualFile, configuration: Configuration, runnable: Runnable) {
     runEnsuringListeners(null, file, configuration, false, runnable)
   }
@@ -400,11 +452,12 @@ class ResourceNotificationManagerTest {
 
   private fun editText(file: PsiFile, location: String, length: Int, text: String) {
     val documentManager = PsiDocumentManager.getInstance(project)
-    val document = assertNotNull(documentManager.getDocument(file))
+    val document = documentManager.getDocument(file)
+    assertThat(document).isNotNull()
 
     // Insert a comment at the beginning
     WriteCommandAction.runWriteCommandAction(null) {
-      val documentText = document.text
+      val documentText = document!!.text
       assertThat(location).contains("^")
       val delta = location.indexOf('^')
 

@@ -19,6 +19,8 @@ import com.android.tools.compile.fast.CompilationResult
 import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.run.deployment.liveedit.LiveEditUpdateException
 import com.android.tools.idea.run.deployment.liveedit.composeRuntimePath
+import com.android.tools.idea.run.deployment.liveedit.configureCompilerOptions
+import com.android.tools.idea.run.deployment.liveedit.k2.backendCodeGenForK2
 import com.android.tools.idea.run.deployment.liveedit.registerComposeCompilerPlugin
 import com.android.tools.idea.run.deployment.liveedit.tokens.ApplicationLiveEditServices
 import com.android.tools.idea.testing.AndroidModuleDependency
@@ -28,11 +30,18 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.JavaLibraryDependency
 import com.android.tools.idea.testing.JavaModuleModelBuilder
 import com.android.tools.tests.AdtTestKotlinArtifacts
+import com.intellij.openapi.application.ApplicationListener
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.fileTypes.PlainTextFileType
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.EmptyProgressIndicator
-import com.intellij.openapi.progress.ProgressManager
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFileFactory
 import com.intellij.testFramework.assertInstanceOf
 import com.intellij.util.io.delete
 import com.jetbrains.rd.util.AtomicInteger
@@ -44,7 +53,13 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
+import org.jetbrains.kotlin.idea.base.util.module
+import org.jetbrains.kotlin.psi.KtFile
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -407,7 +422,7 @@ internal class EmbeddedCompilerClientImplTest {
   }
 
   @Test
-  fun `write action aborts current compilation`() = runBlocking {
+  fun `write action can run during compilation`() = runBlocking {
     val file =
       projectRule.fixture.addFileToProject(
         "app/src/main/java/src/com/test/Source.kt",
@@ -425,6 +440,7 @@ internal class EmbeddedCompilerClientImplTest {
     val compilationHasStarted = CompletableDeferred<Unit>()
     val countDownLatch = CountDownLatch(1)
     val beforeCompileCallCount = AtomicInteger(0)
+    var writeActionRan = false
     run {
       val compiler =
         EmbeddedCompilerClientImpl(
@@ -434,16 +450,13 @@ internal class EmbeddedCompilerClientImplTest {
         ) {
           beforeCompileCallCount.incrementAndGet()
           compilationHasStarted.complete(Unit)
-          while (!countDownLatch.await(1, TimeUnit.SECONDS)) {
-            ProgressManager.checkCanceled()
-          }
+          countDownLatch.await(5, TimeUnit.SECONDS)
         }
       launch(Dispatchers.Default) {
         compilationHasStarted.await()
 
-        // Trigger a write action that should abort the compilation
-        runWriteActionAndWait {}
-        // Now we can let the compilation proceed in the next attempt
+        // Trigger a write action while compilation lock is held before backend code generation starts outside readAction
+        runWriteActionAndWait { writeActionRan = true }
         countDownLatch.countDown()
       }
 
@@ -460,7 +473,128 @@ internal class EmbeddedCompilerClientImplTest {
           EmptyProgressIndicator(),
         )
       assertEquals(CompilationResult.Success, result)
-      assertTrue("Write Action should trigger a compilation re-start", beforeCompileCallCount.get() > 1)
+      assertTrue("Write action should have completed successfully during compilation", writeActionRan)
+      assertEquals("Compilation should complete in a single attempt", 1, beforeCompileCallCount.get())
+    }
+  }
+
+  @Test
+  fun `duplicate file inputs in compilation request succeeds`() = runBlocking {
+    val file =
+      projectRule.fixture.addFileToProject(
+        "app/src/main/java/src/com/test/Source.kt",
+        """
+        package com.test
+
+        fun testMethod() {
+        }
+        """
+          .trimIndent(),
+      )
+
+    val outputDirectory = Files.createTempDirectory("out")
+    val buildTargetReference = readAction { BuildTargetReference.from(file)!! }
+    val result =
+      compiler.compileRequest(
+        ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+        listOf(file, file),
+        buildTargetReference,
+        outputDirectory,
+        EmptyProgressIndicator(),
+      )
+    assertInstanceOf<CompilationResult.Success>(result)
+    assertEquals(
+      """
+      SourceKt.class
+      """
+        .trimIndent(),
+      outputDirectory.toFileNameSet().sorted().joinToString("\n"),
+    )
+  }
+
+  @Test
+  fun `compilation request succeeds when psiFile module returns null but findModuleForFile resolves module`() = runBlocking {
+    val file =
+      projectRule.fixture.addFileToProject(
+        "app/src/main/java/src/com/test/Source.kt",
+        """
+        package com.test
+
+        fun testMethod() {
+        }
+        """
+          .trimIndent(),
+      ) as KtFile
+
+    val fileWithContext = readAction {
+      val dummyContext = PsiFileFactory.getInstance(projectRule.project).createFileFromText("dummy.txt", PlainTextFileType.INSTANCE, "")
+      object : KtFile(file.viewProvider, true) {
+        override fun getContext(): PsiElement = dummyContext
+      }
+    }
+
+    readAction {
+      assertNull("fileWithContext.module should return null", fileWithContext.module)
+      assertNotNull("ModuleUtilCore.findModuleForFile should resolve the module", ModuleUtilCore.findModuleForFile(fileWithContext))
+    }
+
+    val outputDirectory = Files.createTempDirectory("out")
+    val buildTargetReference = readAction { BuildTargetReference.from(file)!! }
+    val result =
+      compiler.compileRequest(
+        ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+        listOf(file, fileWithContext),
+        buildTargetReference,
+        outputDirectory,
+        EmptyProgressIndicator(),
+      )
+    assertInstanceOf<CompilationResult.Success>(result)
+    assertEquals(
+      """
+      SourceKt.class
+      """
+        .trimIndent(),
+      outputDirectory.toFileNameSet().sorted().joinToString("\n"),
+    )
+  }
+
+  @Test
+  fun `backendCodeGenForK2 uses cancellable read action and throws CannotReadException when write action is pending`() {
+    runBlocking {
+      val file =
+        projectRule.fixture.addFileToProject(
+          "app/src/main/java/src/com/test/Source.kt",
+          """
+          package com.test
+
+          fun testMethod() {
+          }
+          """
+            .trimIndent(),
+        ) as KtFile
+
+      val module = readAction { file.module!! }
+      val finishWrite = CountDownLatch(1)
+      val pendingWrite = CountDownLatch(1)
+      ApplicationManager.getApplication()
+        .addApplicationListener(
+          object : ApplicationListener {
+            override fun beforeWriteActionStart(action: Any) {
+              pendingWrite.countDown()
+              assertTrue("Timeout waiting for finishWrite", finishWrite.await(5, TimeUnit.SECONDS))
+            }
+          },
+          projectRule.testRootDisposable,
+        )
+
+      ApplicationManager.getApplication().invokeLater {
+        runWriteAction {}
+      }
+
+      assertTrue("Timeout waiting for pendingWrite", pendingWrite.await(5, TimeUnit.SECONDS))
+      assertThrows(ReadAction.CannotReadException::class.java) {
+        @OptIn(KaExperimentalApi::class) backendCodeGenForK2(file, module) { configureCompilerOptions(module, file) }
+      }
     }
   }
 }

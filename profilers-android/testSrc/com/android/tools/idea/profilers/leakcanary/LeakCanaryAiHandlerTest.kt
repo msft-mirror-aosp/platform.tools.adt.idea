@@ -15,128 +15,122 @@
  */
 package com.android.tools.idea.profilers.leakcanary
 
-import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.gemini.GeminiPluginApiV2
-import com.android.tools.idea.gemini.LlmPrompt
+import com.android.tools.idea.gemini.LlmModelSlot
+import com.android.tools.idea.testing.ui.createFakeToolWindow
 import com.android.tools.leakcanarylib.data.Leak
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
-import org.junit.After
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito
 import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
+import org.mockito.Mockito.never
+import org.mockito.Mockito.`when` as whenever
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
-import kotlin.test.assertTrue
-import kotlin.test.assertFalse
-import org.mockito.Mockito
 
 class LeakCanaryAiHandlerTest {
 
-  @get:Rule
-  val projectRule = ProjectRule()
+  @get:Rule val projectRule = ProjectRule()
+  @get:Rule val edtRule = EdtRule()
 
-  private lateinit var mockGeminiApi: GeminiPluginApi
-  private val project: Project get() = projectRule.project
+  private val project: Project
+    get() = projectRule.project
 
-  @Before
-  fun setup() {
-    mockGeminiApi = mock(GeminiPluginApi::class.java)
-    `when`(mockGeminiApi.MAX_QUERY_CHARS).thenReturn(Int.MAX_VALUE)
 
-    // Register the mock GeminiPluginApi extension
-    val ep = GeminiPluginApi.EP_NAME.getPoint(null)
-    ep.registerExtension(mockGeminiApi, projectRule.project)
-  }
-
-  @After
-  fun tearDown() {
-    StudioFlags.STUDIOBOT_V2_UI_ENABLED.clearOverride()
-  }
-
+  @RunsInEdt
   @Test
   fun `test analyzeLeakWithStudioBot sends query to Gemini`() {
-    StudioFlags.STUDIOBOT_V2_UI_ENABLED.override(false)
+    runBlocking {
+      val mockGeminiApiV2 = mock(GeminiPluginApiV2::class.java)
+      ExtensionTestUtil.maskExtensions(GeminiPluginApiV2.EP_NAME, listOf(mockGeminiApiV2), projectRule.project)
+      whenever(mockGeminiApiV2.isAvailable()).thenReturn(true)
 
-    val rawTrace = "Test Trace"
-    val leak = mock(Leak::class.java)
+      val rawTrace = "Test Trace"
+      val leak = mock(Leak::class.java)
 
-    LeakCanaryAiHandler.getInstance(project).analyzeLeakWithStudioBot(rawTrace, leak)
-    val promptCaptor = argumentCaptor<LlmPrompt>()
-    val displayTextCaptor = argumentCaptor<String>()
+      LeakCanaryAiHandler.getInstance(project).analyzeLeakWithStudioBot(rawTrace, leak)
+      val queryCaptor = argumentCaptor<String>()
 
-    // Using timeout as a safety net since we are dealing with asynchronous background tasks.
-    // We also need to pump the event queue so that Application.invokeLater can run.
-    val start = System.currentTimeMillis()
-    while (System.currentTimeMillis() - start < 5000) {
-      // 1. Give the UI thread a chance to run any pending tasks.
-      ApplicationManager.getApplication().invokeAndWait {
-        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-      }
-      // 2. DETECT: Check if Mockito has recorded ANY calls to 'sendChatQuery'.
-      if (Mockito.mockingDetails(mockGeminiApi).invocations.any { it.method.name == "sendChatQuery" }) {
-        // 3. SUCCESS: The background task finished! We can exit the loop.
-        break
-      }
-      // 4. WAIT: If not called yet, sleep for 100ms and try again.
-      Thread.sleep(100)
+      PlatformTestUtil.waitWithEventsDispatching(
+        "Query was not submitted in time",
+        { Mockito.mockingDetails(mockGeminiApiV2).invocations.any { it.method.name == "submitQueryInToolWindow" } },
+        10,
+      )
+
+      verify(mockGeminiApiV2).submitQueryInToolWindow(eq(project), queryCaptor.capture(), any(), any(), any())
+
+      val submittedQuery = queryCaptor.firstValue
+      assertTrue(submittedQuery.contains("Fix this memory leak and summarize the outcome:"))
+      assertTrue(submittedQuery.contains(rawTrace))
     }
-
-    verify(mockGeminiApi).sendChatQuery(
-      any(),
-      promptCaptor.capture(),
-      displayTextCaptor.capture(),
-      eq(GeminiPluginApi.RequestSource.OTHER)
-    )
-    // TODO: Change to GeminiPluginApi.RequestSource.PROFILER once it is added in the ml-api module.
-
-    assertTrue(displayTextCaptor.firstValue.contains(rawTrace))
   }
 
   @Test
-  fun `test analyzeLeakWithStudioBot sends query to Gemini V2`() = runBlocking {
-    StudioFlags.STUDIOBOT_V2_UI_ENABLED.override(true)
+  fun `test fetchLeakInsight calls GeminiPluginApiV2 generate`() {
+    runBlocking {
+      val mockGeminiApiV2 = mock(GeminiPluginApiV2::class.java)
+      ExtensionTestUtil.maskExtensions(GeminiPluginApiV2.EP_NAME, listOf(mockGeminiApiV2), projectRule.project)
 
-    val mockGeminiApiV2 = mock(GeminiPluginApiV2::class.java)
-    val epV2 = GeminiPluginApiV2.EP_NAME.getPoint(null)
-    epV2.registerExtension(mockGeminiApiV2, projectRule.project)
+      whenever(mockGeminiApiV2.isAvailable()).thenReturn(true)
+      whenever(mockGeminiApiV2.generate(eq(project), any(), eq(LlmModelSlot.CHAT)))
+        .thenReturn("Insight chunk 1 chunk 2")
 
-    val rawTrace = "Test Trace"
-    val leak = mock(Leak::class.java)
-
-    LeakCanaryAiHandler.getInstance(project).analyzeLeakWithStudioBot(rawTrace, leak)
-    val queryCaptor = argumentCaptor<String>()
-
-    // We pump the event queue so that Application.invokeLater can run.
-    val start = System.currentTimeMillis()
-    while (System.currentTimeMillis() - start < 5000) {
-      ApplicationManager.getApplication().invokeAndWait {
-        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-      }
-      if (Mockito.mockingDetails(mockGeminiApiV2).invocations.any { it.method.name == "submitQueryInToolWindow" }) {
-        break
-      }
-      Thread.sleep(100)
+      val result = LeakCanaryAiHandler.fetchLeakInsight(project, "raw trace").toList()
+      assertEquals(listOf("Insight chunk 1 chunk 2"), result)
     }
+  }
 
-    verify(mockGeminiApiV2).submitQueryInToolWindow(
-      eq(project),
-      queryCaptor.capture(),
-      any(),
-      any(),
-      any()
-    )
+  @Test
+  fun `test fetchLeakInsight throws when Gemini returns empty response`() {
+    runBlocking {
+      val mockGeminiApiV2 = mock(GeminiPluginApiV2::class.java)
+      ExtensionTestUtil.maskExtensions(GeminiPluginApiV2.EP_NAME, listOf(mockGeminiApiV2), projectRule.project)
 
-    val submittedQuery = queryCaptor.firstValue
-    assertTrue(submittedQuery.contains("Fix this memory leak and summarize the outcome:"))
-    assertTrue(submittedQuery.contains(rawTrace))
+      whenever(mockGeminiApiV2.isAvailable()).thenReturn(true)
+      whenever(mockGeminiApiV2.generate(eq(project), any(), eq(LlmModelSlot.CHAT)))
+        .thenReturn(null)
+
+      try {
+        LeakCanaryAiHandler.fetchLeakInsight(project, "raw trace").toList()
+        org.junit.Assert.fail("Expected IllegalStateException")
+      } catch (e: IllegalStateException) {
+        assertEquals("Failed to generate insight: No response received.", e.message)
+      }
+    }
+  }
+
+  @RunsInEdt
+  @Test
+  fun `test analyzeLeakWithStudioBot triggers onboarding when Gemini V2 is unavailable`() {
+    runBlocking {
+      val mockGeminiApiV2 = mock(GeminiPluginApiV2::class.java)
+      ExtensionTestUtil.maskExtensions(GeminiPluginApiV2.EP_NAME, listOf(mockGeminiApiV2), projectRule.project)
+      whenever(mockGeminiApiV2.isAvailable()).thenReturn(false)
+      val toolWindow = createFakeToolWindow(project, project, "Gemini")
+
+      assertFalse(toolWindow.isActive)
+      LeakCanaryAiHandler.getInstance(project).analyzeLeakWithStudioBot("Test Trace", null)
+
+      PlatformTestUtil.waitWithEventsDispatching(
+        "Gemini tool window was not activated in time",
+        { toolWindow.isActive },
+        10,
+      )
+      assertTrue(toolWindow.isActive)
+      verify(mockGeminiApiV2, never()).submitQueryInToolWindow(any(), any(), any(), any(), any())
+    }
   }
 }

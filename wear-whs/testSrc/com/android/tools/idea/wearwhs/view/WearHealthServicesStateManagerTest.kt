@@ -31,7 +31,6 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.WearHealthServicesEvent
 import com.intellij.openapi.util.Disposer
 import junit.framework.TestCase.assertEquals
-import junit.framework.TestCase.fail
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -402,6 +401,9 @@ class WearHealthServicesStateManagerTest {
     assertThat(result.isSuccess).isTrue()
     assertThat(deviceManager.triggeredEvents).hasSize(1)
     assertThat(deviceManager.triggeredEvents[0].eventKey).isEqualTo("key")
+    assertThat(loggedEvents).hasSize(2)
+    assertThat(loggedEvents[1].kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
+    assertThat(loggedEvents[1].wearHealthServicesEvent.kind).isEqualTo(WearHealthServicesEvent.EventKind.TRIGGER_EVENT_SUCCESS)
   }
 
   @Test
@@ -412,6 +414,9 @@ class WearHealthServicesStateManagerTest {
 
     assertThat(result.isSuccess).isFalse()
     stateManager.status.waitForValue(WhsStateManagerStatus.ConnectionLost)
+    assertThat(loggedEvents).hasSize(2)
+    assertThat(loggedEvents[1].kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
+    assertThat(loggedEvents[1].wearHealthServicesEvent.kind).isEqualTo(WearHealthServicesEvent.EventKind.TRIGGER_EVENT_FAILURE)
   }
 
   @Test
@@ -423,21 +428,36 @@ class WearHealthServicesStateManagerTest {
 
     assertThat(result.isSuccess).isTrue()
     stateManager.getState(heartRateBpmCapability).mapState { it is UpToDateCapabilityUIState }.waitForValue(true)
+    assertThat(loggedEvents).hasSize(2)
+    assertThat(loggedEvents[1].kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
+    assertThat(loggedEvents[1].wearHealthServicesEvent.kind).isEqualTo(WearHealthServicesEvent.EventKind.RESET_SUCCESS)
   }
 
   @Test
   fun `when there is no connection reset does not clear the state`(): Unit = runBlocking {
     stateManager.setCapabilityEnabled(heartRateBpmCapability, false)
+    // apply to ensure the capability stores "false" as the up-to-date value
+    stateManager.applyChanges()
 
-    stateManager.getState(heartRateBpmCapability).mapState { it is PendingUserChangesCapabilityUIState }.waitForValue(true)
     deviceManager.failState = true
+
+    stateManager.setCapabilityEnabled(heartRateBpmCapability, true)
+    stateManager.getState(heartRateBpmCapability).mapState { it is PendingUserChangesCapabilityUIState }.waitForValue(true)
     val result = stateManager.reset()
 
     assertThat(result.isSuccess).isFalse()
-    try {
+    // The state is expected to stay on "pending" as the change was not able to be pushed to the device.
+    val exception = runCatching {
       stateManager.getState(heartRateBpmCapability).mapState { it is UpToDateCapabilityUIState }.waitForValue(true)
-      fail("Value should not reset if the communication with the device is lost")
-    } catch (_: AssertionError) {}
+    }
+      .exceptionOrNull()
+    // Verify that the wait timed out and threw an exception
+    assertThat(exception).isNotNull()
+    assertThat(exception).isInstanceOf(AssertionError::class.java)
+
+    assertThat(loggedEvents).hasSize(3) // emulator bound, apply changes, reset failure
+    assertThat(loggedEvents.last().kind).isEqualTo(AndroidStudioEvent.EventKind.WEAR_HEALTH_SERVICES_TOOL_WINDOW_EVENT)
+    assertThat(loggedEvents.last().wearHealthServicesEvent.kind).isEqualTo(WearHealthServicesEvent.EventKind.RESET_FAILURE)
   }
 
   @Test
@@ -492,4 +512,26 @@ class WearHealthServicesStateManagerTest {
         stateManager.getState(it).mapState { (it as UpToDateCapabilityUIState).currentState.enabled }.waitForValue(it.isStandardCapability)
       }
     }
+
+  // Regression test for b/442773686
+  @Test
+  fun `reset does not apply standard capabilities if they were not applied`() = runBlocking {
+    // Initially, all capabilities are enabled on device and up to date
+    assertThat(stateManager.preset.value).isEqualTo(Preset.ALL)
+    capabilities.forEach { capability ->
+      stateManager.getState(capability).mapState { it.currentState.enabled }.waitForValue(true)
+    }
+
+    // User selects STANDARD preset, but does not apply changes
+    stateManager.loadPreset(Preset.STANDARD).join()
+    stateManager.getState(stepsCapability).mapState { it.currentState.enabled }.waitForValue(false)
+
+    stateManager.reset()
+
+    assertThat(stateManager.preset.value).isEqualTo(Preset.ALL)
+    // Check that all capabilities are set to "true" as per the "ALL" preset.
+    capabilities.forEach { capability ->
+      stateManager.getState(capability).mapState { (it as UpToDateCapabilityUIState).currentState.enabled }.waitForValue(true)
+    }
+  }
 }

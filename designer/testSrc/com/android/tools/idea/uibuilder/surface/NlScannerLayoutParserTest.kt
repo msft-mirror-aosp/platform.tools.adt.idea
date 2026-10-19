@@ -18,8 +18,12 @@ package com.android.tools.idea.uibuilder.surface
 import android.view.View
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.uibuilder.model.viewInfo
+import com.android.tools.rendering.security.AllowAllRenderSandbox
+import com.android.tools.rendering.security.DenyAllRenderSandbox
+import com.android.tools.rendering.security.RenderSandbox
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -161,5 +165,112 @@ class NlScannerLayoutParserTest {
     assertTrue(parser.includeComponents.isEmpty())
     parser.buildViewToComponentMap(root)
     assertEquals(1, parser.includeComponents.size)
+  }
+
+  @Test
+  fun buildViewToComponentMapRunsUnderSandbox() {
+    val layoutParser = NlScannerLayoutParser()
+    val helper = ScannerTestHelper()
+    val component = helper.buildNlComponent()
+
+    var sandboxDuringGetId: RenderSandbox? = null
+    val view = component.viewInfo?.viewObject as View
+    whenever(view.id).thenAnswer {
+      sandboxDuringGetId = RenderSandbox.getRenderSandbox()
+      123
+    }
+
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+    layoutParser.buildViewToComponentMap(component)
+    assertEquals(DenyAllRenderSandbox, sandboxDuringGetId)
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+  }
+
+  @Test
+  fun buildViewToComponentMapHandlesSecurityExceptionInGetId() {
+    val layoutParser = NlScannerLayoutParser()
+    val helper = ScannerTestHelper()
+    val component = helper.buildNlComponent()
+
+    val view = component.viewInfo?.viewObject as View
+    whenever(view.id).thenThrow(SecurityException("Blocked by sandbox"))
+
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+    // Should not throw
+    layoutParser.buildViewToComponentMap(component)
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+    assertEquals(1, layoutParser.viewToComponent.size)
+    assertEquals(0, layoutParser.idToComponent.size)
+  }
+
+  @Test
+  fun buildViewToComponentMapHandlesSecurityExceptionAndContinuesTraversal() {
+    val layoutParser = NlScannerLayoutParser()
+    val helper = ScannerTestHelper()
+    val model = helper.buildModel(3)
+    val root = model.treeReader.components[0]
+    val child1 = root.children[0]
+    val child2 = root.children[1]
+
+    val child1View = child1.viewInfo?.viewObject as View
+    whenever(child1View.id).thenThrow(SecurityException("Blocked by sandbox"))
+
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+    layoutParser.buildViewToComponentMap(root)
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+
+    assertEquals(3, layoutParser.componentCount)
+    assertTrue(layoutParser.viewToComponent.values.contains(child2))
+    assertTrue(layoutParser.idToComponent.values.contains(child2))
+  }
+
+  @Test
+  fun findComponentRunsUnderSandbox() {
+    val layoutParser = NlScannerLayoutParser()
+    val helper = ScannerTestHelper()
+    val component = helper.buildNlComponent()
+    layoutParser.buildViewToComponentMap(component)
+
+    val result = helper.generateResult(component).build()
+    val issue = ScannerTestHelper.createTestIssueBuilder().setSrcId(helper.lastUsedIssueId).build()
+
+    // Clear viewToComponent so findComponent falls back to view.id
+    layoutParser.viewToComponent.clear()
+
+    var sandboxDuringGetId: RenderSandbox? = null
+    val view = component.viewInfo?.viewObject as View
+    whenever(view.id).thenAnswer {
+      sandboxDuringGetId = RenderSandbox.getRenderSandbox()
+      helper.lastUsedViewId
+    }
+
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+    val found = layoutParser.findComponent(issue, result.srcMap, result.nodeInfoMap)
+    assertEquals(component, found)
+    assertEquals(DenyAllRenderSandbox, sandboxDuringGetId)
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+  }
+
+  @Test
+  fun findComponentHandlesSecurityException() {
+    val layoutParser = NlScannerLayoutParser()
+    val helper = ScannerTestHelper()
+    val component = helper.buildNlComponent()
+    layoutParser.buildViewToComponentMap(component)
+
+    val result = helper.generateResult(component).build()
+    val issue = ScannerTestHelper.createTestIssueBuilder().setSrcId(helper.lastUsedIssueId).build()
+
+    // Clear viewToComponent so findComponent falls back to view.id
+    layoutParser.viewToComponent.clear()
+
+    val view = component.viewInfo?.viewObject as View
+    whenever(view.id).thenThrow(SecurityException("Blocked by sandbox"))
+
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
+    // Should not throw and gracefully return null
+    val found = layoutParser.findComponent(issue, result.srcMap, result.nodeInfoMap)
+    assertNull(found)
+    assertEquals(AllowAllRenderSandbox, RenderSandbox.getRenderSandbox())
   }
 }

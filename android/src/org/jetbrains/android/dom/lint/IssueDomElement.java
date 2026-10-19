@@ -32,9 +32,14 @@ public interface IssueDomElement extends DomElement {
 
   GenericAttributeValue<String> getIn();
 
+  GenericAttributeValue<Boolean> getTests();
+
   @SubTagList("ignore")
   List<IgnoreDomElement> getIgnores();
 
   @SubTagList("option")
   List<OptionDomElement> getOptions();
+
+  @SubTagList("suppress-with")
+  List<SuppressWithDomElement> getSuppressWiths();
 }

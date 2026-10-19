@@ -33,24 +33,25 @@ public:
   void Release();
 
   // Returns true if recording started successfully, false otherwise.
-  bool Start(Jni jni);
+  [[nodiscard]] bool Start(Jni jni);
   void Stop(Jni jni);
   // Returns the number of audio samples read or a negative error code.
-  int32_t Read(Jni jni, JShortArray* buf, int32_t num_samples);
+  [[nodiscard]] int32_t Read(Jni jni, JShortArray* buf, int32_t num_samples);
   // Returns nanosecond timestamp of the audio record, if available, or a negative error code otherwise.
-  int64_t GetTimestamp(Jni jni);
-  bool IsValid() const { return audio_record_.IsNotNull(); }
+  [[nodiscard]] int64_t GetTimestamp(Jni jni);
+  [[nodiscard]] bool IsValid() const { return audio_record_.IsNotNull(); }
 
 private:
+  JObject audio_policy_;
   JObject audio_record_;
-  jmethodID release_method_;
-  jmethodID start_recording_method_;
-  jmethodID stop_method_;
-  jmethodID read_method_;
-  jmethodID get_timestamp_method_;
+  jmethodID release_method_ = nullptr;
+  jmethodID start_recording_method_ = nullptr;
+  jmethodID stop_method_ = nullptr;
+  jmethodID read_method_ = nullptr;
+  jmethodID get_timestamp_method_ = nullptr;
 
   JObject audio_timestamp_;
-  jfieldID audio_timestamp_nano_time_field_;
+  jfieldID audio_timestamp_nano_time_field_ = nullptr;
 
   DISALLOW_COPY_AND_ASSIGN(AudioRecord);
 };

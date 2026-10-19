@@ -15,9 +15,6 @@
  */
 package com.android.tools.idea;
 
-import static com.android.tools.asdriver.tests.AndroidStudioInstallation.AndroidStudioFlavor.FOR_EXTERNAL_USERS;
-import static com.android.tools.asdriver.tests.AndroidSystem.JdkVersion.JDK_21;
-
 import com.android.testutils.TestUtils;
 import com.android.tools.asdriver.tests.AndroidStudio;
 import com.android.tools.asdriver.tests.AndroidSystem;
@@ -50,8 +47,7 @@ import org.junit.Test;
  */
 public class CreateProjectTest {
   @Rule
-  // TODO(b/510866256) Test new project wizard with Studio's bundled JDK
-  public AndroidSystem system = AndroidSystem.withCustomJdkForGradle(FOR_EXTERNAL_USERS, JDK_21);
+  public AndroidSystem system = AndroidSystem.standard();
 
   @Rule
   public MemoryDashboardNameProviderWatcher watcher = new MemoryDashboardNameProviderWatcher();
@@ -64,7 +60,7 @@ public class CreateProjectTest {
     // error saying that no SDK has been configured, so we configure it first.
     system.getInstallation().setGlobalSdk(system.getSdk());
     // See class-level comments
-    system.getInstallation().addVmOption("-Dgradle.ide.agp.version.to.use=9.0.0");
+    system.getInstallation().addVmOption("-Dgradle.ide.agp.version.to.use=9.4.0");
     system.getInstallation().addVmOption("-Dnpw.new.project.compile.sdk=36");
 
     String distributionPath = "tools/external/gradle/";

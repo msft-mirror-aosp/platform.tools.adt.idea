@@ -28,6 +28,7 @@ import com.android.tools.preview.ComposePreviewElement
 import com.android.tools.preview.ParametrizedComposePreviewElementInstance
 import com.intellij.execution.ProgramRunnerUtil
 import com.intellij.execution.RunManager
+import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.execution.configurations.runConfigurationType
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.openapi.actionSystem.ActionUpdateThread
@@ -40,7 +41,11 @@ import icons.StudioIcons.Compose.Toolbar.RUN_ON_DEVICE
 import org.jetbrains.kotlin.idea.base.util.module
 
 /** Action to run a Compose Preview on a device/emulator. */
-internal class DeployToDeviceAction : AnAction(message("action.run.title"), message("action.run.description"), RUN_ON_DEVICE) {
+internal class DeployToDeviceAction(
+  private val executeConfiguration: (RunnerAndConfigurationSettings) -> Unit = {
+    ProgramRunnerUtil.executeConfiguration(it, DefaultRunExecutor.getRunExecutorInstance())
+  }
+) : AnAction(message("action.run.title"), message("action.run.description"), RUN_ON_DEVICE) {
   override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
   override fun actionPerformed(e: AnActionEvent) {
@@ -89,16 +94,26 @@ internal class DeployToDeviceAction : AnAction(message("action.run.title"), mess
         }
       }
 
+    val runManager = RunManager.getInstance(project)
     val configurationAndSettings =
-      RunManager.getInstance(project).findSettings(composePreviewRunConfiguration)
-        ?: RunManager.getInstance(project)
-          .createConfiguration(composePreviewRunConfiguration, factory)
-          .apply { isTemporary = true }
-          .also { configAndSettings -> RunManager.getInstance(project).addConfiguration(configAndSettings) }
+      runManager.getConfigurationSettingsList(ComposePreviewRunConfigurationType::class.java).firstOrNull { settings ->
+        val existingConfig = settings.configuration as? ComposePreviewRunConfiguration ?: return@firstOrNull false
+        existingConfig.composableMethodFqn == composePreviewRunConfiguration.composableMethodFqn &&
+          existingConfig.providerClassFqn == composePreviewRunConfiguration.providerClassFqn &&
+          existingConfig.providerIndex == composePreviewRunConfiguration.providerIndex &&
+          existingConfig.configurationModule.module == composePreviewRunConfiguration.configurationModule.module
+      }
+        ?: run {
+          runManager.setUniqueNameIfNeeded(composePreviewRunConfiguration)
+          runManager
+            .createConfiguration(composePreviewRunConfiguration, factory)
+            .apply { isTemporary = true }
+            .also { configAndSettings -> runManager.addConfiguration(configAndSettings) }
+        }
     (configurationAndSettings.configuration as ComposePreviewRunConfiguration).triggerSource =
       ComposePreviewRunConfiguration.TriggerSource.TOOLBAR
-    RunManager.getInstance(project).selectedConfiguration = configurationAndSettings
-    ProgramRunnerUtil.executeConfiguration(configurationAndSettings, DefaultRunExecutor.getRunExecutorInstance())
+    runManager.selectedConfiguration = configurationAndSettings
+    executeConfiguration(configurationAndSettings)
   }
 }
 

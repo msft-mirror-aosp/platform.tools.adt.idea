@@ -27,11 +27,11 @@ import com.intellij.icons.AllIcons
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.SwingHelper
+import java.util.Locale.getDefault
 import javax.swing.Icon
 import javax.swing.JEditorPane
 import javax.swing.event.HyperlinkEvent
 import javax.swing.event.HyperlinkListener
-import org.jetbrains.kotlin.lombok.utils.capitalize
 
 fun TimeWithPercentage.durationString() = durationString(timeMs)
 
@@ -53,7 +53,9 @@ fun TaskCategory.displayName() =
     TaskCategory.AAR_PACKAGING -> "AAR Packaging"
     TaskCategory.APK_PACKAGING -> "APK Packaging"
     else -> {
-      toString().split("_").joinToString(separator = " ") { word -> word.lowercase().capitalize() }
+      toString().split("_").joinToString(separator = " ") { word ->
+        word.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString() }
+      }
     }
   }
 

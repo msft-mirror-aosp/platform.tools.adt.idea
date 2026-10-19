@@ -38,6 +38,7 @@ import com.android.sdklib.deviceprovisioner.Extension
 import com.android.sdklib.deviceprovisioner.GlassesPairableDeviceHandle
 import com.android.sdklib.deviceprovisioner.LocalEmulatorContext
 import com.android.sdklib.deviceprovisioner.LocalEmulatorDeviceHandle
+import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProvisionerPlugin
 import com.android.sdklib.deviceprovisioner.LocalEmulatorSnapshot
 import com.android.sdklib.deviceprovisioner.LocalEmulatorSnapshotReader
@@ -55,6 +56,7 @@ import com.android.tools.idea.avd.glassespairing.GlassesPairingLockService
 import com.android.tools.idea.avd.glassespairing.GlassesPairingResult
 import com.android.tools.idea.avd.glassespairing.GlassesPairingUsageTracker
 import com.android.tools.idea.avd.glassespairing.GlassesPairingWizard
+import com.android.tools.idea.avd.glassespairing.userInvolvementRequired
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.avdmanager.AccelerationErrorSolution
 import com.android.tools.idea.avdmanager.AvdManagerConnection
@@ -69,6 +71,8 @@ import com.android.tools.idea.deviceprovisioner.NotificationBannersExtension
 import com.android.tools.idea.deviceprovisioner.ShowableOnDiskDeviceHandle
 import com.android.tools.idea.deviceprovisioner.StudioDefaultDeviceActionPresentation
 import com.android.tools.idea.sdk.AndroidSdks
+import com.android.tools.idea.sdk.SdkDownloadState
+import com.android.tools.idea.sdk.SdkDownloadTracker
 import com.android.tools.idea.sdk.wizard.SdkQuickfixUtils
 import com.google.wireless.android.sdk.stats.EmulatorWindowsHypervisorMigrationEvent
 import com.google.wireless.android.sdk.stats.GlassesPairingEvent
@@ -76,6 +80,8 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.actions.RevealFileAction
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.thisLogger
@@ -103,7 +109,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -133,23 +138,26 @@ class StudioLocalEmulatorProvisionerPlugin(
     avdScanner.rescan()
   }
 
-  override val devices: StateFlow<List<StudioLocalEmulatorDeviceHandle>> =
-    flow {
-        val handles = mutableMapOf<LocalEmulatorDeviceHandle, StudioLocalEmulatorDeviceHandle>()
-        basePlugin.devices.collect { baseHandles ->
-          val wrappedHandles = mutableListOf<StudioLocalEmulatorDeviceHandle>()
-          for (baseHandle in baseHandles) {
-            wrappedHandles.add(
-              handles.computeIfAbsent(baseHandle as LocalEmulatorDeviceHandle) {
-                StudioLocalEmulatorDeviceHandle(project, baseHandle, context, devices, ioDispatcher)
-              }
-            )
-          }
-          handles.keys.retainAll(baseHandles.toSet())
-          emit(wrappedHandles.toList())
+  private val _devices = MutableStateFlow<List<StudioLocalEmulatorDeviceHandle>>(emptyList())
+  override val devices: StateFlow<List<StudioLocalEmulatorDeviceHandle>> = _devices.asStateFlow()
+
+  init {
+    scope.launch {
+      val handles = mutableMapOf<LocalEmulatorDeviceHandle, StudioLocalEmulatorDeviceHandle>()
+      basePlugin.devices.collect { baseHandles ->
+        val wrappedHandles = mutableListOf<StudioLocalEmulatorDeviceHandle>()
+        for (baseHandle in baseHandles) {
+          wrappedHandles.add(
+            handles.computeIfAbsent(baseHandle as LocalEmulatorDeviceHandle) {
+              StudioLocalEmulatorDeviceHandle(project, baseHandle, context, devices, ioDispatcher)
+            }
+          )
         }
+        handles.keys.retainAll(baseHandles.toSet())
+        _devices.value = wrappedHandles.toList()
       }
-      .stateIn(scope, SharingStarted.Eagerly, emptyList())
+    }
+  }
 
   private val notificationBanners: StateFlow<List<EditorNotificationPanel>> =
     combine(devices, accelerationError, dismissedErrors) { deviceList, accelError, dismissed ->
@@ -218,6 +226,28 @@ class StudioLocalEmulatorDeviceHandle(
   ShowableOnDiskDeviceHandle,
   DeletableDeviceHandle {
 
+  private val avdInfo by baseDeviceHandle::avdInfo
+  private val onDiskAvdInfo by baseDeviceHandle::onDiskAvdInfo
+
+  private val downloadTracker
+    get() = SdkDownloadTracker.instance
+
+  override val stateFlow: StateFlow<DeviceState> =
+    combine(baseDeviceHandle.stateFlow, downloadTracker.downloadStates) { baseState, downloadStates ->
+        val path = AvdManagerConnection.getRequiredSystemImagePath(avdInfo)
+        val downloadState = path?.let { downloadStates[it] }
+        if (baseState is Disconnected && downloadState is SdkDownloadState.InProgress) {
+          baseState.copy(isTransitioning = true, status = downloadState.systemImageMessage())
+        } else {
+          baseState
+        }
+      }
+      .stateIn(scope, SharingStarted.Eagerly, baseDeviceHandle.state)
+
+  // This override is necessary to avoid delegating to baseDeviceHandle
+  override val state: DeviceState
+    get() = stateFlow.value
+
   // Do not cache this; getDefaultAvdManagerConnection() changes when the local SDK path changes.
   private val avdManagerConnection
     get() = AvdManagerConnection.getDefaultAvdManagerConnection()
@@ -231,19 +261,15 @@ class StudioLocalEmulatorDeviceHandle(
   private val adbLogger
     get() = context.logger
 
-  private val avdInfo by baseDeviceHandle::avdInfo
-  private val onDiskAvdInfo by baseDeviceHandle::onDiskAvdInfo
-
   private suspend fun refreshDevices() {
     baseDeviceHandle.avdScanner.rescan()
   }
 
   // Returning GlassesPairingResult instead of just the device handle allows
   // propagating the MAC address back to avoid race conditions.
-  internal var wizardProvider: suspend (Component?, Project?, Flow<List<DeviceHandle>>, DeviceHandle) -> GlassesPairingResult? =
-    { par, proj, flow, handle ->
-      GlassesPairingWizard.show(par, proj, flow, handle)
-    }
+  internal var wizardProvider:
+    suspend (Component?, Project?, Flow<List<DeviceHandle>>, DeviceHandle?, DeviceHandle?) -> GlassesPairingResult? =
+    GlassesPairingWizard::show
 
   internal fun refreshDevicesAsync() {
     baseDeviceHandle.avdScanner.rescanAsync()
@@ -362,13 +388,30 @@ class StudioLocalEmulatorDeviceHandle(
   override val repairDeviceAction =
     object : RepairDeviceAction {
       override val presentation =
-        DeviceAction.Presentation(label = "Download system image", icon = AllIcons.Actions.Download, enabled = false).enabledIf {
-          (it.error as? AvdDeviceError)?.status == AvdStatus.ERROR_IMAGE_MISSING
-        }
+        combine(stateFlow, downloadTracker.downloadStates) { deviceState, downloadStates ->
+            val path = AvdManagerConnection.getRequiredSystemImagePath(avdInfo)
+            val downloadState = path?.let { downloadStates[it] }
+            val isDownloading = downloadState is SdkDownloadState.InProgress
+            val isMissing = (deviceState.error as? AvdDeviceError)?.status == AvdStatus.ERROR_IMAGE_MISSING
+            DeviceAction.Presentation(
+              label = if (isDownloading) "Downloading system image" else "Download system image",
+              icon = AllIcons.Actions.Download,
+              enabled = isMissing && !isDownloading,
+            )
+          }
+          .stateIn(
+            scope,
+            SharingStarted.Eagerly,
+            DeviceAction.Presentation(label = "Download system image", icon = AllIcons.Actions.Download, enabled = false),
+          )
 
       override suspend fun repair() {
         val path = AvdManagerConnection.getRequiredSystemImagePath(avdInfo) ?: return
-        withContext(edtDispatcher) { SdkQuickfixUtils.createDialogForPaths(project, listOf(path))?.showAndGet() }
+        // The SDK Quickfix dialog presents the license agreements, the download progress and any errors. If the user sends it to the
+        // background, the install keeps running and keeps reporting its progress on the device.
+        withContext(edtDispatcher + ModalityState.any().asContextElement()) {
+          SdkQuickfixUtils.downloadPackages(project, listOf(path), backgroundable = true)
+        }
         refreshDevices()
       }
     }
@@ -377,7 +420,10 @@ class StudioLocalEmulatorDeviceHandle(
     RevealFileAction.openDirectory(avdInfo.dataFolderPath)
   }
 
+  override fun isDuplicateEnabled(): Boolean = state.isStopped()
+
   override fun duplicate(project: Project?, parent: Component?) {
+    if (!isDuplicateEnabled()) return
     EditVirtualDeviceDialog.show(project, parent, onDiskAvdInfo, Mode.DUPLICATE)
     refreshDevicesAsync()
   }
@@ -506,22 +552,44 @@ class StudioLocalEmulatorDeviceHandle(
       .ask(project)
 
   override fun isPairGlassesEnabled(): Boolean =
-    state.properties.deviceType == DeviceType.AI_GLASSES && !service<GlassesPairingLockService>().isWizardOpen.value
+    !service<GlassesPairingLockService>().isWizardOpen.value &&
+      when (val properties = state.properties) {
+        is LocalEmulatorProperties ->
+          properties.deviceType == DeviceType.AI_GLASSES ||
+            (properties.deviceType == DeviceType.HANDHELD && properties.isAiGlassesCompatible)
+        else -> false
+      }
 
   override suspend fun pairGlasses(parent: Component?, project: Project?): Boolean {
-    val glassesHandle = this@StudioLocalEmulatorDeviceHandle
-    logger.info("User initiated Glasses Pairing Wizard for ${glassesHandle.id}")
-    val result = withContext(edtDispatcher) { wizardProvider(parent, project, deviceHandleFlow, glassesHandle) }
+    val isGlasses = state.properties.deviceType == DeviceType.AI_GLASSES
+    val glassesParam = if (isGlasses) this else null
+    val phoneParam = if (isGlasses) null else this
+    logger.info("User initiated Glasses Pairing Wizard for $id")
+    val result = withContext(edtDispatcher) { wizardProvider(parent, project, deviceHandleFlow, glassesParam, phoneParam) }
 
     if (result != null) {
       val pairedPhone = result.phone as? StudioLocalEmulatorDeviceHandle
+      val pairedGlasses = result.glasses as? StudioLocalEmulatorDeviceHandle
       val mac = result.glassesMacAddress
-      if (pairedPhone != null) {
+      if (pairedPhone != null && pairedGlasses != null) {
         try {
           withContext(ioDispatcher) {
-            glassesHandle.updatePairedPhone(pairedPhone)
-            pairedPhone.addPairedGlasses(glassesHandle.id, mac)
-            logger.info("Successfully paired glasses ${glassesHandle.id} with phone ${pairedPhone.id}")
+            pairedPhone.addPairedGlasses(pairedGlasses.id, mac)
+            pairedGlasses.updatePairedPhone(pairedPhone)
+            refreshDevices()
+            logger.info("Successfully paired glasses ${pairedGlasses.id} with phone ${pairedPhone.id}")
+          }
+          // Wait for the pairing status to update, then show the devices side by side.
+          scope.launch {
+            withTimeoutOrNull(5.seconds) {
+              pairedPhone.stateFlow.first { state -> state.properties.pairedGlassesInfos.any { it.id == pairedGlasses.id } }
+              pairedGlasses.stateFlow.first { it.properties.pairedPhoneId == pairedPhone.id }
+            }
+            withContext(edtDispatcher) {
+              if (project?.isDisposed == false) {
+                project.userInvolvementRequired(pairedGlasses, pairedPhone)
+              }
+            }
           }
         } catch (e: IOException) {
           logger.warn("Failed to write pairing config", e)
@@ -547,17 +615,22 @@ class StudioLocalEmulatorDeviceHandle(
     GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.UNPAIR_ACTION_CLICKED)
     val properties = state.properties
     val phoneId = properties.pairedPhoneId
+    val glassesId = this.id
 
     val phoneHandle = phoneId?.let { id -> deviceHandleFlow.value.find { it.id == id } }
-
-    // 1. If Phone is Online, send UNPAIR broadcast
-    if (phoneHandle != null) {
+    // Multi-tier MAC resolution: if the phone's host .ini lacks the glasses MAC, query the
+    // live glasses AVD directly via getBluetoothAddress() so the IDE can construct and dispatch
+    // the targeted UNPAIR broadcast intent to the companion app running on the phone.
+    val glassesMac =
+      phoneHandle?.state?.properties?.pairedGlassesInfos?.find { it.id == glassesId }?.mac
+        ?: state.connectedDevice?.let { dev -> with(AiGlassesPairing(dev.session)) { dev.getBluetoothAddress() } }
+    if (phoneHandle != null && glassesMac != null) {
       val phoneDevice = phoneHandle.state.connectedDevice
       if (phoneDevice != null) {
         try {
           val adbSession = phoneDevice.session
           val pairing = AiGlassesPairing(adbSession)
-          withContext(ioDispatcher) { with(pairing) { phoneDevice.sendUnpairCommand() } }
+          withContext(ioDispatcher) { with(pairing) { phoneDevice.sendUnpairCommand(glassesMac) } }
         } catch (e: CancellationException) {
           throw e
         } catch (e: ShellCommandException) {
@@ -639,3 +712,10 @@ class StudioLocalEmulatorDeviceHandle(
     it.isStopped() && it.error?.severity != DeviceError.Severity.ERROR
   }
 }
+
+/** How a system image install in each phase is described on the device it belongs to. */
+private fun SdkDownloadState.InProgress.systemImageMessage() =
+  when (this) {
+    SdkDownloadState.Downloading -> "Downloading system image..."
+    SdkDownloadState.Installing -> "Installing system image..."
+  }

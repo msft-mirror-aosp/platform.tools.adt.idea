@@ -35,12 +35,12 @@ import org.junit.Assert.assertThat
  * information is not available in the mode. There should be no change in the resulting dependency tree apart from where the information is
  * being obtained from.
  */
-@OldAgpTest(agpVersions = ["7.1.0"], gradleVersions = ["7.2"])
+@OldAgpTest(agpVersions = ["7.2.0"], gradleVersions = ["7.3.3"])
 @RunsInEdt
 class OldAgpResolvedDependenciesTreeRootNodeTest : ResolvedDependenciesTreeRootNodeTest() {
   override fun testTreeStructure() {
     val preparedProject =
-      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_DEPENDENCY, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_71)
+      projectRule.prepareTestProject(AndroidCoreTestProject.PSD_DEPENDENCY, agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_72)
     projectRule.psTestWithProject(preparedProject) { project.runOldAgpTestAndroidTreeStructure() }
   }
 

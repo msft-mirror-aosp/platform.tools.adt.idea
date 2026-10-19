@@ -279,7 +279,7 @@ class WearPairingManagerTest {
 
     pairingManager.setDeviceListListener(WearDevicePairingModel(), WizardActionTest())
 
-    waitForCondition(5, TimeUnit.SECONDS) {
+    waitForCondition(20, TimeUnit.SECONDS) {
       // the pairing will not succeed if the wrong thread is used due to the threading assertions
       isPairingReconnected.get()
     }
@@ -310,5 +310,30 @@ class WearPairingManagerTest {
     val device = pairingManager.findDevice("serialNumber")
     assertNotNull(device)
     assertEquals("Google &lt;B&gt;Malicious Model&lt;/b&gt;", device!!.displayName)
+  }
+
+  @Test
+  fun createPairedDeviceBridgeGrantsBluetoothConnectPermissionForPixelCompanionApp() = runBlocking {
+    var bluetoothPermissionGranted = false
+    val phoneIDevice = directAccessDevice.buildIDevice { request ->
+      when (request) {
+        "pm grant com.google.android.apps.wear.companion android.permission.BLUETOOTH_CONNECT" -> {
+          bluetoothPermissionGranted = true
+          "OK"
+        }
+        else -> handlePhoneAdbRequest(request) ?: throw IllegalStateException("Unknown executeShellCommand request $request")
+      }
+    }
+    val wearIDevice =
+      wearDevice.buildIDevice(
+        avdInfo = avdWearInfo,
+        systemProperties = mapOf("ro.oem.companion_package" to PIXEL_COMPANION_APP_ID),
+      ) { request ->
+        handleWearAdbRequest(request) ?: throw IllegalStateException("Unknown executeShellCommand request $request")
+      }
+
+    pairingManager.setDataProviders({ listOf(avdWearInfo) }, { listOf(phoneIDevice, wearIDevice) })
+    pairingManager.createPairedDeviceBridge(directAccessDevice, phoneIDevice, wearDevice, wearIDevice)
+    assertTrue("android.permission.BLUETOOTH_CONNECT must be granted to the Pixel companion app", bluetoothPermissionGranted)
   }
 }

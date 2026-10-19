@@ -79,7 +79,14 @@ class NlLayoutScanner(surface: NlDesignSurface, parent: Disposable) : Disposable
 
   /** Validate the layout and update the lint accordingly. */
   override fun validateAndUpdateLint(results: Map<LayoutlibSceneManager, RenderResult>) {
-    lintIntegrator.clear()
+    if (results.isEmpty()) {
+      lintIntegrator.clear()
+      return
+    }
+    // Defer clearing existing lint issues until we find a render result with a valid hierarchy to validate.
+    // If a subsequent render does not run layout validation (e.g. non-inflating render where scanner is disabled),
+    // we want to preserve previously detected issues rather than wiping them out.
+    var cleared = false
     results.forEach { (manager, renderResult) ->
       if (!manager.sceneRenderConfiguration.layoutScannerConfig.isIntegrateWithDefaultIssuePanel) {
         return@forEach
@@ -91,7 +98,18 @@ class NlLayoutScanner(surface: NlDesignSurface, parent: Disposable) : Disposable
             listeners.forEach { it.lintUpdated(null) }
             return@forEach
           }
-          updateLint(LayoutValidator.validate(validatorResult), manager.model)
+          if (!cleared) {
+            lintIntegrator.clear()
+            cleared = true
+          }
+          val validated = LayoutValidator.validate(validatorResult)
+          // Mark the ValidatorHierarchy as consumed by nulling out mView (which makes isHierarchyBuilt
+          // return false). RenderSessionImpl reuses the same ValidatorHierarchy instance across
+          // subsequent non-inflating renders when scanner is disabled; without clearing mView, subsequent
+          // passes or repeated updateErrorDisplay calls would re-validate the stale hierarchy without
+          // screenshots (mParameters was consumed during validate) and duplicate issues in mBuilder.mIssues.
+          validatorResult.mView = null
+          updateLint(validated, manager.model)
         }
         else -> {
           // Result not available.

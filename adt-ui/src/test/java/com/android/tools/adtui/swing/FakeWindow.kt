@@ -20,6 +20,8 @@ import com.android.mockito.kotlin.whenever
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.ReflectionUtil
+import com.intellij.util.ui.JBUI
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
@@ -34,12 +36,12 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 
-internal inline fun <reified T : Window> createFakeWindow(root: JComponent, parentDisposable: Disposable?): T {
+internal inline fun <reified T : Window> createFakeWindow(root: JComponent, parentDisposable: Disposable): T {
   // A mock is used here because in a headless environment it is not possible to instantiate
   // Window or any of its subclasses due to checks in the Window constructor.
   val mockWindow = mock(T::class.java)
   wrapInFakeWindow(mockWindow, root, parentDisposable)
-  parentDisposable?.addWindow(mockWindow)
+  parentDisposable.addWindow(mockWindow)
   return mockWindow
 }
 
@@ -51,13 +53,56 @@ private fun wrapInFakeWindow(mockWindow: Window, root: JComponent, parentDisposa
   whenever(mockWindow.isShowing).thenReturn(true)
   whenever(mockWindow.isActive).thenReturn(true)
   whenever(mockWindow.isVisible).thenReturn(true)
+  // We also set the 'visible' field itself because it is used by isRecursivelyVisible(), a non-mockable package-private method.
+  check(ReflectionUtil.setField(Window::class.java, mockWindow, Boolean::class.java, "visible", true))
+  ReflectionUtil.findField(Window::class.java, null, "appContext").let { field ->
+    val appContext = Class.forName("sun.awt.AppContext").getMethod("getAppContext").invoke(null)
+    field.isAccessible = true
+    field.set(mockWindow, appContext)
+  }
   whenever(mockWindow.isEnabled).thenReturn(true)
   whenever(mockWindow.isLightweight).thenReturn(true)
   whenever(mockWindow.isFocusableWindow).thenReturn(true)
   whenever(mockWindow.locationOnScreen).thenReturn(Point(0, 0))
-  whenever(mockWindow.size).thenReturn(root.size)
-  whenever(mockWindow.bounds).thenReturn(Rectangle(0, 0, root.width, root.height))
-  whenever(mockWindow.maximumSize).thenReturn(Dimension(root.width, root.height))
+  whenever(mockWindow.insets).thenReturn(JBUI.emptyInsets())
+  whenever(mockWindow.size).thenAnswer { root.size }
+  whenever(mockWindow.width).thenAnswer { root.width }
+  whenever(mockWindow.height).thenAnswer { root.height }
+  whenever(mockWindow.bounds).thenAnswer { Rectangle(0, 0, root.width, root.height) }
+  whenever(mockWindow.maximumSize).thenAnswer { Dimension(root.width, root.height) }
+  var minimumSize = Dimension(0, 0)
+  whenever(mockWindow.minimumSize).thenAnswer { minimumSize }
+  doAnswer { invocation ->
+      minimumSize = invocation.getArgument(0)
+      null
+    }
+    .whenever(mockWindow)
+    .minimumSize = any()
+  doAnswer { invocation ->
+      val w = invocation.getArgument<Int>(0)
+      val h = invocation.getArgument<Int>(1)
+      root.setSize(w, h)
+      for (child in (root as? java.awt.Container)?.components.orEmpty()) {
+        child.setSize(w, h)
+      }
+      root.validate()
+      null
+    }
+    .whenever(mockWindow)
+    .setSize(anyInt(), anyInt())
+  doAnswer { invocation ->
+      val d = invocation.getArgument<Dimension>(0)
+      mockWindow.setSize(d.width, d.height)
+      null
+    }
+    .whenever(mockWindow)
+    .size = any()
+  doAnswer {
+      root.validate()
+      null
+    }
+    .whenever(mockWindow)
+    .validate()
   whenever(mockWindow.ownedWindows).thenReturn(emptyArray())
   whenever(mockWindow.isFocused).thenReturn(true)
   whenever(mockWindow.getFocusTraversalKeys(anyInt())).thenCallRealMethod()
@@ -77,7 +122,12 @@ private fun wrapInFakeWindow(mockWindow: Window, root: JComponent, parentDisposa
   ComponentAccessor.setParent(root, mockWindow)
   root.addNotify()
   if (parentDisposable != null) {
-    Disposer.register(parentDisposable) { runInEdtAndWait { root.removeNotify() } }
+    Disposer.register(parentDisposable) {
+      runInEdtAndWait {
+        ComponentAccessor.setParent(root, null)
+        root.removeNotify()
+      }
+    }
   }
 }
 

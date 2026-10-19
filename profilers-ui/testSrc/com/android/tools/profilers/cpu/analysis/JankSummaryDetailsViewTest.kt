@@ -26,16 +26,22 @@ import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
 import com.android.tools.profilers.cpu.systemtrace.RenderSequence
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceCpuCapture
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.awt.Component
 import javax.swing.JLabel
 import javax.swing.JTable
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 import perfetto.protos.PerfettoTrace
 
+@RunsInEdt
 class JankSummaryDetailsViewTest {
+  @get:Rule val myEdtRule = EdtRule()
+
   @Test
   fun `jank summary view gets basic content right`() {
     fun isCollapsibleTable(title: String): (Component) -> Boolean = { panel ->

@@ -85,7 +85,7 @@ class CommonNlDesignSurfacePreviewViewTest {
             size = Dimension(1000, 800)
             add(previewView.component, BorderLayout.CENTER)
           },
-          true,
+          parentDisposable = fixture.testRootDisposable,
         )
       fakeUi.root.validate()
     }

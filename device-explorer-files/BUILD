@@ -36,7 +36,6 @@ iml_module(
     test_class = "com.android.tools.idea.device.explorer.files.DeviceExplorerTestSuite",
     # keep sorted
     test_data = [
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/testData",
@@ -62,6 +61,8 @@ iml_module(
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+        "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

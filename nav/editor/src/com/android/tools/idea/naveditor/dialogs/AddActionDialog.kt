@@ -99,6 +99,7 @@ open class AddActionDialog(
   private val parent: NlComponent,
   // open for testing
   open val invocationSite: NavEditorEvent.Source,
+  private val actionDialogData: ActionDialogData? = null,
 ) : DialogWrapper(false) {
 
   private var previousPopTo: DestinationListEntry? = null
@@ -238,7 +239,7 @@ open class AddActionDialog(
   }
 
   private fun populateComboBox(comboBox: JComboBox<DestinationListEntry>, filter: (NlComponent) -> Boolean) {
-    val visibleDestinations = parent.visibleDestinations
+    val visibleDestinations = actionDialogData?.visibleDestinations ?: parent.visibleDestinations
 
     parent.parentSequence().forEach {
       comboBox.addItem(if (it.isNavigation) DestinationListEntry.Parent(it) else DestinationListEntry(it))
@@ -387,13 +388,17 @@ open class AddActionDialog(
 
       component ?: return@ActionListener
 
-      if (repoManager != null) {
-        getAnimatorsPopupContent(repoManager, component.isFragment).forEach { item ->
-          dialog.myEnterComboBox.addItem(item)
-          dialog.myExitComboBox.addItem(item)
-          dialog.myPopEnterComboBox.addItem(item)
-          dialog.myPopExitComboBox.addItem(item)
+      val animators =
+        when {
+          actionDialogData != null -> actionDialogData.getAnimators(component.isFragment)
+          repoManager != null -> getAnimatorsPopupContent(repoManager, component.isFragment)
+          else -> emptyList()
         }
+      animators.forEach { item ->
+        dialog.myEnterComboBox.addItem(item)
+        dialog.myExitComboBox.addItem(item)
+        dialog.myPopEnterComboBox.addItem(item)
+        dialog.myPopExitComboBox.addItem(item)
       }
     }
 

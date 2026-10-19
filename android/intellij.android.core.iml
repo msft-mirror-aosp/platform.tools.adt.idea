@@ -72,7 +72,6 @@
     <orderEntry type="module" module-name="intellij.android.wizardTemplate.plugin" />
     <orderEntry type="module" module-name="intellij.lint" />
     <orderEntry type="library" name="test-result-proto" level="project" />
-    <orderEntry type="library" name="android-test-plugin-host-device-info-proto" level="project" />
     <orderEntry type="library" name="android-core-proto" level="project" />
     <orderEntry type="module" module-name="android.sdktools.zipflinger" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" />
@@ -98,15 +97,7 @@
     <orderEntry type="module" module-name="intellij.android.execution.common" />
     <orderEntry type="module" module-name="android.sdktools.process-monitor" />
     <orderEntry type="module" module-name="intellij.android.render-resources" />
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar://$MODULE_DIR$/../../../../prebuilts/r8/r8.jar!/" />
-        </CLASSES>
-        <JAVADOC />
-        <SOURCES />
-      </library>
-    </orderEntry>
+    <orderEntry type="library" name="r8" level="project" />
     <orderEntry type="module" module-name="intellij.android.rendering" />
     <orderEntry type="module" module-name="intellij.android.preview-elements" />
     <orderEntry type="module" module-name="intellij.android.environment-services" />
@@ -130,16 +121,15 @@
     <orderEntry type="library" name="studio-plugin-intellij.java.execution.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.debugger" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl.backend" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.platform.debugger.impl.backend" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.platform.debugger.impl.frontend" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.platform.images.xdebugger" level="project" />
-    <orderEntry type="library" name="studio-plugin-intellij.java.debugger.impl.frontend" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.smRunner" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.testRunner" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.ui" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.analysis" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.xml.emmet" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.compiler" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.compiler.impl" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.diagnostic.freezeAnalyzer" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.platform.structureView" level="project" />
+    <orderEntry type="library" name="studio-plugin-intellij.xml.structureView" level="project" />
   </component>
 </module>

@@ -29,9 +29,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootEvent
 import com.intellij.openapi.roots.ModuleRootListener
 import com.intellij.openapi.roots.ModuleRootManager
+import java.io.File
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.VisibleForTesting
-import org.jetbrains.kotlin.konan.file.File
 
 @Service
 class GradleModuleHierarchyProvider @VisibleForTesting constructor(private val project: Project) {

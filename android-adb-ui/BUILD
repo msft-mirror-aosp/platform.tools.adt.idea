@@ -5,6 +5,7 @@ iml_module(
     name = "intellij.android.adb.ui",
     srcs = ["src"],
     iml_files = ["intellij.android.adb.ui.iml"],
+    lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
@@ -67,6 +68,9 @@ iml_module(
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/android:intellij.android.core",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+        "//tools/base/adblib-tools:studio.android.sdktools.adblib.tools.tests",
     ],
     test_friends = ["//tools/adt/idea/android-adb-ui:intellij.android.adb.ui"],
     test_srcs = ["testSrc"],

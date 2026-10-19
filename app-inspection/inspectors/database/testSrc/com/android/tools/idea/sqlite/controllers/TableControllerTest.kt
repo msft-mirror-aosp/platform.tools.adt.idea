@@ -49,6 +49,7 @@ import com.android.tools.idea.sqlite.ui.tableView.OrderBy
 import com.android.tools.idea.sqlite.ui.tableView.RowDiffOperation
 import com.android.tools.idea.sqlite.ui.tableView.ViewColumn
 import com.android.tools.idea.sqlite.utils.SqliteTestUtil
+import com.android.tools.idea.sqlite.utils.edtSequencedWorkerExecutor
 import com.android.tools.idea.sqlite.utils.getJdbcDatabaseConnection
 import com.android.tools.idea.sqlite.utils.toSqliteValues
 import com.android.tools.idea.sqlite.utils.toViewColumn
@@ -134,7 +135,7 @@ class TableControllerTest {
   private val projectRule = ProjectRule()
   private val disposableRule = DisposableRule()
 
-  @get:Rule val rule = RuleChain(projectRule, disposableRule, EdtRule())
+  @get:Rule val rule = RuleChain(projectRule, EdtRule(), disposableRule)
 
   private val project
     get() = projectRule.project
@@ -155,7 +156,7 @@ class TableControllerTest {
       getJdbcDatabaseConnection(
         disposable,
         sqliteUtil.createTestSqliteDatabase(),
-        FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()),
+        edtSequencedWorkerExecutor,
       )
     )
   }
@@ -1796,9 +1797,7 @@ class TableControllerTest {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "tableName", listOf("c1", "_rowid_", "rowid", "oid"))
     customDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(disposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(disposable, customSqliteFile, edtSequencedWorkerExecutor))
     val customDatabaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(customDatabaseId, customDatabaseConnection!!) }
 
@@ -1857,9 +1856,7 @@ class TableControllerTest {
     val customSqliteFile =
       sqliteUtil.createAdHocSqliteDatabase(createStatement = "CREATE TABLE t1 (c1 INT)", insertStatement = "INSERT INTO t1 (c1) VALUES (1)")
     customDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(disposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(disposable, customSqliteFile, edtSequencedWorkerExecutor))
     val customDatabaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(customDatabaseId, customDatabaseConnection!!) }
 
@@ -2059,9 +2056,7 @@ class TableControllerTest {
     val customSqliteFile =
       sqliteUtil.createAdHocSqliteDatabase(createStatement = "CREATE TABLE t1 (c1 INT)", insertStatement = "INSERT INTO t1 (c1) VALUES (1)")
     customDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(disposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(disposable, customSqliteFile, edtSequencedWorkerExecutor))
     val customDatabaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(customDatabaseId, customDatabaseConnection!!) }
 
@@ -2115,9 +2110,7 @@ class TableControllerTest {
         insertStatement = "INSERT INTO t1 (c1) VALUES (42)",
       )
     customDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(disposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(disposable, customSqliteFile, edtSequencedWorkerExecutor))
     val customDatabaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(customDatabaseId, customDatabaseConnection!!) }
 
@@ -2178,9 +2171,7 @@ class TableControllerTest {
     val customSqliteFile =
       sqliteUtil.createAdHocSqliteDatabase(createStatement = "CREATE TABLE t1 (c1 INT)", insertStatement = "INSERT INTO t1 (c1) VALUES (1)")
     customDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(disposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(disposable, customSqliteFile, edtSequencedWorkerExecutor))
     val customDatabaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(customDatabaseId, customDatabaseConnection!!) }
 
@@ -2531,9 +2522,7 @@ class TableControllerTest {
         insertStatement = "INSERT INTO t1 (c1) VALUES (1)",
       )
     customDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(disposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+      pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(disposable, customSqliteFile, edtSequencedWorkerExecutor))
     val customDatabaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(customSqliteFile))
     runDispatching { databaseRepository.addDatabaseConnection(customDatabaseId, customDatabaseConnection!!) }
 
@@ -2713,10 +2702,7 @@ class TableControllerTest {
     expectedSqliteStatement: String,
   ) {
     // Prepare
-    customDatabaseConnection =
-      pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(disposable, databaseFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
-      )
+    customDatabaseConnection = pumpEventsAndWaitForFuture(getJdbcDatabaseConnection(disposable, databaseFile, edtSequencedWorkerExecutor))
     val databaseConnectionWrapper = DatabaseConnectionWrapper(customDatabaseConnection!!)
 
     val customDatabaseId = SqliteDatabaseId.fromFileDatabase(DatabaseFileData(databaseFile))

@@ -27,7 +27,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.LightPlatformTestCase
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
-import com.intellij.util.concurrency.EdtExecutorService
+import org.jetbrains.ide.PooledThreadExecutor
 
 class JdbcSqliteResultSetTest : LightPlatformTestCase() {
   private lateinit var sqliteUtil: SqliteTestUtil
@@ -60,7 +60,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
       )
     customConnection =
       pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
+        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(PooledThreadExecutor.INSTANCE))
       )
 
     // Act
@@ -81,7 +81,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
       sqliteUtil.createAdHocSqliteDatabase(createStatement = "CREATE TABLE t1 (c1 INT)", insertStatement = "INSERT INTO t1 (c1) VALUES (1)")
     customConnection =
       pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
+        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(PooledThreadExecutor.INSTANCE))
       )
 
     // Act
@@ -102,7 +102,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
       sqliteUtil.createAdHocSqliteDatabase(createStatement = "CREATE TABLE t1 (c1 INT)", insertStatement = "INSERT INTO t1 (c1) VALUES (1)")
     customConnection =
       pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
+        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(PooledThreadExecutor.INSTANCE))
       )
 
     // Act
@@ -129,7 +129,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
       )
     customConnection =
       pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
+        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(PooledThreadExecutor.INSTANCE))
       )
 
     // Act
@@ -147,7 +147,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
       )
     customConnection =
       pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
+        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(PooledThreadExecutor.INSTANCE))
       )
 
     // Act
@@ -165,7 +165,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
       )
     customConnection =
       pumpEventsAndWaitForFuture(
-        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(EdtExecutorService.getInstance()))
+        getJdbcDatabaseConnection(testRootDisposable, customSqliteFile, FutureCallbackExecutor.wrap(PooledThreadExecutor.INSTANCE))
       )
 
     // Act

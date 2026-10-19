@@ -17,9 +17,11 @@
 
 package com.android.tools.idea.common.actions
 
-import com.android.annotations.concurrency.UiThread
+import com.android.annotations.concurrency.AnyThread
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.wm.IdeFocusManager
+import com.intellij.util.ui.EDT
 import java.awt.event.KeyEvent
 import javax.swing.JTextField
 
@@ -27,7 +29,13 @@ import javax.swing.JTextField
  * Helper function to check if an action event is the key event is from JTextField. In such case we may not process the event. For example,
  * if the shortcut of an Action is a single key stroke, the action will be performed when user is typing the text.
  */
-@UiThread
+@AnyThread
 fun isActionEventFromJTextField(event: AnActionEvent): Boolean {
-  return event.inputEvent is KeyEvent && IdeFocusManager.findInstanceByContext(event.dataContext).focusOwner is JTextField
+  val keyEvent = event.inputEvent as? KeyEvent ?: return false
+  if (keyEvent.source is JTextField) return true
+  val contextComponent = PlatformCoreDataKeys.CONTEXT_COMPONENT.getData(event.dataContext)
+  if (contextComponent != null) return contextComponent is JTextField
+  if (!EDT.isCurrentThreadEdt()) return false
+  val focusOwner = IdeFocusManager.findInstanceByContext(event.dataContext).focusOwner
+  return focusOwner is JTextField
 }

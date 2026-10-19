@@ -20,23 +20,33 @@ import static com.android.tools.idea.profilers.profilingconfig.CpuProfilerConfig
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.Client;
 import com.android.ddmlib.IDevice;
+import com.android.ide.common.repository.GoogleMavenArtifactId;
 import com.android.tools.idea.codenavigation.CodeNavigator;
 import com.android.tools.idea.codenavigation.IntelliJNavSource;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.profilers.analytics.StudioFeatureTracker;
+import com.android.tools.idea.profilers.capture.unified.ProfilerVirtualFile;
+import com.android.tools.idea.profilers.capture.unified.UnifiedProfilerFileEditor;
 import com.android.tools.idea.profilers.leakcanary.LeakCanaryAiHandler;
+import com.android.tools.idea.profilers.perfetto.traceconv.TraceconvBundler;
 import com.android.tools.idea.profilers.perfetto.traceprocessor.TraceProcessorServiceImpl;
 import com.android.tools.idea.profilers.profilingconfig.CpuProfilerConfigConverter;
 import com.android.tools.idea.profilers.stacktrace.IntelliJNativeFrameSymbolizer;
 import com.android.tools.idea.project.AndroidNotification;
 import com.android.tools.idea.project.hyperlink.NotificationHyperlink;
+import com.android.tools.idea.projectsystem.AndroidModuleSystem;
+import com.android.tools.idea.projectsystem.DependencyType;
+import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
+import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.projectsystem.RegisteredDependencyId;
 import com.android.tools.idea.projectsystem.RegisteredDependencyQueryId;
+import com.android.tools.idea.projectsystem.RegisteringModuleSystem;
 import com.android.tools.idea.run.AndroidRunConfigurationBase;
 import com.android.tools.idea.run.editor.ProfilerState;
 import com.android.tools.idea.run.profiler.CpuProfilerConfig;
 import com.android.tools.idea.run.profiler.CpuProfilerConfigsState;
+import com.android.tools.idea.util.DependencyConfirmationDialog;
 import com.android.tools.leakcanarylib.data.Leak;
 import com.android.tools.nativeSymbolizer.NativeSymbolizer;
 import com.android.tools.nativeSymbolizer.NativeSymbolizerKt;
@@ -55,32 +65,33 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.execution.RunManager;
-import kotlinx.coroutines.flow.Flow;
 import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.impl.EditConfigurationsDialog;
 import com.intellij.ide.BrowserUtil;
+import com.intellij.ide.actions.RevealFileAction;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectManager;
-import com.intellij.openapi.progress.ProgressManager;
-import com.intellij.openapi.progress.Task;
-import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProcessCanceledException;
-import com.intellij.openapi.application.ModalityState;
-import com.intellij.openapi.util.Computable;
-import com.android.tools.idea.projectsystem.RegisteredDependencyCompatibilityResult;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.ui.DialogWrapper;
 import com.intellij.openapi.ui.DoNotAskOption;
 import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -92,22 +103,13 @@ import com.intellij.util.Query;
 import com.intellij.util.containers.ContainerUtil;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
-import com.android.ide.common.gradle.Dependency;
-import com.android.ide.common.repository.GoogleMavenArtifactId;
-import com.android.tools.idea.projectsystem.AndroidModuleSystem;
-import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
-import com.android.tools.idea.projectsystem.ProjectSystemUtil;
-import com.android.tools.idea.projectsystem.RegisteringModuleSystem;
-import com.android.tools.idea.projectsystem.DependencyType;
-import com.android.tools.idea.util.DependencyConfirmationDialog;
-import com.intellij.openapi.module.Module;
-import com.intellij.openapi.command.WriteCommandAction;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
@@ -116,11 +118,15 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.swing.SwingUtilities;
+import kotlinx.coroutines.flow.Flow;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
 
 public class IntellijProfilerServices implements IdeProfilerServices, Disposable {
+
+  /** Stable identifier for the "reveal in file manager" hyperlink shown in the export success notification. */
+  @VisibleForTesting static final String REVEAL_FILE_HYPERLINK_ID = "reveal.file";
 
   private static Logger getLogger() {
     return Logger.getInstance(IntellijProfilerServices.class);
@@ -135,15 +141,33 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   @NotNull private final IntellijProfilerPreferences myPersistentPreferences;
   @NotNull private final TemporaryProfilerPreferences myTemporaryPreferences;
 
+  /** Warning shown when no stable studio-leakcanary version is found. */
+  @VisibleForTesting
+  static final String LEAKCANARY_VERSION_NOT_RESOLVED_MESSAGE =
+    "Couldn't find a stable version of " + GoogleMavenArtifactId.LEAKCANARY + " in the project's repositories. " +
+    "Check your connection and repository settings, then try again.";
+
+  /** Turns a dependency's '+' id into a real version. */
+  @NotNull private final DependencyVersionResolver myDependencyVersionResolver;
+
   public IntellijProfilerServices(@NotNull Project project,
                                   @NotNull SymbolFilesLocator symbolLocator) {
+    this(project, symbolLocator, new DependencyVersionResolver());
+  }
+
+  @VisibleForTesting
+  IntellijProfilerServices(@NotNull Project project,
+                           @NotNull SymbolFilesLocator symbolLocator,
+                           @NotNull DependencyVersionResolver dependencyVersionResolver) {
     myProject = project;
     myFeatureTracker = new StudioFeatureTracker(myProject);
 
     mySymbolLocator = symbolLocator;
+    myDependencyVersionResolver = dependencyVersionResolver;
 
     NativeSymbolizer nativeSymbolizer = NativeSymbolizerKt.createNativeSymbolizer(mySymbolLocator);
     Disposer.register(this, nativeSymbolizer::stop);
+    Disposer.register(this, myDependencyVersionResolver);
     myNativeSymbolizer = new IntelliJNativeFrameSymbolizer(nativeSymbolizer);
     myPersistentPreferences = new IntellijProfilerPreferences();
     myTemporaryPreferences = new TemporaryProfilerPreferences();
@@ -184,33 +208,76 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   @Override
   public void saveFile(@NotNull File file, @NotNull Consumer<FileOutputStream> fileOutputStreamConsumer, @Nullable Runnable postRunnable) {
     File parentDir = file.getParentFile();
-    if (!parentDir.exists()) {
-      //noinspection ResultOfMethodCallIgnored
-      parentDir.mkdirs();
-    }
-    if (!file.exists()) {
-      try {
-        if (!file.createNewFile()) {
-          getLogger().error("Could not create new file at: " + file.getPath());
-          return;
-        }
-      }
-      catch (IOException e) {
-        getLogger().error(e);
-      }
+    // Re-check isDirectory() after mkdirs() so that a directory created concurrently by another thread is not treated as a failure.
+    if (parentDir != null && !parentDir.isDirectory() && !parentDir.mkdirs() && !parentDir.isDirectory()) {
+      getLogger().warn("Could not create parent directory at: " + parentDir.getPath());
+      showExportErrorNotification("Could not create directory: " + StringUtil.escapeXmlEntities(parentDir.getPath()));
+      return;
     }
 
     try (FileOutputStream fos = new FileOutputStream(file)) {
       fileOutputStreamConsumer.accept(fos);
     }
-    catch (IOException e) {
-      getLogger().error(e);
+    catch (ProcessCanceledException pce) {
+      throw pce;
+    }
+    catch (Exception e) {
+      if (e instanceof CancellationException || e.getCause() instanceof ProcessCanceledException) {
+        getLogger().info("Export cancelled for: " + file.getPath());
+        return;
+      }
+      getLogger().warn("Failed to export recording to: " + file.getPath(), e);
+      // Opening the stream already truncated any previous content, so remove the empty or partially written file.
+      FileUtil.delete(file);
+      String errorMsg = e.getLocalizedMessage();
+      String suffix = StringUtil.isNotEmpty(errorMsg) ? ": " + StringUtil.escapeXmlEntities(errorMsg) : "";
+      showExportErrorNotification("Failed to export recording to " + StringUtil.escapeXmlEntities(file.getName()) + suffix);
+      return;
     }
 
     VirtualFile virtualFile = VfsUtil.findFileByIoFile(file, true);
     if (virtualFile != null) {
       virtualFile.refresh(true, false, postRunnable);
     }
+
+    getLogger().info("Successfully exported recording to: " + file.getPath());
+    showExportSuccessNotification(file);
+  }
+
+  private void showExportSuccessNotification(@NotNull File file) {
+    // The balloon content is rendered as HTML, so any dynamic text has to be escaped.
+    String message = "Exported recording to " + StringUtil.escapeXmlEntities(file.getName());
+    if (RevealFileAction.isSupported()) {
+      AndroidNotification.getInstance(myProject)
+        .showBalloon("Export Successful", message, NotificationType.INFORMATION, AndroidNotification.BALLOON_GROUP, true,
+                     createRevealHyperlink(file));
+    }
+    else {
+      AndroidNotification.getInstance(myProject)
+        .showBalloon("Export Successful", message, NotificationType.INFORMATION, AndroidNotification.BALLOON_GROUP);
+    }
+  }
+
+  /**
+   * Creates the hyperlink that reveals {@code file} in the platform file manager.
+   *
+   * <p>The hyperlink is identified by a stable id rather than the file path, because the id is embedded into an HTML href and compared
+   * back verbatim by {@link com.android.tools.idea.ui.CustomNotificationListener}.
+   */
+  @VisibleForTesting
+  @NotNull
+  NotificationHyperlink createRevealHyperlink(@NotNull File file) {
+    return new NotificationHyperlink(REVEAL_FILE_HYPERLINK_ID, RevealFileAction.getActionName()) {
+      @Override
+      protected void execute(@NotNull Project project) {
+        RevealFileAction.openFile(file);
+      }
+    };
+  }
+
+  private void showExportErrorNotification(@NotNull String message) {
+    AndroidNotification.getInstance(myProject)
+      .showBalloon("Export Failed", message, NotificationType.ERROR, AndroidNotification.BALLOON_GROUP);
   }
 
   /**
@@ -442,7 +509,7 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   public void closeTaskTab(@NotNull ProfilerTaskType taskType) {
     // used by unifiedProfiler
     // Close the recording tab and show the preview in a new tab in the code editor space.
-    AndroidProfilerToolWindow profilerToolWindow = AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP.get(myProject);
+    AndroidProfilerToolWindow profilerToolWindow = AndroidProfilerToolWindowFactory.getProfilerToolWindow(myProject);
     if (profilerToolWindow != null) {
       profilerToolWindow.closeTaskTab(taskType);
     }
@@ -535,99 +602,19 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
                   (Computable<RegisteredDependencyId>) () -> registeringModuleSystem.getRegisteredDependencyId(artifact)
               );
 
-              // 3. Force the project system to analyze it. This safely resolves the '+' to a concrete version via the background index fetch!
-              ListenableFuture<RegisteredDependencyCompatibilityResult<RegisteredDependencyId>> compatibilityFuture =
-                  registeringModuleSystem.analyzeDependencyCompatibility(List.of(unresolvedId));
+              // 3. Turn '+' into a real version.
+              RegisteredDependencyId tempResolvedId = myDependencyVersionResolver.resolve(
+                DependencyVersionResolver.Key.of(module, artifact), unresolvedId,
+                () -> registeringModuleSystem.analyzeDependencyCompatibility(List.of(unresolvedId)), indicator);
 
-              RegisteredDependencyId tempResolvedId;
-              if (compatibilityFuture != null) {
-                RegisteredDependencyCompatibilityResult<RegisteredDependencyId> result;
-                try {
-                  final long timeoutSeconds = 10;
-                  final long pollIntervalMs = 100;
-
-                  long startTimeNs = System.nanoTime();
-                  long timeoutNs = TimeUnit.SECONDS.toNanos(timeoutSeconds);
-
-                  // Poll the future, allowing the user to cancel the progress bar
-                  while (!compatibilityFuture.isDone()) {
-                    indicator.checkCanceled();
-
-                    // Use a 10-second timeout to prevent hanging on bad network
-                    if (System.nanoTime() - startTimeNs > timeoutNs) {
-                      throw new TimeoutException("Compatibility analysis timed out after " + timeoutSeconds + " seconds.");
-                    }
-                    try {
-                      compatibilityFuture.get(pollIntervalMs, TimeUnit.MILLISECONDS);
-                    } catch (TimeoutException ignored) {
-                      // Expected during polling. Keep looping.
-                    }
-                  }
-                  result = compatibilityFuture.get();
-
-                  // 4. Extract the concrete, resolved ID if available
-                  if (result.getCompatible().containsKey(unresolvedId)) {
-                    tempResolvedId = result.getCompatible().get(unresolvedId);
-                    getLogger().info("Successfully resolved " + artifact + " to concrete version: " + tempResolvedId);
-                  } else {
-                    tempResolvedId = unresolvedId;
-                    getLogger().warn("Failed to resolve exact version for " + artifact + ". Falling back to dynamic version.");
-                  }
-                } catch (ProcessCanceledException pce) {
-                  // Handled correctly, complete future as false to safely abort the injection process
-                  compatibilityFuture.cancel(true);
-                  getLogger().info("User canceled dependency injection for " + artifact);
-                  future.complete(false);
-                  throw pce; // Rethrow to let IntelliJ ProgressManager know the task was canceled
-                } catch (TimeoutException timeoutEx) {
-                  compatibilityFuture.cancel(true);
-                  tempResolvedId = unresolvedId;
-                  getLogger().warn("Network timeout resolving " + artifact + ". Falling back to dynamic version.");
-                } catch (Exception ex) {
-                  compatibilityFuture.cancel(true);
-                  if (ex instanceof InterruptedException) {
-                    Thread.currentThread().interrupt(); // Restore interrupt status
-                  }
-                  tempResolvedId = unresolvedId;
-                  getLogger().warn("Exception resolving " + artifact + ". Falling back to dynamic version.", ex);
-                }
-              } else {
-                // Fallback for tests or unexpected mock behaviors where the future is null
-                tempResolvedId = unresolvedId;
-                getLogger().warn("Compatibility analysis returned null future. Falling back to dynamic version.");
+              // 4. LeakCanary needs a stable version like 1.0.0, never '+' or alpha.
+              // Other artifacts keep the '+' fallback on purpose.
+              if (artifact == GoogleMavenArtifactId.LEAKCANARY && !DependencyVersionResolver.isPinnedStableVersion(tempResolvedId)) {
+                abortLeakCanaryInjection(tempResolvedId, future);
+                return;
               }
 
-              RegisteredDependencyId finalResolvedId = tempResolvedId;
-
-              // Fallback to extract preview versions (e.g. alphas) specifically for LeakCanary since analyzeDependencyCompatibility filters them out.
-              // We restrict this reflection hack ONLY to the studio-leakcanary artifact to prevent breaking other generic ProjectSystem callers.
-              if (artifact == GoogleMavenArtifactId.LEAKCANARY && finalResolvedId.toString().endsWith(":+")) {
-                try {
-                  Class<?> repoManagerClass = Class.forName("com.android.tools.idea.gradle.repositories.RepositoryUrlManager");
-                  Object repoManager = repoManagerClass.getMethod("get").invoke(null);
-                  Object versionString = repoManagerClass.getMethod("getLibraryRevision", String.class, String.class, java.util.function.Predicate.class, boolean.class, java.nio.file.FileSystem.class)
-                      .invoke(repoManager, artifact.getMavenGroupId(), artifact.getMavenArtifactId(), null, true, java.nio.file.FileSystems.getDefault());
-
-                  if (versionString != null) {
-                    // Update both the UI string AND the backend injected ID to ensure they match (Addressing code review feedback)
-                    final String resolvedCoordinate = artifact.getMavenGroupId() + ":" + artifact.getMavenArtifactId() + ":" + versionString;
-                    try {
-                      Dependency dependencyObj = Dependency.parse(resolvedCoordinate);
-
-                      java.lang.reflect.Constructor<?> constructor = unresolvedId.getClass().getDeclaredConstructor(Dependency.class);
-                      constructor.setAccessible(true);
-                      finalResolvedId = (RegisteredDependencyId) constructor.newInstance(dependencyObj);
-                    } catch (Exception innerE) {
-                      getLogger().warn("Failed to reflectively create exact version for LeakCanary. Falling back to dynamic version.", innerE);
-                      finalResolvedId = unresolvedId;
-                    }
-                  }
-                } catch (Exception ignored) {
-                  // If reflection fails (e.g., method signature changes), silently swallow the exception and fall back to the '+' version.
-                }
-              }
-
-              final RegisteredDependencyId dependencyIdToInject = finalResolvedId;
+              final RegisteredDependencyId dependencyIdToInject = tempResolvedId;
               final String finalCoordinateForUi = dependencyIdToInject.toString();
 
               // 5. Safely inject the concrete version on the UI thread
@@ -669,6 +656,8 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
                 }
               }, ModalityState.defaultModalityState());
             } catch (ProcessCanceledException pce) {
+              // The user canceled. Stop and rethrow so the ProgressManager knows.
+              getLogger().info("User canceled dependency injection for " + artifact);
               future.complete(false);
               throw pce;
             } catch (Exception ex) {
@@ -696,6 +685,26 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
       future.complete(false);
     }
   }
+
+  /** Stops LeakCanary injection: no dialog, no build file change, shows a warning balloon. */
+  private void abortLeakCanaryInjection(@NotNull RegisteredDependencyId resolvedId, @NotNull CompletableFuture<Boolean> future) {
+    getLogger().warn("Could not resolve a stable version for " + GoogleMavenArtifactId.LEAKCANARY + " (resolved: " + resolvedId +
+                     "). Aborting dependency injection.");
+    ApplicationManager.getApplication().invokeLater(() -> {
+      if (!myProject.isDisposed()) {
+        AndroidNotification.getInstance(myProject).showBalloon(
+          "LeakCanary", LEAKCANARY_VERSION_NOT_RESOLVED_MESSAGE, NotificationType.WARNING);
+      }
+    });
+    future.complete(false);
+  }
+
+  @VisibleForTesting
+  @NotNull
+  DependencyVersionResolver getDependencyVersionResolver() {
+    return myDependencyVersionResolver;
+  }
+
   @VisibleForTesting
   protected boolean showConfirmationDialog(Module module, GoogleMavenArtifactId artifact, DependencyType dependencyType, @Nullable String resolvedCoordinate) {
     DependencyConfirmationDialog dialog = new DependencyConfirmationDialog(myProject, module, artifact, dependencyType, resolvedCoordinate);
@@ -827,11 +836,40 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   public Flow<String> fetchLeakInsight(@NotNull String rawTrace) {
     return LeakCanaryAiHandler.fetchLeakInsight(myProject, rawTrace);
   }
+
+  @Nullable
+  @Override
+  public String getProguardMappingForApp(@NotNull String deviceSerial, @NotNull String packageName) {
+    return ProfilerExecutionListener.getDeployedAppProguardMapping(myProject, deviceSerial, packageName);
+  }
+
+  @Override
+  public void showAiOnboarding() {
+    ProfilerAiUtils.showAiOnboarding(myProject);
+  }
+
+  @Override
+  public boolean isAiAvailable() {
+    return ProfilerAiUtils.isAiAvailable();
+  }
+
+  @Nullable
+  @Override
+  public File symbolizeAndDeobfuscateTrace(@NotNull File traceFile,
+                                          @NotNull List<String> symbolDirs,
+                                          @NotNull Map<String, String> proguardMaps) {
+    return TraceconvBundler.bundle(traceFile, symbolDirs, proguardMaps);
+  }
   /**
    * Implementation of {@link FeatureConfig} with values used in production.
    */
   @VisibleForTesting
   public static class FeatureConfigProd implements FeatureConfig {
+    @Override
+    public boolean isLeakCanaryOccurrencesEnabled() {
+      return StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.get();
+    }
+
     @Override
     public boolean isMemoryCSVExportEnabled() {
       return StudioFlags.PROFILER_MEMORY_CSV_EXPORT.get();
@@ -878,6 +916,21 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     }
 
     @Override
+    public boolean isLiveTelemetryInEditorEnabled() {
+      return StudioFlags.PROFILER_LIVE_TELEMETRY_IN_EDITOR.get();
+    }
+
+    @Override
+    public boolean isJavaKotlinAllocationsInEditorEnabled() {
+      return StudioFlags.PROFILER_JAVA_KOTLIN_ALLOCATIONS_IN_EDITOR.get();
+    }
+
+    @Override
+    public boolean isLeakCanaryInEditorEnabled() {
+      return StudioFlags.PROFILER_LEAKCANARY_IN_EDITOR.get();
+    }
+
+    @Override
     public boolean isTraceboxEnabled() {
       return StudioFlags.PROFILER_TRACEBOX.get();
     }
@@ -890,6 +943,11 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     @Override
     public boolean isLeakCanaryStudioBotEnabled() {
       return StudioFlags.PROFILER_LEAKCANARY_STUDIOBOT.get();
+    }
+
+    @Override
+    public boolean isUseTraceProcessorForHprofEnabled() {
+      return StudioFlags.PROFILER_USE_TRACEPROCESSOR_FOR_HPROF.get();
     }
 
     @Override
@@ -906,5 +964,51 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     public boolean isProfilerHomeTabV2Enabled() {
       return StudioFlags.PROFILER_HOME_TAB_V2.get();
     }
+
+    @Override
+    public boolean isDeobfuscationForNativeAllocationsEnabled() {
+      return StudioFlags.PROFILER_DEOBFUSCATION_FOR_NATIVE_ALLOCATIONS.get();
+    }
+  }
+
+  /**
+   * Returns the count of all active profiler file editor tabs currently open across all editor windows.
+   */
+  @Override
+  public int getProfilerTabsCount() {
+    if (myProject == null || myProject.isDisposed()) {
+      return 0;
+    }
+    FileEditorManager fileEditorManager = FileEditorManager.getInstance(myProject);
+    if (fileEditorManager == null) {
+      return 0;
+    }
+    int profilerTabsCount = 0;
+    for (FileEditor editor : fileEditorManager.getAllEditors()) {
+      if (editor instanceof UnifiedProfilerFileEditor) {
+        profilerTabsCount++;
+      }
+    }
+    return profilerTabsCount;
+  }
+
+  /**
+   * Returns true if there is an active editor tab open for a live profiling session.
+   */
+  @Override
+  public boolean getHasLiveProfilerTab() {
+    if (myProject == null || myProject.isDisposed()) {
+      return false;
+    }
+    FileEditorManager fileEditorManager = FileEditorManager.getInstance(myProject);
+    if (fileEditorManager == null) {
+      return false;
+    }
+    for (FileEditor editor : fileEditorManager.getAllEditors()) {
+      if (editor.getFile() instanceof ProfilerVirtualFile) {
+        return true;
+      }
+    }
+    return false;
   }
 }

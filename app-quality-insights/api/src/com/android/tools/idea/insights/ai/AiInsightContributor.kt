@@ -22,13 +22,15 @@ import kotlinx.coroutines.delay
 import org.jetbrains.annotations.TestOnly
 
 interface AiInsightContributor {
-  suspend fun fetchInsight(event: Event): AiInsight
+  suspend fun fetchInsight(project: Project, event: Event): AiInsight
 
   fun canContribute(): Boolean
 
   fun isModelAvailable(): Boolean
 
   fun showOnboarding(project: Project)
+
+  fun handleModelAssignment(project: Project)
 
   companion object {
     val EP_NAME = ExtensionPointName<AiInsightContributor>("com.android.tools.idea.insights.ai.aiInsightContributor")
@@ -46,7 +48,9 @@ class StubAiInsightContributor : AiInsightContributor {
 
   override fun showOnboarding(project: Project) = Unit
 
-  override suspend fun fetchInsight(event: Event): AiInsight {
+  override fun handleModelAssignment(project: Project) = Unit
+
+  override suspend fun fetchInsight(project: Project, event: Event): AiInsight {
     delay(2000)
     return AiInsight(rawInsight = "Fake insight for testing purposes.", event = event, insightSource = InsightSource.STUDIO_BOT)
   }

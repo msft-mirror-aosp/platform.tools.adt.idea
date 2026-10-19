@@ -30,12 +30,14 @@ import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.profiler.proto.Common
+import com.android.tools.profiler.proto.Memory
 import com.android.tools.profiler.proto.Trace
 import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.SessionArtifactUtils
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.memory.HprofSessionArtifact
 import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.taskbased.pastrecordings.PastRecordingsTabModel
 import com.android.tools.profilers.tasks.ProfilerTaskType
@@ -191,6 +193,30 @@ class TaskPastRecordingsTabTest {
 
     // Assert export button is enabled as a selection of an exportable artifact is made.
     composeTestRule.onNodeWithTag("ExportRecordingButton").assertIsEnabled()
+  }
+
+  @Test
+  fun `test exporting an imported heap dump offers the format it was imported as`() {
+    composeTestRule.setContent(darkMode = true) { TaskPastRecordingsTab(pastRecordingsTabModel, myComponents) }
+
+    // An imported recording is named after the file it came from, which here is a Perfetto heap graph rather than an ART HPROF.
+    val session = Common.Session.newBuilder().setSessionId(1L).build()
+    val sessionName = "dump.perfetto-java-heap-dump"
+    val heapDump =
+      HprofSessionArtifact(
+        myProfilers,
+        session,
+        Common.SessionMetaData.newBuilder().setSessionName(sessionName).build(),
+        Memory.HeapDumpInfo.newBuilder().setStartTime(1).setEndTime(2).build(),
+      )
+    val recording =
+      SessionArtifactUtils.createSessionItem(myProfilers, session, 1L, sessionName, ProfilerTaskType.HEAP_DUMP, listOf(heapDump))
+    pastRecordingsTabModel.recordingListModel.setRecordingList(listOf(recording))
+    composeTestRule.onAllNodesWithTag("RecordingListRow", useUnmergedTree = true)[0].performClick()
+
+    composeTestRule.onNodeWithTag("ExportRecordingButton").assertIsEnabled().performClick()
+
+    assertThat(myComponents.exportedExtension).isEqualTo("perfetto-java-heap-dump")
   }
 
   @Test

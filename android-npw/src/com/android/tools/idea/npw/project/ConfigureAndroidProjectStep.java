@@ -35,7 +35,6 @@ import com.android.tools.adtui.util.FormScalingUtil;
 import com.android.tools.adtui.validation.Validator;
 import com.android.tools.adtui.validation.ValidatorPanel;
 import com.android.tools.idea.flags.StudioFlags;
-import com.android.tools.idea.gemini.GeminiPluginApi;
 import com.android.tools.idea.gradle.plugin.AgpVersions;
 import com.android.tools.idea.gradle.project.GradleExperimentalSettings;
 import com.android.tools.idea.npw.model.AgpVersionSelector;
@@ -48,6 +47,7 @@ import com.android.tools.idea.npw.template.components.LanguageComboProvider;
 import com.android.tools.idea.npw.validator.ProjectNameValidator;
 import com.android.tools.idea.observable.BindingsManager;
 import com.android.tools.idea.observable.ListenerManager;
+import com.android.tools.idea.observable.ObservableValue;
 import com.android.tools.idea.observable.core.BoolProperty;
 import com.android.tools.idea.observable.core.BoolValueProperty;
 import com.android.tools.idea.observable.core.ObjectProperty;
@@ -79,6 +79,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.intellij.ide.BrowserUtil;
+import com.intellij.ide.HelpTooltip;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.progress.util.BackgroundTaskUtil;
@@ -88,7 +89,6 @@ import com.intellij.ui.ContextHelpLabel;
 import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
-import com.intellij.ui.components.JBLoadingPanel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.uiDesigner.core.Spacer;
 import com.intellij.util.ModalityUiUtil;
@@ -96,11 +96,11 @@ import com.intellij.util.containers.ContainerUtil;
 import com.intellij.util.ui.FormBuilder;
 import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.UIUtil;
-import icons.StudioIcons;
-import java.awt.BorderLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -108,14 +108,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
-import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
-import kotlin.Unit;
+import kotlin.Pair;
 import org.jetbrains.android.util.AndroidBundle;
 import org.jetbrains.android.util.AndroidUtils;
 import org.jetbrains.annotations.NotNull;
@@ -142,8 +142,6 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
   private JPanel myPanel;
   private TextFieldWithBrowseButton myProjectLocation;
   private JTextField myAppName;
-  private JPanel appNamePanel;
-  private JBLoadingPanel generateAppNamePanel;
 
   private JTextField myPackageName;
   private JComboBox<Language> myProjectLanguage;
@@ -159,6 +157,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
   private JComboBox myMinSdkCombo;
   private JComboBox<Object> myBuildConfigurationLanguageCombo;
   private ContextHelpLabel myBuildConfigurationLanguageLabel;
+  private HelpTooltip myBuildConfigurationLanguageTooltip;
   private JBCheckBox myLaunchFirebaseCheckbox;
   private JPanel myLaunchFirebasePanel;
 
@@ -200,10 +199,25 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       .transform(appName -> format("%s.%s", basePackage, nameToJavaPackage(appName)));
     TextProperty packageNameText = new TextProperty(myPackageName);
     BoolProperty isPackageNameSynced = new BoolValueProperty(true);
-    myBindings.bind(myProjectModel.getPackageName(), packageNameText);
+
+    String initialPackage = myProjectModel.getPackageName().get();
+    if (!initialPackage.isEmpty()) {
+      packageNameText.set(initialPackage);
+      isPackageNameSynced.set(initialPackage.equals(computedPackageName.get()));
+    }
 
     myBindings.bind(packageNameText, computedPackageName, isPackageNameSynced);
+    myBindings.bind(myProjectModel.getPackageName(), packageNameText);
     myListeners.listen(packageNameText, value -> isPackageNameSynced.set(value.equals(computedPackageName.get())));
+    myListeners.listen(myProjectModel.getPackageName(), value -> {
+      String targetPackage = value.isEmpty() ? computedPackageName.get() : value;
+      isPackageNameSynced.set(targetPackage.equals(computedPackageName.get()));
+      if (!targetPackage.equals(packageNameText.get())) {
+        packageNameText.set(targetPackage);
+      } else if (value.isEmpty() && !targetPackage.isEmpty()) {
+        myProjectModel.getPackageName().set(targetPackage);
+      }
+    });
 
     Expression<String> computedLocation = myProjectModel.getApplicationName().transform(ConfigureAndroidProjectStep::findProjectLocation);
     TextProperty locationText = new TextProperty(myProjectLocation.getTextField());
@@ -219,7 +233,6 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myBindings.bindTwoWay(new SelectedProperty(myLaunchFirebaseCheckbox), myProjectModel.getLaunchFirebaseWizard());
 
       myBuildConfigurationLanguageCombo.addItem(BuildConfigurationLanguageForNewProject.KTS);
-      myBuildConfigurationLanguageCombo.addItem(BuildConfigurationLanguageForNewProject.Groovy);
 
       if (StudioFlags.NPW_SHOW_DCL.get()) {
         myBuildConfigurationLanguageCombo.addItem(BuildConfigurationLanguageForNewProject.DCL);
@@ -231,8 +244,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
         myBuildConfigurationLanguageCombo.addItem(initialSelection);
       } else {
         initialSelection = switch (myProjectModel.getDslLanguage().get()) {
-          case KTS -> BuildConfigurationLanguageForNewProject.KTS;
-          case GROOVY -> BuildConfigurationLanguageForNewProject.Groovy;
+          case KTS, GROOVY -> BuildConfigurationLanguageForNewProject.KTS;
           case DCL -> BuildConfigurationLanguageForNewProject.DCL;
         };
       }
@@ -255,7 +267,6 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
           if (value instanceof BuildConfigurationLanguageForNewProject) {
             return switch ((BuildConfigurationLanguageForNewProject) value) {
               case KTS -> DslLanguage.KTS;
-              case Groovy -> DslLanguage.GROOVY;
               case DCL -> DslLanguage.DCL;
             };
           }
@@ -266,11 +277,26 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       myBindings.bind(myProjectModel.getTemplateRendererStrategy(), new SelectedItemProperty<>(myBuildConfigurationLanguageCombo).transform(
         selection -> {
           if (selection.isPresent() && selection.get() instanceof TemplateRendererStrategy) {
-            return Optional.of((TemplateRendererStrategy) selection.get());
+            //noinspection unchecked: Generic use
+            return Optional.of((TemplateRendererStrategy<TemplateRendererStrategy.AdditionalUserSettings>) selection.get());
           }
-          return Optional.<TemplateRendererStrategy>empty();
+          return Optional.empty();
         }
       ));
+      myProjectModel.getTemplateRenderStrategyAdditionalUserSettings().forEach((renderStrategy, settings) -> {
+        ObservableValue<Boolean> display =
+          new SelectedItemProperty<>(myBuildConfigurationLanguageCombo)
+            .transform(selection -> selection.isPresent() && selection.get() == renderStrategy);
+        for (Pair<@NotNull JBLabel, @NotNull JComponent> labeledComponent : settings.getLabeledComponents()) {
+          myBindings.bind(new VisibleProperty(labeledComponent.getFirst()), display);
+          myBindings.bind(new VisibleProperty(labeledComponent.getSecond()), display);
+        }
+
+      });
+
+    TemplateRenderStrategyInitializer initializer = new TemplateRenderStrategyInitializer();
+    myBuildConfigurationLanguageCombo.addActionListener(initializer);
+    initializer.ensureInitialInitialized();;
 
     if ((StudioFlags.NPW_SHOW_AGP_VERSION_COMBO_BOX.get() && !ApplicationManager.getApplication().isUnitTestMode()) ||
         (StudioFlags.NPW_SHOW_AGP_VERSION_COMBO_BOX_EXPERIMENTAL_SETTING.get() &&
@@ -380,14 +406,16 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myProjectModel.getLaunchFirebaseWizard().set(isFirebaseTemplate);
     myLaunchFirebasePanel.setVisible(isFirebaseTemplate);
 
-    myBuildConfigurationLanguageCombo.setVisible(true);
-    myBuildConfigurationLanguageLabel.setVisible(true);
+    TemplateRendererStrategy<?> applicableStrategy = TemplateRendererStrategy.getApplicableStrategy(newTemplate);
+    updateBuildConfigurationLanguageTooltip(applicableStrategy);
+
+    boolean showBuildConfigurationLanguage = myBuildConfigurationLanguageCombo.getItemCount() > 1;
+    myBuildConfigurationLanguageCombo.setVisible(showBuildConfigurationLanguage);
+    myBuildConfigurationLanguageLabel.setVisible(showBuildConfigurationLanguage);
 
     if (isWatchFace) {
       myProjectModel.getApplicationName().set("My Watch Face");
     }
-
-    generateAppNamePanel.setVisible(StudioFlags.GEMINI_NEW_PROJECT_AGENT.get() && newTemplate.getFlags().contains(TemplateFlag.NewProjectAgent) && GeminiPluginApi.Companion.getInstance().isAvailable());
   }
 
   @Override
@@ -450,7 +478,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       .addVerticalGap(10)
       .addComponent(createDocumentationLinkPanel())
       .addVerticalGap(10)
-      .addLabeledComponent("&Name",  appNamePanel)
+      .addLabeledComponent("&Name",  myAppName)
       .addLabeledComponent("&Package name", myPackageName)
       .addLabeledComponent("&Save location", myProjectLocation)
       .addLabeledComponent(myProjectLanguageLabel, myProjectLanguage)
@@ -460,7 +488,16 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       .addComponentToRightColumn(myTvCheck)
       .addLabeledComponent(myCarPlatformComboLabel, myCarPlatformCombo)
       .addLabeledComponent(myBuildConfigurationLanguageLabel, myBuildConfigurationLanguageCombo)
-      .addLabeledComponent(myAndroidGradlePluginLabel, myAndroidGradlePluginCombo)
+      .addLabeledComponent(myAndroidGradlePluginLabel, myAndroidGradlePluginCombo);
+
+    for (TemplateRendererStrategy.AdditionalUserSettings additionalSettings : myProjectModel.getTemplateRenderStrategyAdditionalUserSettings()
+      .values()) {
+      for (Pair<JBLabel, JComponent> component : additionalSettings.getLabeledComponents()) {
+        builder.addLabeledComponent(component.getFirst(), component.getSecond());
+      }
+    }
+
+    builder
       .addComponent(myLaunchFirebasePanel)
       .addComponentFillVertically(new Spacer(), 0);
 
@@ -524,11 +561,11 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     myFormFactorSdkControls = new FormFactorSdkControls();
     myFormFactorSdkControlsPanel = myFormFactorSdkControls.getRoot();
     myMinSdkCombo = myFormFactorSdkControls.getMinSdkComboBox();
-    myBuildConfigurationLanguageLabel = ContextHelpLabel.createWithLink(
-      null,
-      AndroidBundle.message("android.wizard.project.help.buildconfigurationlanguage.description"),
-      "Learn more",
-      () -> BrowserUtil.browse(KOTLIN_DSL_LINK));
+    myBuildConfigurationLanguageTooltip = new HelpTooltip()
+      .setNeverHideOnTimeout(true)
+      .setLocation(HelpTooltip.Alignment.HELP_BUTTON);
+    updateBuildConfigurationLanguageTooltip(null);
+    myBuildConfigurationLanguageLabel = ContextHelpLabel.createFromTooltip(myBuildConfigurationLanguageTooltip);
     myBuildConfigurationLanguageLabel.setText("Build configuration language");
     myBuildConfigurationLanguageLabel.setHorizontalTextPosition(SwingConstants.LEFT);
     myAndroidGradlePluginLabel = ContextHelpLabel.create(
@@ -541,28 +578,6 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
 
     myAppName = new JTextField();
     myAppName.setToolTipText("The name that will be shown in the Android launcher for this application");
-
-    JButton generateAppName = new JButton(StudioIcons.StudioBot.GENERIC_AI_ACTION);
-    generateAppName.setToolTipText(message("android.wizard.project.new.create.with.ai.tooltip"));
-    generateAppName.addActionListener(e -> myProjectModel.generateAppName(() -> {
-      generateAppName.setEnabled(false);
-      myAppName.requestFocus();
-      generateAppNamePanel.startLoading();
-      return Unit.INSTANCE;
-    }, () -> {
-      generateAppName.setEnabled(true);
-      generateAppNamePanel.stopLoading();
-      return Unit.INSTANCE;
-    }));
-
-    generateAppNamePanel = new JBLoadingPanel(new BorderLayout(), this);
-    generateAppNamePanel.setVisible(false);
-    generateAppNamePanel.add(generateAppName, BorderLayout.CENTER);
-
-    // Create a panel to hold the text field and the button
-    appNamePanel = new JPanel(new BorderLayout(5, 0)); // 5px horizontal gap
-    appNamePanel.add(myAppName, BorderLayout.CENTER);
-    appNamePanel.add(generateAppNamePanel, BorderLayout.LINE_END);
 
     myPackageName = new JTextField();
     myProjectLocation = new TextFieldWithBrowseButton();
@@ -617,6 +632,19 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     }
   }
 
+  private void updateBuildConfigurationLanguageTooltip(@Nullable TemplateRendererStrategy<?> strategy) {
+    if (strategy != null && strategy.getHelpDescription() != null && strategy.getHelpUrl() != null) {
+      myBuildConfigurationLanguageTooltip
+        .setDescription(strategy.getHelpDescription())
+        .setLink("Learn more", () -> BrowserUtil.browse(strategy.getHelpUrl()));
+    }
+    else {
+      myBuildConfigurationLanguageTooltip
+        .setDescription(AndroidBundle.message("android.wizard.project.help.buildconfigurationlanguage.description"))
+        .setLink("Learn more", () -> BrowserUtil.browse(KOTLIN_DSL_LINK));
+    }
+  }
+
   private static JPanel createCheckboxPanel(JBCheckBox checkbox, String description) {
     JPanel panel = new JPanel(new GridBagLayout());
     GridBagConstraints c = new GridBagConstraints();
@@ -639,5 +667,35 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
     int iconSize = JBUI.getInt("CheckBox.iconSize", 18);
     int textIconGap = JBUI.getInt("CheckBox.textIconGap", 5);
     return iconSize + textIconGap;
+  }
+
+  /**
+   * Listener to defer TemplateRendererStrategy.AdditionalUserSettings initialization,
+   * while ensuring that those initializations only happen once.
+   */
+  private class TemplateRenderStrategyInitializer implements ActionListener {
+    private final Set<TemplateRendererStrategy<?>> alreadyTriggeredInitialize = new HashSet<>();
+
+    @Override
+    public void actionPerformed(ActionEvent event) {
+      Object newValue = myBuildConfigurationLanguageCombo.getSelectedItem();
+      if (newValue instanceof TemplateRendererStrategy<?> ) {
+        ensureInitialized((TemplateRendererStrategy<?>)newValue);
+      }
+    }
+
+    public void ensureInitialInitialized() {
+      TemplateRendererStrategy<TemplateRendererStrategy.AdditionalUserSettings> initialStrategy =
+        myProjectModel.getTemplateRendererStrategy().getValueOrNull();
+      if (initialStrategy == null) return;
+      ensureInitialized(initialStrategy);
+    }
+
+    private void ensureInitialized(TemplateRendererStrategy<?> strategy) {
+      if (!alreadyTriggeredInitialize.add(strategy)) return;
+      BackgroundTaskUtil.executeOnPooledThread(ConfigureAndroidProjectStep.this, () -> {
+        myProjectModel.getTemplateRenderStrategyAdditionalUserSettings().get(strategy).backgroundInitialize();
+      });
+    }
   }
 }

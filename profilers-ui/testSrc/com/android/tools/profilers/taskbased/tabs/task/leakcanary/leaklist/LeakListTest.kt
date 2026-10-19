@@ -36,7 +36,9 @@ import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedU
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_NO_LEAK_FOUND_MESSAGE
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_OCCURRENCES_HEADER_TEXT
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_TOTAL_LEAKED_HEADER_TEXT
+import com.intellij.testFramework.ApplicationRule
 import java.io.File
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -44,6 +46,8 @@ import org.junit.Test
 import org.mockito.Mockito.mock
 
 class LeakListTest : WithFakeTimer {
+  @get:org.junit.Rule val applicationRule = ApplicationRule()
+
   override val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
   @Rule @JvmField val grpcChannel = FakeGrpcChannel("LeakListTestChannel", transportService)
@@ -55,13 +59,13 @@ class LeakListTest : WithFakeTimer {
 
   @Before
   fun setup() {
-    ideProfilerServices = FakeIdeProfilerServices()
+    ideProfilerServices = FakeIdeProfilerServices().apply { enableLeakCanaryOccurrences(true) }
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
-    leakCanaryModel = LeakCanaryModel(profilers)
+    leakCanaryModel = LeakCanaryModel(profilers, null, Dispatchers.Unconfined)
   }
 
   @Test
-  fun `test leak list view when recoding and no leak is available`() {
+  fun `test leak list view when recording and no leak is available`() {
     leakCanaryModel.setIsRecording(true)
     composeTestRule.setContent { LeakListView(leakCanaryModel = leakCanaryModel) }
 
@@ -74,7 +78,7 @@ class LeakListTest : WithFakeTimer {
   }
 
   @Test
-  fun `test leak list view when not recoding and no leak is available`() {
+  fun `test leak list view when not recording and no leak is available`() {
     leakCanaryModel.setIsRecording(false)
     composeTestRule.setContent { LeakListView(leakCanaryModel = leakCanaryModel) }
 

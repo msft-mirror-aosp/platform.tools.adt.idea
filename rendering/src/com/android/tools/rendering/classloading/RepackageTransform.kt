@@ -15,6 +15,7 @@
  */
 package com.android.tools.rendering.classloading
 
+import com.android.tools.rendering.security.RenderSandbox
 import com.intellij.util.ReflectionUtil
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
@@ -49,10 +50,10 @@ private class RepackageRemapper(packagePrefixes: Collection<String>, private val
  * This class needs to be visible since it is accessed from the user code.
  */
 object ClassForNameHandler {
-  @Suppress("UNUSED_PARAMETER") // oldName not used intentionally
   @JvmStatic
   fun forName(oldName: String, newName: String): Class<*> {
     val caller = ReflectionUtil.getGrandCallerClass()!!
+    RenderSandbox.getRenderSandbox().checkClassLoad(oldName)
     return Class.forName(newName, true, caller.classLoader)
   }
 
@@ -63,10 +64,11 @@ object ClassForNameHandler {
     throw UnsupportedOperationException()
   }
 
-  @Suppress("UNUSED_PARAMETER") // oldName not used intentionally
   @JvmStatic
-  fun forName(oldName: String, initialize: Boolean, classLoader: ClassLoader?, newName: String) =
-    Class.forName(newName, initialize, classLoader)
+  fun forName(oldName: String, initialize: Boolean, classLoader: ClassLoader?, newName: String): Class<*> {
+    RenderSandbox.getRenderSandbox().checkClassLoad(oldName)
+    return Class.forName(newName, initialize, classLoader)
+  }
 }
 
 /**

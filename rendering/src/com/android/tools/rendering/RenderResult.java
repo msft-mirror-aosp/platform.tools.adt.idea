@@ -23,8 +23,8 @@ import com.android.ide.common.rendering.api.ViewInfo;
 import com.android.tools.rendering.api.EnvironmentContext;
 import com.android.tools.rendering.api.IdeaModuleProvider;
 import com.android.tools.rendering.api.RenderModelModule;
-import com.android.tools.rendering.imagepool.ImagePool;
-import com.android.tools.rendering.imagepool.ImagePoolImageDisposer;
+import com.android.ide.common.rendering.api.RecyclableImage;
+import com.android.tools.rendering.imagepool.RecyclableImageDisposer;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -32,12 +32,10 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.module.Module;
-import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.PsiFile;
 import java.awt.Dimension;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -51,16 +49,16 @@ public class RenderResult implements Disposable {
 
   @NotNull private final Supplier<PsiFile> mySourceFileProvider;
   @NotNull private final RenderLogger myLogger;
-  @NotNull private final ImmutableList<ViewInfo> myRootViews;
-  @NotNull private final ImmutableList<ViewInfo> mySystemRootViews;
-  @NotNull private final ImagePool.Image myImage;
+  @NotNull private volatile ImmutableList<ViewInfo> myRootViews;
+  @NotNull private volatile ImmutableList<ViewInfo> mySystemRootViews;
+  @NotNull private final RecyclableImage myImage;
   @NotNull private final Result myRenderResult;
-  @NotNull private final Map<Object, Map<ResourceReference, ResourceValue>> myDefaultProperties;
-  @NotNull private final Map<Object, ResourceReference> myDefaultStyles;
+  @NotNull private volatile Map<Object, Map<ResourceReference, ResourceValue>> myDefaultProperties;
+  @NotNull private volatile Map<Object, ResourceReference> myDefaultStyles;
   @NotNull private final IdeaModuleProvider myModule;
   @NotNull private final Project myProject;
   private final ReadWriteLock myDisposeLock = new ReentrantReadWriteLock();
-  @Nullable private final Object myValidatorResult;
+  @Nullable private volatile Object myValidatorResult;
   private final boolean myHasRequestedCustomViews;
   @Nullable private final RenderContext myRenderContext;
   private boolean isDisposed;
@@ -83,7 +81,7 @@ public class RenderResult implements Disposable {
                       @NotNull Result renderResult,
                       @NotNull ImmutableList<ViewInfo> rootViews,
                       @NotNull ImmutableList<ViewInfo> systemRootViews,
-                      @NotNull ImagePool.Image image,
+                      @NotNull RecyclableImage image,
                       @NotNull Map<Object, Map<ResourceReference, ResourceValue>> defaultProperties,
                       @NotNull Map<Object, ResourceReference> defaultStyles,
                       @Nullable Object validatorResult,
@@ -132,7 +130,12 @@ public class RenderResult implements Disposable {
     myDisposeLock.writeLock().lock();
     try {
       isDisposed = true;
-      ImagePoolImageDisposer.disposeImage(myImage);
+      RecyclableImageDisposer.disposeImage(myImage);
+      myRootViews = ImmutableList.of();
+      mySystemRootViews = ImmutableList.of();
+      myDefaultProperties = ImmutableMap.of();
+      myDefaultStyles = ImmutableMap.of();
+      myValidatorResult = null;
     } finally {
       myDisposeLock.writeLock().unlock();
     }
@@ -145,9 +148,19 @@ public class RenderResult implements Disposable {
   }
 
   @NotNull
-  private static Dimension getRootViewDimensionFromSystemViews(@Nullable List<ViewInfo> viewInfo) {
+  private static Dimension getViewDimensions(@Nullable List<ViewInfo> viewInfo) {
     if (viewInfo == null || viewInfo.isEmpty()) return new Dimension(0, 0);
-    return new Dimension(viewInfo.get(0).getRight(), viewInfo.get(0).getBottom());
+    int minLeft = Integer.MAX_VALUE;
+    int minTop = Integer.MAX_VALUE;
+    int maxRight = Integer.MIN_VALUE;
+    int maxBottom = Integer.MIN_VALUE;
+    for (ViewInfo info : viewInfo) {
+      minLeft = Math.min(minLeft, info.getLeft());
+      minTop = Math.min(minTop, info.getTop());
+      maxRight = Math.max(maxRight, info.getRight());
+      maxBottom = Math.max(maxBottom, info.getBottom());
+    }
+    return new Dimension(Math.max(0, maxRight - minLeft), Math.max(0, maxBottom - minTop));
   }
 
   /**
@@ -158,8 +171,9 @@ public class RenderResult implements Disposable {
                                     @NotNull RenderSession session,
                                     @NotNull Supplier<PsiFile> file,
                                     @NotNull RenderLogger logger,
-                                    @NotNull ImagePool.Image image,
-                                    boolean hasRequestedCustomViews) {
+                                    @NotNull RecyclableImage image,
+                                    boolean hasRequestedCustomViews,
+                                    boolean showDecorations) {
     List<ViewInfo> rootViews = session.getRootViews();
     List<ViewInfo> systemRootViews = session.getSystemRootViews();
     Map<Object, Map<ResourceReference, ResourceValue>> defaultProperties = null;
@@ -172,6 +186,7 @@ public class RenderResult implements Disposable {
         LOG.warn("Failed to get default properties/styles", t);
       }
     }
+    List<ViewInfo> viewsForDimensions = showDecorations ? systemRootViews : (rootViews != null && !rootViews.isEmpty() ? rootViews : systemRootViews);
     RenderResult result = new RenderResult(
       createSourceFileProvider(renderContext.getModule().getEnvironment(), file),
       renderContext.getModule().getProject(),
@@ -182,11 +197,11 @@ public class RenderResult implements Disposable {
       session.getResult(),
       rootViews != null ? ImmutableList.copyOf(rootViews) : ImmutableList.of(),
       systemRootViews != null ? ImmutableList.copyOf(systemRootViews) : ImmutableList.of(),
-      image, // image might be ImagePool.NULL_POOL_IMAGE if there is no rendered image (as in layout())
+      image, // image might be RecyclableImage.NULL if there is no rendered image (as in layout())
       defaultProperties != null ? ImmutableMap.copyOf(defaultProperties) : ImmutableMap.of(),
       defaultStyles != null ? ImmutableMap.copyOf(defaultStyles) : ImmutableMap.of(),
       session.getValidationData(),
-      getRootViewDimensionFromSystemViews(systemRootViews), RenderResultStats.getEMPTY()
+      getViewDimensions(viewsForDimensions), RenderResultStats.getEMPTY()
     );
 
     if (LOG.isDebugEnabled()) {
@@ -196,12 +211,22 @@ public class RenderResult implements Disposable {
     return result;
   }
 
+  @NotNull
+  public static RenderResult create(@NotNull RenderContext renderContext,
+                                    @NotNull RenderSession session,
+                                    @NotNull Supplier<PsiFile> file,
+                                    @NotNull RenderLogger logger,
+                                    @NotNull RecyclableImage image,
+                                    boolean hasRequestedCustomViews) {
+    return create(renderContext, session, file, logger, image, hasRequestedCustomViews, true);
+  }
+
   /**
    * Creates a new {@link RenderResult} from a given RenderTask and RenderSession
    */
   @NotNull
   public RenderResult copyWithNewImageAndRootViewDimensions(
-    @NotNull ImagePool.Image image,
+    @NotNull RecyclableImage image,
     @NotNull Dimension rootViewDimensions
   ) {
     return new RenderResult(
@@ -242,7 +267,8 @@ public class RenderResult implements Disposable {
       myDefaultProperties,
       myDefaultStyles,
       myValidatorResult,
-      myRootViewDimensions, myStats.combine(stats)
+      myRootViewDimensions,
+      myStats.combine(stats)
     );
   }
 
@@ -263,7 +289,7 @@ public class RenderResult implements Disposable {
       status.createResult("Render error", throwable),
       ImmutableList.of(),
       ImmutableList.of(),
-      ImagePool.NULL_POOLED_IMAGE,
+      RecyclableImage.NULL,
       ImmutableMap.of(),
       ImmutableMap.of(),
       null,
@@ -296,10 +322,10 @@ public class RenderResult implements Disposable {
   }
 
   @NotNull
-  public ImagePool.Image getRenderedImage() {
+  public RecyclableImage getRenderedImage() {
     myDisposeLock.readLock().lock();
     try {
-      return !isDisposed ? myImage : ImagePool.NULL_POOLED_IMAGE;
+      return !isDisposed ? myImage : RecyclableImage.NULL;
     } finally {
       myDisposeLock.readLock().unlock();
     }
@@ -375,7 +401,7 @@ public class RenderResult implements Disposable {
 
   @NotNull
   public Dimension getRootViewDimensions() {
-    return myRootViews.isEmpty() ? myRootViewDimensions : getRootViewDimensionFromSystemViews(mySystemRootViews);
+    return myRootViewDimensions;
   }
 
   @Override

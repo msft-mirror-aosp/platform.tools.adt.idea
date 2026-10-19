@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.gradle.ui
 
-import com.android.tools.idea.testing.JdkConstants.JDK_11_PATH
+import com.android.tools.idea.testing.JdkConstants.JDK_17_PATH
 import com.android.tools.idea.testing.JdkConstants.JDK_EMBEDDED_PATH
 import com.android.tools.idea.testing.JdkConstants.JDK_INVALID_PATH
 import com.intellij.openapi.application.runWriteAction
@@ -34,8 +34,8 @@ class GradleJdkPathEditComboBoxBuilderTest : LightPlatformTestCase() {
   }
 
   fun `test Given different suggested JDKs containing embedded one, When build ComboBox Then dropdown items filtered and sorted by version`() {
-    val jdkComboBox = buildJdkPathEditComboBox(JDK_EMBEDDED_PATH, listOf(JDK_INVALID_PATH, JDK_11_PATH, JDK_EMBEDDED_PATH))
-    assertJdkItems(jdkComboBox, listOf(JDK_EMBEDDED_PATH, JDK_11_PATH))
+    val jdkComboBox = buildJdkPathEditComboBox(JDK_EMBEDDED_PATH, listOf(JDK_INVALID_PATH, JDK_17_PATH, JDK_EMBEDDED_PATH))
+    assertJdkItems(jdkComboBox, listOf(JDK_EMBEDDED_PATH, JDK_17_PATH))
   }
 
   fun `test Given suggested JDK been canonical equivalent to embedded JDK, When build ComboBox Then dropdown items contains a single embedded JDK`() {

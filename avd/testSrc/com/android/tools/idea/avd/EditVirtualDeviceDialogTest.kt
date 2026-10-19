@@ -72,7 +72,7 @@ class EditVirtualDeviceDialogTest {
 
     init {
       with(sdkFixture) {
-        repoPackages.setLocalPkgInfos(localPackages)
+        setLocalPackages(localPackages)
         repoPackages.setRemotePkgInfos(remotePackages)
       }
     }
@@ -193,7 +193,7 @@ class EditVirtualDeviceDialogTest {
   fun duplicateAvd() {
     with(SdkFixture()) {
       val api34Package = api34()
-      repoPackages.setLocalPkgInfos(listOf(api34Package))
+      setLocalPackages(api34Package)
 
       val systemImageManager = sdkHandler.getSystemImageManager(FakeProgressIndicator())
       val api34Image = systemImageManager.getImageAt(api34Package.location)

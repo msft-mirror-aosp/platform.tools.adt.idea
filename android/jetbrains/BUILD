@@ -7,7 +7,6 @@ iml_module(
     test_class = "com.android.tools.idea.IdeaTestSuite",
     # keep sorted
     test_data = [
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/layoutlib/data:layoutlib_extensions",
@@ -51,6 +50,10 @@ iml_module(
         "@intellij//:com.jetbrains.sh",
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/artwork:intellij.android.artwork",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
+        "//tools/base/resource-repository:studio.android.sdktools.resource-repository.tests",
+        "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],
     test_jvm_flags = [

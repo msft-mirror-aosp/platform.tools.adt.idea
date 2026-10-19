@@ -38,8 +38,6 @@ interface ComposePreviewManager : Disposable, PreviewModeManager, PreviewInvalid
    * @param isRefreshing true if the view is currently refreshing.
    * @param psiFilePointer a [SmartPsiElementPointer] to the [PsiFile] that this preview is representing, if any. For cases where the
    *   preview is rendering synthetic previews or elements from multiple files, this can be null. See [previewedFile] for more information.
-   *
-   * TODO(b/328056861) replace the use of this data class with PreviewViewModelStatus
    */
   data class Status(
     override val hasRenderErrors: Boolean,

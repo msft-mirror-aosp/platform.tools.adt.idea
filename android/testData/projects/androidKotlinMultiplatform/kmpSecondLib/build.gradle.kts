@@ -4,10 +4,6 @@ plugins {
 }
 
 kotlin {
-  jvmToolchain {
-    languageVersion.set(JavaLanguageVersion.of(11))
-  }
-
   jvm {
     compilations.configureEach {
       compileTaskProvider.configure {

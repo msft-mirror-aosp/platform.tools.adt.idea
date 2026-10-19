@@ -43,6 +43,14 @@ interface IdeProfilerServices {
   /** Executor to run the tasks that should run in a thread from the pool. */
   val poolExecutor: Executor
 
+  /** Gets the number of profiler tabs currently open in the IDE. */
+  val profilerTabsCount: Int
+    get() = 0
+
+  /** Returns true if there is at least one Live Profiler tab open. */
+  val hasLiveProfilerTab: Boolean
+    get() = false
+
   /** Compute expensive intermediate value on "pool", then resume it on "main" */
   fun <R> runAsync(supplier: Supplier<R>, consumer: Consumer<R>, timeoutMs: Long) {
     CompletableFuture.supplyAsync(supplier, poolExecutor).orTimeout(timeoutMs, TimeUnit.MILLISECONDS).whenComplete { result: R, action ->
@@ -245,4 +253,28 @@ interface IdeProfilerServices {
    * @return A flow of strings representing the AI's response (markdown).
    */
   fun fetchLeakInsight(rawTrace: String): Flow<String> = emptyFlow()
+
+  /**
+   * Returns the Proguard/R8 mapping file path for [packageName] on [deviceSerial] if the app was deployed by Android Studio with a
+   * minify-enabled build variant, or null otherwise (including when not deployed by Studio or deployed without minification).
+   */
+  fun getProguardMappingForApp(deviceSerial: String, packageName: String): String? = null
+
+  /** Shows the onboarding dialog for AI / Gemini features. */
+  fun showAiOnboarding() {}
+
+  /** Checks if AI features (Gemini) are available (signed in and onboarded). */
+  val isAiAvailable: Boolean
+    get() = false
+
+  /**
+   * Symbolizes and deobfuscates a trace file using traceconv.
+   *
+   * @return The bundled File on success, or null on failure.
+   */
+  fun symbolizeAndDeobfuscateTrace(
+    traceFile: File,
+    symbolDirs: List<String>,
+    proguardMaps: Map<String, String>,
+  ): File? = null
 }

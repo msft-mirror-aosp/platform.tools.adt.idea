@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Resources of the bag types (attr, style, array, plurals) declared with the generic <item> tag.
+  AAPT2 encodes all of these as simple (non-complex) resource table entries: the empty ones as
+  a reference to @null (or TYPE_NULL for an explicit @empty) and the aliases as a reference to
+  the aliased resource.
+-->
+<resources>
+  <attr name="realAttr" format="reference" />
+  <item name="aliasAttr" type="attr">@attr/realAttr</item>
+  <item name="emptyAttr" type="attr" />
+
+  <style name="Base">
+    <item name="realAttr">@style/aliasStyle</item>
+  </style>
+  <item name="aliasStyle" type="style">@style/Base</item>
+  <item name="emptyStyle" type="style" />
+  <item name="emptyValueStyle" type="style">@empty</item>
+
+  <string-array name="baseArray">
+    <item>first</item>
+    <item>second</item>
+  </string-array>
+  <item name="aliasArray" type="array">@array/baseArray</item>
+  <item name="emptyArray" type="array" />
+
+  <plurals name="basePlurals">
+    <item quantity="one">one item</item>
+    <item quantity="other">many items</item>
+  </plurals>
+  <item name="aliasPlurals" type="plurals">@plurals/basePlurals</item>
+  <item name="emptyPlurals" type="plurals" />
+</resources>

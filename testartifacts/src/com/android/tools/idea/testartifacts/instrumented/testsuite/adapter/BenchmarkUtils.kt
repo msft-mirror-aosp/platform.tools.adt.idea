@@ -26,11 +26,15 @@ const val ADDITIONAL_TEST_OUTPUT_PLUGIN_BENCHMARK_MESSAGE_LABEL = "additionaltes
 /** A label used for the benchmark trace file output artifact from the AdditionalTestOutputPlugin in UTP. */
 const val ADDITIONAL_TEST_OUTPUT_PLUGIN_BENCHMARK_TRACE_LABEL = "additionaltestoutput.benchmark.trace"
 
-/** Finds benchmark output artifacts from [utpTestResultProto], retrieves files and messages, and set them to [testCase]. */
+/**
+ * Finds benchmark output artifacts from [utpTestResultProto], retrieves files and messages, and set them to [testCase].
+ *
+ * @param resolveOutputArtifactFunc resolves an output artifact path to a file, or returns null if it cannot be resolved
+ */
 fun setBenchmarkContextAndPrepareFiles(
   utpTestResultProto: TestResultProto.TestResult,
   testCase: AndroidTestCase,
-  resolveOutputArtifactFunc: (String) -> File = ::File,
+  resolveOutputArtifactFunc: (String) -> File? = ::File,
 ) {
   utpTestResultProto.outputArtifactList
     .asSequence()
@@ -39,13 +43,13 @@ fun setBenchmarkContextAndPrepareFiles(
       when (it.label.label) {
         ADDITIONAL_TEST_OUTPUT_PLUGIN_BENCHMARK_MESSAGE_LABEL -> {
           val benchmarkMessageFile = resolveOutputArtifactFunc(it.sourcePath.path)
-          if (benchmarkMessageFile.exists()) {
+          if (benchmarkMessageFile != null && benchmarkMessageFile.isFile) {
             testCase.benchmark = benchmarkMessageFile.readText()
           }
         }
         ADDITIONAL_TEST_OUTPUT_PLUGIN_BENCHMARK_TRACE_LABEL -> {
           val benchmarkTraceFile = resolveOutputArtifactFunc(it.sourcePath.path)
-          if (benchmarkTraceFile.exists()) {
+          if (benchmarkTraceFile != null && benchmarkTraceFile.isFile) {
             // Copy trace files into Android Studio's temporary directory because
             // BenchmarkLinkListener assumes files are available in FileUtil.getTempDirectory().
             // TODO(b/194527508): Don't create a copy as a trace file can be large.

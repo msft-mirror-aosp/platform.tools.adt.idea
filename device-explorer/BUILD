@@ -36,7 +36,6 @@ iml_module(
     iml_files = ["intellij.android.device-explorer.tests.iml"],
     test_class = "com.android.tools.idea.device.explorer.DeviceExplorerTestSuite",
     test_data = [
-        "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/testData",
@@ -57,6 +56,10 @@ iml_module(
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/base/common:studio.android.sdktools.common",
+        "//tools/adt/idea/.idea/libraries:mockito",
+        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
+        "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

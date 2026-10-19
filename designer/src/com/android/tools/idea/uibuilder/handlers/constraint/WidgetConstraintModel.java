@@ -321,9 +321,8 @@ public class WidgetConstraintModel implements SelectionListener {
 
   protected void commit() {
     if (myModification != null) {
-      ApplicationManager.getApplication().invokeLater(new Runnable() {
-        @Override
-        public void run() {
+      ApplicationManager.getApplication().invokeLater(() -> {
+        if (myModification != null) {
           myModification.commit();
           myModification = null;
         }
@@ -912,6 +911,20 @@ public class WidgetConstraintModel implements SelectionListener {
       for (String[] overConstrainedSet: ourOverConstrainedAttributes) {
         if (Arrays.stream(overConstrainedSet).filter(s -> myComponent.getAttribute(SHERPA_URI, s) != null).count() > 1) {
           return true;
+        }
+      }
+      // In ConstraintLayout, baseline alignment conflicts with vertical top/bottom constraints.
+      // If a widget defines a baseline constraint alongside top or bottom constraints, it is over-constrained.
+      if (hasBaseline()) {
+        for (String attr : ConstraintComponentUtilities.ourTopAttributes) {
+          if (myComponent.getAttribute(SHERPA_URI, attr) != null) {
+            return true;
+          }
+        }
+        for (String attr : ConstraintComponentUtilities.ourBottomAttributes) {
+          if (myComponent.getAttribute(SHERPA_URI, attr) != null) {
+            return true;
+          }
         }
       }
     }

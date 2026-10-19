@@ -19,14 +19,18 @@ import com.android.tools.idea.rendering.StudioModuleRenderContext
 import com.android.tools.rendering.classloading.ClassTransform
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.util.LinkedList
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
+
+private val LOG = Logger.getInstance(ModuleClassLoaderHatchery::class.java)
 
 /**
  * How many different classloader types the hatchery stores. The current default is 2 with the idea of having:
@@ -93,20 +97,92 @@ private class Clutch(
   private val cloner: (StudioModuleClassLoaderCreationContext) -> StudioModuleClassLoader?,
   private val donor: StudioModuleClassLoaderCreationContext,
   copies: Int = COPIES,
-  executor: Executor = getDefaultExecutor(),
+  private val executor: Executor = getDefaultExecutor(),
 ) {
   private val eggs = ConcurrentLinkedQueue<StudioPreloader>()
+  private val isDestroyed = AtomicBoolean(false)
+  private val inFlightReplenishments = AtomicInteger(0)
 
   init {
-    executor.execute { repeat(copies) { cloner(donor)?.let { eggs.add(StudioPreloader(it, donor.classesToPreload)) } } }
+    replenishAsync(copies)
   }
+
+  private fun replenishAsync(count: Int = 1) {
+    if (isDestroyed.get() || count <= 0) return
+    inFlightReplenishments.addAndGet(count)
+    try {
+      executor.execute {
+        var remaining = count
+        try {
+          if (isDestroyed.get()) return@execute
+          repeat(count) {
+            if (isDestroyed.get()) return@execute
+            try {
+              cloner(donor)?.let { newClassLoader ->
+                if (isDestroyed.get()) {
+                  newClassLoader.dispose()
+                  return@let
+                }
+                // Until the preloader is constructed nothing else owns newClassLoader, so a failure here would leak it.
+                val preloader =
+                  try {
+                    StudioPreloader(newClassLoader, donor.classesToPreload, executor)
+                  } catch (t: Throwable) {
+                    newClassLoader.dispose()
+                    throw t
+                  }
+                eggs.add(preloader)
+                if (isDestroyed.get()) {
+                  // If destroy() ran while we were creating/adding, ensure it is disposed.
+                  if (eggs.remove(preloader)) {
+                    preloader.dispose()
+                  }
+                }
+              }
+            } catch (t: Throwable) {
+              LOG.warn("Failed to create a pre-warmed class loader", t)
+            } finally {
+              inFlightReplenishments.decrementAndGet()
+              remaining--
+            }
+          }
+        } finally {
+          if (remaining > 0) {
+            inFlightReplenishments.addAndGet(-remaining)
+          }
+        }
+      }
+    } catch (e: Throwable) {
+      inFlightReplenishments.addAndGet(-count)
+      LOG.warn("Failed to schedule class loader replenishment", e)
+    }
+  }
+
+  /**
+   * Returns true if this clutch can no longer produce [StudioModuleClassLoader]s: it holds no eggs at all and has no replenishment in
+   * flight, meaning the last attempt to clone from the donor produced nothing. A clutch whose eggs were merely garbage collected is *not*
+   * dead: it still has queued eggs and [retrieve] will drop them and replenish from the same donor.
+   *
+   * Must only be called while holding the [ModuleClassLoaderHatchery] monitor. [retrieve] transiently satisfies this predicate between
+   * draining the last egg and scheduling its replenishment.
+   */
+  fun isDead(): Boolean = isDestroyed.get() || (eggs.isEmpty() && inFlightReplenishments.get() <= 0)
 
   /** Checks if the clutch maintains the [StudioModuleClassLoader]s of this type. */
   fun isCompatible(parent: ClassLoader?, projectTransformations: ClassTransform, nonProjectTransformations: ClassTransform): Boolean {
-    if (eggs.isNotEmpty()) {
-      return eggs.any { it.isForCompatible(parent, projectTransformations, nonProjectTransformations) }
+    if (isDestroyed.get()) return false
+    var hasLiveEggs = false
+    for (egg in eggs) {
+      if (!egg.isAlive()) continue
+      hasLiveEggs = true
+      if (egg.isForCompatible(parent, projectTransformations, nonProjectTransformations)) {
+        return true
+      }
     }
-    // Fallback if eggs are still being preloaded in the background
+    if (hasLiveEggs) return false
+    if (isDead()) return false
+    // Fallback if eggs are still being preloaded in the background or were GC'd. In the latter case the clutch stays compatible on purpose,
+    // so that retrieve() drops the dead eggs and replenishes from the same donor instead of forcing a new clutch to be incubated.
     return (donor.parent == parent) &&
       (donor.projectTransform.id == projectTransformations.id) &&
       (donor.nonProjectTransformation.id == nonProjectTransformations.id)
@@ -116,28 +192,43 @@ private class Clutch(
    * If possible, returns a [StudioModuleClassLoader] from the clutch and transfers full ownership to the caller, otherwise returns null.
    */
   fun retrieve(): StudioModuleClassLoader? {
-    return generateSequence { eggs.poll() }
-      .mapNotNull { preloader -> preloader.getClassLoader() }
-      .firstOrNull {
-        if (!it.isUserCodeUpToDate) {
-          // This class loader can not be used, it's not up-to-date
-          it.dispose()
-          false
-        } else true
+    if (isDestroyed.get()) return null
+    var discardedCount = 0
+    var compatibleClassLoader: StudioModuleClassLoader? = null
+
+    while (true) {
+      val preloader = eggs.poll() ?: break
+      val classLoader = preloader.getClassLoader()
+      if (classLoader == null) {
+        discardedCount++
+        continue
       }
-      ?.let { compatibleClassLoader ->
-        // Incubate the next one
-        cloner(donor)?.let { newClassLoader -> eggs.add(StudioPreloader(newClassLoader, donor.classesToPreload)) }
-        compatibleClassLoader
+      if (!classLoader.isUserCodeUpToDate) {
+        classLoader.dispose()
+        discardedCount++
+        continue
       }
+      compatibleClassLoader = classLoader
+      break
+    }
+
+    val needsReplenish = discardedCount + (if (compatibleClassLoader != null) 1 else 0)
+    if (needsReplenish > 0) {
+      replenishAsync(needsReplenish)
+    }
+
+    return compatibleClassLoader
   }
 
   fun disposeFirstEggForTesting() {
     eggs.peek()?.dispose()
   }
 
+  fun isFirstEggActiveForTesting(): Boolean = eggs.peek()?.isActive ?: false
+
   /** Should be called when the clutch is no longer needed to free all the resources. */
   fun destroy() {
+    isDestroyed.set(true)
     generateSequence { eggs.poll() }.forEach { it.dispose() }
   }
 
@@ -225,6 +316,12 @@ class ModuleClassLoaderHatchery(
   ): Boolean {
     if (isDisposed.get()) return false
 
+    // Drop clutches that can no longer produce class loaders. Without this, the capacity eviction below removes the head of the list, which
+    // may well be a healthy clutch for another preview type while the dead one stays behind.
+    storage.removeIf { clutch ->
+      clutch.isDead().also { if (it) clutch.destroy() }
+    }
+
     val hasCompatibleDonor = storage.find { it.isCompatible(donor.parent, donor.projectTransform, donor.nonProjectTransformation) } != null
     if (hasCompatibleDonor) return false
     val request = Request(donor.parent, donor.projectTransform, donor.nonProjectTransformation)
@@ -247,6 +344,11 @@ class ModuleClassLoaderHatchery(
   @VisibleForTesting
   fun disposeFirstEggForTesting() {
     storage.firstOrNull()?.disposeFirstEggForTesting()
+  }
+
+  @VisibleForTesting
+  fun isFirstEggActiveForTesting(): Boolean {
+    return storage.firstOrNull()?.isFirstEggActiveForTesting() ?: false
   }
 
   @VisibleForTesting

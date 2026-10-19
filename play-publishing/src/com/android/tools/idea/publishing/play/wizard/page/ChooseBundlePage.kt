@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.publishing.play.wizard.page
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -54,6 +53,8 @@ import androidx.compose.ui.unit.sp
 import com.android.tools.adtui.compose.LocalProject
 import com.android.tools.adtui.compose.WizardAction
 import com.android.tools.adtui.compose.WizardPageScope
+import com.android.tools.idea.publishing.AdiClient
+import com.android.tools.idea.publishing.RegistrationState
 import com.android.tools.idea.publishing.play.AppMetadata
 import com.android.tools.idea.publishing.play.PlayPublishingUsageTracker
 import com.android.tools.idea.publishing.play.client.PlayPublishingClient
@@ -74,11 +75,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.extension
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.LocalComponent
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.ExternalLink
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.InlineErrorBanner
@@ -90,14 +94,16 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 private const val UPLOAD_BUNDLE_DAC_URL = "https://developer.android.com/r/studio-ui/publish/upload-app-bundle"
 
 @Suppress("UnstableApiUsage")
-@OptIn(ExperimentalFoundationApi::class, ExperimentalJewelApi::class)
+@OptIn(ExperimentalJewelApi::class)
 @Composable
 fun WizardPageScope.ChooseBundlePage(
+  createAdiClient: (CoroutineScope) -> AdiClient = { AdiClient(it) },
   shouldExtractMetadata: suspend (Path) -> Boolean = ::shouldExtractMetadata,
   extractMetadata: suspend (Path) -> AppMetadata = ::extractAppMetadata,
 ) {
   val user by GoogleLoginService.instance.activeUserFlow.collectAsState()
   val project = LocalProject.current
+  val adiClient = remember(coroutineScope) { createAdiClient(coroutineScope) }
   val component = LocalComponent.current
   val state = getOrCreateState<PlayPublishingWizardState> { error("State not initialized") }
   val pageState = getOrCreateState { ChooseBundlePageState(isPathLocked = !state.bundlePath.isNullOrEmpty()) }
@@ -132,8 +138,52 @@ fun WizardPageScope.ChooseBundlePage(
   val versionName = metadata?.versionName
   val versionCode = metadata?.versionCode
 
+  var registrationResult: RegistrationResult by
+    remember(state.packageName) {
+      mutableStateOf(
+        if (pageState.isPathLocked && state.isRegistered != null) {
+          RegistrationResult.Success(state.isRegistered)
+        } else {
+          RegistrationResult.Loading
+        }
+      )
+    }
+
+  LaunchedEffect(state.packageName, adiClient) {
+    if (pageState.isPathLocked && state.isRegistered != null) {
+      registrationResult = RegistrationResult.Success(state.isRegistered)
+      return@LaunchedEffect
+    }
+    val packageName = state.packageName
+    if (packageName.isNullOrEmpty()) {
+      state.isRegistered = null
+      registrationResult = RegistrationResult.Success(null)
+      return@LaunchedEffect
+    }
+    registrationResult = RegistrationResult.Loading
+
+    try {
+      val (resultMap, _) = withContext(Dispatchers.IO) { adiClient.checkPackageRegistrationStatus(setOf(packageName), null) }
+      val isReg =
+        when (resultMap[packageName]) {
+          RegistrationState.REGISTERED -> true
+          RegistrationState.NOT_REGISTERED -> false
+          else -> null
+        }
+      state.isRegistered = isReg
+      registrationResult = RegistrationResult.Success(isReg)
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      Logger.getInstance("ChooseBundlePage").warn("Failed to check package registration status", e)
+      state.isRegistered = null
+      registrationResult = RegistrationResult.Success(null)
+    }
+  }
+
   val bundleState =
-    remember(metadataResult, listAppsResult, state.packageName, state.isRegistered, isAppInConsole) {
+    remember(metadataResult, listAppsResult, state.packageName, registrationResult, isAppInConsole) {
+      val registrationResult = registrationResult
       when (metadataResult) {
         is MetadataResult.Idle,
         is MetadataResult.Loading -> BundleState.Loading
@@ -144,12 +194,18 @@ fun WizardPageScope.ChooseBundlePage(
             is ListAppsResult.Loading -> BundleState.Loading
             is ListAppsResult.Error -> BundleState.Empty
             is ListAppsResult.Success -> {
-              when {
-                state.packageName.isNullOrEmpty() -> BundleState.Empty
-                state.isRegistered == true && !isAppInConsole -> BundleState.PackageNotAvailable
-                metadata?.isSigned == false -> BundleState.Unsigned
-                metadata?.isDebug == true -> BundleState.Debug
-                else -> BundleState.Valid
+              when (registrationResult) {
+                is RegistrationResult.Loading -> BundleState.Loading
+                is RegistrationResult.Success -> {
+                  val isRegistered = registrationResult.isRegistered
+                  when {
+                    state.packageName.isNullOrEmpty() -> BundleState.Empty
+                    isRegistered == true && !isAppInConsole -> BundleState.PackageNotAvailable
+                    metadata?.isSigned == false -> BundleState.Unsigned
+                    metadata?.isDebug == true -> BundleState.Debug
+                    else -> BundleState.Valid
+                  }
+                }
               }
             }
           }
@@ -158,17 +214,25 @@ fun WizardPageScope.ChooseBundlePage(
     }
 
   val packageNameCheck =
-    remember(metadataResult, listAppsResult, state.packageName, state.isRegistered, isAppInConsole) {
+    remember(metadataResult, listAppsResult, state.packageName, registrationResult, isAppInConsole) {
+      val isRegistered = (registrationResult as? RegistrationResult.Success)?.isRegistered
       when {
         listAppsResult !is ListAppsResult.Success || metadataResult !is MetadataResult.Success -> null
-        state.isRegistered == false && !state.packageName.isNullOrEmpty() -> {
+        isRegistered == false && !state.packageName.isNullOrEmpty() -> {
           PackageNameCheck(ElementType.SUCCESS, "Package name available")
         }
-        state.isRegistered == true && isAppInConsole -> {
+        isRegistered == true && isAppInConsole -> {
           PackageNameCheck(ElementType.SUCCESS, "Matches existing app")
         }
         else -> null
       }
+    }
+
+  val isPackageNameValidating =
+    remember(metadataResult, listAppsResult, state.packageName, registrationResult) {
+      !state.packageName.isNullOrEmpty() &&
+        metadataResult is MetadataResult.Success &&
+        (listAppsResult is ListAppsResult.Loading || registrationResult is RegistrationResult.Loading)
     }
 
   LaunchedEffect(bundlePathState.text) {
@@ -318,14 +382,17 @@ fun WizardPageScope.ChooseBundlePage(
         Row(modifier = Modifier.testTag("PackageNameRow"), verticalAlignment = Alignment.CenterVertically) {
           Text(text = "Package name", modifier = Modifier.width(100.dp), style = JewelTheme.defaultTextStyle.copy(fontSize = 13.sp))
           Text(text = state.packageName.takeIf { !it.isNullOrEmpty() } ?: "—", style = JewelTheme.defaultTextStyle.copy(fontSize = 13.sp))
-          packageNameCheck?.let {
+          if (isPackageNameValidating) {
             Spacer(modifier = Modifier.width(8.dp))
-            when (it.type) {
+            CircularProgressIndicator(modifier = Modifier.size(14.dp).testTag("PackageNameLoading"))
+          } else if (packageNameCheck != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            when (packageNameCheck.type) {
               ElementType.SUCCESS -> Icon(key = AllIconsKeys.Status.Success, contentDescription = null, modifier = Modifier.size(14.dp))
               ElementType.ERROR -> Icon(key = AllIconsKeys.General.Error, contentDescription = null, modifier = Modifier.size(14.dp))
             }
             Spacer(modifier = Modifier.width(4.dp))
-            Text(text = it.message, style = JewelTheme.defaultTextStyle.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold))
+            Text(text = packageNameCheck.message, style = JewelTheme.defaultTextStyle.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold))
           }
         }
 
@@ -443,4 +510,10 @@ private sealed interface MetadataResult {
   data object ParseError : MetadataResult
 
   data class Success(val metadata: AppMetadata) : MetadataResult
+}
+
+private sealed interface RegistrationResult {
+  data object Loading : RegistrationResult
+
+  data class Success(val isRegistered: Boolean?) : RegistrationResult
 }

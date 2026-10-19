@@ -20,6 +20,8 @@ import com.android.testutils.concurrency.OnDemandExecutorService
 import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.google.common.truth.Truth
 import com.google.common.util.concurrent.MoreExecutors
+import com.intellij.util.ref.GCUtil
+import java.lang.ref.WeakReference
 import java.util.concurrent.AbstractExecutorService
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
@@ -28,9 +30,12 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
@@ -55,6 +60,8 @@ private class TestSingleThreadExecutorService(private val delegate: ExecutorServ
   override fun stackTrace(): Array<StackTraceElement> = emptyArray()
 
   override fun interrupt() {}
+
+  override fun remove(runnable: Runnable): Boolean = (delegate as? ThreadPoolExecutor)?.remove(runnable) ?: false
 
   override fun execute(command: Runnable) = delegate.execute(command)
 
@@ -270,14 +277,13 @@ class RenderExecutorTest {
     assertEquals(3, executor.accumulatedTimeouts)
     timeoutExecutorProvider.advanceBy(2, TimeUnit.SECONDS)
 
-    val job =
-      GlobalScope.launch {
-        // Keep advancing the timeout timer
-        while (!timeoutExecutorProvider.isShutdown) {
-          timeoutExecutorProvider.advanceBy(10, TimeUnit.SECONDS)
-          delay(500L)
-        }
+    val job = GlobalScope.launch {
+      // Keep advancing the timeout timer
+      while (!timeoutExecutorProvider.isShutdown) {
+        timeoutExecutorProvider.advanceBy(10, TimeUnit.SECONDS)
+        delay(500L)
       }
+    }
 
     try {
       executor.runAction(Callable<Void> { null })
@@ -530,6 +536,166 @@ class RenderExecutorTest {
       assertTrue(completedWithoutInterruption)
     } finally {
       executor.shutdown()
+    }
+  }
+
+  @Test
+  fun testEvictionCompletionDoesNotHoldLock() {
+    val actionExecutor = OnDemandExecutorService()
+    val timeoutExecutorProvider = VirtualTimeScheduler()
+    val executor =
+      RenderExecutor.createForTests(
+        executorService = TestSingleThreadExecutorService(actionExecutor),
+        scheduledExecutorService = timeoutExecutorProvider,
+      )
+    try {
+      val lockHeldDuringCompletion = AtomicBoolean(false)
+      val completionCalled = CountDownLatch(1)
+
+      // Add soft limit (50) actions that sit in the queue without running
+      repeat(50) { executor.runAsyncActionWithTestDefault(topic = RenderingTopic.NOT_SPECIFIED) {} }
+
+      // Enqueueing action 51 exceeds the soft limit and causes eviction of the lowest priority task right inside runAsyncActionWithTimeout
+      val overflowFuture = executor.runAsyncActionWithTestDefault(topic = getLowPriorityRenderingTopicForTest()) {}
+      overflowFuture.whenComplete { _, exception ->
+        if (exception != null) {
+          try {
+            // Verify that we can invoke queue operations from inside the completion callback without deadlock or holding
+            // pendingActionsQueueLock
+            executor.runAsyncActionWithTestDefault(topic = getHighPriorityRenderingTopicForTest()) {}
+          } catch (_: Throwable) {
+            lockHeldDuringCompletion.set(true)
+          }
+          completionCalled.countDown()
+        }
+      }
+
+      // Enqueue one more task to trigger eviction of overflowFuture (or the earlier task) if needed
+      executor.runAsyncActionWithTestDefault(topic = getLowPriorityRenderingTopicForTest()) {}
+
+      assertTrue(completionCalled.await(5, TimeUnit.SECONDS))
+      assertFalse(lockHeldDuringCompletion.get())
+    } finally {
+      executor.shutdown()
+    }
+  }
+
+  @Test
+  fun testShutdownCancelsPendingActionsAndRejectsNewActions() {
+    val actionExecutor = OnDemandExecutorService()
+    val timeoutExecutorProvider = VirtualTimeScheduler()
+    val executor =
+      RenderExecutor.createForTests(
+        executorService = TestSingleThreadExecutorService(actionExecutor),
+        scheduledExecutorService = timeoutExecutorProvider,
+      )
+
+    val pendingFuture1 = executor.runAsyncActionWithTestDefault(topic = RenderingTopic.CLEAN) {}
+    val pendingFuture2 = executor.runAsyncActionWithTestDefault(topic = RenderingTopic.NOT_SPECIFIED) {}
+    assertEquals(2, executor.numPendingActions)
+    assertFalse(pendingFuture1.isDone)
+    assertFalse(pendingFuture2.isDone)
+
+    executor.shutdown()
+
+    assertEquals(0, executor.numPendingActions)
+    assertTrue(pendingFuture1.isCancelled)
+    assertTrue(pendingFuture2.isCancelled)
+
+    // Submitting a new action after shutdown should complete exceptionally with
+    // RejectedExecutionException without leaving orphan entries in the pending queue.
+    val postShutdownFuture = executor.runAsyncActionWithTestDefault(topic = RenderingTopic.CLEAN) {}
+    assertEquals(0, executor.numPendingActions)
+    assertTrue(postShutdownFuture.isCompletedExceptionally)
+    try {
+      postShutdownFuture.get()
+      fail("Expected ExecutionException caused by RejectedExecutionException")
+    } catch (e: ExecutionException) {
+      assertTrue(e.cause is RejectedExecutionException)
+    }
+  }
+
+  @Test
+  fun testCompletedActionsReleaseCallableReferencesWhileRenderThreadBlocked() {
+    val timeoutExecutorProvider = VirtualTimeScheduler()
+    val executor =
+      RenderExecutor.createForTests(
+        executorService = SingleThreadExecutorService.create("Layoutlib Render Thread", ThreadProfileSettings.disabled),
+        scheduledExecutorService = timeoutExecutorProvider,
+      )
+    val firstActionStarted = CountDownLatch(1)
+    val unblockFirstAction = CountDownLatch(1)
+
+    try {
+      // Block the render thread so queued actions remain in the executor queue unless removed.
+      executor.runAsyncActionWithTimeout(
+        queueingTimeout = 0,
+        queueingTimeoutUnit = TimeUnit.SECONDS,
+        actionTimeout = 30,
+        actionTimeoutUnit = TimeUnit.SECONDS,
+        renderingTopic = RenderingTopic.CLEAN,
+      ) {
+        firstActionStarted.countDown()
+        unblockFirstAction.await(30, TimeUnit.SECONDS)
+      }
+      assertTrue(firstActionStarted.await(5, TimeUnit.SECONDS))
+
+      fun enqueueCapturingObject(
+        topic: RenderingTopic,
+        queueingTimeoutMs: Long = 10_000,
+      ): Pair<CompletableFuture<*>, WeakReference<Any>> {
+        val captured = Any()
+        val future =
+          executor.runAsyncActionWithTimeout(
+            queueingTimeout = queueingTimeoutMs,
+            queueingTimeoutUnit = TimeUnit.MILLISECONDS,
+            actionTimeout = 10,
+            actionTimeoutUnit = TimeUnit.SECONDS,
+            renderingTopic = topic,
+            callable = Callable { captured.hashCode() },
+          )
+        return future to WeakReference(captured)
+      }
+
+      // 1. Cancelled by topic
+      val (_, cancelledByTopicRef) = enqueueCapturingObject(getLowPriorityRenderingTopicForTest())
+      assertEquals(1, executor.cancelActionsByTopic(listOf(getLowPriorityRenderingTopicForTest()), false))
+      assertEquals(0, executor.numPendingActions)
+
+      // 2. Cancelled directly via Future.cancel
+      val (directCancelFuture, directCancelRef) = enqueueCapturingObject(RenderingTopic.NOT_SPECIFIED)
+      assertTrue(directCancelFuture.cancel(false))
+      assertEquals(0, executor.numPendingActions)
+
+      // 3. Timed out in queue
+      val (timedOutFuture, timedOutRef) = enqueueCapturingObject(RenderingTopic.NOT_SPECIFIED, queueingTimeoutMs = 20)
+      timeoutExecutorProvider.advanceBy(20, TimeUnit.MILLISECONDS)
+      try {
+        timedOutFuture.get(5, TimeUnit.SECONDS)
+        fail("Expected TimeoutException")
+      } catch (e: ExecutionException) {
+        assertTrue(e.cause is TimeoutException)
+      }
+      assertEquals(0, executor.numPendingActions)
+
+      // 4. Evicted due to soft queue limit (50)
+      val (_, evictedRef) = enqueueCapturingObject(getLowPriorityRenderingTopicForTest())
+      val fillerFutures = (1..50).map { executor.runAsyncActionWithTestDefault(topic = RenderingTopic.NOT_SPECIFIED) {} }
+      assertEquals(50, executor.numPendingActions)
+
+      GCUtil.tryGcSoftlyReachableObjects()
+      System.gc()
+
+      assertTrue("Cancelled-by-topic callable should be GC'd", cancelledByTopicRef.get() == null)
+      assertTrue("Directly-cancelled callable should be GC'd", directCancelRef.get() == null)
+      assertTrue("Queue-timed-out callable should be GC'd", timedOutRef.get() == null)
+      assertTrue("Evicted callable should be GC'd", evictedRef.get() == null)
+
+      fillerFutures.forEach { it.cancel(false) }
+      assertEquals(0, executor.numPendingActions)
+    } finally {
+      unblockFirstAction.countDown()
+      executor.shutdown(5)
     }
   }
 }

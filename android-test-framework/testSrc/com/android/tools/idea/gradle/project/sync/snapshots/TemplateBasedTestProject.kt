@@ -176,26 +176,25 @@ class PreparedTemplateBasedTestProject(
   private fun <T> openProject(
     updateOptions: (OpenPreparedProjectOptions) -> OpenPreparedProjectOptions,
     body: (project: Project, projectRoot: File) -> T,
-  ) =
-    templateBasedTestProject.usingTestProjectSetup {
-      val embeddedJdkPath = getEmbeddedJdkPathWithVersion(resolvedAgpVersion.jdkVersion)
-      val options =
-        updateOptions(templateBasedTestProject.defaultOpenPreparedProjectOptions().copy(overrideProjectGradleJdkPath = embeddedJdkPath))
-      integrationTestEnvironment.openPreparedProject(name = "$name${templateBasedTestProject.pathToOpen}", options = options) { project ->
-        IndexingTestUtil.waitUntilIndexesAreReady(project)
-        invokeAndWaitIfNeeded { AndroidGradleTests.waitForProjectStructureUsageTracker(project) }
-        invokeAndWaitIfNeeded { AndroidGradleTests.waitForCreateRunConfigurations(project) }
-        invokeAndWaitIfNeeded { AndroidGradleTests.waitForSourceFolderManagerToProcessUpdates(project) }
-        if (!options.skipSwitchingVariants) {
-          templateBasedTestProject.switchVariant?.let { switchVariant ->
-            switchVariant(project, switchVariant.gradlePath, switchVariant.variant)
-            invokeAndWaitIfNeeded { AndroidGradleTests.waitForSourceFolderManagerToProcessUpdates(project) }
-            templateBasedTestProject.verifyOpened?.invoke(project) // Second time.
-          }
+  ) = templateBasedTestProject.usingTestProjectSetup {
+    val embeddedJdkPath = getEmbeddedJdkPathWithVersion(resolvedAgpVersion.jdkVersion)
+    val options =
+      updateOptions(templateBasedTestProject.defaultOpenPreparedProjectOptions().copy(overrideProjectGradleJdkPath = embeddedJdkPath))
+    integrationTestEnvironment.openPreparedProject(name = "$name${templateBasedTestProject.pathToOpen}", options = options) { project ->
+      IndexingTestUtil.waitUntilIndexesAreReady(project)
+      invokeAndWaitIfNeeded { AndroidGradleTests.waitForProjectStructureUsageTracker(project) }
+      invokeAndWaitIfNeeded { AndroidGradleTests.waitForCreateRunConfigurations(project) }
+      invokeAndWaitIfNeeded { AndroidGradleTests.waitForSourceFolderManagerToProcessUpdates(project) }
+      if (!options.skipSwitchingVariants) {
+        templateBasedTestProject.switchVariant?.let { switchVariant ->
+          switchVariant(project, switchVariant.gradlePath, switchVariant.variant)
+          invokeAndWaitIfNeeded { AndroidGradleTests.waitForSourceFolderManagerToProcessUpdates(project) }
+          templateBasedTestProject.verifyOpened?.invoke(project) // Second time.
         }
-        body(project, root)
       }
+      body(project, root)
     }
+  }
 }
 
 private inline fun <T> TemplateBasedTestProject.usingTestProjectSetup(body: () -> T): T {
@@ -359,12 +358,20 @@ fun migratePackageAttribute(root: File) {
 
       when {
         buildGradle?.exists() == true -> {
-          buildGradle.replaceContent { it.placeNamespaceProperty(namespace) }
-          VfsUtil.markDirtyAndRefresh(false, false, false, buildGradle.toFile())
+          val original = buildGradle.toFile().readText()
+          val updated = original.placeNamespaceProperty(namespace)
+          if (original != updated) {
+            buildGradle.toFile().writeText(updated)
+            VfsUtil.markDirtyAndRefresh(false, false, false, buildGradle)
+          }
         }
         buildGradleKts?.exists() == true -> {
-          buildGradleKts.replaceContent { it.placeNamespaceProperty(namespace) }
-          VfsUtil.markDirtyAndRefresh(false, false, false, buildGradleKts.toFile())
+          val original = buildGradleKts.toFile().readText()
+          val updated = original.placeNamespaceProperty(namespace)
+          if (original != updated) {
+            buildGradleKts.toFile().writeText(updated)
+            VfsUtil.markDirtyAndRefresh(false, false, false, buildGradleKts)
+          }
         }
         else -> {
           error("Cannot find a build file to store the value of 'package' attribute in $manifestPath")
@@ -399,6 +406,7 @@ fun patchLegacyLibraryTargetSdk(root: File) {
 }
 
 fun String.placeNamespaceProperty(namespace: String): String {
+  if (this.contains(Regex("""\bnamespace\s*="""))) return this
   val marker = "\nandroid {\n"
   val firstIndex = indexOf(marker)
   val insertionIndex = if (firstIndex < 0) -1 else firstIndex + marker.length

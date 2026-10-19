@@ -30,6 +30,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
+import java.util.concurrent.TimeoutException
 import kotlin.time.Duration.Companion.seconds
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
@@ -53,6 +54,37 @@ class ComposeWizardTest {
     @OptIn(ExperimentalTestApi::class) composeTestRule.onNodeWithText("abcd").performKeyInput { keyPress(Key.Enter) }
 
     wizard.awaitClose(5.seconds)
+  }
+
+  @Test
+  fun escape() {
+    val wizard = TestComposeWizard {
+      val focusRequester = remember { FocusRequester() }
+      TextField(TextFieldState("abcd"), Modifier.focusRequester(focusRequester))
+      LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    }
+
+    composeTestRule.setContent { wizard.Content() }
+
+    @OptIn(ExperimentalTestApi::class) composeTestRule.onNodeWithText("abcd").performKeyInput { keyPress(Key.Escape) }
+
+    wizard.awaitClose(5.seconds)
+  }
+
+  @Test(expected = TimeoutException::class)
+  fun escapeIgnoredWhenCancelDisabled() {
+    val wizard = TestComposeWizard {
+      val focusRequester = remember { FocusRequester() }
+      TextField(TextFieldState("abcd"), Modifier.focusRequester(focusRequester))
+      LaunchedEffect(Unit) { focusRequester.requestFocus() }
+      cancelButtonEnabled = false
+    }
+
+    composeTestRule.setContent { wizard.Content() }
+
+    @OptIn(ExperimentalTestApi::class) composeTestRule.onNodeWithText("abcd").performKeyInput { keyPress(Key.Escape) }
+
+    wizard.awaitClose(1.seconds)
   }
 
   @Test

@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -63,6 +64,7 @@ import com.google.common.annotations.VisibleForTesting
 import com.intellij.accessibility.AccessibilityUtils
 import com.intellij.ide.actions.RevealFileAction
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.util.ColorProgressBar
 import com.intellij.openapi.util.Disposer
@@ -181,6 +183,11 @@ class ScreenshotAttributesView : Disposable {
   @VisibleForTesting
   @Composable
   fun ScreenshotAttributesUi(currentState: ScreenshotAttributesState) {
+    val isNew =
+      currentState.refLocation == NOT_APPLICABLE &&
+        currentState.matchPercentage == null &&
+        currentState.testResult == AndroidTestCaseResult.FAILED
+
     var refMetadata by remember { mutableStateOf(ImageMetadata()) }
     var newMetadata by remember { mutableStateOf(ImageMetadata()) }
 
@@ -189,9 +196,11 @@ class ScreenshotAttributesView : Disposable {
 
     LaunchedEffect(currentState, refMetadata, newMetadata) {
       val matchText =
-        currentState.matchPercentage?.let { "Match: $it" }
-          ?: if (currentState.testResult == AndroidTestCaseResult.FAILED) "Match: 0.00%"
-          else "Match: ${currentState.testResult?.name ?: NOT_APPLICABLE}"
+        if (isNew) "Match: New"
+        else
+          currentState.matchPercentage?.let { "Match: $it" }
+            ?: if (currentState.testResult == AndroidTestCaseResult.FAILED) "Match: 0.00%"
+            else "Match: ${currentState.testResult?.name ?: NOT_APPLICABLE}"
 
       val description =
         """
@@ -213,9 +222,11 @@ class ScreenshotAttributesView : Disposable {
     val scope = rememberCoroutineScope()
 
     val matchText =
-      currentState.matchPercentage?.let { "Match: $it" }
-        ?: if (currentState.testResult == AndroidTestCaseResult.FAILED) "Match: 0.00%"
-        else "Match: ${currentState.testResult?.name ?: NOT_APPLICABLE}"
+      if (isNew) "Match: New"
+      else
+        currentState.matchPercentage?.let { "Match: $it" }
+          ?: if (currentState.testResult == AndroidTestCaseResult.FAILED) "Match: 0.00%"
+          else "Match: ${currentState.testResult?.name ?: NOT_APPLICABLE}"
 
     val summarySemanticsDescription =
       """
@@ -235,16 +246,22 @@ class ScreenshotAttributesView : Disposable {
         Section("Summary") {
           KeyValueRow("Match") {
             val text =
-              currentState.matchPercentage
-                ?: if (currentState.testResult == AndroidTestCaseResult.FAILED) {
-                  "0.00%"
-                } else {
-                  currentState.testResult?.name ?: NOT_APPLICABLE
-                }
-            when (currentState.testResult) {
-              AndroidTestCaseResult.PASSED -> GreenText(text)
-              AndroidTestCaseResult.FAILED -> RedText(text)
-              else -> GrayText(text)
+              if (isNew) {
+                "New"
+              } else {
+                currentState.matchPercentage
+                  ?: if (currentState.testResult == AndroidTestCaseResult.FAILED) {
+                    "0.00%"
+                  } else {
+                    currentState.testResult?.name ?: NOT_APPLICABLE
+                  }
+              }
+            val matchModifier = Modifier.testTag("match_status")
+            when {
+              isNew -> GreenText(text, modifier = matchModifier)
+              currentState.testResult == AndroidTestCaseResult.PASSED -> GreenText(text, modifier = matchModifier)
+              currentState.testResult == AndroidTestCaseResult.FAILED -> RedText(text, modifier = matchModifier)
+              else -> GrayText(text, modifier = matchModifier)
             }
           }
           KeyValueRow("Preview") {
@@ -407,9 +424,20 @@ private fun ClickableFileLink(path: String, modifier: Modifier = Modifier) {
       BlueText(
         text = path,
         modifier =
-          modifier.clickable(enabled = File(path).exists(), interactionSource = interactionSource, indication = null) {
+          // Do NOT hand untrusted paths to the OS shell. Reveal in the platform file manager instead,
+          // which highlights the file without invoking its association handler.
+          modifier.clickable(
+            enabled =
+              try {
+                java.nio.file.Files.isRegularFile(java.nio.file.Paths.get(path))
+              } catch (e: java.nio.file.InvalidPathException) {
+                false
+              },
+            interactionSource = interactionSource,
+            indication = null,
+          ) {
             try {
-              RevealFileAction.openFile(File(path))
+              RevealFileAction.openFile(java.nio.file.Paths.get(path))
             } catch (e: Exception) {
               LOG.warn("Failed to open file: $path", e)
             }
@@ -489,6 +517,12 @@ private fun RedText(text: String, modifier: Modifier = Modifier) {
  */
 @Composable
 private fun GreenText(text: String, modifier: Modifier = Modifier) {
-  val green7 = JewelTheme.colorPalette.greenOrNull(7) ?: Color(ColorProgressBar.GREEN.rgb)
+  val fallbackGreen =
+    if (ApplicationManager.getApplication() != null) {
+      ColorProgressBar.GREEN
+    } else {
+      JBColor.GREEN
+    }
+  val green7 = JewelTheme.colorPalette.greenOrNull(7) ?: Color(fallbackGreen.rgb)
   Text(text = text, color = green7, modifier = modifier)
 }

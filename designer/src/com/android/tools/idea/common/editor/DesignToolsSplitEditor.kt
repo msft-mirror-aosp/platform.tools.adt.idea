@@ -26,6 +26,7 @@ import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileEditor.TextEditorWithPreview
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.project.Project
+import com.intellij.pom.Navigatable
 
 private const val SPLIT_MODE_PROPERTY_PREFIX = "SPLIT_EDITOR_MODE"
 
@@ -96,6 +97,16 @@ open class DesignToolsSplitEditor(textEditor: TextEditor, val designerEditor: De
     if (!FileEditorManager.getInstance(project).selectedEditors.contains(this)) {
       designerEditor.component.deactivate()
     }
+  }
+
+  override fun navigateTo(navigatable: Navigatable) {
+    // If the text editor is not visible (design-only mode) and the user is navigating to a
+    // specific XML element or line (e.g. from build error output or Go to Declaration), switch to
+    // split mode so the user can see where the cursor moved.
+    if (isDesignMode()) {
+      selectSplitMode(false)
+    }
+    super.navigateTo(navigatable)
   }
 
   override val showEditorAction: SplitEditorAction

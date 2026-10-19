@@ -28,6 +28,7 @@ import java.lang.ref.WeakReference
 import java.lang.reflect.Field
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 import java.util.Arrays
 import java.util.Optional
 import java.util.concurrent.CompletableFuture
@@ -49,12 +50,13 @@ private const val TYPEFACE_COMPAT_FQN = "androidx.core.graphics.TypefaceCompat"
 private const val WINDOW_RECOMPOSER_ANDROID_KT_FQN = "androidx.compose.ui.platform.WindowRecomposer_androidKt"
 private const val LOCAL_BROADCAST_MANAGER_FQN = "androidx.localbroadcastmanager.content.LocalBroadcastManager"
 
-private const val GAP_WORKER_CLASS_NAME = "androidx.recyclerview.widget.GapWorker"
+private val GAP_WORKER_CLASS_NAMES = listOf("androidx.recyclerview.widget.GapWorker", "android.support.v7.widget.GapWorker")
 
 private const val INTERNAL_PACKAGE = "_layoutlib_._internal_."
 private const val ANDROID_UI_DISPATCHER_FQN = "androidx.compose.ui.platform.AndroidUiDispatcher"
 private const val ANDROID_UI_DISPATCHER_COMPANION_FQN = "$ANDROID_UI_DISPATCHER_FQN\$Companion"
 private const val COMBINED_CONTEXT_FQN = "${INTERNAL_PACKAGE}kotlin.coroutines.CombinedContext"
+private const val ANDROID_COMPOSE_VIEW_FQN = "androidx.compose.ui.platform.AndroidComposeView"
 
 /**
  * Initiates a custom [RenderSession] disposal, involving clearing several static collections including some Compose-related objects as well
@@ -67,10 +69,10 @@ fun RenderSession.dispose(classLoader: ModuleClassLoader): CompletableFuture<Voi
   var applyObserversRef: WeakReference<MutableCollection<*>?>? = null
   var globalWriteObserversRef: WeakReference<MutableCollection<*>?>? = null
   var toRunTrampolinedRef: WeakReference<MutableCollection<*>?>? = null
-  // After render clean-up. Dispose the GapWorker, FontRequestWorker, and TypefaceCompat caches for all projects.
-  clearGapWorkerCache(classLoader)
+  // After render clean-up. Dispose the FontRequestWorker cache and TypefaceCompat caches for all projects.
   clearFontRequestWorker(classLoader)
   clearTypefaceCompatCache(classLoader)
+  clearAndroidComposeView(classLoader)
 
   if (classLoader.hasLoadedClass(CLASS_COMPOSE_VIEW_ADAPTER)) {
     clearCompositions(classLoader)
@@ -122,6 +124,8 @@ fun RenderSession.dispose(classLoader: ModuleClassLoader): CompletableFuture<Voi
     toRunTrampolinedRef?.get()?.clear()
     broadcastManagerInstanceField.get()?.set(null, null)
     this@dispose.dispose()
+    clearWindowManagerGlobal(classLoader)
+    clearGapWorkerCache(classLoader)
   }
 }
 
@@ -163,6 +167,9 @@ private fun findToRunTrampolined(classLoader: ModuleClassLoader): MutableCollect
     }
     // This is very hacky, but it might allow us to avoid calling getMain when it has never been
     // called before.
+    // In older Compose versions, Main was a singleton initialized in Main$2. If INSTANCE is null,
+    // AndroidUiDispatcher.Main was never accessed; skip calling getMain to avoid initializing it
+    // on this background thread.
     val ANDROID_UI_DISPATCHER_COMPANION_VALUE_FQN = "$ANDROID_UI_DISPATCHER_COMPANION_FQN\$Main\$2"
     if (classLoader.hasLoadedClass(ANDROID_UI_DISPATCHER_COMPANION_VALUE_FQN)) {
       val uiDispatcherCompanionValue = classLoader.loadClass(ANDROID_UI_DISPATCHER_COMPANION_VALUE_FQN)
@@ -170,9 +177,23 @@ private fun findToRunTrampolined(classLoader: ModuleClassLoader): MutableCollect
         val instanceField = uiDispatcherCompanionValue.getField("INSTANCE")
         if (instanceField[null] == null) {
           LOG.warn("Unexpected: uninitialized AndroidUiDispatcher.Main")
+          return null
         }
       } catch (ignore: ReflectiveOperationException) {}
     }
+    // In Compose versions where AndroidUiDispatcher.Main is a lazy property (e.g. `val Main by lazy`),
+    // accessing getMain() triggers lazy initialization. If it has not been initialized yet on the UI
+    // thread, evaluating it here from the cleaner thread deadlocks in runBlocking(Dispatchers.Main).
+    // Inspect Main$delegate to ensure it is already initialized before invoking getMain().
+    try {
+      val mainDelegateField = uiDispatcher.getDeclaredField("Main\$delegate").apply { isAccessible = true }
+      val mainDelegate = mainDelegateField[null]
+      val isInitializedMethod = mainDelegate?.javaClass?.getMethod("isInitialized")?.apply { isAccessible = true }
+      if (mainDelegate == null || isInitializedMethod?.invoke(mainDelegate) == false) {
+        LOG.warn("Unexpected: uninitialized AndroidUiDispatcher.Main")
+        return null
+      }
+    } catch (ignore: ReflectiveOperationException) {}
     val uiDispatcherCompanion = classLoader.loadClass(ANDROID_UI_DISPATCHER_COMPANION_FQN)
     val uiDispatcherCompanionField = uiDispatcher.getDeclaredField("Companion")
     val uiDispatcherCompanionObj = uiDispatcherCompanionField[null]
@@ -217,8 +238,10 @@ private fun findSnapshotKtObserversField(classLoader: ModuleClassLoader, fieldNa
 }
 
 private fun findLocalBroadcastManagerInstance(classLoader: ModuleClassLoader): Field? {
+  if (!classLoader.hasLoadedClass(LOCAL_BROADCAST_MANAGER_FQN)) return null
+
   return try {
-    val broadcastManagerClass = classLoader.loadClass(LOCAL_BROADCAST_MANAGER_FQN)
+    val broadcastManagerClass: Class<*> = classLoader.loadClass(LOCAL_BROADCAST_MANAGER_FQN)
     broadcastManagerClass.getDeclaredField("mInstance").apply { this.isAccessible = true }
   } catch (ex: ReflectiveOperationException) {
     LOG.debug("Unable to find $LOCAL_BROADCAST_MANAGER_FQN.mInstance", ex)
@@ -283,29 +306,28 @@ private fun clearGapWorkerCache(classLoader: ModuleClassLoader) {
     return
   }
 
-  try {
-    val gapWorkerClass = classLoader.loadClass(GAP_WORKER_CLASS_NAME)
+  for (className in GAP_WORKER_CLASS_NAMES) {
+    try {
+      val gapWorkerClass = classLoader.loadClass(className)
+      val gapWorkerField = gapWorkerClass.getDeclaredField("sGapWorker")
+      gapWorkerField.isAccessible = true
 
-    if (gapWorkerClass.classLoader !== classLoader) {
-      LOG.debug("GapWorker loaded by parent classloader, skipping clean-up")
-      return
-    }
-
-    val gapWorkerField = gapWorkerClass.getDeclaredField("sGapWorker")
-    gapWorkerField.isAccessible = true
-
-    // Because we are clearing-up a ThreadLocal, the code must run on the Layoutlib Thread
-    RenderService.getRenderAsyncActionExecutor().runAsyncAction(RenderAsyncActionExecutor.RenderingTopic.CLEAN) {
-      try {
-        val gapWorkerFieldValue = gapWorkerField[null] as? ThreadLocal<*>
-        gapWorkerFieldValue?.set(null)
-        LOG.debug("GapWorker was cleared")
-      } catch (e: Exception) {
-        LOG.debug(e)
+      val gapWorkerFieldValue = gapWorkerField[null] as? ThreadLocal<*>
+      val gapWorker = gapWorkerFieldValue?.get()
+      if (gapWorker != null) {
+        try {
+          val recyclerViewsField = gapWorker.javaClass.getDeclaredField("mRecyclerViews")
+          recyclerViewsField.isAccessible = true
+          (recyclerViewsField.get(gapWorker) as? MutableCollection<*>)?.clear()
+        } catch (t: Throwable) {
+          LOG.debug("Failed to clear mRecyclerViews in GapWorker", t)
+        }
       }
+      gapWorkerFieldValue?.remove()
+      LOG.debug("GapWorker was cleared")
+    } catch (t: Throwable) {
+      LOG.debug(t)
     }
-  } catch (t: Throwable) {
-    LOG.debug(t)
   }
 }
 
@@ -347,5 +369,92 @@ private fun clearTypefaceCompatCache(classLoader: ModuleClassLoader) {
     clearCacheMethod.invoke(null)
   } catch (ex: ReflectiveOperationException) {
     LOG.debug("Unable to dispose TypefaceCompat.sTypefaceCache", ex)
+  }
+}
+
+/** Clear static variables or caches held by `AndroidComposeView`. */
+private fun clearAndroidComposeView(classLoader: ModuleClassLoader) {
+  if (!classLoader.hasLoadedClass(ANDROID_COMPOSE_VIEW_FQN)) return
+
+  try {
+    val androidComposeViewClass = classLoader.loadClass(ANDROID_COMPOSE_VIEW_FQN)
+
+    // Safety check to ensure we only modify classes loaded by the ModuleClassLoader itself
+    if (androidComposeViewClass.classLoader !== classLoader) {
+      LOG.debug("AndroidComposeView loaded by parent classloader, skipping clean-up")
+      return
+    }
+
+    clearStaticFields(androidComposeViewClass)
+
+    val companionFqn = "$ANDROID_COMPOSE_VIEW_FQN\$Companion"
+    if (classLoader.hasLoadedClass(companionFqn)) {
+      val companionClass = classLoader.loadClass(companionFqn)
+      clearStaticFields(companionClass)
+    }
+  } catch (ex: ReflectiveOperationException) {
+    LOG.debug("Unable to dispose AndroidComposeView static fields", ex)
+  }
+}
+
+private fun clearStaticFields(clazz: Class<*>) {
+  for (field in clazz.declaredFields) {
+    if (Modifier.isStatic(field.modifiers)) {
+      runCatching {
+        field.isAccessible = true
+        val value = field[null] ?: return@runCatching
+        if (value is MutableCollection<*>) {
+          value.clear()
+        } else if (value is MutableMap<*, *>) {
+          value.clear()
+        } else if (value.javaClass.name.startsWith("androidx.collection.Mutable")) {
+          val clearMethod = value.javaClass.methods.firstOrNull { it.name == "clear" && it.parameterTypes.isEmpty() }
+          clearMethod?.let {
+            it.isAccessible = true
+            it.invoke(value)
+          }
+        }
+        if (!Modifier.isFinal(field.modifiers)) {
+          field.set(null, null)
+        }
+      }
+    }
+  }
+}
+
+private const val WINDOW_MANAGER_GLOBAL_FQN = "android.view.WindowManagerGlobal"
+
+/**
+ * Synchronizes `WindowManagerGlobal.mWindowViewsListenerGroup.mLastValue` with `mViews` after [RenderSession.dispose].
+ *
+ * During `RenderSession.dispose()`, `WindowManagerGlobal` removes the session's views from `mViews` and calls
+ * `mWindowViewsListenerGroup.accept(getWindowViews())`. Because `ListenerGroup.accept` posts the `mLastValue` update to a `Handler` whose
+ * `HandlerMessageQueue` is immediately cleared by `SessionInteractiveData.dispose()`, `mLastValue` can remain stuck referencing the
+ * disposed `DecorView` (and its `ComposeViewAdapter` / [ModuleClassLoader]).
+ */
+private fun clearWindowManagerGlobal(classLoader: ModuleClassLoader) {
+  try {
+    val windowManagerGlobalClass = classLoader.loadClass(WINDOW_MANAGER_GLOBAL_FQN)
+    val defaultWmField =
+      windowManagerGlobalClass.getDeclaredField("sDefaultWindowManager").apply {
+        isAccessible = true
+      }
+    val global = defaultWmField.get(null) ?: return
+    val lock = windowManagerGlobalClass.getDeclaredField("mLock").apply { isAccessible = true }.get(global) ?: global
+    val viewsField = windowManagerGlobalClass.getDeclaredField("mViews").apply { isAccessible = true }
+    val listenerGroup =
+      windowManagerGlobalClass.getDeclaredField("mWindowViewsListenerGroup").apply { isAccessible = true }.get(global) ?: return
+    val lastValueField = listenerGroup.javaClass.getDeclaredField("mLastValue").apply { isAccessible = true }
+    val oldLastValue: MutableCollection<*>?
+    val currentViews: ArrayList<Any?>
+    synchronized(lock) {
+      val views = viewsField.get(global) as? Collection<*>
+      currentViews = if (views != null) ArrayList(views) else ArrayList()
+      oldLastValue = lastValueField.get(listenerGroup) as? MutableCollection<*>
+      lastValueField.set(listenerGroup, currentViews)
+    }
+    oldLastValue?.retainAll(currentViews.toSet())
+  } catch (t: Throwable) {
+    LOG.debug("Unable to clean WindowManagerGlobal.mWindowViewsListenerGroup", t)
   }
 }

@@ -225,6 +225,11 @@ abstract class SplitEditor<P : FileEditor>(
       }
 
       if (state) {
+        // PsiAwareTextEditorComponent updates editor.component.isVisible asynchronously via a
+        // ComponentListener when COMPONENT_SHOWN/COMPONENT_HIDDEN events are dispatched. Sync its
+        // visibility immediately so preferredFocusedComponent is not recursively invisible when
+        // requesting focus below.
+        myEditor.editor.component?.isVisible = myEditor.component.isVisible
         preferredFocusedComponent?.requestFocusInWindow()
       }
     }

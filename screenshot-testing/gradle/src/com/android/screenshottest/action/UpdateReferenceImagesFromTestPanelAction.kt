@@ -54,7 +54,10 @@ class UpdateReferenceImagesFromTestPanelAction : AnAction(UPDATE_ACTION_TEXT, UP
     val results = testResults ?: return
 
     // Log the SCREENSHOT_DIALOG_SOURCE_TEST_RESULTS event
-    logScreenshotTestEvent(ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_SOURCE_TEST_RESULTS, project)
+    logScreenshotTestEvent(
+      ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_SOURCE_TEST_RESULTS,
+      project,
+    )
 
     // Use Manager Service to prevent multiple dialogs
     val dialog = UpdateReferenceImagesDialogManager.getInstance(project).showOrGetDialog() ?: return
@@ -76,14 +79,30 @@ class UpdateReferenceImagesFromTestPanelAction : AnAction(UPDATE_ACTION_TEXT, UP
               methodName = methodName,
               previewName = previewName,
               testResult = testCase.result,
-              destImagePath = ScreenshotTestUtils.resolvePath(project, testCase.className, artifacts["PreviewScreenshot.refImagePath"]),
-              srcImagePath = ScreenshotTestUtils.resolvePath(project, testCase.className, artifacts["PreviewScreenshot.newImagePath"]),
-              diffImagePath = ScreenshotTestUtils.resolvePath(project, testCase.className, artifacts["PreviewScreenshot.diffImagePath"]),
+              destImagePath =
+                ScreenshotTestUtils.resolvePath(
+                  project,
+                  artifacts["PreviewScreenshot.refImagePath"],
+                ),
+              srcImagePath =
+                ScreenshotTestUtils.resolvePath(
+                  project,
+                  artifacts["PreviewScreenshot.newImagePath"],
+                ),
+              diffImagePath =
+                ScreenshotTestUtils.resolvePath(
+                  project,
+                  artifacts["PreviewScreenshot.diffImagePath"],
+                ),
               diffPercent = artifacts["PreviewScreenshot.diffPercent"],
             )
+              .withResolvedImageFiles()
 
           LOG.debug("PreviewDetails: $previewDetails")
-          dialog.updateDialogWithTestResult(previewDetails, testCase.result == AndroidTestCaseResult.FAILED)
+          dialog.updateDialogWithTestResult(
+            previewDetails,
+            testCase.result == AndroidTestCaseResult.FAILED,
+          )
         }
       }
       ApplicationManager.getApplication().invokeLater {

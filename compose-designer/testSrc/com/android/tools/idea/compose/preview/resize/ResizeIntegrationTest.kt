@@ -160,7 +160,7 @@ class ResizeIntegrationTest {
             size = Dimension(1000, 800)
             add(previewRepresentation.component, BorderLayout.CENTER)
           },
-          true,
+          parentDisposable = projectRule.testRootDisposable,
         )
 
       projectRule.buildSystemServices.simulateArtifactBuild(ProjectSystemBuildManager.BuildStatus.SUCCESS)

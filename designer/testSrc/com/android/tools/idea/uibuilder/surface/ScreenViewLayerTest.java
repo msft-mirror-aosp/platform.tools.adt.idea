@@ -25,8 +25,7 @@ import com.android.ide.common.rendering.api.Result;
 import com.android.testutils.ImageDiffUtil;
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager;
 import com.android.tools.rendering.RenderResult;
-import com.android.tools.rendering.imagepool.ImagePool;
-import com.android.tools.rendering.imagepool.NonPooledImage;
+import com.android.ide.common.rendering.api.RecyclableImage;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.Ref;
@@ -79,7 +78,7 @@ public class ScreenViewLayerTest {
   }
 
   @NotNull
-  private static RenderResult createRenderResultMock(@NotNull ImagePool.Image resultImage) {
+  private static RenderResult createRenderResultMock(@NotNull RecyclableImage resultImage) {
     RenderResult result = mock(RenderResult.class);
     when(result.getRenderedImage()).thenReturn(resultImage);
     when(result.getRenderResult()).thenReturn(Result.Status.SUCCESS.createResult());
@@ -127,7 +126,7 @@ public class ScreenViewLayerTest {
     Ref<Rectangle> screenViewSize = new Ref<>(scaleRectangle(FULL_SIZE, SCALE));
 
     // Create a high quality image bigger than the screenView that will be scaled.
-    ImagePool.Image imageHQ = getTestImage(IMAGE_WIDTH, IMAGE_HEIGHT);
+    RecyclableImage imageHQ = getTestImage(IMAGE_WIDTH, IMAGE_HEIGHT);
     ScreenView screenView = createScreenViewMock(screenViewSize, createRenderResultMock(imageHQ));
     ScreenViewLayer layer = new ScreenViewLayer(screenView, screenView.getSurface(), screenView.getSurface()::getRotateSurfaceDegree);
 
@@ -154,9 +153,28 @@ public class ScreenViewLayerTest {
     ImageDiffUtil.assertImageSimilar("screenviewlayer_result.png", unscaled, output, 0.0);
   }
 
+  @Test
+  // Regression test for b/546380658
+  public void paintWhenDisposedDoesNotFail() {
+    Ref<Rectangle> screenViewSize = new Ref<>(scaleRectangle(FULL_SIZE, SCALE));
+
+    RecyclableImage imageHQ = getTestImage(IMAGE_WIDTH, IMAGE_HEIGHT);
+    ScreenView screenView = createScreenViewMock(screenViewSize, createRenderResultMock(imageHQ));
+    ScreenViewLayer layer = new ScreenViewLayer(screenView, screenView.getSurface(), screenView.getSurface()::getRotateSurfaceDegree);
+
+    Disposer.dispose(layer);
+
+    BufferedImage output = new BufferedImage(SCREEN_VIEW_WIDTH, SCREEN_VIEW_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+    Graphics2D g = createGraphicsAndClean(output, screenViewSize.get());
+    BufferedImage expected = new BufferedImage(SCREEN_VIEW_WIDTH, SCREEN_VIEW_HEIGHT, BufferedImage.TYPE_INT_ARGB);
+    createGraphicsAndClean(expected, screenViewSize.get());
+
+    layer.paint(g);
+  }
+
   @NotNull
-  private static ImagePool.Image getTestImage(int imageWidth, int imageHeight) {
-    ImagePool.Image imageHQ = NonPooledImage.create(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB);
+  private static RecyclableImage getTestImage(int imageWidth, int imageHeight) {
+    RecyclableImage imageHQ = RecyclableImage.create(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB);
     imageHQ.paint(g -> {
       g.setStroke(new BasicStroke(10));
       //noinspection UseJBColor

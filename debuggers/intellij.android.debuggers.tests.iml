@@ -26,6 +26,8 @@
     <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.execution.common" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="mockito-kotlin" level="project" />
+    <orderEntry type="module" module-name="android.sdktools.flags.tests" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.repository.tests" scope="TEST" />
   </component>
   <component name="TestModuleProperties" production-module="intellij.android.debuggers" />
 </module>

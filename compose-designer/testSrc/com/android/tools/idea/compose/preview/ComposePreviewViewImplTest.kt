@@ -297,7 +297,7 @@ class ComposePreviewViewImplTest {
             size = Dimension(1000, 800)
             add(previewView.component, BorderLayout.CENTER)
           },
-          true,
+          parentDisposable = fixture.testRootDisposable,
         )
       previewView.component.findDescendant<SceneViewPanel>()!!.setNoComposeHeadersForTests()
       fakeUi.root.validate()
@@ -490,7 +490,7 @@ class ComposePreviewViewImplTest {
             size = Dimension(1000, 800)
             add(previewView.component, BorderLayout.CENTER)
           },
-          true,
+          parentDisposable = fixture.testRootDisposable,
         )
       previewView.component.findDescendant<SceneViewPanel>()?.setNoComposeHeadersForTests()
       fakeUi.root.validate()

@@ -44,6 +44,7 @@ import org.junit.runners.JUnit4
 import org.mockito.ArgumentMatcher
 import org.mockito.Mock
 import org.mockito.Mockito.inOrder
+import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.junit.MockitoJUnit
 import org.mockito.junit.MockitoRule
@@ -553,5 +554,112 @@ class UtpTestResultAdapterTest {
       )
 
     assertThat(File(FileUtil.getTempDirectory() + File.separator + "benchmarkTraceFile.trace").exists()).isTrue()
+  }
+
+  @Test
+  fun networkArtifactPathsAreNotAccessed() {
+    // On Windows, calling File.exists() on a UNC path such as \\attacker\share\x makes the OS open an SMB connection to the host and
+    // send the user's NTLM credentials. Imported result files are untrusted, so such paths must never be touched. POSIX resolves a
+    // leading "//" to the local root, so pointing "//"-prefixed paths at real local files makes the check observable on every OS.
+    val outsideDir = temporaryFolder.newFolder("outside")
+    val deviceInfoFile = File(outsideDir, "remote-device-info.pb")
+    deviceInfoFile.outputStream().use {
+      AndroidTestDeviceInfoProto.AndroidTestDeviceInfo.newBuilder().setName("remote device").build().writeTo(it)
+    }
+    val logcatFile = File(outsideDir, "remote-logcat.txt").apply { writeText("remote logs") }
+    val benchmarkFile = File(outsideDir, "remote-benchmark.txt").apply { writeText("remote benchmark") }
+    fun File.asNetworkPath(): String = "//" + absolutePath.replace('\\', '/').trimStart('/')
+
+    writeResultWithArtifacts(
+      "device-info" to deviceInfoFile.asNetworkPath(),
+      "logcat" to logcatFile.asNetworkPath(),
+      ADDITIONAL_TEST_OUTPUT_PLUGIN_BENCHMARK_MESSAGE_LABEL to benchmarkFile.asNetworkPath(),
+      ADDITIONAL_TEST_OUTPUT_PLUGIN_BENCHMARK_MESSAGE_LABEL to "\\\\attacker.example.com\\share\\x",
+    )
+    UtpTestResultAdapter(utpProtoFile).forwardResults(mockListener)
+
+    verify(mockListener).onTestCaseFinished(argThat { deviceName == "Unknown device" }, any(), argThat { logcat == "" && benchmark == "" })
+  }
+
+  @Test
+  fun artifactsNextToResultFileAreResolvedByName() {
+    // Result files are usually shared together with their artifacts, while the proto still contains the absolute paths of the machine
+    // that produced it. Those paths (including network paths) are ignored, but a file with the same name next to the result is used.
+    temporaryFolder.newFile("device-info.pb").outputStream().use {
+      AndroidTestDeviceInfoProto.AndroidTestDeviceInfo.newBuilder().setName("local device").build().writeTo(it)
+    }
+
+    writeResultWithArtifacts("device-info" to "//build-server/share/results/device-info.pb")
+    UtpTestResultAdapter(utpProtoFile).forwardResults(mockListener)
+
+    verify(mockListener).onTestCaseFinished(argThat { deviceName == "local device" }, any(), any())
+  }
+
+  @Test
+  fun windowsArtifactPathsAreResolvedByNameOnAnyOs() {
+    temporaryFolder.newFile("device-info.pb").outputStream().use {
+      AndroidTestDeviceInfoProto.AndroidTestDeviceInfo.newBuilder().setName("local device").build().writeTo(it)
+    }
+    temporaryFolder.newFile("logcat.txt").writeText("local logs")
+
+    writeResultWithArtifacts("device-info" to "C:\\build\\results\\device-info.pb", "logcat" to "\\\\build-server\\share\\logcat.txt")
+    UtpTestResultAdapter(utpProtoFile).forwardResults(mockListener)
+
+    verify(mockListener).onTestCaseFinished(argThat { deviceName == "local device" }, any(), argThat { logcat == "local logs" })
+  }
+
+  @Test
+  fun artifactPathsResolvingToDirectoriesAreIgnored() {
+    for (path in listOf("", ".", "/", "//", "\\\\", temporaryFolder.root.absolutePath)) {
+      val listener = mock(AndroidTestResultListener::class.java)
+      writeResultWithArtifacts("device-info" to path, "logcat" to path)
+
+      UtpTestResultAdapter(utpProtoFile).forwardResults(listener)
+
+      verify(listener).onTestCaseFinished(argThat { deviceName == "Unknown device" }, any(), argThat { logcat == "" })
+    }
+  }
+
+  @Test
+  fun uncRootArtifactPathsAreNotResolved() {
+    // On Windows, PathUtil.getFileName returns a UNC root such as \\host\share as a whole, so a name-based lookup must not rely on it.
+    writeResultWithArtifacts("device-info" to "\\\\attacker.example.com\\share", "logcat" to "//attacker.example.com/share/")
+    UtpTestResultAdapter(utpProtoFile).forwardResults(mockListener)
+
+    verify(mockListener).onTestCaseFinished(argThat { deviceName == "Unknown device" }, any(), argThat { logcat == "" })
+  }
+
+  @Test
+  fun relativeArtifactPathsAreResolvedAgainstResultDirectory() {
+    val workingDirectoryFile = File(System.getProperty("user.dir")).listFiles()?.firstOrNull { it.isFile } ?: return
+    val resultDirectoryFile = temporaryFolder.newFile(workingDirectoryFile.name).apply { writeText("result directory logs") }
+
+    writeResultWithArtifacts("logcat" to resultDirectoryFile.name)
+    UtpTestResultAdapter(utpProtoFile).forwardResults(mockListener)
+
+    verify(mockListener).onTestCaseFinished(any(), any(), argThat { logcat == "result directory logs" })
+  }
+
+  private fun writeResultWithArtifacts(vararg labelToPath: Pair<String, String>) {
+    TestSuiteResultProto.TestSuiteResult.newBuilder()
+      .addTestResult(
+        TestResultProto.TestResult.newBuilder()
+          .setTestCase(
+            TestCaseProto.TestCase.newBuilder().setTestClass("ExampleTest").setTestPackage(TEST_PACKAGE_NAME).setTestMethod("testExample")
+          )
+          .setTestStatus(TestStatusProto.TestStatus.PASSED)
+          .apply {
+            labelToPath.forEach { (label, path) ->
+              addOutputArtifact(
+                TestArtifactProto.Artifact.newBuilder().apply {
+                  this.label = LabelProto.Label.newBuilder().setNamespace("android").setLabel(label).build()
+                  sourcePath = PathProto.Path.newBuilder().setPath(path).build()
+                }
+              )
+            }
+          }
+      )
+      .build()
+      .let { proto -> utpProtoFile.outputStream().use { proto.writeTo(it) } }
   }
 }

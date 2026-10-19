@@ -12,7 +12,6 @@ iml_module(
     iml_files = ["intellij.android.logcat.iml"],
     lint_baseline = "lint_baseline.xml",
     resources = ["resources"],
-    test_resources = ["testResources"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -34,7 +33,7 @@ iml_module(
         "//tools/adt/idea/android:intellij.android.core",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/logcat:logcat-proto",
-        "//prebuilts/r8",
+        "//tools/adt/idea/.idea/libraries:r8",
         "@intellij//:com.intellij.modules.json",
         "@intellij//:intellij.java.debugger",
         "@intellij//:intellij.java.indexing",
@@ -80,9 +79,13 @@ iml_module(
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-        "//tools/adt/idea/android-adb:intellij.android.adb.tests",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
+        "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_friends = ["//tools/adt/idea/logcat:intellij.android.logcat"],
+    test_resources = ["testResources"],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order

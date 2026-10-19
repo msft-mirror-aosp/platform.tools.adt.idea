@@ -26,14 +26,17 @@ import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.runInEdtAndWait
-import com.intellij.ui.CheckboxTree
 import com.intellij.ui.CheckedTreeNode
+import com.intellij.util.ui.UIUtil
 import java.io.File
 import java.util.Base64
+import javax.swing.JList
+import javax.swing.tree.TreePath
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -84,7 +87,7 @@ class UpdateReferenceImagesDialogTest {
     dialog.updateDialogWithTestResult(details, isChecked = true)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
-    val tree = findTree(dialog)
+    val tree = dialog.tree
     val root = tree.model.root as CheckedTreeNode
 
     // Root -> Class -> Method -> Preview
@@ -150,7 +153,7 @@ class UpdateReferenceImagesDialogTest {
     assertTrue("OK enabled initially", dialog.isOKActionEnabled)
 
     // Uncheck the node
-    val tree = findTree(dialog)
+    val tree = dialog.tree
     val root = tree.model.root as CheckedTreeNode
     val classNode = root.firstChild as CheckedTreeNode
     val methodNode = classNode.firstChild as CheckedTreeNode
@@ -180,12 +183,10 @@ class UpdateReferenceImagesDialogTest {
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     val usages = metricsTrackerRule.testTracker.usages
-    val emptyResultEvent =
-      usages.find {
-        it.studioEvent.kind == AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW &&
-          it.studioEvent.screenshotTestComposePreviewEvent.type ==
-            ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_TEST_RESULTS_EMPTY
-      }
+    val emptyResultEvent = usages.find {
+      it.studioEvent.kind == AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW &&
+        it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_TEST_RESULTS_EMPTY
+    }
 
     // Verify the logger was called with expected message
     verify(mockLogger).error(contains("No tests were discovered"))
@@ -302,7 +303,10 @@ class UpdateReferenceImagesDialogTest {
     val usages = metricsTrackerRule.testTracker.usages
     // Check that we have at least one event and the last one matches
     assertTrue("Should have logged at least one event", usages.isNotEmpty())
-    assertEquals(AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW, usages.last().studioEvent.kind)
+    assertEquals(
+      AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW,
+      usages.last().studioEvent.kind,
+    )
     assertEquals(
       ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_CLOSE,
       usages.last().studioEvent.screenshotTestComposePreviewEvent.type,
@@ -315,11 +319,10 @@ class UpdateReferenceImagesDialogTest {
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     val usages = metricsTrackerRule.testTracker.usages
-    val failureEvent =
-      usages.find {
-        it.studioEvent.kind == AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW &&
-          it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_BUILD_FAILURE
-      }
+    val failureEvent = usages.find {
+      it.studioEvent.kind == AndroidStudioEvent.EventKind.SCREENSHOT_TEST_COMPOSE_PREVIEW &&
+        it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_BUILD_FAILURE
+    }
 
     assertTrue("Should have logged build failure metric", failureEvent != null)
     assertEquals(DialogWrapper.CANCEL_EXIT_CODE, dialog.exitCode)
@@ -351,20 +354,192 @@ class UpdateReferenceImagesDialogTest {
     callDoOKAction(dialog)
 
     // Wait for the background copy task and subsequent UI update
-    PlatformTestUtil.waitWithEventsDispatching("Dialog did not close", { dialog.exitCode == DialogWrapper.OK_EXIT_CODE }, 10)
+    PlatformTestUtil.waitWithEventsDispatching(
+      "Dialog did not close",
+      { dialog.exitCode == DialogWrapper.OK_EXIT_CODE },
+      10,
+    )
 
     val usages = metricsTrackerRule.testTracker.usages
-    val updateEvent =
-      usages.find { it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.UPDATE_CLICKED }
+    val updateEvent = usages.find {
+      it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.UPDATE_CLICKED
+    }
     assertNotNull("Should have logged UPDATE_CLICKED metric", updateEvent)
 
     TestDialogManager.setTestDialog(TestDialog.DEFAULT)
   }
 
-  private fun findTree(dialog: UpdateReferenceImagesDialog): CheckboxTree {
-    val field = UpdateReferenceImagesDialog::class.java.getDeclaredField("tree")
+  @Test
+  fun testLoadingTextStartsWithBuildingPhase() = runInEdtAndWait {
+    assertEquals("Building project…", dialog.loadingText)
+    assertNull("Progress is only shown once previews are listed", dialog.progressText)
+  }
+
+  @Test
+  fun testRenderingStartedSwitchesLoadingText() = runInEdtAndWait {
+    dialog.onRenderingStarted()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertEquals("Rendering previews…", dialog.loadingText)
+  }
+
+  @Test
+  fun testProgressCountsRenderedPreviewsAndHidesWhenFinished() = runInEdtAndWait {
+    dialog.onRenderingStarted()
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Rendering previews (1 rendered)…", dialog.progressText)
+
+    dialog.updateDialogWithTestResult(preview("p2"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p3", method = "other"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Rendering previews (3 rendered)…", dialog.progressText)
+
+    dialog.onTestSuiteFinished()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertNull(dialog.progressText)
+  }
+
+  @Test
+  fun testInvalidResultIsNotCounted() = runInEdtAndWait {
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("", method = ""), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertEquals("Rendering previews (1 rendered)…", dialog.progressText)
+  }
+
+  @Test
+  fun testBuildFailureAfterResultsKeepsDialogOpenAndHidesProgress() = runInEdtAndWait {
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertFalse(dialog.isOKActionEnabled)
+
+    dialog.onBuildFailed()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertNull(dialog.progressText)
+    assertFalse("The dialog should stay open with the rendered previews", dialog.isDisposed)
+    assertTrue("The rendered previews should be addable", dialog.isOKActionEnabled)
+    val failureEvent =
+      metricsTrackerRule.testTracker.usages.find {
+        it.studioEvent.screenshotTestComposePreviewEvent.type == ScreenshotTestComposePreviewEvent.Type.SCREENSHOT_DIALOG_BUILD_FAILURE
+      }
+    assertNull(failureEvent)
+  }
+
+  @Test
+  fun testBuildFailureAfterUncheckedResultsKeepsOkDisabled() = runInEdtAndWait {
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = false)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    dialog.onBuildFailed()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertFalse(dialog.isOKActionEnabled)
+  }
+
+  @Test
+  fun testBuildFailureAfterResultsAppliesPendingRefresh() = runInEdtAndWait {
+    recreateDialog(refreshDelayMs = 60_000)
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p2"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals(1, shownPreviewCount())
+
+    dialog.onBuildFailed()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertEquals(2, dialog.rightPaneRefreshCount)
+    assertEquals(2, shownPreviewCount())
+  }
+
+  @Test
+  fun testResultsInQuickSuccessionAreCoalescedIntoOneRefresh() = runInEdtAndWait {
+    recreateDialog(refreshDelayMs = 60_000)
+
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("The first preview should be shown right away", 1, dialog.rightPaneRefreshCount)
+
+    dialog.updateDialogWithTestResult(preview("p2"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p3"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p4", method = "other"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Later previews should wait for the refresh delay", 1, dialog.rightPaneRefreshCount)
+    assertEquals(1, shownPreviewCount())
+
+    dialog.onTestSuiteFinished()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertEquals("Finishing should apply the pending refresh", 2, dialog.rightPaneRefreshCount)
+    assertEquals(4, shownPreviewCount())
+  }
+
+  @Test
+  fun testPendingRefreshIsAppliedAfterDelay() = runInEdtAndWait {
+    recreateDialog(refreshDelayMs = 10)
+
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p2"), isChecked = true)
+    dialog.updateDialogWithTestResult(preview("p3"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    PlatformTestUtil.waitWithEventsDispatching("Pending refresh was not applied", { dialog.rightPaneRefreshCount == 2 }, 10)
+    assertEquals(3, shownPreviewCount())
+  }
+
+  @Test
+  fun testFinishingWithoutPendingRefreshDoesNotRefreshAgain() = runInEdtAndWait {
+    recreateDialog(refreshDelayMs = 60_000)
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    dialog.onTestSuiteFinished()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertEquals(1, dialog.rightPaneRefreshCount)
+  }
+
+  @Test
+  fun testResultOutsideSelectedNodeDoesNotRefresh() = runInEdtAndWait {
+    recreateDialog(refreshDelayMs = 60_000)
+    dialog.updateDialogWithTestResult(preview("p1"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    val tree = dialog.tree
+    val root = tree.model.root as CheckedTreeNode
+    val leaf = (root.firstChild as CheckedTreeNode).firstChild.let { (it as CheckedTreeNode).firstChild as CheckedTreeNode }
+    tree.selectionPath = TreePath(leaf.path)
+    val refreshCountAfterSelection = dialog.rightPaneRefreshCount
+
+    dialog.updateDialogWithTestResult(preview("p2", method = "other"), isChecked = true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    dialog.onTestSuiteFinished()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertEquals(refreshCountAfterSelection, dialog.rightPaneRefreshCount)
+  }
+
+  private fun preview(name: String, method: String = "testMethod") =
+    PreviewDetails(
+      testId = "com.example.TestClass.$method.$name",
+      className = "com.example.TestClass",
+      methodName = method,
+      previewName = name,
+      testResult = AndroidTestCaseResult.PASSED,
+    )
+
+  private fun recreateDialog(refreshDelayMs: Int) {
+    dialog.close(DialogWrapper.CANCEL_EXIT_CODE)
+    dialog = UpdateReferenceImagesDialog(projectRule.project, mockLogger, refreshDelayMs)
+  }
+
+  /** Returns the number of previews currently listed in the right pane. */
+  private fun shownPreviewCount(): Int {
+    val field = UpdateReferenceImagesDialog::class.java.getDeclaredField("previewDetailsPanel")
     field.isAccessible = true
-    return field.get(dialog) as CheckboxTree
+    val panel = field.get(dialog) as PreviewDetailsPanel
+    val list = UIUtil.findComponentOfType(panel, JList::class.java)!!
+    return (0 until list.model.size).sumOf { (list.model.getElementAt(it) as MethodGroup).previews.size }
   }
 
   private fun callUpdateOkButtonState(dialog: UpdateReferenceImagesDialog) {

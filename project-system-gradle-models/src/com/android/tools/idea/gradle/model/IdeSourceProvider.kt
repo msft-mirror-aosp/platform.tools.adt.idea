@@ -41,8 +41,16 @@ private constructor(
   private val baselineProfileDirectoriesField: List<FileImpl>,
   private val keepRulesDirectoriesField: List<FileImpl>,
   private val aarKeepRulesDirectoriesField: List<FileImpl>,
+  private val apiConfigurationNameField: String? = null,
+  private val compileOnlyConfigurationNameField: String? = null,
+  private val compileOnlyApiConfigurationNameField: String? = null,
+  private val implementationConfigurationNameField: String? = null,
+  private val runtimeOnlyConfigurationNameField: String? = null,
+  private val annotationProcessorConfigurationNameField: String? = null,
+  private val kaptConfigurationNameField: String? = null,
 ) : Serializable {
 
+  @JvmOverloads
   constructor(
     name: String,
     folder: File?,
@@ -61,6 +69,13 @@ private constructor(
     baselineProfileDirectories: List<File>,
     keepRulesDirectories: List<FileImpl>,
     aarKeepRulesDirectories: List<FileImpl>,
+    apiConfigurationName: String? = null,
+    compileOnlyConfigurationName: String? = null,
+    compileOnlyApiConfigurationName: String? = null,
+    implementationConfigurationName: String? = null,
+    runtimeOnlyConfigurationName: String? = null,
+    annotationProcessorConfigurationName: String? = null,
+    kaptConfigurationName: String? = null,
   ) : this(
     nameField = name,
     folderField = folder?.toImpl(),
@@ -79,8 +94,16 @@ private constructor(
     baselineProfileDirectoriesField = baselineProfileDirectories.toImpl(),
     keepRulesDirectoriesField = keepRulesDirectories.toImpl(),
     aarKeepRulesDirectoriesField = aarKeepRulesDirectories.toImpl(),
+    apiConfigurationNameField = apiConfigurationName,
+    compileOnlyConfigurationNameField = compileOnlyConfigurationName,
+    compileOnlyApiConfigurationNameField = compileOnlyApiConfigurationName,
+    implementationConfigurationNameField = implementationConfigurationName,
+    runtimeOnlyConfigurationNameField = runtimeOnlyConfigurationName,
+    annotationProcessorConfigurationNameField = annotationProcessorConfigurationName,
+    kaptConfigurationNameField = kaptConfigurationName,
   )
 
+  @JvmOverloads
   constructor(
     name: String,
     folder: File?,
@@ -99,6 +122,13 @@ private constructor(
     baselineProfileDirectories: List<String>,
     keepRulesDirectoriesField: List<String>,
     aarKeepRulesDirectoriesField: List<String>,
+    apiConfigurationName: String? = null,
+    compileOnlyConfigurationName: String? = null,
+    compileOnlyApiConfigurationName: String? = null,
+    implementationConfigurationName: String? = null,
+    runtimeOnlyConfigurationName: String? = null,
+    annotationProcessorConfigurationName: String? = null,
+    kaptConfigurationName: String? = null,
   ) : this(
     name,
     folder,
@@ -117,6 +147,13 @@ private constructor(
     baselineProfileDirectories.translate(folder),
     keepRulesDirectoriesField.translate(folder),
     aarKeepRulesDirectoriesField.translate(folder),
+    apiConfigurationName,
+    compileOnlyConfigurationName,
+    compileOnlyApiConfigurationName,
+    implementationConfigurationName,
+    runtimeOnlyConfigurationName,
+    annotationProcessorConfigurationName,
+    kaptConfigurationName,
   )
 
   // Used for serialization by the IDE.
@@ -139,6 +176,13 @@ private constructor(
       baselineProfileDirectoriesField = mutableListOf(),
       keepRulesDirectoriesField = mutableListOf(),
       aarKeepRulesDirectoriesField = mutableListOf(),
+      apiConfigurationNameField = null,
+      compileOnlyConfigurationNameField = null,
+      compileOnlyApiConfigurationNameField = null,
+      implementationConfigurationNameField = null,
+      runtimeOnlyConfigurationNameField = null,
+      annotationProcessorConfigurationNameField = null,
+      kaptConfigurationNameField = null,
     )
 
   fun appendDirectories(
@@ -219,6 +263,27 @@ private constructor(
 
   val aarKeepRulesDirectories: List<FileImpl>
     get() = aarKeepRulesDirectoriesField
+
+  val apiConfigurationName: String?
+    get() = apiConfigurationNameField
+
+  val compileOnlyConfigurationName: String?
+    get() = compileOnlyConfigurationNameField
+
+  val compileOnlyApiConfigurationName: String?
+    get() = compileOnlyApiConfigurationNameField
+
+  val implementationConfigurationName: String?
+    get() = implementationConfigurationNameField
+
+  val runtimeOnlyConfigurationName: String?
+    get() = runtimeOnlyConfigurationNameField
+
+  val annotationProcessorConfigurationName: String?
+    get() = annotationProcessorConfigurationNameField
+
+  val kaptConfigurationName: String?
+    get() = kaptConfigurationNameField
 }
 
 private fun normalize(folder: File?, file: File): FileImpl =

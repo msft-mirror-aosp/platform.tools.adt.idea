@@ -30,13 +30,19 @@ import javax.swing.plaf.ComponentUI
 class EnumStateAction<T>(var states: Set<T>, private val callback: (T) -> Unit, initialValue: T?) :
   ComboBoxAction(), CustomComponentAction {
 
-  var currentState: T? = initialValue
+  private var _currentState: T? = initialValue
+  var currentState: T?
+    get() = _currentState
     set(value) {
-      field = value
-      if (value != null) {
-        callback(value)
-      }
+      setCurrentState(value, notify = true)
     }
+
+  fun setCurrentState(value: T?, notify: Boolean) {
+    _currentState = value
+    if (notify && value != null) {
+      callback(value)
+    }
+  }
 
   override fun update(e: AnActionEvent) {
     super.update(e)

@@ -15,12 +15,19 @@
  */
 package com.android.tools.idea.insights.ui
 
+import com.android.tools.adtui.common.primaryContentBackground
 import com.intellij.execution.filters.TextConsoleBuilderImpl
 import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.ui.ConsoleViewPlace
+import com.intellij.ide.ui.LafManager
+import com.intellij.ide.ui.laf.isDefaultForTheme
+import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.project.Project
 import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.ui.components.JBScrollPane
 import com.intellij.unscramble.AnalyzeStacktraceUtil
+import com.intellij.util.ui.JBUI
 
 internal val AQI_CONSOLE_VIEW_PLACE = ConsoleViewPlace("AQI")
 
@@ -28,6 +35,8 @@ class StackTraceConsoleBuilder(project: Project) : TextConsoleBuilderImpl(projec
   init {
     filters(AnalyzeStacktraceUtil.EP_NAME.getExtensions(project))
   }
+
+  override fun getConsole(): StackTraceConsoleView = super.getConsole() as StackTraceConsoleView
 
   override fun createConsole(): StackTraceConsoleView {
     return StackTraceConsoleView(project, scope, isViewer, isUsePredefinedMessageFilter)
@@ -37,4 +46,36 @@ class StackTraceConsoleBuilder(project: Project) : TextConsoleBuilderImpl(projec
 class StackTraceConsoleView(project: Project, scope: GlobalSearchScope, isViewer: Boolean, usePredefinedMessage: Boolean) :
   ConsoleViewImpl(project, scope, isViewer, usePredefinedMessage) {
   override fun getPlace() = AQI_CONSOLE_VIEW_PLACE
+
+  /**
+   * Synchronously flushes deferred output and clears the editor document.
+   *
+   * Prefer this over [clear], which clears non-deferred text asynchronously and can race with subsequent [print] calls.
+   */
+  fun clearConsoleText() {
+    flushDeferredText()
+    editor?.document?.setText("")
+  }
+
+  override fun doCreateConsoleEditor(): EditorEx {
+    return super.doCreateConsoleEditor().apply {
+      contentComponent.isFocusCycleRoot = false
+      contentComponent.isFocusable = true
+      setCaretEnabled(false)
+      scrollPane.verticalScrollBarPolicy = JBScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED
+      setBorder(JBUI.Borders.empty())
+      updateEditorBackground(this)
+    }
+  }
+
+  fun updateEditorBackground(editor: EditorEx? = this.editor as? EditorEx) {
+    editor ?: return
+    val globalScheme = EditorColorsManager.getInstance().globalScheme
+    editor.backgroundColor =
+      if (globalScheme.isDefaultForTheme(LafManager.getInstance().currentUIThemeLookAndFeel)) {
+        primaryContentBackground
+      } else {
+        globalScheme.defaultBackground
+      }
+  }
 }

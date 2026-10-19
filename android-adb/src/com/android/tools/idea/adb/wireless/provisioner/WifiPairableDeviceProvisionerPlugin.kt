@@ -44,6 +44,7 @@ import com.android.sdklib.deviceprovisioner.Resolution
 import com.android.sdklib.deviceprovisioner.awaitDisconnection
 import com.android.sdklib.devices.Abi
 import com.android.tools.idea.adb.AdbServerStatusRetriever
+import com.android.tools.idea.adb.ServerStatusState
 import com.android.tools.idea.adb.wireless.AdbServiceWrapper
 import com.android.tools.idea.adb.wireless.PairDevicesUsingWiFiService
 import com.android.tools.idea.adb.wireless.TrackingMdnsService
@@ -59,6 +60,7 @@ import com.google.wireless.android.sdk.stats.DeviceInfo
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.text.Strings.escapeXmlEntities
 import icons.StudioIcons
 import javax.swing.Icon
 import kotlin.collections.plus
@@ -128,8 +130,9 @@ class WifiPairableDeviceProvisionerPlugin(
     scope.launch {
       val mdnsTrackServicesFlow: Flow<Set<MdnsTlsService>> =
         AdbServerStatusRetriever.getInstance(project)
-          .serverStatus
-          .flatMapLatest { serverStatus ->
+          .serverStatusState
+          .flatMapLatest { state ->
+            val serverStatus = (state as? ServerStatusState.Supported)?.status
             if (serverStatus == null) {
               return@flatMapLatest flowOf(MdnsServices(emptyList(), emptyList(), emptyList()))
             }
@@ -255,10 +258,14 @@ class WifiPairableDeviceProvisionerPlugin(
     return handlesToCancel
   }
 
-  private fun buildDeviceNameForDeviceManager(service: MdnsTrackServiceInfo): String =
-    service.givenName.takeUnless { it.isNullOrBlank() }
-      ?: service.deviceModel.takeUnless { it.isNullOrBlank() }?.let { "$it at ${service.ipv4}:${service.port}" }
-      ?: "Device at ${service.ipv4}:${service.port}"
+  private fun buildDeviceNameForDeviceManager(service: MdnsTrackServiceInfo): String {
+    val raw =
+      service.givenName.takeUnless { it.isNullOrBlank() }
+        ?: service.deviceModel.takeUnless { it.isNullOrBlank() }?.let { "$it at ${service.ipv4}:${service.port}" }
+        ?: "Device at ${service.ipv4}:${service.port}"
+    // sanitize the output to prevent flipping UI controls into HTML mode.
+    return escapeXmlEntities(raw)
+  }
 
   data class WifiPairableDeviceProperties(
     override val model: String?,

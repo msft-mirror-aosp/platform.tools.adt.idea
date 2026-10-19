@@ -37,8 +37,8 @@ import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.util.application
 import java.nio.file.Path
 import org.jetbrains.android.facet.AndroidRootUtil
-import org.jetbrains.kotlin.cli.create
-import org.jetbrains.kotlin.config.CompilerConfiguration
+import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
+import org.jetbrains.kotlin.analysis.api.components.KaCompilationOptionsBuilder
 import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.psi.KtFile
 
@@ -114,7 +114,7 @@ class DefaultBuildSystemFilePreviewServices :
         return file.module?.let { CompilationDependenciesImpl(it) }
       }
 
-      override fun getKotlinCompilerConfiguration(ktFile: KtFile): CompilerConfiguration = CompilerConfiguration.create()
+      @OptIn(KaExperimentalApi::class) override fun KaCompilationOptionsBuilder.configureKotlinCompilerOptions(ktFile: KtFile) {}
 
       override fun getDesugarConfigs() = DesugarConfigs.NotKnown("No Desugar config.")
 

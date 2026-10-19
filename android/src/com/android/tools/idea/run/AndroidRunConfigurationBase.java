@@ -392,8 +392,22 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
     return getProjectSystem(getProject()).getApkProvider(this);
   }
 
-  public final boolean isTestConfiguration() {
+  public boolean isTestConfiguration() {
     return myIsTestConfiguration;
+  }
+
+  @Nullable
+  protected AndroidFacet getAndroidFacet() {
+    Module module = getConfigurationModule().getModule();
+    if (module == null) {
+      return null;
+    }
+    AndroidFacet facet = AndroidFacet.getInstance(module);
+    if (facet != null) {
+      return facet;
+    }
+    Module runModule = getModuleForAndroidRunConfiguration(module);
+    return AndroidFacet.getInstance(runModule);
   }
 
   public void updateExtraRunStats(RunStats runStats) {

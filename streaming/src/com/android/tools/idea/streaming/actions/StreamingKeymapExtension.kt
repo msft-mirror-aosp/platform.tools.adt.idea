@@ -16,6 +16,8 @@
 package com.android.tools.idea.streaming.actions
 
 import com.android.tools.idea.flags.StudioFlags
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionStubBase
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.keymap.KeymapExtension
 import com.intellij.openapi.keymap.KeymapGroup
@@ -29,16 +31,33 @@ private const val KEYMAP_SECTION_NAME = "Running Devices"
 /** The action group defining the contents of the Settings > Keymap > Running Devices section. */
 private const val ACTION_GROUP = "Streaming"
 
+private const val SHOW_EXTENDED_CONTROLS_ACTION_ID = "android.emulator.show.extended.controls"
+private const val EXTENDED_CONTROLS_GROUP_ID = "android.emulator.extended.controls"
+private const val DISPLAYS_ACTION_ID = "android.emulator.displays"
+private const val CELLULAR_ACTION_ID = "android.emulator.cellular"
+private const val BATTERY_ACTION_ID = "android.emulator.battery"
+private const val PHONE_ACTION_ID = "android.emulator.phone"
+
 /** Adds the Settings -> Keymap > Running Devices section. */
-class StreamingKeymapExtension : KeymapExtension {
+internal class StreamingKeymapExtension : KeymapExtension {
 
   override fun createGroup(filtered: Condition<in AnAction>, project: Project?): KeymapGroup? {
     val keymapGroup = KeymapGroupFactory.getInstance().createGroup(KEYMAP_SECTION_NAME)
 
+    val actionManager = ActionManager.getInstance()
+    val extendedControlsInStudio = StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.get()
     for (action in ActionsTreeUtil.getActions(ACTION_GROUP)) {
-      if (
-        (action is StreamingXrInputModeAction.InteractionHand || action is StreamingXrInputModeAction.InteractionEye) &&
-          !StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_INPUT.get()
+      val id = (action as? ActionStubBase)?.id ?: actionManager.getId(action)
+      if (extendedControlsInStudio) {
+        if (id == SHOW_EXTENDED_CONTROLS_ACTION_ID) {
+          continue
+        }
+      } else if (
+        id == EXTENDED_CONTROLS_GROUP_ID ||
+          id == DISPLAYS_ACTION_ID ||
+          id == CELLULAR_ACTION_ID ||
+          id == BATTERY_ACTION_ID ||
+          id == PHONE_ACTION_ID
       ) {
         continue
       }

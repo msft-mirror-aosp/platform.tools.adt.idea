@@ -56,8 +56,6 @@ import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.SdkVersionUtil;
 import com.android.tools.dom.ActivityAttributesSnapshot;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
-import com.android.tools.idea.res.StudioResourceRepositoryManager;
-import com.android.tools.res.ResourceNamespacing;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -201,9 +199,7 @@ public class MergedManifestSnapshotFactory {
         throw new MergedManifestException.MissingAttribute(TAG_MANIFEST, null, ATTRIBUTE_PACKAGE, mergedManifestInfo);
       }
 
-      ResourceNamespacing namespacing = StudioResourceRepositoryManager.getInstance(facet).getNamespacing();
-      ResourceNamespace namespace =
-        namespacing == ResourceNamespacing.DISABLED ? ResourceNamespace.RES_AUTO : ResourceNamespace.fromPackageName(packageName);
+      ResourceNamespace namespace = ResourceNamespace.RES_AUTO;
 
       String versionCodeStr = getAttributeValue(root, ANDROID_URI, ATTR_VERSION_CODE);
       Integer versionCode = null;

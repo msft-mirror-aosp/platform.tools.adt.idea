@@ -45,7 +45,7 @@ class ContentManagerImpl(val project: Project) : ContentManager {
     val model =
       UpgradeAssistantWindowModel(
         project,
-        currentVersionProvider = { AndroidPluginInfo.find(project)?.pluginVersion },
+        currentVersionProvider = { AndroidPluginInfo.findFromModel(project)?.pluginVersion },
         recommended = recommended,
       )
     val view = UpgradeAssistantView(model, toolWindow.contentManager)

@@ -30,7 +30,6 @@ import com.android.tools.idea.projectsystem.NamedIdeaSourceProvider;
 import com.android.tools.idea.projectsystem.SourceProviderManager;
 import com.android.tools.idea.res.IdeResourcesUtil;
 import com.android.tools.module.AndroidModuleInfo;
-import com.android.utils.SdkUtils;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
@@ -192,7 +191,7 @@ public class ConvertToWebpAction extends DumbAwareAction {
   public static boolean isEligibleForConversion(@Nullable VirtualFile file, @Nullable WebpConversionSettings settings) {
     if (file != null && !file.isDirectory()) {
       String name = file.getName();
-      if (name.endsWith(DOT_PNG)) {
+      if (endsWithIgnoreCase(name, DOT_PNG)) {
         if (settings != null && settings.skipNinePatches && endsWithIgnoreCase(name, DOT_9PNG)) {
           return false;
         }
@@ -207,7 +206,7 @@ public class ConvertToWebpAction extends DumbAwareAction {
         }
         return true;
       }
-      if (endsWithIgnoreCase(name, DOT_JPG) || SdkUtils.endsWith(name, DOT_JPEG)) {
+      if (endsWithIgnoreCase(name, DOT_JPG) || endsWithIgnoreCase(name, DOT_JPEG)) {
         return true;
       }
       if (endsWithIgnoreCase(name, DOT_BMP)) {
@@ -215,16 +214,28 @@ public class ConvertToWebpAction extends DumbAwareAction {
         return true;
       }
       if (endsWithIgnoreCase(name, DOT_GIF)) {
-        // Can convert only if not an animated gif (TODO: Support animated webp!)
         ImageReader is = ImageIO.getImageReadersBySuffix("GIF").next();
-        ImageInputStream iis;
-        try {
-          iis = ImageIO.createImageInputStream(file.getInputStream());
+        try (ImageInputStream iis = ImageIO.createImageInputStream(file.getInputStream())) {
           is.setInput(iis);
-          return is.getNumImages(true) == 1;
+          int numImages = is.getNumImages(true);
+          if (numImages <= 0) {
+            return false;
+          }
+          if (settings != null && settings.skipTransparentImages) {
+            for (int i = 0; i < numImages; i++) {
+              BufferedImage image = is.read(i);
+              if (image != null && ImageUtils.isNonOpaque(image)) {
+                return false;
+              }
+            }
+          }
+          return true;
         }
         catch (IOException ignore) {
           return false;
+        }
+        finally {
+          is.dispose();
         }
       }
     }
@@ -232,7 +243,7 @@ public class ConvertToWebpAction extends DumbAwareAction {
   }
 
   public static boolean isNinePatchFile(@NotNull VirtualFile file) {
-    return file.getName().endsWith(DOT_9PNG) && !file.isDirectory();
+    return endsWithIgnoreCase(file.getName(), DOT_9PNG) && !file.isDirectory();
   }
 
   // From OptimizePngAction
@@ -397,7 +408,7 @@ public class ConvertToWebpAction extends DumbAwareAction {
         indicator.setFraction(fraction);
         fraction += fileFraction;
 
-        if (skipAlreadyEncoded && file.encoded != null) {
+        if (skipAlreadyEncoded && file.encoded != null && !file.isMultiFrame) {
           continue;
         }
 

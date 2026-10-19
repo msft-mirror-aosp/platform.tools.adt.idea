@@ -39,6 +39,7 @@ interface WatchFaceInfoElement : AndroidDomElement {
   val availableInRetail: AvailableInRetail?
   val multipleInstancesAllowed: MultipleInstancesAllowed?
   val editable: Editable?
+  val flavorsSupported: FlavorsSupported?
 
   @DefinesXml
   interface Preview : AndroidDomElement {
@@ -68,6 +69,11 @@ interface WatchFaceInfoElement : AndroidDomElement {
 
   @DefinesXml
   interface Editable : AndroidDomElement {
+    @get:Required @get:Convert(ResourceReferenceConverter::class) @get:AndroidResourceType("bool") val value: GenericAttributeValue<String>
+  }
+
+  @DefinesXml
+  interface FlavorsSupported : AndroidDomElement {
     @get:Required @get:Convert(ResourceReferenceConverter::class) @get:AndroidResourceType("bool") val value: GenericAttributeValue<String>
   }
 }

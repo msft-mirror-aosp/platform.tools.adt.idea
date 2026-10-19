@@ -15,45 +15,81 @@
  */
 package com.google.idea.blaze.base.run.producers;
 
+import com.google.common.util.concurrent.Futures;
 import com.google.idea.blaze.base.BlazeIntegrationTestCase;
 import com.google.idea.blaze.base.EditorTestHelper;
 import com.google.idea.blaze.base.command.BlazeCommandName;
+import com.google.idea.blaze.base.dependencies.TargetInfo;
 import com.google.idea.blaze.base.model.MockBlazeProjectDataBuilder;
 import com.google.idea.blaze.base.model.MockBlazeProjectDataManager;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
+import com.google.idea.blaze.base.run.SourceToTargetFinder;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.google.idea.testing.FunctionalHeadlessDataManager;
 import com.intellij.execution.Location;
 import com.intellij.execution.PsiLocation;
+import com.intellij.execution.RunConfigurationProducerService;
 import com.intellij.execution.RunnerAndConfigurationSettings;
 import com.intellij.execution.actions.ConfigurationContext;
+import com.intellij.execution.actions.ConfigurationFromContext;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.ide.DataManager;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.actionSystem.LangDataKeys;
+import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.module.ModuleUtil;
+import com.intellij.openapi.progress.EmptyProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.util.Computable;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiFileSystemItem;
+import com.intellij.testFramework.EdtTestUtil;
 import com.intellij.testFramework.ServiceContainerUtil;
 import com.intellij.ui.IconManager;
 import com.intellij.ui.icons.CoreIconManager;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import kotlin.coroutines.EmptyCoroutineContext;
+import kotlinx.coroutines.BuildersKt;
 import org.junit.After;
 import org.junit.Before;
 
 /** Run configuration producer integration test base */
 public class BlazeRunConfigurationProducerTestCase extends BlazeIntegrationTestCase {
 
+  @Override
+  protected boolean runTestsOnEdt() {
+    return false;
+  }
+
   protected EditorTestHelper editorTest;
   private DataManager defaultDataManager;
+  private final List<TargetInfo> registeredTargets = new ArrayList<>();
 
   @Before
   public final void doSetup() throws Throwable {
+    registerExtension(
+        SourceToTargetFinder.EP_NAME,
+        (project, sourceFiles, ruleType) -> {
+          List<TargetInfo> candidates = new ArrayList<>(registeredTargets);
+          if (ruleType.isPresent()) {
+            candidates =
+                candidates.stream()
+                    .filter(t -> ruleType.get().equals(t.getRuleType()))
+                    .collect(Collectors.toList());
+          }
+          return Futures.immediateFuture(candidates);
+        });
+
     BlazeProjectDataManager mockProjectDataManager =
         new MockBlazeProjectDataManager(MockBlazeProjectDataBuilder.builder(workspaceRoot).build());
     registerProjectService(BlazeProjectDataManager.class, mockProjectDataManager);
@@ -68,9 +104,36 @@ public class BlazeRunConfigurationProducerTestCase extends BlazeIntegrationTestC
         DataManager.class,
         new FunctionalHeadlessDataManager());
 
+    RunConfigurationProducerService producerService =
+        RunConfigurationProducerService.getInstance(getProject());
+    producerService
+        .getState()
+        .ignoredProducers
+        .addAll(
+            Arrays.asList(
+                "com.intellij.execution.junit.AbstractAllInDirectoryConfigurationProducer",
+                "com.intellij.execution.junit.AllInDirectoryConfigurationProducer",
+                "com.intellij.execution.junit.AllInPackageConfigurationProducer",
+                "com.intellij.execution.junit.TestInClassConfigurationProducer",
+                "com.intellij.execution.junit.TestClassConfigurationProducer",
+                "com.intellij.execution.junit.TestMethodConfigurationProducer",
+                "com.intellij.execution.junit.PatternConfigurationProducer",
+                "com.intellij.execution.junit.UniqueIdConfigurationProducer",
+                "com.intellij.execution.junit.testDiscovery.JUnitTestDiscoveryConfigurationProducer",
+                "com.intellij.execution.application.ApplicationConfigurationProducer",
+                "org.jetbrains.kotlin.idea.junit.KotlinJUnitRunConfigurationProducer",
+                "org.jetbrains.kotlin.idea.junit.KotlinPatternConfigurationProducer",
+                "com.android.tools.idea.run.AndroidConfigurationProducer",
+                "com.android.tools.idea.testartifacts.instrumented.AndroidTestConfigurationProducer"));
+
     // IntelliJ will use a dummy icon manager that returns the same exact icon.
     // This will cause uniqueness issues for gutter icons.
     IconManager.Companion.activate(new CoreIconManager());
+  }
+
+  protected void registerTargets(TargetInfo... targets) {
+    registeredTargets.clear();
+    registeredTargets.addAll(Arrays.asList(targets));
   }
 
   @After
@@ -101,37 +164,97 @@ public class BlazeRunConfigurationProducerTestCase extends BlazeIntegrationTestC
   }
 
   protected ConfigurationContext createContextFromPsi(PsiElement element) {
-    return ConfigurationContext.getFromContext(
-        SimpleDataContext.builder()
-            .add(CommonDataKeys.PROJECT, getProject())
-            .add(LangDataKeys.MODULE, ModuleUtil.findModuleForPsiElement(element))
-            .add(Location.DATA_KEY, PsiLocation.fromPsiElement(element))
-            .build());
-  }
-
-  protected ConfigurationContext createContextFromMultipleElements(PsiElement[] elements) {
-    return ConfigurationContext.getFromContext(
-        SimpleDataContext.builder()
-            .add(CommonDataKeys.PROJECT, getProject())
-            .add(LangDataKeys.MODULE, ModuleUtil.findModuleForPsiElement(elements[0]))
-            .add(Location.DATA_KEY, PsiLocation.fromPsiElement(elements[0]))
-            .add(
-                Location.DATA_KEYS,
-                Arrays.stream(elements).map(PsiLocation::fromPsiElement).toArray(Location<?>[]::new))
-            .add(LangDataKeys.PSI_ELEMENT_ARRAY, elements)
-            .build());
+    return EdtTestUtil.runInEdtAndGet(
+        () -> {
+          Editor editor = null;
+          // Only open an editor for elements inside a file (e.g., classes, methods, or BUILD
+          // targets),
+          // rather than the file itself or a directory (which represent Project View interactions).
+          if (!(element instanceof PsiFileSystemItem)) {
+            PsiFile containingFile = runReadAction(element::getContainingFile);
+            if (containingFile != null && containingFile.getVirtualFile() != null) {
+              try {
+                editor = editorTest.openFileInEditor(containingFile);
+              } catch (Throwable e) {
+                throw new RuntimeException(e);
+              }
+            }
+          }
+          Editor finalEditor = editor;
+          return runReadAction(
+              () -> {
+                SimpleDataContext.Builder builder =
+                    SimpleDataContext.builder()
+                        .add(CommonDataKeys.PROJECT, getProject())
+                        .add(LangDataKeys.MODULE, ModuleUtil.findModuleForPsiElement(element))
+                        .add(Location.DATA_KEY, PsiLocation.fromPsiElement(element));
+                if (finalEditor != null) {
+                  builder.add(CommonDataKeys.EDITOR, finalEditor);
+                  builder.add(
+                      PlatformCoreDataKeys.CONTEXT_COMPONENT, finalEditor.getContentComponent());
+                }
+                return ConfigurationContext.getFromContext(builder.build());
+              });
+        });
   }
 
   @Nullable
   protected RunConfiguration createConfigurationFromLocation(PsiFile psiFile) {
-    RunnerAndConfigurationSettings settings =
-        ConfigurationContext.getFromContext(
-                SimpleDataContext.builder()
-                    .add(CommonDataKeys.PROJECT, getProject())
-                    .add(LangDataKeys.MODULE, ModuleUtil.findModuleForPsiElement(psiFile))
-                    .add(Location.DATA_KEY, PsiLocation.fromPsiElement(psiFile))
-                    .build())
-            .getConfiguration();
-    return settings != null ? settings.getConfiguration() : null;
+    ConfigurationContext context = createContextFromPsi(psiFile);
+    return runReadAction(
+        () -> {
+          RunnerAndConfigurationSettings settings = context.getConfiguration();
+          return settings != null ? settings.getConfiguration() : null;
+        });
+  }
+
+  protected List<ConfigurationFromContext> getConfigurationsFromContext(
+      ConfigurationContext context) {
+    return runReadAction(context::getConfigurationsFromContext);
+  }
+
+  protected <T> T runReadAction(Computable<T> computable) {
+    return ApplicationManager.getApplication().runReadAction(computable);
+  }
+
+  /**
+   * Test utility helper to execute a block within a progress indicator context, avoiding
+   * IllegalStateException in runBlockingCancellable during integration test execution.
+   */
+  protected <T> T runWithProgress(Computable<T> computable) {
+    return ProgressManager.getInstance().runProcess(computable, new EmptyProgressIndicator());
+  }
+
+  /**
+   * Performs the full Stage 2 refinement, Stage 2.5 resolution, and Stage 3 configuration
+   * application for a given {@link BlazeCommandRunConfiguration} and producer.
+   */
+  protected void performFirstRun(
+      BlazeRunConfigurationProducer<?> producer,
+      BlazeCommandRunConfiguration config,
+      ConfigurationContext context) {
+    runWithProgress(
+        () -> {
+          try {
+            BuildersKt.runBlocking(
+                EmptyCoroutineContext.INSTANCE,
+                (scope, continuation) ->
+                    producer.prepareAndSetupRunConfiguration(config, context, continuation));
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+          }
+          return null;
+        });
+  }
+
+  /**
+   * Performs the full Stage 2 refinement, Stage 2.5 resolution, and Stage 3 configuration
+   * application for a given {@link BlazeCommandRunConfiguration} using {@link
+   * TestContextRunConfigurationProducer}.
+   */
+  protected void performFirstRun(
+      BlazeCommandRunConfiguration config, ConfigurationContext context) {
+    performFirstRun(TestContextRunConfigurationProducer.getInstance(), config, context);
   }
 }

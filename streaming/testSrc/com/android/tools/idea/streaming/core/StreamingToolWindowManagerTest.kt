@@ -38,15 +38,16 @@ import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
 import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
+import com.android.tools.adtui.swing.findModelessDialog
 import com.android.tools.adtui.swing.popup.FakeJBPopup
 import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.adblib.AdbLibApplicationService
+import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.concurrency.AndroidExecutors
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.protobuf.TextFormat
 import com.android.tools.idea.run.DeviceHeadsUpListener
-import com.android.tools.idea.streaming.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.DeviceMirroringSettings
 import com.android.tools.idea.streaming.EmulatorSettings
 import com.android.tools.idea.streaming.MirroringManager
@@ -59,6 +60,7 @@ import com.android.tools.idea.streaming.emulator.EmulatorView
 import com.android.tools.idea.streaming.emulator.FakeEmulator
 import com.android.tools.idea.streaming.emulator.FakeEmulatorRule
 import com.android.tools.idea.streaming.emulator.RunningEmulatorCatalog
+import com.android.tools.idea.streaming.emulator.dialogs.BatteryDialog
 import com.android.tools.idea.streaming.emulator.getEmptyObserver
 import com.android.tools.idea.streaming.emulator.sendKeyEvent
 import com.android.tools.idea.testing.AndroidExecutorsRule
@@ -76,15 +78,20 @@ import com.intellij.openapi.actionSystem.AnActionEvent.createEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DataSnapshotProvider
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.PlatformDataKeys
+import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.openapi.wm.impl.InternalDecorator
+import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.IndexingTestUtil.Companion.waitUntilIndexesAreReady
 import com.intellij.testFramework.PlatformTestUtil.dispatchAllEventsInIdeEventQueue
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
@@ -126,10 +133,11 @@ class StreamingToolWindowManagerTest {
   @get:Rule
   val ruleChain =
     RuleChain(
+      ApplicationRule(),
+      ClipboardSynchronizationDisablementRule(),
       agentRule,
       provisionerRule,
       emulatorRule,
-      ClipboardSynchronizationDisablementRule(),
       androidExecutorsRule,
       EdtRule(),
       PortableUiFontRule(),
@@ -175,6 +183,7 @@ class StreamingToolWindowManagerTest {
     deviceMirroringSettings.loadState(DeviceMirroringSettings()) // Reset device mirroring settings to defaults.
     service<DeviceClientRegistry>().clear()
     PairedDevicesLayoutStorage.getInstance().clear()
+    waitUntilIndexesAreReady(project) // Wait for indexing activity to finish to avoid leaking threads.
   }
 
   @Test
@@ -314,17 +323,22 @@ class StreamingToolWindowManagerTest {
     // Wait for the extended controls to show.
     waitForCondition(2.seconds) { emulator.extendedControlsVisible }
 
+    val batteryDialog = BatteryDialog(emulatorController).show(project)
+    assertThat(batteryDialog.isShowing).isTrue()
+
     val panel = contentManager.contents[0].component as EmulatorToolWindowPanel
 
     toolWindow.hide()
-    // Wait for the extended controls to close.
-    waitForCondition(4.seconds) { !emulator.extendedControlsVisible }
+    // Wait for the extended controls and the extended controls dialog to close.
+    waitForCondition(4.seconds) { !emulator.extendedControlsVisible && !batteryDialog.isShowing }
     // Wait for the prior visibility state of the extended controls to propagate to Studio.
     waitForCondition(2.seconds) { panel.lastUiState?.extendedControlsShown ?: false }
 
     toolWindow.show()
-    // Wait for the extended controls to show.
-    waitForCondition(2.seconds) { emulator.extendedControlsVisible }
+    // Wait for the extended controls and the extended controls dialog to show.
+    waitForCondition(2.seconds) { emulator.extendedControlsVisible && findModelessDialog<DialogWrapper>() != null }
+    val restoredDialog = findModelessDialog<DialogWrapper>()!!
+    assertThat(restoredDialog.title).isEqualTo("Battery (${emulator.avdName})")
   }
 
   @Test
@@ -352,7 +366,7 @@ class StreamingToolWindowManagerTest {
     var emulatorView = ui.getComponent<EmulatorView>()
     waitForCondition(2.seconds) { renderAndGetFrameNumber(ui, emulatorView) > 0u }
 
-    // 1. Verify FIT_INNER framing restoration.
+    // Verify FIT_INNER framing restoration.
     assertThat(emulatorView.hasInnerPart).isTrue()
     emulatorView.zoom(ZoomType.FIT_INNER)
     ui.layoutAndDispatchEvents()
@@ -369,7 +383,7 @@ class StreamingToolWindowManagerTest {
     assertThat(emulatorView.zoomScrollState.framing).isEqualTo(ZoomablePanel.Framing.INNER)
     assertThat(emulatorView.scale).isWithin(0.0001).of(fitInnerScale)
 
-    // 2. Verify zoom and scroll position restoration (uses Framing.OUTER).
+    // Verify zoom and scroll position restoration (uses Framing.OUTER).
     var viewport = emulatorView.parent as JViewport
     while (viewport.viewSize.height <= viewport.height) {
       emulatorView.zoom(ZoomType.IN)
@@ -469,11 +483,10 @@ class StreamingToolWindowManagerTest {
 
   @Test
   fun testRemoteDevice() {
-    val properties =
-      DeviceProperties.buildForTest {
-        icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_CAR
-        model = "Pixel 9000"
-      }
+    val properties = DeviceProperties.buildForTest {
+      icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_CAR
+      model = "Pixel 9000"
+    }
     val device = provisionerRule.deviceProvisionerPlugin.newDevice(properties = properties)
     device.sourceTemplate =
       object : DeviceTemplate {
@@ -507,17 +520,15 @@ class StreamingToolWindowManagerTest {
 
   @Test
   fun testReservableRemoteDevice() {
-    val templateProperties =
-      DeviceProperties.buildForTest {
-        icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_PHONE
-        model = "Pixel Reservable"
-        isRemote = true
-      }
-    val deviceProperties =
-      DeviceProperties.buildForTest {
-        icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_WEAR
-        model = "Pixel Reserved"
-      }
+    val templateProperties = DeviceProperties.buildForTest {
+      icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_PHONE
+      model = "Pixel Reservable"
+      isRemote = true
+    }
+    val deviceProperties = DeviceProperties.buildForTest {
+      icon = StudioIcons.DeviceExplorer.FIREBASE_DEVICE_WEAR
+      model = "Pixel Reserved"
+    }
     val template =
       object : DeviceTemplate {
         override val id = DeviceId("TEST", true, "")
@@ -754,7 +765,11 @@ class StreamingToolWindowManagerTest {
     tablet.start(standalone = true)
     runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
 
-    val popup = triggerAddDevicePopup()
+    lateinit var popup: FakeJBPopup<Any>
+    waitForCondition(2.seconds) {
+      popup = triggerAddDevicePopup()
+      popup.actions.size > 1
+    }
     assertThat(popup.actions.toString())
       .isEqualTo(
         "[Separator (Virtual Devices), ${phone.avdName} (null), " +
@@ -777,9 +792,8 @@ class StreamingToolWindowManagerTest {
     contentManager.removeContent(contentManager.contents[0], true)
     waitForCondition(2.seconds) { contentManager.contents.size == 1 && contentManager.contents[0].displayName == null }
     assertThat(RunningAvdTracker.getInstance().runningAvds[phone.avdFolder]?.isShuttingDown).isTrue()
-    val startAction = triggerAddDevicePopup().actions.find { it.templateText == phone.avdName }
-    assertThat(startAction).isNotNull()
-    executeAction(startAction!!, toolWindow.component, project)
+    val startAction = waitForAddDeviceAction(2.seconds, phone.avdName)
+    executeAction(startAction, toolWindow.component, project)
     assertThat(phone.isRunning)
     phone.resumeGrpc() // Allow the phone AVD to finish its shutdown sequence and terminate.
     waitForCondition(2.seconds) { contentManager.contents.size == 1 && contentManager.contents[0].displayName != null }
@@ -968,6 +982,53 @@ class StreamingToolWindowManagerTest {
   }
 
   @Test
+  fun testUserInvolvementRequiredTwoDevicesInitializesToolWindowAndPersistsSplitLayout() {
+    assertThat(contentManager.contents).isEmpty()
+    assertThat(toolWindow.isVisible).isFalse()
+
+    val tempFolder = emulatorRule.avdRoot
+    val glasses = emulatorRule.newEmulator(FakeEmulator.createDisplayGlassesAvd(tempFolder))
+    val phone = emulatorRule.newEmulator(FakeEmulator.createPhoneAvd(tempFolder))
+    glasses.pairedDevice = phone
+    createMockDeviceProvisioner(glasses.deviceHandle, phone.deviceHandle)
+
+    glasses.start(standalone = false)
+    phone.start(standalone = false)
+    runBlocking { RunningEmulatorCatalog.getInstance().updateNow().await() }
+
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).userInvolvementRequired(glasses.serialNumber, phone.serialNumber, project)
+    dispatchAllInvocationEvents()
+
+    waitForCondition(5.seconds) {
+      val contents = contentManager.contentsRecursively
+      contents.size == 2 && contents[0].manager != contents[1].manager
+    }
+    assertThat(toolWindow.isVisible).isTrue()
+
+    val contentGlasses = contentManager.contentsRecursively.find { it.displayName.startsWith(glasses.avdName) }!!
+    val contentPhone = contentManager.contentsRecursively.find { it.displayName == phone.avdName }!!
+    assertThat(contentGlasses.manager == contentPhone.manager).isFalse()
+
+    val layoutStorage = PairedDevicesLayoutStorage.getInstance()
+    waitForCondition(2.seconds) {
+      layoutStorage.getLayout(glasses.deviceId)?.side !in listOf(null, PairLayout.FIRST_ONLY, PairLayout.SECOND_ONLY)
+    }
+    val savedLayout = layoutStorage.getLayout(glasses.deviceId)!!
+    assertThat(savedLayout.side).isNotEqualTo(PairLayout.FIRST_ONLY)
+    assertThat(savedLayout.side).isNotEqualTo(PairLayout.SECOND_ONLY)
+
+    // Verify calling userInvolvementRequired when already split still persists the split layout.
+    layoutStorage.clear()
+    assertThat(layoutStorage.getLayout(glasses.deviceId)).isNull()
+    project.messageBus.syncPublisher(DeviceHeadsUpListener.TOPIC).userInvolvementRequired(glasses.serialNumber, phone.serialNumber, project)
+    dispatchAllInvocationEvents()
+    waitForCondition(2.seconds) {
+      layoutStorage.getLayout(glasses.deviceId)?.side !in listOf(null, PairLayout.FIRST_ONLY, PairLayout.SECOND_ONLY)
+    }
+    assertThat(layoutStorage.getLayout(glasses.deviceId)!!.side).isEqualTo(savedLayout.side)
+  }
+
+  @Test
   fun testSplitLayoutSaving() {
     assertThat(contentManager.contents).isEmpty()
 
@@ -1089,6 +1150,71 @@ class StreamingToolWindowManagerTest {
     }
   }
 
+  @Test
+  fun testToolbarPlacementOption() {
+    toolWindow.show()
+    waitForCondition(2.seconds) { toolWindow.additionalGearActions != null }
+    val gearActions = (toolWindow.additionalGearActions as DefaultActionGroup).getChildren(null)
+    val placementGroupIndex = gearActions.indexOfFirst { it.templateText == "Toolbar Placement" }
+    val zoomControlsIndex = gearActions.indexOfFirst { it.templateText == "Show Zoom Controls" }
+    assertThat(placementGroupIndex).isAtLeast(0)
+    assertThat(zoomControlsIndex).isGreaterThan(placementGroupIndex) // Toolbar Placement is shown above Show Zoom Controls
+
+    val placementGroup = gearActions[placementGroupIndex] as DefaultActionGroup
+    assertThat(placementGroup.isPopup).isTrue()
+    val placementActions = placementGroup.getChildren(null)
+    assertThat(placementActions.map { it.templateText }).containsExactly("Horizontal", "Vertical", "No Toolbar").inOrder()
+
+    val horizontalAction = placementActions[0] as ToggleAction
+    val verticalAction = placementActions[1] as ToggleAction
+    val noToolbarAction = placementActions[2] as ToggleAction
+
+    val event = createTestEvent(toolWindow.component, project)
+    assertThat(horizontalAction.isSelected(event)).isTrue()
+    assertThat(verticalAction.isSelected(event)).isFalse()
+    assertThat(noToolbarAction.isSelected(event)).isFalse()
+
+    // Start phone AVD and verify toolbar placement
+    val tempFolder = emulatorRule.avdRoot
+    val phone = emulatorRule.newEmulator(FakeEmulator.createPhoneAvd(tempFolder))
+    phone.start(standalone = false)
+    RunningEmulatorCatalog.getInstance().updateNow()
+    waitForCondition(5.seconds) { contentManager.contents.firstOrNull()?.component is EmulatorToolWindowPanel }
+    val panel = contentManager.contents[0].component as EmulatorToolWindowPanel
+    assertThat(panel.toolbarPlacement).isEqualTo(ToolbarPlacement.HORIZONTAL)
+    assertThat(panel.mainToolbar.orientation).isEqualTo(SwingConstants.HORIZONTAL)
+    assertThat(panel.secondaryToolbar.orientation).isEqualTo(SwingConstants.HORIZONTAL)
+    assertThat(panel.toolbarPanel.isVisible).isTrue()
+
+    // Switch to Vertical
+    verticalAction.setSelected(event, true)
+    assertThat(horizontalAction.isSelected(event)).isFalse()
+    assertThat(verticalAction.isSelected(event)).isTrue()
+    assertThat(noToolbarAction.isSelected(event)).isFalse()
+    assertThat(panel.toolbarPlacement).isEqualTo(ToolbarPlacement.VERTICAL)
+    assertThat(panel.mainToolbar.orientation).isEqualTo(SwingConstants.VERTICAL)
+    assertThat(panel.secondaryToolbar.orientation).isEqualTo(SwingConstants.VERTICAL)
+    assertThat(panel.toolbarPanel.isVisible).isTrue()
+
+    // Switch to No Toolbar
+    noToolbarAction.setSelected(event, true)
+    assertThat(horizontalAction.isSelected(event)).isFalse()
+    assertThat(verticalAction.isSelected(event)).isFalse()
+    assertThat(noToolbarAction.isSelected(event)).isTrue()
+    assertThat(panel.toolbarPlacement).isEqualTo(ToolbarPlacement.NONE)
+    assertThat(panel.toolbarPanel.isVisible).isFalse()
+
+    // Switch back to Horizontal
+    horizontalAction.setSelected(event, true)
+    assertThat(horizontalAction.isSelected(event)).isTrue()
+    assertThat(verticalAction.isSelected(event)).isFalse()
+    assertThat(noToolbarAction.isSelected(event)).isFalse()
+    assertThat(panel.toolbarPlacement).isEqualTo(ToolbarPlacement.HORIZONTAL)
+    assertThat(panel.mainToolbar.orientation).isEqualTo(SwingConstants.HORIZONTAL)
+    assertThat(panel.secondaryToolbar.orientation).isEqualTo(SwingConstants.HORIZONTAL)
+    assertThat(panel.toolbarPanel.isVisible).isTrue()
+  }
+
   private fun renderAndGetFrameNumber(fakeUi: FakeUi, displayView: AbstractDisplayView): UInt {
     fakeUi.render() // The frame number may get updated as a result of rendering.
     return displayView.frameNumber
@@ -1115,6 +1241,7 @@ class StreamingToolWindowManagerTest {
   }
 
   private fun triggerAddDevicePopup(): FakeJBPopup<Any> {
+    AvdManagerConnection.getDefaultAvdManagerConnection().getAvds(true) // Force loading of AVDs.
     waitForCondition(2.seconds) { toolWindow.tabActions.isNotEmpty() }
     val newTabAction = toolWindow.tabActions[0]
     val testEvent = createTestEvent(toolWindow.component, project)

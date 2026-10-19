@@ -15,6 +15,15 @@
  */
 package com.android.tools.idea.run.configuration.execution
 
+import com.android.adblib.ConnectedDevice
+import com.android.adblib.DeviceInfo
+import com.android.adblib.DeviceList
+import com.android.adblib.DeviceSelector
+import com.android.adblib.DeviceState
+import com.android.adblib.connectedDevicesTracker
+import com.android.adblib.serialNumber
+import com.android.adblib.testing.FakeAdbSession
+import com.android.adblib.waitForDevice
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.Deployer
 import com.android.tools.deployer.DeployerApplicationTerminator
@@ -30,9 +39,24 @@ import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.psi.psiUtil.findDescendantOfType
 
-fun createApp(device: IDevice, appId: String, servicesName: List<String> = emptyList(), activitiesName: List<String> = emptyList()): App {
+@JvmOverloads
+fun FakeAdbSession.createConnectedDevice(
+  serialNumber: String = "1234",
+  sdk: Int = 31,
+): ConnectedDevice {
+  hostServices.devices = DeviceList(listOf(DeviceInfo(serialNumber, DeviceState.ONLINE)), emptyList())
+  val connectedDevice = runBlocking { connectedDevicesTracker.waitForDevice(serialNumber) }
+  deviceServices.configureDeviceProperties(
+    DeviceSelector.fromSerialNumber(connectedDevice.serialNumber),
+    mapOf("ro.build.version.sdk" to sdk.toString()),
+  )
+  return connectedDevice
+}
+
+fun createApp(appId: String, servicesName: List<String> = emptyList(), activitiesName: List<String> = emptyList()): App {
   val services = servicesName.map { createManifestServiceInfo(it, appId) }
   val activities = activitiesName.map { createManifestActivityInfo(it, appId) }
   val apk = Apk.Builder().setServices(services).setActivities(activities).build()
@@ -69,6 +93,7 @@ class TestApplicationInstaller : ApplicationDeployer {
 
   override fun fullDeploy(
     device: IDevice,
+    connectedDevice: ConnectedDevice?,
     app: ApkInfo,
     deployOptions: DeployOptions,
     hasMakeBeforeRun: Boolean,
@@ -81,6 +106,7 @@ class TestApplicationInstaller : ApplicationDeployer {
 
   override fun applyChangesDeploy(
     device: IDevice,
+    connectedDevice: ConnectedDevice?,
     app: ApkInfo,
     deployOptions: DeployOptions,
     hasMakeBeforeRun: Boolean,
@@ -91,6 +117,7 @@ class TestApplicationInstaller : ApplicationDeployer {
 
   override fun applyCodeChangesDeploy(
     device: IDevice,
+    connectedDevice: ConnectedDevice?,
     app: ApkInfo,
     deployOptions: DeployOptions,
     hasMakeBeforeRun: Boolean,
@@ -118,6 +145,16 @@ fun CodeInsightTestFixture.addWearDependenciesToProject() { // Simulates that 'c
     package androidx.wear.tiles
 
     open class TileService
+    """
+      .trimIndent(),
+  )
+
+  addFileToProject(
+    "src/androidx/glance/wear/GlanceWearWidgetService.kt",
+    """
+    package androidx.glance.wear
+
+    open class GlanceWearWidgetService
     """
       .trimIndent(),
   )

@@ -3,6 +3,7 @@ import argparse
 import datetime
 import json
 import os
+import plistlib
 import re
 import shutil
 import stat
@@ -148,6 +149,26 @@ def _replace_subs(subs, content):
     content = content.replace(k, v)
   return content
 
+def _add_document_types_to_plist(plist_content, extra_document_types_file):
+  """Adds macOS document types to the CFBundleDocumentTypes of an Info.plist.
+
+  extra_document_types_file is a plist file with an array of
+  CFBundleDocumentTypes entries. They are added before the existing entries,
+  so they come before catch-all entries such as "All documents". The
+  Info.plist is parsed and written again with plistlib, so its formatting
+  (indentation, DOCTYPE) may change, but its other keys and values do not.
+  """
+  with open(extra_document_types_file, "rb") as f:
+    extra_document_types = plistlib.load(f)
+  if (not isinstance(extra_document_types, list) or not extra_document_types or
+      not all(isinstance(t, dict) for t in extra_document_types)):
+    sys.exit(f"ERROR: '{extra_document_types_file}' must contain a non-empty array of document types")
+  plist = plistlib.loads(plist_content.encode("utf-8"))
+  if not isinstance(plist, dict) or not isinstance(plist.get("CFBundleDocumentTypes"), list):
+    sys.exit("ERROR: the Info.plist has no CFBundleDocumentTypes array")
+  plist["CFBundleDocumentTypes"] = extra_document_types + plist["CFBundleDocumentTypes"]
+  return plistlib.dumps(plist, sort_keys=False).decode("utf-8")
+
 def _read_file(file, entry = None, optional_entry = False):
   if entry:
     return utils.read_zip_entry(file, entry, optional_entry)
@@ -190,6 +211,10 @@ def main(argv):
       "--replace_build_day",
       action="store_true",
       help="Replaces __BUILD_DAY__ with the current date")
+  parser.add_argument(
+      "--add_document_types",
+      dest="document_types_file",
+      help="Path to a plist file with an array of macOS document types. They are added to the CFBundleDocumentTypes of the given Info.plist.")
   parser.add_argument(
       "--stamp_app_info",
       action="store_true",
@@ -273,6 +298,11 @@ def main(argv):
   content = _read_file(args.stamp[0], args.entry, args.optional_entry)
 
   if content:
+    # Runs first, so that the text replacements below also apply to the added
+    # document types.
+    if args.document_types_file:
+      content = _add_document_types_to_plist(content, args.document_types_file)
+
     if args.replace_build_number:
       content = _replace_build_number(content, args.info_file, args.version_component)
 

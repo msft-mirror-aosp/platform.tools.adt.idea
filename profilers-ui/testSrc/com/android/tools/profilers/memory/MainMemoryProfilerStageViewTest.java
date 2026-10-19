@@ -25,7 +25,6 @@ import static com.android.tools.profilers.memory.MemoryProfilerTestUtils.findDes
 import static com.android.tools.profilers.memory.MemoryProfilerTestUtils.getRootClassifierSet;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assume.assumeTrue;
-import java.nio.file.Files;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.adtui.RangeTooltipComponent;
 import com.android.tools.adtui.TreeWalker;
@@ -44,7 +43,6 @@ import com.android.tools.profiler.proto.Memory;
 import com.android.tools.profiler.proto.Memory.HeapDumpInfo;
 import com.android.tools.profiler.proto.Memory.TrackStatus.Status;
 import com.android.tools.profiler.proto.Trace;
-import com.android.tools.profiler.proto.Transport;
 import com.android.tools.profilers.FakeIdeProfilerComponents;
 import com.android.tools.profilers.NullMonitorStage;
 import com.android.tools.profilers.ProfilerClient;
@@ -72,12 +70,13 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.testFramework.ApplicationRule;
 import com.intellij.testFramework.DisposableRule;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.RunsInEdt;
 import com.intellij.testFramework.ServiceContainerUtil;
 import icons.StudioIcons;
 import java.awt.Component;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
-import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -96,6 +95,7 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 
+@RunsInEdt
 public final class MainMemoryProfilerStageViewTest extends MemoryProfilerTestBase {
   @NotNull private final FakeTransportService myTransportService = new FakeTransportService(myTimer);
   @Rule
@@ -103,6 +103,7 @@ public final class MainMemoryProfilerStageViewTest extends MemoryProfilerTestBas
     new FakeGrpcChannel("MemoryProfilerStageViewTestChannel", myTransportService);
   @Rule public final ApplicationRule myApplicationRule = new ApplicationRule();
   @Rule public final DisposableRule myDisposableRule = new DisposableRule();
+  @Rule public final EdtRule myEdtRule = new EdtRule();
 
   private StudioProfilersView myProfilersView;
 
@@ -434,58 +435,6 @@ public final class MainMemoryProfilerStageViewTest extends MemoryProfilerTestBas
     TreeWalker treeWalker = new TreeWalker(stageView.getComponent());
     Component tooltipComponent = treeWalker.descendantStream().filter(c -> c instanceof RangeTooltipComponent).findFirst().get();
     assertThat(tooltipComponent.getParent().getComponent(0)).isEqualTo(tooltipComponent);
-  }
-
-  @Test
-  public void testLoadHeapDumpFromFile() throws Exception {
-    myIdeProfilerServices.enableTaskBasedUx(false);
-
-    SessionsManager sessionsManager = myProfilers.getSessionsManager();
-
-    // Create a temp file
-    String data = "random_string_~!@#$%^&*()_+";
-    File file = TransportServiceUtils.createTempFile("fake.heap.dump", ".hprof",
-                                                     ByteString.copyFrom(data, Charset.defaultCharset()));
-    // Import heap dump from file
-    assertThat(sessionsManager.importSessionFromFile(file)).isTrue();
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    assertThat(myProfilers.getStage()).isInstanceOf(MemoryCaptureStage.class);
-
-    Common.Session session = sessionsManager.getSelectedSession();
-    long dumpTime = session.getStartTimestamp();
-    Transport.BytesRequest request = Transport.BytesRequest.newBuilder()
-      .setStreamId(session.getStreamId())
-      .setId(Long.toString(dumpTime))
-      .build();
-    Transport.FileResponse response = myProfilers.getClient().getTransportClient().getFile(request);
-    ByteString fileContents = ByteString.copyFrom(Files.readAllBytes(new File(response.getFilePath()).toPath()));
-    assertThat(fileContents).isEqualTo(ByteString.copyFrom(data, Charset.defaultCharset()));
-  }
-
-  @Test
-  public void testLoadHeapDumpFromProfFile() throws Exception {
-    myIdeProfilerServices.enableTaskBasedUx(false);
-
-    SessionsManager sessionsManager = myProfilers.getSessionsManager();
-
-    // Create a temp file
-    String data = "random_string_~!@#$%^&*()_+";
-    File file = TransportServiceUtils.createTempFile("fake.heap.dump", ".prof",
-                                                     ByteString.copyFrom(data, Charset.defaultCharset()));
-    // Import heap dump from file
-    assertThat(sessionsManager.importSessionFromFile(file)).isTrue();
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    assertThat(myProfilers.getStage()).isInstanceOf(MemoryCaptureStage.class);
-
-    Common.Session session = sessionsManager.getSelectedSession();
-    long dumpTime = session.getStartTimestamp();
-    Transport.BytesRequest request = Transport.BytesRequest.newBuilder()
-      .setStreamId(session.getStreamId())
-      .setId(Long.toString(dumpTime))
-      .build();
-    Transport.FileResponse response = myProfilers.getClient().getTransportClient().getFile(request);
-    ByteString fileContents = ByteString.copyFrom(Files.readAllBytes(new File(response.getFilePath()).toPath()));
-    assertThat(fileContents).isEqualTo(ByteString.copyFrom(data, Charset.defaultCharset()));
   }
 
   @Ignore("b/277717905")

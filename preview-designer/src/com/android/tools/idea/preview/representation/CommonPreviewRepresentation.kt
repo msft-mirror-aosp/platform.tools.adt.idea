@@ -116,6 +116,7 @@ import com.intellij.openapi.util.UserDataHolderEx
 import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.SmartPsiElementPointer
+import com.intellij.util.ui.UIUtil
 import java.awt.Rectangle
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.JComponent
@@ -538,8 +539,15 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       try {
         refreshProgressIndicator.text = message("refresh.progress.indicator.finding.previews")
         val filePreviewElements = previewFlowManager.toRenderPreviewElementsFlow.value.asCollection().toList()
+        val renderedPreviews =
+          previewFlowManager.renderedPreviewElementsFlow.value
+            .takeIf { it is FlowableCollection.Present }
+            ?.asCollection()
+            ?.toList()
 
-        val needsFullRefresh = request.refreshType != CommonPreviewRefreshType.QUALITY && invalidated.getAndSet(false)
+        val needsFullRefresh =
+          request.refreshType != CommonPreviewRefreshType.QUALITY &&
+            (invalidated.getAndSet(false) || renderedPreviews != filePreviewElements)
 
         invalidateIfCancelled.set(needsFullRefresh)
 
@@ -611,10 +619,20 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       return CompletableDeferred(Unit)
     }
 
+    if (Disposer.isDisposed(this)) {
+      return CompletableDeferred<Unit>().also { it.completeExceptionally(IllegalStateException("Already disposed")) }
+    }
+
     val startTime = System.nanoTime()
     val refreshProgressIndicator = BackgroundableProcessIndicator(project, message("refresh.progress.indicator.title"), "", "", true)
-    if (!Disposer.tryRegister(this, refreshProgressIndicator)) {
-      refreshProgressIndicator.processFinish()
+    // ProgressWindow.dispose() asserts that it is called on the EDT. Wrap its disposal in a Disposable
+    // that schedules disposal on the EDT so that if `this` is already disposed (or disposed later from a
+    // background thread), ObjectTree never invokes ProgressWindow.dispose() off-EDT (see b/562876887).
+    val indicatorDisposable = Disposable {
+      UIUtil.invokeLaterIfNeeded { Disposer.dispose(refreshProgressIndicator) }
+    }
+    if (!Disposer.tryRegister(this, indicatorDisposable)) {
+      UIUtil.invokeLaterIfNeeded { Disposer.dispose(refreshProgressIndicator) }
       return CompletableDeferred<Unit>().also { it.completeExceptionally(IllegalStateException("Already disposed")) }
     }
 
@@ -622,7 +640,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
     refreshJob.invokeOnCompletion {
       LOG.debug("Completed")
       // Progress indicators must be disposed in the ui thread
-      launch(Dispatchers.EDT) { Disposer.dispose(refreshProgressIndicator) }
+      launch(Dispatchers.EDT) { Disposer.dispose(indicatorDisposable) }
       previewViewModel.refreshCompleted(it is CancellationException, System.nanoTime() - startTime)
     }
     return refreshJob
@@ -679,27 +697,26 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
     }
   }
 
-  private fun configureLayoutlibSceneManager(layoutlibSceneManager: LayoutlibSceneManager) =
-    layoutlibSceneManager.apply {
-      sceneRenderConfiguration.let { config ->
-        // When the cache successful render image is enabled, the scene manager will retain the last
-        // valid image even if subsequent renders fail. But do not cache in interactive mode as it
-        // does not help, and it would make unnecessary copies of the bitmap.
-        config.cacheSuccessfulRenderImage = mode.value !is PreviewMode.Interactive
-        config.classesToPreload = if (mode.value is PreviewMode.Interactive) INTERACTIVE_CLASSES_TO_PRELOAD else emptyList()
-        config.sessionClockProvider = {
-          // For static preview use a clock that increments the time by 500ms on each read so that
-          // callbacks are executed in a deterministic way and without needing to actually wait for
-          // the 500ms to pass.
-          if (mode.value.isNormal) SteppingSessionClock(step = 500.milliseconds)
-          // For interactive and animation preview use a "real" clock to better simulate an
-          // interactive session
-          else RealTimeSessionClock()
-        }
-        config.usePrivateClassLoader = mode.value is PreviewMode.Interactive
-        config.quality = qualityManager.getTargetQuality(this@apply)
+  private fun configureLayoutlibSceneManager(layoutlibSceneManager: LayoutlibSceneManager) = layoutlibSceneManager.apply {
+    sceneRenderConfiguration.let { config ->
+      // When the cache successful render image is enabled, the scene manager will retain the last
+      // valid image even if subsequent renders fail. But do not cache in interactive mode as it
+      // does not help, and it would make unnecessary copies of the bitmap.
+      config.cacheSuccessfulRenderImage = mode.value !is PreviewMode.Interactive
+      config.classesToPreload = if (mode.value is PreviewMode.Interactive) INTERACTIVE_CLASSES_TO_PRELOAD else emptyList()
+      config.sessionClockProvider = {
+        // For static preview use a clock that increments the time by 500ms on each read so that
+        // callbacks are executed in a deterministic way and without needing to actually wait for
+        // the 500ms to pass.
+        if (mode.value.isNormal) SteppingSessionClock(step = 500.milliseconds)
+        // For interactive and animation preview use a "real" clock to better simulate an
+        // interactive session
+        else RealTimeSessionClock()
       }
+      config.usePrivateClassLoader = mode.value is PreviewMode.Interactive
+      config.quality = qualityManager.getTargetQuality(this@apply)
     }
+  }
 
   private fun CoroutineScope.activate(isResuming: Boolean) {
     qualityPolicy.activate()

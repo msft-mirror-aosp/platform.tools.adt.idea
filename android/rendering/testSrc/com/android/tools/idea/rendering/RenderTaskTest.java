@@ -528,6 +528,26 @@ public class RenderTaskTest {
   }
 
   @Test
+  public void testRunAsyncRenderActionFailsWhenDisposed() throws Exception {
+    VirtualFile layoutFile = myFixture.addFileToProject("res/layout/disposed_test.xml", "").getVirtualFile();
+    Configuration configuration = RenderTestUtil.getConfiguration(myModule, layoutFile);
+
+    RenderTask task = createRenderTask(myFacet, layoutFile, configuration);
+    task.disposeAsync().get(5, TimeUnit.SECONDS);
+
+    CompletableFuture<Void> future = task.runAsyncRenderAction(() -> null);
+    assertTrue(future.isCompletedExceptionally());
+    try {
+      future.get();
+      fail("Expected ExecutionException");
+    }
+    catch (ExecutionException e) {
+      assertTrue(e.getCause() instanceof IllegalStateException);
+      assertEquals("RenderTask was already disposed", e.getCause().getMessage());
+    }
+  }
+
+  @Test
   public void testAaptGradient() {
     @Language("XML") final String content = "<vector xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
                                             "        xmlns:aapt=\"http://schemas.android.com/aapt\"\n" +

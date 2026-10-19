@@ -22,6 +22,7 @@ import com.android.tools.idea.appinspection.ide.model.AppInspectionBundle
 import com.android.tools.idea.appinspection.inspector.api.process.DeviceDescriptor
 import com.android.tools.idea.appinspection.inspector.api.process.ProcessDescriptor
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.ActionUpdateThread.BGT
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -115,7 +116,7 @@ class SelectProcessAction(
     ICON_PHONE,
   ) {
 
-  override fun getActionUpdateThread() = BGT
+  override fun getActionUpdateThread() = ActionUpdateThread.EDT
 
   companion object {
     fun createDefaultProcessLabel(process: ProcessDescriptor): String {

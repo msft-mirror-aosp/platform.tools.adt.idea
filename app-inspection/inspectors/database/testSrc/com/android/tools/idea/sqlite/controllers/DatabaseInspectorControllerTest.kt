@@ -1255,7 +1255,7 @@ class DatabaseInspectorControllerTest : HeavyPlatformTestCase() {
         override fun releaseDatabaseLock(lockId: Int): ListenableFuture<Unit> = Futures.immediateFuture(Unit)
       }
 
-    runDispatching {
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
       databaseInspectorController.startAppInspectionSession(
         databaseInspectorClientCommandChannel,
         mock(),
@@ -1283,7 +1283,7 @@ class DatabaseInspectorControllerTest : HeavyPlatformTestCase() {
         override fun releaseDatabaseLock(lockId: Int): ListenableFuture<Unit> = Futures.immediateFuture(Unit)
       }
 
-    runDispatching {
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
       databaseInspectorController.startAppInspectionSession(
         databaseInspectorClientCommandChannel,
         mock(),
@@ -1322,7 +1322,7 @@ class DatabaseInspectorControllerTest : HeavyPlatformTestCase() {
       }
 
     // Act
-    runDispatching {
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
       databaseInspectorController.startAppInspectionSession(
         databaseInspectorClientCommandChannel,
         mock(),
@@ -1475,7 +1475,9 @@ class DatabaseInspectorControllerTest : HeavyPlatformTestCase() {
     val ideServices = mock<AppInspectionIdeServices>()
     `when`(ideServices.isTabSelected(DatabaseInspectorTabProvider.DATABASE_INSPECTOR_ID)).thenReturn(true)
 
-    runDispatching { databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name) }
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
+      databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name)
+    }
 
     // Act
     runDispatching(edtExecutor.asCoroutineDispatcher()) {
@@ -1522,7 +1524,9 @@ class DatabaseInspectorControllerTest : HeavyPlatformTestCase() {
     val ideServices = mock<AppInspectionIdeServices>()
     `when`(ideServices.isTabSelected(DatabaseInspectorTabProvider.DATABASE_INSPECTOR_ID)).thenReturn(false)
 
-    runDispatching { databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name) }
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
+      databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name)
+    }
 
     // Act
     runDispatching(edtExecutor.asCoroutineDispatcher()) {
@@ -1552,7 +1556,9 @@ class DatabaseInspectorControllerTest : HeavyPlatformTestCase() {
     val ideServices = mock<AppInspectionIdeServices>()
     `when`(ideServices.isTabSelected(DatabaseInspectorTabProvider.DATABASE_INSPECTOR_ID)).thenReturn(true)
 
-    runDispatching { databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name) }
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
+      databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name)
+    }
 
     // Act
     runDispatching(edtExecutor.asCoroutineDispatcher()) {
@@ -1581,7 +1587,9 @@ class DatabaseInspectorControllerTest : HeavyPlatformTestCase() {
     val ideServices = mock<AppInspectionIdeServices>()
     `when`(ideServices.isTabSelected(DatabaseInspectorTabProvider.DATABASE_INSPECTOR_ID)).thenReturn(true)
 
-    runDispatching { databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name) }
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
+      databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name)
+    }
 
     // Act
     runDispatching(edtExecutor.asCoroutineDispatcher()) {
@@ -1614,7 +1622,9 @@ class DatabaseInspectorControllerTest : HeavyPlatformTestCase() {
     val ideServices = mock<AppInspectionIdeServices>()
     `when`(ideServices.isTabSelected(DatabaseInspectorTabProvider.DATABASE_INSPECTOR_ID)).thenReturn(true)
 
-    runDispatching { databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name) }
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
+      databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name)
+    }
 
     // Act
     runDispatching(edtExecutor.asCoroutineDispatcher()) {
@@ -1635,7 +1645,9 @@ class DatabaseInspectorControllerTest : HeavyPlatformTestCase() {
     val ideServices = mock<AppInspectionIdeServices>()
     `when`(ideServices.isTabSelected(DatabaseInspectorTabProvider.DATABASE_INSPECTOR_ID)).thenReturn(true)
 
-    runDispatching { databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name) }
+    runDispatching(edtExecutor.asCoroutineDispatcher()) {
+      databaseInspectorController.startAppInspectionSession(mock(), ideServices, processDescriptor, processDescriptor.name)
+    }
 
     // Act
     runDispatching(edtExecutor.asCoroutineDispatcher()) {

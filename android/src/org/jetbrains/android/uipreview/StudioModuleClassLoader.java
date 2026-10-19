@@ -24,9 +24,11 @@ import com.android.tools.rendering.classloading.ViewMethodWrapperTransform;
 import com.android.tools.rendering.classloading.CooperativeInterruptTransform;
 import com.android.tools.rendering.classloading.FilteringClassLoader;
 import com.android.tools.rendering.classloading.FirewalledResourcesClassLoader;
+import com.android.tools.rendering.classloading.GapWorkerTransform;
 import com.android.tools.rendering.classloading.PreviewAnimationClockMethodTransform;
 import com.android.tools.rendering.classloading.RenderActionAllocationLimiterTransform;
 import com.android.tools.rendering.classloading.RepackageTransform;
+import com.android.tools.rendering.classloading.FontsContractCompatTransform;
 import com.android.tools.rendering.classloading.RequestExecutorTransform;
 import com.android.tools.rendering.classloading.ResourcesCompatTransform;
 import com.android.tools.rendering.classloading.SdkIntReplacer;
@@ -48,10 +50,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.nio.file.Path;
 import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -105,6 +104,24 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
   );
 
   /**
+   * List of prefixes that cannot be loaded from the plugin class loader.
+   */
+  private static final ImmutableList<String> DISALLOWED_PACKAGES_FROM_PLUGIN = ImmutableList.of(
+      "com.android.tools.rendering.RenderService",
+      "com.android.tools.rendering.security.",
+      "org.jetbrains.android.uipreview.StudioRenderSandbox",
+      "org.jetbrains.android.uipreview.StudioRenderSecurity",
+      "sun.misc.Signal"
+  );
+
+  /**
+   * List of prefixes exempt from {@link #DISALLOWED_PACKAGES_FROM_PLUGIN} that must be loadable by transformed classes.
+   */
+  private static final ImmutableList<String> EXEMPT_PACKAGES_FROM_PLUGIN = ImmutableList.of(
+      "com.android.tools.rendering.security.RenderSandboxTransformTrampoline"
+  );
+
+  /**
    * Map containing which classes we should look into and do string replacements. The map is of the form:
    * <code>class name -> map of constants</code>
    * If we find the class name while processing the class transformations, we use the map of constants of the form:
@@ -152,9 +169,7 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     ThreadControllingTransform::new,
     CooperativeInterruptTransform::new,
     RenderActionAllocationLimiterTransform::new,
-    SdkIntReplacer::new,
-    // Leave this transformation as last so the rest of the transformations operate on the regular names.
-    visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE)
+    SdkIntReplacer::new
   ).plus(
     UtilKt.toClassTransform(
       ImmutableList.of(visitor -> StudioFlags.RENDER_SANDBOX.get() ? RenderSandbox.getClassTransform(visitor) : visitor),
@@ -162,6 +177,9 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     )
   ).plus(
     (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get()) ? ImmutableList.of(PublicSerializableTransform::new) : ImmutableList.of()
+  ).plus(
+    // Leave this transformation as last so the rest of the transformations operate on the regular names.
+    ImmutableList.of(visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE))
   );
 
   static final ClassTransform NON_PROJECT_CLASSES_DEFAULT_TRANSFORMS = UtilKt.toClassTransform(
@@ -172,15 +190,15 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     PreviewAnimationClockMethodTransform::new,
     ResourcesCompatTransform::new,
     RequestExecutorTransform::new,
+    GapWorkerTransform::new,
+    FontsContractCompatTransform::new,
     ViewTreeLifecycleTransform::new,
     LocalNavigationEventTransform::new,
     NavigationEventHandlerTransform::new,
     SdkIntReplacer::new,
     // Because of the use of RepackageTransform, we also need to ensure that certain internal constants are correctly renamed
     // so they point to the new repackaged classes.
-    visitor -> new StringReplaceTransform(visitor, STRING_REPLACEMENTS),
-    // Leave this transformation as last so the rest of the transformations operate on the regular names.
-    visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE)
+    visitor -> new StringReplaceTransform(visitor, STRING_REPLACEMENTS)
   ).plus(
     UtilKt.toClassTransform(
       ImmutableList.of(visitor -> StudioFlags.RENDER_SANDBOX.get() ? RenderSandbox.getClassTransform(visitor) : visitor),
@@ -188,6 +206,9 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     )
   ).plus(
     (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get()) ? ImmutableList.of(PublicSerializableTransform::new) : ImmutableList.of()
+  ).plus(
+    // Leave this transformation as last so the rest of the transformations operate on the regular names.
+    ImmutableList.of(visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE))
   );
 
   private static final ExecutorService ourDisposeService =
@@ -232,7 +253,11 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
         new FirewalledResourcesClassLoader(
           // Do not allow to load kotlin any unexpected libraries from the plugin classpath. This could cause version
           // mismatches.
-          FilteringClassLoader.allowedPrefixes(parent, ALLOWED_PACKAGES_FROM_PLUGIN)
+          FilteringClassLoader.allowedPrefixes(
+              parent,
+              ALLOWED_PACKAGES_FROM_PLUGIN,
+              DISALLOWED_PACKAGES_FROM_PLUGIN,
+              EXEMPT_PACKAGES_FROM_PLUGIN)
         ),
         renderContext.getBuildTargetReference().getModuleIfNotDisposed(),
         loader
@@ -309,14 +334,7 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
 
   @Override
   public boolean areDependenciesUpToDate() {
-    Module module = myBuildTargetReference.getModuleIfNotDisposed();
-    if (module == null) return true;
-
-    Set<Path> currentlyLoadedLibraries = new HashSet<>(myImpl.getExternalLibraries());
-    List<Path> moduleLibraries = ModuleClassLoaderUtil.getExternalLibraries(myBuildTargetReference);
-
-    return currentlyLoadedLibraries.size() == moduleLibraries.size() &&
-           currentlyLoadedLibraries.containsAll(moduleLibraries);
+    return myImpl.areDependenciesUpToDate(myBuildTargetReference);
   }
 
   /**
@@ -344,18 +362,11 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
   }
 
   @Override
-  protected void onBeforeLoadClass(@NotNull String fqcn) { myDiagnostics.classLoadStart(fqcn); }
-
-  @Override
-  protected void onAfterLoadClass(@NotNull String fqcn, boolean loaded, long durationMs) { myDiagnostics.classLoadedEnd(fqcn, durationMs); }
-
-  @Override
   protected void onBeforeFindClass(@NotNull String fqcn) { myDiagnostics.classFindStart(fqcn); }
 
   @Override
-  protected void onAfterFindClass(@NotNull String fqcn, boolean found, long durationMs) {
-    myDiagnostics.classFindEnd(fqcn, found,
-                               durationMs);
+  protected void onAfterFindClass(@NotNull String fqcn, boolean found, long durationNs) {
+    myDiagnostics.classFindEnd(fqcn, found, durationNs);
   }
 
   @Nullable

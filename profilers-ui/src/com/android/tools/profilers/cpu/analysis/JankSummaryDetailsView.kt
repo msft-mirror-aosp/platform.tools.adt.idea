@@ -30,6 +30,7 @@ import com.android.tools.profilers.cpu.LazyDataSeries
 import com.android.tools.profilers.cpu.analysis.TableUtils.setColumnRenderers
 import com.android.tools.profilers.cpu.getActiveColor
 import com.android.tools.profilers.cpu.systemtrace.getTitle
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.SwingHelper
@@ -188,7 +189,7 @@ private fun abbreviatedLabel(text: String) =
             else -> {
               val availableWidth = width - ellipsisWidth - /* leeway */ 4
               this@apply.text = "${SwingHelper.ELLIPSIS}${bestFittingSuffix(text, availableWidth, fontMetrics::stringWidth)}"
-              toolTipText = text
+              toolTipText = StringUtil.escapeXmlEntities(text)
             }
           }
       }

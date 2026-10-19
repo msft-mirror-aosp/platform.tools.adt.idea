@@ -17,6 +17,7 @@ package com.android.tools.idea.insights.ui.insight
 
 import com.android.tools.adtui.HtmlLabel
 import com.android.tools.idea.concurrency.createCoroutineScope
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.AppInsightsCrashController
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
@@ -82,23 +83,34 @@ class AutoGenerateInsightPanel(
       add(enableAutoGenerate)
     }
 
+  private val isModelManagerEnabled: Boolean
+    get() = StudioFlags.MODEL_MANAGER_ENABLED.get()
+
   private val noModelSelectedPanel =
     JPanel(BorderLayout()).apply {
       val label =
         JTextPane().apply {
           foreground = NamedColorUtil.getInactiveTextColor()
           HtmlLabel.setUpAsHtmlLabel(this)
-          text = "No AI model selected. Please add or select a model from the Agent tool window and click ‘Regenerate’."
+          text =
+            "<b>No model assigned:</b> To view AI-generated insights, add or assign a model in ${if (isModelManagerEnabled) "Settings" else "Agent tool window"}, then click Regenerate."
         }
+      val assignModelLink =
+        HyperlinkLabel("Assign model").apply { addHyperlinkListener { controller.aiInsightToolkit.handleModelAssignment() } }
       val regenerateInsight =
         createLink("Regenerate", Action.GENERATE_ONCE) {
           controller.refreshInsight(regenerateWithContext = false, forceGenerateNewInsight = true)
+        }
+      val linkPanel =
+        JPanel(HorizontalLayout(JBUI.scale(5))).apply {
+          add(assignModelLink)
+          add(regenerateInsight)
         }
       val actionGroup = DefaultActionGroup(InsightSettingGroup())
       val toolbar = ActionManager.getInstance().createActionToolbar("AutoGenerateInsightPanel", actionGroup, true)
       toolbar.targetComponent = this
       add(label, BorderLayout.NORTH)
-      add(regenerateInsight, BorderLayout.WEST)
+      add(linkPanel, BorderLayout.WEST)
       add(toolbar.component, BorderLayout.EAST)
     }
 

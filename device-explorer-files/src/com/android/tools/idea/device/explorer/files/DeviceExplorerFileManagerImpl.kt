@@ -20,6 +20,7 @@ import com.android.annotations.concurrency.WorkerThread
 import com.android.tools.idea.concurrency.runWriteActionAndWait
 import com.android.tools.idea.device.explorer.common.DeviceExplorerSettings
 import com.android.tools.idea.device.explorer.files.DeviceExplorerFilesUtils.findFile
+import com.android.tools.idea.device.explorer.files.DeviceExplorerFilesUtils.mapName
 import com.android.tools.idea.device.explorer.files.fs.DeviceFileEntry
 import com.android.tools.idea.device.explorer.files.fs.DeviceFileSystem
 import com.android.tools.idea.device.explorer.files.fs.DownloadProgress
@@ -41,7 +42,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.serviceContainer.NonInjectable
-import com.intellij.util.PathUtilRt
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -110,7 +110,7 @@ constructor(private val project: Project, private val defaultDownloadPathSupplie
 
     // This assertion prevents regressions for b/141649841.
     // We need to add this assertion because in tests the deletion of a file doesn't trigger some PSI events that call the assertion.
-    (TransactionGuard.getInstance() as TransactionGuardImpl).assertWriteActionAllowed()
+    @Suppress("UnstableApiUsage") (TransactionGuard.getInstance() as TransactionGuardImpl).assertWriteSafeEnvironment()
     virtualFile.delete(this)
   }
 
@@ -158,15 +158,23 @@ constructor(private val project: Project, private val defaultDownloadPathSupplie
       entry = entry.parent
     }
     entryPathComponents.reverse()
+    // `destinationPath` is the host-side containment root (Studio cache dir or a
+    // user-chosen directory). Every `entry.name` above is derived from the connected
+    // ADB device's `ls -al` output (and, for external-services callers like the
+    // Database Inspector's offline-mode download, from a device-supplied gRPC path
+    // string). Even though `mapName()` sanitizes path separators and traversal tokens
+    // ("." and ".."), normalize after resolving and assert containment as
+    // defense-in-depth so a malicious device cannot write outside `destinationPath`.
+    val normalizedDestination = destinationPath.toAbsolutePath().normalize()
     var entryDestinationPath = destinationPath
     for (name in entryPathComponents) {
       entryDestinationPath = entryDestinationPath.resolve(name)
     }
-    return entryDestinationPath
-  }
-
-  private fun mapName(name: String): String {
-    return PathUtilRt.suggestFileName(name, /*allowDots*/ true, /*allowSpaces*/ true)
+    val result = entryDestinationPath.toAbsolutePath().normalize()
+    if (!result.startsWith(normalizedDestination)) {
+      throw SecurityException("Device-supplied path '${file.fullPath}' resolves outside '$normalizedDestination'")
+    }
+    return result
   }
 
   private fun deleteTemporaryFile(localPath: Path) {

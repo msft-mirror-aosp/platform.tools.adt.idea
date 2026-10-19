@@ -64,6 +64,25 @@ STRING_T=([:letter:]|[:digit:]){1}([^:,=\"\\]|\\.)*
   "punch_hole"       { return CUTOUT_HOLE_KEYWORD; }
   "tall"             { return CUTOUT_TALL_KEYWORD; }
 
+  "windowPosture"    { return WINDOW_POSTURE_KEYWORD; }
+  "pointerPrecision" { return POINTER_PRECISION_KEYWORD; }
+  "keyboardKind"     { return KEYBOARD_KIND_KEYWORD; }
+  "hasCamera"        { return HAS_CAMERA_KEYWORD; }
+  "hasMicrophone"    { return HAS_MICROPHONE_KEYWORD; }
+  "viewingDistance"  { return VIEWING_DISTANCE_KEYWORD; }
+
+  "flat"             { return POSTURE_FLAT_KEYWORD; }
+  "tabletop"         { return POSTURE_TABLETOP_KEYWORD; }
+  "book"             { return POSTURE_BOOK_KEYWORD; }
+  "coarse"           { return POINTER_COARSE_KEYWORD; }
+  "fine"             { return POINTER_FINE_KEYWORD; }
+  "blunt"            { return POINTER_BLUNT_KEYWORD; }
+  "virtual"          { return KEYBOARD_VIRTUAL_KEYWORD; }
+  "physical"         { return KEYBOARD_PHYSICAL_KEYWORD; }
+  "near"             { return DISTANCE_NEAR_KEYWORD; }
+  "medium"           { return DISTANCE_MEDIUM_KEYWORD; }
+  "far"              { return DISTANCE_FAR_KEYWORD; }
+
   "id"               { yypushback(yylength()); yybegin(STRING_PARAM); }
   "name"             { yypushback(yylength()); yybegin(STRING_PARAM); }
   "parent"           { yypushback(yylength()); yybegin(STRING_PARAM); }

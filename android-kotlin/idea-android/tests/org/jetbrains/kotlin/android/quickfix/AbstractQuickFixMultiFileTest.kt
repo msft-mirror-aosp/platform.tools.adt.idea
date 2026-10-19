@@ -156,7 +156,9 @@ abstract class AbstractQuickFixMultiFileTest : LightJavaCodeInsightFixtureAdtTes
         private fun extraFileNamePrefix(mainFileName: String): String = mainFileName.replace(".Main.kt", ".").replace(".Main.java", ".")
 
         private fun findActionByPattern(pattern: Pattern, availableActions: List<IntentionAction>): IntentionAction? =
-            availableActions.firstOrNull { pattern.matcher(it.text).matches() }
+            availableActions.firstOrNull {
+                pattern.matcher(it.text).matches()
+            }
 
         fun doAction(
             text: String,

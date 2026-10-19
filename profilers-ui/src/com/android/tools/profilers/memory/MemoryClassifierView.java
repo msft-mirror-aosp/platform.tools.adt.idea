@@ -19,7 +19,6 @@ import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_TOP_BORDER;
 import static com.android.tools.profilers.ProfilerLayout.ROW_HEIGHT_PADDING;
 import static com.android.tools.profilers.ProfilerLayout.TABLE_ROW_BORDER;
 import static com.android.tools.profilers.memory.ClassGrouping.ARRANGE_BY_CLASS;
-
 import com.android.tools.adtui.common.ColoredIconGenerator;
 import com.android.tools.adtui.common.ColumnTreeBuilder;
 import com.android.tools.adtui.instructions.InstructionsPanel;
@@ -33,8 +32,8 @@ import com.android.tools.inspectors.common.ui.ContextMenuInstaller;
 import com.android.tools.profilers.IdeProfilerComponents;
 import com.android.tools.profilers.ProfilerColors;
 import com.android.tools.profilers.ProfilerFonts;
-import com.android.tools.profilers.memory.adapters.CaptureObject;
 import com.android.tools.profilers.memory.adapters.CaptureObject.ClassifierAttribute;
+import com.android.tools.profilers.memory.adapters.CaptureObject;
 import com.android.tools.profilers.memory.adapters.FieldObject;
 import com.android.tools.profilers.memory.adapters.InstanceObject;
 import com.android.tools.profilers.memory.adapters.MemoryObject;
@@ -62,11 +61,12 @@ import com.intellij.util.ui.UIUtilities;
 import icons.StudioIcons;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Graphics;
 import java.awt.RenderingHints;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -86,6 +86,7 @@ import javax.swing.JPanel;
 import javax.swing.JTree;
 import javax.swing.SortOrder;
 import javax.swing.SwingConstants;
+import javax.swing.ToolTipManager;
 import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.TableColumnModel;
 import javax.swing.tree.DefaultTreeModel;
@@ -190,6 +191,9 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
       ClassifierAttribute.SHALLOW_SIZE,
       makeColumn("Shallow Size", 120, ClassifierSet::getTotalShallowSize, Comparator.comparing(ClassifierSet::getName)));
     myAttributeColumns.put(
+      ClassifierAttribute.RETAINED_NATIVE_SIZE,
+      makeColumn("Retained Native Size", 150, ClassifierSet::getRetainedNativeSizeCache, true));
+    myAttributeColumns.put(
       ClassifierAttribute.RETAINED_SIZE,
       makeColumn("Retained Size", 130, ClassifierSet::getRetainedSizeCache, true));
     myAttributeColumns.put(
@@ -220,12 +224,26 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
       if (useColdCache && val == -1L) {
         return "...";
       }
+      if (val == ClassifierSet.NOT_APPLICABLE_SIZE) {
+        return "-";
+      }
       return NumberFormatter.formatInteger(val);
     };
 
     ToLongFunction<ClassifierSet> safeProp = set -> {
       long val = prop.applyAsLong(set);
-      return (useColdCache && val == -1L) ? 0 : val;
+      return ((useColdCache && val == -1L) || val == ClassifierSet.NOT_APPLICABLE_SIZE) ? 0 : val;
+    };
+
+    Function<MemoryObjectTreeNode<ClassifierSet>, String> tooltipGetter = node -> {
+      long val = prop.applyAsLong(node.getAdapter());
+      if (val != ClassifierSet.NOT_APPLICABLE_SIZE) {
+        return null;
+      }
+      if (node.getAdapter() instanceof PackageSet && (myHeapSet == null || !myHeapSet.isFilteredInTraceProcessor())) {
+        return "Retained Size is not available when arranged by package";
+      }
+      return "Retained Size is not available when a filter is applied";
     };
 
     // Progress-bar style background that reflects percentage contribution
@@ -233,18 +251,19 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
       textGetter, v -> null, SwingConstants.RIGHT,
       node -> {
         MemoryObjectTreeNode<ClassifierSet> parent = node.getParent();
-        if (parent == null) {
+        if (parent == null || myTreeRoot == null) {
           return 0;
         }
         else {
-          assert myTreeRoot != null;
-          // Compute relative contribution with respect to top-most parent
+          // Compute relative contribution with respect to top-most parent. Draw no bar when either the row's value or the total is
+          // unavailable, which is what the "-" text and its tooltip already convey.
+          // Clamp to 100 as a guard, since a row's value should never exceed the total.
           long myVal = prop.applyAsLong(node.getAdapter());
-          ClassifierSet root = myTreeRoot.getAdapter();
-          long parentVal = prop.applyAsLong(root);
-          return parentVal == 0 ? 0 : (int)(myVal * 100 / parentVal);
+          long parentVal = prop.applyAsLong(myTreeRoot.getAdapter());
+          return myVal <= 0 || parentVal <= 0 ? 0 : (int)Math.min(100L, myVal * 100 / parentVal);
         }
-      }
+      },
+      tooltipGetter
     );
 
     int preferredWidth = Math.max(SimpleColumnRenderer.DEFAULT_COLUMN_WIDTH, width);
@@ -257,7 +276,7 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
       preferredWidth,
       maxWidth,
       SortOrder.DESCENDING,
-      createTreeNodeComparator(comp, Comparator.comparingLong(prop))
+      createTreeNodeComparator(comp, Comparator.comparingLong(safeProp))
     );
   }
 
@@ -278,7 +297,7 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
   private AttributeColumn<ClassifierSet> makeColumn(String name, int width, ToLongFunction<ClassifierSet> prop, boolean useColdCache) {
     ToLongFunction<ClassifierSet> safeProp = set -> {
       long val = prop.applyAsLong(set);
-      return (useColdCache && val == -1L) ? 0 : val;
+      return ((useColdCache && val == -1L) || val == ClassifierSet.NOT_APPLICABLE_SIZE) ? 0 : val;
     };
     return makeColumn(name, width, prop, Comparator.comparingLong(safeProp), useColdCache);
   }
@@ -360,7 +379,16 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
 
     // Use JTree instead of IJ's tree, because IJ's tree does not happen border's Insets.
     //noinspection UndesirableClassUsage
-    myTree = new JTree();
+    myTree = new JTree() {
+      // Resolve per column: the name column always contributes a row tooltip (leak counts), which would otherwise win over the size ones.
+      @Override
+      public String getToolTipText(MouseEvent event) {
+        String tooltip = myTableColumnModel == null ? null : ColumnTreeBuilder.getColumnToolTipText(this, myTableColumnModel, event);
+        return tooltip != null ? tooltip : super.getToolTipText(event);
+      }
+    };
+    // Renderer tooltips are only shown for trees registered with the ToolTipManager, and this tree never sets a tooltip on itself.
+    ToolTipManager.sharedInstance().registerComponent(myTree);
     int defaultFontHeight = myTree.getFontMetrics(myTree.getFont()).getHeight();
     myTree.setRowHeight(defaultFontHeight + ROW_HEIGHT_PADDING);
     myTree.setBorder(TABLE_ROW_BORDER);
@@ -370,7 +398,7 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
     myTree.addFocusListener(new FocusAdapter() {
       @Override
       public void focusGained(FocusEvent e) {
-        if (myTree.getSelectionCount() == 0) {
+        if (myTree != null && e.getComponent() == myTree && myTree.getSelectionCount() == 0) {
           myTree.setSelectionRow(0);
         }
       }
@@ -577,10 +605,11 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
     // Compute total retained size asynchronously to warm up the cache and repaint the tree when done.
     if (myTreeRoot != null) {
       ClassifierSet root = myTreeRoot.getAdapter();
-      if (!root.isRetainedSizeCached()) {
+      if (!root.isRetainedSizeCached() || !root.isRetainedNativeSizeCached()) {
         mySelection.getIdeServices().getPoolExecutor().execute(() -> {
           // TODO: Cleanup unused variable. Currently needed for test: /profilers-ui:intellij.android.profilers.ui_lint_test Test case: NoOp Code
           long unused = root.getTotalRetainedSize();
+          long unusedNative = root.getTotalRetainedNativeSize();
           mySelection.getIdeServices().getMainExecutor().execute(() -> {
             if (myTree != null) myTree.repaint();
           });

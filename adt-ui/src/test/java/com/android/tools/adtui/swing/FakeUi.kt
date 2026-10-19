@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@file:JvmName("FakeUiUtil")
-
 package com.android.tools.adtui.swing
 
 import com.android.testutils.waitForCondition
@@ -22,6 +20,7 @@ import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.swing.FakeMouse.Button.LEFT
 import com.android.tools.adtui.swing.FakeMouse.Button.RIGHT
 import com.android.tools.adtui.util.scaled
+import com.android.tools.adtui.util.toWxH
 import com.android.tools.idea.concurrency.executeAsync
 import com.intellij.ide.ActivityTracker
 import com.intellij.openapi.Disposable
@@ -50,13 +49,19 @@ import javax.swing.JRootPane
 import javax.swing.SwingUtilities
 import kotlin.time.Duration.Companion.seconds
 
-/**
- * A utility class to interact with Swing components in unit tests.
- *
- * @param root the top-level component
- * @param parentDisposable if provided, FakeUi will use it to clean up
- */
-class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Boolean = false, parentDisposable: Disposable? = null) {
+/** Simulates some UI functionality in headless tests. */
+class FakeUi private constructor(parentDisposable: Disposable?, val root: Component) {
+
+  /**
+   * Creates a `FakeUI` object wrapping [root].
+   *
+   * @param root the top-level component
+   * @param parentDisposable used to trigger cleanup
+   */
+  constructor(root: Component, parentDisposable: Disposable) : this(parentDisposable, root)
+
+  /** `FakeUi` created using this constructor supports only a subset of functionality. Prefer `FakeUi(root, parentDisposable)`. */
+  constructor(root: Component) : this(null, root)
 
   @JvmField val keyboard: FakeKeyboard = FakeKeyboard()
 
@@ -68,32 +73,35 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
 
   private var lastActivityTrackerCount: Int = ActivityTracker.getInstance().count
 
-  init {
-    if (root.parent == null && createFakeWindow) {
-      val rootPane =
-        root as? JRootPane
-          ?: JRootPane().apply {
-            glassPane = IdeGlassPaneImpl(this, false)
-            isFocusCycleRoot = true
-            bounds = root.bounds
-            add(root)
-          }
-      val application = ApplicationManager.getApplication()
-      // Use an exact class comparison so that the check fails if the TestWindowManager class stops
-      // being final in future and a subclass is introduced.
-      @Suppress("UnstableApiUsage")
-      if (application != null && WindowManager.getInstance()?.javaClass == TestWindowManager::class.java) {
-        // Replace TestWindowManager with a more lenient version.
-        application.registerServiceInstance(WindowManager::class.java, FakeUiWindowManager())
-      }
-      createFakeWindow<Window>(rootPane, parentDisposable)
-    }
-    glassPane = (getTopLevelComponent(root) as? JRootPane)?.glassPane as? IdeGlassPaneImpl
+  private val createdRootPane: JRootPane? = if (root.parent == null && parentDisposable != null) createRootPane(parentDisposable) else null
 
+  init {
+    glassPane = (getTopLevelComponent(root) as? JRootPane)?.glassPane as? IdeGlassPaneImpl
     if (!root.isPreferredSizeSet) {
       root.preferredSize = root.size
     }
     doUpdateToolbars()
+  }
+
+  private fun createRootPane(parentDisposable: Disposable): JRootPane {
+    val rootPane =
+      root as? JRootPane
+        ?: JRootPane().apply {
+          glassPane = IdeGlassPaneImpl(this, false)
+          isFocusCycleRoot = true
+          bounds = root.bounds
+          add(root)
+        }
+    val application = ApplicationManager.getApplication()
+    // Use an exact class comparison so that the check fails if the TestWindowManager class stops
+    // being final in future and a subclass is introduced.
+    @Suppress("UnstableApiUsage")
+    if (application != null && WindowManager.getInstance().javaClass == TestWindowManager::class.java) {
+      // Replace TestWindowManager with a more lenient version.
+      application.registerServiceInstance(WindowManager::class.java, FakeUiWindowManager())
+    }
+    createFakeWindow<Window>(rootPane, parentDisposable)
+    return rootPane
   }
 
   /**
@@ -104,6 +112,9 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
    */
   fun layout() {
     val layoutRoot = UIUtil.getParentOfType(JRootPane::class.java, root) ?: root
+    if (layoutRoot === createdRootPane && layoutRoot.size != root.size) {
+      layoutRoot.size = root.size
+    }
     doLayout(layoutRoot)
     layoutRoot.revalidate()
     doLayout(layoutRoot)
@@ -142,8 +153,7 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
 
   private fun dump(component: Component, prefix: String) {
     System.err.println(
-      "$prefix${component.javaClass.simpleName}@(${component.x}, ${component.y}) " +
-        "[${component.size.getWidth()}x${component.size.getHeight()}]" +
+      "$prefix${component.javaClass.simpleName}@(${component.x}, ${component.y}) [${component.size.toWxH()}]" +
         if (isMouseTarget(component)) " {*}" else "" + if (component is JLabel) " text: " + component.text else ""
     )
     if (component is Container) {
@@ -171,8 +181,7 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
   fun getPosition(component: Component): Point {
     var comp: Component? = component
     if (component.width == 0 && component.height == 0) {
-      layout() // The component has zero size. Force layout to give it a chance to acquire non-zero
-      // dimensions.
+      layout() // The component has zero size. Force layout to give it a chance to acquire non-zero dimensions.
     }
     var rx = 0
     var ry = 0
@@ -260,7 +269,7 @@ class FakeUi @JvmOverloads constructor(val root: Component, createFakeWindow: Bo
 
   /**
    * This method exists only for historical reasons. Tests should use [updateToolbarsIfNecessary] instead. If a test fails after replacing
-   * [updateToolbars] with [updateToolbarsIfNecessary], most likely there a missing `ActivityTracker.getInstance().inc()` call in the
+   * [updateToolbars] with [updateToolbarsIfNecessary], most likely there is a missing `ActivityTracker.getInstance().inc()` call in the
    * production code.
    */
   @Deprecated("Use updateToolbarsIfNecessary", replaceWith = ReplaceWith("updateToolbarsIfNecessary"))

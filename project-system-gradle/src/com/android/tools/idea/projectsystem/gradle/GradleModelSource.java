@@ -31,6 +31,8 @@ import com.android.tools.idea.gradle.dsl.parser.files.GradleSettingsFile;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleVersionCatalogFile;
 import com.android.tools.idea.gradle.project.model.GradleModuleModel;
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil;
+import com.android.ide.common.repository.AgpVersion;
+import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion;
 import com.android.tools.idea.projectsystem.AndroidProjectRootUtil;
 import com.intellij.openapi.externalSystem.ExternalSystemModulePropertyManager;
 import com.intellij.openapi.module.Module;
@@ -182,7 +184,12 @@ public final class GradleModelSource extends GradleModelProvider {
 
   @NotNull
   private static BuildModelContext createContext(@NotNull Project project) {
-    return BuildModelContext.create(project, myResolvedConfigurationFileLocationProvider);
+    BuildModelContext context = BuildModelContext.create(project, myResolvedConfigurationFileLocationProvider);
+    AgpVersion agpVersion = GradleProjectSystemUtil.getAndroidGradleModelVersionInUse(project);
+    if (agpVersion != null) {
+      context.setAgpVersion(AndroidGradlePluginVersion.Companion.parse(agpVersion.toString()));
+    }
+    return context;
   }
 
   private static class ResolvedConfigurationFileLocationProviderImpl

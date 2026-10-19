@@ -94,12 +94,12 @@ class FastPreviewManagerGradleTest {
           // supported
           // by the embedded compiler (b/201728545) and it's not used by the tests.
           projectRule.fixture.editor.replaceText("PreviewInOtherFile()", "")
+          PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
         }
       }
       projectRule.fixture.moveCaret("Text(\"Hello 2\")|")
-      projectRule.fixture.type("\n")
-      PlatformTestUtil.dispatchAllEventsInIdeEventQueue() // Consume editor events
     }
+    typeAndSaveDocument("\n")
   }
 
   @After

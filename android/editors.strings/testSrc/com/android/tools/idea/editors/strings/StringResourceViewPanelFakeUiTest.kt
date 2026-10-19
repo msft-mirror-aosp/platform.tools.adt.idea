@@ -87,6 +87,7 @@ class StringResourceViewPanelFakeUiTest {
       fakeUi.root.validate()
     }
     AppUIExecutor.onWriteThread().run { ResourceLoadingTask(stringResourceViewPanel).queue() }
+    waitForCondition(5.seconds) { stringResourceViewPanel.table.data != null }
   }
 
   @Test

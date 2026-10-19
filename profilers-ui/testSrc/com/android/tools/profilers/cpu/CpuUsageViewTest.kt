@@ -27,14 +27,18 @@ import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
 import com.google.common.truth.Truth
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+@RunsInEdt
 class CpuUsageViewTest {
   private val timer = FakeTimer()
 
   @Rule @JvmField var grpcChannel = FakeGrpcChannel("CpuUsageNormalModeViewTest", FakeTransportService(timer))
+  @get:Rule val myEdtRule = EdtRule()
 
   private lateinit var stage: CpuProfilerStage
   private lateinit var ideServices: FakeIdeProfilerServices

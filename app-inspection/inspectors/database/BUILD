@@ -68,6 +68,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
+        "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
+        "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],
     test_srcs = ["testSrc"],
     test_tags = [],

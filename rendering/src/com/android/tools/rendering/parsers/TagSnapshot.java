@@ -17,6 +17,7 @@ package com.android.tools.rendering.parsers;
 
 import static com.android.SdkConstants.AAPT_URI;
 import static com.android.SdkConstants.ATTR_ATTR;
+import static com.android.SdkConstants.ATTR_COMPOSABLE_NAME;
 import static com.android.SdkConstants.ATTR_NAME;
 import static com.android.SdkConstants.ATTR_USE_TAG;
 import static com.android.SdkConstants.CLASS_COMPOSE_VIEW;
@@ -91,10 +92,13 @@ public class TagSnapshot {
     RenderXmlAttribute useTagAttribute = tag.getAttribute(ATTR_USE_TAG, TOOLS_URI);
     String tagName = useTagAttribute == null ? tag.getName() : useTagAttribute.getValue();
 
-    // ComposeView gets replaced with ComposeViewAdapter so it can be rendered correctly within the Layout Editor.
-    // The ComposeView requires a ViewTreeLifecycleOwner but, since the Layout Editor does not run within an activity, there is not one.
-    // ComposeViewAdapter provides that logic allowing for transparently replace it.
-    return CLASS_COMPOSE_VIEW.equals(tagName) ? CLASS_COMPOSE_VIEW_ADAPTER : tagName;
+    // When tools:composableName is specified, ComposeView gets replaced with ComposeViewAdapter so it can be rendered
+    // correctly within the Layout Editor. Without tools:composableName, ComposeViewAdapter would do nothing and would
+    // cause a ClassCastException when inflated via ViewBinding or findViewById as a ComposeView (e.g. inside AndroidViewBinding).
+    if (CLASS_COMPOSE_VIEW.equals(tagName) && tag.getAttribute(ATTR_COMPOSABLE_NAME, TOOLS_URI) != null) {
+      return CLASS_COMPOSE_VIEW_ADAPTER;
+    }
+    return tagName;
   }
 
   /**
@@ -195,6 +199,23 @@ public class TagSnapshot {
     return null;
   }
 
+  @Nullable
+  public String getRenderAttribute(@NotNull String name) {
+    return getRenderAttribute(name, null);
+  }
+
+  @Nullable
+  public String getRenderAttribute(@NotNull String name, @Nullable String namespace) {
+    for (int i = 0, n = attributes.size(); i < n; i++) {
+      AttributeSnapshot attribute = attributes.get(i);
+      if (name.equals(attribute.name) && (namespace == null || namespace.equals(attribute.namespace))) {
+        return attribute.getRenderValue();
+      }
+    }
+
+    return null;
+  }
+
   /**
    * Sets the given attribute in the snapshot; this should <b>only</b> be done during snapshot hierarchy
    * construction, not later, with the sole exception of the property sheet: In the case of the property sheet,
@@ -235,6 +256,28 @@ public class TagSnapshot {
    */
   public void setAttribute(@NotNull String name, @Nullable String namespace, @Nullable String prefix, @Nullable String value) {
     setAttribute(name, namespace, prefix, value, true);
+  }
+
+  /**
+   * Sets or updates the render-specific value of an attribute without modifying the raw XML value.
+   */
+  public void setRenderAttribute(@NotNull String name,
+                                 @Nullable String namespace,
+                                 @Nullable String prefix,
+                                 @Nullable String renderValue) {
+    for (int i = 0, n = attributes.size(); i < n; i++) {
+      AttributeSnapshot attribute = attributes.get(i);
+      if (name.equals(attribute.name) && (namespace == null || namespace.equals(attribute.namespace))) {
+        attribute.renderValue = renderValue;
+        return;
+      }
+    }
+    if (renderValue != null) {
+      if (attributes.isEmpty()) {
+        attributes = new ArrayList<>();
+      }
+      attributes.add(new AttributeSnapshot(namespace, prefix, name, null, renderValue));
+    }
   }
 
   @Nullable

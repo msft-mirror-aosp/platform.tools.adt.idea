@@ -89,6 +89,11 @@ public final class NativeAllocationSampleCaptureObject implements CaptureObject 
     return "Recorded Native Allocations";
   }
 
+  @NotNull
+  public String getAppName() {
+    return myInfo.getConfiguration().getAppName();
+  }
+
   @Override
   public boolean isExportable() {
     return true;
@@ -137,7 +142,7 @@ public final class NativeAllocationSampleCaptureObject implements CaptureObject 
       myIsLoadingError = true;
       return false;
     }
-    service.loadMemoryData(traceId, myProcessAbi, myDefaultHeapSet, myIdeProfilerServices);
+    service.loadNativeMemoryData(traceId, myProcessAbi, myDefaultHeapSet, myIdeProfilerServices);
     myIsDoneLoading = true;
     return true;
   }
@@ -156,6 +161,7 @@ public final class NativeAllocationSampleCaptureObject implements CaptureObject 
   public void unload() {
     myIsLoadingError = false;
     myIsDoneLoading = false;
+    myIdeProfilerServices.getTraceProcessorService().unloadTrace(myStartTimeNs);
   }
 
   @Override
