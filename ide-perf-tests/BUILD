@@ -59,8 +59,8 @@ iml_module(
     # keep sorted
     test_data = [
         ":test_deps",
-        "//prebuilts/studio/buildbenchmarks:JetNews_project",
-        "//prebuilts/studio/buildbenchmarks:SantaTrackerKotlin_project",
+        "//prebuilts/studio/buildbenchmarks/ide-perf-tests:JetNews_project",
+        "//prebuilts/studio/buildbenchmarks/ide-perf-tests:SantaTrackerKotlin_project",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platform-tools",
