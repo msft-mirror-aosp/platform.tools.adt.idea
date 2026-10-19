@@ -89,7 +89,7 @@ fun proguardConfig(useLegacyMinifyEnabled: Boolean, isDeclarative: Boolean, enab
       buildTypes {
           $blockName {
               optimization {
-                  enable true
+                  enable = true
                   packageScope = ["androidx.**", "kotlin.**", "kotlinx.**"]
               }
           }
@@ -100,7 +100,7 @@ fun proguardConfig(useLegacyMinifyEnabled: Boolean, isDeclarative: Boolean, enab
       buildTypes {
           $blockName {
               optimization {
-                  enable false
+                  enable = false
               }
           }
       }
@@ -192,7 +192,7 @@ fun androidConfig(
     externalNativeBuild {
       cmake {
         path "src/main/cpp/CMakeLists.txt"
-        version "$DEFAULT_CMAKE_VERSION"
+        version = "$DEFAULT_CMAKE_VERSION"
       }
     }
     """
@@ -209,7 +209,7 @@ fun androidConfig(
 
   // This is to prevent having a "kotlin" artifact in APKs that are not supposed to have code such
   // as declarative watch faces
-  val disableKotlinBlock = renderIf(!hasCode && kotlinSupport == TemplateKotlinSupport.IMPLICIT_BUILT_IN_KOTLIN) { "enableKotlin false" }
+  val disableKotlinBlock = renderIf(!hasCode && kotlinSupport == TemplateKotlinSupport.IMPLICIT_BUILT_IN_KOTLIN) { "enableKotlin = false" }
 
   // b/490330486: Add support for library modules in declarative.
   val androidBlockName =
@@ -221,7 +221,7 @@ fun androidConfig(
 
   return """
     $androidBlockName {
-    namespace '$applicationId'
+    namespace = '$applicationId'
 
     defaultConfig {
       $propertiesBlock

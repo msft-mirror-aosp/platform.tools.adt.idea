@@ -118,7 +118,7 @@ ${renderIf(useGmd != null) { "import com.android.build.api.dsl.ManagedVirtualDev
 ${emptyPluginsBlock()}
 
 android {
-  namespace '$packageName'
+  namespace = '$packageName'
 
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
