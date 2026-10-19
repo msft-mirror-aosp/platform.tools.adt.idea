@@ -639,6 +639,127 @@ internal class DeviceSpecCheckTest {
     assertEquals("spec:width=411dp,height=891dp,windowPosture=flat,hasCamera=true", result.proposedFix)
   }
 
+  @Test
+  fun testExpandParametersValid() {
+    runWriteActionAndWait { Sdks.addLatestAndroidSdk(rule.fixture.testRootDisposable, rule.module) }
+
+    listOf(
+        "spec:width=411dp,height=891dp,expand=vertical",
+        "spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000dp",
+        "spec:width=1080px,height=1920px,expand=horizontal,maxWidth=5000px",
+        "spec:parent=pixel_4,expand=vertical",
+        "spec:parent=pixel_4,expand=vertical,maxHeight=1200dp",
+        "spec:parent=pixel_4,orientation=landscape,expand=horizontal,maxWidth=5000px",
+      )
+      .forEach { spec ->
+        val result =
+          addKotlinFileAndCheckPreviewAnnotation(
+            """
+            package example
+            import test.Preview
+
+            @Preview(device = "$spec")
+            fun myFun() {}
+            """
+              .trimIndent()
+          )
+        assertTrue("Unexpected issues for $spec: ${result.issues}", result.issues.isEmpty())
+      }
+  }
+
+  @Test
+  fun testExpandParametersInvalid() {
+    runWriteActionAndWait { Sdks.addLatestAndroidSdk(rule.fixture.testRootDisposable, rule.module) }
+
+    // Unknown axis and max size without unit
+    var result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:width=411dp,height=891dp,expand=both,maxHeight=2000")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(listOf(BadType::class, BadType::class), result.issues.map { it::class })
+    assertEquals("spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000dp", result.proposedFix)
+
+    // Max size should use the same unit as the other dimensions
+    result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:width=411dp,height=891dp,expand=horizontal,maxWidth=5000px")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(listOf(BadType::class), result.issues.map { it::class })
+    assertEquals("spec:width=411dp,height=891dp,expand=horizontal,maxWidth=5000dp", result.proposedFix)
+
+    // Bad max size with a parent device
+    result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:parent=pixel_4,expand=vertical,maxHeight=abc")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(listOf(BadType::class), result.issues.map { it::class })
+    assertEquals("spec:parent=pixel_4,expand=vertical,maxHeight=4096dp", result.proposedFix)
+
+    // Non-positive max sizes are rejected
+    result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:width=411dp,height=891dp,expand=vertical,maxHeight=0dp")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(listOf(BadType::class), result.issues.map { it::class })
+    assertEquals("spec:width=411dp,height=891dp,expand=vertical,maxHeight=4096dp", result.proposedFix)
+
+    result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:width=1080px,height=1920px,expand=horizontal,maxWidth=-10px")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(listOf(BadType::class), result.issues.map { it::class })
+    assertEquals("spec:width=1080px,height=1920px,expand=horizontal,maxWidth=4096px", result.proposedFix)
+
+    result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:width=411dp,height=891dp,expand=Vertical")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(listOf(BadType::class), result.issues.map { it::class })
+    assertEquals("spec:width=411dp,height=891dp,expand=vertical", result.proposedFix)
+  }
+
   /** Adds file with the given [fileContents] and runs [DeviceSpecCheck.checkDeviceSpec] on the first Preview annotation found. */
   private fun addKotlinFileAndCheckPreviewAnnotation(
     @Language("kotlin") fileContents: String,

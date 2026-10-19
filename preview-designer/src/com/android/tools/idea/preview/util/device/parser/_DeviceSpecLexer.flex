@@ -83,6 +83,10 @@ STRING_T=([:letter:]|[:digit:]){1}([^:,=\"\\]|\\.)*
   "medium"           { return DISTANCE_MEDIUM_KEYWORD; }
   "far"              { return DISTANCE_FAR_KEYWORD; }
 
+  "expand"           { return EXPAND_KEYWORD; }
+  "vertical"         { return EXPAND_VERTICAL_KEYWORD; }
+  "horizontal"       { return EXPAND_HORIZONTAL_KEYWORD; }
+
   "id"               { yypushback(yylength()); yybegin(STRING_PARAM); }
   "name"             { yypushback(yylength()); yybegin(STRING_PARAM); }
   "parent"           { yypushback(yylength()); yybegin(STRING_PARAM); }
@@ -90,6 +94,8 @@ STRING_T=([:letter:]|[:digit:]){1}([^:,=\"\\]|\\.)*
   "width"            { yypushback(yylength()); yybegin(DIMENSION_PARAM_VALUE); }
   "height"           { yypushback(yylength()); yybegin(DIMENSION_PARAM_VALUE); }
   "chinSize"         { yypushback(yylength()); yybegin(DIMENSION_PARAM_VALUE); }
+  "maxHeight"        { yypushback(yylength()); yybegin(DIMENSION_PARAM_VALUE); }
+  "maxWidth"         { yypushback(yylength()); yybegin(DIMENSION_PARAM_VALUE); }
 
   {NUMERIC_T}        { return NUMERIC_T; }
   {STRING_T}         { return STRING_T; }
@@ -103,6 +109,8 @@ STRING_T=([:letter:]|[:digit:]){1}([^:,=\"\\]|\\.)*
   "width"            { return WIDTH_KEYWORD; }
   "height"           { return HEIGHT_KEYWORD; }
   "chinSize"         { return CHIN_SIZE_KEYWORD; }
+  "maxHeight"        { return MAX_HEIGHT_KEYWORD; }
+  "maxWidth"         { return MAX_WIDTH_KEYWORD; }
 
   {WHITE_SPACE}      { return WHITE_SPACE; }
   {NUMERIC_T}        { return NUMERIC_T; }

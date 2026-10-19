@@ -45,6 +45,14 @@ public class DeviceSpecVisitor extends PsiElementVisitor {
     visitParam(o);
   }
 
+  public void visitExpandParam(@NotNull DeviceSpecExpandParam o) {
+    visitParam(o);
+  }
+
+  public void visitExpandT(@NotNull DeviceSpecExpandT o) {
+    visitPsiElement(o);
+  }
+
   public void visitHasCameraParam(@NotNull DeviceSpecHasCameraParam o) {
     visitParam(o);
   }
@@ -71,6 +79,14 @@ public class DeviceSpecVisitor extends PsiElementVisitor {
 
   public void visitKeyboardKindT(@NotNull DeviceSpecKeyboardKindT o) {
     visitPsiElement(o);
+  }
+
+  public void visitMaxHeightParam(@NotNull DeviceSpecMaxHeightParam o) {
+    visitParam(o);
+  }
+
+  public void visitMaxWidthParam(@NotNull DeviceSpecMaxWidthParam o) {
+    visitParam(o);
   }
 
   public void visitNameParam(@NotNull DeviceSpecNameParam o) {

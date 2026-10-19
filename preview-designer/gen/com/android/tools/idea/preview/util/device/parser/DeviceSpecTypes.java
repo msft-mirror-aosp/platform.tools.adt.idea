@@ -31,6 +31,8 @@ public interface DeviceSpecTypes {
   IElementType CUTOUT_PARAM = new DeviceSpecElementType("CUTOUT_PARAM");
   IElementType CUTOUT_T = new DeviceSpecElementType("CUTOUT_T");
   IElementType DPI_PARAM = new DeviceSpecElementType("DPI_PARAM");
+  IElementType EXPAND_PARAM = new DeviceSpecElementType("EXPAND_PARAM");
+  IElementType EXPAND_T = new DeviceSpecElementType("EXPAND_T");
   IElementType HAS_CAMERA_PARAM = new DeviceSpecElementType("HAS_CAMERA_PARAM");
   IElementType HAS_MICROPHONE_PARAM = new DeviceSpecElementType("HAS_MICROPHONE_PARAM");
   IElementType HEIGHT_PARAM = new DeviceSpecElementType("HEIGHT_PARAM");
@@ -38,6 +40,8 @@ public interface DeviceSpecTypes {
   IElementType IS_ROUND_PARAM = new DeviceSpecElementType("IS_ROUND_PARAM");
   IElementType KEYBOARD_KIND_PARAM = new DeviceSpecElementType("KEYBOARD_KIND_PARAM");
   IElementType KEYBOARD_KIND_T = new DeviceSpecElementType("KEYBOARD_KIND_T");
+  IElementType MAX_HEIGHT_PARAM = new DeviceSpecElementType("MAX_HEIGHT_PARAM");
+  IElementType MAX_WIDTH_PARAM = new DeviceSpecElementType("MAX_WIDTH_PARAM");
   IElementType NAME_PARAM = new DeviceSpecElementType("NAME_PARAM");
   IElementType NAVIGATION_PARAM = new DeviceSpecElementType("NAVIGATION_PARAM");
   IElementType NAVIGATION_T = new DeviceSpecElementType("NAVIGATION_T");
@@ -71,6 +75,9 @@ public interface DeviceSpecTypes {
   IElementType DP = new DeviceSpecTokenType("dp");
   IElementType DPI_KEYWORD = new DeviceSpecTokenType("dpi");
   IElementType EQUALS = new DeviceSpecTokenType("=");
+  IElementType EXPAND_HORIZONTAL_KEYWORD = new DeviceSpecTokenType("horizontal");
+  IElementType EXPAND_KEYWORD = new DeviceSpecTokenType("expand");
+  IElementType EXPAND_VERTICAL_KEYWORD = new DeviceSpecTokenType("vertical");
   IElementType FALSE = new DeviceSpecTokenType("false");
   IElementType HAS_CAMERA_KEYWORD = new DeviceSpecTokenType("hasCamera");
   IElementType HAS_MICROPHONE_KEYWORD = new DeviceSpecTokenType("hasMicrophone");
@@ -81,6 +88,8 @@ public interface DeviceSpecTypes {
   IElementType KEYBOARD_PHYSICAL_KEYWORD = new DeviceSpecTokenType("physical");
   IElementType KEYBOARD_VIRTUAL_KEYWORD = new DeviceSpecTokenType("virtual");
   IElementType LANDSCAPE_KEYWORD = new DeviceSpecTokenType("landscape");
+  IElementType MAX_HEIGHT_KEYWORD = new DeviceSpecTokenType("maxHeight");
+  IElementType MAX_WIDTH_KEYWORD = new DeviceSpecTokenType("maxWidth");
   IElementType NAME_KEYWORD = new DeviceSpecTokenType("name");
   IElementType NAVIGATION_KEYWORD = new DeviceSpecTokenType("navigation");
   IElementType NAV_BUTTONS_KEYWORD = new DeviceSpecTokenType("buttons");
@@ -123,6 +132,12 @@ public interface DeviceSpecTypes {
       else if (type == DPI_PARAM) {
         return new DeviceSpecDpiParamImpl(node);
       }
+      else if (type == EXPAND_PARAM) {
+        return new DeviceSpecExpandParamImpl(node);
+      }
+      else if (type == EXPAND_T) {
+        return new DeviceSpecExpandTImpl(node);
+      }
       else if (type == HAS_CAMERA_PARAM) {
         return new DeviceSpecHasCameraParamImpl(node);
       }
@@ -143,6 +158,12 @@ public interface DeviceSpecTypes {
       }
       else if (type == KEYBOARD_KIND_T) {
         return new DeviceSpecKeyboardKindTImpl(node);
+      }
+      else if (type == MAX_HEIGHT_PARAM) {
+        return new DeviceSpecMaxHeightParamImpl(node);
+      }
+      else if (type == MAX_WIDTH_PARAM) {
+        return new DeviceSpecMaxWidthParamImpl(node);
       }
       else if (type == NAME_PARAM) {
         return new DeviceSpecNameParamImpl(node);

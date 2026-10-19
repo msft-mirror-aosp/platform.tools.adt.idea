@@ -16,6 +16,7 @@
 package com.android.tools.idea.preview.util.device.check
 
 import com.android.tools.preview.config.Cutout
+import com.android.tools.preview.config.ExpandAxis
 import com.android.tools.preview.config.KeyboardKind
 import com.android.tools.preview.config.Navigation
 import com.android.tools.preview.config.Orientation
@@ -52,3 +53,6 @@ internal val ExpectedKeyboardKind = MultipleChoiceValueType(KeyboardKind.entries
 
 /** Value should be one of the supported ViewingDistances. */
 internal val ExpectedViewingDistance = MultipleChoiceValueType(ViewingDistance.entries.map { it.name })
+
+/** Value should be one of the supported ExpandAxis values. */
+internal val ExpectedExpandAxis = MultipleChoiceValueType(ExpandAxis.entries.map { it.name })

@@ -21,6 +21,7 @@ import com.android.tools.preview.config.Preview.DeviceSpec
 import com.android.tools.preview.config.convertToDeviceSpecDimension
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.diagnostic.Logger
+import kotlin.math.roundToInt
 
 /**
  * [ParameterRule] to check Dimension parameters in the DeviceSpec.
@@ -32,7 +33,11 @@ import com.intellij.openapi.diagnostic.Logger
  *
  * There are different fixes that can be applied to a Dimension value. See [DimensionParameterCheckResult].
  */
-internal class DimensionParameterRule(override val name: String, private val defaultNumber: Int) : ParameterRule() {
+internal class DimensionParameterRule(
+  override val name: String,
+  private val defaultNumber: Int,
+  private val allowZero: Boolean = false,
+) : ParameterRule() {
   private val log = Logger.getInstance(this.javaClass)
 
   override val defaultValue: String = defaultNumber.toString() + DeviceSpec.DEFAULT_UNIT
@@ -111,7 +116,7 @@ internal class DimensionParameterRule(override val name: String, private val def
     while (floatNumber == null && lengthToFix > 0) {
       floatNumber = valueToFix.subSequence(0, lengthToFix--).toString().toFloatOrNull()
     }
-    if (floatNumber == null) {
+    if (floatNumber == null || isBadValue(floatNumber)) {
       // Couldn't fix from input, use the default number
       return defaultNumber
     }
@@ -120,9 +125,12 @@ internal class DimensionParameterRule(override val name: String, private val def
     return convertToDeviceSpecDimension(floatNumber)
   }
 
+  private fun isBadValue(value: Float): Boolean = !value.isFinite() || if (allowZero) value < 0f else value.roundToInt() < 1
+
   private fun isBadNumber(numberString: String): Boolean {
     val decimalIndex = numberString.indexOfLast { it == '.' }
-    // Is a bad number if the string can't be parsed to a float, or if there's more than one decimal
-    return numberString.toFloatOrNull() == null || (decimalIndex >= 0 && numberString.length - decimalIndex > 2)
+    val floatValue = numberString.toFloatOrNull()
+    // Is a bad number if the string can't be parsed to a valid float, or if there's more than one decimal
+    return floatValue == null || isBadValue(floatValue) || (decimalIndex >= 0 && numberString.length - decimalIndex > 2)
   }
 }

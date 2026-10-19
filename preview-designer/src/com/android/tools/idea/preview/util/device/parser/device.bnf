@@ -95,6 +95,13 @@
     DISTANCE_MEDIUM_KEYWORD = 'medium'
     DISTANCE_FAR_KEYWORD = 'far'
 
+    EXPAND_KEYWORD = 'expand'
+    MAX_HEIGHT_KEYWORD = 'maxHeight'
+    MAX_WIDTH_KEYWORD = 'maxWidth'
+
+    EXPAND_VERTICAL_KEYWORD = 'vertical'
+    EXPAND_HORIZONTAL_KEYWORD = 'horizontal'
+
     NUMERIC_T = 'regexp:\d+(\.\d)?'
     STRING_T = 'regexp:\p{Alnum}{1}([^:,="\\]|\\.)*'
   ]
@@ -116,6 +123,7 @@ window_posture_t ::= POSTURE_FLAT_KEYWORD | POSTURE_TABLETOP_KEYWORD | POSTURE_B
 pointer_precision_t ::= POINTER_COARSE_KEYWORD | POINTER_FINE_KEYWORD | POINTER_BLUNT_KEYWORD | CUTOUT_NONE_KEYWORD
 keyboard_kind_t ::= KEYBOARD_VIRTUAL_KEYWORD | KEYBOARD_PHYSICAL_KEYWORD | CUTOUT_NONE_KEYWORD
 viewing_distance_t ::= DISTANCE_NEAR_KEYWORD | DISTANCE_MEDIUM_KEYWORD | DISTANCE_FAR_KEYWORD
+expand_t ::= EXPAND_VERTICAL_KEYWORD | EXPAND_HORIZONTAL_KEYWORD
 
 /* Parameter definitions */
 name_param ::= NAME_KEYWORD EQUALS STRING_T
@@ -135,6 +143,9 @@ keyboard_kind_param ::= KEYBOARD_KIND_KEYWORD EQUALS keyboard_kind_t
 has_camera_param ::= HAS_CAMERA_KEYWORD EQUALS boolean_t
 has_microphone_param ::= HAS_MICROPHONE_KEYWORD EQUALS boolean_t
 viewing_distance_param ::= VIEWING_DISTANCE_KEYWORD EQUALS viewing_distance_t
+expand_param ::= EXPAND_KEYWORD EQUALS expand_t
+max_height_param ::= MAX_HEIGHT_KEYWORD EQUALS size_t
+max_width_param ::= MAX_WIDTH_KEYWORD EQUALS size_t
 
 /* Top level definitions */
 param ::= parent_param
@@ -153,5 +164,8 @@ param ::= parent_param
    | has_camera_param
    | has_microphone_param
    | viewing_distance_param
+   | expand_param
+   | max_height_param
+   | max_width_param
    | dpi_param { name="param" }
 spec ::= param (COMMA param)*

@@ -309,4 +309,75 @@ class DeviceSpecParserTest : ParsingTestCase("no_data_path_needed", "", DeviceSp
       ),
     )
   }
+
+  fun testExpandSpec() {
+    assertEquals(
+      """
+      FILE
+        PsiElement(spec)('spec')
+        PsiElement(:)(':')
+        DeviceSpecSpecImpl(SPEC)
+          DeviceSpecParentParamImpl(PARENT_PARAM)
+            PsiElement(parent)('parent')
+            PsiElement(=)('=')
+            PsiElement(STRING_T)('pixel_7')
+          PsiElement(,)(',')
+          DeviceSpecExpandParamImpl(EXPAND_PARAM)
+            PsiElement(expand)('expand')
+            PsiElement(=)('=')
+            DeviceSpecExpandTImpl(EXPAND_T)
+              PsiElement(vertical)('vertical')
+          PsiElement(,)(',')
+          DeviceSpecMaxHeightParamImpl(MAX_HEIGHT_PARAM)
+            PsiElement(maxHeight)('maxHeight')
+            PsiElement(=)('=')
+            DeviceSpecSizeTImpl(SIZE_T)
+              PsiElement(NUMERIC_T)('1200')
+              DeviceSpecUnitImpl(UNIT)
+                PsiElement(dp)('dp')
+      """
+        .trimIndent(),
+      toParseTreeText("spec:parent=pixel_7,expand=vertical,maxHeight=1200dp"),
+    )
+
+    assertEquals(
+      """
+      FILE
+        PsiElement(spec)('spec')
+        PsiElement(:)(':')
+        DeviceSpecSpecImpl(SPEC)
+          DeviceSpecWidthParamImpl(WIDTH_PARAM)
+            PsiElement(width)('width')
+            PsiElement(=)('=')
+            DeviceSpecSizeTImpl(SIZE_T)
+              PsiElement(NUMERIC_T)('1080')
+              DeviceSpecUnitImpl(UNIT)
+                PsiElement(px)('px')
+          PsiElement(,)(',')
+          DeviceSpecHeightParamImpl(HEIGHT_PARAM)
+            PsiElement(height)('height')
+            PsiElement(=)('=')
+            DeviceSpecSizeTImpl(SIZE_T)
+              PsiElement(NUMERIC_T)('1920')
+              DeviceSpecUnitImpl(UNIT)
+                PsiElement(px)('px')
+          PsiElement(,)(',')
+          DeviceSpecExpandParamImpl(EXPAND_PARAM)
+            PsiElement(expand)('expand')
+            PsiElement(=)('=')
+            DeviceSpecExpandTImpl(EXPAND_T)
+              PsiElement(horizontal)('horizontal')
+          PsiElement(,)(',')
+          DeviceSpecMaxWidthParamImpl(MAX_WIDTH_PARAM)
+            PsiElement(maxWidth)('maxWidth')
+            PsiElement(=)('=')
+            DeviceSpecSizeTImpl(SIZE_T)
+              PsiElement(NUMERIC_T)('5000')
+              DeviceSpecUnitImpl(UNIT)
+                PsiElement(px)('px')
+      """
+        .trimIndent(),
+      toParseTreeText("spec:width=1080px,height=1920px,expand=horizontal,maxWidth=5000px"),
+    )
+  }
 }

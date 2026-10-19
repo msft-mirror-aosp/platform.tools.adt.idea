@@ -35,6 +35,9 @@ internal enum class DeviceSpecRule(
         LanguageParameterRule.hasCamera,
         LanguageParameterRule.hasMicrophone,
         LanguageParameterRule.viewingDistance,
+        LanguageParameterRule.expand,
+        LanguageParameterRule.maxHeight,
+        LanguageParameterRule.maxWidth,
       ),
   ),
   LanguageWithParentId(
@@ -49,6 +52,9 @@ internal enum class DeviceSpecRule(
         LanguageParameterRule.hasCamera,
         LanguageParameterRule.hasMicrophone,
         LanguageParameterRule.viewingDistance,
+        LanguageParameterRule.expand,
+        LanguageParameterRule.maxHeight,
+        LanguageParameterRule.maxWidth,
       ),
   ),
 }

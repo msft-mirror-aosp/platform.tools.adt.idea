@@ -18,6 +18,7 @@ package com.android.tools.idea.preview.util.device.check
 import com.android.ide.common.util.enumValueOfOrNull
 import com.android.tools.idea.preview.util.device.check.ParameterRule.Companion.simpleParameterRule
 import com.android.tools.preview.config.Cutout
+import com.android.tools.preview.config.ExpandAxis
 import com.android.tools.preview.config.KeyboardKind
 import com.android.tools.preview.config.Navigation
 import com.android.tools.preview.config.Orientation
@@ -41,7 +42,12 @@ internal object LanguageParameterRule {
 
   val height = DimensionParameterRule(name = DeviceSpec.PARAMETER_HEIGHT, defaultNumber = DeviceSpec.DEFAULT_HEIGHT_DP)
 
-  val chinSize = DimensionParameterRule(name = DeviceSpec.PARAMETER_CHIN_SIZE, defaultNumber = DeviceSpec.DEFAULT_CHIN_SIZE_ZERO)
+  val chinSize =
+    DimensionParameterRule(
+      name = DeviceSpec.PARAMETER_CHIN_SIZE,
+      defaultNumber = DeviceSpec.DEFAULT_CHIN_SIZE_ZERO,
+      allowZero = true,
+    )
 
   val round =
     simpleParameterRule(name = DeviceSpec.PARAMETER_IS_ROUND, expectedType = ExpectedStrictBoolean, defaultValue = false.toString()) {
@@ -131,4 +137,13 @@ internal object LanguageParameterRule {
     ) {
       enumValueOfOrNull<ViewingDistance>(it) != null
     }
+
+  val expand =
+    simpleParameterRule(name = DeviceSpec.PARAMETER_EXPAND, expectedType = ExpectedExpandAxis, defaultValue = ExpandAxis.vertical.name) {
+      enumValueOfOrNull<ExpandAxis>(it) != null
+    }
+
+  val maxHeight = DimensionParameterRule(name = DeviceSpec.PARAMETER_MAX_HEIGHT, defaultNumber = DeviceSpec.DEFAULT_EXPAND_MAX_SIZE_PX)
+
+  val maxWidth = DimensionParameterRule(name = DeviceSpec.PARAMETER_MAX_WIDTH, defaultNumber = DeviceSpec.DEFAULT_EXPAND_MAX_SIZE_PX)
 }

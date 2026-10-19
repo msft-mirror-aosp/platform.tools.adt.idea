@@ -54,11 +54,12 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
   }
 
   public static final TokenSet[] EXTENDS_SETS_ = new TokenSet[] {
-    create_token_set_(CHIN_SIZE_PARAM, CUTOUT_PARAM, DPI_PARAM, HAS_CAMERA_PARAM,
-      HAS_MICROPHONE_PARAM, HEIGHT_PARAM, ID_PARAM, IS_ROUND_PARAM,
-      KEYBOARD_KIND_PARAM, NAME_PARAM, NAVIGATION_PARAM, ORIENTATION_PARAM,
-      PARAM, PARENT_PARAM, POINTER_PRECISION_PARAM, VIEWING_DISTANCE_PARAM,
-      WIDTH_PARAM, WINDOW_POSTURE_PARAM),
+    create_token_set_(CHIN_SIZE_PARAM, CUTOUT_PARAM, DPI_PARAM, EXPAND_PARAM,
+      HAS_CAMERA_PARAM, HAS_MICROPHONE_PARAM, HEIGHT_PARAM, ID_PARAM,
+      IS_ROUND_PARAM, KEYBOARD_KIND_PARAM, MAX_HEIGHT_PARAM, MAX_WIDTH_PARAM,
+      NAME_PARAM, NAVIGATION_PARAM, ORIENTATION_PARAM, PARAM,
+      PARENT_PARAM, POINTER_PRECISION_PARAM, VIEWING_DISTANCE_PARAM, WIDTH_PARAM,
+      WINDOW_POSTURE_PARAM),
   };
 
   /* ********************************************************** */
@@ -125,6 +126,32 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
     Marker m = enter_section_(b);
     r = consumeTokens(b, 0, DPI_KEYWORD, EQUALS, NUMERIC_T);
     exit_section_(b, m, DPI_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // EXPAND_KEYWORD EQUALS expand_t
+  public static boolean expand_param(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "expand_param")) return false;
+    if (!nextTokenIs(b, EXPAND_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeTokens(b, 0, EXPAND_KEYWORD, EQUALS);
+    r = r && expand_t(b, l + 1);
+    exit_section_(b, m, EXPAND_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // EXPAND_VERTICAL_KEYWORD | EXPAND_HORIZONTAL_KEYWORD
+  public static boolean expand_t(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "expand_t")) return false;
+    if (!nextTokenIs(b, "<expand t>", EXPAND_HORIZONTAL_KEYWORD, EXPAND_VERTICAL_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b, l, _NONE_, EXPAND_T, "<expand t>");
+    r = consumeToken(b, EXPAND_VERTICAL_KEYWORD);
+    if (!r) r = consumeToken(b, EXPAND_HORIZONTAL_KEYWORD);
+    exit_section_(b, l, m, r, false, null);
     return r;
   }
 
@@ -219,6 +246,32 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
   }
 
   /* ********************************************************** */
+  // MAX_HEIGHT_KEYWORD EQUALS size_t
+  public static boolean max_height_param(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "max_height_param")) return false;
+    if (!nextTokenIs(b, MAX_HEIGHT_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeTokens(b, 0, MAX_HEIGHT_KEYWORD, EQUALS);
+    r = r && size_t(b, l + 1);
+    exit_section_(b, m, MAX_HEIGHT_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // MAX_WIDTH_KEYWORD EQUALS size_t
+  public static boolean max_width_param(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "max_width_param")) return false;
+    if (!nextTokenIs(b, MAX_WIDTH_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeTokens(b, 0, MAX_WIDTH_KEYWORD, EQUALS);
+    r = r && size_t(b, l + 1);
+    exit_section_(b, m, MAX_WIDTH_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
   // NAME_KEYWORD EQUALS STRING_T
   public static boolean name_param(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "name_param")) return false;
@@ -299,6 +352,9 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
   //    | has_camera_param
   //    | has_microphone_param
   //    | viewing_distance_param
+  //    | expand_param
+  //    | max_height_param
+  //    | max_width_param
   //    | dpi_param
   public static boolean param(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "param")) return false;
@@ -320,6 +376,9 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
     if (!r) r = has_camera_param(b, l + 1);
     if (!r) r = has_microphone_param(b, l + 1);
     if (!r) r = viewing_distance_param(b, l + 1);
+    if (!r) r = expand_param(b, l + 1);
+    if (!r) r = max_height_param(b, l + 1);
+    if (!r) r = max_width_param(b, l + 1);
     if (!r) r = dpi_param(b, l + 1);
     exit_section_(b, l, m, r, false, null);
     return r;
