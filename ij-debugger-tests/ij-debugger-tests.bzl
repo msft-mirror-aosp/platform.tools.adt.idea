@@ -4,6 +4,17 @@ load("@rules_java//java:defs.bzl", "java_test")
 load("@tools_idea//build:tests-options.bzl", "ADD_OPENS_FLAGS", "JAVA_TEST_FLAGS", "TEST_FRAMEWORK_DEPS")
 load("@tools_idea//plugins/kotlin:kotlin_test_dependencies.bzl", "all_test_dep_targets")
 
+def include_k2(test):
+    """Returns a filter string for a K2 debugger test case.
+
+    Args:
+        test: The test name (e.g. "ClassName.testMethod").
+
+    Returns:
+        The filter string formatted for the JUnit 5 test runner.
+    """
+    return "include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test.cases." + test.replace("$", "\\$").replace(".", "#")
+
 def debugger_test(
         name,
         test_dep,

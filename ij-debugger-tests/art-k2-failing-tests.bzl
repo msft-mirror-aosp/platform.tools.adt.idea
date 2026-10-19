@@ -1,5 +1,7 @@
 """Failing K2 ART tests."""
 
+load(":ij-debugger-tests.bzl", "include_k2")
+
 # List of all failing tests excluding InlineScopesAndK2IdeK2CodeEvaluateExpressionTestGenerated and
 # K2IndyLambdaKotlinSteppingTestGenerated which are just duplicates of
 # K2IdeK2CodeKotlinEvaluateExpressionTestGenerated and K2IdeK2CodeKotlinSteppingTestGenerated.
@@ -152,13 +154,13 @@ _tests = [
     "K2IdeK2CoroutineViewJobHierarchyTestGenerated.testCoroutinesHierarchy3",
     "K2IdeK2CoroutineViewJobHierarchyTestGenerated.testOneCoroutine",
 ]
-ART_K2_FAILING = ["include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test.cases." + test.replace("$", "\\$").replace(".", "#") for test in _tests]
+ART_K2_FAILING = [include_k2(test) for test in _tests]
 
 _tests_with_order_related_failure = [
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInInlineFunction",
     "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesInSuspendContexts",
 ]
-TESTS_WITH_ORDER_RELATED_FAILURE = ["include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test.cases." + test.replace("$", "\\$").replace(".", "#") for test in _tests_with_order_related_failure]
+TESTS_WITH_ORDER_RELATED_FAILURE = [include_k2(test) for test in _tests_with_order_related_failure]
 
 _tests_with_errors = [
     "InlineScopesAndK2IdeK2CodeEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testEvaluatableGetters",
@@ -175,4 +177,4 @@ _tests_with_errors = [
     "K2FlowAsyncStackTraceTestGenerated.testStateFlowSimple",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testEvaluatableGetters",
 ]
-TESTS_WITH_ERRORS = ["include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test.cases." + test.replace("$", "\\$").replace(".", "#") for test in _tests_with_errors]
+TESTS_WITH_ERRORS = [include_k2(test) for test in _tests_with_errors]
