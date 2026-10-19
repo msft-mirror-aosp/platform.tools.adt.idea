@@ -34,6 +34,7 @@ import com.google.idea.blaze.base.projectview.ProjectViewManager
 import com.google.idea.blaze.base.qsync.ProjectStatsLogger.logSyncStats
 import com.google.idea.blaze.base.qsync.artifacts.ProjectArtifactStore
 import com.google.idea.blaze.base.qsync.rendering.BazelComposeToolingProjectLabelProvider
+import com.google.idea.blaze.base.qsync.testing.BazelTestToolingProjectLabelProvider
 import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.base.scope.output.StatusOutput
 import com.google.idea.blaze.base.scope.scopes.ProgressIndicatorScope
@@ -297,8 +298,8 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
         }
       }
       val buildTriggered = autoEnableCodeAnalysis(context, startup = true)
-      if (!buildTriggered && userPreferences.autoSyncComposeTooling) {
-        autoEnableComposeBasicDependenciesIfNeeded(context)
+      if (!buildTriggered) {
+        autoEnableBasicDependenciesIfNeeded(context)
       }
     }
 
@@ -323,16 +324,38 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
     return data
   }
 
-  private fun autoEnableComposeBasicDependenciesIfNeeded(context: BlazeContext) {
-    val snapshot = currentSnapshot.getOrNull()
-    if (snapshot != null && BazelComposeToolingProjectLabelProvider.isComposeProject(project, snapshot.staleGraph)) {
-      val label = BazelComposeToolingProjectLabelProvider.getComposeToolingLabel(project)
-      if (label != null) {
-        if (assertProjectLoaded().artifactTracker.stateSnapshot.getTargetBuildInfo(label) == null) {
-          assertProjectLoaded().buildDependencies(context, DependencyTracker.DependencyBuildRequest.specialTarget(setOf(label)))
-        }
-      }
+  private fun autoEnableBasicDependenciesIfNeeded(context: BlazeContext) {
+    val snapshot = currentSnapshot.getOrNull() ?: return
+    val candidateLabels = collectBasicDependencyLabels(snapshot.staleGraph)
+    val loadedProject = assertProjectLoaded()
+    val stateSnapshot = loadedProject.artifactTracker.stateSnapshot
+    val missingLabels = candidateLabels.filter { stateSnapshot.getTargetBuildInfo(it) == null }
+    if (missingLabels.isNotEmpty()) {
+      loadedProject.buildDependencies(
+        context,
+        DependencyTracker.DependencyBuildRequest.specialTarget(missingLabels),
+      )
     }
+  }
+
+  private fun collectBasicDependencyLabels(graph: BuildGraphData): Set<Label> =
+    setOfNotNull(
+      getComposeToolingLabelIfNeeded(graph),
+      getTestToolingLabelIfNeeded(graph),
+    )
+
+  private fun getComposeToolingLabelIfNeeded(graph: BuildGraphData): Label? {
+    if (!userPreferences.autoSyncComposeTooling || !BazelComposeToolingProjectLabelProvider.isComposeProject(project, graph)) {
+      return null
+    }
+    return BazelComposeToolingProjectLabelProvider.getComposeToolingLabel(project)
+  }
+
+  private fun getTestToolingLabelIfNeeded(graph: BuildGraphData): Label? {
+    if (!userPreferences.autoSyncTestTooling || !BazelTestToolingProjectLabelProvider.hasTests(project, graph)) {
+      return null
+    }
+    return BazelTestToolingProjectLabelProvider.getTestToolingLabel(project, graph)
   }
 
   @CanIgnoreReturnValue

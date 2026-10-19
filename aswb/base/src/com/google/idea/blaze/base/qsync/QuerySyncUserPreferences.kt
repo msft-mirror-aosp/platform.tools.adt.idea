@@ -29,6 +29,7 @@ interface QuerySyncUserPreferences {
   val experimentalBuildNativeTargetsFromAndroidTransitionPoint: Boolean
   val liveEditEnabled: Boolean
   val autoSyncComposeTooling: Boolean
+  val autoSyncTestTooling: Boolean
   val commitProjectStructureAfterInitialScan: Boolean
 }
 
@@ -37,6 +38,7 @@ val buildNativeTargetsFromAndroidTransitionPoint =
   BoolExperiment("aswb.query.sync.build.native.targets.from.android.transition.point", true)
 val liveEditSupportEnabled: BoolExperiment = BoolExperiment("aswb.live.edit.enabled", false)
 val autoSyncComposeToolingExperiment = BoolExperiment("aswb.query.sync.auto.sync.compose.tooling", true)
+val autoSyncTestToolingExperiment = BoolExperiment("aswb.query.sync.auto.sync.test.tooling", true)
 val commitProjectStructureAfterInitialScanExperiment = BoolExperiment("aswb.query.sync.commit.project.structure.after.initial.scan", true)
 
 @Service(Service.Level.PROJECT)
@@ -59,6 +61,9 @@ class QuerySyncUserPreferencesProvider(private val project: Project) {
 
       override val autoSyncComposeTooling: Boolean
         get() = autoSyncComposeToolingExperiment.value
+
+      override val autoSyncTestTooling: Boolean
+        get() = autoSyncTestToolingExperiment.value
 
       override val commitProjectStructureAfterInitialScan: Boolean
         get() = commitProjectStructureAfterInitialScanExperiment.value
