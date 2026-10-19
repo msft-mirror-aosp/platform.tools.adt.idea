@@ -44,7 +44,6 @@ iml_module(
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
         "//tools/adt/idea/.idea/libraries:truth",
-        "//tools/base/fakeadbserver:studio.android.sdktools.fakeadbserver",
         "//tools/adt/idea/.idea/libraries:mockito",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests",
         "//tools/adt/idea/android-transport:intellij.android.transport.tests",

@@ -16,7 +16,6 @@ iml_module(
         "//tools/adt/idea/app-inspection/inspectors/network/model:app-inspection.inspectors.network.model",
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/.idea/libraries:network_inspector_java_proto",
-        "//tools/adt/idea/app-inspection/api:app-inspection.api",
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",

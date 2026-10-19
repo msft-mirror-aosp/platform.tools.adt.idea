@@ -25,7 +25,6 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
-        "//tools/adt/idea/app-inspection/api:app-inspection.api",
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api",
         "//tools/adt/idea/.idea/libraries:studio-grpc",
         "//tools/adt/idea/.idea/libraries:studio-proto",

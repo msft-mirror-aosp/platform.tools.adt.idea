@@ -12,7 +12,6 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api",
-        "//tools/base/annotations:studio.android.sdktools.android-annotations",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
         "//tools/adt/idea/android-common:intellij.android.common",
     ],

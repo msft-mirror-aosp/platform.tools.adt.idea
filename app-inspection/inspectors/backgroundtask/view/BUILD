@@ -39,7 +39,6 @@ iml_module(
         "//tools/adt/idea/inspectors-common/api:intellij.android.inspectors-common.api",
         "//tools/adt/idea/inspectors-common/ui:intellij.android.inspectors-common.ui",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
-        "//tools/base/annotations:studio.android.sdktools.android-annotations",
         "//tools/adt/idea/codenavigation",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
     ],
