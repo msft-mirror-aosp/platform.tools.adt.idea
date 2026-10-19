@@ -15,8 +15,8 @@
  */
 package com.google.idea.bazel.kotlin.run.debug;
 
+import com.google.idea.bazel.java.run.BlazeJavaDebugRunProfileState;
 import com.google.idea.bazel.java.run.BlazeJavaDebuggerRunner;
-import com.google.idea.bazel.java.run.BlazeJavaRunProfileState;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.JavaParameters;
 import com.intellij.execution.configurations.RunProfileState;
@@ -41,11 +41,11 @@ public class KotlinDebuggerRunner extends BlazeJavaDebuggerRunner {
   public RunContentDescriptor createContentDescriptor(
       RunProfileState state, ExecutionEnvironment env) throws ExecutionException {
 
-    if (state instanceof BlazeJavaRunProfileState) {
+    if (state instanceof BlazeJavaDebugRunProfileState) {
       AtomicReference<String> kotlinxCoroutinesJavaAgentPath =
           env.getCopyableUserData(BlazeKotlinDebuggingSetupHandler.COROUTINES_LIB_PATH);
       if (kotlinxCoroutinesJavaAgentPath != null && kotlinxCoroutinesJavaAgentPath.get() != null) {
-        ((BlazeJavaRunProfileState) state)
+        ((BlazeJavaDebugRunProfileState) state)
             .addKotlinxCoroutinesJavaAgent(kotlinxCoroutinesJavaAgentPath.get());
 
         //noinspection unused go/checkreturnvalue

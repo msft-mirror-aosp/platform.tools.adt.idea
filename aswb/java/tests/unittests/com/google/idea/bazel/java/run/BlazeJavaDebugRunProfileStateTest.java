@@ -16,16 +16,23 @@
 package com.google.idea.bazel.java.run;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.Futures;
+import com.google.idea.bazel.java.AndroidBlazeRules;
 import com.google.idea.bazel.java.JavaBlazeRules;
 import com.google.idea.bazel.java.sync.source.JavaLikeLanguage;
 import com.google.idea.blaze.base.BlazeTestCase;
+import com.google.idea.blaze.base.bazel.BuildSystem;
+import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker;
+import com.google.idea.blaze.base.bazel.BuildSystem.BuildInvoker.Capability;
 import com.google.idea.blaze.base.bazel.BuildSystemProvider;
 import com.google.idea.blaze.base.bazel.FakeBuildInvoker;
 import com.google.idea.blaze.base.bazel.FakeBuildSystem;
 import com.google.idea.blaze.base.bazel.FakeBuildSystemProvider;
+import com.google.idea.blaze.base.command.BlazeCommand;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeCommandRunnerExperiments;
 import com.google.idea.blaze.base.command.BlazeFlags;
@@ -34,6 +41,7 @@ import com.google.idea.blaze.base.dependencies.TargetInfo;
 import com.google.idea.blaze.base.io.FileOperationProvider;
 import com.google.idea.blaze.base.io.TempDirectoryProvider;
 import com.google.idea.blaze.base.io.TempDirectoryProviderImpl;
+import com.google.idea.blaze.base.issueparser.BlazeIssueParserProvider;
 import com.google.idea.blaze.base.model.primitives.GenericBlazeRules;
 import com.google.idea.blaze.base.model.primitives.Kind;
 import com.google.idea.blaze.base.model.primitives.Label;
@@ -45,6 +53,7 @@ import com.google.idea.blaze.base.run.ExecutorType;
 import com.google.idea.blaze.base.run.confighandler.BlazeCommandGenericRunConfigurationHandlerProvider;
 import com.google.idea.blaze.base.run.confighandler.BlazeCommandRunConfigurationHandlerProvider;
 import com.google.idea.blaze.base.run.confighandler.PendingTargetRunConfigurationHandlerProvider;
+import com.google.idea.blaze.base.run.smrunner.BlazeTestEventsHandler;
 import com.google.idea.blaze.base.run.state.BlazeCommandRunConfigurationCommonState;
 import com.google.idea.blaze.base.run.targetfinder.TargetFinder;
 import com.google.idea.blaze.base.scope.BlazeContext;
@@ -54,29 +63,45 @@ import com.google.idea.blaze.base.settings.BlazeUserSettings;
 import com.google.idea.blaze.base.settings.BuildSystemName;
 import com.google.idea.common.experiments.ExperimentService;
 import com.google.idea.common.experiments.MockExperimentService;
+import com.intellij.execution.executors.DefaultDebugExecutor;
+import com.intellij.execution.filters.TextConsoleBuilderFactory;
+import com.intellij.execution.filters.TextConsoleBuilderFactoryImpl;
+import com.intellij.execution.process.ProcessHandler;
+import com.intellij.execution.runners.ExecutionEnvironment;
+import com.intellij.execution.runners.ExecutionEnvironmentBuilder;
 import com.intellij.openapi.extensions.impl.ExtensionPointImpl;
 import com.intellij.openapi.project.Project;
+import java.lang.reflect.Proxy;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Tests for {@link BlazeJavaRunProfileState}. */
+/** Tests for {@link BlazeJavaDebugRunProfileState}. */
 @RunWith(JUnit4.class)
-public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
+public class BlazeJavaDebugRunProfileStateTest extends BlazeTestCase {
 
-  private static final Supplier<BlazeJavaRunProfileState.IpVersion> DEFAULT_DETECTOR =
-      BlazeJavaRunProfileState.ipVersionDetector;
+  private static final Supplier<BlazeJavaDebugRunProfileState.IpVersion> DEFAULT_DETECTOR =
+      BlazeJavaDebugRunProfileState.ipVersionDetector;
 
   private BlazeCommandRunConfiguration configuration;
+  private ImmutableSet<Capability> invokerCapabilities =
+      ImmutableSet.of(Capability.ATTACH_JAVA_DEBUGGER, Capability.RETURN_PROCESS_HANDLER);
+  private final AtomicReference<Set<? extends Capability>> lastRequestedCapabilities =
+      new AtomicReference<>();
+  private final AtomicReference<BlazeCommand> lastInvokedCommand = new AtomicReference<>();
 
   @Override
   protected void initTest(Container applicationServices, Container projectServices) {
-    BlazeJavaRunProfileState.ipVersionDetector = () -> BlazeJavaRunProfileState.IpVersion.V4;
+    BlazeJavaDebugRunProfileState.ipVersionDetector = () -> BlazeJavaDebugRunProfileState.IpVersion.V4;
     projectServices.register(
         BazelImportSettingsManager.class, new BlazeImportSettingsManager(project));
     BlazeImportSettingsManager.getInstanceForTestingOnly(getProject())
@@ -87,11 +112,14 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
     applicationServices.register(BlazeUserSettings.class, new BlazeUserSettings());
     applicationServices.register(TempDirectoryProvider.class, new TempDirectoryProviderImpl());
     applicationServices.register(FileOperationProvider.class, new FakeFileOperationProvider());
+    applicationServices.register(
+        TextConsoleBuilderFactory.class, new TextConsoleBuilderFactoryImpl());
 
     ExtensionPointImpl<Kind.Provider> kindProviderEp =
         registerExtensionPoint(Kind.Provider.EP_NAME, Kind.Provider.class);
     kindProviderEp.registerExtension(new GenericBlazeRules(), testDisposable);
     kindProviderEp.registerExtension(new JavaBlazeRules(), testDisposable);
+    kindProviderEp.registerExtension(new AndroidBlazeRules(), testDisposable);
     applicationServices.register(Kind.ApplicationState.class, new Kind.ApplicationState());
 
     projectServices.register(ProjectViewManager.class, new MockProjectViewManager());
@@ -105,6 +133,8 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
     javaLikeEp.registerExtension(new JavaLikeLanguage.Java(), testDisposable);
 
     registerExtensionPoint(BuildFlagsProvider.EP_NAME, BuildFlagsProvider.class);
+    registerExtensionPoint(BlazeTestEventsHandler.EP_NAME, BlazeTestEventsHandler.class);
+    registerExtensionPoint(BlazeIssueParserProvider.EP_NAME, BlazeIssueParserProvider.class);
 
     ExtensionPointImpl<BlazeCommandRunConfigurationHandlerProvider> handlerProviderEp =
         registerExtensionPoint(
@@ -123,14 +153,50 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
 
   @Override
   protected BuildSystemProvider createBuildSystemProvider() {
+    FakeBuildSystem delegate =
+        FakeBuildSystem.builder(BuildSystemName.Bazel)
+            .setBuildInvoker(
+                FakeBuildInvoker.builder()
+                    .invokeCommand(ImmutableList.of("/usr/bin/blaze"))
+                    .build())
+            .build();
     return FakeBuildSystemProvider.builder()
         .setBuildSystem(
-            FakeBuildSystem.builder(BuildSystemName.Bazel)
-                .setBuildInvoker(
-                    FakeBuildInvoker.builder()
-                        .invokeCommand(ImmutableList.of("/usr/bin/blaze"))
-                        .build())
-                .build())
+            (BuildSystem)
+                Proxy.newProxyInstance(
+                    getClass().getClassLoader(),
+                    new Class<?>[] {BuildSystem.class},
+                    (proxy, method, args) -> {
+                      if ("getBuildInvoker".equals(method.getName())
+                          && args != null
+                          && args.length == 2) {
+                        @SuppressWarnings("unchecked")
+                        Set<? extends Capability> reqs = (Set<? extends Capability>) args[1];
+                        lastRequestedCapabilities.set(ImmutableSet.copyOf(reqs));
+                        if (!invokerCapabilities.containsAll(reqs)) {
+                          return Optional.empty();
+                        }
+                        FakeBuildInvoker delegateInvoker =
+                            FakeBuildInvoker.builder()
+                                .invokeCommand(ImmutableList.of("/usr/bin/blaze"))
+                                .capabilities(invokerCapabilities)
+                                .build();
+                        BuildInvoker invokerProxy =
+                            (BuildInvoker)
+                                Proxy.newProxyInstance(
+                                    getClass().getClassLoader(),
+                                    new Class<?>[] {BuildInvoker.class},
+                                    (invProxy, invMethod, invArgs) -> {
+                                      if ("invokeAsProcessHandler".equals(invMethod.getName())) {
+                                        lastInvokedCommand.set(
+                                            ((BlazeCommand.Builder) invArgs[0]).build());
+                                      }
+                                      return invMethod.invoke(delegateInvoker, invArgs);
+                                    });
+                        return Optional.of(invokerProxy);
+                      }
+                      return method.invoke(delegate, args);
+                    }))
         .build();
   }
 
@@ -142,7 +208,7 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
     handlerState.getCommandState().setCommand(BlazeCommandName.fromString("command"));
     handlerState.getBlazeFlagsState().setRawFlags(ImmutableList.of("--flag1", "--flag2"));
     assertThat(
-            BlazeJavaRunProfileState.getBlazeCommandBuilder(
+            BlazeJavaDebugRunProfileState.getBlazeCommandBuilder(
                     project,
                     configuration,
                     ImmutableList.of(),
@@ -167,7 +233,7 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
         (BlazeCommandRunConfigurationCommonState) configuration.getHandler().getState();
     handlerState.getCommandState().setCommand(BlazeCommandName.fromString("command"));
     assertThat(
-            BlazeJavaRunProfileState.getBlazeCommandBuilder(
+            BlazeJavaDebugRunProfileState.getBlazeCommandBuilder(
                     project,
                     configuration,
                     ImmutableList.of(),
@@ -193,7 +259,7 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
         (BlazeCommandRunConfigurationCommonState) configuration.getHandler().getState();
     handlerState.getCommandState().setCommand(BlazeCommandName.fromString("command"));
     assertThat(
-            BlazeJavaRunProfileState.getBlazeCommandBuilder(
+            BlazeJavaDebugRunProfileState.getBlazeCommandBuilder(
                     project,
                     configuration,
                     ImmutableList.of(),
@@ -218,7 +284,7 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
     handlerState.getCommandState().setCommand(BlazeCommandName.fromString("command"));
 
     assertThat(
-        BlazeJavaRunProfileState.getBlazeCommandBuilder(
+        BlazeJavaDebugRunProfileState.getBlazeCommandBuilder(
                 project,
                 configuration,
                 ImmutableList.of(),
@@ -227,7 +293,7 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
             .build()
             .toArgumentList()).isNotEmpty();
     assertThat(
-            BlazeJavaRunProfileState.getBlazeCommandBuilder(
+            BlazeJavaDebugRunProfileState.getBlazeCommandBuilder(
                     project,
                     configuration,
                     ImmutableList.of(),
@@ -249,7 +315,7 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
     handlerState.getCommandState().setCommand(BlazeCommandName.fromString("command"));
 
     assertThat(
-            BlazeJavaRunProfileState.getBlazeCommandBuilder(
+            BlazeJavaDebugRunProfileState.getBlazeCommandBuilder(
                     project,
                     configuration,
                     ImmutableList.of(),
@@ -262,7 +328,7 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
 
     configuration.setTargetInfo(new TargetInfo(Label.create("//label:test"), "java_test"));
     assertThat(
-            BlazeJavaRunProfileState.getBlazeCommandBuilder(
+            BlazeJavaDebugRunProfileState.getBlazeCommandBuilder(
                     project,
                     configuration,
                     ImmutableList.of(),
@@ -276,18 +342,18 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
 
   @After
   public void restoreDetector() throws Exception {
-    BlazeJavaRunProfileState.ipVersionDetector = DEFAULT_DETECTOR;
+    BlazeJavaDebugRunProfileState.ipVersionDetector = DEFAULT_DETECTOR;
   }
 
   @Test
   public void debugFlagShouldBeIPv4IfDetectorSaysV4() {
-    BlazeJavaRunProfileState.ipVersionDetector = () -> BlazeJavaRunProfileState.IpVersion.V4;
+    BlazeJavaDebugRunProfileState.ipVersionDetector = () -> BlazeJavaDebugRunProfileState.IpVersion.V4;
     configuration.setTargetInfo(new TargetInfo(Label.create("//label:rule"), "java_test"));
     BlazeCommandRunConfigurationCommonState handlerState =
         (BlazeCommandRunConfigurationCommonState) configuration.getHandler().getState();
     handlerState.getCommandState().setCommand(BlazeCommandName.fromString("command"));
     assertThat(
-            BlazeJavaRunProfileState.getBlazeCommandBuilder(
+            BlazeJavaDebugRunProfileState.getBlazeCommandBuilder(
                     project,
                     configuration,
                     ImmutableList.of(),
@@ -300,13 +366,13 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
 
   @Test
   public void debugFlagShouldBeIPv6IfDetectorSaysV6() {
-    BlazeJavaRunProfileState.ipVersionDetector = () -> BlazeJavaRunProfileState.IpVersion.V6;
+    BlazeJavaDebugRunProfileState.ipVersionDetector = () -> BlazeJavaDebugRunProfileState.IpVersion.V6;
     configuration.setTargetInfo(new TargetInfo(Label.create("//label:rule"), "java_test"));
     BlazeCommandRunConfigurationCommonState handlerState =
         (BlazeCommandRunConfigurationCommonState) configuration.getHandler().getState();
     handlerState.getCommandState().setCommand(BlazeCommandName.fromString("command"));
     assertThat(
-            BlazeJavaRunProfileState.getBlazeCommandBuilder(
+            BlazeJavaDebugRunProfileState.getBlazeCommandBuilder(
                     project,
                     configuration,
                     ImmutableList.of(),
@@ -319,13 +385,14 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
 
   @Test
   public void debugFlagShouldBeSystemIfDetectorSaysSystem() {
-    BlazeJavaRunProfileState.ipVersionDetector = () -> BlazeJavaRunProfileState.IpVersion.SYSTEM;
+    BlazeJavaDebugRunProfileState.ipVersionDetector =
+        () -> BlazeJavaDebugRunProfileState.IpVersion.SYSTEM;
     configuration.setTargetInfo(new TargetInfo(Label.create("//label:rule"), "java_test"));
     BlazeCommandRunConfigurationCommonState handlerState =
         (BlazeCommandRunConfigurationCommonState) configuration.getHandler().getState();
     handlerState.getCommandState().setCommand(BlazeCommandName.fromString("command"));
     assertThat(
-            BlazeJavaRunProfileState.getBlazeCommandBuilder(
+            BlazeJavaDebugRunProfileState.getBlazeCommandBuilder(
                     project,
                     configuration,
                     ImmutableList.of(),
@@ -334,6 +401,53 @@ public class BlazeJavaRunProfileStateTest extends BlazeTestCase {
                 .build()
                 .toArgumentList())
         .contains("--test_arg=--wrapper_script_flag=--debug=5005");
+  }
+
+  @Test
+  public void startProcess_withDebuggerCapableInvoker_invokesBlazeCli() throws Exception {
+    configuration.setTargetInfo(new TargetInfo(Label.create("//label:rule"), "java_test"));
+    BlazeCommandRunConfigurationCommonState handlerState =
+        (BlazeCommandRunConfigurationCommonState) configuration.getHandler().getState();
+    handlerState.getCommandState().setCommand(BlazeCommandName.TEST);
+
+    ExecutionEnvironment env =
+        new ExecutionEnvironmentBuilder(project, new DefaultDebugExecutor())
+            .runProfile(configuration)
+            .runner(new BlazeJavaDebuggerRunner())
+            .build();
+
+    ProcessHandler processHandler = new BlazeJavaDebugRunProfileState(env).startProcess();
+
+    assertThat(processHandler).isNotNull();
+    assertThat(lastRequestedCapabilities.get())
+        .containsExactly(Capability.ATTACH_JAVA_DEBUGGER, Capability.RETURN_PROCESS_HANDLER);
+    assertThat(lastInvokedCommand.get().toArgumentList())
+        .containsAtLeast(
+            "test",
+            "--java_debug",
+            "--test_arg=--wrapper_script_flag=--debug=127.0.0.1:5005",
+            "//label:rule");
+  }
+
+  @Test
+  public void startProcess_withoutDebuggerCapableInvoker_binaryTarget_throws() {
+    invokerCapabilities = ImmutableSet.of(Capability.RETURN_PROCESS_HANDLER);
+    configuration.setTargetInfo(
+        new TargetInfo(Label.create("//label:java_binary_rule"), "java_binary"));
+    BlazeCommandRunConfigurationCommonState handlerState =
+        (BlazeCommandRunConfigurationCommonState) configuration.getHandler().getState();
+    handlerState.getCommandState().setCommand(BlazeCommandName.RUN);
+
+    ExecutionEnvironment env =
+        new ExecutionEnvironmentBuilder(project, new DefaultDebugExecutor())
+            .runProfile(configuration)
+            .runner(new BlazeJavaDebuggerRunner())
+            .build();
+
+    assertThrows(
+        NoSuchElementException.class, () -> new BlazeJavaDebugRunProfileState(env).startProcess());
+    assertThat(lastRequestedCapabilities.get())
+        .containsExactly(Capability.ATTACH_JAVA_DEBUGGER, Capability.RETURN_PROCESS_HANDLER);
   }
 
   private static class MockTargetFinder implements TargetFinder {

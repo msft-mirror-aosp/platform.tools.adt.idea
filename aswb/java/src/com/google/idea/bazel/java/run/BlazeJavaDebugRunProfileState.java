@@ -67,11 +67,11 @@ import javax.annotation.Nullable;
 import kotlin.Unit;
 
 /**
- * A Blaze run configuration set up with an executor, program runner, and other settings, ready to
- * be executed. This class creates a command line for Blaze and exposes debug connection information
- * when using a debug executor.
+ * A Blaze run configuration set up with a debug executor, program runner, and other settings, ready
+ * to be executed. This class creates a command line for Blaze and exposes debug connection
+ * information when using a debug executor.
  */
-public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfileState {
+public final class BlazeJavaDebugRunProfileState extends BlazeJavaDebuggableRunProfileState {
   private static final String JAVA_RUNFILES_ENV = "JAVA_RUNFILES=";
   private static final String TEST_DIAGNOSTICS_OUTPUT_DIR_ENV = "TEST_DIAGNOSTICS_OUTPUT_DIR=";
   private static final String TEST_SIZE_ENV = "TEST_SIZE=";
@@ -102,7 +102,7 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
         return IpVersion.V4;
       };
 
-  BlazeJavaRunProfileState(ExecutionEnvironment environment) {
+  BlazeJavaDebugRunProfileState(ExecutionEnvironment environment) {
     super(environment);
   }
 
@@ -115,32 +115,14 @@ public final class BlazeJavaRunProfileState extends BlazeJavaDebuggableRunProfil
     Project project = getConfiguration().getProject();
     BuildSystem buildSystem = Blaze.getBuildSystemProvider(project).getBuildSystem();
     BlazeContext context = BlazeContext.create();
-    boolean debuggingLocalTest =
-        TargetKindUtil.isLocalTest(getConfiguration().getTargetKind())
-            && getExecutorType().isDebugType();
-    final BuildInvoker invoker;
-    if (debuggingLocalTest) {
-      Optional<BuildInvoker> invokerWithDebuggerCapability =
-          buildSystem.getBuildInvoker(
-              project,
-              ImmutableSet.of(Capability.ATTACH_JAVA_DEBUGGER, Capability.RETURN_PROCESS_HANDLER));
-      if (invokerWithDebuggerCapability.isEmpty()) {
-        return startProcessRunfilesCase(project);
-      } else {
-        invoker = invokerWithDebuggerCapability.get();
-      }
-    } else {
-      invoker =
-          buildSystem
-              .getBuildInvoker(
-                  project,
-                  getExecutorType().isDebugType()
-                      ? ImmutableSet.of(
-                          Capability.ATTACH_JAVA_DEBUGGER, Capability.RETURN_PROCESS_HANDLER)
-                      : ImmutableSet.of(Capability.RETURN_PROCESS_HANDLER))
-              .orElseThrow();
+    Optional<BuildInvoker> invoker =
+        buildSystem.getBuildInvoker(
+            project,
+            ImmutableSet.of(Capability.ATTACH_JAVA_DEBUGGER, Capability.RETURN_PROCESS_HANDLER));
+    if (invoker.isEmpty() && TargetKindUtil.isLocalTest(getConfiguration().getTargetKind())) {
+      return startProcessRunfilesCase(project);
     }
-    return startProcessBazelCliCase(invoker, project, context);
+    return startProcessBazelCliCase(invoker.orElseThrow(), project, context);
   }
 
   private ProcessHandler startProcessRunfilesCase(Project project) throws ExecutionException {
