@@ -33,16 +33,27 @@ enum class TestFilterSyntax {
   RULES_KOTLIN,
 }
 
-/**
- * Identifies an individual test entity (class, method, and optional parameter filter pattern) in domain terms. A null
- * [parameterFilterRegex] indicates that all parameter combinations of the method (if any) are selected.
- */
-data class TestSelector(
-  val className: String,
-  val methodName: String?,
-  val parameterFilterRegex: String?,
-  val testFilterSyntax: TestFilterSyntax,
-)
+/** Identifies a test selection either by source member (for editor contexts) or by resolved filter (for test result contexts). */
+sealed interface TestSelector {
+  val testFilterSyntax: TestFilterSyntax
+
+  /**
+   * Identifies a test class, method, and optional parameter filter selected from source code. Subject to Stage 2 refinement (e.g. abstract
+   * subclass selection) and wildcard parameter suffixing when [parameterFilterRegex] is null.
+   */
+  data class Member(
+    val className: String,
+    val methodName: String?,
+    val parameterFilterRegex: String?,
+    override val testFilterSyntax: TestFilterSyntax,
+  ) : TestSelector
+
+  /**
+   * Encapsulates a pre-constructed test filter expression produced from the Test Results tree, where the concrete class and runtime
+   * parameter representation are already known.
+   */
+  data class Filter(val filter: String, override val testFilterSyntax: TestFilterSyntax) : TestSelector
+}
 
 /** Encapsulates test selection scope and UI naming hints. Null testFilter indicates target-wide execution of all tests. */
 data class TestFilterComponent(val testSelectors: List<TestSelector>, val appendFilteredSuffix: Boolean)

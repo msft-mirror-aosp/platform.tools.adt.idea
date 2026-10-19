@@ -51,7 +51,7 @@ class BlazeJavaTestEventsHandler : BlazeTestEventsHandler {
     return suite.testSuites.all { it.name == null || it.name.contains(".") }
   }
 
-  override fun getTestLocator(): SMTestLocator = JavaTestLocator.INSTANCE
+  override fun getTestLocator(): SMTestLocator = BlazeJavaTestLocator
 
   override fun suiteLocationUrl(label: Label, kind: Kind?, name: String): String =
     JavaTestLocator.SUITE_PROTOCOL + URLUtil.SCHEME_SEPARATOR + name
@@ -80,11 +80,11 @@ class BlazeJavaTestEventsHandler : BlazeTestEventsHandler {
   }
 
   override fun getTestFilter(project: Project, testLocations: List<Location<*>>): String? {
-    val failedClassesAndMethods = HashMap<PsiClass, MutableCollection<Location<*>>>()
+    val locationsPerClass = HashMap<PsiClass, MutableCollection<Location<*>>>()
     for (location in testLocations) {
-      appendTest(failedClassesAndMethods, location)
+      appendTest(locationsPerClass, location)
     }
-    val filter = BlazeJUnitTestFilterFlags.testFilterForClassesAndMethods(failedClassesAndMethods)
+    val filter = BlazeJUnitTestFilterFlags.testFilterForClassesAndMethods(locationsPerClass)
     return if (filter != null) "${BlazeFlags.TEST_FILTER}='$filter'" else null
   }
 
@@ -92,37 +92,18 @@ class BlazeJavaTestEventsHandler : BlazeTestEventsHandler {
     project: Project,
     testLocations: List<Location<*>>,
   ): List<TestSelector>? {
-    val failedClassesAndMethods = HashMap<PsiClass, MutableCollection<Location<*>>>()
+    val locationsPerClass = HashMap<PsiClass, MutableCollection<Location<*>>>()
     for (location in testLocations) {
-      appendTest(failedClassesAndMethods, location)
+      appendTest(locationsPerClass, location)
     }
-    val testSelectors = ArrayList<TestSelector>()
-    for ((psiClass, methods) in failedClassesAndMethods) {
-      val className = psiClass.qualifiedName ?: continue
-      val version =
-        if (JUnitUtil.isJUnit4TestClass(psiClass)) {
-          TestFilterSyntax.JUNIT_4
-        } else {
-          TestFilterSyntax.JUNIT_3
-        }
-      if (methods.isEmpty()) {
-        testSelectors.add(TestSelector(className, null, null, version))
+    val filter = BlazeJUnitTestFilterFlags.testFilterForClassesAndMethods(locationsPerClass) ?: return null
+    val version =
+      if (locationsPerClass.keys.any(JUnitUtil::isJUnit4TestClass)) {
+        TestFilterSyntax.JUNIT_4
       } else {
-        for (loc in methods) {
-          val psi = loc.psiElement
-          if (psi is PsiMethod) {
-            val parameterFilterRegex =
-              if (loc is PsiMemberParameterizedLocation) {
-                StringUtil.escapeToRegexp(loc.paramSetName)
-              } else {
-                null
-              }
-            testSelectors.add(TestSelector(className, psi.name, parameterFilterRegex, version))
-          }
-        }
+        TestFilterSyntax.JUNIT_3
       }
-    }
-    return testSelectors.ifEmpty { null }
+    return listOf(TestSelector.Filter(filter, version))
   }
 
   companion object {
@@ -144,7 +125,10 @@ class BlazeJavaTestEventsHandler : BlazeTestEventsHandler {
     ) {
       val psi = location.psiElement
       if (psi is PsiClass) {
-        map.getOrPut(psi) { HashSet() }
+        val locations = map.getOrPut(psi) { HashSet() }
+        if (location is BlazePsiMemberParameterizedLocation) {
+          locations.add(location)
+        }
         return
       }
       if (psi !is PsiMethod) {

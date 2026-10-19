@@ -56,7 +56,7 @@ internal class KotlinTestContextProvider : TestContextProvider {
 
       val className = testClass.fqName?.asString() ?: fqName.asString()
       val methodName = testMethod?.name
-      val testSelector = TestSelector(className, methodName, null, TestFilterSyntax.RULES_KOTLIN)
+      val testSelector = TestSelector.Member(className, methodName, null, TestFilterSyntax.RULES_KOTLIN)
 
       return UnifiedRunContext(
         contextElement,

@@ -22,6 +22,7 @@ import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration
 import com.google.idea.blaze.base.run.producers.BlazeCommandRunConfigurationHelper
 import com.google.idea.blaze.base.run.producers.CommandComponent
 import com.google.idea.blaze.base.run.producers.TestFilterComponent
+import com.google.idea.blaze.base.run.producers.TestSelector
 
 /** Encodes and decodes Android test filters for Android run configurations. */
 class AndroidBlazeCommandRunConfigurationHelper : BlazeCommandRunConfigurationHelper {
@@ -55,36 +56,45 @@ class AndroidBlazeCommandRunConfigurationHelper : BlazeCommandRunConfigurationHe
       return
     }
 
-    val singleSelector = testSelectors.firstOrNull()
-    if (testSelectors.size == 1 && singleSelector != null) {
-      if (singleSelector.methodName != null) {
-        state.testingType = BlazeAndroidTestRunConfigurationState.TEST_METHOD
-        state.className = singleSelector.className
-        state.methodName = singleSelector.methodName
-      } else {
-        state.testingType = BlazeAndroidTestRunConfigurationState.TEST_CLASS
-        state.className = singleSelector.className
+    val singleSelector = testSelectors.singleOrNull()
+    when (singleSelector) {
+      is TestSelector.Member -> {
+        if (singleSelector.methodName != null) {
+          state.testingType = BlazeAndroidTestRunConfigurationState.TEST_METHOD
+          state.className = singleSelector.className
+          state.methodName = singleSelector.methodName
+        } else {
+          state.testingType = BlazeAndroidTestRunConfigurationState.TEST_CLASS
+          state.className = singleSelector.className
+          state.methodName = ""
+        }
+      }
+      is TestSelector.Filter,
+      null -> {
+        // NOTE: BlazeAndroidTestRunConfigurationState only supports filtering a single class or method.
+        // Multiple target selections or raw test filters cannot be represented, so we fall back to TEST_ALL_IN_MODULE.
+        state.testingType = BlazeAndroidTestRunConfigurationState.TEST_ALL_IN_MODULE
+        state.className = ""
         state.methodName = ""
       }
-    } else {
-      // NOTE: BlazeAndroidTestRunConfigurationState only supports filtering a single class or method.
-      // Multiple target selections cannot be represented, so we fall back to TEST_ALL_IN_MODULE.
-      state.testingType = BlazeAndroidTestRunConfigurationState.TEST_ALL_IN_MODULE
-      state.className = ""
-      state.methodName = ""
     }
   }
 
   override fun matchesFilter(config: BlazeCommandRunConfiguration, testFilter: TestFilterComponent): Boolean {
     val state = config.getHandlerStateIfType(BlazeAndroidTestRunConfigurationState::class.java) ?: return false
     val selector = testFilter.testSelectors.singleOrNull()
-    return when {
-      selector?.methodName != null ->
-        state.testingType == BlazeAndroidTestRunConfigurationState.TEST_METHOD &&
-          state.className == selector.className &&
-          state.methodName == selector.methodName
-      selector != null -> state.testingType == BlazeAndroidTestRunConfigurationState.TEST_CLASS && state.className == selector.className
-      else -> state.testingType == BlazeAndroidTestRunConfigurationState.TEST_ALL_IN_MODULE && state.className.isEmpty()
+    return when (selector) {
+      is TestSelector.Member -> {
+        if (selector.methodName != null) {
+          state.testingType == BlazeAndroidTestRunConfigurationState.TEST_METHOD &&
+            state.className == selector.className &&
+            state.methodName == selector.methodName
+        } else {
+          state.testingType == BlazeAndroidTestRunConfigurationState.TEST_CLASS && state.className == selector.className
+        }
+      }
+      is TestSelector.Filter,
+      null -> state.testingType == BlazeAndroidTestRunConfigurationState.TEST_ALL_IN_MODULE && state.className.isEmpty()
     }
   }
 

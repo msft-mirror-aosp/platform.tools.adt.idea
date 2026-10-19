@@ -16,6 +16,7 @@
 package com.google.idea.bazel.java.run.producers
 
 import com.google.common.annotations.VisibleForTesting
+import com.google.idea.bazel.java.run.BlazePsiMemberParameterizedLocation
 import com.google.idea.bazel.java.run.producers.JUnitParameterizedClassHeuristic.ParameterizedTestInfo
 import com.google.idea.blaze.base.run.producers.TestFilterSyntax
 import com.google.idea.blaze.base.run.producers.TestSelector
@@ -88,31 +89,33 @@ object BlazeJUnitTestFilterFlags {
     }
 
   @JvmStatic
-  fun testFilterForClassesAndMethods(methodsPerClass: Map<PsiClass, Collection<Location<*>>>): String? {
-    if (methodsPerClass.isEmpty()) {
+  fun testFilterForClassesAndMethods(locationsPerClass: Map<PsiClass, Collection<Location<*>>>): String? {
+    if (locationsPerClass.isEmpty()) {
       return null
     }
     // Note: this could be incorrect if there are no JUnit4 classes in this sample, but some in the
     // java_test target they're run from.
-    val version = if (hasJUnit4Test(methodsPerClass.keys)) JUnitVersion.JUNIT_4 else JUnitVersion.JUNIT_3
-    return testFilterForClassesAndMethods(methodsPerClass, version)
+    val version = if (hasJUnit4Test(locationsPerClass.keys)) JUnitVersion.JUNIT_4 else JUnitVersion.JUNIT_3
+    return testFilterForClassesAndMethods(locationsPerClass, version)
   }
 
   @JvmStatic
   fun testFilterForClassesAndMethods(
-    methodsPerClass: Map<PsiClass, Collection<Location<*>>>,
+    locationsPerClass: Map<PsiClass, Collection<Location<*>>>,
     version: JUnitVersion,
   ): String? {
     val classFilters = ArrayList<String>()
-    for ((psiClass, methods) in methodsPerClass) {
+    for ((psiClass, locations) in locationsPerClass) {
+      val className = psiClass.qualifiedName ?: return null
       val parameterizedTestInfo = JUnitParameterizedClassHeuristic.getParameterizedTestInfo(psiClass)
+      val classSuffixRegex = extractClassSuffixRegex(locations) ?: parameterizedTestInfo?.testClassSuffixRegex()
       val filter =
         testFilterForClassAndMethods(
-          psiClass,
+          if (classSuffixRegex != null) className + classSuffixRegex else className,
           version,
-          extractMethodFilters(methods),
-          parameterizedTestInfo,
-        ) ?: return null
+          extractMethodFilters(locations),
+          null,
+        )
       classFilters.add(filter)
     }
     classFilters.sort()
@@ -120,17 +123,36 @@ object BlazeJUnitTestFilterFlags {
     return classFilters.joinToString(separator)
   }
 
-  /** Only runs specified parameterized versions, where relevant. */
-  private fun extractMethodFilters(methods: Collection<Location<*>>): List<String> = methods.map(::testFilterForLocation).sorted()
+  private fun extractClassSuffixRegex(locations: Collection<Location<*>>): String? {
+    val suffixes =
+      locations
+        .filterIsInstance<BlazePsiMemberParameterizedLocation>()
+        .mapNotNull { it.classParamSetName }
+        .filter { it.isNotEmpty() }
+        .map(StringUtil::escapeToRegexp)
+        .distinct()
+        .sorted()
+    if (suffixes.isEmpty()) return null
+    return if (suffixes.size == 1) suffixes[0] else "(${suffixes.joinToString("|")})"
+  }
 
-  private fun testFilterForLocation(location: Location<*>): String {
+  /** Only runs specified parameterized versions, where relevant. */
+  private fun extractMethodFilters(locations: Collection<Location<*>>): List<String> =
+    locations.mapNotNull(::testFilterForLocation).sorted()
+
+  private fun testFilterForLocation(location: Location<*>): String? {
     val psi = location.psiElement
-    check(psi is PsiMethod)
-    val methodName = psi.name
-    if (location is PsiMemberParameterizedLocation) {
-      return methodName + StringUtil.escapeToRegexp(location.paramSetName)
+    if (psi is PsiMethod) {
+      val methodName = psi.name
+      if (location is PsiMemberParameterizedLocation && location.paramSetName.isNotEmpty()) {
+        return methodName + StringUtil.escapeToRegexp(location.paramSetName)
+      }
+      return methodName
     }
-    return methodName
+    if (psi is PsiClass && location is BlazePsiMemberParameterizedLocation && location.paramSetName.isNotEmpty()) {
+      return StringUtil.escapeToRegexp(location.paramSetName)
+    }
+    return null
   }
 
   private fun hasJUnit4Test(classes: Collection<PsiClass>): Boolean = classes.any(JUnitUtil::isJUnit4TestClass)
@@ -204,17 +226,28 @@ object BlazeJUnitTestFilterFlags {
     }
     if (testSelectors.any { it.testFilterSyntax == TestFilterSyntax.RULES_KOTLIN }) {
       val testFilters = testSelectors.map { selector ->
-        if (selector.methodName != null) {
-          "${selector.className}.${selector.methodName}"
-        } else {
-          selector.className
+        when (selector) {
+          is TestSelector.Filter -> selector.filter
+          is TestSelector.Member ->
+            if (selector.methodName != null) {
+              "${selector.className}.${selector.methodName}"
+            } else {
+              selector.className
+            }
         }
       }
       return testFilters.joinToString(",")
     }
     val isJUnit4 = testSelectors.any { it.testFilterSyntax == TestFilterSyntax.JUNIT_4 }
-    val selectorsByClass = testSelectors.groupBy { it.className }
     val classTestFilters = ArrayList<String>()
+    val memberSelectors = ArrayList<TestSelector.Member>()
+    for (selector in testSelectors) {
+      when (selector) {
+        is TestSelector.Filter -> classTestFilters.add(selector.filter)
+        is TestSelector.Member -> memberSelectors.add(selector)
+      }
+    }
+    val selectorsByClass = memberSelectors.groupBy { it.className }
     for ((className, classSelectors) in selectorsByClass) {
       val version = classSelectors[0].testFilterSyntax
       val jv = if (version == TestFilterSyntax.JUNIT_4) JUnitVersion.JUNIT_4 else JUnitVersion.JUNIT_3

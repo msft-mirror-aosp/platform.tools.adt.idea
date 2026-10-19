@@ -114,11 +114,11 @@ internal class JavaTestContextProvider : TestContextProvider {
         }
 
       val testSelectors = ArrayList<TestSelector>()
-      testSelectors.add(TestSelector(qualifiedName, null, null, version))
+      testSelectors.add(TestSelector.Member(qualifiedName, null, null, version))
       for (inner in innerClasses) {
         val innerQualifiedName = inner.qualifiedName
         if (innerQualifiedName != null) {
-          testSelectors.add(TestSelector(innerQualifiedName, null, null, version))
+          testSelectors.add(TestSelector.Member(innerQualifiedName, null, null, version))
         }
       }
 
@@ -158,7 +158,7 @@ internal class JavaTestContextProvider : TestContextProvider {
           TestFilterSyntax.JUNIT_3
         }
 
-      val testSelectors = selectedMethods.map { m -> TestSelector(qualifiedName, m.name, null, version) }
+      val testSelectors = selectedMethods.map { m -> TestSelector.Member(qualifiedName, m.name, null, version) }
 
       val testSize = TestSizeFinder.getTestSize(firstMethod)
       val targetSpec = getTargetSpecification(containingClass, testSize) ?: return null

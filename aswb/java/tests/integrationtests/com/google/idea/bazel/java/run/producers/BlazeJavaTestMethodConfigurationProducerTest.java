@@ -18,6 +18,7 @@ package com.google.idea.bazel.java.run.producers;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.util.concurrent.Futures;
+import com.google.idea.bazel.java.run.BlazeJavaTestEventsHandler;
 import com.google.idea.blaze.base.command.BlazeCommandName;
 import com.google.idea.blaze.base.command.BlazeFlags;
 import com.google.idea.blaze.base.dependencies.TargetInfo;
@@ -274,8 +275,115 @@ public class BlazeJavaTestMethodConfigurationProducerTest
     assertThat(config.getName()).isEqualTo("Bazel test TestClass (filtered)");
     assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:TestClass");
     assertThat(getTestFilterContents(config))
-        .isEqualTo(
-            "--test_filter=com.google.test.TestClass(\\[.*\\])?(\\(.*\\))?#testMethod1\\[param\\]$");
+        .isEqualTo("--test_filter=com.google.test.TestClass#testMethod1\\[param\\]$");
+    assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
+
+    BlazeCommandRunConfigurationCommonState state =
+        config.getHandlerStateIfType(BlazeCommandRunConfigurationCommonState.class);
+    assertThat(state.getBlazeFlagsState().getRawFlags()).contains(BlazeFlags.DISABLE_TEST_SHARDING);
+  }
+
+  @Test
+  public void testFilteredConfigurationFromInheritedAbstractTestTreeElement() throws Throwable {
+    // Arrange
+    createAndIndexFile(
+        new WorkspacePath("java/com/google/test/BaseTest.java"),
+        "package com.google.test;",
+        "public abstract class BaseTest {",
+        "  @org.junit.Test",
+        "  public void testInherited() {}",
+        "}");
+    createAndIndexFile(
+        new WorkspacePath("java/com/google/test/ConcreteTest.java"),
+        "package com.google.test;",
+        "@org.junit.runner.RunWith(org.junit.runners.JUnit4.class)",
+        "public class ConcreteTest extends com.google.test.BaseTest {}");
+
+    TargetInfo targetInfo =
+        new TargetInfo(Label.create("//java/com/google/test:ConcreteTest"), "java_test");
+    registerTargets(targetInfo);
+    registerExtension(
+        TargetFinder.EP_NAME, (project, label) -> Futures.immediateFuture(targetInfo));
+
+    RunManager runManager = RunManager.getInstance(getProject());
+    RunnerAndConfigurationSettings baseSettings =
+        runManager.createConfiguration(
+            "Bazel test ConcreteTest", BlazeCommandRunConfigurationType.getInstance().getFactory());
+    BlazeCommandRunConfiguration baseConfig =
+        (BlazeCommandRunConfiguration) baseSettings.getConfiguration();
+    baseConfig.setTargetInfo(targetInfo);
+    baseConfig.setName("Bazel test ConcreteTest");
+    runManager.addConfiguration(baseSettings);
+    runManager.setSelectedConfiguration(baseSettings);
+
+    BlazeJavaTestEventsHandler eventsHandler = new BlazeJavaTestEventsHandler();
+    Location<?> inheritedParameterizedLocation =
+        runReadAction(
+            () ->
+                eventsHandler
+                    .getTestLocator()
+                    .getLocation(
+                        "java:test",
+                        "com.google.test.ConcreteTest/testInherited(param)",
+                        getProject(),
+                        GlobalSearchScope.allScope(getProject()))
+                    .get(0));
+    SMTestProxy testProxy =
+        new SMTestProxy(
+            "testInherited(param)",
+            false,
+            "java:test://com.google.test.ConcreteTest/testInherited(param)") {
+          @Override
+          public Location<?> getLocation(Project project, GlobalSearchScope searchScope) {
+            return inheritedParameterizedLocation;
+          }
+        };
+    TreePath selectionPath = new TreePath(new Object[] {"root", testProxy});
+    SMTRunnerTestTreeView treeView =
+        new SMTRunnerTestTreeView() {
+          @Override
+          public TreePath[] getSelectionPaths() {
+            return new TreePath[] {selectionPath};
+          }
+
+          @Override
+          public boolean isPathSelected(TreePath path) {
+            return selectionPath.equals(path);
+          }
+
+          @Override
+          public SMTestProxy getSelectedTest(TreePath path) {
+            return selectionPath.equals(path) ? testProxy : null;
+          }
+        };
+
+    DataContext dataContext =
+        SimpleDataContext.builder()
+            .add(CommonDataKeys.PROJECT, getProject())
+            .add(Location.DATA_KEY, inheritedParameterizedLocation)
+            .add(RunConfiguration.DATA_KEY, baseConfig)
+            .add(SMTRunnerTestTreeView.SM_TEST_RUNNER_VIEW, treeView)
+            .build();
+    ConfigurationContext context =
+        runReadAction(() -> ConfigurationContext.getFromContext(dataContext));
+
+    // Act
+    BlazeFilterExistingRunConfigurationProducer producer =
+        new BlazeFilterExistingRunConfigurationProducer();
+    ConfigurationFromContext fromContext =
+        runReadAction(() -> producer.createConfigurationFromContext(context));
+    assertThat(fromContext).isNotNull();
+    BlazeCommandRunConfiguration config =
+        (BlazeCommandRunConfiguration) fromContext.getConfiguration();
+    assertThat(config.getName()).isEqualTo("Bazel test ConcreteTest (filtered)");
+
+    performFirstRun(producer, config, context);
+
+    // Assert
+    assertThat(config.getName()).isEqualTo("Bazel test ConcreteTest (filtered)");
+    assertThat(config.getTargetPatterns()).containsExactly("//java/com/google/test:ConcreteTest");
+    assertThat(getTestFilterContents(config))
+        .isEqualTo("--test_filter=com.google.test.ConcreteTest#testInherited\\(param\\)$");
     assertThat(getCommandType(config)).isEqualTo(BlazeCommandName.TEST);
 
     BlazeCommandRunConfigurationCommonState state =
