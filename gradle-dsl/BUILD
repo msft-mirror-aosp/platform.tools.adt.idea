@@ -42,7 +42,6 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "@intellij//:org.intellij.groovy",
-        "//tools/adt/idea/gradle-dsl-flags:intellij.android.gradle.dsl.flags",
         "@intellij//:intellij.java.impl",
     ],
 )
@@ -68,7 +67,6 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl.testutils",
-        "//tools/adt/idea/gradle-dsl-flags:intellij.android.gradle.dsl.flags",
         "//tools/adt/idea/gradle-dsl-android:intellij.android.gradle.dsl.android",
     ],
     test_shard_count = 3,

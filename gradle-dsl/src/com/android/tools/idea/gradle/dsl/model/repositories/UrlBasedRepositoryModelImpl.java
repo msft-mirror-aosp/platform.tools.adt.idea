@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.model.repositories;
 
-import static com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind.DECLARATIVE;
 import static com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind.KOTLIN;
 
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel;
@@ -49,7 +48,7 @@ public abstract class UrlBasedRepositoryModelImpl extends RepositoryModelImpl im
   public ResolvedPropertyModel url() {
     return GradlePropertyModelBuilder.create(myDslElement, URL).withDefault(myDefaultRepoUrl)
       .addLanguageTransform(KOTLIN, new SingleArgumentMethodTransform("uri"))
-      .addLanguageTransform(DECLARATIVE, new SingleArgumentMethodTransform("uri")).buildResolved();
+      .buildResolved();
   }
 
   @NotNull

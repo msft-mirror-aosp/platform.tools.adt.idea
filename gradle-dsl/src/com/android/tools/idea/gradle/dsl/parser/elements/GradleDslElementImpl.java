@@ -648,9 +648,6 @@ public abstract class GradleDslElementImpl implements GradleDslElement, Modifica
       case KOTLIN -> {
         return kts;
       }
-      case DECLARATIVE -> {
-        return declarative;
-      }
     }
     return ExternalToModelMap.empty;
   }

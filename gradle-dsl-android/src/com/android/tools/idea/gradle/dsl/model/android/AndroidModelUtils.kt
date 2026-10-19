@@ -16,8 +16,6 @@
 package com.android.tools.idea.gradle.dsl.model.android
 
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
-import com.android.tools.idea.gradle.dsl.api.GradleDeclarativeBuildModel
-import com.android.tools.idea.gradle.dsl.api.android.AndroidDeclarativeModel
 import com.android.tools.idea.gradle.dsl.api.android.AndroidModel
 import com.android.tools.idea.gradle.dsl.api.android.KmpAndroidModel
 import com.android.tools.idea.gradle.dsl.api.android.KmpAndroidModel.Companion.KMP_ANDROID_MINIMUM_AGP_VERSION
@@ -37,30 +35,19 @@ class AndroidBlockModelProvider : BlockModelProvider<GradleBuildModel, GradleBui
   override val parentDslClass = GradleBuildFile::class.java
 
   override fun availableModels(kind: GradleDslNameConverter.Kind): List<BlockModelBuilder<*, GradleBuildFile>> =
-    when (kind) {
-      GradleDslNameConverter.Kind.DECLARATIVE -> emptyList()
-      else ->
-        listOf(
-          object : BlockModelBuilder<AndroidModel, GradleBuildFile> {
-            override fun modelClass() = AndroidModel::class.java
+    listOf(
+      object : BlockModelBuilder<AndroidModel, GradleBuildFile> {
+        override fun modelClass() = AndroidModel::class.java
 
-            override fun create(parent: GradleBuildFile) = AndroidModelImpl(parent.ensurePropertyElement(AndroidDslElement.ANDROID))
-          }
-        )
-    }
+        override fun create(parent: GradleBuildFile) = AndroidModelImpl(parent.ensurePropertyElement(AndroidDslElement.ANDROID))
+      }
+    )
 
   override fun elementsMap(kind: GradleDslNameConverter.Kind): Map<String, PropertiesElementDescription<*>> =
-    when (kind) {
-      GradleDslNameConverter.Kind.DECLARATIVE -> emptyMap()
-      else -> mapOf("android" to AndroidDslElement.ANDROID)
-    }
+    mapOf("android" to AndroidDslElement.ANDROID)
 }
 
-fun GradleBuildModel.android() =
-  when {
-    this is GradleDeclarativeBuildModel -> getModel(AndroidDeclarativeModel::class.java)
-    else -> getModel(AndroidModel::class.java)
-  }
+fun GradleBuildModel.android() = getModel(AndroidModel::class.java)
 
 class KmpAndroidBlockModelProvider : BlockModelProvider<KotlinModel, KotlinDslElement> {
   override val parentClass = KotlinModel::class.java

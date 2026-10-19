@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.dsl.model.ext.transforms;
 
 import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.createBasicExpression;
-import static com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind.DECLARATIVE;
 
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo;
@@ -137,9 +136,7 @@ public class SdkOrPreviewTransform extends PropertyTransform {
             value = sdkVersion;
           } catch (NumberFormatException e) {
             operatorName = genericSetter;
-            syntax = holder.getDslFile().getWriter().getKind() == DECLARATIVE
-                     ? ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT
-                     : ExternalNameInfo.ExternalNameSyntax.METHOD;
+            syntax = ExternalNameInfo.ExternalNameSyntax.METHOD;
           }
         }
       } else { // RawText, literal Strings not beginning "android-"
@@ -152,17 +149,13 @@ public class SdkOrPreviewTransform extends PropertyTransform {
         } else {
           // TODO(xof): if and when the genericSetter is removed from AGP, we will need to have some magic at this point.
           operatorName = genericSetter;
-          syntax = holder.getDslFile().getWriter().getKind() == DECLARATIVE
-                   ? ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT
-                   : ExternalNameInfo.ExternalNameSyntax.METHOD;
+          syntax = ExternalNameInfo.ExternalNameSyntax.METHOD;
         }
       }
     }
     else {
       operatorName = genericSetter;
-      syntax = holder.getDslFile().getWriter().getKind() == DECLARATIVE
-               ? ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT
-               : ExternalNameInfo.ExternalNameSyntax.METHOD;
+      syntax = ExternalNameInfo.ExternalNameSyntax.METHOD;
     }
     GradleDslSimpleExpression expression = createBasicExpression(holder, value, GradleNameElement.create(operatorName));
     expression.setModelEffect(new ModelEffectDescription(propertyDescription, ModelSemanticsDescription.CREATE_WITH_VALUE));

@@ -59,12 +59,6 @@ public class AndroidDslElement extends GradleDslBlockElement {
   public static final PropertiesElementDescription<AndroidDslElement> ANDROID =
     new PropertiesElementDescription<>("android", AndroidDslElement.class, AndroidDslElement::new);
 
-  public static final PropertiesElementDescription<DeclarativeAndroidDslElement> ANDROID_APP =
-    new PropertiesElementDescription<>("androidApp", DeclarativeAndroidDslElement.class, DeclarativeAndroidDslElement::new);
-
-  public static final PropertiesElementDescription<DeclarativeAndroidDslElement> ANDROID_LIBRARY =
-    new PropertiesElementDescription<>("androidLibrary", DeclarativeAndroidDslElement.class, DeclarativeAndroidDslElement::new);
-
   public static final ImmutableMap<String, PropertiesElementDescription<?>> CHILD_PROPERTIES_ELEMENTS_MAP = Stream.of(new Object[][]{
     {"aaptOptions", AaptOptionsDslElement.AAPT_OPTIONS},
     {"androidResources", AndroidResourcesDslElement.ANDROID_RESOURCES},
@@ -95,22 +89,12 @@ public class AndroidDslElement extends GradleDslBlockElement {
     {"compileSdk", CompileSdkBlockDslElement.COMPILE_SDK}
   }).collect(toImmutableMap(data -> (String) data[0], data -> (PropertiesElementDescription) data[1]));
 
-  public static final ImmutableMap<String, PropertiesElementDescription<?>> DCL_CHILD_PROPERTIES_ELEMENTS_MAP =
-    ImmutableMap.<String, PropertiesElementDescription<?>>builder()
-      .putAll(CHILD_PROPERTIES_ELEMENTS_MAP)
-      .put("dependencies", DEPENDENCIES).build();
-
   @Override
   @NotNull
   public Map<String, PropertiesElementDescription<?>> getChildPropertiesElementsDescriptionMap(
     @NotNull GradleDslNameConverter.Kind kind
   ) {
-    if (kind == GradleDslNameConverter.Kind.DECLARATIVE) {
-      return DCL_CHILD_PROPERTIES_ELEMENTS_MAP;
-    }
-    else {
       return CHILD_PROPERTIES_ELEMENTS_MAP;
-    }
   }
 
   private static final ExternalToModelMap ktsToModelNameMap = Stream.of(new Object[][]{

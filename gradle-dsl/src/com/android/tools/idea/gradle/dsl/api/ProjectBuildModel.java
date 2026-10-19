@@ -123,17 +123,6 @@ public interface ProjectBuildModel {
   GradleSettingsModel getProjectSettingsModel();
 
 
-  @Nullable
-  GradleDeclarativeSettingsModel getDeclarativeSettingsModel();
-
-  @Nullable
-  GradleDeclarativeBuildModel getDeclarativeModuleBuildModel(@NotNull Module module);
-
-  @Nullable
-  GradleDeclarativeBuildModel getDeclarativeModuleBuildModel(@NotNull VirtualFile file);
-
-  @Nullable
-  GradleDeclarativeBuildModel getDeclarativeModuleBuildModel(@NotNull File modulePath);
 
   /**
    * This method should never be called on the UI thread.

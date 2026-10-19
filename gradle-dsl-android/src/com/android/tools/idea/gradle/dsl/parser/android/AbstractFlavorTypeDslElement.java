@@ -133,9 +133,6 @@ public abstract class AbstractFlavorTypeDslElement extends GradleDslBlockElement
   public Map<String, PropertiesElementDescription<?>> getChildPropertiesElementsDescriptionMap(
     @NotNull GradleDslNameConverter.Kind kind
   ) {
-    if (kind == GradleDslNameConverter.Kind.DECLARATIVE) {
-      return DCL_CHILD_PROPERTIES_ELEMENTS_MAP;
-    }
     return Collections.emptyMap();
   }
 

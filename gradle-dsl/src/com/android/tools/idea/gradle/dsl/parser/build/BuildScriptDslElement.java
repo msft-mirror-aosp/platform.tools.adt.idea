@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.build;
 
-import static com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind.DECLARATIVE;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
@@ -52,12 +51,7 @@ public class BuildScriptDslElement extends GradleDslBlockElement {
   public Map<String, PropertiesElementDescription<?>> getChildPropertiesElementsDescriptionMap(
     @NotNull GradleDslNameConverter.Kind kind
   ) {
-    if (kind == DECLARATIVE) {
-      return DECLARATIVE_CHILD_PROPERTIES_ELEMENTS_MAP;
-    }
-    else {
       return CHILD_PROPERTIES_ELEMENTS_MAP;
-    }
   }
 
   public BuildScriptDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {
