@@ -53,16 +53,6 @@ android.overridePathCheck=$overridePathCheck
 """
     }
 
-  val declarativeBlock =
-    renderIf(dslLanguage.isDcl) {
-      """
-      # Declarative declarations
-      android.experimental.declarative=true
-      org.gradle.kotlin.dsl.dcl=true
-      """
-        .trimIndent()
-    }
-
   return """
 # Project-wide Gradle settings.
 
@@ -95,7 +85,6 @@ org.gradle.caching=true
 $androidXBlock
 $kotlinStyleBlock
 $overridePathCheckBlock
-$declarativeBlock
 """
 }
 

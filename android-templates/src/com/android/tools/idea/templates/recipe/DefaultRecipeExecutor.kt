@@ -28,8 +28,6 @@ import com.android.tools.idea.gradle.dependencies.DependenciesHelper
 import com.android.tools.idea.gradle.dependencies.GroupNameDependencyMatcher
 import com.android.tools.idea.gradle.dependencies.PluginsHelper
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
-import com.android.tools.idea.gradle.dsl.api.GradleDeclarativeBuildModel
-import com.android.tools.idea.gradle.dsl.api.GradleDeclarativeSettingsModel
 import com.android.tools.idea.gradle.dsl.api.GradleSettingsModel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.api.android.CompileSdkPropertyModel.Companion.COMPILE_SDK_BLOCK_VERSION
@@ -109,7 +107,7 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     }
   }
   private val projectSettingsModel: GradleSettingsModel? by lazy {
-    projectBuildModel?.declarativeSettingsModel ?: projectBuildModel?.projectSettingsModel
+    projectBuildModel?.projectSettingsModel
   }
   private val projectGradleBuildModel: GradleBuildModel? by lazy { projectBuildModel?.projectBuildModel }
   private val moduleGradleBuildModel: GradleBuildModel? by lazy {
@@ -202,12 +200,7 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
   }
 
   override fun addClasspathDependency(mavenCoordinate: String, minRev: String?, forceAdding: Boolean) {
-    // Skip legacy classpath dependencies if using Declarative Gradle (b/490330486) or if plugins
-    // are already managed via modern Settings or top-level plugins blocks.
-    if (
-      projectSettingsModel is GradleDeclarativeSettingsModel ||
-        (!forceAdding && (maybeGetPluginsFromSettings() != null || maybeGetPluginsFromProject() != null))
-    ) {
+    if (!forceAdding && (maybeGetPluginsFromSettings() != null || maybeGetPluginsFromProject() != null)) {
       return
     }
 
@@ -605,8 +598,6 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
         projectBuildModel?.getModuleBuildModel(moduleDir) ?: return
       }
 
-    // b/490330486: CompileOptions is not currently supported in Declarative.
-    if (buildModel is GradleDeclarativeBuildModel) return
     val languageLevel = pickLanguageLevel()
 
     val agpApplied = buildModel.appliedPlugins().any { it.name().valueAsString()?.contains("android") == true }
@@ -643,12 +634,12 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
     buildModel.android().useLibraries().create(name)
   }
 
-  override fun addCompileSdk(androidVersion: AndroidVersion, isKotlinMultiplatform: Boolean, isDeclarative: Boolean) {
+  override fun addCompileSdk(androidVersion: AndroidVersion, isKotlinMultiplatform: Boolean) {
     val agpVersion = AndroidGradlePluginVersion.parse(projectTemplateData.agpVersion.toString())
     val compileSdkBlockVersion = VersionConstraint.agpFrom(COMPILE_SDK_BLOCK_VERSION)
 
     // AGP 8.13 supports new syntax for specifying compileSdk as a block
-    val isBlockAllowed = compileSdkBlockVersion.isOkWith(agpVersion) && !isDeclarative
+    val isBlockAllowed = compileSdkBlockVersion.isOkWith(agpVersion)
     val apiLevelMajor = androidVersion.androidApiLevel.majorVersion
     val apiLevelMinor = androidVersion.androidApiLevel.minorVersion
 

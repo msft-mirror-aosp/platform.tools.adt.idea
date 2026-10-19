@@ -17,7 +17,6 @@ package com.android.tools.idea.npw.builders
 
 import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.wizard.template.DslLanguage
-import com.android.tools.idea.wizard.template.renderIf
 import com.android.tools.idea.wizard.template.withoutSkipLines
 import java.net.URL
 import org.gradle.util.GradleVersion
@@ -50,7 +49,6 @@ class GradleSettingsBuilder(
       .toString()
       .withoutSkipLines()
       .gradleSettingsToKtsIfKts(dslLanguage.isKts)
-      .gradleSettingsToDclIfDcl(dslLanguage.isDcl)
   }
 
   private fun String.gradleSettingsToKtsIfKts(isKts: Boolean): String =
@@ -63,19 +61,6 @@ class GradleSettingsBuilder(
     } else {
       this
     }
-
-  private fun String.gradleSettingsToDclIfDcl(isDcl: Boolean): String =
-    if (isDcl) {
-      // Find every single quote, but only if there isn't a backslash right in front of it.
-      // This is used to replace Groovy-style structural quotes (id '...') with KTS-style double quotes (id("...")),
-      // while preserving escaped single quotes within the project name.
-      val unescapedQuote = Regex("(?<!\\\\)'")
-      split("\n").joinToString("\n") {
-        it.replace(unescapedQuote, "\"").replace("id ", "id(").replace(Regex("""\s+version\s+("[^"]+")"""), ").version($1)")
-      }
-    } else {
-      this
-    }
 }
 
 class GradleSettings(private val settingsBuilder: StringBuilder, private val dslLanguage: DslLanguage) {
@@ -84,24 +69,11 @@ class GradleSettings(private val settingsBuilder: StringBuilder, private val dsl
       """
 pluginManagement {
   repositories {${repositoriesUrls.toMavenUrlRepositories()}
-    ${
-        renderIf(dslLanguage.isKts || dslLanguage.isGroovy) {
-          """
     google {
       content {
         includeGroupByRegex("com\\.android.*")
         includeGroupByRegex("com\\.google.*")
         includeGroupByRegex("androidx.*")
-      }
-    }
-   """
-        }
-    }
-    ${
-        renderIf(dslLanguage.isDcl) {
-          """
-    google()
-          """
       }
     }
     mavenCentral()
@@ -139,12 +111,7 @@ plugins {
   }
 
   fun withDependencyResolutionManagement(repositoriesUrls: List<URL>) {
-    val repositoriesMode =
-      if (dslLanguage.isDcl) {
-        "repositoriesMode = FAIL_ON_PROJECT_REPOS"
-      } else {
-        "repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)"
-      }
+    val repositoriesMode = "repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)"
 
     settingsBuilder.appendLine(
       """

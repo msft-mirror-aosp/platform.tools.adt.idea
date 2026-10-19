@@ -447,7 +447,6 @@ fun logRendering(projectData: ProjectTemplateData, project: Project, metrics: Te
     TemplatesUsage.TemplateProject.newBuilder().apply {
       usesLegacySupport = metrics.useAppCompat
       usesBuildGradleKts = metrics.dslLanguage.isKts
-      usesBuildGradleDcl = metrics.dslLanguage.isDcl
     }
 
   val kotlinSupport =

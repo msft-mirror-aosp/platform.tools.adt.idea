@@ -234,19 +234,12 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
 
       myBuildConfigurationLanguageCombo.addItem(BuildConfigurationLanguageForNewProject.KTS);
 
-      if (StudioFlags.NPW_SHOW_DCL.get()) {
-        myBuildConfigurationLanguageCombo.addItem(BuildConfigurationLanguageForNewProject.DCL);
-      }
-
       Object initialSelection;
       if (myProjectModel.getTemplateRendererStrategy().getValueOrNull() != null) {
         initialSelection = myProjectModel.getTemplateRendererStrategy().getValueOrNull();
         myBuildConfigurationLanguageCombo.addItem(initialSelection);
       } else {
-        initialSelection = switch (myProjectModel.getDslLanguage().get()) {
-          case KTS, GROOVY -> BuildConfigurationLanguageForNewProject.KTS;
-          case DCL -> BuildConfigurationLanguageForNewProject.DCL;
-        };
+        initialSelection = BuildConfigurationLanguageForNewProject.KTS;
       }
       myBuildConfigurationLanguageCombo.setSelectedItem(initialSelection);
 
@@ -263,15 +256,7 @@ public class ConfigureAndroidProjectStep extends ModelWizardStep<NewProjectModul
       });
 
       myBindings.bind(myProjectModel.getDslLanguage(), new SelectedItemProperty<>(myBuildConfigurationLanguageCombo).transform(
-        selection -> selection.map(value -> {
-          if (value instanceof BuildConfigurationLanguageForNewProject) {
-            return switch ((BuildConfigurationLanguageForNewProject) value) {
-              case KTS -> DslLanguage.KTS;
-              case DCL -> DslLanguage.DCL;
-            };
-          }
-          return DslLanguage.KTS;
-        }).orElse(DslLanguage.KTS)
+        selection -> DslLanguage.KTS
       ));
 
       myBindings.bind(myProjectModel.getTemplateRendererStrategy(), new SelectedItemProperty<>(myBuildConfigurationLanguageCombo).transform(

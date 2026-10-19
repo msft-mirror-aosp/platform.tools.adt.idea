@@ -38,9 +38,6 @@ fun androidProjectGradleSettings(
           withFoojayPlugin(gradleVersion)
         }
         withDependencyResolutionManagement(injectedRepositories)
-        if (dslLanguage.isDcl) {
-          withAndroidEcosystemPlugin(agpVersion)
-        }
       }
       .build()
   }
