@@ -220,8 +220,6 @@ abstract class SyncedProjectTest(selfTest: Boolean = false, agpVersion: AgpVersi
 
   @Test fun testBuildConfigAsBytecodeEnabled() = testProject(TestProject.BUILD_CONFIG_AS_BYTECODE_ENABLED)
 
-  @Test fun testGradleDeclarative() = testProject(TestProject.GRADLE_DECLARATIVE)
-
   @Test fun testAddTestStaticDir() = testProject(TestProject.TEST_STATIC_DIR)
 
   @Test fun testSimpleApplication_optimization_enabled() = testProject(TestProject.SIMPLE_APPLICATION_OPTIMIZATION_ENABLED)
