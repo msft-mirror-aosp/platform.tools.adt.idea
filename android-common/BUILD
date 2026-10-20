@@ -14,6 +14,7 @@ iml_module(
     exports = [
         "//tools/adt/idea/studio-flags",
         "//tools/adt/idea/android-concurrency:intellij.android.concurrency",
+        "//tools/adt/idea/analytics-utils:intellij.android.analytics-utils",
     ],
     # do not sort: must match IML order
     deps = [
@@ -37,6 +38,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:agp-version",
         "@intellij//:intellij.java",
         "@intellij//:intellij.platform.uast",
+        "//tools/adt/idea/analytics-utils:intellij.android.analytics-utils",
     ],
 )
 

@@ -32,6 +32,7 @@ iml_module(
         "//tools/adt/idea/analytics",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/analytics-utils:intellij.android.analytics-utils",
     ],
     test_friends = ["//tools/adt/idea/analytics"],
     test_srcs = ["testSrc"],

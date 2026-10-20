@@ -28,5 +28,6 @@
     <orderEntry type="library" name="agp-version" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.platform.uast" level="project" />
+    <orderEntry type="module" module-name="intellij.android.analytics-utils" exported="" />
   </component>
 </module>

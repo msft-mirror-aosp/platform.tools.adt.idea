@@ -15,8 +15,6 @@
  */
 package com.android.tools.idea.gservices
 
-import com.android.tools.idea.serverflags.protos.DevServicesDeprecationMetadata
-
 /**
  * Status of services that rely on backend APIs for the current build of the IDE. Our SLA is to support features that rely on backend APIs
  * for a period of about a year past the release of a specific IDE version. Beyond that timeline, users must upgrade to a newer IDE version
@@ -34,15 +32,6 @@ enum class DevServicesDeprecationStatus {
   /** Developer Services are no longer supported and not available to user. */
   UNSUPPORTED;
 
-  companion object {
-    fun fromProto(status: DevServicesDeprecationMetadata.Status) =
-      when (status) {
-        // Unknown implies the flag is unavailable. To be on the safe side, we let the service stay
-        // SUPPORTED.
-        DevServicesDeprecationMetadata.Status.STATUS_UNKNOWN,
-        DevServicesDeprecationMetadata.Status.SUPPORTED -> SUPPORTED
-        DevServicesDeprecationMetadata.Status.DEPRECATED -> DEPRECATED
-        DevServicesDeprecationMetadata.Status.UNSUPPORTED -> UNSUPPORTED
-      }
-  }
+  /** Holds extensions, such as `fromProto()` in android-common. */
+  companion object
 }
