@@ -229,6 +229,7 @@ public final class StudioIcons {
 
   public static final class DeviceExplorer {
     /** 16x16 */ public static final @NotNull Icon DATABASE_FOLDER = load("studio/icons/device-explorer/database-folder.svg", 1958104880, 2);
+    /** 16x16 */ public static final @NotNull Icon DEVICE_LAB_SETTINGS = load("studio/icons/device-explorer/device-lab-settings.svg", -484749410, 2);
     /** 16x16 */ public static final @NotNull Icon DEVICE_PAIRED = load("studio/icons/device-explorer/device-paired.svg", -1643611574, 2);
     /** 16x16 */ public static final @NotNull Icon FIREBASE_DEVICE_CAR = load("studio/icons/device-explorer/firebase-device-car.svg", -220234031, 2);
     /** 16x16 */ public static final @NotNull Icon FIREBASE_DEVICE_DESKTOP = load("studio/icons/device-explorer/firebase-device-desktop.svg", -1315644630, 2);

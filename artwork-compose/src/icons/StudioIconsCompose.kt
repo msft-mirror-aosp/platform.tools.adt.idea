@@ -784,6 +784,12 @@ object StudioIconsCompose {
         "/studio/icons/device-explorer/database-folder.svg",
         StudioIconsCompose.javaClass,
       ) // 16x16
+    val DeviceLabSettings: IntelliJIconKey =
+      IntelliJIconKey(
+        "/studio/icons/device-explorer/device-lab-settings.svg",
+        "/studio/icons/device-explorer/device-lab-settings.svg",
+        StudioIconsCompose.javaClass,
+      ) // 16x16
     val DevicePaired: IntelliJIconKey =
       IntelliJIconKey(
         "/studio/icons/device-explorer/device-paired.svg",
