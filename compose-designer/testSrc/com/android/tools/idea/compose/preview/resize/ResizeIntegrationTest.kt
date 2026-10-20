@@ -22,6 +22,7 @@ import com.android.testutils.retryUntilPassing
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.adtui.swing.popup.PopupRule
+import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
 import com.android.tools.configurations.deviceSizeDp
 import com.android.tools.idea.common.fixtures.MouseEventBuilder
 import com.android.tools.idea.compose.ComposeProjectRule
@@ -33,6 +34,7 @@ import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
+import com.android.tools.idea.rendering.tokens.FakeBuildSystemFilePreviewServices
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.intellij.ide.DataManager
@@ -57,6 +59,8 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import org.jetbrains.org.objectweb.asm.ClassWriter
+import org.jetbrains.org.objectweb.asm.Opcodes
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Rule
@@ -67,7 +71,11 @@ import org.junit.runners.JUnit4
 @RunWith(JUnit4::class)
 class ResizeIntegrationTest {
 
-  private val projectRule = ComposeProjectRule(AndroidProjectRule.withAndroidModel())
+  private val projectRule =
+    ComposeProjectRule(
+      AndroidProjectRule.withAndroidModel(),
+      FakeBuildSystemFilePreviewServices(classFiles = mapOf(COMPOSE_VIEW_ADAPTER_FQN to createComposeViewAdapterBytecode())),
+    )
   private val popupRule = PopupRule()
 
   @get:Rule val rule = RuleChain(projectRule, popupRule, FlagRule(StudioFlags.COMPOSE_PREVIEW_RESIZING, true))
@@ -76,6 +84,30 @@ class ResizeIntegrationTest {
   private lateinit var surface: NlDesignSurface
   private lateinit var fakeUi: FakeUi
   private lateinit var previewView: ComposePreviewView
+
+  /**
+   * Generates bytecode for a stub `androidx.compose.ui.tooling.ComposeViewAdapter` extending `com.android.layoutlib.bridge.MockView` with
+   * the `(Context, AttributeSet)` constructor required by Layoutlib's `BridgeInflater` during view inflation. Extending `MockView` ensures
+   * the view measures with non-zero dimensions during shrink rendering in tests.
+   */
+  private fun createComposeViewAdapterBytecode(): ByteArray {
+    val internalName = COMPOSE_VIEW_ADAPTER_FQN.replace('.', '/')
+    val superName = "com/android/layoutlib/bridge/MockView"
+    val ctorDescriptor = "(Landroid/content/Context;Landroid/util/AttributeSet;)V"
+    val cw = ClassWriter(0)
+    cw.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, internalName, null, superName, null)
+    val ctor = cw.visitMethod(Opcodes.ACC_PUBLIC, "<init>", ctorDescriptor, null, null)
+    ctor.visitCode()
+    ctor.visitVarInsn(Opcodes.ALOAD, 0)
+    ctor.visitVarInsn(Opcodes.ALOAD, 1)
+    ctor.visitVarInsn(Opcodes.ALOAD, 2)
+    ctor.visitMethodInsn(Opcodes.INVOKESPECIAL, superName, "<init>", ctorDescriptor, false)
+    ctor.visitInsn(Opcodes.RETURN)
+    ctor.visitMaxs(3, 3)
+    ctor.visitEnd()
+    cw.visitEnd()
+    return cw.toByteArray()
+  }
 
   @Test
   fun `resize and save integration test`() = runTest {
@@ -141,8 +173,6 @@ class ResizeIntegrationTest {
       }
     previewRepresentation =
       ComposePreviewRepresentation(testPsiFile, viewProvider).also {
-        // TODO(b/445947658): modify test to stop relying on useLoadViewFallbacksForTest
-        it.useLoadViewFallbacksForTest()
         Disposer.register(projectRule.testRootDisposable, it)
       }
     surface = localSurface!!

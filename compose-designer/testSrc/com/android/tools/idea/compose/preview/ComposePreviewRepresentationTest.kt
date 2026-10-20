@@ -1563,7 +1563,6 @@ class ComposePreviewRepresentationTest {
       runVisualAnalysis = false,
       quality = 0.5f,
       disableAnimation = true,
-      useLoadViewFallbacks = false,
     )
 
     assertEquals(0.5f, sceneManager.sceneRenderConfiguration.quality)
@@ -1578,7 +1577,6 @@ class ComposePreviewRepresentationTest {
       runVisualAnalysis = false,
       quality = 0.5f,
       disableAnimation = true,
-      useLoadViewFallbacks = false,
     )
     assertTrue(sceneManager.sceneRenderConfiguration.needsInflation.get())
   }

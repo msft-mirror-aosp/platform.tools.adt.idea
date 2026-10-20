@@ -266,7 +266,6 @@ fun configureLayoutlibSceneManager(
   runVisualAnalysis: Boolean,
   quality: Float,
   disableAnimation: Boolean,
-  useLoadViewFallbacks: Boolean, // TODO(b/445947658): remove this parameter
 ): LayoutlibSceneManager = sceneManager.apply {
   sceneRenderConfiguration.let { config ->
     config.useTransparentRendering = !showDecorations
@@ -294,7 +293,7 @@ fun configureLayoutlibSceneManager(
     config.customContentHierarchyParser = if (runVisualAnalysis) accessibilityBasedHierarchyParser else null
     config.layoutScannerConfig.isLayoutScannerEnabled = runVisualAnalysis
     config.disableAnimation = disableAnimation
-    config.useLoadViewFallbacks = useLoadViewFallbacks
+    config.useLoadViewFallbacks = false
   }
   visualLintMode =
     if (runVisualAnalysis) {
@@ -423,16 +422,6 @@ constructor(
    */
   val uiCheckFilterFlow
     @VisibleForTesting get() = composePreviewFlowManager.uiCheckFilterFlow
-
-  // TODO(b/445947658): remove variable and TestOnly setter method below
-  // Preview should never rely on fallback mechanisms in production, so it should not rely on them
-  // for testing either.
-  private var useLoadViewFallbacks = false
-
-  @TestOnly
-  fun useLoadViewFallbacksForTest() {
-    useLoadViewFallbacks = true
-  }
 
   /** Blank panel to display on top of the surface when transitioning between two [PreviewMode]s */
   private val blankTransitionPanel = JPanel()
@@ -1097,7 +1086,6 @@ constructor(
       runVisualAnalysis = mode.value is PreviewMode.UiCheck,
       quality = qualityManager.getTargetQuality(layoutlibSceneManager),
       disableAnimation = mode.value.isNormal,
-      useLoadViewFallbacks = useLoadViewFallbacks,
     )
   }
 
