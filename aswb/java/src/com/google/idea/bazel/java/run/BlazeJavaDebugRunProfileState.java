@@ -277,6 +277,7 @@ public final class BlazeJavaDebugRunProfileState extends BlazeJavaDebuggableRunP
       Kind kind = configuration.getTargetKind();
       boolean isBinary = kind != null && kind.getRuleType() == RuleType.BINARY;
       int debugPort = handlerState.getDebugPortState().port;
+      command.setDebugPort(debugPort);
       if (isBinary) {
         command.addExeFlags(debugPortFlag(false, debugPort));
       } else {

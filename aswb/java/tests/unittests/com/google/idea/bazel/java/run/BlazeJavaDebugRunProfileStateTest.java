@@ -76,6 +76,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
@@ -421,6 +422,7 @@ public class BlazeJavaDebugRunProfileStateTest extends BlazeTestCase {
     assertThat(processHandler).isNotNull();
     assertThat(lastRequestedCapabilities.get())
         .containsExactly(Capability.ATTACH_JAVA_DEBUGGER, Capability.RETURN_PROCESS_HANDLER);
+    assertThat(lastInvokedCommand.get().getDebugPort()).isEqualTo(OptionalInt.of(5005));
     assertThat(lastInvokedCommand.get().toArgumentList())
         .containsAtLeast(
             "test",

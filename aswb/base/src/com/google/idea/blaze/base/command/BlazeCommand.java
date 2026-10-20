@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.util.Arrays;
 import java.util.List;
+import java.util.OptionalInt;
 import javax.annotation.concurrent.Immutable;
 
 /** A command to issue to Blaze/Bazel on the command line. */
@@ -29,18 +30,26 @@ public final class BlazeCommand {
   private final BlazeCommandName name;
   private final ImmutableList<String> blazeCmdlineFlags;
   private final ImmutableList<String> blazeStartupFlags;
+  private final OptionalInt debugPort;
 
   private BlazeCommand(
       BlazeCommandName name,
       ImmutableList<String> blazeStartupFlags,
-      ImmutableList<String> blazeCmdlineFlags) {
+      ImmutableList<String> blazeCmdlineFlags,
+      OptionalInt debugPort) {
     this.name = name;
     this.blazeCmdlineFlags = blazeCmdlineFlags;
     this.blazeStartupFlags = blazeStartupFlags;
+    this.debugPort = debugPort;
   }
 
   public BlazeCommandName getName() {
     return name;
+  }
+
+  /** Returns the debug port the target JVM listens on, if this command is for debugging. */
+  public OptionalInt getDebugPort() {
+    return debugPort;
   }
 
   public ImmutableList<String> toArgumentList() {
@@ -73,6 +82,7 @@ public final class BlazeCommand {
     private final ImmutableList.Builder<String> targets = ImmutableList.builder();
     private final ImmutableList.Builder<String> blazeCmdlineFlags = ImmutableList.builder();
     private final ImmutableList.Builder<String> exeFlags = ImmutableList.builder();
+    private OptionalInt debugPort = OptionalInt.empty();
 
     public Builder(BlazeCommandName name) {
       this.name = name;
@@ -95,7 +105,13 @@ public final class BlazeCommand {
     }
 
     public BlazeCommand build() {
-      return new BlazeCommand(name, blazeStartupFlags.build(), getArguments());
+      return new BlazeCommand(name, blazeStartupFlags.build(), getArguments(), debugPort);
+    }
+
+    @CanIgnoreReturnValue
+    public Builder setDebugPort(int debugPort) {
+      this.debugPort = OptionalInt.of(debugPort);
+      return this;
     }
 
 
