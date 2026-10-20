@@ -37,6 +37,7 @@ import com.android.tools.preview.config.ReferencePhoneConfig
 import com.android.tools.property.panel.api.PropertiesModel
 import com.android.tools.property.panel.api.PropertiesModelListener
 import com.google.wireless.android.sdk.stats.EditorPickerEvent.EditorPickerAction.PreviewPickerModification.PreviewPickerValue
+import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteAction
@@ -46,7 +47,10 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.dispatchAllEventsInIdeEventQueue
 import com.intellij.testFramework.runInEdtAndWait
 import java.util.concurrent.CompletableFuture
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.intellij.lang.annotations.Language
 import org.jetbrains.android.compose.stubConfigurationAsLibrary
 import org.junit.Assert.assertEquals
@@ -349,6 +353,326 @@ class PreviewPickerTests {
       assertEquals("1080", model.properties["", "Width"].value)
       assertEquals("2340", model.properties["", "Height"].value)
     }
+  }
+
+  @Test
+  fun `saved custom preview dimensions are reflected in hardware properties and cleared when device is changed`() = runTest {
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      @Preview(
+          name = "50dp x 81dp",
+          showBackground = true,
+          widthDp = 50,
+          heightDp = 81
+      )
+      fun CustomSizePreview() {
+      }
+      """
+        .trimIndent()
+
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val model = getFirstModel(fileContent)
+    val preview = AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, fixture.findFileInTempDir("Test.kt")).first()
+
+    withContext(Dispatchers.EDT) {
+      assertEquals("50", model.properties["", "Width"].value)
+      assertEquals("81", model.properties["", "Height"].value)
+      assertEquals("dp", model.properties["", "DimensionUnit"].value)
+      assertEquals("portrait", model.properties["", "Orientation"].value)
+
+      model.properties["", "Device"].value = "id:pixel_5"
+      dispatchAllEventsInIdeEventQueue()
+
+      assertNull(model.properties["", "widthDp"].value)
+      assertNull(model.properties["", "heightDp"].value)
+      assertEquals("id:pixel_5", model.properties["", "Device"].value)
+      assertEquals("1080", model.properties["", "Width"].value)
+      assertEquals("2340", model.properties["", "Height"].value)
+      assertEquals("px", model.properties["", "DimensionUnit"].value)
+    }
+    assertEquals(
+      """
+      @Preview(
+          name = "50dp x 81dp",
+          showBackground = true, device = "id:pixel_5"
+      )
+      """
+        .trimIndent(),
+      preview.annotationText(),
+    )
+  }
+
+  @Test
+  fun `editing the dimensions of a saved custom preview updates widthDp and heightDp`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(widthDp = 50, heightDp = 81)")
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("Width", "60")
+
+      assertEquals("60", model.properties["", "widthDp"].value)
+      assertEquals("81", model.properties["", "heightDp"].value)
+      assertEquals("60", model.properties["", "Width"].value)
+      assertEquals("81", model.properties["", "Height"].value)
+    }
+    // The composable keeps its fixed size: widthDp and heightDp also size it, which the device parameter doesn't.
+    assertEquals("@Preview(widthDp = 60, heightDp = 81)", preview.annotationText())
+
+    // Values are rounded to whole dp.
+    withContext(Dispatchers.EDT) { model.setValueAndDispatch("Height", "100.6") }
+    assertEquals("@Preview(widthDp = 60, heightDp = 101)", preview.annotationText())
+  }
+
+  @Test
+  fun `rotating a saved custom preview swaps widthDp and heightDp`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(widthDp = 50, heightDp = 81)")
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("Orientation", "landscape")
+
+      assertEquals("landscape", model.properties["", "Orientation"].value)
+      assertEquals("81", model.properties["", "Width"].value)
+      assertEquals("50", model.properties["", "Height"].value)
+    }
+    assertEquals("@Preview(widthDp = 81, heightDp = 50)", preview.annotationText())
+  }
+
+  @Test
+  fun `changing dimension unit of saved custom preview converts widthDp and heightDp to device spec`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(widthDp = 50, heightDp = 81)")
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("DimensionUnit", "px")
+
+      // 50dp x 81dp at 440 dpi
+      assertEquals("px", model.properties["", "DimensionUnit"].value)
+      assertEquals("138", model.properties["", "Width"].value)
+      assertEquals("223", model.properties["", "Height"].value)
+    }
+    assertEquals("@Preview(device = \"spec:width=138px,height=223px,dpi=440\")", preview.annotationText())
+  }
+
+  @Test
+  fun `hardware edits keep custom preview dimensions`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(widthDp = 50, heightDp = 81)")
+
+    // The edits apply to the device (the default one, pixel_5), widthDp and heightDp keep replacing its screen size.
+    withContext(Dispatchers.EDT) { model.setValueAndDispatch("Density", "320") }
+    assertEquals("@Preview(widthDp = 50, heightDp = 81, device = \"spec:width=1080px,height=2340px,dpi=320\")", preview.annotationText())
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("Navigation", "buttons")
+
+      assertEquals("50", model.properties["", "Width"].value)
+      assertEquals("81", model.properties["", "Height"].value)
+      assertEquals("dp", model.properties["", "DimensionUnit"].value)
+      assertEquals("320", model.properties["", "Density"].value)
+      assertEquals("buttons", model.properties["", "Navigation"].value)
+    }
+    assertEquals(
+      """
+      @Preview(widthDp = 50, heightDp = 81,
+          device = "spec:width=1080px,height=2340px,dpi=320,navigation=buttons"
+      )
+      """
+        .trimIndent(),
+      preview.annotationText(),
+    )
+  }
+
+  @Test
+  fun `hardware edits with custom preview dimensions keep the parent device`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(device = \"id:pixel_5\", widthDp = 200, heightDp = 300)")
+
+    withContext(Dispatchers.EDT) { model.setValueAndDispatch("Navigation", "buttons") }
+    assertEquals(
+      "@Preview(device = \"spec:parent=pixel_5,navigation=buttons\", widthDp = 200, heightDp = 300)",
+      preview.annotationText(),
+    )
+  }
+
+  @Test
+  fun `hardware edits that do not change the device do not write it`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(device = \"id:pixel_5\", widthDp = 50, heightDp = 81)")
+
+    withContext(Dispatchers.EDT) {
+      // Selecting the value that is already selected or typing an equal one.
+      model.setValueAndDispatch("Orientation", "portrait")
+      model.setValueAndDispatch("DimensionUnit", "dp")
+      model.setValueAndDispatch("Width", "50.0")
+      model.setValueAndDispatch("Width", "50.2")
+      model.setValueAndDispatch("Density", "440")
+      // Values that can't be applied.
+      model.setValueAndDispatch("Orientation", "bad input")
+      model.setValueAndDispatch("Height", "bad input")
+    }
+    assertEquals("@Preview(device = \"id:pixel_5\", widthDp = 50, heightDp = 81)", preview.annotationText())
+  }
+
+  @Test
+  fun `editing the dimension that is not set adds it`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(widthDp = 200)")
+
+    withContext(Dispatchers.EDT) {
+      // Crossing into landscape keeps widthDp and the orientation follows the new size.
+      model.setValueAndDispatch("Height", "100")
+
+      assertEquals("200", model.properties["", "Width"].value)
+      assertEquals("100", model.properties["", "Height"].value)
+      assertEquals("landscape", model.properties["", "Orientation"].value)
+    }
+    assertEquals("@Preview(widthDp = 200, heightDp = 100)", preview.annotationText())
+  }
+
+  @Test
+  fun `rotating a preview with one custom dimension sets both`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(widthDp = 200)")
+
+    // The height is the one of the default device, pixel_5 (850.9dp).
+    withContext(Dispatchers.EDT) { model.setValueAndDispatch("Orientation", "landscape") }
+    assertEquals("@Preview(widthDp = 851, heightDp = 200)", preview.annotationText())
+  }
+
+  @Test
+  fun `custom preview dimensions replace the screen size of the device parameter`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(device = \"id:pixel_5\", widthDp = 200, heightDp = 300)")
+
+    withContext(Dispatchers.EDT) {
+      assertEquals("200", model.properties["", "Width"].value)
+      assertEquals("300", model.properties["", "Height"].value)
+      assertEquals("dp", model.properties["", "DimensionUnit"].value)
+      assertEquals("440", model.properties["", "Density"].value)
+
+      model.setValueAndDispatch("Width", "250")
+    }
+    assertEquals("@Preview(device = \"id:pixel_5\", widthDp = 250, heightDp = 300)", preview.annotationText())
+  }
+
+  @Test
+  fun `picking a device removes custom preview dimensions even with the size of the device`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(widthDp = 411, heightDp = 891)")
+
+    withContext(Dispatchers.EDT) { model.setValueAndDispatch("Device", ReferencePhoneConfig.deviceSpec()) }
+    assertEquals("@Preview(device = \"${ReferencePhoneConfig.deviceSpec()}\")", preview.annotationText())
+  }
+
+  @Test
+  fun `picking the device that is already set removes custom preview dimensions`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(device = \"id:pixel_5\", widthDp = 200, heightDp = 300)")
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("Device", "id:pixel_5")
+
+      assertEquals("1080", model.properties["", "Width"].value)
+      assertEquals("2340", model.properties["", "Height"].value)
+    }
+    assertEquals("@Preview(device = \"id:pixel_5\")", preview.annotationText())
+  }
+
+  @Test
+  fun `clearing the device when it is not set removes custom preview dimensions`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(name = \"50dp x 81dp\", widthDp = 50, heightDp = 81)")
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("Device", null)
+
+      assertEquals("1080", model.properties["", "Width"].value)
+      assertEquals("px", model.properties["", "DimensionUnit"].value)
+    }
+    assertEquals("@Preview(name = \"50dp x 81dp\")", preview.annotationText())
+  }
+
+  @Test
+  fun `custom preview dimensions are not used as device dimensions when the system UI is shown`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(showSystemUi = true, widthDp = 200, heightDp = 300)")
+
+    withContext(Dispatchers.EDT) {
+      // With the system UI, widthDp and heightDp only size the composable inside the frame of the default device (pixel_5).
+      assertEquals("1080", model.properties["", "Width"].value)
+      assertEquals("2340", model.properties["", "Height"].value)
+      assertEquals("px", model.properties["", "DimensionUnit"].value)
+
+      // Hardware edits apply to the device and keep them.
+      model.setValueAndDispatch("Width", "1000")
+    }
+    assertEquals(
+      """
+      @Preview(showSystemUi = true, widthDp = 200, heightDp = 300,
+          device = "spec:width=1000px,height=2340px,dpi=440"
+      )
+      """
+        .trimIndent(),
+      preview.annotationText(),
+    )
+
+    // Picking a device removes them, as the picker has no field for them.
+    withContext(Dispatchers.EDT) { model.setValueAndDispatch("Device", "id:pixel_5") }
+    assertEquals(
+      """
+      @Preview(showSystemUi = true,
+          device = "id:pixel_5"
+      )
+      """
+        .trimIndent(),
+      preview.annotationText(),
+    )
+  }
+
+  @Test
+  fun `custom preview dimensions are read like in rendering`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+
+    // A missing dimension is the one of the device: the height of the default device, pixel_5 (2340px at 440 dpi).
+    val (singleDimensionModel, _) = createCustomSizePreviewModel("@Preview(widthDp = 200)")
+    withContext(Dispatchers.EDT) {
+      assertEquals("200", singleDimensionModel.properties["", "Width"].value)
+      assertEquals("850.9", singleDimensionModel.properties["", "Height"].value)
+      assertEquals("portrait", singleDimensionModel.properties["", "Orientation"].value)
+    }
+
+    // ... taking the orientation of the device into account.
+    val (rotatedDeviceModel, _) =
+      createCustomSizePreviewModel("@Preview(device = \"spec:parent=pixel_5,orientation=landscape\", heightDp = 200)")
+    withContext(Dispatchers.EDT) {
+      assertEquals("850.9", rotatedDeviceModel.properties["", "Width"].value)
+      assertEquals("200", rotatedDeviceModel.properties["", "Height"].value)
+      assertEquals("landscape", rotatedDeviceModel.properties["", "Orientation"].value)
+    }
+
+    // Dimensions are clamped to [MIN_DIMENSION_DP, MAX_DIMENSION_DP] and the orientation follows them.
+    val (clampedModel, _) = createCustomSizePreviewModel("@Preview(widthDp = 5000, heightDp = 0)")
+    withContext(Dispatchers.EDT) {
+      assertEquals("3000", clampedModel.properties["", "Width"].value)
+      assertEquals("1", clampedModel.properties["", "Height"].value)
+      assertEquals("landscape", clampedModel.properties["", "Orientation"].value)
+    }
+  }
+
+  @Test
+  fun `clearing the device removes custom preview dimensions`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) =
+      createCustomSizePreviewModel("@Preview(name = \"Custom\", device = \"id:pixel_5\", widthDp = 200, heightDp = 300)")
+
+    withContext(Dispatchers.EDT) { model.setValueAndDispatch("Device", null) }
+    assertEquals("@Preview(name = \"Custom\")", preview.annotationText())
   }
 
   @Test
@@ -934,6 +1258,31 @@ class PreviewPickerTests {
     return ReadAction.compute<PsiPropertiesModel, Throwable> {
       PreviewPickerPropertiesModel.fromPreviewElement(project, module, preview.previewElementDefinition, tracker)
     }
+  }
+
+  /** Returns the model of a preview annotated with [previewAnnotation], and the preview element to read the annotation back. */
+  private suspend fun createCustomSizePreviewModel(previewAnnotation: String): Pair<PsiPropertiesModel, PsiComposePreviewElement> {
+    @Language("kotlin")
+    val fileContent =
+      """
+      import $COMPOSABLE_ANNOTATION_FQN
+      import $PREVIEW_TOOLING_PACKAGE.Preview
+
+      @Composable
+      $previewAnnotation
+      fun CustomSizePreview() {
+      }
+      """
+        .trimIndent()
+    val model = getFirstModel(fileContent)
+    val preview = AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, fixture.findFileInTempDir("Test.kt")).first()
+    return model to preview
+  }
+
+  /** Sets the property [name] to [value] and dispatches the events, as hardware properties write the device parameter later on the EDT. */
+  private fun PsiPropertiesModel.setValueAndDispatch(name: String, value: String?) {
+    properties["", name].value = value
+    dispatchAllEventsInIdeEventQueue()
   }
 
   /**

@@ -33,6 +33,7 @@ import com.intellij.psi.SmartPointerManager
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.intellij.util.concurrency.annotations.RequiresWriteLock
 import com.intellij.util.text.nullize
 import java.util.concurrent.Callable
 import org.jetbrains.kotlin.analysis.api.analyze
@@ -77,8 +78,9 @@ internal open class PsiCallParameterPropertyItem(
    * Smart pointer to the [KtExpression] representing the parameter argument. Using a [SmartPsiElementPointer] prevents holding stale
    * references to PSI elements when the PSI tree is modified, reformatted, or when references are shortened.
    */
-  protected var argumentExpression: SmartPsiElementPointer<KtExpression>? =
-    argumentExpression?.let { SmartPointerManager.getInstance(project).createSmartPsiElementPointer(it) }
+  protected var argumentExpression: SmartPsiElementPointer<KtExpression>? = argumentExpression?.let {
+    SmartPointerManager.getInstance(project).createSmartPsiElementPointer(it)
+  }
     set(value) {
       if (field != value) {
         field = value
@@ -193,61 +195,94 @@ internal open class PsiCallParameterPropertyItem(
         } else {
           "${parameterName.asString()} = $newValue"
         }
-      writeParameter(parameterString, expectedValue ?: newValue, postWrite)
+      writeParameter(newValue, parameterString, expectedValue ?: newValue, postWrite)
     }
   }
 
   @UiThread
   fun deleteParameter(postWrite: (() -> Unit)? = null) {
     runModification(DELETE_COMMAND) {
-      val arg = argumentExpression?.element?.parent
-      if (arg is KtValueArgument) {
-        val argList = arg.parent
-        if (argList is KtValueArgumentList) {
-          if (argList.arguments.size == 1) {
-            argList.delete() // This deletes the parentheses too, which are unnecessary on annotations with no args.
-          } else {
-            argList.removeArgument(arg)
-          }
+      beforeWriteInWriteAction(null)
+      clearArgumentInWriteAction()
+      postWrite?.invoke()
+    }
+  }
+
+  /**
+   * Called inside the write action right before this parameter's argument is written or deleted, so that subclasses can update other
+   * arguments of the same call as part of the same undoable command.
+   *
+   * @param newValue The value being written, or null when the argument is deleted.
+   */
+  @RequiresWriteLock protected open fun beforeWriteInWriteAction(newValue: String?) {}
+
+  /** Removes this parameter's argument from the PSI call and resets the cached value. */
+  @RequiresWriteLock
+  internal fun clearArgumentInWriteAction() {
+    val arg = argumentExpression?.element?.parent
+    if (arg is KtValueArgument) {
+      val argList = arg.parent
+      if (argList is KtValueArgumentList) {
+        if (argList.arguments.size == 1) {
+          argList.delete() // This deletes the parentheses too, which are unnecessary on annotations with no args.
+        } else {
+          argList.removeArgument(arg)
         }
       }
-      argumentExpression = null
-      postWrite?.invoke()
-
-      cachedValue = null
-      isCachedValueValid = true
     }
+    argumentExpression = null
+    cachedValue = null
+    isCachedValueValid = true
   }
 
   @UiThread
-  private fun writeParameter(parameterString: String, expectedValue: String?, postWrite: (() -> Unit)? = null) {
+  private fun writeParameter(newValue: String, parameterString: String, expectedValue: String?, postWrite: (() -> Unit)? = null) {
     runModification(WRITE_COMMAND(parameterString)) {
-      var newValueArgument = model.psiFactory.createArgument(parameterString)
-      val currentArgumentExpression = argumentExpression?.element
-
-      if (currentArgumentExpression != null) {
-        newValueArgument = currentArgumentExpression.parent.replace(newValueArgument) as KtValueArgument
-      } else {
-        addNewArgumentToResolvedCall(newValueArgument, model.psiFactory)?.let { newValueArgument = it }
-      }
-      val newExpression = newValueArgument.getArgumentExpression()
-      argumentExpression = newExpression?.let { SmartPointerManager.getInstance(project).createSmartPsiElementPointer(it) }
-      argumentExpression?.element?.parent?.let { CodeStyleManager.getInstance(it.project).reformat(it) }
-
-      // Execute post-write actions (such as reference shortening) before finalizing cachedValue.
-      postWrite?.invoke()
-
-      // Set cachedValue = expectedValue and mark isCachedValueValid = true synchronously AFTER postWrite and
-      // argumentExpression assignment (which resets cachedValue). This ensures that when model.firePropertyValuesChanged()
-      // notifies UI controls (like combo boxes), they immediately read the valid expected value synchronously, avoiding
-      // async analysis and UI flickering (b/538471520).
-      cachedValue = expectedValue
-      isCachedValueValid = true
+      beforeWriteInWriteAction(newValue)
+      writeArgumentInWriteAction(parameterString, expectedValue, postWrite)
     }
   }
 
+  /**
+   * Writes [newValue] as this parameter's argument, as is, or removes the argument when [newValue] is null. Unlike [writeNewValue], it
+   * neither starts a command nor notifies the model, so that a caller can update several arguments of the call in one undoable command.
+   */
+  @RequiresWriteLock
+  internal fun writeValueInWriteAction(newValue: String?) {
+    if (newValue == null) {
+      clearArgumentInWriteAction()
+    } else {
+      writeArgumentInWriteAction("${parameterName.asString()} = $newValue", newValue, null)
+    }
+  }
+
+  @RequiresWriteLock
+  private fun writeArgumentInWriteAction(parameterString: String, expectedValue: String?, postWrite: (() -> Unit)?) {
+    var newValueArgument = model.psiFactory.createArgument(parameterString)
+    val currentArgumentExpression = argumentExpression?.element
+
+    if (currentArgumentExpression != null) {
+      newValueArgument = currentArgumentExpression.parent.replace(newValueArgument) as KtValueArgument
+    } else {
+      addNewArgumentToResolvedCall(newValueArgument, model.psiFactory)?.let { newValueArgument = it }
+    }
+    val newExpression = newValueArgument.getArgumentExpression()
+    argumentExpression = newExpression?.let { SmartPointerManager.getInstance(project).createSmartPsiElementPointer(it) }
+    argumentExpression?.element?.parent?.let { CodeStyleManager.getInstance(it.project).reformat(it) }
+
+    // Execute post-write actions (such as reference shortening) before finalizing cachedValue.
+    postWrite?.invoke()
+
+    // Set cachedValue = expectedValue and mark isCachedValueValid = true synchronously AFTER postWrite and
+    // argumentExpression assignment (which resets cachedValue). This ensures that when model.firePropertyValuesChanged()
+    // notifies UI controls (like combo boxes), they immediately read the valid expected value synchronously, avoiding
+    // async analysis and UI flickering (b/538471520).
+    cachedValue = expectedValue
+    isCachedValueValid = true
+  }
+
   @UiThread
-  private fun runModification(commandName: String, modification: () -> Unit) {
+  protected fun runModification(commandName: String, modification: () -> Unit) {
     // We must not change PSI outside command or undo-transparent action in a PSI file and we want the change to be editable via Undo/Redo
     // operations.
     WriteCommandAction.runWriteCommandAction(project, commandName, null, modification, model.ktFile)
