@@ -44,7 +44,6 @@ import com.android.tools.sdk.DeviceManagers
 import com.android.utils.CpuArchitecture
 import com.android.utils.ILogger
 import com.android.utils.StdLogger
-import com.android.utils.osArchitecture
 import com.intellij.util.io.createDirectories
 import java.nio.file.FileSystem
 import java.nio.file.Files
@@ -153,8 +152,8 @@ class SdkFixture(
 }
 
 fun recommendedAbiForHost() =
-  when (osArchitecture) {
+  when (CpuArchitecture.osArchitecture) {
     CpuArchitecture.X86_64 -> Abi.X86_64.toString()
     CpuArchitecture.ARM -> Abi.ARM64_V8A.toString()
-    else -> throw IllegalStateException("Unexpected host architecture: $osArchitecture")
+    else -> throw IllegalStateException("Unexpected host architecture: ${CpuArchitecture.osArchitecture}")
   }

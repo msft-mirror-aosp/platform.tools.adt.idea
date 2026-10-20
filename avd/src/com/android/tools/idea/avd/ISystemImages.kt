@@ -25,7 +25,6 @@ import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
 import com.android.utils.CpuArchitecture
 import com.android.utils.OperatingSystem
-import com.android.utils.osArchitecture
 import com.intellij.openapi.diagnostic.thisLogger
 import kotlin.time.Duration.Companion.days
 import kotlinx.collections.immutable.ImmutableList
@@ -127,7 +126,7 @@ internal fun ISystemImage.getServices(): Services {
 internal fun ISystemImage.isSupported(): Boolean = imageWarnings().isEmpty()
 
 private fun ISystemImage.incompatibleArchitectureWarning(): String? =
-  when (osArchitecture) {
+  when (CpuArchitecture.osArchitecture) {
     CpuArchitecture.X86_64 ->
       when (Abi.getEnum(primaryAbiType)) {
         in listOf(Abi.X86_64, Abi.X86) -> null

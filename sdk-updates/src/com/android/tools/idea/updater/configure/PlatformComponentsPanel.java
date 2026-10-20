@@ -22,7 +22,7 @@ import com.android.repository.api.UpdatablePackage;
 import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.devices.Abi;
 import com.android.sdklib.repository.meta.DetailsTypes;
-import com.android.utils.ComputerArchUtilsKt;
+import com.android.utils.CpuArchitecture;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
@@ -270,7 +270,7 @@ public class PlatformComponentsPanel {
   public JComponent getRootComponent() { return myRootPanel; }
 
   private static boolean isCompatibleAbi(@NotNull Abi abi) {
-    return switch (ComputerArchUtilsKt.getOsArchitecture()) {
+    return switch (CpuArchitecture.getOsArchitecture()) {
       case X86_64 -> abi == Abi.X86_64 || abi == Abi.X86;
       case ARM, X86_ON_ARM -> abi == Abi.ARM64_V8A;
       // The emulator doesn't run on 32-bit x86 or other architectures.
