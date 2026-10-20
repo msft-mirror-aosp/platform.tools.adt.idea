@@ -196,8 +196,8 @@ fun resolveVariantsForRegularSync(
   projectsData: List<Pair<BasicGradleProject, Pair<AndroidModule, String?>>>,
   syncOptions: SyncActionOptions,
   syncIssues: MutableMap<BasicGradleProject, Throwable>,
-): Map<AndroidModule, String> {
-  val modulesToVariants = mutableMapOf<AndroidModule, String>()
+): Map<Int, List<Pair<AndroidModule, String>>> {
+  val gradleProjectToModule = projectsData.associate { it.first to it.second.first }
 
   val projectNodesRegistry = projectsData.map { (gradleProject, data) ->
     val (module, variant) = data
@@ -218,12 +218,13 @@ fun resolveVariantsForRegularSync(
 
   val resultsForVariants = resolveVariantsCore(projectsWithPriority, syncIssues)
 
-  // Update the selected variant for the module configurations.
-  projectsData.forEach { (gradleProject, projectData) ->
-    resultsForVariants[gradleProject]?.let { modulesToVariants[projectData.first] = it }
+  return projectsWithPriority.mapValues { (_, batch) ->
+    batch.mapNotNull { (gradleProject, _) ->
+      val resolvedVariant = resultsForVariants[gradleProject] ?: return@mapNotNull null
+      val module = gradleProjectToModule[gradleProject] ?: return@mapNotNull null
+      module to resolvedVariant
+    }
   }
-
-  return modulesToVariants
 }
 
 /** Generic variant resolution entry point that can be used by both Phased Sync and Standard Sync. */

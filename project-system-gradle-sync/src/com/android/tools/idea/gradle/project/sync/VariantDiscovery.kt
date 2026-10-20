@@ -139,18 +139,20 @@ internal class VariantDiscovery(
       val androidModulesData = inputModules.associateWithNotNull { userSelectedOrDefaultModuleConfiguration(it) }
       val variantsResolutionIssues = mutableMapOf<BasicGradleProject, Throwable>()
 
-      val selectedVariantsPerModules =
+      val selectedVariantsPerBatch =
         resolveVariantsForRegularSync(
           androidModulesData.map { it.key.gradleProject to Pair(it.key, it.value.variant) },
           syncOptions,
           variantsResolutionIssues,
         )
-      // Fetch the successfully resolved modules.
-      val fetchActions = selectedVariantsPerModules.mapNotNull { (module, resolvedVariantName) ->
-        val baseConfig = androidModulesData[module] ?: return@mapNotNull null
-        baseConfig.copy(variant = resolvedVariantName).toFetchVariantDependenciesAction()
+      // Fetch the successfully resolved modules in priority batches (consumers first, then libraries).
+      selectedVariantsPerBatch.values.forEach { batch ->
+        val fetchActions = batch.mapNotNull { (module, resolvedVariantName) ->
+          val baseConfig = androidModulesData[module] ?: return@mapNotNull null
+          baseConfig.copy(variant = resolvedVariantName).toFetchVariantDependenciesAction()
+        }
+        actionRunner.runActions(fetchActions)
       }
-      actionRunner.runActions(fetchActions)
       // Make sure we mark the results as final.
       moduleFetchResults.keys.forEach { it.setFinal() }
     } else {
