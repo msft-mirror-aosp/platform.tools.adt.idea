@@ -73,22 +73,6 @@ intellij_plugin_library(
 intellij_unit_test_suite(
     name = "unit_tests",
     srcs = glob(["tests/unittests/**/*.java"]),
-    # Used for the compiler tests
-    data = [
-        ":auto_value_lib_deploy.jar",
-        ":auto_value_plugin_lib_deploy.jar",
-        ":guava_lib_deploy.jar",
-        ":truth_lib_deploy.jar",
-    ],
-    jvm_flags = [
-        "-Dauto_value.jar=$(location :auto_value_lib_deploy.jar)",
-        "-Dauto_value_plugin.jar=$(location :auto_value_plugin_lib_deploy.jar)",
-        "-Dguava.jar=$(location :guava_lib_deploy.jar)",
-        "-Dtruth.jar=$(location :truth_lib_deploy.jar)",
-        "--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED",
-        "--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
-        "--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED",
-    ],
     tags = ["noci:studio-win"],
     test_package_root = "com.google.idea.bazel.java",
     visibility = DEFAULT_TEST_VISIBILITY,
@@ -107,36 +91,6 @@ intellij_unit_test_suite(
         "//tools/adt/idea/aswb/shared",
         "//tools/adt/idea/aswb/third_party/java/junit",
         "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
-    ],
-)
-
-java_binary(
-    name = "auto_value_lib",
-    main_class = "None",
-    runtime_deps = ["//tools/adt/idea/aswb/third_party/java/auto_value"],
-)
-
-java_binary(
-    name = "auto_value_plugin_lib",
-    main_class = "None",
-    runtime_deps = ["//tools/adt/idea/aswb/third_party/java/auto_value"],
-)
-
-java_binary(
-    name = "guava_lib",
-    testonly = True,
-    main_class = "None",
-    runtime_deps = [
-        "@maven//:com.google.guava.guava",
-    ],
-)
-
-java_binary(
-    name = "truth_lib",
-    testonly = 1,
-    main_class = "None",
-    runtime_deps = [
-        "//tools/adt/idea/.idea/libraries:truth",
     ],
 )
 
