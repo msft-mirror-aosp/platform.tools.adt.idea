@@ -35,6 +35,7 @@ import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind
 import com.google.wireless.android.sdk.stats.DisplayDetails
+import com.google.wireless.android.sdk.stats.ExternalUpdateManagerEvent
 import com.google.wireless.android.sdk.stats.IdePlugin
 import com.google.wireless.android.sdk.stats.IdePluginInfo
 import com.google.wireless.android.sdk.stats.IntelliJNewUIState
@@ -56,6 +57,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.updateSettings.impl.ChannelStatus
+import com.intellij.openapi.updateSettings.impl.ExternalUpdateManager
 import com.intellij.openapi.updateSettings.impl.UpdateSettings
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.ui.NewUI
@@ -204,6 +206,7 @@ object AndroidStudioUsageTracker {
   private fun runStartupReports() {
     reportEnabledPlugins()
     reportSafeModeStats()
+    reportUpdateManager()
   }
 
   private fun runShutdownReports() {
@@ -493,6 +496,24 @@ object AndroidStudioUsageTracker {
       ChannelStatus.RELEASE -> SoftwareLifeCycleChannel.STABLE
       else -> SoftwareLifeCycleChannel.UNKNOWN_LIFE_CYCLE_CHANNEL
     }
+  }
+
+  private fun reportUpdateManager() {
+    val updateManager =
+      when (ExternalUpdateManager.ACTUAL) {
+        ExternalUpdateManager.TOOLBOX -> ExternalUpdateManagerEvent.ExternalUpdateManager.TOOLBOX
+        ExternalUpdateManager.SNAP -> ExternalUpdateManagerEvent.ExternalUpdateManager.SNAP
+        ExternalUpdateManager.FLATPAK -> ExternalUpdateManagerEvent.ExternalUpdateManager.FLATPAK
+        ExternalUpdateManager.BREW -> ExternalUpdateManagerEvent.ExternalUpdateManager.BREW
+        ExternalUpdateManager.UNKNOWN -> ExternalUpdateManagerEvent.ExternalUpdateManager.UNKNOWN
+        null -> ExternalUpdateManagerEvent.ExternalUpdateManager.NONE
+      }
+
+    UsageTracker.log(
+      AndroidStudioEvent.newBuilder()
+        .setKind(EventKind.EXTERNAL_UPDATE_MANAGER_EVENT)
+        .setExternalUpdateManagerEvent(ExternalUpdateManagerEvent.newBuilder().setExternalUpdateManager(updateManager))
+    )
   }
 
   private fun setupMetricsListener() {
