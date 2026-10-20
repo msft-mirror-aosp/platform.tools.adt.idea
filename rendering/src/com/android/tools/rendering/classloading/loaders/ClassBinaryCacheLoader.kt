@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.rendering.classloading.loaders
+package com.android.tools.rendering.classloading.loaders
 
 import com.android.tools.rendering.classloading.ClassBinaryCache
-import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
 
 /**
  * A [DelegatingClassLoader.Loader] that uses the given [binaryCache] to store the returned classes. The given [transformationId] is used to

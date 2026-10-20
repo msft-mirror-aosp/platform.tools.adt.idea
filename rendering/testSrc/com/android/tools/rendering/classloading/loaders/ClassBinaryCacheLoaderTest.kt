@@ -13,10 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.rendering.classloading.loaders
+package com.android.tools.rendering.classloading.loaders
 
 import com.android.tools.rendering.classloading.ClassBinaryCache
-import com.android.tools.rendering.classloading.loaders.StaticLoader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -34,7 +33,7 @@ class ClassBinaryCacheLoaderTest {
         }
 
         override fun setDependencies(paths: Collection<String>) {
-          TODO("Not yet implemented")
+          throw UnsupportedOperationException()
         }
       }
     val staticLoader = StaticLoader("a.class1" to ByteArray(1), "a.class2" to ByteArray(2))

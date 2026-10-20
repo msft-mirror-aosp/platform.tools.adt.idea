@@ -91,27 +91,28 @@ internal fun decompress(stored: ByteArray): ByteArray {
   }
 }
 
+/** Cached library class entry storing its originating [libraryPath] alongside its [compressedData]. */
+private class CacheEntry(val libraryPath: String, val compressedData: ByteArray)
+
 /** A class binary representation cache. */
 class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Long, expireMinutes: Long) {
   @GuardedBy("this") private val scopeCaches = WeakHashMap<Any, ModuleClassCache>()
   private val lock = ReentrantLock()
   /** A mapping from a library path to the caching keys of all the classes cached from this library. */
   @GuardedBy("lock") private val libraryPath2CachingKeys = mutableMapOf<String, MutableSet<String>>()
-  /** A mapping from a caching key to a library (path) that contains the class. */
-  @GuardedBy("lock") private val cachingKey2LibraryPath = mutableMapOf<String, String>()
 
-  /** A binary representation class cache ($transformationId:$fqcn -> bytes). */
+  /** A binary representation class cache ($transformationId:$fqcn -> entry). */
   private val globalCache =
     CacheBuilder.newBuilder()
       .ticker(ticker)
       .concurrencyLevel(1)
       .maximumWeight(maxWeight)
-      .weigher { _: String, value: ByteArray -> value.size }
+      .weigher { _: String, value: CacheEntry -> value.compressedData.size }
       .expireAfterAccess(Duration.ofMinutes(expireMinutes))
-      .removalListener<String, ByteArray> {
+      .removalListener<String, CacheEntry> {
         lock.withLock {
           if (it.cause == RemovalCause.REPLACED) return@removalListener
-          cachingKey2LibraryPath.remove(it.key)?.let { url ->
+          it.value?.libraryPath?.let { url ->
             libraryPath2CachingKeys[url]?.let { keys ->
               keys.remove(it.key)
               if (keys.isEmpty()) libraryPath2CachingKeys.remove(url)
@@ -119,7 +120,7 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
           }
         }
       }
-      .build<String, ByteArray>()
+      .build<String, CacheEntry>()
 
   /**
    * Returns a scope specific cache that will only return classes if they belong to the scope, the cache will also invalidate cache for
@@ -137,23 +138,20 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
   }
 
   private inner class ModuleClassCache : ClassBinaryCache {
-    @GuardedBy("this") private var libraryPaths = setOf<String>()
-
-    /** Synchronously checks if there a library with [path] among the current module dependencies. */
-    @Synchronized private fun notCurrentDependency(path: String?) = path !in libraryPaths
+    @Volatile private var libraryPaths = setOf<String>()
 
     // @LayoutlibRenderThread
     override fun get(fqcn: String, transformationId: String): ByteArray? {
       val key = getCachingKey(fqcn, transformationId)
+      val entry = globalCache.getIfPresent(key) ?: return null
       // If the library the class was cached from is not among the current dependencies of this module, the whole library is stale, so all
       // the classes cached from it are dropped.
-      val libraryPath = lock.withLock { cachingKey2LibraryPath[key] }
-      if (notCurrentDependency(libraryPath)) {
-        libraryPath?.let { lock.withLock { libraryPath2CachingKeys.remove(libraryPath) }?.forEach { globalCache.invalidate(it) } }
+      if (entry.libraryPath !in libraryPaths) {
+        lock.withLock { libraryPath2CachingKeys.remove(entry.libraryPath) }?.forEach { globalCache.invalidate(it) }
         return null
       }
 
-      return globalCache.getIfPresent(key)?.let { decompress(it) }
+      return decompress(entry.compressedData)
     }
 
     private fun getCachingKey(fqcn: String, transformationId: String) = "$transformationId:$fqcn"
@@ -161,10 +159,10 @@ class ClassBinaryCacheManager private constructor(ticker: Ticker, maxWeight: Lon
     // @LayoutlibRenderThread
     override fun put(fqcn: String, transformationId: String, libraryPath: String, data: ByteArray) {
       val key = getCachingKey(fqcn, transformationId)
-      val compressedData = compress(data)
+      val entry = CacheEntry(libraryPath, compress(data))
       lock.withLock {
-        globalCache.put(key, compressedData)
-        val oldLibrary = cachingKey2LibraryPath.put(key, libraryPath)
+        val oldLibrary = globalCache.getIfPresent(key)?.libraryPath
+        globalCache.put(key, entry)
         if ((oldLibrary != null) && (oldLibrary != libraryPath)) {
           libraryPath2CachingKeys[oldLibrary]?.let { keys ->
             keys.remove(key)

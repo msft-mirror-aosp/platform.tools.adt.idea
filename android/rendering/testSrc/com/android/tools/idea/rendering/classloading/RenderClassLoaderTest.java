@@ -23,7 +23,7 @@ import static org.junit.Assert.fail;
 import com.android.layoutlib.reflection.TrackingThread;
 import com.android.layoutlib.reflection.TrackingThreadLocal;
 import com.android.tools.rendering.classloading.loaders.AsmTransformingLoader;
-import com.android.tools.idea.rendering.classloading.loaders.ClassBinaryCacheLoader;
+import com.android.tools.rendering.classloading.loaders.ClassBinaryCacheLoader;
 import com.android.tools.rendering.classloading.ClassBinaryCache;
 import com.android.tools.rendering.classloading.ClassTransform;
 import com.android.tools.rendering.classloading.loaders.ClassLoaderLoader;

@@ -76,7 +76,11 @@ class ModuleClassLoaderOverlays private constructor(module: Module, private val 
 
   private val moduleReference: WeakReference<Module> = WeakReference<Module>(module)
   private val _modificationTracker = SimpleModificationTracker()
-  private var overlayClassLoader: DelegatingClassLoader.Loader? = null
+  // Marked @Volatile so `classLoaderLoader` can read the current reference (and fast-return null
+  // when no overlay is present) without acquiring the `ModuleClassLoaderOverlays` monitor lock on
+  // every class load; writes remain synchronized via `@Synchronized` on `invalidateOverlayPaths`
+  // and `reloadClassLoader`.
+  @Volatile private var overlayClassLoader: DelegatingClassLoader.Loader? = null
 
   val modificationTracker: ModificationTracker = _modificationTracker
 
@@ -84,11 +88,11 @@ class ModuleClassLoaderOverlays private constructor(module: Module, private val 
   override val classLoaderLoader: DelegatingClassLoader.Loader =
     object : DelegatingClassLoader.Loader {
       override fun loadClass(fqcn: String): ByteArray? {
+        val loader = overlayClassLoader ?: return null
         val project = moduleReference.get()?.project ?: return null
         if (!TrustedProjects.isProjectTrusted(project)) {
           return null
         }
-        val loader = synchronized(this@ModuleClassLoaderOverlays) { overlayClassLoader } ?: return null
 
         return loader.loadClass(fqcn)
       }

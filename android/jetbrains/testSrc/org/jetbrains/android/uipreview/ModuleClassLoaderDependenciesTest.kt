@@ -24,6 +24,7 @@ import com.android.tools.idea.testing.JavacUtil.getJavac
 import com.android.tools.idea.util.toVirtualFile
 import com.android.tools.rendering.classloading.ClassBinaryCacheManager
 import com.android.tools.rendering.classloading.useWithClassLoader
+import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.roots.ModuleRootModificationUtil
@@ -170,6 +171,33 @@ class ModuleClassLoaderDependenciesTest : AndroidTestCase() {
     assertNotNull(transformationId)
     val cachedBytes = cache.get("com.foo.bar.A", transformationId!!)
     assertNotNull("The loaded class from a library with spaces in its path must be cached in ClassBinaryCache", cachedBytes)
+  }
+
+  @Test
+  fun testNegativeLookupCachingAndInvalidationOnLibraryChange() {
+    val classes = addAarDependency(myModule, "pseudoclasslocator/classes.jar", "foobar")
+    val context = StudioModuleRenderContext.forModule(myModule)
+
+    // First lookup of a non-existent class populates the negative lookup cache
+    get().getPrivate(null, context).useWithClassLoader { loader ->
+      val missing = runCatching { loader.loadClass("com.foo.bar.DoesNotExist") }.exceptionOrNull()
+      assertThat(missing).isInstanceOf(ClassNotFoundException::class.java)
+      assertThat(loader.loadClass("com.foo.bar.A")).isNotNull()
+    }
+
+    // Subsequent class loader with unchanged library timestamps hits the negative lookup cache
+    // and still loads existing library classes
+    get().getPrivate(null, context).useWithClassLoader { loader ->
+      val missing = runCatching { loader.loadClass("com.foo.bar.DoesNotExist") }.exceptionOrNull()
+      assertThat(missing).isInstanceOf(ClassNotFoundException::class.java)
+      assertThat(loader.loadClass("com.foo.bar.B")).isNotNull()
+    }
+
+    // Modifying library timestamp invalidates the cached ExternalLibraryClassLoaderEntry
+    classes.setLastModified(classes.lastModified() + 10_000L)
+    get().getPrivate(null, context).useWithClassLoader { loader ->
+      assertThat(loader.loadClass("com.foo.bar.C")).isNotNull()
+    }
   }
 
   companion object {

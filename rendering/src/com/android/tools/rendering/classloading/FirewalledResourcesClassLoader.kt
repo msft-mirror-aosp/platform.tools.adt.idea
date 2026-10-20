@@ -26,6 +26,26 @@ import java.util.Enumeration
  * This is meant to workaround b/151089727 and avoid the `ModuleClassLoader` accessing resources from the plugin class loader.
  */
 class FirewalledResourcesClassLoader(parent: ClassLoader?) : ClassLoader(parent) {
+  override fun loadClass(name: String, resolve: Boolean): Class<*> {
+    // `FirewalledResourcesClassLoader` never defines classes of its own; its only role is blocking
+    // non-`.class` resource lookups via `getResource*` / `findResource*`.
+    // In `java.lang.ClassLoader.loadClass`, when `parent.loadClass(name, false)` throws
+    // `ClassNotFoundException` (which happens for every project and external-library class not in
+    // the parent `FilteringClassLoader`), `super.loadClass` catches that exception and calls
+    // `this.findClass(name)`, which allocates and throws a second `ClassNotFoundException` (walking
+    // the ~80-frame JVM call stack a second time per class load). Delegating directly to
+    // `parent.loadClass(name)` lets the parent's single `ClassNotFoundException` propagate directly
+    // to the child class loader without redundant locking, `findLoadedClass` checks, or stack walks.
+    if (parent != null) {
+      val c = parent.loadClass(name)
+      if (resolve) {
+        resolveClass(c)
+      }
+      return c
+    }
+    return super.loadClass(name, resolve)
+  }
+
   override fun findResource(name: String): URL? = null
 
   override fun findResources(name: String): Enumeration<URL> = Collections.emptyEnumeration()

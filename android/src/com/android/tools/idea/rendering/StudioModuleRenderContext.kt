@@ -24,11 +24,11 @@ import org.jetbrains.annotations.TestOnly
 open class StudioModuleRenderContext protected constructor(val buildTargetReference: BuildTargetReference) {
 
   open fun createInjectableClassLoaderLoader(): ProjectSystemClassLoader {
+    val classFileFinder by lazy {
+      buildTargetReference.getBuildSystemFilePreviewServices().getRenderingServices(buildTargetReference).classFileFinder
+    }
     return ProjectSystemClassLoader { fqcn ->
-      val classFileFinder =
-        buildTargetReference.getBuildSystemFilePreviewServices().getRenderingServices(buildTargetReference).classFileFinder
-          ?: return@ProjectSystemClassLoader null
-      return@ProjectSystemClassLoader classFileFinder.findClassFile(fqcn)
+      classFileFinder?.findClassFile(fqcn)
     }
   }
 

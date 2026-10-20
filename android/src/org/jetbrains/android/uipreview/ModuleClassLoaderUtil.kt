@@ -20,7 +20,6 @@ package org.jetbrains.android.uipreview
 import com.android.annotations.concurrency.GuardedBy
 import com.android.tools.idea.editors.fast.FastPreviewManager
 import com.android.tools.idea.rendering.BuildTargetReference
-import com.android.tools.idea.rendering.classloading.loaders.ClassBinaryCacheLoader
 import com.android.tools.idea.rendering.classloading.loaders.FakeNavigationEventDispatcherOwnerLoader
 import com.android.tools.idea.rendering.classloading.loaders.FakeSavedStateRegistryLoader
 import com.android.tools.idea.rendering.classloading.loaders.RecyclerViewAdapterLoader
@@ -28,10 +27,13 @@ import com.android.tools.idea.rendering.tokens.BuildSystemFilePreviewServices.Co
 import com.android.tools.rendering.classloading.ClassBinaryCache
 import com.android.tools.rendering.classloading.ClassLoaderOverlays
 import com.android.tools.rendering.classloading.ClassTransform
+import com.android.tools.rendering.classloading.ExternalLibraryClassLoaderEntry
+import com.android.tools.rendering.classloading.ExternalLibraryClassLoaderPool
 import com.android.tools.rendering.classloading.ModuleClassLoaderDiagnosticsWrite
 import com.android.tools.rendering.classloading.PseudoClassLocatorForLoader
 import com.android.tools.rendering.classloading.loaders.AsmTransformingLoader
 import com.android.tools.rendering.classloading.loaders.CachingClassLoaderLoader
+import com.android.tools.rendering.classloading.loaders.ClassBinaryCacheLoader
 import com.android.tools.rendering.classloading.loaders.ClassLoaderLoader
 import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
 import com.android.tools.rendering.classloading.loaders.ListeningLoader
@@ -48,11 +50,9 @@ import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.util.PsiModificationTracker
-import com.intellij.util.io.URLUtil
 import com.intellij.util.lang.UrlClassLoader
 import java.io.File
 import java.lang.ref.WeakReference
-import java.net.URI
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.Path
@@ -65,12 +65,23 @@ import org.jetbrains.android.sdk.StudioEmbeddedRenderTarget
 import org.jetbrains.annotations.VisibleForTesting
 import org.objectweb.asm.ClassWriter
 
-private val ourLoaderCachePool = UrlClassLoader.createCachePool()
+/**
+ * Returns a cached [ExternalLibraryClassLoaderEntry] from the shared [ExternalLibraryClassLoaderPool] for the given [externalLibraries] and
+ * their [libraryIdentities] (`libraryPath -> "$libraryPath@$modificationTime"`), or creates and caches a new one if no matching entry
+ * exists.
+ *
+ * Because [libraryIdentities] includes the modification timestamp of every library JAR, any added, removed, or modified dependency JAR
+ * produces a distinct map key and automatically invalidates the previous entry.
+ */
+private fun getOrCreateExternalLibraryEntry(
+  externalLibraries: List<Path>,
+  libraryIdentities: Map<String, String>,
+): ExternalLibraryClassLoaderEntry = ExternalLibraryClassLoaderPool.getOrCreateEntry(externalLibraries, libraryIdentities)
 
 @JvmOverloads
 @VisibleForTesting
 fun createUrlClassLoader(paths: List<Path>, allowLock: Boolean = !SystemInfo.isWindows): UrlClassLoader {
-  return UrlClassLoader.build().files(paths).useCache(ourLoaderCachePool) { true }.allowLock(allowLock).get()
+  return ExternalLibraryClassLoaderPool.createUrlClassLoader(paths, allowLock)
 }
 
 private val additionalLibraries: List<Path>
@@ -84,12 +95,8 @@ private val additionalLibraries: List<Path>
 val BuildTargetReference.externalLibraries: List<Path>
   get() = additionalLibraries + this.getBuildSystemFilePreviewServices().getRenderingServices(this).externalLibraries
 
-private fun computeLibraryIdentities(libraries: Iterable<Path>): Map<String, String> = libraries.associate { path ->
-  val libraryPath = FileUtil.toSystemIndependentName(path.toString())
-  // A library that cannot be read is given a fixed identity: it would fail to load classes anyway.
-  val modificationTime = runCatching { Files.getLastModifiedTime(path).toMillis() }.getOrDefault(-1L)
-  libraryPath to "$libraryPath@$modificationTime"
-}
+private fun computeLibraryIdentities(libraries: Iterable<Path>): Map<String, String> =
+  ExternalLibraryClassLoaderPool.computeLibraryIdentities(libraries)
 
 /**
  * Package name used to "re-package" certain classes that would conflict with the ones in the Studio class loader. This applies to all
@@ -153,9 +160,6 @@ internal class ModuleClassLoaderImpl(
    */
   val externalLibraries = buildTargetReference.externalLibraries
 
-  /** Class loader for classes and resources contained in [externalLibraries]. */
-  private val externalLibrariesClassLoader = createUrlClassLoader(externalLibraries)
-
   /**
    * Identity of every library in [externalLibraries], indexed by its system independent path.
    *
@@ -165,6 +169,11 @@ internal class ModuleClassLoaderImpl(
    * dropped from the cache rather than served stale.
    */
   private val libraryIdentities: Map<String, String> = computeLibraryIdentities(externalLibraries)
+
+  private val externalLibraryEntry: ExternalLibraryClassLoaderEntry = getOrCreateExternalLibraryEntry(externalLibraries, libraryIdentities)
+
+  /** Class loader for classes and resources contained in [externalLibraries]. */
+  private val externalLibrariesClassLoader: UrlClassLoader = externalLibraryEntry.classLoader
 
   /** List of the FQCN of the classes loaded from the project. */
   val projectLoadedClassNames: Set<String>
@@ -210,29 +219,15 @@ internal class ModuleClassLoaderImpl(
     // map of fqcn -> library identity used to be able to insert classes into the ClassBinaryCache. Classes coming from a library that is
     // not a current dependency (see libraryIdentities) are not cached, since the cache would reject them anyway.
     val fqcnToLibraryIdentity = ConcurrentHashMap<String, String>()
-    val jarLoader =
-      NameRemapperLoader(
-        ClassLoaderLoader(externalLibrariesClassLoader) { fqcn, path, _ ->
-          URLUtil.splitJarUrl(path)?.first?.let { rawPath ->
-            val libraryPath =
-              FileUtil.toSystemIndependentName(
-                runCatching {
-                  if (rawPath.startsWith("file:", ignoreCase = true)) {
-                    Path.of(URI.create(rawPath)).toString()
-                  } else {
-                    Path.of(URLUtil.unescapePercentSequences(rawPath)).toString()
-                  }
-                }
-                  .getOrElse {
-                    val extracted = URLUtil.extractPath(rawPath)
-                    runCatching { Path.of(URLUtil.unescapePercentSequences(extracted)).toString() }.getOrDefault(extracted)
-                  }
-              )
-            libraryIdentities[libraryPath]?.let { libraryIdentity -> fqcnToLibraryIdentity[fqcn] = libraryIdentity }
-          }
-        },
-        ::onDiskClassNameLookup,
-      )
+    // Loads raw .class bytes from external library JARs (short-circuiting repeated misses via
+    // `externalLibraryEntry.getMissingClasses()`) and resolves the originating JAR URL path via
+    // `ExternalLibraryClassLoaderPool.resolveLibraryPath` so the transformed bytecode can later be
+    // stored in `binaryCache` under that library's `"$libraryPath@$modificationTime"` identity.
+    val underlyingJarLoader =
+      externalLibraryEntry.createCachingJarLoader(libraryIdentities) { fqcn, libraryIdentity ->
+        fqcnToLibraryIdentity[fqcn] = libraryIdentity
+      }
+    val jarLoader = NameRemapperLoader(underlyingJarLoader, ::onDiskClassNameLookup)
     // Loads a fake saved state registry, when [ViewTreeLifecycleOwner] requests a mocked lifecycle.
     // See also ViewTreeLifecycleTransform to check when this fake class gets created.
     val fakeSavedStateRegistryLoader = FakeSavedStateRegistryLoader(jarLoader)
@@ -258,9 +253,9 @@ internal class ModuleClassLoaderImpl(
                   onRewrite = onClassRewrite,
                 ),
               onAfterLoad = { fqcn, bytes ->
-                // Map the fqcn to the library it was loaded from and insert the class into the class
-                // binary cache
-                fqcnToLibraryIdentity[onDiskClassNameLookup(fqcn)]?.let { libraryIdentity ->
+                // Remove the transient fqcn -> libraryIdentity mapping (no longer needed once
+                // cached) and insert the transformed class into the class binary cache.
+                fqcnToLibraryIdentity.remove(onDiskClassNameLookup(fqcn))?.let { libraryIdentity ->
                   binaryCache.put(fqcn, nonProjectTransformationId, libraryIdentity, bytes)
                 }
               },
