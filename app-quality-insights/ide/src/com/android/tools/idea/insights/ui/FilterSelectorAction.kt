@@ -37,16 +37,17 @@ class FilterSelectorAction(
   private val flow: StateFlow<List<ConnectionFilter>>
     get() = project.service<AppInsightsFilterSelector>().filters
 
-  private var selectedFilter: ConnectionFilter? = null
+  private val selectedFilter: ConnectionFilter?
+    get() {
+      val targetAppId = project.service<AppInsightsFilterSelector>().selectedAppId.value
+      return flow.value.firstOrNull { it.appId == targetAppId }
+    }
+
   private lateinit var popup: JBPopup
 
   override fun getActionUpdateThread() = ActionUpdateThread.BGT
 
   override fun update(e: AnActionEvent) {
-    if (selectedFilter == null && flow.value.isNotEmpty()) {
-      selectedFilter = flow.value.firstOrNull()
-    }
-
     val text = selectedFilter?.let { "${it.title} [${it.appId}]" } ?: "No apps available"
     e.presentation.setText(text, false)
     e.presentation.putClientProperty(ActionUtil.SHOW_TEXT_IN_TOOLBAR, true)
@@ -55,8 +56,7 @@ class FilterSelectorAction(
   override fun actionPerformed(eve: AnActionEvent) {
     popup =
       FilterSelectorPopup(flow.value, selectedFilter, scope) { filter ->
-          selectedFilter = filter
-          project.service<AppInsightsFilterSelector>().selectedAppId.value = selectedFilter?.appId
+          project.service<AppInsightsFilterSelector>().selectedAppId.value = filter?.appId
           popup.closeOk(null)
         }
         .asPopup()

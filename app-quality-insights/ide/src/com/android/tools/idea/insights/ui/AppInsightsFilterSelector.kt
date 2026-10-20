@@ -113,9 +113,13 @@ class AppInsightsFilterSelector(val project: Project, val scope: CoroutineScope)
                 }
 
             _filters.value = filters
-            // Choose the most preferred application when no one is selected.
-            if (selectedAppId.value == null && filters.isNotEmpty()) {
-              selectedAppId.compareAndSet(null, filters.maxBy { it.preferences.values.sumOf { preference -> preference.value } }.appId)
+            // Choose the most preferred application when none is selected or the current selection is no longer available.
+            val currentAppId = selectedAppId.value
+            if (filters.none { it.appId == currentAppId }) {
+              selectedAppId.compareAndSet(
+                currentAppId,
+                filters.maxByOrNull { it.preferences.values.sumOf { preference -> preference.value } }?.appId,
+              )
             }
           }
           .collect()

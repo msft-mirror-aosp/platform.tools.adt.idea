@@ -38,7 +38,6 @@ import com.intellij.testFramework.replaceService
 import com.intellij.util.PlatformIcons
 import java.awt.Point
 import javax.swing.Icon
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,7 +46,6 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
 
 private val connections1 =
   listOf(
@@ -66,11 +64,19 @@ private val connections2 =
     TestConnection(appId = "app5", displayName = "App5", isMatching = false, isPreferred = false),
   )
 
+private val connections3 = listOf(TestConnection(appId = "app6", displayName = "App6", isMatching = false, isPreferred = false))
+
 private class TabProvider(
-  private val connections: List<Connection>,
+  private val connectionsFlow: StateFlow<Selection<Connection>>,
   override val insightsProvider: FakeInsightsProvider,
   override val icon: Icon,
 ) : TestTabProvider(insightsProvider.displayName) {
+
+  constructor(
+    connections: List<Connection>,
+    insightsProvider: FakeInsightsProvider,
+    icon: Icon,
+  ) : this(MutableStateFlow(Selection(null, connections)), insightsProvider, icon)
 
   override fun getConfigurationManager(project: Project): AppInsightsConfigurationManager {
     return object : AppInsightsConfigurationManager {
@@ -81,8 +87,8 @@ private class TabProvider(
           AppInsightsModel.Authenticated(
             StubAppInsightsCrashController(
               provider = insightsProvider,
-              state = MutableStateFlow(AppInsightsCrashState(Selection(null, connections), mock(), LoadingState.Loading)),
-              connections = MutableStateFlow(Selection(null, connections)),
+              state = MutableStateFlow(AppInsightsCrashState(connectionsFlow.value, mock(), LoadingState.Loading)),
+              connections = connectionsFlow,
             )
           )
         )
@@ -140,25 +146,31 @@ class FilterSelectorActionTest {
   }
 
   @Test
-  fun `action updates title when selection changes`() {
-    runBlocking {
-      val filtersFlow = MutableStateFlow<List<ConnectionFilter>>(emptyList())
-      val mockSelector = mock(AppInsightsFilterSelector::class.java)
-      `when`(mockSelector.filters).thenReturn(filtersFlow)
-      `when`(mockSelector.scope).thenReturn(mock(CoroutineScope::class.java))
-      projectRule.project.replaceService(AppInsightsFilterSelector::class.java, mockSelector, projectRule.disposable)
+  fun `action updates title when selection changes`() = runBlocking {
+    val scope = projectRule.disposable.createCoroutineScope(Dispatchers.IO)
+    val connectionsFlow = MutableStateFlow(Selection<Connection>(null, emptyList()))
+    val provider = TabProvider(connectionsFlow, FakeInsightsProvider("firebase", true, Source.FIREBASE), PlatformIcons.ADD_ICON)
+    ExtensionTestUtil.maskExtensions(AppInsightsTabProvider.EP_NAME, listOf(provider), projectRule.disposable)
 
-      val action = FilterSelectorAction(projectRule.project, mockSelector.scope) { Point() }
+    val selector = AppInsightsFilterSelector(projectRule.project, scope)
+    selector.startCollection()
+    projectRule.project.replaceService(AppInsightsFilterSelector::class.java, selector, projectRule.disposable)
 
-      val event = createTestEvent()
-      action.update(event)
-      assertThat(event.presentation.text).isEqualTo("No apps available")
+    val action = FilterSelectorAction(projectRule.project, selector.scope) { Point() }
 
-      val filter1 = ConnectionFilter("app1", "app1", mapOf(Source.FIREBASE to ConnectionPreference.PREFERRED))
-      filtersFlow.value = listOf(filter1)
+    val event = createTestEvent()
+    action.update(event)
+    assertThat(event.presentation.text).isEqualTo("No apps available")
 
-      action.update(event)
-      assertThat(event.presentation.text).isEqualTo("app1 [app1]")
-    }
+    connectionsFlow.value = Selection(null, connections3)
+    selector.selectedAppId.first { it == "app6" }
+    action.update(event)
+    assertThat(event.presentation.text).isEqualTo("App6 [app6]")
+
+    // Signing into another account: the previous app is gone and the service selects the preferred app (app2, not the first item app1).
+    connectionsFlow.value = Selection(null, connections1)
+    selector.selectedAppId.first { it == "app2" }
+    action.update(event)
+    assertThat(event.presentation.text).isEqualTo("App2 [app2]")
   }
 }
