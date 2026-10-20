@@ -58,6 +58,7 @@ import com.android.tools.idea.compose.preview.InteractivePreviewNavigationContro
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.flags.StudioFlags
 import icons.StudioIconsCompose
+import java.util.Collections
 import java.util.WeakHashMap
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.delay
@@ -90,6 +91,9 @@ fun NavigationControlsContent(
     NavigationControlsPanel(
       isEdgeNavigationImplemented = isEdgeNavigationImplemented,
       getNavigationHistory = { interactivePreviewNavigationController.getNavigationHistory() },
+      parseNavigationItem = { item, onParsed ->
+        interactivePreviewNavigationController.parseNavigationItem(item, onParsed)
+      },
       canBackPress = { interactivePreviewNavigationController.canBackPress() },
       onBackPress = {
         interactivePreviewNavigationController.backPressCompleted()
@@ -122,6 +126,7 @@ fun NavigationControlsContent(
  *
  * @param modifier The modifier to be applied to this Composable.
  * @param getNavigationHistory A callback returning the list of items in the navigation back stack.
+ * @param parseNavigationItem A callback that parses a navigation history item into [NavigationItemInfo] entries.
  * @param isEdgeNavigationImplemented A callback returning whether the back navigation edge represents an implemented capability.
  * @param canBackPress A callback that returns whether back navigation is currently available.
  * @param onBackPress A callback invoked when the back button is clicked.
@@ -137,6 +142,9 @@ fun NavigationControlsContent(
 fun NavigationControlsPanel(
   modifier: Modifier = Modifier,
   getNavigationHistory: () -> List<Any> = { emptyList() },
+  parseNavigationItem: (Any, (List<NavigationItemInfo>) -> Unit) -> Unit = { item, onParsed ->
+    onParsed(parseNavigationItem(item))
+  },
   isEdgeNavigationImplemented: suspend () -> Boolean,
   canBackPress: () -> Boolean,
   onBackPress: () -> Unit,
@@ -248,16 +256,23 @@ fun NavigationControlsPanel(
       }
     }
     if (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.get()) {
-      BackStack(navigationHistory, backToState)
+      BackStack(navigationHistory, parseNavigationItem, backToState, fpsUpdater)
     }
   }
 }
 
 @Composable
-private fun BackStack(navigationHistory: List<Any>, onBackToState: (Any) -> Unit) {
+private fun BackStack(
+  navigationHistory: List<Any>,
+  parseNavigationItem: (Any, (List<NavigationItemInfo>) -> Unit) -> Unit,
+  onBackToState: (Any) -> Unit,
+  fpsUpdater: SharedFlow<Unit>,
+) {
   // Cache parsed navigation keys per history item so reflection is only executed once when a new
   // item enters the back stack, rather than on every recomposition or when items shift position.
-  val parsedNavigationItemsCache = remember { WeakHashMap<Any, List<NavigationItemInfo>>() }
+  val parsedNavigationItemsCache = remember {
+    Collections.synchronizedMap(WeakHashMap<Any, List<NavigationItemInfo>>())
+  }
   Column(
     modifier = Modifier.padding(vertical = DEFAULT_SPACING).fillMaxWidth().testTag(NavigationControlsPanelTestTags.visualStack),
     horizontalAlignment = Alignment.CenterHorizontally,
@@ -282,12 +297,35 @@ private fun BackStack(navigationHistory: List<Any>, onBackToState: (Any) -> Unit
         // Display in reverse order so the newest/active item is on top of the stack.
         navigationHistory.asReversed().forEachIndexed { index, navigationInfoItem ->
           val isCurrentActiveNavigationItem = index == 0
-          val navKeys =
-            parsedNavigationItemsCache.getOrPut(navigationInfoItem) {
-              parseNavigationItem(navigationInfoItem)
-            }
-          // Key by the forward stack index and item so focus state stays bound to the specific entry across pushes and pops.
+          // Key by the forward stack index and item so focus state stays bound to the specific
+          // entry across pushes and pops.
           key(navigationHistory.lastIndex - index, navigationInfoItem) {
+            val navKeys by
+              produceState(
+                parsedNavigationItemsCache[navigationInfoItem] ?: emptyList(),
+                navigationInfoItem,
+                fpsUpdater,
+              ) {
+                fun requestParseIfNeeded() {
+                  val cachedKeys = parsedNavigationItemsCache[navigationInfoItem]
+                  if (cachedKeys != null) {
+                    value = cachedKeys
+                  } else {
+                    parseNavigationItem(navigationInfoItem) { parsedKeys ->
+                      if (parsedKeys.isNotEmpty()) {
+                        parsedNavigationItemsCache[navigationInfoItem] = parsedKeys
+                      }
+                      value = parsedKeys
+                    }
+                  }
+                }
+                requestParseIfNeeded()
+                fpsUpdater.collect {
+                  if (value.isEmpty()) {
+                    requestParseIfNeeded()
+                  }
+                }
+              }
             BackStackItem(
               navigationInfoItem = navigationInfoItem,
               navKeys = navKeys,

@@ -19,6 +19,7 @@ import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.compose.StudioComposePanel
 import com.android.tools.environment.Logger
 import com.android.tools.idea.compose.preview.interactive.NavigationControlsContent
+import com.android.tools.idea.compose.preview.interactive.NavigationItemInfo
 import com.android.tools.idea.compose.preview.scene.InteractivePreviewBackNavigationUpdater
 import com.android.tools.idea.compose.preview.util.isEdgeNavigationImplemented
 import com.android.tools.idea.preview.analytics.InteractivePreviewUsageTracker
@@ -61,6 +62,7 @@ class InteractivePreviewNavigationController(
   private val _backPressCompletedFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
   val backPressCompletedFlow = _backPressCompletedFlow.asSharedFlow()
 
+  @Volatile
   var isBackGestureInProgress: Boolean = false
     private set
 
@@ -256,20 +258,41 @@ class InteractivePreviewNavigationController(
   }
 
   /**
+   * Parses a navigation history item into [NavigationItemInfo] entries inside the active render session so reflection and `toString()`
+   * calls execute under the render sandbox off the EDT.
+   */
+  fun parseNavigationItem(navigationInfoItem: Any, onParsed: (List<NavigationItemInfo>) -> Unit) {
+    executeSandboxedAction {
+      // Catch any exception thrown by reflection or user toString() so onParsed is always invoked
+      val parsedItems =
+        try {
+          com.android.tools.idea.compose.preview.interactive.parseNavigationItem(navigationInfoItem)
+        } catch (throwable: Throwable) {
+          logger.warn("Failed to parse navigation item in render session", throwable)
+          emptyList()
+        }
+      onParsed(parsedItems)
+    }
+  }
+
+  /**
    * Pops the back stack until reaching the specified [navigationState] in history.
    *
+   * Dispatches the reflection invocation to the active render session asynchronously to guarantee execution within a sandboxed context
+   * without blocking the EDT.
+   *
    * @param navigationState the target state in history to navigate back to
-   * @return `true` if navigation was performed to reach [navigationState], `false` otherwise
    */
-  fun backToState(navigationState: Any): Boolean {
-    val owner = backPressDispatcherOwner ?: return false
+  fun backToState(navigationState: Any) {
+    val owner = backPressDispatcherOwner ?: return
     val resolvedMethod = backToStateMethod ?: owner.findMethod(BACK_TO_STATE, parameterCount = 1).also { backToStateMethod = it }
-    val result = resolvedMethod?.invoke(owner, navigationState) as? Boolean ?: false
-    if (result) {
-      _backPressCompletedFlow.tryEmit(Unit)
-      isBackGestureInProgress = false
+    executeSandboxedAction {
+      val result = resolvedMethod?.invoke(owner, navigationState) as? Boolean ?: false
+      if (result) {
+        _backPressCompletedFlow.tryEmit(Unit)
+        isBackGestureInProgress = false
+      }
     }
-    return result
   }
 
   /**

@@ -564,6 +564,85 @@ class NavigationControlsPanelUiTest {
   }
 
   @Test
+  fun testNavigationControlsContentSandboxesParseAndBackToState() {
+    // Enable the visual back stack feature flag for the test
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
+    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    var isRenderSessionReady = false
+    var renderSessionActionCount = 0
+    var navigateButtonTracked = false
+
+    val tracker =
+      object : InteractivePreviewUsageTracker {
+        override fun logInteractiveSession(fps: Int, durationMs: Int, userInteractions: Int) {}
+
+        override fun logStartupTime(timeMs: Int, peers: Int) {}
+
+        override fun trackNavigationPanelProgressPress() {}
+
+        override fun trackNavigationPanelBackPress() {}
+
+        override fun trackNavigationPanelVisibilityChange(isShown: Boolean) {}
+
+        override fun trackNavigationPanelEdgeDropdownPress() {}
+
+        override fun trackNavigateButtonClick() {
+          navigateButtonTracked = true
+        }
+      }
+
+    // Set up a fake adapter with two items in history and a matching back stack
+    val composeViewAdapterObjFake =
+      TestComposeViewAdapterViewObj(
+        canBackPress = true,
+        history = listOf("Screen0", "Screen1"),
+        backStack = listOf("Screen1", "Screen0"),
+      )
+
+    val controller =
+      InteractivePreviewNavigationController(
+          usageTrackerProvider = { tracker },
+          fpsUpdater = fpsUpdater,
+          executeInRenderSessionAsync = { runnable ->
+            if (isRenderSessionReady) {
+              renderSessionActionCount++
+              runnable.run()
+            }
+          },
+        )
+        .apply { updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = true) }
+
+    composeTestRule.setContent {
+      NavigationControlsContent(
+        interactivePreviewNavigationController = controller,
+        fpsUpdater = fpsUpdater,
+        isEdgeNavigationImplemented = { true },
+      )
+    }
+
+    // When the initial render session execution is dropped, the next fpsUpdater tick retries and parses both items
+    composeTestRule.waitForIdle()
+    assertEquals(0, renderSessionActionCount)
+    isRenderSessionReady = true
+    fpsUpdater.tryEmit(Unit)
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText("Screen0").assertIsDisplayed()
+    composeTestRule.onNodeWithText("Screen1").assertIsDisplayed()
+    assertEquals(2, renderSessionActionCount)
+
+    // Subsequent fpsUpdater ticks should reuse cached parsed items without dispatching to the render session
+    fpsUpdater.tryEmit(Unit)
+    composeTestRule.waitForIdle()
+    assertEquals(2, renderSessionActionCount)
+
+    // Clicking a previous item dispatches backToState through the sandboxed render session executor
+    composeTestRule.onNodeWithText("Screen0").performClick()
+    composeTestRule.waitForIdle()
+    assertEquals(3, renderSessionActionCount)
+    assertTrue(navigateButtonTracked)
+  }
+
+  @Test
   fun testStateRestorationPreservesSliderPositionAndSelectedEdge() {
     var currentSaveableStateRegistry = SaveableStateRegistry(emptyMap()) { true }
     val isPanelVisible = mutableStateOf(true)

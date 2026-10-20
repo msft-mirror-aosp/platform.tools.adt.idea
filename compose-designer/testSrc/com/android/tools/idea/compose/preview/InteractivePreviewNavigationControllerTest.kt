@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.preview
 
+import com.android.tools.idea.compose.preview.interactive.NavigationItemInfo
 import com.android.tools.idea.preview.analytics.InteractiveNopTracker
 import com.android.tools.preview.PreviewConfiguration
 import com.android.tools.preview.PreviewDisplaySettings
@@ -201,14 +202,12 @@ class InteractivePreviewNavigationControllerTest {
 
     // Verify navigating back to an existing state succeeds and pops the back stack down to and including that state.
     val state = "Preview One"
-    val result = controller.backToState(state)
-    assertThat(result).isTrue()
+    controller.backToState(state)
     assertThat(composeViewAdapterObjFake.backStack).containsExactly("Preview Zero")
 
     // Verify back navigation to a non-existing state fails and leaves the back stack unchanged.
     val nonExistingState = "Non Existing Preview"
-    val resultWithNonExistingState = controller.backToState(nonExistingState)
-    assertThat(resultWithNonExistingState).isFalse()
+    controller.backToState(nonExistingState)
     assertThat(composeViewAdapterObjFake.backStack).containsExactly("Preview Zero")
   }
 
@@ -295,6 +294,23 @@ class InteractivePreviewNavigationControllerTest {
 
     controller.backPressCancelled()
     assertThat(renderSessionActionCount).isEqualTo(3)
+
+    controller.backToState("State0")
+    assertThat(renderSessionActionCount).isEqualTo(4)
+
+    var parsedItems = emptyList<NavigationItemInfo>()
+    controller.parseNavigationItem("State0") { parsedItems = it }
+    assertThat(renderSessionActionCount).isEqualTo(5)
+    assertThat(parsedItems.map { it.navKey }).containsExactly("State0")
+
+    // Verify exceptions during parsing are caught and invoke onParsed with an empty list
+    val throwingItem =
+      object {
+        override fun toString(): String = throw SecurityException("Blocked by sandbox")
+      }
+    controller.parseNavigationItem(throwingItem) { parsedItems = it }
+    assertThat(renderSessionActionCount).isEqualTo(6)
+    assertThat(parsedItems).isEmpty()
   }
 
   @Test
