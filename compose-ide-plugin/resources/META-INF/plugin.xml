@@ -97,7 +97,7 @@
     <weigher key="completion"
              implementationClass="com.android.tools.compose.code.completion.ComposeCompletionWeigher"
              id="android.compose"
-             order="first"/>
+             order="after prefix, before stats"/>
 
     <weigher key="completion"
              implementationClass="com.android.tools.compose.code.completion.ComposePositioningCompletionWeigher"

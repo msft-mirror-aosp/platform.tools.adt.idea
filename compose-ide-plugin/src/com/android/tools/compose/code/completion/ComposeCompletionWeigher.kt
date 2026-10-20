@@ -16,11 +16,13 @@
 package com.android.tools.compose.code.completion
 
 import com.android.tools.compose.isComposableFunction
+import com.android.tools.compose.isInsideComposableCode
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.intellij.codeInsight.completion.BaseCompletionParameters
 import com.intellij.codeInsight.completion.CompletionLocation
 import com.intellij.codeInsight.completion.CompletionWeigher
 import com.intellij.codeInsight.lookup.LookupElement
+import com.intellij.openapi.util.Key
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.parentOfType
 import org.jetbrains.kotlin.idea.KotlinLanguage
@@ -32,9 +34,8 @@ import org.jetbrains.kotlin.psi.KtValueArgument
 /**
  * Custom [CompletionWeigher] which moves Composable functions up the completion list.
  *
- * It doesn't give Composable functions "absolute" priority, some weighers are hardcoded to run first: specifically one that puts prefix
- * matches above [LookupElement]s where the match is in the middle of the name. Overriding this behavior would require an extension point in
- * [org.jetbrains.kotlin.idea.completion.CompletionSession.createSorter].
+ * It runs after prefix matching, ensuring that exact prefix matches take precedence over middle/subsequence matches, while prioritizing
+ * Composable functions within statement contexts for equally matching elements.
  *
  * See [com.intellij.codeInsight.completion.PrioritizedLookupElement] for more information on how ordering of [LookupElement]s works and how
  * to debug it.
@@ -42,6 +43,7 @@ import org.jetbrains.kotlin.psi.KtValueArgument
 class ComposeCompletionWeigher : CompletionWeigher() {
   override fun weigh(element: LookupElement, location: CompletionLocation): Int {
     if (!location.baseCompletionParameters.isInComposeEnabledModuleAndFile()) return 0
+    if (!location.isInsideComposableContext()) return 0
 
     // Since Compose uses so many named arguments, promote them to the top. This is for a case where
     // the user has typed something like
@@ -49,7 +51,7 @@ class ComposeCompletionWeigher : CompletionWeigher() {
     if (element.isNamedArgumentCompletion()) return 3
 
     if (location.baseCompletionParameters.isForStatement()) {
-      // For statements, ensure that the order of completion ends up as:
+      // For statements in composable contexts, ensure that the order of completion ends up as:
       // [Weight 2] Non-Composable functions that are being promoted above Composables
       // [Weight 1] Composable functions
       // [Weight 0] Anything else
@@ -59,7 +61,7 @@ class ComposeCompletionWeigher : CompletionWeigher() {
     }
 
     if (location.baseCompletionParameters.isForValueArgument()) {
-      // For arguments, ensure that the order of completion ends up as:
+      // For arguments in composable contexts, ensure that the order of completion ends up as:
       // [Weight 2] Non-Composable functions that are being promoted
       // [Weight 1] Non-Composable functions / Anything else (default case)
       // [Weight 0] Composable functions
@@ -99,6 +101,22 @@ private fun LookupElement.isComposableFunction() = psiElement?.isComposableFunct
 
 /** Checks if the proposed completion would insert a named argument. */
 private fun LookupElement.isNamedArgumentCompletion() = lookupString.endsWith(" =")
+
+/**
+ * Stores result of whether a [CompletionLocation] is within a Composable context so it can be reused across any completion elements sharing
+ * the same location.
+ */
+private val IS_INSIDE_COMPOSABLE_KEY = Key.create<Boolean>("ComposeCompletionWeigher.isInsideComposable")
+
+/** Checks if the completion position is inside a composable function, getter, or lambda. */
+private fun CompletionLocation.isInsideComposableContext(): Boolean {
+  getUserData(IS_INSIDE_COMPOSABLE_KEY)?.let {
+    return it
+  }
+  val result = baseCompletionParameters.position.isInsideComposableCode()
+  putUserData(IS_INSIDE_COMPOSABLE_KEY, result)
+  return result
+}
 
 /** Checks if this completion is for a statement (where Compose views are usually called) and not part of another expression. */
 private fun BaseCompletionParameters.isForStatement() =
