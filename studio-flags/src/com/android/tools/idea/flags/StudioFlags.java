@@ -464,10 +464,6 @@ public final class StudioFlags {
     "Render Material Symbols as customizable layout files. When enabled deprecates Material Icons"
   );
 
-  public static final Flag<Boolean> GENERATE_VECTOR_DRAWABLE_TOOL = new BooleanFlag(
-    DESIGN_TOOLS, "generate.vector.drawable.tool", "Enable the Generate Vector Drawable agent tool",
-    "If enabled, an agent tool to generate vector drawables will be available for agents.");
-
   public static final Flag<Boolean> MATERIAL_SYMBOLS_TOOL = new BooleanFlag(
     DESIGN_TOOLS, "material.symbols.tool", "Enable the Material Symbols Search agent tool",
     "If enabled, an agent tool to search and find Material Symbol AVD and Compose icons will be available to the agent.");
