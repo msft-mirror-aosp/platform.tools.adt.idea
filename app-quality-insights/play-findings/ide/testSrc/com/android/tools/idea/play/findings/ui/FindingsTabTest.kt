@@ -37,6 +37,7 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
+import icons.StudioIconsCompose
 import java.awt.BorderLayout
 import java.time.Clock
 import java.time.Instant
@@ -62,6 +63,9 @@ class FindingsTabTest {
   private lateinit var tab: FindingsTab
   private val table: FindingsTableView
     get() = UIUtil.findComponentOfType(tab, FindingsTableView::class.java)!!
+
+  private val displayedDetailsTitle: String?
+    get() = tab.detailsPanel.currentFinding?.displayName
 
   private val findingEdgeToEdge =
     AppFinding.Supported(
@@ -113,6 +117,7 @@ class FindingsTabTest {
 
     assertThat(table.listTableModel.items).containsExactly(findingEdgeToEdge, findingDrm).inOrder()
     assertThat(table.selectedObject).isEqualTo(findingEdgeToEdge)
+    assertThat(displayedDetailsTitle).isEqualTo(findingEdgeToEdge.displayName)
     assertThat(controller.state.value.selectedFinding).isEqualTo(findingEdgeToEdge)
     assertThat(table.getColumnName(0)).isEqualTo("Finding")
     assertThat(table.getColumnName(1)).isEqualTo("Category")
@@ -123,7 +128,7 @@ class FindingsTabTest {
   }
 
   @Test
-  fun testUserRowSelectionUpdatesController() {
+  fun testUserRowSelectionUpdatesDetailsPanelAndController() {
     controller.mutableState.value =
       FindingsState(
         packageName = "com.example.app",
@@ -133,7 +138,11 @@ class FindingsTabTest {
     table.selection = listOf(findingDrm)
 
     assertThat(table.selectedObject).isEqualTo(findingDrm)
+    assertThat(displayedDetailsTitle).isEqualTo(findingDrm.displayName)
     assertThat(controller.state.value.selectedFinding).isEqualTo(findingDrm)
+
+    controller.selectFinding(findingEdgeToEdge)
+    assertThat(displayedDetailsTitle).isEqualTo(findingEdgeToEdge.displayName)
   }
 
   @Test
@@ -153,6 +162,7 @@ class FindingsTabTest {
         selectedFinding = findingDrm,
       )
     assertThat(table.listTableModel.items).isEmpty()
+    assertThat(displayedDetailsTitle).isNull()
 
     controller.mutableState.value =
       FindingsState(
@@ -161,6 +171,7 @@ class FindingsTabTest {
         selectedFinding = findingDrm,
       )
     assertThat(table.selectedObject).isEqualTo(findingDrm)
+    assertThat(displayedDetailsTitle).isEqualTo(findingDrm.displayName)
     assertThat(controller.state.value.selectedFinding).isEqualTo(findingDrm)
   }
 
@@ -279,9 +290,13 @@ class FindingsTabTest {
   @Test
   fun testSeverityIcons() {
     assertThat(FindingSeverity.BLOCKING.icon).isEqualTo(StudioIcons.AppQualityInsights.FATAL)
+    assertThat(FindingSeverity.BLOCKING.iconKey).isEqualTo(StudioIconsCompose.AppQualityInsights.Fatal)
     assertThat(FindingSeverity.SEVERE.icon).isEqualTo(StudioIcons.Common.ERROR)
+    assertThat(FindingSeverity.SEVERE.iconKey).isEqualTo(StudioIconsCompose.Common.Error)
     assertThat(FindingSeverity.WARNING.icon).isEqualTo(StudioIcons.Common.WARNING)
+    assertThat(FindingSeverity.WARNING.iconKey).isEqualTo(StudioIconsCompose.Common.Warning)
     assertThat(FindingSeverity.INFO.icon).isEqualTo(StudioIcons.Common.INFO)
+    assertThat(FindingSeverity.INFO.iconKey).isEqualTo(StudioIconsCompose.Common.Info)
   }
 
   @Test

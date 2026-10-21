@@ -17,14 +17,21 @@ package com.android.tools.idea.play.findings.ui
 
 import com.android.tools.idea.findings.model.FindingSeverity
 import icons.StudioIcons
+import icons.StudioIconsCompose
 import javax.swing.Icon
+import org.jetbrains.jewel.ui.icon.IconKey
+
+val FindingSeverity.icon: Icon
+  get() = severityIcons().first
+
+val FindingSeverity.iconKey: IconKey
+  get() = severityIcons().second
 
 // TODO(b/517599039): Confirm final severity icons with UX (FATAL uses a transparent cutout whereas Common icons use solid white fill).
-val FindingSeverity.icon: Icon
-  get() =
-    when (this) {
-      FindingSeverity.BLOCKING -> StudioIcons.AppQualityInsights.FATAL
-      FindingSeverity.SEVERE -> StudioIcons.Common.ERROR
-      FindingSeverity.WARNING -> StudioIcons.Common.WARNING
-      FindingSeverity.INFO -> StudioIcons.Common.INFO
-    }
+private fun FindingSeverity.severityIcons(): Pair<Icon, IconKey> =
+  when (this) {
+    FindingSeverity.BLOCKING -> StudioIcons.AppQualityInsights.FATAL to StudioIconsCompose.AppQualityInsights.Fatal
+    FindingSeverity.SEVERE -> StudioIcons.Common.ERROR to StudioIconsCompose.Common.Error
+    FindingSeverity.WARNING -> StudioIcons.Common.WARNING to StudioIconsCompose.Common.Warning
+    FindingSeverity.INFO -> StudioIcons.Common.INFO to StudioIconsCompose.Common.Info
+  }

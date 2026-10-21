@@ -5,6 +5,7 @@ iml_module(
     name = "intellij.android.app-quality-insights.play-findings.ide",
     srcs = ["src"],
     iml_files = ["intellij.android.app-quality-insights.play-findings.ide.iml"],
+    kotlin_use_compose = True,
     resources = ["resources"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
@@ -14,6 +15,7 @@ iml_module(
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/adt/idea/artwork:intellij.android.artwork",
+        "//tools/adt/idea/artwork-compose:intellij.android.artwork-compose",
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api",
@@ -22,6 +24,7 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
         "//tools/vendor/google/login:google-login",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
     ],
 )
 
@@ -29,6 +32,8 @@ iml_module(
 iml_module(
     name = "intellij.android.app-quality-insights.play-findings.ide.tests",
     iml_files = ["intellij.android.app-quality-insights.play-findings.ide.tests.iml"],
+    kotlin_use_compose = True,
+    shorten_test_target_name = True,
     test_class = "com.android.tools.idea.play.findings.PlayFindingsIdeTestSuite",
     # do not sort: must match IML order
     test_deps = [
@@ -36,6 +41,7 @@ iml_module(
         "//tools/adt/idea/app-quality-insights/play-findings/ide:intellij.android.app-quality-insights.play-findings.ide",
         "@intellij//:intellij-sdk",
         "//tools/adt/idea/artwork:intellij.android.artwork",
+        "//tools/adt/idea/artwork-compose:intellij.android.artwork-compose",
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api",
         "//tools/adt/idea/app-quality-insights/ide:intellij.android.app-quality-insights.ide",
         "//tools/adt/idea/app-quality-insights/client:intellij.android.app-quality-insights.client",
@@ -49,6 +55,8 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/app-quality-insights/ui:intellij.android.app-quality-insights.ui",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose.tests",
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api.tests",
     ],
     test_friends = ["//tools/adt/idea/app-quality-insights/play-findings/ide:intellij.android.app-quality-insights.play-findings.ide"],

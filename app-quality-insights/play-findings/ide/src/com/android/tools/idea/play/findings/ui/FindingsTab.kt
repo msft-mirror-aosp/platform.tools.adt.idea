@@ -24,6 +24,7 @@ import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.model.common.GroupAware
+import com.android.tools.idea.insights.ui.APP_INSIGHTS_ID
 import com.android.tools.idea.insights.ui.AppInsightsToolbar
 import com.android.tools.idea.insights.ui.Timestamp
 import com.android.tools.idea.insights.ui.TimestampState
@@ -40,6 +41,8 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.ThreeComponentsSplitter
+import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.ui.JBColor
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SideBorder
@@ -47,6 +50,7 @@ import com.intellij.ui.components.JBLoadingPanel
 import java.awt.BorderLayout
 import java.time.Clock
 import javax.swing.Icon
+import javax.swing.JComponent
 import javax.swing.JPanel
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.Dispatchers
@@ -86,17 +90,20 @@ class FindingsToolWindowContext
 /**
  * The main tab panel for Play Console Findings.
  *
- * Layout consists of a top filter toolbar (category/severity dropdowns, refresh action, and last-refreshed timestamp) above a [WorkBench]
- * containing [FindingsTableView].
+ * Layout consists of a top filter toolbar above a two-pane [WorkBench] and [ThreeComponentsSplitter]:
+ * - **Top toolbar**: Category/severity filter dropdowns, refresh action, and last-refreshed timestamp.
+ * - **Left pane**: [FindingsTableView] listing findings matching the active filters.
+ * - **Right pane**: [FindingsDetailsPanel] displaying metadata and description for the selected finding.
  */
 class FindingsTab(
   private val controller: FindingsProjectLevelController,
-  project: Project,
+  private val project: Project,
   clock: Clock = Clock.systemDefaultZone(),
   mainContext: CoroutineContext = Dispatchers.EDT,
 ) : JPanel(BorderLayout()), Disposable {
   private val scope = createCoroutineScope(mainContext)
 
+  @VisibleForTesting internal val detailsPanel = FindingsDetailsPanel()
   private val table = FindingsTableView(onSelectionChanged = ::updateSelection)
   private val workBench = WorkBench<FindingsToolWindowContext>(project, "AQI_FINDINGS", null, this)
 
@@ -126,8 +133,9 @@ class FindingsTab(
     background = primaryContentBackground
 
     val loadingPanel = createLoadingTablePanel()
+    val splitter = createSplitter(loadingPanel)
 
-    workBench.init(loadingPanel, FindingsToolWindowContext(), createToolWindowDefinitions(), false)
+    workBench.init(splitter, FindingsToolWindowContext(), createToolWindowDefinitions(), false)
     add(createToolbar().component, BorderLayout.NORTH)
     add(workBench, BorderLayout.CENTER)
 
@@ -199,10 +207,30 @@ class FindingsTab(
       add(ScrollPaneFactory.createScrollPane(table, true), BorderLayout.CENTER)
     }
 
+  /** Creates the horizontal splitter pairing the table pane with [detailsPanel], sizing each to at least 1/4 of the tool window width. */
+  private fun createSplitter(leftPanel: JComponent): ThreeComponentsSplitter =
+    ThreeComponentsSplitter(false, true).apply {
+      setHonorComponentsMinimumSize(true)
+      firstComponent = leftPanel
+      lastComponent = detailsPanel.component
+      isFocusCycleRoot = false
+      ToolWindowManager.getInstance(project).getToolWindow(APP_INSIGHTS_ID)?.let { toolWindow ->
+        val minSize = toolWindow.component.width / 4
+        firstSize = minSize
+        lastSize = minSize
+      }
+    }
+
   private fun createToolWindowDefinitions(): List<ToolWindowDefinition<FindingsToolWindowContext>> = emptyList()
 
-  /** Collects [FindingsProjectLevelController.state] to drive the loading overlay, table rows, and filters. */
+  /** Collects [FindingsProjectLevelController.state] to drive the loading overlay, table rows, filters, and details panel. */
   private fun observeControllerState(loadingPanel: JBLoadingPanel) {
+    scope.launch {
+      controller.state
+        .map { state -> state.selectedFinding.takeIf { state.currentFindings is LoadingState.Ready } }
+        .distinctUntilChanged()
+        .collect { finding -> detailsPanel.updateFinding(finding) }
+    }
     scope.launch {
       controller.state
         .map { it.packageName }
