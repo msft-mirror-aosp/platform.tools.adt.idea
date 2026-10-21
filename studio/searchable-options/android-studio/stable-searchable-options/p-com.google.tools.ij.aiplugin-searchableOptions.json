@@ -603,7 +603,16 @@
       "hit": "Compiler directive"
     },
     {
+      "hit": "Functions//Function call"
+    },
+    {
+      "hit": "Functions//Function declaration"
+    },
+    {
       "hit": "Keyword"
+    },
+    {
+      "hit": "Label"
     },
     {
       "hit": "Number"
@@ -612,7 +621,43 @@
       "hit": "Operator"
     },
     {
-      "hit": "String"
+      "hit": "Parameter"
+    },
+    {
+      "hit": "Properties and Variables//Enum case"
+    },
+    {
+      "hit": "Properties and Variables//Global variable"
+    },
+    {
+      "hit": "Properties and Variables//Instance property"
+    },
+    {
+      "hit": "Properties and Variables//Local variable"
+    },
+    {
+      "hit": "Properties and Variables//Static property"
+    },
+    {
+      "hit": "String//Escape sequence"
+    },
+    {
+      "hit": "String//Interpolated expression"
+    },
+    {
+      "hit": "String//String text"
+    },
+    {
+      "hit": "Types//Protocol declaration"
+    },
+    {
+      "hit": "Types//Type declaration"
+    },
+    {
+      "hit": "Types//Type parameter"
+    },
+    {
+      "hit": "Types//Type reference"
     }
   ]
 }
