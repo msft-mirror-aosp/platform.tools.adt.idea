@@ -2337,6 +2337,11 @@ public final class StudioFlags {
                     "Enable Agent Context Protocol (ACP) Support",
                     "Allows using ACP-compatible agent harnesses");
 
+  public static final Flag<Boolean> STUDIOBOT_ACP_AGENTS_EDITOR_TAB_ENABLED =
+    new BooleanFlag(STUDIOBOT, "acp.agents.editor.tab.enabled",
+                    "Manage ACP agents in an editor tab",
+                    "When enabled, ACP agents are browsed, installed and configured in an \"Agents\" editor tab instead of the Settings page.");
+
   public static final Flag<Boolean> STUDIOBOT_ACP_CODEX_OVERRIDE_DISABLED =
     new BooleanFlag(STUDIOBOT, "acp.codex.override.disabled",
                     "Disable config overrides for the Codex ACP agent",
