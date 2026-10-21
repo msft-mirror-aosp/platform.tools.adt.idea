@@ -1,5 +1,8 @@
 package com.android.tools.idea.compose.preview.actions
 
+import com.android.testutils.VirtualTimeScheduler
+import com.android.tools.analytics.TestUsageTracker
+import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.common.actions.CopyResultImageAction
 import com.android.tools.idea.common.surface.DesignSurface
 import com.android.tools.idea.common.util.EnableUnderConditionWrapper
@@ -11,6 +14,7 @@ import com.android.tools.idea.compose.preview.EXPECTED_SCENE_VIEW_TOOLBAR_VISIBL
 import com.android.tools.idea.compose.preview.PredictiveBackNavigationControlsAction
 import com.android.tools.idea.compose.preview.actions.glasses.GlassesBlendDropdownAction
 import com.android.tools.idea.compose.preview.util.FakeStudioBotActionFactory
+import com.android.tools.idea.diagnostics.AndroidStudioSystemHealthMonitor
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.actions.AnimationInspectorAction
 import com.android.tools.idea.preview.actions.EnableInteractiveAction
@@ -26,6 +30,7 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.google.common.truth.Truth.assertThat
+import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.AnActionWrapper
 import com.intellij.openapi.actionSystem.CommonDataKeys
@@ -264,6 +269,51 @@ class PreviewSurfaceActionManagerTest {
   fun `verify actions doesn't contain glasses dropdown action if flag is disabled`() {
     StudioFlags.COMPOSE_PREVIEW_AI_GLASSES_PREVIEW.overrideForTest(false, projectRule.testRootDisposable)
     assertTrue(actionManager.sceneViewContextToolbarActions.filterIsInstance<GlassesBlendDropdownAction>().isEmpty())
+  }
+
+  // Regression test for b/575848746
+  @Test
+  fun testToolbarActionsUsageTrackingRecordsDelegateActionClassName() {
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.overrideForTest(true, projectRule.testRootDisposable)
+    StudioFlags.COMPOSE_PREVIEW_LOOKAHEAD_VISUALIZATION.overrideForTest(true, projectRule.testRootDisposable)
+
+    val usageTracker = TestUsageTracker(VirtualTimeScheduler())
+    UsageTracker.setWriterForTest(usageTracker)
+
+    try {
+      val dataContext = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, projectRule.project).build()
+      val testEvent = createTestEvent(dataContext)
+      val overflowActions = actionManager.getSceneViewContextToolbarOverflowActions()
+      val sceneViewActions = (overflowActions.filterIsInstance<ActionGroup>().single()).getChildren(testEvent)
+      val remainingWrappedActions = overflowActions.filterIsInstance<AnActionWrapper>()
+
+      val actionsToVerify = sceneViewActions + remainingWrappedActions
+      val expectedActionNames =
+        listOf(
+          "SavePreviewInNewSizeAction",
+          "EnableUiCheckAction",
+          "AnimationInspectorAction",
+          "EnableInteractiveAction",
+          "DeployToDeviceAction",
+          "PredictiveBackNavigationControlsAction",
+          "LookaheadVisualizationAction",
+          "LookaheadLabelsAction",
+        )
+
+      assertEquals(expectedActionNames.size, actionsToVerify.size)
+
+      actionsToVerify.forEachIndexed { index, action ->
+        AndroidStudioSystemHealthMonitor.countActionInvocation(action, action.templatePresentation, testEvent)
+        assertThat(usageTracker.usages).hasSize(index + 1)
+        val usage = usageTracker.usages.last()
+        assertThat(usage.studioEvent.kind).isEqualTo(AndroidStudioEvent.EventKind.STUDIO_UI_ACTION_STATS)
+        val actionStats = usage.studioEvent.uiActionStats
+        assertThat(actionStats.actionClassName).isEqualTo(expectedActionNames[index])
+      }
+    } finally {
+      usageTracker.close()
+      UsageTracker.cleanAfterTesting()
+    }
   }
 
   private val fakeMouseEvent = MouseEvent(JPanel(), 0, 0L, 0, 0, 0, 1, true)

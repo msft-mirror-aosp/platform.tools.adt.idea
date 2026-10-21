@@ -1037,8 +1037,12 @@ public final class AndroidStudioSystemHealthMonitor {
   public static void countActionInvocation(@NotNull AnAction anAction, @NotNull Presentation templatePresentation, @NotNull AnActionEvent event) {
     ourStudioActionCount.incrementAndGet();
     AnAction action = anAction;
-    if (action instanceof AnActionWrapper) {
-      action = ((AnActionWrapper)action).getDelegate();
+    while (action instanceof AnActionWrapper) {
+      AnAction delegate = ((AnActionWrapper)action).getDelegate();
+      if (delegate == null || delegate == action) {
+        break;
+      }
+      action = delegate;
     }
     Class actionClass = action.getClass();
     synchronized (ACTION_INVOCATIONS_LOCK) {
