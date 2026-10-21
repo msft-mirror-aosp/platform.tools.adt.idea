@@ -32,6 +32,7 @@ compose.preview.code.to.preview.navigation=COMPLETE:2025
 compose.preview.reference.provider.enabled=PREVIEW
 compose.preview.resizing=COMPLETE:2025
 design.tools.assetstudio.dynamic.material.symbols=PREVIEW
+design.tools.preview.in.memory.preview=PREVIEW
 design.tools.render.tool.diff.viewer=COMPLETE:2026
 device.manager.ai.glasses.device.support.enabled=COMPLETE:2026
 device.manager.ai.glasses.displayless.device.support.enabled=COMPLETE:2026
