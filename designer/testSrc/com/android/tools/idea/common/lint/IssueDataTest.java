@@ -21,15 +21,21 @@ import com.android.tools.lint.detector.api.Category;
 import com.android.tools.lint.detector.api.Implementation;
 import com.android.tools.lint.detector.api.Incident;
 import com.android.tools.lint.detector.api.Issue;
+import com.android.tools.lint.detector.api.LintFix;
+import com.android.tools.lint.detector.api.Location;
+import com.android.tools.lint.detector.api.Project;
 import com.android.tools.lint.detector.api.Scope;
 import com.android.tools.lint.detector.api.Severity;
 import com.intellij.codeHighlighting.HighlightDisplayLevel;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.SmartPsiElementPointer;
+import com.intellij.testFramework.ApplicationRule;
+import java.io.File;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Answers;
 import org.mockito.Mock;
@@ -38,14 +44,14 @@ import org.mockito.MockitoAnnotations;
 
 public class IssueDataTest {
 
+  @Rule
+  public ApplicationRule myApplicationRule = new ApplicationRule();
+
   @Mock(answer = Answers.RETURNS_DEEP_STUBS)
   NlComponent myComponent;
 
   @Mock
   AndroidLintInspectionBase myInspection;
-
-  @Mock
-  HighlightDisplayLevel myHighlightLevel;
 
   @Mock
   SmartPsiElementPointer<PsiElement> myPsiPointer;
@@ -90,5 +96,45 @@ public class IssueDataTest {
 
   void addIssue(LintAnnotationsModel model, HighlightDisplayLevel level, int priority, Severity severity) {
     model.addIssue(myComponent, null, new Incident(), createIssue(priority, severity), "", myInspection, level, myPsiPointer, myPsiPointer, null);
+  }
+
+  @Test
+  public void incidentCopiesSafelyWithoutRetainingProjectOrScope() {
+    Project mockProject = Mockito.mock(Project.class);
+    Object mockScope = new Object();
+    Location location = Location.create(new File("/tmp/test.xml"));
+    LintFix fix = LintFix.create().replace().text("foo").with("bar").build();
+    Issue issue = createIssue(5, Severity.ERROR);
+
+    Incident incident = new Incident(issue, "Test message", location, mockScope, fix);
+    incident.setProject(mockProject);
+    incident.setSeverity(Severity.WARNING);
+
+    LintAnnotationsModel model = new LintAnnotationsModel();
+    model.addIssue(
+        myComponent,
+        null,
+        incident,
+        issue,
+        "Test message",
+        myInspection,
+        HighlightDisplayLevel.WARNING,
+        myPsiPointer,
+        myPsiPointer,
+        fix);
+
+    List<LintAnnotationsModel.IssueData> issues = model.getIssues();
+    Assert.assertEquals(1, issues.size());
+    LintAnnotationsModel.IssueData issueData = issues.get(0);
+    Incident storedIncident = issueData.incident;
+
+    Assert.assertNotSame(incident, storedIncident);
+    Assert.assertNull(storedIncident.getProject());
+    Assert.assertNull(storedIncident.getScope());
+    Assert.assertSame(issue, storedIncident.getIssue());
+    Assert.assertEquals("Test message", storedIncident.getMessage());
+    Assert.assertEquals(location.getFile(), storedIncident.getFile());
+    Assert.assertEquals(Severity.WARNING, storedIncident.getSeverity());
+    Assert.assertNotNull(storedIncident.getFix());
   }
 }

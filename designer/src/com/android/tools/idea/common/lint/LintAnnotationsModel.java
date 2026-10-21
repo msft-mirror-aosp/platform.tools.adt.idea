@@ -22,6 +22,7 @@ import com.android.tools.idea.lint.common.AndroidLintInspectionBase;
 import com.android.tools.idea.lint.common.SuppressLintQuickFix;
 import com.android.tools.lint.checks.RtlDetector;
 import com.android.tools.lint.detector.api.Incident;
+import com.android.tools.lint.detector.api.IncidentKt;
 import com.android.tools.lint.detector.api.Issue;
 import com.android.tools.lint.detector.api.LintFix;
 import com.google.common.collect.ArrayListMultimap;
@@ -155,7 +156,7 @@ public class LintAnnotationsModel {
       this.issueSource = new NlComponentIssueSource(component);
       this.attribute = attribute;
       this.inspection = inspection;
-      this.incident = incident;
+      this.incident = IncidentKt.copySafe(incident);
       this.issue = issue;
       this.message = message;
       this.level = level;
