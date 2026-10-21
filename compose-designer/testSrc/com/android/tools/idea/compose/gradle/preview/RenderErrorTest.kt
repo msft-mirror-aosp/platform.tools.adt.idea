@@ -149,7 +149,10 @@ class RenderErrorTest {
               },
               parentDisposable = fixture.testRootDisposable,
             )
-            .also { it.root.validate() }
+            .also {
+              it.findComponent<SceneViewPanel>()?.setNoComposeHeadersForTests()
+              it.root.validate()
+            }
         }
       composePreviewRepresentation.activateAndWaitForRender(fakeUi)
     }
@@ -158,7 +161,6 @@ class RenderErrorTest {
   @Test
   fun testSceneViewWithRenderErrors() =
     runBlocking(Dispatchers.Default) {
-      fakeUi.findComponent<SceneViewPanel>()?.setNoComposeHeadersForTests()
       startUiCheckForModel("PreviewWithRenderErrors")
 
       lateinit var sceneViewPanelWithErrors: SceneViewPeerPanel
@@ -182,7 +184,6 @@ class RenderErrorTest {
   @Test
   fun testSceneViewWithoutRenderErrors() =
     runBlocking(Dispatchers.Default) {
-      fakeUi.findComponent<SceneViewPanel>()?.setNoComposeHeadersForTests()
       startUiCheckForModel("PreviewWithoutRenderErrors")
 
       lateinit var sceneViewPanelWithoutErrors: SceneViewPeerPanel
