@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.preview
 
+import com.android.SdkConstants
 import com.android.ide.common.rendering.api.Bridge
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
@@ -38,6 +39,7 @@ import com.android.tools.idea.compose.preview.flow.ComposePreviewFlowManager
 import com.android.tools.idea.compose.preview.navigation.ComposePreviewNavigationHandler
 import com.android.tools.idea.compose.preview.resize.RESIZE_PANEL_INSTANCE_KEY
 import com.android.tools.idea.compose.preview.resize.ResizePanel
+import com.android.tools.idea.compose.preview.resize.layoutSize
 import com.android.tools.idea.compose.preview.scene.ComposeAnimationToolbarUpdater
 import com.android.tools.idea.compose.preview.scene.ComposeSceneComponentProvider
 import com.android.tools.idea.compose.preview.scene.ComposeScreenViewProvider
@@ -550,6 +552,12 @@ constructor(
           // Whether to paint the debug boundaries or not
           .toolsAttribute("paintBounds", showDebugBoundaries.toString())
           .apply {
+            val resizePanel = activeResizePanelInFocusMode
+            val isCustomSized = resizePanel != null && resizePanel.matchesPreviewElement(previewElement) && resizePanel.isCustomSized
+            val (layoutWidth, layoutHeight) = previewElement.layoutSize(isCustomSized)
+            androidAttribute(SdkConstants.ATTR_LAYOUT_WIDTH, layoutWidth)
+            androidAttribute(SdkConstants.ATTR_LAYOUT_HEIGHT, layoutHeight)
+
             if (mode.value is PreviewMode.AnimationInspection) {
               // If the animation inspection is active, start the PreviewAnimationClock with the current epoch time.
               toolsAttribute("animationClockStartTime", System.currentTimeMillis().toString())

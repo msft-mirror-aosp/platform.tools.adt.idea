@@ -15,14 +15,25 @@
  */
 package com.android.tools.idea.compose.preview.resize
 
+import com.android.SdkConstants.ANDROID_URI
+import com.android.SdkConstants.ATTR_LAYOUT_HEIGHT
+import com.android.SdkConstants.ATTR_LAYOUT_WIDTH
+import com.android.SdkConstants.VALUE_MATCH_PARENT
+import com.android.SdkConstants.VALUE_WRAP_CONTENT
 import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.configurations.DeviceSize
 import com.android.tools.configurations.deviceSizePx
+import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
-import com.intellij.openapi.Disposable
+import com.android.tools.preview.ComposePreviewElementInstance
+import com.android.tools.preview.dimensionToString
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.util.CheckedDisposable
 import com.intellij.openapi.util.Disposer
 import java.awt.Dimension
 import kotlinx.coroutines.CancellationException
@@ -30,10 +41,12 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -44,25 +57,54 @@ import kotlinx.coroutines.withContext
 private const val ZOOM_TO_FIT_RESCALE_THRESHOLD = 2.0
 
 /**
+ * Returns the `layout_width` and `layout_height` to use for the root tag of this preview's XML.
+ *
+ * A custom-sized preview (WxH text fields or drag handles in the [ResizePanel]) without System UI fills the custom size, like
+ * `@Preview(widthDp, heightDp)`. Otherwise, the preview's configured dimensions are used (`wrap_content` by default), like `@Preview(device
+ * = ...)`, so that preset devices don't make the preview fill the whole device screen.
+ */
+internal fun ComposePreviewElementInstance<*>.layoutSize(isCustomSized: Boolean): Pair<String, String> =
+  if (isCustomSized && !displaySettings.showDecoration) {
+    VALUE_MATCH_PARENT to VALUE_MATCH_PARENT
+  } else {
+    dimensionToString(configuration.width, VALUE_WRAP_CONTENT) to dimensionToString(configuration.height, VALUE_WRAP_CONTENT)
+  }
+
+/**
  * Invokes rendering of the scene when the device size changes in [Configuration]. The lifecycle is tied to corresponding [SceneManger]
  *
  * @param sceneManager SceneManager
  * @param configuration Configuration
  * @param defaultDispatcher CoroutineDispatcher
+ * @param isCustomSized Whether the preview is currently resized to custom dimensions, see [ResizePanel.isCustomSized]. Used to update the
+ *   root tag's layout dimensions, see [layoutSize].
  */
 class ConfigurationResizeListener(
   private val sceneManager: LayoutlibSceneManager,
   private val configuration: Configuration,
   defaultDispatcher: CoroutineDispatcher = Dispatchers.Default,
-) : ConfigurationListener, Disposable {
+  private val isCustomSized: () -> Boolean = { false },
+) : ConfigurationListener, CheckedDisposable {
   private val logger = Logger.getInstance(ConfigurationResizeListener::class.java)
 
-  private val scope = CoroutineScope(defaultDispatcher + CoroutineName(javaClass.simpleName))
+  private val scope = CoroutineScope(defaultDispatcher + SupervisorJob() + CoroutineName(javaClass.simpleName))
 
   private val deviceSizeChangedFlow = MutableSharedFlow<DeviceSize>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
   init {
     if (Disposer.tryRegister(sceneManager, this)) {
+      scope.launch {
+        // A refresh builds the preview XML before ResizePanel.applyOverrides runs, and applyOverrides can drop the resize (e.g. when the
+        // @Preview device is changed in code). The XML then has the layout size of the dropped resize and no configuration change follows,
+        // so check the root tag once when the listener is attached after the refresh and re-render if it had to be fixed.
+        try {
+          requestRender(configuration.deviceSizePx().let { Dimension(it.width, it.height) }, onlyIfLayoutSizeChanged = true)
+        } catch (e: CancellationException) {
+          throw e
+        } catch (e: Exception) {
+          logger.warn("Error while syncing the preview layout size: ", e)
+        }
+      }
       scope.launch {
         deviceSizeChangedFlow.collectLatest { (width, height) ->
           try {
@@ -74,8 +116,18 @@ class ConfigurationResizeListener(
           }
         }
       }
+    } else {
+      // The sceneManager is already disposed, so this listener would never be disposed with it. Dispose it right away so that it is not
+      // attached to the configuration, see [isDisposed].
+      Disposer.dispose(this)
     }
   }
+
+  /**
+   * Whether this listener is disposed, e.g. because its [sceneManager] was already disposed when it was created. A disposed listener must
+   * not be added to the [configuration].
+   */
+  override fun isDisposed(): Boolean = !scope.isActive
 
   override fun changed(changeType: Int): Boolean {
     if (changeType and ConfigurationListener.CFG_DEVICE != 0) {
@@ -84,11 +136,18 @@ class ConfigurationResizeListener(
     return true
   }
 
-  private suspend fun requestRender(newDeviceSize: Dimension) {
+  /**
+   * Re-inflates and renders the preview with [newDeviceSize], after updating the root tag's layout size.
+   *
+   * @param onlyIfLayoutSizeChanged if true, the preview is only rendered when the root tag's layout size had to be updated.
+   */
+  private suspend fun requestRender(newDeviceSize: Dimension, onlyIfLayoutSizeChanged: Boolean = false) {
     // If the preview has never been rendered there is nothing showing the old size, and its first render will already use the new
     // configuration, so don't trigger a render from here.
     if (sceneManager.viewObject == null && sceneManager.renderResult == null) return
 
+    val layoutSizeChanged = updateLayoutDimensionsIfNeeded()
+    if (onlyIfLayoutSizeChanged && !layoutSizeChanged) return
     sceneManager.sceneRenderConfiguration.needsInflation?.set(true)
     sceneManager.requestRenderWithNewSize(newDeviceSize.width, newDeviceSize.height)
 
@@ -114,6 +173,42 @@ class ConfigurationResizeListener(
           surface.zoomController.zoomToFit()
         }
       }
+    }
+  }
+
+  /**
+   * Sets the root tag's `layout_width` and `layout_height` to [layoutSize] for the current resize state.
+   *
+   * @return true if the root tag was updated.
+   */
+  private suspend fun updateLayoutDimensionsIfNeeded(): Boolean {
+    val model = sceneManager.model ?: return false
+
+    return withContext(Dispatchers.EDT) {
+      val (layoutWidth, layoutHeight) =
+        runReadAction {
+          val file = model.file
+          if (!file.isValid) return@runReadAction null
+          val previewElement = model.dataProvider?.previewElement() ?: return@runReadAction null
+          val layoutSize = previewElement.layoutSize(isCustomSized())
+          layoutSize.takeUnless {
+            val rootTag = file.rootTag ?: return@runReadAction null
+            rootTag.getAttributeValue(ATTR_LAYOUT_WIDTH, ANDROID_URI) == layoutSize.first &&
+              rootTag.getAttributeValue(ATTR_LAYOUT_HEIGHT, ANDROID_URI) == layoutSize.second
+          }
+        } ?: return@withContext false
+      var updated = false
+      // Undo-transparent so these internal preview XML changes don't end up in the user's undo history.
+      CommandProcessor.getInstance().runUndoTransparentAction {
+        runWriteAction {
+          // Re-check the tag, since the PSI may have changed between the read and the write action.
+          val rootTag = model.file.takeIf { it.isValid }?.rootTag?.takeIf { it.isValid } ?: return@runWriteAction
+          rootTag.setAttribute(ATTR_LAYOUT_WIDTH, ANDROID_URI, layoutWidth)
+          rootTag.setAttribute(ATTR_LAYOUT_HEIGHT, ANDROID_URI, layoutHeight)
+          updated = true
+        }
+      }
+      updated
     }
   }
 

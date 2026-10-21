@@ -24,18 +24,22 @@ import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.adtui.swing.popup.PopupRule
 import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
 import com.android.tools.configurations.deviceSizeDp
+import com.android.tools.configurations.deviceSizePx
 import com.android.tools.idea.common.fixtures.MouseEventBuilder
 import com.android.tools.idea.compose.ComposeProjectRule
 import com.android.tools.idea.compose.preview.ComposePreviewRepresentation
 import com.android.tools.idea.compose.preview.ComposePreviewView
 import com.android.tools.idea.compose.preview.ComposePreviewViewImpl
 import com.android.tools.idea.compose.preview.ComposePreviewViewProvider
+import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.concurrency.asCollection
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.rendering.tokens.FakeBuildSystemFilePreviewServices
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.uibuilder.model.h
+import com.android.tools.idea.uibuilder.model.w
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
@@ -62,7 +66,9 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.org.objectweb.asm.ClassWriter
 import org.jetbrains.org.objectweb.asm.Opcodes
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -130,13 +136,34 @@ class ResizeIntegrationTest {
 
     setupPreview(testPsiFile)
     openResizePanel()
-    resize(newWidth, newHeight)
 
     val sceneManager = surface.sceneManagers.single()
-    val configuration = sceneManager.model.configuration
-    val (deviceWidth, deviceHeight) = configuration.deviceSizeDp()
+    // A refresh replaces the model's configuration, so always read the current one.
+    fun configuration() = sceneManager.model.configuration
+    fun rootComponentSizePx() = sceneManager.model.treeReader.components.single().let { Dimension(it.w, it.h) }
+
+    val initialRootViewDimensions = rootComponentSizePx()
+    // Initially wrap_content (smaller than the full device screen size)
+    assertNotEquals(
+      configuration().deviceSizePx().let { Dimension(it.width, it.height) },
+      initialRootViewDimensions,
+    )
+
+    resize(newWidth, newHeight)
+
+    val (deviceWidth, deviceHeight) = configuration().deviceSizeDp()
     assertEquals(newWidth, deviceWidth)
     assertEquals(newHeight, deviceHeight)
+
+    val expectedCustomSizePx = configuration().deviceSizePx().let { Dimension(it.width, it.height) }
+    delayUntilCondition(200) { rootComponentSizePx() == expectedCustomSizePx }
+    assertEquals(expectedCustomSizePx, rootComponentSizePx())
+
+    // A refresh regenerates the preview XML from the @Preview annotation, which must keep the custom size.
+    val previewElement = sceneManager.model.dataProvider?.previewElement()!!
+    val refreshedXml = previewRepresentation.previewElementModelAdapterForTest.toXml(previewElement)
+    assertTrue(refreshedXml, refreshedXml.contains("android:layout_width=\"match_parent\""))
+    assertTrue(refreshedXml, refreshedXml.contains("android:layout_height=\"match_parent\""))
 
     clickContextMenuItem("Save New Preview (${newWidth}dp x ${newHeight}dp)")
 
@@ -158,6 +185,17 @@ class ResizeIntegrationTest {
         .trimIndent(),
       fileContent,
     )
+
+    // Selecting a preset device (Pixel 9) from the ResizePanel dropdown on a non-System-UI preview
+    // should revert to wrap_content instead of expanding to full device size (b/421356464).
+    val resizePanel = fakeUi.findComponent<ResizePanel>()!!
+    val pixel9 = configuration().settings.devices.first { it.id == "pixel_9" }
+    withContext(Dispatchers.EDT) { resizePanel.selectDeviceForTest(pixel9) }
+
+    assertEquals("pixel_9", configuration().cachedDevice?.id)
+    val pixel9ScreenSizePx = configuration().deviceSizePx().let { Dimension(it.width, it.height) }
+    delayUntilCondition(200) { rootComponentSizePx() != expectedCustomSizePx }
+    assertNotEquals(pixel9ScreenSizePx, rootComponentSizePx())
   }
 
   private suspend fun setupPreview(testPsiFile: PsiFile) {
@@ -206,8 +244,10 @@ class ResizeIntegrationTest {
   private fun openContextMenu(): JPopupMenu? {
     val interactionPane = surface.interactionPane
     val guiInputHandler = surface.guiInputHandler
+    val sceneView = surface.sceneViews.single()
+    val scaledSize = sceneView.scaledContentSize
     val mouseEvent =
-      MouseEventBuilder(interactionPane.width / 2, interactionPane.height / 2)
+      MouseEventBuilder(sceneView.x + scaledSize.width / 2, sceneView.y + scaledSize.height / 2)
         .withSource(interactionPane)
         .withComponent(interactionPane)
         .withButton(MouseEvent.BUTTON3)

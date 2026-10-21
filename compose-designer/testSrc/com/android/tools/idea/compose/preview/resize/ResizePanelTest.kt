@@ -603,26 +603,37 @@ class ResizePanelTest {
   fun `hasBeenResized flag is correctly managed`() = runInEdtAndGet {
     setupAndShowPanel()
     assertFalse(resizePanel.hasBeenResized)
+    assertFalse(resizePanel.isCustomSized)
 
     // Resize by changing device
     setDifferentDevice()
     assertTrue(resizePanel.hasBeenResized)
+    assertFalse(resizePanel.isCustomSized)
 
     // Revert and check
     revert()
     assertFalse(resizePanel.hasBeenResized)
+    assertFalse(resizePanel.isCustomSized)
 
     // Resize by changing width
     changeWidthTextField(widthTextField.value + 10)
     assertTrue(resizePanel.hasBeenResized)
+    assertTrue(resizePanel.isCustomSized)
+
+    // Selecting a preset device after custom dimensions clears isCustomSized while keeping hasBeenResized
+    setDifferentDevice()
+    assertTrue(resizePanel.hasBeenResized)
+    assertFalse(resizePanel.isCustomSized)
 
     // Revert and check
     revert()
     assertFalse(resizePanel.hasBeenResized)
+    assertFalse(resizePanel.isCustomSized)
 
     // Resize by changing height
     changeHeightTextField(heightTextField.value + 10)
     assertTrue(resizePanel.hasBeenResized)
+    assertTrue(resizePanel.isCustomSized)
   }
 
   @Test
@@ -1005,40 +1016,41 @@ class ResizePanelTest {
   }
 
   @Test
-  fun `device picker dropdown excludes AI Glasses for non-AI-Glasses previews and excludes non-glasses devices when baseline is AI Glasses`() = runInEdtAndGet {
-    setupAndShowPanel()
-    assertThat(Device.isAiGlasses(configuration.device)).isFalse()
+  fun `device picker dropdown excludes AI Glasses for non-AI-Glasses previews and excludes non-glasses devices when baseline is AI Glasses`() =
+    runInEdtAndGet {
+      setupAndShowPanel()
+      assertThat(Device.isAiGlasses(configuration.device)).isFalse()
 
-    // 1. For a standard phone preview, open device dropdown and verify Display Glasses is not present
-    fakeUi.clickOn(devicePicker)
-    fakeUi.layoutAndDispatchEvents()
-    val phonePopupMenu = popupRule.popupContents
-    assertThat(phonePopupMenu).named("Popup menu not found").isNotNull()
-    val phoneMenuItems = phonePopupMenu!!.findAllDescendants<ActionMenuItem>().map { it.text }.toList()
-    popupRule.mockPopup.hide()
-    phonePopupMenu.isVisible = false
+      // 1. For a standard phone preview, open device dropdown and verify Display Glasses is not present
+      fakeUi.clickOn(devicePicker)
+      fakeUi.layoutAndDispatchEvents()
+      val phonePopupMenu = popupRule.popupContents
+      assertThat(phonePopupMenu).named("Popup menu not found").isNotNull()
+      val phoneMenuItems = phonePopupMenu!!.findAllDescendants<ActionMenuItem>().map { it.text }.toList()
+      popupRule.mockPopup.hide()
+      phonePopupMenu.isVisible = false
 
-    assertThat(phoneMenuItems.any { it.contains("Display Glasses") }).isFalse()
-    assertThat(phoneMenuItems.any { it.contains("Medium Phone") || it.contains("Pixel") }).isTrue()
+      assertThat(phoneMenuItems.any { it.contains("Display Glasses") }).isFalse()
+      assertThat(phoneMenuItems.any { it.contains("Medium Phone") || it.contains("Pixel") }).isTrue()
 
-    // 2. Set an AI Glasses device as the baseline preview device and set the scene manager
-    val aiGlassesDevice = createAiGlassesDevice()
-    configuration.setEffectiveDevice(aiGlassesDevice, aiGlassesDevice.defaultState)
-    resizePanel.clear()
-    resizePanel.setSceneManager(sceneManager)
+      // 2. Set an AI Glasses device as the baseline preview device and set the scene manager
+      val aiGlassesDevice = createAiGlassesDevice()
+      configuration.setEffectiveDevice(aiGlassesDevice, aiGlassesDevice.defaultState)
+      resizePanel.clear()
+      resizePanel.setSceneManager(sceneManager)
 
-    // Open device dropdown for AI Glasses preview and verify Display Glasses is offered, but non-glasses devices are excluded
-    fakeUi.clickOn(devicePicker)
-    fakeUi.layoutAndDispatchEvents()
-    val glassesPopupMenu = popupRule.popupContents
-    assertThat(glassesPopupMenu).named("Popup menu not found").isNotNull()
-    val glassesMenuItems = glassesPopupMenu!!.findAllDescendants<ActionMenuItem>().map { it.text }.toList()
-    popupRule.mockPopup.hide()
-    glassesPopupMenu.isVisible = false
+      // Open device dropdown for AI Glasses preview and verify Display Glasses is offered, but non-glasses devices are excluded
+      fakeUi.clickOn(devicePicker)
+      fakeUi.layoutAndDispatchEvents()
+      val glassesPopupMenu = popupRule.popupContents
+      assertThat(glassesPopupMenu).named("Popup menu not found").isNotNull()
+      val glassesMenuItems = glassesPopupMenu!!.findAllDescendants<ActionMenuItem>().map { it.text }.toList()
+      popupRule.mockPopup.hide()
+      glassesPopupMenu.isVisible = false
 
-    assertThat(glassesMenuItems.any { it.contains("Display Glasses") }).isTrue()
-    assertThat(glassesMenuItems.any { it.contains("Medium Phone") || it.contains("Pixel") }).isFalse()
-  }
+      assertThat(glassesMenuItems.any { it.contains("Display Glasses") }).isTrue()
+      assertThat(glassesMenuItems.any { it.contains("Medium Phone") || it.contains("Pixel") }).isFalse()
+    }
 
   private fun createAiGlassesDevice(): Device {
     val baseDevice = configuration.settings.devices.first()

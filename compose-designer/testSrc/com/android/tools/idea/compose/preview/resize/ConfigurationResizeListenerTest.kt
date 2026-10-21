@@ -15,6 +15,11 @@
  */
 package com.android.tools.idea.compose.preview.resize
 
+import com.android.SdkConstants.ANDROID_URI
+import com.android.SdkConstants.ATTR_LAYOUT_HEIGHT
+import com.android.SdkConstants.ATTR_LAYOUT_WIDTH
+import com.android.SdkConstants.VALUE_MATCH_PARENT
+import com.android.SdkConstants.VALUE_WRAP_CONTENT
 import com.android.ide.common.resources.Locale
 import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.resources.Density
@@ -34,21 +39,31 @@ import com.android.tools.configurations.ConfigurationModelModule
 import com.android.tools.configurations.ConfigurationSettings
 import com.android.tools.configurations.ResourceResolverCache
 import com.android.tools.configurations.updateScreenSize
+import com.android.tools.idea.common.model.NlDataProvider
+import com.android.tools.idea.common.model.NlModel
+import com.android.tools.idea.compose.PsiComposePreviewElementInstance
+import com.android.tools.idea.compose.preview.PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneRenderConfiguration
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.android.tools.preview.PreviewConfiguration
+import com.android.tools.preview.SingleComposePreviewElementInstance
 import com.android.tools.rendering.RenderResult
 import com.google.common.collect.ImmutableList
 import com.intellij.openapi.util.Disposer
+import com.intellij.psi.xml.XmlFile
+import com.intellij.psi.xml.XmlTag
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.dispatchAllEventsInIdeEventQueue
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -56,6 +71,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.times
@@ -248,13 +264,27 @@ class ConfigurationResizeListenerTest {
     val listener =
       ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
 
+    assertFalse(listener.isDisposed())
     configuration.addListener(listener)
 
     Disposer.dispose(sceneManager) // Simulate disposal
+    assertTrue(listener.isDisposed())
     configuration.updateScreenSize(12, 12)
     advanceUntilIdle()
     verify(sceneManager, never()).requestRenderWithNewSize(any(), any())
     Disposer.dispose(sceneManager)
+  }
+
+  @Test
+  fun `listener created for a disposed SceneManager is disposed`() = runTest {
+    val sceneManager = createSceneManager(true)
+    val configuration = createConfiguration(500, 600)
+    Disposer.dispose(sceneManager)
+
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler)).also { advanceUntilIdle() }
+
+    assertTrue(listener.isDisposed())
   }
 
   @Test
@@ -466,6 +496,161 @@ class ConfigurationResizeListenerTest {
 
     verify(zoomController, never()).zoomToFit()
     Disposer.dispose(sceneManager)
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener updates layout dimensions to match_parent for custom size and wrap_content for preset device or revert`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = false)
+    val configuration = createConfiguration(500, 600)
+    val originalDevice = configuration.cachedDevice
+
+    val preview = FakePreviewModel(sceneManager)
+    var isCustomSized = false
+
+    val listener =
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler), isCustomSized = { isCustomSized })
+        .also { advanceUntilIdleIncludingEdt() }
+    configuration.addListener(listener)
+
+    try {
+      // 1. Custom WxH resize sets layout_width and layout_height to match_parent.
+      isCustomSized = true
+      configuration.updateScreenSize(700, 800)
+      advanceUntilIdleIncludingEdt()
+
+      assertEquals(VALUE_MATCH_PARENT, preview.layoutWidth)
+      assertEquals(VALUE_MATCH_PARENT, preview.layoutHeight)
+      verify(sceneManager, times(1)).requestRenderWithNewSize(700, 800)
+
+      // 2. When the preview is no longer custom sized, e.g. a preset device is selected, wrap_content is restored (b/421356464).
+      isCustomSized = false
+      val presetDevice = device(1080, 2424)
+      configuration.setEffectiveDevice(presetDevice, presetDevice.defaultState)
+      advanceUntilIdleIncludingEdt()
+
+      assertEquals(VALUE_WRAP_CONTENT, preview.layoutWidth)
+      assertEquals(VALUE_WRAP_CONTENT, preview.layoutHeight)
+      verify(sceneManager, times(1)).requestRenderWithNewSize(1080, 2424)
+
+      // 3. Another custom WxH resize sets match_parent again, and reverting to originalDevice restores wrap_content.
+      isCustomSized = true
+      configuration.updateScreenSize(900, 1000)
+      advanceUntilIdleIncludingEdt()
+      assertEquals(VALUE_MATCH_PARENT, preview.layoutWidth)
+      assertEquals(VALUE_MATCH_PARENT, preview.layoutHeight)
+
+      isCustomSized = false
+      configuration.setEffectiveDevice(originalDevice, originalDevice?.defaultState)
+      advanceUntilIdleIncludingEdt()
+      assertEquals(VALUE_WRAP_CONTENT, preview.layoutWidth)
+      assertEquals(VALUE_WRAP_CONTENT, preview.layoutHeight)
+
+      // 4. A custom-sized preview with System UI keeps its configured dimensions, since it already fills the device screen.
+      preview.previewElement = SingleComposePreviewElementInstance.forTesting("com.example.MyPreview", showDecorations = true)
+      isCustomSized = true
+      configuration.updateScreenSize(600, 700)
+      advanceUntilIdleIncludingEdt()
+      assertEquals(VALUE_WRAP_CONTENT, preview.layoutWidth)
+      assertEquals(VALUE_WRAP_CONTENT, preview.layoutHeight)
+      verify(sceneManager, times(1)).requestRenderWithNewSize(600, 700)
+    } finally {
+      Disposer.dispose(sceneManager)
+    }
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener fixes the layout size left by a dropped resize when it is attached`() = runTest {
+    // A refresh built the preview XML while the preview was custom sized, but ResizePanel.applyOverrides then dropped the resize (e.g.
+    // the @Preview device was changed in code), so the XML still has match_parent while the preview is no longer custom sized.
+    val sceneManager = createSceneManager(showDecorations = false)
+    val configuration = createConfiguration(500, 600)
+    val preview = FakePreviewModel(sceneManager, layoutWidth = VALUE_MATCH_PARENT, layoutHeight = VALUE_MATCH_PARENT)
+
+    try {
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler), isCustomSized = { false }).also {
+        advanceUntilIdleIncludingEdt()
+      }
+
+      assertEquals(VALUE_WRAP_CONTENT, preview.layoutWidth)
+      assertEquals(VALUE_WRAP_CONTENT, preview.layoutHeight)
+      assertTrue(needsInflation.get())
+      verify(sceneManager, times(1)).requestRenderWithNewSize(500, 600)
+    } finally {
+      Disposer.dispose(sceneManager)
+    }
+  }
+
+  @RunsInEdt
+  @Test
+  fun `listener does not re-render when attached if the layout size is already up to date`() = runTest {
+    val sceneManager = createSceneManager(showDecorations = false)
+    val configuration = createConfiguration(500, 600)
+    val preview = FakePreviewModel(sceneManager, layoutWidth = VALUE_MATCH_PARENT, layoutHeight = VALUE_MATCH_PARENT)
+
+    try {
+      ConfigurationResizeListener(sceneManager, configuration, StandardTestDispatcher(testScheduler), isCustomSized = { true }).also {
+        advanceUntilIdleIncludingEdt()
+      }
+
+      assertEquals(VALUE_MATCH_PARENT, preview.layoutWidth)
+      assertEquals(VALUE_MATCH_PARENT, preview.layoutHeight)
+      assertFalse(needsInflation.get())
+      verify(sceneManager, never()).requestRenderWithNewSize(any(), any())
+    } finally {
+      Disposer.dispose(sceneManager)
+    }
+  }
+
+  /**
+   * Runs the listener's coroutine to completion when it hops to `Dispatchers.EDT` midway: the EDT block runs from the IDE event queue, and
+   * the rest of the coroutine then resumes on the test dispatcher.
+   */
+  private fun TestScope.advanceUntilIdleIncludingEdt() {
+    advanceUntilIdle()
+    dispatchAllEventsInIdeEventQueue()
+    advanceUntilIdle()
+  }
+
+  /**
+   * Mocks the [NlModel] of [sceneManager] with a preview XML file whose root tag keeps its `layout_width` and `layout_height` in
+   * [layoutWidth] and [layoutHeight], and with [previewElement] as the model's preview element.
+   */
+  private class FakePreviewModel(
+    sceneManager: LayoutlibSceneManager,
+    var layoutWidth: String = VALUE_WRAP_CONTENT,
+    var layoutHeight: String = VALUE_WRAP_CONTENT,
+  ) {
+    var previewElement: PsiComposePreviewElementInstance =
+      SingleComposePreviewElementInstance.forTesting("com.example.MyPreview", configuration = PreviewConfiguration.cleanAndGet())
+
+    init {
+      val rootTag = mock<XmlTag>()
+      whenever(rootTag.isValid).thenReturn(true)
+      whenever(rootTag.getAttributeValue(ATTR_LAYOUT_WIDTH, ANDROID_URI)).thenAnswer { layoutWidth }
+      whenever(rootTag.getAttributeValue(ATTR_LAYOUT_HEIGHT, ANDROID_URI)).thenAnswer { layoutHeight }
+      whenever(rootTag.setAttribute(eq(ATTR_LAYOUT_WIDTH), eq(ANDROID_URI), any())).thenAnswer {
+        layoutWidth = it.getArgument(2)
+        null
+      }
+      whenever(rootTag.setAttribute(eq(ATTR_LAYOUT_HEIGHT), eq(ANDROID_URI), any())).thenAnswer {
+        layoutHeight = it.getArgument(2)
+        null
+      }
+      val xmlFile = mock<XmlFile>()
+      whenever(xmlFile.isValid).thenReturn(true)
+      whenever(xmlFile.rootTag).thenReturn(rootTag)
+      val model = mock<NlModel>()
+      whenever(model.file).thenReturn(xmlFile)
+      whenever(model.dataProvider)
+        .thenReturn(
+          object : NlDataProvider(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE) {
+            override fun getData(dataId: String) = previewElement.takeIf { dataId == PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name }
+          }
+        )
+      whenever(sceneManager.model).thenReturn(model)
+    }
   }
 
   // Helper function to create a Configuration

@@ -120,6 +120,16 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
   var hasBeenResized: Boolean = false
     private set
 
+  /**
+   * Indicates whether the preview has been resized to custom dimensions (e.g. via the width/height text fields or canvas drag), rather than
+   * a preset device from the dropdown or the original baseline device.
+   */
+  val isCustomSized: Boolean
+    get() =
+      hasBeenResized &&
+        currentConfiguration?.cachedDevice?.id == Configuration.CUSTOM_DEVICE_ID &&
+        currentConfiguration?.cachedDevice != baselineSnapshot?.device
+
   @Volatile private var isPanelEnabled: Boolean = false
 
   /**
@@ -339,7 +349,6 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
   }
 
   /** Checks if the given [element] matches the currently focused preview element in this panel. */
-  @VisibleForTesting
   fun matchesPreviewElement(element: PsiComposePreviewElementInstance?): Boolean {
     if (element == null || currentFocusedPreviewElement == null) return false
     return currentFocusedPreviewElement?.instanceId == element.instanceId
@@ -445,7 +454,10 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     currentConfiguration?.addListener(resizePanelUiUpdaterListener)
     currentConfiguration?.let { configuration ->
       currentSceneManager?.let { sm ->
-        renderTriggerListener = ConfigurationResizeListener(sm, configuration).also { configuration.addListener(it) }
+        renderTriggerListener =
+          ConfigurationResizeListener(sm, configuration, isCustomSized = { isCustomSized })
+            .takeUnless { it.isDisposed() }
+            ?.also { configuration.addListener(it) }
       }
     }
     // The dimension text fields are synced with the new configuration by DimensionInputsAction.updateCustomComponent on the next toolbar
