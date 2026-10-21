@@ -15,8 +15,6 @@
  */
 package com.android.tools.idea.gradle.project.sync
 
-import com.android.builder.model.v2.models.ModelBuilderParameter
-import com.android.builder.model.v2.models.VariantDependenciesAdjacencyList
 import com.android.ide.gradle.model.composites.BuildMap
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
@@ -69,44 +67,48 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
           buildModel.projects.mapNotNull { gradleProject ->
             BuildAction {
               runCatching {
-                  val data = cachedData.data[gradleProject] ?: return@BuildAction null
-                  val ideAndroidProject = data.ideAndroidProject
-                  val variantDependencies =
-                    controller.findModel(gradleProject, VariantDependenciesAdjacencyList::class.java, ModelBuilderParameter::class.java) {
-                      it.variantName = data.selectedVariantName
-                      // If the studio flag for it is enabled, we don't fetch runtime classpath for libraries with inbound depenencis
-                      if (
-                        data.shouldSkipRuntimeClassPathForLibraries &&
-                          ideAndroidProject.projectType == IdeAndroidProjectType.PROJECT_TYPE_LIBRARY &&
-                          hasInboundDependencyByPath[gradleProject.path] == true
-                      ) {
-                        it.buildOnlyTestRuntimeClasspaths(
-                          syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryUnitTests,
-                          syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryScreenshotTests,
-                          addAdditionalArtifactsInModel = syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport,
-                        )
-                      } else {
-                        it.buildAllRuntimeClasspaths(
-                          addAdditionalArtifactsInModel = syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport
-                        )
-                      }
-                    } ?: return@BuildAction null
-                  val selectedVariant = ideAndroidProject.coreVariants.single { it.name == data.selectedVariantName }
-                  val result =
-                    fetchAndProcessAndroidDependenciesModel(
-                      variantDependencies,
-                      cachedData.data[gradleProject]!!.modelVersions,
-                      buildModel,
-                      gradleProject,
-                      selectedVariant,
-                      ideAndroidProject.bootClasspath,
-                      internedModels,
-                      androidProjectPathResolver = androidProjectPathResolver,
-                      buildPathMap = buildPathMap,
-                    )
-                  exceptionsPerProject += result.exceptions.map { gradleProject to it }
-                  result.ignoreExceptionsAndGet()?.let { gradleProject to it }
-                }
+                val data = cachedData.data[gradleProject] ?: return@BuildAction null
+                val ideAndroidProject = data.ideAndroidProject
+                val variantDependencies =
+                  controller.findVariantDependenciesV2Model(
+                    project = gradleProject,
+                    modelVersions = data.modelVersions,
+                    variantName = data.selectedVariantName,
+                    useFlatDependencyGraphModel = false,
+                  ) {
+                    // If the studio flag for it is enabled, we don't fetch runtime classpath for libraries with inbound depenencis
+                    if (
+                      data.shouldSkipRuntimeClassPathForLibraries &&
+                        ideAndroidProject.projectType == IdeAndroidProjectType.PROJECT_TYPE_LIBRARY &&
+                        hasInboundDependencyByPath[gradleProject.path] == true
+                    ) {
+                      it.buildOnlyTestRuntimeClasspaths(
+                        syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryUnitTests,
+                        syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryScreenshotTests,
+                        addAdditionalArtifactsInModel = syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport,
+                      )
+                    } else {
+                      it.buildAllRuntimeClasspaths(
+                        addAdditionalArtifactsInModel = syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport
+                      )
+                    }
+                  } ?: return@BuildAction null
+                val selectedVariant = ideAndroidProject.coreVariants.single { it.name == data.selectedVariantName }
+                val result =
+                  fetchAndProcessAndroidDependenciesModel(
+                    variantDependencies,
+                    data.modelVersions,
+                    buildModel,
+                    gradleProject,
+                    selectedVariant,
+                    ideAndroidProject.bootClasspath,
+                    internedModels,
+                    androidProjectPathResolver = androidProjectPathResolver,
+                    buildPathMap = buildPathMap,
+                  )
+                exceptionsPerProject += result.exceptions.map { gradleProject to it }
+                result.ignoreExceptionsAndGet()?.let { gradleProject to it }
+              }
                 .onFailure { exceptionsPerProject += gradleProject to it }
                 .getOrNull()
             }
@@ -142,7 +144,7 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
 }
 
 private fun fetchAndProcessAndroidDependenciesModel(
-  variantDependencies: VariantDependenciesAdjacencyList,
+  variantDependencies: VariantDependenciesCompat,
   versions: ModelVersions,
   buildModel: GradleBuild,
   projectModel: BasicGradleProject,
@@ -160,7 +162,7 @@ private fun fetchAndProcessAndroidDependenciesModel(
     BuildId(buildModel.buildIdentifier.rootDir),
     projectModel.projectIdentifier.projectPath,
     ideVariant as IdeVariantCoreImpl,
-    VariantDependenciesCompat.AdjacencyList(variantDependencies, versions),
+    variantDependencies,
     bootClasspath,
     androidProjectPathResolver,
     buildPathMap,
