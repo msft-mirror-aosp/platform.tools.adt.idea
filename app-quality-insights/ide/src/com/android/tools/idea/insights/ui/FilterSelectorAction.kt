@@ -15,8 +15,6 @@
  */
 package com.android.tools.idea.insights.ui
 
-import com.android.tools.idea.insights.inspection.AppInsightsFilterSelector
-import com.android.tools.idea.insights.inspection.ConnectionFilter
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ex.ActionUtil

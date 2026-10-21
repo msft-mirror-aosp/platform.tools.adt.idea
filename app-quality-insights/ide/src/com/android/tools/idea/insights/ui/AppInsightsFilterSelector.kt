@@ -13,12 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tools.idea.insights.inspection
+package com.android.tools.idea.insights.ui
 
 import com.android.tools.idea.insights.AppInsightsModel
 import com.android.tools.idea.insights.InsightsProvider.Source
 import com.android.tools.idea.insights.model.connection.Connection
-import com.android.tools.idea.insights.ui.AppInsightsTabProvider
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.Service.Level
 import com.intellij.openapi.project.Project
@@ -125,7 +124,7 @@ class AppInsightsFilterSelector(val project: Project, val scope: CoroutineScope)
   }
 }
 
-fun Connection.preference() =
+private fun Connection.preference() =
   when {
     isPreferredConnection() -> ConnectionPreference.PREFERRED
     isMatchingProject() -> ConnectionPreference.MATCHING

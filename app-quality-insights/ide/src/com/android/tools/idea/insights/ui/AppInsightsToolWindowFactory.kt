@@ -16,7 +16,6 @@
 package com.android.tools.idea.insights.ui
 
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.insights.inspection.AppInsightsFilterSelector
 import com.android.tools.idea.insights.persistence.AppInsightsSettings
 import com.android.tools.idea.project.AndroidProjectInfo
 import com.intellij.openapi.application.invokeLater

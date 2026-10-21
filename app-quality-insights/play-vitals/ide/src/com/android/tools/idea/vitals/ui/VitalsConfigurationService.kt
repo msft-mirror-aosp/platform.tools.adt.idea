@@ -30,10 +30,10 @@ import com.android.tools.idea.insights.client.AppInsightsClient
 import com.android.tools.idea.insights.client.channelBuilderForAddress
 import com.android.tools.idea.insights.events.ExplicitRefresh
 import com.android.tools.idea.insights.getHolderModules
-import com.android.tools.idea.insights.inspection.AppInsightsFilterSelector
 import com.android.tools.idea.insights.isAndroidApp
 import com.android.tools.idea.insights.model.connection.AppConnection
 import com.android.tools.idea.insights.model.connection.ConnectionMode
+import com.android.tools.idea.insights.ui.AppInsightsFilterSelector
 import com.android.tools.idea.insights.ui.AppInsightsToolWindowFactory
 import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.vitals.IntellijStackTraceGroupParser

@@ -21,9 +21,9 @@ import com.android.tools.idea.findings.client.utils.FakeFindingsClient
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.insights.InsightsProvider.Source
 import com.android.tools.idea.insights.LoadingState
-import com.android.tools.idea.insights.inspection.AppInsightsFilterSelector
-import com.android.tools.idea.insights.inspection.ConnectionFilter
-import com.android.tools.idea.insights.inspection.ConnectionPreference
+import com.android.tools.idea.insights.ui.AppInsightsFilterSelector
+import com.android.tools.idea.insights.ui.ConnectionFilter
+import com.android.tools.idea.insights.ui.ConnectionPreference
 import com.android.tools.idea.play.findings.PlayFindingsInsightsProvider
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ProjectRule
