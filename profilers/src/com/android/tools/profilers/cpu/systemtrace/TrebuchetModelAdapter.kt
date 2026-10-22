@@ -25,7 +25,7 @@ import trebuchet.model.SchedSlice
 import trebuchet.model.SchedulingState
 import trebuchet.model.base.SliceGroup
 
-class TrebuchetModelAdapter(trebuchetModel: Model, private val technology: TraceType) : SystemTraceModelAdapter {
+class TrebuchetModelAdapter(trebuchetModel: Model) : SystemTraceModelAdapter {
 
   companion object {
     private val SECONDS_TO_US = TimeUnit.SECONDS.toMicros(1)
@@ -63,7 +63,7 @@ class TrebuchetModelAdapter(trebuchetModel: Model, private val technology: Trace
 
   override fun getCpuCores(): List<CpuCoreModel> = cores
 
-  override fun getSystemTraceTechnology() = technology
+  override fun getSystemTraceTechnology() = TraceType.ATRACE
 
   override fun getPowerRails(): List<CounterModel> = powerRails
 

@@ -16,6 +16,9 @@
 package com.android.tools.profilers.perfetto
 
 import com.android.tools.adtui.model.Range
+import com.android.tools.idea.protobuf.CodedInputStream
+import com.android.tools.idea.protobuf.ExtensionRegistryLite
+import com.android.tools.idea.protobuf.WireFormat
 import com.android.tools.profilers.IdeProfilerServices
 import com.android.tools.profilers.cpu.CpuCapture
 import com.android.tools.profilers.cpu.MainProcessSelector
@@ -23,10 +26,15 @@ import com.android.tools.profilers.cpu.TraceParser
 import com.android.tools.profilers.cpu.systemtrace.ProcessListSorter
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceCpuCaptureBuilder
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceSurfaceflingerManager
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.diagnostic.Logger
 import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
+import java.io.InputStream
 import java.util.Base64
 import java.util.concurrent.TimeUnit
+import java.util.zip.ZipFile
 import perfetto.protos.PerfettoTrace
 
 class PerfettoParser(private val mainProcessSelector: MainProcessSelector, private val ideProfilerServices: IdeProfilerServices) :
@@ -38,6 +46,69 @@ class PerfettoParser(private val mainProcessSelector: MainProcessSelector, priva
     // We use this instead of @Synchronized, because CpuCaptureParser build and return new instances of PerfettoParser,
     // so we need a static object to serve as the lock monitor.
     val TPD_LOCK = Any()
+
+    /** Tag of `Trace.packet`, the only field of the root `Trace` message: field 1, length-delimited. */
+    private const val TRACE_PACKET_TAG = (1 shl 3) or WireFormat.WIRETYPE_LENGTH_DELIMITED
+
+    /**
+     * @param file handle to a file that represents a perfetto trace. A single trace packet will be read from this file to verify the file
+     *   can be opened and parsed to a `TracePacket`.
+     * @return true if one `TracePacket` was able to be read from the file.
+     */
+    @JvmStatic
+    fun verifyFileHasPerfettoTraceHeader(file: File): Boolean {
+      // 1. Try to read it as a ZIP archive, as Tracing 2.0 captures are zipped.
+      try {
+        ZipFile(file).use { zipFile ->
+          for (entry in zipFile.entries()) {
+            zipFile.getInputStream(entry).use { entryStream ->
+              if (isPerfettoStream(entryStream)) {
+                return true
+              }
+            }
+          }
+          return false // Valid zip, but no Perfetto entries found
+        }
+      } catch (e: Exception) {
+        LOGGER.info("File ${file.name} is not a ZIP archive (or threw ${e.javaClass.simpleName}), falling back to raw Perfetto check.")
+      }
+
+      // 2. Fall back to reading it as a raw file
+      return try {
+        FileInputStream(file).use { isPerfettoStream(it) }
+      } catch (e: IOException) {
+        false
+      }
+    }
+
+    /** Helper function to verify if an InputStream starts with a valid Perfetto trace packet. */
+    private fun isPerfettoStream(input: InputStream): Boolean {
+      return try {
+        startsWithTracePacket(input)
+      } catch (e: IOException) {
+        LOGGER.warn("Failed to read the first Perfetto trace packet.", e)
+        false
+      }
+    }
+
+    /**
+     * Returns true if [input] starts with a `Trace.packet` field that parses as a `TracePacket`, false if it is empty or starts with any
+     * other field.
+     *
+     * Only the first packet is read, because reading the full `Trace` requires keeping every packet in memory.
+     *
+     * @throws IOException if the first packet is malformed.
+     */
+    @VisibleForTesting
+    internal fun startsWithTracePacket(input: InputStream): Boolean {
+      val stream = CodedInputStream.newInstance(input)
+      // A tag of 0 means we have reached the end of the stream. Any tag other than the one of `Trace.packet` means this is not a trace.
+      if (stream.readTag() != TRACE_PACKET_TAG) {
+        return false
+      }
+      stream.readMessage(PerfettoTrace.TracePacket.parser(), ExtensionRegistryLite.getEmptyRegistry())
+      return true
+    }
   }
 
   override fun parse(file: File, traceId: Long): CpuCapture {

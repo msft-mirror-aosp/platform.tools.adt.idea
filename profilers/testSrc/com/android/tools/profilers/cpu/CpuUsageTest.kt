@@ -22,7 +22,6 @@ import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
-import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.android.tools.profilers.cpu.systemtrace.AtraceParser
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
@@ -42,14 +41,6 @@ class CpuUsageTest {
   fun atraceCaptureCreatesMergedDataSeries() {
     val parser = AtraceParser(MainProcessSelector(idHint = 1))
     val capture = parser.parse(CpuProfilerTestUtils.getTraceFile("atrace.ctrace"), 0)
-    val usage = CpuUsage(profilers, capture.range, capture.range, capture)
-    assertThat(usage.cpuSeries.series).isNotEmpty()
-  }
-
-  @Test
-  fun perfettoCaptureCreatesMergedDataSeries() {
-    val parser = AtraceParser(TraceType.PERFETTO, MainProcessSelector())
-    val capture = parser.parse(CpuProfilerTestUtils.getTraceFile("perfetto_cpu_usage.trace"), 0)
     val usage = CpuUsage(profilers, capture.range, capture.range, capture)
     assertThat(usage.cpuSeries.series).isNotEmpty()
   }

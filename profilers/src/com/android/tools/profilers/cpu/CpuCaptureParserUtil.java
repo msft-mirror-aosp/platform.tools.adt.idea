@@ -19,7 +19,7 @@ import com.android.tools.profilers.cpu.art.ArtTraceParser;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
 import com.android.tools.profilers.cpu.simpleperf.SimpleperfTraceParser;
 import com.android.tools.profilers.cpu.systemtrace.AtraceProducer;
-import com.android.tools.profilers.cpu.systemtrace.PerfettoProducer;
+import com.android.tools.profilers.perfetto.PerfettoParser;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import java.io.File;
@@ -37,7 +37,7 @@ public class CpuCaptureParserUtil {
   private static final Predicate<File> ART_TESTER = ArtTraceParser::verifyFileHasArtHeader;
   private static final Predicate<File> SIMPLE_PREF_TESTER = SimpleperfTraceParser::verifyFileHasSimpleperfHeader;
   private static final Predicate<File> ATRACE_FILE_TESTER = AtraceProducer::verifyFileHasAtraceHeader;
-  private static final Predicate<File> PERFETTO_FILE_TESTER = PerfettoProducer::verifyFileHasPerfettoTraceHeader;
+  private static final Predicate<File> PERFETTO_FILE_TESTER = PerfettoParser::verifyFileHasPerfettoTraceHeader;
 
   @Nullable
   public static TraceType getFileTraceType(@NotNull File traceFile, @NotNull TraceType profilerType) {

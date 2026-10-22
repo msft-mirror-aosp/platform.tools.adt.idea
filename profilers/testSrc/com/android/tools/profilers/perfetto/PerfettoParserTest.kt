@@ -15,6 +15,7 @@
  */
 package com.android.tools.profilers.perfetto
 
+import com.android.tools.idea.protobuf.InvalidProtocolBufferException
 import com.android.tools.profilers.FakeFeatureTracker
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.FakeTraceProcessorService
@@ -24,6 +25,7 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceCpuCapture
 import com.google.common.truth.Truth.assertThat
 import java.util.concurrent.TimeUnit
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import perfetto.protos.PerfettoTrace
 
@@ -159,5 +161,21 @@ class PerfettoParserTest {
     // power rails) because it is the number of counters post rail aggregation.
     assertThat(featureTracker.powerProfilerCaptureMetadata.powerRailCount).isEqualTo(16)
     assertThat(featureTracker.powerProfilerCaptureMetadata.batteryCounterCount).isEqualTo(3)
+  }
+
+  @Test
+  fun `first trace packet is validated against the full trace schema`() {
+    // Trace.packet holding TracePacket.clock_snapshot, which holds ClockSnapshot.clocks with clock_id = 6.
+    val validPacket = byteArrayOf(0x0A, 0x06, 0x32, 0x04, 0x0A, 0x02, 0x08, 0x06)
+    assertThat(PerfettoParser.startsWithTracePacket(validPacket.inputStream())).isTrue()
+
+    // Same, but ClockSnapshot.clocks claims more bytes than clock_snapshot holds. The packet is well-formed if its fields are treated as
+    // opaque bytes, so only a parser that knows the nested ClockSnapshot message rejects it.
+    val malformedNestedMessage = byteArrayOf(0x0A, 0x05, 0x32, 0x03, 0x0A, 0x05, 0x08)
+    assertThrows(InvalidProtocolBufferException::class.java) { PerfettoParser.startsWithTracePacket(malformedNestedMessage.inputStream()) }
+
+    // Files that don't start with Trace.packet are not Perfetto traces.
+    assertThat(PerfettoParser.startsWithTracePacket("*version\n".byteInputStream())).isFalse()
+    assertThat(PerfettoParser.startsWithTracePacket(ByteArray(0).inputStream())).isFalse()
   }
 }
