@@ -513,6 +513,22 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Run Journey with Agent",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Run Journeys in Directory with Agent",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Run all Journey files in this directory using the Agent.",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Run this Journey file using the Agent.",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Show Next Edit Prediction Menu",
       "path": "ActionManager"
     },
