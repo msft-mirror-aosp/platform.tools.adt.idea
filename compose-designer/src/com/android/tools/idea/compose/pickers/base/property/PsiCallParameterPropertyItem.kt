@@ -226,6 +226,8 @@ internal open class PsiCallParameterPropertyItem(
         if (argList.arguments.size == 1) {
           argList.delete() // This deletes the parentheses too, which are unnecessary on annotations with no args.
         } else {
+          // Removing an argument would shift the positional arguments after it into other parameters.
+          if (!nameFollowingPositionalArguments(argList, arg)) return
           argList.removeArgument(arg)
         }
       }
@@ -233,6 +235,34 @@ internal open class PsiCallParameterPropertyItem(
     argumentExpression = null
     cachedValue = null
     isCachedValueValid = true
+  }
+
+  /**
+   * Converts the positional arguments that follow [argument] in [argumentList] into named arguments, so that removing [argument] doesn't
+   * shift them into other parameters. [argument] can be named too, when it is in its own position. Returns false, without changing
+   * anything, if one of them doesn't belong to a property of the [model], in which case [argument] must not be removed.
+   */
+  @RequiresWriteLock
+  private fun nameFollowingPositionalArguments(argumentList: KtValueArgumentList, argument: KtValueArgument): Boolean {
+    val parameterItems = model.properties.values.filterIsInstance<PsiCallParameterPropertyItem>()
+    val followingPositionalArguments = argumentList.arguments.dropWhile { it != argument }.drop(1).filterNot { it.isNamed() }
+    // Match all of them to their properties before changing any of them, so that the call stays as it is if one can't be matched.
+    val matchedArguments = followingPositionalArguments.map { followingArgument ->
+      val expression = followingArgument.getArgumentExpression() ?: return false
+      val item = parameterItems.firstOrNull { it.argumentExpression?.element == expression } ?: return false
+      Triple(followingArgument, expression, item)
+    }
+    for ((followingArgument, expression, item) in matchedArguments) {
+      val namedArgument = followingArgument.replace(model.psiFactory.createArgument(expression, item.parameterName)) as KtValueArgument
+      // Only the name was added: keep the cached value instead of evaluating the new expression again.
+      val itemCachedValue = item.cachedValue
+      val itemIsCachedValueValid = item.isCachedValueValid
+      item.argumentExpression =
+        namedArgument.getArgumentExpression()?.let { SmartPointerManager.getInstance(project).createSmartPsiElementPointer(it) }
+      item.cachedValue = itemCachedValue
+      item.isCachedValueValid = itemIsCachedValueValid
+    }
+    return true
   }
 
   @UiThread

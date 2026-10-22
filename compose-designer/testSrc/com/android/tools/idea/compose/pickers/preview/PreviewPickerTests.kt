@@ -676,6 +676,86 @@ class PreviewPickerTests {
   }
 
   @Test
+  fun `clearing a positional argument keeps the arguments after it in their parameters`() = runTest {
+    // Regression test for b/576666275: the group used to shift into the name.
+    val (model, preview) = createCustomSizePreviewModel("@Preview(\"My preview\", \"My group\")")
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("name", null)
+
+      assertNull(model.properties["", "name"].value)
+      assertEquals("My group", model.properties["", "group"].value)
+    }
+    assertEquals("@Preview(group = \"My group\")", preview.annotationText())
+
+    // The group property is still bound to its argument after it was named.
+    withContext(Dispatchers.EDT) { model.setValueAndDispatch("group", "Other group") }
+    assertEquals("@Preview(group = \"Other group\")", preview.annotationText())
+  }
+
+  @Test
+  fun `clearing a named argument keeps the positional arguments after it in their parameters`() = runTest {
+    // A named argument in its own position can be followed by positional arguments.
+    val (model, preview) = createCustomSizePreviewModel("@Preview(\"My preview\", group = \"My group\", 33)")
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("group", null)
+
+      assertNull(model.properties["", "group"].value)
+      assertEquals("33", model.properties["", "apiLevel"].value)
+    }
+    assertEquals("@Preview(\"My preview\", apiLevel = 33)", preview.annotationText())
+
+    // That includes the first argument.
+    val (nameModel, namePreview) = createCustomSizePreviewModel("@Preview(name = \"My preview\", \"My group\")")
+    withContext(Dispatchers.EDT) {
+      nameModel.setValueAndDispatch("name", null)
+
+      assertNull(nameModel.properties["", "name"].value)
+      assertEquals("My group", nameModel.properties["", "group"].value)
+    }
+    assertEquals("@Preview(group = \"My group\")", namePreview.annotationText())
+  }
+
+  @Test
+  fun `clearing an argument keeps the call unchanged if an argument after it can't be named`() = runTest {
+    // The last argument doesn't match any parameter, so it can't be named.
+    val annotation = "@Preview(\"My preview\", \"My group\", 33, 200, 300, \"fr\", 1f, false, false, 0, 0, \"id:pixel_5\", 0, 42)"
+    val (model, preview) = createCustomSizePreviewModel(annotation)
+
+    withContext(Dispatchers.EDT) {
+      assertEquals("My group", model.properties["", "group"].value)
+
+      model.setValueAndDispatch("name", null)
+
+      assertEquals("My preview", model.properties["", "name"].value)
+      assertEquals("My group", model.properties["", "group"].value)
+    }
+    assertEquals(annotation, preview.annotationText())
+  }
+
+  @Test
+  fun `removing custom preview dimensions keeps the arguments after them in their parameters`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(\"Name\", \"Group\", 33, 200, 300, \"fr\")")
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("Device", "id:pixel_5")
+
+      assertNull(model.properties["", "widthDp"].value)
+      assertNull(model.properties["", "heightDp"].value)
+      assertEquals("fr", model.properties["", "locale"].value)
+    }
+    assertEquals("@Preview(\"Name\", \"Group\", 33, locale = \"fr\", device = \"id:pixel_5\")", preview.annotationText())
+
+    // Named custom preview dimensions in their own positions can be followed by positional arguments too.
+    val (namedModel, namedPreview) =
+      createCustomSizePreviewModel("@Preview(\"Name\", \"Group\", 33, widthDp = 200, heightDp = 300, \"fr\")")
+    withContext(Dispatchers.EDT) { namedModel.setValueAndDispatch("Device", "id:pixel_5") }
+    assertEquals("@Preview(\"Name\", \"Group\", 33, locale = \"fr\", device = \"id:pixel_5\")", namedPreview.annotationText())
+  }
+
+  @Test
   fun fontScaleEditing() = runBlocking {
     @Language("kotlin")
     val fileContent =
