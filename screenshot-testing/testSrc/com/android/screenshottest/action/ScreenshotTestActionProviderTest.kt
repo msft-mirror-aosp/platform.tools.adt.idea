@@ -22,9 +22,9 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.openapi.actionSystem.ActionManager
 import org.jetbrains.plugins.gradle.service.execution.GradleExternalTaskConfigurationType
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -36,14 +36,6 @@ class ScreenshotTestActionProviderTest {
   @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
   private val provider = ScreenshotTestActionProvider()
-
-  @After
-  fun tearDown() {
-    val action =
-      ActionManager.getInstance().getAction("com.android.screenshottest.action.UpdateReferenceImagesFromTestPanelAction")
-        as? UpdateReferenceImagesFromTestPanelAction
-    action?.testResults = null
-  }
 
   @Test
   fun testIsApplicable_matchingAndNonMatchingConfigurations() {
@@ -74,17 +66,31 @@ class ScreenshotTestActionProviderTest {
     val action = actions.single()
     assertTrue(action is UpdateReferenceImagesFromTestPanelAction)
     val panelAction = action as UpdateReferenceImagesFromTestPanelAction
-    assertSame(
-      ActionManager.getInstance().getAction("com.android.screenshottest.action.UpdateReferenceImagesFromTestPanelAction"),
-      panelAction,
-    )
+    val registeredAction = ActionManager.getInstance().getAction(FROM_TEST_PANEL_ACTION_ID)
+    assertNotSame(registeredAction, panelAction)
     assertSame(testResults, panelAction.testResults)
+    assertEquals(registeredAction.templatePresentation.text, panelAction.templatePresentation.text)
     assertEquals(true, panelAction.templatePresentation.getClientProperty("SHOW_TEXT_IN_TOOLBAR"))
 
-    // Calling with null clears testResults on the action
     val actionsWithNull = provider.getDetailsViewHeaderActions(null)
     assertEquals(1, actionsWithNull.size)
     assertNull((actionsWithNull.single() as UpdateReferenceImagesFromTestPanelAction).testResults)
+  }
+
+  @Test
+  fun testGetDetailsViewHeaderActions_eachViewKeepsItsOwnResults() {
+    val firstRunResults = createFakeTestResults(emptyList())
+    val secondRunResults = createFakeTestResults(emptyList())
+
+    val firstAction = provider.getDetailsViewHeaderActions(firstRunResults).single() as UpdateReferenceImagesFromTestPanelAction
+    val secondAction = provider.getDetailsViewHeaderActions(secondRunResults).single() as UpdateReferenceImagesFromTestPanelAction
+
+    // A later run must not replace the results used by an earlier run's view.
+    assertNotSame(firstAction, secondAction)
+    assertSame(firstRunResults, firstAction.testResults)
+    assertSame(secondRunResults, secondAction.testResults)
+    // The shared registered action is not modified.
+    assertNull((ActionManager.getInstance().getAction(FROM_TEST_PANEL_ACTION_ID) as UpdateReferenceImagesFromTestPanelAction).testResults)
   }
 
   @Test
@@ -108,5 +114,9 @@ class ScreenshotTestActionProviderTest {
   private fun createRunConfiguration(name: String): RunConfiguration {
     val factory = GradleExternalTaskConfigurationType.getInstance().factory
     return factory.createTemplateConfiguration(projectRule.project).apply { this.name = name }
+  }
+
+  private companion object {
+    const val FROM_TEST_PANEL_ACTION_ID = "com.android.screenshottest.action.UpdateReferenceImagesFromTestPanelAction"
   }
 }

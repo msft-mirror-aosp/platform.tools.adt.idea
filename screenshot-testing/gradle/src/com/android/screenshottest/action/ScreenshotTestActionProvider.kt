@@ -33,9 +33,22 @@ class ScreenshotTestActionProvider : AndroidTestSuiteDetailsActionProvider {
 
   override fun getDetailsViewHeaderActions(testResults: AndroidTestResults?): List<AnAction> {
     LOG.debug("Getting details view header actions for test results: $testResults")
-    val action = ActionManager.getInstance().getAction("com.android.screenshottest.action.UpdateReferenceImagesFromTestPanelAction")
-    (action as? UpdateReferenceImagesFromTestPanelAction)?.let { it.testResults = testResults }
-    action.templatePresentation.putClientProperty("SHOW_TEXT_IN_TOOLBAR", true)
+    // Create a new action for every test suite view. The registered action is a single shared
+    // instance, so storing the results on it would make every run tab use the latest run's results.
+    val registered = ActionManager.getInstance().getAction(FROM_TEST_PANEL_ACTION_ID)
+    val action =
+      UpdateReferenceImagesFromTestPanelAction().apply {
+        this.testResults = testResults
+        registered?.templatePresentation?.let {
+          templatePresentation.text = it.text
+          templatePresentation.description = it.description
+        }
+        templatePresentation.putClientProperty("SHOW_TEXT_IN_TOOLBAR", true)
+      }
     return listOf(action)
+  }
+
+  private companion object {
+    const val FROM_TEST_PANEL_ACTION_ID = "com.android.screenshottest.action.UpdateReferenceImagesFromTestPanelAction"
   }
 }
