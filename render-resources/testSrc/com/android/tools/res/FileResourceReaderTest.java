@@ -17,6 +17,7 @@ package com.android.tools.res;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import com.android.ide.common.util.PathString;
 import com.android.testutils.TestUtils;
@@ -43,6 +44,29 @@ public class FileResourceReaderTest {
     bytes = FileResourceReader.readBytes("apk:" + resourcePath);
     assertNotNull(bytes);
     assertEquals(214, bytes.length);
+  }
+
+  @Test
+  public void testReadBytes_whenThreadIsInterrupted_succeedsAndPreservesInterruptFlag() throws Exception {
+    Path resApkPath = TestUtils.resolveWorkspacePath(ApkTestUtil.TEST_DATA_DIR + "apk-all-resources.ap_");
+    String resourcePath = resApkPath + "!/res/drawable-mdpi-v4/abc_btn_check_to_on_mtrl_000.png";
+    PathString pathString = new PathString("apk", resourcePath);
+
+    Thread.currentThread().interrupt();
+    try {
+      byte[] bytes = FileResourceReader.readBytes(pathString, ResourceIdResolver.NO_RESOLUTION);
+      assertNotNull(bytes);
+      assertEquals(214, bytes.length);
+      assertTrue("Thread interrupt status should be preserved after readBytes", Thread.currentThread().isInterrupted());
+
+      bytes = FileResourceReader.readBytes("apk:" + resourcePath);
+      assertNotNull(bytes);
+      assertEquals(214, bytes.length);
+      assertTrue("Thread interrupt status should remain set", Thread.currentThread().isInterrupted());
+    }
+    finally {
+      Thread.interrupted();
+    }
   }
 
   @Test

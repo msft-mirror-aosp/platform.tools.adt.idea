@@ -38,6 +38,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -52,6 +53,13 @@ import org.xmlpull.v1.XmlPullParserException;
  */
 public class FileResourceReader {
   private static final String APK_PROTOCOL = "apk";
+
+  /**
+   * Maximum number of retries if the current thread receives a new interrupt while reading a zip
+   * entry via {@link java.nio.channels.FileChannel}.
+   */
+  private static final int MAX_INTERRUPT_RETRIES = 3;
+
   /**
    * Cache to store {@link ZipMap} objects created from zip files.
    * Keys are the full path to the zip file from which the ZipMap is created.
@@ -160,6 +168,35 @@ public class FileResourceReader {
 
   @NotNull
   private static byte[] readZipEntryBytes(String zipPath, String zipEntryPath) throws IOException {
+    // ZipMap and ZipRepo use FileChannel (an InterruptibleChannel), which throws
+    // ClosedByInterruptException if the thread's interrupt flag is set (for example after
+    // RenderTask.executeCallbacks's 500ms timeout interrupts the render thread while callbacks
+    // continue executing). Clear the interrupt status during the read and restore it afterwards so
+    // zip-backed resource reads behave consistently with FileInputStream-backed readFileBytes.
+    boolean interrupted = Thread.interrupted();
+    try {
+      for (int attempt = 0; ; attempt++) {
+        try {
+          return readZipEntryBytesOnce(zipPath, zipEntryPath);
+        }
+        catch (ClosedByInterruptException e) {
+          interrupted = true;
+          Thread.interrupted();
+          if (attempt >= MAX_INTERRUPT_RETRIES) {
+            throw e;
+          }
+        }
+      }
+    }
+    finally {
+      if (interrupted) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  @NotNull
+  private static byte[] readZipEntryBytesOnce(String zipPath, String zipEntryPath) throws IOException {
     // Cache ZipMap as its creation is time consuming.
     ZipMap zipMap;
     try {
