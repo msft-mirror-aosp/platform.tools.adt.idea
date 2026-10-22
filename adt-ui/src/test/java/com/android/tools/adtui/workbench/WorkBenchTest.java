@@ -63,8 +63,6 @@ import javax.swing.JPanel;
 import javax.swing.JRootPane;
 import org.jetbrains.annotations.NotNull;
 import org.mockito.Mock;
-import sun.awt.AWTAccessor;
-import sun.awt.NullComponentPeer;
 
 public class WorkBenchTest extends WorkBenchTestCase {
   @Mock
@@ -407,17 +405,23 @@ public class WorkBenchTest extends WorkBenchTestCase {
 
   public void testMoveToolToLeftAndBackToRight() {
     // Regression test for b/245085070
-    // myToolWindow2 is currently showing in the right side panel. Moving it to the left side panel caused the peer and thereby the
-    // tool window to be made invisible. The code in SidePanel.addVisibleTools should take this into account and make them visible
-    // after moving the tool window.
-    JComponent component = myToolWindow2.getComponent();
-
-    // There is code in the JDK that clears the peers visibility (See Component.removeNotify). Emulate that here in tests:
-    FakePanelPeer.install(component);
-    FakePanelPeer.install(component.getParent());
+    // Minimize myToolWindow3 so myToolWindow2 is the single visible tool in the right side panel's CardLayout.
+    // Moving myToolWindow2 to the left side panel (which already has myToolWindow1) moves both into the splitter,
+    // causing CardLayout.removeLayoutComponent to set their visibility to false. SidePanel.addVisibleTools must
+    // make them visible after adding them to the splitter.
+    myToolWindow3.setPropertyAndUpdate(PropertyType.MINIMIZED, true);
+    JComponent component1 = myToolWindow1.getComponent();
+    JComponent component2 = myToolWindow2.getComponent();
+    assertThat(component1.isVisible()).isTrue();
+    assertThat(component2.isVisible()).isTrue();
 
     myToolWindow2.setPropertyAndUpdate(PropertyType.LEFT, true);
-    assertThat(component.isVisible()).isTrue();
+    assertThat(component1.isVisible()).isTrue();
+    assertThat(component2.isVisible()).isTrue();
+
+    myToolWindow2.setPropertyAndUpdate(PropertyType.LEFT, false);
+    assertThat(component1.isVisible()).isTrue();
+    assertThat(component2.isVisible()).isTrue();
   }
 
   public void testShowToolWindow() {
@@ -486,30 +490,5 @@ public class WorkBenchTest extends WorkBenchTestCase {
     MouseEvent mouseEvent = new MouseEvent(button, MouseEvent.MOUSE_RELEASED, 1, InputEvent.BUTTON1_MASK, x, y, 1, false);
     DragEvent event = new DragEvent(mouseEvent, dragImage, new Point(xStart, yStart));
     myToolWindow1.fireButtonDropped(event);
-  }
-
-  private static class FakePanelPeer extends NullComponentPeer {
-    private Component myComponent;
-
-    public static void install(Component component) {
-      AWTAccessor.getComponentAccessor().setPeer(component, new FakePanelPeer(component));
-    }
-
-    FakePanelPeer(Component component) {
-      myComponent = component;
-    }
-
-    @Override
-    public void setVisible(boolean b) {
-      myComponent.setVisible(b);
-    }
-
-    public void show() {
-      setVisible(true);
-    }
-
-    public void hide() {
-      setVisible(false);
-    }
   }
 }

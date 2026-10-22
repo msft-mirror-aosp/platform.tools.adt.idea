@@ -52,7 +52,8 @@ constructor(
     }
     for (target in artifactState.targets()) {
       val javaInfo = (target as? TargetBuildInfo.Java)?.javaInfo ?: continue
-      if (projectDefinition.isIncluded(javaInfo.label)) {
+      // Targets within the project scope can still be external dependencies, e.g. if their rule kind is not supported.
+      if (!javaInfo.isExternalDependency) {
         continue
       }
       update.library(target.label) {

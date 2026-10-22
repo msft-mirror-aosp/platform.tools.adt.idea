@@ -608,7 +608,7 @@ class BuildVariantsIntegrationTest {
       """apply plugin: 'com.android.application'
       android {
           compileSdkVersion ${AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk}
-          namespace "com.example"
+          namespace = "com.example"
       }
       dependencies {
           api project(':library2')
@@ -720,7 +720,7 @@ class BuildVariantsIntegrationTest {
 
       android {
           compileSdkVersion ${AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk}
-          namespace "com.example"
+          namespace = "com.example"
       }
     """
         .trimIndent(),

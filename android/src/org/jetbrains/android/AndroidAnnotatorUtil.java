@@ -118,16 +118,14 @@ public class AndroidAnnotatorUtil {
   }
 
   /**
-   * Creates a {@link XmlPullParser} for the given XML file resource. The file may contain
-   * either regular or proto XML.
+   * Creates a {@link XmlPullParser} for the given XML file resource.
    *
    * @param resourceFile the resource file
    * @return the parser for the resource, or null if the resource does not exist
    * @throws IOException in case of an I/O error
    */
-  @VisibleForTesting
   @Nullable
-  public static XmlPullParser createXmlPullParser(@NotNull VirtualFile resourceFile) throws IOException {
+  private static XmlPullParser createXmlPullParser(@NotNull VirtualFile resourceFile) throws IOException {
     try {
       byte[] contents = resourceFile.contentsToByteArray();
       return FileResourceReader.createXmlPullParser(contents);

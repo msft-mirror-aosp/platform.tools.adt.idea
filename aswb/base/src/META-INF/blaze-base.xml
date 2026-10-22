@@ -430,6 +430,8 @@
                     interface="com.google.idea.blaze.base.qsync.AnnotationProcessorOverride"/>
     <extensionPoint qualifiedName="com.google.idea.blaze.base.qsync.rendering.bazelComposeToolingProjectLabelProvider"
                     interface="com.google.idea.blaze.base.qsync.rendering.BazelComposeToolingProjectLabelProvider" />
+    <extensionPoint qualifiedName="com.google.idea.blaze.base.qsync.testing.bazelTestToolingProjectLabelProvider"
+                    interface="com.google.idea.blaze.base.qsync.testing.BazelTestToolingProjectLabelProvider" />
     <extensionPoint qualifiedName="com.google.idea.blaze.BundledAspectsProvider"
                     interface="com.google.idea.blaze.base.qsync.BundledAspectsProvider" />
   </extensionPoints>
@@ -553,6 +555,10 @@
   <extensions defaultExtensionNs="com.google.idea.blaze.qsync">
     <ArtifactFetcher implementation="com.google.idea.blaze.base.qsync.cache.FileApiArtifactFetcher"/>
     <QuerySyncListenerProvider implementation="com.google.idea.blaze.base.qsync.ProjectUpdater$Provider" />
+  </extensions>
+
+  <extensions defaultExtensionNs="com.google.idea.blaze.base.qsync">
+    <testing.bazelTestToolingProjectLabelProvider implementation="com.google.idea.blaze.base.qsync.testing.DefaultBazelTestToolingProjectLabelProvider"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">

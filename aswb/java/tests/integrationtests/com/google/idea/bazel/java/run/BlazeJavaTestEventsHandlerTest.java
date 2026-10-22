@@ -128,10 +128,12 @@ public class BlazeJavaTestEventsHandlerTest extends BlazeIntegrationTestCase {
         "  @org.junit.Test",
         "  public void testMethod() {}",
         "}");
-    workspace.createPsiFile(
-        new WorkspacePath("java/com/google/lib/ConcreteTest.java"),
-        "package com.google.lib;",
-        "public class ConcreteTest extends com.google.lib.BaseTest {}");
+    PsiFile concreteFile =
+        workspace.createPsiFile(
+            new WorkspacePath("java/com/google/lib/ConcreteTest.java"),
+            "package com.google.lib;",
+            "public class ConcreteTest extends com.google.lib.BaseTest {}");
+    PsiClass concreteClass = ((PsiClassOwner) concreteFile).getClasses()[0];
 
     String parameterizedUrl =
         handler.testLocationUrl(
@@ -141,14 +143,16 @@ public class BlazeJavaTestEventsHandlerTest extends BlazeIntegrationTestCase {
             "[0] true (testMethod)",
             "com.google.lib.ConcreteTest");
     Location<?> parameterizedLocation = getLocation(parameterizedUrl);
-    assertThat(parameterizedLocation).isNotNull();
+    assertThat(parameterizedLocation).isInstanceOf(BlazePsiMemberParameterizedLocation.class);
+    assertThat(parameterizedLocation.getAncestors(PsiClass.class, false).next().getPsiElement())
+        .isEqualTo(concreteClass);
 
     List<TestSelector> parameterizedSelectors =
         handler.getTestSelectors(getProject(), ImmutableList.of(parameterizedLocation));
     assertThat(parameterizedSelectors)
         .containsExactly(
-            new TestSelector(
-                "com.google.lib.ConcreteTest", "testMethod", "\\[0\\]", TestFilterSyntax.JUNIT_4));
+            new TestSelector.Filter(
+                "com.google.lib.ConcreteTest#testMethod\\[0\\]$", TestFilterSyntax.JUNIT_4));
 
     String unparameterizedUrl =
         handler.testLocationUrl(
@@ -164,8 +168,65 @@ public class BlazeJavaTestEventsHandlerTest extends BlazeIntegrationTestCase {
         handler.getTestSelectors(getProject(), ImmutableList.of(unparameterizedLocation));
     assertThat(unparameterizedSelectors)
         .containsExactly(
-            new TestSelector(
-                "com.google.lib.ConcreteTest", "testMethod", null, TestFilterSyntax.JUNIT_4));
+            new TestSelector.Filter(
+                "com.google.lib.ConcreteTest#testMethod$", TestFilterSyntax.JUNIT_4));
+  }
+
+  @Test
+  public void testParenthesisAndCustomSuffixAndClassLevelParameterizedMethodLocationsResolve() {
+    workspace.createPsiFile(
+        new WorkspacePath("org/junit/Test.java"),
+        "package org.junit;",
+        "public @interface Test {}");
+    PsiFile javaFile =
+        workspace.createPsiFile(
+            new WorkspacePath("java/com/google/lib/JavaClass.java"),
+            "package com.google.lib;",
+            "public class JavaClass {",
+            "  @org.junit.Test",
+            "  public void testMethod() {}",
+            "}");
+    PsiClass javaClass = ((PsiClassOwner) javaFile).getClasses()[0];
+    PsiMethod method = javaClass.findMethodsByName("testMethod", false)[0];
+
+    Location<?> parenLocation =
+        getLocation("java:test://com.google.lib.JavaClass/testMethod(param_val)");
+    assertThat(parenLocation).isNotNull();
+    assertThat(parenLocation.getPsiElement()).isEqualTo(method);
+    assertThat(handler.getTestSelectors(getProject(), ImmutableList.of(parenLocation)))
+        .containsExactly(
+            new TestSelector.Filter(
+                "com.google.lib.JavaClass#testMethod\\(param_val\\)$", TestFilterSyntax.JUNIT_4));
+
+    Location<?> customSuffixLocation =
+        getLocation("java:test://com.google.lib.JavaClass/testMethod_customParam");
+    assertThat(customSuffixLocation).isNotNull();
+    assertThat(customSuffixLocation.getPsiElement()).isEqualTo(method);
+    assertThat(handler.getTestSelectors(getProject(), ImmutableList.of(customSuffixLocation)))
+        .containsExactly(
+            new TestSelector.Filter(
+                "com.google.lib.JavaClass#testMethod_customParam$", TestFilterSyntax.JUNIT_4));
+
+    Location<?> classAndMethodParamLocation =
+        getLocation(
+            "java:test://com.google.lib.JavaClass[classParam]/testMethod[methodParam/withSlash]");
+    assertThat(classAndMethodParamLocation).isNotNull();
+    assertThat(classAndMethodParamLocation.getPsiElement()).isEqualTo(method);
+    assertThat(
+            handler.getTestSelectors(getProject(), ImmutableList.of(classAndMethodParamLocation)))
+        .containsExactly(
+            new TestSelector.Filter(
+                "com.google.lib.JavaClass\\[classParam\\]#testMethod\\[methodParam/withSlash\\]$",
+                TestFilterSyntax.JUNIT_4));
+
+    Location<?> arbitraryCaseLocation =
+        getLocation("java:test://com.google.lib.JavaClass/customCaseWithoutMethodName");
+    assertThat(arbitraryCaseLocation).isNotNull();
+    assertThat(arbitraryCaseLocation.getPsiElement()).isEqualTo(javaClass);
+    assertThat(handler.getTestSelectors(getProject(), ImmutableList.of(arbitraryCaseLocation)))
+        .containsExactly(
+            new TestSelector.Filter(
+                "com.google.lib.JavaClass#customCaseWithoutMethodName$", TestFilterSyntax.JUNIT_4));
   }
 
   @Nullable

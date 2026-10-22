@@ -44,21 +44,22 @@ import com.intellij.platform.workspace.storage.metadata.model.EntityMetadata
 @GeneratedCodeApiVersion(3)
 @GeneratedCodeImplVersion(7)
 @OptIn(WorkspaceEntityInternalApi::class)
-internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleModelEntityData) : GradleModuleModelEntity, WorkspaceEntityBase(
-  dataSource) {
+internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleModelEntityData) :
+  GradleModuleModelEntity, WorkspaceEntityBase(dataSource) {
 
   private companion object {
-    internal val MODULE_CONNECTION_ID: ConnectionId = ConnectionId.create(ModuleEntity::class.java, GradleModuleModelEntity::class.java,
-                                                                          ConnectionId.ConnectionType.ONE_TO_ONE, false)
+    internal val MODULE_CONNECTION_ID: ConnectionId =
+      ConnectionId.create(ModuleEntity::class.java, GradleModuleModelEntity::class.java, ConnectionId.ConnectionType.ONE_TO_ONE, false)
     private val connections = listOf<ConnectionId>(MODULE_CONNECTION_ID)
-
   }
 
   override val symbolicId: GradleModuleModelEntityId = super.symbolicId
 
   override val module: ModuleEntity
-    get() = snapshot.instrumentation.getParent(MODULE_CONNECTION_ID, this) as? ModuleEntity ?: error(
-      "Parent module not found for GradleModuleModelEntity")
+    get() =
+      snapshot.instrumentation.getParent(MODULE_CONNECTION_ID, this) as? ModuleEntity
+        ?: error("Parent module not found for GradleModuleModelEntity")
+
   override val gradleModuleModel: GradleModuleModel
     get() {
       readField("gradleModuleModel")
@@ -75,9 +76,8 @@ internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleM
     return connections
   }
 
-
-  internal class Builder(result: GradleModuleModelEntityData?) : ModifiableWorkspaceEntityBase<GradleModuleModelEntity, GradleModuleModelEntityData>(
-    result), GradleModuleModelEntityBuilder {
+  internal class Builder(result: GradleModuleModelEntityData?) :
+    ModifiableWorkspaceEntityBase<GradleModuleModelEntity, GradleModuleModelEntityData>(result), GradleModuleModelEntityBuilder {
     internal constructor() : this(GradleModuleModelEntityData())
 
     override fun applyToBuilder(builder: MutableEntityStorage) {
@@ -85,8 +85,7 @@ internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleM
         if (existsInBuilder(builder)) {
           this.diff = builder
           return
-        }
-        else {
+        } else {
           error("Entity GradleModuleModelEntity is already created in a different builder")
         }
       }
@@ -110,8 +109,7 @@ internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleM
         if (_diff.instrumentation.getParentBuilder(MODULE_CONNECTION_ID, this) == null) {
           error("Field GradleModuleModelEntity#module should be initialized")
         }
-      }
-      else {
+      } else {
         if (this.entityLinks[EntityLink(false, MODULE_CONNECTION_ID)] == null) {
           error("Field GradleModuleModelEntity#module should be initialized")
         }
@@ -133,26 +131,24 @@ internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleM
       updateChildToParentReferences(parents)
     }
 
-
     override var entitySource: EntitySource
       get() = getEntityData().entitySource
       set(value) {
         checkModificationAllowed()
         getEntityData(true).entitySource = value
         changedProperty.add("entitySource")
-
       }
+
     override var module: ModuleEntityBuilder
       get() {
         val _diff = diff
         return if (_diff != null) {
           ((_diff as MutableEntityStorageInstrumentation).getParentBuilder(MODULE_CONNECTION_ID, this) as? ModuleEntityBuilder)
-          ?: (this.entityLinks[EntityLink(false, MODULE_CONNECTION_ID)] as? ModuleEntityBuilder) ?: error(
-            "module is null for GradleModuleModelEntity")
-        }
-        else {
-          (this.entityLinks[EntityLink(false, MODULE_CONNECTION_ID)] as? ModuleEntityBuilder) ?: error(
-            "module is null for GradleModuleModelEntity")
+            ?: (this.entityLinks[EntityLink(false, MODULE_CONNECTION_ID)] as? ModuleEntityBuilder)
+            ?: error("module is null for GradleModuleModelEntity")
+        } else {
+          (this.entityLinks[EntityLink(false, MODULE_CONNECTION_ID)] as? ModuleEntityBuilder)
+            ?: error("module is null for GradleModuleModelEntity")
         }
       }
       set(value) {
@@ -167,8 +163,7 @@ internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleM
         }
         if (_diff != null && (value !is ModifiableWorkspaceEntityBase<*, *> || value.diff != null)) {
           _diff.instrumentation.addChild(MODULE_CONNECTION_ID, value, this)
-        }
-        else {
+        } else {
           if (value is ModifiableWorkspaceEntityBase<*, *>) {
             value.entityLinks[EntityLink(true, MODULE_CONNECTION_ID)] = this
           }
@@ -184,12 +179,10 @@ internal class GradleModuleModelEntityImpl(private val dataSource: GradleModuleM
         checkModificationAllowed()
         getEntityData(true).gradleModuleModel = value
         changedProperty.add("gradleModuleModel")
-
       }
 
     override fun getEntityClass(): Class<GradleModuleModelEntity> = GradleModuleModelEntity::class.java
   }
-
 }
 
 @OptIn(WorkspaceEntityInternalApi::class)
@@ -216,8 +209,8 @@ internal class GradleModuleModelEntityData : WorkspaceEntityData<GradleModuleMod
   }
 
   override fun getMetadata(): EntityMetadata {
-    return MetadataStorageImpl.getMetadataByTypeFqn(
-      "com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity") as EntityMetadata
+    return MetadataStorageImpl.getMetadataByTypeFqn("com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity")
+      as EntityMetadata
   }
 
   override fun getEntityInterface(): Class<out WorkspaceEntity> {

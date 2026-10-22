@@ -23,7 +23,6 @@ import com.android.ide.common.rendering.api.Bridge;
 import com.android.ide.common.rendering.api.ILayoutLog;
 import com.android.sdklib.IAndroidTarget;
 import com.android.tools.environment.Logger;
-import com.android.utils.ComputerArchUtilsKt;
 import com.android.utils.CpuArchitecture;
 import java.io.File;
 import java.io.FileInputStream;
@@ -125,7 +124,7 @@ public class LayoutLibraryLoader {
   private static String getPlatformName() {
     return switch(SdkConstants.currentPlatform()) {
       case SdkConstants.PLATFORM_WINDOWS -> "win";
-      case SdkConstants.PLATFORM_DARWIN -> ComputerArchUtilsKt.getJvmArchitecture() == CpuArchitecture.ARM ? "mac-arm" : "mac";
+      case SdkConstants.PLATFORM_DARWIN -> CpuArchitecture.getJvmArchitecture() == CpuArchitecture.ARM ? "mac-arm" : "mac";
       case SdkConstants.PLATFORM_LINUX -> "linux";
       default -> "";
     };

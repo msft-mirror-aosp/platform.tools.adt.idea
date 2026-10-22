@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.diagnostics;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -35,12 +36,15 @@ import com.android.tools.idea.diagnostics.crash.StudioCrashReporter;
 import com.android.tools.idea.diagnostics.report.DiagnosticReport;
 import com.android.tools.idea.diagnostics.report.FreezeReport;
 import com.android.tools.idea.diagnostics.report.HistogramReport;
+import com.android.tools.idea.diagnostics.report.MemoryReportReason;
 import com.intellij.mock.MockApplication;
 import com.intellij.notification.NotificationGroup;
 import com.intellij.notification.NotificationGroupManager;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.io.FileUtil;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -136,6 +140,29 @@ public class AndroidStudioSystemHealthMonitorTest {
     verify(studioCrashReporterMock, timeout(TIMEOUT).times(expectedNumberOfReportsSubmitted)).submit(crashReportArgumentCaptor.capture(), eq(true));
     long numHistogramReportsSubmitted = crashReportArgumentCaptor.getAllValues().stream().filter(crashReport -> crashReport.getType().equals(HistogramReport.REPORT_TYPE)).count();
     assertEquals(AndroidStudioSystemHealthMonitor.getMaxHistogramReportsCount().longValue(), numHistogramReportsSubmitted);
+  }
+
+  @Test
+  public void testAddHistogramToDatabase() throws Exception {
+    androidStudioSystemHealthMonitor.addHistogramToDatabase(MemoryReportReason.UserInvoked, "testDescription");
+
+    ArgumentCaptor<DiagnosticReport> reportCaptor = ArgumentCaptor.forClass(DiagnosticReport.class);
+    verify(studioReportDatabaseMock).appendReport(reportCaptor.capture());
+    assertThat(reportCaptor.getValue()).isInstanceOf(HistogramReport.class);
+
+    HistogramReport report = (HistogramReport) reportCaptor.getValue();
+    try {
+      assertEquals(MemoryReportReason.UserInvoked, report.getReason());
+      assertEquals("testDescription", report.getDescription());
+      String histogram = Files.readString(report.getHistogramPath());
+      assertThat(histogram).contains("#instances");
+      assertThat(histogram).contains("#bytes");
+      assertThat(histogram).contains("[...]");
+      assertThat(histogram).contains("Total");
+      assertThat(Files.readString(report.getThreadDumpPath())).isNotEmpty();
+    } finally {
+      FileUtil.delete(report.getHistogramPath().getParent());
+    }
   }
 
 }

@@ -23,7 +23,6 @@ import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.rendering.classloading.loaders.ClassBinaryCacheLoader
 import com.android.tools.idea.rendering.classloading.loaders.FakeNavigationEventDispatcherOwnerLoader
 import com.android.tools.idea.rendering.classloading.loaders.FakeSavedStateRegistryLoader
-import com.android.tools.idea.rendering.classloading.loaders.MultiLoaderWithAffinity
 import com.android.tools.idea.rendering.classloading.loaders.RecyclerViewAdapterLoader
 import com.android.tools.idea.rendering.tokens.BuildSystemFilePreviewServices.Companion.getBuildSystemFilePreviewServices
 import com.android.tools.rendering.classloading.ClassBinaryCache
@@ -37,6 +36,7 @@ import com.android.tools.rendering.classloading.loaders.ClassLoaderLoader
 import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
 import com.android.tools.rendering.classloading.loaders.ListeningLoader
 import com.android.tools.rendering.classloading.loaders.MultiLoader
+import com.android.tools.rendering.classloading.loaders.MultiLoaderWithAffinity
 import com.android.tools.rendering.classloading.loaders.NameRemapperLoader
 import com.android.utils.cache.ChangeTracker
 import com.android.utils.cache.ChangeTrackerCachedValue

@@ -17,17 +17,12 @@ package com.android.tools.adtui.swing;
 
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.GraphicsConfiguration;
 import java.awt.peer.ComponentPeer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import sun.awt.AWTAccessor;
 
 class ComponentAccessor {
-  public static void setGraphicsConfiguration(@NotNull Component component, @Nullable GraphicsConfiguration gc) {
-    AWTAccessor.getComponentAccessor().setGraphicsConfiguration(component, gc);
-  }
-
   static void setParent(@NotNull Component component, @Nullable Container parent) {
     AWTAccessor.getComponentAccessor().setParent(component, parent);
   }

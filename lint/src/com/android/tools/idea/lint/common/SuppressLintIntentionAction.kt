@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.lint.common
 
-import com.android.tools.idea.gradle.dcl.lang.psi.DeclarativeFileType
 import com.android.tools.lint.detector.api.Issue
 import com.intellij.codeInsight.intention.PriorityAction
 import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
@@ -63,8 +62,7 @@ class SuppressLintIntentionAction(private val id: String, element: PsiElement, p
         type === GradleFileType ||
         type === KotlinFileType.INSTANCE ||
         context.file is PsiBinaryFile ||
-        type === TomlFileType ||
-        type === DeclarativeFileType.INSTANCE
+        type === TomlFileType
     )
       Presentation.of(label).withIcon(AllIcons.Actions.Cancel).withPriority(PriorityAction.Priority.LOW)
     else null

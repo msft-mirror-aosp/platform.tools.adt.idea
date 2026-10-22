@@ -128,7 +128,7 @@ public class ProjectLoaderImpl implements ProjectLoader {
       BuildGraphData.ProtoRules protoRules,
       ProjectStructureReader projectStructureReader,
       Optional<BlazeVcsHandler> vcsHandler,
-      BazelVersionHandler bazelVersionProvider) {}
+      BazelInfoProvider bazelInfoProvider) {}
 
   public ProjectLoaderImpl(Project project) {
     this(
@@ -182,7 +182,7 @@ public class ProjectLoaderImpl implements ProjectLoader {
             result.protoRules(),
             result.projectStructureReader(),
             result.vcsHandler().orElse(null),
-            result.bazelVersionProvider());
+            result.bazelInfoProvider());
 
     return querySyncProject;
   }
@@ -333,7 +333,7 @@ public class ProjectLoaderImpl implements ProjectLoader {
         buildSystem.getProtoRules(),
         projectStructureReader,
         vcsHandler,
-        new BazelVersionHandler(buildSystem, buildSystem.getBuildInvoker(project)));
+        new BazelInfoProvider(buildSystem, buildSystem.getBuildInvoker(project)));
   }
 
   private static Map<BuildArtifact, ? extends Collection<? extends ArtifactMetadata.Extractor<?>>>

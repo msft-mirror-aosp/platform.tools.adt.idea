@@ -31,9 +31,10 @@ import org.junit.runner.Description
 import org.junit.runners.model.Statement
 
 /** [TestRule] that implements the [before] and [after] setup specific for Compose unit tests. */
-private class ComposeProjectRuleImpl(private val projectRule: AndroidProjectRule) : NamedExternalResource() {
-  val buildSystemServices = FakeBuildSystemFilePreviewServices()
-
+private class ComposeProjectRuleImpl(
+  private val projectRule: AndroidProjectRule,
+  val buildSystemServices: FakeBuildSystemFilePreviewServices = FakeBuildSystemFilePreviewServices(),
+) : NamedExternalResource() {
   override fun before(description: Description) {
     buildSystemServices.register(projectRule.testRootDisposable)
     (projectRule.module.getModuleSystem() as? DefaultModuleSystem)?.let { it.usesCompose = true }
@@ -51,7 +52,10 @@ private class ComposeProjectRuleImpl(private val projectRule: AndroidProjectRule
  * Compose UI elements and should not be used in test that are checking UI state as it depends on IntelliJ infrastructure making the test
  * inherently flaky.
  */
-class ComposeProjectRule(private val projectRule: AndroidProjectRule = AndroidProjectRule.inMemory()) : ComposeProjectBasedTestRule {
+class ComposeProjectRule(
+  private val projectRule: AndroidProjectRule = AndroidProjectRule.inMemory(),
+  buildSystemServices: FakeBuildSystemFilePreviewServices = FakeBuildSystemFilePreviewServices(),
+) : ComposeProjectBasedTestRule {
   override val project: Project
     get() = projectRule.project
 
@@ -61,7 +65,7 @@ class ComposeProjectRule(private val projectRule: AndroidProjectRule = AndroidPr
   override val fixture: CodeInsightTestFixture
     get() = projectRule.fixture
 
-  private val implRule = ComposeProjectRuleImpl(projectRule)
+  private val implRule = ComposeProjectRuleImpl(projectRule, buildSystemServices)
 
   val buildSystemServices: FakeBuildSystemFilePreviewServices
     get() = implRule.buildSystemServices

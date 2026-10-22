@@ -17,11 +17,18 @@ package com.android.tools.preview.config
 
 import com.android.resources.Density
 import com.android.resources.ScreenOrientation
+import com.android.resources.ScreenRatio
 import com.android.resources.ScreenRound
+import com.android.resources.ScreenSize
 import com.android.sdklib.devices.Device
+import com.android.sdklib.devices.Hardware
+import com.android.sdklib.devices.Screen
+import com.android.sdklib.devices.Software
+import com.android.sdklib.devices.State
 import kotlin.test.assertNotNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -183,6 +190,68 @@ internal class DeviceUtilsKtTest {
     assertEquals(ViewingDistance.far, config.viewingDistance)
 
     assertEquals(spec, config.deviceSpec())
+  }
+
+  @Test
+  fun parentDeviceSpecPreservesParentDeviceScreenAndTagProperties() {
+    // Build a parent device with a 6.7-inch screen explicitly configured as NORMAL screen size
+    val parentScreen =
+      Screen().apply {
+        xDimension = 1344
+        yDimension = 2992
+        pixelDensity = Density.XXHIGH
+        diagonalLength = 6.70
+        size = ScreenSize.NORMAL
+        ratio = ScreenRatio.LONG
+        screenRound = ScreenRound.NOTROUND
+      }
+    val parentState =
+      State().apply {
+        name = "Portrait"
+        isDefaultState = true
+        orientation = ScreenOrientation.PORTRAIT
+        hardware = Hardware().apply { screen = parentScreen }
+      }
+    val parentDevice =
+      Device.Builder()
+        .apply {
+          setId("pixel_8_pro")
+          setName("Pixel 8 Pro")
+          setTagId("android-wear")
+          setManufacturer("Google")
+          addSoftware(Software())
+          addState(parentState)
+        }
+        .build()
+    val availableDevices = listOf(parentDevice)
+
+    // Parse a parent device spec and verify the created device retains the parent's screen size, diagonal length, ratio, and tagId
+    val resolvedParentDevice = availableDevices.findOrParseFromDefinition("spec:parent=pixel_8_pro,orientation=landscape")
+    assertNotNull(resolvedParentDevice)
+    val resolvedScreen = resolvedParentDevice.defaultHardware.screen!!
+    assertEquals("Custom", resolvedParentDevice.id)
+    assertEquals("android-wear", resolvedParentDevice.tagId)
+    assertEquals(ScreenOrientation.LANDSCAPE, resolvedParentDevice.defaultState.orientation)
+    assertEquals(ScreenSize.NORMAL, resolvedScreen.size)
+    assertEquals(6.70, resolvedScreen.diagonalLength, 0.001)
+    assertEquals(ScreenRatio.LONG, resolvedScreen.ratio)
+
+    // Modify a hardware dimension on the mutable config and verify the parent device is invalidated and screen size is recomputed
+    val modifiedConfig = DeviceConfig.toMutableDeviceConfigOrNull("spec:parent=pixel_8_pro", availableDevices)
+    assertNotNull(modifiedConfig)
+    modifiedConfig.width = 1400f
+    assertNull(modifiedConfig.parentDeviceId)
+    assertNull(modifiedConfig.parentDevice)
+    val recomputedDevice = modifiedConfig.createDeviceInstance()
+    assertEquals(ScreenSize.LARGE, recomputedDevice.defaultHardware.screen!!.size)
+
+    // Assign and clear parentDevice on the mutable config and verify parentDeviceId stays in sync
+    modifiedConfig.parentDevice = parentDevice
+    assertEquals("pixel_8_pro", modifiedConfig.parentDeviceId)
+    assertEquals(parentDevice, modifiedConfig.parentDevice)
+    modifiedConfig.parentDevice = null
+    assertNull(modifiedConfig.parentDeviceId)
+    assertNull(modifiedConfig.parentDevice)
   }
 }
 

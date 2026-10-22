@@ -25,7 +25,7 @@ android {
     // Do not configure testApplicationId here and instead leave it configured in the manifest.
   }
 
-  targetProjectPath ':app'
+  targetProjectPath = ':app'
 }
 
 repositories {

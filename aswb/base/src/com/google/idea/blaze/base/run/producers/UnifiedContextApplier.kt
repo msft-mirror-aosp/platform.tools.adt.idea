@@ -50,10 +50,11 @@ object UnifiedContextApplier {
   }
 
   fun getFilterDescription(testSelectors: List<TestSelector>): String? {
-    if (testSelectors.isEmpty()) return null
-    val first = testSelectors.first()
+    val memberSelectors = testSelectors.filterIsInstance<TestSelector.Member>()
+    if (memberSelectors.isEmpty()) return null
+    val first = memberSelectors.first()
     val className = first.className.substringAfterLast('.')
-    val methodNames = testSelectors.mapNotNull { it.methodName }.distinct()
+    val methodNames = memberSelectors.mapNotNull { it.methodName }.distinct()
     return if (methodNames.isEmpty()) {
       className
     } else {

@@ -11,7 +11,6 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
-        "//tools/adt/idea/app-inspection/api:app-inspection.api",
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api",
         "//tools/adt/idea/.idea/libraries:studio-proto",
         "//tools/adt/idea/.idea/libraries:network_inspector_java_proto",
@@ -45,9 +44,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:kotlin-test",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/.idea/libraries:mockito",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/android-test-framework:intellij.android.testFramework",
-        "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
     ],

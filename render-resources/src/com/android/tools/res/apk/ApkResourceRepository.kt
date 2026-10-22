@@ -119,9 +119,8 @@ private val PLURALS_NAMES =
  * * `<item type="style" name="Alias">@style/Base</item>` is a resource alias, encoded as a reference to the aliased resource.
  *
  * Simple entries are represented as a plain [ResourceValueImpl] whose value is the (reference) value of the entry, regardless of the
- * resource type. This matches both the runtime behavior of the framework (AssetManager2 treats such entries as values, not bags, and
- * follows alias references during reference resolution) and how [com.android.resources.aar.AarProtoResourceRepository] represents the same
- * entries when loading compiled resources. See [createSimpleResValue] for the exceptions to this rule.
+ * resource type. This matches the runtime behavior of the framework (AssetManager2 treats such entries as values, not bags, and follows
+ * alias references during reference resolution). See [createSimpleResValue] for the exceptions to this rule.
  */
 internal fun TypeChunk.Entry.createResValue(
   resRef: ResourceReference,

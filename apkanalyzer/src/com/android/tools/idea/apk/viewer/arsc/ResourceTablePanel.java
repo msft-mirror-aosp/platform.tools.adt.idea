@@ -53,10 +53,10 @@ import java.util.Locale;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JTable;
+import javax.swing.RowFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
-import org.jdesktop.swingx.sort.RowFilters.GeneralFilter;
 import org.jetbrains.annotations.NotNull;
 
 public class ResourceTablePanel {
@@ -203,7 +203,7 @@ public class ResourceTablePanel {
     return renderer;
   }
 
-  private static class ResourceFilter extends GeneralFilter {
+  private static class ResourceFilter extends RowFilter<Object, Object> {
 
     private final String myFilter;
 
@@ -212,8 +212,13 @@ public class ResourceTablePanel {
     }
 
     @Override
-    protected boolean include(Entry<?, ?> value, int index) {
-      return value.getStringValue(index).toLowerCase(Locale.getDefault()).contains(myFilter);
+    public boolean include(Entry<?, ?> entry) {
+      for (int index = 0; index < entry.getValueCount(); index++) {
+        if (entry.getStringValue(index).toLowerCase(Locale.getDefault()).contains(myFilter)) {
+          return true;
+        }
+      }
+      return false;
     }
   }
 }

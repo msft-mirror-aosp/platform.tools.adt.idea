@@ -49,6 +49,29 @@ class UtilsTest {
   }
 
   @Test
+  fun testWearDebugSurfaceVersionRetriesOnColdBoot() {
+    val version = 4
+    var attempts = 0
+    val device = getMockDevice { request ->
+      when (request) {
+        "am broadcast -a com.google.android.wearable.app.DEBUG_SURFACE --es operation version" -> {
+          attempts++
+          if (attempts < 3) {
+            "Broadcast completed: result=0"
+          } else {
+            "Broadcast completed: result=1, data=\"$version\""
+          }
+        }
+
+        else -> "Unknown request: $request"
+      }
+    }
+
+    assertEquals(version, device.getWearDebugSurfaceVersion(EmptyProgressIndicator(), timeoutMs = 5_000, retryIntervalMs = 10))
+    assertEquals(3, attempts)
+  }
+
+  @Test
   fun testWearDebugSurfaceVersionWhenInvalidResult() {
     val device = getMockDevice { request ->
       when (request) {
@@ -58,7 +81,7 @@ class UtilsTest {
       }
     }
     assertThrows(ExecutionException::class.java, "Error while checking version") {
-      device.getWearDebugSurfaceVersion(EmptyProgressIndicator())
+      device.getWearDebugSurfaceVersion(EmptyProgressIndicator(), timeoutMs = 50, retryIntervalMs = 10)
     }
   }
 

@@ -20,11 +20,9 @@ import static com.android.SdkConstants.DOT_VERSIONS_DOT_TOML;
 import static com.android.SdkConstants.EXT_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.EXT_GRADLE_KTS;
 import static com.android.SdkConstants.FN_BUILD_GRADLE;
-import static com.android.SdkConstants.FN_BUILD_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.FN_BUILD_GRADLE_KTS;
 import static com.android.SdkConstants.FN_GRADLE_PROPERTIES;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE;
-import static com.android.SdkConstants.FN_SETTINGS_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE_KTS;
 import static com.android.tools.idea.Projects.getBaseDirPath;
 import static com.android.tools.idea.projectsystem.ProjectSystemUtil.getProjectSystem;
@@ -842,12 +840,9 @@ public class AndroidGradleTests {
     File build = new File(srcRoot, FN_BUILD_GRADLE);
     File ktsSettings = new File(srcRoot, FN_SETTINGS_GRADLE_KTS);
     File ktsBuild = new File(srcRoot, FN_BUILD_GRADLE_KTS);
-    File dclSettings = new File(srcRoot, FN_SETTINGS_GRADLE_DECLARATIVE);
-    File dclBuild = new File(srcRoot, FN_BUILD_GRADLE_DECLARATIVE);
-    TestCase.assertTrue("Couldn't find build.gradle(.kts|.dcl) or settings.gradle(.kts|dcl) in " + srcRoot.getPath(),
+    TestCase.assertTrue("Couldn't find build.gradle(.kts) or settings.gradle(.kts) in " + srcRoot.getPath(),
                         settings.exists() || build.exists() ||
-                        ktsSettings.exists() || ktsBuild.exists() ||
-                        dclSettings.exists() || dclBuild.exists());
+                        ktsSettings.exists() || ktsBuild.exists());
   }
 
   public static void syncProject(@NotNull Project project,

@@ -3155,8 +3155,6 @@ android-studio/plugins/gmd-code-completion/lib/gmd-code-completion.jar
 android-studio/plugins/gmd-code-completion/lib/google-api-services-storage-v1-rev20230301-2.0.0.jar
 android-studio/plugins/gmd-code-completion/lib/google-api-services-testing-v1-rev20250327-2.0.0.jar
 android-studio/plugins/gmd-code-completion/lib/google-api-services-toolresults-v1beta3-rev20230410-2.0.0.jar
-android-studio/plugins/gradle-declarative/lib/gradle-declarative.jar
-android-studio/plugins/gradle-declarative/lib/gradle-declarative.so.jar
 android-studio/plugins/gradle-dsl/lib/gradle-dsl.jar
 android-studio/plugins/gradle-java-plugin/lib/gradle-java-plugin.jar
 android-studio/plugins/gradle-java-plugin/lib/gradle-jps.jar

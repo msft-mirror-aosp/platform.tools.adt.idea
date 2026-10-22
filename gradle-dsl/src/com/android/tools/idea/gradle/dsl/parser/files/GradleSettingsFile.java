@@ -77,9 +77,6 @@ public class GradleSettingsFile extends GradleScriptFile {
   public Map<String, PropertiesElementDescription<?>> getChildPropertiesElementsDescriptionMap(
     @NotNull GradleDslNameConverter.Kind kind
   ) {
-    if(kind == GradleDslNameConverter.Kind.DECLARATIVE)
-      return CHILD_PROPERTIES_DECLARATIVE_MAP;
-
     return CHILD_PROPERTIES_ELEMENTS_MAP;
   }
 

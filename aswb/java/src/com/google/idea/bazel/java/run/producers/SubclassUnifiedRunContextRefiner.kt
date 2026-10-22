@@ -38,6 +38,10 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 class SubclassUnifiedRunContextRefiner : UnifiedRunContextRefiner {
 
   override suspend fun refine(runContext: UnifiedRunContext, popupPosition: RelativePoint?): UnifiedRunContext {
+    val selectors = runContext.testFilter?.testSelectors ?: return runContext
+    if (selectors.isEmpty() || selectors.any { it !is TestSelector.Member }) {
+      return runContext
+    }
     val psiClass = readAction { getPsiClass(runContext.sourceElement) } ?: return runContext
     val isAbstract = readAction { psiClass.hasModifierProperty(PsiModifier.ABSTRACT) }
     if (!isAbstract) {
@@ -61,7 +65,14 @@ class SubclassUnifiedRunContextRefiner : UnifiedRunContextRefiner {
         RefinedInfo(className, methodName, version, newTargetSpec)
       } ?: return runContext
 
-    val testSelector = TestSelector(refinedInfo.className, refinedInfo.methodName, null, refinedInfo.version)
+    val existingParamRegex = (selectors.firstOrNull() as? TestSelector.Member)?.parameterFilterRegex
+    val testSelector =
+      TestSelector.Member(
+        refinedInfo.className,
+        refinedInfo.methodName,
+        existingParamRegex,
+        refinedInfo.version,
+      )
     val newTestFilter = TestFilterComponent(listOf(testSelector), runContext.testFilter?.appendFilteredSuffix ?: false)
 
     return runContext.copy(

@@ -182,6 +182,7 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
         Pair<Boolean, String> result = supportsRunningLibraryProjects(facet);
         if (!result.getFirst()) {
           errors.add(ValidationError.fatal(result.getSecond()));
+          return errors;
         }
         break;
 

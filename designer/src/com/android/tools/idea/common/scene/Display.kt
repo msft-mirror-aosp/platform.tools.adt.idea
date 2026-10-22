@@ -42,26 +42,55 @@ import org.jetbrains.annotations.TestOnly
 
 /** [Display] that runs the layout and the creation of the display list in a background thread. */
 private class AsyncDisplay(disposable: Disposable, private val captureRepaints: Boolean) : Display {
-  private data class CachedState(val displayListVersion: Long, val displayList: DisplayList, val scale: Double)
+  private data class CachedState(
+    val displayListVersion: Long,
+    val displayList: DisplayList,
+    val scale: Double,
+    val x: Int = Int.MIN_VALUE,
+    val y: Int = Int.MIN_VALUE,
+    val contentTranslationX: Int = Int.MIN_VALUE,
+    val contentTranslationY: Int = Int.MIN_VALUE,
+  )
 
-  private val rebuildTriggerFlow = MutableSharedFlow<SceneView>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+  private data class RebuildRequest(
+    val scene: Scene,
+    val sceneContext: SceneContext,
+    val sceneVersion: Long,
+    val scale: Double,
+    val x: Int,
+    val y: Int,
+    val contentTranslationX: Int,
+    val contentTranslationY: Int,
+  )
+
+  private val rebuildTriggerFlow = MutableSharedFlow<RebuildRequest>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+  @Volatile private var lastEmittedRequest: RebuildRequest? = null
 
   private val cachedStateFlow = MutableStateFlow(CachedState(0, initialEmptyList, 0.0))
 
   init {
     AndroidCoroutineScope(disposable).launch(Dispatchers.Default) {
-      rebuildTriggerFlow.collectLatest { sceneView ->
-        val scene = sceneView.scene
-        val sceneContext = sceneView.context
+      rebuildTriggerFlow.collectLatest { request ->
+        val scene = request.scene
+        val sceneContext = request.sceneContext
         val newDisplayList = DisplayList()
 
         val time = System.currentTimeMillis()
-        val sceneVersion = scene.displayListVersion
         scene.layout(time, sceneContext)
         sceneContext.time = time
         checkCanceled()
         scene.buildDisplayList(newDisplayList, time, sceneContext)
-        cachedStateFlow.value = CachedState(sceneVersion, newDisplayList, sceneContext.scale)
+        cachedStateFlow.value =
+          CachedState(
+            request.sceneVersion,
+            newDisplayList,
+            request.scale,
+            request.x,
+            request.y,
+            request.contentTranslationX,
+            request.contentTranslationY,
+          )
         withContext(Dispatchers.Main) { scene.repaint() }
       }
     }
@@ -73,6 +102,7 @@ private class AsyncDisplay(disposable: Disposable, private val captureRepaints: 
   private val pendingRepaints: MutableSet<Scene> = Collections.newSetFromMap(WeakHashMap())
 
   override fun relayout() {
+    lastEmittedRequest = null
     cachedStateFlow.value = cachedStateFlow.value.copy(displayListVersion = 0)
   }
 
@@ -83,11 +113,34 @@ private class AsyncDisplay(disposable: Disposable, private val captureRepaints: 
     val scene = sceneView.scene
     val sceneContext = sceneView.context
     val state = cachedStateFlow.value
+    val currentRequest =
+      RebuildRequest(
+        scene = scene,
+        sceneContext = sceneContext,
+        sceneVersion = scene.displayListVersion,
+        scale = sceneContext.scale,
+        x = sceneView.x,
+        y = sceneView.y,
+        contentTranslationX = sceneView.contentTranslationX,
+        contentTranslationY = sceneView.contentTranslationY,
+      )
     val needsRebuild =
-      scene.displayListVersion > state.displayListVersion || sceneContext.scale != state.scale || state.displayList == initialEmptyList
+      currentRequest.sceneVersion > state.displayListVersion ||
+        currentRequest.scale != state.scale ||
+        currentRequest.x != state.x ||
+        currentRequest.y != state.y ||
+        currentRequest.contentTranslationX != state.contentTranslationX ||
+        currentRequest.contentTranslationY != state.contentTranslationY ||
+        state.displayList == initialEmptyList
 
     if (needsRebuild) {
-      rebuildTriggerFlow.tryEmit(sceneView)
+      if (captureRepaints) {
+        pendingRepaintsLock.withLock { pendingRepaints.add(scene) }
+      }
+      if (currentRequest != lastEmittedRequest) {
+        lastEmittedRequest = currentRequest
+        rebuildTriggerFlow.tryEmit(currentRequest)
+      }
     } else {
       if (captureRepaints) {
         pendingRepaintsLock.withLock { pendingRepaints.remove(scene) }

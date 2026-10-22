@@ -45,6 +45,14 @@ interface QuerySummary {
     val stamp: Long
 
     /**
+     * A hash of the last-modified times that this package's [subincludes] in the main repository and in local repositories had when the
+     * package was last queried.
+     *
+     * 0 if the package loads no such file, or if nothing was recorded.
+     */
+    val subincludeStamp: Long
+
+    /**
      * The set of all `.bzl` files loaded by this build package.
      *
      * Note: This list is transitively expanded by Bazel query itself (meaning it contains all nested subincludes recursively loaded by any
@@ -63,14 +71,6 @@ interface QuerySummary {
    * The packages are workspace relative paths that contain a BUILD file.
    */
   val packages: PackageSet
-
-  /**
-   * Returns a map of .bzl file labels to BUILD file labels that include them.
-   *
-   * Note: This map contains transitive/nested includes (meaning if BUILD loads a.bzl, and a.bzl loads b.bzl, both a.bzl and b.bzl are
-   * mapped back to the BUILD file path recursively).
-   */
-  val reverseSubincludeMap: Map<Path, Collection<Path>>
 
   /**
    * Returns the set of labels of all files included from BUILD files.
@@ -95,11 +95,12 @@ interface QuerySummary {
   fun protoForSerializationOnly(): Query.Summary
 
   /**
-   * Returns a copy of this [QuerySummary] with package stamps updated by [provider].
+   * Returns a copy of this [QuerySummary] with package stamps updated by [packageStamps] and subinclude stamps updated by
+   * [subincludeStamps].
    *
    * Reuses string tables, rule graphs, source file graphs, and derived package structures without re-indexing or re-decoding.
    */
-  fun withPackageStamps(provider: PackageStampProvider): QuerySummary
+  fun withPackageAndSubincludeStamps(packageStamps: PackageStampProvider, subincludeStamps: PackageStampProvider): QuerySummary
 
   companion object {
     @JvmField
@@ -111,7 +112,6 @@ interface QuerySummary {
         override fun getBuildPackage(packageLabel: Label): BuildPackage? = null
 
         override val packages: PackageSet = PackageSet.EMPTY
-        override val reverseSubincludeMap: Map<Path, Collection<Path>> = emptyMap()
         override val allBuildIncludedFiles: Set<Label> = emptySet()
         override val packagesWithErrors: Set<Path> = emptySet()
         override val packagesWithErrorsCount: Int = 0
@@ -120,7 +120,10 @@ interface QuerySummary {
 
         override fun protoForSerializationOnly(): Query.Summary = Query.Summary.getDefaultInstance()
 
-        override fun withPackageStamps(provider: PackageStampProvider): QuerySummary = this
+        override fun withPackageAndSubincludeStamps(
+          packageStamps: PackageStampProvider,
+          subincludeStamps: PackageStampProvider,
+        ): QuerySummary = this
       }
   }
 }
@@ -128,7 +131,7 @@ interface QuerySummary {
 /** Returns a copy of this [QuerySummary] with package stamps updated from [stamps], normalizing package keys. */
 fun QuerySummary.withPackageStamps(stamps: Map<Label, Long>): QuerySummary {
   val normalizedStamps = stamps.mapKeys { it.key.getPackageLabel() }
-  return withPackageStamps { pkg -> normalizedStamps[pkg.packageLabel] }
+  return withPackageAndSubincludeStamps(packageStamps = { pkg -> normalizedStamps[pkg.packageLabel] }, subincludeStamps = { null })
 }
 
 fun QuerySummary.getRule(label: Label): QueryData.Rule? {

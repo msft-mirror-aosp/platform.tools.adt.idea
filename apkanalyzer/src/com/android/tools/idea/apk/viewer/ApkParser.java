@@ -198,9 +198,6 @@ public class ApkParser {
   }
 
   private static AndroidApplicationInfo getAppInfoFromAppBundle(@NotNull ArchiveEntry entry) throws Exception {
-    // Note: This code below is a little convoluted, it would be better to update AndroidManifestParser
-    //       to support ProtoXmlPullParser, which can decode xml protobuf streams automatically.
-
     // Decode XML protobuf into XML document string representation
     byte[] content = Files.readAllBytes(entry.getPath());
     String doc = new ProtoXmlPrettyPrinterImpl().prettyPrint(content);

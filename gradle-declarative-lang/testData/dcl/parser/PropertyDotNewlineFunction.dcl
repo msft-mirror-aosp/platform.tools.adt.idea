@@ -1,2 +1,0 @@
-rootProject.
-include(":app")

@@ -26,10 +26,6 @@ class BuildConfigurationLanguageComboProviderTest {
     val items = (0 until combo.itemCount).map { combo.getItemAt(it) }
     val names = items.map { it.name }
     assertThat(names).doesNotContain("Groovy")
-    assertThat(items)
-      .containsExactly(
-        BuildConfigurationLanguageForNewModule.KTS,
-        BuildConfigurationLanguageForNewModule.DCL,
-      )
+    assertThat(items).containsExactly(BuildConfigurationLanguageForNewModule.KTS)
   }
 }

@@ -18,8 +18,6 @@ package com.android.tools.idea.insights.ui
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.insights.InsightsProvider.Source
-import com.android.tools.idea.insights.inspection.ConnectionFilter
-import com.android.tools.idea.insights.inspection.ConnectionPreference
 import com.android.tools.idea.insights.ui.FilterSelectorPopup.NoAvailableAppsBanner
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule

@@ -26,6 +26,7 @@ import com.intellij.diagnostic.DefaultIdeaErrorLogger;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.AnActionWrapper;
 import com.intellij.openapi.actionSystem.EmptyAction;
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.actionSystem.ex.ActionUtil;
@@ -81,6 +82,29 @@ public class AndroidStudioSystemHealthMonitorUtilitiesTest extends LightPlatform
         .toList();
       assertThat(usages).hasSize(1);
       assertThat(usages.getFirst().getStudioEvent().getUiActionStats().getActionClassName()).endsWith(EmptyAction.class.getSimpleName());
+    } finally {
+      UsageTracker.cleanAfterTesting();
+    }
+  }
+
+  // Regression test for b/575848746
+  public void testActionInvocationMetricsLoggedWithNestedActionWrappers() throws Exception {
+    try (TestUsageTracker usageTracker = new TestUsageTracker(new VirtualTimeScheduler())) {
+      UsageTracker.setWriterForTest(usageTracker);
+
+      AnAction targetAction = new EmptyAction();
+      AnAction wrapper1 = new AnActionWrapper(targetAction);
+      AnAction wrapper2 = new AnActionWrapper(wrapper1);
+
+      var event = TestActionEvent.createTestEvent();
+      ActionUtil.performAction(wrapper2, event);
+
+      var usages = usageTracker.getUsages().stream()
+        .filter(u -> u.getStudioEvent().getKind() == AndroidStudioEvent.EventKind.STUDIO_UI_ACTION_STATS)
+        .toList();
+      assertThat(usages).hasSize(1);
+      assertThat(usages.getFirst().getStudioEvent().getUiActionStats().getActionClassName())
+        .isEqualTo("EmptyAction");
     } finally {
       UsageTracker.cleanAfterTesting();
     }

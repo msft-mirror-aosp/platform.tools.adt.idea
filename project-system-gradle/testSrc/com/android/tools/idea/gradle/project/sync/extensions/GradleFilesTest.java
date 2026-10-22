@@ -16,9 +16,7 @@
 package com.android.tools.idea.gradle.project.sync.extensions;
 
 import static com.android.SdkConstants.FN_BUILD_GRADLE;
-import static com.android.SdkConstants.FN_BUILD_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.FN_GRADLE_PROPERTIES;
-import static com.android.SdkConstants.FN_SETTINGS_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE_KTS;
 import static com.android.tools.idea.Projects.getBaseDirPath;
 import static com.google.common.truth.Truth.assertThat;
@@ -26,7 +24,6 @@ import static com.intellij.openapi.util.io.FileUtilRt.createIfNotExists;
 import static com.intellij.openapi.vfs.VfsUtil.findFileByIoFile;
 import static org.mockito.MockitoAnnotations.initMocks;
 
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport;
 import com.android.tools.idea.gradle.project.sync.GradleFiles;
 import com.android.tools.idea.gradle.util.GradleWrapper;
 import com.android.tools.idea.testing.AndroidGradleProjectRule;
@@ -105,30 +102,7 @@ public class GradleFilesTest {
     assertThat(myGradleFiles.isGradleFile(psiFile)).isTrue();
   }
 
-  @Test
-  public void testIsGradleFileWithDeclarativeGradleFile() {
-    DeclarativeStudioSupport.override(true);
-    try {
-      PsiFile psiFile = findOrCreatePsiFileRelativeToProjectRootFolder(FN_BUILD_GRADLE_DECLARATIVE);
-      assertThat(myGradleFiles.isGradleFile(psiFile)).isTrue();
-    }
-    finally {
-      DeclarativeStudioSupport.clearOverride();
-    }
-  }
 
-  @Test
-  public void testIsGradleFileWithDeclarativeSettingsFile() {
-    DeclarativeStudioSupport.override(true);
-    try {
-      PsiFile psiFile = PsiFileFactory.getInstance(projectRule.getProject())
-        .createFileFromText(FN_SETTINGS_GRADLE_DECLARATIVE, FileTypeManager.getInstance().getStdFileType(""), "", 0L, false);
-      assertThat(myGradleFiles.isGradleFile(psiFile)).isTrue();
-    }
-    finally {
-      DeclarativeStudioSupport.clearOverride();
-    }
-  }
 
   @Test
   public void testIsGradleFileWithVersionsToml() {

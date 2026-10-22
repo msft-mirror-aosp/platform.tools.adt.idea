@@ -45,18 +45,21 @@ class PartialProjectRefresh implements RefreshOperation {
   @VisibleForTesting final ImmutableSet<Path> modifiedPackages;
   @VisibleForTesting final ImmutableSet<Path> deletedPackages;
   private final ProjectStructureData projectStructureData;
+  private final CachingFileMtimeReader mtimeReader;
 
   PartialProjectRefresh(
       Path workspaceRoot,
       PostQuerySyncData previousState,
       Set<Path> modifiedPackages,
       Set<Path> deletedPackages,
-      ProjectStructureData projectStructureData) {
+      ProjectStructureData projectStructureData,
+      CachingFileMtimeReader mtimeReader) {
     this.workspaceRoot = workspaceRoot;
     this.previousState = previousState;
     this.modifiedPackages = ImmutableSet.copyOf(modifiedPackages);
     this.deletedPackages = ImmutableSet.copyOf(deletedPackages);
     this.projectStructureData = projectStructureData;
+    this.mtimeReader = mtimeReader;
   }
 
   private Optional<QuerySpec> createQuerySpec() {
@@ -116,6 +119,7 @@ class PartialProjectRefresh implements RefreshOperation {
       if (structPkg != null) {
         builder.putPackageStamp(pkg.getPackageLabel(), structPkg.getStamp());
       }
+      builder.putSubincludeStamp(pkg.getPackageLabel(), mtimeReader.subincludeStampOf(pkg));
     }
 
     return builder.build();

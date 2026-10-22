@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace 'com.example.myapplication'
+    namespace = 'com.example.myapplication'
     compileSdk 33
 
     defaultConfig {
@@ -17,7 +17,7 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
-            useSupportLibrary true
+            useSupportLibrary = true
         }
     }
 
@@ -35,7 +35,7 @@ android {
         jvmTarget = '1.8'
     }
     buildFeatures {
-        compose true
+        compose = true
     }
     packagingOptions {
         resources {

@@ -35,8 +35,7 @@ import org.apache.commons.lang3.ClassUtils
 class BuildOutputParserManager(private val project: Project) {
 
   fun getBuildOutputParsers(buildId: ExternalSystemTaskId): List<BuildOutputParser> {
-    val failureHandlers =
-      listOf(DeprecatedJavaLanguageLevelFailureHandler(), ConfigurationCacheErrorParser(), DeclarativeErrorParser(), TomlErrorParser())
+    val failureHandlers = listOf(DeprecatedJavaLanguageLevelFailureHandler(), ConfigurationCacheErrorParser(), TomlErrorParser())
     val buildOutputParsers: List<BuildOutputParser> =
       listOf(
         GradleBuildOutputParser(),

@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.model.dependencies
 
-import com.android.tools.idea.gradle.dcl.lang.flags.DeclarativeIdeSupport
 import com.android.tools.idea.gradle.dsl.TestFileNameImpl.DEPENDENCIES_ADD_NON_IDENTIFIER_CONFIGURATION_EXPECTED
 import com.android.tools.idea.gradle.dsl.TestFileNameImpl.DEPENDENCIES_ALL_DEPENDENCIES
 import com.android.tools.idea.gradle.dsl.TestFileNameImpl.DEPENDENCIES_KOTLIN_DEPENDENCIES
@@ -27,28 +26,12 @@ import com.android.tools.idea.gradle.dsl.api.dependencies.FileDependencyModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.FileTreeDependencyModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.ModuleDependencyModel
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.CoreMatchers.nullValue
 import org.hamcrest.MatcherAssert.assertThat
-import org.junit.After
-import org.junit.Before
 import org.junit.Test
 
 class DependenciesTest : GradleFileModelTestCase() {
-
-  @Before
-  override fun before() {
-    DeclarativeIdeSupport.override(true)
-    DeclarativeStudioSupport.override(true)
-    super.before()
-  }
-
-  @After
-  fun onAfter() {
-    DeclarativeIdeSupport.clearOverride()
-    DeclarativeStudioSupport.clearOverride()
-  }
 
   @Test
   fun testAllDependencies() {
@@ -57,7 +40,7 @@ class DependenciesTest : GradleFileModelTestCase() {
     val buildModel = gradleBuildModel
 
     val deps = buildModel.dependencies().all()
-    if (isGradleDeclarative) assertSize(10, deps) else assertSize(13, deps)
+    assertSize(13, deps)
     run {
       val dep = deps[0] as ArtifactDependencyModel
       assertThat(dep.configurationName(), equalTo("implementation"))
@@ -108,26 +91,24 @@ class DependenciesTest : GradleFileModelTestCase() {
       assertThat(dep.configurationName(), equalTo("releaseImplementation"))
       assertThat(dep.name(), equalTo("lib3"))
     }
-    if (!isGradleDeclarative) {
-      run {
-        val dep = deps[10] as FileTreeDependencyModel
-        assertThat(dep.configurationName(), equalTo("releaseImplementation"))
-        assertThat(dep.dir().toString(), equalTo("libz"))
-        assertThat(dep.includes().toList()?.map { it.toString() }, equalTo(listOf("*.jar")))
-        assertThat(dep.excludes().toList(), nullValue())
-      }
-      run {
-        val dep = deps[11] as ArtifactDependencyModel
-        assertThat(dep.configurationName(), equalTo("releaseImplementation"))
-        assertThat(dep.compactNotation(), equalTo("org.springframework:spring-core:2.5"))
-      }
-      run {
-        val dep = deps[12] as FileTreeDependencyModel
-        assertThat(dep.configurationName(), equalTo("api"))
-        assertThat(dep.dir().toString(), equalTo("libs"))
-        assertThat(dep.includes().toList()?.map { it.toString() }, equalTo(listOf("*.jar")))
-        assertThat(dep.excludes().toList(), nullValue())
-      }
+    run {
+      val dep = deps[10] as FileTreeDependencyModel
+      assertThat(dep.configurationName(), equalTo("releaseImplementation"))
+      assertThat(dep.dir().toString(), equalTo("libz"))
+      assertThat(dep.includes().toList()?.map { it.toString() }, equalTo(listOf("*.jar")))
+      assertThat(dep.excludes().toList(), nullValue())
+    }
+    run {
+      val dep = deps[11] as ArtifactDependencyModel
+      assertThat(dep.configurationName(), equalTo("releaseImplementation"))
+      assertThat(dep.compactNotation(), equalTo("org.springframework:spring-core:2.5"))
+    }
+    run {
+      val dep = deps[12] as FileTreeDependencyModel
+      assertThat(dep.configurationName(), equalTo("api"))
+      assertThat(dep.dir().toString(), equalTo("libs"))
+      assertThat(dep.includes().toList()?.map { it.toString() }, equalTo(listOf("*.jar")))
+      assertThat(dep.excludes().toList(), nullValue())
     }
   }
 
@@ -138,24 +119,22 @@ class DependenciesTest : GradleFileModelTestCase() {
     val buildModel = gradleBuildModel
 
     val deps = buildModel.dependencies().all()
-    assertSize(if (isGradleDeclarative) 2 else 3, deps)
+    assertSize(3, deps)
     val files = let {
       val dep = deps[1] as FileDependencyModel
       assertThat(dep.configurationName(), equalTo("compile"))
       assertThat(dep.file().toString(), equalTo("lib1.jar"))
       dep
     }
-    if (!isGradleDeclarative) {
-      val fileTree = let {
-        val dep = deps[2] as FileTreeDependencyModel
-        assertThat(dep.configurationName(), equalTo("api"))
-        assertThat(dep.dir().toString(), equalTo("libs"))
-        assertThat(dep.includes().toList()?.map { it.toString() }, equalTo(listOf("*.jar")))
-        assertThat(dep.excludes().toList(), nullValue())
-        dep
-      }
-      buildModel.dependencies().remove(fileTree)
+    val fileTree = let {
+      val dep = deps[2] as FileTreeDependencyModel
+      assertThat(dep.configurationName(), equalTo("api"))
+      assertThat(dep.dir().toString(), equalTo("libs"))
+      assertThat(dep.includes().toList()?.map { it.toString() }, equalTo(listOf("*.jar")))
+      assertThat(dep.excludes().toList(), nullValue())
+      dep
     }
+    buildModel.dependencies().remove(fileTree)
     buildModel.dependencies().remove(files)
     assertSize(1, buildModel.dependencies().all())
   }

@@ -97,7 +97,7 @@
     <weigher key="completion"
              implementationClass="com.android.tools.compose.code.completion.ComposeCompletionWeigher"
              id="android.compose"
-             order="first"/>
+             order="after prefix, before stats"/>
 
     <weigher key="completion"
              implementationClass="com.android.tools.compose.code.completion.ComposePositioningCompletionWeigher"
@@ -163,10 +163,6 @@
                                     implementationClass="com.android.tools.compose.ComposeColorLineMarkerProviderDescriptor" />
 
     <usageGroupingRuleProvider implementation="com.android.tools.compose.ComposeUsageGroupingRuleProvider" />
-  </extensions>
-
-  <extensions defaultExtensionNs="org.jetbrains.kotlin.extensions.internal">
-    <typeResolutionInterceptorExtension implementation="androidx.compose.compiler.plugins.kotlin.k1.ComposeTypeResolutionInterceptorExtension"/>
   </extensions>
 
   <extensions defaultExtensionNs="org.jetbrains.kotlin.idea.debugger.core">

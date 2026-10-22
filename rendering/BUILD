@@ -117,7 +117,6 @@ kotlin_test(
         "@maven//:com.google.truth.truth",
         "@maven//:junit.junit",
         "@maven//:net.sf.kxml.kxml2",
-        "@maven//:org.bouncycastle.bcpkix-jdk18on",
         "@maven//:org.jetbrains.kotlin.kotlin-reflect",
         "@maven//:org.jetbrains.kotlin.kotlin-test",
         "@maven//:org.mockito.mockito-core",

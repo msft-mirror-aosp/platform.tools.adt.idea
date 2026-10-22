@@ -27,12 +27,15 @@ import java.nio.file.Path
  * @param packagesToUpdate The packages that need to be evaluated for updates (e.g. user-required packages). They should be
  *   workspace-relative paths. We assume the path is from the latest project structure.
  * @param projectScope Predicate indicating whether a package is within the project scope.
+ * @param haveSubincludesChanged Predicate indicating whether the files that a package loads changed since it was last queried. It's only
+ *   called for packages in [packagesToUpdate] that are in the project scope and whose package stamp is unchanged.
  */
 fun calculatePackageStampAffectedPackages(
   latestProjectDataPackageStamp: Map<Path, Long>,
   latestBuildGraphDataPackageStamp: Map<Path, Long>,
   packagesToUpdate: Collection<Path>,
   projectScope: (Path) -> Boolean,
+  haveSubincludesChanged: (Path) -> Boolean,
 ): AffectedPackages {
   val modifiedPackages = buildSet {
     fun addIfInProjectScope(pkg: Path) {
@@ -43,7 +46,7 @@ fun calculatePackageStampAffectedPackages(
       val newStamp = latestProjectDataPackageStamp[path] ?: continue
       val oldStamp = latestBuildGraphDataPackageStamp[path]
 
-      if (newStamp == oldStamp) continue
+      if (newStamp == oldStamp && (!projectScope(path) || !haveSubincludesChanged(path))) continue
       addIfInProjectScope(path)
 
       // When a new package is created, force update its enclosing parent package (if any)
@@ -59,7 +62,6 @@ fun calculatePackageStampAffectedPackages(
   // Always drop all deleted packages within the project scope so that removed packages are cleaned up from the graph.
   val deletedPackages = (latestBuildGraphDataPackageStamp.keys - latestProjectDataPackageStamp.keys).filter { projectScope(it) }.toSet()
 
-  // TODO(b/555814875): We will handle the bzl files later
   return AffectedPackages(modifiedPackages, deletedPackages)
 }
 

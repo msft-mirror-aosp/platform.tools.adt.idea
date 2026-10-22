@@ -34,12 +34,12 @@ import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.ProjectRule
+import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.Paths
-import org.jetbrains.kotlin.konan.file.File
 import org.junit.Assume.assumeNoException
 import org.junit.Before
 import org.junit.Rule

@@ -1,1 +1,0 @@
-// no repositories for declarative - checking fake model

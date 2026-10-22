@@ -1,5 +1,0 @@
-defaults {
-  myTestDslElement {
-    stringVal = "two"
-  }
-}

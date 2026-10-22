@@ -29,7 +29,6 @@ import org.jetbrains.kotlin.util.capitalizeDecapitalize.capitalizeAsciiOnly
 // This Gradle version is exclusively used for the Sync Comparison Benchmarks and gets updated
 // frequently. Please do not use for other purposes
 const val GRADLE_SNAPSHOT_VERSION = "9.9.0-20261005000231+0000"
-const val GRADLE_DECLARATIVE_SNAPSHOT_VERSION = "9.6.0"
 // For available versions:
 // https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev/org/jetbrains/kotlin/kotlin-compiler/maven-metadata.xml
 const val KOTLIN_SNAPSHOT_VERSION = "2.5.0-dev-9824"
@@ -172,7 +171,6 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
   ),
   AGP_LATEST_KOTLIN_SNAPSHOT(agpVersion = null, gradleVersion = null, kotlinVersion = KOTLIN_SNAPSHOT_VERSION, compileSdk = "34"),
   AGP_LATEST_GRADLE_SNAPSHOT(agpVersion = null, gradleVersion = GRADLE_SNAPSHOT_VERSION, compileSdk = "34"),
-  AGP_DECLARATIVE_GRADLE_SNAPSHOT(agpVersion = null, gradleVersion = GRADLE_DECLARATIVE_SNAPSHOT_VERSION, compileSdk = "34"),
   // Must be last to represent the newest version.
   AGP_LATEST(null, gradleVersion = null, compileSdk = "34");
 
@@ -257,7 +255,6 @@ fun IntegrationTestEnvironment.outputCurrentlyRunningTest(testDefinition: AgpInt
 private fun AgpVersionSoftwareEnvironmentDescriptor.agpSuffix(): String =
   when (this) {
     AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST,
-    AgpVersionSoftwareEnvironmentDescriptor.AGP_DECLARATIVE_GRADLE_SNAPSHOT,
     AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST_GRADLE_SNAPSHOT,
     AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST_KOTLIN_SNAPSHOT -> "_"
     AgpVersionSoftwareEnvironmentDescriptor.AGP_9_4 -> "_Agp_9.4_"

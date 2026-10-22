@@ -1,3 +1,0 @@
-androidApp {
-  compileSdkVersion = 21
-}

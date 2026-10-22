@@ -441,7 +441,7 @@ class MoreFontsDialogTest {
 
   private fun findFontNameEditor(parent: JComponent): JTextField {
     val fields = UIUtil.findComponentsOfType(parent, JTextField::class.java)
-    return fields.first { it !is SearchTextField && it.parent !is SearchTextField }
+    return fields.first { it.parent !is SearchTextField }
   }
 
   private fun findSearchField(parent: JComponent): SearchTextField {

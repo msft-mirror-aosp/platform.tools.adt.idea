@@ -80,6 +80,7 @@ val referenceDeviceIds =
  * @param shape Shape of the device screen, may affect how the screen behaves, or it may add a cutout (like with wearables).
  * @param chinSize For round devices only, defines the height of the flat surface on a screen, measured from the bottom.
  * @param parentDeviceId ID of the parent device used as template for this configuration.
+ * @param parentDevice Optional parent [Device] instance used as template for this configuration when preserving inherent hardware state.
  */
 open class DeviceConfig(
   val deviceId: String? = null,
@@ -99,6 +100,7 @@ open class DeviceConfig(
   open val hasMicrophone: Boolean = true,
   open val viewingDistance: ViewingDistance = ViewingDistance.near,
   open val parentDeviceId: String? = null,
+  open val parentDevice: Device? = null,
 ) {
   /**
    * String representation of the width as it is used in DeviceSpec Language.
@@ -623,6 +625,7 @@ class MutableDeviceConfig(
   initialHasMicrophone: Boolean = true,
   initialViewingDistance: ViewingDistance = ViewingDistance.near,
   initialBackingDeviceId: String? = null,
+  initialParentDevice: Device? = null,
 ) :
   DeviceConfig(
     id,
@@ -642,6 +645,7 @@ class MutableDeviceConfig(
     initialHasMicrophone,
     initialViewingDistance,
     initialBackingDeviceId,
+    initialParentDevice,
   ) {
 
   /**
@@ -650,6 +654,30 @@ class MutableDeviceConfig(
    * This means that changes on other device properties may nullify this property.
    */
   override var parentDeviceId: String? = initialBackingDeviceId
+    set(newValue) {
+      field = newValue
+      // Clear the backing parent device if the parent ID no longer matches it
+      if (newValue != parentDevice?.id) {
+        parentDevice = null
+      }
+    }
+
+  /**
+   * Backing [Device] instance this configuration represents, or null if it is a custom device.
+   *
+   * Changes to hardware properties that invalidate [parentDeviceId] also nullify this reference.
+   */
+  override var parentDevice: Device? = initialParentDevice
+    set(newValue) {
+      val previousDeviceId = field?.id
+      field = newValue
+      // Synchronize parentDeviceId when a parent device is assigned or directly cleared
+      if (newValue != null) {
+        parentDeviceId = newValue.id
+      } else if (parentDeviceId != null && parentDeviceId == previousDeviceId) {
+        parentDeviceId = null
+      }
+    }
 
   /** Changes to this property nullifies [parentDeviceId]. */
   override var width: Float by invalidateIdOnPropertyChangeDelegate(initialWidth)
@@ -702,7 +730,7 @@ class MutableDeviceConfig(
 
   override var viewingDistance: ViewingDistance = initialViewingDistance
 
-  /** Returns a property delegate that nullifies the [parentDeviceId] whenever the property sees a different value. */
+  /** Returns a property delegate that nullifies [parentDeviceId] and [parentDevice] whenever the property sees a different value. */
   private fun <T> invalidateIdOnPropertyChangeDelegate(initialValue: T) =
     object : ObservableProperty<T>(initialValue) {
       override fun afterChange(property: KProperty<*>, oldValue: T, newValue: T) {
@@ -732,6 +760,7 @@ internal fun MutableDeviceConfig.toImmutableConfig(): DeviceConfig =
     hasMicrophone = this.hasMicrophone,
     viewingDistance = this.viewingDistance,
     parentDeviceId = this.parentDeviceId,
+    parentDevice = this.parentDevice,
   )
 
 /** Returns a mutable copy of this [DeviceConfig] instance. */
@@ -753,6 +782,7 @@ fun DeviceConfig.toMutableConfig(): MutableDeviceConfig =
     initialHasMicrophone = this.hasMicrophone,
     initialViewingDistance = this.viewingDistance,
     initialBackingDeviceId = this.parentDeviceId,
+    initialParentDevice = this.parentDevice,
   )
 
 /** Convenience class to define an Android dimension by its number [value] and [unit]. */

@@ -61,7 +61,7 @@ import com.google.gct.login2.PreferredUser
 import com.google.gct.login2.fstLoginFeature
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.diagnostic.thisLogger
-import com.intellij.openapi.updateSettings.impl.UpdateChecker
+import com.intellij.openapi.updateSettings.impl.UpdateCheckerFacade
 import icons.StudioIllustrationsCompose
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -196,7 +196,7 @@ fun WizardPageScope.AccountChooserPage() {
               action("Update Android Studio") {
                 PlayPublishingUsageTracker.trackDeprecation(deprecationData.status, updateClicked = true)
                 if (project != null) {
-                  UpdateChecker.updateAndShowResult(project)
+                  UpdateCheckerFacade.getInstance().updateAndShowResult(project)
                 } else {
                   thisLogger().error("Cannot run update check: project is null")
                 }

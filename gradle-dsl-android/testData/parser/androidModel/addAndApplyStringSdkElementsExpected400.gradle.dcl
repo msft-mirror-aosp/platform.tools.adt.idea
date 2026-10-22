@@ -1,4 +1,0 @@
-
-androidApp {
-  compileSdkVersion = "android-S"
-}

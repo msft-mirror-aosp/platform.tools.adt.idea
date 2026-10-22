@@ -26,7 +26,6 @@ abstract class PluginsHelper {
       when (calculateAddDependencyPolicy(projectModel)) {
         AddDependencyPolicy.VERSION_CATALOG -> CatalogPluginsInserter(projectModel)
         AddDependencyPolicy.BUILD_FILE -> CommonPluginsInserter(projectModel)
-        AddDependencyPolicy.DECLARATIVE -> DeclarativePluginsInserter(projectModel)
       }
   }
 }

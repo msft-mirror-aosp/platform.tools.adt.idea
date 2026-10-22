@@ -22,8 +22,8 @@ import com.android.tools.idea.insights.AppInsightsProjectLevelController
 import com.android.tools.idea.insights.InsightsProvider
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.Selection
-import com.android.tools.idea.insights.inspection.AppInsightsFilterSelector
 import com.android.tools.idea.insights.model.connection.Connection
+import com.android.tools.idea.insights.ui.AppInsightsFilterSelector
 import com.android.tools.idea.play.findings.PlayFindingsInsightsProvider
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project

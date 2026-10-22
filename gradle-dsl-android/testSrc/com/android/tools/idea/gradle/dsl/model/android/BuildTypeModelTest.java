@@ -32,7 +32,6 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assume.assumeTrue;
 
-import com.android.tools.idea.gradle.dcl.lang.flags.DeclarativeIdeSupport;
 import com.android.tools.idea.gradle.dsl.TestFileName;
 import com.android.tools.idea.gradle.dsl.model.AndroidGradleFileModelTestCase;
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
@@ -45,7 +44,6 @@ import com.android.tools.idea.gradle.dsl.api.dependencies.DependencyModel;
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.api.ext.SigningConfigPropertyModel;
 import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion;
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -55,27 +53,12 @@ import java.io.IOException;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.SystemDependent;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
  * Tests for {@link BuildTypeModelImpl}.
  */
 public class BuildTypeModelTest extends AndroidGradleFileModelTestCase {
-  @Before
-  @Override
-  public void before() throws Exception {
-    DeclarativeIdeSupport.override(true);
-    DeclarativeStudioSupport.override(true);
-    super.before();
-  }
-
-  @After
-  public void after() {
-    DeclarativeIdeSupport.clearOverride();
-    DeclarativeStudioSupport.clearOverride();
-  }
 
   @Test
   public void testBuildTypeBlockWithApplicationStatements() throws Exception {

@@ -31,7 +31,6 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.npw.model.NewProjectModel.Companion.getSuggestedProjectPackage
 import com.android.tools.idea.npw.model.NewProjectModel.Companion.nameToJavaPackage
 import com.android.tools.idea.npw.model.ProjectModelData
-import com.android.tools.idea.npw.model.hasDclUsage
 import com.android.tools.idea.npw.platform.AndroidVersionsInfo
 import com.android.tools.idea.npw.platform.sdkManagerLocalPath
 import com.android.tools.idea.npw.project.GradleAndroidModuleTemplate
@@ -58,7 +57,6 @@ import com.android.tools.idea.templates.determineVersionCatalogUseForNewModule
 import com.android.tools.idea.wizard.model.ModelWizardStep
 import com.android.tools.idea.wizard.model.SkippableWizardStep
 import com.android.tools.idea.wizard.template.BuildConfigurationLanguageForNewModule
-import com.android.tools.idea.wizard.template.BuildConfigurationLanguageForNewModule.DCL
 import com.android.tools.idea.wizard.template.BuildConfigurationLanguageForNewModule.KTS
 import com.android.tools.idea.wizard.template.DslLanguage
 import com.android.tools.idea.wizard.template.Language
@@ -100,8 +98,7 @@ abstract class ConfigureModuleStep<ModuleModelKind : ModuleModel>(
   // If StudioFlags.NPW_SHOW_KTS_GRADLE_COMBO_BOX is false, the Combobox for Build configuration
   // language is not visible,
   // thus, build script is determined if the existing project has KTS usage
-  private val buildConfigurationLanguage: OptionalValueProperty<BuildConfigurationLanguageForNewModule> =
-    OptionalValueProperty(if (model.project.hasDclUsage()) DCL else KTS)
+  private val buildConfigurationLanguage: OptionalValueProperty<BuildConfigurationLanguageForNewModule> = OptionalValueProperty(KTS)
 
   private val disposable by lazy { parentDisposable ?: this }
   private val androidVersionsInfo = AndroidVersionsInfo()
@@ -207,12 +204,7 @@ abstract class ConfigureModuleStep<ModuleModelKind : ModuleModel>(
   override fun onProceeding() {
     // Now that the module name was validated, update the model template
     model.template.set(GradleAndroidModuleTemplate.createDefaultModuleTemplate(model.project, model.moduleName.get()))
-    model.dslLanguage.set(
-      when (buildConfigurationLanguage.value) {
-        KTS -> DslLanguage.KTS
-        DCL -> DslLanguage.DCL
-      }
-    )
+    model.dslLanguage.set(DslLanguage.KTS)
 
     installRequests.clear()
     installLicenseRequests.clear()

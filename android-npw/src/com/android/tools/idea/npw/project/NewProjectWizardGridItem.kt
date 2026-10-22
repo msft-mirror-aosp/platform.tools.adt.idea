@@ -17,6 +17,7 @@ package com.android.tools.idea.npw.project
 
 import androidx.compose.runtime.Composable
 import com.android.tools.idea.npw.template.PluginPromotionTemplate
+import com.android.tools.idea.npw.template.PromotedPluginInstallTracker
 import com.android.tools.idea.wizard.template.FormFactor
 import com.android.tools.idea.wizard.template.Template
 import com.android.tools.idea.wizard.template.Thumb
@@ -30,6 +31,10 @@ interface GridItem {
   val title: String
   val description: String
     get() = ""
+
+  /** Whether the item can currently be selected. Disabled items are rendered dimmed and ignore clicks. */
+  val isEnabled: Boolean
+    get() = true
 
   @Composable fun Icon()
 }
@@ -77,6 +82,9 @@ data class PluginPromotionGridItem(val template: PluginPromotionTemplate) : Lega
 
   val pluginId: String
     get() = template.pluginId
+
+  override val isEnabled: Boolean
+    get() = !PromotedPluginInstallTracker.isInstalling(pluginId)
 
   override fun thumb(): Thumb = template.thumb()
 }

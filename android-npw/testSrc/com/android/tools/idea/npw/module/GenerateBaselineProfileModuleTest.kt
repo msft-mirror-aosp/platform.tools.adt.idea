@@ -248,7 +248,7 @@ plugins {
 }
 
 android {
-  namespace 'com.test.packagename'
+  namespace = 'com.test.packagename'
 
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
@@ -678,7 +678,7 @@ plugins {
 }
 
 android {
-  namespace 'com.test.packagename'
+  namespace = 'com.test.packagename'
 
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11

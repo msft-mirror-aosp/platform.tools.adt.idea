@@ -207,7 +207,6 @@ class DisplaysDialogTest {
 
     // Ensure NotificationTracker is subscribed and receives a notification with only the primary display.
     val notificationTracker = NotificationTracker.forEmulator(emulatorController)
-    notificationTracker.connectionStateChanged(emulatorController, emulatorController.connectionState)
     waitForCondition(5.seconds) { notificationTracker.microphoneInput.value != null }
     runBlocking {
       fakeEmulator.changeSecondaryDisplays(listOf(secondaryDisplay1))

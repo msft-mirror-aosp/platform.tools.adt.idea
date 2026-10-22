@@ -92,7 +92,11 @@ fun IDevice.executeShellCommand(
   }
 }
 
-internal fun IDevice.getWearDebugSurfaceVersion(indicator: ProgressIndicator): Int {
+internal fun IDevice.getWearDebugSurfaceVersion(
+  indicator: ProgressIndicator,
+  timeoutMs: Long = 20_000,
+  retryIntervalMs: Long = 1_000,
+): Int {
   class VersionReceiver(private val isCancelledCheck: () -> Boolean) : MultiLineReceiver() {
     // Example of output: Broadcast completed: result=1, data="3"
     private val versionPattern = "data=\"(\\d+)\"".toRegex()
@@ -111,15 +115,16 @@ internal fun IDevice.getWearDebugSurfaceVersion(indicator: ProgressIndicator): I
 
   val startTime = System.currentTimeMillis()
   do {
+    indicator.checkCanceled()
     val outputReceiver = RecordOutputReceiver { indicator.isCanceled }
     val resultReceiver = CommandResultReceiverV1()
     val versionReceiver = VersionReceiver { indicator.isCanceled }
     val receiver = MultiReceiver(outputReceiver, resultReceiver.asIShellOutputReceiver(), versionReceiver)
-    executeShellCommand(WearComponent.ShellCommand.GET_WEAR_DEBUG_SURFACE_VERSION, receiver, 5, TimeUnit.SECONDS)
+    executeShellCommand(WearComponent.ShellCommand.GET_WEAR_DEBUG_SURFACE_VERSION, receiver, 10, TimeUnit.SECONDS)
 
     val timeElapsed = System.currentTimeMillis() - startTime
-    if (resultReceiver.resultCode <= 0 && timeElapsed < 5_000) {
-      Thread.sleep(1_000)
+    if (resultReceiver.resultCode <= 0 && timeElapsed < timeoutMs) {
+      Thread.sleep(retryIntervalMs)
       continue // This can happen when checking the version after cold boot. Try again.
     }
 

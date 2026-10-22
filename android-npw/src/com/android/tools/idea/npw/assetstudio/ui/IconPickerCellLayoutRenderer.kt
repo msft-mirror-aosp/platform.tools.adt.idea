@@ -205,11 +205,11 @@ private class IconPickerCellComponentXML(
         g.fillRoundRect(0, 0, width - offset, height - offset, JBUI.scale(ARC_SIZE), JBUI.scale(ARC_SIZE))
 
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAntialiasing)
-        if (isFocused) {
-          selectedFocusedBorder.apply {
-            setColor(UIUtil.getTreeSelectionBackground(isFocused))
-            paintBorder(this@IconPickerCellComponentXML, g, 0, 0, width, height)
-          }
+        // Paint the selection border whenever the cell is selected or focused so the selection
+        // highlight remains clearly visible while interacting with sliders, checkboxes, or filters.
+        selectedFocusedBorder.apply {
+          setColor(UIUtil.getTreeSelectionBackground(true))
+          paintBorder(this@IconPickerCellComponentXML, g, 0, 0, width, height)
         }
       }
     }

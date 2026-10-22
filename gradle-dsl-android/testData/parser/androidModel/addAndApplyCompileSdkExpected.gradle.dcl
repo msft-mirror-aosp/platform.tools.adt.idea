@@ -1,3 +1,0 @@
-androidApp {
-  compileSdk = 36
-}

@@ -16,7 +16,6 @@ iml_module(
         "//tools/adt/idea/android/testData",
         "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
         "//tools/base/build-system:gradle-runtime-maven",
-        "//tools/base/resource-repository/test/resources",
     ],
     # do not sort: must match IML order
     test_deps = [
@@ -52,7 +51,6 @@ iml_module(
         "//tools/adt/idea/artwork:intellij.android.artwork",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/base/flags:studio.android.sdktools.flags.tests",
-        "//tools/base/resource-repository:studio.android.sdktools.resource-repository.tests",
         "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],

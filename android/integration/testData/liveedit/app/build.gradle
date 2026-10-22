@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'com.example.liveedittest'
+    namespace = 'com.example.liveedittest'
     compileSdk 35
 
     defaultConfig {

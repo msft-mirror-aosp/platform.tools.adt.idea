@@ -35,7 +35,8 @@ import java.nio.file.Path
  * If extra data from the `query` invocation is needed by later stages of sync, that data should be added to the [Query.Summary] proto and
  * this code should be updated accordingly. The proto should remain a simple mapping of data from the build proto, i.e. no complex
  * functionality should be added to this class. Non-trivial calculations based on the output of the query belong in
- * [com.google.idea.blaze.qsync.BlazeQueryParser] instead.
+ * [com.google.idea.blaze.qsync.BlazeQueryParser] instead. The package stamps, `stamp` and `subinclude_stamp`, are the exception: they
+ * record how fresh each package is, and a refresh sets them after the query.
  *
  * Instances of the the [Query.Summary] proto are maintained in memory so data should not be added to it unnecessarily.
  */
@@ -45,7 +46,6 @@ private constructor(
   private val decodedPackages: List<BuildPackageImpl>,
   private val buildPackagesMap: Map<Label, BuildPackageImpl>,
   override val packages: PackageSet,
-  override val reverseSubincludeMap: Map<Path, Collection<Path>>,
   override val allBuildIncludedFiles: Set<Label>,
   override val packagesWithErrors: Set<Path>,
   override val packagesWithErrorsCount: Int,
@@ -70,7 +70,7 @@ private constructor(
     return buildPackagesMap[packageLabel.getPackageLabel()]
   }
 
-  override fun withPackageStamps(provider: PackageStampProvider): QuerySummary {
+  override fun withPackageAndSubincludeStamps(packageStamps: PackageStampProvider, subincludeStamps: PackageStampProvider): QuerySummary {
     val protoPackages = proto.buildPackagesList
     var anyChanged = false
     val newPackages = ArrayList<BuildPackageImpl>(decodedPackages.size)
@@ -78,17 +78,18 @@ private constructor(
 
     for (i in decodedPackages.indices) {
       val pkg = decodedPackages[i]
-      val newStamp = provider.getStamp(pkg)
-      if (newStamp != null && newStamp != pkg.stamp) {
+      val newStamp = packageStamps.getStamp(pkg) ?: pkg.stamp
+      val newSubincludeStamp = subincludeStamps.getStamp(pkg) ?: pkg.subincludeStamp
+      if (newStamp != pkg.stamp || newSubincludeStamp != pkg.subincludeStamp) {
         if (!anyChanged) {
           anyChanged = true
           protoBuilder = proto.toBuilder()
         }
-        val updatedPkg = pkg.copy(stamp = newStamp)
+        val updatedPkg = pkg.copy(stamp = newStamp, subincludeStamp = newSubincludeStamp)
         newPackages.add(updatedPkg)
         protoBuilder!!.setBuildPackages(
           i,
-          protoPackages[i].toBuilder().setStamp(newStamp).build(),
+          protoPackages[i].toBuilder().setStamp(newStamp).setSubincludeStamp(newSubincludeStamp).build(),
         )
       } else {
         newPackages.add(pkg)
@@ -106,7 +107,6 @@ private constructor(
       decodedPackages = newPackages,
       buildPackagesMap = updatedMap,
       packages = packages,
-      reverseSubincludeMap = reverseSubincludeMap,
       allBuildIncludedFiles = allBuildIncludedFiles,
       packagesWithErrors = packagesWithErrors,
       packagesWithErrorsCount = packagesWithErrorsCount,
@@ -129,6 +129,7 @@ private constructor(
     override val subincludes: Set<Label>,
     override val hasError: Boolean,
     override val stamp: Long = 0L,
+    override val subincludeStamp: Long = 0L,
   ) : QuerySummary.BuildPackage {
     constructor(
       packageLabel: Label,
@@ -136,6 +137,7 @@ private constructor(
       rules: Collection<QueryData.Rule>,
       hasError: Boolean,
       stamp: Long = 0L,
+      subincludeStamp: Long = 0L,
     ) : this(
       packageLabel = packageLabel,
       sourceFilesMap = sourceFiles.associateBy { it.label },
@@ -143,6 +145,7 @@ private constructor(
       subincludes = sourceFiles.flatMap { it.subincliudes }.toSet(),
       hasError = hasError,
       stamp = stamp,
+      subincludeStamp = subincludeStamp,
     )
   }
 
@@ -282,6 +285,7 @@ private constructor(
       val packageLabel: Label,
       var hasError: Boolean = false,
       var stamp: Long = 0L,
+      var subincludeStamp: Long = 0L,
       val rules: MutableList<QueryData.Rule> = mutableListOf(),
       val sourceFiles: MutableList<QueryData.SourceFile> = mutableListOf(),
     )
@@ -328,6 +332,7 @@ private constructor(
           pkgBuilder.hasError = true
         }
         pkgBuilder.stamp = pkg.stamp
+        pkgBuilder.subincludeStamp = pkg.subincludeStamp
         pkgBuilder.rules.addAll(pkg.rulesMap.values)
         pkgBuilder.sourceFiles.addAll(pkg.sourceFilesMap.values)
       }
@@ -337,6 +342,12 @@ private constructor(
     fun putPackageStamp(packageLabel: Label, stamp: Long): Builder {
       val label = packageLabel.getPackageLabel()
       packageBuilders.getOrPut(label) { PackageBuilder(label) }.stamp = stamp
+      return this
+    }
+
+    fun putSubincludeStamp(packageLabel: Label, subincludeStamp: Long): Builder {
+      val label = packageLabel.getPackageLabel()
+      packageBuilders.getOrPut(label) { PackageBuilder(label) }.subincludeStamp = subincludeStamp
       return this
     }
 
@@ -353,6 +364,7 @@ private constructor(
             .setBuildPackage(indexer.index(pkg.packageLabel.buildPackage))
             .setHasError(pkg.hasError)
             .setStamp(pkg.stamp)
+            .setSubincludeStamp(pkg.subincludeStamp)
 
         pkg.rules.forEach { pkgBuilder.addStoredRules(indexer.ruleToStoredRule(it)) }
         pkg.sourceFiles.forEach { pkgBuilder.addSourceFiles(indexer.sourceFileToStoredSourceFile(it)) }
@@ -373,7 +385,7 @@ private constructor(
      * Whenever changing the logic in this class such that the Query.Summary proto contents will be different for the same input, this
      * version should be incremented.
      */
-    @VisibleForTesting const val PROTO_VERSION: Int = 16
+    @VisibleForTesting const val PROTO_VERSION: Int = 17
 
     // Compile-time dependency attributes, as they appear in streamed_proto output
     private val DEPENDENCY_ATTRIBUTES: Set<String> =
@@ -431,6 +443,7 @@ private constructor(
             rules = pkg.storedRulesList.map { lookup.storedRuleToRule(it) },
             hasError = pkg.hasError,
             stamp = pkg.stamp,
+            subincludeStamp = pkg.subincludeStamp,
           )
         }
 
@@ -438,14 +451,6 @@ private constructor(
       val packagesWithErrors = buildPackages.asSequence().filter { it.hasError }.map { it.packageLabel.getBuildPackagePath() }.toSet()
       val packages = PackageSet(buildPackages.map { it.packageLabel.getBuildPackagePath() }.toSet())
       val allBuildIncludedFiles = buildPackages.flatMap { it.subincludes }.toSet()
-      val reverseSubincludeMap =
-        buildPackages
-          .asSequence()
-          .flatMap { pkg ->
-            pkg.subincludes.asSequence().map { subinclude -> subinclude.toFilePath() to pkg.packageLabel.getBuildPackagePath() }
-          }
-          .groupBy({ it.first }, { it.second })
-          .mapValues { it.value.toSet() }
       val packagesWithErrorsCount = buildPackages.count { it.hasError }
       val rulesCount = buildPackages.sumOf { it.rulesMap.size }
 
@@ -454,7 +459,6 @@ private constructor(
         decodedPackages = buildPackages,
         buildPackagesMap = buildPackagesMap,
         packages = packages,
-        reverseSubincludeMap = reverseSubincludeMap,
         allBuildIncludedFiles = allBuildIncludedFiles,
         packagesWithErrors = packagesWithErrors,
         packagesWithErrorsCount = packagesWithErrorsCount,

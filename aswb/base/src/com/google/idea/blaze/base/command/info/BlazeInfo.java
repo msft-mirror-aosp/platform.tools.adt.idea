@@ -30,6 +30,8 @@ public abstract class BlazeInfo {
   public static final String PACKAGE_PATH_KEY = "package_path";
   public static final String BUILD_LANGUAGE = "build-language";
   public static final String OUTPUT_BASE_KEY = "output_base";
+  public static final String INSTALL_BASE_KEY = "install_base";
+  public static final String REPOSITORY_CACHE_KEY = "repository_cache";
   public static final String OUTPUT_PATH_KEY = "output_path";
   public static final String MASTER_LOG = "master-log";
   public static final String RELEASE = "release";

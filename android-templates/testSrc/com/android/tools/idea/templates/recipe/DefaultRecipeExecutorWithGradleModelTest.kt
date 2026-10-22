@@ -578,12 +578,11 @@ android-library = { id = "com.android.library", version.ref = "agpVersion" }
 
   @Test
   fun testAddCompileSdk_betaVersion_newBlock() {
-    skipGradleDeclarativeTemporary()
     whenever(mockProjectTemplateData.agpVersion).thenReturn(AgpVersion.parse("9.4.0-alpha03"))
     writeToBuildFile("")
 
     val androidVersion = AndroidVersion.fromString("37.1-beta2")
-    recipeExecutor.addCompileSdk(androidVersion, isKotlinMultiplatform = false, isDeclarative = false)
+    recipeExecutor.addCompileSdk(androidVersion, isKotlinMultiplatform = false)
 
     applyChanges(recipeExecutor.projectBuildModel!!)
 

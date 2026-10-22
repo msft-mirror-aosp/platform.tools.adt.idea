@@ -88,7 +88,6 @@ import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.idea.preview.mvvm.PREVIEW_VIEW_MODEL_STATUS
 import com.android.tools.idea.preview.navigation.AbstractPreviewNavigationHandler
-import com.android.tools.idea.preview.pagination.PreviewPaginationManager
 import com.android.tools.idea.preview.refreshExistingPreviewElements
 import com.android.tools.idea.preview.representation.CommonPreviewStateManager
 import com.android.tools.idea.preview.representation.PREVIEW_ELEMENT_INSTANCE
@@ -221,7 +220,6 @@ private fun createPreviewElementDataProvider(
       COMPOSE_PREVIEW_MANAGER,
       PreviewModeManager.KEY,
       PreviewGroupManager.KEY,
-      PreviewPaginationManager.KEY,
       PreviewFlowManager.KEY,
       PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE,
       PREVIEW_ELEMENT_INSTANCE,
@@ -235,7 +233,6 @@ private fun createPreviewElementDataProvider(
       when (dataId) {
         COMPOSE_PREVIEW_MANAGER.name,
         PreviewModeManager.KEY.name -> composePreviewManager
-        PreviewPaginationManager.KEY.name -> previewFlowManager.previewFlowPaginator
         PreviewGroupManager.KEY.name,
         PreviewFlowManager.KEY.name -> previewFlowManager
         PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE.name,
@@ -269,7 +266,6 @@ fun configureLayoutlibSceneManager(
   runVisualAnalysis: Boolean,
   quality: Float,
   disableAnimation: Boolean,
-  useLoadViewFallbacks: Boolean, // TODO(b/445947658): remove this parameter
 ): LayoutlibSceneManager = sceneManager.apply {
   sceneRenderConfiguration.let { config ->
     config.useTransparentRendering = !showDecorations
@@ -297,7 +293,7 @@ fun configureLayoutlibSceneManager(
     config.customContentHierarchyParser = if (runVisualAnalysis) accessibilityBasedHierarchyParser else null
     config.layoutScannerConfig.isLayoutScannerEnabled = runVisualAnalysis
     config.disableAnimation = disableAnimation
-    config.useLoadViewFallbacks = useLoadViewFallbacks
+    config.useLoadViewFallbacks = false
   }
   visualLintMode =
     if (runVisualAnalysis) {
@@ -426,16 +422,6 @@ constructor(
    */
   val uiCheckFilterFlow
     @VisibleForTesting get() = composePreviewFlowManager.uiCheckFilterFlow
-
-  // TODO(b/445947658): remove variable and TestOnly setter method below
-  // Preview should never rely on fallback mechanisms in production, so it should not rely on them
-  // for testing either.
-  private var useLoadViewFallbacks = false
-
-  @TestOnly
-  fun useLoadViewFallbacksForTest() {
-    useLoadViewFallbacks = true
-  }
 
   /** Blank panel to display on top of the surface when transitioning between two [PreviewMode]s */
   private val blankTransitionPanel = JPanel()
@@ -744,7 +730,6 @@ constructor(
   private val uiDataProvider = UiDataProvider {
     it[COMPOSE_PREVIEW_MANAGER] = this@ComposePreviewRepresentation
     it[PreviewModeManager.KEY] = this@ComposePreviewRepresentation
-    it[PreviewPaginationManager.KEY] = composePreviewFlowManager.previewFlowPaginator
     it[PreviewGroupManager.KEY] = composePreviewFlowManager
     it[PreviewFlowManager.KEY] = composePreviewFlowManager
     // The Compose preview NlModels do not point to the actual file but to a synthetic file
@@ -1101,7 +1086,6 @@ constructor(
       runVisualAnalysis = mode.value is PreviewMode.UiCheck,
       quality = qualityManager.getTargetQuality(layoutlibSceneManager),
       disableAnimation = mode.value.isNormal,
-      useLoadViewFallbacks = useLoadViewFallbacks,
     )
   }
 

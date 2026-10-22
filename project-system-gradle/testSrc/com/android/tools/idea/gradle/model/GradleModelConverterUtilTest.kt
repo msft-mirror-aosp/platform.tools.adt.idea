@@ -67,7 +67,6 @@ class GradleModelConverterUtilTest {
       expect.that(result.resFolder).isEqualTo(RecursiveResourceFolder(PathString(resFolder)))
       expect.that(result.assetsFolder).isEqualTo(PathString(assetsFolder))
       expect.that(result.symbolFile).isEqualTo(PathString(symbolFile))
-      expect.that(result.resApkFile).isEqualTo(resStaticLibrary?.let(::PathString))
     }
   }
 }

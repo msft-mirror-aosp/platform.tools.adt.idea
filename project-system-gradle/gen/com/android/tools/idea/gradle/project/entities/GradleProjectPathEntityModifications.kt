@@ -35,8 +35,12 @@ interface GradleProjectPathEntityBuilder : WorkspaceEntityBuilder<GradleProjectP
 }
 
 internal object GradleProjectPathEntityType : EntityType<GradleProjectPathEntity, GradleProjectPathEntityBuilder>() {
-  override val entityClass: Class<GradleProjectPathEntity> get() = GradleProjectPathEntity::class.java
-  override val entityImplBuilderClass: Class<*> get() = GradleProjectPathEntityImpl.Builder::class.java
+  override val entityClass: Class<GradleProjectPathEntity>
+    get() = GradleProjectPathEntity::class.java
+
+  override val entityImplBuilderClass: Class<*>
+    get() = GradleProjectPathEntityImpl.Builder::class.java
+
   operator fun invoke(
     gradleProjectPath: GradleProjectPath,
     entitySource: EntitySource,
@@ -55,9 +59,8 @@ fun MutableEntityStorage.modifyGradleProjectPathEntity(
   modification: GradleProjectPathEntityBuilder.() -> Unit,
 ): GradleProjectPathEntity = modifyEntity(GradleProjectPathEntityBuilder::class.java, entity, modification)
 
-var ModuleEntityBuilder.gradleProjectPath: GradleProjectPathEntityBuilder?
-  by WorkspaceEntity.extensionBuilder(GradleProjectPathEntity::class.java)
-
+var ModuleEntityBuilder.gradleProjectPath: GradleProjectPathEntityBuilder? by
+  WorkspaceEntity.extensionBuilder(GradleProjectPathEntity::class.java)
 
 @JvmOverloads
 @JvmName("createGradleProjectPathEntity")

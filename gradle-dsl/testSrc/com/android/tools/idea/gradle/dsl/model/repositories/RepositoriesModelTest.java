@@ -24,7 +24,6 @@ import static com.android.tools.idea.gradle.dsl.model.repositories.MavenCentralR
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assume.assumeTrue;
 
-import com.android.tools.idea.gradle.dcl.lang.flags.DeclarativeIdeSupport;
 import com.android.tools.idea.gradle.dsl.TestFileName;
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel;
@@ -35,7 +34,6 @@ import com.android.tools.idea.gradle.dsl.api.repositories.RepositoriesModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoryModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.UrlBasedRepositoryModel;
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase;
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport;
 import com.google.common.collect.ImmutableList;
 import com.intellij.util.containers.ContainerUtil;
 import java.io.File;
@@ -44,8 +42,6 @@ import java.util.Comparator;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.SystemDependent;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -55,20 +51,6 @@ public class RepositoriesModelTest extends GradleFileModelTestCase {
 
   @NotNull private static final String TEST_DIR = "hello/i/am/a/dir";
   @NotNull private static final String OTHER_TEST_DIR = "/this/is/also/a/dir";
-
-  @Before
-  @Override
-  public void before() throws Exception {
-    DeclarativeIdeSupport.override(true);
-    DeclarativeStudioSupport.override(true);
-    super.before();
-  }
-
-  @After
-  public void after() {
-    DeclarativeIdeSupport.clearOverride();
-    DeclarativeStudioSupport.clearOverride();
-  }
 
   @Test
   public void testParseJCenterDefaultRepository() throws IOException {
@@ -485,7 +467,6 @@ public class RepositoriesModelTest extends GradleFileModelTestCase {
 
   @Test
   public void testAddFlatRepository() throws IOException {
-    isIrrelevantForDeclarative("addFlatDirRepository is not support for declarative");
 
     writeToBuildFile("repositories {\n}");
 
@@ -511,7 +492,6 @@ public class RepositoriesModelTest extends GradleFileModelTestCase {
 
   @Test
   public void testAddFlatRepositoryFromEmpty() throws IOException {
-    isIrrelevantForDeclarative("addFlatDirRepository is not support for declarative");
     writeToBuildFile("");
 
     GradleBuildModel buildModel = getGradleBuildModel();
@@ -807,14 +787,8 @@ public class RepositoriesModelTest extends GradleFileModelTestCase {
   }
 
   private RepositoriesModel initTest(TestFileName testFilename) throws IOException {
-    if(isGradleDeclarative()) {
-      writeToSettingsFile(testFilename);
-      return getGradleDeclarativeSettingsModel().dependencyResolutionManagement().repositories();
-    } else {
-      writeToBuildFile(testFilename);
-      return getGradleBuildModel().repositories();
-
-    }
+    writeToBuildFile(testFilename);
+    return getGradleBuildModel().repositories();
   }
 
   enum TestFile implements TestFileName {

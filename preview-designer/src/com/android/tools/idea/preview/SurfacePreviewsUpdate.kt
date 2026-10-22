@@ -22,11 +22,10 @@ import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.model.NlModelUpdaterInterface
 import com.android.tools.idea.common.model.updateFileContentBlocking
 import com.android.tools.idea.common.surface.DesignSurfaceSettings.Companion.getInstance
+import com.android.tools.idea.common.surface.organization.DEFAULT_ORGANIZATION_GROUP_STATE
 import com.android.tools.idea.common.surface.organization.OrganizationGroup
-import com.android.tools.idea.common.surface.organization.OrganizationGroupType
 import com.android.tools.idea.concurrency.getPsiFileSafely
 import com.android.tools.idea.configurations.ConfigurationManager
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.module.module
 import com.android.tools.idea.preview.PreviewBundle.message
 import com.android.tools.idea.preview.analytics.PreviewRefreshEventBuilder
@@ -174,7 +173,7 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
             facet,
           )
 
-        copySettingsInto(from = previewElement.displaySettings, to = newModel.displaySettings, psiFile)
+        copySettingsInto(from = previewElement.displaySettings, to = newModel.displaySettings)
 
         newModel.dataProvider = previewElementModelAdapter.createDataProvider(previewElement)
         newModel.setModelUpdater(modelUpdater)
@@ -185,12 +184,10 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
         newModel.organizationGroup =
           groups.getOrCreate(previewElement.displaySettings.organizationGroup) { groupId ->
             val displayName = previewElement.displaySettings.organizationName ?: previewElement.displaySettings.name
-            val fileAndDisplayName = newModel.displaySettings.fileName.value?.let { "$it.$displayName" } ?: displayName
             OrganizationGroup(
               groupId = groupId,
-              displayName = fileAndDisplayName,
-              groupType = newModel.displaySettings.groupType.value,
-              defaultOpenedState = previousOrganizationState[groupId] ?: newModel.displaySettings.groupType.value.defaultGroupState,
+              displayName = displayName,
+              defaultOpenedState = previousOrganizationState[groupId] ?: DEFAULT_ORGANIZATION_GROUP_STATE,
             ) {
               // Everytime state is changed we need to save it.
               isOpened ->
@@ -242,18 +239,11 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
   return elementsToSceneManagers.map { it.first }
 }
 
-fun copySettingsInto(from: PreviewDisplaySettings, to: DisplaySettings, psiFile: PsiFile) {
+fun copySettingsInto(from: PreviewDisplaySettings, to: DisplaySettings) {
   // Common configuration steps for new and reused models
   to.setDisplayName(from.name)
   to.setBaseName(from.baseName)
   to.setParameterName(from.parameterName)
-
-  // TODO(b/407525144) Set correct icon and do not set file name if preview opened from the
-  // same file.
-  if (StudioFlags.PREVIEW_SOURCESET_UI.get()) {
-    to.setFileName(psiFile.name)
-    to.setGroupType(OrganizationGroupType.Test)
-  }
 }
 
 /**

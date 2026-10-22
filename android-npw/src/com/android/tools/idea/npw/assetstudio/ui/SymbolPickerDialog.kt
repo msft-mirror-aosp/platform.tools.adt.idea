@@ -75,6 +75,7 @@ import javax.swing.table.AbstractTableModel
 import kotlin.math.min
 import kotlin.reflect.KClass
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.PropertyKey
@@ -157,6 +158,8 @@ constructor(
   private val coroutineScope = myDisposable.createCoroutineScope()
 
   private lateinit var selectedIcon: VdIcon
+  private var selectedSymbolMetadataName: String? = null
+  private var selectIconJob: Job? = null
 
   private var layoutIconList: List<MaterialSymbolsVirtualFile> = ArrayList(EXPECTED_NUMBER_OF_ICONS)
     set(value) {
@@ -205,13 +208,8 @@ constructor(
 
           val stylesBoxListener = { e: ItemEvent ->
             if (e.getStateChange() != ItemEvent.DESELECTED && e.getItem() != null) {
-              val categoryCurrentIndex: Int = categoriesBox.getSelectedIndex()
               setCategoriesBoxModel()
               updateIconList()
-              layoutModel.fireTableDataChanged()
-              if (categoryCurrentIndex >= 0 && categoryCurrentIndex < categoriesBox.itemCount) {
-                categoriesBox.setSelectedIndex(categoryCurrentIndex)
-              }
             }
           }
 
@@ -238,6 +236,7 @@ constructor(
 
   private fun setCategoriesBoxModel() {
     categoriesBox.isVisible = true
+    val previousSelectedCategory = categoriesBox.selectedItem as? String
     val items = metadata.categories.toMutableList()
     categoriesBoxNameMap.clear()
     items.forEach { item -> categoriesBoxNameMap[item.replaceFirstChar { it.uppercase() }] = item }
@@ -246,17 +245,28 @@ constructor(
       replaceAll { it.replaceFirstChar { char -> char.uppercase() } }
       add(0, SymbolsBundle.message("categories.all"))
     }
-    val collectionComboBoxModel = CollectionComboBoxModel(items, SymbolsBundle.message("categories.all"))
+    // Preserve the previously selected category when rebuilding the model if it still exists.
+    val selectedCategory =
+      if (previousSelectedCategory != null && items.contains(previousSelectedCategory)) {
+        previousSelectedCategory
+      } else {
+        SymbolsBundle.message("categories.all")
+      }
+    val collectionComboBoxModel = CollectionComboBoxModel(items, selectedCategory)
     categoriesBox.model = collectionComboBoxModel
   }
 
   private fun selectVdIcon(icon: MaterialSymbolsVirtualFile) {
-    coroutineScope.launch {
+    // Cancel any in-flight icon loading job so intermediate configuration updates do not overwrite the latest selection.
+    selectIconJob?.cancel()
+    selectIconJob = coroutineScope.launch {
       val vdIcon =
         withContext(Dispatchers.IO) { vdIconLoader(icon.symbolConfiguration, icon.metadata, metadata, materialSymbolsUrlProvider) }
       if (vdIcon != null) {
-        selectedIcon = vdIcon
-        isOKActionEnabled = true
+        withContext(Dispatchers.Main) {
+          selectedIcon = vdIcon
+          isOKActionEnabled = true
+        }
       }
     }
   }
@@ -272,7 +282,6 @@ constructor(
    * It gets triggered whenever a configuration option is modified, or when the [metadata] gets updated
    */
   private fun updateIconList() {
-    isOKActionEnabled = false
     val style = Symbols.getInstance(stylesBox.selectedItem as String)
     val symbolConfiguration =
       SymbolConfiguration(
@@ -313,6 +322,7 @@ constructor(
       iconListMap[symbolConfiguration] = layoutIconList
       iconTable.emptyText.text = SymbolsBundle.message("table.empty")
     } else {
+      layoutIconList = emptyList()
       iconTable.emptyText.text = SymbolsBundle.message("table.no_font")
     }
   }
@@ -324,6 +334,7 @@ constructor(
    * This is triggered on [searchField], [categoriesBox] and [layoutIconList] update
    */
   private fun updateFilter() {
+    val previouslySelectedSymbolName = selectedSymbolMetadataName
     filteredSymbolList.clear()
     val filtered =
       layoutIconList
@@ -337,6 +348,29 @@ constructor(
 
     if (filteredSymbolList.isEmpty()) {
       iconTable.emptyText.text = SymbolsBundle.message("table.empty")
+    }
+
+    restoreSelectedSymbolInTable(previouslySelectedSymbolName)
+  }
+
+  /**
+   * Restores the table cell selection if the symbol matching [previouslySelectedSymbolName] is present in [filteredSymbolList], or disables
+   * the OK button when no matching symbol is selected.
+   */
+  private fun restoreSelectedSymbolInTable(previouslySelectedSymbolName: String?) {
+    val matchingSymbolIndex =
+      if (previouslySelectedSymbolName != null) {
+        filteredSymbolList.indexOfFirst { symbolFile -> symbolFile.metadata.name == previouslySelectedSymbolName }
+      } else {
+        -1
+      }
+    if (matchingSymbolIndex >= 0) {
+      val targetRow = matchingSymbolIndex / COLUMN_COUNT
+      val targetColumn = matchingSymbolIndex % COLUMN_COUNT
+      iconTable.changeSelection(targetRow, targetColumn, false, false)
+    } else {
+      selectIconJob?.cancel()
+      isOKActionEnabled = false
     }
   }
 
@@ -437,9 +471,15 @@ constructor(
       if (!e.valueIsAdjusting) {
         val row = iconTable.selectedRow
         val col = iconTable.selectedColumn
-        val icon = if (row != -1 && col != -1) iconTable.getValueAt(row, col) else null
+        val icon = if (row != -1 && col != -1) iconTable.getValueAt(row, col) as? MaterialSymbolsVirtualFile else null
         if (icon != null) {
-          selectVdIcon(icon as MaterialSymbolsVirtualFile)
+          selectedSymbolMetadataName = icon.metadata.name
+          selectVdIcon(icon)
+        } else {
+          // Clear selection state and cancel any in-flight icon load when an empty cell is selected or selection is cleared.
+          selectIconJob?.cancel()
+          selectedSymbolMetadataName = null
+          isOKActionEnabled = false
         }
       }
     }

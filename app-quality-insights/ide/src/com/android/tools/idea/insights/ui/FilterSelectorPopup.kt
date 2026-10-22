@@ -16,8 +16,6 @@
 package com.android.tools.idea.insights.ui
 
 import com.android.tools.idea.insights.InsightsProvider.Source
-import com.android.tools.idea.insights.inspection.ConnectionFilter
-import com.android.tools.idea.insights.inspection.ConnectionPreference
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.ui.CollectionListModel

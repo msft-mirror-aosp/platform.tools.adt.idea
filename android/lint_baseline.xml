@@ -573,4 +573,15 @@
             column="19"/>
     </issue>
 
+    <issue
+        id="StaticInitializerWrongThread"
+        message="Top-level initialization has a call that must be from `@{Slow,WorkerThread}`"
+        errorLine1="var installerData = parse()"
+        errorLine2="                    ~~~~~~~">
+        <location
+            file="src/com/android/tools/idea/welcome/config/InstallerData.kt"
+            line="91"
+            column="21"/>
+    </issue>
+
 </issues>

@@ -37,8 +37,12 @@ interface GradleAndroidModelEntityBuilder : WorkspaceEntityBuilder<GradleAndroid
 }
 
 internal object GradleAndroidModelEntityType : EntityType<GradleAndroidModelEntity, GradleAndroidModelEntityBuilder>() {
-  override val entityClass: Class<GradleAndroidModelEntity> get() = GradleAndroidModelEntity::class.java
-  override val entityImplBuilderClass: Class<*> get() = GradleAndroidModelEntityImpl.Builder::class.java
+  override val entityClass: Class<GradleAndroidModelEntity>
+    get() = GradleAndroidModelEntity::class.java
+
+  override val entityImplBuilderClass: Class<*>
+    get() = GradleAndroidModelEntityImpl.Builder::class.java
+
   operator fun invoke(
     gradleAndroidModel: GradleAndroidModelImpl,
     entitySource: EntitySource,
@@ -57,9 +61,8 @@ fun MutableEntityStorage.modifyGradleAndroidModelEntity(
   modification: GradleAndroidModelEntityBuilder.() -> Unit,
 ): GradleAndroidModelEntity = modifyEntity(GradleAndroidModelEntityBuilder::class.java, entity, modification)
 
-var ModuleEntityBuilder.gradleAndroidModel: GradleAndroidModelEntityBuilder?
-  by WorkspaceEntity.extensionBuilder(GradleAndroidModelEntity::class.java)
-
+var ModuleEntityBuilder.gradleAndroidModel: GradleAndroidModelEntityBuilder? by
+  WorkspaceEntity.extensionBuilder(GradleAndroidModelEntity::class.java)
 
 @JvmOverloads
 @JvmName("createGradleAndroidModelEntity")

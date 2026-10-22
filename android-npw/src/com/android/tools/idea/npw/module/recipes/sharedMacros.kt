@@ -72,7 +72,7 @@ fun generateManifest(
   """
 }
 
-fun proguardConfig(useLegacyMinifyEnabled: Boolean, isDeclarative: Boolean, enableGradualR8: Boolean) =
+fun proguardConfig(useLegacyMinifyEnabled: Boolean, enableGradualR8: Boolean) =
   if (useLegacyMinifyEnabled) {
     """
     buildTypes {
@@ -83,13 +83,12 @@ fun proguardConfig(useLegacyMinifyEnabled: Boolean, isDeclarative: Boolean, enab
     }
     """
   } else {
-    val blockName = if (isDeclarative) """buildType("release")""" else "release"
     if (enableGradualR8) {
       """
       buildTypes {
-          $blockName {
+          release {
               optimization {
-                  enable true
+                  enable = true
                   packageScope = ["androidx.**", "kotlin.**", "kotlinx.**"]
               }
           }
@@ -98,9 +97,9 @@ fun proguardConfig(useLegacyMinifyEnabled: Boolean, isDeclarative: Boolean, enab
     } else {
       """
       buildTypes {
-          $blockName {
+          release {
               optimization {
-                  enable false
+                  enable = false
               }
           }
       }
@@ -143,7 +142,6 @@ fun androidConfig(
   cppStandard: CppStandardType,
   hasCode: Boolean,
   kotlinSupport: TemplateKotlinSupport,
-  isDcl: Boolean,
 ): String {
   val propertiesBlock =
     if (isDynamicFeature) {
@@ -165,7 +163,7 @@ fun androidConfig(
   val enableGradualR8 = agpVersion >= AgpVersion.parse("9.4.0")
   val proguardConsumerBlock =
     renderIf(canUseProguard && isLibraryProject && useLegacyProguardApi) { "consumerProguardFiles \"consumer-rules.pro\"" }
-  val proguardConfigBlock = renderIf(canUseProguard && !isLibraryProject) { proguardConfig(useLegacyProguardApi, isDcl, enableGradualR8) }
+  val proguardConfigBlock = renderIf(canUseProguard && !isLibraryProject) { proguardConfig(useLegacyProguardApi, enableGradualR8) }
   val lintOptionsBlock =
     renderIf(addLintOptions) {
       """
@@ -192,36 +190,19 @@ fun androidConfig(
     externalNativeBuild {
       cmake {
         path "src/main/cpp/CMakeLists.txt"
-        version "$DEFAULT_CMAKE_VERSION"
+        version = "$DEFAULT_CMAKE_VERSION"
       }
     }
     """
     }
 
-  val dependencies =
-    renderIf(isDcl) {
-      """
-
-      dependencies {
-      }
-      """
-    }
-
   // This is to prevent having a "kotlin" artifact in APKs that are not supposed to have code such
   // as declarative watch faces
-  val disableKotlinBlock = renderIf(!hasCode && kotlinSupport == TemplateKotlinSupport.IMPLICIT_BUILT_IN_KOTLIN) { "enableKotlin false" }
-
-  // b/490330486: Add support for library modules in declarative.
-  val androidBlockName =
-    when {
-      isDcl && isLibraryProject -> "androidLibrary"
-      isDcl -> "androidApp"
-      else -> "android"
-    }
+  val disableKotlinBlock = renderIf(!hasCode && kotlinSupport == TemplateKotlinSupport.IMPLICIT_BUILT_IN_KOTLIN) { "enableKotlin = false" }
 
   return """
-    $androidBlockName {
-    namespace '$applicationId'
+    android {
+    namespace = '$applicationId'
 
     defaultConfig {
       $propertiesBlock
@@ -234,7 +215,6 @@ fun androidConfig(
     $lintOptionsBlock
     $cppReferenceBlock
     $disableKotlinBlock
-    $dependencies
     }
     """
 }

@@ -16,12 +16,7 @@
 package com.android.tools.idea.gradle.dsl.model;
 
 import static com.android.tools.idea.gradle.dsl.model.GradleModelFactory.createGradleBuildModel;
-import static com.android.tools.idea.gradle.dsl.utils.SdkConstants.FN_BUILD_GRADLE_DECLARATIVE;
-import static com.android.tools.idea.gradle.dsl.utils.SdkConstants.FN_SETTINGS_GRADLE_DECLARATIVE;
-
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
-import com.android.tools.idea.gradle.dsl.api.GradleDeclarativeBuildModel;
-import com.android.tools.idea.gradle.dsl.api.GradleDeclarativeSettingsModel;
 import com.android.tools.idea.gradle.dsl.api.GradleSettingsModel;
 import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogsModel;
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel;
@@ -29,7 +24,6 @@ import com.android.tools.idea.gradle.dsl.parser.files.GradleBuildFile;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleDslFile;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleSettingsFile;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleVersionCatalogFile;
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.io.FileUtil;
@@ -81,12 +75,6 @@ public class ProjectBuildModelImpl implements ProjectBuildModel {
       return null;
     }
 
-    if (DeclarativeStudioSupport.isEnabled()) {
-      GradleDeclarativeBuildModel declarativeModel = getDeclarativeModuleBuildModel(file);
-      if (declarativeModel != null) {
-        return declarativeModel;
-      }
-    }
     return getModuleBuildModel(file);
   }
 
@@ -97,30 +85,7 @@ public class ProjectBuildModelImpl implements ProjectBuildModel {
     return file == null ? null : getModuleBuildModel(file);
   }
 
-  @Override
-  @Nullable
-  public GradleDeclarativeBuildModel getDeclarativeModuleBuildModel(@NotNull Module module) {
-    if(!DeclarativeStudioSupport.isEnabled()) return null;
-    VirtualFile file = myBuildModelContext.getGradleBuildFile(module);
-    return file == null ? null : getDeclarativeModuleBuildModel(file);
-  }
-  @Override
-  @Nullable
-  public GradleDeclarativeBuildModel getDeclarativeModuleBuildModel(@NotNull  File modulePath) {
-    if(!DeclarativeStudioSupport.isEnabled()) return null;
-    VirtualFile file = myBuildModelContext.getGradleBuildFile(modulePath);
-    return file == null ? null : getDeclarativeModuleBuildModel(file);
-  }
-  @Override
-  @Nullable
-  public GradleDeclarativeBuildModel getDeclarativeModuleBuildModel(@NotNull VirtualFile file) {
-    if(!DeclarativeStudioSupport.isEnabled()) return null;
-    if(!file.getName().equals(FN_BUILD_GRADLE_DECLARATIVE)) return null;
 
-    GradleBuildFile dslFile = myBuildModelContext.getOrCreateBuildFile(file, false);
-    return GradleDeclarativeBuildModelProvider.EP.getExtensionList().stream()
-             .map(provider -> provider.createModel(dslFile)).filter(Objects::nonNull).findFirst().orElse(null);
-  }
 
   /**
    * Gets the {@link GradleBuildModel} for the given {@link VirtualFile}. Please prefer using {@link #getModuleBuildModel(Module)} if
@@ -147,18 +112,7 @@ public class ProjectBuildModelImpl implements ProjectBuildModel {
     return new GradleSettingsModelImpl(settingsFile);
   }
 
-  @Override
-  @Nullable
-  public GradleDeclarativeSettingsModel getDeclarativeSettingsModel() {
-    VirtualFile virtualFile = getProjectSettingsFile();
-    if (virtualFile == null) return null;
-    if (!virtualFile.getName().equals(FN_SETTINGS_GRADLE_DECLARATIVE)) return null;
 
-    GradleSettingsFile settingsFile = myBuildModelContext.getOrCreateSettingsFile(virtualFile);
-
-    return GradleDeclarativeSettingsModelProvider.EP.getExtensionList().stream()
-      .map(provider -> provider.createModel(settingsFile)).filter(Objects::nonNull).findFirst().orElse(null);
-  }
 
   @Nullable
   private VirtualFile getProjectSettingsFile() {

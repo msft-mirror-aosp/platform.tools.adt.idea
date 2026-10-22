@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.model.android
 
-import com.android.tools.idea.gradle.dcl.lang.flags.DeclarativeIdeSupport
 import com.android.tools.idea.gradle.dsl.TestFileName
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencyModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
@@ -28,7 +27,6 @@ import com.android.tools.idea.gradle.dsl.model.android.productFlavors.NdkOptions
 import com.android.tools.idea.gradle.dsl.model.android.productFlavors.externalNativeBuild.CMakeOptionsModelImpl
 import com.android.tools.idea.gradle.dsl.model.android.productFlavors.externalNativeBuild.NdkBuildOptionsModelImpl
 import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.Lists
 import com.google.common.truth.Truth
@@ -39,9 +37,7 @@ import junit.framework.TestCase
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert
 import org.jetbrains.annotations.SystemDependent
-import org.junit.After
 import org.junit.Assume.assumeTrue
-import org.junit.Before
 import org.junit.Test
 
 /**
@@ -52,19 +48,6 @@ import org.junit.Test
  * `android.defaultConfig {}` block. The general structure of `android.productFlavors {}` is tested in [ProductFlavorsElementTest].
  */
 class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
-
-  @Before
-  override fun before() {
-    DeclarativeIdeSupport.override(true)
-    DeclarativeStudioSupport.override(true)
-    super.before()
-  }
-
-  @After
-  fun onAfter() {
-    DeclarativeIdeSupport.clearOverride()
-    DeclarativeStudioSupport.clearOverride()
-  }
 
   @Test
   fun testDefaultConfigBlockWithApplicationStatements() {
@@ -1879,7 +1862,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testAddAndApplyMapElements400() {
-    isIrrelevantForDeclarative("No method call alternatives for properties in declarative")
     writeToBuildFile(TestFile.ADD_AND_APPLY_MAP_ELEMENTS)
 
     val buildModel = gradleBuildModel
@@ -2539,7 +2521,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
   @Test
   fun testWriteMatchingFallbacks() {
     // TODO fix test for declarative
-    isIrrelevantForDeclarative("Need to use gradleDeclarativeBuildModel for declarative")
     val text = ""
     writeToBuildFile(text)
     val buildModel = gradleBuildModel

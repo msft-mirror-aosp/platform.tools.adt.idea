@@ -16,7 +16,7 @@
 apply plugin: 'com.android.test'
 
 android {
-  namespace 'com.example.android.app.benchmark'
+  namespace = 'com.example.android.app.benchmark'
   compileSdkVersion 19
 
   defaultConfig {

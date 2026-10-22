@@ -1,14 +1,10 @@
-load("//tools/base/bazel:bazel.bzl", "iml_module")
+load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 
 # managed by go/iml_to_build
 iml_module(
     name = "intellij.android.testFramework",
     data = ["//prebuilts/studio/jdk:mock-jdk17"],
     iml_files = ["intellij.android.testFramework.iml"],
-    javacopts_from_jps = [
-        "--add-exports",
-        "jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
-    ],
     test_agents = ["//tools/base/threading-agent:threading_agent.jar"],
     # do not sort: must match IML order
     test_deps = [
@@ -47,7 +43,6 @@ iml_module(
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
-        "//tools/adt/idea/gradle-dsl-flags:intellij.android.gradle.dsl.flags",
         "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile",
         "//tools/base/deploy/deployer:studio.android.sdktools.deployer",
         "//tools/base/manifest-parser:studio.android.sdktools.manifest-parser",
@@ -66,4 +61,16 @@ iml_module(
         "@intellij//:intellij.java.impl",
         "@intellij//:intellij.java.ui",
     ],
+)
+
+# Runs JavacUtilTest with IntelliJ's PathClassLoader installed as the system class loader, the
+# configuration used when tests are launched from IntelliJ IDEA (b/285585692).
+iml_test(
+    name = "JavacUtilPathClassLoaderTest",
+    jvm_flags = [
+        "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader",
+        "--add-opens=java.base/sun.nio.fs=ALL-UNNAMED",
+    ],
+    module = ":intellij.android.testFramework",
+    test_class = "com.android.tools.idea.testing.JavacUtilTest",
 )

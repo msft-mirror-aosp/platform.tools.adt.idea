@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.service.resolve
 
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport
 import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.moveCaret
@@ -207,71 +206,6 @@ class NamespacePsiPackageReferenceProviderTest {
       )
     fixture.configureFromExistingVirtualFile(file.virtualFile)
     doChecks(false)
-  }
-
-  @Test
-  fun testDeclarativeNamespace() {
-    try {
-      DeclarativeStudioSupport.override(true)
-      val file =
-        fixture.addFileToProject(
-          "build.gradle.dcl",
-          """
-          android {
-            namespace = "com.example.myapplication"
-          }
-          """
-            .trimIndent(),
-        )
-      fixture.configureFromExistingVirtualFile(file.virtualFile)
-      doChecks()
-    } finally {
-      DeclarativeStudioSupport.clearOverride()
-    }
-  }
-
-  @Test
-  fun testDeclarativeTestNamespace() {
-    try {
-      DeclarativeStudioSupport.override(true)
-      val file =
-        fixture.addFileToProject(
-          "build.gradle.dcl",
-          """
-          android {
-            testNamespace = "com.example.myapplication.test"
-          }
-          """
-            .trimIndent(),
-        )
-      fixture.configureFromExistingVirtualFile(file.virtualFile)
-      doChecks()
-    } finally {
-      DeclarativeStudioSupport.clearOverride()
-    }
-  }
-
-  @Test
-  fun testDeclarativeApplicationId() {
-    try {
-      DeclarativeStudioSupport.override(true)
-      val file =
-        fixture.addFileToProject(
-          "build.gradle.dcl",
-          """
-          android {
-            defaultConfig {
-              applicationId = "com.example.myapplication"
-            }
-          }
-          """
-            .trimIndent(),
-        )
-      fixture.configureFromExistingVirtualFile(file.virtualFile)
-      doChecks(false)
-    } finally {
-      DeclarativeStudioSupport.clearOverride()
-    }
   }
 
   private fun doChecks(expectPackage: Boolean = true) {

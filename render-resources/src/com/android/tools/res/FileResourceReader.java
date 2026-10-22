@@ -20,11 +20,9 @@ import static com.android.SdkConstants.JAR_PROTOCOL;
 import static com.android.SdkConstants.JAR_SEPARATOR;
 
 import com.android.SdkConstants;
-import com.android.ide.common.resources.ProtoXmlPullParser;
 import com.android.ide.common.util.PathString;
 import com.android.tools.apk.analyzer.BinaryXmlParser;
 import com.android.tools.apk.analyzer.ResourceIdResolver;
-import com.android.utils.XmlUtils;
 import com.android.zipflinger.ZipMap;
 import com.android.zipflinger.ZipRepo;
 import com.google.common.cache.CacheBuilder;
@@ -190,8 +188,7 @@ public class FileResourceReader {
   }
 
   /**
-   * Creates a {@link XmlPullParser} for the given XML file resource. The file may contain
-   * either regular or proto XML.
+   * Creates a {@link XmlPullParser} for the given XML file resource.
    *
    * @param resourcePath the path to a file or a zip entry
    * @return the parser for the resource, or null if the resource does not exist
@@ -212,8 +209,7 @@ public class FileResourceReader {
   }
 
   /**
-   * Creates a {@link XmlPullParser} for the contents of an XML file resource. The contains
-   * may contain either regular or proto XML.
+   * Creates a {@link XmlPullParser} for the contents of an XML file resource.
    *
    * @param contents the contents of a file resource
    * @return the parser for the resource
@@ -221,15 +217,8 @@ public class FileResourceReader {
   @NotNull
   public static XmlPullParser createXmlPullParser(@NotNull byte[] contents) {
     try {
-      // Instantiate an XML pull parser based on the contents of the file.
-      XmlPullParser parser;
-      if (XmlUtils.isProtoXml(contents)) {
-        parser = new ProtoXmlPullParser(); // Parser for proto XML used in AARs.
-      }
-      else {
-        parser = new KXmlParser(); // Parser for regular text XML.
-        parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true);
-      }
+      XmlPullParser parser = new KXmlParser();
+      parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true);
       parser.setInput(new ByteArrayInputStream(contents), null);
       return parser;
     } catch (XmlPullParserException e) {

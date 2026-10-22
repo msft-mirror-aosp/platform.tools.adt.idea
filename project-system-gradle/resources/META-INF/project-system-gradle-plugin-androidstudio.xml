@@ -69,6 +69,8 @@
     <registryKey key="unknown.sdk.show.editor.actions" defaultValue="false" description="Show editor suggestions to fix missing SKDs" overrides="true"/>
     <!-- Disable Gradle auto-import by overriding the corresponding registry flag. -->
     <registryKey key="external.system.auto.import.disabled" defaultValue="true" description="Disable build system auto-import" overrides="true"/>
+    <!-- Disable resilient sync as it interferes with our sync issue parsers -->
+    <registryKey key="gradle.use.resilient.model.fetch" defaultValue="false" description="Use gradle stable resilient model fetch API to resolve gradle models" overrides="true"/>
     <!-- Disable phased sync as we've found it to be slower and there is currently no benefit for Android Studio. Context: b/360851078 -->
     <registryKey key="gradle.phased.sync.enabled" defaultValue="false" description="Enable the phased Gradle sync execution" overrides="true"/>
     <!-- Disable project widget status as it does not work (has no benefit) as expected in Android Studio. Discuss with JB about its benefits: b/378463994 -->

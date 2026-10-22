@@ -77,10 +77,6 @@
   ]
 }
 {
-  "id": "DeclarativeFocus",
-  "name": "Gradle Declarative Focus"
-}
-{
   "id": "build.tools",
   "name": "Build Tools",
   "entries": [
@@ -990,6 +986,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Fingerprint",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Fold/Unfold",
       "path": "ActionManager"
     },
@@ -1302,7 +1302,15 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Open camera settings",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Open cellular settings",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open fingerprint controls",
       "path": "ActionManager"
     },
     {

@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.dsl.model.android
 
-import com.android.tools.idea.gradle.dcl.lang.flags.DeclarativeIdeSupport
 import com.android.tools.idea.gradle.dsl.TestFileName
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.android.CompileSdkAddonModel
@@ -27,32 +26,15 @@ import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo
 import com.android.tools.idea.gradle.dsl.model.AndroidGradleFileModelTestCase
 import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport
 import com.google.common.truth.Truth.assertThat
 import java.io.File
 import org.jetbrains.annotations.SystemDependent
-import org.junit.After
-import org.junit.Before
 import org.junit.Test
 
 class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
-  @Before
-  override fun before() {
-    DeclarativeIdeSupport.override(true)
-    DeclarativeStudioSupport.override(true)
-    super.before()
-  }
-
-  @After
-  fun onAfter() {
-    DeclarativeIdeSupport.clearOverride()
-    DeclarativeStudioSupport.clearOverride()
-  }
-
   @Test
   fun testReadCompileSdkVersionBlock() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.READ_RELEASE_BLOCK)
 
@@ -75,7 +57,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testReadCompileSdkVersionReleaseMethod() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.READ_RELEASE_METHOD)
 
@@ -98,7 +79,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testReadVariableInCompileSdkVersionReleaseMethod() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.READ_RELEASE_METHOD_WITH_REFERENCE)
 
@@ -120,7 +100,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testSetReferenceInCompileSdkVersionReleaseMethod() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.SET_RELEASE_METHOD_TO_REFERENCE)
 
@@ -134,7 +113,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testReadVariableInCompileSdkVersionPreviewMethod() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.READ_PREVIEW_METHOD_WITH_REFERENCE)
 
@@ -155,7 +133,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testSetReferenceInCompileSdkVersionPreviewMethod() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.SET_PREVIEW_METHOD_TO_REFERENCE)
 
@@ -169,7 +146,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testReadCompileSdkVersionPreviewMethod() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.READ_PREVIEW_METHOD)
 
@@ -190,7 +166,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testReadCompileSdkVersionAddonMethod() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.READ_ADDON_METHOD)
 
@@ -213,7 +188,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testUpdateCompileSdkVersionWithOldApi() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 
@@ -229,7 +203,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testUpdateCompileSdkAllValuesVersionWithOldApi() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 
@@ -245,7 +218,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testUpdateCompileSdkWithMinorVersionWithOldApi() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 
@@ -261,7 +233,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testUpdateCompileSdkWithExtensionVersionWithOldApi() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 
@@ -277,7 +248,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testUpdateCompileSdkWithPreviewWithOldApi() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 
@@ -293,7 +263,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testUpdateCompileSdkWithAddonWithOldApi() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 
@@ -309,7 +278,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testCreateCompileSdkWithZeroMinorRelease() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 
@@ -326,7 +294,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testCompileSdkVersionToString() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 
@@ -344,7 +311,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testCompileSdkValueType() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 
@@ -370,7 +336,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testReadUpdateCompileSdkValuesWithOldApi() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 
@@ -402,7 +367,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testWriteCompileSdkAfterElement() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.WRITE_RELEASE_BLOCK_AFTER_ELEMENT)
 
@@ -418,7 +382,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testWriteCompileSdkAfterElementForOldAgp() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     writeToBuildFile(TestFile.WRITE_RELEASE_BLOCK_AFTER_ELEMENT)
     val buildModel = gradleBuildModel
@@ -436,7 +399,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testPickupNotSavedElementForOldApi() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     writeToBuildFile(TestFile.EMPTY_ANDROID_BLOCK)
     val buildModel = gradleBuildModel
@@ -454,7 +416,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testSetCompileSdkPreviewWithExistingCompileSdkRelease() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     writeToBuildFile(TestFile.READ_RELEASE_BLOCK)
     val buildModel = gradleBuildModel
@@ -469,7 +430,6 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
 
   @Test
   fun testSetCompileSdkReleaseWithExistingCompileSdkPreview() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     writeToBuildFile(TestFile.READ_PREVIEW_METHOD)
     val buildModel = gradleBuildModel
@@ -483,30 +443,7 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
   }
 
   @Test
-  fun testWriteCompileSdkForDeclarative() {
-    isIrrelevantForGroovy("Declarative only test")
-    isIrrelevantForKotlinScript("Declarative only test")
-
-    writeToBuildFile("androidApp {\n}")
-    val buildModel = gradleDeclarativeBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse(CompileSdkPropertyModel.COMPILE_SDK_BLOCK_VERSION)
-
-    val android = buildModel.android()
-    assertNotNull(android)
-
-    val compileSdkVersion = android.compileSdkVersion()
-    assertThat(compileSdkVersion).isNotNull()
-    compileSdkVersion.setValue(33)
-    applyChanges(buildModel)
-
-    val content = loadBuildFile()
-    assertThat(content).contains("compileSdk = 33")
-    assertThat(content).doesNotContain("compileSdk {")
-  }
-
-  @Test
   fun testSetBetaVersion() {
-    isIrrelevantForDeclarative("Not supported in Declarative")
 
     val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
 

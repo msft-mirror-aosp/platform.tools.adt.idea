@@ -53,7 +53,7 @@ fun buildGradle(
 ${emptyPluginsBlock()}
 
 android {
-    namespace '$packageName'
+    namespace = '$packageName'
 
     defaultConfig {
         ${minSdk(minApi, agpVersion)}

@@ -1,7 +1,7 @@
 load(":art-k2-failing-tests.bzl", "ART_K2_FAILING", "TESTS_WITH_ERRORS", "TESTS_WITH_ORDER_RELATED_FAILURE")
-load(":ij-debugger-tests.bzl", "debugger_test")
+load(":ij-debugger-tests.bzl", "debugger_test", "include_k2")
 
-smoke_test = "include-methodname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2PositionManagerTestGenerated\\$SingleFile#testClass"
+smoke_test = include_k2("K2PositionManagerTestGenerated$SingleFile.testClass")
 
 debugger_test(
     name = "jvm-smoke-test",

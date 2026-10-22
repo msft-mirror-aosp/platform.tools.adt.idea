@@ -114,6 +114,35 @@ aswb_test(
 )
 
 aswb_test(
+    name = "CachingFileMtimeReaderTest",
+    size = "small",
+    srcs = ["CachingFileMtimeReaderTest.kt"],
+    deps = [
+        "//tools/adt/idea/aswb/plugin_api",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/query",
+        "//tools/adt/idea/aswb/shared",
+        "//tools/adt/idea/aswb/third_party/java/junit",
+        "//tools/adt/idea/aswb/third_party/java/truth",
+        "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
+    ],
+)
+
+aswb_test(
+    name = "SubincludeFileResolverTest",
+    size = "small",
+    srcs = ["SubincludeFileResolverTest.kt"],
+    deps = [
+        "//tools/adt/idea/aswb/plugin_api",
+        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
+        "//tools/adt/idea/aswb/shared",
+        "//tools/adt/idea/aswb/third_party/java/junit",
+        "//tools/adt/idea/aswb/third_party/java/truth",
+        "//tools/vendor/google/aswb/plugin_api:plugin_api_for_tests",
+    ],
+)
+
+aswb_test(
     name = "FileProcessorTest",
     srcs = ["FileProcessorTest.kt"],
     deps = [
@@ -145,7 +174,6 @@ aswb_test(
     srcs = ["BazelProjectFilteringProcessorTest.kt"],
     deps = [
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync",
-        "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/qsync/project",
         "//tools/adt/idea/aswb/querysync/java/com/google/idea/blaze/traverser",
         "//tools/adt/idea/aswb/shared/java/com/google/idea/blaze/common",
         "//tools/adt/idea/aswb/shared/javatests/com/google/idea/blaze/common:test_utils",

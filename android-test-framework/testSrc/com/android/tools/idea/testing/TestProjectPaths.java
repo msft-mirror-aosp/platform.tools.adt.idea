@@ -91,10 +91,7 @@ public final class TestProjectPaths {
   public static final String SIMPLE_APPLICATION_VERSION_CATALOG = "projects/simpleApplicationVersionCatalog";
   public static final String SINGLE_MODULE_VERSION_CATALOG = "projects/singleModuleVersionCatalog";
   public static final String SINGLE_MODULE_APPLICATION = "projects/singleModuleApplication";
-  public static final String SIMPLE_APPLICATION_DECLARATIVE = "projects/simpleDeclarativeApp";
-  public static final String EMPTY_APPLICATION_DECLARATIVE = "projects/emptyDeclarativeApp";
-  public static final String DECLARATIVE_ANDROID_INCLUDED_BUILD = "projects/declarativeAndroidWithInternalBuild";
-  public static final String MINIMAL_CATALOG_APPLICATION = "projects/minimalCatalogProject";
+   public static final String MINIMAL_CATALOG_APPLICATION = "projects/minimalCatalogProject";
   public static final String SIMPLE_APPLICATION_GENERATED_ASSETS = "projects/simpleApplicationGeneratedAssets";
   public static final String SIMPLE_APPLICATION_MULTI_VERSION_CATALOG = "projects/simpleApplicationMultiVersionCatalog";
   public static final String SIMPLE_APPLICATION_VERSION_CATALOG_KTS = "projects/simpleApplicationVersionCatalogKts";

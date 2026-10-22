@@ -21,6 +21,7 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.caret
 import com.android.tools.idea.testing.loadNewFile
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 import com.intellij.openapi.application.runReadAction
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
@@ -320,6 +321,288 @@ class ComposeCompletionWeigherTest {
         "foobarTwo(required: Int, optional: Int = ...) (com.example) Int",
       )
       .inOrder()
+  }
+
+  @Test
+  fun testLookupElementOrder_regularFunctionDoesNotPromoteComposable() {
+    addMyComposables()
+
+    // Given:
+    myFixture.loadNewFile(
+      "src/com/example/Test.kt",
+      // language=kotlin
+      """
+      package com.example
+
+      fun regularFunction() {
+        val rememberLocal = "hello"
+        rem$caret
+      }
+      """
+        .trimIndent(),
+    )
+
+    // When:
+    myFixture.completeBasic()
+
+    // Then:
+    assertPrecedes("rememberLocal", "rememberSaveable")
+  }
+
+  @Test
+  fun testLookupElementOrder_suspendFunctionDoesNotPromoteComposable() {
+    addMyComposables()
+
+    // Given:
+    myFixture.loadNewFile(
+      "src/com/example/Test.kt",
+      // language=kotlin
+      """
+      package com.example
+
+      suspend fun suspendFunction() {
+        val rememberLocal = "hello"
+        rem$caret
+      }
+      """
+        .trimIndent(),
+    )
+
+    // When:
+    myFixture.completeBasic()
+
+    // Then:
+    assertPrecedes("rememberLocal", "rememberSaveable")
+  }
+
+  @Test
+  fun testLookupElementOrder_nonComposableCallbackInComposableDoesNotPromoteComposable() {
+    addMyComposables(
+      // language=kotlin
+      """
+      @Composable
+      fun Button(onClick: () -> Unit) {}
+      """
+    )
+
+    // Given:
+    myFixture.loadNewFile(
+      "src/com/example/Test.kt",
+      // language=kotlin
+      """
+      package com.example
+
+      import androidx.compose.runtime.Composable
+
+      @Composable
+      fun MyScreen() {
+        Button(onClick = {
+          val rememberLocal = "hello"
+          rem$caret
+        })
+      }
+      """
+        .trimIndent(),
+    )
+
+    // When:
+    myFixture.completeBasic()
+
+    // Then:
+    assertPrecedes("rememberLocal", "rememberSaveable")
+  }
+
+  @Test
+  fun testLookupElementOrder_composableLambdaInNonComposablePromotesComposable() {
+    addMyComposables(
+      // language=kotlin
+      """
+      fun setContent(content: @Composable () -> Unit) {}
+      """
+    )
+
+    // Given:
+    myFixture.loadNewFile(
+      "src/com/example/Test.kt",
+      // language=kotlin
+      """
+      package com.example
+
+      fun regularFunction() {
+        setContent {
+          rem$caret
+        }
+      }
+      """
+        .trimIndent(),
+    )
+
+    // When:
+    myFixture.completeBasic()
+
+    // Then:
+    assertPrecedes("rememberSaveable", "rememberOther")
+  }
+
+  @Test
+  fun testLookupElementOrder_composableFunctionPrioritizesExactPrefixOverSubsequenceComposable() {
+    addMyComposables()
+
+    // Given:
+    myFixture.loadNewFile(
+      "src/com/example/Test.kt",
+      // language=kotlin
+      """
+      package com.example
+
+      import androidx.compose.runtime.Composable
+
+      @Composable
+      fun composableFunction() {
+        val result = "hello"
+        res$caret
+      }
+      """
+        .trimIndent(),
+    )
+
+    // When:
+    myFixture.completeBasic()
+
+    // Then:
+    assertPrecedes("result", "rememberSaveable")
+  }
+
+  @Test
+  fun testLookupElementOrder_nonComposableFunctionArgumentDoesNotPromoteComposeSymbols() {
+    myFixture.addFileToProject(
+      "src/androidx/compose/material/MaterialTheme.kt",
+      // language=kotlin
+      """
+      package androidx.compose.material
+
+      object MaterialTheme
+      """,
+    )
+
+    myFixture.addFileToProject(
+      "src/com/example/MaterialTheme.kt",
+      // language=kotlin
+      """
+      package com.example
+
+      object MaterialTheme
+      """,
+    )
+
+    // Given:
+    myFixture.loadNewFile(
+      "src/com/example/Test.kt",
+      // language=kotlin
+      """
+      package com.example
+
+      fun regularFunction() {
+        consume(Material$caret)
+      }
+
+      fun consume(param: Any) {}
+      """
+        .trimIndent(),
+    )
+
+    // When:
+    myFixture.completeBasic()
+
+    // Then:
+    assertPrecedes(
+      first = "MaterialTheme (com.example)",
+      second = "MaterialTheme (androidx.compose.material)",
+      elements = myFixture.renderedLookupElements,
+    )
+  }
+
+  @Test
+  fun testLookupElementOrder_regularFunctionDoesNotPromoteNamedArgumentOverLocalVariable() {
+    myFixture.loadNewFile(
+      "src/com/example/Test.kt",
+      // language=kotlin
+      """
+      package com.example
+
+      fun regularFunction() {
+        val foobarArg = 42
+        consume(foobar$caret)
+      }
+
+      fun consume(foobarArg: Int) {}
+      """
+        .trimIndent(),
+    )
+
+    // When:
+    myFixture.completeBasic()
+
+    // Then:
+    assertPrecedes("foobarArg", "foobarArg =")
+  }
+
+  @Test
+  fun testLookupElementOrder_suspendFunctionDoesNotPromoteNamedArgumentOverLocalVariable() {
+    myFixture.loadNewFile(
+      "src/com/example/Test.kt",
+      // language=kotlin
+      """
+      package com.example
+
+      suspend fun suspendFunction() {
+        val foobarArg = 42
+        consume(foobar$caret)
+      }
+
+      fun consume(foobarArg: Int) {}
+      """
+        .trimIndent(),
+    )
+
+    // When:
+    myFixture.completeBasic()
+
+    // Then:
+    assertPrecedes("foobarArg", "foobarArg =")
+  }
+
+  private fun addMyComposables(extraDeclarations: String = "") {
+    myFixture.addFileToProject(
+      "src/com/example/MyComposables.kt",
+      // language=kotlin
+      """
+      package com.example
+
+      import androidx.compose.runtime.Composable
+
+      @Composable
+      fun rememberSaveable(): String = ""
+
+      fun rememberOther(): String = ""
+      $extraDeclarations
+      """
+        .trimIndent(),
+    )
+  }
+
+  private fun assertPrecedes(
+    first: String,
+    second: String,
+    elements: Collection<String> = myFixture.lookupElementStrings.orEmpty(),
+  ) {
+    val list = elements.toList()
+    val firstIndex = list.indexOf(first)
+    val secondIndex = list.indexOf(second)
+
+    assertWithMessage("Element '$first' not found in $list").that(firstIndex).isAtLeast(0)
+    assertWithMessage("Element '$second' not found in $list").that(secondIndex).isAtLeast(0)
+    assertWithMessage("Expected '$first' to precede '$second' in $list").that(firstIndex).isLessThan(secondIndex)
   }
 
   private val CodeInsightTestFixture.renderedLookupElements: Collection<String>

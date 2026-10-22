@@ -563,6 +563,60 @@
   ]
 }
 {
+  "id": "reference.settingsdialog.IDE.editor.colors.com.android.studio.ios.swift.highlighting.SwiftColorSettingsPage",
+  "name": "Swift",
+  "entries": [
+    {
+      "hit": "Swift"
+    },
+    {
+      "hit": "Attribute"
+    },
+    {
+      "hit": "Braces and Operators//Braces"
+    },
+    {
+      "hit": "Braces and Operators//Brackets"
+    },
+    {
+      "hit": "Braces and Operators//Comma"
+    },
+    {
+      "hit": "Braces and Operators//Dot"
+    },
+    {
+      "hit": "Braces and Operators//Parentheses"
+    },
+    {
+      "hit": "Braces and Operators//Semicolon"
+    },
+    {
+      "hit": "Comments//Block comment"
+    },
+    {
+      "hit": "Comments//Documentation comment"
+    },
+    {
+      "hit": "Comments//Line comment"
+    },
+    {
+      "hit": "Compiler directive"
+    },
+    {
+      "hit": "Keyword"
+    },
+    {
+      "hit": "Number"
+    },
+    {
+      "hit": "Operator"
+    },
+    {
+      "hit": "String"
+    }
+  ]
+}
+{
   "id": "reference.settingsdialog.IDE.editor.colors.com.google.tools.aiplugin.editor.predictionservices.configuration.NextEditPredictionColorsPage",
   "name": "AI Edits",
   "entries": [

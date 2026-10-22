@@ -19,7 +19,7 @@ plugins {
 
 android {
     compileSdk 33
-    namespace "com.example.app"
+    namespace = "com.example.app"
     defaultConfig {
         minSdk 26
     }

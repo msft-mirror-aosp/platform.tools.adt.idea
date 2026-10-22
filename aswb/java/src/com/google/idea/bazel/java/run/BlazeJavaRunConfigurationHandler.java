@@ -95,7 +95,7 @@ public final class BlazeJavaRunConfigurationHandler implements BlazeCommandRunCo
       // Create place holders for the debugging setup handlers data in the user data storage.
       BlazeJavaDebuggingSetupHandler.initHandlersData(env);
       ClassFileManifestBuilder.initState(env);
-      return new BlazeJavaRunProfileState(env);
+      return new BlazeJavaDebugRunProfileState(env);
     }
 
     @Override

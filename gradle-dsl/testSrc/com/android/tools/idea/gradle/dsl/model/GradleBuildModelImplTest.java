@@ -17,19 +17,15 @@ package com.android.tools.idea.gradle.dsl.model;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.android.tools.idea.gradle.dcl.lang.flags.DeclarativeIdeSupport;
 import com.android.tools.idea.gradle.dsl.TestFileName;
 import com.android.tools.idea.gradle.dsl.api.BuildScriptModel;
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoryModel;
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.SystemDependent;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
@@ -37,23 +33,8 @@ import org.junit.Test;
  */
 public class GradleBuildModelImplTest extends GradleFileModelTestCase {
 
-  @Before
-  @Override
-  public void before() throws Exception {
-    DeclarativeIdeSupport.override(true);
-    DeclarativeStudioSupport.override(true);
-    super.before();
-  }
-
-  @After
-  public void after() {
-    DeclarativeIdeSupport.clearOverride();
-    DeclarativeStudioSupport.clearOverride();
-  }
-
   @Test
   public void testRemoveRepositoriesSingleBlock() throws IOException {
-    isIrrelevantForDeclarative("No repositories for Declarative");
     writeToBuildFile(TestFile.REMOVE_REPOSITORIES_SINGLE_BLOCK);
     GradleBuildModel buildModel = getGradleBuildModel();
     List<RepositoryModel> repositories = buildModel.repositories().repositories();
@@ -78,7 +59,6 @@ public class GradleBuildModelImplTest extends GradleFileModelTestCase {
 
   @Test
   public void testRemoveRepositoriesMultipleBlocks() throws IOException {
-    isIrrelevantForDeclarative("No repositories for Declarative");
     writeToBuildFile(TestFile.REMOVE_REPOSITORIES_MULTIPLE_BLOCKS);
     GradleBuildModel buildModel = getGradleBuildModel();
     List<RepositoryModel> repositories = buildModel.repositories().repositories();
@@ -114,7 +94,6 @@ public class GradleBuildModelImplTest extends GradleFileModelTestCase {
 
   @Test
   public void testRemoveRepositoriesWithAllprojectsBlock() throws IOException {
-    isIrrelevantForDeclarative("No repositories for Declarative");
     writeToBuildFile(TestFile.REMOVE_REPOSITORIES_WITH_ALLPROJECTS_BLOCK);
     GradleBuildModel buildModel = getGradleBuildModel();
     List<RepositoryModel> repositories = buildModel.repositories().repositories();
@@ -130,7 +109,6 @@ public class GradleBuildModelImplTest extends GradleFileModelTestCase {
 
   @Test
   public void testPluginsBlockPsi() throws IOException {
-    isIrrelevantForDeclarative("No plugin in build file for Declarative");
     writeToBuildFile(TestFile.PLUGINS_BLOCK_PSI);
     GradleBuildModel buildModel = getGradleBuildModel();
 
@@ -147,7 +125,6 @@ public class GradleBuildModelImplTest extends GradleFileModelTestCase {
 
   @Test
   public void testApplyPluginNoPluginsBlockPsi() throws IOException {
-    isIrrelevantForDeclarative("No plugin in build file for Declarative");
     writeToBuildFile(TestFile.APPLY_PLUGIN_NO_PLUGINS_BLOCK_PSI);
     GradleBuildModel buildModel = getGradleBuildModel();
 

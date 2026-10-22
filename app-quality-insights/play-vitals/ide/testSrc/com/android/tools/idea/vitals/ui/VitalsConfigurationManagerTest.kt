@@ -22,8 +22,8 @@ import com.android.tools.idea.insights.AppInsightsModel
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.client.AppInsightsCacheImpl
 import com.android.tools.idea.insights.client.AppInsightsClient
-import com.android.tools.idea.insights.inspection.AppInsightsFilterSelector
 import com.android.tools.idea.insights.model.connection.AppConnection
+import com.android.tools.idea.insights.ui.AppInsightsFilterSelector
 import com.android.tools.idea.testing.AndroidExecutorsRule
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.flags.overrideForTest

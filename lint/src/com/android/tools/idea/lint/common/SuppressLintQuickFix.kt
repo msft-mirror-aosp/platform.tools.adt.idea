@@ -17,7 +17,6 @@ package com.android.tools.idea.lint.common
 
 import com.android.SdkConstants
 import com.android.SdkConstants.FQCN_SUPPRESS_LINT
-import com.android.tools.idea.gradle.dcl.lang.DeclarativeLanguage
 import com.android.tools.idea.lint.common.AndroidLintInspectionBase.LINT_INSPECTION_PREFIX
 import com.android.tools.lint.detector.api.ClassContext
 import com.android.tools.lint.detector.api.firstLabelableParent
@@ -100,7 +99,6 @@ class SuppressLintQuickFix(private val id: String, element: PsiElement? = null) 
       GroovyLanguage -> simplePsiUpdater(::handleGroovy)
       KotlinLanguage.INSTANCE -> simplePsiUpdater(::handleKotlin)
       TomlLanguage -> simplePsiUpdater(::handleToml)
-      DeclarativeLanguage.INSTANCE -> simplePsiUpdater(::handleDeclarative)
       else -> {
         // Suppressing lint checks tagged on things like icons, where we edit a different file.
         if (element is PsiFile) {
@@ -148,14 +146,6 @@ class SuppressLintQuickFix(private val id: String, element: PsiElement? = null) 
     val project = file.project
     val offset = element.textOffset
     addNoInspectionComment(project, file, offset, "#")
-  }
-
-  @Throws(IncorrectOperationException::class)
-  private fun handleDeclarative(element: PsiElement) {
-    val file = if (element is PsiFile) element else element.containingFile ?: return
-    val project = file.project
-    val offset = element.textOffset
-    addNoInspectionComment(project, file, offset)
   }
 
   /** Given a file and offset of a statement, inserts a //noinspection <id> comment on the **previous** line. */
@@ -398,7 +388,6 @@ class SuppressLintQuickFix(private val id: String, element: PsiElement? = null) 
           else LintBundle.message("android.lint.fix.suppress.lint.api.comment", id)
         }
         GroovyLanguage -> LintBundle.message("android.lint.fix.suppress.lint.api.comment", id)
-        DeclarativeLanguage.INSTANCE -> LintBundle.message("android.lint.fix.suppress.lint.api.comment", id)
         else -> "Suppress $id"
       }
     }

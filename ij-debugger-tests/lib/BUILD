@@ -57,7 +57,7 @@ kotlin_library(
     visibility = ["//tools/adt/idea/ij-debugger-tests:__pkg__"],
     deps = [
         "@tools_idea//platform/testFramework/bootstrap:tools-testsBootstrap",
-        "@tools_idea_lib//:libraries-junit5-launcher-_j_unit5_launcher",
+        "@tools_idea_lib//:libraries-junit6-launcher-_j_unit6_launcher",
     ],
 )
 

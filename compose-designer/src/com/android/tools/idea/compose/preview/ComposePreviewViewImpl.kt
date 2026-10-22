@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.compose.preview
 
-import com.android.flags.ifEnabled
 import com.android.tools.adtui.PANNABLE_KEY
 import com.android.tools.adtui.Pannable
 import com.android.tools.adtui.stdui.ActionData
@@ -32,7 +31,6 @@ import com.android.tools.idea.editors.build.RenderingBuildStatusManager
 import com.android.tools.idea.editors.notifications.NotificationPanel
 import com.android.tools.idea.editors.shortcuts.asString
 import com.android.tools.idea.editors.shortcuts.getBuildAndRefreshShortcut
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.focus.FocusModeProperty
 import com.android.tools.idea.preview.mvvm.PreviewRepresentationView
 import com.android.tools.idea.rendering.tokens.requestBuildArtifactsForRendering
@@ -394,11 +392,9 @@ internal class ComposePreviewViewImpl(
 
   /** Creates an [AnAction] to that generates Compose Previews for this file. */
   private fun createGeneratePreviewsActionData(): AnAction? {
-    return StudioFlags.COMPOSE_PREVIEW_GENERATE_PREVIEW_AGENTIC.ifEnabled {
-      getComposeStudioBotActionFactory()?.createPreviewGenerator()?.also {
-        it.templatePresentation.text = message("action.generate.single.preview.for.file.empty.panel")
-        it.templatePresentation.icon = createPaddedAiIcon()
-      }
+    return getComposeStudioBotActionFactory()?.createPreviewGenerator()?.also {
+      it.templatePresentation.text = message("action.generate.single.preview.for.file.empty.panel")
+      it.templatePresentation.icon = createPaddedAiIcon()
     }
   }
 

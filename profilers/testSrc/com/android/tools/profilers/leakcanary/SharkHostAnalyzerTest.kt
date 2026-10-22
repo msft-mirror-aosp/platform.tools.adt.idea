@@ -115,7 +115,7 @@ class SharkHostAnalyzerTest {
    */
   @Test
   fun `analyze handles very large graph gracefully`() {
-    val hprofFile = getTestFile("tools/adt/idea/profilers/testData/hprofs/valid_leak_test.hprof")
+    val hprofFile = getTestFile("tools/adt/idea/profilers/testData/hprofs/performance/sunflower.hprof")
     val result = analyzer.analyze(hprofFile) {}
 
     Truth.assertThat(result).isInstanceOf(HeapAnalysisSuccess::class.java)

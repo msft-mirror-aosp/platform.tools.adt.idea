@@ -16,7 +16,7 @@
 apply plugin: 'android'
 
 android {
-  namespace 'com.example.android.app'
+  namespace = 'com.example.android.app'
   compileSdkVersion 19
 
   defaultConfig {

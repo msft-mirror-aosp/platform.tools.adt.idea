@@ -18,7 +18,6 @@ package com.android.tools.idea.gradle.project.sync.snapshots
 import com.android.builder.model.v2.ide.SyncIssue
 import com.android.ide.common.repository.AgpVersion
 import com.android.testutils.AssumeUtil.assumeNotWindows
-import com.android.tools.idea.gradle.feature.flags.DeclarativeStudioSupport
 import com.android.tools.idea.gradle.project.GradleExperimentalSettings
 import com.android.tools.idea.gradle.project.sync.GradleSyncState
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
@@ -548,18 +547,6 @@ enum class TestProject(
             .trimIndent()
         )
     },
-  ),
-  GRADLE_DECLARATIVE(
-    TestProjectToSnapshotPaths.GRADLE_DECLARATIVE,
-    setup =
-      fun(): () -> Unit {
-        DeclarativeStudioSupport.override(true)
-
-        return fun() {
-          DeclarativeStudioSupport.clearOverride()
-        }
-      },
-    isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT },
   ),
   TEST_STATIC_DIR(
     TestProjectToSnapshotPaths.STATIC_FOLDER_TEST,

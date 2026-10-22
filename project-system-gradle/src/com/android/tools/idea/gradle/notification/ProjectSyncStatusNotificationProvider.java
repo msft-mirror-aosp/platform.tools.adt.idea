@@ -16,10 +16,8 @@
 package com.android.tools.idea.gradle.notification;
 
 import static com.android.SdkConstants.FN_BUILD_GRADLE;
-import static com.android.SdkConstants.FN_BUILD_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.FN_BUILD_GRADLE_KTS;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE;
-import static com.android.SdkConstants.FN_SETTINGS_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.FN_SETTINGS_GRADLE_KTS;
 import static com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_USER_STALE_CHANGES;
 import static com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_USER_TRY_AGAIN;
@@ -285,9 +283,9 @@ public class ProjectSyncStatusNotificationProvider implements DumbAware, EditorN
   }
 
   private static final Set<String> DEFAULT_GRADLE_BUILD_FILE_NAMES =
-    Set.of(FN_BUILD_GRADLE, FN_BUILD_GRADLE_KTS, FN_BUILD_GRADLE_DECLARATIVE);
+    Set.of(FN_BUILD_GRADLE, FN_BUILD_GRADLE_KTS);
   private static final Set<String> GRADLE_SETTINGS_FILE_NAMES =
-    Set.of(FN_SETTINGS_GRADLE, FN_SETTINGS_GRADLE_KTS, FN_SETTINGS_GRADLE_DECLARATIVE);
+    Set.of(FN_SETTINGS_GRADLE, FN_SETTINGS_GRADLE_KTS);
 
   private static boolean isDefaultGradleBuildFile(VirtualFile file) {
     return DEFAULT_GRADLE_BUILD_FILE_NAMES.contains(file.getName());

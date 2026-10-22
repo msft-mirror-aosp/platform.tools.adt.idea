@@ -1,5 +1,0 @@
-androidApp {
-  dependencies {
-    compile("[]#$a")
-  }
-}

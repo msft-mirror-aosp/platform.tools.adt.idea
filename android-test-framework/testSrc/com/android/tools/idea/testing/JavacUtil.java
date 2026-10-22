@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.testing;
 
-import com.sun.tools.javac.api.JavacTool;
+import java.util.ServiceLoader;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 
@@ -27,8 +27,14 @@ public class JavacUtil {
     JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
     if (javac == null) {
       // http://b/285585692
-      // PathClassLoader does not support modules yet so ToolProvider will not be able to locate the JavaCompiler.
-      javac = JavacTool.create();
+      // When tests run from IntelliJ IDEA, PathClassLoader is the system class loader and its
+      // parent is the platform class loader, so the application class loader that defines
+      // jdk.compiler is skipped and ToolProvider.getSystemJavaCompiler() cannot find javac.
+      // Look it up through the boot module layer instead, which does not depend on class loaders.
+      javac =
+          ServiceLoader.load(ModuleLayer.boot(), JavaCompiler.class)
+              .findFirst()
+              .orElseThrow(() -> new IllegalStateException("No JavaCompiler found"));
     }
     return javac;
   }

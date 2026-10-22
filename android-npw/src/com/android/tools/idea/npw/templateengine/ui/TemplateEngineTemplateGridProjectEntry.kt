@@ -31,6 +31,7 @@ import com.android.tools.idea.npw.model.NewProjectModuleModel
 import com.android.tools.idea.npw.project.ChooseAndroidProjectEntry
 import com.android.tools.idea.npw.project.GridItem
 import com.android.tools.idea.npw.project.ItemGrid
+import com.android.tools.idea.npw.template.PromotedPluginInstallTracker
 import com.android.tools.idea.npw.templateengine.api.PromotionCardSpec
 import com.android.tools.idea.npw.templateengine.services.ExternalTemplate
 import icons.StudioIllustrationsCompose
@@ -84,6 +85,9 @@ sealed interface TemplateGalleryItem : GridItem {
 
     override val description: String
       get() = spec.description
+
+    override val isEnabled: Boolean
+      get() = spec.pluginId?.let { !PromotedPluginInstallTracker.isInstalling(it) } ?: true
 
     @Composable
     override fun Icon() {

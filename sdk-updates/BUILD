@@ -13,7 +13,6 @@ iml_module(
         "@intellij//:com.intellij.java",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/android:intellij.android.core",
-        "//tools/analytics-library/shared:analytics-shared",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/observable:intellij.android.observable",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",

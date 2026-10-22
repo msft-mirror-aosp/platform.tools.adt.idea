@@ -15,12 +15,8 @@
  */
 package com.android.tools.idea.compose.preview.actions
 
-import com.android.flags.ifEnabled
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.actions.CommonIssueNotificationAction
 import com.android.tools.idea.preview.actions.ForceCompileAndRefreshActionForNotification
-import com.android.tools.idea.preview.actions.visibleOnlyInDefaultPreview
-import com.android.tools.idea.preview.pagination.actions.PaginationActionGroup
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
@@ -53,10 +49,4 @@ class PreviewIssueNotificationAction(parentDisposable: Disposable) : CommonIssue
 
 /** [DefaultActionGroup] that shows the notification chip and the [ForceCompileAndRefreshActionForNotification] button when applicable. */
 class ComposeNotificationGroup(parentDisposable: Disposable) :
-  DefaultActionGroup(
-    listOfNotNull(
-      StudioFlags.PREVIEW_PAGINATION.ifEnabled { PaginationActionGroup().visibleOnlyInDefaultPreview() },
-      PreviewIssueNotificationAction(parentDisposable),
-      ForceCompileAndRefreshActionForNotification.getInstance(),
-    )
-  )
+  DefaultActionGroup(listOf(PreviewIssueNotificationAction(parentDisposable), ForceCompileAndRefreshActionForNotification.getInstance()))

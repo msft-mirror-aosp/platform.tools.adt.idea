@@ -160,7 +160,7 @@ class AndroidModuleDescriptorsTest {
         AndroidCoreTestProject.SIMPLE_APPLICATION.withAdditionalPatch { root ->
           root
             .resolve("app/build.gradle")
-            .replaceInContent("compileSdkVersion $latestAgpCompileSdk", "compileSdk $latestAgpCompileSdk" + "\ncompileSdkExtension 0")
+            .replaceInContent("compileSdkVersion $latestAgpCompileSdk", "compileSdk $latestAgpCompileSdk" + "\ncompileSdkExtension = 0")
         }
       )
     preparedProject.open { resolvedProject ->
@@ -414,7 +414,7 @@ class AndroidModuleDescriptorsTest {
         AndroidCoreTestProject.PSD_SAMPLE_GROOVY.withAdditionalPatch { root ->
           root
             .resolve("app/build.gradle")
-            .replaceInContent("compileSdkVersion $latestAgpCompileSdk", "compileSdk $latestAgpCompileSdk" + "\ncompileSdkExtension 2")
+            .replaceInContent("compileSdkVersion $latestAgpCompileSdk", "compileSdk $latestAgpCompileSdk" + "\ncompileSdkExtension = 2")
         }
       )
     preparedProject.open(updateOptions = OpenPreparedProjectOptions::withoutKtsRelatedIndexing) { resolvedProject ->

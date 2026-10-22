@@ -28,7 +28,6 @@
     <orderEntry type="module" module-name="android.sdktools.ddmlib-studio" />
     <orderEntry type="module" module-name="analytics-tracker" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
-    <orderEntry type="module" module-name="android.sdktools.threading-agent-callback" />
     <orderEntry type="module" module-name="intellij.android.execution.common" />
     <orderEntry type="module" module-name="analytics" />
   </component>

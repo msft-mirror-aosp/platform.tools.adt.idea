@@ -123,8 +123,11 @@ internal class NotificationTracker private constructor(private val emulator: Emu
   }
 
   override fun connectionStateChanged(emulator: EmulatorController, connectionState: ConnectionState) {
-    stopNotificationReader()
-    startNotificationReaderIfConnected()
+    if (connectionState == ConnectionState.CONNECTED) {
+      startNotificationReaderIfConnected()
+    } else {
+      stopNotificationReader()
+    }
   }
 
   @Synchronized

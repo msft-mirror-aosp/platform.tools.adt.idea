@@ -52,7 +52,13 @@ import org.junit.Test
  * Note: the memory metric only covers the Studio JVM. The heap graph itself lives in the out-of-process Trace Processor Daemon.
  */
 class MemoryProfilerHeapDumpTraceProcessorTest {
-  private val loadBenchmark = benchmarkMemoryAndTime("Heap Dump", "TraceProcessor-Load-Capture", analyzer = HEAP_DUMP_ANALYZER)
+  private val loadBenchmark =
+    benchmarkMemoryAndTime(
+      "Heap Dump",
+      "TraceProcessor-Load-Capture",
+      memoryAnalyzer = HEAP_DUMP_MEMORY_ANALYZER,
+      timeAnalyzer = HEAP_DUMP_TIME_ANALYZER,
+    )
   private val queryTimeBenchmark =
     Benchmark.Builder("Heap Dump Trace Processor Query Time (micros)").setProject("Android Studio Profilers").build()
   private val ideServices = FakeIdeProfilerServices()
@@ -126,8 +132,8 @@ class MemoryProfilerHeapDumpTraceProcessorTest {
    * Runs [work] [QUERY_WARMUPS] times to warm up, then [QUERY_SAMPLES] times timed, logging every timed run, in microseconds, as a sample
    * of the same metric. Warming up keeps one-time costs (e.g. the first, cold query) out of the samples.
    *
-   * Perfgate aggregates the samples of each run by their minimum: interference from other work on the machine, such as other tests running
-   * on the same CI host, only ever adds time, so the fastest sample is the most stable estimate of the query's cost.
+   * Perfgate aggregates the samples of each run by their minimum: interference from other work on the machine only ever adds time, so the
+   * fastest sample is the most stable estimate of the query's cost.
    *
    * Each result is checked with [validate], outside the timed block, before its sample is logged. A failed Trace Processor query doesn't
    * throw: it logs a warning and quickly returns an empty result, which would become the minimum.
@@ -144,7 +150,7 @@ class MemoryProfilerHeapDumpTraceProcessorTest {
       validate(result)
       metric.addSamples(queryTimeBenchmark, Metric.MetricSample(startTimestampMs + i, elapsedMicros))
     }
-    metric.setAnalyzers(queryTimeBenchmark, setOf(HEAP_DUMP_ANALYZER))
+    metric.setAnalyzers(queryTimeBenchmark, setOf(HEAP_DUMP_TIME_ANALYZER))
     metric.commit()
   }
 

@@ -61,7 +61,7 @@ fun macrobenchmarksBuildGradle(
 ${emptyPluginsBlock()}
 
 android {
-    namespace '$packageName'
+    namespace = '$packageName'
 
     defaultConfig {
         ${minSdk(apis.minApi, agpVersion)}

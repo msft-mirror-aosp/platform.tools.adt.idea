@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace 'com.example.emptyapplication'
+    namespace = 'com.example.emptyapplication'
     compileSdk 33
 
     defaultConfig {
@@ -13,7 +13,7 @@ android {
         versionCode 1
         versionName "1.0"
         vectorDrawables {
-            useSupportLibrary true
+            useSupportLibrary = true
         }
     }
 

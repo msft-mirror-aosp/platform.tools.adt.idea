@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace 'template.test.in'
+    namespace = 'template.test.in'
     compileSdk {
         version = release(35)
     }

@@ -18,7 +18,7 @@ plugins {
 }
 
 android {
-  namespace "com.example.perfgatecomplexlayout"
+  namespace = "com.example.perfgatecomplexlayout"
   compileSdk 35 // compileSdk version will be replaced by AndroidGradleTestCase
 
   defaultConfig {

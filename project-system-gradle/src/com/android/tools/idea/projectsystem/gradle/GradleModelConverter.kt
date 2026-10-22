@@ -62,10 +62,6 @@ private class AndroidLibraryWrapper(source: IdeAndroidLibrary) : LibraryWrapper<
   override val symbolFile: PathString
     get() = PathString(lib.symbolFile)
 
-  override val resApkFile: PathString?
-    get() = lib.resStaticLibrary?.let(::PathString)
-
-  // NOTE: The intended implementation is resApkFile != null || resFolder != null, but resFolder is currently always not null.
   override val hasResources: Boolean
     get() = true
 }

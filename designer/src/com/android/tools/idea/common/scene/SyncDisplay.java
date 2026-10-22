@@ -30,6 +30,10 @@ class SyncDisplay implements Display {
   private final DisplayList myDisplayList = new DisplayList();
   private long myDisplayListVersion = 0;
   double myScale = 0;
+  private int myX = Integer.MIN_VALUE;
+  private int myY = Integer.MIN_VALUE;
+  private int myContentTranslationX = Integer.MIN_VALUE;
+  private int myContentTranslationY = Integer.MIN_VALUE;
 
   @Override
   public void relayout() {
@@ -44,6 +48,17 @@ class SyncDisplay implements Display {
     boolean needsRebuild = scene.getDisplayListVersion() > myDisplayListVersion;
     if (sceneContext.getScale() != myScale) {
       myScale = sceneContext.getScale();
+      needsRebuild = true;
+    }
+    if (sceneView.getX() != myX || sceneView.getY() != myY) {
+      myX = sceneView.getX();
+      myY = sceneView.getY();
+      needsRebuild = true;
+    }
+    if (sceneView.getContentTranslationX() != myContentTranslationX ||
+        sceneView.getContentTranslationY() != myContentTranslationY) {
+      myContentTranslationX = sceneView.getContentTranslationX();
+      myContentTranslationY = sceneView.getContentTranslationY();
       needsRebuild = true;
     }
     needsRebuild |= myDisplayList.getCommands().isEmpty();

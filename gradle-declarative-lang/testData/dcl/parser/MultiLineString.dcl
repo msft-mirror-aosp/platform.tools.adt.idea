@@ -1,1 +1,0 @@
-foo="""some string$quotes"""

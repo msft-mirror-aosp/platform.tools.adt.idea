@@ -151,6 +151,7 @@ iml_module(
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/analytics-library/shared:analytics-shared",
+        "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/base/deploy/deployer:studio.android.sdktools.deployer",
         "//tools/base/flags:studio.android.sdktools.flags",

@@ -20,13 +20,12 @@ import com.android.sdklib.SystemImageSupplier
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Abi
 import com.android.sdklib.repository.AndroidSdkHandler
-import com.android.tools.analytics.CommonMetricsData
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
 import com.android.tools.idea.sdk.StudioDownloader
 import com.android.tools.idea.sdk.StudioSettingsController
-import com.google.wireless.android.sdk.stats.ProductDetails.CpuArchitecture
+import com.android.utils.CpuArchitecture
+import com.android.utils.OperatingSystem
 import com.intellij.openapi.diagnostic.thisLogger
-import com.intellij.openapi.util.SystemInfo
 import kotlin.time.Duration.Companion.days
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.PersistentList
@@ -127,7 +126,7 @@ internal fun ISystemImage.getServices(): Services {
 internal fun ISystemImage.isSupported(): Boolean = imageWarnings().isEmpty()
 
 private fun ISystemImage.incompatibleArchitectureWarning(): String? =
-  when (CommonMetricsData.osArchitecture) {
+  when (CpuArchitecture.osArchitecture) {
     CpuArchitecture.X86_64 ->
       when (Abi.getEnum(primaryAbiType)) {
         in listOf(Abi.X86_64, Abi.X86) -> null
@@ -138,9 +137,10 @@ private fun ISystemImage.incompatibleArchitectureWarning(): String? =
     CpuArchitecture.X86_ON_ARM,
     CpuArchitecture.ARM ->
       when (Abi.getEnum(primaryAbiType)) {
-        Abi.ARM64_V8A -> null
+        Abi.ARM64_V8A ->
+          if (OperatingSystem.isWindows() && has16KbPageSize()) "Windows on ARM does not support images with 16 KB page size." else null
         in listOf(Abi.ARMEABI, Abi.ARMEABI_V7A) ->
-          if (SystemInfo.isMac) "32-bit ARM images are not supported on Apple Silicon."
+          if (OperatingSystem.isMac()) "32-bit ARM images are not supported on Apple Silicon."
           else "Compatibility with $primaryAbiType images is unknown."
         in listOf(Abi.X86_64, Abi.X86) -> "$primaryAbiType images are not supported on ARM hosts."
         else -> "Compatibility with $primaryAbiType images is unknown."

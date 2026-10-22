@@ -99,22 +99,20 @@ fun RecipeExecutor.generateCommonModule(
       moduleOut.resolve(dslLanguage.buildFileName),
     )
   }
-  addCompileSdk(apis.buildApi, isDeclarative = dslLanguage.isDcl)
+  addCompileSdk(apis.buildApi)
 
   // Note: com.android.* needs to be applied before kotlin
   val classpathModule = "com.android.tools.build:gradle"
   val version = projectData.agpVersion.toString()
 
-  if (!dslLanguage.isDcl) {
-    when {
-      isLibraryProject -> addPlugin("com.android.library", classpathModule, version)
-      data.isDynamic -> addPlugin("com.android.dynamic-feature", classpathModule, version)
-      else -> addPlugin("com.android.application", classpathModule, version)
-    }
-    if (hasCode) {
-      addKotlinIfNeeded(projectData, targetApi = apis.targetApi.apiLevel, noKtx = noKtx)
-      setJavaKotlinCompileOptions(data.projectTemplateData.language == Language.Kotlin)
-    }
+  when {
+    isLibraryProject -> addPlugin("com.android.library", classpathModule, version)
+    data.isDynamic -> addPlugin("com.android.dynamic-feature", classpathModule, version)
+    else -> addPlugin("com.android.application", classpathModule, version)
+  }
+  if (hasCode) {
+    addKotlinIfNeeded(projectData, targetApi = apis.targetApi.apiLevel, noKtx = noKtx)
+    setJavaKotlinCompileOptions(data.projectTemplateData.language == Language.Kotlin)
   }
 
   if (generateGenericLocalTests) {

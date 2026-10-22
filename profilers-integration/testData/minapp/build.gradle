@@ -10,7 +10,7 @@ apply plugin: 'com.android.application'
 android {
   compileSdk 33
   defaultConfig {
-    namespace "com.example.minapp"
+    namespace = "com.example.minapp"
     minSdk 29
     targetSdk 33
   }
@@ -19,7 +19,7 @@ android {
     targetCompatibility JavaVersion.VERSION_17
   }
   lintOptions {
-    checkReleaseBuilds false
+    checkReleaseBuilds = false
   }
   kotlin {
     compilerOptions {

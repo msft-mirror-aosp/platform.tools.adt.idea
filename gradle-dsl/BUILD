@@ -11,7 +11,6 @@ iml_module(
         "//tools/adt/idea/gradle-dsl-groovy:intellij.android.gradle.dsl.groovy",
         "//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin",
         "//tools/adt/idea/gradle-dsl-toml:intellij.android.gradle.dsl.toml",
-        "//tools/adt/idea/gradle-dsl-declarative:intellij.android.gradle.dsl.declarative",
         # Android-specific implementation module
         "//tools/adt/idea/gradle-dsl-android:intellij.android.gradle.dsl.android",
         # Studio plugin implementation module
@@ -28,7 +27,6 @@ iml_module(
         "//tools/adt/idea/android-templates:intellij.android.templates",
         # Kotlin Android Gradle Configurator
         "//tools/adt/idea/android-kotlin:intellij.android.kotlin.idea.common",
-        "//tools/vendor/google/focus-plugin:declarative-gradle.focus-plugin",
         # TODO(xof): investigate
         "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion",
         "//tools/vendor/google/android-ndk:android-ndk",
@@ -43,7 +41,6 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "@intellij//:org.intellij.groovy",
-        "//tools/adt/idea/gradle-dsl-flags:intellij.android.gradle.dsl.flags",
         "@intellij//:intellij.java.impl",
     ],
 )
@@ -69,10 +66,7 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl.testutils",
-        "//tools/adt/idea/gradle-dsl-flags:intellij.android.gradle.dsl.flags",
         "//tools/adt/idea/gradle-dsl-android:intellij.android.gradle.dsl.android",
-        "//tools/adt/idea/gradle-declarative-lang:intellij.android.gradle.declarative.lang",
-        "//tools/adt/idea/gradle-declarative-lang-flags:intellij.android.gradle.declarative.lang.flags",
     ],
     test_shard_count = 3,
     test_srcs = ["testSrc"],
@@ -86,7 +80,6 @@ iml_module(
         "@intellij//:org.intellij.groovy",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/flags:studio.android.sdktools.flags",
-        "//tools/adt/idea/gradle-declarative-lang-ide:intellij.android.gradle.declarative.lang.ide",
         "//tools/adt/idea/.idea/libraries:mockito",
         "@intellij//:org.toml.lang",
     ],
@@ -117,7 +110,6 @@ iml_module(
         "//tools/adt/idea/gradle-dsl-groovy:intellij.android.gradle.dsl.groovy",
         "//tools/adt/idea/gradle-dsl-kotlin:intellij.android.gradle.dsl.kotlin",
         "//tools/adt/idea/gradle-dsl-toml:intellij.android.gradle.dsl.toml",
-        "//tools/adt/idea/gradle-dsl-declarative:intellij.android.gradle.dsl.declarative",
         "@intellij//:org.intellij.groovy",
         "@intellij//:org.jetbrains.kotlin",
         "@intellij//:org.toml.lang",

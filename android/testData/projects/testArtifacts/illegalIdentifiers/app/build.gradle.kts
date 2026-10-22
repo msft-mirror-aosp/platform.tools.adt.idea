@@ -2,10 +2,10 @@ plugins {
   id("com.android.application")
 }
 
-val `a b c` by extra(1)
+val `a b c` = 1
 
 dependencies {
-  val `**` by extra(2)
+  val `**` = 2
 }
 
 android {

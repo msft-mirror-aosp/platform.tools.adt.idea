@@ -66,7 +66,6 @@ fun buildGradle(
       cppStandard = cppStandard,
       hasCode = hasCode,
       kotlinSupport = kotlinSupport,
-      isDcl = dslLanguage.isDcl,
     )
 
   if (isDynamicFeature) {
@@ -88,10 +87,6 @@ dependencies {
     $composeDependenciesBlock
   }
   """
-
-  if (dslLanguage.isDcl) {
-    return androidConfigBlock.withoutSkipLines().gradleToKtsOrDcl(dslLanguage.isDcl)
-  }
 
   val allBlocks =
     """

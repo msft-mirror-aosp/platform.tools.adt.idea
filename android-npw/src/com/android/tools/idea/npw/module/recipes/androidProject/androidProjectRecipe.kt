@@ -28,10 +28,7 @@ fun RecipeExecutor.androidProjectRecipe(data: ProjectTemplateData, appTitle: Str
   val topOut = data.rootDir
   val dslLanguage = data.dslLanguage
 
-  // Declarative project do not require top level build.gradle files.
-  if (dslLanguage.isKts || dslLanguage.isGroovy) {
-    save(androidProjectBuildGradle(), topOut.resolve(dslLanguage.buildFileName))
-  }
+  save(androidProjectBuildGradle(), topOut.resolve(dslLanguage.buildFileName))
 
   if (makeIgnore) {
     copy(resource("project_ignore"), topOut.resolve(".gitignore"))

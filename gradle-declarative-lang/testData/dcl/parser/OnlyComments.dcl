@@ -1,4 +1,0 @@
-// comment
-/* Some comment
- foo()
-*/

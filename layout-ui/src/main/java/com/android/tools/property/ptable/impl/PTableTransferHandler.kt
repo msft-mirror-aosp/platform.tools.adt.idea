@@ -15,6 +15,7 @@
  */
 package com.android.tools.property.ptable.impl
 
+import com.intellij.util.ui.TextTransferable
 import java.awt.Component
 import java.awt.Container
 import java.awt.datatransfer.DataFlavor
@@ -22,7 +23,6 @@ import java.awt.datatransfer.Transferable
 import javax.swing.JComponent
 import javax.swing.JTextField
 import javax.swing.TransferHandler
-import org.jdesktop.swingx.plaf.basic.core.BasicTransferable
 
 class PTableTransferHandler : TransferHandler() {
 
@@ -37,7 +37,7 @@ class PTableTransferHandler : TransferHandler() {
     val textField = editor?.firstComponentOfClass(JTextField::class.java)
     val selectedText = textField?.selectedText
     if (selectedText != null) {
-      return BasicTransferable(selectedText, selectedText)
+      return TextTransferable(selectedText, selectedText)
     }
     val plainStr = StringBuilder()
     val htmlStr = StringBuilder()
@@ -53,7 +53,7 @@ class PTableTransferHandler : TransferHandler() {
     // remove the last newline
     plainStr.deleteCharAt(plainStr.length - 1)
     htmlStr.append("</table>\n</body>\n</html>")
-    return BasicTransferable(plainStr.toString(), htmlStr.toString())
+    return TextTransferable(htmlStr.toString(), plainStr.toString())
   }
 
   override fun exportDone(component: JComponent?, data: Transferable?, action: Int) {

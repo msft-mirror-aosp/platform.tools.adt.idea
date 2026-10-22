@@ -556,7 +556,7 @@ class GradleDependencyCompatibilityAnalyzerTest : AndroidTestCase() {
       allprojects {
           repositories {
               maven {
-                  url 'file://${testDataDir}'
+                  url = 'file://${testDataDir}'
               }
           }
       }

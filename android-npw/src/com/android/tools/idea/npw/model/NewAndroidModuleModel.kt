@@ -307,14 +307,9 @@ internal fun Project.hasKtsUsage(): Boolean {
   return GradleProjectSystemUtil.projectBuildFilesTypes(this).contains(GradleProjectSystemUtil.BuildFileType.KOTLIN_SCRIPT)
 }
 
-internal fun Project.hasDclUsage(): Boolean {
-  return GradleProjectSystemUtil.projectBuildFilesTypes(this).contains(GradleProjectSystemUtil.BuildFileType.DECLARATIVE)
-}
-
 internal fun Project.dslLanguageUsage(): DslLanguage {
   return when {
     this.hasKtsUsage() -> DslLanguage.KTS
-    this.hasDclUsage() -> DslLanguage.DCL
     else -> DslLanguage.GROOVY
   }
 }

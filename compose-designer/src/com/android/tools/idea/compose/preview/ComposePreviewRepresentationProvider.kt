@@ -28,11 +28,8 @@ import com.android.tools.idea.compose.preview.actions.StopUiCheckPreviewAction
 import com.android.tools.idea.compose.preview.actions.UiCheckDropDownAction
 import com.android.tools.idea.editors.sourcecode.isKotlinFileType
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.preview.PreviewViewSingleWordFilter
 import com.android.tools.idea.preview.actions.CommonViewControlAction
 import com.android.tools.idea.preview.actions.GroupSwitchAction
-import com.android.tools.idea.preview.actions.PreviewFilterShowHistoryAction
-import com.android.tools.idea.preview.actions.PreviewFilterTextAction
 import com.android.tools.idea.preview.actions.StopAnimationInspectorAction
 import com.android.tools.idea.preview.actions.StopInteractivePreviewAction
 import com.android.tools.idea.preview.actions.isPreviewRefreshing
@@ -81,8 +78,6 @@ private class ComposePreviewToolbar(surface: DesignSurface<*>) : ToolbarActionGr
         ComposeStudioBotActionFactory.EP_NAME.extensionList.firstOrNull()?.previewAgentsToolbarAction()?.visibleOnlyInStaticPreview(),
         Separator.getInstance().visibleOnlyInUiCheck(),
         UiCheckDropDownAction().visibleOnlyInUiCheck(),
-        StudioFlags.PREVIEW_FILTER.ifEnabled { PreviewFilterShowHistoryAction().visibleOnlyInStaticPreview() },
-        StudioFlags.PREVIEW_FILTER.ifEnabled { PreviewFilterTextAction(PreviewViewSingleWordFilter()).visibleOnlyInStaticPreview() },
         StudioFlags.COMPOSE_DEBUG_BOUNDS.ifEnabled { ShowDebugBoundaries() },
       )
     ) {
