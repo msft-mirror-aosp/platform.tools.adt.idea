@@ -17,32 +17,35 @@
 
 package com.android.tools.idea.psi
 
+import com.intellij.java.library.JavaLibraryUtil
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
-import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
 import com.intellij.psi.PsiArrayType
-import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementFactory
 import com.intellij.psi.PsiType
 import com.intellij.psi.TypeAnnotationProvider
-import com.intellij.psi.search.GlobalSearchScope
 
 private const val PREFIX_ANDROIDX = "androidx.annotation"
 private const val PREFIX_SUPPORT = "android.support.annotation"
 private const val NONNULL = "NonNull"
 private const val NULLABLE = "Nullable"
 
-private fun Project.findClass(fcqn: String, context: PsiElement?): PsiClass? {
-  val facade = JavaPsiFacade.getInstance(this)
-  return facade.findClass(fcqn, context?.resolveScope ?: GlobalSearchScope.projectScope(this))
+private fun hasClass(project: Project, context: PsiElement?, classFqn: String): Boolean {
+  val module = context?.let { ModuleUtilCore.findModuleForPsiElement(it) }
+  return if (module != null) {
+    JavaLibraryUtil.hasLibraryClass(module, classFqn)
+  } else {
+    JavaLibraryUtil.hasLibraryClass(project, classFqn)
+  }
 }
 
 fun Project.createNullabilityAnnotation(isNonNull: Boolean, context: PsiElement?): PsiAnnotation {
   // Prefer androidx.annotation as much as possible, as it is the preferred annotation moving
   // forward, but fall back to the support annotation in case we are loading a legacy project
   val prefix =
-    if (findClass("$PREFIX_ANDROIDX.$NONNULL", context) != null || findClass("$PREFIX_SUPPORT.$NONNULL", context) == null) {
+    if (hasClass(this, context, "$PREFIX_ANDROIDX.$NONNULL") || !hasClass(this, context, "$PREFIX_SUPPORT.$NONNULL")) {
       PREFIX_ANDROIDX
     } else {
       PREFIX_SUPPORT

@@ -36,4 +36,10 @@ class NullabilityUtilsTest : JavaPsiTestCase() {
     assertThat(nonNullDummyType.annotations.single().text).isEqualTo(project.createNullabilityAnnotation(true, null).text)
     assertThat(nullableDummyType.annotations.single().text).isEqualTo(project.createNullabilityAnnotation(false, null).text)
   }
+
+  fun testCreateNullabilityAnnotationWithContext() {
+    val dummyFile = createFile("Test.java", "class Test {}")
+    val annotation = project.createNullabilityAnnotation(true, dummyFile)
+    assertThat(annotation.text).isEqualTo("@androidx.annotation.NonNull")
+  }
 }

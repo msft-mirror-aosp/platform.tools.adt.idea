@@ -24,11 +24,20 @@ import com.intellij.psi.impl.light.LightModifierList
 class ModifierListWithNullabilityAnnotation(private val wrapped: PsiModifierList, private val isNonNull: Boolean) :
   LightModifierList(wrapped.manager) {
 
+  private val annotation: PsiAnnotation by
+    lazy(LazyThreadSafetyMode.PUBLICATION) {
+      project.createNullabilityAnnotation(isNonNull, wrapped.context)
+    }
+
   init {
     copyModifiers(wrapped)
   }
 
   override fun getAnnotations(): Array<PsiAnnotation> {
-    return arrayOf(project.createNullabilityAnnotation(isNonNull, wrapped.context))
+    return arrayOf(annotation)
+  }
+
+  override fun findAnnotation(qualifiedName: String): PsiAnnotation? {
+    return if (annotation.hasQualifiedName(qualifiedName)) annotation else wrapped.findAnnotation(qualifiedName)
   }
 }

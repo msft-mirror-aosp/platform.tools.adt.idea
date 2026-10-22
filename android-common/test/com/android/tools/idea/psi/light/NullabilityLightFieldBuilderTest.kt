@@ -17,6 +17,7 @@ package com.android.tools.idea.psi.light
 
 import com.android.tools.idea.psi.createNullabilityAnnotation
 import com.google.common.truth.Truth.assertThat
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiType
@@ -34,9 +35,28 @@ class NullabilityLightFieldBuilderTest : JavaPsiTestCase() {
     assertThat(nameField.annotations.contains(project.createNullabilityAnnotation(true, null)))
     assertThat(nicknameField.annotations.contains(project.createNullabilityAnnotation(false, null)))
 
+    // Verify findAnnotation and annotation caching on modifier list
+    assertThat(nameField.modifierList.findAnnotation("androidx.annotation.NonNull")).isNotNull()
+    assertThat(nameField.modifierList.findAnnotation("androidx.annotation.Nullable")).isNull()
+    assertThat(nameField.modifierList.hasAnnotation("androidx.annotation.NonNull")).isTrue()
+    assertSame(nameField.modifierList.annotations.single(), nameField.modifierList.annotations.single())
+
     // Make sure nullability annotations didn't overwrite field modifiers
     assertThat(nameField.modifierList.hasModifierProperty(PsiModifier.PUBLIC)).isTrue()
     assertThat(nameField.modifierList.hasModifierProperty(PsiModifier.FINAL)).isTrue()
     assertThat(nameField.modifierList.hasModifierProperty(PsiModifier.STATIC)).isFalse()
+  }
+
+  fun testCanFindAnnotationsFromWrappedModifierList() {
+    val elementFactory = JavaPsiFacade.getElementFactory(project)
+    val dummyField = elementFactory.createFieldFromText("@java.lang.Deprecated int x;", null)
+    val modifierList = ModifierListWithNullabilityAnnotation(dummyField.modifierList!!, true)
+
+    assertThat(modifierList.findAnnotation("androidx.annotation.NonNull")).isNotNull()
+    assertThat(modifierList.findAnnotation("java.lang.Deprecated")).isNotNull()
+    assertThat(modifierList.findAnnotation("java.lang.Override")).isNull()
+    assertThat(modifierList.hasAnnotation("androidx.annotation.NonNull")).isTrue()
+    assertThat(modifierList.hasAnnotation("java.lang.Deprecated")).isTrue()
+    assertThat(modifierList.hasAnnotation("java.lang.Override")).isFalse()
   }
 }
