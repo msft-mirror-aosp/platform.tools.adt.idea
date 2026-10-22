@@ -49,7 +49,6 @@
     <orderEntry type="module" module-name="analytics-tracker" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="studio-analytics-proto" level="project" />
     <orderEntry type="library" scope="TEST" name="studio-grpc" level="project" />
-    <orderEntry type="module" module-name="intellij.android.transportDatabase" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.fakeadbserver" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.model" scope="TEST" />
     <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />

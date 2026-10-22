@@ -39,8 +39,6 @@ iml_module(
         "//tools/adt/idea/android-adb:intellij.android.adb",
         "//tools/adt/idea/.idea/libraries:studio-grpc",
         "//tools/adt/idea/.idea/libraries:studio-proto",
-        "//tools/adt/idea/wizard:intellij.android.wizard",
-        "//tools/adt/idea/wizard-model:intellij.android.wizard.model",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/base/dynamic-layout-inspector/common:studio.dynamic-layout-inspector.common",
@@ -103,7 +101,6 @@ iml_module(
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/.idea/libraries:studio-grpc",
-        "//tools/adt/idea/transport-database:intellij.android.transportDatabase",
         "//tools/base/fakeadbserver:studio.android.sdktools.fakeadbserver",
         "//tools/adt/idea/adt-ui-model:intellij.android.adt.ui.model",
         "//tools/base/flags:studio.android.sdktools.flags",
@@ -169,7 +166,6 @@ iml_module(
         "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector",
         "//tools/adt/idea/.idea/libraries:junit4",
         "//tools/adt/idea/as-driver:as-driver.utils",
-        "//tools/base/common:studio.android.sdktools.common",
     ],
     test_friends = ["//tools/adt/idea/layout-inspector:intellij.android.layout-inspector"],
     test_resources = ["integration/testData"],
@@ -181,7 +177,6 @@ iml_module(
         "@intellij//:org.jetbrains.kotlin",
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
-        "//tools/base/testutils:studio.android.sdktools.testutils",
     ],
 )
 
@@ -266,14 +261,12 @@ iml_module(
         "//tools/adt/idea/app-inspection/inspector/api:app-inspection.inspector.api",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/layout-inspector:intellij.android.layout-inspector",
-        "//tools/adt/idea/app-inspection/api:app-inspection.api",
         "//tools/adt/idea/app-inspection/ide:app-inspection.ide",
         "//tools/base/sdk-common/gradle:studio.android.sdktools.sdk-common.gradle",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
         "//tools/adt/idea/project-system-gradle:intellij.android.projectSystem.gradle",
-        "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
     ],
 )
 

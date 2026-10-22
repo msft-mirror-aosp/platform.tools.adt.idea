@@ -13,13 +13,11 @@
     <orderEntry type="module" module-name="app-inspection.inspector.api" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
     <orderEntry type="module" module-name="intellij.android.layout-inspector" />
-    <orderEntry type="module" module-name="app-inspection.api" />
     <orderEntry type="module" module-name="app-inspection.ide" />
     <orderEntry type="module" module-name="android.sdktools.sdk-common.gradle" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="intellij.android.common" />
     <orderEntry type="module" module-name="android.sdktools.sdk-common" />
     <orderEntry type="module" module-name="intellij.android.projectSystem.gradle" />
-    <orderEntry type="module" module-name="intellij.android.projectSystem.gradle.models" />
   </component>
 </module>

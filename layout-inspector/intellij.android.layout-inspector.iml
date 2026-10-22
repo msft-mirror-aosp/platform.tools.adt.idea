@@ -22,8 +22,6 @@
     <orderEntry type="module" module-name="intellij.android.adb" />
     <orderEntry type="library" name="studio-grpc" level="project" />
     <orderEntry type="library" name="studio-proto" level="project" />
-    <orderEntry type="module" module-name="intellij.android.wizard" />
-    <orderEntry type="module" module-name="intellij.android.wizard.model" />
     <orderEntry type="module" module-name="analytics-tracker" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
     <orderEntry type="module" module-name="dynamic-layout-inspector.common" />
