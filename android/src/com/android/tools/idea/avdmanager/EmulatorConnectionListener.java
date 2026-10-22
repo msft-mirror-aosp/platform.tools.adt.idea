@@ -40,16 +40,17 @@ import org.jetbrains.annotations.Nullable;
 public class EmulatorConnectionListener {
   // Wait for a device corresponding to given emulator to come online for the given timeout period
   public static ListenableFuture<IDevice> getDeviceForEmulator(@Nullable Project project,
-                                                               @NotNull String avdName,
+                                                               @NotNull String avdDisplayName,
+                                                               @NotNull String avdFolderPath,
                                                                @Nullable ProcessHandler emulatorProcessHandler,
                                                                long timeout,
                                                                @NotNull TimeUnit units) {
     if (emulatorProcessHandler == null) {
-      return Futures.immediateFailedFuture(new EmulatorTerminatedException("The emulator process for AVD " + avdName + " died."));
+      return Futures.immediateFailedFuture(new EmulatorTerminatedException("The emulator process for AVD " + avdDisplayName + " died."));
     }
 
     final SettableFuture<IDevice> future = SettableFuture.create();
-    WaitForEmulatorTask task = new WaitForEmulatorTask(project, future, avdName, emulatorProcessHandler, timeout, units);
+    WaitForEmulatorTask task = new WaitForEmulatorTask(project, future, avdDisplayName, avdFolderPath, emulatorProcessHandler, timeout, units);
     ApplicationManager.getApplication().executeOnPooledThread(task);
     return future;
   }
@@ -59,19 +60,22 @@ public class EmulatorConnectionListener {
 
     private final Project myProject;
     private final SettableFuture<IDevice> myDeviceFuture;
-    private final String myAvdName;
+    private final String myAvdDisplayName;
+    private final String myAvdFolderPath;
     private final ProcessHandler myEmulatorProcessHandler;
     private final long myTimeout; // in POLL_TIMEUNIT units
 
     private WaitForEmulatorTask(@Nullable Project project,
                                 @NotNull SettableFuture<IDevice> device,
-                                @NotNull String avdName,
+                                @NotNull String avdDisplayName,
+                                @NotNull String avdFolderPath,
                                 @NotNull ProcessHandler emulatorProcessHandler,
                                 long timeout,
                                 @NotNull TimeUnit units) {
       myProject = project;
       myDeviceFuture = device;
-      myAvdName = avdName;
+      myAvdDisplayName = avdDisplayName;
+      myAvdFolderPath = avdFolderPath;
       myEmulatorProcessHandler = emulatorProcessHandler;
       myTimeout = POLL_TIMEUNIT.convert(timeout, units);
     }
@@ -90,7 +94,8 @@ public class EmulatorConnectionListener {
         }
 
         if (myEmulatorProcessHandler.isProcessTerminated() || myEmulatorProcessHandler.isProcessTerminating()) {
-          myDeviceFuture.setException(new EmulatorTerminatedException("The emulator process for AVD " + myAvdName + " has terminated."));
+          myDeviceFuture.setException(
+            new EmulatorTerminatedException("The emulator process for AVD " + myAvdDisplayName + " has terminated."));
           return;
         }
 
@@ -117,7 +122,7 @@ public class EmulatorConnectionListener {
             continue;
           }
 
-          if (!StringUtil.equals(device.getAvdName(), myAvdName)) {
+          if (!StringUtil.equals(device.getAvdPath(), myAvdFolderPath)) {
             continue;
           }
 

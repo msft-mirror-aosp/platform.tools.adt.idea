@@ -296,7 +296,14 @@ constructor(
         }
       }
       try {
-        return@coroutineScope EmulatorConnectionListener.getDeviceForEmulator(project, avd.name, processHandler, 5, TimeUnit.MINUTES)
+        return@coroutineScope EmulatorConnectionListener.getDeviceForEmulator(
+            project,
+            avd.displayName,
+            avd.dataFolderPath.toString(),
+            processHandler,
+            5,
+            TimeUnit.MINUTES,
+          )
           .await()
       } finally {
         progressJob.cancel()
