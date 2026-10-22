@@ -118,6 +118,8 @@ android-studio/jbr/conf/security/policy/limited/exempt_local.policy
 android-studio/jbr/conf/security/policy/unlimited/default_US_export.policy
 android-studio/jbr/conf/security/policy/unlimited/default_local.policy
 android-studio/jbr/conf/sound.properties
+android-studio/jbr/legal/bundled-libraries/libxi6/copyright
+android-studio/jbr/legal/bundled-libraries/libxtst6/copyright
 android-studio/jbr/legal/java.base/ADDITIONAL_LICENSE_INFO
 android-studio/jbr/legal/java.base/ASSEMBLY_EXCEPTION
 android-studio/jbr/legal/java.base/LICENSE
@@ -461,6 +463,8 @@ android-studio/jbr/lib/jfr/profile.jfc
 android-studio/jbr/lib/jrt-fs.jar
 android-studio/jbr/lib/jspawnhelper
 android-studio/jbr/lib/jvm.cfg
+android-studio/jbr/lib/libXi.so.6
+android-studio/jbr/lib/libXtst.so.6
 android-studio/jbr/lib/libattach.so
 android-studio/jbr/lib/libawt.so
 android-studio/jbr/lib/libawt_headless.so
