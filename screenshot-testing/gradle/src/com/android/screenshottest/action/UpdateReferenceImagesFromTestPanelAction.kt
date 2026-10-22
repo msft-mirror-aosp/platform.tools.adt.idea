@@ -15,13 +15,13 @@
  */
 package com.android.screenshottest.action
 
-import com.android.screenshottest.ui.PreviewDetails
+import com.android.screenshottest.util.PreviewScreenshotArtifacts
 import com.android.screenshottest.util.UPDATE_ACTION_DESCRIPTION
 import com.android.screenshottest.util.UPDATE_ACTION_TEXT
 import com.android.screenshottest.util.UpdateReferenceImagesDialogManager
+import com.android.screenshottest.util.createPreviewDetails
 import com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResults
 import com.android.tools.idea.testartifacts.instrumented.testsuite.model.AndroidTestCaseResult
-import com.android.tools.idea.testartifacts.instrumented.testsuite.util.ScreenshotTestUtils
 import com.android.tools.idea.testartifacts.instrumented.testsuite.util.logScreenshotTestEvent
 import com.google.wireless.android.sdk.stats.ScreenshotTestComposePreviewEvent
 import com.intellij.ide.DataManager
@@ -69,42 +69,24 @@ class UpdateReferenceImagesFromTestPanelAction : AnAction(UPDATE_ACTION_TEXT, UP
         // Stop processing if the user closed the dialog while results were still being loaded.
         if (dialog.isDisposed) return@submit
         val artifacts = testCase.additionalTestArtifacts
-        val methodName = artifacts["PreviewScreenshot.methodName"]
-        val previewName = artifacts["PreviewScreenshot.previewName"]
-        if (methodName != null && previewName != null) {
-          val testId = "${testCase.className}.$methodName.$previewName"
-          val previewDetails =
-            PreviewDetails(
-                testId = testId,
-                className = testCase.className,
-                methodName = methodName,
-                previewName = previewName,
-                testResult = testCase.result,
-                destImagePath =
-                  ScreenshotTestUtils.resolvePath(
-                    project,
-                    artifacts["PreviewScreenshot.refImagePath"],
-                  ),
-                srcImagePath =
-                  ScreenshotTestUtils.resolvePath(
-                    project,
-                    artifacts["PreviewScreenshot.newImagePath"],
-                  ),
-                diffImagePath =
-                  ScreenshotTestUtils.resolvePath(
-                    project,
-                    artifacts["PreviewScreenshot.diffImagePath"],
-                  ),
-                diffPercent = artifacts["PreviewScreenshot.diffPercent"],
-              )
-              .withResolvedImageFiles()
-
-          LOG.debug("PreviewDetails: $previewDetails")
-          dialog.updateDialogWithTestResult(
-            previewDetails,
-            testCase.result == AndroidTestCaseResult.FAILED,
+        val methodName = artifacts[PreviewScreenshotArtifacts.METHOD_NAME] ?: continue
+        val rawPreviewName = artifacts[PreviewScreenshotArtifacts.PREVIEW_NAME] ?: continue
+        val previewDetails =
+          createPreviewDetails(
+            project = project,
+            className = testCase.className,
+            methodName = methodName,
+            rawPreviewName = rawPreviewName,
+            artifacts = artifacts,
+            testResult = testCase.result,
+            errorStackTrace = testCase.errorStackTrace,
           )
-        }
+
+        LOG.debug("PreviewDetails: $previewDetails")
+        dialog.updateDialogWithTestResult(
+          previewDetails,
+          testCase.result == AndroidTestCaseResult.FAILED,
+        )
       }
       dialog.onTestSuiteFinished()
     }

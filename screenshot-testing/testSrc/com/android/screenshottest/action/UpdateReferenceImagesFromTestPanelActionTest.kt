@@ -583,6 +583,69 @@ class UpdateReferenceImagesFromTestPanelActionTest {
   }
 
   @Test
+  fun testActionPerformed_cleansPreviewNameAndDetectsSizeMismatch() = runInEdtAndWait {
+    val project = projectRule.project
+    val manager = UpdateReferenceImagesDialogManager.getInstance(project)
+
+    // Set on the background thread that processes the test results.
+    val suiteFinished = AtomicBoolean(false)
+    var capturedDialog: UpdateReferenceImagesDialog? = null
+    manager.dialogFactory = { proj ->
+      spy(UpdateReferenceImagesDialog(proj)).also { spyDialog ->
+        createdDialogs += spyDialog
+        doAnswer { null }.`when`(spyDialog).show()
+        doAnswer {
+            it.callRealMethod()
+            // Set only after the real method has queued its EDT update, so that dispatching
+            // events once this flag is seen is guaranteed to run that update.
+            suiteFinished.set(true)
+          }
+          .`when`(spyDialog)
+          .onTestSuiteFinished()
+        capturedDialog = spyDialog
+      }
+    }
+
+    val testCase =
+      AndroidTestCase(
+        id = "parameterized_id",
+        methodName = "ParameterizedMethod",
+        className = "com.example.MyScreenshotTest",
+        packageName = "com.example",
+        result = AndroidTestCaseResult.FAILED,
+        errorStackTrace =
+          "java.lang.AssertionError: Size Mismatch. Reference image size: 100x100. Rendered image size: 120x100\n" +
+            "\tat com.example.MyScreenshotTest.ParameterizedMethod",
+        additionalTestArtifacts =
+          mutableMapOf(
+            "PreviewScreenshot.methodName" to "ParameterizedMethod",
+            "PreviewScreenshot.previewName" to "[{provider=com.example.MyProvider}]_0",
+            "PreviewScreenshot.newImagePath" to createProjectImage("build/outputs/parameterized.png"),
+          ),
+      )
+
+    val action = UpdateReferenceImagesFromTestPanelAction()
+    action.testResults = createFakeTestResults(listOf(testCase))
+    val dataContext = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project).build()
+    action.actionPerformed(TestActionEvent.createTestEvent(action, dataContext))
+
+    PlatformTestUtil.waitWithEventsDispatching("onTestSuiteFinished() was not called", { suiteFinished.get() }, 10)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    // The details must match the ones built for results streamed from a Gradle run.
+    val root = capturedDialog!!.tree.model.root as CheckedTreeNode
+    val methodNode = (root.firstChild as CheckedTreeNode).firstChild as CheckedTreeNode
+    val details = (methodNode.firstChild as CheckedTreeNode).userObject as PreviewDetails
+    assertEquals("MyProvider_0", details.previewName)
+    assertEquals("com.example.MyScreenshotTest.ParameterizedMethod.MyProvider_0", details.testId)
+    assertTrue(details.isSizeMismatch)
+    assertEquals(
+      "Size Mismatch. Reference image size: 100x100. Rendered image size: 120x100",
+      details.sizeMismatchMessage,
+    )
+  }
+
+  @Test
   fun testCustomComponentCreationUpdateAndClick() = runInEdtAndWait {
     val project = projectRule.project
     val manager = UpdateReferenceImagesDialogManager.getInstance(project)
