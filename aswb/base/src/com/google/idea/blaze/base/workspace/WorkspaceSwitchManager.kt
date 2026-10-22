@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.SharedFlow
 
 /** Extension methods and helpers for configuring and retrieving active workspace redirection. */
 object WorkspaceSwitchManager {
-  @JvmField val WORKSPACE_SWITCHER_ENABLED = BoolExperiment("aswb.workspace.switcher.enabled", false)
+  @JvmField val WORKSPACE_SWITCHER_ENABLED = BoolExperiment("aswb.workspace.switcher.enabled", true)
 
   val mappingChangeEvents: SharedFlow<Unit>
     get() = WorkspaceMappingManager.getInstance().mappingChangeEvents
