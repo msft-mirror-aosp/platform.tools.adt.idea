@@ -43,21 +43,22 @@ class UpdateScreenshotTestResultsListener(
     testSuite: AndroidTestSuite,
     testCase: AndroidTestCase,
   ) {
+    // AndroidTestCase is mutable, so read its state now rather than on the executor thread.
     val className = testCase.className
-    val artifacts = testCase.additionalTestArtifacts
-    val methodName = artifacts[PreviewScreenshotArtifacts.METHOD_NAME] ?: " "
-    val rawPreviewName = artifacts[PreviewScreenshotArtifacts.PREVIEW_NAME] ?: " "
+    val artifacts = testCase.additionalTestArtifacts.toMap()
+    val testResult = testCase.result
+    val errorStackTrace = testCase.errorStackTrace
 
     executor.execute {
       val previewDetails =
         createPreviewDetails(
           project = dialog.project,
           className = className,
-          methodName = methodName,
-          rawPreviewName = rawPreviewName,
+          methodName = artifacts[PreviewScreenshotArtifacts.METHOD_NAME] ?: " ",
+          rawPreviewName = artifacts[PreviewScreenshotArtifacts.PREVIEW_NAME] ?: " ",
           artifacts = artifacts,
-          testResult = testCase.result,
-          errorStackTrace = testCase.errorStackTrace,
+          testResult = testResult,
+          errorStackTrace = errorStackTrace,
         )
       dialog.updateDialogWithTestResult(previewDetails, true)
     }
