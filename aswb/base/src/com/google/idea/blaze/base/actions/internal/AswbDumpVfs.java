@@ -15,6 +15,7 @@
  */
 package com.google.idea.blaze.base.actions.internal;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.diagnostic.Logger;
@@ -27,6 +28,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.NewVirtualFile;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
+import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent;
 import com.intellij.openapi.vfs.newvfs.persistent.PersistentFS;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -37,6 +39,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 import org.jetbrains.annotations.NotNull;
 
 class AswbDumpVfs extends DumbAwareAction {
@@ -92,19 +95,60 @@ class AswbDumpVfs extends DumbAwareAction {
   static class BulkListener implements BulkFileListener {
     private static final Logger vfsDiagLogger =
         Logger.getInstance("#" + BulkListener.class.getName() + "_vfs_diag");
+    private static final String GOOGLE_ROOT_PATH = "/google";
+    private static final String GOOGLE_ROOT_PREFIX = "/google/";
+    private static final String VOLUMES_GOOGLE_ROOT_PATH = "/Volumes/google";
+    private static final String VOLUMES_GOOGLE_ROOT_PREFIX = "/Volumes/google/";
+
+    private final Consumer<String> infoLogger;
+
+    BulkListener() {
+      this(vfsDiagLogger::info);
+    }
+
+    @VisibleForTesting
+    BulkListener(Consumer<String> infoLogger) {
+      this.infoLogger = infoLogger;
+    }
 
     @Override
     public void before(List<? extends VFileEvent> events) {
-      vfsDiagLogger.info(String.format(Locale.ROOT, "VFS Events: (%d)", events.size()));
-      for (int i = 0; i < events.size(); i++) {
-        VFileEvent event = events.get(i);
-        vfsDiagLogger.info("    " + event);
+      List<? extends VFileEvent> loggableEvents =
+          events.stream().filter(BulkListener::shouldLogEvent).toList();
+      if (loggableEvents.isEmpty()) {
+        return;
+      }
+      infoLogger.accept(String.format(Locale.ROOT, "VFS Events: (%d)", loggableEvents.size()));
+      for (int i = 0; i < loggableEvents.size(); i++) {
+        VFileEvent event = loggableEvents.get(i);
+        infoLogger.accept("    " + event);
         if (i > 50) {
-          vfsDiagLogger.info(String.format(Locale.ROOT, "    ...and %d more events", events.size() - i));
+          infoLogger.accept(
+              String.format(
+                  Locale.ROOT, "    ...and %d more events", loggableEvents.size() - i - 1));
           break;
         }
       }
-      vfsDiagLogger.info("    end.");
+      infoLogger.accept("    end.");
+    }
+
+    /**
+     * Excludes {@link VFilePropertyChangeEvent}s outside {@code /google} and {@code
+     * /Volumes/google} to avoid excessive log noise in non-google3 projects while preserving CitC
+     * VFS diagnostics.
+     */
+    private static boolean shouldLogEvent(VFileEvent event) {
+      if (!(event instanceof VFilePropertyChangeEvent)) {
+        return true;
+      }
+      return isUnderGoogleRoot(event.getPath());
+    }
+
+    private static boolean isUnderGoogleRoot(String path) {
+      return path.equals(GOOGLE_ROOT_PATH)
+          || path.startsWith(GOOGLE_ROOT_PREFIX)
+          || path.equals(VOLUMES_GOOGLE_ROOT_PATH)
+          || path.startsWith(VOLUMES_GOOGLE_ROOT_PREFIX);
     }
   }
 }
