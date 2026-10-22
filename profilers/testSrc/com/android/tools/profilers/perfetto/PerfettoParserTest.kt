@@ -27,7 +27,7 @@ import com.google.common.truth.Truth.assertThat
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertThrows
 import org.junit.Test
-import perfetto.protos.PerfettoTrace
+import perfetto.protos.UiStateOuterClass.UiState
 
 class PerfettoParserTest {
 
@@ -48,8 +48,8 @@ class PerfettoParserTest {
     val services = FakeIdeProfilerServices()
     val fakeTraceProcessorService = services.traceProcessorService as FakeTraceProcessorService
     val uiState =
-      PerfettoTrace.UiState.newBuilder()
-        .setHighlightProcess(PerfettoTrace.UiState.HighlightProcess.newBuilder().setPid(1001))
+      UiState.newBuilder()
+        .setHighlightProcess(UiState.HighlightProcess.newBuilder().setPid(1001))
         .setTimelineStartTs(TimeUnit.SECONDS.toNanos(1))
         .setTimelineEndTs(TimeUnit.SECONDS.toNanos(99))
         .build()
@@ -68,8 +68,8 @@ class PerfettoParserTest {
     val services = FakeIdeProfilerServices()
     val fakeTraceProcessorService = services.traceProcessorService as FakeTraceProcessorService
     val uiState =
-      PerfettoTrace.UiState.newBuilder()
-        .setHighlightProcess(PerfettoTrace.UiState.HighlightProcess.newBuilder().setCmdline("com.android.phone"))
+      UiState.newBuilder()
+        .setHighlightProcess(UiState.HighlightProcess.newBuilder().setCmdline("com.android.phone"))
         .setTimelineStartTs(TimeUnit.SECONDS.toNanos(1))
         .setTimelineEndTs(TimeUnit.SECONDS.toNanos(99))
         .build()

@@ -21,7 +21,8 @@ import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
 import com.android.tools.profilers.cpu.systemtrace.CpuSystemTraceData
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
-import perfetto.protos.PerfettoTrace
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 object MockCaptureUtils {
   fun frame(frameNumber: Int, timestamp: Long, duration: Long, depth: Int): TraceProcessor.AndroidFrameEventsResult.FrameEvent =
@@ -80,8 +81,8 @@ object MockCaptureUtils {
         1000L,
         1500L,
         "",
-        PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_LATE,
-        PerfettoTrace.FrameTimelineEvent.JankType.JANK_APP_DEADLINE_MISSED,
+        PresentType.PRESENT_LATE,
+        JankType.JANK_APP_DEADLINE_MISSED,
         onTimeFinish = false,
         gpuComposition = false,
         layoutDepth = 0,
@@ -93,8 +94,8 @@ object MockCaptureUtils {
         3000L,
         2900L,
         "",
-        PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_ON_TIME,
-        PerfettoTrace.FrameTimelineEvent.JankType.JANK_NONE,
+        PresentType.PRESENT_ON_TIME,
+        JankType.JANK_NONE,
         onTimeFinish = true,
         gpuComposition = false,
         layoutDepth = 0,

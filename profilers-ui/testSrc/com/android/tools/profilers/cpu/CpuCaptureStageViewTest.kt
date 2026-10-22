@@ -71,7 +71,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
-import perfetto.protos.PerfettoTrace
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 @RunsInEdt
 class CpuCaptureStageViewTest {
@@ -292,8 +293,8 @@ class CpuCaptureStageViewTest {
         20,
         30,
         "",
-        PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_LATE,
-        PerfettoTrace.FrameTimelineEvent.JankType.JANK_APP_DEADLINE_MISSED,
+        PresentType.PRESENT_LATE,
+        JankType.JANK_APP_DEADLINE_MISSED,
         false,
         false,
         0,

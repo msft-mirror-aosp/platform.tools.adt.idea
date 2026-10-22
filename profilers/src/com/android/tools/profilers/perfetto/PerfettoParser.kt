@@ -17,7 +17,11 @@ package com.android.tools.profilers.perfetto
 
 import com.android.tools.adtui.model.Range
 import com.android.tools.idea.protobuf.CodedInputStream
+import com.android.tools.idea.protobuf.DescriptorProtos.FileDescriptorSet
+import com.android.tools.idea.protobuf.Descriptors.FileDescriptor
+import com.android.tools.idea.protobuf.DynamicMessage
 import com.android.tools.idea.protobuf.ExtensionRegistryLite
+import com.android.tools.idea.protobuf.Parser
 import com.android.tools.idea.protobuf.WireFormat
 import com.android.tools.profilers.IdeProfilerServices
 import com.android.tools.profilers.cpu.CpuCapture
@@ -35,7 +39,7 @@ import java.io.InputStream
 import java.util.Base64
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
-import perfetto.protos.PerfettoTrace
+import perfetto.protos.UiStateOuterClass.UiState
 
 class PerfettoParser(private val mainProcessSelector: MainProcessSelector, private val ideProfilerServices: IdeProfilerServices) :
   TraceParser {
@@ -47,8 +51,27 @@ class PerfettoParser(private val mainProcessSelector: MainProcessSelector, priva
     // so we need a static object to serve as the lock monitor.
     val TPD_LOCK = Any()
 
+    /**
+     * Descriptor set of perfetto_trace.proto, the default output of @perfetto_repo//:perfetto_trace_proto. The proto is amalgamated, so the
+     * set holds a single file without imports.
+     */
+    private const val TRACE_DESCRIPTOR_RESOURCE = "/perfetto_trace_proto-descriptor-set.proto.bin"
+
     /** Tag of `Trace.packet`, the only field of the root `Trace` message: field 1, length-delimited. */
     private const val TRACE_PACKET_TAG = (1 shl 3) or WireFormat.WIRETYPE_LENGTH_DELIMITED
+
+    /**
+     * Parser for `perfetto.protos.TracePacket`. It uses the descriptor of the full trace schema, so it validates the same nested messages
+     * as classes generated from perfetto_trace.proto would, without generating Java classes for every message of the schema.
+     */
+    private val tracePacketParser: Parser<DynamicMessage> by lazy {
+      val descriptorStream =
+        checkNotNull(PerfettoParser::class.java.getResourceAsStream(TRACE_DESCRIPTOR_RESOURCE)) { "Missing $TRACE_DESCRIPTOR_RESOURCE" }
+      val descriptorSet = descriptorStream.use { FileDescriptorSet.parseFrom(it) }
+      val traceFile = FileDescriptor.buildFrom(descriptorSet.fileList.single(), arrayOf())
+      val tracePacket = checkNotNull(traceFile.findMessageTypeByName("TracePacket")) { "Missing TracePacket in $TRACE_DESCRIPTOR_RESOURCE" }
+      DynamicMessage.getDefaultInstance(tracePacket).parserForType
+    }
 
     /**
      * @param file handle to a file that represents a perfetto trace. A single trace packet will be read from this file to verify the file
@@ -106,7 +129,7 @@ class PerfettoParser(private val mainProcessSelector: MainProcessSelector, priva
       if (stream.readTag() != TRACE_PACKET_TAG) {
         return false
       }
-      stream.readMessage(PerfettoTrace.TracePacket.parser(), ExtensionRegistryLite.getEmptyRegistry())
+      stream.readMessage(tracePacketParser, ExtensionRegistryLite.getEmptyRegistry())
       return true
     }
   }
@@ -131,7 +154,7 @@ class PerfettoParser(private val mainProcessSelector: MainProcessSelector, priva
 
       if (traceUIMetadata.isNotEmpty()) {
         try {
-          val uiState = PerfettoTrace.UiState.parseFrom(Base64.getDecoder().decode(traceUIMetadata.last()))
+          val uiState = UiState.parseFrom(Base64.getDecoder().decode(traceUIMetadata.last()))
           if (uiState.highlightProcess.hasPid()) {
             val wantedProcessId = uiState.getHighlightProcess().getPid()
             processHint = processList.find { it.id == wantedProcessId }?.getSafeProcessName() ?: mainProcessSelector.nameHint

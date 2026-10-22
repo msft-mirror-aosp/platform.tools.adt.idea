@@ -39,7 +39,8 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.min
 import org.jetbrains.annotations.VisibleForTesting
-import perfetto.protos.PerfettoTrace
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 class TraceProcessorModel(builder: Builder) : SystemTraceModelAdapter, Serializable {
 
@@ -473,26 +474,26 @@ class TraceProcessorModel(builder: Builder) : SystemTraceModelAdapter, Serializa
 
     private fun parsePresentType(presetTypeStr: String) =
       when (presetTypeStr) {
-        "On-time Present" -> PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_ON_TIME
-        "Late Present" -> PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_LATE
-        "Early Present" -> PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_EARLY
-        "Dropped Frame" -> PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_DROPPED
-        "Unknown Present" -> PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_UNKNOWN
-        else -> PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_UNSPECIFIED
+        "On-time Present" -> PresentType.PRESENT_ON_TIME
+        "Late Present" -> PresentType.PRESENT_LATE
+        "Early Present" -> PresentType.PRESENT_EARLY
+        "Dropped Frame" -> PresentType.PRESENT_DROPPED
+        "Unknown Present" -> PresentType.PRESENT_UNKNOWN
+        else -> PresentType.PRESENT_UNSPECIFIED
       }
 
-    private fun parseAppJankType(jankTypeStr: String): PerfettoTrace.FrameTimelineEvent.JankType {
+    private fun parseAppJankType(jankTypeStr: String): JankType {
       // jankTypeStr is a comma-separated string of both an app jank type and a surfaceflinger jank type (if exists).
       // In SystemTrace we only care about the app jank type, so once a match is found we can return early.
       jankTypeStr.split(", ").forEach {
         when (it) {
-          "None" -> return PerfettoTrace.FrameTimelineEvent.JankType.JANK_NONE
-          "App Deadline Missed" -> return PerfettoTrace.FrameTimelineEvent.JankType.JANK_APP_DEADLINE_MISSED
-          "Buffer Stuffing" -> return PerfettoTrace.FrameTimelineEvent.JankType.JANK_BUFFER_STUFFING
-          "Unknown Jank" -> return PerfettoTrace.FrameTimelineEvent.JankType.JANK_UNKNOWN
+          "None" -> return JankType.JANK_NONE
+          "App Deadline Missed" -> return JankType.JANK_APP_DEADLINE_MISSED
+          "Buffer Stuffing" -> return JankType.JANK_BUFFER_STUFFING
+          "Unknown Jank" -> return JankType.JANK_UNKNOWN
         }
       }
-      return PerfettoTrace.FrameTimelineEvent.JankType.JANK_UNSPECIFIED
+      return JankType.JANK_UNSPECIFIED
     }
   }
 }

@@ -36,7 +36,8 @@ import org.junit.Test
 import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
-import perfetto.protos.PerfettoTrace
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 @RunsInEdt
 class JankSummaryDetailsViewTest {
@@ -82,8 +83,8 @@ private val MODEL =
       2000L,
       3000L,
       "",
-      PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_LATE,
-      PerfettoTrace.FrameTimelineEvent.JankType.JANK_APP_DEADLINE_MISSED,
+      PresentType.PRESENT_LATE,
+      JankType.JANK_APP_DEADLINE_MISSED,
       false,
       false,
       0,

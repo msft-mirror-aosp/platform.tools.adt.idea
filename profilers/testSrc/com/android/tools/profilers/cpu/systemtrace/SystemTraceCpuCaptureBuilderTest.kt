@@ -23,7 +23,8 @@ import com.android.tools.profilers.cpu.ThreadState
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
-import perfetto.protos.PerfettoTrace
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 class SystemTraceCpuCaptureBuilderTest {
 
@@ -476,8 +477,8 @@ class SystemTraceCpuCaptureBuilderTest {
         1500,
         2000,
         "layer",
-        PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_LATE,
-        PerfettoTrace.FrameTimelineEvent.JankType.JANK_APP_DEADLINE_MISSED,
+        PresentType.PRESENT_LATE,
+        JankType.JANK_APP_DEADLINE_MISSED,
         false,
         false,
         0,
@@ -490,8 +491,8 @@ class SystemTraceCpuCaptureBuilderTest {
         6500,
         7500,
         "layer",
-        PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_LATE,
-        PerfettoTrace.FrameTimelineEvent.JankType.JANK_APP_DEADLINE_MISSED,
+        PresentType.PRESENT_LATE,
+        JankType.JANK_APP_DEADLINE_MISSED,
         false,
         false,
         0,

@@ -23,7 +23,8 @@ import java.io.Serializable
 import java.lang.Long.max
 import java.util.SortedMap
 import java.util.TreeMap
-import perfetto.protos.PerfettoTrace
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 /**
  * SystemTraceModelAdapter exposes a common API for accessing the raw model data from system trace captures.
@@ -332,8 +333,8 @@ data class AndroidFrameTimelineEvent(
   val expectedEndUs: Long,
   val actualEndUs: Long,
   val layerName: String,
-  val presentType: PerfettoTrace.FrameTimelineEvent.PresentType,
-  val appJankType: PerfettoTrace.FrameTimelineEvent.JankType,
+  val presentType: PresentType,
+  val appJankType: JankType,
   val onTimeFinish: Boolean,
   val gpuComposition: Boolean,
   val layoutDepth: Int,
@@ -345,10 +346,10 @@ data class AndroidFrameTimelineEvent(
     get() = actualEndUs - expectedStartUs
 
   val isJank
-    get() = appJankType != PerfettoTrace.FrameTimelineEvent.JankType.JANK_NONE
+    get() = appJankType != JankType.JANK_NONE
 
   val isActionableJank
-    get() = appJankType == PerfettoTrace.FrameTimelineEvent.JankType.JANK_APP_DEADLINE_MISSED
+    get() = appJankType == JankType.JANK_APP_DEADLINE_MISSED
 }
 
 /**

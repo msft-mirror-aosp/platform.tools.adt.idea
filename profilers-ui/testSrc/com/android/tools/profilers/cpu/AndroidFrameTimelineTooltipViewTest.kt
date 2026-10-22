@@ -31,7 +31,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
-import perfetto.protos.PerfettoTrace
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 @RunsInEdt
 class AndroidFrameTimelineTooltipViewTest {
@@ -97,8 +98,8 @@ private val FAKE_EVENT_0 =
     2000L,
     3000L,
     "",
-    PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_LATE,
-    PerfettoTrace.FrameTimelineEvent.JankType.JANK_APP_DEADLINE_MISSED,
+    PresentType.PRESENT_LATE,
+    JankType.JANK_APP_DEADLINE_MISSED,
     onTimeFinish = false,
     gpuComposition = false,
     1,
@@ -112,8 +113,8 @@ private val FAKE_EVENT_1 =
     3000L,
     3500L,
     "",
-    PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_LATE,
-    PerfettoTrace.FrameTimelineEvent.JankType.JANK_BUFFER_STUFFING,
+    PresentType.PRESENT_LATE,
+    JankType.JANK_BUFFER_STUFFING,
     onTimeFinish = false,
     gpuComposition = false,
     0,

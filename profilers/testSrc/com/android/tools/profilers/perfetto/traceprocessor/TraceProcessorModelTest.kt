@@ -27,7 +27,8 @@ import com.android.tools.profilers.cpu.systemtrace.SchedulingEventModel
 import com.android.tools.profilers.cpu.systemtrace.TraceEventModel
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
-import perfetto.protos.PerfettoTrace
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
+import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 class TraceProcessorModelTest {
 
@@ -462,8 +463,8 @@ class TraceProcessorModelTest {
           2,
           2,
           "foo",
-          PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_ON_TIME,
-          PerfettoTrace.FrameTimelineEvent.JankType.JANK_NONE,
+          PresentType.PRESENT_ON_TIME,
+          JankType.JANK_NONE,
           onTimeFinish = true,
           gpuComposition = true,
           layoutDepth = 0,
@@ -475,8 +476,8 @@ class TraceProcessorModelTest {
           4,
           5,
           "foo",
-          PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_LATE,
-          PerfettoTrace.FrameTimelineEvent.JankType.JANK_APP_DEADLINE_MISSED,
+          PresentType.PRESENT_LATE,
+          JankType.JANK_APP_DEADLINE_MISSED,
           onTimeFinish = false,
           gpuComposition = true,
           layoutDepth = 1,
@@ -488,8 +489,8 @@ class TraceProcessorModelTest {
           6,
           6,
           "foo",
-          PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_EARLY,
-          PerfettoTrace.FrameTimelineEvent.JankType.JANK_BUFFER_STUFFING,
+          PresentType.PRESENT_EARLY,
+          JankType.JANK_BUFFER_STUFFING,
           onTimeFinish = true,
           gpuComposition = true,
           layoutDepth = 2,
@@ -501,8 +502,8 @@ class TraceProcessorModelTest {
           8,
           10,
           "foo",
-          PerfettoTrace.FrameTimelineEvent.PresentType.PRESENT_DROPPED,
-          PerfettoTrace.FrameTimelineEvent.JankType.JANK_UNKNOWN,
+          PresentType.PRESENT_DROPPED,
+          JankType.JANK_UNKNOWN,
           onTimeFinish = true,
           gpuComposition = false,
           layoutDepth = 0,
