@@ -1542,6 +1542,38 @@ _intellij_platform = rule(
     implementation = _intellij_platform_impl,
 )
 
+def _intellij_platform_files_impl(ctx):
+    platform = {"linux": LINUX, "mac": MAC, "mac_arm": MAC_ARM, "win": WIN}[ctx.attr.os]
+    intellij_info = ctx.attr.platform[IntellijInfo]
+    available = dict(platform.get(intellij_info.base))
+    for plugin_files in platform.get(intellij_info.plugins).values():
+        available.update(plugin_files)
+    missing = [path for path in ctx.attr.paths if path not in available]
+    if missing:
+        fail("Not found in the %s IntelliJ platform: %s" % (ctx.attr.os, ", ".join(missing)))
+    return [DefaultInfo(files = depset([available[path] for path in ctx.attr.paths]))]
+
+intellij_platform_files = rule(
+    doc = """Selects files from an IntelliJ platform by their path in the IDE distribution.
+
+    The paths are relative to the IDE root for the given OS (so they start with "Contents/" on macOS),
+    and may point into the base platform or into any of its bundled plugins. This keeps consumers from
+    depending on the layout of the prebuilts, which changes between IntelliJ versions.
+    """,
+    attrs = {
+        "platform": attr.label(
+            providers = [IntellijInfo],
+            default = Label("@intellij//:intellij-sdk"),
+        ),
+        "os": attr.string(
+            mandatory = True,
+            values = ["linux", "mac", "mac_arm", "win"],
+        ),
+        "paths": attr.string_list(mandatory = True, allow_empty = False),
+    },
+    implementation = _intellij_platform_files_impl,
+)
+
 def intellij_platform_import(name, spec):
     """Imports a platform used only for building standalone plugins.
 
