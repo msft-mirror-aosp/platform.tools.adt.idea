@@ -42,8 +42,8 @@ class AndroidManifestIndexTest {
       <?xml version='1.0' encoding='utf-8'?>
       <manifest xmlns:android='http://schemas.android.com/apk/res/android'
         package='com.example' android:enabled='true'>
-        <application android:theme='@style/Theme.AppCompat' android:debuggable='true'>
-          <activity android:name='.EnabledActivity' android:enabled='true' android:exported='true' android:theme='@style/AppTheme.NoActionBar'>
+        <application android:theme='@style/Theme.AppCompat' android:debuggable='true' android:icon='@drawable/app_icon' android:label='@string/app_name'>
+          <activity android:name='.EnabledActivity' android:enabled='true' android:exported='true' android:theme='@style/AppTheme.NoActionBar' android:icon='@drawable/activity_icon' android:label='@string/activity_name'>
             <intent-filter>
               <action android:name='android.intent.action.MAIN'/>
               <category android:name='android.intent.category.DEFAULT'/>
@@ -87,8 +87,8 @@ class AndroidManifestIndexTest {
                       categoryNames = setOf("android.intent.category.DEFAULT"),
                     )
                   ),
-                icon = null,
-                label = null,
+                icon = "@drawable/activity_icon",
+                label = "@string/activity_name",
               ),
               ActivityRawText(
                 name = ".DisabledActivity",
@@ -123,8 +123,8 @@ class AndroidManifestIndexTest {
           customPermissionNames = setOf("custom.permissions.IN_CUSTOM_GROUP", "custom.permissions.NO_GROUP"),
           debuggable = "true",
           enabled = "true",
-          icon = null,
-          label = null,
+          icon = "@drawable/app_icon",
+          label = "@string/app_name",
           minSdkLevel = "22",
           packageName = "com.example",
           supportsRtl = null,
@@ -341,119 +341,6 @@ class AndroidManifestIndexTest {
               ServiceRawText(name = ".MyService", enabled = "true", metaData = setOf(MetaDataRawText("meta1", "val1"))),
               ServiceRawText(name = "com.other.OtherService", enabled = null, metaData = setOf(MetaDataRawText("meta2", "val2"))),
             ),
-        ),
-      )
-  }
-
-  @Test
-  fun indexer_manifestWithNamespacedApplicationAttributes() {
-    @Language("xml")
-    val manifestContent =
-      """
-      <?xml version='1.0' encoding='utf-8'?>
-      <manifest xmlns:android2='http://schemas.android.com/apk/res/android' package='com.example'>
-        <application
-          android2:label="@android2:strings/cancel"
-          android2:icon="@android2:drawable/ic_media_play">
-        </application>
-      </manifest>
-      """
-        .trimIndent()
-    val manifestMap = AndroidManifestIndex.Indexer.map(FakeXmlFileContent(manifestContent))
-    assertThat(manifestMap)
-      .containsExactly(
-        "com.example",
-        AndroidManifestRawText(
-          activities = emptySet(),
-          activityAliases = emptySet(),
-          customPermissionGroupNames = emptySet(),
-          customPermissionNames = emptySet(),
-          debuggable = null,
-          enabled = null,
-          icon =
-            NamespacedValueRawText(
-              value = "@android2:drawable/ic_media_play",
-              namespaces = setOf(NamespaceRawText("android2", "http://schemas.android.com/apk/res/android")),
-            ),
-          label =
-            NamespacedValueRawText(
-              value = "@android2:strings/cancel",
-              namespaces = setOf(NamespaceRawText("android2", "http://schemas.android.com/apk/res/android")),
-            ),
-          minSdkLevel = null,
-          packageName = "com.example",
-          supportsRtl = null,
-          usedPermissionNames = emptySet(),
-          usedFeatures = emptySet(),
-          targetSdkLevel = null,
-          theme = null,
-          applicationProperties = emptySet(),
-          services = emptySet(),
-        ),
-      )
-  }
-
-  @Test
-  fun indexer_manifestWithNamespacedActivityAttributes() {
-    @Language("xml")
-    val manifestContent =
-      """
-      <?xml version='1.0' encoding='utf-8'?>
-      <manifest xmlns:android2='http://schemas.android.com/apk/res/android' package='com.example'>
-        <application>
-          <activity
-            android2:name=".Foo"
-            android2:enabled="true"
-            android2:label="@android2:strings/cancel"
-            android2:icon="@android2:drawable/ic_media_play">
-          </activity>
-        </application>
-      </manifest>
-      """
-        .trimIndent()
-    val manifestMap = AndroidManifestIndex.Indexer.map(FakeXmlFileContent(manifestContent))
-    assertThat(manifestMap)
-      .containsExactly(
-        "com.example",
-        AndroidManifestRawText(
-          activities =
-            setOf(
-              ActivityRawText(
-                name = ".Foo",
-                enabled = "true",
-                exported = null,
-                theme = null,
-                parentActivityName = null,
-                uiOptions = null,
-                intentFilters = emptySet(),
-                label =
-                  NamespacedValueRawText(
-                    "@android2:strings/cancel",
-                    setOf(NamespaceRawText("android2", "http://schemas.android.com/apk/res/android")),
-                  ),
-                icon =
-                  NamespacedValueRawText(
-                    "@android2:drawable/ic_media_play",
-                    setOf(NamespaceRawText("android2", "http://schemas.android.com/apk/res/android")),
-                  ),
-              )
-            ),
-          activityAliases = emptySet(),
-          customPermissionGroupNames = emptySet(),
-          customPermissionNames = emptySet(),
-          debuggable = null,
-          enabled = null,
-          icon = null,
-          label = null,
-          minSdkLevel = null,
-          packageName = "com.example",
-          supportsRtl = null,
-          usedPermissionNames = emptySet(),
-          usedFeatures = emptySet(),
-          targetSdkLevel = null,
-          theme = null,
-          applicationProperties = emptySet(),
-          services = emptySet(),
         ),
       )
   }

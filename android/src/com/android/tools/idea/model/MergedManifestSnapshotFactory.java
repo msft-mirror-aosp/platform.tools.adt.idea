@@ -114,8 +114,7 @@ public class MergedManifestSnapshotFactory {
   }
 
   @Nullable
-  private static ResourceValue getResourceValue(@NotNull ResourceNamespace namespace,
-                                                @NotNull ResourceType type,
+  private static ResourceValue getResourceValue(@NotNull ResourceType type,
                                                 @NotNull Element element,
                                                 @Nullable String namespaceUri,
                                                 @NotNull String attributeName) {
@@ -125,8 +124,8 @@ public class MergedManifestSnapshotFactory {
     }
     ResourceUrl url = ResourceUrl.parse(value);
     ResourceReference reference =
-      url == null ? null : url.resolve(namespace, namespacePrefix -> element.lookupNamespaceURI(namespacePrefix));
-    return new ManifestResourceValue(namespace, type, attributeName, value, reference);
+      url == null ? null : url.resolve(ResourceNamespace.RES_AUTO, ResourceNamespace.Resolver.EMPTY_RESOLVER);
+    return new ManifestResourceValue(ResourceNamespace.RES_AUTO, type, attributeName, value, reference);
   }
 
   private static AndroidVersion getApiVersion(@NotNull Element usesSdk,
@@ -199,8 +198,6 @@ public class MergedManifestSnapshotFactory {
         throw new MergedManifestException.MissingAttribute(TAG_MANIFEST, null, ATTRIBUTE_PACKAGE, mergedManifestInfo);
       }
 
-      ResourceNamespace namespace = ResourceNamespace.RES_AUTO;
-
       String versionCodeStr = getAttributeValue(root, ANDROID_URI, ATTR_VERSION_CODE);
       Integer versionCode = null;
       try {
@@ -228,8 +225,8 @@ public class MergedManifestSnapshotFactory {
           String nodeName = node.getNodeName();
           if (NODE_APPLICATION.equals(nodeName)) {
             Element application = (Element)node;
-            appIcon = getResourceValue(namespace, ResourceType.DRAWABLE, application, ANDROID_URI, ATTRIBUTE_ICON);
-            appLabel = getResourceValue(namespace, ResourceType.STRING, application, ANDROID_URI, ATTRIBUTE_LABEL);
+            appIcon = getResourceValue(ResourceType.DRAWABLE, application, ANDROID_URI, ATTRIBUTE_ICON);
+            appLabel = getResourceValue(ResourceType.STRING, application, ANDROID_URI, ATTRIBUTE_LABEL);
             manifestTheme = getAttributeValue(application, ANDROID_URI, ATTRIBUTE_THEME);
             supportsRtl = VALUE_TRUE.equals(getAttributeValue(application, ANDROID_URI, ATTRIBUTE_SUPPORTS_RTL));
 
@@ -242,7 +239,7 @@ public class MergedManifestSnapshotFactory {
                 String childNodeName = child.getNodeName();
                 if (NODE_ACTIVITY.equals(childNodeName)) {
                   Element element = (Element)child;
-                  ActivityAttributesSnapshot attributes = createActivityAttributesSnapshot(element, packageName, namespace);
+                  ActivityAttributesSnapshot attributes = createActivityAttributesSnapshot(element, packageName);
                   activityAttributesMap.put(attributes.getName(), attributes);
                   activities.add(element);
                 }
@@ -318,8 +315,7 @@ public class MergedManifestSnapshotFactory {
 
   @NotNull
   private static ActivityAttributesSnapshot createActivityAttributesSnapshot(@NotNull Element activity,
-                                                                             @Nullable String packageName,
-                                                                             @NotNull ResourceNamespace namespace) {
+                                                                             @Nullable String packageName) {
     // Get activity name.
     String name = getAttributeValue(activity, ANDROID_URI, ATTRIBUTE_NAME);
     if (name == null || name.isEmpty()) {
@@ -331,10 +327,10 @@ public class MergedManifestSnapshotFactory {
     }
 
     // Get activity icon.
-    ResourceValue icon = getResourceValue(namespace, ResourceType.DRAWABLE, activity, ANDROID_URI, ATTRIBUTE_ICON);
+    ResourceValue icon = getResourceValue(ResourceType.DRAWABLE, activity, ANDROID_URI, ATTRIBUTE_ICON);
 
     // Get activity label.
-    ResourceValue label = getResourceValue(namespace, ResourceType.STRING, activity, ANDROID_URI, ATTRIBUTE_LABEL);
+    ResourceValue label = getResourceValue(ResourceType.STRING, activity, ANDROID_URI, ATTRIBUTE_LABEL);
 
     // Get activity parent. Also search the meta-data for parent info.
     String value = getAttributeValue(activity, ANDROID_URI, ATTRIBUTE_PARENT_ACTIVITY_NAME);

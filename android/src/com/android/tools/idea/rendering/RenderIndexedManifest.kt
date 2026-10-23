@@ -23,7 +23,6 @@ import com.android.tools.dom.ActivityAttributesSnapshot
 import com.android.tools.idea.model.AndroidManifestIndex
 import com.android.tools.idea.model.AndroidManifestRawText
 import com.android.tools.idea.model.MergedManifestSnapshotFactory.ManifestResourceValue
-import com.android.tools.idea.model.NamespacedValueRawText
 import com.android.tools.rendering.api.RenderModelManifest
 import com.android.xml.AndroidManifest.ATTRIBUTE_ICON
 import com.android.xml.AndroidManifest.ATTRIBUTE_LABEL
@@ -37,17 +36,10 @@ class RenderIndexedManifest(val facet: AndroidFacet) : RenderModelManifest {
   override val applicationIcon: ResourceValue? =
     data.firstNotNullOfOrNull { it.icon }?.toResourceValue(ResourceType.DRAWABLE, ATTRIBUTE_ICON)
 
-  private fun NamespacedValueRawText.toResourceValue(resourceType: ResourceType, name: String) =
-    ResourceUrl.parse(value)
-      ?.resolve(
-        ResourceNamespace.RES_AUTO,
-        object : ResourceNamespace.Resolver {
-          override fun prefixToUri(prefix: String) = namespaces.firstOrNull { it.name == prefix }?.url
-
-          override fun uriToPrefix(namespaceUri: String) = namespaces.firstOrNull { it.url == namespaceUri }?.name
-        },
-      )
-      ?.let { ManifestResourceValue(ResourceNamespace.RES_AUTO, resourceType, name, value, it) }
+  private fun String.toResourceValue(resourceType: ResourceType, name: String) =
+    ResourceUrl.parse(this)?.resolve(ResourceNamespace.RES_AUTO, ResourceNamespace.Resolver.EMPTY_RESOLVER)?.let {
+      ManifestResourceValue(ResourceNamespace.RES_AUTO, resourceType, name, this, it)
+    }
 
   override fun getActivityAttributes(activity: String): ActivityAttributesSnapshot? =
     data
