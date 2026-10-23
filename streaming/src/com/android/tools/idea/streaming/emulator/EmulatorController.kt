@@ -49,6 +49,7 @@ import com.android.emulator.control.PaneEntry
 import com.android.emulator.control.PhysicalModelValue
 import com.android.emulator.control.Posture.PostureValue
 import com.android.emulator.control.RotationRadian
+import com.android.emulator.control.SensorValue
 import com.android.emulator.control.SnapshotFilter
 import com.android.emulator.control.SnapshotList
 import com.android.emulator.control.SnapshotPackage
@@ -663,6 +664,25 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     val observer = SuspendingStreamObserver<Empty>()
     setPhysicalModel(modelValue, observer)
     observer.getResult()
+  }
+
+  /** Retrieves a sensor value. */
+  fun getSensor(sensorType: SensorValue.SensorType, streamObserver: StreamObserver<SensorValue>) {
+    val sensorValue = SensorValue.newBuilder().setTarget(sensorType).build()
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("getSensor(${shortDebugString(sensorValue)})")
+    }
+    emulatorControllerStub.getSensor(
+      sensorValue,
+      DelegatingStreamObserver(streamObserver, EmulatorControllerGrpc.getGetSensorMethod()),
+    )
+  }
+
+  /** Retrieves a sensor value. */
+  suspend fun getSensor(sensorType: SensorValue.SensorType): SensorValue {
+    val observer = SuspendingStreamObserver<SensorValue>()
+    getSensor(sensorType, observer)
+    return observer.getResult()
   }
 
   /** Retrieves a screenshot of an Emulator display. */

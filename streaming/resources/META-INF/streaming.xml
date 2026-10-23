@@ -299,6 +299,8 @@
                 icon="com.android.tools.idea.streaming.StagingIcons.CAMERA" text="Camera" description="Open camera settings"/>
         <action id="android.emulator.phone" class="com.android.tools.idea.streaming.emulator.actions.EmulatorPhoneAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.PHONE" text="Phone" description="Open phone controls"/>
+        <action id="android.emulator.device.pose" class="com.android.tools.idea.streaming.emulator.actions.EmulatorDevicePoseAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.DEVICE_POSE" text="Device Pose" description="Open device pose controls"/>
         <action id="android.emulator.fingerprint" class="com.android.tools.idea.streaming.emulator.actions.EmulatorFingerprintAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.FINGERPRINT" text="Fingerprint" description="Open fingerprint controls"/>
       </group>

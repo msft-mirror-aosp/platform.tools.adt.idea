@@ -213,6 +213,11 @@ internal fun String.htmlEscaped(): String = HtmlEscapers.htmlEscaper().escape(th
 /** Wraps the string with &lt;font color=...>, &lt;/font> tags. */
 internal fun String.htmlColored(color: Color): String = "<font color=${(color.rgb and 0xFFFFFF).toString(16)}>$this</font>"
 
+/** Removes the leading minus sign if the formatted number is zero (e.g. `"-0.0°"` or `"-0.00"`). */
+internal fun String.cleanNegativeZero(): String = if (NEGATIVE_ZERO_REGEX.matches(this)) substring(1) else this
+
+private val NEGATIVE_ZERO_REGEX = Regex("-0\\.0*(\\D.*)?")
+
 /** Returns an HTML hyperlink for showing the log. */
 internal fun getShowLogHyperlink(): String =
   if (ShowLogAction.isSupported()) "<a href='ShowLog'>log</a>".htmlColored(JBUI.CurrentTheme.Link.Foreground.ENABLED) else "log"

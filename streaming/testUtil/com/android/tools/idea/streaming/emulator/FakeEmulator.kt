@@ -64,6 +64,8 @@ import com.android.emulator.control.Posture.PostureValue
 import com.android.emulator.control.Rotation
 import com.android.emulator.control.Rotation.SkinRotation
 import com.android.emulator.control.RotationRadian
+import com.android.emulator.control.SensorValue
+import com.android.emulator.control.SensorValue.SensorType
 import com.android.emulator.control.SmsMessage
 import com.android.emulator.control.SnapshotDetails
 import com.android.emulator.control.SnapshotFilter
@@ -158,9 +160,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Predicate
 import javax.imageio.ImageIO
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.time.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -215,6 +219,14 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       "table" to Poster.newBuilder().setName("table").setMinWidth(0.2f).setMaxWidth(1.0f).setScale(1.0f).build(),
     )
   @Volatile var animationState: AnimationState = AnimationState.newBuilder().setTvOn(true).build()
+  @Volatile var deviceRotation: List<Float> = listOf(0f, 0f, 0f)
+  @Volatile var devicePosition: List<Float> = listOf(0f, 0f, 0f)
+  @Volatile
+  var hingeAngles: List<Float> =
+    listOf(config.postures.lastOrNull { it.valueType == PostureDescriptor.ValueType.HINGE_ANGLE }?.maxValue?.toFloat() ?: 180f)
+  @Volatile
+  var rollablePercentages: List<Float> =
+    listOf(config.postures.lastOrNull { it.valueType == PostureDescriptor.ValueType.ROLL_PERCENTAGE }?.maxValue?.toFloat() ?: 100f)
 
   @Volatile
   var devicePosture: PostureValue? = config.postures.lastOrNull()?.posture
@@ -714,11 +726,48 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         val value = request.value
         when (target) {
           PhysicalType.ROTATION -> {
-            val zAngle = value.getData(2)
-            displayRotation = SkinRotation.forNumber(normalizedRotation((zAngle / 90).roundToInt()))
+            if (value.dataCount >= 3) {
+              deviceRotation = listOf(value.getData(0), value.getData(1), value.getData(2))
+              val zAngle = value.getData(2)
+              displayRotation = SkinRotation.forNumber(normalizedRotation((zAngle / 90).roundToInt()))
+            }
           }
-          PhysicalType.HINGE_ANGLE0 -> findPosture(PostureDescriptor.ValueType.HINGE_ANGLE, value.getData(0))?.let { devicePosture = it }
-          PhysicalType.ROLLABLE0 -> findPosture(PostureDescriptor.ValueType.ROLL_PERCENTAGE, value.getData(0))?.let { devicePosture = it }
+          PhysicalType.POSITION -> {
+            if (value.dataCount >= 3) {
+              devicePosition = listOf(value.getData(0), value.getData(1), value.getData(2))
+            }
+          }
+          PhysicalType.POSTURE -> {
+            if (value.dataCount >= 1) {
+              PostureValue.forNumber(value.getData(0).roundToInt())?.let { posture ->
+                devicePosture = posture
+                config.postures
+                  .find { it.posture == posture }
+                  ?.let { descriptor ->
+                    val v = postureDefaultValue(descriptor, config.postures).toFloat()
+                    if (descriptor.valueType == PostureDescriptor.ValueType.HINGE_ANGLE) {
+                      hingeAngles = listOf(v)
+                    } else {
+                      rollablePercentages = listOf(v)
+                    }
+                  }
+              }
+            }
+          }
+          PhysicalType.HINGE_ANGLE0 -> {
+            if (value.dataCount >= 1) {
+              val angle = value.getData(0)
+              hingeAngles = listOf(angle)
+              findPosture(PostureDescriptor.ValueType.HINGE_ANGLE, angle)?.let { devicePosture = it }
+            }
+          }
+          PhysicalType.ROLLABLE0 -> {
+            if (value.dataCount >= 1) {
+              val pct = value.getData(0)
+              rollablePercentages = listOf(pct)
+              findPosture(PostureDescriptor.ValueType.ROLL_PERCENTAGE, pct)?.let { devicePosture = it }
+            }
+          }
           else -> {}
         }
         sendEmptyResponse(responseObserver)
@@ -729,6 +778,18 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       executor.execute {
         val result =
           when (request.target) {
+            PhysicalType.ROTATION -> {
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.ROTATION)
+                .setValue(ParameterValue.newBuilder().addAllData(deviceRotation))
+                .build()
+            }
+            PhysicalType.POSITION -> {
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.POSITION)
+                .setValue(ParameterValue.newBuilder().addAllData(devicePosition))
+                .build()
+            }
             PhysicalType.POSTURE -> {
               val posture = devicePosture ?: PostureValue.POSTURE_OPENED
               PhysicalModelValue.newBuilder()
@@ -736,8 +797,36 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
                 .setValue(ParameterValue.newBuilder().addData(posture.number.toFloat()))
                 .build()
             }
+            PhysicalType.HINGE_ANGLE0 -> {
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.HINGE_ANGLE0)
+                .setValue(ParameterValue.newBuilder().addData(hingeAngles.getOrElse(0) { 0f }))
+                .build()
+            }
+            PhysicalType.ROLLABLE0 -> {
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.ROLLABLE0)
+                .setValue(ParameterValue.newBuilder().addData(rollablePercentages.getOrElse(0) { 0f }))
+                .build()
+            }
             else -> PhysicalModelValue.getDefaultInstance()
           }
+        sendResponse(responseObserver, result)
+      }
+    }
+
+    override fun getSensor(request: SensorValue, responseObserver: StreamObserver<SensorValue>) {
+      executor.execute {
+        val rot = deviceRotation
+        val values =
+          when (request.target) {
+            SensorType.ACCELERATION -> rotateByConjugate(rot, 0f, 9.81f, 0f)
+            SensorType.GYROSCOPE -> listOf(0f, 0f, 0f)
+            SensorType.MAGNETIC_FIELD -> rotateByConjugate(rot, 0f, 5.9f, -48.4f)
+            SensorType.ORIENTATION -> listOf(rot.getOrElse(0) { 0f }, rot.getOrElse(1) { 0f }, rot.getOrElse(2) { 0f })
+            else -> emptyList()
+          }
+        val result = SensorValue.newBuilder().setTarget(request.target).setValue(ParameterValue.newBuilder().addAllData(values)).build()
         sendResponse(responseObserver, result)
       }
     }
@@ -781,6 +870,41 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
     private fun findPosture(valueType: PostureDescriptor.ValueType, value: Float): PostureValue? =
       config.postures.find { it.valueType == valueType && it.minValue <= value && value <= it.maxValue }?.posture
+
+    private fun postureDefaultValue(posture: PostureDescriptor, postures: List<PostureDescriptor>): Double {
+      val minValue = postures.minOfOrNull { it.minValue } ?: Double.MAX_VALUE
+      val maxValue = postures.maxOfOrNull { it.maxValue } ?: Double.MIN_VALUE
+      return when {
+        posture.minValue == minValue -> minValue
+        posture.maxValue == maxValue -> maxValue
+        else -> (posture.minValue + posture.maxValue) / 2
+      }
+    }
+
+    private fun rotateByConjugate(eulerDeg: List<Float>, vx: Float, vy: Float, vz: Float): List<Float> {
+      val hx = Math.toRadians((eulerDeg.getOrElse(0) { 0f } * 0.5f).toDouble()).toFloat()
+      val hy = Math.toRadians((eulerDeg.getOrElse(1) { 0f } * 0.5f).toDouble()).toFloat()
+      val hz = Math.toRadians((eulerDeg.getOrElse(2) { 0f } * 0.5f).toDouble()).toFloat()
+      val cx = cos(hx)
+      val sx = sin(hx)
+      val cy = cos(hy)
+      val sy = sin(hy)
+      val cz = cos(hz)
+      val sz = sin(hz)
+      // q = quatX(x) * quatY(y) * quatZ(z), conjugate(q) = (-q.x, -q.y, -q.z, q.w)
+      val qw = cx * cy * cz - sx * sy * sz
+      val qx = -(sx * cy * cz + cx * sy * sz)
+      val qy = -(cx * sy * cz - sx * cy * sz)
+      val qz = -(cx * cy * sz + sx * sy * cz)
+      // v' = v + 2 * cross(q.xyz, cross(q.xyz, v) + qw * v)
+      val tx = 2f * (qy * vz - qz * vy)
+      val ty = 2f * (qz * vx - qx * vz)
+      val tz = 2f * (qx * vy - qy * vx)
+      val rx = vx + qw * tx + (qy * tz - qz * ty)
+      val ry = vy + qw * ty + (qz * tx - qx * tz)
+      val rz = vz + qw * tz + (qx * ty - qy * tx)
+      return listOf(rx, ry, rz)
+    }
 
     override fun getStatus(request: Empty, responseObserver: StreamObserver<EmulatorStatus>) {
       executor.execute {

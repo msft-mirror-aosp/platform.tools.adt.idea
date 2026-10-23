@@ -64,6 +64,7 @@ class EmulatorExtendedControlsActionGroupTest {
     val batteryActionId = "android.emulator.battery"
     val cameraActionId = "android.emulator.camera"
     val phoneActionId = "android.emulator.phone"
+    val devicePoseActionId = "android.emulator.device.pose"
     val fingerprintActionId = "android.emulator.fingerprint"
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
@@ -90,6 +91,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val phoneDisabled = updateAndGetActionPresentation(phoneActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(phoneDisabled.isVisible).isFalse()
     assertThat(phoneDisabled.isEnabled).isFalse()
+
+    val devicePoseDisabled = updateAndGetActionPresentation(devicePoseActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(devicePoseDisabled.isVisible).isFalse()
+    assertThat(devicePoseDisabled.isEnabled).isFalse()
 
     val fingerprintDisabled = updateAndGetActionPresentation(fingerprintActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(fingerprintDisabled.isVisible).isFalse()
@@ -120,6 +125,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(phoneEnabled.isVisible).isTrue()
     assertThat(phoneEnabled.isEnabled).isTrue()
 
+    val devicePoseEnabled = updateAndGetActionPresentation(devicePoseActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(devicePoseEnabled.isVisible).isTrue()
+    assertThat(devicePoseEnabled.isEnabled).isTrue()
+
     val fingerprintEnabled = updateAndGetActionPresentation(fingerprintActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(fingerprintEnabled.isVisible).isTrue()
     assertThat(fingerprintEnabled.isEnabled).isTrue()
@@ -132,6 +141,21 @@ class EmulatorExtendedControlsActionGroupTest {
     val cameraAutomotive = updateAndGetActionPresentation(cameraActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(cameraAutomotive.isVisible).isFalse()
     assertThat(cameraAutomotive.isEnabled).isFalse()
+
+    val devicePoseAutomotive =
+      updateAndGetActionPresentation(devicePoseActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(devicePoseAutomotive.isVisible).isTrue()
+    assertThat(devicePoseAutomotive.isEnabled).isTrue()
+
+    val watchView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createWatchAvd(path) })
+    val devicePoseWatch = updateAndGetActionPresentation(devicePoseActionId, watchView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(devicePoseWatch.isVisible).isTrue()
+    assertThat(devicePoseWatch.isEnabled).isTrue()
+
+    val tvView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createTvAvd(path) })
+    val devicePoseTv = updateAndGetActionPresentation(devicePoseActionId, tvView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(devicePoseTv.isVisible).isFalse()
+    assertThat(devicePoseTv.isEnabled).isFalse()
 
     val api22View =
       emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createPhoneAvd(path, androidVersion = AndroidVersion(22, 0)) })
@@ -151,7 +175,7 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(6)
+    assertThat(children).hasLength(7)
     val displaysAction = children[0]
     assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
     assertThat(displaysAction.templatePresentation.icon).isEqualTo(StagingIcons.DISPLAYS)
@@ -172,7 +196,11 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(phoneAction.templatePresentation.text).isEqualTo("Phone")
     assertThat(phoneAction.templatePresentation.icon).isEqualTo(StagingIcons.PHONE)
 
-    val fingerprintAction = children[5]
+    val devicePoseAction = children[5]
+    assertThat(devicePoseAction.templatePresentation.text).isEqualTo("Device Pose")
+    assertThat(devicePoseAction.templatePresentation.icon).isEqualTo(StagingIcons.DEVICE_POSE)
+
+    val fingerprintAction = children[6]
     assertThat(fingerprintAction.templatePresentation.text).isEqualTo("Fingerprint")
     assertThat(fingerprintAction.templatePresentation.icon).isEqualTo(StagingIcons.FINGERPRINT)
 
@@ -210,8 +238,14 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(phoneDlg.title).isEqualTo("Phone ($avdName)")
     assertThat(modelessDialogs).containsExactly(phoneDlg)
 
-    executeAction(fingerprintAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    executeAction(devicePoseAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
     assertThat(phoneDlg.isShowing).isFalse()
+    val devicePoseDlg = findModelessDialog<DialogWrapper>()!!
+    assertThat(devicePoseDlg.title).isEqualTo("Device Pose ($avdName)")
+    assertThat(modelessDialogs).containsExactly(devicePoseDlg)
+
+    executeAction(fingerprintAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    assertThat(devicePoseDlg.isShowing).isFalse()
     val fingerprintDlg = findModelessDialog<DialogWrapper>()!!
     assertThat(fingerprintDlg.title).isEqualTo("Fingerprint ($avdName)")
     assertThat(modelessDialogs).containsExactly(fingerprintDlg)

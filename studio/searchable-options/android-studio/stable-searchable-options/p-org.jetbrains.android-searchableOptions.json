@@ -878,6 +878,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Device Pose",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Device UI Shortcuts",
       "path": "ActionManager"
     },
@@ -1307,6 +1311,10 @@
     },
     {
       "hit": "Open cellular settings",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open device pose controls",
       "path": "ActionManager"
     },
     {
