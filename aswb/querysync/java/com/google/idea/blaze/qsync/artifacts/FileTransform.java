@@ -39,19 +39,30 @@ public interface FileTransform {
       Enumeration<? extends ZipEntry> entries = zip.entries();
       while (entries.hasMoreElements()) {
         ZipEntry entry = entries.nextElement();
+        Path target = resolveEntry(destination, entry);
         if (entry.isDirectory()) {
-          Files.createDirectories(destination.resolve(entry.getName()));
+          Files.createDirectories(target);
         } else {
           // Srcjars do not contain separate directory entries
-          Files.createDirectories(destination.resolve(entry.getName()).getParent());
+          Files.createDirectories(target.getParent());
           try (InputStream in = zip.getInputStream(entry)) {
-            Files.copy(
-                in, destination.resolve(entry.getName()), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
           }
-          dests.add(destination.resolve(entry.getName()));
+          dests.add(target);
         }
       }
     }
     return dests.build();
+  }
+
+  /** Resolves {@code entry} against {@code destination}, rejecting names that would escape it. */
+  private static Path resolveEntry(Path destination, ZipEntry entry) throws IOException {
+    Path normalizedDestination = destination.normalize();
+    Path resolved = normalizedDestination.resolve(entry.getName()).normalize();
+    if (!resolved.startsWith(normalizedDestination)) {
+      throw new IOException(
+          String.format("Zip entry '%s' resolves outside of %s", entry.getName(), destination));
+    }
+    return resolved;
   }
 }

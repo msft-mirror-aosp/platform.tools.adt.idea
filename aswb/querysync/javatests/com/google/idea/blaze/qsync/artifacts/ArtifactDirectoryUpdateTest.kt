@@ -157,6 +157,45 @@ class ArtifactDirectoryUpdateTest {
 
   @Test
   @Throws(IOException::class)
+  fun unzip_entry_with_parent_traversal_not_extracted_outside_dir() {
+    assertUnzipEntryNotExtracted(entryName = "../../escaped.txt", outsidePath = tmpDir.root.toPath().resolve("escaped.txt"))
+  }
+
+  @Test
+  @Throws(IOException::class)
+  fun unzip_entry_with_absolute_path_not_extracted_outside_dir() {
+    val outsidePath = tmpDir.root.toPath().resolve("absolute.txt")
+    assertUnzipEntryNotExtracted(entryName = outsidePath.toString(), outsidePath = outsidePath)
+  }
+
+  private fun assertUnzipEntryNotExtracted(entryName: String, outsidePath: Path) {
+    writeZipFile(cacheDir!!.resolve("zipdigest"), mapOf(entryName to "outside contents"))
+    val update =
+      ArtifactDirectoryUpdate(
+        "name",
+        cache,
+        root,
+        ProjectProto.ArtifactDirectoryContents(
+          contents =
+            mapOf(
+              "unzipped" to
+                ProjectProto.ProjectArtifact(
+                  target = Label.of("//target"),
+                  buildArtifact = ProjectProto.BuildArtifact("zipdigest"),
+                  fromBuild = buildTimestamp,
+                  transform = ProjectProto.ProjectArtifact.ArtifactTransform.UNZIP,
+                )
+            )
+        ),
+      )
+    update.update(NoopContext())
+
+    Truth.assertThat(Files.exists(outsidePath)).isFalse()
+    Truth.assertThat(update.updatedPaths).isEmpty()
+  }
+
+  @Test
+  @Throws(IOException::class)
   fun empty_proto_existing_dir_contents_deleted() {
     createFiles("rootArtifact", "subdir/artifact")
     Files.createDirectory(root.resolve("emptyDir"))
