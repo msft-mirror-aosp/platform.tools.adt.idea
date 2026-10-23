@@ -94,7 +94,7 @@ internal class CameraDialog(emulator: EmulatorController) :
     )
 
   init {
-    coroutineScope.launch {
+    val initialStateJob = coroutineScope.launch {
       try {
         val posterList = emulator.listPosters()
         withContext(uiContext) {
@@ -105,6 +105,7 @@ internal class CameraDialog(emulator: EmulatorController) :
         // Error is already logged by EmulatorController.
       }
     }
+    onDispose { initialStateJob.cancel() }
   }
 
   /** Creates contents of the dialog. */

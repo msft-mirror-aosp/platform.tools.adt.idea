@@ -81,6 +81,9 @@ internal abstract class AbstractExtendedControlsDialog(
   var parent: Component? = null
     private set
 
+  protected open val dimensionServiceKey: String
+    get() = "#${this::class.qualifiedName}"
+
   /** Creates contents of the dialog. */
   protected abstract fun createPanel(): DialogPanel
 
@@ -113,8 +116,7 @@ internal abstract class AbstractExtendedControlsDialog(
     setState: suspend (EmulatorController, S) -> Unit,
   ): SendChannel<S> {
     val channel = Channel<S>(Channel.CONFLATED)
-    onDispose { channel.close() }
-    coroutineScope.launch {
+    val initialStateJob = coroutineScope.launch {
       try {
         val state = getState(emulator)
         withContext(uiContext) {
@@ -126,6 +128,13 @@ internal abstract class AbstractExtendedControlsDialog(
         t.throwIfCancellation()
         // Error is already logged by EmulatorController.
       }
+    }
+    onDispose {
+      initialStateJob.cancel()
+      channel.close()
+    }
+    coroutineScope.launch {
+      initialStateJob.join()
       for (state in channel) {
         try {
           setState(emulator, state)
@@ -212,7 +221,6 @@ internal abstract class AbstractExtendedControlsDialog(
     openDialogs[emulator]?.takeIf { it !== this }?.close()
     this.project = project
     this.parent = parent
-    val dimensionServiceKey = "#${this::class.qualifiedName}"
     uiUpdaters.clear()
     val dialogPanel = createPanel()
     return dialog(
