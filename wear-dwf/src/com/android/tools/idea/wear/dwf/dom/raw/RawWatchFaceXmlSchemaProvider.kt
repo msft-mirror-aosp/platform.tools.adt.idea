@@ -16,15 +16,8 @@
 package com.android.tools.idea.wear.dwf.dom.raw
 
 import com.android.SdkConstants.FN_ANDROID_MANIFEST_XML
-import com.android.SdkConstants.TAG_WATCH_FACE
-import com.android.ide.common.rendering.api.ResourceNamespace
-import com.android.resources.ResourceType
+import com.android.annotations.concurrency.GuardedBy
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.projectsystem.AndroidModuleSystem.Type
-import com.android.tools.idea.projectsystem.getAndroidFacets
-import com.android.tools.idea.projectsystem.getModuleSystem
-import com.android.tools.idea.res.StudioResourceRepositoryManager
-import com.android.tools.idea.res.getSourceAsVirtualFile
 import com.android.tools.idea.wear.dwf.analytics.DeclarativeWatchFaceUsageTracker
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
@@ -34,12 +27,10 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.runBlockingMaybeCancellable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.io.FileUtil
-import com.intellij.openapi.util.removeUserData
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
-import com.intellij.openapi.vfs.findPsiFile
 import com.intellij.openapi.vfs.newvfs.BulkFileListener
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent
 import com.intellij.psi.PsiFile
@@ -49,12 +40,6 @@ import com.intellij.xml.XmlSchemaProvider
 import com.intellij.xml.util.XmlUtil
 import org.jetbrains.android.dom.isDeclarativeWatchFaceFile
 import org.jetbrains.annotations.NonNls
-
-/**
- * Stores whether a Declarative Watch Face file has been opened. This is used to know which files need to be reparsed whenever a manifest
- * has been modified. This is needed to ensure we use the latest WFF version.
- */
-private val DWF_FILE_IN_USE = Key.create<Boolean>("dwf_file_in_use")
 
 /**
  * Provides XSD Schemas based on the current WFF version defined in the merged manifest.
@@ -72,9 +57,9 @@ class RawWatchfaceXmlSchemaProvider() : XmlSchemaProvider() {
 
   override fun getSchema(url: @NonNls String, module: Module?, baseFile: PsiFile): XmlFile? {
     if (module == null) return null
-    // We only want to initialize the service on demand when a declarative watch face file is opened
-    RawWatchFaceXmlSchemaUpdater.initializeService(module.project)
-    baseFile.putUserData(DWF_FILE_IN_USE, true)
+    (baseFile.virtualFile ?: baseFile.originalFile.virtualFile)?.let {
+      RawWatchFaceXmlSchemaUpdater.getInstance(module.project).registerFileInUse(it)
+    }
     val (schemaVersion, isFallback) =
       runBlockingMaybeCancellable { CurrentWFFVersionService.getInstance().getCurrentWFFVersion(module) } ?: return null
 
@@ -103,10 +88,27 @@ class RawWatchfaceXmlSchemaProvider() : XmlSchemaProvider() {
 @Service(Service.Level.PROJECT)
 private class RawWatchFaceXmlSchemaUpdater private constructor(val project: Project) : BulkFileListener, Disposable {
 
+  /** Guards [filesInUse]. */
+  private val lock = Any()
+
+  @GuardedBy("lock") private val filesInUse = mutableSetOf<VirtualFile>()
+
   init {
     val connection = ApplicationManager.getApplication().messageBus.connect()
     Disposer.register(this, connection)
     connection.subscribe(VirtualFileManager.VFS_CHANGES, this)
+  }
+
+  /**
+   * Registers a Declarative Watch Face file as in use (i.e. opened and has had a schema loaded).
+   *
+   * Only registered files will be reparsed when changes to [FN_ANDROID_MANIFEST_XML] are detected, ensuring that their cached schemas are
+   * updated with the latest WFF version without reparsing unopened watch face files.
+   */
+  fun registerFileInUse(file: VirtualFile) {
+    synchronized(lock) {
+      filesInUse.add(file)
+    }
   }
 
   override fun after(events: List<VFileEvent>) {
@@ -114,36 +116,27 @@ private class RawWatchFaceXmlSchemaUpdater private constructor(val project: Proj
     if (!isManifestChange) return
 
     ApplicationManager.getApplication().invokeLater {
-      val declarativeWatchFaceFiles = project.getDeclarativeWatchFaceFilesToReparse()
-      if (declarativeWatchFaceFiles.isEmpty()) return@invokeLater
+      if (project.isDisposed) return@invokeLater
+      val filesToReparse =
+        synchronized(lock) {
+          val files = filesInUse.filter { it.isValid }
+          filesInUse.clear()
+          files
+        }
+      if (filesToReparse.isEmpty()) return@invokeLater
       // reparse the files for the caches to be dropped and the schemas recomputed with
       // the latest merged manifest
-      FileContentUtilCore.reparseFiles(declarativeWatchFaceFiles)
+      FileContentUtilCore.reparseFiles(filesToReparse)
     }
   }
 
-  override fun dispose() {}
-
-  /**
-   * Retrieves the list of DWFs that need to be reparsed. A DWF needs to be reparsed if it has been opened by a user and has had a schema
-   * loaded for it.
-   *
-   * The [DWF_FILE_IN_USE] key is used to determine if a file is in use.
-   */
-  private fun Project.getDeclarativeWatchFaceFilesToReparse() =
-    getAndroidFacets()
-      .filter { it.getModuleSystem().type == Type.TYPE_APP }
-      .flatMap { facet ->
-        StudioResourceRepositoryManager.getModuleResources(facet).getResources(ResourceNamespace.RES_AUTO, ResourceType.RAW) {
-          val xmlFile = it.getSourceAsVirtualFile()?.findPsiFile(project) as? XmlFile
-          if (xmlFile?.rootTag?.name != TAG_WATCH_FACE) return@getResources false
-          // This will be repopulated if the file is in use
-          xmlFile.removeUserData(DWF_FILE_IN_USE) ?: return@getResources false
-        }
-      }
-      .mapNotNull { it.getSourceAsVirtualFile() }
+  override fun dispose() {
+    synchronized(lock) {
+      filesInUse.clear()
+    }
+  }
 
   companion object {
-    fun initializeService(project: Project) = project.service<RawWatchFaceXmlSchemaUpdater>()
+    fun getInstance(project: Project) = project.service<RawWatchFaceXmlSchemaUpdater>()
   }
 }
