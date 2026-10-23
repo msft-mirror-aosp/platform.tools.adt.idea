@@ -155,6 +155,12 @@ class Device3DWidgetTest {
     val innerCenterRgbWhenOpen = activeInnerTexture.getRGB(activeInnerTexture.width / 2, activeInnerTexture.height / 2) and 0xFFFFFF
     val outerCenterRgbWhenOpen = inactiveOuterTexture.getRGB(inactiveOuterTexture.width / 2, inactiveOuterTexture.height / 2) and 0xFFFFFF
 
+    // Dragging right in Fold mode moves the left leaf right (folds the device, decreasing foldValue).
+    val ui = FakeUi(widget)
+    widget.operationMode = OperationMode.FOLD
+    ui.mouse.drag(widget.width / 2, widget.height / 2, 50, 0)
+    assertThat(widget.foldValue).isLessThan(180f)
+
     // Half-open posture (90 degrees): the left leaf (with the outer display) rotates by 90 degrees
     // while the right leaf remains stationary.
     widget.foldValue = 90f

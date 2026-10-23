@@ -60,7 +60,7 @@ import kotlin.math.tan
  */
 @Suppress("UseJBColor", "UndesirableClassUsage")
 internal class Device3DWidget(
-  private val emulator: EmulatorController,
+  emulator: EmulatorController,
   private val onRotationChanged: (Vec3) -> Unit = {},
   private val onPositionChanged: (Vec3) -> Unit = {},
   private val onFoldValueChanged: (Float) -> Unit = {},
@@ -280,7 +280,8 @@ internal class Device3DWidget(
                 prevMouseX = e.x
                 prevMouseY = e.y
                 val range = (maxFoldValue - minFoldValue).coerceAtLeast(1f)
-                val deltaFold = deltaX.toFloat() * range / width.coerceAtLeast(100)
+                val sign = if (isRollable) 1f else -1f
+                val deltaFold = sign * deltaX.toFloat() * range / width.coerceAtLeast(100)
                 onFoldValueChanged(foldValue + deltaFold)
               }
             }
