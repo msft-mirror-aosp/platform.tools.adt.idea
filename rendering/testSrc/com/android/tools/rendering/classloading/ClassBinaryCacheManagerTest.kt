@@ -17,6 +17,8 @@ package com.android.tools.rendering.classloading
 
 import com.android.tools.rendering.classloading.codeexecution.A
 import com.google.common.base.Ticker
+import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.util.LowMemoryWatcher
 import java.io.IOException
 import kotlin.random.Random
 import kotlin.test.assertEquals
@@ -283,5 +285,90 @@ class ClassBinaryCacheManagerTest {
     // Truncate compressed array so it cannot finish deflating all 100 bytes
     val truncated = compressed.copyOf(compressed.size / 2)
     assertFailsWith<IOException> { decompress(truncated) }
+  }
+
+  @Test
+  fun testTwoTierCacheExclusiveResidencyAndDemotionOnOverflow() {
+    // L1 capacity = 100 bytes uncompressed, L2 capacity = 1,000 bytes compressed
+    val manager = ClassBinaryCacheManager.getTestInstance(ManualTicker(), 1_000, 1, maxUncompressedWeight = 100)
+    val moduleCache = manager.getCache(Any())
+    moduleCache.setDependencies(listOf("libA"))
+
+    val bytes1 = ByteArray(60) { 0x11 }
+    val bytes2 = ByteArray(60) { 0x22 }
+
+    // First entry (60 bytes <= 100) resides exclusively in L1 (uncompressed)
+    moduleCache.put("com.example.Class1", "trans1", "libA", bytes1)
+    assertThat(manager.isInUncompressedCacheForTest("com.example.Class1", "trans1")).isTrue()
+    assertThat(manager.isInCompressedCacheForTest("com.example.Class1", "trans1")).isFalse()
+    assertThat(manager.getUncompressedWeightForTest()).isEqualTo(60L)
+    assertThat(moduleCache.get("com.example.Class1", "trans1")).isSameAs(bytes1)
+
+    // Inserting second entry (60 bytes) exceeds L1 capacity (120 > 100), evicting Class1 from L1
+    // and compressing/demoting it into L2 while Class2 remains in L1
+    moduleCache.put("com.example.Class2", "trans1", "libA", bytes2)
+    assertThat(manager.isInUncompressedCacheForTest("com.example.Class1", "trans1")).isFalse()
+    assertThat(manager.isInCompressedCacheForTest("com.example.Class1", "trans1")).isTrue()
+    assertThat(manager.isInUncompressedCacheForTest("com.example.Class2", "trans1")).isTrue()
+    assertThat(manager.isInCompressedCacheForTest("com.example.Class2", "trans1")).isFalse()
+    assertThat(manager.getUncompressedWeightForTest()).isEqualTo(60L)
+    assertThat(manager.getCachedKeysForLibrary("libA")).containsExactly("trans1:com.example.Class1", "trans1:com.example.Class2")
+
+    // Reading Class1 from L2 while L1 does not have spare capacity (60 + 60 > 100) decompresses
+    // Class1 without evicting Class2 from L1 (preventing sequential-scan LRU thrashing)
+    val retrieved1 = moduleCache.get("com.example.Class1", "trans1")
+    assertThat(retrieved1).isEqualTo(bytes1)
+    assertThat(manager.isInUncompressedCacheForTest("com.example.Class2", "trans1")).isTrue()
+    assertThat(manager.isInCompressedCacheForTest("com.example.Class1", "trans1")).isTrue()
+  }
+
+  @Test
+  fun testLowMemoryDemotesL1ToL2AndSubsequentGetPromotesWhenCapacityAvailable() {
+    val manager = ClassBinaryCacheManager.getTestInstance(ManualTicker(), 1_000, 1, maxUncompressedWeight = 100)
+    val moduleCache = manager.getCache(Any())
+    moduleCache.setDependencies(listOf("libA"))
+
+    val bytes1 = ByteArray(40) { 0x33 }
+    val bytes2 = ByteArray(40) { 0x44 }
+    moduleCache.put("com.example.Class1", "trans1", "libA", bytes1)
+    moduleCache.put("com.example.Class2", "trans1", "libA", bytes2)
+    assertThat(manager.getUncompressedWeightForTest()).isEqualTo(80L)
+
+    // Triggering low-memory signal demotes all L1 entries into L2 (compressed)
+    LowMemoryWatcher.onLowMemorySignalReceived(true)
+    assertThat(manager.getUncompressedWeightForTest()).isEqualTo(0L)
+    assertThat(manager.isInUncompressedCacheForTest("com.example.Class1", "trans1")).isFalse()
+    assertThat(manager.isInCompressedCacheForTest("com.example.Class1", "trans1")).isTrue()
+    assertThat(manager.isInUncompressedCacheForTest("com.example.Class2", "trans1")).isFalse()
+    assertThat(manager.isInCompressedCacheForTest("com.example.Class2", "trans1")).isTrue()
+    assertThat(manager.getCachedKeysForLibrary("libA")).containsExactly("trans1:com.example.Class1", "trans1:com.example.Class2")
+
+    // Because L1 now has spare capacity (0 + 40 <= 100), reading Class1 promotes it back to L1
+    // and removes it from L2 so it is never stored in both simultaneously
+    assertThat(moduleCache.get("com.example.Class1", "trans1")).isEqualTo(bytes1)
+    assertThat(manager.isInUncompressedCacheForTest("com.example.Class1", "trans1")).isTrue()
+    assertThat(manager.isInCompressedCacheForTest("com.example.Class1", "trans1")).isFalse()
+    assertThat(manager.getUncompressedWeightForTest()).isEqualTo(40L)
+  }
+
+  @Test
+  fun testInvalidateStaleLibraryPurgesBothL1AndL2() {
+    val manager = ClassBinaryCacheManager.getTestInstance(ManualTicker(), 1_000, 1, maxUncompressedWeight = 100)
+    val moduleCache = manager.getCache(Any())
+    moduleCache.setDependencies(listOf("libA"))
+
+    // Class1 gets demoted to L2, Class2 stays in L1
+    moduleCache.put("com.example.Class1", "trans1", "libA", ByteArray(60) { 0x01 })
+    moduleCache.put("com.example.Class2", "trans1", "libA", ByteArray(60) { 0x02 })
+    assertThat(manager.isInCompressedCacheForTest("com.example.Class1", "trans1")).isTrue()
+    assertThat(manager.isInUncompressedCacheForTest("com.example.Class2", "trans1")).isTrue()
+
+    // Removing libA from dependencies and probing Class2 invalidates both L1 and L2 entries
+    moduleCache.setDependencies(listOf("libB"))
+    assertThat(moduleCache.get("com.example.Class2", "trans1")).isNull()
+    assertThat(manager.isInUncompressedCacheForTest("com.example.Class2", "trans1")).isFalse()
+    assertThat(manager.isInCompressedCacheForTest("com.example.Class1", "trans1")).isFalse()
+    assertThat(manager.getUncompressedWeightForTest()).isEqualTo(0L)
+    assertThat(manager.getCachedKeysForLibrary("libA")).isEmpty()
   }
 }
