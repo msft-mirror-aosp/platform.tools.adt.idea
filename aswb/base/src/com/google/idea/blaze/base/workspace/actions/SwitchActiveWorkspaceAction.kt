@@ -28,14 +28,19 @@ import com.google.idea.blaze.base.workspace.WorkspaceSwitchManager
 import com.google.idea.blaze.base.workspace.WorkspaceSwitchManager.getWorkspaceTarget
 import com.google.idea.blaze.base.workspace.WorkspaceSwitchManager.setWorkspaceTarget
 import com.google.idea.blaze.base.workspace.WorkspaceSwitcherStateService
+import com.intellij.icons.AllIcons
 import com.intellij.ide.DataManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CustomShortcutSet
 import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.fileChooser.FileChooser
+import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
@@ -45,11 +50,17 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.newvfs.NewVirtualFile
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.ui.awt.RelativePoint
+import com.intellij.ui.popup.WizardPopup
+import java.awt.event.ActionEvent
+import java.awt.event.KeyEvent
 import java.nio.file.Path
+import javax.swing.AbstractAction
+import javax.swing.KeyStroke
 import kotlin.jvm.optionals.getOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.VisibleForTesting
 
 /** Presentation wrapper class representing a physical workspace candidate in chooser menus. */
 data class WorkspaceCandidate(val descriptor: WorkspaceDescriptor) : Comparable<WorkspaceCandidate> {
@@ -64,16 +75,28 @@ data class WorkspaceCandidate(val descriptor: WorkspaceDescriptor) : Comparable<
   override fun compareTo(other: WorkspaceCandidate): Int = this.name.compareTo(other.name, ignoreCase = true)
 }
 
+/**
+ * Resolved options to present in the workspace switcher popup.
+ *
+ * @property candidates Sorted physical workspace candidates (including the active target if mapped).
+ * @property canBrowseDirectories Whether to append an action for choosing an arbitrary workspace directory on disk.
+ */
+data class WorkspacePopupOptions(
+  val candidates: List<WorkspaceCandidate>,
+  val canBrowseDirectories: Boolean,
+)
+
 /** Action group and popup trigger allowing developers to switch their project workspace location dynamically. */
 class SwitchActiveWorkspaceAction : BlazeProjectAction(), DumbAware {
 
   companion object {
     private val LOG = logger<SwitchActiveWorkspaceAction>()
 
-    /** Discovers and returns all alternative physical workspace candidates for the project. */
-    fun discoverCandidates(project: Project): List<WorkspaceCandidate> {
+    /** Discovers and resolves the workspace candidates and browsing options for the project. */
+    fun discoverPopupOptions(project: Project): WorkspacePopupOptions {
       val discoverer = WorkspaceDiscoverer.getWorkspaceDiscoverer(project)
-      val discovered = discoverer.discoverWorkspaces(project).toMutableList()
+      val discoveryResult = discoverer.discoverWorkspaces(project)
+      val discovered = discoveryResult.workspaces.toMutableList()
 
       val activeTarget = project.getWorkspaceTarget()
       if (activeTarget != null && discovered.none { it.path == activeTarget }) {
@@ -82,7 +105,103 @@ class SwitchActiveWorkspaceAction : BlazeProjectAction(), DumbAware {
         discovered.add(activeDescriptor)
       }
 
-      return discovered.distinct().map { WorkspaceCandidate(it) }.sorted()
+      val candidates = discovered.distinct().map { WorkspaceCandidate(it) }.sorted()
+      return WorkspacePopupOptions(
+        candidates = candidates,
+        canBrowseDirectories = discoveryResult.canBrowseDirectories,
+      )
+    }
+
+    /** Builds the popup action group from the resolved popup options and active target. */
+    @VisibleForTesting
+    fun buildPopupActionGroup(
+      project: Project,
+      popupOptions: WorkspacePopupOptions,
+      activeTarget: Path?,
+      onBrowseSelected: () -> Unit,
+    ): DefaultActionGroup {
+      val actions = buildList {
+        if (popupOptions.candidates.isEmpty()) {
+          add(
+            object : AnAction("No workspaces found") {
+              override fun actionPerformed(e: AnActionEvent) {}
+
+              override fun update(e: AnActionEvent) {
+                e.presentation.isEnabled = false
+              }
+            }
+          )
+        } else {
+          popupOptions.candidates.forEach { candidate ->
+            add(
+              object : AnAction(candidate.name), DumbAware {
+                override fun actionPerformed(e: AnActionEvent) {
+                  if (candidate.absolutePath != activeTarget) {
+                    performSwitch(project, candidate.absolutePath)
+                  }
+                }
+
+                override fun update(e: AnActionEvent) {
+                  if (candidate.absolutePath == activeTarget) {
+                    e.presentation.text = candidate.name + " (current)"
+                  } else {
+                    e.presentation.text = candidate.name
+                  }
+                }
+              }
+            )
+          }
+        }
+
+        if (popupOptions.canBrowseDirectories) {
+          add(Separator.create())
+          add(
+            object : AnAction("Browse...", "Select a target workspace directory on disk", AllIcons.Nodes.Folder), DumbAware {
+              init {
+                shortcutSet = CustomShortcutSet(KeyEvent.VK_SLASH, KeyEvent.VK_DIVIDE)
+              }
+
+              override fun actionPerformed(e: AnActionEvent) {
+                onBrowseSelected()
+              }
+            }
+          )
+        }
+      }
+      return DefaultActionGroup(actions)
+    }
+
+    /** Opens a single-folder chooser dialog and switches to the chosen directory if it differs from the active target. */
+    fun browseWorkspaceDirectory(project: Project) {
+      val activeTarget = project.getWorkspaceTarget()
+      val localFileSystem = LocalFileSystem.getInstance()
+      val initialFile = activeTarget?.let { target ->
+        localFileSystem.findFileByNioFile(target) ?: target.parent?.let { localFileSystem.findFileByNioFile(it) }
+      }
+      val descriptor =
+        FileChooserDescriptorFactory.createSingleFolderDescriptor()
+          .withTitle("Select Active Workspace")
+          .withDescription("Select the target workspace directory.")
+      FileChooser.chooseFile(descriptor, project, initialFile) { selectedFile ->
+        val selectedPath = selectedFile.toNioPath()
+        if (selectedPath != project.getWorkspaceTarget()) {
+          performSwitch(project, selectedPath)
+        }
+      }
+    }
+
+    /** Registers the `/` keyboard shortcut on the popup to close it and invoke [onBrowseSelected] before SpeedSearch. */
+    private fun registerBrowseShortcut(popup: ListPopup, onBrowseSelected: () -> Unit) {
+      val wizardPopup = popup as? WizardPopup ?: return
+      val browseAction =
+        object : AbstractAction() {
+          override fun actionPerformed(e: ActionEvent?) {
+            popup.closeOk(null)
+            onBrowseSelected()
+          }
+        }
+      wizardPopup.registerAction("browseWorkspaceDirectorySlash", KeyStroke.getKeyStroke(KeyEvent.VK_SLASH, 0), browseAction)
+      wizardPopup.registerAction("browseWorkspaceDirectoryDivide", KeyStroke.getKeyStroke(KeyEvent.VK_DIVIDE, 0), browseAction)
     }
 
     /**
@@ -142,7 +261,7 @@ class SwitchActiveWorkspaceAction : BlazeProjectAction(), DumbAware {
 
       val loadingGroup =
         DefaultActionGroup(
-          object : AnAction("Searching for workspaces...", null, com.intellij.icons.AllIcons.Process.Step_2) {
+          object : AnAction("Searching for workspaces...", null, AllIcons.Process.Step_2) {
             override fun actionPerformed(e: AnActionEvent) {}
 
             override fun update(e: AnActionEvent) {
@@ -162,7 +281,7 @@ class SwitchActiveWorkspaceAction : BlazeProjectAction(), DumbAware {
 
       val coroutineScope = project.service<WorkspaceSwitcherStateService>().coroutineScope
       coroutineScope.launch {
-        val candidates = withContext(Dispatchers.Default) { discoverCandidates(project) }
+        val popupOptions = withContext(Dispatchers.Default) { discoverPopupOptions(project) }
         val activeTarget = project.getWorkspaceTarget()
 
         withContext(Dispatchers.EDT) {
@@ -170,38 +289,8 @@ class SwitchActiveWorkspaceAction : BlazeProjectAction(), DumbAware {
           loadingPopup.cancel()
 
           val realGroup =
-            DefaultActionGroup().apply {
-              if (candidates.isEmpty()) {
-                add(
-                  object : AnAction("No workspaces found") {
-                    override fun actionPerformed(e: AnActionEvent) {}
-
-                    override fun update(e: AnActionEvent) {
-                      e.presentation.isEnabled = false
-                    }
-                  }
-                )
-              } else {
-                candidates.forEach { candidate ->
-                  add(
-                    object : AnAction(candidate.name), DumbAware {
-                      override fun actionPerformed(e: AnActionEvent) {
-                        if (candidate.absolutePath != activeTarget) {
-                          performSwitch(project, candidate.absolutePath)
-                        }
-                      }
-
-                      override fun update(e: AnActionEvent) {
-                        if (candidate.absolutePath == activeTarget) {
-                          e.presentation.text = candidate.name + " (current)"
-                        } else {
-                          e.presentation.text = candidate.name
-                        }
-                      }
-                    }
-                  )
-                }
-              }
+            buildPopupActionGroup(project, popupOptions, activeTarget) {
+              browseWorkspaceDirectory(project)
             }
 
           val finalPopup =
@@ -212,6 +301,9 @@ class SwitchActiveWorkspaceAction : BlazeProjectAction(), DumbAware {
               JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
               true,
             )
+          if (popupOptions.canBrowseDirectories) {
+            registerBrowseShortcut(finalPopup) { browseWorkspaceDirectory(project) }
+          }
           finalPopup.show(relativePoint)
         }
       }

@@ -28,6 +28,17 @@ import java.nio.file.Path
  */
 data class WorkspaceDescriptor(val path: Path, val name: String)
 
+/**
+ * Result of scanning for physical workspaces available to switch to.
+ *
+ * @property workspaces Discovered physical workspace descriptors.
+ * @property canBrowseDirectories Whether arbitrary target directories on disk can be selected via a directory chooser.
+ */
+data class WorkspaceDiscoveryResult(
+  val workspaces: List<WorkspaceDescriptor>,
+  val canBrowseDirectories: Boolean,
+)
+
 /** Extension point interface for discovering alternative/sibling physical workspaces. */
 interface WorkspaceDiscoverer {
   companion object {
@@ -44,8 +55,8 @@ interface WorkspaceDiscoverer {
   /** Returns whether this discoverer is applicable to the given project. */
   fun isApplicable(project: Project): Boolean
 
-  /** Discovers and returns alternative physical workspace descriptors for the project. */
-  fun discoverWorkspaces(project: Project): List<WorkspaceDescriptor>
+  /** Discovers alternative physical workspaces and browsing capabilities for the project. */
+  fun discoverWorkspaces(project: Project): WorkspaceDiscoveryResult
 
   /**
    * Generates a WorkspaceDescriptor metadata record for the given physical workspace path.
@@ -62,17 +73,21 @@ interface WorkspaceDiscoverer {
 class DefaultWorkspaceDiscoverer : WorkspaceDiscoverer {
   override fun isApplicable(project: Project): Boolean = true
 
-  override fun discoverWorkspaces(project: Project): List<WorkspaceDescriptor> {
-    val physicalWorkspaceRoot = project.getWorkspaceTarget() ?: return emptyList()
+  override fun discoverWorkspaces(project: Project): WorkspaceDiscoveryResult {
+    val physicalWorkspaceRoot =
+      project.getWorkspaceTarget() ?: return WorkspaceDiscoveryResult(workspaces = emptyList(), canBrowseDirectories = true)
 
     // Discover the shared repository folder housing the physical workspaces (e.g. /src/)
-    val parentWorkspaceDir = physicalWorkspaceRoot.parent?.toFile() ?: return emptyList()
+    val parentWorkspaceDir =
+      physicalWorkspaceRoot.parent?.toFile() ?: return WorkspaceDiscoveryResult(workspaces = emptyList(), canBrowseDirectories = true)
     val activeRootStr = physicalWorkspaceRoot.toString()
 
     // Returns all alternative physical candidate workspace siblings statelessly
-    return parentWorkspaceDir
-      .listFiles()
-      ?.filter { it.isDirectory && it.absolutePath != activeRootStr }
-      ?.map { WorkspaceDescriptor(it.toPath(), it.name) } ?: emptyList()
+    val siblings =
+      parentWorkspaceDir
+        .listFiles()
+        ?.filter { it.isDirectory && it.absolutePath != activeRootStr }
+        ?.map { WorkspaceDescriptor(it.toPath(), it.name) } ?: emptyList()
+    return WorkspaceDiscoveryResult(workspaces = siblings, canBrowseDirectories = true)
   }
 }
