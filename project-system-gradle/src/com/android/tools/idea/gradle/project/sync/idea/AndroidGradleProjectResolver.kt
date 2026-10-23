@@ -398,7 +398,7 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
       }
 
       if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
-        variant.testSuiteArtifacts.forEach { testSuite ->
+        variant.testSuiteComponents.forEach { testSuite ->
           createAndSetupGradleSourceSetDataNode(moduleNode, gradleModule, testSuite.suiteName, prodModule, isTestSuite = true)
         }
       }

@@ -21,6 +21,10 @@ import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
 import com.android.tools.idea.gradle.model.IdeJavaArtifact
 import com.android.tools.idea.gradle.model.IdeJavaArtifactCore
+import com.android.tools.idea.gradle.model.IdeTestSuiteDeviceArtifact
+import com.android.tools.idea.gradle.model.IdeTestSuiteDeviceArtifactCore
+import com.android.tools.idea.gradle.model.IdeTestSuiteHostArtifact
+import com.android.tools.idea.gradle.model.IdeTestSuiteHostArtifactCore
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.io.FilePaths
 import com.android.tools.idea.projectsystem.gradle.isAndroidTestModule
@@ -109,6 +113,12 @@ class AndroidGradleOrderEnumeratorHandlerFactory : GradleOrderEnumeratorHandler.
           is IdeJavaArtifactCore -> addFoldersFromJavaArtifact(it as IdeJavaArtifactCore)
           is IdeAndroidArtifact,
           is IdeAndroidArtifactCore -> addFoldersFromAndroidArtifact(it as IdeAndroidArtifactCore)
+          is IdeTestSuiteHostArtifact,
+          is IdeTestSuiteHostArtifactCore -> foldersFromBaseArtifact(it)
+          // Unlike IdeAndroidArtifactCore, AGP's TestSuiteSourceSet.TestApk only supports manifest, Java/Kotlin, and Java resources
+          // (no Android res or assets), so TestSuiteDeviceArtifact has no generatedResourceFolders or generatedAssetFolders.
+          is IdeTestSuiteDeviceArtifact,
+          is IdeTestSuiteDeviceArtifactCore -> foldersFromBaseArtifact(it)
         }
       }
     }

@@ -20,9 +20,9 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeTestSuite
 import com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl
 import com.android.tools.idea.testartifacts.testsuite.TestSuiteTestUtils.createAssetsTestSuiteSource
 import com.android.tools.idea.testing.AndroidModuleModelBuilder
 import com.android.tools.idea.testing.AndroidProjectBuilder
@@ -73,11 +73,10 @@ class TestSuiteRunConfigurationProducerTest {
                   )
                 )
               },
-              testSuiteArtifactsStub = {
+              testSuiteComponentsStub = {
                 listOf(
-                  IdeTestSuiteVariantTargetImpl(
+                  IdeTestSuiteComponentCoreImpl(
                     suiteName = "myTestSuite",
-                    targetedVariantName = "debug",
                     targets =
                       listOf(
                         IdeTestSuiteTargetImpl(

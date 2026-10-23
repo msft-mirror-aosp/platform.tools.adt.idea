@@ -84,8 +84,8 @@ object TestSuiteUtils {
    * TODO(b/447100167): Add support for running targets configured with GMD devices
    */
   fun getTestSuiteTargets(selectedVariant: IdeVariantCore, testSuiteName: String): List<TestSuiteTarget> {
-    val testSuiteVariantTarget = selectedVariant.testSuiteArtifacts.find { it.suiteName == testSuiteName } ?: return emptyList()
-    return testSuiteVariantTarget.targets.filter { it.targetedDevices.isEmpty() }.map { TestSuiteTarget(it.targetName, it.testTaskName) }
+    val testSuiteComponent = selectedVariant.testSuiteComponents.find { it.suiteName == testSuiteName } ?: return emptyList()
+    return testSuiteComponent.targets.filter { it.targetedDevices.isEmpty() }.map { TestSuiteTarget(it.targetName, it.testTaskName) }
   }
 
   private fun isFileInTestSuite(file: File, testSuite: IdeTestSuite): Boolean {
@@ -194,10 +194,10 @@ object TestSuiteUtils {
    */
   private fun getTestSuiteNameWithTestTaskName(variants: List<IdeVariantCore>, testTaskName: String): String? {
     for (variant in variants) {
-      for (testSuiteArtifact in variant.testSuiteArtifacts) {
-        for (target in testSuiteArtifact.targets) {
+      for (testSuiteComponent in variant.testSuiteComponents) {
+        for (target in testSuiteComponent.targets) {
           if (target.testTaskName == testTaskName) {
-            return testSuiteArtifact.suiteName
+            return testSuiteComponent.suiteName
           }
         }
       }

@@ -32,7 +32,7 @@ import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
 import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTable
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
@@ -277,7 +277,7 @@ private fun SyncContributorAndroidProjectDependenciesContext.populateDependencie
       ideVariant.hostTestArtifacts.map { it.asTestDependency() } +
       if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
         // TODO(445381129): Pass the dependencies through once they have been added to the test suite artifact
-        ideVariant.testSuiteArtifacts.map { it.asEmptyTestDependency() }
+        ideVariant.testSuiteComponents.map { it.asEmptyTestDependency() }
       } else {
         emptyList()
       }
@@ -355,5 +355,5 @@ private fun IdeAndroidArtifactCore.asTestDependency() = Triple(name.toSourceSet(
 
 private fun IdeJavaArtifactCore.asTestDependency() = Triple(name.toSourceSet().sourceSetName, compileClasspathCore, DependencyScope.TEST)
 
-private fun IdeTestSuiteVariantTargetImpl.asEmptyTestDependency() =
+private fun IdeTestSuiteComponentCoreImpl.asEmptyTestDependency() =
   Triple(suiteName, IdeDependenciesCoreDirect(emptyList()), DependencyScope.TEST)

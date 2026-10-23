@@ -228,7 +228,7 @@ private fun IdeVariantCoreImpl.artifact(artifact: IdeModuleWellKnownSourceSet): 
  * - this resolver only handles the legacy `kotlin("multiplatform")` + `com.android.application`/`com.android.library` (`androidTarget()`)
  *   setup, which only maps Android compilations to the well-known source sets (see `findFor`), and
  * - test suites are not part of `hostTestArtifacts`/`deviceTestArtifacts`. Those lists are built with `convertArtifactName`, which only
- *   returns well-known names. Test suites are kept in [IdeVariantCoreImpl.testSuiteArtifacts], which [patchFromMppModel] copies over
+ *   returns well-known names. Test suites are kept in [IdeVariantCoreImpl.testSuiteComponents], which [patchFromMppModel] copies over
  *   unchanged.
  *
  * So the cast is always expected to succeed. A test suite name here would mean a bug, so this fails instead of silently skipping it.

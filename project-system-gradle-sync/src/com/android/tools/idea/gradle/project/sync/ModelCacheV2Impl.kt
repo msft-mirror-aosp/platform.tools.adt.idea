@@ -115,10 +115,10 @@ import com.android.tools.idea.gradle.model.impl.IdeSigningConfigImpl
 import com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestedTargetVariantImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedDependencyImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantBuildInformationImpl
@@ -1237,12 +1237,11 @@ fun modelCacheV2Impl(
     }
   }
 
-  fun testSuiteArtifactsFrom(basicVariant: BasicVariant): Collection<IdeTestSuiteVariantTargetImpl> {
+  fun testSuiteComponentsFrom(basicVariant: BasicVariant): List<IdeTestSuiteComponentCoreImpl> {
     return if (modelVersions[ModelFeature.HAS_TEST_SUITES]) {
       basicVariant.testSuiteVariantTargets.values.map { variantTarget ->
-        IdeTestSuiteVariantTargetImpl(
+        IdeTestSuiteComponentCoreImpl(
           suiteName = variantTarget.testSuiteName,
-          targetedVariantName = basicVariant.name,
           targets =
             variantTarget.targets.map { target ->
               IdeTestSuiteTargetImpl(target.name, target.testTaskName, target.targetedDevices.toList())
@@ -1346,7 +1345,7 @@ fun modelCacheV2Impl(
           legacyAndroidGradlePluginProperties,
           assetContext,
         ),
-      testSuiteArtifacts = testSuiteArtifactsFrom(basicVariant).toList(),
+      testSuiteComponents = testSuiteComponentsFrom(basicVariant),
       testFixturesArtifact =
         variant.testFixturesArtifact?.let { it: AndroidArtifact ->
           androidArtifactFrom(

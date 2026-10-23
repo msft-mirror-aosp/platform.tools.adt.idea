@@ -20,9 +20,9 @@ import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeTestSuiteSource
 import com.android.tools.idea.gradle.model.impl.IdeCustomSourceDirectoryImpl
 import com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.sync.TEST_SUITE_ASSETS_CUSTOM_SOURCE_DIRECTORY
 import com.android.tools.idea.testartifacts.testsuite.TestSuiteTestUtils.createAssetsTestSuiteSource
@@ -94,13 +94,12 @@ class TestSuiteUtilsTest {
                   ),
                 )
               },
-              testSuiteArtifactsStub = { variant ->
+              testSuiteComponentsStub = { variant ->
                 when (variant) {
                   "debug" ->
                     listOf(
-                      IdeTestSuiteVariantTargetImpl(
+                      IdeTestSuiteComponentCoreImpl(
                         suiteName = "myTestSuite",
-                        targetedVariantName = "debug",
                         targets =
                           listOf(
                             IdeTestSuiteTargetImpl(
@@ -110,14 +109,12 @@ class TestSuiteUtilsTest {
                             )
                           ),
                       ),
-                      IdeTestSuiteVariantTargetImpl(
+                      IdeTestSuiteComponentCoreImpl(
                         suiteName = "myTestSuiteWithoutTargets",
-                        targetedVariantName = "debug",
                         targets = emptyList(),
                       ),
-                      IdeTestSuiteVariantTargetImpl(
+                      IdeTestSuiteComponentCoreImpl(
                         suiteName = "myTestSuiteWithMultipleTargets",
-                        targetedVariantName = "debug",
                         targets =
                           listOf(
                             IdeTestSuiteTargetImpl(
@@ -141,9 +138,8 @@ class TestSuiteUtilsTest {
 
                   "release" ->
                     listOf(
-                      IdeTestSuiteVariantTargetImpl(
+                      IdeTestSuiteComponentCoreImpl(
                         suiteName = "myTestSuiteWithNonTargetedVariant",
-                        targetedVariantName = "release",
                         targets =
                           listOf(
                             IdeTestSuiteTargetImpl(

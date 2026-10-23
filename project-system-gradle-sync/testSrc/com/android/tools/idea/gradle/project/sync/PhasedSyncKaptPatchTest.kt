@@ -294,7 +294,7 @@ class PhasedSyncKaptPatchTest {
       name = variantName,
       displayName = variantName,
       mainArtifact = mainArtifact,
-      testSuiteArtifacts = emptyList(),
+      testSuiteComponents = emptyList(),
       hostTestArtifacts = listOf(unitTestArtifact),
       deviceTestArtifacts = emptyList(),
       testFixturesArtifact = null,

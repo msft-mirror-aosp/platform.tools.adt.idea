@@ -46,9 +46,9 @@ import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeSourceProviderContainer
 import com.android.tools.idea.gradle.model.IdeTestOptions
 import com.android.tools.idea.gradle.model.IdeTestSuite
+import com.android.tools.idea.gradle.model.IdeTestSuiteComponentCore
 import com.android.tools.idea.gradle.model.IdeTestSuiteSource
 import com.android.tools.idea.gradle.model.IdeTestSuiteTarget
-import com.android.tools.idea.gradle.model.IdeTestSuiteVariantTarget
 import com.android.tools.idea.gradle.model.IdeTestedTargetVariant
 import com.android.tools.idea.gradle.model.IdeUnknownLibrary
 import com.android.tools.idea.gradle.model.IdeVariantBuildInformation
@@ -432,7 +432,7 @@ private fun ideModelDumper(projectDumper: ProjectDumper) =
             head("TestedTargetVariants")
             nest { dump(it) }
           }
-          ideVariant.testSuiteArtifacts.forEach {
+          ideVariant.testSuiteComponents.forEach {
             head("${it.suiteName}TestSuiteArtifact")
             nest { dump(it) }
           }
@@ -495,11 +495,10 @@ private fun ideModelDumper(projectDumper: ProjectDumper) =
         ideAndroidArtifact.abiFilters.sorted().forEach { prop("AbiFilters") { it } }
       }
 
-      private fun dump(ideTestSuiteVariantTarget: IdeTestSuiteVariantTarget) {
-        prop("TargetedVariantName") { ideTestSuiteVariantTarget.targetedVariantName }
-        if (ideTestSuiteVariantTarget.targets.isNotEmpty()) {
+      private fun dump(ideTestSuiteComponent: IdeTestSuiteComponentCore) {
+        if (ideTestSuiteComponent.targets.isNotEmpty()) {
           head("Targets")
-          nest { ideTestSuiteVariantTarget.targets.forEach { dump(it) } }
+          nest { ideTestSuiteComponent.targets.forEach { dump(it) } }
         }
       }
 

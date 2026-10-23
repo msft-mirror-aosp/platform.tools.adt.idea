@@ -593,7 +593,7 @@ class KotlinModelConverter {
         mainArtifact = mainArtifact,
         hostTestArtifacts = listOfNotNull(unitTestArtifact),
         deviceTestArtifacts = listOfNotNull(androidTestArtifact),
-        testSuiteArtifacts = listOfNotNull(),
+        testSuiteComponents = listOfNotNull(),
         testFixturesArtifact = null,
         buildType = "", // TODO(b/288062702): figure out what will this affect
         productFlavors = emptyList(),

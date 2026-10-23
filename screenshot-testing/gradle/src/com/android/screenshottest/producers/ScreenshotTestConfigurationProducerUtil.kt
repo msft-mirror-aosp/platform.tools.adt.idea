@@ -140,7 +140,7 @@ fun getScreenshotTestTaskNames(context: ConfigurationContext): List<String>? {
     // which overwrites reference screenshots). Once the AGP test suite model exposes whether a
     // target is a
     // recording vs. verification target, dynamically resolve the target name from
-    // IdeTestSuiteVariantTarget
+    // IdeTestSuiteComponent
     // while filtering out recording targets.
     return suiteNames.map { suiteName ->
       val capitalizedSuiteName = suiteName.capitalize()

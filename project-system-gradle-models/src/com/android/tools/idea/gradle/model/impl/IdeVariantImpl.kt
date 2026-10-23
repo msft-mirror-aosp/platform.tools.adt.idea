@@ -44,7 +44,7 @@ data object ThrowingIdeVariantCore : IdeVariantCoreSerializable {
       error("Should not be called")
     }
 
-  override val testSuiteArtifacts: List<IdeTestSuiteVariantTargetImpl>
+  override val testSuiteComponents: List<IdeTestSuiteComponentCoreImpl>
     get() {
       error("Should not be called")
     }
@@ -190,7 +190,7 @@ data class IdeVariantCoreImpl(
   override val name: String,
   override val displayName: String,
   override val mainArtifact: IdeAndroidArtifactCoreImpl,
-  override val testSuiteArtifacts: List<IdeTestSuiteVariantTargetImpl>,
+  override val testSuiteComponents: List<IdeTestSuiteComponentCoreImpl>,
   override val hostTestArtifacts: List<IdeJavaArtifactCoreImpl>,
   override val deviceTestArtifacts: List<IdeAndroidArtifactCoreImpl>,
   override val testFixturesArtifact: IdeAndroidArtifactCoreImpl?,
@@ -223,7 +223,7 @@ data class IdeVariantCoreImpl(
       name,
       displayName,
       mainArtifact,
-      testSuiteArtifacts,
+      testSuiteComponents,
       hostTestArtifacts,
       deviceTestArtifacts,
       testFixturesArtifact,
@@ -256,7 +256,7 @@ data class IdeVariantCoreImpl(
     name: String,
     displayName: String,
     mainArtifact: IdeAndroidArtifactCoreImpl,
-    testSuiteArtifacts: List<IdeTestSuiteVariantTargetImpl>,
+    testSuiteComponents: List<IdeTestSuiteComponentCoreImpl>,
     hostTestArtifacts: List<IdeJavaArtifactCoreImpl>,
     deviceTestArtifacts: List<IdeAndroidArtifactCoreImpl>,
     testFixturesArtifact: IdeAndroidArtifactCoreImpl?,
@@ -288,7 +288,7 @@ data class IdeVariantCoreImpl(
     name,
     displayName,
     mainArtifact,
-    testSuiteArtifacts,
+    testSuiteComponents,
     hostTestArtifacts,
     deviceTestArtifacts,
     testFixturesArtifact,
@@ -329,7 +329,7 @@ data class IdeVariantCoreImpl(
     if (name != other.name) return false
     if (displayName != other.displayName) return false
     if (mainArtifact != other.mainArtifact) return false
-    if (testSuiteArtifacts != other.testSuiteArtifacts) return false
+    if (testSuiteComponents != other.testSuiteComponents) return false
     if (hostTestArtifacts != other.hostTestArtifacts) return false
     if (deviceTestArtifacts != other.deviceTestArtifacts) return false
     if (testFixturesArtifact != other.testFixturesArtifact) return false
@@ -365,7 +365,7 @@ data class IdeVariantCoreImpl(
       name,
       displayName,
       mainArtifact,
-      testSuiteArtifacts,
+      testSuiteComponents,
       hostTestArtifacts,
       deviceTestArtifacts,
       testFixturesArtifact,
@@ -399,7 +399,7 @@ data class IdeVariantCoreImpl(
       name: String,
       displayName: String,
       mainArtifact: IdeAndroidArtifactCoreImpl,
-      testSuiteArtifacts: List<IdeTestSuiteVariantTargetImpl>,
+      testSuiteComponents: List<IdeTestSuiteComponentCoreImpl>,
       hostTestArtifacts: List<IdeJavaArtifactCoreImpl>,
       deviceTestArtifacts: List<IdeAndroidArtifactCoreImpl>,
       testFixturesArtifact: IdeAndroidArtifactCoreImpl?,
@@ -430,7 +430,7 @@ data class IdeVariantCoreImpl(
       var result = name.hashCode()
       result = 31 * result + displayName.hashCode()
       result = 31 * result + mainArtifact.hashCode()
-      result = 31 * result + testSuiteArtifacts.hashCode()
+      result = 31 * result + testSuiteComponents.hashCode()
       result = 31 * result + hostTestArtifacts.hashCode()
       result = 31 * result + deviceTestArtifacts.hashCode()
       result = 31 * result + testFixturesArtifact.hashCode()
@@ -492,14 +492,8 @@ class IdeVariantImpl(val core: IdeVariantCoreImpl, resolver: IdeLibraryModelReso
   override val deviceTestArtifacts: List<IdeAndroidArtifactImpl> = core.deviceTestArtifacts.map { IdeAndroidArtifactImpl(it, resolver) }
   override val testFixturesArtifact: IdeAndroidArtifactImpl? = core.testFixturesArtifact?.let { IdeAndroidArtifactImpl(it, resolver) }
   override val hostTestArtifacts: List<IdeJavaArtifactImpl> = core.hostTestArtifacts.map { IdeJavaArtifactImpl(it, resolver) }
-  override val testSuiteArtifacts: List<IdeTestSuiteVariantTargetImpl> =
-    core.testSuiteArtifacts.map {
-      IdeTestSuiteVariantTargetImpl(
-        it.suiteName,
-        it.targetedVariantName,
-        it.targets.map { target -> IdeTestSuiteTargetImpl(target.targetName, target.testTaskName, target.targetedDevices) },
-      )
-    }
+  override val testSuiteComponents: List<IdeTestSuiteComponentImpl> =
+    core.testSuiteComponents.map { IdeTestSuiteComponentImpl(it, resolver) }
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -511,6 +505,7 @@ class IdeVariantImpl(val core: IdeVariantCoreImpl, resolver: IdeLibraryModelReso
       mainArtifact.hasSameResolvedDependencies(other.mainArtifact) &&
       deviceTestArtifacts.allPairs(other.deviceTestArtifacts) { a, b -> a.hasSameResolvedDependencies(b) } &&
       hostTestArtifacts.allPairs(other.hostTestArtifacts) { a, b -> a.hasSameResolvedDependencies(b) } &&
+      testSuiteComponents.allPairs(other.testSuiteComponents) { a, b -> a.hasSameResolvedDependencies(b) } &&
       testFixturesArtifact.let { a ->
         val b = other.testFixturesArtifact
         if (a == null || b == null) a === b else a.hasSameResolvedDependencies(b)
@@ -521,5 +516,5 @@ class IdeVariantImpl(val core: IdeVariantCoreImpl, resolver: IdeLibraryModelReso
   override fun hashCode(): Int = core.hashCode()
 }
 
-private inline fun <T> List<T>.allPairs(other: List<T>, predicate: (T, T) -> Boolean): Boolean =
+internal inline fun <T> List<T>.allPairs(other: List<T>, predicate: (T, T) -> Boolean): Boolean =
   size == other.size && indices.all { predicate(this[it], other[it]) }

@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.model.IdeAndroidLibraryImpl
 import com.android.tools.idea.gradle.model.IdeJavaLibraryImpl
 import com.android.tools.idea.gradle.model.IdePreResolvedModuleLibraryImpl
 import com.android.tools.idea.gradle.model.IdeSourceProvider
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
 import com.android.tools.idea.gradle.model.impl.FileImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactOutputImpl
@@ -33,9 +34,11 @@ import com.android.tools.idea.gradle.model.impl.IdeBasicVariantNameImpl
 import com.android.tools.idea.gradle.model.impl.IdeBuildTypeContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeBuildTypeImpl
 import com.android.tools.idea.gradle.model.impl.IdeClassFieldImpl
+import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeExtraSourceProviderImpl
 import com.android.tools.idea.gradle.model.impl.IdeFilterDataImpl
+import com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaCompileOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeLintOptionsImpl
@@ -44,6 +47,12 @@ import com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl
 import com.android.tools.idea.gradle.model.impl.IdeSigningConfigImpl
 import com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteDeviceArtifactCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteHostArtifactCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestedTargetVariantImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeVectorDrawablesOptionsImpl
@@ -248,6 +257,82 @@ class ModelSerializationTest {
   @Test fun testTestedTargetVariant() = Truth.assertThat(IdeTestedTargetVariantImpl::class.java).isAssignableTo(Serializable::class.java)
 
   @Test fun testTestOptions() = Truth.assertThat(IdeTestOptionsImpl::class.java).isAssignableTo(Serializable::class.java)
+
+  @Test
+  fun testTestSuiteComponentCore() {
+    Truth.assertThat(IdeTestSuiteComponentCoreImpl::class.java).isAssignableTo(Serializable::class.java)
+    assertSerializable {
+      IdeTestSuiteComponentCoreImpl(
+        suiteName = "suite",
+        targets = listOf(IdeTestSuiteTargetImpl("t1", "testSuiteT1Debug", listOf("device1"))),
+        hostTestSuiteArtifacts = listOf(sampleTestSuiteHostArtifactCore()),
+        deviceTestSuiteArtifacts = listOf(sampleTestSuiteDeviceArtifactCore()),
+      )
+    }
+  }
+
+  @Test
+  fun testTestSuiteHostArtifactCore() {
+    Truth.assertThat(IdeTestSuiteHostArtifactCoreImpl::class.java).isAssignableTo(Serializable::class.java)
+    assertSerializable { sampleTestSuiteHostArtifactCore() }
+  }
+
+  @Test
+  fun testTestSuiteDeviceArtifactCore() {
+    Truth.assertThat(IdeTestSuiteDeviceArtifactCoreImpl::class.java).isAssignableTo(Serializable::class.java)
+    assertSerializable { sampleTestSuiteDeviceArtifactCore() }
+  }
+
+  private fun sampleTestSuiteHostArtifactCore() =
+    IdeTestSuiteHostArtifactCoreImpl(
+      name = IdeTestSuiteArtifactName("suiteTest"),
+      sourceSetIdentifier = "debugSuiteTest",
+      compileTaskName = "compileDebugSuiteTestKotlin",
+      assembleTaskName = null,
+      classesFolder = listOf(FileImpl("build/classes/suiteTest")),
+      variantSourceProvider = null,
+      multiFlavorSourceProvider = null,
+      ideSetupTaskNames = listOf("ideSetupTask"),
+      generatedSourceFolders = listOf(FileImpl("build/generated/suiteTest")),
+      isTestArtifact = true,
+      compileClasspathCore = IdeDependenciesCoreDirect(emptyList()),
+      runtimeClasspathCore = IdeDependenciesCoreDirect(emptyList()),
+      unresolvedDependencies = emptyList(),
+      generatedClassPaths = emptyMap(),
+      bytecodeTransforms = null,
+    )
+
+  private fun sampleTestSuiteDeviceArtifactCore() =
+    IdeTestSuiteDeviceArtifactCoreImpl(
+      name = IdeTestSuiteArtifactName("suiteAndroidTest"),
+      sourceSetIdentifier = "debugSuiteAndroidTest",
+      compileTaskName = "compileDebugSuiteAndroidTestKotlin",
+      assembleTaskName = "assembleDebugSuiteAndroidTest",
+      classesFolder = listOf(FileImpl("build/classes/suiteAndroidTest")),
+      variantSourceProvider = null,
+      multiFlavorSourceProvider = null,
+      ideSetupTaskNames = listOf("ideSetupDeviceTask"),
+      generatedSourceFolders = listOf(FileImpl("build/generated/suiteAndroidTest")),
+      isTestArtifact = true,
+      compileClasspathCore = IdeDependenciesCoreDirect(emptyList()),
+      runtimeClasspathCore = IdeDependenciesCoreDirect(emptyList()),
+      unresolvedDependencies = emptyList(),
+      generatedClassPaths = emptyMap(),
+      bytecodeTransforms = null,
+      applicationId = "com.example.suite.test",
+      minSdkVersion = IdeApiVersionImpl(21, null, "21"),
+      isSigned = true,
+      signingConfigName = "debug",
+      assembleTaskOutputListingFile = FileImpl("build/outputs/apk/output-metadata.json"),
+    )
+
+  @Test fun testTestSuiteTarget() = Truth.assertThat(IdeTestSuiteTargetImpl::class.java).isAssignableTo(Serializable::class.java)
+
+  @Test fun testTestSuite() = Truth.assertThat(IdeTestSuiteImpl::class.java).isAssignableTo(Serializable::class.java)
+
+  @Test fun testTestSuiteSource() = Truth.assertThat(IdeTestSuiteSourceImpl::class.java).isAssignableTo(Serializable::class.java)
+
+  @Test fun testJUnitEngineInfo() = Truth.assertThat(IdeJUnitEngineInfoImpl::class.java).isAssignableTo(Serializable::class.java)
 
   @Test fun testBasicVariant() = Truth.assertThat(IdeBasicVariantImpl::class.java).isAssignableTo(Serializable::class.java)
 

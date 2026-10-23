@@ -67,9 +67,9 @@ import com.android.tools.idea.gradle.model.impl.IdeProductFlavorImpl
 import com.android.tools.idea.gradle.model.impl.IdeProjectPathImpl
 import com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteVariantTargetImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantBuildInformationImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeVectorDrawablesOptionsImpl
@@ -467,7 +467,7 @@ interface AndroidProjectStubBuilder {
 
   fun hostTestArtifacts(variant: String): List<IdeJavaArtifactCoreImpl>
 
-  fun testSuiteArtifacts(variant: String): List<IdeTestSuiteVariantTargetImpl>
+  fun testSuiteComponents(variant: String): List<IdeTestSuiteComponentCoreImpl>
 
   fun testFixturesArtifact(variant: String): IdeAndroidArtifactCoreImpl?
 
@@ -545,7 +545,7 @@ data class AndroidProjectBuilder(
   val hostTestArtifactsStub: AndroidProjectStubBuilder.(variant: String) -> List<IdeJavaArtifactCoreImpl> = { variant ->
     listOf(buildUnitTestArtifactStub(variant))
   },
-  val testSuiteArtifactsStub: AndroidProjectStubBuilder.(variant: String) -> List<IdeTestSuiteVariantTargetImpl> = { variant ->
+  val testSuiteComponentsStub: AndroidProjectStubBuilder.(variant: String) -> List<IdeTestSuiteComponentCoreImpl> = { variant ->
     emptyList()
   },
   val testFixturesArtifactStub: AndroidProjectStubBuilder.(variant: String) -> IdeAndroidArtifactCoreImpl? = { variant -> null },
@@ -748,7 +748,7 @@ data class AndroidProjectBuilder(
 
           override fun hostTestArtifacts(variant: String): List<IdeJavaArtifactCoreImpl> = hostTestArtifactsStub(variant)
 
-          override fun testSuiteArtifacts(variant: String): List<IdeTestSuiteVariantTargetImpl> = testSuiteArtifactsStub(variant)
+          override fun testSuiteComponents(variant: String): List<IdeTestSuiteComponentCoreImpl> = testSuiteComponentsStub(variant)
 
           override fun testFixturesArtifact(variant: String): IdeAndroidArtifactCoreImpl? = testFixturesArtifactStub(variant)
 
@@ -1212,7 +1212,7 @@ fun AndroidProjectStubBuilder.buildUnitTestArtifactStub(
   )
 }
 
-fun AndroidProjectStubBuilder.buildTestSuiteArtifactStub(
+fun AndroidProjectStubBuilder.buildTestSuiteComponentStub(
   variant: String,
   dependencies: IdeDependenciesCoreImpl =
     buildDependenciesStub(
@@ -1233,10 +1233,9 @@ fun AndroidProjectStubBuilder.buildTestSuiteArtifactStub(
           )
     ),
   mockablePlatformJar: File? = null,
-): IdeTestSuiteVariantTargetImpl {
-  return IdeTestSuiteVariantTargetImpl(
+): IdeTestSuiteComponentCoreImpl {
+  return IdeTestSuiteComponentCoreImpl(
     suiteName = "first",
-    targetedVariantName = variant,
     targets = listOf(IdeTestSuiteTargetImpl("t1", "testFirstT1${variant}", targetedDevices = listOf("pixel 9"))),
   )
 }
@@ -1380,7 +1379,7 @@ fun AndroidProjectStubBuilder.buildVariantStubs(): List<IdeVariantCoreImpl> {
         variant,
         variant,
         mainArtifact,
-        testSuiteArtifacts = testSuiteArtifacts(variant),
+        testSuiteComponents = testSuiteComponents(variant),
         hostTestArtifacts(variant),
         deviceTestArtifacts(variant, applicationId = testApplicationId),
         testFixturesArtifact(variant),
@@ -2010,7 +2009,7 @@ private fun createAndroidModuleDataNode(
     artifact.name.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toSourceSet()) }
   }
   selectedVariant.testFixturesArtifact?.name?.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toSourceSet()) }
-  selectedVariant.testSuiteArtifacts.forEach { testSuite ->
+  selectedVariant.testSuiteComponents.forEach { testSuite ->
     testSuite.suiteName.let {
       val sourceSet = IdeModuleSourceSetImpl(it, canBeConsumed = false)
       setupSourceSetDataNode(it, sourceSet, true)

@@ -49,7 +49,7 @@ interface IdeVariantCore : IdeVariantHeader {
   val deviceTestArtifacts: List<IdeAndroidArtifactCore>
   val testFixturesArtifact: IdeAndroidArtifactCore?
   val hostTestArtifacts: List<IdeJavaArtifactCore>
-  val testSuiteArtifacts: Collection<IdeTestSuiteVariantTarget>
+  val testSuiteComponents: Collection<IdeTestSuiteComponentCore>
 
   val minSdkVersion: IdeApiVersion
 
@@ -116,5 +116,5 @@ interface IdeVariant : IdeVariantCore {
   override val deviceTestArtifacts: List<IdeAndroidArtifact>
   override val testFixturesArtifact: IdeAndroidArtifact?
   override val hostTestArtifacts: List<IdeJavaArtifact>
-  override val testSuiteArtifacts: List<IdeTestSuiteVariantTarget>
+  override val testSuiteComponents: List<IdeTestSuiteComponent>
 }

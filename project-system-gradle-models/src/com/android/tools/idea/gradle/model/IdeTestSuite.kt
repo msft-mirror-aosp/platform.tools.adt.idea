@@ -21,8 +21,8 @@ package com.android.tools.idea.gradle.model
  * At the project level, you will find information related to the suites like the configured source folders as well as the JUnit engines
  * configured to run the tests.
  *
- * At the variant level [IdeTestSuiteVariantTarget] will provide information like which devices are targeted and the Gradle task to run
- * execute the test suite.
+ * At the variant level [IdeTestSuiteComponent] will provide information like which devices are targeted and the Gradle task to execute the
+ * test suite.
  */
 interface IdeTestSuite {
   /** Test suite name. */

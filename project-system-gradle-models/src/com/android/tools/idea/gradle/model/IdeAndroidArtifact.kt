@@ -65,9 +65,6 @@ interface IdeAndroidArtifactCore : Serializable, IdeBaseArtifactCore {
   /** Returns the code shrinker used by this artifact or null if no shrinker is used to build this artifact. */
   val codeShrinker: CodeShrinker?
 
-  val compileClasspathCore: IdeDependenciesCore
-  val runtimeClasspathCore: IdeDependenciesCore
-
   /** Files listing any D8 backported desugared methods or core library desugared methods for this artifact */
   val desugaredMethodsFiles: Collection<File>
 

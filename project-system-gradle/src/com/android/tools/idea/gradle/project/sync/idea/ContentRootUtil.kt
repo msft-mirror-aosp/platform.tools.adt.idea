@@ -20,7 +20,7 @@ import com.android.tools.idea.gradle.model.IdeAndroidArtifactCore
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
 import com.android.tools.idea.gradle.model.IdeSourceProvider
-import com.android.tools.idea.gradle.model.IdeTestSuiteVariantTarget
+import com.android.tools.idea.gradle.model.IdeTestSuiteComponentCore
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelData
 import com.android.tools.idea.gradle.project.model.activeSourceProviders
 import com.android.tools.idea.gradle.project.model.testFixturesSourceProviders
@@ -76,7 +76,7 @@ fun DataNode<ModuleData>.setupAndroidContentEntriesPerSourceSet(androidModel: Gr
   }
 
   fun populateContentEntries(
-    artifact: IdeTestSuiteVariantTarget?,
+    artifact: IdeTestSuiteComponentCore?,
     sourceProviders: List<IdeSourceProvider>,
   ): List<DataNode<ContentRootData>> {
     val sourceSetDataNode = findSourceSetDataForArtifact(artifact ?: return emptyList())
@@ -92,7 +92,7 @@ fun DataNode<ModuleData>.setupAndroidContentEntriesPerSourceSet(androidModel: Gr
         ?.let { add(populateContentEntries(it, androidModel.getTestSourceProviders(it.name))) }
       add(populateContentEntries(variant.testFixturesArtifact, androidModel.testFixturesSourceProviders))
       if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
-        variant.testSuiteArtifacts.forEach { add(populateContentEntries(it, androidModel.getTestSuiteSourceProviders(it.suiteName))) }
+        variant.testSuiteComponents.forEach { add(populateContentEntries(it, androidModel.getTestSuiteSourceProviders(it.suiteName))) }
       }
     }
 

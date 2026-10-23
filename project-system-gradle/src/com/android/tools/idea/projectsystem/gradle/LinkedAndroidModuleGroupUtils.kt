@@ -156,8 +156,7 @@ private fun GradleHolderProjectPath.resolveAndroidModuleGroup(
     androidTest = resolveSourceSetModule(storage, IdeModuleWellKnownSourceSet.ANDROID_TEST),
     testFixtures = resolveSourceSetModule(storage, IdeModuleWellKnownSourceSet.TEST_FIXTURES),
     screenshotTest = resolveSourceSetModule(storage, IdeModuleWellKnownSourceSet.SCREENSHOT_TEST),
-    testSuites =
-      androidModel.selectedVariant.testSuiteArtifacts.mapNotNull { resolveSourceSetModule(storage, it.suiteName) },
+    testSuites = androidModel.selectedVariant.testSuiteComponents.mapNotNull { resolveSourceSetModule(storage, it.suiteName) },
   )
 
 private fun Module.currentStorage(): EntityStorage = WorkspaceModel.getInstance(project).currentSnapshot
@@ -167,8 +166,7 @@ internal fun Module.isHolderModule(storage: EntityStorage): Boolean =
 
 fun Module.isHolderModule(): Boolean = isHolderModule(currentStorage())
 
-internal fun Module.getHolderModule(storage: EntityStorage): Module =
-  resolveAndroidModuleGroup(storage)?.holder.resolve() ?: this
+internal fun Module.getHolderModule(storage: EntityStorage): Module = resolveAndroidModuleGroup(storage)?.holder.resolve() ?: this
 
 fun Module.getHolderModule(): Module = getHolderModule(currentStorage())
 
@@ -187,22 +185,19 @@ fun Module.isUnitTestModule(): Boolean = getUnitTestModule() == this
 
 fun Module.getUnitTestModule(): Module? = getUnitTestModule(currentStorage())
 
-internal fun Module.getAndroidTestModule(storage: EntityStorage): Module? =
-  resolveAndroidModuleGroup(storage)?.androidTest.resolve()
+internal fun Module.getAndroidTestModule(storage: EntityStorage): Module? = resolveAndroidModuleGroup(storage)?.androidTest.resolve()
 
 fun Module.isAndroidTestModule(): Boolean = getAndroidTestModule() == this
 
 fun Module.getAndroidTestModule(): Module? = getAndroidTestModule(currentStorage())
 
-internal fun Module.getScreenshotTestModule(storage: EntityStorage): Module? =
-  resolveAndroidModuleGroup(storage)?.screenshotTest.resolve()
+internal fun Module.getScreenshotTestModule(storage: EntityStorage): Module? = resolveAndroidModuleGroup(storage)?.screenshotTest.resolve()
 
 fun Module.isScreenshotTestModule(): Boolean = getScreenshotTestModule() == this
 
 fun Module.getScreenshotTestModule(): Module? = getScreenshotTestModule(currentStorage())
 
-internal fun Module.getTestFixturesModule(storage: EntityStorage): Module? =
-  resolveAndroidModuleGroup(storage)?.testFixtures.resolve()
+internal fun Module.getTestFixturesModule(storage: EntityStorage): Module? = resolveAndroidModuleGroup(storage)?.testFixtures.resolve()
 
 fun Module.isTestFixturesModule(): Boolean = getTestFixturesModule() == this
 

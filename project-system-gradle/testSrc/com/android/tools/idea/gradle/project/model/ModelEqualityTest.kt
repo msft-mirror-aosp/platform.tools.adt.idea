@@ -18,17 +18,27 @@ package com.android.tools.idea.gradle.project.model
 import com.android.tools.idea.gradle.model.IdeDependencies
 import com.android.tools.idea.gradle.model.IdeLibrary
 import com.android.tools.idea.gradle.model.IdeModuleLibraryImpl
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
 import com.android.tools.idea.gradle.model.LibraryReference
 import com.android.tools.idea.gradle.model.ResolverType
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
+import com.android.tools.idea.gradle.model.impl.IdeApiVersionImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
+import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreRef
 import com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactImpl
 import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeResolvedLibraryTableImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteDeviceArtifactCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteDeviceArtifactImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteHostArtifactCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteHostArtifactImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantImpl
 import com.android.tools.idea.gradle.project.sync.InternedModels
@@ -49,9 +59,22 @@ class ModelEqualityTest {
       .build()
       .invoke("projectName", ":", File("root"), File("root/module"), "9.0.0", InternedModels(buildRootDirectory = null))
 
-  /** A variant whose main, device test and host test artifacts all depend on the `:lib` module. */
+  /** A variant whose main, device test, host test and test suite artifacts all depend on the `:lib` module. */
   private val variantWithLibDependency: IdeVariantCoreImpl =
-    AndroidProjectBuilder(androidModuleDependencyList = { listOf(AndroidModuleDependency(":lib", "debug")) })
+    AndroidProjectBuilder(
+        androidModuleDependencyList = { listOf(AndroidModuleDependency(":lib", "debug")) },
+        testSuiteComponentsStub = { variant ->
+          val dependencies = mainArtifact(variant).compileClasspathCore
+          listOf(
+            IdeTestSuiteComponentCoreImpl(
+              suiteName = "suite",
+              targets = listOf(IdeTestSuiteTargetImpl("t1", "testSuiteT1Debug", emptyList())),
+              hostTestSuiteArtifacts = listOf(testSuiteHostArtifactCore(dependencies)),
+              deviceTestSuiteArtifacts = listOf(testSuiteDeviceArtifactCore(dependencies)),
+            )
+          )
+        },
+      )
       .build()
       .invoke("projectName", ":app", File("root"), File("root/app"), "9.0.0", InternedModels(buildRootDirectory = null))
       .variants
@@ -66,6 +89,11 @@ class ModelEqualityTest {
       .flatMap { it.compileClasspathCore.dependencies + it.runtimeClasspathCore.dependencies }
       .plus(
         variantWithLibDependency.hostTestArtifacts.flatMap { it.compileClasspathCore.dependencies + it.runtimeClasspathCore.dependencies }
+      )
+      .plus(
+        variantWithLibDependency.testSuiteComponents
+          .flatMap { it.hostTestSuiteArtifacts + it.deviceTestSuiteArtifacts }
+          .flatMap { it.compileClasspathCore.dependencies + it.runtimeClasspathCore.dependencies }
       )
       .maxOf { it.target.libraryIndex } + 1
 
@@ -110,6 +138,36 @@ class ModelEqualityTest {
   }
 
   @Test
+  fun testIdeTestSuiteHostArtifactImpl() {
+    EqualsVerifier.forClass(IdeTestSuiteHostArtifactImpl::class.java)
+      .withPrefabValues(
+        IdeDependencies::class.java,
+        IdeDependencies(classpathReferencingLibrary0, resolverOf(listOf(listOf(moduleLibrary(":red"))))),
+        IdeDependencies(classpathReferencingLibrary0, resolverOf(listOf(listOf(moduleLibrary(":blue"))))),
+      )
+      // Delegates equality check to core and the libraries its classpaths resolve to, the rest of the fields are derived from core.
+      .withOnlyTheseFields("core", "compileClasspath", "runtimeClasspath")
+      // hashCode intentionally only uses core to avoid resolving libraries.
+      .suppress(Warning.STRICT_HASHCODE)
+      .verify()
+  }
+
+  @Test
+  fun testIdeTestSuiteDeviceArtifactImpl() {
+    EqualsVerifier.forClass(IdeTestSuiteDeviceArtifactImpl::class.java)
+      .withPrefabValues(
+        IdeDependencies::class.java,
+        IdeDependencies(classpathReferencingLibrary0, resolverOf(listOf(listOf(moduleLibrary(":red"))))),
+        IdeDependencies(classpathReferencingLibrary0, resolverOf(listOf(listOf(moduleLibrary(":blue"))))),
+      )
+      // Delegates equality check to core and the libraries its classpaths resolve to, the rest of the fields are derived from core.
+      .withOnlyTheseFields("core", "compileClasspath", "runtimeClasspath")
+      // hashCode intentionally only uses core to avoid resolving libraries.
+      .suppress(Warning.STRICT_HASHCODE)
+      .verify()
+  }
+
+  @Test
   fun testIdeDependencies() {
     val dependencies = listOf(IdeDependencyCoreImpl(LibraryReference(0), dependencies = listOf(1, 2, 3, 4, 5)))
     val direct = IdeDependenciesCoreDirect(dependencies)
@@ -141,6 +199,13 @@ class ModelEqualityTest {
           compileClasspathCore = classpathReferencingLibrary0,
           runtimeClasspathCore = classpathReferencingLibrary0,
         )
+    val testSuiteComponentCore =
+      IdeTestSuiteComponentCoreImpl(
+        suiteName = "suite",
+        targets = emptyList(),
+        hostTestSuiteArtifacts = listOf(testSuiteHostArtifactCore(classpathReferencingLibrary0)),
+        deviceTestSuiteArtifacts = listOf(testSuiteDeviceArtifactCore(classpathReferencingLibrary0)),
+      )
     val redResolver = resolverOf(listOf(listOf(moduleLibrary(":red"))))
     val blueResolver = resolverOf(listOf(listOf(moduleLibrary(":blue"))))
     EqualsVerifier.forClass(IdeVariantImpl::class.java)
@@ -154,8 +219,20 @@ class ModelEqualityTest {
         IdeJavaArtifactImpl(hostTestArtifactCore, redResolver),
         IdeJavaArtifactImpl(hostTestArtifactCore, blueResolver),
       )
+      .withPrefabValues(
+        IdeTestSuiteComponentImpl::class.java,
+        IdeTestSuiteComponentImpl(testSuiteComponentCore, redResolver),
+        IdeTestSuiteComponentImpl(testSuiteComponentCore, blueResolver),
+      )
       // Delegates equality check to core and the resolved dependencies of its artifacts, the rest of the fields are derived from core.
-      .withOnlyTheseFields("core", "mainArtifact", "deviceTestArtifacts", "hostTestArtifacts", "testFixturesArtifact")
+      .withOnlyTheseFields(
+        "core",
+        "mainArtifact",
+        "deviceTestArtifacts",
+        "hostTestArtifacts",
+        "testSuiteComponents",
+        "testFixturesArtifact",
+      )
       // hashCode intentionally only uses core to avoid resolving libraries.
       .suppress(Warning.STRICT_HASHCODE)
       .verify()
@@ -175,6 +252,45 @@ class ModelEqualityTest {
     assertThat(unresolved.mainArtifact).isNotEqualTo(resolved.mainArtifact)
     assertThat(unresolved.deviceTestArtifacts.single()).isNotEqualTo(resolved.deviceTestArtifacts.single())
     assertThat(unresolved.hostTestArtifacts.single()).isNotEqualTo(resolved.hostTestArtifacts.single())
+    assertThat(unresolved.testSuiteComponents.single()).isNotEqualTo(resolved.testSuiteComponents.single())
+    assertThat(unresolved.testSuiteComponents.single().hostTestSuiteArtifacts.single())
+      .isNotEqualTo(resolved.testSuiteComponents.single().hostTestSuiteArtifacts.single())
+    assertThat(unresolved.testSuiteComponents.single().deviceTestSuiteArtifacts.single())
+      .isNotEqualTo(resolved.testSuiteComponents.single().deviceTestSuiteArtifacts.single())
+
+    // Also verify IdeVariantImpl differs when ONLY a host or ONLY a device test suite artifact's resolved dependency differs
+    // (exercising both branches of IdeTestSuiteComponentImpl.hasSameResolvedDependencies without short-circuiting).
+    for (onlyTestSuiteComponent in
+      listOf(
+        IdeTestSuiteComponentCoreImpl(
+          suiteName = "suite",
+          targets = emptyList(),
+          hostTestSuiteArtifacts = listOf(testSuiteHostArtifactCore(classpathReferencingLibrary0)),
+        ),
+        IdeTestSuiteComponentCoreImpl(
+          suiteName = "suite",
+          targets = emptyList(),
+          deviceTestSuiteArtifacts = listOf(testSuiteDeviceArtifactCore(classpathReferencingLibrary0)),
+        ),
+      )) {
+      val variantWithOnlyTestSuiteLibDependency =
+        AndroidProjectBuilder(testSuiteComponentsStub = { listOf(onlyTestSuiteComponent) })
+          .build()
+          .invoke("projectName", ":app", File("root"), File("root/app"), "9.0.0", InternedModels(buildRootDirectory = null))
+          .variants
+          .first()
+      val onlySuiteBefore =
+        IdeVariantImpl(
+          variantWithOnlyTestSuiteLibDependency,
+          resolverOf(libraryTable { index -> if (index == 0) emptyList() else otherLibrary(index) }),
+        )
+      val onlySuiteAfter =
+        IdeVariantImpl(
+          variantWithOnlyTestSuiteLibDependency,
+          resolverOf(libraryTable { index -> if (index == 0) listOf(moduleLibrary(":lib")) else otherLibrary(index) }),
+        )
+      assertThat(onlySuiteBefore).isNotEqualTo(onlySuiteAfter)
+    }
   }
 
   @Test
@@ -189,6 +305,7 @@ class ModelEqualityTest {
 
     assertThat(before).isNotEqualTo(after)
     assertThat(before.mainArtifact).isNotEqualTo(after.mainArtifact)
+    assertThat(before.testSuiteComponents.single()).isNotEqualTo(after.testSuiteComponents.single())
   }
 
   @Test
@@ -210,6 +327,11 @@ class ModelEqualityTest {
     assertThat(before.mainArtifact).isEqualTo(after.mainArtifact)
     assertThat(before.deviceTestArtifacts.single()).isEqualTo(after.deviceTestArtifacts.single())
     assertThat(before.hostTestArtifacts.single()).isEqualTo(after.hostTestArtifacts.single())
+    assertThat(before.testSuiteComponents.single()).isEqualTo(after.testSuiteComponents.single())
+    assertThat(before.testSuiteComponents.single().hostTestSuiteArtifacts.single())
+      .isEqualTo(after.testSuiteComponents.single().hostTestSuiteArtifacts.single())
+    assertThat(before.testSuiteComponents.single().deviceTestSuiteArtifacts.single())
+      .isEqualTo(after.testSuiteComponents.single().deviceTestSuiteArtifacts.single())
   }
 
   @Test
@@ -217,16 +339,28 @@ class ModelEqualityTest {
     val kmpClasspath =
       IdeDependenciesCoreDirect(listOf(IdeDependencyCoreImpl(LibraryReference(0, ResolverType.KMP_ANDROID), dependencies = listOf())))
     val artifactCore = example.variants.first().mainArtifact.copy(compileClasspathCore = kmpClasspath, runtimeClasspathCore = kmpClasspath)
+    val hostSuiteCore = testSuiteHostArtifactCore(kmpClasspath)
+    val deviceSuiteCore = testSuiteDeviceArtifactCore(kmpClasspath)
     val withoutKmpTable = IdeLibraryModelResolverImpl(IdeResolvedLibraryTableImpl(emptyList()), null)
     val withKmpTable =
       IdeLibraryModelResolverImpl(
         IdeResolvedLibraryTableImpl(emptyList()),
         IdeResolvedLibraryTableImpl(listOf(listOf(moduleLibrary(":kmp")))),
       )
+    val nullTables = IdeLibraryModelResolverImpl(null, null)
 
     assertThat(IdeAndroidArtifactImpl(artifactCore, withoutKmpTable)).isNotEqualTo(IdeAndroidArtifactImpl(artifactCore, withKmpTable))
-    assertThat(IdeAndroidArtifactImpl(artifactCore, withoutKmpTable))
-      .isEqualTo(IdeAndroidArtifactImpl(artifactCore, IdeLibraryModelResolverImpl(null, null)))
+    assertThat(IdeAndroidArtifactImpl(artifactCore, withoutKmpTable)).isEqualTo(IdeAndroidArtifactImpl(artifactCore, nullTables))
+
+    assertThat(IdeTestSuiteHostArtifactImpl(hostSuiteCore, withoutKmpTable))
+      .isNotEqualTo(IdeTestSuiteHostArtifactImpl(hostSuiteCore, withKmpTable))
+    assertThat(IdeTestSuiteHostArtifactImpl(hostSuiteCore, withoutKmpTable))
+      .isEqualTo(IdeTestSuiteHostArtifactImpl(hostSuiteCore, nullTables))
+
+    assertThat(IdeTestSuiteDeviceArtifactImpl(deviceSuiteCore, withoutKmpTable))
+      .isNotEqualTo(IdeTestSuiteDeviceArtifactImpl(deviceSuiteCore, withKmpTable))
+    assertThat(IdeTestSuiteDeviceArtifactImpl(deviceSuiteCore, withoutKmpTable))
+      .isEqualTo(IdeTestSuiteDeviceArtifactImpl(deviceSuiteCore, nullTables))
   }
 
   @Test
@@ -244,6 +378,11 @@ class ModelEqualityTest {
     assertThat(variant.hashCode()).isEqualTo(variantWithLibDependency.hashCode())
     assertThat(variant.mainArtifact.hashCode()).isEqualTo(variantWithLibDependency.mainArtifact.hashCode())
     assertThat(variant.hostTestArtifacts.single().hashCode()).isEqualTo(variantWithLibDependency.hostTestArtifacts.single().hashCode())
+    assertThat(variant.testSuiteComponents.single().hashCode()).isEqualTo(variantWithLibDependency.testSuiteComponents.single().hashCode())
+    assertThat(variant.testSuiteComponents.single().hostTestSuiteArtifacts.single().hashCode())
+      .isEqualTo(variantWithLibDependency.testSuiteComponents.single().hostTestSuiteArtifacts.single().hashCode())
+    assertThat(variant.testSuiteComponents.single().deviceTestSuiteArtifacts.single().hashCode())
+      .isEqualTo(variantWithLibDependency.testSuiteComponents.single().deviceTestSuiteArtifacts.single().hashCode())
     assertThat(variant).isEqualTo(IdeVariantImpl(variantWithLibDependency, resolver))
   }
 
@@ -258,6 +397,81 @@ class ModelEqualityTest {
   fun testGradleAndroidModelData() {
     EqualsVerifier.forClass(GradleAndroidModelData::class.java).verify()
   }
+
+  @Test
+  fun testIdeTestSuiteTargetImpl() {
+    EqualsVerifier.forClass(IdeTestSuiteTargetImpl::class.java).verify()
+  }
+
+  @Test
+  fun testIdeTestSuiteComponentCoreImpl() {
+    EqualsVerifier.forClass(IdeTestSuiteComponentCoreImpl::class.java).verify()
+  }
+
+  @Test
+  fun testIdeTestSuiteComponentImpl() {
+    val hostArtifactCore = testSuiteHostArtifactCore(classpathReferencingLibrary0)
+    val deviceArtifactCore = testSuiteDeviceArtifactCore(classpathReferencingLibrary0)
+    val redResolver = resolverOf(listOf(listOf(moduleLibrary(":red"))))
+    val blueResolver = resolverOf(listOf(listOf(moduleLibrary(":blue"))))
+    EqualsVerifier.forClass(IdeTestSuiteComponentImpl::class.java)
+      .withPrefabValues(
+        IdeTestSuiteHostArtifactImpl::class.java,
+        IdeTestSuiteHostArtifactImpl(hostArtifactCore, redResolver),
+        IdeTestSuiteHostArtifactImpl(hostArtifactCore, blueResolver),
+      )
+      .withPrefabValues(
+        IdeTestSuiteDeviceArtifactImpl::class.java,
+        IdeTestSuiteDeviceArtifactImpl(deviceArtifactCore, redResolver),
+        IdeTestSuiteDeviceArtifactImpl(deviceArtifactCore, blueResolver),
+      )
+      // Artifact hashCode intentionally only uses core to avoid resolving libraries.
+      .suppress(Warning.STRICT_HASHCODE)
+      .verify()
+  }
+
+  private fun testSuiteHostArtifactCore(dependencies: IdeDependenciesCoreImpl) =
+    IdeTestSuiteHostArtifactCoreImpl(
+      name = IdeTestSuiteArtifactName("suiteTest"),
+      sourceSetIdentifier = "debugSuiteTest",
+      compileTaskName = "compileDebugSuiteTestKotlin",
+      assembleTaskName = null,
+      classesFolder = emptyList(),
+      variantSourceProvider = null,
+      multiFlavorSourceProvider = null,
+      ideSetupTaskNames = emptyList(),
+      generatedSourceFolders = emptyList(),
+      isTestArtifact = true,
+      compileClasspathCore = dependencies,
+      runtimeClasspathCore = dependencies,
+      unresolvedDependencies = emptyList(),
+      generatedClassPaths = emptyMap(),
+      bytecodeTransforms = null,
+    )
+
+  private fun testSuiteDeviceArtifactCore(dependencies: IdeDependenciesCoreImpl) =
+    IdeTestSuiteDeviceArtifactCoreImpl(
+      name = IdeTestSuiteArtifactName("suiteAndroidTest"),
+      sourceSetIdentifier = "debugSuiteAndroidTest",
+      compileTaskName = "compileDebugSuiteAndroidTestKotlin",
+      assembleTaskName = "assembleDebugSuiteAndroidTest",
+      classesFolder = emptyList(),
+      variantSourceProvider = null,
+      multiFlavorSourceProvider = null,
+      ideSetupTaskNames = emptyList(),
+      generatedSourceFolders = emptyList(),
+      isTestArtifact = true,
+      compileClasspathCore = dependencies,
+      runtimeClasspathCore = dependencies,
+      unresolvedDependencies = emptyList(),
+      generatedClassPaths = emptyMap(),
+      bytecodeTransforms = null,
+      applicationId = "com.example.test",
+      minSdkVersion = IdeApiVersionImpl(16, null, "16"),
+      isSigned = true,
+      signingConfigName = "debug",
+      assembleTaskOutputListingFile = null,
+    )
 
   /** Returns a library table of [libraryTableSize] entries, created anew on each call to mimic separate syncs. */
   private fun libraryTable(librariesAt: (Int) -> List<IdeLibrary>): List<List<IdeLibrary>> = List(libraryTableSize, librariesAt)

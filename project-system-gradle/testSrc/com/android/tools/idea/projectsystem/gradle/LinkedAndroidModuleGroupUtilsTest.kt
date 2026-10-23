@@ -70,7 +70,7 @@ class LinkedAndroidModuleGroupUtilsTest {
   private fun attachMockAndroidModel(holderModule: Module) {
     val mockModel = mock(GradleAndroidModelImpl::class.java)
     val mockVariant = mock(IdeVariantCoreImpl::class.java)
-    `when`(mockVariant.testSuiteArtifacts).thenReturn(emptyList())
+    `when`(mockVariant.testSuiteComponents).thenReturn(emptyList())
     `when`(mockModel.moduleName).thenReturn(holderModule.name)
     `when`(mockModel.selectedVariant).thenReturn(mockVariant)
     runWriteAction {

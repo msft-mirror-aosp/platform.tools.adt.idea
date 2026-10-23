@@ -78,7 +78,7 @@ private fun GradleAndroidModelData.collectTestFixturesSourceProviders(variant: I
 
 private fun GradleAndroidModelData.collectTestSuiteSourceProviders(variant: IdeVariantCore): Map<String, List<IdeSourceProvider>> {
   val testSuitesDefinitions = this.androidProject.testSuites.associateBy { it.name }
-  return variant.testSuiteArtifacts.associate { testSuite ->
+  return variant.testSuiteComponents.associate { testSuite ->
     testSuite.suiteName to testSuitesDefinitions[testSuite.suiteName]!!.sources.map { it.sourceProvider }
   }
 }

@@ -77,6 +77,12 @@ sealed interface IdeBaseArtifactCore : Serializable {
 
   /** All bytecode transformations done by AGP or 3P plugins. If this information is not provided by AGP, `null` is returned. */
   val bytecodeTransforms: Collection<IdeBytecodeTransformation>?
+
+  /** The compile classpath of this artifact, with unresolved library references. */
+  val compileClasspathCore: IdeDependenciesCore
+
+  /** The runtime classpath of this artifact, with unresolved library references. */
+  val runtimeClasspathCore: IdeDependenciesCore
 }
 
 sealed interface IdeBaseArtifact : IdeBaseArtifactCore {

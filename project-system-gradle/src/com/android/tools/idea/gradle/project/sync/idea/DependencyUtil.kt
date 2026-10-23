@@ -30,7 +30,7 @@ import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
 import com.android.tools.idea.gradle.model.IdeJavaLibrary
 import com.android.tools.idea.gradle.model.IdeLibrary
 import com.android.tools.idea.gradle.model.IdeModuleLibrary
-import com.android.tools.idea.gradle.model.IdeTestSuiteVariantTarget
+import com.android.tools.idea.gradle.model.IdeTestSuiteComponentCore
 import com.android.tools.idea.gradle.model.IdeUnknownLibrary
 import com.android.tools.idea.gradle.model.IdeVariant
 import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
@@ -302,9 +302,9 @@ fun DataNode<ModuleData>.findSourceSetDataForArtifact(ideBaseArtifact: IdeBaseAr
   } ?: throw ExternalSystemException("Missing GradleSourceSetData data for artifact!")
 }
 
-fun DataNode<ModuleData>.findSourceSetDataForArtifact(ideTestSuiteVariantTarget: IdeTestSuiteVariantTarget): DataNode<GradleSourceSetData> {
+fun DataNode<ModuleData>.findSourceSetDataForArtifact(ideTestSuiteComponent: IdeTestSuiteComponentCore): DataNode<GradleSourceSetData> {
   return ExternalSystemApiUtil.findChild(this, GradleSourceSetData.KEY) {
-    it.data.getProperty("TestSuite").toBoolean() && it.data.externalName.substringAfterLast(":") == ideTestSuiteVariantTarget.suiteName
+    it.data.getProperty("TestSuite").toBoolean() && it.data.externalName.substringAfterLast(":") == ideTestSuiteComponent.suiteName
   } ?: throw ExternalSystemException("Missing GradleSourceSetData data for artifact!")
 }
 

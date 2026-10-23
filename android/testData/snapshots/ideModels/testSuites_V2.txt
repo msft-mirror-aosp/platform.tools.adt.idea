@@ -1849,13 +1849,11 @@ MODULE                        : project.app
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
             firstTestSuiteArtifact
-                TargetedVariantName           : debug
                 Targets
                     TestSuiteTarget
                         TargetName                    : t1
                         TestTaskName                  : testDebugFirstT1TestSuite
             secondTestSuiteArtifact
-                TargetedVariantName           : debug
                 Targets
                     TestSuiteTarget
                         TargetName                    : t1
