@@ -104,6 +104,7 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
                     internedModels,
                     androidProjectPathResolver = androidProjectPathResolver,
                     buildPathMap = buildPathMap,
+                    syncOptions.syncTestMode,
                   )
                 exceptionsPerProject += result.exceptions.map { gradleProject to it }
                 result.ignoreExceptionsAndGet()?.let { gradleProject to it }
@@ -152,10 +153,11 @@ private fun fetchAndProcessAndroidDependenciesModel(
   internedModels: InternedModels,
   androidProjectPathResolver: AndroidProjectPathResolver,
   buildPathMap: Map<String, BuildId>,
+  testSyncMode: SyncTestMode,
 ): ModelResult<IdeVariantWithPostProcessor> {
   // We need to be lenient when modules are being resolved as some might not be set up yet if not supported by phased sync
   // - for instance, the KMP modules are not supported and not yet populated in this case
-  val modelCacheV2Impl = modelCacheV2Impl(internedModels, versions, syncTestMode = SyncTestMode.PRODUCTION, lenientModuleResolution = true)
+  val modelCacheV2Impl = modelCacheV2Impl(internedModels, versions, syncTestMode = testSyncMode, lenientModuleResolution = true)
 
   return modelCacheV2Impl.variantFrom(
     BuildId(buildModel.buildIdentifier.rootDir),
