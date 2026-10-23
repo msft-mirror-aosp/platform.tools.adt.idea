@@ -61,11 +61,11 @@ public class BuildLanguageSpecProviderImpl implements BuildLanguageSpecProvider 
     return getLanguageSpecInternal();
 
     // query sync:
-    //LanguageSpecResult spec = blazeProjectData.getSyncState().get(LanguageSpecResult.class);
-    //if (spec == null) {
+    // LanguageSpecResult spec = blazeProjectData.getSyncState().get(LanguageSpecResult.class);
+    // if (spec == null) {
     //  return null;
-    //}
-    //return spec.getSpec();
+    // }
+    // return spec.getSpec();
   }
 
   private synchronized void setLanguageSpec(BuildLanguageSpec languageSpec, String blazeRelease) {
@@ -107,7 +107,7 @@ public class BuildLanguageSpecProviderImpl implements BuildLanguageSpecProvider 
 
                     @Override
                     public void onFailure(Throwable throwable) {
-                      logger.error("Failed to fetch build language spec", throwable);
+                      logger.warn("Failed to fetch build language spec", throwable);
                       context.output(
                           IssueOutput.error(
                                   "Failed to obtain Build language spec. Build language support may"
@@ -121,7 +121,7 @@ public class BuildLanguageSpecProviderImpl implements BuildLanguageSpecProvider 
 
           @Override
           public void onFailure(Throwable throwable) {
-            logger.error("Could not fetch blaze version", throwable);
+            logger.warn("Could not fetch blaze version", throwable);
             context.output(
                 IssueOutput.error(
                         String.format(
