@@ -44,7 +44,6 @@ import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.CheckedTreeNode
 import java.io.File
 import java.util.Base64
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.JButton
 import javax.swing.JPanel
 import org.junit.After
@@ -97,8 +96,6 @@ class UpdateReferenceImagesFromTestPanelActionTest {
     val manager = UpdateReferenceImagesDialogManager.getInstance(project)
 
     var showCalled = false
-    // Set on the background thread that processes the test results.
-    val suiteFinished = AtomicBoolean(false)
     var capturedDialog: UpdateReferenceImagesDialog? = null
     manager.dialogFactory = { proj ->
       spy(UpdateReferenceImagesDialog(proj)).also { spyDialog ->
@@ -109,12 +106,6 @@ class UpdateReferenceImagesFromTestPanelActionTest {
           }
           .`when`(spyDialog)
           .show()
-        doAnswer {
-            suiteFinished.set(true)
-            it.callRealMethod()
-          }
-          .`when`(spyDialog)
-          .onTestSuiteFinished()
         capturedDialog = spyDialog
       }
     }
@@ -226,9 +217,7 @@ class UpdateReferenceImagesFromTestPanelActionTest {
     val dataContext = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project).build()
     action.actionPerformed(TestActionEvent.createTestEvent(action, dataContext))
 
-    PlatformTestUtil.waitWithEventsDispatching("onTestSuiteFinished() was not called", { suiteFinished.get() }, 10)
-
-    assertTrue("Dialog show() was not called", showCalled)
+    PlatformTestUtil.waitWithEventsDispatching("Dialog show() was not called", { showCalled }, 10)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
     val dialog = capturedDialog!!
@@ -297,8 +286,6 @@ class UpdateReferenceImagesFromTestPanelActionTest {
     val manager = UpdateReferenceImagesDialogManager.getInstance(project)
 
     var showCalled = false
-    // Set on the background thread that processes the test results.
-    val suiteFinished = AtomicBoolean(false)
     var capturedDialog: UpdateReferenceImagesDialog? = null
     manager.dialogFactory = { proj ->
       spy(UpdateReferenceImagesDialog(proj)).also { spyDialog ->
@@ -309,12 +296,6 @@ class UpdateReferenceImagesFromTestPanelActionTest {
           }
           .`when`(spyDialog)
           .show()
-        doAnswer {
-            suiteFinished.set(true)
-            it.callRealMethod()
-          }
-          .`when`(spyDialog)
-          .onTestSuiteFinished()
         capturedDialog = spyDialog
       }
     }
@@ -413,9 +394,7 @@ class UpdateReferenceImagesFromTestPanelActionTest {
       val dataContext = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project).build()
       action.actionPerformed(TestActionEvent.createTestEvent(action, dataContext))
 
-      PlatformTestUtil.waitWithEventsDispatching("onTestSuiteFinished() was not called", { suiteFinished.get() }, 10)
-
-      assertTrue("Dialog show() was not called", showCalled)
+      PlatformTestUtil.waitWithEventsDispatching("Dialog show() was not called", { showCalled }, 10)
       PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
       val dialog = capturedDialog!!
@@ -451,8 +430,6 @@ class UpdateReferenceImagesFromTestPanelActionTest {
     val mockLogger = mock(Logger::class.java)
 
     var showCalled = false
-    // Set on the background thread that processes the test results.
-    val suiteFinished = AtomicBoolean(false)
     var capturedDialog: UpdateReferenceImagesDialog? = null
     manager.dialogFactory = { proj ->
       spy(UpdateReferenceImagesDialog(proj, mockLogger)).also { spyDialog ->
@@ -463,12 +440,6 @@ class UpdateReferenceImagesFromTestPanelActionTest {
           }
           .`when`(spyDialog)
           .show()
-        doAnswer {
-            suiteFinished.set(true)
-            it.callRealMethod()
-          }
-          .`when`(spyDialog)
-          .onTestSuiteFinished()
         capturedDialog = spyDialog
       }
     }
@@ -484,9 +455,7 @@ class UpdateReferenceImagesFromTestPanelActionTest {
       val dataContext = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project).build()
       action.actionPerformed(TestActionEvent.createTestEvent(action, dataContext))
 
-      PlatformTestUtil.waitWithEventsDispatching("onTestSuiteFinished() was not called", { suiteFinished.get() }, 10)
-
-      assertTrue("Dialog show() was not called", showCalled)
+      PlatformTestUtil.waitWithEventsDispatching("Dialog show() was not called", { showCalled }, 10)
       PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
 
       val dialog = capturedDialog!!
@@ -552,27 +521,6 @@ class UpdateReferenceImagesFromTestPanelActionTest {
 
     assertEquals(1, factoryCalls)
     verify(mockDialog).toFront()
-    Disposer.dispose(disposable)
-  }
-
-  @Test
-  fun testActionPerformed_showsDialogBeforeTestResultsAreProcessed() = runInEdtAndWait {
-    val project = projectRule.project
-    val manager = UpdateReferenceImagesDialogManager.getInstance(project)
-
-    val mockDialog = mock(UpdateReferenceImagesDialog::class.java)
-    val disposable = Disposer.newDisposable(projectRule.testRootDisposable, "MockDialog")
-    `when`(mockDialog.disposable).thenReturn(disposable)
-    manager.dialogFactory = { mockDialog }
-
-    val action = UpdateReferenceImagesFromTestPanelAction()
-    action.testResults = createFakeTestResults(emptyList())
-    val projectContext = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, project).build()
-    action.actionPerformed(TestActionEvent.createTestEvent(action, projectContext))
-
-    // The dialog must be visible as soon as it is registered with the manager. Otherwise, the
-    // manager treats it as closed and a second click would open another dialog.
-    verify(mockDialog).show()
     Disposer.dispose(disposable)
   }
 
