@@ -490,6 +490,35 @@ class ArtifactDirectoryUpdateTest {
   }
 
   @Test
+  @Throws(IOException::class)
+  fun corrupted_state_file_recovers() {
+    val contentsProtoPath = ArtifactDirectoryUpdate.getContentsFile(root)
+    Files.writeString(contentsProtoPath, "corrupted serialized state")
+
+    val expectedContents =
+      ProjectProto.ArtifactDirectoryContents(
+        contents =
+          mapOf(
+            "somefile.txt" to
+              ProjectProto.ProjectArtifact(
+                target = Label.of("//target"),
+                buildArtifact = ProjectProto.BuildArtifact("abcde"),
+                fromBuild = buildTimestamp,
+                transform = ProjectProto.ProjectArtifact.ArtifactTransform.COPY,
+              )
+          )
+      )
+    val update = ArtifactDirectoryUpdate("name", cache, root, expectedContents)
+    update.update(NoopContext())
+
+    Truth.assertThat(readContents()).containsExactly(Path.of("somefile.txt"))
+    Truth.assertThat(Files.readAllLines(root.resolve("somefile.txt"))).containsExactly("abcde")
+    Files.newInputStream(contentsProtoPath).use { input ->
+      Truth.assertThat(ProjectProto.ArtifactDirectoryContents.readFrom(input)).isEqualTo(expectedContents)
+    }
+  }
+
+  @Test
   fun computeFilesToDelete_filesDeleted() {
     val toDelete = ArtifactDirectoryUpdate.computeFilesToDelete(paths("a", "b", "c"), paths("a", "b"))
     Truth.assertThat(toDelete).isEqualTo(paths("c").toList())

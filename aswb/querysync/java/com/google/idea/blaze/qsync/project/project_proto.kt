@@ -1,7 +1,6 @@
 package com.google.idea.blaze.qsync.project
 
 import com.google.idea.blaze.common.Label
-import com.intellij.openapi.diagnostic.getOrLogException
 import com.intellij.openapi.diagnostic.thisLogger
 import java.io.InputStream
 import java.io.ObjectInputStream
@@ -121,11 +120,13 @@ class ProjectProto {
     }
 
     companion object {
-      @Suppress("UnstableApiUsage")
       @JvmStatic
       fun readFrom(input: InputStream): ArtifactDirectoryContents {
-        return runCatching { ObjectInputStream(input).readObject() as ArtifactDirectoryContents }.getOrLogException(thisLogger())
-          ?: ArtifactDirectoryContents.getDefaultInstance()
+        return runCatching { ObjectInputStream(input).readObject() as ArtifactDirectoryContents }
+          .getOrElse {
+            thisLogger().warn("Failed to read artifact directory contents", it)
+            ArtifactDirectoryContents.getDefaultInstance()
+          }
       }
 
       @JvmStatic fun getDefaultInstance(): ArtifactDirectoryContents = ArtifactDirectoryContents(mapOf())
