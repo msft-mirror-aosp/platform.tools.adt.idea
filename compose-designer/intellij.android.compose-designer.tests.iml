@@ -79,7 +79,7 @@
     <orderEntry type="module" module-name="intellij.android.render-resources" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.rendering" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.testFramework" scope="TEST" />
-    <orderEntry type="module" module-name="intellij.android.visual-lint" scope="TEST" />
+    <orderEntry type="module" module-name="android.sdktools.visual-lint" scope="TEST" />
     <orderEntry type="module-library" scope="TEST">
       <library name="ui-animation-tooling">
         <CLASSES>

@@ -64,7 +64,7 @@
     <orderEntry type="module" module-name="intellij.android.layoutlib-loader" />
     <orderEntry type="module" module-name="intellij.android.ml-api" />
     <orderEntry type="module" module-name="intellij.android.avd" />
-    <orderEntry type="module" module-name="intellij.android.visual-lint" />
+    <orderEntry type="module" module-name="android.sdktools.visual-lint" />
     <orderEntry type="library" name="studio-plugin-intellij.spellchecker" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.uiDesigner" level="project" />
     <orderEntry type="library" name="studio-plugin-intellij.java.indexing" level="project" />

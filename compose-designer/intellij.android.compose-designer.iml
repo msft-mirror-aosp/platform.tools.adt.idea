@@ -55,7 +55,7 @@
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="intellij.android.render-resources" />
     <orderEntry type="module" module-name="intellij.android.rendering" />
-    <orderEntry type="module" module-name="intellij.android.visual-lint" />
+    <orderEntry type="module" module-name="android.sdktools.visual-lint" />
     <orderEntry type="module-library">
       <library name="ui-animation-tooling-internal">
         <CLASSES>

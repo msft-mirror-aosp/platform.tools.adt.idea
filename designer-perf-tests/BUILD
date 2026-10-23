@@ -126,7 +126,7 @@ iml_module(
         "//tools/adt/idea/project-system-gradle-models:intellij.android.projectSystem.gradle.models",
         "//tools/adt/idea/preview-elements:intellij.android.preview-elements",
         "//tools/adt/idea/preview-fast-compile:intellij.android.preview-fast-compile",
-        "//tools/adt/idea/visual-lint:intellij.android.visual-lint",
+        "//tools/base/visual-lint:studio.android.sdktools.visual-lint",
         "//tools/adt/idea/compose-designer:intellij.android.compose-designer.testFramework",
         "//tools/adt/idea/.idea/libraries:truth",
         "//tools/adt/idea/designer:intellij.android.designer.testFramework",
