@@ -683,7 +683,7 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
         listOfNotNull(
           PhasedSyncProjectModelProvider(syncOptions, cachedModels),
           PhasedSyncDependencyModelProvider(syncOptions, cachedModels).takeIf { dependencyResolutionEnabled },
-          PhasedSyncAdditionalModelProvider(cachedModels).takeIf { dependencyResolutionEnabled },
+          PhasedSyncAdditionalModelProvider(syncOptions, cachedModels).takeIf { dependencyResolutionEnabled },
         )
       } else {
         emptyList()

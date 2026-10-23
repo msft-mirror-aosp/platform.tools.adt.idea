@@ -22,9 +22,11 @@ import org.gradle.tooling.BuildController
 import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.gradle.tooling.model.gradle.GradleBuild
 import org.jetbrains.kotlin.idea.gradleTooling.KotlinGradleModel
+import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider
 
-class PhasedSyncAdditionalModelProvider(val cachedModels: ModelProviderCachedData) : ProjectImportModelProvider {
+class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val cachedModels: ModelProviderCachedData) :
+  ProjectImportModelProvider {
   override fun getPhase() = GradleModelFetchPhase.ADDITIONAL_MODEL_PHASE
 
   override fun populateModels(
@@ -37,9 +39,11 @@ class PhasedSyncAdditionalModelProvider(val cachedModels: ModelProviderCachedDat
     }
     val actions = buildModels.flatMap { buildModel ->
       buildModel.projects.mapNotNull { gradleProject ->
-        BuildAction { controller ->
-          gradleProject to controller.fetchModel<KotlinGradleModel>(gradleProject, cachedModels.data[gradleProject]?.selectedVariantName)
-        }
+        if (cachedModels.versions[gradleProject] != null) {
+          BuildAction { controller ->
+            gradleProject to controller.fetchModel<KotlinGradleModel>(gradleProject, cachedModels.data[gradleProject]?.selectedVariantName)
+          }
+        } else null
       }
     }
 
@@ -49,6 +53,37 @@ class PhasedSyncAdditionalModelProvider(val cachedModels: ModelProviderCachedDat
         modelConsumer.consumeProjectModel(gradleProject, it, IdeAndroidModels::class.java)
       }
     }
+
+    val hasAndroidModules = buildModels.any { it.projects.any { p -> cachedModels.versions[p] != null } }
+    modelConsumer.consumeBuildModel(
+      buildModels.first(),
+      IdeSyncExecutionReport(parallelFetchForV2ModelsEnabled = syncOptions.flags.studioFlagParallelSyncEnabled && hasAndroidModules),
+      IdeSyncExecutionReport::class.java,
+    )
+
+    // Now, for Java modules, as a fallback we request the Kotlin and KAPT models.
+    controller
+      .run(
+        buildModels.flatMap { buildModel ->
+          buildModel.projects.mapNotNull { gradleProject ->
+            if (cachedModels.versions[gradleProject] == null) {
+              BuildAction { controller ->
+                gradleProject to
+                  Pair(
+                    controller.findModel(gradleProject, KotlinGradleModel::class.java),
+                    controller.findModel(gradleProject, KaptGradleModel::class.java),
+                  )
+              }
+            } else null
+          }
+        }
+      )
+      .filterNotNull()
+      .forEach { (gradleProject, models) ->
+        models.first?.let { modelConsumer.consumeProjectModel(gradleProject, it, KotlinGradleModel::class.java) }
+        models.second?.let { modelConsumer.consumeProjectModel(gradleProject, it, KaptGradleModel::class.java) }
+      }
+
     cachedModels.clear()
   }
 }
