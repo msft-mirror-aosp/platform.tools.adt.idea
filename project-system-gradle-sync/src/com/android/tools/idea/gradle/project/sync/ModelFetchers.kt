@@ -29,6 +29,7 @@ import com.android.builder.model.v2.models.ndk.NativeModelBuilderParameter
 import com.android.builder.model.v2.models.ndk.NativeModule
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactName
+import com.android.tools.idea.gradle.model.IdeVariantCore
 import com.android.tools.idea.gradle.project.sync.AndroidProjectResult.Companion.RuntimeClasspathBehaviour
 import com.android.utils.appendCapitalized
 import org.gradle.tooling.BuildController
@@ -130,18 +131,53 @@ internal fun BuildController.findNativeModuleModel(project: BasicGradleProject, 
 
 internal val androidArtifactSuffixes = listOf("", "unitTest", "androidTest", "screenshotTest", "testFixtures")
 
+/**
+ * Computes a comma-separated list of Kotlin compilation names to request from the Kotlin model builder for [variant].
+ *
+ * For standard artifacts, the compilation name is `<variantName><ArtifactSuffix>` (e.g. `debugUnitTest`). For the sources of AGP test
+ * suites, the compilation name is the source set identifier AGP reports for the test suite artifact (e.g. `debugMixedTest`).
+ */
+internal fun computeKotlinModelParameter(variant: IdeVariantCore): String {
+  val candidates = mutableSetOf<String>()
+  for (suffix in androidArtifactSuffixes) {
+    candidates.add(variant.name.appendCapitalized(suffix))
+  }
+  for (component in variant.testSuiteComponents) {
+    for (artifact in component.hostTestSuiteArtifacts) {
+      candidates.add(artifact.sourceSetIdentifier)
+    }
+    for (artifact in component.deviceTestSuiteArtifacts) {
+      candidates.add(artifact.sourceSetIdentifier)
+    }
+  }
+  return candidates.joinToString(separator = ",")
+}
+
+internal fun computeKaptModelParameter(variantName: String): String =
+  androidArtifactSuffixes.joinToString(separator = ",") { artifactSuffix -> variantName.appendCapitalized(artifactSuffix) }
+
+internal fun BuildController.fetchKotlinGradleModel(root: Model, selectedVariant: IdeVariantCore?): KotlinGradleModel? =
+  if (selectedVariant != null) {
+    val parameterValue = computeKotlinModelParameter(selectedVariant)
+    findModel(root, KotlinGradleModel::class.java, ModelBuilderService.Parameter::class.java) { it.value = parameterValue }
+  } else {
+    findModel(root, KotlinGradleModel::class.java)
+  }
+
+internal fun BuildController.fetchKaptGradleModel(root: Model, selectedVariantName: String?): KaptGradleModel? =
+  if (selectedVariantName != null) {
+    val parameterValue = computeKaptModelParameter(selectedVariantName)
+    findModel(root, KaptGradleModel::class.java, ModelBuilderService.Parameter::class.java) { it.value = parameterValue }
+  } else {
+    findModel(root, KaptGradleModel::class.java)
+  }
+
 /** Kotlin related models that are fetched when importing Android projects. */
 internal data class AllKotlinModels(val kotlinModel: KotlinGradleModel?, val kaptModel: KaptGradleModel?)
 
-internal fun BuildController.findKotlinModelsForAndroidProject(root: Model, variantName: String): AllKotlinModels {
-  val kotlinModel =
-    findModel(root, KotlinGradleModel::class.java, ModelBuilderService.Parameter::class.java) {
-      it.value = androidArtifactSuffixes.joinToString(separator = ",") { artifactSuffix -> variantName.appendCapitalized(artifactSuffix) }
-    }
-  val kaptModel =
-    findModel(root, KaptGradleModel::class.java, ModelBuilderService.Parameter::class.java) {
-      it.value = androidArtifactSuffixes.joinToString(separator = ",") { artifactSuffix -> variantName.appendCapitalized(artifactSuffix) }
-    }
+internal fun BuildController.findKotlinModelsForAndroidProject(root: Model, variant: IdeVariantCore): AllKotlinModels {
+  val kotlinModel = fetchKotlinGradleModel(root, variant)
+  val kaptModel = fetchKaptGradleModel(root, variant.name)
   return AllKotlinModels(kotlinModel, kaptModel)
 }
 
@@ -149,7 +185,8 @@ sealed class VariantDependenciesCompat(
   val mainArtifact: ArtifactDependenciesCompat,
   val deviceTestArtifacts: Map<IdeArtifactName, ArtifactDependenciesCompat>,
   val hostTestArtifacts: Map<IdeArtifactName, ArtifactDependenciesCompat>,
-  val testSuiteArtifacts: Map<String, List<ArtifactDependenciesCompat>>,
+  /** Test suite source dependencies, keyed by test suite name and then by test suite source set identifier. */
+  val testSuiteArtifacts: Map<String, Map<String, ArtifactDependenciesCompat>>,
   val testFixturesArtifact: ArtifactDependenciesCompat?,
   val libraries: Map<String, Library>,
 ) {
@@ -191,9 +228,9 @@ sealed class VariantDependenciesCompat(
           ?: emptyMap()
       },
       if (modelVersions[ModelFeature.HAS_TEST_SUITES]) {
-        variantDependencies.testSuiteArtifacts.mapValues {
-          it.value.sourcesDependencies.map { sourceDependency ->
-            ArtifactDependenciesCompat.AdjacencyList(sourceDependency.artifactDependencies)
+        variantDependencies.testSuiteArtifacts.mapValues { (_, suiteDeps) ->
+          suiteDeps.sourcesDependencies.associate { sourceDependency ->
+            sourceDependency.name to ArtifactDependenciesCompat.AdjacencyList(sourceDependency.artifactDependencies)
           }
         }
       } else emptyMap(),
@@ -221,8 +258,10 @@ sealed class VariantDependenciesCompat(
           ?: emptyMap()
       },
       if (modelVersions[ModelFeature.HAS_TEST_SUITES])
-        variantDependencies.testSuiteArtifacts.mapValues {
-          it.value.sourcesDependencies.map { ArtifactDependenciesCompat.GraphItemList(it.artifactDependencies) }
+        variantDependencies.testSuiteArtifacts.mapValues { (_, suiteDeps) ->
+          suiteDeps.sourcesDependencies.associate { sourceDependency ->
+            sourceDependency.name to ArtifactDependenciesCompat.GraphItemList(sourceDependency.artifactDependencies)
+          }
         }
       else emptyMap(),
       variantDependencies.testFixturesArtifact?.let { ArtifactDependenciesCompat.GraphItemList(it) },

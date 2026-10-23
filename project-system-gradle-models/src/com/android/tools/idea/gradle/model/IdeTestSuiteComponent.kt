@@ -50,3 +50,7 @@ interface IdeTestSuiteComponent : IdeTestSuiteComponentCore {
   override val hostTestSuiteArtifacts: Collection<IdeTestSuiteHostArtifact>
   override val deviceTestSuiteArtifacts: Collection<IdeTestSuiteDeviceArtifact>
 }
+
+/** All the host and device artifacts of this test suite component. */
+val IdeTestSuiteComponentCore.allArtifacts: List<IdeBaseArtifactCore>
+  get() = hostTestSuiteArtifacts + deviceTestSuiteArtifacts

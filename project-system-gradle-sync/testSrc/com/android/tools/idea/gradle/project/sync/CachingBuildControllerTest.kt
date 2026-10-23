@@ -324,7 +324,7 @@ class CachingBuildControllerTest {
     // Assert that additional providers didn't run because shouldRunLegacyModelProviders is true, making request size empty.
     assertThat(gradle.requests).isEmpty()
     val cachingController = gradle.controller().toCachingController(cachedModels)
-    assertThat(cachingController.fetchModel<KotlinGradleModel>(app, options, "debug")).isNotNull()
+    assertThat(cachingController.fetchKotlinGradleModel(app, selectedVariant = null)).isNotNull()
     assertThat(cachingController.findModel(javaLib, KotlinGradleModel::class.java)).isNotNull()
     assertThat(cachingController.findModel(javaLib, KaptGradleModel::class.java)).isNotNull()
     assertThat(gradle.requests).hasSize(3)

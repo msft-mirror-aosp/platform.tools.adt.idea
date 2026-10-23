@@ -41,6 +41,8 @@ import com.android.builder.model.v2.ide.SourceProvider
 import com.android.builder.model.v2.ide.SourceSetContainer
 import com.android.builder.model.v2.ide.SyncIssue
 import com.android.builder.model.v2.ide.TestInfo
+import com.android.builder.model.v2.ide.TestSuiteDeviceArtifact
+import com.android.builder.model.v2.ide.TestSuiteHostArtifact
 import com.android.builder.model.v2.ide.TestedTargetVariant
 import com.android.builder.model.v2.ide.UnresolvedDependency
 import com.android.builder.model.v2.ide.Variant
@@ -116,6 +118,8 @@ import com.android.tools.idea.gradle.model.impl.IdeSourceProviderContainerImpl
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestOptionsImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteDeviceArtifactCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteHostArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteTargetImpl
@@ -129,6 +133,7 @@ import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeAbiImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeModuleImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeVariantImpl
 import com.android.tools.idea.gradle.model.impl.throwingIdeDependencies
+import com.android.tools.idea.gradle.model.impl.toImpl
 import com.android.utils.FileUtils
 import com.google.common.collect.Lists
 import com.intellij.util.containers.addIfNotNull
@@ -236,28 +241,17 @@ fun modelCacheV2Impl(
   ): IdeSourceProvider = sourceProviderFrom(provider, assetContext.buildFolder, legacyAndroidGradlePluginProperties)
 
   fun sourceProviderFrom(source: HostJarTestSuiteSource): IdeSourceProvider {
-    val topLevel: File =
-      if (modelVersions[ModelFeature.HAS_TEST_SUITES_SOURCES]) {
-        source.defaultTopLevel
-      } else {
-        source.kotlin.first().parentFile
-      }
-
+    val topLevel: File = source.defaultTopLevel
     fun File.makeRelativeAndDeduplicate(): String = relativeToOrSelf(topLevel).path.deduplicate()
 
-    val manifestFile: File =
-      if (modelVersions[ModelFeature.HAS_TEST_SUITES_SOURCES]) {
-        source.manifestFile!!
-      } else {
-        File(topLevel, "AndroidManifest.xml")
-      }
+    val manifestFile = source.manifestFile ?: error("Manifest file is null for host jar test suite source '${source.name}'")
     return IdeSourceProvider(
       name = source.name.deduplicate(),
       folder = topLevel,
       manifestFile = manifestFile.makeRelativeAndDeduplicate(),
       javaDirectories = source.java.map { it.makeRelativeAndDeduplicate() },
       kotlinDirectories = source.kotlin.map { it.makeRelativeAndDeduplicate() },
-      resourcesDirectories = emptyList(),
+      resourcesDirectories = source.resources.map { it.makeRelativeAndDeduplicate() },
       aidlDirectories = emptyList(),
       renderscriptDirectories = emptyList(),
       resDirectories = emptyList(),
@@ -1237,19 +1231,217 @@ fun modelCacheV2Impl(
     }
   }
 
-  fun testSuiteComponentsFrom(basicVariant: BasicVariant): List<IdeTestSuiteComponentCoreImpl> {
-    return if (modelVersions[ModelFeature.HAS_TEST_SUITES]) {
-      basicVariant.testSuiteVariantTargets.values.map { variantTarget ->
-        IdeTestSuiteComponentCoreImpl(
-          suiteName = variantTarget.testSuiteName,
-          targets =
-            variantTarget.targets.map { target ->
-              IdeTestSuiteTargetImpl(target.name, target.testTaskName, target.targetedDevices.toList())
-            },
+  /** Converts a V2 [TestSuiteHostArtifact] and its [sourceSetIdentifier] key in [Variant.testSuiteHostArtifacts] into an IDE model. */
+  fun testSuiteHostArtifactFrom(sourceSetIdentifier: String, artifact: TestSuiteHostArtifact): IdeTestSuiteHostArtifactCoreImpl =
+    IdeTestSuiteHostArtifactCoreImpl(
+      name = IdeTestSuiteArtifactName(artifact.sourceSetName),
+      sourceSetIdentifier = sourceSetIdentifier,
+      compileTaskName = artifact.compileTaskName,
+      assembleTaskName = artifact.assembleTaskName,
+      classesFolder = artifact.classesFolders.toList().toImpl(),
+      // The source folders of a test suite source set are declared once for the project and shared by every variant the suite targets,
+      // and are available from IdeAndroidProjectImpl.testSuites.
+      variantSourceProvider = null,
+      multiFlavorSourceProvider = null,
+      ideSetupTaskNames = artifact.ideSetupTaskNames.deduplicateStrings().toList(),
+      generatedSourceFolders = artifact.generatedSourceFolders.deduplicateFiles().distinct().toImpl(),
+      isTestArtifact = true,
+      compileClasspathCore = throwingIdeDependencies(),
+      runtimeClasspathCore = throwingIdeDependencies(),
+      unresolvedDependencies = emptyList(),
+      generatedClassPaths = artifact.generatedClassPaths.toImpl(),
+      bytecodeTransforms = artifact.bytecodeTransformations.toIdeModels().toList(),
+    )
+
+  /** Converts a V2 [TestSuiteDeviceArtifact] and its [sourceSetIdentifier] key in [Variant.testSuiteDeviceArtifacts] into an IDE model. */
+  fun testSuiteDeviceArtifactFrom(sourceSetIdentifier: String, artifact: TestSuiteDeviceArtifact): IdeTestSuiteDeviceArtifactCoreImpl =
+    IdeTestSuiteDeviceArtifactCoreImpl(
+      name = IdeTestSuiteArtifactName(artifact.sourceSetName),
+      sourceSetIdentifier = sourceSetIdentifier,
+      compileTaskName = artifact.compileTaskName,
+      assembleTaskName = artifact.assembleTaskName,
+      classesFolder = artifact.classesFolders.toList().toImpl(),
+      // The source folders of a test suite source set are declared once for the project and shared by every variant the suite targets,
+      // and are available from IdeAndroidProjectImpl.testSuites.
+      variantSourceProvider = null,
+      multiFlavorSourceProvider = null,
+      ideSetupTaskNames = artifact.ideSetupTaskNames.deduplicateStrings().toList(),
+      generatedSourceFolders = artifact.generatedSourceFolders.deduplicateFiles().distinct().toImpl(),
+      isTestArtifact = true,
+      compileClasspathCore = throwingIdeDependencies(),
+      runtimeClasspathCore = throwingIdeDependencies(),
+      unresolvedDependencies = emptyList(),
+      generatedClassPaths = artifact.generatedClassPaths.toImpl(),
+      bytecodeTransforms = artifact.bytecodeTransformations.toIdeModels().toList(),
+      applicationId = artifact.applicationId,
+      minSdkVersion = apiVersionFrom(artifact.minSdkVersion),
+      isSigned = artifact.isSigned,
+      signingConfigName = artifact.signingConfigName?.deduplicate(),
+      assembleTaskOutputListingFile = artifact.assembleTaskOutputListingFile?.toImpl(),
+    )
+
+  /**
+   * Builds the [IdeTestSuiteComponentCoreImpl] of each test suite applied to the variant: the targets come from the Phase 1
+   * [BasicVariant.testSuiteVariantTargets] and the host and device artifacts from the Phase 2 [Variant] model. Each artifact keeps the key
+   * AGP uses for it in [Variant.testSuiteHostArtifacts] / [Variant.testSuiteDeviceArtifacts] as its source set identifier.
+   */
+  fun testSuiteComponentsFrom(basicVariant: BasicVariant, variant: Variant): List<IdeTestSuiteComponentCoreImpl> {
+    val hostArtifactsBySuite = variant.testSuiteHostArtifacts.entries.groupBy { it.value.testSuiteName }
+    val deviceArtifactsBySuite = variant.testSuiteDeviceArtifacts.entries.groupBy { it.value.testSuiteName }
+    return basicVariant.testSuiteVariantTargets.values.map { variantTarget ->
+      val suiteName = variantTarget.testSuiteName
+      IdeTestSuiteComponentCoreImpl(
+        suiteName = suiteName,
+        targets =
+          variantTarget.targets.map { target -> IdeTestSuiteTargetImpl(target.name, target.testTaskName, target.targetedDevices.toList()) },
+        hostTestSuiteArtifacts =
+          hostArtifactsBySuite[suiteName].orEmpty().map { (key, artifact) -> testSuiteHostArtifactFrom(key, artifact) },
+        deviceTestSuiteArtifacts =
+          deviceArtifactsBySuite[suiteName].orEmpty().map { (key, artifact) -> testSuiteDeviceArtifactFrom(key, artifact) },
+      )
+    }
+  }
+
+  /**
+   * Attaches the compile, runtime, and unresolved dependencies from [artifactDependencies] to a test suite artifact via
+   * [copyWithDependencies].
+   *
+   * When [artifactDependencies] is `null`, the artifact is kept with an empty compile classpath and a runtime classpath that throws before
+   * [IdeModelWithPostProcessor.postProcess] and resolves to an empty classpath after post-processing.
+   */
+  fun <T> testSuiteArtifactWithDependenciesFrom(
+    buildId: BuildId,
+    projectPath: String,
+    artifactName: IdeModuleSourceSet,
+    artifactDependencies: ArtifactDependenciesCompat?,
+    libraries: Map<String, Library>,
+    bootClasspath: Collection<String>,
+    androidProjectPathResolver: AndroidProjectPathResolver,
+    buildPathMap: Map<String, BuildId>,
+    copyWithDependencies:
+      (
+        compileClasspathCore: IdeDependenciesCoreImpl,
+        runtimeClasspathCore: IdeDependenciesCoreImpl,
+        unresolvedDependencies: List<IdeUnresolvedDependencyImpl>,
+      ) -> T,
+  ): ModelResult<IdeModelWithPostProcessor<T>> {
+    if (artifactDependencies == null) {
+      return ModelResult.create {
+        IdeModelWithPostProcessor(
+          copyWithDependencies(IdeDependenciesCoreDirect(emptyList()), throwingIdeDependencies(), emptyList()),
+          postProcessor = {
+            copyWithDependencies(IdeDependenciesCoreDirect(emptyList()), IdeDependenciesCoreDirect(emptyList()), emptyList())
+          },
         )
       }
-    } else emptyList()
+    }
+    return ModelResult.create {
+      val compileClasspathCore =
+        dependenciesFrom(
+            ClasspathIdentifier(buildId, projectPath, artifactName, ClasspathType.COMPILE),
+            artifactDependencies.compileDependencies,
+            libraries,
+            bootClasspath,
+            androidProjectPathResolver,
+            buildPathMap,
+          )
+          .recordAndGet()
+
+      val runtimeClasspathCore =
+        dependenciesFrom(
+            ClasspathIdentifier(buildId, projectPath, artifactName, ClasspathType.RUNTIME),
+            artifactDependencies.runtimeDependencies,
+            libraries,
+            bootClasspath,
+            androidProjectPathResolver,
+            buildPathMap,
+          )
+          .recordAndGet()
+
+      val unresolvedDependencies = artifactDependencies.unresolvedDependencies.unresolvedDependenciesFrom()
+
+      IdeModelWithPostProcessor(
+        copyWithDependencies(
+          compileClasspathCore?.model ?: IdeDependenciesCoreDirect(emptyList()),
+          throwingIdeDependencies(),
+          unresolvedDependencies,
+        ),
+        postProcessor = {
+          copyWithDependencies(
+            compileClasspathCore?.postProcess() ?: IdeDependenciesCoreDirect(emptyList()),
+            runtimeClasspathCore?.postProcess() ?: IdeDependenciesCoreDirect(emptyList()),
+            unresolvedDependencies,
+          )
+        },
+      )
+    }
   }
+
+  /**
+   * Attaches the compile, runtime, and unresolved dependencies from [artifactDependencies] to [artifact].
+   *
+   * When [artifactDependencies] is `null`, the artifact is kept with an empty compile classpath and a runtime classpath that throws before
+   * [IdeModelWithPostProcessor.postProcess] and resolves to an empty classpath after post-processing.
+   */
+  fun testSuiteHostArtifactWithDependenciesFrom(
+    buildId: BuildId,
+    projectPath: String,
+    artifact: IdeTestSuiteHostArtifactCoreImpl,
+    artifactDependencies: ArtifactDependenciesCompat?,
+    libraries: Map<String, Library>,
+    bootClasspath: Collection<String>,
+    androidProjectPathResolver: AndroidProjectPathResolver,
+    buildPathMap: Map<String, BuildId>,
+  ): ModelResult<IdeModelWithPostProcessor<IdeTestSuiteHostArtifactCoreImpl>> =
+    testSuiteArtifactWithDependenciesFrom(
+      buildId = buildId,
+      projectPath = projectPath,
+      artifactName = artifact.name.toSourceSet(),
+      artifactDependencies = artifactDependencies,
+      libraries = libraries,
+      bootClasspath = bootClasspath,
+      androidProjectPathResolver = androidProjectPathResolver,
+      buildPathMap = buildPathMap,
+    ) { compileClasspathCore, runtimeClasspathCore, unresolvedDependencies ->
+      artifact.copy(
+        compileClasspathCore = compileClasspathCore,
+        runtimeClasspathCore = runtimeClasspathCore,
+        unresolvedDependencies = unresolvedDependencies,
+      )
+    }
+
+  /**
+   * Attaches the compile, runtime, and unresolved dependencies from [artifactDependencies] to [artifact].
+   *
+   * When [artifactDependencies] is `null`, the artifact is kept with an empty compile classpath and a runtime classpath that throws before
+   * [IdeModelWithPostProcessor.postProcess] and resolves to an empty classpath after post-processing.
+   */
+  fun testSuiteDeviceArtifactWithDependenciesFrom(
+    buildId: BuildId,
+    projectPath: String,
+    artifact: IdeTestSuiteDeviceArtifactCoreImpl,
+    artifactDependencies: ArtifactDependenciesCompat?,
+    libraries: Map<String, Library>,
+    bootClasspath: Collection<String>,
+    androidProjectPathResolver: AndroidProjectPathResolver,
+    buildPathMap: Map<String, BuildId>,
+  ): ModelResult<IdeModelWithPostProcessor<IdeTestSuiteDeviceArtifactCoreImpl>> =
+    testSuiteArtifactWithDependenciesFrom(
+      buildId = buildId,
+      projectPath = projectPath,
+      artifactName = artifact.name.toSourceSet(),
+      artifactDependencies = artifactDependencies,
+      libraries = libraries,
+      bootClasspath = bootClasspath,
+      androidProjectPathResolver = androidProjectPathResolver,
+      buildPathMap = buildPathMap,
+    ) { compileClasspathCore, runtimeClasspathCore, unresolvedDependencies ->
+      artifact.copy(
+        compileClasspathCore = compileClasspathCore,
+        runtimeClasspathCore = runtimeClasspathCore,
+        unresolvedDependencies = unresolvedDependencies,
+      )
+    }
 
   fun deviceTestArtifactsFrom(
     variant: Variant,
@@ -1345,7 +1537,8 @@ fun modelCacheV2Impl(
           legacyAndroidGradlePluginProperties,
           assetContext,
         ),
-      testSuiteComponents = testSuiteComponentsFrom(basicVariant),
+      testSuiteComponents =
+        if (modelVersions[ModelFeature.HAS_TEST_SUITES]) testSuiteComponentsFrom(basicVariant, variant) else emptyList(),
       testFixturesArtifact =
         variant.testFixturesArtifact?.let { it: AndroidArtifact ->
           androidArtifactFrom(
@@ -1465,12 +1658,59 @@ fun modelCacheV2Impl(
             .recordAndGet()
         }
 
+      // AGP names the dependencies of each test suite source with the same source set identifier it uses as the key of the artifact.
+      val testSuiteComponents =
+        variant.testSuiteComponents.map { component ->
+          val suiteDependencies = variantDependencies.testSuiteArtifacts[component.suiteName].orEmpty()
+          val hostTestSuiteArtifacts =
+            component.hostTestSuiteArtifacts.mapNotNull { artifact ->
+              testSuiteHostArtifactWithDependenciesFrom(
+                  buildId = ownerBuildId,
+                  projectPath = ownerProjectPath,
+                  artifact = artifact,
+                  artifactDependencies = suiteDependencies[artifact.sourceSetIdentifier],
+                  libraries = variantDependencies.libraries,
+                  bootClasspath = bootClasspath,
+                  androidProjectPathResolver = androidProjectPathResolver,
+                  buildPathMap = buildPathMap,
+                )
+                .recordAndGet()
+            }
+          val deviceTestSuiteArtifacts =
+            component.deviceTestSuiteArtifacts.mapNotNull { artifact ->
+              testSuiteDeviceArtifactWithDependenciesFrom(
+                  buildId = ownerBuildId,
+                  projectPath = ownerProjectPath,
+                  artifact = artifact,
+                  artifactDependencies = suiteDependencies[artifact.sourceSetIdentifier],
+                  libraries = variantDependencies.libraries,
+                  bootClasspath = bootClasspath,
+                  androidProjectPathResolver = androidProjectPathResolver,
+                  buildPathMap = buildPathMap,
+                )
+                .recordAndGet()
+            }
+          IdeModelWithPostProcessor(
+            component.copy(
+              hostTestSuiteArtifacts = hostTestSuiteArtifacts.map { it.model },
+              deviceTestSuiteArtifacts = deviceTestSuiteArtifacts.map { it.model },
+            ),
+            postProcessor = {
+              component.copy(
+                hostTestSuiteArtifacts = hostTestSuiteArtifacts.map { it.postProcess() },
+                deviceTestSuiteArtifacts = deviceTestSuiteArtifacts.map { it.postProcess() },
+              )
+            },
+          )
+        }
+
       IdeVariantWithPostProcessor(
         variant.copy(
           mainArtifact = mainArtifact?.model ?: error("Failed to fetch models of the main artifact of $ownerProjectPath ($ownerBuildId)"),
           deviceTestArtifacts = deviceTestArtifacts.filterNotNull().map { it.model },
           hostTestArtifacts = hostTestArtifacts.filterNotNull().map { it.model },
           testFixturesArtifact = testFixturesArtifact?.model,
+          testSuiteComponents = testSuiteComponents.map { it.model },
         ),
         postProcessor =
           fun(): IdeVariantCoreImpl {
@@ -1479,6 +1719,7 @@ fun modelCacheV2Impl(
               deviceTestArtifacts = deviceTestArtifacts.map { it!!.postProcess() },
               hostTestArtifacts = hostTestArtifacts.map { it!!.postProcess() },
               testFixturesArtifact = testFixturesArtifact?.postProcess(),
+              testSuiteComponents = testSuiteComponents.map { it.postProcess() },
             )
           },
       )

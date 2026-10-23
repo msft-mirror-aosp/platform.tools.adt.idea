@@ -33,6 +33,7 @@ import com.android.tools.idea.gradle.model.IdeSyncIssue
 import com.android.tools.idea.gradle.model.IdeUnresolvedDependency
 import com.android.tools.idea.gradle.model.IdeUnresolvedLibrary
 import com.android.tools.idea.gradle.model.LibraryReference
+import com.android.tools.idea.gradle.model.allArtifacts
 import com.android.tools.idea.gradle.model.impl.FileImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
@@ -290,6 +291,7 @@ fun IdeVariantCoreImpl.patchForKapt(kaptModel: KaptGradleModel): IdeVariantCoreI
       },
     testFixturesArtifact =
       testFixturesArtifact?.maybePatch("TestFixtures") { copy(generatedSourceFolders = generatedSourceFoldersPatchedForKapt(it)) },
+    // TODO(b/580562534): Patch test suite artifacts once AGP supports KAPT for test suites.
   )
 }
 
@@ -317,7 +319,8 @@ internal fun collectIdentifiers(
         sequenceOf(it.mainArtifact.compileClasspathCore) +
           it.deviceTestArtifacts.find { v -> v.name == IdeArtifactName.ANDROID_TEST }?.compileClasspathCore +
           it.hostTestArtifacts.map { v -> v.compileClasspathCore } +
-          it.testFixturesArtifact?.compileClasspathCore
+          it.testFixturesArtifact?.compileClasspathCore +
+          it.testSuiteComponents.asSequence().flatMap { c -> c.allArtifacts.asSequence() }.map { a -> a.compileClasspathCore }
 
       sequence.filterNotNull()
     }

@@ -547,10 +547,13 @@ private fun ProjectDumper.dumpLinkedAndroidModuleGroup(module: Module) {
     prop("androidTest") { module.getAndroidTestModule()?.name }
     prop("testFixtures") { module.getTestFixturesModule()?.name }
     prop("screenshotTest") { module.getScreenshotTestModule()?.name }
-    val testSuites = module.getTestSuiteModules()
-    if (testSuites.isNotEmpty()) {
-      prop("testSuites") { testSuites.map { it.name }.sorted().joinToString(", ") }
-    }
+    module
+      .getTestSuiteModules()
+      .map { it.name }
+      .sorted()
+      .forEach {
+        prop("testSuites") { it }
+      }
   }
 }
 

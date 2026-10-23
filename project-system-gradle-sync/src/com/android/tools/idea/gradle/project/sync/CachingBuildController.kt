@@ -184,7 +184,7 @@ private data class RecordedModelBuilderParameter(
 
 /**
  * Records a [ModelBuilderService.Parameter], used for the `KotlinGradleModel` and `KaptGradleModel` models (see
- * [findKotlinModelsForAndroidProject] and [fetchModel]).
+ * [findKotlinModelsForAndroidProject], [fetchKotlinGradleModel] and [fetchKaptGradleModel]).
  */
 private data class RecordedModelBuilderServiceParameter(var recordedValue: String? = null) : ModelBuilderService.Parameter {
   override fun getValue(): String? = recordedValue

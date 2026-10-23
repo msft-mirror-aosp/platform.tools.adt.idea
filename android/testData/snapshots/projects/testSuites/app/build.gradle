@@ -34,7 +34,11 @@ android {
         useJunitEngine {
           inputs.add(com.android.build.api.dsl.AgpTestSuiteInputParameters.MERGED_MANIFEST)
         }
-        hostJar {}
+        hostJar {
+          dependencies {
+            implementation 'junit:junit:4.12'
+          }
+        }
         targetVariants.add('debug')
         targets.create('t1') {
         }

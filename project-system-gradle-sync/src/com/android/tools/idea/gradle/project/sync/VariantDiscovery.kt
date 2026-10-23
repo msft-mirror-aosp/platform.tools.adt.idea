@@ -20,6 +20,7 @@ import com.android.builder.model.v2.models.ProjectGraph
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeUnresolvedDependency
+import com.android.tools.idea.gradle.model.allArtifacts
 import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.ignoreExceptionsAndGet
 import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.mapCatching
 import com.android.utils.associateWithNotNull
@@ -98,7 +99,7 @@ internal class VariantDiscovery(
                 when (it) {
                   is SyncVariantResultFailure -> Unit
                   is SyncVariantResultSuccess -> {
-                    val allKotlinModels = controller.findKotlinModelsForAndroidProject(module.findModelRoot, it.ideVariant.name)
+                    val allKotlinModels = controller.findKotlinModelsForAndroidProject(module.findModelRoot, it.ideVariant.variant)
                     module.kotlinGradleModel = allKotlinModels.kotlinModel
                     module.kaptGradleModel = allKotlinModels.kaptModel
                   }
@@ -271,6 +272,9 @@ internal class VariantDiscovery(
                   ?.let { unresolvedDependencies.addAll(it.unresolvedDependencies) }
                 ideVariant.testFixturesArtifact?.let { unresolvedDependencies.addAll(it.unresolvedDependencies) }
                 ideVariant.hostTestArtifacts.forEach { unresolvedDependencies.addAll(it.unresolvedDependencies) }
+                ideVariant.testSuiteComponents.forEach { component ->
+                  component.allArtifacts.forEach { unresolvedDependencies.addAll(it.unresolvedDependencies) }
+                }
                 return unresolvedDependencies
               }
 
@@ -559,7 +563,7 @@ private fun selectVariantForAppOrLeaf(androidModule: AndroidModule, selectedVari
 private fun fetchKotlinModelsAction(result: SyncVariantResultSuccess) =
   ActionToRun(
     { controller ->
-      val allKotlinModels = controller.findKotlinModelsForAndroidProject(result.module.findModelRoot, result.ideVariant.name)
+      val allKotlinModels = controller.findKotlinModelsForAndroidProject(result.module.findModelRoot, result.ideVariant.variant)
 
       result.module.kotlinGradleModel = allKotlinModels.kotlinModel
       result.module.kaptGradleModel = allKotlinModels.kaptModel

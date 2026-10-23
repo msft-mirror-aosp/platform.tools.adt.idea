@@ -104,11 +104,11 @@ enum class ModelFeature(
   HAS_R8_PARTITION_FILE_PATH(ModelVersion(19, 0)),
   HAS_MATCHING_FALLBACKS(ModelVersion(20, 0)),
   HAS_MISSING_DIMENSION_STRATEGY(ModelVersion(21, 0)),
-  HAS_TEST_SUITES_SOURCES(ModelVersion(21, 1)),
   HAS_KEEP_RULES_SOURCES(ModelVersion(22, 0)),
   HAS_AAR_KEEP_RULES_SOURCES(ModelVersion(23, 0)),
   HAS_SOURCE_PROVIDERS_CONFIGURATION_NAMES(ModelVersion(24, 0)),
-  // Test suite targets moved from BasicTestSuite to BasicVariant.testSuiteVariantTargets in model version 25.0.
+  // Model version 25.0 moves test suite targets to BasicVariant.testSuiteVariantTargets and adds the test suite host and device
+  // artifacts to Variant.
   HAS_TEST_SUITES(ModelVersion(25, 0));
 
   init {

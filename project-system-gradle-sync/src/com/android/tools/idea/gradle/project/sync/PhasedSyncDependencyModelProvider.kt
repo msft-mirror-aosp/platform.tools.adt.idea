@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeSyncIssue
 import com.android.tools.idea.gradle.model.IdeUnresolvedDependency
 import com.android.tools.idea.gradle.model.IdeVariantCore
+import com.android.tools.idea.gradle.model.allArtifacts
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
@@ -168,6 +169,7 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
               variant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.let { addAll(it.unresolvedDependencies) }
               variant.testFixturesArtifact?.let { addAll(it.unresolvedDependencies) }
               variant.hostTestArtifacts.forEach { addAll(it.unresolvedDependencies) }
+              variant.testSuiteComponents.forEach { component -> component.allArtifacts.forEach { addAll(it.unresolvedDependencies) } }
             }
           }
           .distinct()

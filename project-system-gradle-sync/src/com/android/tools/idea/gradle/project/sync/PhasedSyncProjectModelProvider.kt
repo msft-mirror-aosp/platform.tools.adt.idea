@@ -37,7 +37,6 @@ import com.android.tools.idea.gradle.model.IdeSyncIssue.Companion.TYPE_GENERIC
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.ignoreExceptionsAndGet
-import com.android.utils.appendCapitalized
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
 import com.intellij.openapi.diagnostic.logger
 import java.util.Collections
@@ -53,7 +52,6 @@ import org.gradle.tooling.model.gradle.GradleBuild
 import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 import org.jetbrains.plugins.gradle.model.GradleTaskModel
 import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider
-import org.jetbrains.plugins.gradle.tooling.ModelBuilderService
 
 class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cachedModels: ModelProviderCachedData) :
   ProjectImportModelProvider {
@@ -279,7 +277,13 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
             BuildAction {
               // If this is not a project that we support , then we should not fetch the KAPT model in this case.
               val data = cachedModels.data[gradleProject] ?: return@BuildAction null
-              val kaptModel = controller.fetchModel<KaptGradleModel>(gradleProject, syncOptions, data.selectedVariantName)
+              val selectedVariantName =
+                when (syncOptions) {
+                  is SingleVariantSyncActionOptions -> data.selectedVariantName
+                  // Without a selected variant name, the KAPT model is requested for all variants.
+                  is AllVariantsSyncActionOptions -> null
+                }
+              val kaptModel = controller.fetchKaptGradleModel(gradleProject, selectedVariantName)
               kaptModel?.let { gradleProject to it }
             }
           }
@@ -417,27 +421,6 @@ private fun computeVariantNameToBeSynced(
 
 /** Cache the current variant's buildTypes + fallbacks, and flavors + fallbacks. */
 fun BasicGradleProject.moduleId() = Modules.createUniqueModuleId(projectIdentifier.buildIdentifier.rootDir, path)
-
-internal inline fun <reified T> BuildController.fetchModel(
-  gradleProject: BasicGradleProject,
-  syncOptions: SyncActionOptions,
-  selectedVariantName: String,
-): T? =
-  when (syncOptions) {
-    is SingleVariantSyncActionOptions ->
-      findModel(
-        gradleProject,
-        T::class.java,
-        ModelBuilderService.Parameter::class.java,
-        {
-          it.value =
-            androidArtifactSuffixes.joinToString(separator = ",") { artifactSuffix ->
-              selectedVariantName.appendCapitalized(artifactSuffix)
-            }
-        },
-      )
-    is AllVariantsSyncActionOptions -> findModel(gradleProject, T::class.java)
-  }
 
 fun <T> T.getAllChildren(childrenFunction: (T) -> List<out T>): List<T> {
   val result = mutableListOf<T>(this)

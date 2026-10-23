@@ -47,7 +47,15 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
       buildModel.projects.mapNotNull { gradleProject ->
         val data = cachedModels.data[gradleProject] ?: return@mapNotNull null
         BuildAction { controller ->
-          val kotlinModel = controller.fetchModel<KotlinGradleModel>(gradleProject, syncOptions, data.selectedVariantName)
+          val selectedVariant =
+            when (syncOptions) {
+              is SingleVariantSyncActionOptions ->
+                cachedModels.fetchedVariants[gradleProject]?.find { it.name == data.selectedVariantName }
+                  ?: data.ideAndroidProject.coreVariants.find { it.name == data.selectedVariantName }
+              // Without a selected variant, the Kotlin model is requested for all variants.
+              is AllVariantsSyncActionOptions -> null
+            }
+          val kotlinModel = controller.fetchKotlinGradleModel(gradleProject, selectedVariant)
           val additionalArtifactsResult =
             controller.fetchAdditionalClassifierArtifactsModelForPhasedSync(gradleProject, syncOptions, cachedModels)
           Triple(gradleProject, kotlinModel, additionalArtifactsResult)

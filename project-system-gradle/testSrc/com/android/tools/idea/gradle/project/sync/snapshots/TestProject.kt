@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.project.sync.snapshots
 import com.android.builder.model.v2.ide.SyncIssue
 import com.android.ide.common.repository.AgpVersion
 import com.android.testutils.AssumeUtil.assumeNotWindows
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.GradleExperimentalSettings
 import com.android.tools.idea.gradle.project.sync.GradleSyncState
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
@@ -605,7 +606,18 @@ enum class TestProject(
     },
     switchVariant = TemplateBasedTestProject.VariantSelection(":app", "release"),
   ),
-  TEST_SUITES(TestProjectToSnapshotPaths.TEST_SUITES, isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT });
+  TEST_SUITES(
+    TestProjectToSnapshotPaths.TEST_SUITES,
+    setup =
+      fun(): () -> Unit {
+        StudioFlags.AGP_TEST_SUITES_ENABLED.override(true)
+
+        return fun() {
+          StudioFlags.AGP_TEST_SUITES_ENABLED.clearOverride()
+        }
+      },
+    isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT },
+  );
 
   override fun getTestDataDirectoryWorkspaceRelativePath(): String = "tools/adt/idea/android/testData/snapshots"
 

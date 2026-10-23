@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.model.IdePreResolvedModuleLibrary
 import com.android.tools.idea.gradle.model.IdeUnresolvedDependency
 import com.android.tools.idea.gradle.model.IdeUnresolvedLibrary
 import com.android.tools.idea.gradle.model.LibraryReference
+import com.android.tools.idea.gradle.model.allArtifacts
 
 internal sealed class SyncVariantResult(val moduleConfiguration: ModuleConfiguration, val module: AndroidModule)
 
@@ -78,6 +79,9 @@ internal fun SyncVariantResultSuccess.getModuleDependencyConfigurations(
         ?.dependencies
         ?.let { yieldAll(it) }
       ideVariant.testFixturesArtifact?.compileClasspathCore?.dependencies?.let { yieldAll(it) }
+      ideVariant.testSuiteComponents.forEach { component ->
+        component.allArtifacts.forEach { yieldAll(it.compileClasspathCore.dependencies) }
+      }
     }
 
     return allDependencies

@@ -35,6 +35,7 @@ import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeJavaArtifactCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.ndk.v2.IdeNativeModuleImpl
 import com.android.tools.idea.gradle.project.sync.ModelCache.Companion.LOCAL_AARS
@@ -123,6 +124,8 @@ val IdeVariantWithPostProcessor.deviceTestArtifacts: List<IdeAndroidArtifactCore
   get() = variant.deviceTestArtifacts
 val IdeVariantWithPostProcessor.testFixturesArtifact: IdeAndroidArtifactCoreImpl?
   get() = variant.testFixturesArtifact
+val IdeVariantWithPostProcessor.testSuiteComponents: List<IdeTestSuiteComponentCoreImpl>
+  get() = variant.testSuiteComponents
 
 @VisibleForTesting
 /** For older AGP versions pick a variant name based on a heuristic */

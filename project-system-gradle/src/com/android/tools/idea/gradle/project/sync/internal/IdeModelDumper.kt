@@ -47,6 +47,7 @@ import com.android.tools.idea.gradle.model.IdeSourceProviderContainer
 import com.android.tools.idea.gradle.model.IdeTestOptions
 import com.android.tools.idea.gradle.model.IdeTestSuite
 import com.android.tools.idea.gradle.model.IdeTestSuiteComponentCore
+import com.android.tools.idea.gradle.model.IdeTestSuiteDeviceArtifactCore
 import com.android.tools.idea.gradle.model.IdeTestSuiteSource
 import com.android.tools.idea.gradle.model.IdeTestSuiteTarget
 import com.android.tools.idea.gradle.model.IdeTestedTargetVariant
@@ -433,7 +434,7 @@ private fun ideModelDumper(projectDumper: ProjectDumper) =
             nest { dump(it) }
           }
           ideVariant.testSuiteComponents.forEach {
-            head("${it.suiteName}TestSuiteArtifact")
+            head("${it.suiteName}TestSuiteComponent")
             nest { dump(it) }
           }
         }
@@ -500,6 +501,39 @@ private fun ideModelDumper(projectDumper: ProjectDumper) =
           head("Targets")
           nest { ideTestSuiteComponent.targets.forEach { dump(it) } }
         }
+        if (ideTestSuiteComponent.hostTestSuiteArtifacts.isNotEmpty()) {
+          head("HostTestSuiteArtifacts")
+          nest {
+            ideTestSuiteComponent.hostTestSuiteArtifacts.forEach { artifact ->
+              head(artifact.name.name)
+              nest {
+                prop("SourceSetIdentifier") { artifact.sourceSetIdentifier }
+                dump(artifact as IdeBaseArtifactCore)
+              }
+            }
+          }
+        }
+        if (ideTestSuiteComponent.deviceTestSuiteArtifacts.isNotEmpty()) {
+          head("DeviceTestSuiteArtifacts")
+          nest {
+            ideTestSuiteComponent.deviceTestSuiteArtifacts.forEach { artifact ->
+              head(artifact.name.name)
+              nest {
+                prop("SourceSetIdentifier") { artifact.sourceSetIdentifier }
+                dump(artifact)
+              }
+            }
+          }
+        }
+      }
+
+      private fun dump(ideTestSuiteDeviceArtifact: IdeTestSuiteDeviceArtifactCore) {
+        dump(ideTestSuiteDeviceArtifact as IdeBaseArtifactCore) // dump the IdeBaseArtifact part first.
+        prop("ApplicationId") { ideTestSuiteDeviceArtifact.applicationId }
+        ideTestSuiteDeviceArtifact.minSdkVersion.dump("MinSdkVersion")
+        prop("IsSigned") { ideTestSuiteDeviceArtifact.isSigned.toString() }
+        prop("SigningConfigName") { ideTestSuiteDeviceArtifact.signingConfigName }
+        prop("AssembleTaskOutputListingFile") { ideTestSuiteDeviceArtifact.assembleTaskOutputListingFile?.path?.toPrintablePath() }
       }
 
       private fun dump(ideTestSuiteTarget: IdeTestSuiteTarget) {
