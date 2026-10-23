@@ -20,6 +20,7 @@ import com.android.tools.idea.testing.addFileToProjectAndInvalidate
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runReadAction
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -113,6 +114,41 @@ class AnnotatedMethodsFinderTest {
     // A different parameter combination should add a new cache key
     assertEquals(0, findAnnotatedMethods(project, sourceFile.virtualFile, "com.android.annotations.MyAnnotationB", "MyAnnotationB").size)
     assertTrue("Unexpectedly no new cache keys", cacheKeys < CacheKeysManager.getInstance(project).map().size)
+  }
+
+  @Test
+  fun `test findAnnotatedMethods finds methods once their annotation resolves without the file changing`() = runTest {
+    val sourceFile =
+      fixture.addFileToProjectAndInvalidate(
+        "com/android/test/SourceFile.kt",
+        // language=kotlin
+        """
+        package com.android.test
+
+        import com.android.annotations.MyAnnotationA
+
+        @MyAnnotationA
+        fun abcde() { }
+        """
+          .trimIndent(),
+      )
+
+    // MyAnnotationA is not declared yet, so the annotation cannot be resolved.
+    assertEquals(0, findAnnotatedMethods(project, sourceFile.virtualFile, "com.android.annotations.MyAnnotationA", "MyAnnotationA").size)
+
+    // Declaring the annotation class does not modify SourceFile.kt.
+    fixture.addFileToProjectAndInvalidate(
+      "com/android/annotations/MyAnnotationA.kt",
+      // language=kotlin
+      """
+      package com.android.annotations
+
+      annotation class MyAnnotationA
+      """
+        .trimIndent(),
+    )
+
+    assertEquals(1, findAnnotatedMethods(project, sourceFile.virtualFile, "com.android.annotations.MyAnnotationA", "MyAnnotationA").size)
   }
 
   @Test

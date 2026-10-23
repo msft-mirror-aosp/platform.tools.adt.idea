@@ -30,6 +30,7 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.util.ModificationTracker
 import com.intellij.openapi.util.UserDataHolder
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.impl.java.stubs.index.JavaAnnotationIndex
 import com.intellij.psi.impl.light.LightElement
@@ -97,25 +98,27 @@ internal fun findAnnotations(project: Project, vFile: VirtualFile, shortAnnotati
   }
 
   val psiFile = AndroidPsiUtils.getPsiFileSafely(project, vFile) ?: return emptyList()
-  return CachedValuesManager.getManager(project).getCachedValue(
-    psiFile,
-    CacheKeysManager.getInstance(project).getKey(shortAnnotationName),
-  ) {
-    val scope = GlobalSearchScope.fileScope(project, vFile)
-    val annotations =
-      if (psiFile.language == KotlinLanguage.INSTANCE) {
-        KotlinAnnotationsIndex[shortAnnotationName, project, scope].asSequence().map { it.psiOrParent }
-      } else {
-        JavaAnnotationIndex.getInstance().getAnnotations(shortAnnotationName, project, scope).asSequence()
-      }
+  // Only the PSI is cached. UAST elements memoize what they resolve to (e.g. UAnnotation.qualifiedName), so caching them would keep
+  // returning stale results when that changes without this file being modified, e.g. when the annotation class is declared later.
+  return CachedValuesManager.getManager(project)
+    .getCachedValue(psiFile, CacheKeysManager.getInstance(project).getKey<List<PsiElement>>(shortAnnotationName)) {
+      val scope = GlobalSearchScope.fileScope(project, vFile)
+      val annotations =
+        if (psiFile.language == KotlinLanguage.INSTANCE) {
+          KotlinAnnotationsIndex[shortAnnotationName, project, scope].asSequence().map { it.psiOrParent }
+        } else {
+          JavaAnnotationIndex.getInstance().getAnnotations(shortAnnotationName, project, scope).asSequence()
+        }
 
-    // We skip light/synthetic elements (such as Kotlin light classes or Java synthetic elements)
-    // to avoid expensive and redundant conversions to UAST, since preview annotations are intended
-    // to be processed from original source files.
-    val filteredAnnotations = annotations.filter { it !is LightElement }
+      // We skip light/synthetic elements (such as Kotlin light classes or Java synthetic elements)
+      // to avoid expensive and redundant conversions to UAST, since preview annotations are intended
+      // to be processed from original source files.
+      val filteredAnnotations = annotations.filter { it !is LightElement }
 
-    CachedValueProvider.Result.create(filteredAnnotations.toList().mapNotNull { it.toUElementOfType<UAnnotation>() }.distinct(), psiFile)
-  }
+      CachedValueProvider.Result.create(filteredAnnotations.toList(), psiFile)
+    }
+    .mapNotNull { it.toUElementOfType<UAnnotation>() }
+    .distinct()
 }
 
 /**
