@@ -15,16 +15,8 @@
  */
 package icons;
 
-import com.google.common.base.Ascii;
-import com.google.idea.blaze.base.settings.Blaze;
-import com.intellij.ide.DataManager;
-import com.intellij.openapi.actionSystem.CommonDataKeys;
-import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.util.IconLoader;
 import javax.swing.Icon;
-import javax.swing.SwingUtilities;
 
 /** Class to manage icons used by the Blaze plugin. */
 public class BlazeIcons {
@@ -32,14 +24,14 @@ public class BlazeIcons {
   private static final String BASE = "resources/icons/";
 
   public static final Icon GoogleLogo = load("google-logo.svg");
-  public static final Icon Logo = loadForBuildSystem("logo.png");
+  public static final Icon Logo = load("bazel/logo.png");
   public static final Icon BazelLogo = load("bazel/logo.png");
   public static final Icon BlazeSlow = load("blaze_slow.png"); // 16x16
-  public static final Icon Failed = loadForBuildSystem("failed.png"); // 16x16
+  public static final Icon Failed = load("bazel/failed.png"); // 16x16
 
   public static final Icon BlazeRerun = load("blazeRerun.png"); // 16x16
 
-  public static final Icon ToolWindow = loadForBuildSystem("tool_window.png");
+  public static final Icon ToolWindow = load("bazel/tool_window.png");
 
   // Build file support icons
   public static final Icon BuildFile = load("build_file.png"); // 16x16
@@ -49,31 +41,5 @@ public class BlazeIcons {
 
   private static Icon load(String path) {
     return IconLoader.getIcon(BASE + path, BlazeIcons.class);
-  }
-
-  /**
-   * Tries to guess the current project. This is used to determine the build system name when there is no project.
-   */
-  private static Project guessCurrentProject() {
-    Project[] openProjects = ProjectManager.getInstance().getOpenProjects();
-    if (openProjects.length == 1) {
-      return openProjects[0];
-    }
-    if (SwingUtilities.isEventDispatchThread()) {
-      return DataManager.getInstance().getDataContext().getData(CommonDataKeys.PROJECT);
-    }
-    return null;
-  }
-
-  private static Icon loadForBuildSystem(String basename) {
-    // Guessing the build system name may result in an NPE if (e.g.) it was called from a
-    // unit-testing scenario where there aren't Application/ProjectManager instances yet.
-    if (ApplicationManager.getApplication() == null || ProjectManager.getInstance() == null) {
-      // Default to the bazel icons.
-      return load("bazel/" + basename);
-    } else {
-      Project project = guessCurrentProject();
-      return load(Ascii.toLowerCase(Blaze.buildSystemName(project)) + "/" + basename);
-    }
   }
 }
