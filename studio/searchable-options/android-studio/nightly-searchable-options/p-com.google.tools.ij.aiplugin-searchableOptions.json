@@ -326,6 +326,24 @@
   ]
 }
 {
+  "id": "editor.breadcrumbs",
+  "name": "Breadcrumbs",
+  "entries": [
+    {
+      "hit": "Swift"
+    }
+  ]
+}
+{
+  "id": "editor.stickyLines",
+  "name": "Sticky Lines",
+  "entries": [
+    {
+      "hit": "Swift"
+    }
+  ]
+}
+{
   "id": "preferences.keymap",
   "name": "Keymap",
   "entries": [
