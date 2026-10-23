@@ -77,13 +77,10 @@ import org.objectweb.asm.Type;
  * look up resources such as string and style values), and based on the names there generates bytecode on the
  * fly which can then be loaded into the VM and handled by the class loader.
  * <p>
- * In non-namespaced projects, the R class for an aar should contain the resource references to resources from
- * the aar and all its dependencies. It is not straight-forward to get the list of dependencies after the creation
- * of the resource repositories for each aar. So, we use the app's resource repository and generate the R file
+ * The R class for an aar should contain the resource references to resources from the aar and all its
+ * dependencies. It is not straight-forward to get the list of dependencies after the creation of the
+ * resource repositories for each aar. So, we use the app's resource repository and generate the R file
  * from it. This will break custom libraries that use reflection on the R class, but meh.
- * <p>
- * In namespaced projects the R class contains only resources from the aar itself and the repository used by the
- * {@link ResourceClassGenerator} should be the one created from the AAR.
  */
 public class ResourceClassGenerator {
   private static final Logger LOG = Logger.getInstance(ResourceClassGenerator.class);
@@ -104,14 +101,11 @@ public class ResourceClassGenerator {
   private Map<String, IntArrayList> myStyleableCache;
   @NotNull private final ResourceRepository myResources;
   @NotNull private final NumericIdProvider myIdProvider;
-  @NotNull private final ResourceNamespace myNamespace;
 
   private ResourceClassGenerator(@NotNull NumericIdProvider idProvider,
-                                 @NotNull ResourceRepository resources,
-                                 @NotNull ResourceNamespace namespace) {
+                                 @NotNull ResourceRepository resources) {
     myIdProvider = idProvider;
     myResources = resources;
-    myNamespace = namespace;
   }
 
   /**
@@ -119,9 +113,8 @@ public class ResourceClassGenerator {
    */
   @NotNull
   public static ResourceClassGenerator create(@NotNull NumericIdProvider manager,
-                                              @NotNull ResourceRepository resources,
-                                              @NotNull ResourceNamespace namespace) {
-    return new ResourceClassGenerator(manager, resources, namespace);
+                                              @NotNull ResourceRepository resources) {
+    return new ResourceClassGenerator(manager, resources);
   }
 
   /**
@@ -180,7 +173,7 @@ public class ResourceClassGenerator {
       }
     } else {
       // Default R class.
-      for (ResourceType t : myResources.getResourceTypes(myNamespace)) {
+      for (ResourceType t : myResources.getResourceTypes(ResourceNamespace.RES_AUTO)) {
         if (t.getHasInnerClass()) {
           cw.visitInnerClass(className + "$" + t.getName(), className, t.getName(), ACC_PUBLIC + ACC_FINAL + ACC_STATIC);
         }
@@ -193,9 +186,9 @@ public class ResourceClassGenerator {
   }
 
   private void generateValuesForType(@NotNull ClassWriter cw, @NotNull ResourceType resType, @NotNull Object2IntOpenHashMap<String> cache) {
-    Collection<String> resourceNames = myResources.getResourceNames(myNamespace, resType);
+    Collection<String> resourceNames = myResources.getResourceNames(ResourceNamespace.RES_AUTO, resType);
     for (String name : resourceNames) {
-      int initialValue = myIdProvider.getOrGenerateId(new ResourceReference(myNamespace, resType, name));
+      int initialValue = myIdProvider.getOrGenerateId(new ResourceReference(ResourceNamespace.RES_AUTO, resType, name));
       name = RClassNaming.getFieldNameByResourceName(name);
       generateField(cw, name, initialValue);
       cache.put(name, initialValue);
@@ -220,12 +213,12 @@ public class ResourceClassGenerator {
     boolean debug = LOG.isDebugEnabled() && isPublicClass(className);
 
     Object2IntOpenHashMap<String> indexFieldsCache = myCache.get(ResourceType.STYLEABLE);
-    Collection<String> styleableNames = myResources.getResourceNames(myNamespace, ResourceType.STYLEABLE);
+    Collection<String> styleableNames = myResources.getResourceNames(ResourceNamespace.RES_AUTO, ResourceType.STYLEABLE);
     List<MergedStyleable> mergedStyleables = new ArrayList<>(styleableNames.size());
 
     // Generate all declarations - both int[] and int for the indices into the array.
     for (String styleableName : styleableNames) {
-      List<ResourceItem> items = myResources.getResources(myNamespace, ResourceType.STYLEABLE, styleableName);
+      List<ResourceItem> items = myResources.getResources(ResourceNamespace.RES_AUTO, ResourceType.STYLEABLE, styleableName);
       if (items.isEmpty()) {
         if (debug) {
           LOG.debug("  No items for " + styleableName);
@@ -348,16 +341,14 @@ public class ResourceClassGenerator {
     mv.visitEnd();
   }
 
-  public String getResourceName(String styleableName, @NotNull ResourceReference value) {
+  private static String getResourceName(String styleableName, @NotNull ResourceReference value) {
     StringBuilder sb = new StringBuilder(30);
     sb.append(styleableName);
     sb.append('_');
-    if (!value.getNamespace().equals(myNamespace)) {
-      String packageName = value.getNamespace().getPackageName();
-      if (packageName != null) {
-        appendEscaped(sb, packageName);
-        sb.append('_');
-      }
+    String packageName = value.getNamespace().getPackageName();
+    if (packageName != null) {
+      appendEscaped(sb, packageName);
+      sb.append('_');
     }
     appendEscaped(sb, value.getName());
     return sb.toString();

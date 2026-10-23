@@ -81,18 +81,4 @@ interface ResourceRepositoryManager {
   fun getFrameworkResources(languages: Set<String>): ResourceRepository? {
     return getFrameworkResources(languages, emptyList())
   }
-
-  /**
-   * Returns a list containing the single resource repository returned by [appResources].
-   *
-   * **Note:** This method should not be called on the event dispatch thread since it may take long time, or block waiting for a read action
-   * lock.
-   *
-   * @param namespace the namespace to return resource repositories for
-   * @return the repositories for the given namespace
-   */
-  @Slow
-  fun getAppResourcesForNamespace(namespace: ResourceNamespace): List<ResourceRepository> {
-    return listOf(appResources)
-  }
 }

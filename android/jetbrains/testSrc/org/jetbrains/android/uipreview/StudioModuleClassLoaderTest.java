@@ -25,7 +25,6 @@ import static com.android.tools.idea.testing.JavacUtil.getJavac;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.android.ide.common.gradle.Component;
-import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.resources.ResourceRepository;
 import com.android.tools.idea.editors.fast.FastPreviewConfiguration;
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType;
@@ -168,11 +167,10 @@ public class StudioModuleClassLoaderTest extends AndroidTestCase {
 
     generateRClass(getProject(), "test", new File(outputDir, "R.class"));
 
-    StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(module);
-    ResourceNamespace namespace = Objects.requireNonNull(repositoryManager).getNamespace();
-    ResourceRepository moduleResources = repositoryManager.getModuleResources();
+    StudioResourceRepositoryManager repositoryManager = Objects.requireNonNull(StudioResourceRepositoryManager.getInstance(module));
+    ResourceRepository appResources = repositoryManager.getAppResources();
     ResourceClassRegistry rClassRegistry = ResourceClassRegistry.get(module.getProject());
-    rClassRegistry.addLibrary(moduleResources, StudioResourceIdManager.get(module), "test", namespace);
+    rClassRegistry.addLibrary(appResources, StudioResourceIdManager.get(module), "test");
 
     ApplicationManager.getApplication().runReadAction(() -> {
       try (ModuleClassLoaderManager.Reference<StudioModuleClassLoader> loaderReference = StudioModuleClassLoaderManager.get()

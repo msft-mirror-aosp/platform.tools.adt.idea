@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.res
 
-import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.resources.ResourceRepository
 import com.android.tools.res.ResourceRepositoryManager
 import com.android.tools.res.ids.ResourceClassGenerator
@@ -47,19 +46,18 @@ class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Du
   private var packages: TimeoutCachedValue<Set<String>> = createPackageCache()
 
   /**
-   * Adds definition of a new R class to the registry. The R class will contain resources from the given repo in the given namespace and
-   * will be generated when the [findClassDefinition] is called with a class name that matches the [packageName] and the `repo` resource
-   * repository can be found in the [StudioResourceRepositoryManager] passed to [findClassDefinition].
+   * Adds definition of a new R class to the registry. The R class will contain resources from the given repo and will be generated when
+   * [findClassDefinition] is called with a class name that matches the [packageName] and the `repo` resource repository matches
+   * [ResourceRepositoryManager.appResources] of the manager passed to [findClassDefinition].
    *
    * Note that the [ResourceClassRegistry] is a project-level component, so the same R class may be generated in different ways depending on
-   * the repository used. In non-namespaced project, the repository is the full [AppResourceRepository] of the module in question. In
-   * namespaced projects the repository is a [com.android.resources.aar.AarResourceRepository] of just the AAR contents.
+   * the [AppResourceRepository] of the module in question.
    */
-  fun addLibrary(repo: ResourceRepository, idManager: ResourceIdManager, packageName: String?, namespace: ResourceNamespace) {
+  fun addLibrary(repo: ResourceRepository, idManager: ResourceIdManager, packageName: String?) {
     if (packageName.isNullOrEmpty()) return
     var info = repoMap[repo]
     if (info == null) {
-      info = ResourceRepositoryInfo(repo, idManager, namespace)
+      info = ResourceRepositoryInfo(repo, idManager)
       repoMap[repo] = info
       // Explicit cleanup for Disposable instead of waiting for GC.
       if (repo is Disposable && !Disposer.tryRegister(repo) { removeRepository(repo) }) {
@@ -76,9 +74,7 @@ class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Du
     if (!className.isRClassName()) return null
     val pkg = className.substringBeforeLast(".", "")
     if (pkg in packages.get()) {
-      val namespace = ResourceNamespace.fromPackageName(pkg)
-      val repositories = repositoryManager.getAppResourcesForNamespace(namespace)
-      return findClassGenerator(repositories, className)?.generate(className)
+      return repoMap[repositoryManager.appResources]?.resourceClassGenerator?.generate(className)
     }
     return null
   }
@@ -94,17 +90,6 @@ class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Du
     packages = createPackageCache()
   }
 
-  private fun findClassGenerator(repositories: List<ResourceRepository>, className: String): ResourceClassGenerator? {
-    return repositories
-      .asSequence()
-      .mapNotNull { repoMap[it]?.resourceClassGenerator }
-      .reduceOrNull { _, _ ->
-        // There is a package name collision between libraries. Throw NoClassDefFoundError
-        // exception.
-        throw NoClassDefFoundError("$className class could not be loaded because of package name collision between libraries")
-      }
-  }
-
   private fun createPackageCache() =
     TimeoutCachedValue(packageTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS) {
       buildSet { repoMap.values.forEach { this.addAll(it.packages) } }
@@ -115,8 +100,8 @@ class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Du
     packages = createPackageCache()
   }
 
-  private class ResourceRepositoryInfo(repo: ResourceRepository, idManager: ResourceIdManager, namespace: ResourceNamespace) {
-    val resourceClassGenerator = ResourceClassGenerator.create(idManager, repo, namespace)
+  private class ResourceRepositoryInfo(repo: ResourceRepository, idManager: ResourceIdManager) {
+    val resourceClassGenerator = ResourceClassGenerator.create(idManager, repo)
     val packages = mutableSetOf<String>()
   }
 

@@ -15,8 +15,7 @@
  */
 package com.android.tools.idea.res
 
-import com.android.ide.common.rendering.api.ResourceNamespace
-import com.android.ide.common.resources.ResourceRepository
+import com.android.tools.res.CacheableResourceRepository
 import com.android.tools.res.ResourceRepositoryManager
 import com.android.tools.res.ids.ResourceIdManagerBase
 import com.android.tools.res.ids.ResourceIdManagerModelModule
@@ -26,7 +25,6 @@ import com.intellij.openapi.util.Disposer
 import java.nio.ByteBuffer
 import kotlin.time.Duration.Companion.days
 import org.junit.After
-import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.doReturn
@@ -37,19 +35,15 @@ import org.mockito.kotlin.whenever
 private const val PKG_1 = "come.on.fhqwhgads"
 private const val PKG_2 = "everybody.to.the.limit"
 
-private val String.namespace: ResourceNamespace
-  get() = ResourceNamespace.fromPackageName(this)
-
 class ResourceClassRegistryTest {
 
   private val registry = ResourceClassRegistry(1.days) // Not testing the TimeoutCachedValue
   private val disposable = Disposer.newDisposable()
   private val idManager by lazy { ResourceIdManagerBase(ResourceIdManagerModelModule.appModule()) }
-  private val repository: ResourceRepository = mock()
-  private val disposableRepository: ResourceRepository = mock(extraInterfaces = arrayOf(Disposable::class))
+  private val repository: CacheableResourceRepository = mock()
+  private val disposableRepository: CacheableResourceRepository = mock(extraInterfaces = arrayOf(Disposable::class))
   private val manager: ResourceRepositoryManager = mock {
-    on { getAppResourcesForNamespace(PKG_1.namespace) } doReturn listOf(repository, disposableRepository)
-    on { getAppResourcesForNamespace(PKG_2.namespace) } doReturn listOf(repository, disposableRepository)
+    on { appResources } doReturn repository
   }
 
   @Before
@@ -65,8 +59,8 @@ class ResourceClassRegistryTest {
   @Test
   fun addLibrary_alreadyDisposedRepo() {
     Disposer.dispose(disposableRepository as Disposable)
-    registry.addLibrary(repository, idManager, PKG_1, PKG_1.namespace)
-    registry.addLibrary(disposableRepository, idManager, PKG_2, PKG_2.namespace)
+    registry.addLibrary(repository, idManager, PKG_1)
+    registry.addLibrary(disposableRepository, idManager, PKG_2)
 
     assertThat(registry.findClassDefinition("$PKG_1.R", manager)).isNotNull()
     assertThat(registry.findClassDefinition("$PKG_2.R", manager)).isNull()
@@ -74,7 +68,8 @@ class ResourceClassRegistryTest {
 
   @Test
   fun addLibrary_disposableRepo() {
-    registry.addLibrary(disposableRepository, idManager, PKG_1, PKG_1.namespace)
+    whenever(manager.appResources).thenReturn(disposableRepository)
+    registry.addLibrary(disposableRepository, idManager, PKG_1)
 
     assertThat(registry.findClassDefinition("$PKG_1.R", manager)).isNotNull()
 
@@ -96,33 +91,16 @@ class ResourceClassRegistryTest {
   }
 
   @Test
-  fun findClassDefinition_packageNameCollision() {
-    registry.addLibrary(repository, idManager, PKG_1, PKG_1.namespace)
-    registry.addLibrary(disposableRepository, idManager, PKG_1, PKG_1.namespace)
-
-    Assert.assertThrows(NoClassDefFoundError::class.java) { registry.findClassDefinition("$PKG_1.R\$string", manager) }
-  }
-
-  @Test
-  fun findClassDefinition_noPackageNameCollisionIfOneReturnedFromManager() {
-    registry.addLibrary(repository, idManager, PKG_1, PKG_1.namespace)
-    registry.addLibrary(disposableRepository, idManager, PKG_1, PKG_1.namespace)
-    whenever(manager.getAppResourcesForNamespace(PKG_1.namespace)).thenReturn(listOf(repository))
-
-    assertThat(registry.findClassDefinition("$PKG_1.R\$string", manager)).isNotNull()
-  }
-
-  @Test
   fun findClassDefinition_noRepository() {
-    registry.addLibrary(repository, idManager, PKG_1, PKG_1.namespace)
-    whenever(manager.getAppResourcesForNamespace(PKG_1.namespace)).thenReturn(listOf())
+    registry.addLibrary(repository, idManager, PKG_1)
+    whenever(manager.appResources).thenReturn(disposableRepository)
 
     assertThat(registry.findClassDefinition("$PKG_1.R", manager)).isNull()
   }
 
   @Test
   fun findClassDefinition() {
-    registry.addLibrary(repository, idManager, PKG_1, PKG_1.namespace)
+    registry.addLibrary(repository, idManager, PKG_1)
 
     val bytes = registry.findClassDefinition("$PKG_1.R", manager)
     assertThat(Integer.toHexString(ByteBuffer.wrap(bytes).int)).startsWith("cafebabe")
@@ -130,7 +108,7 @@ class ResourceClassRegistryTest {
 
   @Test
   fun clearCache() {
-    registry.addLibrary(repository, idManager, PKG_1, PKG_1.namespace)
+    registry.addLibrary(repository, idManager, PKG_1)
 
     registry.clearCache()
 

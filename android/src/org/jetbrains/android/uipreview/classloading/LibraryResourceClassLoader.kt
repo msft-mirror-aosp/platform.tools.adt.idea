@@ -15,7 +15,6 @@
  */
 package org.jetbrains.android.uipreview.classloading
 
-import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.resources.AndroidManifestPackageNameUtils
 import com.android.projectmodel.ExternalAndroidLibrary
 import com.android.tools.idea.projectsystem.DependencyScopeType
@@ -53,9 +52,8 @@ private fun ResourceClassRegistry.registerLibraryResources(
   idManager: ResourceIdManager,
   repositoryManager: StudioResourceRepositoryManager,
 ) {
-  // Choose which resources should be in the generated R class. This is described in the JavaDoc of ResourceClassGenerator.
   val resolvedPackageName = externalLib.getResolvedPackageName() ?: return
-  this.addLibrary(repositoryManager.appResources, idManager, resolvedPackageName, ResourceNamespace.RES_AUTO)
+  this.addLibrary(repositoryManager.appResources, idManager, resolvedPackageName)
 }
 
 /** Register all the [Module] resources, including libraries and dependencies with the [ResourceClassRegistry]. */
@@ -70,7 +68,7 @@ private fun registerResources(module: Module) {
   if (!idManager.finalIdsUsed) {
     val resourcePackageNames = runReadAction { androidFacet.getModuleSystem().moduleDependencies.getResourcePackageNames(false) }
     for (resourcePackageName in resourcePackageNames) {
-      classRegistry.addLibrary(repositoryManager.appResources, idManager, resourcePackageName, repositoryManager.namespace)
+      classRegistry.addLibrary(repositoryManager.appResources, idManager, resourcePackageName)
     }
   }
   module

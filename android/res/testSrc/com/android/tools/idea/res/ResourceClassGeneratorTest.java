@@ -281,7 +281,7 @@ public class ResourceClassGeneratorTest extends AndroidTestCase {
 
   @NotNull
   private ResourceClassGenerator buildGenerator(ResourceIdManager idManager, ResourceRepository resources) {
-    return ResourceClassGenerator.create(idManager, resources, RES_AUTO);
+    return ResourceClassGenerator.create(idManager, resources);
   }
 
   public void testIndexOverflow() throws Exception {
