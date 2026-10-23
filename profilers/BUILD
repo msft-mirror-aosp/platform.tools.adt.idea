@@ -49,7 +49,6 @@ iml_module(
         "//tools/adt/idea/codenavigation",
         "//tools/analytics-library/shared:analytics-shared",
         "//tools/analytics-library/tracker:analytics-tracker",
-        "//tools/adt/idea/artwork:intellij.android.artwork",
     ],
 )
 
