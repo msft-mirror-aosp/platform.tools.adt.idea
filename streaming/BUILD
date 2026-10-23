@@ -1,5 +1,6 @@
 load("//tools/adt/idea/emulator-snapshots:emulator_test_env.bzl", "emulator_snapshot_data", "emulator_snapshot_jvm_flags")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
+load("//tools/base/bazel:proto.bzl", "android_java_proto_library")
 
 # managed by go/iml_to_build
 iml_module(
@@ -279,4 +280,21 @@ iml_module(
     runtime_deps = ["//tools/adt/idea/.idea/libraries:ffmpeg-platform"],
     # do not sort: must match IML order
     deps = ["@intellij//:com.intellij.java"],
+)
+
+android_java_proto_library(
+    name = "emulator_java_proto",
+    srcs = [
+        "@aemu//protos/services/emulator-controller:emulator_controller.proto",
+        "@aemu//protos/services/incubating/modem:modem_service.proto",
+        "@aemu//protos/services/incubating/virtualscene:virtual_scene_service.proto",
+        "@aemu//protos/services/snapshot:snapshot.proto",
+        "@aemu//protos/services/snapshot:snapshot_service.proto",
+        "@aemu//protos/services/ui-controller:ui_controller_service.proto",
+        "@aemu//protos/services/webrtc:ice_config.proto",
+        "@aemu//protos/services/webrtc:rtc_service_v2.proto",
+    ],
+    grpc_support = True,
+    java_deps = ["@maven//:io.grpc.grpc-all"],
+    visibility = ["//visibility:public"],
 )

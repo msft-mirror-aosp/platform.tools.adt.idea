@@ -122,7 +122,7 @@ jvm_import(
 # managed by go/iml_to_build
 jvm_import(
     name = "emulator-proto",
-    jars = ["//tools/base/emulator/proto:emulator_java_proto.jar"],
+    jars = ["//tools/adt/idea/streaming:emulator_java_proto.jar"],
     visibility = ["//visibility:public"],
 )
 
