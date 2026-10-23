@@ -24,6 +24,7 @@ import com.android.tools.preview.config.Navigation
 import com.android.tools.preview.config.Orientation
 import com.android.tools.preview.config.PointerPrecision
 import com.android.tools.preview.config.Preview.DeviceSpec
+import com.android.tools.preview.config.ScrollTarget
 import com.android.tools.preview.config.ViewingDistance
 import com.android.tools.preview.config.WindowPosture
 
@@ -146,4 +147,13 @@ internal object LanguageParameterRule {
   val maxHeight = DimensionParameterRule(name = DeviceSpec.PARAMETER_MAX_HEIGHT, defaultNumber = DeviceSpec.DEFAULT_EXPAND_MAX_SIZE_PX)
 
   val maxWidth = DimensionParameterRule(name = DeviceSpec.PARAMETER_MAX_WIDTH, defaultNumber = DeviceSpec.DEFAULT_EXPAND_MAX_SIZE_PX)
+
+  val scrollTo =
+    simpleParameterRule(
+      name = DeviceSpec.PARAMETER_SCROLL_TO,
+      expectedType = ExpectedScrollTarget,
+      defaultValue = ScrollTarget.End.specValue,
+    ) {
+      ScrollTarget.keywordTargets.any { target -> target.specValue == it }
+    }
 }

@@ -46,7 +46,7 @@ internal class DeviceSpecCompletionContributorTest {
       CompletionContributorEP(DeviceSpecLanguage.id, DeviceSpecCompletionContributor::class.java.name, ep.pluginDescriptor),
       fixture.testRootDisposable,
     )
-    stubPreviewDeviceSpec("expand,maxHeight,maxWidth")
+    stubPreviewDeviceSpec("expand,maxHeight,maxWidth,scrollTo")
     runInEdtAndWait {
       // Sdk needed for Devices
       Sdks.addLatestAndroidSdk(fixture.testRootDisposable, rule.module)
@@ -198,6 +198,15 @@ internal class DeviceSpecCompletionContributorTest {
   }
 
   @Test
+  fun providedScrollToValues() {
+    fixture.completeDeviceSpec("spec:scrollTo=$caret")
+    assertEquals(listOf("end"), fixture.lookupElementStrings)
+
+    fixture.completeDeviceSpec("spec:parent=pixel_5,scrollTo=$caret")
+    assertEquals(listOf("end"), fixture.lookupElementStrings)
+  }
+
+  @Test
   fun nothingProvided() {
     // Currently, not supported in name
     fixture.completeDeviceSpec("name:Nexus 7$caret")
@@ -257,7 +266,7 @@ internal class DeviceSpecCompletionContributorTest {
   @Test
   fun parameterCompletion() {
     fixture.completeDeviceSpec("spec:$caret")
-    assertEquals(18, fixture.lookupElementStrings!!.size)
+    assertEquals(19, fixture.lookupElementStrings!!.size)
     assertEquals("chinSize", fixture.lookupElementStrings!![0])
     assertEquals("cutout", fixture.lookupElementStrings!![1])
     assertEquals("dpi", fixture.lookupElementStrings!![2])
@@ -273,12 +282,13 @@ internal class DeviceSpecCompletionContributorTest {
     assertEquals("orientation", fixture.lookupElementStrings!![12])
     assertEquals("parent", fixture.lookupElementStrings!![13])
     assertEquals("pointerPrecision", fixture.lookupElementStrings!![14])
-    assertEquals("viewingDistance", fixture.lookupElementStrings!![15])
-    assertEquals("width", fixture.lookupElementStrings!![16])
-    assertEquals("windowPosture", fixture.lookupElementStrings!![17])
+    assertEquals("scrollTo", fixture.lookupElementStrings!![15])
+    assertEquals("viewingDistance", fixture.lookupElementStrings!![16])
+    assertEquals("width", fixture.lookupElementStrings!![17])
+    assertEquals("windowPosture", fixture.lookupElementStrings!![18])
 
     fixture.completeDeviceSpec("spec:orientation=portrait,$caret")
-    assertEquals(17, fixture.lookupElementStrings!!.size)
+    assertEquals(18, fixture.lookupElementStrings!!.size)
     assertEquals("chinSize", fixture.lookupElementStrings!![0])
     assertEquals("cutout", fixture.lookupElementStrings!![1])
     assertEquals("dpi", fixture.lookupElementStrings!![2])
@@ -293,12 +303,13 @@ internal class DeviceSpecCompletionContributorTest {
     assertEquals("navigation", fixture.lookupElementStrings!![11])
     assertEquals("parent", fixture.lookupElementStrings!![12])
     assertEquals("pointerPrecision", fixture.lookupElementStrings!![13])
-    assertEquals("viewingDistance", fixture.lookupElementStrings!![14])
-    assertEquals("width", fixture.lookupElementStrings!![15])
-    assertEquals("windowPosture", fixture.lookupElementStrings!![16])
+    assertEquals("scrollTo", fixture.lookupElementStrings!![14])
+    assertEquals("viewingDistance", fixture.lookupElementStrings!![15])
+    assertEquals("width", fixture.lookupElementStrings!![16])
+    assertEquals("windowPosture", fixture.lookupElementStrings!![17])
 
     fixture.completeDeviceSpec("spec:parent=pixel_5,$caret")
-    assertEquals(11, fixture.lookupElementStrings!!.size)
+    assertEquals(12, fixture.lookupElementStrings!!.size)
     assertEquals("expand", fixture.lookupElementStrings!![0])
     assertEquals("hasCamera", fixture.lookupElementStrings!![1])
     assertEquals("hasMicrophone", fixture.lookupElementStrings!![2])
@@ -308,11 +319,12 @@ internal class DeviceSpecCompletionContributorTest {
     assertEquals("navigation", fixture.lookupElementStrings!![6])
     assertEquals("orientation", fixture.lookupElementStrings!![7])
     assertEquals("pointerPrecision", fixture.lookupElementStrings!![8])
-    assertEquals("viewingDistance", fixture.lookupElementStrings!![9])
-    assertEquals("windowPosture", fixture.lookupElementStrings!![10])
+    assertEquals("scrollTo", fixture.lookupElementStrings!![9])
+    assertEquals("viewingDistance", fixture.lookupElementStrings!![10])
+    assertEquals("windowPosture", fixture.lookupElementStrings!![11])
 
     fixture.completeDeviceSpec("spec:width=1080px,$caret")
-    assertEquals(16, fixture.lookupElementStrings!!.size)
+    assertEquals(17, fixture.lookupElementStrings!!.size)
     assertEquals("chinSize", fixture.lookupElementStrings!![0])
     assertEquals("cutout", fixture.lookupElementStrings!![1])
     assertEquals("dpi", fixture.lookupElementStrings!![2])
@@ -327,8 +339,9 @@ internal class DeviceSpecCompletionContributorTest {
     assertEquals("navigation", fixture.lookupElementStrings!![11])
     assertEquals("orientation", fixture.lookupElementStrings!![12])
     assertEquals("pointerPrecision", fixture.lookupElementStrings!![13])
-    assertEquals("viewingDistance", fixture.lookupElementStrings!![14])
-    assertEquals("windowPosture", fixture.lookupElementStrings!![15])
+    assertEquals("scrollTo", fixture.lookupElementStrings!![14])
+    assertEquals("viewingDistance", fixture.lookupElementStrings!![15])
+    assertEquals("windowPosture", fixture.lookupElementStrings!![16])
 
     // 'heigh' also matches 'maxHeight'
     fixture.completeDeviceSpec("spec:width=1080px,heigh$caret")
@@ -391,12 +404,18 @@ internal class DeviceSpecCompletionContributorTest {
     fixture.completeDeviceSpec("spec:parent=pixel_5,maxWidth=2000px,maxHeigh$caret")
     fixture.checkResult("spec:parent=pixel_5,maxWidth=2000px,maxHeight=4096px")
 
+    fixture.completeDeviceSpec("spec:width=1080dp,scroll$caret")
+    fixture.checkResult("spec:width=1080dp,scrollTo=end")
+
+    fixture.completeDeviceSpec("spec:parent=pixel_5,scroll$caret")
+    fixture.checkResult("spec:parent=pixel_5,scrollTo=end")
+
     // Nothing else to complete when using `parent`
     fixture.completeDeviceSpec(
-      "spec:orientation=portrait,navigation=gesture,parent=pixel_5,windowPosture=flat,pointerPrecision=coarse,keyboardKind=virtual,hasCamera=true,hasMicrophone=true,viewingDistance=near,expand=vertical,maxHeight=1000dp,maxWidth=1000dp,$caret"
+      "spec:orientation=portrait,navigation=gesture,parent=pixel_5,windowPosture=flat,pointerPrecision=coarse,keyboardKind=virtual,hasCamera=true,hasMicrophone=true,viewingDistance=near,expand=vertical,maxHeight=1000dp,maxWidth=1000dp,scrollTo=end,$caret"
     )
     fixture.checkResult(
-      "spec:orientation=portrait,navigation=gesture,parent=pixel_5,windowPosture=flat,pointerPrecision=coarse,keyboardKind=virtual,hasCamera=true,hasMicrophone=true,viewingDistance=near,expand=vertical,maxHeight=1000dp,maxWidth=1000dp,"
+      "spec:orientation=portrait,navigation=gesture,parent=pixel_5,windowPosture=flat,pointerPrecision=coarse,keyboardKind=virtual,hasCamera=true,hasMicrophone=true,viewingDistance=near,expand=vertical,maxHeight=1000dp,maxWidth=1000dp,scrollTo=end,"
     )
     assertEquals(0, fixture.lookupElementStrings!!.size)
 
@@ -447,6 +466,9 @@ internal class DeviceSpecCompletionContributorTest {
     )
 
     fixture.completeDeviceSpec("spec:expand=$caret")
+    assertEquals(emptyList<String>(), fixture.lookupElementStrings)
+
+    fixture.completeDeviceSpec("spec:scrollTo=$caret")
     assertEquals(emptyList<String>(), fixture.lookupElementStrings)
   }
 }

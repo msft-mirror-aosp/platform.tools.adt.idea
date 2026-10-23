@@ -760,6 +760,79 @@ internal class DeviceSpecCheckTest {
     assertEquals("spec:width=411dp,height=891dp,expand=vertical", result.proposedFix)
   }
 
+  @Test
+  fun testScrollToParameterValid() {
+    runWriteActionAndWait { Sdks.addLatestAndroidSdk(rule.fixture.testRootDisposable, rule.module) }
+
+    listOf(
+        "spec:width=411dp,height=891dp,scrollTo=end",
+        "spec:width=411dp,height=891dp,expand=vertical,scrollTo=end",
+        "spec:parent=pixel_4,scrollTo=end",
+        "spec:parent=pixel_4,orientation=landscape,scrollTo=end",
+      )
+      .forEach { spec ->
+        val result =
+          addKotlinFileAndCheckPreviewAnnotation(
+            """
+            package example
+            import test.Preview
+
+            @Preview(device = "$spec")
+            fun myFun() {}
+            """
+              .trimIndent()
+          )
+        assertTrue("Unexpected issues for $spec: ${result.issues}", result.issues.isEmpty())
+      }
+  }
+
+  @Test
+  fun testScrollToParameterInvalid() {
+    runWriteActionAndWait { Sdks.addLatestAndroidSdk(rule.fixture.testRootDisposable, rule.module) }
+
+    var result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:width=411dp,height=891dp,scrollTo=start")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(listOf(BadType::class), result.issues.map { it::class })
+    assertEquals("spec:width=411dp,height=891dp,scrollTo=end", result.proposedFix)
+
+    result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:parent=pixel_4,scrollTo=bottom")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(listOf(BadType::class), result.issues.map { it::class })
+    assertEquals("spec:parent=pixel_4,scrollTo=end", result.proposedFix)
+
+    result =
+      addKotlinFileAndCheckPreviewAnnotation(
+        """
+        package example
+        import test.Preview
+
+        @Preview(device = "spec:width=411dp,height=891dp,scrollTo=End")
+        fun myFun() {}
+        """
+          .trimIndent()
+      )
+    assertEquals(listOf(BadType::class), result.issues.map { it::class })
+    assertEquals("spec:width=411dp,height=891dp,scrollTo=end", result.proposedFix)
+  }
+
   /** Adds file with the given [fileContents] and runs [DeviceSpecCheck.checkDeviceSpec] on the first Preview annotation found. */
   private fun addKotlinFileAndCheckPreviewAnnotation(
     @Language("kotlin") fileContents: String,

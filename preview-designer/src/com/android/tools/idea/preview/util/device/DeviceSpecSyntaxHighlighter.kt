@@ -78,6 +78,7 @@ class DeviceSpecSyntaxHighlighter : SyntaxHighlighterBase() {
       DeviceSpecTypes.DISTANCE_FAR_KEYWORD,
       DeviceSpecTypes.EXPAND_VERTICAL_KEYWORD,
       DeviceSpecTypes.EXPAND_HORIZONTAL_KEYWORD,
+      DeviceSpecTypes.SCROLL_TO_END_KEYWORD,
       DeviceSpecTypes.STRING_T -> string
       DeviceSpecTypes.PX,
       DeviceSpecTypes.DP -> unit
@@ -100,7 +101,8 @@ class DeviceSpecSyntaxHighlighter : SyntaxHighlighterBase() {
       DeviceSpecTypes.VIEWING_DISTANCE_KEYWORD,
       DeviceSpecTypes.EXPAND_KEYWORD,
       DeviceSpecTypes.MAX_HEIGHT_KEYWORD,
-      DeviceSpecTypes.MAX_WIDTH_KEYWORD -> paramName
+      DeviceSpecTypes.MAX_WIDTH_KEYWORD,
+      DeviceSpecTypes.SCROLL_TO_KEYWORD -> paramName
       else -> emptyArray()
     }
 }

@@ -51,6 +51,8 @@ public interface DeviceSpecTypes {
   IElementType PARENT_PARAM = new DeviceSpecElementType("PARENT_PARAM");
   IElementType POINTER_PRECISION_PARAM = new DeviceSpecElementType("POINTER_PRECISION_PARAM");
   IElementType POINTER_PRECISION_T = new DeviceSpecElementType("POINTER_PRECISION_T");
+  IElementType SCROLL_TO_PARAM = new DeviceSpecElementType("SCROLL_TO_PARAM");
+  IElementType SCROLL_TO_T = new DeviceSpecElementType("SCROLL_TO_T");
   IElementType SIZE_T = new DeviceSpecElementType("SIZE_T");
   IElementType SPEC = new DeviceSpecElementType("SPEC");
   IElementType UNIT = new DeviceSpecElementType("UNIT");
@@ -106,6 +108,8 @@ public interface DeviceSpecTypes {
   IElementType POSTURE_FLAT_KEYWORD = new DeviceSpecTokenType("flat");
   IElementType POSTURE_TABLETOP_KEYWORD = new DeviceSpecTokenType("tabletop");
   IElementType PX = new DeviceSpecTokenType("px");
+  IElementType SCROLL_TO_END_KEYWORD = new DeviceSpecTokenType("end");
+  IElementType SCROLL_TO_KEYWORD = new DeviceSpecTokenType("scrollTo");
   IElementType SPEC_KEYWORD = new DeviceSpecTokenType("spec");
   IElementType SQUARE_KEYWORD = new DeviceSpecTokenType("square");
   IElementType STRING_T = new DeviceSpecTokenType("STRING_T");
@@ -188,6 +192,12 @@ public interface DeviceSpecTypes {
       }
       else if (type == POINTER_PRECISION_T) {
         return new DeviceSpecPointerPrecisionTImpl(node);
+      }
+      else if (type == SCROLL_TO_PARAM) {
+        return new DeviceSpecScrollToParamImpl(node);
+      }
+      else if (type == SCROLL_TO_T) {
+        return new DeviceSpecScrollToTImpl(node);
       }
       else if (type == SIZE_T) {
         return new DeviceSpecSizeTImpl(node);

@@ -21,6 +21,7 @@ import com.android.tools.preview.config.KeyboardKind
 import com.android.tools.preview.config.Navigation
 import com.android.tools.preview.config.Orientation
 import com.android.tools.preview.config.PointerPrecision
+import com.android.tools.preview.config.ScrollTarget
 import com.android.tools.preview.config.ViewingDistance
 import com.android.tools.preview.config.WindowPosture
 
@@ -56,3 +57,6 @@ internal val ExpectedViewingDistance = MultipleChoiceValueType(ViewingDistance.e
 
 /** Value should be one of the supported ExpandAxis values. */
 internal val ExpectedExpandAxis = MultipleChoiceValueType(ExpandAxis.entries.map { it.name })
+
+/** Value should be one of the supported ScrollTarget keywords. */
+internal val ExpectedScrollTarget = MultipleChoiceValueType(ScrollTarget.keywordTargets.map { it.specValue })

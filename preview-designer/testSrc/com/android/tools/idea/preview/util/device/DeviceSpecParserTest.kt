@@ -380,4 +380,27 @@ class DeviceSpecParserTest : ParsingTestCase("no_data_path_needed", "", DeviceSp
       toParseTreeText("spec:width=1080px,height=1920px,expand=horizontal,maxWidth=5000px"),
     )
   }
+
+  fun testScrollToSpec() {
+    assertEquals(
+      """
+      FILE
+        PsiElement(spec)('spec')
+        PsiElement(:)(':')
+        DeviceSpecSpecImpl(SPEC)
+          DeviceSpecParentParamImpl(PARENT_PARAM)
+            PsiElement(parent)('parent')
+            PsiElement(=)('=')
+            PsiElement(STRING_T)('pixel_5')
+          PsiElement(,)(',')
+          DeviceSpecScrollToParamImpl(SCROLL_TO_PARAM)
+            PsiElement(scrollTo)('scrollTo')
+            PsiElement(=)('=')
+            DeviceSpecScrollToTImpl(SCROLL_TO_T)
+              PsiElement(end)('end')
+      """
+        .trimIndent(),
+      toParseTreeText("spec:parent=pixel_5,scrollTo=end"),
+    )
+  }
 }

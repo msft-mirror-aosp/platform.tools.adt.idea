@@ -58,8 +58,8 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
       HAS_CAMERA_PARAM, HAS_MICROPHONE_PARAM, HEIGHT_PARAM, ID_PARAM,
       IS_ROUND_PARAM, KEYBOARD_KIND_PARAM, MAX_HEIGHT_PARAM, MAX_WIDTH_PARAM,
       NAME_PARAM, NAVIGATION_PARAM, ORIENTATION_PARAM, PARAM,
-      PARENT_PARAM, POINTER_PRECISION_PARAM, VIEWING_DISTANCE_PARAM, WIDTH_PARAM,
-      WINDOW_POSTURE_PARAM),
+      PARENT_PARAM, POINTER_PRECISION_PARAM, SCROLL_TO_PARAM, VIEWING_DISTANCE_PARAM,
+      WIDTH_PARAM, WINDOW_POSTURE_PARAM),
   };
 
   /* ********************************************************** */
@@ -355,6 +355,7 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
   //    | expand_param
   //    | max_height_param
   //    | max_width_param
+  //    | scroll_to_param
   //    | dpi_param
   public static boolean param(PsiBuilder b, int l) {
     if (!recursion_guard_(b, l, "param")) return false;
@@ -379,6 +380,7 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
     if (!r) r = expand_param(b, l + 1);
     if (!r) r = max_height_param(b, l + 1);
     if (!r) r = max_width_param(b, l + 1);
+    if (!r) r = scroll_to_param(b, l + 1);
     if (!r) r = dpi_param(b, l + 1);
     exit_section_(b, l, m, r, false, null);
     return r;
@@ -444,6 +446,31 @@ public class DeviceSpecParser implements PsiParser, LightPsiParser {
     r = consumeTokens(b, 0, SPEC_KEYWORD, COLON);
     r = r && spec(b, l + 1);
     exit_section_(b, m, null, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // SCROLL_TO_KEYWORD EQUALS scroll_to_t
+  public static boolean scroll_to_param(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "scroll_to_param")) return false;
+    if (!nextTokenIs(b, SCROLL_TO_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeTokens(b, 0, SCROLL_TO_KEYWORD, EQUALS);
+    r = r && scroll_to_t(b, l + 1);
+    exit_section_(b, m, SCROLL_TO_PARAM, r);
+    return r;
+  }
+
+  /* ********************************************************** */
+  // SCROLL_TO_END_KEYWORD
+  public static boolean scroll_to_t(PsiBuilder b, int l) {
+    if (!recursion_guard_(b, l, "scroll_to_t")) return false;
+    if (!nextTokenIs(b, SCROLL_TO_END_KEYWORD)) return false;
+    boolean r;
+    Marker m = enter_section_(b);
+    r = consumeToken(b, SCROLL_TO_END_KEYWORD);
+    exit_section_(b, m, SCROLL_TO_T, r);
     return r;
   }
 

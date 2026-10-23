@@ -45,6 +45,7 @@ import com.android.tools.preview.config.ReferenceDesktopConfig
 import com.android.tools.preview.config.ReferenceFoldableConfig
 import com.android.tools.preview.config.ReferencePhoneConfig
 import com.android.tools.preview.config.ReferenceTabletConfig
+import com.android.tools.preview.config.ScrollTarget
 import com.android.tools.preview.config.ViewingDistance
 import com.android.tools.preview.config.WindowPosture
 import com.android.tools.preview.config.getDefaultPreviewDevice
@@ -206,6 +207,16 @@ class DeviceSpecCompletionContributor : CompletionContributor() {
     )
     extend(
       CompletionType.BASIC,
+      // Completion for `scrollTo=<end>`
+      PlatformPatterns.psiElement(DeviceSpecTypes.STRING_T)
+        .afterLeafSkipping(
+          PlatformPatterns.psiElement(DeviceSpecTypes.EQUALS),
+          PlatformPatterns.psiElement(DeviceSpecTypes.SCROLL_TO_KEYWORD),
+        ),
+      ScrollToValueProvider,
+    )
+    extend(
+      CompletionType.BASIC,
       // Completion for spec/id prefix.
       PlatformPatterns.psiElement(DeviceSpecTypes.STRING_T) // String token
         // The initial prefix for the device definition is always the first element of the file, and
@@ -247,14 +258,15 @@ private fun <T : PsiElement> PsiElementPattern<T, PsiElementPattern.Capture<T>>.
   )
 
 /**
- * Parameters to expand the render area, supported both with and without a parent device. They are not included in the
+ * Parameters to expand the render area or scroll its content, supported both with and without a parent device. They are not included in the
  * [baseDeviceSpecTemplate] since they change how the preview is rendered.
  */
-private val expandSpecParamsToDefaultValues: Map<String, String> =
+private val renderSpecParamsToDefaultValues: Map<String, String> =
   mapOf(
     DeviceSpec.PARAMETER_EXPAND to ExpandAxis.vertical.name,
     DeviceSpec.PARAMETER_MAX_HEIGHT to DeviceSpec.DEFAULT_EXPAND_MAX_SIZE_PX.toString(),
     DeviceSpec.PARAMETER_MAX_WIDTH to DeviceSpec.DEFAULT_EXPAND_MAX_SIZE_PX.toString(),
+    DeviceSpec.PARAMETER_SCROLL_TO to ScrollTarget.End.specValue,
   )
 
 /** Supported parameters to autocomplete a custom Device definition with the `spec` prefix when using the DeviceSpec Language. */
@@ -274,7 +286,7 @@ private val customSpecParamsToDefaultValues: Map<String, String> =
     DeviceSpec.PARAMETER_HAS_CAMERA to true.toString(),
     DeviceSpec.PARAMETER_HAS_MICROPHONE to true.toString(),
     DeviceSpec.PARAMETER_VIEWING_DISTANCE to ViewingDistance.near.name,
-  ) + expandSpecParamsToDefaultValues
+  ) + renderSpecParamsToDefaultValues
 
 /** Supported parameters to autocomplete an existing device definition with the `spec` prefix when using the DeviceSpec Language */
 private val parentBasedSpecParamsToDefaultValues: Map<String, String> =
@@ -288,7 +300,7 @@ private val parentBasedSpecParamsToDefaultValues: Map<String, String> =
     DeviceSpec.PARAMETER_HAS_CAMERA to true.toString(),
     DeviceSpec.PARAMETER_HAS_MICROPHONE to true.toString(),
     DeviceSpec.PARAMETER_VIEWING_DISTANCE to ViewingDistance.near.name,
-  ) + expandSpecParamsToDefaultValues
+  ) + renderSpecParamsToDefaultValues
 
 /** All supported parameters compatible with `spec...` when using the DeviceSpec Language. */
 private val allSpecParamsToDefaultValues: Map<String, String> =
@@ -308,7 +320,7 @@ private val allSpecParamsToDefaultValues: Map<String, String> =
     DeviceSpec.PARAMETER_HAS_CAMERA to true.toString(),
     DeviceSpec.PARAMETER_HAS_MICROPHONE to true.toString(),
     DeviceSpec.PARAMETER_VIEWING_DISTANCE to ViewingDistance.near.name,
-  ) + expandSpecParamsToDefaultValues
+  ) + renderSpecParamsToDefaultValues
 
 /**
  * The common parameters of [parentBasedSpecParamsToDefaultValues] and [customSpecParamsToDefaultValues].
@@ -322,9 +334,9 @@ private val commonSpecParams: Set<String> =
 private val baseDeviceSpecTemplate: LiveTemplateFormat by lazy {
   val template =
     customSpecParamsToDefaultValues
-      // Exclude expand parameters so the default "spec:" live template creates a standard
-      // device-sized preview rather than an expanded one.
-      .filterKeys { it !in expandSpecParamsToDefaultValues }
+      // Exclude expand and scrollTo parameters so the default "spec:" live template creates a
+      // standard device-sized preview rather than an expanded or scrolled one.
+      .filterKeys { it !in renderSpecParamsToDefaultValues }
       .map { entry ->
         val suffix = if (DeviceSpec.isDimensionParameter(entry.key)) DeviceSpec.DEFAULT_UNIT.name else ""
 
@@ -403,10 +415,10 @@ private object DeviceSpecParameterProvider : CompletionProvider<CompletionParame
         }
       }.toMutableMap()
 
-    // Remove existing parameters and expand parameters not supported by the module's ui-tooling version
+    // Remove existing parameters and expand/scrollTo parameters not supported by the module's ui-tooling version
     val supportedParameters = parameters.position.module?.supportedComposePreviewDeviceSpecParameters().orEmpty()
     existingParameters.forEach { parametersToComplete.remove(it) }
-    expandSpecParamsToDefaultValues.keys.forEach { param ->
+    renderSpecParamsToDefaultValues.keys.forEach { param ->
       if (supportedParameters.none { it.equals(param, ignoreCase = true) }) {
         parametersToComplete.remove(param)
       }
@@ -515,6 +527,19 @@ private object ExpandValueProvider : CompletionProvider<CompletionParameters>() 
     val supportedParameters = parameters.position.module?.supportedComposePreviewDeviceSpecParameters().orEmpty()
     if (supportedParameters.none { it.equals(DeviceSpec.PARAMETER_EXPAND, ignoreCase = true) }) return
     ExpandAxis.entries.forEach { result.addLookupElement(lookupString = it.name) }
+  }
+}
+
+/**
+ * Provides the keyword scroll targets for the ScrollTo parameter.
+ *
+ * I.e: provides "end" for `scrollTo=$caret`
+ */
+private object ScrollToValueProvider : CompletionProvider<CompletionParameters>() {
+  override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+    val supportedParameters = parameters.position.module?.supportedComposePreviewDeviceSpecParameters().orEmpty()
+    if (supportedParameters.none { it.equals(DeviceSpec.PARAMETER_SCROLL_TO, ignoreCase = true) }) return
+    ScrollTarget.keywordTargets.forEach { result.addLookupElement(lookupString = it.specValue) }
   }
 }
 

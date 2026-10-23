@@ -125,6 +125,14 @@ public class DeviceSpecVisitor extends PsiElementVisitor {
     visitPsiElement(o);
   }
 
+  public void visitScrollToParam(@NotNull DeviceSpecScrollToParam o) {
+    visitParam(o);
+  }
+
+  public void visitScrollToT(@NotNull DeviceSpecScrollToT o) {
+    visitPsiElement(o);
+  }
+
   public void visitSizeT(@NotNull DeviceSpecSizeT o) {
     visitPsiElement(o);
   }

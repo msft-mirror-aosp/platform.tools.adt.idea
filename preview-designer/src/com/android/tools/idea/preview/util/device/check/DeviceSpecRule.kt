@@ -38,6 +38,7 @@ internal enum class DeviceSpecRule(
         LanguageParameterRule.expand,
         LanguageParameterRule.maxHeight,
         LanguageParameterRule.maxWidth,
+        LanguageParameterRule.scrollTo,
       ),
   ),
   LanguageWithParentId(
@@ -55,6 +56,7 @@ internal enum class DeviceSpecRule(
         LanguageParameterRule.expand,
         LanguageParameterRule.maxHeight,
         LanguageParameterRule.maxWidth,
+        LanguageParameterRule.scrollTo,
       ),
   ),
 }

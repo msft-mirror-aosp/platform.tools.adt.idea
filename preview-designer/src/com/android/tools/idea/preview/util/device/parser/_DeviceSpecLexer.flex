@@ -87,6 +87,9 @@ STRING_T=([:letter:]|[:digit:]){1}([^:,=\"\\]|\\.)*
   "vertical"         { return EXPAND_VERTICAL_KEYWORD; }
   "horizontal"       { return EXPAND_HORIZONTAL_KEYWORD; }
 
+  "scrollTo"         { return SCROLL_TO_KEYWORD; }
+  "end"              { return SCROLL_TO_END_KEYWORD; }
+
   "id"               { yypushback(yylength()); yybegin(STRING_PARAM); }
   "name"             { yypushback(yylength()); yybegin(STRING_PARAM); }
   "parent"           { yypushback(yylength()); yybegin(STRING_PARAM); }
