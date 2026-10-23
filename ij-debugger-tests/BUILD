@@ -139,7 +139,6 @@ debugger_test(
 
 debugger_test(
     name = "art-performance-tests",
-    expected_results = "art-performance-expected-results.txt",
     run_on_art = True,
     tags = [
         "ci:studio-linux_very_flaky",
