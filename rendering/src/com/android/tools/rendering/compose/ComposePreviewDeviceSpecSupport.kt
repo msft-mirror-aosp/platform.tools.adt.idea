@@ -78,6 +78,7 @@ private val UI_TOOLING_DEVICE_SPEC_PARAMETERS =
     PARAMETER_EXPAND,
     "maxHeight",
     "maxWidth",
+    "scrollTo",
   )
 
 private val UI_TOOLING_PARAMETER_BY_LOWERCASE_NAME = UI_TOOLING_DEVICE_SPEC_PARAMETERS.associateBy { it.lowercase() }

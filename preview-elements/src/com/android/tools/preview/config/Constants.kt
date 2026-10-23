@@ -98,6 +98,8 @@ object Preview {
     const val PARAMETER_MAX_HEIGHT = "maxHeight"
     /** Maximum width of the render area when [PARAMETER_EXPAND] is [ExpandAxis.horizontal]. */
     const val PARAMETER_MAX_WIDTH = "maxWidth"
+    /** Where the scrollable content of the preview is scrolled to. See [ScrollTarget]. */
+    const val PARAMETER_SCROLL_TO = "scrollTo"
     // endregion
 
     /** Maximum size, in pixels, of the expanded axis when [PARAMETER_MAX_HEIGHT] or [PARAMETER_MAX_WIDTH] are not set. */

@@ -417,6 +417,88 @@ internal class DeviceUtilsKtTest {
     assertNull(parseExpandSettings("spec:width=411dp,height=891dp,expand=vertical,maxHeight=0.2px"))
     assertNull(parseExpandSettings("spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000px"))
     assertNull(parseExpandSettings("spec:parent=pixel_7,expand=vertical,maxHeight=1000dp,maxWidth=3000px"))
+    // scrollTo is not an expand setting
+    assertNull(parseExpandSettings("spec:width=411dp,height=891dp,scrollTo=end"))
+    assertEquals(ExpandSettings(ExpandAxis.vertical), parseExpandSettings("spec:parent=pixel_7,expand=vertical,scrollTo=end"))
+  }
+
+  @Test
+  fun deviceSpecWithScrollTo() {
+    val spec = "spec:width=411dp,height=891dp,scrollTo=end"
+    val config = DeviceConfig.toDeviceConfigOrNull(spec, emptyList())
+    assertNotNull(config)
+    assertEquals(ScrollTarget.End, config!!.scrollTo)
+    assertNull(config.expand)
+    assertEquals(spec, config.deviceSpec())
+
+    // Case-insensitive scrollTo value
+    val mixedCaseConfig = DeviceConfig.toDeviceConfigOrNull("spec:width=411dp,height=891dp,scrollTo=End", emptyList())
+    assertNotNull(mixedCaseConfig)
+    assertEquals(ScrollTarget.End, mixedCaseConfig!!.scrollTo)
+    assertEquals(spec, mixedCaseConfig.deviceSpec())
+
+    // scrollTo can be combined with the expand parameters
+    val expandSpec = "spec:width=1080px,height=1920px,dpi=440,expand=vertical,maxHeight=5000px,scrollTo=end"
+    val expandConfig = DeviceConfig.toDeviceConfigOrNull(expandSpec, emptyList())
+    assertNotNull(expandConfig)
+    assertEquals(ScrollTarget.End, expandConfig!!.scrollTo)
+    assertEquals(ExpandAxis.vertical, expandConfig.expand)
+    assertEquals(expandSpec, expandConfig.deviceSpec())
+
+    // Not scrolled by default
+    val defaultConfig = DeviceConfig.toDeviceConfigOrNull("spec:width=411dp,height=891dp", emptyList())
+    assertNotNull(defaultConfig)
+    assertNull(defaultConfig!!.scrollTo)
+
+    assertNotEquals(defaultConfig, config)
+    assertEquals(config, DeviceConfig.toDeviceConfigOrNull(spec, emptyList()))
+    assertEquals(config.hashCode(), DeviceConfig.toDeviceConfigOrNull(spec, emptyList()).hashCode())
+  }
+
+  @Test
+  fun parentDeviceSpecWithScrollTo() {
+    val existingDevices = buildMockDevices()
+
+    // A parent based spec with scrollTo is not shortened to id:<device-id>
+    val spec = "spec:parent=id1,scrollTo=end"
+    val config = DeviceConfig.toDeviceConfigOrNull(spec, existingDevices)
+    assertNotNull(config)
+    assertEquals(ScrollTarget.End, config!!.scrollTo)
+    assertEquals("id1", config.parentDeviceId)
+    assertEquals(spec, config.deviceSpec())
+
+    val landscapeSpec = "spec:parent=id1,orientation=landscape,scrollTo=end"
+    assertEquals(landscapeSpec, DeviceConfig.toDeviceConfigOrNull(landscapeSpec, existingDevices)!!.deviceSpec())
+
+    val mutableConfig = DeviceConfig.toMutableDeviceConfigOrNull(spec, existingDevices)
+    assertNotNull(mutableConfig)
+    mutableConfig!!.scrollTo = null
+    // scrollTo doesn't affect the parent device
+    assertEquals("id1", mutableConfig.parentDeviceId)
+    assertEquals("id:id1", mutableConfig.deviceSpec())
+    mutableConfig.scrollTo = ScrollTarget.End
+    assertEquals(spec, mutableConfig.deviceSpec())
+  }
+
+  @Test
+  fun deviceSpecWithInvalidScrollTo() {
+    val invalidSpecs =
+      listOf(
+        "spec:width=411dp,height=891dp,scrollTo=start",
+        "spec:width=411dp,height=891dp,scrollTo=",
+        "spec:parent=id1,scrollTo=bottom",
+      )
+    val existingDevices = buildMockDevices()
+    invalidSpecs.forEach { assertNull(it, DeviceConfig.toDeviceConfigOrNull(it, existingDevices)) }
+  }
+
+  @Test
+  fun scrollTargetSpecValues() {
+    assertEquals(ScrollTarget.End, ScrollTarget.fromSpecValue("end"))
+    assertEquals(ScrollTarget.End, ScrollTarget.fromSpecValue("End"))
+    assertEquals("end", ScrollTarget.End.specValue)
+    assertNull(ScrollTarget.fromSpecValue(""))
+    ScrollTarget.keywordTargets.forEach { assertEquals(it, ScrollTarget.fromSpecValue(it.specValue)) }
   }
 }
 

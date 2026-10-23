@@ -50,6 +50,7 @@ import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_NAVIGATION
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_ORIENTATION
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_PARENT
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_POINTER_PRECISION
+import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_SCROLL_TO
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_VIEWING_DISTANCE
 import com.android.tools.preview.config.Preview.DeviceSpec.PARAMETER_WINDOW_POSTURE
 import com.android.tools.preview.config.Preview.DeviceSpec.SEPARATOR
@@ -86,6 +87,7 @@ val referenceDeviceIds =
  * @param expand Axis of the render area that grows to fit scrollable content, null if the render area has a fixed size.
  * @param maxHeight Maximum height, in [dimUnit], of the render area when [expand] is [ExpandAxis.vertical]. Null to use the default.
  * @param maxWidth Maximum width, in [dimUnit], of the render area when [expand] is [ExpandAxis.horizontal]. Null to use the default.
+ * @param scrollTo Position to which the vertically scrollable content of the preview is scrolled, null to keep the initial position.
  * @param parentDeviceId ID of the parent device used as template for this configuration.
  * @param parentDevice Optional parent [Device] instance used as template for this configuration when preserving inherent hardware state.
  */
@@ -109,6 +111,7 @@ open class DeviceConfig(
   open val expand: ExpandAxis? = null,
   open val maxHeight: Float? = null,
   open val maxWidth: Float? = null,
+  open val scrollTo: ScrollTarget? = null,
   open val parentDeviceId: String? = null,
   open val parentDevice: Device? = null,
 ) {
@@ -190,10 +193,11 @@ open class DeviceConfig(
         viewingDistance == ViewingDistance.near &&
         expand == null &&
         maxHeight == null &&
-        maxWidth == null
+        maxWidth == null &&
+        scrollTo == null
     ) {
-      // If the spec value has a parent but none of orientation, navigation, cutout, media query and expand attributes are different from
-      // default value, return id:<device-id>
+      // If the spec value has a parent but none of orientation, navigation, cutout, media query, expand and scrollTo attributes are
+      // different from default value, return id:<device-id>
       return "$DEVICE_BY_ID_PREFIX$parentDeviceId"
     }
     val builder = StringBuilder(DEVICE_BY_SPEC_PREFIX)
@@ -234,7 +238,7 @@ open class DeviceConfig(
         builder.appendSeparator()
         builder.appendParamValue(PARAMETER_VIEWING_DISTANCE, viewingDistance.name)
       }
-      builder.addExpandIfNeeded()
+      builder.addExpandAndScrollToIfNeeded()
       return builder.toString()
     }
     builder.appendParamValue(PARAMETER_WIDTH, widthString + dimUnit.name)
@@ -287,12 +291,12 @@ open class DeviceConfig(
       builder.appendSeparator()
       builder.appendParamValue(PARAMETER_VIEWING_DISTANCE, viewingDistance.name)
     }
-    builder.addExpandIfNeeded()
+    builder.addExpandAndScrollToIfNeeded()
     return builder.toString()
   }
 
-  /** Adds the [expand], [maxHeight] and [maxWidth] parameters if they are set. */
-  private fun StringBuilder.addExpandIfNeeded() {
+  /** Adds the [expand], [maxHeight], [maxWidth] and [scrollTo] parameters if they are set. */
+  private fun StringBuilder.addExpandAndScrollToIfNeeded() {
     expand?.let {
       appendSeparator()
       appendParamValue(PARAMETER_EXPAND, it.name)
@@ -304,6 +308,10 @@ open class DeviceConfig(
     maxWidthString?.let {
       appendSeparator()
       appendParamValue(PARAMETER_MAX_WIDTH, it + dimUnit.name)
+    }
+    scrollTo?.let {
+      appendSeparator()
+      appendParamValue(PARAMETER_SCROLL_TO, it.specValue)
     }
   }
 
@@ -340,6 +348,7 @@ open class DeviceConfig(
       expand == other.expand &&
       maxHeight == other.maxHeight &&
       maxWidth == other.maxWidth &&
+      scrollTo == other.scrollTo &&
       parentDeviceId == other.parentDeviceId
   }
 
@@ -364,6 +373,7 @@ open class DeviceConfig(
       expand,
       maxHeight,
       maxWidth,
+      scrollTo,
       parentDeviceId,
     )
   }
@@ -526,6 +536,13 @@ open class DeviceConfig(
       val maxHeight = maxHeightDimension?.toUnit(initialConfig.dimUnit, initialConfig.dpi)
       val maxWidth = maxWidthDimension?.toUnit(initialConfig.dimUnit, initialConfig.dpi)
 
+      val scrollTo =
+        if (params[PARAMETER_SCROLL_TO] != null) {
+          ScrollTarget.fromSpecValue(params.getOrDefault(PARAMETER_SCROLL_TO, "")) ?: return null
+        } else {
+          null
+        }
+
       if (
         orientation != null ||
           navigation != null ||
@@ -538,7 +555,8 @@ open class DeviceConfig(
           viewingDistance != null ||
           expand != null ||
           maxHeight != null ||
-          maxWidth != null
+          maxWidth != null ||
+          scrollTo != null
       ) {
         return initialConfig
           .toMutableConfig()
@@ -555,6 +573,7 @@ open class DeviceConfig(
             expand?.let { this.expand = it }
             maxHeight?.let { this.maxHeight = it }
             maxWidth?.let { this.maxWidth = it }
+            scrollTo?.let { this.scrollTo = it }
           }
           .toImmutableConfig()
       }
@@ -685,6 +704,13 @@ open class DeviceConfig(
           null
         }
 
+      val scrollTo =
+        if (params[PARAMETER_SCROLL_TO] != null) {
+          ScrollTarget.fromSpecValue(params.getOrDefault(PARAMETER_SCROLL_TO, "")) ?: return null
+        } else {
+          null
+        }
+
       return DeviceConfig(
         deviceId = params[PARAMETER_ID],
         width = width.value,
@@ -705,6 +731,7 @@ open class DeviceConfig(
         expand = expand,
         maxHeight = maxHeight?.value,
         maxWidth = maxWidth?.value,
+        scrollTo = scrollTo,
         parentDeviceId = null, // Not supported when explicitly declaring width, height, dpi, chinSize
       )
     }
@@ -736,6 +763,7 @@ class MutableDeviceConfig(
   initialExpand: ExpandAxis? = null,
   initialMaxHeight: Float? = null,
   initialMaxWidth: Float? = null,
+  initialScrollTo: ScrollTarget? = null,
   initialBackingDeviceId: String? = null,
   initialParentDevice: Device? = null,
 ) :
@@ -759,6 +787,7 @@ class MutableDeviceConfig(
     initialExpand,
     initialMaxHeight,
     initialMaxWidth,
+    initialScrollTo,
     initialBackingDeviceId,
     initialParentDevice,
   ) {
@@ -853,6 +882,8 @@ class MutableDeviceConfig(
 
   override var maxWidth: Float? = initialMaxWidth
 
+  override var scrollTo: ScrollTarget? = initialScrollTo
+
   /** Returns a property delegate that nullifies [parentDeviceId] and [parentDevice] whenever the property sees a different value. */
   private fun <T> invalidateIdOnPropertyChangeDelegate(initialValue: T) =
     object : ObservableProperty<T>(initialValue) {
@@ -885,6 +916,7 @@ internal fun MutableDeviceConfig.toImmutableConfig(): DeviceConfig =
     expand = this.expand,
     maxHeight = this.maxHeight,
     maxWidth = this.maxWidth,
+    scrollTo = this.scrollTo,
     parentDeviceId = this.parentDeviceId,
     parentDevice = this.parentDevice,
   )
@@ -910,6 +942,7 @@ fun DeviceConfig.toMutableConfig(): MutableDeviceConfig =
     initialExpand = this.expand,
     initialMaxHeight = this.maxHeight,
     initialMaxWidth = this.maxWidth,
+    initialScrollTo = this.scrollTo,
     initialBackingDeviceId = this.parentDeviceId,
     initialParentDevice = this.parentDevice,
   )
@@ -1058,5 +1091,24 @@ enum class ExpandAxis {
   companion object {
     /** Parses a [PARAMETER_EXPAND] value, or returns null if it's not a supported axis. */
     fun fromSpecValue(value: String): ExpandAxis? = enumValueOfOrNull<ExpandAxis>(value.lowercase(Locale.US))
+  }
+}
+
+/** Where the vertically scrollable content of a preview is scrolled to, set with [PARAMETER_SCROLL_TO]. */
+sealed interface ScrollTarget {
+  /** Serialized value used in the device spec. */
+  val specValue: String
+
+  /** `scrollTo=end`: the content is scrolled to its end. */
+  data object End : ScrollTarget {
+    override val specValue = "end"
+  }
+
+  companion object {
+    /** Targets that are written as a fixed keyword in the device spec. */
+    val keywordTargets: List<ScrollTarget> = listOf(End)
+
+    /** Parses a [PARAMETER_SCROLL_TO] value, or returns null if it's not a supported target. */
+    fun fromSpecValue(value: String): ScrollTarget? = keywordTargets.firstOrNull { it.specValue == value.lowercase(Locale.US) }
   }
 }
