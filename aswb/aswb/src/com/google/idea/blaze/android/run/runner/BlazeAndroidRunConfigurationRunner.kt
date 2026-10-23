@@ -35,7 +35,6 @@ import com.android.tools.idea.run.configuration.execution.TileLaunchOptions
 import com.android.tools.idea.run.configuration.execution.WatchFaceLaunchOptions
 import com.android.tools.idea.run.editor.DeployTarget
 import com.android.tools.idea.run.editor.DeployTargetState
-import com.google.common.util.concurrent.Futures
 import com.google.idea.blaze.android.projectsystem.BazelProjectSystem
 import com.google.idea.blaze.android.run.BazelAndroidRunContext
 import com.google.idea.blaze.android.run.binary.BlazeAndroidBinaryRunConfigurationState
@@ -60,8 +59,10 @@ import com.google.idea.blaze.base.settings.Blaze
 import com.google.idea.blaze.base.settings.BlazeUserSettings
 import com.google.idea.blaze.base.sync.aspects.BlazeBuildOutputs
 import com.google.idea.blaze.base.toolwindow.Task
+import com.google.idea.blaze.exception.BuildException
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.Executor
+import com.intellij.execution.RunCanceledByUserException
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.RunProfileState
 import com.intellij.execution.executors.DefaultDebugExecutor
@@ -71,6 +72,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
 import java.util.concurrent.CancellationException
+import java.util.concurrent.ExecutionException as ConcurrentExecutionException
 import org.jetbrains.android.util.AndroidBundle
 
 /**
@@ -131,7 +133,7 @@ class BlazeAndroidRunConfigurationRunner(
             launchStrategy.createBlazeAndroidRunContext(environment, deployInfo, liveEditDataExtractor, runConfig).also {
               runConfig.putUserData(BazelProjectSystem.RUN_CONFIG_APPLICATION_ID_PROVIDER, it.applicationIdProvider)
             }
-          } ?: throw ExecutionException("APK build failed")
+          }
 
         val state = runConfig.handler.getState()
 
@@ -195,45 +197,79 @@ class BlazeAndroidRunConfigurationRunner(
     return true
   }
 
-  private fun <T> executeUnderBuildProgress(environment: ExecutionEnvironment, buildInvocation: (context: BlazeContext) -> T): T? {
+  @Throws(ExecutionException::class)
+  private fun <T> executeUnderBuildProgress(environment: ExecutionEnvironment, buildInvocation: (context: BlazeContext) -> T): T {
     val project = environment.project
     val settings = BlazeUserSettings.getInstance()
     return Scope.root(
-      ScopedFunction { context ->
-        context
-          .push(ProblemsViewScope(project, settings.showProblemsViewOnRun))
-          .push(ExperimentScope())
-          .push(
-            ToolWindowScope.Builder(project, Task(project, "Build apk"))
-              .setPopupBehavior(settings.showBlazeConsoleOnRun)
-              .setIssueParsers(
-                BlazeIssueParser.defaultIssueParsers(
-                  project,
-                  WorkspaceRoot.fromProject(project),
-                  BlazeInvocationContext.ContextType.BeforeRunTask,
+        ScopedFunction<Result<T>> { context ->
+          context
+            .push(ProblemsViewScope(project, settings.showProblemsViewOnRun))
+            .push(ExperimentScope())
+            .push(
+              ToolWindowScope.Builder(project, Task(project, "Build apk"))
+                .setPopupBehavior(settings.showBlazeConsoleOnRun)
+                .setIssueParsers(
+                  BlazeIssueParser.defaultIssueParsers(
+                    project,
+                    WorkspaceRoot.fromProject(project),
+                    BlazeInvocationContext.ContextType.BeforeRunTask,
+                  )
                 )
-              )
-              .build()
-          )
-          .push(IdeaLogScope())
-        try {
+                .build()
+            )
+            .push(IdeaLogScope())
           val buildFuture =
-            ProgressiveTaskWithProgressIndicator.builder(project, "Executing ${Blaze.buildSystemName(project)} apk build")
-              .submitTaskWithResult { progressIndicator ->
-                context.push(ProgressIndicatorScope(progressIndicator))
-                buildInvocation(context)
+            try {
+              ProgressiveTaskWithProgressIndicator.builder(project, "Executing ${Blaze.buildSystemName(project)} apk build")
+                .submitTaskWithResult { progressIndicator ->
+                  context.push(ProgressIndicatorScope(progressIndicator))
+                  buildInvocation(context)
+                }
+            } catch (e: CancellationException) {
+              context.setCancelled()
+              return@ScopedFunction Result.failure(RunCanceledByUserException())
+            } catch (t: Throwable) {
+              LOG.error(t)
+              context.setHasError()
+              return@ScopedFunction Result.failure(ExecutionException(t))
+            }
+
+          try {
+            Result.success(buildFuture.get())
+          } catch (e: CancellationException) {
+            context.setCancelled()
+            Result.failure(RunCanceledByUserException())
+          } catch (e: InterruptedException) {
+            buildFuture.cancel(true)
+            Thread.currentThread().interrupt()
+            context.setCancelled()
+            Result.failure(RunCanceledByUserException())
+          } catch (e: ConcurrentExecutionException) {
+            val cause = e.cause ?: e
+            when {
+              cause is CancellationException || context.isCancelled -> {
+                context.setCancelled()
+                Result.failure(RunCanceledByUserException())
               }
-          return@ScopedFunction Futures.getChecked(buildFuture, ExecutionException::class.java)
-        } catch (e: ExecutionException) {
-          context.setHasError()
-        } catch (e: CancellationException) {
-          context.setCancelled()
-        } catch (e: Exception) {
-          LOG.error(e)
+              cause is BuildException -> {
+                context.setHasError()
+                Result.failure(ExecutionException("APK build failed", cause))
+              }
+              cause is ExecutionException -> {
+                context.setHasError()
+                Result.failure(cause)
+              }
+              else -> {
+                LOG.error(cause)
+                context.setHasError()
+                Result.failure(ExecutionException(cause))
+              }
+            }
+          }
         }
-        return@ScopedFunction null
-      }
-    )
+      )
+      .getOrThrow()
   }
 
   @Throws(ExecutionException::class)

@@ -25,6 +25,7 @@ import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.runners.ExecutionUtil;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.util.Key;
 import icons.BlazeIcons;
 import javax.annotation.Nullable;
@@ -115,7 +116,9 @@ public final class BlazeBeforeRunTaskProvider
         env.getCopyableUserData(BlazeCommandRunConfigurationRunner.RUNNER_KEY);
     try {
       return runner.executeBeforeRunTask(env);
-    } catch (RuntimeException e) {
+    } catch (ProcessCanceledException e) {
+      throw e;
+    } catch (Throwable e) {
       // An uncaught exception here means IntelliJ never cleans up and the configuration is always
       // considered to be already running, so you can't start it ever again.
       logger.warn("Uncaught exception in Blaze before run task", e);

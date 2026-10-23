@@ -35,6 +35,7 @@ import com.intellij.execution.ui.RunContentDescriptor;
 import com.intellij.openapi.application.ActionsKt;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -44,6 +45,7 @@ import org.jetbrains.concurrency.Promise;
 /** Program runner for configurations from {@link BlazeAndroidBinaryRunConfigurationHandler}. */
 public class BlazeAndroidBinaryProgramRunner extends AsyncProgramRunner<RunnerSettings> {
   private static final Logger logger = Logger.getInstance(BlazeAndroidBinaryProgramRunner.class);
+
   @Override
   public boolean canRun(String executorId, RunProfile profile) {
     BlazeAndroidRunConfigurationHandler handler =
@@ -65,7 +67,9 @@ public class BlazeAndroidBinaryProgramRunner extends AsyncProgramRunner<RunnerSe
 
     ProgressManager.getInstance()
         .run(
-            new Task.Backgroundable(environment.getProject(), String.format("Launching %s", environment.getRunProfile().getName())) {
+            new Task.Backgroundable(
+                environment.getProject(),
+                String.format("Launching %s", environment.getRunProfile().getName())) {
               @Override
               public void run(ProgressIndicator indicator) {
                 try {
@@ -88,8 +92,9 @@ public class BlazeAndroidBinaryProgramRunner extends AsyncProgramRunner<RunnerSe
                   promise.setResult(descriptor);
                 } catch (ExecutionException e) {
                   boolean unused = promise.setError(e);
-                }
-                catch (Exception e) {
+                } catch (ProcessCanceledException e) {
+                  throw e;
+                } catch (Throwable e) {
                   logger.error(e);
                   boolean unused = promise.setError(new ExecutionException(e));
                 }
@@ -99,6 +104,16 @@ public class BlazeAndroidBinaryProgramRunner extends AsyncProgramRunner<RunnerSe
               public void onCancel() {
                 super.onCancel();
                 promise.setResult(null);
+              }
+
+              @Override
+              public void onThrowable(Throwable error) {
+                super.onThrowable(error);
+                boolean unused =
+                    promise.setError(
+                        error instanceof ExecutionException
+                            ? error
+                            : new ExecutionException(error));
               }
             });
 
