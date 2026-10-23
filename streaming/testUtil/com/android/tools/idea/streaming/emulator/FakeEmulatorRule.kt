@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.streaming.emulator
 
-import com.android.ddmlib.IDevice
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.BootMode
 import com.android.sdklib.repository.AndroidSdkHandler
@@ -40,7 +39,6 @@ import org.junit.rules.ExternalResource
 import org.junit.rules.TestRule
 import org.junit.runner.Description
 import org.junit.runners.model.Statement
-import org.mockito.kotlin.mock
 
 /** Allows tests to use [FakeEmulator] instead of the real one. */
 class FakeEmulatorRule : TestRule {
@@ -132,11 +130,10 @@ class FakeEmulatorRule : TestRule {
       return super.findAvdWithFolder(avdFolder)
     }
 
-    override suspend fun startAvd(project: Project?, avd: AvdInfo, forceLaunchInToolWindow: Boolean, bootMode: BootMode): IDevice {
+    override suspend fun startAvd(project: Project?, avd: AvdInfo, forceLaunchInToolWindow: Boolean, bootMode: BootMode) {
       val emulator =
         emulators.firstOrNull { it.avdFolder == avd.dataFolderPath } ?: throw IllegalArgumentException("Unknown AVD: ${avd.id}")
       emulator.start(standalone = !forceLaunchInToolWindow)
-      return mock<IDevice>()
     }
   }
 }

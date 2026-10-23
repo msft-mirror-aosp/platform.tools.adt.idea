@@ -21,6 +21,7 @@ import com.android.ddmlib.AndroidDebugBridge
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.IDevice.HardwareFeature
 import com.android.sdklib.SystemImageTags
+import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.tools.idea.AndroidStartupActivity
 import com.android.tools.idea.adb.AdbService
@@ -417,9 +418,11 @@ class WearPairingManager(
 
   private suspend fun launchAvd(project: Project?, avd: AvdInfo): IDevice {
     return withContext(ioDispatcher) {
-      getDefaultAvdManagerConnection().startAvd(project, avd).also {
-        project?.messageBus?.syncPublisher(DeviceHeadsUpListener.TOPIC)?.userInvolvementRequired(it.serialNumber, project)
-      }
+      getDefaultAvdManagerConnection().startAvd(project, avd)
+      val iDevice =
+        connectedDevicesProvider().find { it.getDeviceID() == avd.id } ?: throw DeviceActionException("Failed to launch ${avd.displayName}")
+      project?.messageBus?.syncPublisher(DeviceHeadsUpListener.TOPIC)?.userInvolvementRequired(iDevice.serialNumber, project)
+      iDevice
     }
   }
 

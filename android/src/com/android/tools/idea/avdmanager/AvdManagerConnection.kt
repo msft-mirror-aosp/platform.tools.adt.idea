@@ -16,7 +16,6 @@
 package com.android.tools.idea.avdmanager
 
 import com.android.annotations.concurrency.Slow
-import com.android.ddmlib.IDevice
 import com.android.prefs.AndroidLocationsException
 import com.android.prefs.AndroidLocationsSingleton
 import com.android.repository.api.ProgressIndicator
@@ -163,7 +162,7 @@ constructor(
     avd: AvdInfo,
     forceLaunchInToolWindow: Boolean = false,
     bootMode: BootMode = BootMode.fromProperties(avd.properties),
-  ): IDevice {
+  ) {
     avdManager ?: throw DeviceActionException("No Android SDK Found")
     checkNotNull(sdkHandler)
 
@@ -179,7 +178,7 @@ constructor(
       updateSkin(skin)
     }
 
-    return withContext(Dispatchers.Default) {
+    withContext(Dispatchers.Default) {
       val code = checkAcceleration(sdkHandler)
       continueToStartAvdIfAccelerationErrorIsNotBlocking(code, project, avd, forceLaunchInToolWindow, bootMode)
     }
@@ -191,7 +190,7 @@ constructor(
     avd: AvdInfo,
     forceLaunchInToolWindow: Boolean,
     bootMode: BootMode,
-  ): IDevice {
+  ) {
     if (!code.problem.isEmpty()) {
       IJ_LOG.warn(String.format("Launching %s: %s: %s", avd.name, code, code.problem))
     }
@@ -222,7 +221,7 @@ constructor(
   private fun isQemuNextRequired(avd: AvdInfo) =
     QemuNext.isRequired() && avd.androidVersion.androidApiLevel.majorVersion >= 37 && avd.deviceType() == DeviceType.HANDHELD
 
-  private suspend fun continueToStartAvd(project: Project?, avd: AvdInfo, forceLaunchInToolWindow: Boolean, bootMode: BootMode): IDevice =
+  private suspend fun continueToStartAvd(project: Project?, avd: AvdInfo, forceLaunchInToolWindow: Boolean, bootMode: BootMode): Unit =
     coroutineScope {
       // Check AVD-specific error conditions
       if (isQemuNextRequired(avd)) {
@@ -294,7 +293,7 @@ constructor(
         }
       }
       try {
-        return@coroutineScope EmulatorConnectionListener.getDeviceForEmulator(
+        EmulatorConnectionListener.getDeviceForEmulator(
             project,
             avd.displayName,
             avd.dataFolderPath.toString(),
@@ -348,7 +347,7 @@ constructor(
     launchInToolWindow: Boolean,
     bootMode: BootMode,
     code: AccelerationErrorCode,
-  ): IDevice {
+  ) {
     if (code.solution == SolutionCode.NONE) {
       throw DeviceActionException("${code.problem}\n\n${code.solutionMessage}\n")
     }
@@ -358,7 +357,7 @@ constructor(
       throw DeviceActionCanceledException("Could not start AVD")
     }
 
-    return tryFixingAccelerationError(project, info, launchInToolWindow, bootMode, code)
+    tryFixingAccelerationError(project, info, launchInToolWindow, bootMode, code)
   }
 
   private suspend fun showAccelerationErrorDialog(code: AccelerationErrorCode, project: Project?): Int =
@@ -387,7 +386,7 @@ constructor(
     launchInToolWindow: Boolean,
     bootMode: BootMode,
     code: AccelerationErrorCode,
-  ): IDevice {
+  ) {
     val changeWasMade = CompletableDeferred<Boolean>()
 
     ApplicationManager.getApplication()
@@ -396,7 +395,7 @@ constructor(
       )
 
     if (changeWasMade.await()) {
-      return startAvd(project, avd, launchInToolWindow, bootMode)
+      startAvd(project, avd, launchInToolWindow, bootMode)
     } else {
       throw DeviceActionCanceledException("Retry after fixing problem by hand")
     }
