@@ -90,10 +90,6 @@ public abstract class ListSectionParser<T> extends SectionParser {
     parseContext.resetToSavedPosition();
 
     ImmutableList<ItemOrTextBlock<T>> items = builder.build();
-    if (items.isEmpty()) {
-      parseContext.addError(String.format("Empty section: '%s'", name));
-    }
-
     return new ListSection<>(key, items);
   }
 

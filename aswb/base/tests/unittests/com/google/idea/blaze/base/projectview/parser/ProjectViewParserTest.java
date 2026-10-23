@@ -327,10 +327,14 @@ public class ProjectViewParserTest extends BlazeTestCase {
   }
 
   @Test
-  public void testEmptySectionYieldsError() {
+  public void testEmptySection() {
     projectViewStorageManager.add(".blazeproject", "directories:", "");
     projectViewParser.parseProjectViewFile(new File(".blazeproject"));
-    errorCollector.assertIssues("Empty section: 'directories'");
+    errorCollector.assertNoIssues();
+
+    ProjectView projectView =
+        projectViewParser.getResult().getTopLevelProjectViewFile().projectView;
+    assertThat(projectView.getSectionsOfType(DirectorySection.KEY).get(0).items()).isEmpty();
   }
 
   @Test
@@ -483,14 +487,14 @@ public class ProjectViewParserTest extends BlazeTestCase {
   @Test
   public void testParsersSubset() throws Exception {
     projectViewStorageManager.add(
-      ".blazeproject",
-      "workspace_location: /google3/location",
-            "use_query_sync: compatibility");
-    projectViewParser.parseProjectViewFile(new File(".blazeproject"), List.of(WorkspaceLocationSection.PARSER));
+        ".blazeproject", "workspace_location: /google3/location", "use_query_sync: compatibility");
+    projectViewParser.parseProjectViewFile(
+        new File(".blazeproject"), List.of(WorkspaceLocationSection.PARSER));
     // Parser errors are expected from the parsers not included in the parsers list
 
     ProjectViewSet projectViewSet = projectViewParser.getResult();
-    assertThat(projectViewSet.getScalarValue(WorkspaceLocationSection.KEY)).isEqualTo(Optional.of("/google3/location"));
+    assertThat(projectViewSet.getScalarValue(WorkspaceLocationSection.KEY))
+        .isEqualTo(Optional.of("/google3/location"));
     // Value will not be parsed for the parsers not in the provided list
     assertThat(projectViewSet.getScalarValue(UseQuerySyncSection.KEY)).isEqualTo(Optional.empty());
   }
