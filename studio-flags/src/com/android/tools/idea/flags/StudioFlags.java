@@ -1119,13 +1119,6 @@ public final class StudioFlags {
     " having to match by Gradle coordinate. This flag will have no effect if used with a version of AGP before 8.1.0-alpha8."
   );
 
-  public static final Flag<Boolean> USE_FLAT_DEPENDENCY_GRAPH_MODEL = new BooleanFlag(
-    GRADLE_IDE,
-    "use.flat.dependency.graph.model",
-    "Switches to a flat representation of the dependency model to improve performance",
-    "Switches to a flat representation of the dependency model to improve performance. The behaviour is guarded behind a flag " +
-    "until we can decide to enable it. This currently reduces some functionality around views / analyses regarding dependency structure");
-
   public static final Flag<Boolean> MULTIPLE_DEVICE_SPECS_ENABLED = new BooleanFlag(
     GRADLE_IDE,
     "enable.multiple.device.specs",

@@ -65,7 +65,6 @@ data class GradleSyncStudioFlags(
   val studioFlagBuildRuntimeClasspathForLibraryUnitTests: Boolean,
   val studioFlagBuildRuntimeClasspathForLibraryScreenshotTests: Boolean,
   val studioFlagSupportFutureAgpVersions: Boolean,
-  val studioFlagUseFlatDependencyGraphModel: Boolean,
   val studioFlagFetchKotlinModelsInParallel: Boolean,
   val studioFlagUsedPhasedSyncVariantResolution: Boolean,
   val studioFlagPhasedSyncDependencyResolutionEnabled: Boolean,

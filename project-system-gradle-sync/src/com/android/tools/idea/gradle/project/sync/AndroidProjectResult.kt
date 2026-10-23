@@ -41,7 +41,6 @@ sealed class AndroidProjectResult {
     override val defaultVariantName: String?,
     val androidVariantResolver: AndroidVariantResolver,
     val runtimeClasspathBehaviour: RuntimeClasspathBehaviour,
-    val useFlatDependencyGraphModel: Boolean,
     val additionalArtifactsInModel: Boolean,
     val basicAndroidProject: BasicAndroidProject? = null,
     val androidProjectV2: com.android.builder.model.v2.models.AndroidProject? = null,
@@ -54,7 +53,6 @@ sealed class AndroidProjectResult {
         modelVersions,
         v2Variants,
         runtimeClasspathBehaviour,
-        useFlatDependencyGraphModel,
         additionalArtifactsInModel,
       )
   }
@@ -78,7 +76,6 @@ sealed class AndroidProjectResult {
       legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
       gradlePropertiesModel: GradlePropertiesModel,
       runtimeClasspathBehaviour: RuntimeClasspathBehaviour,
-      useFlatDependencyGraphModel: Boolean,
       additionalArtifactsInModel: Boolean,
       declaredDependencies: DeclaredDependencies? = null,
     ): ModelResult<V2Project> {
@@ -132,7 +129,6 @@ sealed class AndroidProjectResult {
           defaultVariantName = defaultVariantName,
           androidVariantResolver = androidVariantResolver,
           runtimeClasspathBehaviour = runtimeClasspathBehaviour,
-          useFlatDependencyGraphModel = useFlatDependencyGraphModel,
           additionalArtifactsInModel = additionalArtifactsInModel,
           basicAndroidProject = basicAndroidProject,
           androidProjectV2 = androidProject,
@@ -171,7 +167,6 @@ private fun v2VariantFetcher(
   modelVersions: ModelVersions,
   v2Variants: List<IdeVariantCoreImpl>,
   runtimeClasspathBehaviour: RuntimeClasspathBehaviour,
-  useFlatDependencyGraphModel: Boolean,
   additionalArtifactsInModel: Boolean,
 ): IdeVariantFetcher {
   return fun(
@@ -191,7 +186,6 @@ private fun v2VariantFetcher(
         module.gradleProject,
         modelVersions,
         configuration.variant,
-        useFlatDependencyGraphModel,
         parameterMutatorForProject(runtimeClasspathBehaviour, module.projectType, configuration.isRoot, additionalArtifactsInModel),
       ) ?: return ModelResult.create { null }
     return modelCache.variantFrom(

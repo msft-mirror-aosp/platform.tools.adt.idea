@@ -67,7 +67,6 @@ internal fun BuildController.findVariantDependenciesV2Model(
   project: BasicGradleProject,
   modelVersions: ModelVersions,
   variantName: String,
-  useFlatDependencyGraphModel: Boolean,
   parameterMutator: (com.android.builder.model.v2.models.ModelBuilderParameter) -> Unit,
 ): VariantDependenciesCompat? {
   fun <T> findModel(clazz: Class<T>, parameterMutator: (com.android.builder.model.v2.models.ModelBuilderParameter) -> Unit) =
@@ -76,9 +75,7 @@ internal fun BuildController.findVariantDependenciesV2Model(
       parameterMutator(it)
     }
 
-  return if (useFlatDependencyGraphModel) {
-    findModel(VariantDependenciesFlatList::class.java, parameterMutator)?.let { VariantDependenciesCompat.FlatList(it, modelVersions) }
-  } else if (modelVersions[ModelFeature.HAS_ADJACENCY_LIST_DEPENDENCY_GRAPH]) {
+  return if (modelVersions[ModelFeature.HAS_ADJACENCY_LIST_DEPENDENCY_GRAPH]) {
     findModel(VariantDependenciesAdjacencyList::class.java, parameterMutator)?.let {
       VariantDependenciesCompat.AdjacencyList(it, modelVersions)
     }

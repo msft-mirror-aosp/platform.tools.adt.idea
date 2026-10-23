@@ -74,7 +74,6 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
                     project = gradleProject,
                     modelVersions = data.modelVersions,
                     variantName = data.selectedVariantName,
-                    useFlatDependencyGraphModel = false,
                   ) {
                     // If the studio flag for it is enabled, we don't fetch runtime classpath for libraries with inbound depenencis
                     if (

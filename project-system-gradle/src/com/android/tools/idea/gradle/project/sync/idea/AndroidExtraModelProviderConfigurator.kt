@@ -75,7 +75,6 @@ fun ProjectResolverContext.getSyncOptions(project: Project): SyncActionOptions {
       studioFlagBuildRuntimeClasspathForLibraryScreenshotTests =
         StudioFlags.GRADLE_BUILD_RUNTIME_CLASSPATH_FOR_LIBRARY_SCREENSHOT_TESTS.get(),
       studioFlagSupportFutureAgpVersions = StudioFlags.SUPPORT_FUTURE_AGP_VERSIONS.get(),
-      studioFlagUseFlatDependencyGraphModel = StudioFlags.USE_FLAT_DEPENDENCY_GRAPH_MODEL.get(),
       studioFlagFetchKotlinModelsInParallel = StudioFlags.GRADLE_SYNC_FETCH_KOTLIN_MODELS_IN_PARALLEL.get(),
       studioFlagUsedPhasedSyncVariantResolution = StudioFlags.DEPENDENCY_AWARE_VARIANT_RESOLUTION_ENABLED.get(),
       studioFlagPhasedSyncDependencyResolutionEnabled = StudioFlags.PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED.get(),
