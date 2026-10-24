@@ -46,6 +46,7 @@ import com.intellij.ui.JBSplitter
 import com.intellij.ui.NewUI
 import com.intellij.util.containers.orNull
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.update.UiNotifyConnector
 import java.awt.Dimension
 import javax.swing.Icon
 import javax.swing.JComponent
@@ -230,6 +231,15 @@ abstract class SplitEditor<P : FileEditor>(
         // visibility immediately so preferredFocusedComponent is not recursively invisible when
         // requesting focus below.
         myEditor.editor.component?.isVisible = myEditor.component.isVisible
+        if (myEditor.component.isVisible) {
+          // Validate the layout immediately when making the text editor visible (e.g. switching
+          // from Design mode to Split mode on navigation) so the editor viewport and scrollbar
+          // have valid bounds before any subsequent scrollToCaret call, and flush any deferred
+          // state-restoration scroll from UiNotifyConnector.doWhenFirstShown before moving the
+          // caret.
+          component.validate()
+          myEditor.editor.contentComponent?.let { UiNotifyConnector.forceNotifyIsShown(it) }
+        }
         preferredFocusedComponent?.requestFocusInWindow()
       }
     }

@@ -29,6 +29,7 @@ import com.intellij.codeInsight.NullableNotNullManager
 import com.intellij.facet.FacetManager
 import com.intellij.lang.jvm.JvmModifier
 import com.intellij.psi.PsiParameter
+import com.intellij.psi.xml.XmlFile
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
@@ -480,5 +481,29 @@ class LightViewBindingClassTest {
             bindMethod.returnType!!.assertExpected(project, "ActivityMainBinding")
           }
       }
+  }
+
+  @Test
+  fun classAndStaticMethodsNavigateToRootXmlTag() {
+    val file =
+      fixture.addFileToProject(
+        "src/main/res/layout/activity_main.xml",
+        """
+        <?xml version="1.0" encoding="utf-8"?>
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+        """
+          .trimIndent(),
+      ) as XmlFile
+
+    val context = fixture.addClass("public class MainActivity {}")
+    val binding = fixture.findClass("test.db.databinding.ActivityMainBinding", context) as LightBindingClass
+    val expectedRootTag = file.rootTag!!
+
+    assertThat(binding.navigationElement).isEqualTo(expectedRootTag)
+    for (method in binding.methods) {
+      assertThat(method.navigationElement).isEqualTo(expectedRootTag)
+    }
   }
 }

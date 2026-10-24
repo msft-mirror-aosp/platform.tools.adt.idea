@@ -25,6 +25,7 @@ import com.intellij.facet.FacetManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.psi.PsiAnchor
 import com.intellij.psi.PsiClass
+import com.intellij.psi.xml.XmlTag
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
@@ -104,6 +105,10 @@ class DataBindingNavigationTests(private val mode: DataBindingMode) {
     val binding = fixture.findClass("test.db.databinding.ActivityMainBinding", context) as LightBindingClass
     binding.navigate(true)
     assertThat(editors.selectedFiles[0].name).isEqualTo("activity_main.xml")
+    assertThat(binding.navigationElement).isInstanceOf(XmlTag::class.java)
+    for (method in binding.findMethodsByName("inflate", false) + binding.findMethodsByName("bind", false)) {
+      assertThat(method.navigationElement).isEqualTo(binding.navigationElement)
+    }
 
     // Regression test for 261536892: PsiAnchor.create throws assertion error for LightBindingClass
     // navigation element.

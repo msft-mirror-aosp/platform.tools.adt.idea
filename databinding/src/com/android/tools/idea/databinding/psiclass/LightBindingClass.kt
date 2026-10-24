@@ -408,8 +408,9 @@ class LightBindingClass(psiManager: PsiManager, private val config: LightBinding
     }
 
     val psiManager = manager
+    val navigationElement = xmlFile.rootTag ?: xmlFile.navigationElement ?: xmlFile
     for (method in methods) {
-      outPsiMethods.add(LightDataBindingMethod(xmlFile, psiManager, method, this, JavaLanguage.INSTANCE))
+      outPsiMethods.add(LightDataBindingMethod(navigationElement, psiManager, method, this, JavaLanguage.INSTANCE))
     }
   }
 
@@ -452,7 +453,7 @@ class LightBindingClass(psiManager: PsiManager, private val config: LightBinding
 
   override fun getNavigationElement(): PsiElement {
     val xmlFile = config.targetLayout.toXmlFile() ?: return super.getNavigationElement()
-    return xmlFile.navigationElement ?: xmlFile
+    return xmlFile.rootTag ?: xmlFile.navigationElement ?: xmlFile
   }
 
   override fun getName() = config.className

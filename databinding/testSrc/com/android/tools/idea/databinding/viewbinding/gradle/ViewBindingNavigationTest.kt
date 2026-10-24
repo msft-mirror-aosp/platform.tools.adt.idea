@@ -79,6 +79,10 @@ class ViewBindingNavigationTest {
     val binding = fixture.findClass("com.android.example.viewbinding.databinding.ActivityMainBinding", context) as LightBindingClass
     binding.navigate(true)
     assertThat(editorManager.selectedFiles[0].name).isEqualTo("activity_main.xml")
+    assertThat(binding.navigationElement).isInstanceOf(XmlTag::class.java)
+    for (method in binding.findMethodsByName("inflate", false) + binding.findMethodsByName("bind", false)) {
+      assertThat(method.navigationElement).isEqualTo(binding.navigationElement)
+    }
 
     // Regression test for 261536892: PsiAnchor.create throws assertion error for LightBindingClass
     // navigation element.

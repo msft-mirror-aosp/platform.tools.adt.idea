@@ -27,6 +27,7 @@ import com.intellij.openapi.fileEditor.TextEditorWithPreview
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.project.Project
 import com.intellij.pom.Navigatable
+import com.intellij.util.ui.update.UiNotifyConnector
 
 private const val SPLIT_MODE_PROPERTY_PREFIX = "SPLIT_EDITOR_MODE"
 
@@ -106,6 +107,8 @@ open class DesignToolsSplitEditor(textEditor: TextEditor, val designerEditor: De
     if (isDesignMode()) {
       selectSplitMode(false)
     }
+    component.validate()
+    myEditor.editor.contentComponent?.let { UiNotifyConnector.forceNotifyIsShown(it) }
     super.navigateTo(navigatable)
   }
 

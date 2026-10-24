@@ -20,6 +20,7 @@ import com.android.SdkConstants.ATTR_TEXT
 import com.android.SdkConstants.BUTTON
 import com.android.SdkConstants.LINEAR_LAYOUT
 import com.android.SdkConstants.TAG_NAVIGATION
+import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.common.SyncNlModel
 import com.android.tools.idea.common.api.InsertType
 import com.android.tools.idea.common.command.NlWriteCommandActionUtil
@@ -34,10 +35,14 @@ import com.android.tools.idea.uibuilder.model.createChild
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.util.PsiNavigationSupport
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.fileEditor.FileEditorStateLevel
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.xml.XmlFile
 import com.intellij.testFramework.PlatformTestUtil
+import javax.swing.JViewport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -136,6 +141,88 @@ class NlEditorProviderTest {
       editor.navigateTo(descriptor)
       assertThat(editor.isSplitMode()).isTrue()
       assertThat(editor.textEditor.editor.caretModel.offset).isEqualTo(textViewComponent.tagDeprecated.textOffset)
+    }
+  }
+
+  @Test
+  fun testNavigateFromDesignModeValidatesLayoutAndScrollsToTargetView() = runBlocking {
+    val repeatedViews =
+      (1..40).joinToString("\n") {
+        """
+        <TextView
+            android:id="@+id/spacer_$it"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+        """
+          .trimIndent()
+      }
+    @Language("XML")
+    val fileContents =
+      """
+      <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          android:orientation="vertical">
+          <androidx.appcompat.widget.Toolbar
+              android:id="@+id/toolbar"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content" />
+      $repeatedViews
+          <Button
+              android:id="@+id/bottomButton"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content" />
+      </LinearLayout>
+      """
+        .trimIndent()
+    val file = projectRule.fixture.addFileToProject("res/layout/scroll_layout.xml", fileContents) as XmlFile
+
+    projectRule.fixture.configureFromExistingVirtualFile(file.virtualFile)
+    waitForResourceRepositoryUpdates(projectRule.module)
+
+    val editor = provider.createFileEditor(projectRule.project, file.virtualFile, null, this) as DesignToolsSplitEditor
+    Disposer.register(projectRule.testRootDisposable, editor)
+
+    withContext(Dispatchers.EDT) {
+      // Simulate EditorComposite laying out the split editor while it starts in Design mode.
+      assertThat(editor.isDesignMode()).isTrue()
+      val scrollPane = (editor.textEditor.editor as EditorEx).scrollPane
+      scrollPane.viewport.scrollMode = JViewport.SIMPLE_SCROLL_MODE
+      scrollPane.rowHeader?.scrollMode = JViewport.SIMPLE_SCROLL_MODE
+      scrollPane.columnHeader?.scrollMode = JViewport.SIMPLE_SCROLL_MODE
+      editor.component.setBounds(0, 0, 800, 600)
+      FakeUi(editor.component, projectRule.testRootDisposable)
+      assertThat(editor.textEditor.editor.scrollingModel.visibleArea.height).isAtMost(0)
+
+      // Restore state while in Design mode (which registers deferred scroll restoration listeners).
+      editor.setState(editor.getState(FileEditorStateLevel.FULL))
+
+      val text = editor.textEditor.editor.document.text
+      val toolbarOffset = text.indexOf("<androidx.appcompat.widget.Toolbar")
+      val bottomButtonOffset = text.indexOf("<Button")
+
+      // Navigating to a view near the top (e.g. Toolbar) from Design mode should validate the
+      // split layout first and keep verticalScrollOffset at 0 so the top of the view is not hidden.
+      editor.navigateTo(OpenFileDescriptor(projectRule.project, file.virtualFile, toolbarOffset))
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertThat(editor.isSplitMode()).isTrue()
+      val scrollingModel = editor.textEditor.editor.scrollingModel
+      assertThat(scrollingModel.visibleArea.height).isGreaterThan(0)
+      assertThat(scrollingModel.verticalScrollOffset).isEqualTo(0)
+
+      // Navigating from Design mode to a view far down in the XML should scroll the viewport so
+      // the target view is visible.
+      editor.selectDesignMode(userExplicitlyTriggered = false)
+      assertThat(editor.isDesignMode()).isTrue()
+      editor.setState(editor.getState(FileEditorStateLevel.FULL))
+      editor.navigateTo(OpenFileDescriptor(projectRule.project, file.virtualFile, bottomButtonOffset))
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      assertThat(editor.isSplitMode()).isTrue()
+      val caretY = editor.textEditor.editor.visualLineToY(editor.textEditor.editor.caretModel.visualPosition.line)
+      val visibleArea = scrollingModel.visibleArea
+      assertThat(scrollingModel.verticalScrollOffset).isGreaterThan(0)
+      assertThat(caretY).isAtLeast(visibleArea.y)
+      assertThat(caretY).isLessThan(visibleArea.y + visibleArea.height)
     }
   }
 
