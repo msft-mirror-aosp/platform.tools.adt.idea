@@ -56,9 +56,11 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.impl.CoreProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.WindowManager
 import com.intellij.openapi.wm.ex.WindowManagerEx
 import com.intellij.ui.ExperimentalUI
+import com.intellij.util.ui.UIUtil
 import java.nio.file.Path
 import org.junit.After
 import org.junit.Assert.assertThrows
@@ -109,6 +111,7 @@ class BlazeAndroidRunConfigurationRunnerTest : BlazeTestCase() {
 
   @After
   fun restoreLoggerFactory() {
+    UIUtil.invokeAndWaitIfNeeded { Disposer.dispose(testDisposable) }
     Logger.setFactory(::DefaultLogger)
   }
 
