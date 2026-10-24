@@ -150,7 +150,7 @@ public class AccelerationErrorSolution {
       case UPDATE_EMULATOR:
         return () -> {
           try {
-            showQuickFix(ImmutableList.of(StudioFlags.EMULATOR_PREVIEW_REQUIRED.get() ? EmulatorPackage.QEMU_NEXT_PACKAGE_PATH : SdkConstants.FD_EMULATOR));
+            showQuickFix(ImmutableList.of(QemuNext.isRequired() ? EmulatorPackage.QEMU_NEXT_PACKAGE_PATH : SdkConstants.FD_EMULATOR));
           }
           finally {
             reportBack();

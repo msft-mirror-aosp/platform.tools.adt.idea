@@ -220,9 +220,7 @@ constructor(
   }
 
   private fun isQemuNextRequired(avd: AvdInfo) =
-    StudioFlags.EMULATOR_PREVIEW_REQUIRED.get() &&
-      avd.androidVersion.androidApiLevel.majorVersion >= 37 &&
-      avd.deviceType() == DeviceType.HANDHELD
+    QemuNext.isRequired() && avd.androidVersion.androidApiLevel.majorVersion >= 37 && avd.deviceType() == DeviceType.HANDHELD
 
   private suspend fun continueToStartAvd(project: Project?, avd: AvdInfo, forceLaunchInToolWindow: Boolean, bootMode: BootMode): IDevice =
     coroutineScope {

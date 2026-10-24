@@ -23,13 +23,20 @@ import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.testutils.TestUtils
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.flags.StudioFlags
+import com.android.utils.Environment
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.SystemInfo
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 
 class AndroidSdkTest {
   @get:Rule val emulatorPreviewFlagRule = FlagRule(StudioFlags.EMULATOR_PREVIEW_REQUIRED)
+
+  @After
+  fun tearDown() {
+    Environment.initialize(Environment.SYSTEM)
+  }
 
   @Test
   fun `get required SDK packages doesn't return emulator on Chrome OS`() {
@@ -42,9 +49,20 @@ class AndroidSdkTest {
   @Test
   fun `get required SDK packages includes preview emulator when flag is enabled`() {
     StudioFlags.EMULATOR_PREVIEW_REQUIRED.override(true)
+    Environment.initialize(fakeEnvironment(osName = "Linux", osArch = "amd64"))
     val sdk = AndroidSdkComponentTreeNode(false)
     val packages = sdk.getRequiredSdkPackages(false)
     assertThat(packages).contains(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH)
+  }
+
+  @Test
+  fun `get required SDK packages does not include preview emulator on Intel Macs`() {
+    StudioFlags.EMULATOR_PREVIEW_REQUIRED.override(true)
+    Environment.initialize(fakeEnvironment(osName = "Mac OS X", osArch = "x86_64"))
+    val sdk = AndroidSdkComponentTreeNode(false)
+    val packages = sdk.getRequiredSdkPackages(false)
+    assertThat(packages).contains(SdkConstants.FD_EMULATOR)
+    assertThat(packages).doesNotContain(EmulatorPackage.QEMU_NEXT_PACKAGE_PATH)
   }
 
   @Test
@@ -63,4 +81,18 @@ class AndroidSdkTest {
       assertThat(AehdSdkComponentTreeNode.InstallerInfo.checkInstallation()).isEqualTo(AccelerationErrorCode.AEHD_REQUIRES_WINDOWS)
     }
   }
+
+  private fun fakeEnvironment(osName: String, osArch: String) =
+    object : Environment() {
+      override fun getVariable(name: EnvironmentVariable): String? = null
+
+      override fun getSystemProperty(name: SystemProperty): String =
+        when (name) {
+          SystemProperty.OS_NAME -> osName
+          SystemProperty.OS_ARCH -> osArch
+        }
+
+      override val isRosetta: Boolean = false
+      override val isWindowsArm64: Boolean = false
+    }
 }
