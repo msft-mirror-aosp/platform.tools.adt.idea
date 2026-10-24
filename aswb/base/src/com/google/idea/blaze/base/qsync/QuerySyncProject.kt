@@ -328,8 +328,11 @@ class QuerySyncProject(
       return true
     }
 
-    val pendingTargets = snapshotHolder()?.getPendingTargets(workspaceRoot.relativize(path)).orEmpty()
-    return pendingTargets.isEmpty()
+    val snapshot = snapshotHolder() ?: return true
+    val workspaceRelativePath = workspaceRoot.relativize(path)
+    // A file of a package that hasn't been queried has no known targets, so nothing looks pending. It isn't ready until its package is
+    // queried and its dependencies are built.
+    return !snapshot.isInUnqueriedPackage(workspaceRelativePath) && snapshot.getPendingTargets(workspaceRelativePath).isEmpty()
   }
 
   class CreateProjectStructureResult(val projectStructure: ProjectProto.Project, val artifactState: ArtifactTracker.State)

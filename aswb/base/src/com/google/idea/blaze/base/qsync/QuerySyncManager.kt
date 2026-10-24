@@ -28,6 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.errorprone.annotations.CanIgnoreReturnValue
 import com.google.idea.blaze.base.async.executor.ProgressiveTaskWithProgressIndicator
 import com.google.idea.blaze.base.bazel.BuildSystemProvider
+import com.google.idea.blaze.base.lang.buildfile.language.BuildFileType
 import com.google.idea.blaze.base.logging.utils.querysync.QuerySyncActionStatsScope
 import com.google.idea.blaze.base.logging.utils.querysync.SyncQueryStatsScope
 import com.google.idea.blaze.base.projectview.ProjectViewManager
@@ -942,6 +943,8 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
   }
 
   fun isReadyForAnalysis(psiFile: PsiFile): Boolean {
+    // BUILD, .bzl and other Starlark files are always ready: their highlighting needs neither the query nor built dependencies.
+    if (psiFile.fileType == BuildFileType.INSTANCE) return true
     val virtualFile = psiFile.virtualFile ?: return true
     val nioPath = virtualFile.fileSystem.getNioPath(virtualFile) ?: return true
     return CachedValuesManager.getCachedValue(psiFile) {

@@ -28,6 +28,7 @@ import com.google.idea.blaze.qsync.project.ProjectStructureData
 import com.google.idea.blaze.qsync.project.ProjectTarget
 import com.google.idea.blaze.qsync.project.RequestedTargets
 import com.google.idea.blaze.qsync.project.computeSufficientTargets
+import com.google.idea.blaze.qsync.project.getBuildPackage
 import com.google.idea.blaze.qsync.project.pathToLabel
 import com.google.idea.blaze.qsync.project.requiredTargets
 import java.nio.file.Path
@@ -131,5 +132,16 @@ data class QuerySyncProjectSnapshot(
   fun getPendingTargets(workspaceRelativePath: Path): Set<Label> {
     Preconditions.checkState(!workspaceRelativePath.isAbsolute, workspaceRelativePath)
     return getPendingExternalDeps(getSourceFileOwners(workspaceRelativePath))
+  }
+
+  /**
+   * Returns whether [workspaceRelativePath] is in a project package that hasn't been queried. Packages are queried when they're needed, so
+   * the graph knows nothing about the files of such a package yet. A package that was queried counts as queried even if its query data is
+   * out of date, e.g. stale after an upstream revision or Bazel version change, or older than an edit of its BUILD file: it keeps the
+   * targets of its last query until it's requested again.
+   */
+  fun isInUnqueriedPackage(workspaceRelativePath: Path): Boolean {
+    val buildPackage = projectStructureData.getBuildPackage(workspaceRelativePath) ?: return false
+    return !queryData.querySummary().packages.contains(buildPackage.path)
   }
 }
