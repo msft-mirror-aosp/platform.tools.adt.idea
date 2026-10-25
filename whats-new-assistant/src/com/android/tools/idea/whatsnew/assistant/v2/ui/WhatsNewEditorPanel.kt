@@ -74,6 +74,7 @@ import org.jetbrains.jewel.foundation.modifier.thenIf
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.markdown.MarkdownBlock
 import org.jetbrains.jewel.markdown.extensions.markdownProcessor
+import org.jetbrains.jewel.markdown.processing.MarkdownProcessor
 import org.jetbrains.jewel.markdown.rawMarkdown
 import org.jetbrains.jewel.markdown.rendering.MarkdownBlockRenderer
 import org.jetbrains.jewel.markdown.rendering.MarkdownStyling
@@ -175,7 +176,8 @@ private fun WhatsNewAllDocuments(
   // First, we parse all Markdown files, so that we don't try to display "empty" documents in the "LazyColumn".
   // If we were to parse documents asynchronously while displaying the LazyColumn of documents, the scrollbar
   // would "jump" around and being jittery overall.
-  val processor = JewelTheme.markdownProcessor
+  val baseProcessor = JewelTheme.markdownProcessor
+  val processor = remember(baseProcessor) { MarkdownProcessor(baseProcessor.extensions + FeatureFlagProcessorExtension) }
   var parsedMarkdownDocuments by
     rememberSaveable(markdownDocuments) { mutableStateOf<Map<WhatsNewMarkdownDocument, Result<List<MarkdownBlock>>>>(emptyMap()) }
   LaunchedEffect(markdownDocuments) {

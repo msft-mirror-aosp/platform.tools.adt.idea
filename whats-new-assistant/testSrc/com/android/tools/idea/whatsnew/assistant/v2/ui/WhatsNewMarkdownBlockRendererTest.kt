@@ -24,6 +24,7 @@ import com.android.tools.idea.whatsnew.assistant.v2.ui.WhatsNewMarkdownBlockRend
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.markdown.InlineMarkdown
 import org.jetbrains.jewel.markdown.MarkdownBlock
+import org.jetbrains.jewel.markdown.processing.MarkdownProcessor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -43,7 +44,7 @@ class WhatsNewMarkdownBlockRendererTest {
           heading("Section 1", level = 2),
           paragraph("Section 1 text"),
           heading("Gemma Section", level = 2),
-          htmlBlock("<!-- FEATURE_FLAG=studiobot.local.gemma.enabled -->"),
+          featureFlagBlock("studiobot.local.gemma.enabled"),
           paragraph("Gemma text"),
           heading("Section 3", level = 2),
           paragraph("Section 3 text"),
@@ -78,7 +79,7 @@ class WhatsNewMarkdownBlockRendererTest {
           heading("Section 1", level = 2),
           paragraph("Section 1 text"),
           heading("Gemma Section", level = 2),
-          htmlBlock("<!-- FEATURE_FLAG=studiobot.local.gemma.enabled -->"),
+          featureFlagBlock("studiobot.local.gemma.enabled"),
           paragraph("Gemma text"),
           heading("Section 3", level = 2),
           paragraph("Section 3 text"),
@@ -95,7 +96,7 @@ class WhatsNewMarkdownBlockRendererTest {
       assertEquals(
         listOf(
           heading("Gemma Section", 2),
-          htmlBlock("<!-- FEATURE_FLAG=studiobot.local.gemma.enabled -->"),
+          featureFlagBlock("studiobot.local.gemma.enabled"),
           paragraph("Gemma text"),
         ),
         (groups[2] as MarkdownGroup.Cell).blocks,
@@ -120,10 +121,10 @@ class WhatsNewMarkdownBlockRendererTest {
           heading("Title", level = 1),
           paragraph("Intro text"),
           heading("What's New V2 Section", level = 2),
-          htmlBlock("<!-- FEATURE_FLAG=whatsnew.use.whats.new.v2 -->"),
+          featureFlagBlock("whatsnew.use.whats.new.v2"),
           paragraph("V2 text"),
           heading("Gemma Section", level = 2),
-          htmlBlock("<!-- FEATURE_FLAG=studiobot.local.gemma.enabled -->"),
+          featureFlagBlock("studiobot.local.gemma.enabled"),
           paragraph("Gemma text"),
           heading("Section 3", level = 2),
           paragraph("Section 3 text"),
@@ -138,7 +139,61 @@ class WhatsNewMarkdownBlockRendererTest {
       assertEquals(
         listOf(
           heading("What's New V2 Section", 2),
-          htmlBlock("<!-- FEATURE_FLAG=whatsnew.use.whats.new.v2 -->"),
+          featureFlagBlock("whatsnew.use.whats.new.v2"),
+          paragraph("V2 text"),
+        ),
+        (groups[1] as MarkdownGroup.Cell).blocks,
+      )
+
+      assertTrue(groups[2] is MarkdownGroup.Cell)
+      assertEquals(
+        listOf(
+          heading("Section 3", 2),
+          paragraph("Section 3 text"),
+        ),
+        (groups[2] as MarkdownGroup.Cell).blocks,
+      )
+    } finally {
+      StudioFlags.WHATS_NEW_V2.clearOverride()
+      StudioFlags.LOCAL_GEMMA_ENABLED.clearOverride()
+    }
+  }
+
+  @Test
+  fun featureFlagProcessorExtension_parsesAndFiltersMarkdownDocument() {
+    StudioFlags.WHATS_NEW_V2.override(true)
+    StudioFlags.LOCAL_GEMMA_ENABLED.override(false)
+    try {
+      val markdown =
+        """
+        # Title
+        Intro text
+
+        ## What's New V2 Section
+        <!-- FEATURE_FLAG=whatsnew.use.whats.new.v2 -->
+        V2 text
+
+        ## Gemma Section
+        <!-- FEATURE_FLAG=studiobot.local.gemma.enabled -->
+        Gemma text
+
+        ## Section 3
+        Section 3 text
+        """
+          .trimIndent()
+
+      val processor = MarkdownProcessor(listOf(FeatureFlagProcessorExtension))
+      val blocks = processor.processMarkdownDocument(markdown)
+      val groups = filterFeatureFlagGroups(groupBlocksByH1ThenH2Blocks(blocks))
+
+      assertEquals(3, groups.size)
+      assertTrue(groups[0] is MarkdownGroup.Rows)
+
+      assertTrue(groups[1] is MarkdownGroup.Cell)
+      assertEquals(
+        listOf(
+          heading("What's New V2 Section", 2),
+          featureFlagBlock("whatsnew.use.whats.new.v2"),
           paragraph("V2 text"),
         ),
         (groups[1] as MarkdownGroup.Cell).blocks,
@@ -166,7 +221,7 @@ class WhatsNewMarkdownBlockRendererTest {
     return MarkdownBlock.Paragraph(listOf(InlineMarkdown.Text(text)))
   }
 
-  private fun htmlBlock(content: String): MarkdownBlock.HtmlBlock {
-    return MarkdownBlock.HtmlBlock(content)
+  private fun featureFlagBlock(flagName: String): FeatureFlagMarkdownBlock {
+    return FeatureFlagMarkdownBlock(flagName)
   }
 }

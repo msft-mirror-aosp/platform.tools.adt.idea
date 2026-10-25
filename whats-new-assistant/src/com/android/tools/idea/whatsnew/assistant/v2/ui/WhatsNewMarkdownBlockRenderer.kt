@@ -89,6 +89,14 @@ internal class WhatsNewMarkdownBlockRenderer(
   }
 
   @Composable
+  override fun RenderBlock(block: MarkdownBlock, enabled: Boolean, onUrlClick: (String) -> Unit, modifier: Modifier) {
+    if (block is FeatureFlagMarkdownBlock) {
+      return
+    }
+    super.RenderBlock(block, enabled, onUrlClick, modifier)
+  }
+
+  @Composable
   private fun RenderTopLevelBlocks(blocks: List<MarkdownBlock>, enabled: Boolean, onUrlClick: (String) -> Unit, modifier: Modifier) {
     RenderTopLevelBlocks_ColumnAndRows(blocks, enabled, onUrlClick, modifier)
   }
@@ -281,8 +289,6 @@ internal class WhatsNewMarkdownBlockRenderer(
       class Cell(val blocks: List<MarkdownBlock>) : MarkdownGroup()
     }
 
-    private val FEATURE_FLAG_REGEX = Regex("""<!--\s*FEATURE_FLAG\s*=\s*(\S+?)\s*-->""")
-
     /**
      * Removes Cells from the Markdown groups if the Cell (1 card) contains a comment with a flag and the flag is disabled
      */
@@ -297,15 +303,14 @@ internal class WhatsNewMarkdownBlockRenderer(
     }
 
     /**
-     * Returns true if the cell contains an HtmlBlock matching the format `<!-- FEATURE_FLAG=studiobot.local.gemma.enabled -->` and
+     * Returns true if the cell contains a [FeatureFlagMarkdownBlock] matching `<!-- FEATURE_FLAG=studiobot.local.gemma.enabled -->` and
      * the flag exists and is disabled. We check for disabled instead of enabled, because flags that no longer exist should be treated as
      * enabled.
      */
     private fun hasDisabledFlag(cell: MarkdownGroup.Cell): Boolean {
       for (block in cell.blocks) {
-        if (block !is MarkdownBlock.HtmlBlock) continue
-        val match = FEATURE_FLAG_REGEX.find(block.content) ?: continue
-        val flag = StudioFlags.FLAGS.getFlag(match.groupValues[1])
+        if (block !is FeatureFlagMarkdownBlock) continue
+        val flag = StudioFlags.FLAGS.getFlag(block.flagName)
         if (flag != null && flag.get() == false) {
           return true
         }
