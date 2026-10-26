@@ -47,6 +47,7 @@ import com.android.tools.idea.gradle.project.sync.SUBSET_500_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_KMP_2000_NAME
 import com.android.tools.idea.gradle.project.sync.createCpuBenchmarkTestRule
 import com.android.tools.idea.testing.requestSyncAndWait
+import com.intellij.openapi.util.SystemInfo
 import kotlin.time.Duration.Companion.minutes
 import org.junit.Rule
 import org.junit.Test
@@ -85,7 +86,8 @@ class Benchmark2000KotlinMultiplatformCpuTest {
 
 class Benchmark2000CpuTest {
   @get:Rule val benchmarkProjectSetupRule = createCpuBenchmarkTestRule(SUBSET_2000_NAME, STANDARD_2000)
-  @get:Rule val measureSyncExecutionTimeRule = MeasureSyncExecutionTimeRule(syncCount = 5)
+  // Mac runs on continuous studio-mac postsubmit (runs_per_test=1), which is too noisy for regression alerts.
+  @get:Rule val measureSyncExecutionTimeRule = MeasureSyncExecutionTimeRule(syncCount = 5, enableAnalyzers = !SystemInfo.isMac)
   @get:Rule val daemonIdleTimeoutRule = DaemonIdleTimeoutRule(7.minutes)
 
   @Test fun testCpu() = runTest(benchmarkProjectSetupRule, measureSyncExecutionTimeRule)
