@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.project.build.invoker
 
 import com.android.testutils.AssumeUtil
 import com.android.testutils.VirtualTimeScheduler
+import com.android.testutils.waitForCondition
 import com.android.tools.analytics.TestUsageTracker
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.gradle.project.build.events.GradleErrorQuickFixProvider
@@ -44,6 +45,8 @@ import com.intellij.build.events.impl.StartEventImpl
 import com.intellij.build.events.impl.SuccessResultImpl
 import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.process.ProcessOutputType
+import com.intellij.execution.ui.ExecutionConsole
+import com.intellij.execution.ui.unwrapDelegate
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
@@ -229,38 +232,74 @@ class BuildOutputParsersIntegrationTest {
     val eventView = buildView.getView(BuildTreeConsoleView::class.java.name, BuildTreeConsoleView::class.java)!!
     BuildViewAssertions.showAllNodes(eventView)
     BuildViewAssertions.assertBuildViewTreeText(buildView) { println("=== Tree Presentation\n$it\n===") }
+    // Drain BuildTreeConsoleView's background invoker so all build events (including
+    // FinishBuildEvent's fallback root-console selection) have settled before driving selection.
+    eventView.invokeLater {}.blockingGet(10, TimeUnit.SECONDS)
 
+    val rootConsole = checkNotNull(buildView.consoleView).unwrapDelegate()
     val tree = eventView.tree
-    val nodes = runInEdtAndGet {
-      PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-      PlatformTestUtil.waitWhileBusy(tree)
+    val (progressRootNode, nodes) =
+      runInEdtAndGet {
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        PlatformTestUtil.waitWhileBusy(tree)
 
-      TreeUtil.treeNodeTraverser(tree.model.root as DefaultMutableTreeNode)
-        .filter {
-          val userObject = (it as DefaultMutableTreeNode).userObject
-          nameFilter.test(userObject.toString())
-        }
-        .toList()
-    }
+        val root = tree.model.root as DefaultMutableTreeNode
+        val progressRoot = root.firstChild as DefaultMutableTreeNode
+        val matchingNodes =
+          TreeUtil.treeNodeTraverser(root)
+            .filter {
+              val userObject = (it as DefaultMutableTreeNode).userObject
+              nameFilter.test(userObject.toString())
+            }
+            .toList()
+        progressRoot to matchingNodes
+      }
 
     val result = mutableListOf<String>()
 
     nodes.forEach { node ->
-      val selectedPathComponent =
-        if (node != tree.selectionPath?.lastPathComponent) {
-          runInEdtAndGet {
-            TreeUtil.selectNode(tree, node)
-            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-            PlatformTestUtil.waitWhileBusy(tree)
-            tree.selectionPath!!.lastPathComponent
-          }
-        } else {
-          tree.selectionPath!!.lastPathComponent
+      // With build.toolwindow.split enabled, JTree selection propagates asynchronously to the
+      // console view via coroutines (BuildTreeView -> BuildTreeViewModel ->
+      // BuildTreeConsoleView.selectNode), and auto-selection of the first error node can leave the
+      // JTree selected before the console switches (or after FinishBuildEvent resets the console
+      // view to the progress root node). Select the progress root node first as a barrier, then
+      // select the target node and wait until its console becomes active.
+      if (node != progressRootNode) {
+        runInEdtAndGet {
+          TreeUtil.selectNode(tree, progressRootNode)
+          PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+          PlatformTestUtil.waitWhileBusy(tree)
         }
+        waitForCondition(10, TimeUnit.SECONDS) {
+          runInEdtAndGet {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            eventView.selectedNodeConsole === rootConsole
+          }
+        }
+      }
+
+      val selectedPathComponent = runInEdtAndGet {
+        TreeUtil.selectNode(tree, node)
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        PlatformTestUtil.waitWhileBusy(tree)
+        tree.selectionPath!!.lastPathComponent
+      }
       if (node != selectedPathComponent) {
         assertEquals(node.toString(), selectedPathComponent.toString())
       }
-      val selectedNodeConsole = runInEdtAndGet { eventView.selectedNodeConsole }
+
+      var selectedNodeConsole: ExecutionConsole? = null
+      waitForCondition(10, TimeUnit.SECONDS) {
+        val console = runInEdtAndGet {
+          PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+          eventView.selectedNodeConsole
+        }
+        val ready = console != null && (node == progressRootNode || console !== rootConsole)
+        if (ready) {
+          selectedNodeConsole = console
+        }
+        ready
+      }
 
       val buildTreeNode = (node as DefaultMutableTreeNode).userObject as BuildTreeNode
       val kind =
@@ -270,11 +309,20 @@ class BuildOutputParsersIntegrationTest {
           else -> ""
         }
 
+      val (selectedPathText, consoleText) =
+        runInEdtAndGet {
+          val pathText =
+            tree.selectionPath!!.path.joinToString(prefix = "Path:", separator = " > ") {
+              it.toString()
+            }
+          pathText to (selectedNodeConsole as? ConsoleViewImpl)?.text
+        }
+
       result.add(
         buildString {
-          appendLine(tree.selectionPath!!.path.joinToString(prefix = "Path:", separator = " > ") { it.toString() })
+          appendLine(selectedPathText)
           appendLine(kind)
-          appendLine((selectedNodeConsole as? ConsoleViewImpl)?.text)
+          appendLine(consoleText)
           append("---")
         }
       )
