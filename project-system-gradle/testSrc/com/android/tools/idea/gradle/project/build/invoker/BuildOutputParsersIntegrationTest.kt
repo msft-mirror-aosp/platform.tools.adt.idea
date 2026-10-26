@@ -31,10 +31,12 @@ import com.google.wireless.android.sdk.stats.BuildErrorMessage.ErrorType.UNKNOWN
 import com.google.wireless.android.sdk.stats.BuildErrorMessage.ErrorType.XML_PARSER
 import com.google.wireless.android.sdk.stats.BuildErrorMessage.FileType.PROJECT_FILE
 import com.google.wireless.android.sdk.stats.BuildErrorMessage.FileType.UNKNOWN_FILE_TYPE
+import com.intellij.build.BuildProgressListener
 import com.intellij.build.BuildTreeConsoleView
 import com.intellij.build.BuildTreeNode
 import com.intellij.build.BuildViewManager
 import com.intellij.build.events.BuildEvent
+import com.intellij.build.events.FinishBuildEvent
 import com.intellij.build.events.MessageEvent
 import com.intellij.build.events.impl.FailureResultImpl
 import com.intellij.build.events.impl.FinishEventImpl
@@ -48,6 +50,7 @@ import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType
 import com.intellij.openapi.externalSystem.model.task.event.ExternalSystemBuildEvent
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.testFramework.assertion.BuildViewAssertions
@@ -57,6 +60,8 @@ import com.intellij.testFramework.registerExtension
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.util.ui.tree.TreeUtil
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.function.Predicate
 import javax.swing.tree.DefaultMutableTreeNode
 import junit.framework.TestCase.assertEquals
@@ -151,36 +156,55 @@ class BuildOutputParsersIntegrationTest {
     val myRequest = GradleBuildInvoker.Request.builder(projectRule.project, File(basePath)).setTaskId(myTaskId).build()
     val buildListener =
       GradleBuildInvokerImpl.Companion.createBuildTaskListenerForTests(projectRule.project, myFileDocumentManager, myRequest, "")
-    buildListener.onStart(basePath, myTaskId)
-    output.lines().forEach { line ->
-      if (line.startsWith("> Task :")) {
-        // Send out task start and task finish events. GradleOutputMessageDispatcher creates sub-readers for each task,
-        // which work in parallel, and it is important to mimic this process fully.
-        val taskName = line.removePrefix("> Task ").substringBefore(' ')
-        val eventId = "[root build id] > [Task $taskName]"
-        // See org.jetbrains.plugins.gradle.service.execution.GradleProgressEventConverter.convertTaskProgressEventResult for real
-        // conversion
-        val result =
-          when {
-            line.endsWith(" FAILED") -> FailureResultImpl(null, null)
-            line.endsWith(" UP-TO-DATE") -> SuccessResultImpl(/* isUpToDate= */ true)
-            else -> SuccessResultImpl(/* isUpToDate= */ false)
-          }
-        buildListener.onStatusChange(
-          ExternalSystemBuildEvent(myTaskId, StartEventImpl(eventId, myTaskId, System.currentTimeMillis(), taskName))
+    val finishBuildEventDelivered = CountDownLatch(1)
+    val listenerDisposable = Disposer.newDisposable(projectRule.testRootDisposable)
+    try {
+      buildListener.onStart(basePath, myTaskId)
+      // Attach after onStart so this listener runs after BuildOutputErrorsListener (registered by
+      // BuildOutputParserManager.onBuildStart) in AbstractViewManager.onEvent's FIFO listener list.
+      projectRule.project
+        .getService(BuildViewManager::class.java)
+        .addListener(
+          BuildProgressListener { buildId, event ->
+            if (buildId == myTaskId && event is FinishBuildEvent) {
+              finishBuildEventDelivered.countDown()
+            }
+          },
+          listenerDisposable,
         )
-        buildListener.onStatusChange(
-          ExternalSystemBuildEvent(myTaskId, FinishEventImpl(eventId, myTaskId, System.currentTimeMillis(), taskName, result))
-        )
+      output.lines().forEach { line ->
+        if (line.startsWith("> Task :")) {
+          // Send out task start and task finish events. GradleOutputMessageDispatcher creates sub-readers for each task,
+          // which work in parallel, and it is important to mimic this process fully.
+          val taskName = line.removePrefix("> Task ").substringBefore(' ')
+          val eventId = "[root build id] > [Task $taskName]"
+          // See org.jetbrains.plugins.gradle.service.execution.GradleProgressEventConverter.convertTaskProgressEventResult for real
+          // conversion
+          val result =
+            when {
+              line.endsWith(" FAILED") -> FailureResultImpl(null, null)
+              line.endsWith(" UP-TO-DATE") -> SuccessResultImpl(/* isUpToDate= */ true)
+              else -> SuccessResultImpl(/* isUpToDate= */ false)
+            }
+          buildListener.onStatusChange(
+            ExternalSystemBuildEvent(myTaskId, StartEventImpl(eventId, myTaskId, System.currentTimeMillis(), taskName))
+          )
+          buildListener.onStatusChange(
+            ExternalSystemBuildEvent(myTaskId, FinishEventImpl(eventId, myTaskId, System.currentTimeMillis(), taskName, result))
+          )
+        }
       }
+      buildListener.onTaskOutput(myTaskId, output, ProcessOutputType.STDOUT)
+      if (exception != null) {
+        buildListener.onFailure(basePath, myTaskId, exception)
+      } else {
+        buildListener.onSuccess(basePath, myTaskId)
+      }
+      buildListener.onEnd(basePath, myTaskId)
+      assertThat(finishBuildEventDelivered.await(10, TimeUnit.SECONDS)).isTrue()
+    } finally {
+      Disposer.dispose(listenerDisposable)
     }
-    buildListener.onTaskOutput(myTaskId, output, ProcessOutputType.STDOUT)
-    if (exception != null) {
-      buildListener.onFailure(basePath, myTaskId, exception)
-    } else {
-      buildListener.onSuccess(basePath, myTaskId)
-    }
-    buildListener.onEnd(basePath, myTaskId)
   }
 
   private fun List<BuildErrorMessage>.checkSentMetricsData(assertions: List<(BuildErrorMessage) -> Unit>) {
