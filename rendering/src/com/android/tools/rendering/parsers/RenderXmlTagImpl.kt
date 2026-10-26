@@ -15,8 +15,6 @@
  */
 package com.android.tools.rendering.parsers
 
-import com.android.ide.common.rendering.api.ResourceNamespace
-
 /** Simple implementation of [RenderXmlTag] assuming it is not related to any file. */
 internal class RenderXmlTagImpl(
   override val localName: String,
@@ -40,9 +38,6 @@ internal class RenderXmlTagImpl(
   override fun getAttribute(name: String): RenderXmlAttribute? {
     return attrsMap[name]
   }
-
-  override val resourceNamespace: ResourceNamespace?
-    get() = null
 
   override val isValid: Boolean
     get() = true

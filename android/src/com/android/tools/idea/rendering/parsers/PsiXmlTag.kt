@@ -1,7 +1,5 @@
 package com.android.tools.idea.rendering.parsers
 
-import com.android.ide.common.rendering.api.ResourceNamespace
-import com.android.tools.idea.res.resourceNamespace
 import com.android.tools.rendering.parsers.RenderXmlAttribute
 import com.android.tools.rendering.parsers.RenderXmlTag
 import com.intellij.openapi.application.ApplicationManager
@@ -35,9 +33,6 @@ class PsiXmlTag private constructor(private val tagPointer: SmartPsiElementPoint
 
   override val namespace: String
     get() = psiXmlTag?.namespace ?: ""
-
-  override val resourceNamespace: ResourceNamespace?
-    get() = psiXmlTag?.resourceNamespace
 
   override val localName: String
     get() = psiXmlTag?.localName ?: ""

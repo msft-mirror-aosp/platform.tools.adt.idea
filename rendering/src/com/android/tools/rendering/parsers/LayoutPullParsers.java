@@ -159,15 +159,13 @@ public class LayoutPullParsers {
       throw new IllegalArgumentException("RenderTask always should always have PsiFile when it has ResourceFolderType");
     }
 
-    ResourceRepositoryManager manager = renderTask.getContext().getModule().getResourceRepositoryManager();
-
     switch (folderType) {
       case LAYOUT: {
         IRenderLogger logger = renderTask.getLogger();
         ResourceResolver resourceResolver = renderTask.getContext().getConfiguration().getResourceResolver();
         NavGraphResolver navGraphResolver = renderTask.getContext().getModule().getEnvironment().getNavGraphResolver(resourceResolver);
         boolean useToolsNamespace = renderTask.getShowWithToolsVisibilityAndPosition();
-        return LayoutRenderPullParser.create(file, logger, navGraphResolver, manager, useToolsNamespace);
+        return LayoutRenderPullParser.create(file, logger, navGraphResolver, useToolsNamespace);
       }
       case DRAWABLE:
       case MIPMAP:
@@ -184,14 +182,14 @@ public class LayoutPullParsers {
           if (tag.equals(TAG_APPWIDGET_PROVIDER)) {
             // Widget
             renderTask.setDecorations(false);
-            return createWidgetParser(rootTag);
+            return createWidgetParser(rootTag, file.getResourceNamespace());
           }
           else if (tag.equals(PREFERENCE_SCREEN) ||
                    CLASS_PREFERENCE_SCREEN_ANDROIDX.isEquals(tag)) {
             IRenderLogger logger = renderTask.getLogger();
             ResourceResolver resourceResolver = renderTask.getContext().getConfiguration().getResourceResolver();
             NavGraphResolver navGraphResolver = renderTask.getContext().getModule().getEnvironment().getNavGraphResolver(resourceResolver);
-            return LayoutRenderPullParser.create(file, logger, navGraphResolver, manager, true);
+            return LayoutRenderPullParser.create(file, logger, navGraphResolver, true);
           }
         }
         return null;
@@ -200,6 +198,7 @@ public class LayoutPullParsers {
         renderTask.setTransparentBackground();
         renderTask.setDecorations(false);
         renderTask.setRenderingMode(V_SCROLL);
+        ResourceRepositoryManager manager = renderTask.getContext().getModule().getResourceRepositoryManager();
         ResourceIdResolver resolver = ResourceIdManagerHelper.getResolver(renderTask.getContext().getModule().getResourceIdManager());
         DownloadableFontCacheService fontService = renderTask.getContext().getModule().getEnvironment().getDownloadableFontCacheService();
         return createFontFamilyParser(file, (fontName) -> (new ProjectFonts(fontService, manager, resolver)).getFont(fontName), renderTask.getDefaultForegroundColor());
@@ -263,7 +262,7 @@ public class LayoutPullParsers {
   }
 
   @Nullable
-  private static ILayoutPullParser createWidgetParser(RenderXmlTag rootTag) {
+  private static ILayoutPullParser createWidgetParser(@NotNull RenderXmlTag rootTag, @Nullable ResourceNamespace namespace) {
     // See http://developer.android.com/guide/topics/appwidgets/index.html:
 
     // Build up a menu layout based on what we find in the menu file
@@ -277,7 +276,7 @@ public class LayoutPullParsers {
 
     Document document = DomPullParser.createEmptyPlainDocument();
     assert document != null;
-    Element root = addRootElement(document, layout != null ? VIEW_INCLUDE : IMAGE_VIEW, rootTag.getResourceNamespace());
+    Element root = addRootElement(document, layout != null ? VIEW_INCLUDE : IMAGE_VIEW, namespace);
     if (layout != null) {
       root.setAttribute(ATTR_LAYOUT, layout);
       setAndroidAttr(root, ATTR_LAYOUT_WIDTH, VALUE_FILL_PARENT);

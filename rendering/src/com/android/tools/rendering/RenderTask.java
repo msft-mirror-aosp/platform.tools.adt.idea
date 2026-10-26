@@ -852,13 +852,10 @@ public class RenderTask {
       // Attempt to read from PSI.
       RenderXmlFile fromXmlFile = myIncludedWithin.getFromXmlFile(myContext.getModule().getProject());
       if (fromXmlFile != null) {
-        LayoutRenderPullParser parser = LayoutRenderPullParser.create(fromXmlFile, myLogger,
-                                                                      myContext.getModule().getResourceRepositoryManager());
-        topParser = parser;
+        topParser = LayoutRenderPullParser.create(fromXmlFile, myLogger);
       }
       else {
-        // TODO(namespaces, b/74003372): figure out where to get the namespace from.
-        topParser = LayoutFilePullParser.create(new PathString(myIncludedWithin.getFromPath()), ResourceNamespace.TODO(), myContext.getModule().getResourceIdManager());
+        topParser = LayoutFilePullParser.create(new PathString(myIncludedWithin.getFromPath()), ResourceNamespace.RES_AUTO, myContext.getModule().getResourceIdManager());
         if (topParser == null) {
           myLogger.error(null, String.format("Could not read layout file %1$s", myIncludedWithin.getFromPath()), null, null, null);
         }
@@ -1381,10 +1378,7 @@ public class RenderTask {
    */
   @NotNull
   public CompletableFuture<Map<RenderXmlTag, ViewInfo>> measureChildren(@NotNull RenderXmlTag parent, @Nullable AttributeFilter filter) {
-    ILayoutPullParser modelParser = LayoutRenderPullParser.create(filter,
-                                                                  parent,
-                                                                  myLogger,
-                                                                  myContext.getModule().getResourceRepositoryManager());
+    ILayoutPullParser modelParser = LayoutRenderPullParser.create(filter, parent, myLogger);
     Map<RenderXmlTag, ViewInfo> map = new HashMap<>();
     return runAsyncRenderAction(() -> measure(modelParser))
       .thenComposeAsync(session -> {

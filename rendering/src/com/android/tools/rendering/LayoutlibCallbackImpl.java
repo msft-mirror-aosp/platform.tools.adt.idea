@@ -408,8 +408,7 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
     if (!myAaptDeclaredResources.isEmpty() && layoutResource.getResourceType() == ResourceType.AAPT) {
       TagSnapshot aaptResource = myAaptDeclaredResources.get(layoutResource.getValue());
       if (aaptResource == null) return null;
-      // TODO(namespaces, b/74003372): figure out where to get the namespace from.
-      parser = LayoutRenderPullParser.create(aaptResource, ResourceNamespace.TODO(), myLogger);
+      parser = LayoutRenderPullParser.create(aaptResource, myLogger);
     }
     else {
       PathString pathString = ResourcesUtil.toFileResourcePathString(value);
@@ -458,9 +457,7 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
     }
 
     if (myLayoutPullParserFactory != null) {
-      ILayoutPullParser parser = myLayoutPullParserFactory.create(
-        myRenderModule.getProject(),
-        myLogger, xml, this, myRenderModule.getResourceRepositoryManager());
+      ILayoutPullParser parser = myLayoutPullParserFactory.create(myRenderModule.getProject(), myLogger, xml, this);
       if (parser != null) {
         return parser;
       }
@@ -501,7 +498,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
                                                                         myLogger,
                                                                         false,
                                                                         navGraphResolver,
-                                                                        myRenderModule.getResourceRepositoryManager(),
                                                                         sampleDataCounter.getAndIncrement());
           parser.setUseSrcCompat(myHasLegacyAppCompat || myHasAndroidXAppCompat);
           return parser;

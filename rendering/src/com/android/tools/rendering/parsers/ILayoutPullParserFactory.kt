@@ -19,7 +19,6 @@ import com.android.ide.common.rendering.api.ILayoutPullParser
 import com.android.ide.common.rendering.api.LayoutlibCallback
 import com.android.ide.common.util.PathString
 import com.android.tools.rendering.IRenderLogger
-import com.android.tools.res.ResourceRepositoryManager
 import com.intellij.openapi.project.Project
 
 /** A factory for creating [ILayoutPullParser]s. */
@@ -33,6 +32,5 @@ interface ILayoutPullParserFactory {
     logger: IRenderLogger,
     xml: PathString,
     layoutlibCallback: LayoutlibCallback,
-    resourceRepositoryManager: ResourceRepositoryManager,
   ): ILayoutPullParser?
 }

@@ -289,7 +289,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
 
   public void testNonLayoutXmlDoesNotTriggerCycleCheck() {
     ILayoutPullParser mockParser = mock(ILayoutPullParser.class);
-    ILayoutPullParserFactory parserFactory = (project, renderLogger, file, callback, resourceRepositoryManager) -> mockParser;
+    ILayoutPullParserFactory parserFactory = (project, renderLogger, file, callback) -> mockParser;
 
     withLayoutlibCallback(parserFactory, layoutlibCallback -> {
       ResourceValue drawableResource =
@@ -311,7 +311,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
 
   public void testLayoutXmlTriggersCycleCheckWhenRepeated() {
     ILayoutPullParser mockParser = mock(ILayoutPullParser.class);
-    ILayoutPullParserFactory parserFactory = (project, renderLogger, file, callback, resourceRepositoryManager) -> mockParser;
+    ILayoutPullParserFactory parserFactory = (project, renderLogger, file, callback) -> mockParser;
 
     withLayoutlibCallback(parserFactory, layoutlibCallback -> {
       ResourceValue layoutResource =

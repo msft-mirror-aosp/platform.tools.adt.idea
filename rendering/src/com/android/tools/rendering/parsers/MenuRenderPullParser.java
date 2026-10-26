@@ -17,7 +17,6 @@ package com.android.tools.rendering.parsers;
 
 import com.android.ide.common.rendering.api.ILayoutLog;
 import com.android.tools.rendering.RenderTask;
-import com.android.tools.res.ResourceRepositoryManager;
 import com.google.common.collect.ImmutableSet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -32,7 +31,7 @@ class MenuRenderPullParser extends LayoutRenderPullParser.AttributeFilteredLayou
   // Some attributes are not supported by layoutlib and will throw an exception.
   private static final ImmutableSet<String> UNSUPPORTED_ATTRIBUTES = ImmutableSet.of("onClick", "actionViewClass");
 
-  public MenuRenderPullParser(RenderXmlFile file, ILayoutLog logger, ResourceRepositoryManager resourceRepositoryManager) {
+  public MenuRenderPullParser(RenderXmlFile file, ILayoutLog logger) {
     super(file, logger, new RenderTask.AttributeFilter() {
       @Nullable
       @Override
@@ -69,7 +68,7 @@ class MenuRenderPullParser extends LayoutRenderPullParser.AttributeFilteredLayou
         // No match found.
         return null;
       }
-    }, resourceRepositoryManager);
+    });
   }
 
   @Nullable

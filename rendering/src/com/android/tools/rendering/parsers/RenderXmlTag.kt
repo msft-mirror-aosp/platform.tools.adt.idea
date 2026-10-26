@@ -15,8 +15,6 @@
  */
 package com.android.tools.rendering.parsers
 
-import com.android.ide.common.rendering.api.ResourceNamespace
-
 /** Implementation agnostic representation of a xml tag. Used in rendering pipeline. */
 interface RenderXmlTag {
   val localNamespaceDeclarations: Map<String, String>
@@ -30,8 +28,6 @@ interface RenderXmlTag {
   val subTags: List<RenderXmlTag>
 
   val namespace: String
-
-  val resourceNamespace: ResourceNamespace?
 
   val localName: String
 
