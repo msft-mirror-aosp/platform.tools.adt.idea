@@ -53,6 +53,7 @@ import com.android.tools.idea.gradle.project.facet.gradle.GradleFacetConfigurati
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.gradle.project.model.GradleModuleModel;
 import com.android.tools.idea.gradle.project.model.GradleModuleModelKt;
+import com.android.tools.idea.gradle.project.sync.GradleSyncState;
 import com.android.tools.idea.projectsystem.FilenameConstants;
 import com.android.tools.idea.util.EmbeddedDistributionPaths;
 import com.android.tools.idea.util.StudioPathManager;
@@ -93,6 +94,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.gradle.tooling.internal.consumer.DefaultGradleConnector;
+import org.gradle.util.GradleVersion;
 import org.jetbrains.android.facet.AndroidRootUtil;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
@@ -230,6 +232,20 @@ public class GradleProjectSystemUtil {
       return AgpVersion.tryParse(androidProject.getAgpVersion());
     }
 
+    return null;
+  }
+
+  /**
+   * Determines the version of Gradle used by the project, based on the last sync. The result can be absent if
+   * the project has not synced or if sync failed. Does not touch the filesystem or VFS.
+   */
+  @Nullable
+  public static GradleVersion getGradleVersionInUse(@NotNull Project project) {
+    GradleSyncState syncState = GradleSyncState.getInstance(project);
+    GradleVersion gradleVersion = syncState.getLastSyncedGradleVersion();
+    if (gradleVersion != null) {
+      return gradleVersion.getBaseVersion();
+    }
     return null;
   }
 

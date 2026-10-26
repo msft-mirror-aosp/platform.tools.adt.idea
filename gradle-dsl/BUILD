@@ -40,6 +40,7 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "@intellij//:com.intellij.gradle",
         "@intellij//:org.intellij.groovy",
         "@intellij//:intellij.java.impl",
     ],

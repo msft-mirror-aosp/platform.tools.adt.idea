@@ -38,6 +38,7 @@ import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessit
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_INDEPENDENT
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.OPTIONAL_CODEPENDENT
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.OPTIONAL_INDEPENDENT
+import com.android.tools.idea.gradle.util.CompatibleGradleVersion.Companion.getCompatibleGradleVersion
 import com.android.tools.idea.util.toIoFile
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
@@ -260,6 +261,9 @@ class AgpUpgradeRefactoringProcessor(project: Project, val current: AgpVersion, 
 
   val uuid = UUID.randomUUID().toString()
   val agpVersionRefactoringProcessor by lazy { componentRefactoringProcessors.firstNotNullOf { it as? AgpVersionRefactoringProcessor } }
+  val gradleVersionRefactoringProcessor by lazy {
+    componentRefactoringProcessors.firstNotNullOf { it as? GradleVersionRefactoringProcessor }
+  }
   val componentRefactoringProcessorsWithAgpVersionProcessorLast
     get() = componentRefactoringProcessors.sortedBy { if (it is AgpVersionRefactoringProcessor) 1 else 0 }
 
@@ -609,7 +613,7 @@ class AgpUpgradeRefactoringProcessor(project: Project, val current: AgpVersion, 
       trackProcessorUsage(BLOCKED, usages.size, projectBuildModel.context.allRequestedFiles.size)
       return
     }
-    projectBuildModel.context.agpVersion = AndroidGradlePluginVersion.tryParse(new.toString())
+    projectBuildModel.updateContextVersionsForUpgrade(new, gradleVersionRefactoringProcessor.isEnabled)
     trackProcessorUsage(EXECUTE, usages.size, projectBuildModel.context.allRequestedFiles.size)
     executedUsages = usages
     super.execute(usages)
@@ -1236,4 +1240,18 @@ private fun AgpUpgradeComponentRefactoringProcessor.trackComponentUsage(kind: Up
       .setUpgradeAssistantComponentEvent(componentEvent)
 
   UsageTracker.log(studioEvent)
+}
+
+internal fun ProjectBuildModel.updateContextVersionsForUpgrade(
+  newAgpVersion: AgpVersion,
+  updateGradleVersion: Boolean = true,
+) {
+  context.agpVersion = AndroidGradlePluginVersion.tryParse(newAgpVersion.toString())
+  if (updateGradleVersion) {
+    val currentGradle = context.gradleVersion
+    val targetGradle = getCompatibleGradleVersion(newAgpVersion).version
+    if (currentGradle == null || currentGradle < targetGradle) {
+      context.gradleVersion = targetGradle
+    }
+  }
 }

@@ -50,6 +50,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.gradle.util.GradleVersion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.SystemIndependent;
@@ -188,6 +189,10 @@ public final class GradleModelSource extends GradleModelProvider {
     AgpVersion agpVersion = GradleProjectSystemUtil.getAndroidGradleModelVersionInUse(project);
     if (agpVersion != null) {
       context.setAgpVersion(AndroidGradlePluginVersion.Companion.parse(agpVersion.toString()));
+    }
+    GradleVersion gradleVersion = GradleProjectSystemUtil.getGradleVersionInUse(project);
+    if (gradleVersion != null) {
+      context.setGradleVersion(gradleVersion);
     }
     return context;
   }

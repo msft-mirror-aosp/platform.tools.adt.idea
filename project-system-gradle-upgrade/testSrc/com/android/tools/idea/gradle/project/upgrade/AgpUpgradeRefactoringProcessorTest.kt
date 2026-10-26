@@ -19,6 +19,7 @@ import com.android.SdkConstants
 import com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION
 import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
+import com.android.tools.idea.gradle.util.CompatibleGradleVersion.Companion.getCompatibleGradleVersion
 import com.android.tools.idea.testing.IdeComponents
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
@@ -28,6 +29,7 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.testFramework.RunsInEdt
 import java.util.Comparator
+import org.gradle.util.GradleVersion
 import org.junit.After
 import org.junit.Assert
 import org.junit.Assume.assumeTrue
@@ -88,6 +90,7 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
     val expectedText = FileUtil.loadFile(TestFileName("GradleVersion/OldGradleVersion").toFile(testDataPath, ""))
     val actualText = VfsUtilCore.loadText(gradleWrapperPropertiesFile)
     Assert.assertEquals(expectedText, actualText)
+    assertThat(processor.projectBuildModel.context.gradleVersion).isNull()
   }
 
   @Test
@@ -183,6 +186,32 @@ class AgpUpgradeRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
     val expectedText = FileUtil.loadFile(TestFileName("GradleVersion/OldGradleVersion880Expected").toFile(testDataPath, ""))
     val actualText = VfsUtilCore.loadText(gradleWrapperPropertiesFile)
     Assert.assertEquals(expectedText, actualText)
+    val expectedGradleVersion = getCompatibleGradleVersion(AgpVersion.parse("8.8.0")).version
+    assertThat(processor.projectBuildModel.context.gradleVersion).isEqualTo(expectedGradleVersion)
+  }
+
+  @Test
+  fun testEnabledEffectOnGradleVersionUpgradesLowerContextVersion() {
+    writeToGradleWrapperPropertiesFile(TestFileName("GradleVersion/OldGradleVersion"))
+    val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("4.2.0"), AgpVersion.parse("8.8.0"))
+    processor.projectBuildModel.context.gradleVersion = GradleVersion.version("7.0")
+    processor.componentRefactoringProcessors.forEach { it.isEnabled = it is GradleVersionRefactoringProcessor }
+    processor.run()
+
+    val expectedGradleVersion = getCompatibleGradleVersion(AgpVersion.parse("8.8.0")).version
+    assertThat(processor.projectBuildModel.context.gradleVersion).isEqualTo(expectedGradleVersion)
+  }
+
+  @Test
+  fun testEnabledEffectOnGradleVersionPreservesHigherContextVersion() {
+    writeToGradleWrapperPropertiesFile(TestFileName("GradleVersion/OldGradleVersion"))
+    val processor = AgpUpgradeRefactoringProcessor(project, AgpVersion.parse("4.2.0"), AgpVersion.parse("8.8.0"))
+    val higherGradleVersion = GradleVersion.version("9.0")
+    processor.projectBuildModel.context.gradleVersion = higherGradleVersion
+    processor.componentRefactoringProcessors.forEach { it.isEnabled = it is GradleVersionRefactoringProcessor }
+    processor.run()
+
+    assertThat(processor.projectBuildModel.context.gradleVersion).isEqualTo(higherGradleVersion)
   }
 
   @Test

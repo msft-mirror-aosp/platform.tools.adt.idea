@@ -68,6 +68,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.gradle.util.GradleVersion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.SystemIndependent;
@@ -108,6 +109,8 @@ public final class BuildModelContext {
   private GradleBuildFile myRootProjectFile;
   @Nullable
   private AndroidGradlePluginVersion agpVersion;
+  @Nullable
+  private GradleVersion gradleVersion;
   @NotNull
   private final Set<GradleVersionCatalogFile> myVersionCatalogFiles = new LinkedHashSet<>();
 
@@ -127,6 +130,15 @@ public final class BuildModelContext {
   @Nullable
   public AndroidGradlePluginVersion getAgpVersion() {
     return agpVersion;
+  }
+
+  public void setGradleVersion(@Nullable GradleVersion gradleVersion) {
+    this.gradleVersion = gradleVersion;
+  }
+
+  @Nullable
+  public GradleVersion getGradleVersion() {
+    return gradleVersion;
   }
 
   @NotNull
