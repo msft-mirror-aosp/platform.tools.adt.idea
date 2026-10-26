@@ -24,13 +24,13 @@ import com.android.tools.idea.databinding.index.ImportData;
 import com.android.tools.idea.lang.databinding.DataBindingExpressionSupport;
 import com.android.tools.idea.lang.databinding.DataBindingExpressionUtil;
 import com.android.tools.idea.projectsystem.AndroidModuleSystem;
-import com.android.tools.idea.projectsystem.ModuleSystemUtil;
 import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.ModificationTracker;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.CommonClassNames;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiArrayType;
 import com.intellij.psi.PsiClass;
@@ -38,7 +38,6 @@ import com.intellij.psi.PsiClassType;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiField;
 import com.intellij.psi.PsiJavaCodeReferenceElement;
-import com.intellij.psi.PsiJavaParserFacade;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiPrimitiveType;
@@ -46,6 +45,7 @@ import com.intellij.psi.PsiType;
 import com.intellij.psi.PsiTypeVisitor;
 import com.intellij.psi.PsiTypes;
 import com.intellij.psi.impl.source.PsiClassReferenceType;
+import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.psi.xml.XmlAttribute;
 import com.intellij.psi.xml.XmlAttributeValue;
 import com.intellij.psi.xml.XmlFile;
@@ -423,11 +423,9 @@ public final class DataBindingUtil {
                                         @NotNull String nameOrAlias,
                                         @NotNull BindingXmlData bindingData,
                                         boolean qualifyJavaLang) {
-    JavaPsiFacade psiFacade = JavaPsiFacade.getInstance(project);
-    PsiJavaParserFacade parser = psiFacade.getParserFacade();
     PsiType psiType;
     try {
-      psiType = parser.createTypeFromText(nameOrAlias, null);
+      psiType = JavaPsiFacade.getInstance(project).getParserFacade().createTypeFromText(nameOrAlias, null);
     } catch (IncorrectOperationException e) {
       return null;
     }
@@ -455,7 +453,7 @@ public final class DataBindingUtil {
             int nameLength = className.length();
             className = resolveImport(className, bindingData);
             if (qualifyJavaLang && className.indexOf('.') < 0) {
-              className = qualifyClassName(className, parser);
+              className = qualifyClassName(project, className);
               if (className == null) {
                 throw new UnresolvedClassNameException();
               }
@@ -478,23 +476,14 @@ public final class DataBindingUtil {
   }
 
   /**
-   * Given a class name as a String, return its fully qualified name. This may return {@code null}
-   * if the associated {@link PsiClassType} cannot be resolved.
+   * Given a class name as a String, return its fully qualified name if it is a {@code java.lang} class.
+   * This may return {@code null} if the class cannot be found in {@code java.lang}.
    */
   @Nullable
-  private static String qualifyClassName(@NotNull String className, @NotNull PsiJavaParserFacade parser) {
-    PsiType psiType = parser.createTypeFromText(className, null);
-    if (psiType instanceof PsiClassType) {
-      PsiClass psiClass = ((PsiClassType)psiType).resolve();
-      if (psiClass == null) {
-        return null;
-      }
-      String name = psiClass.getQualifiedName();
-      if (name != null) {
-        return name;
-      }
-    }
-    return className;
+  private static String qualifyClassName(@NotNull Project project, @NotNull String className) {
+    PsiClass psiClass = JavaPsiFacade.getInstance(project)
+        .findClass(CommonClassNames.DEFAULT_PACKAGE + "." + className, GlobalSearchScope.allScope(project));
+    return psiClass != null ? psiClass.getQualifiedName() : null;
   }
 
   /**

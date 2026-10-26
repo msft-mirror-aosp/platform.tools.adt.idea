@@ -15,6 +15,9 @@
  */
 package com.android.tools.idea.databinding
 
+import com.android.tools.idea.databinding.index.BindingLayoutType
+import com.android.tools.idea.databinding.index.BindingXmlData
+import com.android.tools.idea.databinding.index.ImportData
 import com.android.tools.idea.databinding.util.DataBindingUtil
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
@@ -104,5 +107,68 @@ class DataBindingUtilTest {
     setters.forEach { method -> assertThat(method.parameters.size).isEqualTo(1) }
     setters.forEach { method -> assertThat(method.returnType).isEqualTo(PsiTypes.voidType()) }
     assertThat(setters.map { m -> m.name }).containsExactly("setBoolValue", "setIntValue", "setStringValue")
+  }
+
+  @Test
+  @RunsInEdt
+  fun getQualifiedType() {
+    val bindingDataWithImports =
+      BindingXmlData(
+        layoutType = BindingLayoutType.DATA_BINDING_LAYOUT,
+        rootTag = "layout",
+        viewBindingIgnore = false,
+        customBindingName = null,
+        imports =
+          listOf(
+            ImportData("java.util.List", null),
+            ImportData("java.util.Map", "MyMap"),
+          ),
+        variables = emptyList(),
+        viewIds = emptyList(),
+      )
+    val emptyBindingData =
+      BindingXmlData(
+        layoutType = BindingLayoutType.DATA_BINDING_LAYOUT,
+        rootTag = "layout",
+        viewBindingIgnore = false,
+        customBindingName = null,
+        imports = emptyList(),
+        variables = emptyList(),
+        viewIds = emptyList(),
+      )
+
+    val project = projectRule.project
+
+    // Primitive types
+    assertThat(DataBindingUtil.getQualifiedType(project, "int", emptyBindingData, true)).isEqualTo("int")
+    assertThat(DataBindingUtil.getQualifiedType(project, "boolean", emptyBindingData, false)).isEqualTo("boolean")
+
+    // java.lang classes with qualifyJavaLang = true
+    assertThat(DataBindingUtil.getQualifiedType(project, "String", emptyBindingData, true)).isEqualTo("java.lang.String")
+    assertThat(DataBindingUtil.getQualifiedType(project, "Integer", emptyBindingData, true)).isEqualTo("java.lang.Integer")
+    assertThat(DataBindingUtil.getQualifiedType(project, "Object", emptyBindingData, true)).isEqualTo("java.lang.Object")
+    assertThat(DataBindingUtil.getQualifiedType(project, "CharSequence", emptyBindingData, true)).isEqualTo("java.lang.CharSequence")
+
+    // java.lang classes with qualifyJavaLang = false (should remain unqualified)
+    assertThat(DataBindingUtil.getQualifiedType(project, "String", emptyBindingData, false)).isEqualTo("String")
+
+    // Fully-qualified classes
+    assertThat(DataBindingUtil.getQualifiedType(project, "java.lang.String", emptyBindingData, true)).isEqualTo("java.lang.String")
+    assertThat(DataBindingUtil.getQualifiedType(project, "java.util.List", emptyBindingData, true)).isEqualTo("java.util.List")
+
+    // Unqualified non-java.lang classes
+    assertThat(DataBindingUtil.getQualifiedType(project, "NonExistentClass", emptyBindingData, true)).isNull()
+    assertThat(DataBindingUtil.getQualifiedType(project, "NonExistentClass", emptyBindingData, false)).isEqualTo("NonExistentClass")
+
+    // Generic types containing java.lang and imported types
+    assertThat(DataBindingUtil.getQualifiedType(project, "List<String>", bindingDataWithImports, true))
+      .isEqualTo("java.util.List<java.lang.String>")
+    assertThat(DataBindingUtil.getQualifiedType(project, "MyMap<String, Integer>", bindingDataWithImports, true))
+      .isEqualTo("java.util.Map<java.lang.String, java.lang.Integer>")
+
+    // Generic type with unimported non-java.lang type
+    assertThat(DataBindingUtil.getQualifiedType(project, "List<UnknownType>", bindingDataWithImports, true)).isNull()
+    assertThat(DataBindingUtil.getQualifiedType(project, "List<UnknownType>", bindingDataWithImports, false))
+      .isEqualTo("java.util.List<UnknownType>")
   }
 }
