@@ -2338,6 +2338,11 @@ public final class StudioFlags {
                     "Enable Studio Bot Skills Agent Tools.",
                     "When enabled, agents can use skills tools.");
 
+  public static final Flag<Boolean> STUDIOBOT_IS_CUSTOM_SKILL_CATALOGS_ENABLED =
+    new BooleanFlag(STUDIOBOT, "skills.custom.catalogs.enabled",
+                    "Enable Studio Bot Custom Skill Catalogs.",
+                    "When enabled, users can add and delete custom skill catalogs.");
+
   public static final Flag<Boolean> STUDIOBOT_IS_QUICK_EDIT_ENABLED =
     new BooleanFlag(STUDIOBOT, "quick.edit.enabled",
                     "Enable the quick edit support.",
