@@ -55,14 +55,10 @@ public class LanguageDslElement extends GradleDslBlockElement {
     {"include", atLeast(0), INCLUDE, OTHER}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"enable", property, ENABLE, VAR},
-    {"include", property, INCLUDE, VAR},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public LanguageDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

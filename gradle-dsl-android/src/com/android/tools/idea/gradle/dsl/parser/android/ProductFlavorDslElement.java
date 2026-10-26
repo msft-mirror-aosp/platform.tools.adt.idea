@@ -50,9 +50,6 @@ public class ProductFlavorDslElement extends AbstractProductFlavorDslElement imp
     {"initWith", exactly(1), INIT_WITH, OTHER},
   }).collect(toModelMap(AbstractProductFlavorDslElement.groovyToModelNameMap));
 
-  private static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"initWith", property, INIT_WITH, VAR},
-  }).collect(toModelMap(AbstractProductFlavorDslElement.declarativeToModelNameMap));
 
   @Nullable
   private String methodName;
@@ -63,7 +60,7 @@ public class ProductFlavorDslElement extends AbstractProductFlavorDslElement imp
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   @Override

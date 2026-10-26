@@ -79,16 +79,6 @@ public class DexOptionsDslElement extends GradleDslBlockElement {
     {"threadCount", exactly(1), THREAD_COUNT, SET}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"additionalParameters", property, ADDITIONAL_PARAMETERS, VAR},
-    {"javaMaxHeapSize", property, JAVA_MAX_HEAP_SIZE, VAR},
-    {"jumboMode", property, JUMBO_MODE, VAR},
-    {"keepRuntimeAnnotatedClasses", property, KEEP_RUNTIME_ANNOTATED_CLASSES, VAR},
-    {"maxProcessCount", property, MAX_PROCESS_COUNT, VAR},
-    {"optimize", property, OPTIMIZE, VAR},
-    {"preDexLibraries", property, PRE_DEX_LIBRARIES, VAR},
-    {"threadCount", property, THREAD_COUNT, VAR},
-  }).collect(toModelMap());
   public static final PropertiesElementDescription<DexOptionsDslElement> DEX_OPTIONS =
     new PropertiesElementDescription<>("dexOptions",
                                        DexOptionsDslElement.class,
@@ -96,7 +86,7 @@ public class DexOptionsDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public DexOptionsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

@@ -58,15 +58,9 @@ public class JniLibsDslElement extends GradleDslBlockElement {
     {"useLegacyPackaging", exactly(1), USE_LEGACY_PACKAGING, SET}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"excludes", property, EXCLUDES, VAL},
-    {"pickFirsts", property, PICK_FIRSTS, VAL},
-    {"keepDebugSymbols", property, KEEP_DEBUG_SYMBOLS, VAL},
-    {"useLegacyPackaging", property, USE_LEGACY_PACKAGING, VAR},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 }

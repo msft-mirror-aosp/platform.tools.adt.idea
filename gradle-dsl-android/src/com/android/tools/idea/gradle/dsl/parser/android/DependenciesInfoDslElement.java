@@ -50,14 +50,10 @@ public class DependenciesInfoDslElement extends GradleDslBlockElement {
     {"includeInBundle", exactly(1), INCLUDE_IN_BUNDLE, SET}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelMap = Stream.of(new Object[][]{
-    {"includeInApk", property, INCLUDE_IN_APK, VAR},
-    {"includeInBundle", property, INCLUDE_IN_BUNDLE, VAR}
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelMap, ktsToModelMap, declarativeToModelMap);
+    return getExternalToModelMap(converter, groovyToModelMap, ktsToModelMap);
   }
 
   DependenciesInfoDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

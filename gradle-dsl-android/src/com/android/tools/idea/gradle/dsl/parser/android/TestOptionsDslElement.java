@@ -76,15 +76,10 @@ public class TestOptionsDslElement extends GradleDslBlockElement {
     {"execution", exactly(1), EXECUTION, SET}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"reportDir", property, REPORT_DIR, VAR},
-    {"resultsDir", property, RESULTS_DIR, VAR},
-    {"execution", property, EXECUTION, VAR}
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public TestOptionsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

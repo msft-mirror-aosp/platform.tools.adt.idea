@@ -76,16 +76,6 @@ public class AndroidResourcesDslElement extends GradleDslBlockElement {
     {"namespaced", exactly(1), NAMESPACED, SET}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"additionalParameters", property, ADDITIONAL_PARAMETERS, VAR},
-    {"cruncherEnabled", property, CRUNCHER_ENABLED, VAR},
-    {"cruncherProcesses", property, CRUNCHER_PROCESSES, VAR},
-    {"failOnMissingConfigEntry", property, FAIL_ON_MISSING_CONFIG_ENTRY, VAR},
-    {"ignoreAssetsPattern", property, IGNORE_ASSETS, VAR},
-    {"ignoreAssets", property, IGNORE_ASSETS, VAR},
-    {"noCompress", property, NO_COMPRESS, VAR},
-    {"namespaced", property, NAMESPACED, VAR},
-  }).collect(toModelMap());
 
   public static final PropertiesElementDescription<AndroidResourcesDslElement> ANDROID_RESOURCES =
     new PropertiesElementDescription<>("androidResources",
@@ -94,7 +84,7 @@ public class AndroidResourcesDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public AndroidResourcesDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

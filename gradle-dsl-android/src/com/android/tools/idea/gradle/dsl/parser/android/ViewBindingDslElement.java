@@ -41,9 +41,6 @@ public class ViewBindingDslElement extends GradleDslBlockElement {
     {"enabled", exactly(1), ENABLED, SET}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"enabled", property, ENABLED, VAR},
-  }).collect(toModelMap());
 
   public static final PropertiesElementDescription<ViewBindingDslElement> VIEW_BINDING =
     new PropertiesElementDescription<>("viewBinding",
@@ -52,7 +49,7 @@ public class ViewBindingDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public ViewBindingDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

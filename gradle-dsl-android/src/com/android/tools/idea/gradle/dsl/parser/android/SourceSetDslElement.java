@@ -70,9 +70,6 @@ public class SourceSetDslElement extends GradleDslBlockElement implements Gradle
     {"root", exactly(1), ROOT, SET}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"root", property, ROOT, VAR},
-  }).collect(toModelMap());
 
   @Override
   @NotNull
@@ -84,7 +81,7 @@ public class SourceSetDslElement extends GradleDslBlockElement implements Gradle
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public SourceSetDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

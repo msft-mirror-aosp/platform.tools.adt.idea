@@ -46,13 +46,10 @@ public class TestCoverageDslElement extends GradleDslBlockElement {
     {"jacocoVersion", exactly(1), JACOCO_VERSION, SET},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelMap = Stream.of(new Object[][]{
-    {"jacocoVersion", property, JACOCO_VERSION, VAR},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelMap, ktsToModelMap, declarativeToModelMap);
+    return getExternalToModelMap(converter, groovyToModelMap, ktsToModelMap);
   }
 
   public TestCoverageDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

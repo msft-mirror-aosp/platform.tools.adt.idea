@@ -76,9 +76,6 @@ public class CompileSdkBlockDslElement extends GradleDslBlockElement {
     {"version", property, VERSION, VAR},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"version", property, VERSION, VAR},
-  }).collect(toModelMap());
 
   protected CompileSdkBlockDslElement(@Nullable GradleDslElement parent, @NotNull GradleNameElement name) {
     super(parent, name);
@@ -86,6 +83,6 @@ public class CompileSdkBlockDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 }

@@ -50,14 +50,10 @@ public class CompileOptionsDslElement extends BaseCompileOptionsDslElement {
     {"incremental", exactly(1), INCREMENTAL, SET},
   }).collect(toModelMap(BaseCompileOptionsDslElement.groovyToModelNameMap));
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"encoding", property, ENCODING, VAR},
-    {"incremental", property, INCREMENTAL, VAR}
-  }).collect(toModelMap(BaseCompileOptionsDslElement.declarativeToModelNameMap));
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public CompileOptionsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

@@ -50,10 +50,6 @@ public class AdbOptionsDslElement extends GradleDslBlockElement {
     {"timeOutInMs", exactly(1), TIME_OUT_IN_MS, SET}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"installOptions", property, INSTALL_OPTIONS, VAR},
-    {"timeOutInMs", property, TIME_OUT_IN_MS, VAR},
-  }).collect(toModelMap());
   public static final PropertiesElementDescription<AdbOptionsDslElement> ADB_OPTIONS =
     new PropertiesElementDescription<>("adbOptions",
                                        AdbOptionsDslElement.class,
@@ -61,7 +57,7 @@ public class AdbOptionsDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public AdbOptionsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

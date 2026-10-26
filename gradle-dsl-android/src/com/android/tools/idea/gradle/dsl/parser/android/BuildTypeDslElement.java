@@ -114,31 +114,13 @@ public final class BuildTypeDslElement extends AbstractFlavorTypeDslElement impl
     {"enableAndroidTestCoverage", exactly(1), ENABLE_ANDROID_TEST_COVERAGE, SET},
   }).collect(toModelMap(AbstractFlavorTypeDslElement.groovyToModelNameMap));
 
-  private static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"crunchPngs", property, CRUNCH_PNGS, VAR},
-    {"debuggable", property, DEBUGGABLE, VAR},
-    {"isDefault", property, DEFAULT, VAR},
-    {"embedMicroApp", property, EMBED_MICRO_APP, VAR},
-    {"initWith", property, INIT_WITH, VAR},
-    {"jniDebuggable", property, JNI_DEBUGGABLE, VAR},
-    {"minifyEnabled", property, MINIFY_ENABLED, VAR},
-    {"pseudoLocalesEnabled", property, PSEUDO_LOCALES_ENABLED, VAR},
-    {"renderscriptDebuggable", property, RENDERSCRIPT_DEBUGGABLE, VAR},
-    {"renderscriptOptimLevel", property, RENDERSCRIPT_OPTIM_LEVEL, VAR},
-    {"shrinkResources", property, SHRINK_RESOURCES, VAR},
-    {"testCoverageEnabled", property, TEST_COVERAGE_ENABLED, VAR},
-    {"useProguard", property, USE_PROGUARD, VAR},
-    {"zipAlignEnabled", property, ZIP_ALIGN_ENABLED, VAR},
-    {"enableUnitTestCoverage", property, ENABLE_UNIT_TEST_COVERAGE, VAR},
-    {"enableAndroidTestCoverage", property, ENABLE_ANDROID_TEST_COVERAGE, VAR},
-  }).collect(toModelMap(AbstractFlavorTypeDslElement.groovyToModelNameMap));
 
   @Nullable
   private String methodName;
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   @Override

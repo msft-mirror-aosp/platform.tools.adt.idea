@@ -46,13 +46,10 @@ public class UnitTestsDslElement extends GradleDslBlockElement {
     {"returnDefaultValues", exactly(1), RETURN_DEFAULT_VALUES, SET},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"returnDefaultValues", property, RETURN_DEFAULT_VALUES, VAR},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public UnitTestsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

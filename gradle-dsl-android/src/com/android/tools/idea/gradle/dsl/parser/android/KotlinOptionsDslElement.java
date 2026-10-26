@@ -45,7 +45,7 @@ public class KotlinOptionsDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, modelNameMap, modelNameMap, modelNameMap);
+    return getExternalToModelMap(converter, modelNameMap, modelNameMap);
   }
 
   public KotlinOptionsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

@@ -47,13 +47,10 @@ public class JacocoDslElement extends GradleDslBlockElement {
     {"version", exactly(1), VERSION, SET},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelMap = Stream.of(new Object[][]{
-    {"version", property, VERSION, VAR},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelMap, ktsToModelMap, declarativeToModelMap);
+    return getExternalToModelMap(converter, groovyToModelMap, ktsToModelMap);
   }
 
   public JacocoDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

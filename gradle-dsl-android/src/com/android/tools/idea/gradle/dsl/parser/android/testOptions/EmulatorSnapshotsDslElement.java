@@ -54,15 +54,10 @@ public class EmulatorSnapshotsDslElement extends GradleDslBlockElement {
     {"maxSnapshotsForTestFailures", exactly(1), MAX_SNAPSHOTS_FOR_TEST_FAILURES, SET},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelMap = Stream.of(new Object[][]{
-    {"compressSnapshots", property, COMPRESS_SNAPSHOTS, VAR},
-    {"enableForTestFailures", property, ENABLE_FOR_TEST_FAILURES, VAR},
-    {"maxSnapshotsForTestFailures", property, MAX_SNAPSHOTS_FOR_TEST_FAILURES, VAR},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelMap, ktsToModelMap, declarativeToModelMap);
+    return getExternalToModelMap(converter, groovyToModelMap, ktsToModelMap);
   }
 
   public EmulatorSnapshotsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

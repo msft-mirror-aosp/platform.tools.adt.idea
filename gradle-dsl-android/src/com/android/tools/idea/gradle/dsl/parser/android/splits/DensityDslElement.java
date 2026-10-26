@@ -51,14 +51,10 @@ public class DensityDslElement extends BaseSplitOptionsDslElement {
     {"compatibleScreens", atLeast(0), COMPATIBLE_SCREENS, OTHER},
   }).collect(toModelMap(BaseSplitOptionsDslElement.groovyToModelNameMap));
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"auto", property, AUTO, VAR},
-    {"compatibleScreens", property, COMPATIBLE_SCREENS, VAR},
-  }).collect(toModelMap(BaseSplitOptionsDslElement.declarativeToModelNameMap));
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public DensityDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

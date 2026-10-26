@@ -47,7 +47,7 @@ class KotlinSourceSetDslElement(parent: GradleDslElement, name: GradleNameElemen
     CHILD_PROPERTIES_ELEMENTS_MAP
 
   override fun getExternalToModelMap(converter: GradleDslNameConverter): ExternalToModelMap =
-    getExternalToModelMap(converter, ktsToModelNameMap, groovyToModelNameMap, declarativeToModelNameMap)
+    getExternalToModelMap(converter, ktsToModelNameMap, groovyToModelNameMap)
 
   companion object {
     @JvmField
@@ -65,8 +65,6 @@ class KotlinSourceSetDslElement(parent: GradleDslElement, name: GradleNameElemen
     private val ktsToModelNameMap: ExternalToModelMap = ExternalToModelMap.empty
 
     private val groovyToModelNameMap: ExternalToModelMap = ExternalToModelMap.empty
-
-    private val declarativeToModelNameMap: ExternalToModelMap = ExternalToModelMap.empty
   }
 
   override fun getAccessMethodName(): String? {

@@ -77,18 +77,6 @@ public final class BuildFeaturesDslElement extends GradleDslBlockElement {
     {"resValues", exactly(1), RES_VALUES, SET},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"compose", property, COMPOSE, VAR},
-    {"dataBinding", property, DATA_BINDING, VAR},
-    {"mlModelBinding", property, ML_MODEL_BINDING, VAR},
-    {"viewBinding", property, VIEW_BINDING, VAR},
-    {"prefab", property, PREFAB, VAR},
-    {"renderScript", property, RENDER_SCRIPT, VAR},
-    {"buildConfig", property, BUILD_CONFIG, VAR},
-    {"aidl", property, AIDL, VAR},
-    {"shaders", property, SHADERS, VAR},
-    {"resValues", property, RES_VALUES, VAR},
-  }).collect(toModelMap());
   public static final PropertiesElementDescription<BuildFeaturesDslElement> BUILD_FEATURES =
     new PropertiesElementDescription<>("buildFeatures",
                                        BuildFeaturesDslElement.class,
@@ -96,7 +84,7 @@ public final class BuildFeaturesDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public BuildFeaturesDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

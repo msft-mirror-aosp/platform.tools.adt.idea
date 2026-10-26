@@ -48,13 +48,10 @@ public class DexDslElement extends GradleDslBlockElement {
     {"useLegacyPackaging", exactly(1), USE_LEGACY_PACKAGING, SET}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"useLegacyPackaging", property, USE_LEGACY_PACKAGING, VAR}
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
 }

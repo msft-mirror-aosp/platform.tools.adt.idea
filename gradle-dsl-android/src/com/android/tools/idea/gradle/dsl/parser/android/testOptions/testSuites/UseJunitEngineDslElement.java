@@ -52,18 +52,13 @@ public class UseJunitEngineDslElement extends GradleDslBlockElement {
     {"includeEngines", property, UseJunitEngineModelImpl.INCLUDED_ENGINES, VAR},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"inputs", property, UseJunitEngineModelImpl.INPUTS, VAR},
-    {"includeEngines", property, UseJunitEngineModelImpl.INCLUDED_ENGINES, VAR},
-  }).collect(toModelMap());
-
   public UseJunitEngineDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {
     super(parent, name);
   }
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   @Override

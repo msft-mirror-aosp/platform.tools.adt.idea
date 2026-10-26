@@ -49,11 +49,6 @@ public class DataBindingDslElement extends GradleDslBlockElement {
     {"version", exactly(1), VERSION, SET},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"addDefaultAdapters", property, ADD_DEFAULT_ADAPTERS, VAR},
-    {"isEnabled", property, ENABLED, VAR},
-    {"version", property, VERSION, VAR},
-  }).collect(toModelMap());
 
   public static final PropertiesElementDescription<DataBindingDslElement> DATA_BINDING =
     new PropertiesElementDescription<>("dataBinding",
@@ -62,7 +57,7 @@ public class DataBindingDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public DataBindingDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

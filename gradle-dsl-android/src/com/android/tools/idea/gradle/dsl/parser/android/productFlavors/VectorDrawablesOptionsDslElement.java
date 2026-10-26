@@ -55,14 +55,10 @@ public class VectorDrawablesOptionsDslElement extends GradleDslBlockElement {
     {"useSupportLibrary", exactly(1), USE_SUPPORT_LIBRARY, SET}
   }).collect(toModelMap());
 
-  private static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"generatedDensities", property, GENERATED_DENSITIES, VAR},
-    {"useSupportLibrary", property, USE_SUPPORT_LIBRARY, VAR},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public VectorDrawablesOptionsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

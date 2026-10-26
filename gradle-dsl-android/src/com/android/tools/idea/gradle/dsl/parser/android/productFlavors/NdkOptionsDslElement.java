@@ -70,13 +70,10 @@ public class NdkOptionsDslElement extends GradleDslBlockElement {
     {"stl", exactly(1), STL, SET},
   }).collect(toModelMap());
 
-  private static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"abiFilters", property, ABI_FILTERS, VAR},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public NdkOptionsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

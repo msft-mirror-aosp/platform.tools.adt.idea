@@ -160,44 +160,6 @@ public class LintOptionsDslElement extends GradleDslBlockElement {
     {"warning", atLeast(0), WARNING, AUGMENT_LIST},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"abortOnError", property, ABORT_ON_ERROR, VAR},
-    {"absolutePaths", property, ABSOLUTE_PATHS, VAR},
-    {"checkAllWarnings", property, CHECK_ALL_WARNINGS, VAR},
-    {"checkDependencies", property, CHECK_DEPENDENCIES, VAR},
-    {"checkGeneratedSources", property, CHECK_GENERATED_SOURCES, VAR},
-    {"checkReleaseBuilds", property, CHECK_RELEASE_BUILDS, VAR},
-    {"checkTestSources", property, CHECK_TEST_SOURCES, VAR},
-    {"explainIssues", property, EXPLAIN_ISSUES, VAR},
-    {"ignoreTestSources", property, IGNORE_TEST_SOURCES, VAR},
-    {"ignoreWarnings", property, IGNORE_WARNINGS, VAR},
-    {"noLines", property, NO_LINES, VAR},
-    {"quiet", property, QUIET, VAR},
-    {"showAll", property, SHOW_ALL, VAR},
-    {"warningsAsErrors", property, WARNINGS_AS_ERRORS, VAR},
-
-    {"baseline", property, BASELINE, VAR},
-    {"lintConfig", property, LINT_CONFIG, VAR},
-    {"htmlOutput", property, HTML_OUTPUT, VAR},
-    {"htmlReport", property, HTML_REPORT, VAR},
-    {"sarifOutput", property, SARIF_OUTPUT, VAR},
-    {"sarifReport", property, SARIF_REPORT, VAR},
-    {"textOutput", property, TEXT_OUTPUT, VAR},
-    {"textReport", property, TEXT_REPORT, VAR},
-    {"xmlOutput", property, XML_OUTPUT, VAR},
-    {"xmlReport", property, XML_REPORT, VAR},
-
-    // There are also exactly(1) variants of these with the same name, but they are redundant for our purposes
-    {"checkOnly", atLeast(0), CHECK, AUGMENT_LIST, VersionConstraint.agpFrom("4.1.0")},
-    {"check", atLeast(0), CHECK, AUGMENT_LIST},
-    {"disable", atLeast(0), DISABLE, AUGMENT_LIST},
-    {"enable", atLeast(0), ENABLE, AUGMENT_LIST},
-    {"error", atLeast(0), ERROR, AUGMENT_LIST},
-    {"fatal", atLeast(0), FATAL, AUGMENT_LIST},
-    {"ignore", atLeast(0), IGNORE, AUGMENT_LIST},
-    {"informational", atLeast(0), INFORMATIONAL, AUGMENT_LIST},
-    {"warning", atLeast(0), WARNING, AUGMENT_LIST},
-  }).collect(toModelMap());
 
   public static final PropertiesElementDescription<LintOptionsDslElement> LINT_OPTIONS =
     new PropertiesElementDescription<>("lintOptions",
@@ -206,7 +168,7 @@ public class LintOptionsDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
 

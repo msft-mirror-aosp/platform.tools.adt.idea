@@ -53,15 +53,10 @@ public class ResourcesDslElement extends GradleDslBlockElement {
     {"pickFirsts", property, PICK_FIRSTS, VAL},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"excludes", property, EXCLUDES, VAL},
-    {"merges", property, MERGES, VAL},
-    {"pickFirsts", property, PICK_FIRSTS, VAL},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
 }

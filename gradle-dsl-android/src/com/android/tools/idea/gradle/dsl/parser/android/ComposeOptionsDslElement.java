@@ -50,14 +50,10 @@ public class ComposeOptionsDslElement extends GradleDslBlockElement {
     {"kotlinCompilerVersion", exactly(1), KOTLIN_COMPILER_VERSION, SET}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelMap = Stream.of(new Object[][]{
-    {"kotlinCompilerExtensionVersion", property, KOTLIN_COMPILER_EXTENSION_VERSION, VAR},
-    {"kotlinCompilerVersion", property, KOTLIN_COMPILER_VERSION, VAR}
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelMap, ktsToModelMap, declarativeToModelMap);
+    return getExternalToModelMap(converter, groovyToModelMap, ktsToModelMap);
   }
 
   ComposeOptionsDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

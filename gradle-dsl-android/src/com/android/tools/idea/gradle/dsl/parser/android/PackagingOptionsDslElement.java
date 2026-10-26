@@ -72,12 +72,6 @@ public class PackagingOptionsDslElement extends GradleDslBlockElement {
     {"pickFirst", exactly(1), PICK_FIRSTS, AUGMENT_LIST}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"doNotStrip", property, DO_NOT_STRIP, VAR},
-    {"excludes", property, EXCLUDES, VAR},
-    {"merges", property, MERGES, VAR},
-    {"pickFirsts", property, PICK_FIRSTS, VAR},
-  }).collect(toModelMap());
 
   public static final ImmutableMap<String,PropertiesElementDescription<?>> CHILD_PROPERTIES_ELEMENTS_MAP = Stream.of(new Object[][]{
     {"dex", DexDslElement.DEX},
@@ -87,7 +81,7 @@ public class PackagingOptionsDslElement extends GradleDslBlockElement {
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   @Override

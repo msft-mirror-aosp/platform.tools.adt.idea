@@ -69,9 +69,6 @@ public class TestSuiteDslElement extends GradleDslBlockElement implements Gradle
     {"targetVariants", property, TestSuiteModelImpl.getTARGET_VARIANTS(), VAR},
   }).collect(toModelMap(AbstractProductFlavorDslElement.groovyToModelNameMap));
 
-  private static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"targetVariants", property, TestSuiteModelImpl.getTARGET_VARIANTS(), VAR},
-  }).collect(toModelMap(AbstractProductFlavorDslElement.declarativeToModelNameMap));
 
   @Nullable
   private String methodName;
@@ -82,7 +79,7 @@ public class TestSuiteDslElement extends GradleDslBlockElement implements Gradle
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   @Override

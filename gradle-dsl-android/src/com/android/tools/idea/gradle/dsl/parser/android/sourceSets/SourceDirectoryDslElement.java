@@ -99,15 +99,10 @@ public class SourceDirectoryDslElement extends GradleDslBlockElement {
     {"srcDir", exactly(1), SRC_DIRS, OTHER}
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"excludes", property, EXCLUDES, VAL},
-    {"includes", property, INCLUDES, VAL},
-    {"srcDirs", property, SRC_DIRS, VAR},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public SourceDirectoryDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

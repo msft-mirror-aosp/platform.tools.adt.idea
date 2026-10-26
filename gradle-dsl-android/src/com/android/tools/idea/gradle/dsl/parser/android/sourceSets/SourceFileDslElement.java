@@ -47,13 +47,10 @@ public class SourceFileDslElement extends GradleDslBlockElement {
     {"srcFile", exactly(1), SRC_FILE, SET},
   }).collect(toModelMap());
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"srcFile", property, SRC_FILE, VAL},
-  }).collect(toModelMap());
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public SourceFileDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {

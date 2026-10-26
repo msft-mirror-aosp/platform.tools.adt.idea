@@ -43,13 +43,10 @@ public class AbiDslElement extends BaseSplitOptionsDslElement {
     {"universalApk", exactly(1), UNIVERSAL_APK, SET},
   }).collect(toModelMap(BaseSplitOptionsDslElement.groovyToModelNameMap));
 
-  public static final ExternalToModelMap declarativeToModelNameMap = Stream.of(new Object[][]{
-    {"universalApk", property, UNIVERSAL_APK, VAR},
-  }).collect(toModelMap(BaseSplitOptionsDslElement.declarativeToModelNameMap));
 
   @Override
   public @NotNull ExternalToModelMap getExternalToModelMap(@NotNull GradleDslNameConverter converter) {
-    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap, declarativeToModelNameMap);
+    return getExternalToModelMap(converter, groovyToModelNameMap, ktsToModelNameMap);
   }
 
   public AbiDslElement(@NotNull GradleDslElement parent, @NotNull GradleNameElement name) {
