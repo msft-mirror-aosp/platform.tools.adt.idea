@@ -141,7 +141,8 @@ class ResourceResolverCache(
     val configuredAppRes =
       getCachedAppResources(qualifierString)
         ?: run {
-          // Get the project resource values based on the current config.
+          // Get the project resource values based on the current config (including dynamic
+          // pseudolocalization when fullConfiguration specifies en-rXA or ar-rXB).
           val newAppRes = resources.getConfiguredResources(fullConfiguration)
           cacheAppResources(qualifierString, newAppRes)
           newAppRes
@@ -221,7 +222,10 @@ class ResourceResolverCache(
         }
 
     val locale = configuration.localeQualifier ?: settings.locale.qualifier
-    val language = locale.language
+    // For pseudolocales (especially ar-rXB whose language code is "ar"), do not load language-specific
+    // framework translations (e.g. values-ar real Arabic strings); instead load only the default
+    // English framework strings so getConfiguredResources can pseudolocalize them.
+    val language = if (locale.isPseudoLocale) null else locale.language
     val languages = if (language == null) ImmutableSet.of() else ImmutableSet.of(language)
     return targetData.getFrameworkResources(languages, overlays)
   }

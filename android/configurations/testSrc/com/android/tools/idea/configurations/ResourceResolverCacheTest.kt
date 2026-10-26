@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.configurations
 
+import com.android.ide.common.resources.Locale
+import com.android.resources.LayoutDirection
 import com.android.sdklib.devices.Device
 import com.android.tools.configurations.Configuration
 import com.android.tools.idea.res.StudioResourceRepositoryManager
@@ -23,6 +25,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.PsiManager
 import com.intellij.psi.xml.XmlFile
+import java.text.Bidi
 import org.jetbrains.android.AndroidTestCase
 import org.jetbrains.android.facet.AndroidFacet
 
@@ -182,5 +185,74 @@ class ResourceResolverCacheTest : AndroidTestCase() {
 
     // We've only changed the theme so the resource maps won't change. They are indexed per device config.
     assertDoesntContain(cache.resolverMap.keys, customResolverMapKey)
+  }
+
+  fun testPseudolocale() {
+    val layoutFile = myFixture.copyFileToProject("render/layout1.xml", "res/layout/layout1.xml")
+    myFixture.addFileToProject(
+      "res/values/strings.xml",
+      // language=XML
+      """
+      <resources>
+        <string name="app_name">Application Name</string>
+        <string name="cancel">Cancel</string>
+        <string name="tagline">pseudolocales rule!</string>
+      </resources>
+      """
+        .trimIndent(),
+    )
+
+    val configurationManager = ConfigurationManager.getOrCreateInstance(myModule)
+    val configuration = configurationManager.getConfiguration(layoutFile!!)
+
+    assertThat(configuration.resourceResolver.findResValue("@string/cancel", false)?.value).isEqualTo("Cancel")
+    assertThat(configuration.resourceResolver.findResValue("@string/tagline", false)?.value).isEqualTo("pseudolocales rule!")
+
+    configuration.locale = Locale.create("en-rXA")
+    assertThat(configuration.resourceResolver.findResValue("@string/cancel", false)?.value).isEqualTo("[Çåñçéļ one two]")
+    assertThat(configuration.resourceResolver.findResValue("@string/tagline", false)?.value)
+      .isEqualTo("[þšéûðöļöçåļéš ŕûļé¡ one two three]")
+    assertThat(configuration.resourceResolver.findResValue("@android:string/cancel", false)?.value).isEqualTo("[Çåñçéļ one two]")
+
+    configuration.locale = Locale.create("ar-rXB")
+    assertThat(configuration.fullConfig.layoutDirectionQualifier?.value).isEqualTo(LayoutDirection.RTL)
+
+    // In ar-rXB, each word remains in logical character order in memory wrapped in Unicode BiDi
+    // control characters (RLM + RLO + <word> + PDF + RLM), which the Unicode BiDi layout engine
+    // renders right-to-left on screen.
+    val appCancelArXb = configuration.resourceResolver.findResValue("@string/cancel", false)?.value!!
+    assertThat(appCancelArXb).isEqualTo("\u200f\u202eCancel\u202c\u200f")
+    assertThat(renderBidiVisualOrder(appCancelArXb)).isEqualTo("lecnaC")
+
+    val frameworkCancelArXb = configuration.resourceResolver.findResValue("@android:string/cancel", false)?.value!!
+    assertThat(frameworkCancelArXb).isEqualTo("\u200f\u202eCancel\u202c\u200f")
+    assertThat(renderBidiVisualOrder(frameworkCancelArXb)).isEqualTo("lecnaC")
+
+    val appNameArXb = configuration.resourceResolver.findResValue("@string/app_name", false)?.value!!
+    assertThat(appNameArXb).isEqualTo("\u200f\u202eApplication\u202c\u200f \u200f\u202eName\u202c\u200f")
+    assertThat(renderBidiVisualOrder(appNameArXb)).isEqualTo("emaN noitacilppA")
+
+    val taglineArXb = configuration.resourceResolver.findResValue("@string/tagline", false)?.value!!
+    assertThat(taglineArXb).isEqualTo("\u200f\u202epseudolocales\u202c\u200f \u200f\u202erule!\u202c\u200f")
+    assertThat(renderBidiVisualOrder(taglineArXb)).isEqualTo("!elur selacoloduesp")
+  }
+
+  /**
+   * Simulates Unicode BiDi visual layout (UAX #9) using [java.text.Bidi] and strips invisible BiDi control characters (`RLM`, `RLO`,
+   * `PDF`), returning the left-to-right visual character order as displayed on screen.
+   */
+  private fun renderBidiVisualOrder(logicalText: String): String {
+    if (logicalText.isEmpty()) return ""
+    val bidi = Bidi(logicalText, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT)
+    val levels = ByteArray(logicalText.length) { i -> bidi.getLevelAt(i).toByte() }
+    val chars = Array(logicalText.length) { i -> logicalText[i] }
+    Bidi.reorderVisually(levels, 0, chars, 0, chars.size)
+    return buildString {
+      for (ch in chars) {
+        if (ch != '\u200f' && ch != '\u202e' && ch != '\u202c') {
+          append(ch)
+        }
+      }
+    }
   }
 }

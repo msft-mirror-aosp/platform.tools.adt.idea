@@ -220,6 +220,50 @@ class SingleComposePreviewElementRendererTest {
     )
   }
 
+  @Test
+  fun testDefaultPreviewRenderingWithEnXaPseudolocale() {
+    val facet = projectRule.androidFacet(":app")
+    val mainActivityFile = facet.virtualFile("src/main/java/google/simpleapplication/MainActivity.kt")
+    val defaultRenderWithEnXaLocale =
+      renderPreviewElement(
+          facet,
+          mainActivityFile,
+          SingleComposePreviewElementInstance.forTesting(
+            "google.simpleapplication.MainActivityKt.DefaultPreview",
+            configuration = PreviewConfiguration.cleanAndGet(null, null, null, "en-rXA", null, null, null),
+          ),
+        )
+        .get()!!
+    assertImageSimilar(
+      Paths.get("${projectRule.fixture.testDataPath}/${SIMPLE_COMPOSE_PROJECT_PATH}/defaultRender-withEnXaLocale.png"),
+      defaultRenderWithEnXaLocale,
+      0.1,
+      1,
+    )
+  }
+
+  @Test
+  fun testDefaultPreviewRenderingWithArXbPseudolocale() {
+    val facet = projectRule.androidFacet(":app")
+    val mainActivityFile = facet.virtualFile("src/main/java/google/simpleapplication/MainActivity.kt")
+    val defaultRenderWithArXbLocale =
+      renderPreviewElement(
+          facet,
+          mainActivityFile,
+          SingleComposePreviewElementInstance.forTesting(
+            "google.simpleapplication.MainActivityKt.DefaultPreview",
+            configuration = PreviewConfiguration.cleanAndGet(null, null, null, "ar-rXB", null, null, null),
+          ),
+        )
+        .get()!!
+    assertImageSimilar(
+      Paths.get("${projectRule.fixture.testDataPath}/${SIMPLE_COMPOSE_PROJECT_PATH}/defaultRender-withArXbLocale.png"),
+      defaultRenderWithArXbLocale,
+      0.1,
+      1,
+    )
+  }
+
   /**
    * Check that rendering a Preview with unsigned types does not throw an exception. And also that limit values for signed and unsigned
    * integers are correctly handled and rendered Regression test for b/204986515
