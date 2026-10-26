@@ -40,6 +40,7 @@ iml_module(
         "//tools/base/adblib:studio.android.sdktools.adblib",
         "//tools/adt/idea/rendering:intellij.android.rendering",
         "@intellij//:test-framework",
+        "//tools/analytics-library/shared:analytics-shared",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",

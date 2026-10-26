@@ -271,7 +271,7 @@ interface AndroidProjectRule : TestRule {
             return base
           }
         }
-      val wrappedRules: TestRule = RuleChain.outerRule(projectRule).around(integrationTestEdtRule)
+      val wrappedRules: TestRule = RuleChain.outerRule(AnalyticsPathsRule()).around(projectRule).around(integrationTestEdtRule)
       return object : IntegrationTestEnvironmentRule, TestRule by wrappedRules {
         override fun getBaseTestPath(): String = projectRule.fixture.tempDirPath
 
