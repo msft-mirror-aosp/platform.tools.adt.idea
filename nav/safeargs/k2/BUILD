@@ -13,7 +13,6 @@ iml_module(
         "@intellij//:com.intellij.java",
         "@intellij//:org.jetbrains.kotlin",
         "//tools/base/common:studio.android.sdktools.common",
-        "//tools/base/sdk-common:studio.android.sdktools.sdk-common",
         "//tools/adt/idea/nav/safeargs/common:intellij.android.nav.safeargs.common",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
     ],

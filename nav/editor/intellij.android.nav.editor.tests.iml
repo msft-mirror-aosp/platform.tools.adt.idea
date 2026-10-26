@@ -20,7 +20,6 @@
     <orderEntry type="module" module-name="intellij.android.testFramework" scope="TEST" />
     <orderEntry type="module" module-name="analytics-shared" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="truth" level="project" />
-    <orderEntry type="module" module-name="android.sdktools.flags" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.common" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.nav.editor" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.designer" scope="TEST" />

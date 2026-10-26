@@ -17,7 +17,6 @@ iml_module(
         "//tools/adt/idea/analytics",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/base/common:studio.android.sdktools.common",
-        "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/base/layoutlib-api:studio.android.sdktools.layoutlib-api",
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/adt/idea/android:intellij.android.core",
