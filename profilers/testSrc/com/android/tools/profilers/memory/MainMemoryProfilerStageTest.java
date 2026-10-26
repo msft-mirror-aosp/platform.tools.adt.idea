@@ -47,6 +47,7 @@ import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.FakeFeatureTracker;
 import com.android.tools.profilers.ProfilerCaptureFileUtils;
 import com.android.tools.profilers.ProfilerClient;
+import com.android.tools.profilers.ProfilerFormat;
 import com.android.tools.profilers.ProfilersTestData;
 import com.android.tools.idea.transport.TransportServiceUtils;
 import com.android.tools.profilers.FakeIdeProfilerServices;
@@ -956,6 +957,10 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
   public void selectingHeapDumpGoesToSeparateStage_inEditorEnabled() throws Exception {
     myIdeProfilerServices.setHeapDumpTraceInEditorEnabled(true);
     myIdeProfilerServices.enableTaskBasedUx(true);
+    // An ART HPROF, as recorded for a debuggable app, is not a Perfetto trace, so it opens as recorded even with heap dump
+    // deobfuscation on and an R8 mapping available.
+    myIdeProfilerServices.enableDeobfuscationForHeapDumps(true);
+    myIdeProfilerServices.setProguardMappings(Collections.singletonMap("com.example.app", "/fake/mapping.txt"));
     HeapDumpInfo info = HeapDumpInfo.newBuilder().build();
 
     myTransportService.addEventToStream(ProfilersTestData.SESSION_DATA.getStreamId(),
@@ -979,6 +984,8 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     assertThat(myProfilers.getStage()).isInstanceOf(MainMemoryProfilerStage.class); // Stays on the main stage
     assertThat(myIdeProfilerServices.getOpenedFile()).isNotNull();
     assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(ProfilerTaskType.HEAP_DUMP);
+    assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isFalse();
+    assertThat(myIdeProfilerServices.getLastRequestedProguardMappingDeviceSerial()).isNull();
   }
 
   @Test
@@ -1128,7 +1135,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     return new CaptureFiles(rawFile, captureFile);
   }
 
-  private void assertNativeAllocationTraceBundled(@NotNull CaptureFiles files) throws Exception {
+  private void assertTraceBundled(@NotNull CaptureFiles files) throws Exception {
     assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isTrue();
     assertThat(files.rawFile().exists()).isFalse();
     assertThat(files.captureFile().exists()).isTrue();
@@ -1136,7 +1143,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(files.captureFile());
   }
 
-  private void assertNativeAllocationTraceOpenedRaw(@NotNull CaptureFiles files) throws Exception {
+  private void assertTraceOpenedRaw(@NotNull CaptureFiles files) throws Exception {
     assertThat(myIdeProfilerServices.isTraceSymbolizedAndDeobfuscated()).isFalse();
     assertThat(files.rawFile().exists()).isFalse();
     assertThat(files.captureFile().exists()).isTrue();
@@ -1186,7 +1193,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myIdeProfilerServices.setProguardMappings(Collections.emptyMap());
 
     CaptureFiles files = selectNativeAllocationCaptureInEditor(RAW_TRACE);
-    assertNativeAllocationTraceBundled(files);
+    assertTraceBundled(files);
   }
 
   @Test
@@ -1198,7 +1205,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     CaptureFiles files = selectNativeAllocationCaptureInEditor(RAW_TRACE);
     assertThat(myIdeProfilerServices.getLastRequestedProguardMappingDeviceSerial()).isEqualTo(FakeTransportService.FAKE_DEVICE.getSerial());
     assertThat(myIdeProfilerServices.getLastRequestedProguardMappingPackageName()).isEqualTo("com.example.app");
-    assertNativeAllocationTraceBundled(files);
+    assertTraceBundled(files);
   }
 
   @Test
@@ -1212,7 +1219,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     assertThat(myIdeProfilerServices.getLastRequestedProguardMappingDeviceSerial()).isEqualTo(FakeTransportService.FAKE_DEVICE.getSerial());
     assertThat(myIdeProfilerServices.getLastRequestedProguardMappingPackageName()).isEqualTo("com.example.app");
     assertThat(myIdeProfilerServices.getLastBundledProguardMaps()).containsExactly("com.example.app", "/fake/mapping.txt");
-    assertNativeAllocationTraceBundled(files);
+    assertTraceBundled(files);
   }
 
   @Test
@@ -1222,7 +1229,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myIdeProfilerServices.setProguardMappings(Collections.singletonMap("com.other.app", "/fake/mapping.txt"));
 
     CaptureFiles files = selectNativeAllocationCaptureInEditor(RAW_TRACE);
-    assertNativeAllocationTraceOpenedRaw(files);
+    assertTraceOpenedRaw(files);
   }
 
   @Test
@@ -1234,7 +1241,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
 
     CaptureFiles files = selectNativeAllocationCaptureInEditor(RAW_TRACE);
     assertThat(myIdeProfilerServices.getLastBundledProguardMaps()).isEmpty();
-    assertNativeAllocationTraceBundled(files);
+    assertTraceBundled(files);
   }
 
   @Test
@@ -1252,7 +1259,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     CaptureFiles files = selectNativeAllocationCaptureInEditor("com.example.app", importedSession, importedStage, RAW_TRACE);
     assertThat(myIdeProfilerServices.getLastRequestedProguardMappingDeviceSerial()).isNull();
     assertThat(myIdeProfilerServices.getLastRequestedProguardMappingPackageName()).isNull();
-    assertNativeAllocationTraceOpenedRaw(files);
+    assertTraceOpenedRaw(files);
   }
 
   @Test
@@ -1262,7 +1269,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myIdeProfilerServices.setProguardMappings(Collections.emptyMap());
 
     CaptureFiles files = selectNativeAllocationCaptureInEditor(RAW_TRACE);
-    assertNativeAllocationTraceOpenedRaw(files);
+    assertTraceOpenedRaw(files);
   }
 
   @Test
@@ -1272,7 +1279,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myIdeProfilerServices.setProguardMappings(Collections.singletonMap("com.example.app", "/fake/mapping.txt"));
 
     CaptureFiles files = selectNativeAllocationCaptureInEditor(RAW_TRACE);
-    assertNativeAllocationTraceBundled(files);
+    assertTraceBundled(files);
   }
 
   @Test
@@ -1289,6 +1296,95 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     assertThat(files.captureFile().exists()).isTrue();
     assertThat(FileUtil.loadFile(files.captureFile())).isEqualTo(RAW_TRACE_CONTENT);
     assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(files.captureFile());
+  }
+
+  /** Records a Perfetto heap graph of {@code appName} and opens it in the editor, with the in-editor and task-based UX flags on. */
+  @NotNull
+  private CaptureFiles selectJavaHeapGraphCaptureInEditor(@NotNull String appName, @NotNull ByteString rawTraceBytes) throws Exception {
+    myIdeProfilerServices.setHeapDumpTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    Common.Session session = ProfilersTestData.SESSION_DATA;
+    long startTimeUs = 10;
+    long endTimeUs = 15;
+    long startTimeNs = TimeUnit.MICROSECONDS.toNanos(startTimeUs);
+    long endTimeNs = TimeUnit.MICROSECONDS.toNanos(endTimeUs);
+    Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(endTimeNs)
+      .setConfiguration(Trace.TraceConfiguration.newBuilder()
+                          .setAppName(appName)
+                          .setPerfettoOptions(PerfettoTraceConfigBuilders.INSTANCE.getJavaHeapGraphTraceConfig(
+                            session.getPid(), appName, AndroidVersion.VersionCodes.S)))
+      .build();
+
+    long streamId = session.getStreamId();
+    int pid = session.getPid();
+    myTransportService.addEventToStream(
+      streamId,
+      ProfilersTestData.generateMemoryTraceData(
+        streamId, startTimeUs,
+        Trace.TraceData.newBuilder().setTraceStarted(Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(info)).build())
+        .setPid(pid)
+        .build());
+    myTransportService.addEventToStream(
+      streamId,
+      ProfilersTestData.generateMemoryTraceData(
+        streamId, endTimeUs,
+        Trace.TraceData.newBuilder().setTraceEnded(Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)).build())
+        .setPid(pid)
+        .build());
+
+    DataSeries<CaptureDurationData<? extends CaptureObject>> series =
+      CaptureDataSeries.ofJavaHeapGraphSamples(new ProfilerClient(myGrpcChannel.getChannel()), session,
+                                               myIdeProfilerServices.getFeatureTracker(), myStage);
+    List<SeriesData<CaptureDurationData<? extends CaptureObject>>> dataList = series.getDataForRange(new Range(0, Double.MAX_VALUE));
+
+    File rawFile = TransportServiceUtils.createTempFile("dummy", "trace", rawTraceBytes);
+    myFilesToCleanUp.add(rawFile);
+    myTransportService.addFile(Long.toString(info.getFromTimestamp()), rawFile.getAbsolutePath());
+
+    File captureFile =
+      ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + "." + ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION);
+    FileUtil.delete(captureFile);
+    myFilesToCleanUp.add(captureFile);
+
+    myStage.selectCaptureDuration(dataList.getFirst().value, null);
+    return new CaptureFiles(rawFile, captureFile);
+  }
+
+  @Test
+  public void javaHeapGraphInEditorWithDeobfuscationAddsOnlyTheAppMapping() throws Exception {
+    myIdeProfilerServices.enableDeobfuscationForHeapDumps(true);
+    myIdeProfilerServices.setNativeSymbolsDirectories(Collections.singletonList(FakeIdeProfilerServices.FAKE_SYMBOL_DIR));
+    myIdeProfilerServices.setProguardMappings(Collections.singletonMap("com.example.app", "/fake/mapping.txt"));
+
+    CaptureFiles files = selectJavaHeapGraphCaptureInEditor("com.example.app", RAW_TRACE);
+    assertThat(myIdeProfilerServices.getLastRequestedProguardMappingDeviceSerial()).isEqualTo(FakeTransportService.FAKE_DEVICE.getSerial());
+    assertThat(myIdeProfilerServices.getLastRequestedProguardMappingPackageName()).isEqualTo("com.example.app");
+    assertThat(myIdeProfilerServices.getLastBundledProguardMaps()).containsExactly("com.example.app", "/fake/mapping.txt");
+    // A heap graph has no native frames, so no symbols are added even when symbol directories are set.
+    assertThat(myIdeProfilerServices.getLastBundledSymbolDirs()).isEmpty();
+    assertTraceBundled(files);
+  }
+
+  @Test
+  public void javaHeapGraphInEditorWithoutAppMappingOpensAsRecorded() throws Exception {
+    myIdeProfilerServices.enableDeobfuscationForHeapDumps(true);
+    myIdeProfilerServices.setNativeSymbolsDirectories(Collections.singletonList(FakeIdeProfilerServices.FAKE_SYMBOL_DIR));
+    myIdeProfilerServices.setProguardMappings(Collections.emptyMap());
+
+    CaptureFiles files = selectJavaHeapGraphCaptureInEditor("com.example.app", RAW_TRACE);
+    assertTraceOpenedRaw(files);
+  }
+
+  @Test
+  public void javaHeapGraphInEditorWithDeobfuscationDisabledOpensAsRecorded() throws Exception {
+    myIdeProfilerServices.enableDeobfuscationForHeapDumps(false);
+    myIdeProfilerServices.setProguardMappings(Collections.singletonMap("com.example.app", "/fake/mapping.txt"));
+
+    CaptureFiles files = selectJavaHeapGraphCaptureInEditor("com.example.app", RAW_TRACE);
+    assertThat(myIdeProfilerServices.getLastRequestedProguardMappingPackageName()).isNull();
+    assertTraceOpenedRaw(files);
   }
 
   @Test

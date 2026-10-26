@@ -978,6 +978,13 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         featureConfig.isDeobfuscationForNativeAllocationsEnabled()) {
       return new TraceDeobfuscation(nativeAllocations.getAppName(), true);
     }
+    // A heap graph has no native frames, so it gets only the R8 mapping. An ART HPROF is not a Perfetto trace, so it is skipped.
+    if (capture instanceof HeapDumpCaptureObject heapDump &&
+        heapDump.isPerfettoHeapGraph() &&
+        heapDump.getAppName() != null &&
+        featureConfig.isDeobfuscationForHeapDumpsEnabled()) {
+      return new TraceDeobfuscation(heapDump.getAppName(), false);
+    }
     return null;
   }
 

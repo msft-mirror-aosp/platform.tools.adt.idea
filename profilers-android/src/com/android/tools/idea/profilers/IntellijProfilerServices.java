@@ -1009,6 +1009,11 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     }
 
     @Override
+    public boolean isDeobfuscationForHeapDumpsEnabled() {
+      return StudioFlags.PROFILER_DEOBFUSCATION_FOR_HEAP_DUMPS.get();
+    }
+
+    @Override
     public boolean isDeobfuscationForNativeAllocationsEnabled() {
       return StudioFlags.PROFILER_DEOBFUSCATION_FOR_NATIVE_ALLOCATIONS.get();
     }

@@ -137,7 +137,8 @@ object CaptureDataSeries {
           stage.studioProfilers.ideServices,
           // Polls like Native Allocations, which uses the same daemon path; see the TODO in getTraceFile.
           { getTraceFile(client, session.streamId, it.fromTimestamp.toString(), retry = true) },
-          ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION,
+          defaultFileExtension = ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION,
+          appName = it.configuration.appName,
         )
       },
       { durUs, _, entry -> CaptureDurationData(durUs, false, false, entry, HeapDumpCaptureObject::class.java) },

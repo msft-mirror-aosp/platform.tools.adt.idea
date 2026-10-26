@@ -193,9 +193,14 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   private boolean myProfilerHomeTabV2Enabled = true;
   private boolean myDeobfuscationForNativeAllocationsEnabled = true;
+  private boolean myDeobfuscationForHeapDumpsEnabled = false;
 
   public void enableDeobfuscationForNativeAllocations(boolean enabled) {
     myDeobfuscationForNativeAllocationsEnabled = enabled;
+  }
+
+  public void enableDeobfuscationForHeapDumps(boolean enabled) {
+    myDeobfuscationForHeapDumpsEnabled = enabled;
   }
 
   private boolean myRecordPerfettoHeapDumpEnabled = false;
@@ -331,6 +336,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       @Override
       public boolean isPerformanceMonitoringEnabled() {
         return false;
+      }
+
+      @Override
+      public boolean isDeobfuscationForHeapDumpsEnabled() {
+        return myDeobfuscationForHeapDumpsEnabled;
       }
 
       @Override
@@ -759,6 +769,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   @Nullable private String myLastRequestedProguardMappingDeviceSerial = null;
   @Nullable private String myLastRequestedProguardMappingPackageName = null;
   @NotNull private Map<String, String> myLastBundledProguardMaps = Collections.emptyMap();
+  @NotNull private List<String> myLastBundledSymbolDirs = Collections.emptyList();
 
   public void setSymbolizeAndDeobfuscateFails(boolean fails) {
     mySymbolizeAndDeobfuscateFails = fails;
@@ -794,6 +805,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     return myLastBundledProguardMaps;
   }
 
+  @NotNull
+  public List<String> getLastBundledSymbolDirs() {
+    return myLastBundledSymbolDirs;
+  }
+
   @Nullable
   @Override
   public File symbolizeAndDeobfuscateTrace(@NotNull File traceFile,
@@ -801,6 +817,7 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
                                           @NotNull Map<String, String> proguardMaps) {
     myTraceSymbolizedAndDeobfuscated = true;
     myLastBundledProguardMaps = proguardMaps;
+    myLastBundledSymbolDirs = symbolDirs;
     if (mySymbolizeAndDeobfuscateFails) {
       return null;
     }

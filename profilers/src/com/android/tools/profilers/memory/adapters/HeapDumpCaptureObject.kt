@@ -90,6 +90,11 @@ constructor(
    * [ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION] here or it is reopened as an HPROF.
    */
   private val defaultFileExtension: String = ProfilerFormat.Hprof.DEFAULT_EXTENSION,
+  /**
+   * Name of the recorded process, for a heap dump recorded live as a Perfetto heap graph. Used to look up the app's R8 mapping. Null for an
+   * ART HPROF or an imported heap dump.
+   */
+  val appName: String? = null,
 ) : CaptureObject {
   var isTraceProcessor = true
     private set
@@ -155,8 +160,11 @@ constructor(
   val isARTHeapDump: Boolean
     get() = fileExtension.equals("hprof", ignoreCase = true) || fileExtension.equals("prof", ignoreCase = true)
 
-  /** True when this capture is a Perfetto heap graph, not an ART HPROF. Uses [getExportableExtension], as [fileExtension] can be `.tmp`. */
-  private val isPerfettoHeapGraph: Boolean
+  /**
+   * True when this capture is a Perfetto heap graph, not an ART HPROF. Uses [getExportableExtension], as [fileExtension] can be `.tmp`.
+   * Before [load], it is true only for a capture created with its format, such as a live one.
+   */
+  val isPerfettoHeapGraph: Boolean
     get() = getExportableExtension().equals(ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION, ignoreCase = true)
 
   private lateinit var activityFragmentLeakFilter: ActivityFragmentLeakInstanceFilter

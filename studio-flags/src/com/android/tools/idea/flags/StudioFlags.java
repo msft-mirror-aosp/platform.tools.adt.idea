@@ -440,6 +440,11 @@ public final class StudioFlags {
     PROFILER, "deobfuscation.for.native.allocations", "Symbolization/Deobfuscation for Native Allocations",
     "Enable symbolization and deobfuscation for native allocations captures");
 
+  public static final Flag<Boolean> PROFILER_DEOBFUSCATION_FOR_HEAP_DUMPS = new BooleanFlag(
+    PROFILER, "deobfuscation.for.heap.dumps", "Deobfuscation for Heap Dumps",
+    "Enable R8 deobfuscation for Perfetto heap dumps of apps deployed by Android Studio. " +
+    "Requires profiler.perfetto.heap.dump to be on to take effect");
+
   public static final Flag<Boolean> PROFILER_PERFETTO_HEAP_DUMP = new BooleanFlag(
     PROFILER, "perfetto.heap.dump", "Perfetto heap dumps",
     "Records the Heap Dump task of a profileable app with Perfetto, on Android 11 and higher");

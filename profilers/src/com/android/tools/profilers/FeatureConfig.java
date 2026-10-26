@@ -42,6 +42,7 @@ public interface FeatureConfig {
   boolean isLeakCanaryInEditorEnabled();
   boolean isProfilerHomeTabV2Enabled();
   boolean isRecordPerfettoHeapDumpEnabled();
+  boolean isDeobfuscationForHeapDumpsEnabled();
   boolean isDeobfuscationForNativeAllocationsEnabled();
 
   PowerProfilerDisplayMode getSystemTracePowerProfilerDisplayMode();
