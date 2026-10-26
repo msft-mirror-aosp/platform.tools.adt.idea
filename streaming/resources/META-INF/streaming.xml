@@ -301,6 +301,8 @@
                 icon="com.android.tools.idea.streaming.StagingIcons.PHONE" text="Phone" description="Open phone controls"/>
         <action id="android.emulator.device.pose" class="com.android.tools.idea.streaming.emulator.actions.EmulatorDevicePoseAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.DEVICE_POSE" text="Device Pose" description="Open device pose controls"/>
+        <action id="android.emulator.sensors" class="com.android.tools.idea.streaming.emulator.actions.EmulatorSensorsAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.SENSORS" text="Sensors" description="Open virtual sensors controls"/>
         <action id="android.emulator.fingerprint" class="com.android.tools.idea.streaming.emulator.actions.EmulatorFingerprintAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.FINGERPRINT" text="Fingerprint" description="Open fingerprint controls"/>
       </group>

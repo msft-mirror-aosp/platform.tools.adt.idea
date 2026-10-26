@@ -221,6 +221,13 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile var animationState: AnimationState = AnimationState.newBuilder().setTvOn(true).build()
   @Volatile var deviceRotation: List<Float> = listOf(0f, 0f, 0f)
   @Volatile var devicePosition: List<Float> = listOf(0f, 0f, 0f)
+  @Volatile var ambientTemperature: Float = 0f
+  @Volatile var magneticField: List<Float> = listOf(0f, 5.9f, -48.4f)
+  @Volatile var proximity: Float = 1f
+  @Volatile var light: Float = 0f
+  @Volatile var pressure: Float = 0f
+  @Volatile var humidity: Float = 0f
+  @Volatile var heartRate: Float = 0f
   @Volatile
   var hingeAngles: List<Float> =
     listOf(config.postures.lastOrNull { it.valueType == PostureDescriptor.ValueType.HINGE_ANGLE }?.maxValue?.toFloat() ?: 180f)
@@ -768,6 +775,41 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
               findPosture(PostureDescriptor.ValueType.ROLL_PERCENTAGE, pct)?.let { devicePosture = it }
             }
           }
+          PhysicalType.TEMPERATURE -> {
+            if (value.dataCount >= 1) {
+              ambientTemperature = value.getData(0)
+            }
+          }
+          PhysicalType.MAGNETIC_FIELD -> {
+            if (value.dataCount >= 3) {
+              magneticField = listOf(value.getData(0), value.getData(1), value.getData(2))
+            }
+          }
+          PhysicalType.PROXIMITY -> {
+            if (value.dataCount >= 1) {
+              proximity = value.getData(0)
+            }
+          }
+          PhysicalType.LIGHT -> {
+            if (value.dataCount >= 1) {
+              light = value.getData(0)
+            }
+          }
+          PhysicalType.PRESSURE -> {
+            if (value.dataCount >= 1) {
+              pressure = value.getData(0)
+            }
+          }
+          PhysicalType.HUMIDITY -> {
+            if (value.dataCount >= 1) {
+              humidity = value.getData(0)
+            }
+          }
+          PhysicalType.HEART_RATE -> {
+            if (value.dataCount >= 1) {
+              heartRate = value.getData(0)
+            }
+          }
           else -> {}
         }
         sendEmptyResponse(responseObserver)
@@ -809,6 +851,45 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
                 .setValue(ParameterValue.newBuilder().addData(rollablePercentages.getOrElse(0) { 0f }))
                 .build()
             }
+            PhysicalType.TEMPERATURE -> {
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.TEMPERATURE)
+                .setValue(ParameterValue.newBuilder().addData(ambientTemperature))
+                .build()
+            }
+            PhysicalType.MAGNETIC_FIELD -> {
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.MAGNETIC_FIELD)
+                .setValue(ParameterValue.newBuilder().addAllData(magneticField))
+                .build()
+            }
+            PhysicalType.PROXIMITY -> {
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.PROXIMITY)
+                .setValue(ParameterValue.newBuilder().addData(proximity))
+                .build()
+            }
+            PhysicalType.LIGHT -> {
+              PhysicalModelValue.newBuilder().setTarget(PhysicalType.LIGHT).setValue(ParameterValue.newBuilder().addData(light)).build()
+            }
+            PhysicalType.PRESSURE -> {
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.PRESSURE)
+                .setValue(ParameterValue.newBuilder().addData(pressure))
+                .build()
+            }
+            PhysicalType.HUMIDITY -> {
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.HUMIDITY)
+                .setValue(ParameterValue.newBuilder().addData(humidity))
+                .build()
+            }
+            PhysicalType.HEART_RATE -> {
+              PhysicalModelValue.newBuilder()
+                .setTarget(PhysicalType.HEART_RATE)
+                .setValue(ParameterValue.newBuilder().addData(heartRate))
+                .build()
+            }
             else -> PhysicalModelValue.getDefaultInstance()
           }
         sendResponse(responseObserver, result)
@@ -822,7 +903,13 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           when (request.target) {
             SensorType.ACCELERATION -> rotateByConjugate(rot, 0f, 9.81f, 0f)
             SensorType.GYROSCOPE -> listOf(0f, 0f, 0f)
-            SensorType.MAGNETIC_FIELD -> rotateByConjugate(rot, 0f, 5.9f, -48.4f)
+            SensorType.MAGNETIC_FIELD ->
+              rotateByConjugate(
+                rot,
+                magneticField.getOrElse(0) { 0f },
+                magneticField.getOrElse(1) { 5.9f },
+                magneticField.getOrElse(2) { -48.4f },
+              )
             SensorType.ORIENTATION -> listOf(rot.getOrElse(0) { 0f }, rot.getOrElse(1) { 0f }, rot.getOrElse(2) { 0f })
             else -> emptyList()
           }

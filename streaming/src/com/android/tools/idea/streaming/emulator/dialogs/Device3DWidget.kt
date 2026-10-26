@@ -1453,14 +1453,3 @@ internal class Device3DWidget(
     }
   }
 }
-
-/** 3-component vector used for Euler angles, 3D coordinates, and sensor values. */
-internal data class Vec3(val x: Float, val y: Float, val z: Float) {
-  operator fun plus(other: Vec3): Vec3 = Vec3(x + other.x, y + other.y, z + other.z)
-
-  operator fun minus(other: Vec3): Vec3 = Vec3(x - other.x, y - other.y, z - other.z)
-
-  companion object {
-    val ZERO = Vec3(0f, 0f, 0f)
-  }
-}

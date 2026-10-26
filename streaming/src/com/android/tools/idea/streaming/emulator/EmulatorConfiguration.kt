@@ -60,6 +60,7 @@ private constructor(
   val hasTransparentDisplay: Boolean = false,
   val hasTouchScreen: Boolean = false,
   val hasBattery: Boolean = false,
+  val hasHeartRateSensor: Boolean = false,
   val initialOrientationQuadrants: Int = 0,
   val displayModes: List<DisplayMode> = emptyList(),
   val postures: List<PostureDescriptor> = emptyList(),
@@ -188,6 +189,8 @@ private constructor(
       val extensionLevel = sourceProperties["AndroidVersion.ExtensionLevel"]?.let { parseInt(it, 0) }
       val isBaseSdk = sourceProperties["AndroidVersion.IsBaseSdk"]?.toBoolean() ?: true
       val androidVersion = AndroidVersion(api, codeName, extensionLevel, isBaseSdk)
+      // The emulator enables the heart rate sensor by default on Wear OS API 28+ even when "hw.sensors.heart_rate" is omitted.
+      val hasHeartRateSensor = getConfigBoolean(configIni["hw.sensors.heart_rate"], deviceType == DeviceType.WEAR && api.majorVersion >= 28)
 
       // Extract parameters of secondary displays from lines like "hw.display6.width=400" and "hw.display6.height=600".
       val additionalDisplays = mutableMapOf<Int, Dimension>()
@@ -269,6 +272,7 @@ private constructor(
         hasTransparentDisplay = hasTransparentDisplay,
         hasTouchScreen = hasTouchScreen,
         hasBattery = hasBattery,
+        hasHeartRateSensor = hasHeartRateSensor,
         initialOrientationQuadrants = initialOrientation,
         displayModes = displayModes,
         postures = postures,

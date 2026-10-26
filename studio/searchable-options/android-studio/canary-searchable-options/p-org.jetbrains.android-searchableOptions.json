@@ -1347,6 +1347,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Open virtual sensors controls",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Open...",
       "path": "ActionManager"
     },
@@ -1636,6 +1640,10 @@
     },
     {
       "hit": "Select mode of interaction with running apps",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Sensors",
       "path": "ActionManager"
     },
     {
