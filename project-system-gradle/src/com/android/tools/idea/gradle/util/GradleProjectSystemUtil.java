@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.util;
 
-import static com.android.SdkConstants.DOT_DECLARATIVE;
 import static com.android.SdkConstants.DOT_GRADLE;
 import static com.android.SdkConstants.DOT_KTS;
 import static com.android.SdkConstants.FD_GRADLE_WRAPPER;

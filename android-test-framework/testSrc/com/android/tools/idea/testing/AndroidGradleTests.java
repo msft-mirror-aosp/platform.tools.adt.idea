@@ -17,7 +17,6 @@ package com.android.tools.idea.testing;
 
 import static com.android.SdkConstants.DOT_GRADLE;
 import static com.android.SdkConstants.DOT_VERSIONS_DOT_TOML;
-import static com.android.SdkConstants.EXT_GRADLE_DECLARATIVE;
 import static com.android.SdkConstants.EXT_GRADLE_KTS;
 import static com.android.SdkConstants.FN_BUILD_GRADLE;
 import static com.android.SdkConstants.FN_BUILD_GRADLE_KTS;
@@ -363,23 +362,6 @@ public class AndroidGradleTests {
           contents = contents.replace(NDK_VERSION_PLACEHOLDER, String.format("ndkVersion=\"%s\"", ndkVersion));
         }
 
-        if (!contents.equals(contentsOrig)) {
-          Files.writeString(path.toPath(), contents);
-        }
-      }
-      else if (path.getPath().endsWith(EXT_GRADLE_DECLARATIVE)) {
-        String contentsOrig = Files.readString(path.toPath());
-        String contents = contentsOrig;
-        String localRepositories = getLocalRepositoriesForDeclarative(localRepos);
-        contents = replaceRegexGroup(contents, "id\\(\"com.android.ecosystem\"\\).version\\(\"(.+)\"\\)", agpEnvironment.getAgpVersion());
-
-        final var buildEnvironment = BuildEnvironment.getInstance();
-        contents = replaceRegexGroup(contents, "buildToolsVersion\\(\"(.+)\"\\)", buildEnvironment.getBuildToolsVersion());
-        contents = updateCompileSdkVersion(contents, agpEnvironment.getCompileSdk());
-        contents = updateTargetSdkVersion(contents, agpEnvironment.getTargetSdk());
-        contents = replaceRegexGroup(contents, "\"[a-zA-Z]+\"\\s*\\(\"org.jetbrains.kotlin:kotlin-stdlib:(.+)\"\\)", agpEnvironment.getKotlinVersion());
-
-        contents = updateLocalRepositories(contents, localRepositories);
         if (!contents.equals(contentsOrig)) {
           Files.writeString(path.toPath(), contents);
         }
