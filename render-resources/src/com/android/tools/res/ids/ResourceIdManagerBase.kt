@@ -32,8 +32,6 @@ import java.util.function.Consumer
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 
-private const val FIRST_PACKAGE_ID: Byte = 0x02
-
 // Comparator for fields, which makes them appear in the same order as in the R class source code.
 // This means that in R.styleable,
 // indices come after corresponding array and before other arrays, e.g. "ActionBar_logo" comes
@@ -351,20 +349,14 @@ internal constructor(
     }
   }
 
-  @GuardedBy("this") private var nextPackageId: Byte = FIRST_PACKAGE_ID
+  @GuardedBy("this") private var resAutoProvider = IdProvider(0x7f)
 
-  @GuardedBy("this") private val perNamespaceProviders = hashMapOf<ResourceNamespace, IdProvider>()
+  @GuardedBy("this") private var androidProvider = IdProvider(0x01)
 
   @Synchronized
   private fun resetProviders() {
-    nextPackageId = FIRST_PACKAGE_ID
-    perNamespaceProviders.clear()
-    perNamespaceProviders[ResourceNamespace.RES_AUTO] = IdProvider(0x7f)
-    perNamespaceProviders[ResourceNamespace.ANDROID] = IdProvider(0x01)
-  }
-
-  init {
-    resetProviders()
+    resAutoProvider = IdProvider(0x7f)
+    androidProvider = IdProvider(0x01)
   }
 
   /**
@@ -440,7 +432,11 @@ internal constructor(
       return dynamicId
     }
 
-    val provider = perNamespaceProviders.getOrPut(resource.namespace) { IdProvider(nextPackageId++) }
+    val provider =
+      when (resource.namespace) {
+        ResourceNamespace.ANDROID -> androidProvider
+        else -> resAutoProvider
+      }
     val newId = provider.getNext(resource.resourceType)
 
     dynamicToIdMap.put(resource, newId)
