@@ -33,25 +33,15 @@ import org.junit.runner.RunWith;
 public class GradleProjectSystemTestSuite extends IdeaTestSuiteBase {
 
   static {
-    Path declarativePlugin = TestUtils.getWorkspaceRoot().resolve("tools/base/build-system/declarative_android_gradle_plugin.zip");
-    if (Files.exists(declarativePlugin)) {
-      unzipIntoOfflineMavenRepo("tools/base/build-system/declarative_android_gradle_plugin.zip");
-    }
     Path file = TestUtils.getWorkspaceRoot().resolve("tools/base/build-system/android_gradle_plugin.zip");
     if (Files.exists(file)) {
       unzipIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin.zip");
     }
-    if (Files.exists(declarativePlugin) || Files.exists(file)) {
+    if (Files.exists(file)) {
       linkIntoOfflineMavenRepo("tools/base/build-system/android_gradle_plugin_runtime_dependencies.manifest");
       linkIntoOfflineMavenRepo("tools/adt/idea/project-system-gradle/test_deps.manifest");
       linkIntoOfflineMavenRepo("tools/base/build-system/integration-test/kotlin_gradle_plugin_prebuilts.manifest");
       linkIntoOfflineMavenRepo("tools/base/build-system/gradle-runtime-maven.manifest");
-    }
-
-    String declarativeGradleRuntime = "tools/base/build-system/declarative_gradle_runtime.manifest";
-    Path gradlePlugins = TestUtils.getWorkspaceRoot().resolve(declarativeGradleRuntime);
-    if(Files.exists(gradlePlugins)) {
-      linkIntoOfflineMavenRepo(declarativeGradleRuntime);
     }
 
     Path dataBindingSupportFile = TestUtils.getWorkspaceRoot().resolve("tools/data-binding/data_binding_runtime.zip");

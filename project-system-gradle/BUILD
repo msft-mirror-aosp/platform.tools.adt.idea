@@ -209,8 +209,6 @@ iml_module(
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
                 "//prebuilts/studio/jdk:jdk21",
                 "//prebuilts/studio/jdk/jbr25:jdk_runtime_files",
-                "//tools/base/build-system:declarative_gradle_runtime",
-                "//tools/base/build-system:declarative_android_gradle_plugin.zip",
                 "//tools/base/firebase/testlab/testlab-gradle-plugin:maven_dependencies",
                 "//tools/base/firebase/testlab/testlab-gradle-plugin:testlab-gradle-plugin",
             ],
@@ -231,7 +229,6 @@ iml_module(
                 "//tools/data-binding:data_binding_runtime.zip",
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
                 "//prebuilts/studio/jdk:jdk21",
-                "//tools/base/build-system:declarative_android_gradle_plugin.zip",
                 "//tools/base/firebase/testlab/testlab-gradle-plugin:maven_dependencies",
                 "//tools/base/firebase/testlab/testlab-gradle-plugin:testlab-gradle-plugin",
             ],
@@ -251,7 +248,6 @@ iml_module(
                 "//tools/data-binding:data_binding_runtime.zip",
                 "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
                 "//prebuilts/studio/jdk:jdk21",
-                "//tools/base/build-system:declarative_android_gradle_plugin.zip",
             ],
         },
         "runs_gradle_VersionCatalogAndDeclarative": {
@@ -410,7 +406,6 @@ iml_module(
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
-                "//tools/base/build-system:declarative_android_gradle_plugin.zip",
                 "//tools/base/build-system:gradle-distrib",
                 "//tools/base/build-system:gradle-runtime-maven",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
@@ -434,7 +429,6 @@ iml_module(
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
-                "//tools/base/build-system:declarative_android_gradle_plugin.zip",
                 "//tools/base/build-system:gradle-distrib",
                 "//tools/base/build-system:gradle-runtime-maven",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
@@ -453,7 +447,6 @@ iml_module(
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
-                "//tools/base/build-system:declarative_android_gradle_plugin.zip",
                 "//tools/base/build-system:gradle-distrib",
                 "//tools/base/build-system:gradle-runtime-maven",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
@@ -471,7 +464,6 @@ iml_module(
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
-                "//tools/base/build-system:declarative_android_gradle_plugin.zip",
                 "//tools/base/build-system:gradle-distrib",
                 "//tools/base/build-system:gradle-runtime-maven",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
