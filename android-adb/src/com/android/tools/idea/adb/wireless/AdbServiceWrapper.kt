@@ -19,8 +19,8 @@ import com.android.adblib.MdnsServices
 import com.android.adblib.ServerStatus
 import com.android.annotations.concurrency.AnyThread
 import com.android.ddmlib.IDevice
+import com.android.sdklib.deviceprovisioner.DeviceProperties.Companion.sanitizeForUi
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.text.Strings.escapeXmlEntities
 import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 
@@ -68,7 +68,7 @@ data class AdbOnlineDevice(val id: String, val properties: Map<String, String>) 
       val model = properties[IDevice.PROP_DEVICE_MODEL] ?: id
       val rawResult = if (model.startsWith(manufacturer, true)) model else "$manufacturer $model"
       // sanitize the output to prevent flipping UI controls into HTML mode.
-      return escapeXmlEntities(rawResult)
+      return rawResult.sanitizeForUi()
     }
 }
 

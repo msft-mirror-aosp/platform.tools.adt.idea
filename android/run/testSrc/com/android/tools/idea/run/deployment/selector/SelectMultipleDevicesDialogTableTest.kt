@@ -52,17 +52,18 @@ class SelectMultipleDevicesDialogTableTest {
 
   @Test
   fun setModel() {
-    val device = createDevice("Pixel 8")
+    val device = createDevice("<html>Lynne's Pixel 8")
     val model = SelectMultipleDevicesDialogTableModel(listOf(device))
 
     table.setModel(model)
 
-    assertThat(table.data).isEqualTo(listOf(listOf("", "Type", "Device"), listOf(false, device.icon, "Pixel 8")))
+    assertThat(table.data).isEqualTo(listOf(listOf("", "Type", "Device"), listOf(false, device.icon, "‹html›Lynne's Pixel 8")))
   }
 
   @Test
   fun deviceWithError() {
-    val device = createDevice("Pixel 5", launchCompatibility = LaunchCompatibility(LaunchCompatibility.State.ERROR, "Missing system image"))
+    val device =
+      createDevice("Lynne's Pixel 5", launchCompatibility = LaunchCompatibility(LaunchCompatibility.State.ERROR, "Missing system image"))
     val model = SelectMultipleDevicesDialogTableModel(listOf(device))
 
     table.setModel(model)
@@ -70,7 +71,7 @@ class SelectMultipleDevicesDialogTableTest {
     val data =
       listOf(
         listOf("", "Type", "Device"),
-        listOf(false, device.icon, "<html>Pixel 5<br><font size=-2 color=#999999>Missing system image</font></html>"),
+        listOf(false, device.icon, "<html>Lynne&#39;s Pixel 5<br><font size=-2 color=#999999>Missing system image</font></html>"),
       )
     assertThat(table.data).isEqualTo(data)
   }

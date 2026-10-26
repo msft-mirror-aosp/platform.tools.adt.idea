@@ -35,7 +35,7 @@ interface WiFiPairingNotificationService {
 
 fun WiFiPairingNotificationService.showPairingSuccessBalloon(device: AdbOnlineDevice) {
   showBalloon(
-    "${device.displayString} connected over Wi-Fi",
+    escapeXmlEntities("${device.displayString} connected over Wi-Fi"),
     "The device is now available to use.",
     NotificationType.INFORMATION,
     StudioIcons.Common.SUCCESS,

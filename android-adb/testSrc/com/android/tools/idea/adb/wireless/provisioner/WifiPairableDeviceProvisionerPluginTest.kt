@@ -169,14 +169,15 @@ class WifiPairableDeviceProvisionerPluginTest {
 
   @Test
   fun newMdnsService_withGivenName() = runTest {
-    mdnsFlow.value = createMdnsTlsService("service1", givenName = "Foo Pixel")
+    mdnsFlow.value = createMdnsTlsService("service1", givenName = "Lynne's <Z> Fold7")
     val plugin = WifiPairableDeviceProvisionerPlugin(backgroundScope, adbService, project, notificationService)
     advanceTimeBy(6000) // Past initial delay
 
     assertThat(plugin.devices.value).hasSize(1)
     val handle = plugin.devices.value.first() as WifiPairableDeviceProvisionerPlugin.WifiPairableDeviceHandle
     assertThat(handle.mdnsService.serviceInstanceName.instance).isEqualTo("service1")
-    assertThat(handle.state.properties.model).isEqualTo("Foo Pixel")
+    assertThat(handle.state.properties.model).isEqualTo("Lynne's ‹Z› Fold7")
+    assertThat(handle.state.properties.title).isEqualTo("Lynne's ‹Z› Fold7")
     assertThat(handle.state.error).isNull()
   }
 

@@ -19,8 +19,8 @@ import com.android.adblib.MdnsServices
 import com.android.adblib.MdnsTrackServiceInfo
 import com.android.annotations.concurrency.AnyThread
 import com.android.repository.Revision
+import com.android.sdklib.deviceprovisioner.DeviceProperties.Companion.sanitizeForUi
 import com.google.common.util.concurrent.ListenableFuture
-import com.intellij.openapi.util.text.Strings.escapeXmlEntities
 import java.awt.Color
 import java.awt.image.BufferedImage
 import java.net.InetAddress
@@ -110,7 +110,7 @@ data class TrackingMdnsService(
 ) {
   val displayString: String
     get() {
-      return if (deviceName.isNullOrBlank()) "Device" else escapeXmlEntities(deviceName)
+      return if (deviceName.isNullOrBlank()) "Device" else deviceName.sanitizeForUi()
     }
 }
 

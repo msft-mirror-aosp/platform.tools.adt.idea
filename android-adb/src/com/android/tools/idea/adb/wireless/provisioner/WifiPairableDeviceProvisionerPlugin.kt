@@ -31,6 +31,7 @@ import com.android.sdklib.deviceprovisioner.DeviceError
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProperties
+import com.android.sdklib.deviceprovisioner.DeviceProperties.Companion.sanitizeForUi
 import com.android.sdklib.deviceprovisioner.DeviceProvisionerPlugin
 import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceState.Disconnected
@@ -60,7 +61,6 @@ import com.google.wireless.android.sdk.stats.DeviceInfo
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.text.Strings.escapeXmlEntities
 import icons.StudioIcons
 import javax.swing.Icon
 import kotlin.collections.plus
@@ -264,7 +264,7 @@ class WifiPairableDeviceProvisionerPlugin(
         ?: service.deviceModel.takeUnless { it.isNullOrBlank() }?.let { "$it at ${service.ipv4}:${service.port}" }
         ?: "Device at ${service.ipv4}:${service.port}"
     // sanitize the output to prevent flipping UI controls into HTML mode.
-    return escapeXmlEntities(raw)
+    return raw.sanitizeForUi()
   }
 
   data class WifiPairableDeviceProperties(
