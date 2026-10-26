@@ -18,6 +18,8 @@ package com.android.tools.idea.stats
 import com.android.tools.adtui.HtmlLabel
 import com.android.tools.adtui.ImageComponent
 import com.android.tools.analytics.AnalyticsSettings
+import com.android.tools.analytics.ConsentDialogNext
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.ui.GuiTestingService
 import com.google.common.base.Predicates
 import com.intellij.ide.gdpr.Consent
@@ -193,12 +195,21 @@ class ConsentDialog(private val consent: Consent) : DialogWrapper(null) {
       application.invokeLater {
         val consent = list[0]
 
-        val dialog = ConsentDialog(consent)
-        hideSplashBeforeShow(dialog.window)
-        dialog.isModal = true
-        dialog.show()
+        val consented =
+          if (StudioFlags.NEW_CONSENT_DIALOG_ENABLED.get()) {
+            val dialog = ConsentDialogNext()
+            hideSplashBeforeShow(dialog.window)
+            dialog.show()
+            dialog.isOptedIn
+          } else {
+            val dialog = ConsentDialog(consent)
+            hideSplashBeforeShow(dialog.window)
+            dialog.isModal = true
+            dialog.show()
+            dialog.exitCode == OK_EXIT_CODE
+          }
 
-        val result = listOf<Consent>(consent.derive(dialog.exitCode == OK_EXIT_CODE))
+        val result = listOf<Consent>(consent.derive(consented))
         // Saving consents is an IO operation that must run on a background thread.
         application.executeOnPooledThread { AppUIUtil.saveConsents(result) }
       }

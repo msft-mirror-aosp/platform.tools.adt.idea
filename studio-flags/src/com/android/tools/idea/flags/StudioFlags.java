@@ -2989,6 +2989,18 @@ public final class StudioFlags {
     );
   // endregion Automated Updates Flow
 
+  // region New Consent Dialog
+
+  private static final FlagGroup NEW_CONSENT_DIALOG = new FlagGroup(FLAGS, "new.consent.dialog", "New Consent Dialog");
+  public static final Flag<Boolean> NEW_CONSENT_DIALOG_ENABLED =
+    new BooleanFlag(
+      NEW_CONSENT_DIALOG,
+      "enabled",
+      "Enable the New Consent Dialog",
+      "Enable the new consent dialog"
+    );
+  // endregion New Consent Dialog
+
   private StudioFlags() { }
 
   private static Boolean isUnitTestMode() {

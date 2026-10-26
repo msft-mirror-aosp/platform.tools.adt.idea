@@ -5,6 +5,7 @@ iml_module(
     name = "analytics",
     srcs = ["src"],
     iml_files = ["analytics.iml"],
+    kotlin_use_compose = True,
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
     deps = [
@@ -19,6 +20,8 @@ iml_module(
         "//tools/base/ddmlib-studio:studio.android.sdktools.ddmlib-studio",
         "//tools/analytics-library/shared:analytics-shared",
         "//tools/base/adblib:studio.android.sdktools.adblib",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
+        "//tools/adt/idea/artwork-compose:intellij.android.artwork-compose",
     ],
 )
 
@@ -26,13 +29,21 @@ iml_module(
 iml_module(
     name = "analytics.tests",
     iml_files = ["analytics.tests.iml"],
+    kotlin_use_compose = True,
+    test_class = "com.android.analytics.AnalyticsTestSuiteBase",
     # do not sort: must match IML order
     test_deps = [
         "@intellij//:intellij-sdk",
         "//tools/adt/idea/analytics",
         "//tools/adt/idea/.idea/libraries:studio-analytics-proto",
         "//tools/adt/idea/.idea/libraries:junit4",
+        "//tools/adt/idea/.idea/libraries:truth",
+        "//tools/adt/idea/.idea/libraries:jetbrains.kotlinx.coroutines.test",
         "//tools/adt/idea/analytics-utils:intellij.android.analytics-utils",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
+        "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose.tests",
+        "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
+        "//tools/base/testutils:studio.android.sdktools.testutils",
     ],
     test_friends = ["//tools/adt/idea/analytics"],
     test_srcs = ["testSrc"],
