@@ -15,53 +15,36 @@
  */
 package com.android.tools.idea.compose.meshgradient
 
-import androidx.compose.foundation.focusable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.unit.dp
+import com.android.tools.idea.compose.meshgradient.components.GRADIENT_HANDLE_SIZE
+import com.android.tools.idea.compose.meshgradient.components.GradientHandleBox
 import com.android.tools.idea.compose.meshgradient.components.toHexString
 import com.android.tools.idea.compose.preview.message
-import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.focusOutline
 
 // Adapted from the Mesh project: des/c5inco/mesh/common/PointCursor.kt
 
 /** Diameter of a [PointCursor]. */
-internal val POINT_CURSOR_SIZE = 20.dp
-private val CURSOR_BORDER_WIDTH = 4.dp
-private const val PINNED_ALPHA = 0.6f
+internal val POINT_CURSOR_SIZE = GRADIENT_HANDLE_SIZE
 
 /** Normalized step moved by a single arrow key press on a focused movable [PointCursor]. */
 internal const val VERTEX_KEYBOARD_STEP = 0.05f
 
 /**
  * Handle for the mesh vertex at [row] and [col], filled with the vertex [color]. A vertex that can't be dragged ([movable] is false) is
- * drawn with a dimmed border and label.
+ * drawn as a rounded square with a muted opaque ring while keeping full-contrast coordinate text.
  *
  * Pointer input is handled by the canvas that draws the handles, so [onSelect] and [onMove] are exposed through keyboard and accessibility
  * semantics without attaching pointer input listeners to the handle itself.
@@ -77,7 +60,6 @@ internal fun PointCursor(
   onSelect: (() -> Unit)? = null,
   onMove: ((Offset) -> Unit)? = null,
 ) {
-  var isFocused by remember { mutableStateOf(false) }
   // The visible label uses the 0-based indices passed to setVertex, while the description read by accessibility services is 1-based.
   val description = message("gradient.editor.mesh.vertex.description", row + 1, col + 1)
   val selectLabel = message("gradient.editor.mesh.vertex.edit.color")
@@ -92,62 +74,43 @@ internal fun PointCursor(
         message("gradient.editor.mesh.vertex.pinned.state", colorText, xText, yText)
       }
     }
-  val contrastColor = if (color.luminance() > 0.5f) Color.Black else Color.White
-  val labelColor = if (movable) contrastColor else contrastColor.copy(alpha = PINNED_ALPHA)
-  val borderColor = if (movable) Color.White else Color.White.copy(alpha = PINNED_ALPHA)
-  Box(
-    contentAlignment = Alignment.Center,
-    modifier =
-      modifier
-        .size(POINT_CURSOR_SIZE)
-        .focusOutline(isFocused, CircleShape)
-        .onFocusChanged { isFocused = it.isFocused }
-        .onKeyEvent { event ->
-          if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
-          when (event.key) {
-            Key.Enter,
-            Key.NumPadEnter,
-            Key.Spacebar -> {
-              if (onSelect != null) {
-                onSelect()
-                true
-              } else {
-                false
-              }
-            }
-            Key.DirectionLeft -> moveVertex(position, Offset(-VERTEX_KEYBOARD_STEP, 0f), movable, onMove)
-            Key.DirectionRight -> moveVertex(position, Offset(VERTEX_KEYBOARD_STEP, 0f), movable, onMove)
-            Key.DirectionUp -> moveVertex(position, Offset(0f, -VERTEX_KEYBOARD_STEP), movable, onMove)
-            Key.DirectionDown -> moveVertex(position, Offset(0f, VERTEX_KEYBOARD_STEP), movable, onMove)
-            else -> false
-          }
-        }
-        .focusable()
-        .clearAndSetSemantics {
-          contentDescription = description
-          stateDescription = stateText
+  GradientHandleBox(
+    glyph = "$row,$col",
+    color = color,
+    pinned = !movable,
+    modifier = modifier,
+    onKeyEvent = { event ->
+      if (event.type != KeyEventType.KeyDown) return@GradientHandleBox false
+      when (event.key) {
+        Key.Enter,
+        Key.NumPadEnter,
+        Key.Spacebar -> {
           if (onSelect != null) {
-            role = Role.Button
-            onClick(label = selectLabel) {
-              onSelect()
-              true
-            }
+            onSelect()
+            true
+          } else {
+            false
           }
         }
-        .drawWithCache {
-          val strokeWidth = CURSOR_BORDER_WIDTH.toPx()
-          val stroke = Stroke(width = strokeWidth)
-          val radius = size.minDimension / 2f
-          onDrawWithContent {
-            drawCircle(color = color, radius = radius)
-            // Inset the border so that it is drawn within the cursor bounds instead of overflowing them by half its width.
-            drawCircle(color = borderColor, radius = radius - strokeWidth / 2f, style = stroke)
-            drawContent()
-          }
-        },
-  ) {
-    Text("$row,$col", color = labelColor)
-  }
+        Key.DirectionLeft -> moveVertex(position, Offset(-VERTEX_KEYBOARD_STEP, 0f), movable, onMove)
+        Key.DirectionRight -> moveVertex(position, Offset(VERTEX_KEYBOARD_STEP, 0f), movable, onMove)
+        Key.DirectionUp -> moveVertex(position, Offset(0f, -VERTEX_KEYBOARD_STEP), movable, onMove)
+        Key.DirectionDown -> moveVertex(position, Offset(0f, VERTEX_KEYBOARD_STEP), movable, onMove)
+        else -> false
+      }
+    },
+    semantics = {
+      contentDescription = description
+      stateDescription = stateText
+      if (onSelect != null) {
+        role = Role.Button
+        onClick(label = selectLabel) {
+          onSelect()
+          true
+        }
+      }
+    },
+  )
 }
 
 private fun moveVertex(position: Offset, delta: Offset, movable: Boolean, onMove: ((Offset) -> Unit)?): Boolean {

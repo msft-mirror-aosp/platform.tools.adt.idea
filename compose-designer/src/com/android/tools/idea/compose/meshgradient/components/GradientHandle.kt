@@ -23,6 +23,7 @@ import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,13 +31,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.DrawStyle
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -52,9 +64,12 @@ import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.PointerInputModifierNode
 import androidx.compose.ui.node.requireLayoutCoordinates
 import androidx.compose.ui.platform.InspectorInfo
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import org.jetbrains.jewel.ui.component.Text
@@ -65,6 +80,26 @@ internal val GRADIENT_HANDLE_SIZE = 24.dp
 
 /** Step in brush pixels moved by a single arrow key press on a focused [GradientHandle]. */
 internal const val HANDLE_KEYBOARD_STEP = 10f
+
+/** Corner radius of a pinned handle (`25%` of [GRADIENT_HANDLE_SIZE], matching [SWATCH_SHAPE] proportions). */
+private val PINNED_HANDLE_CORNER_RADIUS = 6.dp
+private val PINNED_HANDLE_SHAPE = RoundedCornerShape(PINNED_HANDLE_CORNER_RADIUS)
+
+private val OUTER_BORDER_WIDTH = 1.dp
+private val INNER_RING_WIDTH = 1.5.dp
+private val INNER_HAIRLINE_WIDTH = 0.5.dp
+private val CHECKERBOARD_CELL_SIZE = 3.dp
+
+private val SINGLE_GLYPH_FONT_SIZE = 11.dp
+private val MULTI_GLYPH_FONT_SIZE = 9.dp
+private val MULTI_GLYPH_LETTER_SPACING = (-0.3).dp
+
+private val OUTER_BORDER_COLOR = Color.Black.copy(alpha = 0.45f)
+private val PINNED_RING_COLOR = Color(0xFFD0D5DD)
+private val INNER_BORDER_COLOR = Color.Black.copy(alpha = 0.18f)
+private val CHECKERBOARD_LIGHT_COLOR = Color.White
+private val CHECKERBOARD_DARK_COLOR = Color(0xFFDCDFE4)
+private val CHECKERBOARD_AVERAGE_COLOR = Color(0xFFEEF0F2)
 
 /**
  * A circular handle drawn over a gradient preview, filled with [color] and showing a short [glyph].
@@ -84,51 +119,203 @@ internal fun GradientHandle(
   stateDescription: (() -> String)? = null,
   onMove: ((delta: Offset) -> Unit)? = null,
 ) {
+  GradientHandleBox(
+    glyph = glyph,
+    color = color,
+    pinned = false,
+    modifier = modifier,
+    onKeyEvent = { event ->
+      if (event.type != KeyEventType.KeyDown || onMove == null) return@GradientHandleBox false
+      when (event.key) {
+        Key.DirectionLeft -> {
+          onMove(Offset(-HANDLE_KEYBOARD_STEP, 0f))
+          true
+        }
+        Key.DirectionRight -> {
+          onMove(Offset(HANDLE_KEYBOARD_STEP, 0f))
+          true
+        }
+        Key.DirectionUp -> {
+          onMove(Offset(0f, -HANDLE_KEYBOARD_STEP))
+          true
+        }
+        Key.DirectionDown -> {
+          onMove(Offset(0f, HANDLE_KEYBOARD_STEP))
+          true
+        }
+        else -> false
+      }
+    },
+    semantics = {
+      this.contentDescription = contentDescription
+      if (stateDescription != null) {
+        this.stateDescription = stateDescription()
+      }
+    },
+  )
+}
+
+/**
+ * Shared visual container for gradient control handles (both standard Brush handles and mesh vertex cursors).
+ *
+ * Draws a dual-ring border (dark outer ring + opaque white/silver inner ring) strictly inside [GRADIENT_HANDLE_SIZE] so the handle remains
+ * legible over both light and dark backgrounds without bleeding fill color into the border. Movable handles are circular; [pinned] handles
+ * use a rounded-square silhouette with a muted opaque ring while retaining full-contrast [glyph] text.
+ */
+@Composable
+internal fun GradientHandleBox(
+  glyph: String,
+  color: Color,
+  pinned: Boolean,
+  onKeyEvent: (KeyEvent) -> Boolean,
+  semantics: SemanticsPropertyReceiver.() -> Unit,
+  modifier: Modifier = Modifier,
+) {
   var isFocused by remember { mutableStateOf(false) }
-  val textColor = if (color.luminance() > 0.5f) Color.Black else Color.White
+  val shape = if (pinned) PINNED_HANDLE_SHAPE else CircleShape
+  val textColor = contrastingHandleTextColor(color)
+  val density = LocalDensity.current
+  val isSingleGlyph = glyph.length <= 1
+  // Size the glyph in dp converted to sp so the label always fits within the fixed-dp handle regardless of fontScale.
+  val fontSize = with(density) { (if (isSingleGlyph) SINGLE_GLYPH_FONT_SIZE else MULTI_GLYPH_FONT_SIZE).toSp() }
+  val letterSpacing = with(density) { (if (isSingleGlyph) 0.dp else MULTI_GLYPH_LETTER_SPACING).toSp() }
+
   Box(
     contentAlignment = Alignment.Center,
     modifier =
       modifier
         .size(GRADIENT_HANDLE_SIZE)
-        .focusOutline(isFocused, CircleShape)
+        .focusOutline(isFocused, shape)
         .onFocusChanged { isFocused = it.isFocused }
-        .onKeyEvent { event ->
-          if (event.type != KeyEventType.KeyDown || onMove == null) return@onKeyEvent false
-          when (event.key) {
-            Key.DirectionLeft -> {
-              onMove(Offset(-HANDLE_KEYBOARD_STEP, 0f))
-              true
-            }
-            Key.DirectionRight -> {
-              onMove(Offset(HANDLE_KEYBOARD_STEP, 0f))
-              true
-            }
-            Key.DirectionUp -> {
-              onMove(Offset(0f, -HANDLE_KEYBOARD_STEP))
-              true
-            }
-            Key.DirectionDown -> {
-              onMove(Offset(0f, HANDLE_KEYBOARD_STEP))
-              true
-            }
-            else -> false
-          }
-        }
+        .onKeyEvent(onKeyEvent)
         .focusable()
-        .clearAndSetSemantics {
-          this.contentDescription = contentDescription
-          if (stateDescription != null) {
-            this.stateDescription = stateDescription()
-          }
-        }
-        .drawWithContent {
-          drawCircle(color = color)
-          drawCircle(color = Color.White, style = Stroke(width = 4.dp.toPx()))
-          drawContent()
-        },
+        .clearAndSetSemantics(semantics)
+        .drawGradientHandleBackground(color = color, pinned = pinned),
   ) {
-    Text(glyph, color = textColor)
+    Text(
+      text = glyph,
+      color = textColor,
+      fontSize = fontSize,
+      fontWeight = FontWeight.SemiBold,
+      letterSpacing = letterSpacing,
+      lineHeight = fontSize,
+      maxLines = 1,
+      softWrap = false,
+    )
+  }
+}
+
+/**
+ * Returns [Color.Black] or [Color.White], whichever provides higher WCAG 2.x contrast against [color].
+ *
+ * Semi-transparent colors are first composited over [CHECKERBOARD_AVERAGE_COLOR] so the contrast reflects the checkerboard backing drawn
+ * behind translucent fills rather than ignoring [Color.alpha]. Comparing WCAG contrast ratios places the relative-luminance crossover at
+ * `sqrt(1.05 * 0.05) - 0.05` (~0.179), guaranteeing at least ~4.58:1 contrast for every color.
+ */
+internal fun contrastingHandleTextColor(color: Color): Color {
+  val effectiveColor = if (color.alpha < 1f) color.compositeOver(CHECKERBOARD_AVERAGE_COLOR) else color
+  val luminance = effectiveColor.luminance()
+  val whiteContrast = 1.05f / (luminance + 0.05f)
+  val blackContrast = (luminance + 0.05f) / 0.05f
+  return if (blackContrast >= whiteContrast) Color.Black else Color.White
+}
+
+private fun Modifier.drawGradientHandleBackground(color: Color, pinned: Boolean): Modifier = drawWithCache {
+  val outerBorderPx = OUTER_BORDER_WIDTH.toPx()
+  val ringInsetPx = outerBorderPx
+  val fillInsetPx = outerBorderPx + INNER_RING_WIDTH.toPx()
+  val hairlinePx = INNER_HAIRLINE_WIDTH.toPx().coerceAtLeast(1f)
+  val hairlineStroke = Stroke(width = hairlinePx)
+  val ringColor = if (pinned) PINNED_RING_COLOR else Color.White
+  val pinnedCornerPx = PINNED_HANDLE_CORNER_RADIUS.toPx()
+  val cellSizePx = CHECKERBOARD_CELL_SIZE.toPx()
+
+  val clipPath =
+    if (color.alpha < 1f) {
+      Path().apply {
+        val rect = Rect(fillInsetPx, fillInsetPx, size.width - fillInsetPx, size.height - fillInsetPx)
+        if (pinned) {
+          val radius = (pinnedCornerPx - fillInsetPx).coerceAtLeast(0f)
+          addRoundRect(RoundRect(rect, CornerRadius(radius, radius)))
+        } else {
+          addOval(rect)
+        }
+      }
+    } else {
+      null
+    }
+
+  onDrawWithContent {
+    // Paint concentric filled layers from outside in so adjacent anti-aliased edges never leave translucent seams, and neither the canvas
+    // nor the handle fill bleeds into the opaque ring.
+    drawHandleLayer(inset = 0f, pinned = pinned, pinnedCornerPx = pinnedCornerPx, color = OUTER_BORDER_COLOR)
+    drawHandleLayer(inset = ringInsetPx, pinned = pinned, pinnedCornerPx = pinnedCornerPx, color = ringColor)
+
+    if (clipPath != null) {
+      clipPath(clipPath) {
+        drawCheckerboard(inset = fillInsetPx, cellSizePx = cellSizePx)
+        if (color.alpha > 0f) {
+          drawRect(color = color)
+        }
+      }
+    } else {
+      drawHandleLayer(inset = fillInsetPx, pinned = pinned, pinnedCornerPx = pinnedCornerPx, color = color)
+    }
+
+    // A subtle inner hairline separates white, very light, or transparent fills from the surrounding light ring.
+    drawHandleLayer(
+      inset = fillInsetPx + hairlinePx / 2f,
+      pinned = pinned,
+      pinnedCornerPx = pinnedCornerPx,
+      color = INNER_BORDER_COLOR,
+      style = hairlineStroke,
+    )
+    drawContent()
+  }
+}
+
+private fun DrawScope.drawHandleLayer(
+  inset: Float,
+  pinned: Boolean,
+  pinnedCornerPx: Float,
+  color: Color,
+  style: DrawStyle = Fill,
+) {
+  val width = (size.width - 2f * inset).coerceAtLeast(0f)
+  val height = (size.height - 2f * inset).coerceAtLeast(0f)
+  if (width == 0f || height == 0f) return
+  if (pinned) {
+    val radius = (pinnedCornerPx - inset).coerceAtLeast(0f)
+    drawRoundRect(
+      color = color,
+      topLeft = Offset(inset, inset),
+      size = Size(width, height),
+      cornerRadius = CornerRadius(radius, radius),
+      style = style,
+    )
+  } else {
+    drawCircle(color = color, radius = minOf(width, height) / 2f, style = style)
+  }
+}
+
+private fun DrawScope.drawCheckerboard(inset: Float, cellSizePx: Float) {
+  drawRect(color = CHECKERBOARD_LIGHT_COLOR)
+  if (cellSizePx <= 0f) return
+  val endX = size.width - inset
+  val endY = size.height - inset
+  var row = 0
+  var y = inset
+  while (y < endY) {
+    val startCol = if (row % 2 == 0) 1 else 0
+    var x = inset + startCol * cellSizePx
+    val cellHeight = minOf(cellSizePx, endY - y)
+    while (x < endX) {
+      val cellWidth = minOf(cellSizePx, endX - x)
+      drawRect(color = CHECKERBOARD_DARK_COLOR, topLeft = Offset(x, y), size = Size(cellWidth, cellHeight))
+      x += 2f * cellSizePx
+    }
+    y += cellSizePx
+    row++
   }
 }
 
