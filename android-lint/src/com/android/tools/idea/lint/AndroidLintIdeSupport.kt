@@ -16,7 +16,6 @@
 package com.android.tools.idea.lint
 
 import com.android.SdkConstants.ANDROID_MANIFEST_XML
-import com.android.SdkConstants.EXT_GRADLE_DECLARATIVE
 import com.android.ide.common.gradle.Dependency
 import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.gradle.plugin.AgpVersions
@@ -115,8 +114,6 @@ class AndroidLintIdeSupport : LintIdeSupport() {
     // Limit checks to Android modules and modules within Android projects.
     val facet = AndroidFacet.getInstance(module)
     if (facet == null && !CommonAndroidUtil.getInstance().isAndroidProject(module.project)) return false
-
-    if (file.name.endsWith(EXT_GRADLE_DECLARATIVE)) return true
 
     return when (file.fileType) {
       JavaFileType.INSTANCE,

@@ -16,7 +16,6 @@
 package com.android.tools.idea.lint.common
 
 import com.android.SdkConstants.DOT_KEEP
-import com.android.SdkConstants.EXT_GRADLE_DECLARATIVE
 import com.android.SdkConstants.FN_ANDROID_PROGUARD_FILE
 import com.android.SdkConstants.FN_PROJECT_PROGUARD_FILE
 import com.android.SdkConstants.OLD_PROGUARD_FILE
@@ -99,8 +98,7 @@ abstract class LintIdeSupport {
       fileType === JavaFileType.INSTANCE ||
         fileType === KotlinFileType.INSTANCE ||
         fileType === PropertiesFileType.INSTANCE ||
-        fileType === TomlFileType ||
-        file.name.endsWith(EXT_GRADLE_DECLARATIVE)
+        fileType === TomlFileType
     ) {
       return true
     }
