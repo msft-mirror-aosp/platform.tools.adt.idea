@@ -139,7 +139,7 @@ class AndroidModuleDescriptorsTest {
             .resolve("app/build.gradle")
             .replaceInContent(
               "compileSdkVersion $latestAgpCompileSdk",
-              "compileSdk {\n version = " + "release(${latestAgpCompileSdk}) {\n  minorApiLevel = 0\n" + "sdkExtension 0\n}\n}",
+              "compileSdk {\n version = " + "release(${latestAgpCompileSdk}) {\n  minorApiLevel = 0\n" + "sdkExtension = 0\n}\n}",
             )
         }
       )
@@ -374,7 +374,7 @@ class AndroidModuleDescriptorsTest {
             .resolve("app/build.gradle")
             .replaceInContent(
               "compileSdkVersion $latestAgpCompileSdk",
-              "compileSdk {\n version = " + "release(${latestAgpCompileSdk}) {\n  minorApiLevel = 0\n" + "sdkExtension 0\n}\n}",
+              "compileSdk {\n version = " + "release(${latestAgpCompileSdk}) {\n  minorApiLevel = 0\n" + "sdkExtension = 0\n}\n}",
             )
         }
       )
@@ -473,7 +473,7 @@ class AndroidModuleDescriptorsTest {
             .resolve("app/build.gradle")
             .replaceInContent(
               "compileSdkVersion $latestAgpCompileSdk",
-              "compileSdk {\n version = " + "release(${latestAgpCompileSdk}) {\n  minorApiLevel = 0\n" + "sdkExtension 0\n}\n}",
+              "compileSdk {\n version = " + "release(${latestAgpCompileSdk}) {\n  minorApiLevel = 0\n" + "sdkExtension = 0\n}\n}",
             )
         }
       )
