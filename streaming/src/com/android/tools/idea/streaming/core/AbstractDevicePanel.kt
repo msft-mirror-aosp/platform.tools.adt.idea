@@ -39,7 +39,6 @@ import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.actionSystem.toolbarLayout.ToolbarLayoutStrategy
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.thisLogger
-import com.intellij.openapi.ui.getParentOfType
 import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.openapi.util.Disposer
@@ -240,11 +239,11 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   }
 
   override fun addNotification(notificationPanel: EditorNotificationPanel) {
-    findNotificationHolderPanel()?.addNotification(notificationPanel)
+    notificationHolderPanel.addNotification(notificationPanel)
   }
 
   override fun removeNotification(notificationPanel: EditorNotificationPanel) {
-    findNotificationHolderPanel()?.removeNotification(notificationPanel)
+    notificationHolderPanel.removeNotification(notificationPanel)
   }
 
   override fun addDeviceDisplayListener(listener: DeviceDisplayListener) {
@@ -412,8 +411,6 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
     ActionToolbarUtil.makeToolbarNavigable(toolbar)
     return toolbar
   }
-
-  private fun findNotificationHolderPanel() = primaryDisplayView?.getParentOfType<NotificationHolderPanel>()
 
   internal interface UiState
 }

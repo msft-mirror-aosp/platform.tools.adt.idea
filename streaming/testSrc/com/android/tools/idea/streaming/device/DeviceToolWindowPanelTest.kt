@@ -75,6 +75,7 @@ import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestDataProvider
 import com.intellij.testFramework.replaceService
+import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.LayeredIcon
 import com.intellij.ui.components.JBLabel
 import icons.StudioIcons
@@ -110,6 +111,7 @@ import javax.sound.sampled.Line
 import javax.sound.sampled.LineListener
 import javax.sound.sampled.SourceDataLine
 import javax.swing.JViewport
+import javax.swing.SwingUtilities
 import kotlin.math.PI
 import kotlin.math.max
 import kotlin.math.sin
@@ -887,6 +889,23 @@ class DeviceToolWindowPanelTest {
 
     runBlocking { agent.crash() }
     waitForCondition(2.seconds) { !protectedContentPopup2.isVisible }
+  }
+
+  @Test
+  fun testNotificationsAddedAndRemovedWithoutContent() {
+    device = agentRule.connectDevice("Pixel 4", 31, Dimension(1080, 2280))
+    val notification = EditorNotificationPanel()
+
+    panel.addNotification(notification)
+    assertThat(SwingUtilities.isDescendingFrom(notification, panel)).isTrue()
+
+    panel.createContent(false)
+    panel.destroyContent()
+    assertThat(SwingUtilities.isDescendingFrom(notification, panel)).isTrue()
+
+    panel.removeNotification(notification)
+    assertThat(SwingUtilities.isDescendingFrom(notification, panel)).isFalse()
+    waitForCondition(2.seconds) { !agent.videoStreamActive }
   }
 
   private fun FakeUi.mousePressOn(component: Component) {
