@@ -133,6 +133,7 @@ internal class GradientEditorDialog(private val project: Project, private val in
   override fun getDimensionServiceKey(): String = DIMENSION_SERVICE_KEY
 
   override fun doOKAction() {
+    rootPane?.requestFocusInWindow()
     val result = applyChanges()
     if (result is GradientWriteResult.Failed) {
       setErrorText(result.message)

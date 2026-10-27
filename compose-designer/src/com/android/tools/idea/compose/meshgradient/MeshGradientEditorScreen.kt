@@ -205,7 +205,16 @@ internal class GeneratedCodeViewer(private val project: Project, initialText: St
       val viewer = EditorFactory.getInstance().createViewer(document, project)
       // Releasing the editor and applying a color scheme require the write-intent lock, which Compose callbacks such as onForgotten and
       // message bus listeners don't necessarily hold. Document changes in setText take the write lock, which also acquires it.
-      Disposer.register(disposable) { WriteIntentReadAction.run { EditorFactory.getInstance().releaseEditor(viewer) } }
+      Disposer.register(disposable) {
+        val app = ApplicationManager.getApplication()
+        if (app.isDispatchThread) {
+          WriteIntentReadAction.run { EditorFactory.getInstance().releaseEditor(viewer) }
+        } else {
+          app.invokeLater {
+            WriteIntentReadAction.run { EditorFactory.getInstance().releaseEditor(viewer) }
+          }
+        }
+      }
       editor =
         (viewer as EditorEx).apply {
           val fileType = KotlinLanguage.INSTANCE.associatedFileType ?: FileTypes.PLAIN_TEXT
@@ -235,7 +244,6 @@ internal class GeneratedCodeViewer(private val project: Project, initialText: St
 
   fun setText(text: String) {
     if (project.isDisposed || editor.isDisposed) return
-    if (document.text == text) return
     val app = ApplicationManager.getApplication()
     val runnable = Runnable {
       if (project.isDisposed || editor.isDisposed) return@Runnable
