@@ -35,6 +35,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.intellij.ide.HelpTooltip;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.dsl.listCellRenderer.BuilderKt;
+import com.intellij.util.ui.JBUI;
 import icons.StudioIcons;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -76,9 +77,11 @@ public class CpuAnalysisChart extends CpuAnalysisTab<CpuAnalysisChartModel<?>> {
   private void buildComponents() {
     setLayout(new TabularLayout("*", "Fit,*"));
 
-    // Toolbar
+    // Toolbar. The filter shrinks when there isn't enough room for it next to the clock type selector.
+    JPanel filterPanel = new JPanel(ProfilerLayout.createShrinkingToolbarLayout());
+    filterPanel.add(myFilterComponent);
     JPanel toolbar = new JPanel(new BorderLayout());
-    toolbar.add(myFilterComponent, BorderLayout.WEST);
+    toolbar.add(filterPanel, BorderLayout.CENTER);
     toolbar.add(buildClockTypeSelector(), BorderLayout.EAST);
 
     updateDetailsView(getModel().createDetails());
@@ -102,7 +105,8 @@ public class CpuAnalysisChart extends CpuAnalysisTab<CpuAnalysisChartModel<?>> {
       ProfilerLayout.FILTER_TEXT_HISTORY_SIZE,
       ProfilerLayout.FILTER_TEXT_FIELD_TRIGGER_DELAY_MS)
       // TODO(b/112703942): Show again when we can completely support this value
-      .setMatchCountVisibility(false);
+      .setMatchCountVisibility(false)
+      .setMinTextFieldWidth(JBUI.scale(ProfilerLayout.FILTER_TEXT_FIELD_MIN_WIDTH));
     filterComponent.getModel().setFilterHandler(new FilterHandler() {
       @NotNull
       @Override

@@ -73,19 +73,19 @@ class FilterComponentTest {
         }
       }
     )
-    val normalBackground = ui.filterComponent.searchField.textEditor.background
+    val normalForeground = ui.filterComponent.searchField.textEditor.foreground
     ui.filterComponent.model.filter = Filter("")
     assertThat(ui.filterComponent.countLabel.text).isEqualTo("")
-    assertThat(ui.filterComponent.searchField.textEditor.background).isEqualTo(normalBackground)
+    assertThat(ui.filterComponent.searchField.textEditor.foreground).isEqualTo(normalForeground)
     ui.filterComponent.model.filter = Filter("0")
     assertThat(ui.filterComponent.countLabel.text).isEqualTo("No matches")
-    assertThat(ui.filterComponent.searchField.textEditor.background).isEqualTo(FilterComponent.NO_MATCHES_COLOR)
+    assertThat(ui.filterComponent.searchField.textEditor.foreground).isEqualTo(FilterComponent.NO_MATCHES_COLOR)
     ui.filterComponent.model.filter = Filter("1")
     assertThat(ui.filterComponent.countLabel.text).isEqualTo("One match")
-    assertThat(ui.filterComponent.searchField.textEditor.background).isEqualTo(normalBackground)
+    assertThat(ui.filterComponent.searchField.textEditor.foreground).isEqualTo(normalForeground)
     ui.filterComponent.model.filter = Filter("1234567")
     assertThat(ui.filterComponent.countLabel.text).isEqualTo("1,234,567 matches")
-    assertThat(ui.filterComponent.searchField.textEditor.background).isEqualTo(normalBackground)
+    assertThat(ui.filterComponent.searchField.textEditor.foreground).isEqualTo(normalForeground)
   }
 
   @Test

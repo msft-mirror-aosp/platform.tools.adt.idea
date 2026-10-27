@@ -21,13 +21,31 @@ import com.android.tools.adtui.common.AdtUiUtils;
 import com.android.tools.adtui.model.filter.Filter;
 import com.android.tools.adtui.model.filter.FilterModel;
 import com.android.tools.adtui.stdui.CommonToggleButton;
+import com.intellij.find.FindBundle;
+import com.intellij.find.impl.RegExHelpPopup;
 import com.intellij.icons.AllIcons;
+import com.intellij.openapi.actionSystem.ActionToolbar;
+import com.intellij.openapi.actionSystem.ActionUpdateThread;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.ShortcutSet;
+import com.intellij.openapi.actionSystem.Toggleable;
+import com.intellij.openapi.actionSystem.ex.ActionUtil;
+import com.intellij.openapi.actionSystem.ex.TooltipDescriptionProvider;
+import com.intellij.openapi.actionSystem.ex.TooltipLinkProvider;
+import com.intellij.openapi.actionSystem.impl.ActionButton;
+import com.intellij.openapi.actionSystem.impl.FieldInplaceActionButtonLook;
 import com.intellij.openapi.keymap.KeymapUtil;
+import com.intellij.openapi.project.DumbAwareToggleAction;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.SearchTextField;
+import com.intellij.ui.components.SearchFieldWithExtension;
+import com.intellij.util.ui.JBUI;
+import com.intellij.util.ui.NamedColorUtil;
+import com.intellij.util.ui.UIUtil;
 import icons.StudioIcons;
 import java.util.concurrent.CountDownLatch;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -45,18 +63,19 @@ import org.jetbrains.annotations.TestOnly;
 public final class FilterComponent extends JPanel {
   static final String OPEN_AND_FOCUS_ACTION = "OpenAndFocusSearchAction";
   static final String CLOSE_ACTION = "CloseSearchAction";
-  static final JBColor NO_MATCHES_COLOR = new JBColor(new Color(0xffffcccc), new Color(0xff743a3a));
+  // The color of the search text when nothing matches, like in the editor's find bar.
+  static final JBColor NO_MATCHES_COLOR = JBColor.namedColor("SearchField.errorForeground", NamedColorUtil.getErrorForeground());
 
-  private static final String REGEX = "Regex";
-  private static final String MATCH_CASE = "Match Case";
   private final FilterModel myModel;
 
-  private JCheckBox myRegexCheckBox;
-  private JCheckBox myMatchCaseCheckBox;
+  private final OptionAction myRegexAction;
+  private final OptionAction myMatchCaseAction;
   private JLabel myCountLabel;
   private final SearchTextField mySearchField;
+  private final JComponent mySearchBar;
   private final Timer myTimer;
-  private final Color mySearchFieldDefaultBackground;
+  private final Color mySearchFieldDefaultForeground;
+  private int myMinTextFieldWidth;
 
   /**
    * For test code, we need to know when {@code myTimer} has finished firing, so we use a latch to detect this case.
@@ -65,7 +84,9 @@ public final class FilterComponent extends JPanel {
   private CountDownLatch myTimerRunningLatch = new CountDownLatch(0);
 
   public FilterComponent(@NotNull Filter filter, int textFieldWidth, int historySize, int delayMs) {
-    super(new TabularLayout("4px," + textFieldWidth + "px,5px,Fit-,5px,Fit-,20px,Fit-", "Fit-"));
+    // The search bar takes the width left by the match count, so that it can shrink down to its minimum width.
+    super(new TabularLayout("4px,*,20px,Fit-", "Fit-"));
+    myMinTextFieldWidth = textFieldWidth;
 
     myModel = new FilterModel();
     myModel.setFilter(filter);
@@ -100,6 +121,8 @@ public final class FilterComponent extends JPanel {
         super.onFocusLost();
       }
     };
+    // The width of the search field when there is room for it, already scaled by the caller.
+    mySearchField.setPreferredSize(new Dimension(textFieldWidth, mySearchField.getPreferredSize().height));
     if (!filter.isEmpty()) {
       mySearchField.setText(filter.getFilterString());
     }
@@ -146,43 +169,41 @@ public final class FilterComponent extends JPanel {
 
     mySearchField.setHistorySize(historySize);
 
-    add(mySearchField, new TabularLayout.Constraint(0, 1));
-    mySearchFieldDefaultBackground = mySearchField.getTextEditor().getBackground();
-
-    // Configure check boxes
-    myMatchCaseCheckBox = new JCheckBox(MATCH_CASE, filter.isMatchCase());
-    myMatchCaseCheckBox.setMnemonic(KeyEvent.VK_C);
-    myMatchCaseCheckBox.setDisplayedMnemonicIndex(MATCH_CASE.indexOf('C'));
-    myMatchCaseCheckBox.addItemListener(new ItemListener() {
-      @Override
-      public void itemStateChanged(ItemEvent e) {
-        updateModel();
+    // Show the option buttons inside the search field, like in Logcat and the editor's find bar.
+    myMatchCaseAction = new OptionAction(FindBundle.message("find.case.sensitive"), AllIcons.Actions.MatchCase,
+                                         AllIcons.Actions.MatchCaseHovered, AllIcons.Actions.MatchCaseSelected, filter.isMatchCase());
+    myRegexAction = new RegexAction(filter.isRegex());
+    // Like in the find bar, Alt+<mnemonic> (Option on macOS) toggles an option, as its tooltip shows.
+    for (OptionAction action : new OptionAction[]{myMatchCaseAction, myRegexAction}) {
+      ShortcutSet shortcut = ActionUtil.getMnemonicAsShortcut(action);
+      if (shortcut != null) {
+        action.registerCustomShortcutSet(shortcut, this);
       }
-    });
-    add(myMatchCaseCheckBox, new TabularLayout.Constraint(0, 3));
-
-    myRegexCheckBox = new JCheckBox(REGEX, filter.isRegex());
-    myRegexCheckBox.setMnemonic(KeyEvent.VK_G);
-    myRegexCheckBox.addItemListener(new ItemListener() {
-      @Override
-      public void itemStateChanged(ItemEvent e) {
-        updateModel();
-      }
-    });
-    add(myRegexCheckBox, new TabularLayout.Constraint(0, 5));
+    }
+    JPanel optionButtons = new JPanel(new GridBagLayout());
+    optionButtons.setOpaque(false);
+    optionButtons.add(new OptionButton(myMatchCaseAction));
+    optionButtons.add(Box.createHorizontalStrut(JBUI.scale(4)));
+    optionButtons.add(new OptionButton(myRegexAction));
+    mySearchBar = new SearchFieldWithExtension(optionButtons, mySearchField);
+    add(mySearchBar, new TabularLayout.Constraint(0, 1));
+    mySearchFieldDefaultForeground = mySearchField.getTextEditor().getForeground();
 
     myCountLabel = new JLabel();
     myCountLabel.setFont(myCountLabel.getFont().deriveFont(Font.BOLD));
-    add(myCountLabel, new TabularLayout.Constraint(0, 7));
+    add(myCountLabel, new TabularLayout.Constraint(0, 3));
 
+    Color countLabelDefaultForeground = myCountLabel.getForeground();
     myModel.addMatchResultListener(result -> {
-      Color background = mySearchFieldDefaultBackground;
+      Color foreground = mySearchFieldDefaultForeground;
+      Color countForeground = countLabelDefaultForeground;
       String text = "";
       if (result.isFilterEnabled()) {
         int count = result.getMatchCount();
         if (count == 0) {
           text = "No matches";
-          background = NO_MATCHES_COLOR;
+          foreground = NO_MATCHES_COLOR;
+          countForeground = NO_MATCHES_COLOR;
         }
         else if (count == 1) {
           text = "One match";
@@ -191,7 +212,8 @@ public final class FilterComponent extends JPanel {
           text = new DecimalFormat("#,###").format(count) + " matches";
         }
       }
-      mySearchField.getTextEditor().setBackground(background);
+      mySearchField.getTextEditor().setForeground(foreground);
+      myCountLabel.setForeground(countForeground);
       myCountLabel.setText(text);
     });
   }
@@ -213,6 +235,25 @@ public final class FilterComponent extends JPanel {
   public FilterComponent setMatchCountVisibility(boolean value) {
     myCountLabel.setVisible(value);
     return this;
+  }
+
+  /**
+   * Lets the search field shrink down to {@code minTextFieldWidth}, which is already scaled like the text field width, when this
+   * component is laid out narrower than its preferred width.
+   */
+  @NotNull
+  public FilterComponent setMinTextFieldWidth(int minTextFieldWidth) {
+    myMinTextFieldWidth = minTextFieldWidth;
+    revalidate();
+    return this;
+  }
+
+  @Override
+  public Dimension getMinimumSize() {
+    // The layout leaves no room for the search bar, which can only shrink as much as its text field.
+    Dimension size = super.getMinimumSize();
+    size.width += mySearchBar.getPreferredSize().width - mySearchField.getPreferredSize().width + myMinTextFieldWidth;
+    return size;
   }
 
   @Override
@@ -238,7 +279,76 @@ public final class FilterComponent extends JPanel {
   }
 
   private void updateModel() {
-    myModel.setFilter(new Filter(mySearchField.getText(), myMatchCaseCheckBox.isSelected(), myRegexCheckBox.isSelected()));
+    myModel.setFilter(new Filter(mySearchField.getText(), myMatchCaseAction.mySelected, myRegexAction.mySelected));
+  }
+
+  /** An option of the filter, toggled by a button inside the search field like in Logcat and the editor's find bar. */
+  private class OptionAction extends DumbAwareToggleAction implements TooltipDescriptionProvider {
+    private boolean mySelected;
+
+    private OptionAction(@NotNull String text, @NotNull Icon icon, @NotNull Icon hoveredIcon, @NotNull Icon selectedIcon, boolean selected) {
+      // Like the find bar's options, the tooltip says how to use the option from the keyboard.
+      super(text, FindBundle.message("find.embedded.buttons.description"), icon);
+      getTemplatePresentation().setHoveredIcon(hoveredIcon);
+      getTemplatePresentation().setSelectedIcon(selectedIcon);
+      mySelected = selected;
+    }
+
+    @Override
+    public boolean isSelected(@NotNull AnActionEvent e) {
+      return mySelected;
+    }
+
+    @Override
+    public void setSelected(@NotNull AnActionEvent e, boolean state) {
+      mySelected = state;
+      updateModel();
+      // A shortcut toggles the option without going through its button, so refresh the buttons like the find bar does.
+      UIUtil.findComponentsOfType(mySearchBar, ActionButton.class).forEach(ActionButton::update);
+    }
+
+    @Override
+    public @NotNull ActionUpdateThread getActionUpdateThread() {
+      return ActionUpdateThread.EDT;
+    }
+  }
+
+  /** The regex option, whose tooltip links to help on regular expressions like in the editor's find bar. */
+  private final class RegexAction extends OptionAction implements TooltipLinkProvider {
+    private RegexAction(boolean selected) {
+      super(FindBundle.message("find.regex"), AllIcons.Actions.Regex, AllIcons.Actions.RegexHovered, AllIcons.Actions.RegexSelected,
+            selected);
+    }
+
+    @Override
+    public @Nullable TooltipLink getTooltipLink(@Nullable JComponent owner) {
+      return new TooltipLink(FindBundle.message("find.regex.help.link"), RegExHelpPopup.createRegExLinkRunnable(owner));
+    }
+  }
+
+  /**
+   * The button of an option, which looks like the find bar's option buttons: it shows the selected icon and background of the option
+   * when it's on, and a border when focused.
+   */
+  private static final class OptionButton extends ActionButton {
+    private OptionButton(@NotNull OptionAction action) {
+      super(action, action.getTemplatePresentation().clone(), "FilterComponent", ActionToolbar.DEFAULT_MINIMUM_BUTTON_SIZE);
+      setLook(new FieldInplaceActionButtonLook());
+      setFocusable(true);
+      Toggleable.setSelected(getPresentation(), action.mySelected);
+      updateIcon();
+    }
+
+    @Override
+    public int getPopState() {
+      return isSelected() ? SELECTED : super.getPopState();
+    }
+
+    @Override
+    public @NotNull Icon getIcon() {
+      Icon selectedIcon = getPresentation().getSelectedIcon();
+      return isEnabled() && isSelected() && selectedIcon != null ? selectedIcon : super.getIcon();
+    }
   }
 
   /**

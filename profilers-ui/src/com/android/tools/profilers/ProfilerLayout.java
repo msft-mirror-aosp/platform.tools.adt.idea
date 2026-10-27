@@ -17,6 +17,10 @@ package com.android.tools.profilers;
 
 import com.intellij.util.ui.JBEmptyBorder;
 import com.intellij.util.ui.JBUI;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.LayoutManager;
@@ -70,6 +74,8 @@ public class ProfilerLayout {
   public static final int PROFILING_INSTRUCTIONS_ICON_PADDING = JBUI.scale(1);
 
   public static final int FILTER_TEXT_FIELD_WIDTH = JBUI.scale(245);
+  // How narrow, before scaling, the search field of a filter can get when there isn't enough room for it.
+  public static final int FILTER_TEXT_FIELD_MIN_WIDTH = 80;
   public static final int FILTER_TEXT_FIELD_TRIGGER_DELAY_MS = 250;
   public static final int FILTER_TEXT_HISTORY_SIZE = 5;
 
@@ -102,5 +108,28 @@ public class ProfilerLayout {
   public static LayoutManager createToolbarLayout() {
     // We use a GridBagLayout because by default it acts like a FlowLayout that is vertically aligned.
     return new GridBagLayout();
+  }
+
+  /**
+   * Returns a layout that lays out a toolbar in a row like a {@link FlowLayout}, but shrinks components that don't fit towards their
+   * minimum width, first to last, rather than wrap them.
+   */
+  @NotNull
+  public static LayoutManager createShrinkingToolbarLayout() {
+    return new FlowLayout(FlowLayout.LEFT, 0, 0) {
+      @Override
+      public void layoutContainer(Container target) {
+        int excess = preferredLayoutSize(target).width - target.getWidth();
+        int x = target.getInsets().left;
+        for (Component component : target.getComponents()) {
+          if (!component.isVisible()) continue;
+          Dimension size = component.getPreferredSize();
+          int shrink = Math.max(0, Math.min(excess, size.width - component.getMinimumSize().width));
+          excess -= shrink;
+          component.setBounds(x, (target.getHeight() - size.height) / 2, size.width - shrink, size.height);
+          x += size.width - shrink;
+        }
+      }
+    };
   }
 }

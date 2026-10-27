@@ -26,11 +26,12 @@ import com.android.tools.adtui.model.formatter.NumberFormatter
 import com.android.tools.profilers.IdeProfilerComponents
 import com.android.tools.profilers.MinWidthScrollPane.Companion.KEEP_PREFERRED_WIDTH
 import com.android.tools.profilers.ProfilerFonts
+import com.android.tools.profilers.ProfilerLayout.FILTER_TEXT_FIELD_MIN_WIDTH
 import com.android.tools.profilers.ProfilerLayout.FILTER_TEXT_FIELD_TRIGGER_DELAY_MS
 import com.android.tools.profilers.ProfilerLayout.FILTER_TEXT_FIELD_WIDTH
 import com.android.tools.profilers.ProfilerLayout.FILTER_TEXT_HISTORY_SIZE
 import com.android.tools.profilers.ProfilerLayout.TOOLBAR_ICON_BORDER
-import com.android.tools.profilers.ProfilerLayout.createToolbarLayout
+import com.android.tools.profilers.ProfilerLayout.createShrinkingToolbarLayout
 import com.android.tools.profilers.StudioProfilersView
 import com.android.tools.profilers.memory.adapters.HeapDumpCaptureObject
 import com.android.tools.profilers.memory.adapters.NativeAllocationSampleCaptureObject
@@ -94,6 +95,7 @@ class CapturePanel(
     FilterComponent(FILTER_TEXT_FIELD_WIDTH, FILTER_TEXT_HISTORY_SIZE, FILTER_TEXT_FIELD_TRIGGER_DELAY_MS).apply {
       model.setFilterHandler(selection.filterHandler)
       border = JBEmptyBorder(0, 4, 0, 0)
+      setMinTextFieldWidth(JBUI.scale(FILTER_TEXT_FIELD_MIN_WIDTH))
     }
 
   val component: JPanel =
@@ -140,7 +142,7 @@ private class CapturePanelUi(
       fun refreshPanel() {
         removeAll()
         if (selection.selectedCapture is HeapDumpCaptureObject) {
-          val toolbarPanel = JPanel(createToolbarLayout())
+          val toolbarPanel = JPanel(createShrinkingToolbarLayout())
           toolbarDefaults().forEach { toolbarPanel.add(it) }
           headingPanel.add(buildToolbarPanel(toolbarPanel), 0)
           add(classifierView.component)
@@ -179,7 +181,7 @@ private class CapturePanelUi(
     }
 
   private fun addTab(tabPane: JBTabbedPane, name: String, tabContainer: CapturePanelTabContainer, toolbarComponents: List<Component>) {
-    toolbarTabPanels[name] = ToolbarComponents(JPanel(createToolbarLayout()), toolbarComponents)
+    toolbarTabPanels[name] = ToolbarComponents(JPanel(createShrinkingToolbarLayout()), toolbarComponents)
     tabListeners.add(tabContainer)
     val body = buildNonTabPanel(toolbarTabPanels[name]!!.toolbarPanel, tabContainer.component)
     tabPane.add(name, body)
@@ -207,7 +209,7 @@ private class CapturePanelUi(
 
   private fun buildToolbarPanel(toolbar: JPanel) =
     JPanel(BorderLayout()).apply {
-      add(toolbar, BorderLayout.LINE_START)
+      add(toolbar, BorderLayout.CENTER)
       alignmentX = Component.LEFT_ALIGNMENT
       minimumSize = Dimension(0, minimumSize.height)
     }
