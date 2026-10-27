@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.project.sync.cpu
 
-import com.android.builder.model.SyncIssue.Companion.TYPE_UNRESOLVED_DEPENDENCY
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.KMP_2000
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.MULTI_APP_100
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.MULTI_APP_190
@@ -191,12 +190,7 @@ private fun runTest(benchmarkTestRule: BenchmarkTestRule, measureSyncExecutionTi
   benchmarkTestRule.addListener(measureSyncExecutionTimeRule.listener)
   benchmarkTestRule.openProject { project ->
     val syncCount = System.getProperty("sync_count_override")?.toIntOrNull() ?: measureSyncExecutionTimeRule.syncCount
-    repeat(syncCount) {
-      // TODO(b/449111235): Properly set up databinding dependencies for AGP 8.13 benchmarks
-      project.requestSyncAndWait(
-        ignoreSyncIssues = if (benchmarkTestRule.project.useAgp813) setOf(TYPE_UNRESOLVED_DEPENDENCY) else emptySet()
-      )
-    }
+    repeat(syncCount) { project.requestSyncAndWait() }
     measureSyncExecutionTimeRule.recordMeasurements(benchmarkTestRule.projectName)
   }
 }

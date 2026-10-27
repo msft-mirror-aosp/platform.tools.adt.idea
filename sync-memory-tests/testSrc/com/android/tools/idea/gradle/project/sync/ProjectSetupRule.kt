@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.sync
 
 import com.android.SdkConstants
-import com.android.builder.model.SyncIssue.Companion.TYPE_UNRESOLVED_DEPENDENCY
 import com.android.testutils.TestUtils
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.testProjectTemplateFromPath
@@ -149,8 +148,6 @@ class ProjectSetupRuleImpl(
         updateOptions = {
           it.copy(
             subscribe = { connection -> listeners.forEach { connection.subscribe(GRADLE_SYNC_TOPIC, it) } },
-            // TODO(b/449111235): Properly set up databinding dependencies for AGP 8.13 benchmarks
-            expectedSyncIssues = if (project.useAgp813) setOf(TYPE_UNRESOLVED_DEPENDENCY) else emptySet(),
             onProjectCreated = {
               if (project.useAgp813) {
                 disableKtsSyncForProject()
