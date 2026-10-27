@@ -54,14 +54,14 @@ MODULE                        : gradle_project.app
             ApiLevel                      : 19
             ApiString                     : 19
         targetSdk
-            ApiLevel                      : 34
-            ApiString                     : 34
+            ApiLevel                      : 36
+            ApiString                     : 36.0
     RootBuildId                   : <ROOT>/gradle_project
     BuildId                       : <ROOT>/gradle_project
     ProjectPath                   : :app
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     BuildFolder                   : <ROOT>/gradle_project/app/build
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
@@ -111,7 +111,7 @@ MODULE                        : gradle_project.app
     - basicVariant:               : release
         applicationId                 : google.simpleapplication
         buildType                     : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-34/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-36/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -127,8 +127,8 @@ MODULE                        : gradle_project.app
                 ApiLevel                      : 19
                 ApiString                     : 19
             TargetSdkVersion
-                ApiLevel                      : 34
-                ApiString                     : 34
+                ApiLevel                      : 36
+                ApiString                     : 36
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -331,8 +331,8 @@ MODULE                        : gradle_project.app
                 ApiLevel                      : 19
                 ApiString                     : 19
             TargetSdkVersion
-                ApiLevel                      : 34
-                ApiString                     : 34
+                ApiLevel                      : 36
+                ApiString                     : 36
             VersionCode                   : 1
             VersionNameWithSuffix         : 1.0
             MainArtifact

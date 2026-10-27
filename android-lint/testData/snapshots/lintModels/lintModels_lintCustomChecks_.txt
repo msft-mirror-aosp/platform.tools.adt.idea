@@ -7,9 +7,9 @@ MODULE                        : project.app
     AGPVersion                    : <AGP_VERSION>
     BuildFolder                   : <ROOT>/app/build
     - LintRuleJars                : <ROOT>/lint/build/libs/lint.jar [-]
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-34/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-36/android.jar
     JavaSourceLevel               : 11
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     LintOptions
         AbortOnError                  : true
         AbsolutePaths                 : true
@@ -68,7 +68,7 @@ MODULE                        : project.app
         - ClassOutputs                : <ROOT>/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
         - ClassOutputs                : <ROOT>/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
         MinSdkVersion                 : API 16
-        TargetSdkVersion              : API 34
+        TargetSdkVersion              : API 36.0
         SourceProviders
             - ManifestFiles               : <ROOT>/app/src/main/AndroidManifest.xml
             - JavaDirectories             : <ROOT>/app/src/main/java
@@ -128,9 +128,9 @@ MODULE                        : project.library
     MavenName                     : project:library:
     AGPVersion                    : <AGP_VERSION>
     BuildFolder                   : <ROOT>/library/build
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-34/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-36/android.jar
     JavaSourceLevel               : 11
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     LintOptions
         AbortOnError                  : true
         AbsolutePaths                 : true
@@ -184,7 +184,7 @@ MODULE                        : project.library
         - ClassOutputs                : <ROOT>/library/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
         - ClassOutputs                : <ROOT>/library/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
         MinSdkVersion                 : API 16
-        TargetSdkVersion              : API 34
+        TargetSdkVersion              : API 36.0
         SourceProviders
             - ManifestFiles               : <ROOT>/library/src/main/AndroidManifest.xml
             - JavaDirectories             : <ROOT>/library/src/main/java [-]
@@ -238,9 +238,9 @@ MODULE                        : project.library-remote
     MavenName                     : com.example.google:library-remote:
     AGPVersion                    : <AGP_VERSION>
     BuildFolder                   : <ROOT>/library-remote/build
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-34/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-36/android.jar
     JavaSourceLevel               : 11
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     LintOptions
         AbortOnError                  : true
         AbsolutePaths                 : true
@@ -294,7 +294,7 @@ MODULE                        : project.library-remote
         - ClassOutputs                : <ROOT>/library-remote/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
         - ClassOutputs                : <ROOT>/library-remote/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
         MinSdkVersion                 : API 16
-        TargetSdkVersion              : API 34
+        TargetSdkVersion              : API 36.0
         SourceProviders
             - ManifestFiles               : <ROOT>/library-remote/src/main/AndroidManifest.xml
             - JavaDirectories             : <ROOT>/library-remote/src/main/java [-]

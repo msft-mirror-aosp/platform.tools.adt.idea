@@ -2,4 +2,4 @@
 directories:
   simple_kotlin/project
 
-android_sdk_platform: android-34
+android_sdk_platform: android-36

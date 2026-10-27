@@ -648,14 +648,14 @@ MODULE                        : MultiFlavor.app
             ApiLevel                      : 16
             ApiString                     : 16
         targetSdk
-            ApiLevel                      : 34
-            ApiString                     : 34
+            ApiLevel                      : 36
+            ApiString                     : 36.0
     RootBuildId                   : <ROOT>
     BuildId                       : <ROOT>
     ProjectPath                   : :app
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     BuildFolder                   : <ROOT>/app/build
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
@@ -728,7 +728,7 @@ MODULE                        : MultiFlavor.app
         buildType                     : release
     FlavorDimensions              : Dim1
     FlavorDimensions              : Dim2
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-34/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-36/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -750,8 +750,8 @@ MODULE                        : MultiFlavor.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 34
-                ApiString                     : 34
+                ApiLevel                      : 36
+                ApiString                     : 36
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -1315,8 +1315,8 @@ MODULE                        : MultiFlavor.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 34
-                ApiString                     : 34
+                ApiLevel                      : 36
+                ApiString                     : 36
             VersionCode                   : 20
             VersionNameSuffix             : -firstAbc-secondAbc-debug
             VersionNameWithSuffix         : 1.secondAbc-firstAbc-secondAbc-debug

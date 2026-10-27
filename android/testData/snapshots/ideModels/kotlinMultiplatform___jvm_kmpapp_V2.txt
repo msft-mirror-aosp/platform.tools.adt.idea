@@ -762,7 +762,7 @@ MODULE                        : kotlinMultiPlatform.module2
     ProjectPath                   : :module2
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_KOTLIN_MULTIPLATFORM
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     BuildFolder                   : <ROOT>/module2/build
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -808,7 +808,7 @@ MODULE                        : kotlinMultiPlatform.module2
     - basicVariant:               : androidMain
         testApplicationId             : com.example.test.multiproject.module2.test
         buildType                     :
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-34/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-36/android.jar
     DefaultConfig
         ProductFlavor
             Name                          :

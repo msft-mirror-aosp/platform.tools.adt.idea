@@ -123,6 +123,42 @@ class AndroidGradleTestsTest {
   }
 
   @Test
+  fun testUpdateCompileSdkVersionWithVersionCatalogExpression() {
+    val contents = "android {\n    compileSdk = libs.versions.compileSdk.get().toInt()\n}"
+    val result = AndroidGradleTests.updateCompileSdkVersion(contents, "36")
+    assertThat(result).isEqualTo("android {\n    compileSdk {\n        version = release(36)\n    }\n}")
+  }
+
+  @Test
+  fun testUpdateCompileSdkVersionMethodWithNestedParentheses() {
+    val contents = "android {\n    compileSdkVersion(libs.versions.compileSdk.get().toInt())\n}"
+    val result = AndroidGradleTests.updateCompileSdkVersion(contents, "36")
+    assertThat(result).isEqualTo("android {\n    compileSdk {\n        version = release(36)\n    }\n}")
+  }
+
+  @Test
+  fun testUpdateCompileSdkVersionInsideExtBlock() {
+    val contents = "ext {\n    compileSdkVersion = 33\n}"
+    val result = AndroidGradleTests.updateCompileSdkVersion(contents, "36")
+    assertThat(result).isEqualTo("ext {\n    compileSdkVersion = 36\n}")
+  }
+
+  @Test
+  fun testUpdateCompileSdkVersionExtPropertyPrefix() {
+    val contents = "ext.compileSdkVersion = 33"
+    val result = AndroidGradleTests.updateCompileSdkVersion(contents, "36")
+    assertThat(result).isEqualTo("ext.compileSdkVersion = 36")
+  }
+
+  @Test
+  fun testUpdateCompileSdkVersionExtAndAndroidBlock() {
+    val contents = "ext {\n    compileSdkVersion = 33\n}\nandroid {\n    compileSdkVersion 34\n}"
+    val result = AndroidGradleTests.updateCompileSdkVersion(contents, "36")
+    assertThat(result)
+      .isEqualTo("ext {\n    compileSdkVersion = 36\n}\nandroid {\n    compileSdk {\n        version = release(36)\n    }\n}")
+  }
+
+  @Test
   fun testUpdateCompileSdkVersionDowngradeFromBlock() {
     val contents = "android {\n    compileSdk {\n        version = release(36)\n    }\n}"
     val result = AndroidGradleTests.updateCompileSdkVersion(contents, "34")

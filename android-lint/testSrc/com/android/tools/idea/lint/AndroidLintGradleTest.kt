@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.lint
 
+import com.android.sdklib.AndroidApiLevel
 import com.android.tools.analytics.AnalyticsSettings.setInstanceForTest
 import com.android.tools.analytics.AnalyticsSettingsData
 import com.android.tools.idea.lint.common.AndroidLintGradleDependencyInspection
@@ -31,9 +32,11 @@ import com.android.tools.idea.lint.inspections.AndroidLintMockLocationInspection
 import com.android.tools.idea.lint.inspections.AndroidLintNewApiInspection
 import com.android.tools.idea.lint.inspections.AndroidLintSdCardPathInspection
 import com.android.tools.idea.lint.inspections.AndroidLintUnusedResourcesInspection
+import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.onEdt
+import com.android.tools.idea.testing.withCompileSdk
 import com.android.tools.lint.checks.GradleDetector
 import com.intellij.analysis.AnalysisScope
 import com.intellij.codeInspection.CommonProblemDescriptor
@@ -343,7 +346,10 @@ class AndroidLintGradleTest {
 
   @Test
   fun testCompileSdkLocation() {
-    projectRule.loadProject(TestProjectPaths.TEST_LINT_DSL_ERRORS)
+    projectRule.loadProject(
+      TestProjectPaths.TEST_LINT_DSL_ERRORS,
+      agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT.withCompileSdk(AndroidApiLevel(34)),
+    )
     val appBuildFile = fixture.loadFile("app/build.gradle.kts")
     fixture.checkLint(
       appBuildFile,

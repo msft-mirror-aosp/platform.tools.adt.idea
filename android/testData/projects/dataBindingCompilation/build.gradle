@@ -1,5 +1,5 @@
-ext.latestCompileSdk = 34
-ext.buildToolsVersion = "34.0.0"
+ext.latestCompileSdk = 36
+ext.buildToolsVersion = "36.0.0"
 
 buildscript {
     repositories {

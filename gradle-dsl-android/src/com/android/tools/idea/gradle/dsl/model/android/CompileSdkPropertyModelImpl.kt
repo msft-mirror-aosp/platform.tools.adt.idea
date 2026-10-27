@@ -158,6 +158,11 @@ class CompileSdkPropertyModelImpl(
         is Int -> compileSdkBlock.setReleaseVersion(value, null, null)
         else -> {
           val stringValue = value.toString()
+          val intValue = stringValue.toIntOrNull()
+          if (intValue != null) {
+            compileSdkBlock.setReleaseVersion(intValue, null, null)
+            return
+          }
 
           val betaMatchResult = BETA_PATTERN.matchEntire(stringValue)
           if (betaMatchResult != null) {
@@ -212,6 +217,7 @@ class CompileSdkPropertyModelImpl(
       return when (typeReference) {
         GradlePropertyModel.STRING_TYPE -> it.sdkBlockModel.getVersion()?.toHash() as T?
         GradlePropertyModel.INTEGER_TYPE -> it.sdkBlockModel.getVersion()?.toInt() as T?
+        GradlePropertyModel.OBJECT_TYPE -> (it.sdkBlockModel.getVersion()?.toInt() ?: it.sdkBlockModel.getVersion()?.toHash()) as T?
         else -> internalModel.getValue(typeReference)
       }
     }

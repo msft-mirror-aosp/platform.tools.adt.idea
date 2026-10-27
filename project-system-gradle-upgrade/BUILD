@@ -24,6 +24,7 @@ iml_module(
         "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platforms/android-34",
+        "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/testData",
         "//tools/adt/idea/project-system-gradle-upgrade/testData",
         "//tools/base/build-system:android_gradle_plugin.zip",
@@ -188,6 +189,11 @@ maven_repository(
     ],
 )
 
+COMMON_UPGRADE_DATA = [
+    "//prebuilts/studio/sdk:build-tools/latest",
+    "//prebuilts/studio/sdk:platforms/latest",
+]
+
 # Tests can't currently run on windows because full jar path is passed by the rule instead of just jar name like in iml rule.
 tests_list = [
     dict(
@@ -200,7 +206,7 @@ tests_list = [
             "//tools/adt/idea/android/testData:snapshots",
             "//tools/adt/idea/project-system-gradle-upgrade/testData",
             "//tools/base/build-system:gradle-distrib-7.3.3",
-        ] + AGP_DATA[AGP_7_2],
+        ] + AGP_DATA[AGP_7_2] + COMMON_UPGRADE_DATA,
         gradle_version = "7.3.3",
         ignore_other_tests = True,
         jvm_flags = ["-Didea.skip.indices.initialization=true"],
@@ -225,7 +231,7 @@ tests_list = [
             "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
             "//tools/adt/idea/project-system-gradle-upgrade/testData",
             "//tools/base/build-system:gradle-distrib-7.4",
-        ] + AGP_DATA[AGP_7_3],
+        ] + AGP_DATA[AGP_7_3] + COMMON_UPGRADE_DATA,
         gradle_version = "7.4",
         ignore_other_tests = True,
         jvm_flags = ["-Didea.skip.indices.initialization=true"],
@@ -249,7 +255,7 @@ tests_list = [
             "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
             "//tools/adt/idea/project-system-gradle-upgrade/testData",
             "//tools/base/build-system:gradle-distrib-8.0",
-        ] + AGP_DATA[AGP_8_0],
+        ] + AGP_DATA[AGP_8_0] + COMMON_UPGRADE_DATA,
         gradle_version = "8.0",
         ignore_other_tests = True,
         jvm_flags = ["-Didea.skip.indices.initialization=true"],
@@ -273,7 +279,7 @@ tests_list = [
             "//prebuilts/studio/sdk:platforms/android-34",
             "//tools/adt/idea/project-system-gradle-upgrade/testData",
             "//tools/base/build-system:gradle-distrib-8.13",
-        ] + AGP_DATA[AGP_8_11],
+        ] + AGP_DATA[AGP_8_11] + COMMON_UPGRADE_DATA,
         gradle_version = "8.13",
         ignore_other_tests = True,
         jvm_flags = ["-Didea.skip.indices.initialization=true"],
@@ -297,7 +303,7 @@ tests_list = [
             "//prebuilts/studio/sdk:platforms/android-34",
             "//tools/adt/idea/project-system-gradle-upgrade/testData",
             "//tools/base/build-system:gradle-distrib-9.1.0",
-        ] + AGP_DATA[AGP_9_0],
+        ] + AGP_DATA[AGP_9_0] + COMMON_UPGRADE_DATA,
         gradle_version = "9.1.0",
         ignore_other_tests = True,
         jvm_flags = ["-Didea.skip.indices.initialization=true"],
@@ -318,11 +324,10 @@ tests_list = [
         agp_version = "LATEST",
         data = [
             "//prebuilts/studio/jdk/jdk17:jdk_runtime_files",
-            "//prebuilts/studio/sdk:build-tools/latest",
-            "//prebuilts/studio/sdk:platforms/latest",
+            "//prebuilts/studio/sdk:platforms/android-34",
             "//tools/adt/idea/project-system-gradle-upgrade/testData",
             "//tools/base/build-system:gradle-distrib",
-        ],
+        ] + COMMON_UPGRADE_DATA,
         gradle_version = "LATEST",
         ignore_other_tests = True,
         jvm_flags = ["-Didea.skip.indices.initialization=true"],

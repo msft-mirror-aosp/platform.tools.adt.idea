@@ -11,6 +11,7 @@ iml_module(
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/layoutlib/data:layoutlib_extensions",
         "//prebuilts/studio/sdk:build-tools/latest",
+        "//prebuilts/studio/sdk:platforms/android-34",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android:test_deps",
         "//tools/adt/idea/android/testData",

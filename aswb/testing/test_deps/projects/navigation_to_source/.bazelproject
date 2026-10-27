@@ -2,6 +2,6 @@
 directories:
   navigation_to_source/project
 
-android_sdk_platform: android-34
+android_sdk_platform: android-36
 
 

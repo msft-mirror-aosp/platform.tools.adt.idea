@@ -90,7 +90,9 @@ iml_module(
         "AndroidLintIdeProjectGradleIntegrationTest": {
             "test_filter": "com.android.tools.idea.lint.AndroidLintIdeProjectGradleIntegrationTest",
         },
-        "other": {},
+        "other": {
+            "shard_count": 2,
+        },
     },
     test_class = "com.android.tools.idea.lint.AndroidLintTestSuite",
     # keep sorted
@@ -98,6 +100,7 @@ iml_module(
         ":test_deps",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
         "//prebuilts/studio/sdk:build-tools/latest",
+        "//prebuilts/studio/sdk:platforms/android-34",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android-lint/testData",
         "//tools/adt/idea/android/testData",

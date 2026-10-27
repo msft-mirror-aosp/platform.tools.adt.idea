@@ -42,6 +42,7 @@ iml_module(
     iml_files = ["intellij.android.gmd-code-completion.tests.iml"],
     test_class = "com.android.gmdcodecompletion.GmdCodeCompletionTestSuite",
     test_data = [
+        "//prebuilts/studio/sdk:platforms/latest",
         "//prebuilts/studio/sdk:platforms/latest-preview",
         "//tools/adt/idea/android/testData",
     ],

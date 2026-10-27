@@ -6,9 +6,9 @@ MODULE                        : My_First_App.app
     MavenName                     : My First App:app:
     AGPVersion                    : <AGP_VERSION>
     BuildFolder                   : <ROOT>/firstapp/app/build
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-34/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-36/android.jar
     JavaSourceLevel               : 11
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     LintOptions
         AbortOnError                  : true
         AbsolutePaths                 : true
@@ -231,7 +231,7 @@ MODULE                        : My_First_App.app
         - ClassOutputs                : <ROOT>/firstapp/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
         - ClassOutputs                : <ROOT>/firstapp/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
         MinSdkVersion                 : API 16
-        TargetSdkVersion              : API 34
+        TargetSdkVersion              : API 36.0
         SourceProviders
             - ManifestFiles               : <ROOT>/firstapp/app/src/main/AndroidManifest.xml
             - JavaDirectories             : <ROOT>/firstapp/app/src/main/java
@@ -641,9 +641,9 @@ MODULE                        : My_First_App.app.mysharedlibrary
     MavenName                     : My First App.app:app:mysharedlibrary:
     AGPVersion                    : <AGP_VERSION>
     BuildFolder                   : <ROOT>/shared/mysharedlibrary/build
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-34/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-36/android.jar
     JavaSourceLevel               : 11
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     LintOptions
         AbortOnError                  : true
         AbsolutePaths                 : true
@@ -881,7 +881,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
         - ClassOutputs                : <ROOT>/shared/mysharedlibrary/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
         - ClassOutputs                : <ROOT>/shared/mysharedlibrary/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
         MinSdkVersion                 : API 16
-        TargetSdkVersion              : API 34
+        TargetSdkVersion              : API 36.0
         - ConsumerProguardFiles       : <ROOT>/shared/mysharedlibrary/consumer-rules.pro
         SourceProviders
             - ManifestFiles               : <ROOT>/shared/mysharedlibrary/src/main/AndroidManifest.xml

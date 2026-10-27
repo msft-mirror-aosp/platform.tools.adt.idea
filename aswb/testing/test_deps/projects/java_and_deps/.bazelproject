@@ -3,6 +3,6 @@ directories:
   java_and_deps/project
   -java_and_deps/project/java/com/example/sample/excluded
 
-android_sdk_platform: android-34
+android_sdk_platform: android-36
 
 

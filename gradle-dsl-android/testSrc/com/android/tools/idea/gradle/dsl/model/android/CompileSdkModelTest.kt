@@ -457,6 +457,41 @@ class CompileSdkModelTest : AndroidGradleFileModelTestCase() {
     verifyFileContents(myBuildFile, TestFile.CREATE_WITH_BETA_VERSION_EXPECTED)
   }
 
+  @Test
+  fun testReadCompileSdkReleaseBlockAsObject() {
+    val blockModel = initTest(TestFile.READ_RELEASE_BLOCK)
+    assertThat(blockModel.android().compileSdkVersion().getValue(GradlePropertyModel.OBJECT_TYPE))
+      .isEqualTo("android-33.1-ext18")
+  }
+
+  @Test
+  fun testReadCompileSdkReleaseMethodAsObject() {
+    val releaseModel = initTest(TestFile.READ_RELEASE_METHOD)
+    assertThat(releaseModel.android().compileSdkVersion().getValue(GradlePropertyModel.OBJECT_TYPE))
+      .isEqualTo(33)
+  }
+
+  @Test
+  fun testReadCompileSdkPreviewMethodAsObject() {
+    val previewModel = initTest(TestFile.READ_PREVIEW_METHOD)
+    assertThat(previewModel.android().compileSdkVersion().getValue(GradlePropertyModel.OBJECT_TYPE))
+      .isEqualTo("android-Tiramisu")
+  }
+
+  @Test
+  fun testSetCompileSdkNumericStringWithCompileSdkBlock() {
+    val buildModel = initTest(TestFile.EMPTY_ANDROID_BLOCK)
+
+    val compileSdkVersion = buildModel.android().compileSdkVersion()
+    compileSdkVersion.setValue("33")
+    assertThat(compileSdkVersion.getValue(GradlePropertyModel.OBJECT_TYPE)).isEqualTo(33)
+
+    applyChangesAndReparse(buildModel)
+    verifyFileContents(myBuildFile, TestFile.CREATE_MAJOR_VERSION_ONLY_EXPECTED)
+    assertThat(buildModel.android().compileSdkVersion().getValue(GradlePropertyModel.OBJECT_TYPE))
+      .isEqualTo(33)
+  }
+
   private fun initTest(testFileName: TestFileName): GradleBuildModel {
     writeToBuildFile(testFileName)
     val buildModel = gradleBuildModel

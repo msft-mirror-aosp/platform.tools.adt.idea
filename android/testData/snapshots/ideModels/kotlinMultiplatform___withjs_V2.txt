@@ -776,14 +776,14 @@ MODULE                        : kotlinMultiPlatform.app
             ApiLevel                      : 16
             ApiString                     : 16
         targetSdk
-            ApiLevel                      : 34
-            ApiString                     : 34
+            ApiLevel                      : 36
+            ApiString                     : 36.0
     RootBuildId                   : <ROOT>
     BuildId                       : <ROOT>
     ProjectPath                   : :app
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     BuildFolder                   : <ROOT>/app/build
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
@@ -833,7 +833,7 @@ MODULE                        : kotlinMultiPlatform.app
     - basicVariant:               : release
         applicationId                 : com.example.android.kotlin
         buildType                     : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-34/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-36/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -850,8 +850,8 @@ MODULE                        : kotlinMultiPlatform.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 34
-                ApiString                     : 34
+                ApiLevel                      : 36
+                ApiString                     : 36
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -1052,8 +1052,8 @@ MODULE                        : kotlinMultiPlatform.app
                 ApiLevel                      : 16
                 ApiString                     : 16
             TargetSdkVersion
-                ApiLevel                      : 34
-                ApiString                     : 34
+                ApiLevel                      : 36
+                ApiString                     : 36
             VersionCode                   : 1
             VersionNameWithSuffix         : 1.0
             TestInstrumentationRunner     : android.support.test.runner.AndroidJUnitRunner
@@ -2203,7 +2203,7 @@ MODULE                        : kotlinMultiPlatform.module2
     ProjectPath                   : :module2
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_KOTLIN_MULTIPLATFORM
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     BuildFolder                   : <ROOT>/module2/build
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : false
@@ -2249,7 +2249,7 @@ MODULE                        : kotlinMultiPlatform.module2
     - basicVariant:               : androidMain
         testApplicationId             : com.example.test.multiproject.module2.test
         buildType                     :
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-34/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-36/android.jar
     DefaultConfig
         ProductFlavor
             Name                          :

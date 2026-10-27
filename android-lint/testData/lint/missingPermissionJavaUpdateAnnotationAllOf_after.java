@@ -5,7 +5,7 @@ import android.os.DropBoxManager;
 import androidx.annotation.RequiresPermission;
 
 class LocationTest {
-  @RequiresPermission(allOf = {"foo.bar.baz", Manifest.permission.READ_LOGS, Manifest.permission.PACKAGE_USAGE_STATS})
+  @RequiresPermission(allOf = {"foo.bar.baz", Manifest.permission.READ_DROPBOX_DATA, Manifest.permission.PACKAGE_USAGE_STATS})
   void test(DropBoxManager manager) {
     manager.getNext<caret>Entry("tag", 8675309L);
   }

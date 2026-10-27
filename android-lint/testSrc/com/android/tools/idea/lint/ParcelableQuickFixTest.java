@@ -358,7 +358,7 @@ public class ParcelableQuickFixTest extends AndroidTestCase {
                   "        dest.writeLong(myLong);\n" +
                   "        dest.writeString(myString);\n" +
                   "        dest.writeBooleanArray(myBooleans);\n" +
-                  "        dest.writeBlob(myBytes);\n" +
+                  "        dest.writeByteArray(myBytes);\n" +
                   "        dest.writeCharArray(myChars);\n" +
                   "        dest.writeDoubleArray(myDoubles);\n" +
                   "        dest.writeFloatArray(myFloats);\n" +

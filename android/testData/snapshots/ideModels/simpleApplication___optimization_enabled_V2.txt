@@ -594,14 +594,14 @@ MODULE                        : project.app
             ApiLevel                      : 19
             ApiString                     : 19
         targetSdk
-            ApiLevel                      : 34
-            ApiString                     : 34
+            ApiLevel                      : 36
+            ApiString                     : 36.0
     RootBuildId                   : <ROOT>
     BuildId                       : <ROOT>
     ProjectPath                   : :app
     ModelVersion                  : <AGP_VERSION>
     ProjectType                   : PROJECT_TYPE_APP
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     BuildFolder                   : <ROOT>/app/build
     buildToolsVersion             : <CURRENT_BUILD_TOOLS_VERSION>
     IsBaseSplit                   : true
@@ -651,7 +651,7 @@ MODULE                        : project.app
     - basicVariant:               : release
         applicationId                 : google.simpleapplication
         buildType                     : release
-    BootClassPath                 : <ANDROID_SDK>/platforms/android-34/android.jar
+    BootClassPath                 : <ANDROID_SDK>/platforms/android-36/android.jar
     ViewBindingOptions
         Enabled                       : false
     DependenciesInfo
@@ -667,8 +667,8 @@ MODULE                        : project.app
                 ApiLevel                      : 19
                 ApiString                     : 19
             TargetSdkVersion
-                ApiLevel                      : 34
-                ApiString                     : 34
+                ApiLevel                      : 36
+                ApiString                     : 36
             VectorDrawables
                 UseSupportLibrary             : false
         SourceProvider
@@ -871,8 +871,8 @@ MODULE                        : project.app
                 ApiLevel                      : 19
                 ApiString                     : 19
             TargetSdkVersion
-                ApiLevel                      : 34
-                ApiString                     : 34
+                ApiLevel                      : 36
+                ApiString                     : 36
             VersionCode                   : 1
             VersionNameWithSuffix         : 1.0
             ProguardFiles                 : <ROOT>/app/build/intermediates/default_proguard_files/global/proguard-android-optimize.txt-<AGP_VERSION> [-]

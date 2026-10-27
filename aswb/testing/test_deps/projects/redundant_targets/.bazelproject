@@ -2,7 +2,7 @@
 directories:
   redundant_targets/project
 
-android_sdk_platform: android-34
+android_sdk_platform: android-36
 
 use_query_sync: true
 enable_code_analysis_on_sync: true

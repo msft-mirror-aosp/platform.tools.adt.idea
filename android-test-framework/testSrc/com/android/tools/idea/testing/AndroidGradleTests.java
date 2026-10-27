@@ -408,10 +408,28 @@ public class AndroidGradleTests {
   private static final Pattern COMPILE_SDK_BLOCK_PATTERN =
       Pattern.compile("\\bcompileSdk\\s*\\{[^{}]*(?:\\{[^{}]*\\}[^{}]*)?\\}");
 
-  // Matches compileSdkVersion or compileSdk declarations, including optional @Suppress("DEPRECATION")
+  private static final Pattern EXT_BLOCK_PATTERN = Pattern.compile("\\bext\\s*\\{");
+
+  // Matches compileSdkVersion or compileSdk declarations (excluding ext.*), including optional @Suppress("DEPRECATION")
   private static final Pattern COMPILE_SDK_LEGACY_PATTERN =
       Pattern.compile(
-          "(?:@Suppress\\([\"']DEPRECATION[\"']\\)\\s*[\r\n]+\\s*)?\\bcompileSdk(?:Version)?\\b(?:\\s*\\([^)]*\\)|\\s*=\\s*['\"]?[0-9a-zA-Z._-]+['\"]?|\\s+['\"]?[0-9a-zA-Z._-]+['\"]?)");
+          "(?:@Suppress\\([\"']DEPRECATION[\"']\\)\\s*[\r\n]+\\s*)?(?<!\\bext\\.)\\bcompileSdk(?:Version)?\\b(?:\\s*\\([^\\r\\n]*\\)|\\s*=\\s*[^\\r\\n]+|\\s+[^\\r\\n]+)");
+
+  private static boolean isInsideExtBlock(@NotNull String contents, int offset) {
+    Matcher matcher = EXT_BLOCK_PATTERN.matcher(contents);
+    while (matcher.find()) {
+      if (matcher.start() > offset) return false;
+      int depth = 1;
+      int i = matcher.end();
+      while (i < contents.length() && depth > 0) {
+        char c = contents.charAt(i++);
+        if (c == '{') depth++;
+        else if (c == '}') depth--;
+      }
+      if (offset < i) return true;
+    }
+    return false;
+  }
 
   @Nullable
   private static String buildCompileSdkDsl(@NotNull AndroidVersion version) {
@@ -437,11 +455,17 @@ public class AndroidGradleTests {
       if (dsl != null) {
         Matcher blockMatcher = COMPILE_SDK_BLOCK_PATTERN.matcher(contents);
         if (blockMatcher.find()) {
-          return blockMatcher.replaceAll(Matcher.quoteReplacement(dsl));
-        }
-        Matcher legacyMatcher = COMPILE_SDK_LEGACY_PATTERN.matcher(contents);
-        if (legacyMatcher.find()) {
-          return legacyMatcher.replaceAll(Matcher.quoteReplacement(dsl));
+          contents = blockMatcher.replaceAll(Matcher.quoteReplacement(dsl));
+        } else {
+          Matcher legacyMatcher = COMPILE_SDK_LEGACY_PATTERN.matcher(contents);
+          StringBuilder sb = new StringBuilder();
+          while (legacyMatcher.find()) {
+            if (!isInsideExtBlock(contents, legacyMatcher.start())) {
+              legacyMatcher.appendReplacement(sb, Matcher.quoteReplacement(dsl));
+            }
+          }
+          legacyMatcher.appendTail(sb);
+          contents = sb.toString();
         }
       } else {
         // When downgrading to < 36, convert any existing block DSL to legacy syntax

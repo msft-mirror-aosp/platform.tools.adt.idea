@@ -4,4 +4,4 @@ directories:
 derive_targets_from_directories: true
 
 workspace_type: android
-android_sdk_platform: android-34
+android_sdk_platform: android-36

@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.structure.model.helpers
 
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
+import com.android.tools.idea.gradle.project.sync.snapshots.withAdditionalPatch
 import com.android.tools.idea.gradle.structure.model.PsProjectImpl
 import com.android.tools.idea.gradle.structure.model.android.AndroidModuleDescriptors
 import com.android.tools.idea.gradle.structure.model.android.PsAndroidModule
@@ -24,6 +25,7 @@ import com.android.tools.idea.gradle.structure.model.android.PsAndroidModuleDefa
 import com.android.tools.idea.gradle.structure.model.android.PsBuildType
 import com.android.tools.idea.gradle.structure.model.android.PsProductFlavor
 import com.android.tools.idea.gradle.structure.model.android.asParsed
+import com.android.tools.idea.gradle.structure.model.android.replaceCompileSdk
 import com.android.tools.idea.gradle.structure.model.java.PsJavaModule
 import com.android.tools.idea.gradle.structure.model.meta.DslText
 import com.android.tools.idea.gradle.structure.model.meta.ModelPropertyCore
@@ -38,6 +40,7 @@ import com.android.tools.idea.testing.OpenPreparedProjectOptions
 import com.android.tools.idea.testing.withoutKtsRelatedIndexing
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.RunsInEdt
+import java.io.File
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.CoreMatchers.notNullValue
 import org.hamcrest.CoreMatchers.nullValue
@@ -109,13 +112,27 @@ class ExtractVariableWorkerTest {
 
   @Test
   fun testExtractVariableGroovy() {
-    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY, "p")
+    val latestAgpCompileSdk = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk
+    val preparedProject =
+      projectRule.prepareTestProject(
+        AndroidCoreTestProject.PSD_SAMPLE_GROOVY.withAdditionalPatch { root ->
+          root.resolve("app/build.gradle").replaceCompileSdk("compileSdkVersion $latestAgpCompileSdk")
+        },
+        "p",
+      )
     preparedProject.open { resolvedProject -> doTestExtractVariable(resolvedProject) }
   }
 
   @Test
   fun testExtractVariableKotlin() {
-    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_KOTLIN, "p")
+    val latestAgpCompileSdk = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk
+    val preparedProject =
+      projectRule.prepareTestProject(
+        AndroidCoreTestProject.PSD_SAMPLE_KOTLIN.withAdditionalPatch { root ->
+          root.resolve("app/build.gradle.kts").replaceCompileSdk("compileSdk = $latestAgpCompileSdk")
+        },
+        "p",
+      )
     preparedProject.open(updateOptions = OpenPreparedProjectOptions::withoutKtsRelatedIndexing) { resolvedProject ->
       doTestExtractVariable(resolvedProject)
     }
@@ -123,7 +140,14 @@ class ExtractVariableWorkerTest {
 
   @Test
   fun testExtractVariable_projectLevel() {
-    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY, "p")
+    val latestAgpCompileSdk = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST.compileSdk
+    val preparedProject =
+      projectRule.prepareTestProject(
+        AndroidCoreTestProject.PSD_SAMPLE_GROOVY.withAdditionalPatch { root ->
+          root.resolve("app/build.gradle").replaceCompileSdk("compileSdkVersion $latestAgpCompileSdk")
+        },
+        "p",
+      )
     preparedProject.open { resolvedProject ->
       val project = PsProjectImpl(resolvedProject)
       val appModule = project.findModuleByName("app") as PsAndroidModule

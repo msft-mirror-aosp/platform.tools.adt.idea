@@ -6,10 +6,10 @@ MODULE                        : project.app
     MavenName                     : project:app:
     AGPVersion                    : <AGP_VERSION>
     BuildFolder                   : <ROOT>/app/build
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-34/android.jar
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-36/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar
     JavaSourceLevel               : 11
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     LintOptions
         AbsolutePaths                 : true
         ExplainIssues                 : true
@@ -26,7 +26,7 @@ MODULE                        : project.app
             - DesugaredMethodFiles        : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
             Dependencies
                 CompileDependencies
-                    __non_maven__:<ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar
+                    __non_maven__:<ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar
                     android.arch.core:common      : null => android.arch.core:common:1.1.1
                     android.arch.core:runtime     : null => android.arch.core:runtime:1.1.1@aar
                     android.arch.lifecycle:common : null => android.arch.lifecycle:common:1.1.1
@@ -67,7 +67,7 @@ MODULE                        : project.app
                     org.jetbrains.kotlin:kotlin-stdlib      : null => org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
                     org.jetbrains:annotations     : null => org.jetbrains:annotations:13.0
                 PackageDependencies
-                    __non_maven__:<ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar
+                    __non_maven__:<ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar
                     android.arch.core:common      : null => android.arch.core:common:1.1.1
                     android.arch.core:runtime     : null => android.arch.core:runtime:1.1.1@aar
                     android.arch.lifecycle:common : null => android.arch.lifecycle:common:1.1.1
@@ -113,7 +113,7 @@ MODULE                        : project.app
         TestArtifact
             Dependencies
                 CompileDependencies
-                    __non_maven__:<ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar
+                    __non_maven__:<ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar
                     android.arch.core:common      : null => android.arch.core:common:1.1.1
                     android.arch.core:runtime     : null => android.arch.core:runtime:1.1.1@aar
                     android.arch.lifecycle:common : null => android.arch.lifecycle:common:1.1.1
@@ -170,7 +170,7 @@ MODULE                        : project.app
                     org.jetbrains.kotlin:kotlin-stdlib      : null => org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
                     org.jetbrains:annotations     : null => org.jetbrains:annotations:13.0
                 PackageDependencies
-                    __non_maven__:<ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar
+                    __non_maven__:<ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar
                     android.arch.core:common      : null => android.arch.core:common:1.1.1
                     android.arch.core:runtime     : null => android.arch.core:runtime:1.1.1@aar
                     android.arch.lifecycle:common : null => android.arch.lifecycle:common:1.1.1
@@ -234,7 +234,7 @@ MODULE                        : project.app
         - DesugaredMethodFiles        : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/D8BackportedDesugaredMethods.txt
         Dependencies
             CompileDependencies
-                __non_maven__:<ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar
+                __non_maven__:<ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar
                 android.arch.core:common      : null => android.arch.core:common:1.1.1
                 android.arch.core:runtime     : null => android.arch.core:runtime:1.1.1@aar
                 android.arch.lifecycle:common : null => android.arch.lifecycle:common:1.1.1
@@ -288,7 +288,7 @@ MODULE                        : project.app
                 org.jetbrains.kotlin:kotlin-stdlib      : null => org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
                 org.jetbrains:annotations     : null => org.jetbrains:annotations:13.0
             PackageDependencies
-                __non_maven__:<ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar
+                __non_maven__:<ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar      : null => <ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar
                 artifacts::app                : null => :app@main
                 artifacts::lib                : null => :lib@main
                 com.android.support.test.espresso:espresso-core   : null => com.android.support.test.espresso:espresso-core:3.0.2@aar
@@ -308,7 +308,7 @@ MODULE                        : project.app
         - ClassOutputs                : <ROOT>/app/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
         - ClassOutputs                : <ROOT>/app/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
         MinSdkVersion                 : API 19
-        TargetSdkVersion              : API 34
+        TargetSdkVersion              : API 36.0
         SourceProviders
             - ManifestFiles               : <ROOT>/app/src/main/AndroidManifest.xml
             - JavaDirectories             : <ROOT>/app/src/main/java
@@ -343,10 +343,10 @@ MODULE                        : project.app
             - AssetsDirectories           : <ROOT>/app/src/testDebug/assets [-]
         Debuggable                    : true
         LibraryResolver
-            LintModelLibrary              : JavaLibrary(__non_maven__:<ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar:)
-                - JarFiles                    : <ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar
-                Identifier                    : <ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar
-                ResolvedCoordinates           : __non_maven__:<ANDROID_SDK>/platforms/android-34/optional/org.apache.http.legacy.jar:
+            LintModelLibrary              : JavaLibrary(__non_maven__:<ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar:)
+                - JarFiles                    : <ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar
+                Identifier                    : <ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar
+                ResolvedCoordinates           : __non_maven__:<ANDROID_SDK>/platforms/android-36/optional/org.apache.http.legacy.jar:
             LintModelLibrary              : LocalLibrary(:app)
                 Identifier                    : :app@main
                 ProjectPath                   : :app
@@ -882,9 +882,9 @@ MODULE                        : project.lib
     MavenName                     : project:lib:
     AGPVersion                    : <AGP_VERSION>
     BuildFolder                   : <ROOT>/lib/build
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-34/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-36/android.jar
     JavaSourceLevel               : 11
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     LintOptions
         AbortOnError                  : true
         AbsolutePaths                 : true

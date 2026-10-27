@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.project.sync.issues.processor.runsGradleErrors
 
+import com.android.sdklib.AndroidApiLevel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.model.android.android
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
@@ -23,9 +24,11 @@ import com.android.tools.idea.gradle.project.sync.GradleSyncState
 import com.android.tools.idea.gradle.project.sync.issues.processor.UpdateCompileSdkProcessor
 import com.android.tools.idea.gradle.project.sync.requestProjectSync
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
+import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths.SIMPLE_APPLICATION
 import com.android.tools.idea.testing.findAppModule
+import com.android.tools.idea.testing.withCompileSdk
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger.TRIGGER_QF_MIN_COMPILE_SDK_UPDATED
 import com.intellij.openapi.application.runReadAction
@@ -50,7 +53,11 @@ class UpdateCompileSdkProcessorTest {
 
   @Before
   fun setUp() {
-    projectRule.loadProject(SIMPLE_APPLICATION)
+    // TODO(b/580992411): Add test coverage for compileSdk { version = release(...) } block syntax.
+    projectRule.loadProject(
+      SIMPLE_APPLICATION,
+      agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT.withCompileSdk(AndroidApiLevel(34)),
+    )
     // setup test project module with a lower compileSdk. In the test, we update the compileSdk to latest using
     // UpdateCompileSdkProcessor.
     decrementCompileSdkVersionForTesting()

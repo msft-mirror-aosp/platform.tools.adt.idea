@@ -296,7 +296,7 @@ class AddArgumentDialogTest : NavTestCase() {
     AddArgumentDialog(null, fragment1, testClassChooserFactory).runAndClose { dialog ->
       dialog.dialogUI.myTypeComboBox.selectedItem = AddArgumentDialog.Type.CUSTOM_ENUM
       assertEquals("java.nio.file.AccessMode", dialog.type)
-      assertEquals("READ", dialog.dialogUI.myDefaultValueComboBox.model.getElementAt(0))
+      assertEquals("EXECUTE", dialog.dialogUI.myDefaultValueComboBox.model.getElementAt(0))
     }
   }
 

@@ -169,10 +169,10 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
     jdkVersion = JDK_17,
     compileSdk = "36.1",
   ),
-  AGP_LATEST_KOTLIN_SNAPSHOT(agpVersion = null, gradleVersion = null, kotlinVersion = KOTLIN_SNAPSHOT_VERSION, compileSdk = "34"),
-  AGP_LATEST_GRADLE_SNAPSHOT(agpVersion = null, gradleVersion = GRADLE_SNAPSHOT_VERSION, compileSdk = "34"),
+  AGP_LATEST_KOTLIN_SNAPSHOT(agpVersion = null, gradleVersion = null, kotlinVersion = KOTLIN_SNAPSHOT_VERSION, compileSdk = "36"),
+  AGP_LATEST_GRADLE_SNAPSHOT(agpVersion = null, gradleVersion = GRADLE_SNAPSHOT_VERSION, compileSdk = "36"),
   // Must be last to represent the newest version.
-  AGP_LATEST(null, gradleVersion = null, compileSdk = "34");
+  AGP_LATEST(null, gradleVersion = null, compileSdk = "36");
 
   override fun toString(): String {
     return listOfNotNull(
@@ -181,7 +181,7 @@ enum class AgpVersionSoftwareEnvironmentDescriptor(
         jdkVersion?.let { "j=$it" },
         kotlinVersion?.let { "k=$it" },
         modelVersion.takeIf { it != ModelVersion.V2 }?.let { "m=$it" },
-        compileSdk.takeIf { it != "34" }?.let { "c=$it" },
+        compileSdk.takeIf { it != "36" }?.let { "c=$it" },
       )
       .joinToString(",", "Agp(", ")")
   }

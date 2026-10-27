@@ -128,6 +128,7 @@ iml_module(
         ":test_deps",
         "//prebuilts/studio/layoutlib:runtime",
         "//prebuilts/studio/layoutlib/data:framework_res.jar",
+        "//prebuilts/studio/sdk:platforms/android-34",
         "//prebuilts/studio/sdk:platforms/latest",
         "//tools/adt/idea/android/annotations",
         "//tools/adt/idea/android/lib:sampleData",

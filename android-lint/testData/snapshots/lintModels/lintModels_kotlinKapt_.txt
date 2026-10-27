@@ -6,9 +6,9 @@ MODULE                        : MainActivity.app
     MavenName                     : MainActivity:app:
     AGPVersion                    : <AGP_VERSION>
     BuildFolder                   : <ROOT>/app/build
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-34/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-36/android.jar
     JavaSourceLevel               : 11
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     LintOptions
         AbortOnError                  : true
         AbsolutePaths                 : true
@@ -157,7 +157,7 @@ MODULE                        : MainActivity.app
         - ClassOutputs                : <ROOT>/app/build/intermediates/compile_r_class_jar/localDebugAndroidTest/generateLocalDebugAndroidTestRFile/R.jar [-]
         - ClassOutputs                : <ROOT>/app/build/intermediates/javac/localDebugAndroidTest/compileLocalDebugAndroidTestJavaWithJavac/classes [-]
         MinSdkVersion                 : API 16
-        TargetSdkVersion              : API 34
+        TargetSdkVersion              : API 36.0
         SourceProviders
             - ManifestFiles               : <ROOT>/app/src/main/AndroidManifest.xml
             - JavaDirectories             : <ROOT>/app/src/main/java
@@ -411,9 +411,9 @@ MODULE                        : MainActivity.lib
     MavenName                     : MainActivity:lib:
     AGPVersion                    : <AGP_VERSION>
     BuildFolder                   : <ROOT>/lib/build
-    - BootClassPath               : <ANDROID_SDK>/platforms/android-34/android.jar
+    - BootClassPath               : <ANDROID_SDK>/platforms/android-36/android.jar
     JavaSourceLevel               : 11
-    CompileTarget                 : android-34
+    CompileTarget                 : android-36
     LintOptions
         AbortOnError                  : true
         AbsolutePaths                 : true
@@ -647,7 +647,7 @@ MODULE                        : MainActivity.lib
         - ClassOutputs                : <ROOT>/lib/build/intermediates/compile_r_class_jar/debugAndroidTest/generateDebugAndroidTestRFile/R.jar [-]
         - ClassOutputs                : <ROOT>/lib/build/intermediates/javac/debugAndroidTest/compileDebugAndroidTestJavaWithJavac/classes [-]
         MinSdkVersion                 : API 16
-        TargetSdkVersion              : API 34
+        TargetSdkVersion              : API 36.0
         SourceProviders
             - ManifestFiles               : <ROOT>/lib/src/main/AndroidManifest.xml
             - JavaDirectories             : <ROOT>/lib/src/main/java [-]

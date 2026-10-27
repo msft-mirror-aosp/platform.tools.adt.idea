@@ -63,7 +63,7 @@ tasks.register("runFailingTasks") {
         assertThat(output)
           .startsWith(
             """
-          Build file '$projectRoot/app/build.gradle' line: 43
+          Build file '$projectRoot/app/build.gradle' line: 45
   
           Execution failed for task ':app:failingTask1' (registered in build file 'app/build.gradle').
           > java.lang.Exception: Failing failingTask1
@@ -113,7 +113,7 @@ tasks.register("runFailingTasks") {
         assertThat(output)
           .isEqualTo(
             """
-          Build file '$projectRoot/app/build.gradle' line: 43
+          Build file '$projectRoot/app/build.gradle' line: 45
   
           Execution failed for task ':app:failingTask1' (registered in build file 'app/build.gradle').
           > java.lang.Exception: Failing failingTask1
@@ -131,7 +131,7 @@ tasks.register("runFailingTasks") {
         assertThat(output)
           .isEqualTo(
             """
-          Build file '$projectRoot/app/build.gradle' line: 51
+          Build file '$projectRoot/app/build.gradle' line: 53
   
           Execution failed for task ':app:failingTask2' (registered in build file 'app/build.gradle').
           > java.lang.Exception: Failing failingTask2
@@ -241,7 +241,7 @@ tasks.register("runFailingTasks") {
         assertThat(output)
           .isEqualTo(
             """
-          Build file '$projectRoot/app/build.gradle' line: 43
+          Build file '$projectRoot/app/build.gradle' line: 45
   
           Execution failed for task ':app:failingTask1' (registered in build file 'app/build.gradle').
           > java.lang.Exception: Failing failingTask1
@@ -259,7 +259,7 @@ tasks.register("runFailingTasks") {
         assertThat(output)
           .isEqualTo(
             """
-          Build file '$projectRoot/app/build.gradle' line: 51
+          Build file '$projectRoot/app/build.gradle' line: 53
   
           Execution failed for task ':app:failingTask2' (registered in build file 'app/build.gradle').
           > java.lang.Exception: Failing failingTask2
@@ -277,7 +277,7 @@ tasks.register("runFailingTasks") {
         assertThat(output)
           .isEqualTo(
             """
-          Build file '$projectRoot/app/build.gradle' line: 59
+          Build file '$projectRoot/app/build.gradle' line: 61
   
           Execution failed for task ':app:failingTask3' (registered in build file 'app/build.gradle').
           > java.lang.Exception: Failing failingTask3

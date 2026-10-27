@@ -6,7 +6,7 @@ import androidx.annotation.RequiresPermission
 
 @Suppress("unused")
 class LocationTest {
-  @RequiresPermission(allOf = [Manifest.permission.READ_LOGS, Manifest.permission.PACKAGE_USAGE_STATS])
+  @RequiresPermission(allOf = [Manifest.permission.READ_DROPBOX_DATA, Manifest.permission.PACKAGE_USAGE_STATS])
   fun test(manager: DropBoxManager) {
     manager.getNext<caret>Entry("tag", 8675309L)
   }
