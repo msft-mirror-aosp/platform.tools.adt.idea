@@ -17,6 +17,7 @@ package com.android.tools.profilers.taskbased.tabs.pastrecordings.recordinglist
 
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -25,8 +26,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -41,19 +47,43 @@ import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBas
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions.TABLE_ROW_HORIZONTAL_PADDING_DP
 import com.android.tools.profilers.taskbased.common.table.LeftAlignedColumnText
 import com.android.tools.profilers.taskbased.common.table.RightAlignedColumnText
+import com.intellij.util.ui.UIUtil
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 import org.jetbrains.jewel.foundation.lazy.SingleSelectionLazyColumn
 import org.jetbrains.jewel.foundation.lazy.items
 import org.jetbrains.jewel.foundation.lazy.rememberSingleSelectionLazyListState
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 
+/**
+ * A row of the recording table. Clicking it twice within the platform's multi-click interval invokes [onDoubleClick].
+ *
+ * Single clicks are not delayed, and row selection is still handled on press by the enclosing [SingleSelectionLazyColumn]. The last click
+ * is cleared once [onDoubleClick] fires, so that a triple-click does not trigger it twice.
+ *
+ * [onDoubleClick] runs on the second click's release rather than its press, because a modal dialog opened on press can swallow the release.
+ */
 @Composable
-fun RecordingListRow(selectedRecording: SessionItem?, recording: SessionItem) {
+fun RecordingListRow(selectedRecording: SessionItem?, recording: SessionItem, onDoubleClick: () -> Unit) {
+  var lastClickTimeMark by remember { mutableStateOf<TimeMark?>(null) }
   Row(
     modifier =
       Modifier.fillMaxWidth()
         .height(TABLE_ROW_HEIGHT_DP)
         .background(if (recording == selectedRecording) TABLE_ROW_SELECTION_BACKGROUND_COLOR else Color.Transparent)
+        // Keep keyboard focus on the enclosing list so that arrow-key navigation continues to work.
+        .focusProperties { canFocus = false }
+        .clickable(interactionSource = null, indication = null) {
+          val lastClick = lastClickTimeMark
+          if (lastClick != null && lastClick.elapsedNow() < UIUtil.getMultiClickInterval().milliseconds) {
+            lastClickTimeMark = null
+            onDoubleClick()
+          } else {
+            lastClickTimeMark = TimeSource.Monotonic.markNow()
+          }
+        }
         .padding(horizontal = TABLE_ROW_HORIZONTAL_PADDING_DP)
         .testTag("RecordingListRow")
   ) {
@@ -84,7 +114,12 @@ fun RecordingListHeader() {
 }
 
 @Composable
-fun RecordingTable(recordingList: List<SessionItem>, selectedRecording: SessionItem?, onRecordingSelection: (SessionItem?) -> Unit) {
+fun RecordingTable(
+  recordingList: List<SessionItem>,
+  selectedRecording: SessionItem?,
+  onRecordingSelection: (SessionItem?) -> Unit,
+  onRecordingDoubleClick: (SessionItem) -> Unit,
+) {
   val listState = rememberSingleSelectionLazyListState()
 
   Box {
@@ -102,7 +137,9 @@ fun RecordingTable(recordingList: List<SessionItem>, selectedRecording: SessionI
         RecordingListHeader()
         Divider(color = TABLE_SEPARATOR_COLOR, modifier = Modifier.fillMaxWidth(), thickness = 1.dp, orientation = Orientation.Horizontal)
       }
-      items(items = recordingList) { recording -> RecordingListRow(selectedRecording, recording) }
+      items(items = recordingList) { recording ->
+        RecordingListRow(selectedRecording, recording, onDoubleClick = { onRecordingDoubleClick(recording) })
+      }
     }
 
     VerticalScrollbar(

@@ -16,7 +16,11 @@
 package com.android.tools.profilers.taskbased.tabs.pastrecordings.recordinglist
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import com.android.testutils.ignore.IgnoreTestRule
 import com.android.tools.adtui.compose.StudioTestTheme
 import com.android.tools.adtui.compose.standaloneSingleWindowApplication
@@ -54,6 +58,7 @@ class RecordingListTest {
   private lateinit var myManager: SessionsManager
   private lateinit var ideProfilerServices: FakeIdeProfilerServices
   private lateinit var recordingListModel: RecordingListModel
+  private var openProfilerTaskCount = 0
 
   @Before
   fun setup() {
@@ -62,7 +67,7 @@ class RecordingListTest {
     myManager = myProfilers.sessionsManager
     val taskHandlers = ProfilerTaskHandlerFactory.createTaskHandlers(myManager)
     taskHandlers.forEach { myProfilers.addTaskHandler(it.key, it.value) }
-    recordingListModel = RecordingListModel(myProfilers, taskHandlers, {}) {}
+    recordingListModel = RecordingListModel(myProfilers, taskHandlers, {}) { openProfilerTaskCount++ }
     ideProfilerServices.enableTaskBasedUx(true)
   }
 
@@ -84,5 +89,50 @@ class RecordingListTest {
     // Assert both the data model and the UI reflect the past recording entry.
     assertThat(recordingListModel.recordingList.value).hasSize(1)
     composeTestRule.onAllNodesWithTag("RecordingListRow", useUnmergedTree = true).assertCountEquals(1)
+  }
+
+  @Test
+  fun `test double-clicking a recording selects and opens it`() {
+    composeTestRule.setContent(darkMode = true) { RecordingList(recordingListModel) }
+
+    val recording = createSessionItemWithSystemTraceArtifact("Recording 1", 1L, 1L, myProfilers)
+    recordingListModel.setRecordingList(listOf(recording))
+
+    composeTestRule.onAllNodesWithTag("RecordingListRow", useUnmergedTree = true)[0].performTouchInput { doubleClick() }
+
+    // Double-clicking should behave like selecting the recording and clicking the "Open profiler task" button.
+    assertThat(recordingListModel.selectedRecording.value).isEqualTo(recording)
+    assertThat(openProfilerTaskCount).isEqualTo(1)
+  }
+
+  @Test
+  fun `test single click selects a recording without opening it`() {
+    composeTestRule.setContent(darkMode = true) { RecordingList(recordingListModel) }
+
+    val recording = createSessionItemWithSystemTraceArtifact("Recording 1", 1L, 1L, myProfilers)
+    recordingListModel.setRecordingList(listOf(recording))
+
+    composeTestRule.onAllNodesWithTag("RecordingListRow", useUnmergedTree = true)[0].performClick()
+
+    assertThat(recordingListModel.selectedRecording.value).isEqualTo(recording)
+    assertThat(openProfilerTaskCount).isEqualTo(0)
+  }
+
+  @Test
+  fun `test triple-clicking a recording opens it only once`() {
+    composeTestRule.setContent(darkMode = true) { RecordingList(recordingListModel) }
+
+    recordingListModel.setRecordingList(listOf(createSessionItemWithSystemTraceArtifact("Recording 1", 1L, 1L, myProfilers)))
+
+    composeTestRule.onAllNodesWithTag("RecordingListRow", useUnmergedTree = true)[0].performTouchInput {
+      click()
+      advanceEventTime(100)
+      click()
+      advanceEventTime(100)
+      click()
+    }
+
+    // The third click starts a new click sequence rather than opening the recording a second time.
+    assertThat(openProfilerTaskCount).isEqualTo(1)
   }
 }

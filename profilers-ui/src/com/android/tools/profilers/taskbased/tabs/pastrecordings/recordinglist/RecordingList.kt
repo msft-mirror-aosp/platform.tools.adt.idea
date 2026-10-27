@@ -46,6 +46,7 @@ fun RecordingList(recordingListModel: RecordingListModel, modifier: Modifier = M
         recordingList = recordingList,
         selectedRecording = selectedRecording,
         onRecordingSelection = recordingListModel::onRecordingSelection,
+        onRecordingDoubleClick = recordingListModel::openRecording,
       )
     }
   }
