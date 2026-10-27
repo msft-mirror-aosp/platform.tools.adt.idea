@@ -41,9 +41,9 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
-import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.anyBoolean
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -60,7 +60,7 @@ class BenchmarkLinkListenerTest {
   private val mockEditorService = mock<FileEditorManager>()
   private val mockBrowserService = mock<BrowserLauncher>()
   private lateinit var mockNotification: AndroidNotification
-  private val fileCapture = ArgumentCaptor.forClass(FileEditorNavigatable::class.java)
+  private val fileCapture = argumentCaptor<FileEditorNavigatable>()
   private lateinit var componentStack: ComponentStack
 
   @Before
@@ -85,7 +85,7 @@ class BenchmarkLinkListenerTest {
     val traceFile = FileUtil.createTempFile("traceFile", ".trace")
     traceFile.deleteOnExit()
     listener.hyperlinkClicked("file://${traceFile.name}")
-    assertThat(fileCapture.value.file.name).isEqualTo(traceFile.name)
+    assertThat(fileCapture.lastValue.file.name).isEqualTo(traceFile.name)
   }
 
   @Test
@@ -94,7 +94,7 @@ class BenchmarkLinkListenerTest {
     val traceFile = FileUtil.createTempFile("traceFile", ".trace")
     traceFile.deleteOnExit()
     listener.hyperlinkClicked("uri://${traceFile.name}?param1=value1&param2=value2")
-    assertThat(fileCapture.value.file.name).isEqualTo(traceFile.name)
+    assertThat(fileCapture.lastValue.file.name).isEqualTo(traceFile.name)
   }
 
   @Test
@@ -173,9 +173,9 @@ class BenchmarkLinkListenerTest {
   fun rejectedLongPathIsTrimmedInNotification() {
     val listener = BenchmarkLinkListener(projectRule.project)
     listener.hyperlinkClicked("file://../" + "a".repeat(10_000) + ".trace")
-    val textCaptor = ArgumentCaptor.forClass(String::class.java)
+    val textCaptor = argumentCaptor<String>()
     verify(mockNotification).showBalloon(eq("Invalid benchmark path"), textCaptor.capture(), eq(NotificationType.WARNING))
-    val shownPath = textCaptor.value.removePrefix("Rejected path traversal: ")
+    val shownPath = textCaptor.lastValue.removePrefix("Rejected path traversal: ")
     assertThat(shownPath.length).isAtMost(200)
     assertThat(shownPath).startsWith("../")
     assertThat(shownPath).contains("…")
@@ -239,7 +239,7 @@ class BenchmarkLinkListenerTest {
     val traceFile = FileUtil.createTempFile("traceFile", ".TRACE")
     traceFile.deleteOnExit()
     listener.hyperlinkClicked("file://${traceFile.name}")
-    assertThat(fileCapture.value.file.name).isEqualTo(traceFile.name)
+    assertThat(fileCapture.lastValue.file.name).isEqualTo(traceFile.name)
   }
 
   @Test
@@ -248,7 +248,7 @@ class BenchmarkLinkListenerTest {
     val traceFile = FileUtil.createTempFile("traceFile", ".perfetto-trace")
     traceFile.deleteOnExit()
     listener.hyperlinkClicked("uri://${traceFile.name}")
-    assertThat(fileCapture.value.file.name).isEqualTo(traceFile.name)
+    assertThat(fileCapture.lastValue.file.name).isEqualTo(traceFile.name)
   }
 
   @Test
@@ -347,9 +347,9 @@ class BenchmarkLinkListenerTest {
     val listener = BenchmarkLinkListener(projectRule.project)
     val longLink = "https://evil.example/" + "a".repeat(10_000)
     listener.hyperlinkClicked(longLink)
-    val textCaptor = ArgumentCaptor.forClass(String::class.java)
+    val textCaptor = argumentCaptor<String>()
     verify(mockNotification).showBalloon(eq("Benchmark link not opened"), textCaptor.capture(), eq(NotificationType.WARNING))
-    val shownLink = textCaptor.value.substringAfter("(").removeSuffix(")")
+    val shownLink = textCaptor.lastValue.substringAfter("(").removeSuffix(")")
     assertThat(shownLink.length).isAtMost(200)
     assertThat(shownLink).startsWith("https://evil.example/")
     assertThat(shownLink).contains("…")

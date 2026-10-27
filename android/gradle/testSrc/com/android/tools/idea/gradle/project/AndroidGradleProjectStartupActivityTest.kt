@@ -54,9 +54,9 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.ArgumentCaptor
 import org.mockito.Mock
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -194,9 +194,9 @@ class AndroidGradleProjectStartupActivityTest {
       // Complete editor notification tasks since PlatformTestUtil.dispatchAllEventsInIdeEventQueue isn't sufficient
       (EditorNotifications.getInstance(myProject) as EditorNotificationsImpl).completeAsyncTasks()
 
-      val captureNotification = ArgumentCaptor.forClass(EditorNotificationPanel::class.java)
+      val captureNotification = argumentCaptor<EditorNotificationPanel>()
       verify(testFileEditor).addTopComponent(any(), captureNotification.capture())
-      assertThat(captureNotification.value.text)
+      assertThat(captureNotification.lastValue.text)
         .isEqualTo("Gradle JDK configuration has changed. A project sync may be necessary for the IDE to apply those changes.")
     }
   }
