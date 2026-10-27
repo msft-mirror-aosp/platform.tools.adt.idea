@@ -111,7 +111,7 @@ class ScreenshotAction :
           }
           val cause = getMessage(e) ?: e.javaClass.name
           val message = message("screenshot.error.generic", escapeXmlEntities(cause))
-          thisLogger().error(message, e)
+          thisLogger().warn(message, e)
           ApplicationManager.getApplication().invokeLater { showErrorDialog(project, message, message("screenshot.action.title")) }
         }
       }
