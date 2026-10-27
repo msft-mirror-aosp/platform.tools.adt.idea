@@ -31,6 +31,7 @@ import com.android.tools.adtui.model.RangedContinuousSeries
 import com.android.tools.adtui.model.Timeline
 import com.android.tools.adtui.model.axis.AxisComponentModel
 import com.android.tools.adtui.model.axis.ClampedAxisComponentModel
+import com.android.tools.adtui.model.legend.LegendComponentModel
 import com.android.tools.profilers.ProfilerColors
 import com.android.tools.profilers.ProfilerLayout
 import com.intellij.ui.JBColor
@@ -38,14 +39,13 @@ import com.intellij.ui.components.JBPanel
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.LayoutManager
-import java.awt.event.ComponentAdapter
-import java.awt.event.ComponentEvent
 import java.util.function.DoubleSupplier
 import javax.swing.BorderFactory
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.SwingConstants
+import javax.swing.SwingUtilities
 
 class DetailedMemoryChart {
   val lineChart: LineChart
@@ -108,14 +108,7 @@ class DetailedMemoryChart {
           add(makeAxis(memoryAxis, AxisComponent.AxisOrientation.RIGHT), BorderLayout.WEST)
           add(makeAxis(objectsAxis, AxisComponent.AxisOrientation.LEFT), BorderLayout.EAST)
         }
-      val legendPanel =
-        FlexibleLegendPanel(memoryUsage, legends, lineChart).also {
-          addComponentListener(
-            object : ComponentAdapter() {
-              override fun componentResized(e: ComponentEvent?) = it.adapt(width)
-            }
-          )
-        }
+      val legendPanel = FlexibleLegendPanel(memoryUsage, legends, lineChart)
       border = ProfilerLayout.MONITOR_BORDER
       add(legendPanel, TabularLayout.Constraint(0, 0))
       add(overlayPanel, TabularLayout.Constraint(0, 0))
@@ -179,22 +172,36 @@ internal class FlexibleLegendPanel(usage: DetailedMemoryUsage, legends: MemorySt
   JBPanel<FlexibleLegendPanel>(BorderLayout()) {
   private val fullLegend = makeLegendComponent(usage, legends, lineChart, true)
   private val compactLegend = makeLegendComponent(usage, legends, lineChart, false)
+  private val label =
+    JLabel("MEMORY").apply {
+      border = ProfilerLayout.MONITOR_LABEL_PADDING
+      verticalAlignment = SwingConstants.TOP
+    }
 
   init {
-    val label =
-      JLabel("MEMORY").apply {
-        border = ProfilerLayout.MONITOR_LABEL_PADDING
-        verticalAlignment = SwingConstants.TOP
-      }
     isOpaque = false
     add(label, BorderLayout.WEST)
     add(fullLegend, BorderLayout.EAST)
   }
 
-  fun adapt(width: Int) {
-    remove(fullLegend)
-    remove(compactLegend)
-    add(if (fullLegend.preferredSize.width + 60 < width) fullLegend else compactLegend, BorderLayout.EAST)
+  // Pick the legend on every layout, not just on resize: a legend's width is only known once it has been shown, and it
+  // grows with its values. Either change revalidates this panel, so the choice is corrected on the next layout.
+  override fun doLayout() {
+    val availableWidth = width - label.preferredSize.width
+    // Null when neither fits: show only the label instead of overlapping it.
+    val legend = listOf(fullLegend, compactLegend).firstOrNull { it.preferredSize.width <= availableWidth }
+    val shownLegend = components.firstOrNull { it is LegendComponent }
+    if (legend !== shownLegend) {
+      shownLegend?.let { remove(it) }
+      legend?.let {
+        add(it, BorderLayout.EAST)
+        // A legend only fills in while showing, and static data never updates it, so refresh it after this layout pass (a
+        // revalidate during it would be lost).
+        SwingUtilities.invokeLater { it.model.changed(LegendComponentModel.Aspect.LEGEND) }
+      }
+      repaint()
+    }
+    super.doLayout()
   }
 
   private companion object {
