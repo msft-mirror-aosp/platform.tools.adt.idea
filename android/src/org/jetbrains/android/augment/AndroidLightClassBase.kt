@@ -266,7 +266,13 @@ private constructor(
   protected sealed interface ContainingFileProvider {
     fun getContainingFile(project: Project): PsiFile
 
-    class Builder(private val packageName: String, private val shortName: String) {
+    class Builder
+    @JvmOverloads
+    constructor(
+      private val packageName: String,
+      private val shortName: String,
+      private val contentsAfterPackage: String = "// This class is generated on-the-fly by the IDE.",
+    ) {
 
       constructor(
         fullyQualifiedName: String
@@ -277,18 +283,11 @@ private constructor(
         require(shortName.isNotEmpty()) { "Short name \"$shortName\" must not be empty." }
       }
 
-      private var contents: String = "// This class is generated on-the-fly by the IDE."
-
-      fun setContents(value: String): Builder {
-        contents = value
-        return this
-      }
-
       fun build(project: Project, moduleInfo: AndroidLightClassModuleInfo): ContainingFileProvider {
+        val fileText = "package $packageName;\n\n$contentsAfterPackage"
         val javaFile =
-          PsiFileFactory.getInstance(project).createFileFromText("$shortName.java", JavaFileType.INSTANCE, contents) as PsiJavaFile
+          PsiFileFactory.getInstance(project).createFileFromText("$shortName.java", JavaFileType.INSTANCE, fileText) as PsiJavaFile
 
-        javaFile.packageName = packageName
         moduleInfo.setInfoOnContainingFile(javaFile)
 
         return ContainingFileProviderImpl(javaFile)

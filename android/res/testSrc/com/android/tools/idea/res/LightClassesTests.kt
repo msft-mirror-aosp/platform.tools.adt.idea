@@ -53,10 +53,20 @@ import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementPresentation
 import com.intellij.lang.annotation.HighlightSeverity.ERROR
 import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.guessProjectDir
+import com.intellij.pom.PomManager
+import com.intellij.pom.PomModelAspect
+import com.intellij.pom.event.PomModelEvent
+import com.intellij.pom.event.PomModelListener
+import com.intellij.pom.tree.TreeAspect
+import com.intellij.pom.tree.events.TreeChangeEvent
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiJavaFile
+import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiModifier
 import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.impl.ElementPresentationUtil
@@ -69,10 +79,12 @@ import com.intellij.testFramework.fixtures.IdeaProjectTestFixture
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.testFramework.fixtures.TestFixtureBuilder
 import com.intellij.usageView.UsageInfo
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.assertFailsWith
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import org.jetbrains.android.AndroidTestCase
+import org.jetbrains.android.augment.AndroidLightClassBase
 import org.jetbrains.android.augment.AndroidLightField
 import org.jetbrains.android.augment.ResourceLightField
 import org.jetbrains.android.augment.StyleableAttrLightField
@@ -742,6 +754,130 @@ class SingleModuleLightClassesTest {
     val rClass = resolveReferenceUnderCaret(myFixture)
     assertThat(rClass).isInstanceOf(ModuleRClass::class.java)
     assertThat((rClass as ModuleRClass).qualifiedName).isEqualTo("p1.p2.R")
+  }
+
+  @Test
+  fun containingFileProvider_backingFileTextAndPackage() {
+    val psiManager = PsiManager.getInstance(project)
+
+    // 1. Default contentsAfterPackage
+    val defaultClass = TestLightClass(psiManager, myModule, "com.example.test", "DefaultClass")
+    val defaultFile = defaultClass.containingFile as PsiJavaFile
+    assertThat(defaultFile.packageName).isEqualTo("com.example.test")
+    assertThat(defaultFile.name).isEqualTo("DefaultClass.java")
+    assertThat(defaultFile.text).isEqualTo("package com.example.test;\n\n// This class is generated on-the-fly by the IDE.")
+
+    // 2. Custom contentsAfterPackage
+    val customClass =
+      TestLightClass(
+        psiManager,
+        myModule,
+        "com.example.custom",
+        "CustomComponent",
+        "public interface CustomComponent {}\n",
+      )
+    val customFile = customClass.containingFile as PsiJavaFile
+    assertThat(customFile.packageName).isEqualTo("com.example.custom")
+    assertThat(customFile.name).isEqualTo("CustomComponent.java")
+    assertThat(customFile.text).isEqualTo("package com.example.custom;\n\npublic interface CustomComponent {}\n")
+    assertThat(customFile.classes.map { it.name }).containsExactly("CustomComponent")
+
+    // 3. Empty contentsAfterPackage
+    val emptyClass = TestLightClass(psiManager, myModule, "com.example.empty", "EmptyClass", "")
+    val emptyFile = emptyClass.containingFile as PsiJavaFile
+    assertThat(emptyFile.packageName).isEqualTo("com.example.empty")
+    assertThat(emptyFile.name).isEqualTo("EmptyClass.java")
+    assertThat(emptyFile.text).isEqualTo("package com.example.empty;\n\n")
+
+    // 4. Fully qualified name constructor
+    val fqnClass = TestLightClass(psiManager, myModule, "com.example.fqn.FqnClass")
+    val fqnFile = fqnClass.containingFile as PsiJavaFile
+    assertThat(fqnFile.packageName).isEqualTo("com.example.fqn")
+    assertThat(fqnFile.name).isEqualTo("FqnClass.java")
+    assertThat(fqnFile.text).isEqualTo("package com.example.fqn;\n\n// This class is generated on-the-fly by the IDE.")
+
+    // 5. Empty package name validation
+    assertFailsWith<IllegalArgumentException> {
+      TestLightClass(psiManager, myModule, "", "EmptyPkg")
+    }
+  }
+
+  @Test
+  fun containingFileProvider_doesNotMutateAstOnCreation() {
+    // Regression test for b/578382910: Light classes should not mutate the AST for their content upon creation.
+
+    val psiManager = PsiManager.getInstance(project)
+    val treeAspect = TreeAspect.getInstance(project)
+    val mutatedFiles = CopyOnWriteArrayList<PsiFile>()
+    // PsiFileFactory.createFileFromText creates a non-physical PsiFile, so mutating its AST does
+    // not increment PsiModificationTracker.modificationCount. Instead, listen to POM TreeAspect
+    // transactions and check each backing file's modificationStamp directly, which both catches
+    // non-physical AST mutations (such as setPackageName) and avoids flakiness from unrelated
+    // background PSI activity.
+    PomManager.getModel(project)
+      .addModelListener(
+        object : PomModelListener {
+          override fun modelChanged(event: PomModelEvent) {
+            val change = (event.getChangeSet(treeAspect) as? TreeChangeEvent) ?: return
+            change.rootElement.psi.containingFile?.let { mutatedFiles.add(it) }
+          }
+
+          override fun isAspectChangeInteresting(aspect: PomModelAspect): Boolean = aspect is TreeAspect
+        },
+        androidProjectRule.testRootDisposable,
+      )
+
+    val lightClasses =
+      listOf(
+        TestLightClass(psiManager, myModule, "com.example.test", "DefaultClass"),
+        TestLightClass(
+          psiManager,
+          myModule,
+          "com.example.custom",
+          "CustomComponent",
+          "public interface CustomComponent {}\n",
+        ),
+        TestLightClass(psiManager, myModule, "com.example.empty", "EmptyClass", ""),
+        TestLightClass(psiManager, myModule, "com.example.fqn.FqnClass"),
+      )
+
+    for (lightClass in lightClasses) {
+      val containingFile = lightClass.containingFile
+      assertThat(mutatedFiles).doesNotContain(containingFile)
+      assertThat(containingFile.modificationStamp).isEqualTo(0L)
+    }
+  }
+
+  private class TestLightClass : AndroidLightClassBase {
+    constructor(
+      psiManager: PsiManager,
+      module: Module,
+      packageName: String,
+      shortName: String,
+      contentsAfterPackage: String? = null,
+    ) : super(
+      psiManager,
+      emptySet(),
+      if (contentsAfterPackage != null) {
+        ContainingFileProvider.Builder(packageName, shortName, contentsAfterPackage)
+      } else {
+        ContainingFileProvider.Builder(packageName, shortName)
+      },
+      AndroidLightClassModuleInfo.from(module),
+    )
+
+    constructor(
+      psiManager: PsiManager,
+      module: Module,
+      fullyQualifiedName: String,
+    ) : super(
+      psiManager,
+      emptySet(),
+      ContainingFileProvider.Builder(fullyQualifiedName),
+      AndroidLightClassModuleInfo.from(module),
+    )
+
+    override fun getQualifiedName(): String? = null
   }
 }
 

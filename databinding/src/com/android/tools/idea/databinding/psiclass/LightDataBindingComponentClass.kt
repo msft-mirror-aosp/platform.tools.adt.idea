@@ -157,15 +157,13 @@ private constructor(psiManager: PsiManager, private val facet: AndroidFacet, pri
   companion object {
     private fun createContainingFileInfo(dataBindingMode: DataBindingMode): ContainingFileProvider.Builder {
       val normalizedPackageName = dataBindingMode.packageName.removeSuffix(".")
-      return ContainingFileProvider.Builder(normalizedPackageName, SdkConstants.CLASS_NAME_DATA_BINDING_COMPONENT)
-        .setContents(
+      return ContainingFileProvider.Builder(
+        normalizedPackageName,
+        SdkConstants.CLASS_NAME_DATA_BINDING_COMPONENT,
+        contentsAfterPackage =
           // language=Java
-          """
-          package $normalizedPackageName;
-          public interface DataBindingComponent {}
-          """
-            .trimIndent()
-        )
+          "public interface DataBindingComponent {}\n",
+      )
     }
   }
 }

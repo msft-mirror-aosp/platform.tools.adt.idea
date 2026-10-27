@@ -21,7 +21,7 @@ class AndroidInternalRClass(psiManager: PsiManager, private val platform: Androi
   AndroidLightClassBase(
     psiManager,
     ImmutableSet.of(PsiModifier.PUBLIC, PsiModifier.STATIC, PsiModifier.FINAL),
-    ContainingFileProvider.Builder(AndroidInternalRClassFinder.INTERNAL_PACKAGE_QNAME, "R").setContents(""),
+    ContainingFileProvider.Builder(AndroidInternalRClassFinder.INTERNAL_PACKAGE_QNAME, "R", contentsAfterPackage = ""),
     AndroidLightClassModuleInfo.from(sdk),
   ) {
   private val innerClasses: Array<PsiClass>
