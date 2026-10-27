@@ -16,7 +16,6 @@
 package com.android.tools.profilers.memory;
 
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_TOP_BORDER;
-import static com.android.tools.profilers.ProfilerLayout.ROW_HEIGHT_PADDING;
 import static com.android.tools.profilers.ProfilerLayout.TABLE_ROW_BORDER;
 import static com.android.tools.profilers.memory.SimpleColumnRenderer.compareOn;
 import static com.android.tools.profilers.memory.SimpleColumnRenderer.makeConditionalGetter;
@@ -229,8 +228,7 @@ public final class MemoryClassSetView extends AspectObserver {
 
     // Use JTree instead of IJ's tree, because IJ's tree does not happen border's Insets.
     myTree = new JTree();
-    int defaultFontHeight = myTree.getFontMetrics(myTree.getFont()).getHeight();
-    myTree.setRowHeight(defaultFontHeight + ROW_HEIGHT_PADDING);
+    // Keep the look and feel's row height, which follows the IDE font size. A fixed height would clip larger text.
     myTree.setBorder(TABLE_ROW_BORDER);
     myTree.setRootVisible(false);
     myTree.setShowsRootHandles(true);

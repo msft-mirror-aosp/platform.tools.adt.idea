@@ -17,7 +17,6 @@ package com.android.tools.profilers.memory;
 
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_BORDER_COLOR;
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_TOP_BORDER;
-import static com.android.tools.profilers.ProfilerLayout.ROW_HEIGHT_PADDING;
 import static com.android.tools.profilers.ProfilerLayout.TABLE_ROW_BORDER;
 import static com.android.tools.profilers.memory.SimpleColumnRenderer.makeIntColumn;
 import static com.android.tools.profilers.memory.SimpleColumnRenderer.makeSizeColumn;
@@ -450,8 +449,7 @@ public final class MemoryInstanceDetailsView extends AspectObserver {
         return super.getToolTipText(e);
       }
     };
-    int defaultFontHeight = tree.getFontMetrics(tree.getFont()).getHeight();
-    tree.setRowHeight(defaultFontHeight + ROW_HEIGHT_PADDING);
+    // Keep the look and feel's row height, which follows the IDE font size. A fixed height would clip larger text.
     tree.setBorder(TABLE_ROW_BORDER);
     tree.setRootVisible(false);
     tree.setShowsRootHandles(true);
@@ -631,8 +629,7 @@ public final class MemoryInstanceDetailsView extends AspectObserver {
         return super.getToolTipText(e);
       }
     };
-    int defaultFontHeight = tree.getFontMetrics(tree.getFont()).getHeight();
-    tree.setRowHeight(defaultFontHeight + ROW_HEIGHT_PADDING);
+    // Keep the look and feel's row height, which follows the IDE font size. A fixed height would clip larger text.
     tree.setBorder(TABLE_ROW_BORDER);
     tree.setRootVisible(true);
     tree.setShowsRootHandles(true);

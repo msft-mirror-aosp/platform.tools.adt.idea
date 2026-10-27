@@ -16,7 +16,6 @@
 package com.android.tools.profilers.memory;
 
 import static com.android.tools.adtui.common.AdtUiUtils.DEFAULT_TOP_BORDER;
-import static com.android.tools.profilers.ProfilerLayout.ROW_HEIGHT_PADDING;
 import static com.android.tools.profilers.ProfilerLayout.TABLE_ROW_BORDER;
 import static com.android.tools.profilers.memory.ClassGrouping.ARRANGE_BY_CLASS;
 import com.android.tools.adtui.common.ColoredIconGenerator;
@@ -389,8 +388,7 @@ public final class MemoryClassifierView extends AspectObserver implements Captur
     };
     // Renderer tooltips are only shown for trees registered with the ToolTipManager, and this tree never sets a tooltip on itself.
     ToolTipManager.sharedInstance().registerComponent(myTree);
-    int defaultFontHeight = myTree.getFontMetrics(myTree.getFont()).getHeight();
-    myTree.setRowHeight(defaultFontHeight + ROW_HEIGHT_PADDING);
+    // Keep the look and feel's row height, which follows the IDE font size. A fixed height would clip larger text.
     myTree.setBorder(TABLE_ROW_BORDER);
     myTree.setRootVisible(true);
     myTree.setShowsRootHandles(false);
