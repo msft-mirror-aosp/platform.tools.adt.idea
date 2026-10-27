@@ -18,11 +18,17 @@ package com.android.tools.idea.gradle.project.build.failure
 import com.android.tools.idea.gradle.project.build.output.DataBindingIssueChecker
 import com.android.tools.idea.gradle.project.build.output.OpenFileWithLocationQuickFix
 import com.google.common.truth.Truth
+import com.intellij.build.FilePosition
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.project.Project
 import java.io.File
 import java.lang.reflect.InvocationTargetException
 import org.jetbrains.kotlin.kapt3.diagnostic.KaptError
 import org.jetbrains.plugins.gradle.issue.GradleIssueData
 import org.junit.Test
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.verify
+import org.mockito.Mockito.verifyNoMoreInteractions
 
 class DataBindingIssueCheckerTest {
 
@@ -115,5 +121,19 @@ class DataBindingIssueCheckerTest {
     Truth.assertThat(resultIssue.quickFixes[1]).isInstanceOf(OpenFileWithLocationQuickFix::class.java)
     Truth.assertThat((resultIssue.quickFixes[1] as OpenFileWithLocationQuickFix).myFilePosition.file!!.absolutePath)
       .isEqualTo(expectedPath2)
+  }
+
+  @Test
+  fun openFileQuickFixWithoutProjectFileCompletesImmediately() {
+    val project = mock(Project::class.java) // projectFile is null, e.g. the default project
+    val quickFix = OpenFileWithLocationQuickFix("open.file.0", FilePosition(File("/some/project/path/layout.xml"), 1, 2))
+
+    val future = quickFix.runQuickFix(project, DataContext.EMPTY_CONTEXT)
+
+    Truth.assertThat(future.isDone).isTrue()
+    Truth.assertThat(future.get()).isNull()
+    // Bails out before scheduling navigation, so nothing else is read from the project.
+    verify(project).projectFile
+    verifyNoMoreInteractions(project)
   }
 }
