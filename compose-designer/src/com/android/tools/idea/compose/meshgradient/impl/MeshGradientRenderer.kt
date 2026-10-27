@@ -152,12 +152,42 @@ internal class MeshGradientRenderer {
     }
   }
 
+  private data class BufferKey(val subdivisionsU: Int, val subdivisionsV: Int, val patchesPerBatch: Int)
+
+  private class BatchBuffers(
+    val forwardDiffX: FloatArray,
+    val forwardDiffY: FloatArray,
+    val colorForwardDiff: FloatArray,
+    val positions: FloatArray,
+    val colors: IntArray,
+    val indices: ShortArray,
+  )
+
+  private val bufferCache = LinkedHashMap<BufferKey, BatchBuffers>(4, 0.75f, true)
+
   /**
    * (Re)allocates the vertex, index and scratch buffers when the tessellation level of a patch or the number of patches per batch changes,
-   * and keeps them otherwise.
+   * and keeps them otherwise. Caches recent configurations to eliminate GC churn when tessellation oscillates during dragging.
    */
   private fun ensureBuffers(subdivisionsU: Int, subdivisionsV: Int, patchesPerBatch: Int) {
     if (lastSubdivisionU == subdivisionsU && lastSubdivisionV == subdivisionsV && lastPatchesPerBatch == patchesPerBatch) return
+    val key = BufferKey(subdivisionsU, subdivisionsV, patchesPerBatch)
+    val cached = bufferCache[key]
+    if (cached != null) {
+      forwardDifferenceRowResultsX = cached.forwardDiffX
+      forwardDifferenceRowResultsY = cached.forwardDiffY
+      colorForwardDifferenceRowResults = cached.colorForwardDiff
+      positionsBuffer = cached.positions
+      colorsBuffer = cached.colors
+      indexBuffer = cached.indices
+      partialIndexBuffer = ShortArray(0)
+      precomputeBasisArrays(subdivisionsV)
+      lastSubdivisionU = subdivisionsU
+      lastSubdivisionV = subdivisionsV
+      lastPatchesPerBatch = patchesPerBatch
+      return
+    }
+
     val vertexCount = subdivisionsU * subdivisionsV * patchesPerBatch
     forwardDifferenceRowResultsX = FloatArray(4 * subdivisionsU)
     forwardDifferenceRowResultsY = FloatArray(4 * subdivisionsU)
@@ -170,6 +200,20 @@ internal class MeshGradientRenderer {
     lastSubdivisionU = subdivisionsU
     lastSubdivisionV = subdivisionsV
     lastPatchesPerBatch = patchesPerBatch
+
+    if (bufferCache.size >= 4) {
+      val eldest = bufferCache.keys.first()
+      bufferCache.remove(eldest)
+    }
+    bufferCache[key] =
+      BatchBuffers(
+        forwardDifferenceRowResultsX,
+        forwardDifferenceRowResultsY,
+        colorForwardDifferenceRowResults,
+        positionsBuffer,
+        colorsBuffer,
+        indexBuffer,
+      )
   }
 
   /**
@@ -405,13 +449,14 @@ internal class MeshGradientRenderer {
         val minValue = OklabChannelMinValues[channel]
         val maxValue = OklabChannelMaxValues[channel]
 
-        forwardDiffColor[rowOffset + channel] = currentColorValue.coerceIn(minValue, maxValue)
+        forwardDiffColor[rowOffset + channel] = (if (currentColorValue.isNaN()) 0f else currentColorValue).coerceIn(minValue, maxValue)
 
         for (uIndex in 1 until subdivisionsU) {
           currentColorValue += forwardDiff1Color
           forwardDiff1Color += forwardDiff2Color
           forwardDiff2Color += forwardDiff3Color
-          forwardDiffColor[rowOffset + uIndex * 4 + channel] = currentColorValue.coerceIn(minValue, maxValue)
+          forwardDiffColor[rowOffset + uIndex * 4 + channel] =
+            (if (currentColorValue.isNaN()) 0f else currentColorValue).coerceIn(minValue, maxValue)
         }
       }
     }

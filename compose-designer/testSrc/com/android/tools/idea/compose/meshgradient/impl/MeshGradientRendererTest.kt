@@ -103,6 +103,24 @@ class MeshGradientRendererTest {
   }
 
   @Test
+  fun bufferInstancesAreReusedAcrossOscillatingResizedFrames() {
+    val config = gridConfig(rows = 2, columns = 2)
+    val renderer = MeshGradientRenderer()
+    var buffer1: FloatArray? = null
+    var buffer3: FloatArray? = null
+
+    renderer.tessellate(config, Size(200f, 200f)) { positions, _, _ ->
+      if (buffer1 == null) buffer1 = positions
+    }
+    renderer.tessellate(config, Size(220f, 220f)) { _, _, _ -> }
+    renderer.tessellate(config, Size(200f, 200f)) { positions, _, _ ->
+      if (buffer3 == null) buffer3 = positions
+    }
+
+    assertTrue("Buffers should be reused across oscillating frames to prevent GC thrashing", buffer1 === buffer3)
+  }
+
+  @Test
   fun patchCornersMatchTheMeshVertices() {
     val topLeft = Offset(0.1f, 0.05f)
     val bottomRight = Offset(0.95f, 0.9f)
