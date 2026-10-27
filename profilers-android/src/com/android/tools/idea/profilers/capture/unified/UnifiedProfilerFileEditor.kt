@@ -26,6 +26,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorLocation
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerKeys
 import com.intellij.openapi.fileEditor.FileEditorState
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
@@ -94,6 +95,10 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
    * Because live profiling sessions share a single centralized UI component ([AndroidProfilerToolWindow.profilersPanel]) across the IDE,
    * this method embeds that panel into the editor tab. To ensure layout consistency and prevent UI cloning across split editor panes, this
    * method enforces a strict singleton policy by closing any older editor tabs for this file after layout transitions settle.
+   *
+   * [ProfilerVirtualFile] sets [FileEditorManagerKeys.FORBID_TAB_SPLIT], so the platform already hides the editor tab actions that would
+   * show this file twice and closes the old editor before opening it elsewhere. The delayed check below is a fallback for paths that bypass
+   * that key, such as the Split Chooser's "Duplicate".
    */
   private fun initializeLiveTaskEditor() {
     val profilerToolWindow = AndroidProfilerToolWindowFactory.getProfilerToolWindow(project) ?: return

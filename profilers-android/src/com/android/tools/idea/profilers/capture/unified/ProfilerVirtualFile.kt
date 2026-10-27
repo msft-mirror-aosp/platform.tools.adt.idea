@@ -18,6 +18,7 @@ package com.android.tools.idea.profilers.capture.unified
 import com.android.tools.profilers.taskbased.common.icons.TaskIconUtils
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerKeys
 import com.intellij.openapi.fileTypes.ex.FakeFileType
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileSystem
@@ -38,6 +39,12 @@ import java.io.OutputStream
  * @property taskName The human-readable title of the task displayed on the editor tab.
  */
 class ProfilerVirtualFile(val sessionId: Long, val taskType: ProfilerTaskType, private val taskName: String) : VirtualFile() {
+
+  init {
+    // Live tasks share a single profiler UI, so this file can be shown in only one editor at a time. This hides the editor tab actions
+    // that would show it twice ("Split Right", "Split Down", "Open in Opposite Group"); the "Split and Move" actions remain available.
+    putUserData(FileEditorManagerKeys.FORBID_TAB_SPLIT, true)
+  }
 
   override fun getName(): String = taskName
 

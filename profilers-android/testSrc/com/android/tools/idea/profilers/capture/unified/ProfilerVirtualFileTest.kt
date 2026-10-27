@@ -18,6 +18,7 @@ package com.android.tools.idea.profilers.capture.unified
 import com.android.tools.profilers.taskbased.common.icons.TaskIconUtils
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.fileEditor.FileEditorManagerKeys
 import com.intellij.openapi.vfs.ex.dummy.DummyFileSystem
 import com.intellij.testFramework.ApplicationRule
 import org.junit.Rule
@@ -43,5 +44,13 @@ class ProfilerVirtualFileTest {
     assertThat(fileType.isMyFileType(virtualFile)).isTrue()
     assertThat(fileType.name).isEqualTo("ProfilerCapture")
     assertThat(fileType.icon).isEqualTo(TaskIconUtils.getTaskIcon(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS))
+  }
+
+  @Test
+  fun virtualFile_forbidsTabSplit() {
+    val virtualFile = ProfilerVirtualFile(sessionId = 12345L, taskType = ProfilerTaskType.LIVE_VIEW, taskName = "Live View")
+
+    // Live tasks share a single profiler UI, so the platform must hide the editor tab actions that would show the file twice.
+    assertThat(virtualFile.getUserData(FileEditorManagerKeys.FORBID_TAB_SPLIT)).isTrue()
   }
 }
