@@ -25,6 +25,7 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
+        "@intellij//:com.intellij.gradle",
     ],
 )
 
@@ -55,6 +56,7 @@ iml_module(
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
+        "@intellij//:com.intellij.gradle",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
         "//tools/adt/idea/gradle-dsl-plugin:intellij.android.gradle.dsl.plugin",
     ],

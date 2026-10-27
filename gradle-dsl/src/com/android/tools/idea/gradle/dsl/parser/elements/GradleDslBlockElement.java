@@ -32,6 +32,7 @@ import static com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanti
 import static com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescription.VAR_BUT_DO_NOT_USE_FOR_WRITING_IN_KTS;
 import static com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanticsDescription.VWO;
 
+import com.android.tools.idea.gradle.dsl.model.BuildModelContext;
 import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax;
 import com.android.tools.idea.gradle.dsl.parser.apply.ApplyDslElement;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleScriptFile;
@@ -40,6 +41,7 @@ import com.android.tools.idea.gradle.dsl.parser.semantics.ModelEffectDescription
 import com.android.tools.idea.gradle.dsl.parser.semantics.SemanticsDescription;
 import com.intellij.psi.PsiElement;
 import java.util.Objects;
+import org.gradle.util.GradleVersion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -93,8 +95,13 @@ public class GradleDslBlockElement extends GradlePropertiesDslElement {
     String name = element.getName();
     @NotNull ExternalToModelMap nameMapper = getExternalToModelMap(element.getDslFile().getParser());
     ExternalNameSyntax syntax = element.getExternalSyntax();
+    BuildModelContext context = element.getDslFile().getContext();
+    GradleVersion gradleVersion = context.getGradleVersion();
     if (syntax == ASSIGNMENT || syntax == AUGMENTED_ASSIGNMENT || syntax == SET_METHOD) {
       for (ExternalToModelMap.Entry entry : nameMapper.getEntrySet()) {
+        if (entry.versionConstraint != null && gradleVersion != null && !entry.versionConstraint.isOkWith(gradleVersion)) {
+          continue;
+        }
         String entryName = entry.surfaceSyntaxDescription.name;
         Integer arity = entry.surfaceSyntaxDescription.arity;
         if (entryName.equals(name) && Objects.equals(arity, property)) {
@@ -105,6 +112,9 @@ public class GradleDslBlockElement extends GradlePropertiesDslElement {
     else {
       if (!element.isBlockElement()) {
         for (ExternalToModelMap.Entry entry : nameMapper.getEntrySet()) {
+          if (entry.versionConstraint != null && gradleVersion != null && !entry.versionConstraint.isOkWith(gradleVersion)) {
+            continue;
+          }
           String entryName = entry.surfaceSyntaxDescription.name;
           Integer arity = entry.surfaceSyntaxDescription.arity;
           // TODO(xof): distinguish between semantics based on expressed arities (at the moment we return the first method entry we find,

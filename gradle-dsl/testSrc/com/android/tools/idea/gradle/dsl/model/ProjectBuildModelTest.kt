@@ -39,6 +39,7 @@ import com.intellij.testFramework.utils.vfs.createFile
 import java.io.File
 import java.io.IOException
 import junit.framework.Assert
+import org.gradle.util.GradleVersion
 import org.hamcrest.CoreMatchers.hasItems
 import org.hamcrest.MatcherAssert.assertThat
 import org.jetbrains.annotations.SystemDependent
@@ -461,6 +462,38 @@ class ProjectBuildModelTest : GradleFileModelTestCase() {
     assertEquals(version, buildModel.context.agpVersion)
     assertEquals(version, settingsModel.context.agpVersion)
     buildModel.involvedFiles.forEach { assertEquals(version, it.context.agpVersion) }
+  }
+
+  @Test
+  fun testContextGradleVersion() {
+    writeToBuildFile(TestFile.CONTEXT_AGP_VERSION)
+    writeToSettingsFile("")
+
+    val pbm = projectBuildModel
+    val settingsModel = pbm.projectSettingsModel!!
+    val buildModel = pbm.projectBuildModel!!
+
+    assertEquals(null, pbm.context.gradleVersion)
+    assertEquals(null, buildModel.context.gradleVersion)
+    assertEquals(null, settingsModel.context.gradleVersion)
+    buildModel.involvedFiles.forEach { assertEquals(null, it.context.gradleVersion) }
+  }
+
+  @Test
+  fun testContextGradleVersionSetExplicitly() {
+    writeToBuildFile(TestFile.CONTEXT_AGP_VERSION)
+    writeToSettingsFile("")
+
+    val pbm = projectBuildModel
+    val settingsModel = pbm.projectSettingsModel!!
+    val buildModel = pbm.projectBuildModel!!
+
+    val version = GradleVersion.version("9.0.0")
+    pbm.context.gradleVersion = version
+    assertEquals(version, pbm.context.gradleVersion)
+    assertEquals(version, buildModel.context.gradleVersion)
+    assertEquals(version, settingsModel.context.gradleVersion)
+    buildModel.involvedFiles.forEach { assertEquals(version, it.context.gradleVersion) }
   }
 
   @Test

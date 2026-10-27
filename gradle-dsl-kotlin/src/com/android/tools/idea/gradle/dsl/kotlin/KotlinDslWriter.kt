@@ -66,6 +66,8 @@ import org.jetbrains.kotlin.psi.psiUtil.getChildOfType
 
 class KotlinDslWriter(override val internalContext: BuildModelContext) : KotlinDslNameConverter, GradleDslWriter {
 
+  override fun getSyntaxForSdkSetter() = ASSIGNMENT
+
   override fun moveDslElement(element: GradleDslElement): PsiElement? {
     val anchorAfter = element.anchor ?: return null
     if (anchorAfter !is GradleDslAnchor.After) return null // TODO(xof), wait, we can't move elements to the first position!?

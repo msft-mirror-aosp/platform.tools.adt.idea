@@ -15,9 +15,11 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.semantics;
 
+import com.android.tools.idea.gradle.dsl.model.BuildModelContext;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.gradle.util.GradleVersion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,23 +34,22 @@ import org.jetbrains.annotations.Nullable;
  * are non-overlapping, and are sorted in increasing order.  An absence of VersionConstraint (completely,
  * or for a particular piece of software) is equivalent to a VersionConstraint of one interval with both
  * end-points null (i.e. all versions are acceptable); a null software version is considered to be as far
- * in the future as is known (i.e. is acceptable to all VersionConstraints with a null upper end-point in
- * its last interval).
+ * in the future as is known for AGP (i.e. is acceptable to all VersionConstraints with a null upper end-point in
+ * its last interval) or default pre-Gradle 9 for GradleVersion (i.e. acceptable to constraints with null lower bound).
  *
  * Note that at present the constraints on the validity of the VersionConstraint are enforced implicitly by
  * having no way of constructing an invalid VersionConstraint.
- *
- * At present, the only piece of software we consider is the Android Gradle Plugin.
  */
 public class VersionConstraint {
-  @Nullable private List<VersionInterval> agpVersion = null;
+  @Nullable private List<AgpVersionInterval> agpVersion = null;
+  @Nullable private List<GradleVersionInterval> gradleVersion = null;
 
   VersionConstraint() {
   }
 
   public static VersionConstraint agpBefore(@NotNull AndroidGradlePluginVersion agpVersion) {
     VersionConstraint versionConstraint = new VersionConstraint();
-    versionConstraint.agpVersion = Collections.singletonList(new VersionInterval(null, agpVersion));
+    versionConstraint.agpVersion = Collections.singletonList(new AgpVersionInterval(null, agpVersion));
     return versionConstraint;
   }
 
@@ -58,7 +59,7 @@ public class VersionConstraint {
 
   public static VersionConstraint agpFrom(@NotNull AndroidGradlePluginVersion agpVersion) {
     VersionConstraint versionConstraint = new VersionConstraint();
-    versionConstraint.agpVersion = Collections.singletonList(new VersionInterval(agpVersion, null));
+    versionConstraint.agpVersion = Collections.singletonList(new AgpVersionInterval(agpVersion, null));
     return versionConstraint;
   }
 
@@ -66,12 +67,33 @@ public class VersionConstraint {
     return agpFrom(AndroidGradlePluginVersion.Companion.parse(agpVersion));
   }
 
+  public static VersionConstraint gradleBefore(@NotNull GradleVersion gradleVersion) {
+    VersionConstraint versionConstraint = new VersionConstraint();
+    versionConstraint.gradleVersion = Collections.singletonList(new GradleVersionInterval(null, gradleVersion));
+    return versionConstraint;
+  }
+
+  public static VersionConstraint gradleBefore(@NotNull String gradleVersion) {
+    return gradleBefore(GradleVersion.version(gradleVersion));
+  }
+
+  public VersionConstraint andGradleBefore(@NotNull GradleVersion gradleVersion) {
+    VersionConstraint result = new VersionConstraint();
+    result.agpVersion = this.agpVersion;
+    result.gradleVersion = Collections.singletonList(new GradleVersionInterval(null, gradleVersion));
+    return result;
+  }
+
+  public VersionConstraint andGradleBefore(@NotNull String gradleVersion) {
+    return andGradleBefore(GradleVersion.version(gradleVersion));
+  }
+
   public boolean isOkWith(@Nullable AndroidGradlePluginVersion agpVersion) {
     if (this.agpVersion == null) {
       return true;
     }
     else {
-      for (VersionInterval interval : this.agpVersion) {
+      for (AgpVersionInterval interval : this.agpVersion) {
         if (interval.contains(agpVersion)) {
           return true;
         }
@@ -80,42 +102,68 @@ public class VersionConstraint {
     return false;
   }
 
+  public boolean isOkWith(@NotNull GradleVersion gradleVersion) {
+    if (this.gradleVersion == null) {
+      return true;
+    }
+    else {
+      for (GradleVersionInterval interval : this.gradleVersion) {
+        if (interval.contains(gradleVersion)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  public boolean isOkWith(@Nullable AndroidGradlePluginVersion agpVersion, @Nullable GradleVersion gradleVersion) {
+    if (this.agpVersion != null && !isOkWith(agpVersion)) {
+      return false;
+    }
+    if (this.gradleVersion != null && gradleVersion != null && !isOkWith(gradleVersion)) {
+      return false;
+    }
+    return true;
+  }
+
+  public boolean isOkWith(@NotNull BuildModelContext context) {
+    return isOkWith(context.getAgpVersion(), context.getGradleVersion());
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     VersionConstraint that = (VersionConstraint)o;
-    return Objects.equals(agpVersion, that.agpVersion);
+    return Objects.equals(agpVersion, that.agpVersion) &&
+           Objects.equals(gradleVersion, that.gradleVersion);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(agpVersion);
+    return Objects.hash(agpVersion, gradleVersion);
   }
 }
 
 /**
  * Similar to {@code GradleVersionRange} (in android.sdktools.common) but admits a null lower bound, and is not intended for parsing.
  */
-class VersionInterval {
-  @Nullable private final AndroidGradlePluginVersion min;
-  @Nullable private final AndroidGradlePluginVersion max;
+abstract class VersionInterval<T extends Comparable<T>> {
+  @Nullable final T min;
+  @Nullable final T max;
 
-  VersionInterval(@Nullable AndroidGradlePluginVersion min, @Nullable AndroidGradlePluginVersion max) {
+  VersionInterval(@Nullable T min, @Nullable T max) {
     this.min = min;
     this.max = max;
   }
 
-  public boolean contains(@Nullable AndroidGradlePluginVersion query) {
-    if (query == null) return this.max == null;
-    return (this.min == null || this.min.compareTo(query) <= 0) && (this.max == null || this.max.compareTo(query) > 0);
-  }
+  abstract boolean contains(@Nullable T query);
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    VersionInterval interval = (VersionInterval)o;
+    VersionInterval<?> interval = (VersionInterval<?>)o;
     return Objects.equals(min, interval.min) &&
            Objects.equals(max, interval.max);
   }
@@ -123,5 +171,29 @@ class VersionInterval {
   @Override
   public int hashCode() {
     return Objects.hash(min, max);
+  }
+}
+
+class AgpVersionInterval extends VersionInterval<AndroidGradlePluginVersion> {
+  AgpVersionInterval(@Nullable AndroidGradlePluginVersion min, @Nullable AndroidGradlePluginVersion max) {
+    super(min, max);
+  }
+
+  @Override
+  public boolean contains(@Nullable AndroidGradlePluginVersion query) {
+    if (query == null) return this.max == null;
+    return (this.min == null || this.min.compareTo(query) <= 0) && (this.max == null || this.max.compareTo(query) > 0);
+  }
+}
+
+class GradleVersionInterval extends VersionInterval<GradleVersion> {
+  GradleVersionInterval(@Nullable GradleVersion min, @Nullable GradleVersion max) {
+    super(min, max);
+  }
+
+  @Override
+  public boolean contains(@Nullable GradleVersion query) {
+    if (query == null) return false;
+    return (this.min == null || this.min.compareTo(query) <= 0) && (this.max == null || this.max.compareTo(query) > 0);
   }
 }

@@ -54,6 +54,7 @@ import com.intellij.openapi.util.Computable;
 import com.intellij.psi.PsiElement;
 import java.util.Arrays;
 import java.util.regex.Pattern;
+import org.gradle.util.GradleVersion;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElementFactory;
@@ -140,28 +141,40 @@ public class GroovyDslNameConverter implements GradleDslNameConverter {
     }
   }
 
+  boolean preferAssignment() {
+    GradleVersion gradleVersion = getContext().getGradleVersion();
+    return gradleVersion == null || gradleVersion.getMajorVersion() >= 9;
+  }
+
   @NotNull
   @Override
   public ExternalNameInfo externalNameForParent(@NotNull String modelName, @NotNull GradleDslElement context) {
     @NotNull ExternalToModelMap map = context.getExternalToModelMap(this);
     ExternalNameInfo result = new ExternalNameInfo(modelName, UNKNOWN);
+    boolean preferAssignment = preferAssignment();
     for (ExternalToModelMap.Entry e : map.getEntrySet()) {
       if (e.modelEffectDescription.property.name.equals(modelName)) {
-        if (e.versionConstraint != null && !e.versionConstraint.isOkWith(getContext().getAgpVersion())) continue;
+        if (e.versionConstraint != null && !e.versionConstraint.isOkWith(getContext())) continue;
         SemanticsDescription semantics = e.modelEffectDescription.semantics;
         if (semantics == GRADLE_PROPERTY) {
           return new ExternalNameInfo(e.surfaceSyntaxDescription.name, ASSIGNMENT);
         }
-        if (Arrays.asList(SET, ADD_AS_LIST, AUGMENT_LIST, CLEAR_AND_AUGMENT_LIST, AUGMENT_MAP, OTHER).contains(semantics)) {
+        boolean isPropertyAssignment = semantics == VAR || semantics == VWO || semantics == VAR_BUT_DO_NOT_USE_FOR_WRITING_IN_KTS;
+        if (preferAssignment) {
+          if (isPropertyAssignment) return new ExternalNameInfo(e.surfaceSyntaxDescription.name, ASSIGNMENT);
+          if (semantics == SET) result = new ExternalNameInfo(e.surfaceSyntaxDescription.name, METHOD);
+        }
+        else {
+          if (semantics == SET) return new ExternalNameInfo(e.surfaceSyntaxDescription.name, METHOD);
+          if (isPropertyAssignment) result = new ExternalNameInfo(e.surfaceSyntaxDescription.name, ASSIGNMENT);
+        }
+        if (Arrays.asList(ADD_AS_LIST, AUGMENT_LIST, CLEAR_AND_AUGMENT_LIST, AUGMENT_MAP, OTHER).contains(semantics)) {
           return new ExternalNameInfo(e.surfaceSyntaxDescription.name, METHOD);
         }
         if (semantics == VAL && (e.modelEffectDescription.property.type == MUTABLE_SET ||
                                  e.modelEffectDescription.property.type == MUTABLE_LIST ||
                                  e.modelEffectDescription.property.type == MUTABLE_MAP)) {
           return new ExternalNameInfo(e.surfaceSyntaxDescription.name, AUGMENTED_ASSIGNMENT);
-        }
-        if (semantics == VAR || semantics == VWO || semantics == VAR_BUT_DO_NOT_USE_FOR_WRITING_IN_KTS) {
-          result = new ExternalNameInfo(e.surfaceSyntaxDescription.name, ASSIGNMENT);
         }
       }
     }

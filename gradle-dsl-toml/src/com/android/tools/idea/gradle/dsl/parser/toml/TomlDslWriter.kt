@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.dsl.parser.toml
 
 import com.android.tools.idea.gradle.dsl.model.BuildModelContext
+import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.UNKNOWN
 import com.android.tools.idea.gradle.dsl.parser.GradleDslWriter
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslAnchor
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement
@@ -45,6 +46,8 @@ import org.toml.lang.psi.TomlTable
 
 class TomlDslWriter(private val context: BuildModelContext) : GradleDslWriter, TomlDslNameConverter {
   private val tables = listOf("versions", "libraries", "plugins", "bundles")
+
+  override fun getSyntaxForSdkSetter() = UNKNOWN
 
   override fun getContext(): BuildModelContext = context
 

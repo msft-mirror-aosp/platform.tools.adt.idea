@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.dsl.parser.semantics
 
 import com.google.common.truth.Expect
+import org.gradle.util.GradleVersion
 import org.junit.Rule
 import org.junit.Test
 
@@ -81,5 +82,39 @@ class VersionConstraintTest {
       }
       expect.that(vc.isOkWith(null)).isFalse()
     }
+  }
+
+  @Test
+  fun testVersionConstraintGradleBefore() {
+    val vc = VersionConstraint.gradleBefore("10.0")
+    expect.that(vc.isOkWith(GradleVersion.version("8.8"))).isTrue()
+    expect.that(vc.isOkWith(GradleVersion.version("9.0"))).isTrue()
+    expect.that(vc.isOkWith(GradleVersion.version("9.1.0"))).isTrue()
+    expect.that(vc.isOkWith(GradleVersion.version("10.0"))).isFalse()
+    expect.that(vc.isOkWith(GradleVersion.version("10.1"))).isFalse()
+    // Null Gradle version (unspecified) does not violate gradleBefore
+    expect.that(vc.isOkWith(null, null)).isTrue()
+  }
+
+  @Test
+  fun testVersionConstraintGradleEquality() {
+    val vc1 = VersionConstraint.gradleBefore("10.0")
+    val vc2 = VersionConstraint.gradleBefore(GradleVersion.version("10.0"))
+    val vc3 = VersionConstraint.gradleBefore("9.0")
+    expect.that(vc1 == vc2).isTrue()
+    expect.that(vc1.hashCode() == vc2.hashCode()).isTrue()
+    expect.that(vc1 == vc3).isFalse()
+  }
+
+  @Test
+  fun testVersionConstraintAgpAndGradleBefore() {
+    val vc = VersionConstraint.agpFrom("4.1.0").andGradleBefore("10.0")
+    expect.that(vc.isOkWith(AndroidGradlePluginVersion.parse("4.1.0"))).isTrue()
+    expect.that(vc.isOkWith(AndroidGradlePluginVersion.parse("4.0.0"))).isFalse()
+    expect.that(vc.isOkWith(GradleVersion.version("8.8"))).isTrue()
+    expect.that(vc.isOkWith(GradleVersion.version("10.0"))).isFalse()
+    expect.that(vc.isOkWith(AndroidGradlePluginVersion.parse("4.1.0"), GradleVersion.version("8.8"))).isTrue()
+    expect.that(vc.isOkWith(AndroidGradlePluginVersion.parse("4.0.0"), GradleVersion.version("8.8"))).isFalse()
+    expect.that(vc.isOkWith(AndroidGradlePluginVersion.parse("4.1.0"), GradleVersion.version("10.0"))).isFalse()
   }
 }

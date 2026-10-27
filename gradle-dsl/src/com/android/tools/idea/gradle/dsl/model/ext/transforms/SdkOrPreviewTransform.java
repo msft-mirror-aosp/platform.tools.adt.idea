@@ -19,6 +19,7 @@ import static com.android.tools.idea.gradle.dsl.model.ext.PropertyUtil.createBas
 
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo;
 import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo;
+import com.android.tools.idea.gradle.dsl.parser.GradleDslWriter;
 import com.android.tools.idea.gradle.dsl.parser.android.FakeSdkElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpression;
@@ -106,6 +107,7 @@ public class SdkOrPreviewTransform extends PropertyTransform {
   ) {
     String operatorName;
     ExternalNameInfo.ExternalNameSyntax syntax;
+    GradleDslWriter writer = holder.getDslFile().getWriter();
     if (versionConstraint == null || versionConstraint.isOkWith(holder.getDslFile().getContext().getAgpVersion())) {
       if (value instanceof ReferenceTo) {
         // TODO(xof): if and when the genericSetter is removed from AGP, we will need to have some magic at this point.
@@ -114,25 +116,19 @@ public class SdkOrPreviewTransform extends PropertyTransform {
       }
       else if (value instanceof Integer) {
         operatorName = sdkSetter;
-        syntax = Objects.equals("gradle", holder.getDslFile().getFile().getExtension())
-                 ? ExternalNameInfo.ExternalNameSyntax.METHOD
-                 : ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT;
+        syntax = writer.getSyntaxForSdkSetter();
       }
       else if (value instanceof String && ((String)value).startsWith("android-")) {
         String valueAfterAndroid = ((String)value).substring("android-".length());
         if (isPreviewHash((String) value)) {
           operatorName = previewSetter;
-          syntax = Objects.equals("gradle", holder.getDslFile().getFile().getExtension())
-                   ? ExternalNameInfo.ExternalNameSyntax.METHOD
-                   : ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT;
+          syntax = writer.getSyntaxForSdkSetter();
           value = valueAfterAndroid;
         } else {
           try {
             int sdkVersion = Integer.parseInt(valueAfterAndroid);
             operatorName = sdkSetter;
-            syntax = Objects.equals("gradle", holder.getDslFile().getFile().getExtension())
-                     ? ExternalNameInfo.ExternalNameSyntax.METHOD
-                     : ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT;
+            syntax = writer.getSyntaxForSdkSetter();
             value = sdkVersion;
           } catch (NumberFormatException e) {
             operatorName = genericSetter;
@@ -143,9 +139,7 @@ public class SdkOrPreviewTransform extends PropertyTransform {
         // Handle RawText that refers to an integer
         if (value.toString().endsWith(".toInt()")) {
           operatorName = sdkSetter;
-          syntax = Objects.equals("gradle", holder.getDslFile().getFile().getExtension())
-                   ? ExternalNameInfo.ExternalNameSyntax.METHOD
-                   : ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT;
+          syntax = writer.getSyntaxForSdkSetter();
         } else {
           // TODO(xof): if and when the genericSetter is removed from AGP, we will need to have some magic at this point.
           operatorName = genericSetter;

@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.dsl.parser.groovy;
 
 import static com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.ASSIGNMENT;
 import static com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.AUGMENTED_ASSIGNMENT;
+import static com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.METHOD;
 import static com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.SET_METHOD;
 import static com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.UNKNOWN;
 import static com.android.tools.idea.gradle.dsl.parser.SharedParserUtilsKt.isDomainObjectConfiguratorMethodName;
@@ -74,6 +75,12 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.params.GrParameterLi
 public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDslWriter {
   public GroovyDslWriter(@NotNull BuildModelContext context) {
     super(context);
+  }
+
+  @NotNull
+  @Override
+  public ExternalNameSyntax getSyntaxForSdkSetter() {
+    return preferAssignment() ? ASSIGNMENT : METHOD;
   }
 
   @Override

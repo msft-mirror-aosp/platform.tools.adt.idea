@@ -15,7 +15,8 @@
  */
 package com.android.tools.idea.gradle.dsl.model.ext
 
-import com.android.tools.idea.gradle.dsl.TestFileNameImpl.PROPERTY_UTIL_WRITE_BACK_ELEMENT_WITH_TRIMMED_NAME
+import com.android.tools.idea.gradle.dsl.TestFileNameImpl.PROPERTY_UTIL_WRITE_BACK_ELEMENT_WITH_TRIMMED_NAME_BEFORE9
+import com.android.tools.idea.gradle.dsl.TestFileNameImpl.PROPERTY_UTIL_WRITE_BACK_ELEMENT_WITH_TRIMMED_NAME_GRADLE9
 import com.android.tools.idea.gradle.dsl.api.ext.PropertyType
 import com.android.tools.idea.gradle.dsl.model.android.ProductFlavorModelImpl
 import com.android.tools.idea.gradle.dsl.model.android.android
@@ -24,6 +25,7 @@ import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyn
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslLiteral
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslMethodCall
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement
+import org.gradle.util.GradleVersion
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Test
@@ -98,9 +100,10 @@ class PropertyUtilTest : TransformTestCase() {
   }
 
   @Test
-  fun testWriteBackElementWithTrimmedName() {
+  fun testWriteBackElementWithTrimmedNameBefore9() {
     val literal = createLiteral(name = "android.defaultConfig.applicationId")
     val buildModel = gradleBuildModel
+    buildModel.context.gradleVersion = GradleVersion.version("8.8")
     val defaultConfigBlock = (buildModel.android().defaultConfig() as ProductFlavorModelImpl).dslElement()
     literal.elementType = PropertyType.REGULAR
     if (!isGroovy) {
@@ -110,7 +113,7 @@ class PropertyUtilTest : TransformTestCase() {
     literal.setValue("hello")
 
     applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, PROPERTY_UTIL_WRITE_BACK_ELEMENT_WITH_TRIMMED_NAME)
+    verifyFileContents(myBuildFile, PROPERTY_UTIL_WRITE_BACK_ELEMENT_WITH_TRIMMED_NAME_BEFORE9)
 
     val applicationId = buildModel.android().defaultConfig().applicationId()
     if (isGroovy) {
@@ -118,5 +121,22 @@ class PropertyUtilTest : TransformTestCase() {
     } else {
       assertThat(applicationId.psiElement!!.parent!!.text, equalTo("applicationId = \"hello\""))
     }
+  }
+
+  @Test
+  fun testWriteBackElementWithTrimmedNameGradle9() {
+    val literal = createLiteral(name = "android.defaultConfig.applicationId")
+    val buildModel = gradleBuildModel
+    buildModel.context.gradleVersion = GradleVersion.version("9.0.0")
+    val defaultConfigBlock = (buildModel.android().defaultConfig() as ProductFlavorModelImpl).dslElement()
+    literal.elementType = PropertyType.REGULAR
+    if (!isGroovy) {
+      literal.externalSyntax = ASSIGNMENT
+    }
+    defaultConfigBlock.setNewElement(literal)
+    literal.setValue("hello")
+
+    applyChangesAndReparse(buildModel)
+    verifyFileContents(myBuildFile, PROPERTY_UTIL_WRITE_BACK_ELEMENT_WITH_TRIMMED_NAME_GRADLE9)
   }
 }

@@ -12,6 +12,7 @@ iml_module(
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
         "@intellij//:org.intellij.groovy",
+        "@intellij//:com.intellij.gradle",
         "//tools/adt/idea/gradle-dsl:intellij.android.gradle.dsl",
     ],
 )

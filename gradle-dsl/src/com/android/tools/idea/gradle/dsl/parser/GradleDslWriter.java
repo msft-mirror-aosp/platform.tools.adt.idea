@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.dsl.parser;
 
+import static com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyntax.UNKNOWN;
 import static com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter.Kind.NONE;
 
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
@@ -71,6 +72,9 @@ public interface GradleDslWriter extends GradleDslNameConverter {
 
   void applyDslPropertiesElement(@NotNull GradlePropertiesDslElement element);
 
+  @NotNull
+  ExternalNameInfo.ExternalNameSyntax getSyntaxForSdkSetter();
+
   class Adapter implements GradleDslWriter {
     @NotNull private final BuildModelContext context;
 
@@ -123,5 +127,9 @@ public interface GradleDslWriter extends GradleDslNameConverter {
     @Override
     @NotNull
     public BuildModelContext getContext() { return context; }
+
+    @Override
+    @NotNull
+    public ExternalNameInfo.ExternalNameSyntax getSyntaxForSdkSetter() { return UNKNOWN; }
   }
 }
