@@ -20,7 +20,9 @@ import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.resources.SingleNamespaceResourceRepository
 import com.android.resources.ResourceType
 import com.android.tools.idea.model.AndroidModel
+import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.res.LocalResourceRepository
+import com.android.tools.res.LocalResourceRepository.EmptyRepository
 import com.android.utils.TraceUtils.simpleId
 import com.google.common.base.MoreObjects
 import com.intellij.openapi.Disposable
@@ -42,7 +44,6 @@ class ModuleResourceRepository
 private constructor(
   private val facet: AndroidFacet,
   parentDisposable: Disposable,
-  private val namespace: ResourceNamespace,
   addDynamicResources: Boolean,
   delegates: List<LocalResourceRepository<VirtualFile>>? = null,
 ) : MemoryTrackingMultiResourceRepository(parentDisposable, facet.module.name), SingleNamespaceResourceRepository {
@@ -58,7 +59,7 @@ private constructor(
 
     val dynamicResources: List<LocalResourceRepository<VirtualFile>> =
       if (addDynamicResources) {
-        listOf(DynamicValueResourceRepository.create(facet, this, namespace))
+        listOf(DynamicValueResourceRepository.create(facet, this))
       } else {
         emptyList()
       }
@@ -139,9 +140,9 @@ private constructor(
     setChildren(resources, emptyList(), emptyList())
   }
 
-  override fun getNamespace() = namespace
+  override fun getNamespace() = ResourceNamespace.RES_AUTO
 
-  override fun getPackageName() = ResourceRepositoryImplUtil.getPackageName(namespace, facet)
+  override fun getPackageName() = facet.getModuleSystem().getPackageName()
 
   override fun toString() = MoreObjects.toStringHelper(this).toString()
 
@@ -179,12 +180,11 @@ private constructor(
      * The returned repository needs to be registered with a [com.intellij.openapi.Disposable] parent.
      *
      * @param facet the facet for the module
-     * @param namespace the namespace for the repository
      * @return the resource repository
      */
     @JvmStatic
-    fun forMainResources(facet: AndroidFacet, parentDisposable: Disposable, namespace: ResourceNamespace) =
-      createIfNotEmpty(facet, parentDisposable, namespace, addDynamicResources = AndroidModel.isRequired(facet))
+    fun forMainResources(facet: AndroidFacet, parentDisposable: Disposable) =
+      createIfNotEmpty(facet, parentDisposable, addDynamicResources = AndroidModel.isRequired(facet))
 
     /**
      * Creates a new resource repository for the given module, **not** including its dependent modules.
@@ -192,21 +192,20 @@ private constructor(
      * The returned repository needs to be registered with a [com.intellij.openapi.Disposable] parent.
      *
      * @param facet the facet for the module
-     * @param namespace the namespace for the repository
      * @return the resource repository
      */
     @JvmStatic
-    fun forTestResources(facet: AndroidFacet, parentDisposable: Disposable, namespace: ResourceNamespace) =
-      createIfNotEmpty(facet, parentDisposable, namespace, addDynamicResources = false)
+    fun forTestResources(facet: AndroidFacet, parentDisposable: Disposable) =
+      createIfNotEmpty(facet, parentDisposable, addDynamicResources = false)
 
     private fun createIfNotEmpty(
       facet: AndroidFacet,
       parentDisposable: Disposable,
-      namespace: ResourceNamespace,
       addDynamicResources: Boolean,
     ): LocalResourceRepository<VirtualFile> =
-      if (!AndroidModel.isRequired(facet) && ResourceFolderManager.getInstance(facet).folders.isEmpty()) EmptyRepository(namespace)
-      else ModuleResourceRepository(facet, parentDisposable, namespace, addDynamicResources)
+      if (!AndroidModel.isRequired(facet) && ResourceFolderManager.getInstance(facet).folders.isEmpty())
+        EmptyRepository(ResourceNamespace.RES_AUTO)
+      else ModuleResourceRepository(facet, parentDisposable, addDynamicResources)
 
     @TestOnly
     @JvmOverloads
@@ -214,7 +213,6 @@ private constructor(
     fun createForTest(
       facet: AndroidFacet,
       resourceDirectories: Collection<VirtualFile>,
-      namespace: ResourceNamespace = ResourceNamespace.RES_AUTO,
       dynamicResourceValueRepository: DynamicValueResourceRepository? = null,
     ): ModuleResourceRepository {
       assert(ApplicationManager.getApplication().isUnitTestMode)
@@ -224,13 +222,10 @@ private constructor(
 
       val resourceFolderRegistry = ResourceFolderRegistry.getInstance(facet.module.project)
       for (dir in resourceDirectories) {
-        val repository =
-          if (namespace == ResourceNamespace.RES_AUTO) resourceFolderRegistry[facet, dir]
-          else ResourceFolderRepository.create(facet, dir, namespace, null).ensureLoaded()
-        delegates.add(repository)
+        delegates.add(resourceFolderRegistry[facet, dir])
       }
 
-      return ModuleResourceRepository(facet, parentDisposable = facet, namespace, addDynamicResources = false, delegates)
+      return ModuleResourceRepository(facet, parentDisposable = facet, addDynamicResources = false, delegates)
     }
   }
 }

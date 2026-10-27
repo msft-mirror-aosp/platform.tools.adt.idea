@@ -16,7 +16,6 @@
 package com.android.tools.idea.editors.strings
 
 import com.android.SdkConstants
-import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.resources.Locale
 import com.android.projectmodel.DynamicResourceValue
 import com.android.resources.ResourceType
@@ -70,11 +69,9 @@ class StringResourceDataTest {
 
     val field = DynamicResourceValue(ResourceType.STRING, "L'Étranger")
 
-    val dynamicRepository =
-      DynamicValueResourceRepository.createForTest(facet, ResourceNamespace.RES_AUTO, Collections.singletonMap("dynamic_key1", field))
+    val dynamicRepository = DynamicValueResourceRepository.createForTest(facet, Collections.singletonMap("dynamic_key1", field))
 
-    val moduleRepository =
-      ModuleResourceRepository.createForTest(facet, listOf(resourceDirectory), ResourceNamespace.RES_AUTO, dynamicRepository)
+    val moduleRepository = ModuleResourceRepository.createForTest(facet, listOf(resourceDirectory), dynamicRepository)
 
     data = create(module.project, Utils.createStringRepository(moduleRepository, module.project))
   }
@@ -306,7 +303,7 @@ class StringResourceDataTest {
     val newTag = resources.createChildTag("string", "", "New Text", false)
     newTag.setAttribute(SdkConstants.ATTR_NAME, "newKey")
     WriteCommandAction.runWriteCommandAction(project) { resources.addAfter(newTag, tag2) }
-    val moduleRepository = ModuleResourceRepository.createForTest(facet, listOf(resourceDirectory), ResourceNamespace.RES_AUTO)
+    val moduleRepository = ModuleResourceRepository.createForTest(facet, listOf(resourceDirectory))
     data = create(module.project, Utils.createStringRepository(moduleRepository, module.project))
 
     val locale = Locale.create("fr")

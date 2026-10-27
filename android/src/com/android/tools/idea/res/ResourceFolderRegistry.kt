@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.res
 
-import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.tools.concurrency.AndroidIoManager
 import com.android.tools.idea.util.toPathString
 import com.android.utils.TraceUtils.simpleId
@@ -92,7 +91,6 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
     ensureLoaded: Boolean = true,
   ): ResourceFolderRepository {
     val repository = cache.getAndUnwrap(dir) { createRepository(facet, dir) }
-    assert(repository.namespace == ResourceNamespace.RES_AUTO)
 
     // TODO(b/80179120): figure out why this is not always true.
     // assert repository.getFacet().equals(facet);
@@ -189,7 +187,7 @@ class ResourceFolderRegistry(val project: Project) : Disposable {
       if (ApplicationManager.getApplication().isUnitTestMode) Executor { _: Runnable? -> }
       else AndroidIoManager.getInstance().getBackgroundDiskIoExecutor()
     val cachingData = ResourceFolderRepositoryFileCacheService.get().getCachingData(facet.module.project, dir, executor)
-    return ResourceFolderRepository.create(facet, dir, ResourceNamespace.RES_AUTO, cachingData)
+    return ResourceFolderRepository.create(facet, dir, cachingData)
   }
 
   companion object {

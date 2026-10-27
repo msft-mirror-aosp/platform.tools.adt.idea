@@ -65,6 +65,7 @@ import com.android.resources.base.ResourceSerializationUtil;
 import com.android.resources.base.ResourceSourceFile;
 import com.android.sdklib.IAndroidTarget;
 import com.android.tools.idea.configurations.ConfigurationManager;
+import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.idea.util.FileExtensions;
 import com.android.tools.idea.module.ModuleKeyManager;
 import com.android.tools.res.LocalResourceRepository;
@@ -193,7 +194,6 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
   @NotNull private final AndroidFacet myFacet;
   @NotNull private final PsiTreeChangeListener myPsiListener;
   @NotNull private final VirtualFile myResourceDir;
-  @NotNull private final ResourceNamespace myNamespace;
   /**
    * Common prefix of paths of all file resources.  Used to compose resource paths returned by
    * the {@link BasicFileResourceItem#getSource()} method.
@@ -258,20 +258,18 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
    * NOTE: You should normally use {@link ResourceFolderRegistry#get} rather than this method.
    */
   @NotNull
-  static ResourceFolderRepository create(@NotNull AndroidFacet facet, @NotNull VirtualFile dir, @NotNull ResourceNamespace namespace,
+  static ResourceFolderRepository create(@NotNull AndroidFacet facet, @NotNull VirtualFile dir,
                                          @Nullable ResourceFolderRepositoryCachingData cachingData) {
-    return new ResourceFolderRepository(facet, dir, namespace, cachingData);
+    return new ResourceFolderRepository(facet, dir, cachingData);
   }
 
   private ResourceFolderRepository(@NotNull AndroidFacet facet,
                                    @NotNull VirtualFile resourceDir,
-                                   @NotNull ResourceNamespace namespace,
                                    @Nullable ResourceFolderRepositoryCachingData cachingData) {
     super(resourceDir.getName());
 
     myFacet = facet;
     myResourceDir = resourceDir;
-    myNamespace = namespace;
     myResourcePathPrefix = portableFileName(myResourceDir.getPath()) + '/';
     myResourcePathBase = new PathString(myResourcePathPrefix);
     myPsiManager = PsiManager.getInstance(getProject());
@@ -334,7 +332,7 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
   @Override
   @Nullable
   public String getPackageName() {
-    return ResourceRepositoryImplUtil.getPackageName(myNamespace, myFacet);
+    return ProjectSystemUtil.getModuleSystem(myFacet).getPackageName();
   }
 
   @Override
@@ -503,7 +501,7 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
   @Override
   @NotNull
   public ResourceVisitor.VisitResult accept(@NotNull ResourceVisitor visitor) {
-    if (visitor.shouldVisitNamespace(myNamespace)) {
+    if (visitor.shouldVisitNamespace(ResourceNamespace.RES_AUTO)) {
       synchronized (ITEM_MAP_LOCK) {
         if (acceptByResources(myResourceTable, visitor) == ResourceVisitor.VisitResult.ABORT) {
           return ResourceVisitor.VisitResult.ABORT;
@@ -519,7 +517,7 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
   @Override
   @Nullable
   protected ListMultimap<String, ResourceItem> getMap(@NotNull ResourceNamespace namespace, @NotNull ResourceType type) {
-    if (!namespace.equals(myNamespace)) {
+    if (!namespace.equals(ResourceNamespace.RES_AUTO)) {
       return null;
     }
     return myResourceTable.get(type);
@@ -536,7 +534,7 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
   @Override
   @NotNull
   public ResourceNamespace getNamespace() {
-    return myNamespace;
+    return ResourceNamespace.RES_AUTO;
   }
 
   private void addIds(@NotNull PsiElement element,
@@ -2275,7 +2273,7 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
     private volatile boolean myLoaded = false;
 
     Loader(@NotNull ResourceFolderRepository repository, @Nullable ResourceFolderRepositoryCachingData cachingData) {
-      super(VfsUtilCore.virtualToIoFile(repository.myResourceDir).toPath(), null, repository.getNamespace());
+      super(VfsUtilCore.virtualToIoFile(repository.myResourceDir).toPath(), null, ResourceNamespace.RES_AUTO);
       myRepository = repository;
       myResourceDir = repository.myResourceDir;
       myPsiManager = repository.myPsiManager;

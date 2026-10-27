@@ -15,7 +15,6 @@
  */
 package com.android.tools.res
 
-import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.resources.Locale
 import com.android.ide.common.resources.ResourceRepository
 import com.google.common.collect.ImmutableList
@@ -28,7 +27,6 @@ import com.google.common.collect.ImmutableSet
 class SingleRepoResourceRepositoryManager(resourcesRepo: CacheableResourceRepository) : ResourceRepositoryManager {
   override val appResources: CacheableResourceRepository = resourcesRepo
   override val projectResources: ResourceRepository = resourcesRepo
-  override val namespace: ResourceNamespace = ResourceNamespace.RES_AUTO
   override val localesInProject: ImmutableList<Locale> = ImmutableList.of()
   override val languagesInProject: ImmutableSet<String> = ImmutableSet.of()
   override val moduleResources: ResourceRepository = resourcesRepo

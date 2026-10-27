@@ -25,6 +25,7 @@ import com.android.ide.common.resources.SingleNamespaceResourceRepository;
 import com.android.projectmodel.DynamicResourceValue;
 import com.android.resources.ResourceType;
 import com.android.tools.idea.model.AndroidModel;
+import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.res.LocalResourceRepository;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.LinkedListMultimap;
@@ -53,18 +54,15 @@ import org.jetbrains.annotations.TestOnly;
  */
 public class DynamicValueResourceRepository extends LocalResourceRepository<VirtualFile> implements Disposable, SingleNamespaceResourceRepository {
   private final AndroidFacet myFacet;
-  @NotNull private final ResourceNamespace myNamespace;
   @SuppressWarnings("InstanceGuardedByStatic")
   @GuardedBy("ITEM_MAP_LOCK")
   @NotNull private final Map<ResourceType, ListMultimap<String, ResourceItem>> myResourceTable = new EnumMap<>(ResourceType.class);
 
   private DynamicValueResourceRepository(@NotNull AndroidFacet facet,
-                                         @NotNull Disposable parentDisposable,
-                                         @NotNull ResourceNamespace namespace) {
+                                         @NotNull Disposable parentDisposable) {
     super("Gradle Dynamic");
     Disposer.register(parentDisposable, this);
     myFacet = facet;
-    myNamespace = namespace;
     assert AndroidModel.isRequired(facet);
   }
 
@@ -82,7 +80,7 @@ public class DynamicValueResourceRepository extends LocalResourceRepository<Virt
   @Override
   @Nullable
   public String getPackageName() {
-    return ResourceRepositoryImplUtil.getPackageName(myNamespace, myFacet);
+    return ProjectSystemUtil.getModuleSystem(myFacet).getPackageName();
   }
 
   /**
@@ -91,9 +89,8 @@ public class DynamicValueResourceRepository extends LocalResourceRepository<Virt
    */
   @NotNull
   public static DynamicValueResourceRepository create(@NotNull AndroidFacet facet,
-                                                      @NotNull Disposable parentDisposable,
-                                                      @NotNull ResourceNamespace namespace) {
-    DynamicValueResourceRepository repository = new DynamicValueResourceRepository(facet, parentDisposable, namespace);
+                                                      @NotNull Disposable parentDisposable) {
+    DynamicValueResourceRepository repository = new DynamicValueResourceRepository(facet, parentDisposable);
     repository.registerListeners();
     return repository;
   }
@@ -104,9 +101,8 @@ public class DynamicValueResourceRepository extends LocalResourceRepository<Virt
   @TestOnly
   @NotNull
   public static DynamicValueResourceRepository createForTest(@NotNull AndroidFacet facet,
-                                                             @NotNull ResourceNamespace namespace,
                                                              @NotNull Map<String, DynamicResourceValue> values) {
-    DynamicValueResourceRepository repository = new DynamicValueResourceRepository(facet, facet, namespace);
+    DynamicValueResourceRepository repository = new DynamicValueResourceRepository(facet, facet);
     synchronized (ITEM_MAP_LOCK) {
       repository.addValues(values);
     }
@@ -147,7 +143,7 @@ public class DynamicValueResourceRepository extends LocalResourceRepository<Virt
   @Override
   @Nullable
   protected ListMultimap<String, ResourceItem> getMap(@NotNull ResourceNamespace namespace, @NotNull ResourceType type) {
-    if (!namespace.equals(myNamespace)) {
+    if (!namespace.equals(ResourceNamespace.RES_AUTO)) {
       return null;
     }
 
@@ -157,13 +153,13 @@ public class DynamicValueResourceRepository extends LocalResourceRepository<Virt
   @Override
   @NotNull
   public ResourceNamespace getNamespace() {
-    return myNamespace;
+    return ResourceNamespace.RES_AUTO;
   }
 
   @Override
   @NotNull
   public ResourceVisitor.VisitResult accept(@NotNull ResourceVisitor visitor) {
-    if (visitor.shouldVisitNamespace(myNamespace)) {
+    if (visitor.shouldVisitNamespace(ResourceNamespace.RES_AUTO)) {
       synchronized (ITEM_MAP_LOCK) {
         if (acceptByResources(myResourceTable, visitor) == ResourceVisitor.VisitResult.ABORT) {
           return ResourceVisitor.VisitResult.ABORT;

@@ -23,6 +23,7 @@ import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.ResourceVisitor;
 import com.android.ide.common.resources.SingleNamespaceResourceRepository;
 import com.android.resources.ResourceType;
+import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.android.tools.res.LocalResourceRepository;
 import com.android.tools.res.MultiResourceRepository;
 import com.google.common.collect.ImmutableList;
@@ -64,7 +65,6 @@ final class SampleDataResourceRepository extends LocalResourceRepository<Virtual
   private static final Logger LOG = Logger.getInstance(SampleDataResourceRepository.class);
 
   @NotNull private final AndroidFacet myAndroidFacet;
-  @NotNull private final ResourceNamespace myNamespace;
   @NotNull private final Map<ResourceType, ListMultimap<String, ResourceItem>> myResourceTable = new EnumMap<>(ResourceType.class);
   private final AtomicReference<CompletableFuture<List<SampleDataResourceItem>>> myUpdateTaskReference = Atomics.newReference(CompletableFuture.completedFuture(ImmutableList.of()));
   private final Executor myUpdateExecutor = AppExecutorUtil.createBoundedApplicationPoolExecutor("SampleDataResourceRepositoryUpdate", 1);
@@ -74,8 +74,6 @@ final class SampleDataResourceRepository extends LocalResourceRepository<Virtual
     Disposer.register(parentDisposable, this);
     myAndroidFacet = androidFacet;
 
-    StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(androidFacet);
-    myNamespace = repositoryManager.getNamespace();
     loadItems();
 
     SampleDataListener.getInstance(androidFacet.getModule().getProject());
@@ -100,7 +98,7 @@ final class SampleDataResourceRepository extends LocalResourceRepository<Virtual
   @Override
   @Nullable
   protected ListMultimap<String, ResourceItem> getMap(@NotNull ResourceNamespace namespace, @NotNull ResourceType type) {
-    if (!namespace.equals(myNamespace)) {
+    if (!namespace.equals(ResourceNamespace.RES_AUTO)) {
       return null;
     }
     return myResourceTable.get(type);
@@ -109,19 +107,19 @@ final class SampleDataResourceRepository extends LocalResourceRepository<Virtual
   @Override
   @NotNull
   public ResourceNamespace getNamespace() {
-    return myNamespace;
+    return ResourceNamespace.RES_AUTO;
   }
 
   @Override
   @Nullable
   public String getPackageName() {
-    return ResourceRepositoryImplUtil.getPackageName(myNamespace, myAndroidFacet);
+    return ProjectSystemUtil.getModuleSystem(myAndroidFacet).getPackageName();
   }
 
   @Override
   @NotNull
   public ResourceVisitor.VisitResult accept(@NotNull ResourceVisitor visitor) {
-    if (visitor.shouldVisitNamespace(myNamespace)) {
+    if (visitor.shouldVisitNamespace(ResourceNamespace.RES_AUTO)) {
       synchronized (ITEM_MAP_LOCK) {
         if (acceptByResources(myResourceTable, visitor) == ResourceVisitor.VisitResult.ABORT) {
           return ResourceVisitor.VisitResult.ABORT;
@@ -168,7 +166,7 @@ final class SampleDataResourceRepository extends LocalResourceRepository<Virtual
             HashSet<String> alreadyParsedItems = new HashSet<>();
             ImmutableListMultimap.Builder<String, ResourceItem> mapBuilder = ImmutableListMultimap.builder();
             for (ResourceItem item : items) {
-              assert item.getNamespace().equals(myNamespace);
+              assert item.getNamespace().equals(ResourceNamespace.RES_AUTO);
               // Only add to the result if we have not parsed a sample data source with the same name. If there are collisions, we use the
               // dependency order so in, app -> lib, app sample data sources would override the lib ones.
               if (alreadyParsedItems.add(item.getName())) mapBuilder.put(item.getName(), item);

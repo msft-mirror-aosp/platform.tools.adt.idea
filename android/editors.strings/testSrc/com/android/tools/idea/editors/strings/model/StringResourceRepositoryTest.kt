@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.editors.strings.model
 
-import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.resources.Locale
 import com.android.projectmodel.DynamicResourceValue
 import com.android.resources.ResourceType
@@ -67,7 +66,6 @@ class StringResourceRepositoryTest {
     dynamicResourceRepository =
       DynamicValueResourceRepository.createForTest(
         facet,
-        ResourceNamespace.RES_AUTO,
         mutableMapOf(
           DYNAMIC_KEY_1 to DynamicResourceValue(ResourceType.STRING, DYNAMIC_VALUE_1),
           DYNAMIC_KEY_2 to DynamicResourceValue(ResourceType.STRING, DYNAMIC_VALUE_2),
@@ -81,12 +79,7 @@ class StringResourceRepositoryTest {
     key1 = StringResourceKey("key1", resourceDirectory)
     invalidKey = StringResourceKey("key1", resourceDirectory.parent)
     localResourceRepository =
-      ModuleResourceRepository.createForTest(
-        facet,
-        listOf(resourceDirectory, generatedDirectory),
-        ResourceNamespace.RES_AUTO,
-        dynamicResourceRepository,
-      )
+      ModuleResourceRepository.createForTest(facet, listOf(resourceDirectory, generatedDirectory), dynamicResourceRepository)
     stringResourceRepository = StringResourceRepository.create(localResourceRepository, androidProjectRule.project)
 
     runBlocking {

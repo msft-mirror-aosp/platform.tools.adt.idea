@@ -40,7 +40,6 @@ import com.android.ide.common.rendering.api.ArrayResourceValue;
 import com.android.ide.common.rendering.api.AttrResourceValue;
 import com.android.ide.common.rendering.api.DensityBasedResourceValue;
 import com.android.ide.common.rendering.api.PluralsResourceValue;
-import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.rendering.api.StyleItemResourceValue;
 import com.android.ide.common.rendering.api.StyleResourceValue;
@@ -204,11 +203,10 @@ public class ResourceFolderRepositoryTest {
 
   private @NotNull ResourceFolderRepository createRepository(boolean createCache) {
     VirtualFile dir = getResourceDirectory();
-    ResourceNamespace namespace = StudioResourceRepositoryManager.getInstance(myFacet).getNamespace();
     ResourceFolderRepositoryCachingData cachingData =
         ResourceFolderRepositoryFileCacheService.get().getCachingData(myProject, dir, createCache ? directExecutor() : null);
 
-    return ResourceFolderRepository.create(myFacet, dir, namespace, cachingData).ensureLoaded();
+    return ResourceFolderRepository.create(myFacet, dir, cachingData).ensureLoaded();
   }
 
   private @NotNull ResourceFolderRepository createRegisteredRepository() {

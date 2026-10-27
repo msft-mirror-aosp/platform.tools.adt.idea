@@ -292,7 +292,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
       return appResources;
     }
     if (myFacet.isDisposed()) {
-      return new EmptyRepository<>(getNamespace());
+      return new EmptyRepository<>(ResourceNamespace.RES_AUTO);
     }
 
     getLibraryResources(); // Precompute library resources to do less work inside the read action below.
@@ -302,7 +302,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     synchronized (APP_RESOURCES_LOCK) {
       if (myFacet.isDisposed()) {
         Disposer.dispose(appResourceRepository);
-        return new EmptyRepository<>(getNamespace());
+        return new EmptyRepository<>(ResourceNamespace.RES_AUTO);
       }
       if (myAppResources == null) {
         myAppResources = appResourceRepository;
@@ -353,7 +353,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
       return projectResources;
     }
     if (myFacet.isDisposed()) {
-      return new EmptyRepository<>(getNamespace());
+      return new EmptyRepository<>(ResourceNamespace.RES_AUTO);
     }
 
     ProjectResourceRepository projectResourceRepository = ProjectResourceRepository.create(myFacet, this);
@@ -410,9 +410,9 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     synchronized (MODULE_RESOURCES_LOCK) {
       if (myModuleResources == null) {
         if (myFacet.isDisposed()) {
-          return new EmptyRepository<VirtualFile>(getNamespace());
+          return new EmptyRepository<>(ResourceNamespace.RES_AUTO);
         }
-        myModuleResources = ModuleResourceRepository.forMainResources(myFacet, this, getNamespace());
+        myModuleResources = ModuleResourceRepository.forMainResources(myFacet, this);
       }
       moduleResources = myModuleResources;
     }
@@ -467,7 +467,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
       return testAppResources;
     }
     if (myFacet.isDisposed()) {
-      return new EmptyRepository<>(getTestNamespace());
+      return new EmptyRepository<>(ResourceNamespace.RES_AUTO);
     }
 
     TestAppResourceRepository testAppResourceRepository = TestAppResourceRepository.create(myFacet, this);
@@ -475,7 +475,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     synchronized (TEST_RESOURCES_LOCK) {
       if (myFacet.isDisposed()) {
         Disposer.dispose(testAppResourceRepository);
-        return new EmptyRepository<>(getTestNamespace());
+        return new EmptyRepository<>(ResourceNamespace.RES_AUTO);
       }
       if (myTestAppResources == null) {
         myTestAppResources = testAppResourceRepository;
@@ -506,9 +506,9 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     synchronized (TEST_RESOURCES_LOCK) {
       if (myTestModuleResources == null) {
         if (myFacet.isDisposed()) {
-          return new EmptyRepository<>(getTestNamespace());
+          return new EmptyRepository<>(ResourceNamespace.RES_AUTO);
         }
-        myTestModuleResources = ModuleResourceRepository.forTestResources(myFacet, this, getTestNamespace());
+        myTestModuleResources = ModuleResourceRepository.forTestResources(myFacet, this);
       }
       testModuleResources = myTestModuleResources;
     }
@@ -528,7 +528,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
       return sampleDataResources;
     }
     if (myFacet.isDisposed()) {
-      return new EmptyRepository<>(getNamespace());
+      return new EmptyRepository<>(ResourceNamespace.RES_AUTO);
     }
 
     SampleDataResourceRepository sampleDataResourceRepository = new SampleDataResourceRepository(myFacet, this);
@@ -536,7 +536,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     synchronized (mySampleDataLock) {
       if (myFacet.isDisposed()) {
         Disposer.dispose(sampleDataResourceRepository);
-        return new EmptyRepository<>(getNamespace());
+        return new EmptyRepository<>(ResourceNamespace.RES_AUTO);
       }
       if (mySampleDataResources == null) {
         mySampleDataResources = sampleDataResourceRepository;
@@ -717,23 +717,6 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
       }
       // Ignore exceptions caused by the facet disposal (b/162211246).
     }
-  }
-
-  /**
-   * Returns the {@link ResourceNamespace} used by the current module.
-   */
-  @Override
-  @NotNull
-  public ResourceNamespace getNamespace() {
-    return ResourceNamespace.RES_AUTO;
-  }
-
-  /**
-   * Returns the {@link ResourceNamespace} used by test resources of the current module.
-   */
-  @NotNull
-  public ResourceNamespace getTestNamespace() {
-    return ResourceNamespace.RES_AUTO;
   }
 
   /**

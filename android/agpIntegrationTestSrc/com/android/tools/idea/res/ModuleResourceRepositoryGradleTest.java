@@ -85,7 +85,7 @@ public class ModuleResourceRepositoryGradleTest {
     AndroidFacet appHolderFacet = projectRule.androidFacet(":app");
     AndroidFacet androidTestFacet = projectRule.androidTestAndroidFacet(":app");
 
-    ResourceRepository repository = ModuleResourceRepository.forTestResources(androidTestFacet, appHolderFacet, RES_AUTO);
+    ResourceRepository repository = ModuleResourceRepository.forTestResources(androidTestFacet, appHolderFacet);
     assertThat(repository.getAllResources()).isEmpty();
 
     createFile(
