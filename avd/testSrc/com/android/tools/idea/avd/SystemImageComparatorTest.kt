@@ -15,27 +15,31 @@
  */
 package com.android.tools.idea.avd
 
+import com.android.repository.Revision
 import com.android.repository.api.RepoPackage
+import com.android.repository.testframework.FakePackage.FakeRemotePackage
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.ISystemImage
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.repository.IdDisplay
+import java.nio.file.Path
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 
 @RunWith(JUnit4::class)
 class SystemImageComparatorTest {
   @Test
   fun compareIsForTablet() {
     // Arrange
-    val image1 = mockSystemImage(AndroidVersion(34).withBaseExtensionLevel())
+    val image1 = FakeSystemImage(AndroidVersion(34).withBaseExtensionLevel())
 
-    val image2 = mockSystemImage(AndroidVersion(34).withBaseExtensionLevel())
-    whenever(image2.tags).thenReturn(listOf(SystemImageTags.PLAY_STORE_TAG, SystemImageTags.TABLET_TAG))
+    val image2 =
+      FakeSystemImage(
+        AndroidVersion(34).withBaseExtensionLevel(),
+        tags = listOf(SystemImageTags.PLAY_STORE_TAG, SystemImageTags.TABLET_TAG),
+      )
 
     val images = listOf(image2, image1)
 
@@ -49,8 +53,8 @@ class SystemImageComparatorTest {
   @Test
   fun compareIsPreview() {
     // Arrange
-    val image1 = mockSystemImage(AndroidVersion(34, "VanillaIceCream", 12, true))
-    val image2 = mockSystemImage(AndroidVersion(34, null, 12, false))
+    val image1 = FakeSystemImage(AndroidVersion(34, "VanillaIceCream", 12, true))
+    val image2 = FakeSystemImage(AndroidVersion(34, null, 12, false))
 
     val images = listOf(image2, image1)
 
@@ -62,27 +66,31 @@ class SystemImageComparatorTest {
   }
 
   @Test
-  fun compareFeatureLevels() {
+  fun compareAndroidVersions() {
     // Arrange
-    val image1 = mockSystemImage(AndroidVersion(33).withExtensionLevel(5))
-    val image2 = mockSystemImage(AndroidVersion(34).withExtensionLevel(12))
+    val image1 = FakeSystemImage(AndroidVersion(37).withCanaryNumber(1000))
+    val image2 = FakeSystemImage(AndroidVersion(37).withCanaryNumber(1001))
+    val image3 = FakeSystemImage(AndroidVersion(37, 1).withBetaNumber(3))
+    val image4 = FakeSystemImage(AndroidVersion(37, 1).withBetaNumber(4))
+    val image5 = FakeSystemImage(AndroidVersion(33).withExtensionLevel(5))
+    val image6 = FakeSystemImage(AndroidVersion(34).withExtensionLevel(12))
 
-    val images = listOf(image2, image1)
+    val images = listOf(image6, image5, image4, image3, image2, image1)
 
     // Act
     val sortedImages = images.sortedWith(SystemImageComparator)
 
     // Assert
-    assertEquals(listOf(image1, image2), sortedImages)
+    assertEquals(listOf(image1, image2, image3, image4, image5, image6), sortedImages)
   }
 
   @Test
   fun compareExtensionLevels() {
     // Arrange
-    val image1 = mockSystemImage(AndroidVersion(34, null, 10, false))
-    val image2 = mockSystemImage(AndroidVersion(34, null, 8, false))
-    val image3 = mockSystemImage(AndroidVersion(34, null, null, true))
-    val image4 = mockSystemImage(AndroidVersion(34, null, 7, true), hasPlayStore = true)
+    val image1 = FakeSystemImage(AndroidVersion(34, null, 10, false))
+    val image2 = FakeSystemImage(AndroidVersion(34, null, 8, false))
+    val image3 = FakeSystemImage(AndroidVersion(34, null, null, true))
+    val image4 = FakeSystemImage(AndroidVersion(34, null, 7, true), tags = listOf(SystemImageTags.PLAY_STORE_TAG))
 
     val images = listOf(image4, image3, image2, image1)
 
@@ -95,10 +103,9 @@ class SystemImageComparatorTest {
 
   @Test
   fun compareServices() {
-    val image1 = mockSystemImage(AndroidVersion(33).withBaseExtensionLevel())
-    whenever(image1.hasGoogleApis()).thenReturn(true)
+    val image1 = FakeSystemImage(AndroidVersion(33).withBaseExtensionLevel(), tags = listOf(SystemImageTags.GOOGLE_APIS_TAG))
 
-    val image2 = mockSystemImage(AndroidVersion(33).withBaseExtensionLevel(), true)
+    val image2 = FakeSystemImage(AndroidVersion(33).withBaseExtensionLevel(), tags = listOf(SystemImageTags.PLAY_STORE_TAG))
 
     val images = listOf(image2, image1)
 
@@ -111,10 +118,13 @@ class SystemImageComparatorTest {
 
   @Test
   fun compareOtherTagCounts() {
-    val image1 = mockSystemImage(AndroidVersion(33).withBaseExtensionLevel(), true)
-    whenever(image1.tags).thenReturn(listOf(IdDisplay.create("other-tag", "Other Tag")))
+    val image1 =
+      FakeSystemImage(
+        AndroidVersion(33).withBaseExtensionLevel(),
+        tags = listOf(SystemImageTags.PLAY_STORE_TAG, IdDisplay.create("other-tag", "Other Tag")),
+      )
 
-    val image2 = mockSystemImage(AndroidVersion(33).withBaseExtensionLevel(), true)
+    val image2 = FakeSystemImage(AndroidVersion(33).withBaseExtensionLevel(), tags = listOf(SystemImageTags.PLAY_STORE_TAG))
 
     val images = listOf(image2, image1)
 
@@ -127,9 +137,19 @@ class SystemImageComparatorTest {
 
   @Test
   fun compareDisplayNames() {
-    val image1 = mockSystemImage(AndroidVersion(33).withBaseExtensionLevel(), true, "Google Play Intel x86_64 Atom System Image")
+    val image1 =
+      FakeSystemImage(
+        AndroidVersion(33).withBaseExtensionLevel(),
+        displayName = "Google Play Intel x86_64 Atom System Image",
+        tags = listOf(SystemImageTags.PLAY_STORE_TAG),
+      )
 
-    val image2 = mockSystemImage(AndroidVersion(33).withBaseExtensionLevel(), true, "Google Play ARM 64 v8a System Image")
+    val image2 =
+      FakeSystemImage(
+        AndroidVersion(33).withBaseExtensionLevel(),
+        displayName = "Google Play ARM 64 v8a System Image",
+        tags = listOf(SystemImageTags.PLAY_STORE_TAG),
+      )
 
     val images = listOf(image2, image1)
 
@@ -142,12 +162,12 @@ class SystemImageComparatorTest {
 
   @Test
   fun compareXrPriority() {
-    val image1 = mockSystemImage(AndroidVersion(34).withBaseExtensionLevel(), path = "system-images;android-34;google-xr;x86_64")
+    val image1 = FakeSystemImage(AndroidVersion(34).withBaseExtensionLevel(), path = "system-images;android-34;google-xr;x86_64")
     val image2 =
-      mockSystemImage(AndroidVersion(34).withBaseExtensionLevel(), path = "system-images;android-34;android-xr-v3-playstore;x86_64")
+      FakeSystemImage(AndroidVersion(34).withBaseExtensionLevel(), path = "system-images;android-34;android-xr-v3-playstore;x86_64")
     val image3 =
-      mockSystemImage(AndroidVersion(34).withBaseExtensionLevel(), path = "system-images;android-34;android-xr-preview-playstore;x86_64")
-    val image4 = mockSystemImage(AndroidVersion(34).withBaseExtensionLevel(), path = "system-images;android-34;google_apis;x86_64")
+      FakeSystemImage(AndroidVersion(34).withBaseExtensionLevel(), path = "system-images;android-34;android-xr-preview-playstore;x86_64")
+    val image4 = FakeSystemImage(AndroidVersion(34).withBaseExtensionLevel(), path = "system-images;android-34;google_apis;x86_64")
 
     val images = listOf(image4, image3, image2, image1)
 
@@ -158,26 +178,35 @@ class SystemImageComparatorTest {
     assertEquals(listOf(image1, image2, image3, image4), sortedImages)
   }
 
-  private companion object {
-    private fun mockSystemImage(
-      version: AndroidVersion,
-      hasPlayStore: Boolean = false,
-      displayName: String? = null,
-      path: String = "system-images;android-34;google_apis;x86_64",
-    ): ISystemImage {
-      val image = mock<ISystemImage>()
-      whenever(image.androidVersion).thenReturn(version)
-      whenever(image.hasPlayStore()).thenReturn(hasPlayStore)
-
-      val repoPackage = mock<RepoPackage>()
-      if (displayName != null) {
-        whenever(repoPackage.displayName).thenReturn(displayName)
+  private data class FakeSystemImage(
+    private val androidVersion: AndroidVersion,
+    val displayName: String? = null,
+    val path: String = "system-images;android-34;google_apis;x86_64",
+    private val tags: List<IdDisplay> = emptyList(),
+  ) : ISystemImage {
+    override fun getPackage(): RepoPackage =
+      FakeRemotePackage(path).apply {
+        this@FakeSystemImage.displayName?.let { displayName = it }
       }
-      whenever(repoPackage.path).thenReturn(path)
 
-      whenever(image.`package`).thenReturn(repoPackage)
+    override fun getLocation(): Path = Path.of("")
 
-      return image
-    }
+    override fun getTags(): List<IdDisplay> = tags
+
+    override fun getAddonVendor(): IdDisplay? = null
+
+    override fun getPrimaryAbiType(): String = ""
+
+    override fun getAbiTypes(): List<String> = emptyList()
+
+    override fun getTranslatedAbiTypes(): List<String> = emptyList()
+
+    override fun getSkins(): List<Path> = emptyList()
+
+    override fun getRevision(): Revision = Revision.NOT_SPECIFIED
+
+    override fun getAndroidVersion(): AndroidVersion = androidVersion
+
+    override fun obsolete(): Boolean = false
   }
 }

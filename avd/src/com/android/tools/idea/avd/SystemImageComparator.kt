@@ -27,7 +27,7 @@ internal object SystemImageComparator :
   Comparator<ISystemImage> by (compareBy<ISystemImage> { it.isSupported() }
     .thenBy { it.isForTablet() }
     .thenByDescending { it.androidVersion.isPreview }
-    .thenBy { it.androidVersion.featureLevel }
+    .thenBy { it.androidVersion.withBaseExtensionLevel() }
     .thenByDescending { if (it.androidVersion.isBaseExtension) 0 else it.androidVersion.extensionLevel ?: 0 }
     .thenByDescending { it.getServices() }
     .thenBy { it.xrPriority() }
