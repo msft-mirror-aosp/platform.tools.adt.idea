@@ -711,6 +711,8 @@ MODULE                        : kotlinMultiPlatform
                         - jsRuntimeElements-published : <ROOT>/jsModule/build/libs/jsModule-js.klib [-]
                         - jsSourcesElements           : <ROOT>/jsModule/build/libs/jsModule-js-sources.jar [-]
                         - jsSourcesElements-published : <ROOT>/jsModule/build/libs/jsModule-js-sources.jar [-]
+                        - kotlinNpmSharedPackageJsonFiles       : <ROOT>/build/js/packages/kotlinMultiPlatform-jsModule/package.json [-]
+                        - kotlinNpmSharedPackageJsonFiles       : <ROOT>/build/js/packages/kotlinMultiPlatform-jsModule-test/package.json [-]
                         - metadataApiElements         : <ROOT>/jsModule/build/libs/jsModule-metadata.jar [-]
                         - metadataSourcesElements     : <ROOT>/jsModule/build/libs/jsModule-kotlin-sources.jar [-]
                     - additionalArtifacts         : <ROOT>/jsModule/build/libs/jsModule-metadata.jar [-]

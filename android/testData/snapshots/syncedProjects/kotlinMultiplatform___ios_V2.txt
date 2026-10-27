@@ -929,6 +929,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: AVFoundation | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: AVKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: AVRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Accelerate | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Accessibility | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: AccessorySetupKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -960,6 +961,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: CloudKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: ColorSync | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: CommonCrypto | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: ComputeGraph | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Contacts | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: ContactsUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: CoreAudio | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -1016,6 +1018,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: IntentsUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: JavaScriptCore | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LinkPresentation | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: LinkSecurity | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LocalAuthentication | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LockedCameraCapture | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -1062,6 +1065,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SafariServices | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SafetyKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SceneKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: ScreenTime | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Security | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SecurityUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -1075,6 +1079,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SoundAnalysis | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Speech | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SpriteKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: StateReporting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: StoreKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Symbols | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SystemConfiguration | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -1170,6 +1175,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: AVRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accelerate | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accessibility | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -1231,6 +1238,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: ColorSync | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: CommonCrypto | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ComputeGraph | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Contacts | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
@@ -1344,6 +1353,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LinkPresentation | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: LinkSecurity | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthentication | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -1436,6 +1447,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SceneKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: ScreenTime | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Security | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -1461,6 +1474,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: Speech | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SpriteKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: StateReporting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: StoreKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
@@ -1693,6 +1708,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: AVFoundation | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: AVKit | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: AVRouting | ios_arm64 [=]
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: Accelerate | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: Accessibility | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: AccessorySetupKit | ios_arm64 [=]
@@ -1724,6 +1740,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: CloudKit | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: ColorSync | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: CommonCrypto | ios_arm64 [=]
+        LIBRARY                       : Kotlin/Native: ComputeGraph | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: Contacts | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: ContactsUI | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: CoreAudio | ios_arm64 [=]
@@ -1780,6 +1797,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: IntentsUI | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: JavaScriptCore | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: LinkPresentation | ios_arm64 [=]
+        LIBRARY                       : Kotlin/Native: LinkSecurity | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: LocalAuthentication | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: LockedCameraCapture | ios_arm64 [=]
@@ -1826,6 +1844,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SafariServices | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: SafetyKit | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: SceneKit | ios_arm64 [=]
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: ScreenTime | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: Security | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: SecurityUI | ios_arm64 [=]
@@ -1839,6 +1858,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SoundAnalysis | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: Speech | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: SpriteKit | ios_arm64 [=]
+        LIBRARY                       : Kotlin/Native: StateReporting | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: StoreKit | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: Symbols | ios_arm64 [=]
         LIBRARY                       : Kotlin/Native: SystemConfiguration | ios_arm64 [=]
@@ -1929,6 +1949,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: AVRouting | ios_arm64 [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | ios_arm64 [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accelerate | ios_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accessibility | ios_arm64 [=]
@@ -1990,6 +2012,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: ColorSync | ios_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: CommonCrypto | ios_arm64 [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ComputeGraph | ios_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Contacts | ios_arm64 [=]
             Scope                         : Test
@@ -2103,6 +2127,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LinkPresentation | ios_arm64 [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: LinkSecurity | ios_arm64 [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthentication | ios_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | ios_arm64 [=]
@@ -2195,6 +2221,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SceneKit | ios_arm64 [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | ios_arm64 [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: ScreenTime | ios_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Security | ios_arm64 [=]
@@ -2220,6 +2248,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: Speech | ios_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SpriteKit | ios_arm64 [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: StateReporting | ios_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: StoreKit | ios_arm64 [=]
             Scope                         : Test
@@ -2351,6 +2381,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: AVFoundation | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: AVKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: AVRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Accelerate | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Accessibility | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: AccessorySetupKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -2382,6 +2413,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: CloudKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: ColorSync | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: CommonCrypto | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: ComputeGraph | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Contacts | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: ContactsUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: CoreAudio | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -2438,6 +2470,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: IntentsUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: JavaScriptCore | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LinkPresentation | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: LinkSecurity | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LocalAuthentication | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LockedCameraCapture | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -2484,6 +2517,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SafariServices | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SafetyKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SceneKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: ScreenTime | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Security | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SecurityUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -2497,6 +2531,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SoundAnalysis | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Speech | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SpriteKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: StateReporting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: StoreKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Symbols | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SystemConfiguration | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -2578,6 +2613,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: AVFoundation | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: AVKit | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: AVRouting | ios_simulator_arm64 [=]
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: Accelerate | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: Accessibility | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: AccessorySetupKit | ios_simulator_arm64 [=]
@@ -2609,6 +2645,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: CloudKit | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: ColorSync | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: CommonCrypto | ios_simulator_arm64 [=]
+        LIBRARY                       : Kotlin/Native: ComputeGraph | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: Contacts | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: ContactsUI | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: CoreAudio | ios_simulator_arm64 [=]
@@ -2665,6 +2702,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: IntentsUI | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: JavaScriptCore | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: LinkPresentation | ios_simulator_arm64 [=]
+        LIBRARY                       : Kotlin/Native: LinkSecurity | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: LocalAuthentication | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: LockedCameraCapture | ios_simulator_arm64 [=]
@@ -2711,6 +2749,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SafariServices | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: SafetyKit | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: SceneKit | ios_simulator_arm64 [=]
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: ScreenTime | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: Security | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: SecurityUI | ios_simulator_arm64 [=]
@@ -2724,6 +2763,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SoundAnalysis | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: Speech | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: SpriteKit | ios_simulator_arm64 [=]
+        LIBRARY                       : Kotlin/Native: StateReporting | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: StoreKit | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: Symbols | ios_simulator_arm64 [=]
         LIBRARY                       : Kotlin/Native: SystemConfiguration | ios_simulator_arm64 [=]
@@ -2814,6 +2854,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: AVRouting | ios_simulator_arm64 [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | ios_simulator_arm64 [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accelerate | ios_simulator_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accessibility | ios_simulator_arm64 [=]
@@ -2875,6 +2917,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: ColorSync | ios_simulator_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: CommonCrypto | ios_simulator_arm64 [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ComputeGraph | ios_simulator_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Contacts | ios_simulator_arm64 [=]
             Scope                         : Test
@@ -2988,6 +3032,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LinkPresentation | ios_simulator_arm64 [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: LinkSecurity | ios_simulator_arm64 [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthentication | ios_simulator_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | ios_simulator_arm64 [=]
@@ -3080,6 +3126,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SceneKit | ios_simulator_arm64 [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | ios_simulator_arm64 [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: ScreenTime | ios_simulator_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Security | ios_simulator_arm64 [=]
@@ -3105,6 +3153,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: Speech | ios_simulator_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SpriteKit | ios_simulator_arm64 [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: StateReporting | ios_simulator_arm64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: StoreKit | ios_simulator_arm64 [=]
             Scope                         : Test
@@ -3244,6 +3294,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: AVRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accelerate | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accessibility | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -3305,6 +3357,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: ColorSync | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: CommonCrypto | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ComputeGraph | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Contacts | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
@@ -3418,6 +3472,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LinkPresentation | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: LinkSecurity | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthentication | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -3510,6 +3566,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SceneKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: ScreenTime | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Security | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -3535,6 +3593,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: Speech | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SpriteKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: StateReporting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: StoreKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
@@ -3655,6 +3715,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: AVFoundation | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: AVKit | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: AVRouting | ios_x64 [=]
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: Accelerate | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: Accessibility | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: AccessorySetupKit | ios_x64 [=]
@@ -3686,6 +3747,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: CloudKit | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: ColorSync | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: CommonCrypto | ios_x64 [=]
+        LIBRARY                       : Kotlin/Native: ComputeGraph | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: Contacts | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: ContactsUI | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: CoreAudio | ios_x64 [=]
@@ -3742,6 +3804,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: IntentsUI | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: JavaScriptCore | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: LinkPresentation | ios_x64 [=]
+        LIBRARY                       : Kotlin/Native: LinkSecurity | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: LocalAuthentication | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: LockedCameraCapture | ios_x64 [=]
@@ -3788,6 +3851,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SafariServices | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: SafetyKit | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: SceneKit | ios_x64 [=]
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: ScreenTime | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: Security | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: SecurityUI | ios_x64 [=]
@@ -3801,6 +3865,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SoundAnalysis | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: Speech | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: SpriteKit | ios_x64 [=]
+        LIBRARY                       : Kotlin/Native: StateReporting | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: StoreKit | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: Symbols | ios_x64 [=]
         LIBRARY                       : Kotlin/Native: SystemConfiguration | ios_x64 [=]
@@ -3891,6 +3956,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: AVRouting | ios_x64 [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | ios_x64 [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accelerate | ios_x64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accessibility | ios_x64 [=]
@@ -3952,6 +4019,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: ColorSync | ios_x64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: CommonCrypto | ios_x64 [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ComputeGraph | ios_x64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Contacts | ios_x64 [=]
             Scope                         : Test
@@ -4065,6 +4134,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LinkPresentation | ios_x64 [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: LinkSecurity | ios_x64 [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthentication | ios_x64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | ios_x64 [=]
@@ -4157,6 +4228,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SceneKit | ios_x64 [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | ios_x64 [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: ScreenTime | ios_x64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Security | ios_x64 [=]
@@ -4182,6 +4255,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: Speech | ios_x64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SpriteKit | ios_x64 [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: StateReporting | ios_x64 [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: StoreKit | ios_x64 [=]
             Scope                         : Test
@@ -4313,6 +4388,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: AVFoundation | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: AVKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: AVRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Accelerate | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Accessibility | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: AccessorySetupKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -4344,6 +4420,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: CloudKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: ColorSync | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: CommonCrypto | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: ComputeGraph | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Contacts | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: ContactsUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: CoreAudio | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -4400,6 +4477,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: IntentsUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: JavaScriptCore | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LinkPresentation | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: LinkSecurity | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LocalAuthentication | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: LockedCameraCapture | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -4446,6 +4524,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SafariServices | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SafetyKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SceneKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: ScreenTime | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Security | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SecurityUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -4459,6 +4538,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: SoundAnalysis | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Speech | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SpriteKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+        LIBRARY                       : Kotlin/Native: StateReporting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: StoreKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: Symbols | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
         LIBRARY                       : Kotlin/Native: SystemConfiguration | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -4553,6 +4633,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: AVRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accelerate | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Accessibility | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -4614,6 +4696,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: ColorSync | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: CommonCrypto | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ComputeGraph | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Contacts | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
@@ -4727,6 +4811,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LinkPresentation | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: LinkSecurity | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthentication | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: LocalAuthenticationEmbeddedUI | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -4819,6 +4905,8 @@ PROJECT                       : kotlinMultiPlatform
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SceneKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
         LIBRARY                       : Kotlin/Native: ScreenTime | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: Security | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
@@ -4844,6 +4932,8 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Kotlin/Native: Speech | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: SpriteKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
+            Scope                         : Test
+        LIBRARY                       : Kotlin/Native: StateReporting | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
         LIBRARY                       : Kotlin/Native: StoreKit | [(ios_arm64, ios_simulator_arm64, ios_x64)] [=]
             Scope                         : Test
@@ -5034,7 +5124,7 @@ PROJECT                       : kotlinMultiPlatform
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
             *CLASSES                      : jar://<M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar!/
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:commonMain:<KOTLIN_VERSION>
-            *CLASSES                      : jar://<PROJECT>/.kotlin/metadata/kotlinTransformedMetadataLibraries/org.jetbrains.kotlin-kotlin-stdlib-<KOTLIN_VERSION>.klib!/
+            *CLASSES                      : jar://<PROJECT>/.kotlin/metadata/kotlinTransformedMetadataLibraries/org.jetbrains.kotlin-kotlin-stdlib-<KOTLIN_VERSION>_SHg.klib!/
         LIBRARY                       : Gradle: org.jetbrains:annotations:13.0
             *CLASSES                      : jar://<M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar!/
         LIBRARY                       : Kotlin/Native: ARKit | [(ios_arm64, ios_simulator_arm64, ios_x64)]
@@ -5077,6 +5167,14 @@ PROJECT                       : kotlinMultiPlatform
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_simulator_arm64/org.jetbrains.kotlin.native.platform.AVRouting
         LIBRARY                       : Kotlin/Native: AVRouting | ios_x64
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_x64/org.jetbrains.kotlin.native.platform.AVRouting
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | [(ios_arm64, ios_simulator_arm64, ios_x64)]
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/commonized/<KOTLIN_VERSION>/(ios_arm64, ios_simulator_arm64, ios_x64)/org.jetbrains.kotlin.native.platform.AVSystemRouting
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | ios_arm64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_arm64/org.jetbrains.kotlin.native.platform.AVSystemRouting
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | ios_simulator_arm64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_simulator_arm64/org.jetbrains.kotlin.native.platform.AVSystemRouting
+        LIBRARY                       : Kotlin/Native: AVSystemRouting | ios_x64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_x64/org.jetbrains.kotlin.native.platform.AVSystemRouting
         LIBRARY                       : Kotlin/Native: Accelerate | [(ios_arm64, ios_simulator_arm64, ios_x64)]
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/commonized/<KOTLIN_VERSION>/(ios_arm64, ios_simulator_arm64, ios_x64)/org.jetbrains.kotlin.native.platform.Accelerate
         LIBRARY                       : Kotlin/Native: Accelerate | ios_arm64
@@ -5325,6 +5423,14 @@ PROJECT                       : kotlinMultiPlatform
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_simulator_arm64/org.jetbrains.kotlin.native.platform.CommonCrypto
         LIBRARY                       : Kotlin/Native: CommonCrypto | ios_x64
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_x64/org.jetbrains.kotlin.native.platform.CommonCrypto
+        LIBRARY                       : Kotlin/Native: ComputeGraph | [(ios_arm64, ios_simulator_arm64, ios_x64)]
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/commonized/<KOTLIN_VERSION>/(ios_arm64, ios_simulator_arm64, ios_x64)/org.jetbrains.kotlin.native.platform.ComputeGraph
+        LIBRARY                       : Kotlin/Native: ComputeGraph | ios_arm64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_arm64/org.jetbrains.kotlin.native.platform.ComputeGraph
+        LIBRARY                       : Kotlin/Native: ComputeGraph | ios_simulator_arm64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_simulator_arm64/org.jetbrains.kotlin.native.platform.ComputeGraph
+        LIBRARY                       : Kotlin/Native: ComputeGraph | ios_x64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_x64/org.jetbrains.kotlin.native.platform.ComputeGraph
         LIBRARY                       : Kotlin/Native: Contacts | [(ios_arm64, ios_simulator_arm64, ios_x64)]
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/commonized/<KOTLIN_VERSION>/(ios_arm64, ios_simulator_arm64, ios_x64)/org.jetbrains.kotlin.native.platform.Contacts
         LIBRARY                       : Kotlin/Native: Contacts | ios_arm64
@@ -5773,6 +5879,14 @@ PROJECT                       : kotlinMultiPlatform
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_simulator_arm64/org.jetbrains.kotlin.native.platform.LinkPresentation
         LIBRARY                       : Kotlin/Native: LinkPresentation | ios_x64
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_x64/org.jetbrains.kotlin.native.platform.LinkPresentation
+        LIBRARY                       : Kotlin/Native: LinkSecurity | [(ios_arm64, ios_simulator_arm64, ios_x64)]
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/commonized/<KOTLIN_VERSION>/(ios_arm64, ios_simulator_arm64, ios_x64)/org.jetbrains.kotlin.native.platform.LinkSecurity
+        LIBRARY                       : Kotlin/Native: LinkSecurity | ios_arm64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_arm64/org.jetbrains.kotlin.native.platform.LinkSecurity
+        LIBRARY                       : Kotlin/Native: LinkSecurity | ios_simulator_arm64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_simulator_arm64/org.jetbrains.kotlin.native.platform.LinkSecurity
+        LIBRARY                       : Kotlin/Native: LinkSecurity | ios_x64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_x64/org.jetbrains.kotlin.native.platform.LinkSecurity
         LIBRARY                       : Kotlin/Native: LocalAuthentication | [(ios_arm64, ios_simulator_arm64, ios_x64)]
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/commonized/<KOTLIN_VERSION>/(ios_arm64, ios_simulator_arm64, ios_x64)/org.jetbrains.kotlin.native.platform.LocalAuthentication
         LIBRARY                       : Kotlin/Native: LocalAuthentication | ios_arm64
@@ -6141,6 +6255,14 @@ PROJECT                       : kotlinMultiPlatform
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_simulator_arm64/org.jetbrains.kotlin.native.platform.SceneKit
         LIBRARY                       : Kotlin/Native: SceneKit | ios_x64
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_x64/org.jetbrains.kotlin.native.platform.SceneKit
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | [(ios_arm64, ios_simulator_arm64, ios_x64)]
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/commonized/<KOTLIN_VERSION>/(ios_arm64, ios_simulator_arm64, ios_x64)/org.jetbrains.kotlin.native.platform.ScreenCaptureKit
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | ios_arm64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_arm64/org.jetbrains.kotlin.native.platform.ScreenCaptureKit
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | ios_simulator_arm64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_simulator_arm64/org.jetbrains.kotlin.native.platform.ScreenCaptureKit
+        LIBRARY                       : Kotlin/Native: ScreenCaptureKit | ios_x64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_x64/org.jetbrains.kotlin.native.platform.ScreenCaptureKit
         LIBRARY                       : Kotlin/Native: ScreenTime | [(ios_arm64, ios_simulator_arm64, ios_x64)]
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/commonized/<KOTLIN_VERSION>/(ios_arm64, ios_simulator_arm64, ios_x64)/org.jetbrains.kotlin.native.platform.ScreenTime
         LIBRARY                       : Kotlin/Native: ScreenTime | ios_arm64
@@ -6245,6 +6367,14 @@ PROJECT                       : kotlinMultiPlatform
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_simulator_arm64/org.jetbrains.kotlin.native.platform.SpriteKit
         LIBRARY                       : Kotlin/Native: SpriteKit | ios_x64
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_x64/org.jetbrains.kotlin.native.platform.SpriteKit
+        LIBRARY                       : Kotlin/Native: StateReporting | [(ios_arm64, ios_simulator_arm64, ios_x64)]
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/commonized/<KOTLIN_VERSION>/(ios_arm64, ios_simulator_arm64, ios_x64)/org.jetbrains.kotlin.native.platform.StateReporting
+        LIBRARY                       : Kotlin/Native: StateReporting | ios_arm64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_arm64/org.jetbrains.kotlin.native.platform.StateReporting
+        LIBRARY                       : Kotlin/Native: StateReporting | ios_simulator_arm64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_simulator_arm64/org.jetbrains.kotlin.native.platform.StateReporting
+        LIBRARY                       : Kotlin/Native: StateReporting | ios_x64
+            *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/platform/ios_x64/org.jetbrains.kotlin.native.platform.StateReporting
         LIBRARY                       : Kotlin/Native: StoreKit | [(ios_arm64, ios_simulator_arm64, ios_x64)]
             *CLASSES                      : file://<KONAN>/kotlin-native-prebuilt-linux-x86_64-<KOTLIN_VERSION>/klib/commonized/<KOTLIN_VERSION>/(ios_arm64, ios_simulator_arm64, ios_x64)/org.jetbrains.kotlin.native.platform.StoreKit
         LIBRARY                       : Kotlin/Native: StoreKit | ios_arm64
