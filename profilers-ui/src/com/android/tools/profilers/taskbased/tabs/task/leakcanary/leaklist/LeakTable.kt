@@ -46,6 +46,7 @@ import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBas
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import com.android.tools.profilers.taskbased.common.table.LeftAlignedColumnText
 import com.android.tools.profilers.taskbased.common.table.RightAlignedColumnText
+import com.android.tools.profilers.taskbased.common.table.tableRowHeight
 import com.android.tools.profilers.taskbased.common.text.EllipsisText
 import org.jetbrains.jewel.foundation.lazy.SingleSelectionLazyColumn
 import org.jetbrains.jewel.foundation.lazy.items
@@ -76,7 +77,7 @@ private fun LeakListRow(leak: Leak, isSelected: Boolean) {
     Row(
       modifier =
         Modifier.fillMaxWidth()
-          .height(TaskBasedUxDimensions.TABLE_ROW_HEIGHT_DP)
+          .tableRowHeight()
           .background(if (isSelected) TaskBasedUxColors.TABLE_ROW_SELECTION_BACKGROUND_COLOR else Color.Transparent)
           .padding(horizontal = TaskBasedUxDimensions.TABLE_ROW_HORIZONTAL_PADDING_DP)
           .testTag("leakListRow")
@@ -98,7 +99,7 @@ private fun LeakListHeader() {
   Row(
     modifier =
       Modifier.fillMaxWidth()
-        .height(TaskBasedUxDimensions.TABLE_HEADER_ROW_HEIGHT_DP)
+        .tableRowHeight(TaskBasedUxDimensions.TABLE_HEADER_ROW_HEIGHT_DP)
         .background(TaskBasedUxColors.TABLE_HEADER_BACKGROUND_COLOR)
         .padding(horizontal = TaskBasedUxDimensions.TABLE_ROW_HORIZONTAL_PADDING_DP),
     verticalAlignment = Alignment.CenterVertically,

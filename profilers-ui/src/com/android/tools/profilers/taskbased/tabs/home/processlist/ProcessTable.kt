@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
@@ -37,11 +36,11 @@ import com.android.tools.profilers.taskbased.common.constants.colors.TaskBasedUx
 import com.android.tools.profilers.taskbased.common.constants.colors.TaskBasedUxColors.TABLE_ROW_SELECTION_BACKGROUND_COLOR
 import com.android.tools.profilers.taskbased.common.constants.colors.TaskBasedUxColors.TABLE_SEPARATOR_COLOR
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions
-import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions.TABLE_ROW_HEIGHT_DP
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions.TABLE_ROW_HORIZONTAL_PADDING_DP
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import com.android.tools.profilers.taskbased.common.table.LeftAlignedColumnText
 import com.android.tools.profilers.taskbased.common.table.RightAlignedColumnText
+import com.android.tools.profilers.taskbased.common.table.tableRowHeight
 import com.intellij.openapi.diagnostic.Logger
 import icons.StudioIconsCompose
 import org.jetbrains.jewel.foundation.lazy.SingleSelectionLazyColumn
@@ -64,7 +63,7 @@ private fun ProcessListRow(selectedProcess: Common.Process, process: Common.Proc
   Row(
     modifier =
       Modifier.fillMaxWidth()
-        .height(TABLE_ROW_HEIGHT_DP)
+        .tableRowHeight()
         .background(if (process == selectedProcess) TABLE_ROW_SELECTION_BACKGROUND_COLOR else Color.Transparent)
         .padding(horizontal = TABLE_ROW_HORIZONTAL_PADDING_DP)
         .testTag("ProcessListRow")
@@ -101,7 +100,7 @@ private fun ProcessListHeader() {
   Row(
     modifier =
       Modifier.fillMaxWidth()
-        .height(TABLE_ROW_HEIGHT_DP)
+        .tableRowHeight()
         .background(TABLE_HEADER_BACKGROUND_COLOR)
         .padding(horizontal = TABLE_ROW_HORIZONTAL_PADDING_DP)
   ) {

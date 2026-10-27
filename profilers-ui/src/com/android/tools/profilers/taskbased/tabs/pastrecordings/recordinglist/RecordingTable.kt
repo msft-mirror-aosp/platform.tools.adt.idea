@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.runtime.Composable
@@ -43,10 +42,10 @@ import com.android.tools.profilers.taskbased.common.constants.colors.TaskBasedUx
 import com.android.tools.profilers.taskbased.common.constants.colors.TaskBasedUxColors.TABLE_SEPARATOR_COLOR
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions.RECORDING_TASKS_COL_WIDTH_DP
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions.RECORDING_TIME_COL_WIDTH_DP
-import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions.TABLE_ROW_HEIGHT_DP
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions.TABLE_ROW_HORIZONTAL_PADDING_DP
 import com.android.tools.profilers.taskbased.common.table.LeftAlignedColumnText
 import com.android.tools.profilers.taskbased.common.table.RightAlignedColumnText
+import com.android.tools.profilers.taskbased.common.table.tableRowHeight
 import com.intellij.util.ui.UIUtil
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeMark
@@ -71,7 +70,7 @@ fun RecordingListRow(selectedRecording: SessionItem?, recording: SessionItem, on
   Row(
     modifier =
       Modifier.fillMaxWidth()
-        .height(TABLE_ROW_HEIGHT_DP)
+        .tableRowHeight()
         .background(if (recording == selectedRecording) TABLE_ROW_SELECTION_BACKGROUND_COLOR else Color.Transparent)
         // Keep keyboard focus on the enclosing list so that arrow-key navigation continues to work.
         .focusProperties { canFocus = false }
@@ -101,7 +100,7 @@ fun RecordingListHeader() {
   Row(
     modifier =
       Modifier.fillMaxWidth()
-        .height(TABLE_ROW_HEIGHT_DP)
+        .tableRowHeight()
         .background(TABLE_HEADER_BACKGROUND_COLOR)
         .padding(horizontal = TABLE_ROW_HORIZONTAL_PADDING_DP)
   ) {

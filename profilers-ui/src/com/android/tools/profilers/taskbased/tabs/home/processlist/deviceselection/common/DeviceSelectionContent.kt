@@ -19,14 +19,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.TextUnitType
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
@@ -36,7 +34,9 @@ import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.Pro
 import com.intellij.openapi.diagnostic.Logger
 import icons.StudioIcons
 import javax.swing.Icon
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.typography
 
 private val logger = Logger.getInstance("DeviceSelectionContent")
 
@@ -44,7 +44,7 @@ private val logger = Logger.getInstance("DeviceSelectionContent")
 fun DeviceSelectionContent(selectedDevice: ProfilerDeviceSelection?, selectedDevicesCount: Int) {
   Box(
     modifier =
-      Modifier.height(TaskBasedUxDimensions.TOP_BAR_HEIGHT_DP)
+      Modifier.heightIn(min = TaskBasedUxDimensions.TOP_BAR_HEIGHT_DP)
         .padding(
           vertical = TaskBasedUxDimensions.DEVICE_SELECTION_VERTICAL_PADDING_DP,
           horizontal = TaskBasedUxDimensions.DEVICE_SELECTION_HORIZONTAL_PADDING_DP,
@@ -64,9 +64,10 @@ fun DeviceSelectionContent(selectedDevice: ProfilerDeviceSelection?, selectedDev
   }
 }
 
+/** Shows the device name in the IDE's standard text size, so that it follows the IDE font size. */
 @Composable
 fun DeviceText(text: String) {
-  EllipsisText(text = text, fontSize = TextUnit(14f, TextUnitType.Sp), lineHeight = TextUnit(18f, TextUnitType.Sp))
+  EllipsisText(text = text)
 }
 
 @Composable
@@ -74,9 +75,10 @@ private fun DeviceIcon(icon: Icon?, description: String) {
   DeviceIconUtils.getDeviceIconKey(icon)?.let { Icon(it, contentDescription = description) }
 }
 
+/** Shows secondary device information in the IDE's standard medium text size, which is one step below the standard size. */
 @Composable
 private fun DeviceStatusText(text: String) {
-  EllipsisText(text = text, fontSize = TextUnit(12f, TextUnitType.Sp), lineHeight = TextUnit(16f, TextUnitType.Sp), color = Color.Gray)
+  EllipsisText(text = text, fontSize = JewelTheme.typography.medium.fontSize, color = Color.Gray)
 }
 
 @Composable
