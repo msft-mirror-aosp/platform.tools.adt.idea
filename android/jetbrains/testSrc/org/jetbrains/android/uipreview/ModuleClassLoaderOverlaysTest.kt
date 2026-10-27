@@ -19,6 +19,7 @@ import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.utils.FileUtils.toSystemIndependentPath
 import com.intellij.ide.trustedProjects.TrustedProjects
+import com.intellij.testFramework.TrustedProjectsTestUtil
 import java.nio.file.Files
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -145,20 +146,22 @@ internal class ModuleClassLoaderOverlaysTest {
     val moduleClassLoaderOverlay = ModuleClassLoaderOverlays.getInstance(buildTargetReference)
     moduleClassLoaderOverlay.pushOverlayPath(tempOverlayPath)
 
-    try {
-      TrustedProjects.setProjectTrusted(projectRule.project, false)
-      assertTrue(moduleClassLoaderOverlay.state.paths.isEmpty())
-      assertNull(moduleClassLoaderOverlay.classLoaderLoader.loadClass(testClassName))
+    TrustedProjectsTestUtil.withTrustedProjectsCheckEnabled {
+      try {
+        TrustedProjects.setProjectTrusted(projectRule.project, false)
+        assertTrue(moduleClassLoaderOverlay.state.paths.isEmpty())
+        assertNull(moduleClassLoaderOverlay.classLoaderLoader.loadClass(testClassName))
 
-      val state = ModuleClassLoaderOverlays.State(listOf(tempOverlayPath.toString()))
-      moduleClassLoaderOverlay.loadState(state)
-      assertTrue(moduleClassLoaderOverlay.state.paths.isEmpty())
+        val state = ModuleClassLoaderOverlays.State(listOf(tempOverlayPath.toString()))
+        moduleClassLoaderOverlay.loadState(state)
+        assertTrue(moduleClassLoaderOverlay.state.paths.isEmpty())
 
-      val anotherTempPath = Files.createTempDirectory("overlayTest2")
-      moduleClassLoaderOverlay.pushOverlayPath(anotherTempPath)
-      assertTrue(moduleClassLoaderOverlay.state.paths.isEmpty())
-    } finally {
-      TrustedProjects.setProjectTrusted(projectRule.project, true)
+        val anotherTempPath = Files.createTempDirectory("overlayTest2")
+        moduleClassLoaderOverlay.pushOverlayPath(anotherTempPath)
+        assertTrue(moduleClassLoaderOverlay.state.paths.isEmpty())
+      } finally {
+        TrustedProjects.setProjectTrusted(projectRule.project, true)
+      }
     }
   }
 

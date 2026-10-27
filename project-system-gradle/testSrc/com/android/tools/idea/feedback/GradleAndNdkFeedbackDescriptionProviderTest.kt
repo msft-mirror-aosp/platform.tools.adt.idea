@@ -19,6 +19,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.trustedProjects.TrustedProjects
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.TrustedProjectsTestUtil
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -63,17 +64,23 @@ class GradleAndNdkFeedbackDescriptionProviderTest {
 
   @Test
   fun testDescriptionUntrusted() {
-    runBlocking {
-      TrustedProjects.setProjectTrusted(project, false)
-      val description = provider.getDescription(project)
+    TrustedProjectsTestUtil.withTrustedProjectsCheckEnabled {
+      try {
+        runBlocking {
+          TrustedProjects.setProjectTrusted(project, false)
+          val description = provider.getDescription(project)
 
-      assertThat(description).contains("Gradle JDK: (default)")
+          assertThat(description).contains("Gradle JDK: (default)")
 
-      assertThat(description).contains("NDK: ")
-      assertThat(description).doesNotContain("NDK: from local.properties:")
+          assertThat(description).contains("NDK: ")
+          assertThat(description).doesNotContain("NDK: from local.properties:")
 
-      assertThat(description).contains("CMake: ")
-      assertThat(description).doesNotContain("CMake: from local.properties:")
+          assertThat(description).contains("CMake: ")
+          assertThat(description).doesNotContain("CMake: from local.properties:")
+        }
+      } finally {
+        TrustedProjects.setProjectTrusted(project, true)
+      }
     }
   }
 }

@@ -16,6 +16,7 @@
 package com.android.tools.idea.configurations
 
 import com.intellij.ide.trustedProjects.TrustedProjects
+import com.intellij.testFramework.TrustedProjectsTestUtil
 import org.jetbrains.android.AndroidTestCase
 
 class ConfigurationStateManagerTest : AndroidTestCase() {
@@ -107,18 +108,20 @@ class ConfigurationStateManagerTest : AndroidTestCase() {
     assertNull(manager.getConfigurationState(file))
 
     val wasTrusted = TrustedProjects.isProjectTrusted(project)
-    try {
-      TrustedProjects.setProjectTrusted(project, false)
-      manager.loadState(state)
-      // State should NOT be loaded because project is untrusted
-      assertNull(manager.getConfigurationState(file))
+    TrustedProjectsTestUtil.withTrustedProjectsCheckEnabled {
+      try {
+        TrustedProjects.setProjectTrusted(project, false)
+        manager.loadState(state)
+        // State should NOT be loaded because project is untrusted
+        assertNull(manager.getConfigurationState(file))
 
-      TrustedProjects.setProjectTrusted(project, true)
-      manager.loadState(state)
-      // State SHOULD be loaded because project is trusted
-      assertNotNull(manager.getConfigurationState(file))
-    } finally {
-      TrustedProjects.setProjectTrusted(project, wasTrusted)
+        TrustedProjects.setProjectTrusted(project, true)
+        manager.loadState(state)
+        // State SHOULD be loaded because project is trusted
+        assertNotNull(manager.getConfigurationState(file))
+      } finally {
+        TrustedProjects.setProjectTrusted(project, wasTrusted)
+      }
     }
   }
 

@@ -28,6 +28,7 @@ import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
+import com.intellij.testFramework.TrustedProjectsTestUtil
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -65,11 +66,17 @@ class AgpUpgradeActionTest {
   @Test
   fun testAgpUpgradeActionDisabledForUntrustedProject() {
     ProjectSystemService.getInstance(project).replaceProjectSystemForTests(GradleProjectSystem(project))
-    TrustedProjects.setProjectTrusted(project, false)
-    val action = AgpUpgradeAction()
-    val event = TestActionEvent.createTestEvent(action)
-    action.update(event)
-    assertThat(event.presentation.isEnabled).isFalse()
+    TrustedProjectsTestUtil.withTrustedProjectsCheckEnabled {
+      try {
+        TrustedProjects.setProjectTrusted(project, false)
+        val action = AgpUpgradeAction()
+        val event = TestActionEvent.createTestEvent(action)
+        action.update(event)
+        assertThat(event.presentation.isEnabled).isFalse()
+      } finally {
+        TrustedProjects.setProjectTrusted(project, true)
+      }
+    }
   }
 
   @Test
