@@ -50,6 +50,7 @@ import java.awt.Dimension
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.util.concurrent.TimeUnit
+import javax.swing.Box
 import javax.swing.JComponent
 import javax.swing.JLabel
 import javax.swing.JPanel
@@ -141,7 +142,8 @@ internal constructor(
     // If we don't have a heap selected return an empty panel.
     selection.selectedHeapSet ?: return JPanel()
 
-    val selected = ClassifierSetHNode(model, selection.selectedHeapSet!!, 0)
+    // The root is hidden, so start it one level up: its children then fill the chart's first row instead of leaving it empty.
+    val selected = ClassifierSetHNode(model, selection.selectedHeapSet!!, -1)
     selected.updateChildrenOffsets()
     val captureRange = Range(0.0, selected.end.toDouble())
     val globalRange = Range(captureRange)
@@ -155,11 +157,14 @@ internal constructor(
     chart.addMouseMotionListener(
       MemoryVisualizationTooltipView(chart, profilersView.component, VisualizationTooltipModel(captureRange, model))
     )
-    val panel = JPanel(TabularLayout("*,Fit", "*,Fit"))
-    panel.add(axis, TabularLayout.Constraint(0, 0))
-    panel.add(chart, TabularLayout.Constraint(0, 0))
-    panel.add(HTreeChartVerticalScrollBar(chart), TabularLayout.Constraint(0, 1))
-    panel.add(horizontalScrollBar, TabularLayout.Constraint(1, 0, 1, 2))
+    // The axis labels get a header row of their own, so that the chart rows can't scroll over them. The axis also spans the
+    // chart row, where its markers act as grid lines.
+    val panel = JPanel(TabularLayout("*,Fit", "Fit,*,Fit"))
+    panel.add(axis, TabularLayout.Constraint(0, 0, 2, 1))
+    panel.add(Box.createVerticalStrut(axis.getFontMetrics(axis.font).height), TabularLayout.Constraint(0, 0))
+    panel.add(chart, TabularLayout.Constraint(1, 0))
+    panel.add(HTreeChartVerticalScrollBar(chart), TabularLayout.Constraint(1, 1))
+    panel.add(horizontalScrollBar, TabularLayout.Constraint(2, 0, 1, 2))
     val navigator = profilersView.studioProfilers.ideServices.codeNavigator
     profilersView.ideProfilerComponents.createContextMenuInstaller().installNavigationContextMenu(chart, navigator) {
       getCodeLocation(chart)
