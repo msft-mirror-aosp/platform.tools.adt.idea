@@ -38,6 +38,7 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Stroke;
+import java.awt.event.HierarchyEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -48,6 +49,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import javax.swing.Icon;
 import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -123,6 +125,13 @@ public class LegendComponent extends AnimatedComponent {
     myShowValues = builder.myShowValues;
     myExcludedLegends = builder.myExcludedLegends;
     myModel.addDependency(myAspectObserver).onChange(LegendComponentModel.Aspect.LEGEND, this::modelChanged);
+    // modelChanged() skips hidden legends, and the model may never change again (e.g. imported recordings), so fill in once
+    // shown. Deferred, as a size change made during an ancestor's layout would not trigger a new layout.
+    addHierarchyListener(e -> {
+      if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && isShowing()) {
+        SwingUtilities.invokeLater(this::modelChanged);
+      }
+    });
     setFont(AdtUiUtils.DEFAULT_FONT.deriveFont(builder.myTextSize));
     modelChanged();
   }

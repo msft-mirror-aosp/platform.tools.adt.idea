@@ -27,10 +27,17 @@ import com.android.tools.adtui.model.legend.Legend
 import com.android.tools.adtui.model.legend.LegendComponentModel
 import com.google.common.truth.Truth.assertThat
 import com.intellij.icons.AllIcons
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RunsInEdt
 import java.awt.Color
+import org.junit.Rule
 import org.junit.Test
 
+// Legends refresh on the EDT once shown, so run there rather than racing with that refresh.
+@RunsInEdt(writeIntent = false)
 class LegendComponentTest {
+  @get:Rule val edtRule = EdtRule()
+
   @Test
   fun addingAndRemovingLegendsCreatesTextInstructions() {
     val range = Range(0.0, 0.0) // Just a valid starting range, no special meaning to 0.0.
