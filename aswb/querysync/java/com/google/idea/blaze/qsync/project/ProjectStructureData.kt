@@ -156,6 +156,14 @@ fun ProjectStructureData.getBuildPackage(path: Path): BuildPackage? {
   return null
 }
 
+/**
+ * Returns [path] and the paths of the build packages under it, recursively: just [path] for a file, and every package for the workspace
+ * root (the empty path). [path] stays in the result so that it still maps to the package that contains it, e.g. for a file or for a
+ * directory inside a package.
+ */
+fun ProjectStructureData.withBuildPackagesUnder(path: Path): Set<Path> =
+  setOf(path) + roots.flatMap { it.buildPackages.keys }.filter { it.startsWith(path) || path.toString().isEmpty() }
+
 /** Returns a [Label] representing the given path in the workspace with the current build packages. The file does not need to exist. */
 fun ProjectStructureData.pathToLabel(file: Path): Label? {
   val buildPkg = getBuildPackage(file) ?: return null

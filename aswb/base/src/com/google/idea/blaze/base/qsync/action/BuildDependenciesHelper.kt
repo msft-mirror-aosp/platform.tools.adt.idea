@@ -26,6 +26,7 @@ import com.google.idea.blaze.base.scope.BlazeContext
 import com.google.idea.blaze.common.Label
 import com.google.idea.blaze.exception.BuildException
 import com.google.idea.blaze.qsync.project.TargetsToBuild
+import com.google.idea.blaze.qsync.project.withBuildPackagesUnder
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
@@ -90,7 +91,12 @@ class BuildDependenciesHelper(val project: Project) {
       if (!canEnableAnalysisNow()) return@async false
       val syncResult =
         withContext(Dispatchers.EDT) {
-            syncManager.syncQueryDataIfNeeded(workspaceRelativePaths, querySyncActionStats, TaskOrigin.AUTOMATIC)
+            // A directory's targets are those of every package under it (BuildGraphData.getProjectTargets), so query those packages too.
+            syncManager.syncQueryDataIfNeeded(
+              { workspaceRelativePaths.flatMap { withBuildPackagesUnder(it) } },
+              querySyncActionStats,
+              TaskOrigin.AUTOMATIC,
+            )
           }
           .asDeferred()
           .await()

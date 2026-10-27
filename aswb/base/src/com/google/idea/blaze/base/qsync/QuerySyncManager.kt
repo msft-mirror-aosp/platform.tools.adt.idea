@@ -202,7 +202,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
           context,
           lastQuery = result?.existingPostQuerySyncData,
           lastProjectStructureData = null,
-          paths = null,
+          pathsToQuery = { null },
         )
       }
     }
@@ -284,7 +284,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
             context,
             lastQuery = result?.existingPostQuerySyncData,
             lastProjectStructureData = lastProjectStructureData,
-            paths = if (buildWholeProject) null else emptyList(),
+            pathsToQuery = { if (buildWholeProject) null else emptyList() },
             onQueryDuration = ::setStartupBazelQueryTime,
           )
         }
@@ -306,7 +306,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
               context,
               lastQuery = result.existingPostQuerySyncData,
               lastProjectStructureData = lastProjectStructureData,
-              paths = null,
+              pathsToQuery = { null },
               onQueryDuration = ::setStartupBazelQueryTime,
             )
           }
@@ -402,7 +402,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
     operation(title = "Updating project structure", subTitle = "Re-importing project", operationType = OperationType.SYNC) { context ->
       val result = reloadProjectIfDefinitionHasChanged(context)
       syncStatsScope(context) { context ->
-        runQueryAndReadProjectStructureAndApply(context, lastQuery = null, lastProjectStructureData = null, paths = null)
+        runQueryAndReadProjectStructureAndApply(context, lastQuery = null, lastProjectStructureData = null, pathsToQuery = { null })
       }
       if (userPreferences.commitProjectStructureAfterInitialScan) {
         updateProjectStructureAndSnapshot(context)
@@ -425,7 +425,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
           context,
           lastQuery = result?.existingPostQuerySyncData,
           lastProjectStructureData = null,
-          paths = null,
+          pathsToQuery = { null },
         )
       }
       if (userPreferences.commitProjectStructureAfterInitialScan) {
@@ -434,56 +434,24 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
       autoEnableCodeAnalysis(context)
     }
 
+  /**
+   * Refreshes the query data for the paths that [workspaceRelativePathsToQuery] returns for the project structure of a new directory scan.
+   */
   fun syncQueryDataIfNeeded(
-    workspaceRelativePaths: Collection<Path>,
+    workspaceRelativePathsToQuery: ProjectStructureData.() -> Collection<Path>,
     querySyncActionStats: QuerySyncActionStatsScope,
     taskOrigin: TaskOrigin,
   ): ListenableFuture<Boolean> {
     return coroutineScope
-      .async { runOperationWithToolWindow(this, querySyncActionStats, taskOrigin, syncQueryDataIfNeededOperation(workspaceRelativePaths)) }
-      .asListenableFuture()
-  }
-
-  @JvmOverloads
-  fun getBuildGraphDataFor(
-    context: BlazeContext,
-    packages: Collection<Path>,
-    querySyncActionStats: QuerySyncActionStatsScope,
-    taskOrigin: TaskOrigin = TaskOrigin.UNKNOWN,
-  ): ListenableFuture<BuildGraphData?> {
-    return coroutineScope
       .async {
-        syncStatus.operationStarted(OperationType.SYNC)
-        querySyncActionStats.builder.setTaskOrigin(taskOrigin)
-        try {
-          withSyncEventsPublished(context) {
-            context.push(querySyncActionStats)
-            assertProjectLoaded()
-            val reloadResult = reloadProjectIfDefinitionHasChanged(context) as? ReloadProjectResult.SnapshotRetained
-            runQueryAndReadProjectStructureAndApply(
-              context,
-              lastQuery = reloadResult?.existingPostQuerySyncData,
-              lastProjectStructureData = null,
-              paths = packages,
-            )
-            logSyncStats(context, loadedProject, currentSnapshot.getOrNull())
-          }
-          syncStatus.operationEnded()
-          currentBuildGraphdata
-        } catch (throwable: Throwable) {
-          if (throwable is CancellationException) {
-            syncStatus.operationCancelled()
-          } else {
-            syncStatus.operationFailed()
-            logger.error("Failed to get build graph", throwable)
-          }
-          throw throwable
-        }
+        runOperationWithToolWindow(this, querySyncActionStats, taskOrigin, syncQueryDataIfNeededOperation(workspaceRelativePathsToQuery))
       }
       .asListenableFuture()
   }
 
-  private fun syncQueryDataIfNeededOperation(workspaceRelativePaths: Collection<Path>): QuerySyncOperation =
+  private fun syncQueryDataIfNeededOperation(
+    workspaceRelativePathsToQuery: ProjectStructureData.() -> Collection<Path>
+  ): QuerySyncOperation =
     operation(
       title = "Updating build structure",
       subTitle = "Refreshing build structure",
@@ -496,7 +464,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
         context,
         lastQuery = result?.existingPostQuerySyncData,
         lastProjectStructureData = null,
-        paths = workspaceRelativePaths,
+        pathsToQuery = workspaceRelativePathsToQuery,
       )
     }
 
@@ -628,18 +596,19 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
   /**
    * Runs the query and applies the resulting structure to the project.
    *
-   * @param paths Evaluates the packages to update.
-   *     - If `null`: Evaluates all packages known across the workspace. Pass `null` for workspace-wide full/delta syncs so the Querier can
-   *       evaluate all changes.
-   *     - If `emptyList()`: Evaluates exactly zero packages, skipping the query phase entirely. Pass `emptyList()` when you want to avoid
+   * @param pathsToQuery Returns the paths to query, given the project structure that the query uses (a new directory scan unless
+   *   [lastProjectStructureData] is given).
+   *     - If `null`: Evaluates all packages known across the workspace. Return `null` for workspace-wide full/delta syncs so the Querier
+   *       can evaluate all changes.
+   *     - If `emptyList()`: Evaluates exactly zero packages, skipping the query phase entirely. Return `emptyList()` when you want to avoid
    *       running queries (e.g., during IDE startup).
-   *     - Otherwise: Evaluates strictly the packages corresponding to the specified paths.
+   *     - Otherwise: Evaluates strictly the packages corresponding to the returned paths.
    */
   private fun runQueryAndReadProjectStructureAndApply(
     context: BlazeContext,
     lastQuery: PostQuerySyncData?,
     lastProjectStructureData: ProjectStructureData?,
-    paths: Collection<Path>?,
+    pathsToQuery: ProjectStructureData.() -> Collection<Path>?,
     onQueryDuration: (BlazeContext, Duration) -> Unit = { _, _ -> },
   ) {
     val duration = measureTime {
@@ -648,6 +617,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
       val bazelVersion = loadedProject.getBazelVersion(context)
 
       val projectStructureDataToUse = readProjectStructureData(context, lastProjectStructureData)
+      val paths = projectStructureDataToUse.pathsToQuery()
       val requestedPackages =
         paths?.mapNotNull { projectStructureDataToUse.getBuildPackage(it)?.path }?.toSet()
           ?: projectStructureDataToUse.roots.flatMap { it.buildPackages.keys }.toSet()
@@ -895,7 +865,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
           context,
           lastQuery = result?.existingPostQuerySyncData,
           lastProjectStructureData = null,
-          paths = null,
+          pathsToQuery = { null },
         )
       }
       context.output(PrintOutput.output("Building project dependencies..."))
@@ -946,7 +916,7 @@ constructor(private val project: Project, private val coroutineScope: CoroutineS
         )
       }
       syncStatsScope(context) { context ->
-        runQueryAndReadProjectStructureAndApply(context, lastQuery = null, lastProjectStructureData = null, paths = null)
+        runQueryAndReadProjectStructureAndApply(context, lastQuery = null, lastProjectStructureData = null, pathsToQuery = { null })
       }
       autoEnableCodeAnalysis(context)
     }

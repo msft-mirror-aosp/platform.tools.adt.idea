@@ -67,6 +67,38 @@ class ProjectStructureDataTest {
   }
 
   @Test
+  fun testWithBuildPackagesUnder() {
+    val data =
+      ProjectStructureData.create(
+        roots =
+          listOf(
+            ProjectStructureRoot(
+              Path.of("java"),
+              buildPackages =
+                mapOf(
+                  Path.of("java/com/example") to BuildPackage(Path.of("java/com/example"), emptyList(), 100L),
+                  Path.of("java/com/example/sub") to BuildPackage(Path.of("java/com/example/sub"), emptyList(), 200L),
+                  Path.of("java/com/other") to BuildPackage(Path.of("java/com/other"), emptyList(), 300L),
+                ),
+            )
+          ),
+        activeLanguages = emptySet(),
+      )
+
+    assertThat(data.withBuildPackagesUnder(Path.of("java/com/example")))
+      .containsExactly(Path.of("java/com/example"), Path.of("java/com/example/sub"))
+    // Above every package
+    assertThat(data.withBuildPackagesUnder(Path.of("java/com")))
+      .containsExactly(Path.of("java/com"), Path.of("java/com/example"), Path.of("java/com/example/sub"), Path.of("java/com/other"))
+    // The workspace root: itself and every package
+    assertThat(data.withBuildPackagesUnder(Path.of(""))).hasSize(4)
+    // A file: just the file
+    assertThat(data.withBuildPackagesUnder(Path.of("java/com/example/File.java"))).containsExactly(Path.of("java/com/example/File.java"))
+    // Paths match by whole names
+    assertThat(data.withBuildPackagesUnder(Path.of("java/com/examples"))).containsExactly(Path.of("java/com/examples"))
+  }
+
+  @Test
   fun testPathToLabel() {
     val data =
       ProjectStructureData.create(
