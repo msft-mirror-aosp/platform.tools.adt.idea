@@ -621,8 +621,8 @@ android-library = { id = "com.android.library", version.ref = "agpVersion" }
         }
         android {
           compileOptions {
-            sourceCompatibility JavaVersion.VERSION_11
-            targetCompatibility JavaVersion.VERSION_11
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
           }
           kotlinOptions {
             jvmTarget = '11'
@@ -669,8 +669,8 @@ android-library = { id = "com.android.library", version.ref = "agpVersion" }
         }
         android {
           compileOptions {
-            sourceCompatibility JavaVersion.VERSION_11
-            targetCompatibility JavaVersion.VERSION_11
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
           }
         }
         kotlin {
@@ -721,8 +721,8 @@ android-library = { id = "com.android.library", version.ref = "agpVersion" }
         }
         android {
           compileOptions {
-            sourceCompatibility JavaVersion.VERSION_11
-            targetCompatibility JavaVersion.VERSION_11
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
           }
         }
         kotlin {
@@ -773,8 +773,8 @@ android-library = { id = "com.android.library", version.ref = "agpVersion" }
         }
         android {
           compileOptions {
-            sourceCompatibility JavaVersion.VERSION_11
-            targetCompatibility JavaVersion.VERSION_11
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
           }
         }
         """

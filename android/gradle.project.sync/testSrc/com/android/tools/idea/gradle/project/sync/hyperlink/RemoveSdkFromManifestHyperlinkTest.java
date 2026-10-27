@@ -207,7 +207,7 @@ public class RemoveSdkFromManifestHyperlinkTest {
         "android {\n" +
         "    compileSdkVersion " + BuildEnvironment.getInstance().getCompileSdkVersion() + "\n" +
         "    defaultConfig {\n" +
-        "            targetSdk 27\n" +
+        "            targetSdk = 27\n" +
         "    }\n" +
         "}\n"
       );
@@ -257,7 +257,7 @@ public class RemoveSdkFromManifestHyperlinkTest {
         "android {\n" +
         "    compileSdkVersion " + BuildEnvironment.getInstance().getCompileSdkVersion() + "\n" +
         "    defaultConfig {\n" +
-        "            minSdk 21\n" +
+        "            minSdk = 21\n" +
         "    }\n" +
         "}\n"
       );

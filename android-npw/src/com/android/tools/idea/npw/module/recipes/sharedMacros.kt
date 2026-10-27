@@ -77,7 +77,7 @@ fun proguardConfig(useLegacyMinifyEnabled: Boolean, enableGradualR8: Boolean) =
     """
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }

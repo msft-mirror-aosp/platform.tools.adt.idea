@@ -97,7 +97,7 @@ class UpdateCompileSdkProcessorTest {
     WriteCommandAction.runWriteCommandAction(project) { processor.updateProjectBuildModel(usages) }
     GradleSyncInvoker.getInstance().requestProjectSync(project, TRIGGER_QF_MIN_COMPILE_SDK_UPDATED)
 
-    assertThat(String(buildFile.contentsToByteArray()).contains("compileSdk $newCompileSdkVersion")).isTrue()
+    assertThat(String(buildFile.contentsToByteArray()).contains("compileSdk = $newCompileSdkVersion")).isTrue()
     assertThat(synced).isTrue()
   }
 }

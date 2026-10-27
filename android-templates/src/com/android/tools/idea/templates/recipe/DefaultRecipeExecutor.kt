@@ -107,6 +107,7 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
   val projectBuildModel: ProjectBuildModel? by lazy {
     ProjectBuildModel.getOrLog(project)?.also {
       it.context.agpVersion = AndroidGradlePluginVersion.parse(projectTemplateData.agpVersion.toString())
+      it.context.gradleVersion = projectTemplateData.gradleVersion
     }
   }
   private val projectSettingsModel: GradleSettingsModel? by lazy {
@@ -725,8 +726,8 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
    * only fall back to NIO when it is null.
    *
    * With asynchronous VFS writes, a given file must be accessed either only through the VFS or only through direct Java file I/O (NIO).
-   * Mixing the two on the same file can observe stale contents. Because all writes in this executor go through the VFS, NIO is only
-   * ever used for files that don't exist, never for a file the VFS also manages.
+   * Mixing the two on the same file can observe stale contents. Because all writes in this executor go through the VFS, NIO is only ever
+   * used for files that don't exist, never for a file the VFS also manages.
    */
   private fun findVirtualFile(file: File): VirtualFile? = findFileByIoFile(file, true)
 

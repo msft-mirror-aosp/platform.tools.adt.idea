@@ -265,7 +265,7 @@ abstract class AddNewModulesToAppTest(private val dslLanguage: DslLanguage, priv
           .resolve(moduleName)
           .resolve("build.gradle")
           .readText()
-          .contains("sourceCompatibility JavaVersion.VERSION_11")
+          .contains("sourceCompatibility = JavaVersion.VERSION_11")
       )
     }
   }
