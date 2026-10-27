@@ -27,6 +27,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -40,7 +41,7 @@ public class AbiDslElement extends BaseSplitOptionsDslElement {
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"universalApk", property, UNIVERSAL_APK, VAR},
-    {"universalApk", exactly(1), UNIVERSAL_APK, SET},
+    {"universalApk", exactly(1), UNIVERSAL_APK, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap(BaseSplitOptionsDslElement.groovyToModelNameMap));
 
 

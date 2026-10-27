@@ -37,6 +37,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -61,19 +62,19 @@ public class AaptOptionsDslElement extends GradleDslBlockElement {
     {"additionalParameters", property, ADDITIONAL_PARAMETERS, VAR},
     {"additionalParameters", atLeast(0), ADDITIONAL_PARAMETERS, ADD_AS_LIST},
     {"cruncherEnabled", property, CRUNCHER_ENABLED, VAR},
-    {"cruncherEnabled", exactly(1), CRUNCHER_ENABLED, SET},
+    {"cruncherEnabled", exactly(1), CRUNCHER_ENABLED, SET, VersionConstraint.gradleBefore("10.0")},
     {"cruncherProcesses", property, CRUNCHER_PROCESSES, VAR},
-    {"cruncherProcesses", exactly(1), CRUNCHER_PROCESSES, SET},
+    {"cruncherProcesses", exactly(1), CRUNCHER_PROCESSES, SET, VersionConstraint.gradleBefore("10.0")},
     {"failOnMissingConfigEntry", property, FAIL_ON_MISSING_CONFIG_ENTRY, VAR},
-    {"failOnMissingConfigEntry", exactly(1), FAIL_ON_MISSING_CONFIG_ENTRY, SET},
+    {"failOnMissingConfigEntry", exactly(1), FAIL_ON_MISSING_CONFIG_ENTRY, SET, VersionConstraint.gradleBefore("10.0")},
     {"ignoreAssetsPattern", property, IGNORE_ASSETS, VAR},
-    {"ignoreAssetsPattern", exactly(1), IGNORE_ASSETS, SET},
+    {"ignoreAssetsPattern", exactly(1), IGNORE_ASSETS, SET, VersionConstraint.gradleBefore("10.0")},
     {"ignoreAssets", property, IGNORE_ASSETS, VAR},
-    {"ignoreAssets", exactly(1), IGNORE_ASSETS, SET},
+    {"ignoreAssets", exactly(1), IGNORE_ASSETS, SET, VersionConstraint.gradleBefore("10.0")},
     {"noCompress", property, NO_COMPRESS, VAR},
     {"noCompress", atLeast(0), NO_COMPRESS, ADD_AS_LIST},
     {"namespaced", property, NAMESPACED, VAR},
-    {"namespaced", exactly(1), NAMESPACED, SET}
+    {"namespaced", exactly(1), NAMESPACED, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
 

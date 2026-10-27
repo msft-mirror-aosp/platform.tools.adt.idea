@@ -31,6 +31,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -47,7 +48,7 @@ public class AdbOptionsDslElement extends GradleDslBlockElement {
     {"installOptions", property, INSTALL_OPTIONS, VAR},
     {"installOptions", atLeast(0), INSTALL_OPTIONS, ADD_AS_LIST},
     {"timeOutInMs", property, TIME_OUT_IN_MS, VAR},
-    {"timeOutInMs", exactly(1), TIME_OUT_IN_MS, SET}
+    {"timeOutInMs", exactly(1), TIME_OUT_IN_MS, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
   public static final PropertiesElementDescription<AdbOptionsDslElement> ADB_OPTIONS =

@@ -32,6 +32,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -52,7 +53,7 @@ public class VectorDrawablesOptionsDslElement extends GradleDslBlockElement {
     {"generatedDensities", property, GENERATED_DENSITIES, VAR},
     {"generatedDensities", atLeast(0), GENERATED_DENSITIES, OTHER},
     {"useSupportLibrary", property, USE_SUPPORT_LIBRARY, VAR},
-    {"useSupportLibrary", exactly(1), USE_SUPPORT_LIBRARY, SET}
+    {"useSupportLibrary", exactly(1), USE_SUPPORT_LIBRARY, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
 

@@ -33,6 +33,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslNamedDomainEle
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -67,7 +68,7 @@ public class SourceSetDslElement extends GradleDslBlockElement implements Gradle
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"root", property, ROOT, VWO},
     {"setRoot", exactly(1), ROOT, SET},
-    {"root", exactly(1), ROOT, SET}
+    {"root", exactly(1), ROOT, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
 

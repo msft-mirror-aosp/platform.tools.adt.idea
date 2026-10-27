@@ -28,6 +28,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -45,7 +46,7 @@ public class DexDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"useLegacyPackaging", property, USE_LEGACY_PACKAGING, VAR},
-    {"useLegacyPackaging", exactly(1), USE_LEGACY_PACKAGING, SET}
+    {"useLegacyPackaging", exactly(1), USE_LEGACY_PACKAGING, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
 

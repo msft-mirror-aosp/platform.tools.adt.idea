@@ -73,14 +73,14 @@ public abstract class AbstractFlavorTypeDslElement extends GradleDslBlockElement
   @NotNull
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"applicationIdSuffix", property, APPLICATION_ID_SUFFIX, VAR},
-    {"applicationIdSuffix", exactly(1), APPLICATION_ID_SUFFIX, SET},
+    {"applicationIdSuffix", exactly(1), APPLICATION_ID_SUFFIX, SET, VersionConstraint.gradleBefore("10.0")},
     {"buildConfigField", exactly(3), BUILD_CONFIG_FIELD, OTHER},
     {"consumerProguardFiles", atLeast(0), CONSUMER_PROGUARD_FILES, AUGMENT_LIST},
     {"consumerProguardFiles", property, CONSUMER_PROGUARD_FILES, VAR},
     {"consumerProguardFile", exactly(1), CONSUMER_PROGUARD_FILES, AUGMENT_LIST},
     {"setConsumerProguardFiles", exactly(1), CONSUMER_PROGUARD_FILES, CLEAR_AND_AUGMENT_LIST},
     {"manifestPlaceholders", property, MANIFEST_PLACEHOLDERS, VAR},
-    {"manifestPlaceholders", exactly(1), MANIFEST_PLACEHOLDERS, SET},
+    {"manifestPlaceholders", exactly(1), MANIFEST_PLACEHOLDERS, SET, VersionConstraint.gradleBefore("10.0")},
     // TODO(xof): if we want to support the method call syntax (as opposed to the application statement syntax) of
     //  setManifestPlaceholders([a: 'b']) more properly, this SET could become CLEAR_AND_AUGMENT_MAP (and we would need something a bit
     //  like mungeElementsForAddToParsedElementList() in addToParsedElementMap).
@@ -88,20 +88,22 @@ public abstract class AbstractFlavorTypeDslElement extends GradleDslBlockElement
     {"matchingFallbacks", property, MATCHING_FALLBACKS, VAR},
     {"setMatchingFallbacks", atLeast(1), MATCHING_FALLBACKS, CLEAR_AND_AUGMENT_LIST, VersionConstraint.agpBefore("8.0.0")},
     {"multiDexEnabled", property, MULTI_DEX_ENABLED, VAR},
-    {"multiDexEnabled", exactly(1), MULTI_DEX_ENABLED, SET},
-    {"multiDexKeepFile", exactly(1), MULTI_DEX_KEEP_FILE, SET},
-    {"multiDexKeepProguard", exactly(1), MULTI_DEX_KEEP_PROGUARD, SET},
+    {"multiDexEnabled", exactly(1), MULTI_DEX_ENABLED, SET, VersionConstraint.gradleBefore("10.0")},
+    {"multiDexKeepFile", property, MULTI_DEX_KEEP_FILE, VAR},
+    {"multiDexKeepFile", exactly(1), MULTI_DEX_KEEP_FILE, SET, VersionConstraint.gradleBefore("10.0")},
+    {"multiDexKeepProguard", property, MULTI_DEX_KEEP_PROGUARD, VAR},
+    {"multiDexKeepProguard", exactly(1), MULTI_DEX_KEEP_PROGUARD, SET, VersionConstraint.gradleBefore("10.0")},
     {"proguardFiles", atLeast(0), PROGUARD_FILES, AUGMENT_LIST},
     {"proguardFiles", property, PROGUARD_FILES, VAR},
     {"proguardFile", exactly(1), PROGUARD_FILES, AUGMENT_LIST},
     {"setProguardFiles", exactly(1), PROGUARD_FILES, CLEAR_AND_AUGMENT_LIST},
     {"resValue", exactly(3), RES_VALUE, OTHER},
     {"signingConfig", property, SIGNING_CONFIG, VAR},
-    {"signingConfig", exactly(1), SIGNING_CONFIG, SET},
+    {"signingConfig", exactly(1), SIGNING_CONFIG, SET, VersionConstraint.gradleBefore("10.0")},
     {"useJack", property, USE_JACK, VAR},
-    {"useJack", exactly(1), USE_JACK, SET},
+    {"useJack", exactly(1), USE_JACK, SET, VersionConstraint.gradleBefore("10.0")},
     {"versionNameSuffix", property, VERSION_NAME_SUFFIX, VAR},
-    {"versionNameSuffix", exactly(1), VERSION_NAME_SUFFIX, SET}
+    {"versionNameSuffix", exactly(1), VERSION_NAME_SUFFIX, SET, VersionConstraint.gradleBefore("10.0")}
   })
     .collect(toModelMap());
 

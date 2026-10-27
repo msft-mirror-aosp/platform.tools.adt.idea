@@ -35,6 +35,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -69,11 +70,11 @@ public class TestOptionsDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"reportDir", property, REPORT_DIR, VAR},
-    {"reportDir", exactly(1), REPORT_DIR, SET},
+    {"reportDir", exactly(1), REPORT_DIR, SET, VersionConstraint.gradleBefore("10.0")},
     {"resultsDir", property, RESULTS_DIR, VAR},
-    {"resultsDir", exactly(1), RESULTS_DIR, SET},
+    {"resultsDir", exactly(1), RESULTS_DIR, SET, VersionConstraint.gradleBefore("10.0")},
     {"execution", property, EXECUTION, VAR},
-    {"execution", exactly(1), EXECUTION, SET}
+    {"execution", exactly(1), EXECUTION, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
 

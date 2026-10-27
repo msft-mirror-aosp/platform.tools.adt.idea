@@ -28,6 +28,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -38,7 +39,7 @@ public class CrashlyticsDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelMap = Stream.of(new Object[][] {
     {"enableNdk", property, ENABLE_NDK, VAR},
-    {"enableNdk", exactly(1), ENABLE_NDK, SET}
+    {"enableNdk", exactly(1), ENABLE_NDK, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
   @Override

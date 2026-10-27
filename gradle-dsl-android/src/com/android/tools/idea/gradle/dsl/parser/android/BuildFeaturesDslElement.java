@@ -37,11 +37,12 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
 public final class BuildFeaturesDslElement extends GradleDslBlockElement {
-  public static final ExternalToModelMap ktsToModelNameMap = Stream.of(new Object[][]{
+  public static final ExternalToModelMap commonToModelNameMap = Stream.of(new Object[][]{
     {"compose", property, COMPOSE, VAR},
     {"dataBinding", property, DATA_BINDING, VAR},
     {"mlModelBinding", property, ML_MODEL_BINDING, VAR},
@@ -53,30 +54,21 @@ public final class BuildFeaturesDslElement extends GradleDslBlockElement {
     {"shaders", property, SHADERS, VAR},
     {"resValues", property, RES_VALUES, VAR},
   }).collect(toModelMap());
+
+  public static final ExternalToModelMap ktsToModelNameMap = commonToModelNameMap;
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
-    {"compose", property, COMPOSE, VAR},
-    {"compose", exactly(1), COMPOSE, SET},
-    {"dataBinding", property, DATA_BINDING, VAR},
-    {"dataBinding", exactly(1), DATA_BINDING, SET},
-    {"mlModelBinding", property, ML_MODEL_BINDING, VAR},
-    {"mlModelBinding", exactly(1), ML_MODEL_BINDING, SET},
-    {"viewBinding", property, VIEW_BINDING, VAR},
-    {"viewBinding", exactly(1), VIEW_BINDING, SET},
-    {"prefab", property, PREFAB, VAR},
-    {"prefab", exactly(1), PREFAB, SET},
-    {"renderScript", property, RENDER_SCRIPT, VAR},
-    {"renderScript", exactly(1), RENDER_SCRIPT, SET},
-    {"buildConfig", property, BUILD_CONFIG, VAR},
-    {"buildConfig", exactly(1), BUILD_CONFIG, SET},
-    {"aidl", property, AIDL, VAR},
-    {"aidl", exactly(1), AIDL, SET},
-    {"shaders", property, SHADERS, VAR},
-    {"shaders", exactly(1), SHADERS, SET},
-    {"resValues", property, RES_VALUES, VAR},
-    {"resValues", exactly(1), RES_VALUES, SET},
-  }).collect(toModelMap());
-
+    {"compose", exactly(1), COMPOSE, SET, VersionConstraint.gradleBefore("10.0")},
+    {"dataBinding", exactly(1), DATA_BINDING, SET, VersionConstraint.gradleBefore("10.0")},
+    {"mlModelBinding", exactly(1), ML_MODEL_BINDING, SET, VersionConstraint.gradleBefore("10.0")},
+    {"viewBinding", exactly(1), VIEW_BINDING, SET, VersionConstraint.gradleBefore("10.0")},
+    {"prefab", exactly(1), PREFAB, SET, VersionConstraint.gradleBefore("10.0")},
+    {"renderScript", exactly(1), RENDER_SCRIPT, SET, VersionConstraint.gradleBefore("10.0")},
+    {"buildConfig", exactly(1), BUILD_CONFIG, SET, VersionConstraint.gradleBefore("10.0")},
+    {"aidl", exactly(1), AIDL, SET, VersionConstraint.gradleBefore("10.0")},
+    {"shaders", exactly(1), SHADERS, SET, VersionConstraint.gradleBefore("10.0")},
+    {"resValues", exactly(1), RES_VALUES, SET, VersionConstraint.gradleBefore("10.0")},
+  }).collect(toModelMap(commonToModelNameMap));
   public static final PropertiesElementDescription<BuildFeaturesDslElement> BUILD_FEATURES =
     new PropertiesElementDescription<>("buildFeatures",
                                        BuildFeaturesDslElement.class,

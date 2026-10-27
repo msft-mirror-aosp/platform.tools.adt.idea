@@ -29,6 +29,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -45,9 +46,9 @@ public class ComposeOptionsDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelMap = Stream.of(new Object[][] {
     {"kotlinCompilerExtensionVersion", property, KOTLIN_COMPILER_EXTENSION_VERSION, VAR},
-    {"kotlinCompilerExtensionVersion", exactly(1), KOTLIN_COMPILER_EXTENSION_VERSION, SET},
+    {"kotlinCompilerExtensionVersion", exactly(1), KOTLIN_COMPILER_EXTENSION_VERSION, SET, VersionConstraint.gradleBefore("10.0")},
     {"kotlinCompilerVersion", property, KOTLIN_COMPILER_VERSION, VAR},
-    {"kotlinCompilerVersion", exactly(1), KOTLIN_COMPILER_VERSION, SET}
+    {"kotlinCompilerVersion", exactly(1), KOTLIN_COMPILER_VERSION, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
 

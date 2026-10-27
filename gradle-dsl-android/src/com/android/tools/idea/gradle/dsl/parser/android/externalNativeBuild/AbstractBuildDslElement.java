@@ -28,6 +28,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslBlockElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -41,9 +42,9 @@ public abstract class AbstractBuildDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"path", property, PATH, VAR},
-    {"path", exactly(1), PATH, SET},
+    {"path", exactly(1), PATH, SET, VersionConstraint.gradleBefore("10.0")},
     {"version", property, VERSION, VAR},
-    {"version", exactly(1), VERSION, SET}
+    {"version", exactly(1), VERSION, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
 

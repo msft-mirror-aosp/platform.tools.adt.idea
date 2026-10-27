@@ -97,70 +97,60 @@ public class AndroidDslElement extends GradleDslBlockElement {
       return CHILD_PROPERTIES_ELEMENTS_MAP;
   }
 
-  private static final ExternalToModelMap ktsToModelNameMap = Stream.of(new Object[][]{
-    {"aidlPackagedList", property, AIDL_PACKAGED_LIST, VAL}, // TODO(xof): was aidlPackageW***eL**t, add support for old version
-    {"assetPacks", property, ASSET_PACKS, VAL}, // TODO(xof): was VAR some time ago
+  private static final ExternalToModelMap commonToModelNameMap = Stream.of(new Object[][]{
+    {"aidlPackagedList", property, AIDL_PACKAGED_LIST, VAL},
     {"buildToolsVersion", property, BUILD_TOOLS_VERSION, VAR},
-    {"buildToolsVersion", exactly(1), BUILD_TOOLS_VERSION, SET, VersionConstraint.agpBefore("8.0.0")},
     {"compileSdk", property, COMPILE_SDK_VERSION, VAR, VersionConstraint.agpFrom("4.1.0")},
     {"compileSdkExtension", property, COMPILE_SDK_EXTENSION, VAR, VersionConstraint.agpFrom("4.1.0")},
     {"compileSdkMinor", property, COMPILE_SDK_MINOR, VAR, VersionConstraint.agpFrom("4.1.0")},
     {"compileSdkPreview", property, COMPILE_SDK_VERSION, VAR, VersionConstraint.agpFrom("4.1.0")},
+    {"defaultPublishConfig", property, DEFAULT_PUBLISH_CONFIG, VAR},
+    {"generatePureSplits", property, GENERATE_PURE_SPLITS, VAR},
+    {"namespace", property, NAMESPACE, VAR},
+    {"ndkVersion", property, NDK_VERSION, VAR},
+    {"resourcePrefix", property, RESOURCE_PREFIX, VAL},
+    {"targetProjectPath", property, TARGET_PROJECT_PATH, VAR},
+    {"testNamespace", property, TEST_NAMESPACE, VAR},
+  }).collect(toModelMap());
+
+  private static final ExternalToModelMap ktsToModelNameMap = Stream.of(new Object[][]{
+    {"assetPacks", property, ASSET_PACKS, VAL}, // TODO(xof): was VAR some time ago
+    {"buildToolsVersion", exactly(1), BUILD_TOOLS_VERSION, SET, VersionConstraint.agpBefore("8.0.0")},
     {"compileSdkVersion", property, COMPILE_SDK_VERSION, VAR_BUT_DO_NOT_USE_FOR_WRITING_IN_KTS, VersionConstraint.agpBefore("8.0.0")},
     {"compileSdkVersion", exactly(1), COMPILE_SDK_VERSION, SET, VersionConstraint.agpBefore("8.0.0")},
-    {"defaultPublishConfig", property, DEFAULT_PUBLISH_CONFIG, VAR},
     {"defaultPublishConfig", exactly(1), DEFAULT_PUBLISH_CONFIG, SET},
     {"dynamicFeatures", property, DYNAMIC_FEATURES, VAR, VersionConstraint.agpBefore("4.1.0")},
     {"dynamicFeatures", property, DYNAMIC_FEATURES, VAL, VersionConstraint.agpFrom("4.1.0")},
     {"flavorDimensions", property, FLAVOR_DIMENSIONS, VAL, VersionConstraint.agpFrom("4.1.0")},
     {"flavorDimensions", atLeast(0), FLAVOR_DIMENSIONS, ADD_AS_LIST, VersionConstraint.agpBefore("8.0.0")},
-    {"generatePureSplits", property, GENERATE_PURE_SPLITS, VAR},
     {"generatePureSplits", exactly(1), GENERATE_PURE_SPLITS, SET},
-    {"namespace", property, NAMESPACE, VAR},
-    {"ndkVersion", property, NDK_VERSION, VAR},
     {"setPublishNonDefault", exactly(1), PUBLISH_NON_DEFAULT, SET},
-    {"resourcePrefix", property, RESOURCE_PREFIX, VAL}, // no setResourcePrefix: not a VAR
     {"resourcePrefix", exactly(1), RESOURCE_PREFIX, SET},
-    {"targetProjectPath", property, TARGET_PROJECT_PATH, VAR},
     {"targetProjectPath", exactly(1), TARGET_PROJECT_PATH, SET},
-    {"testNamespace", property, TEST_NAMESPACE, VAR},
-  }).collect(toModelMap());
+  }).collect(toModelMap(commonToModelNameMap));
 
   private static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
-    {"aidlPackagedList", property, AIDL_PACKAGED_LIST, VAL},
     {"assetPacks", property, ASSET_PACKS, VAR},
-    {"buildToolsVersion", property, BUILD_TOOLS_VERSION, VAR},
-    {"buildToolsVersion", exactly(1), BUILD_TOOLS_VERSION, SET},
-    {"compileSdk", property, COMPILE_SDK_VERSION, VAR, VersionConstraint.agpFrom("4.1.0")},
-    {"compileSdk", exactly(1), COMPILE_SDK_VERSION, SET, VersionConstraint.agpFrom("4.1.0")},
-    {"compileSdkExtension", property, COMPILE_SDK_EXTENSION, VAR, VersionConstraint.agpFrom("4.1.0")},
-    {"compileSdkExtension", exactly(1), COMPILE_SDK_EXTENSION, SET, VersionConstraint.agpFrom("4.1.0")},
-    {"compileSdkMinor", property, COMPILE_SDK_MINOR, VAR, VersionConstraint.agpFrom("4.1.0")},
-    {"compileSdkMinor", exactly(1), COMPILE_SDK_MINOR, SET, VersionConstraint.agpFrom("4.1.0")},
-    {"compileSdkPreview", property, COMPILE_SDK_VERSION, VAR, VersionConstraint.agpFrom("4.1.0")},
-    {"compileSdkPreview", exactly(1), COMPILE_SDK_VERSION, SET, VersionConstraint.agpFrom("4.1.0")},
     {"compileSdkVersion", property, COMPILE_SDK_VERSION, VAR, VersionConstraint.agpBefore("8.0.0")},
-    {"compileSdkVersion", exactly(1), COMPILE_SDK_VERSION, SET, VersionConstraint.agpBefore("8.0.0")},
-    {"defaultPublishConfig", property, DEFAULT_PUBLISH_CONFIG, VAR},
-    {"defaultPublishConfig", exactly(1), DEFAULT_PUBLISH_CONFIG, SET},
     {"dynamicFeatures", property, DYNAMIC_FEATURES, VAR},
     {"flavorDimensions", atLeast(0), FLAVOR_DIMENSIONS, ADD_AS_LIST},
     {"flavorDimensions", property, FLAVOR_DIMENSIONS, VAR, VersionConstraint.agpFrom("4.1.0")},
-    {"generatePureSplits", property, GENERATE_PURE_SPLITS, VAR},
-    {"generatePureSplits", exactly(1), GENERATE_PURE_SPLITS, SET},
-    {"namespace", property, NAMESPACE, VAR},
-    {"namespace", exactly(1), NAMESPACE, SET},
-    {"ndkVersion", property, NDK_VERSION, VAR},
-    {"ndkVersion", exactly(1), NDK_VERSION, SET},
     {"publishNonDefault", property, PUBLISH_NON_DEFAULT, VAR},
-    {"publishNonDefault", exactly(1), PUBLISH_NON_DEFAULT, SET},
-    {"resourcePrefix", property, RESOURCE_PREFIX, VAL},
-    {"resourcePrefix", exactly(1), RESOURCE_PREFIX, SET},
-    {"targetProjectPath", property, TARGET_PROJECT_PATH, VAR},
-    {"targetProjectPath", exactly(1), TARGET_PROJECT_PATH, SET},
-    {"testNamespace", property, TEST_NAMESPACE, VAR},
-    {"testNamespace", exactly(1), TEST_NAMESPACE, SET},
-  }).collect(toModelMap());
+    {"buildToolsVersion", exactly(1), BUILD_TOOLS_VERSION, SET, VersionConstraint.gradleBefore("10.0")},
+    {"compileSdk", exactly(1), COMPILE_SDK_VERSION, SET, VersionConstraint.agpFrom("4.1.0").andGradleBefore("10.0")},
+    {"compileSdkExtension", exactly(1), COMPILE_SDK_EXTENSION, SET, VersionConstraint.agpFrom("4.1.0").andGradleBefore("10.0")},
+    {"compileSdkMinor", exactly(1), COMPILE_SDK_MINOR, SET, VersionConstraint.agpFrom("4.1.0").andGradleBefore("10.0")},
+    {"compileSdkPreview", exactly(1), COMPILE_SDK_VERSION, SET, VersionConstraint.agpFrom("4.1.0").andGradleBefore("10.0")},
+    {"compileSdkVersion", exactly(1), COMPILE_SDK_VERSION, SET, VersionConstraint.agpBefore("8.0.0").andGradleBefore("10.0")},
+    {"defaultPublishConfig", exactly(1), DEFAULT_PUBLISH_CONFIG, SET, VersionConstraint.gradleBefore("10.0")},
+    {"generatePureSplits", exactly(1), GENERATE_PURE_SPLITS, SET, VersionConstraint.gradleBefore("10.0")},
+    {"namespace", exactly(1), NAMESPACE, SET, VersionConstraint.gradleBefore("10.0")},
+    {"ndkVersion", exactly(1), NDK_VERSION, SET, VersionConstraint.gradleBefore("10.0")},
+    {"publishNonDefault", exactly(1), PUBLISH_NON_DEFAULT, SET, VersionConstraint.gradleBefore("10.0")},
+    {"resourcePrefix", exactly(1), RESOURCE_PREFIX, SET, VersionConstraint.gradleBefore("10.0")},
+    {"targetProjectPath", exactly(1), TARGET_PROJECT_PATH, SET, VersionConstraint.gradleBefore("10.0")},
+    {"testNamespace", exactly(1), TEST_NAMESPACE, SET, VersionConstraint.gradleBefore("10.0")},
+  }).collect(toModelMap(commonToModelNameMap));
 
 
   @Override

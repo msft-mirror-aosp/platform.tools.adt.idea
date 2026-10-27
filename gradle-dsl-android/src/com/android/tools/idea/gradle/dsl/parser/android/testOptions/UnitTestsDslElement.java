@@ -28,6 +28,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -43,7 +44,7 @@ public class UnitTestsDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"returnDefaultValues", property, RETURN_DEFAULT_VALUES, VAR},
-    {"returnDefaultValues", exactly(1), RETURN_DEFAULT_VALUES, SET},
+    {"returnDefaultValues", exactly(1), RETURN_DEFAULT_VALUES, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap());
 
 

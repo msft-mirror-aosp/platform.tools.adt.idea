@@ -23,6 +23,7 @@ import static com.android.tools.idea.gradle.dsl.parser.semantics.PropertySemanti
 
 import com.android.tools.idea.gradle.dsl.parser.GradleDslNameConverter;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -41,9 +42,9 @@ public abstract class BaseCompileOptionsDslElement extends GradleDslBlockElement
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"sourceCompatibility", property, SOURCE_COMPATIBILITY, VAR},
-    {"sourceCompatibility", exactly(1), SOURCE_COMPATIBILITY, SET},
+    {"sourceCompatibility", exactly(1), SOURCE_COMPATIBILITY, SET, VersionConstraint.gradleBefore("10.0")},
     {"targetCompatibility", property, TARGET_COMPATIBILITY, VAR},
-    {"targetCompatibility", exactly(1), TARGET_COMPATIBILITY, SET}
+    {"targetCompatibility", exactly(1), TARGET_COMPATIBILITY, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
   @Override

@@ -37,6 +37,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -64,19 +65,19 @@ public class DexOptionsDslElement extends GradleDslBlockElement {
     {"additionalParameters", property, ADDITIONAL_PARAMETERS, VAR},
     {"additionalParameters", atLeast(0), ADDITIONAL_PARAMETERS, ADD_AS_LIST},
     {"javaMaxHeapSize", property, JAVA_MAX_HEAP_SIZE, VAR},
-    {"javaMaxHeapSize", exactly(1), JAVA_MAX_HEAP_SIZE, SET},
+    {"javaMaxHeapSize", exactly(1), JAVA_MAX_HEAP_SIZE, SET, VersionConstraint.gradleBefore("10.0")},
     {"jumboMode", property, JUMBO_MODE, VAR},
-    {"jumboMode", exactly(1), JUMBO_MODE, SET},
+    {"jumboMode", exactly(1), JUMBO_MODE, SET, VersionConstraint.gradleBefore("10.0")},
     {"keepRuntimeAnnotatedClasses", property, KEEP_RUNTIME_ANNOTATED_CLASSES, VAR},
-    {"keepRuntimeAnnotatedClasses", exactly(1), KEEP_RUNTIME_ANNOTATED_CLASSES, SET},
+    {"keepRuntimeAnnotatedClasses", exactly(1), KEEP_RUNTIME_ANNOTATED_CLASSES, SET, VersionConstraint.gradleBefore("10.0")},
     {"maxProcessCount", property, MAX_PROCESS_COUNT, VAR},
-    {"maxProcessCount", exactly(1), MAX_PROCESS_COUNT, SET},
+    {"maxProcessCount", exactly(1), MAX_PROCESS_COUNT, SET, VersionConstraint.gradleBefore("10.0")},
     {"optimize", property, OPTIMIZE, VAR},
-    {"optimize", exactly(1), OPTIMIZE, SET},
+    {"optimize", exactly(1), OPTIMIZE, SET, VersionConstraint.gradleBefore("10.0")},
     {"preDexLibraries", property, PRE_DEX_LIBRARIES, VAR},
-    {"preDexLibraries", exactly(1), PRE_DEX_LIBRARIES, SET},
+    {"preDexLibraries", exactly(1), PRE_DEX_LIBRARIES, SET, VersionConstraint.gradleBefore("10.0")},
     {"threadCount", property, THREAD_COUNT, VAR},
-    {"threadCount", exactly(1), THREAD_COUNT, SET}
+    {"threadCount", exactly(1), THREAD_COUNT, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
   public static final PropertiesElementDescription<DexOptionsDslElement> DEX_OPTIONS =

@@ -30,6 +30,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -42,11 +43,11 @@ public class DataBindingDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"addDefaultAdapters", property, ADD_DEFAULT_ADAPTERS, VAR},
-    {"addDefaultAdapters", exactly(1), ADD_DEFAULT_ADAPTERS, SET},
+    {"addDefaultAdapters", exactly(1), ADD_DEFAULT_ADAPTERS, SET, VersionConstraint.gradleBefore("10.0")},
     {"enabled", property, ENABLED, VAR},
-    {"enabled", exactly(1), ENABLED, SET},
+    {"enabled", exactly(1), ENABLED, SET, VersionConstraint.gradleBefore("10.0")},
     {"version", property, VERSION, VAR},
-    {"version", exactly(1), VERSION, SET},
+    {"version", exactly(1), VERSION, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap());
 
 

@@ -30,6 +30,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -47,11 +48,11 @@ public class EmulatorSnapshotsDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelMap = Stream.of(new Object[][]{
     {"compressSnapshots", property, COMPRESS_SNAPSHOTS, VAR},
-    {"compressSnapshots", exactly(1), COMPRESS_SNAPSHOTS, SET},
+    {"compressSnapshots", exactly(1), COMPRESS_SNAPSHOTS, SET, VersionConstraint.gradleBefore("10.0")},
     {"enableForTestFailures", property, ENABLE_FOR_TEST_FAILURES, VAR},
-    {"enableForTestFailures", exactly(1), ENABLE_FOR_TEST_FAILURES, SET},
+    {"enableForTestFailures", exactly(1), ENABLE_FOR_TEST_FAILURES, SET, VersionConstraint.gradleBefore("10.0")},
     {"maxSnapshotsForTestFailures", property, MAX_SNAPSHOTS_FOR_TEST_FAILURES, VAR},
-    {"maxSnapshotsForTestFailures", exactly(1), MAX_SNAPSHOTS_FOR_TEST_FAILURES, SET},
+    {"maxSnapshotsForTestFailures", exactly(1), MAX_SNAPSHOTS_FOR_TEST_FAILURES, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap());
 
 

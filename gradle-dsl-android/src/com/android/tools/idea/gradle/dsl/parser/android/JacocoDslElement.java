@@ -28,6 +28,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -44,7 +45,7 @@ public class JacocoDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelMap = Stream.of(new Object[][]{
     {"version", property, VERSION, VAR},
-    {"version", exactly(1), VERSION, SET},
+    {"version", exactly(1), VERSION, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap());
 
 

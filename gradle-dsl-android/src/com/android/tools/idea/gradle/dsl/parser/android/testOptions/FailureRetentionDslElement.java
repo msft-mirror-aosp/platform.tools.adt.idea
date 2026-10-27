@@ -29,6 +29,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -45,9 +46,9 @@ public class FailureRetentionDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelMap = Stream.of(new Object[][]{
     {"enable", property, ENABLE, VAR},
-    {"enable", exactly(1), ENABLE, SET},
+    {"enable", exactly(1), ENABLE, SET, VersionConstraint.gradleBefore("10.0")},
     {"maxSnapshots", property, MAX_SNAPSHOTS, VAR},
-    {"maxSnapshots", exactly(1), MAX_SNAPSHOTS, SET},
+    {"maxSnapshots", exactly(1), MAX_SNAPSHOTS, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap());
 
 

@@ -28,6 +28,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslNamedDomainEle
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import com.intellij.psi.PsiElement;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
@@ -44,9 +45,9 @@ public class ConfigurationDslElement extends GradleDslBlockElement implements Gr
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"transitive", property, TRANSITIVE, VAR},
-    {"transitive", exactly(1), TRANSITIVE, SET},
+    {"transitive", exactly(1), TRANSITIVE, SET, VersionConstraint.gradleBefore("10.0")},
     {"visible", property, VISIBLE, VAR},
-    {"visible", exactly(1), VISIBLE, SET}
+    {"visible", exactly(1), VISIBLE, SET, VersionConstraint.gradleBefore("10.0")}
   }).collect(toModelMap());
 
   @Override

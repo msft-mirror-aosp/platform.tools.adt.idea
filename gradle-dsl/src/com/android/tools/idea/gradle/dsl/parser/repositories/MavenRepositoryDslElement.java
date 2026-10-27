@@ -33,6 +33,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -57,9 +58,9 @@ public class MavenRepositoryDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"name", property, NAME, VAR},
-    {"name", exactly(1), NAME, SET},
+    {"name", exactly(1), NAME, SET, VersionConstraint.gradleBefore("10.0")},
     {"url", property, URL, VAR},
-    {"url", exactly(1), URL, SET},
+    {"url", exactly(1), URL, SET, VersionConstraint.gradleBefore("10.0")},
     {"artifactUrls", atLeast(0), ARTIFACT_URLS, OTHER}
   }).collect(toModelMap());
 

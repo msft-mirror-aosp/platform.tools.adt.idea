@@ -36,6 +36,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -59,15 +60,15 @@ public class NdkOptionsDslElement extends GradleDslBlockElement {
     {"abiFilters", atLeast(0), ABI_FILTERS, AUGMENT_LIST},
     {"abiFilter", exactly(1), ABI_FILTERS, AUGMENT_LIST},
     {"cFlags", property, C_FLAGS, VAR},
-    {"cFlags", exactly(1), C_FLAGS, SET},
+    {"cFlags", exactly(1), C_FLAGS, SET, VersionConstraint.gradleBefore("10.0")},
     {"jobs", property, JOBS, VAR},
-    {"jobs", exactly(1), JOBS, SET},
+    {"jobs", exactly(1), JOBS, SET, VersionConstraint.gradleBefore("10.0")},
     {"ldLibs", property, LD_LIBS, VAR},
     {"ldLibs", atLeast(0), LD_LIBS, AUGMENT_LIST},
     {"moduleName", property, MODULE_NAME, VAR},
-    {"moduleName", exactly(1), MODULE_NAME, SET},
+    {"moduleName", exactly(1), MODULE_NAME, SET, VersionConstraint.gradleBefore("10.0")},
     {"stl", property, STL, VAR},
-    {"stl", exactly(1), STL, SET},
+    {"stl", exactly(1), STL, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap());
 
 

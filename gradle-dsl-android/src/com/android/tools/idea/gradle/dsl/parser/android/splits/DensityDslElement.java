@@ -30,6 +30,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -46,7 +47,7 @@ public class DensityDslElement extends BaseSplitOptionsDslElement {
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"auto", property, AUTO, VAR},
-    {"auto", exactly(1), AUTO, SET},
+    {"auto", exactly(1), AUTO, SET, VersionConstraint.gradleBefore("10.0")},
     {"compatibleScreens", property, COMPATIBLE_SCREENS, VAR},
     {"compatibleScreens", atLeast(0), COMPATIBLE_SCREENS, OTHER},
   }).collect(toModelMap(BaseSplitOptionsDslElement.groovyToModelNameMap));

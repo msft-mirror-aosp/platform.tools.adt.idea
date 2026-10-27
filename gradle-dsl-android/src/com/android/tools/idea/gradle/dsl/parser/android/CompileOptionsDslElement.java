@@ -29,6 +29,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -45,9 +46,9 @@ public class CompileOptionsDslElement extends BaseCompileOptionsDslElement {
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"encoding", property, ENCODING, VAR},
-    {"encoding", exactly(1), ENCODING, SET},
+    {"encoding", exactly(1), ENCODING, SET, VersionConstraint.gradleBefore("10.0")},
     {"incremental", property, INCREMENTAL, VAR},
-    {"incremental", exactly(1), INCREMENTAL, SET},
+    {"incremental", exactly(1), INCREMENTAL, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap(BaseCompileOptionsDslElement.groovyToModelNameMap));
 
 

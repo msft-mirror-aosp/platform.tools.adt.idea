@@ -28,6 +28,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -42,9 +43,9 @@ public class MavenCredentialsDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"username", property, USERNAME, VAR},
-    {"username", exactly(1), USERNAME, SET},
+    {"username", exactly(1), USERNAME, SET, VersionConstraint.gradleBefore("10.0")},
     {"password", property, PASSWORD, VAR},
-    {"password", exactly(1), PASSWORD, SET},
+    {"password", exactly(1), PASSWORD, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap());
 
   @Override

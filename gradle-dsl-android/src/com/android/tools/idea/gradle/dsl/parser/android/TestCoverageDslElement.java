@@ -28,6 +28,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 
@@ -43,7 +44,7 @@ public class TestCoverageDslElement extends GradleDslBlockElement {
 
   public static final ExternalToModelMap groovyToModelMap = Stream.of(new Object[][]{
     {"jacocoVersion", property, JACOCO_VERSION, VAR},
-    {"jacocoVersion", exactly(1), JACOCO_VERSION, SET},
+    {"jacocoVersion", exactly(1), JACOCO_VERSION, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap());
 
 

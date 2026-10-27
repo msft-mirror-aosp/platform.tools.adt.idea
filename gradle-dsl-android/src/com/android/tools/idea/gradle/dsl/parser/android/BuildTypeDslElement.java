@@ -47,6 +47,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -82,36 +83,36 @@ public final class BuildTypeDslElement extends AbstractFlavorTypeDslElement impl
 
   private static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"crunchPngs", property, CRUNCH_PNGS, VAR},
-    {"crunchPngs", exactly(1), CRUNCH_PNGS, SET},
+    {"crunchPngs", exactly(1), CRUNCH_PNGS, SET, VersionConstraint.gradleBefore("10.0")},
     {"debuggable", property, DEBUGGABLE, VAR},
-    {"debuggable", exactly(1), DEBUGGABLE, SET},
+    {"debuggable", exactly(1), DEBUGGABLE, SET, VersionConstraint.gradleBefore("10.0")},
     {"isDefault", property, DEFAULT, VAR},
-    {"isDefault", exactly(1), DEFAULT, SET},
+    {"isDefault", exactly(1), DEFAULT, SET, VersionConstraint.gradleBefore("10.0")},
     {"embedMicroApp", property, EMBED_MICRO_APP, VAR},
-    {"embedMicroApp", exactly(1), EMBED_MICRO_APP, SET},
+    {"embedMicroApp", exactly(1), EMBED_MICRO_APP, SET, VersionConstraint.gradleBefore("10.0")},
     {"initWith", exactly(1), INIT_WITH, OTHER},
     {"jniDebuggable", property, JNI_DEBUGGABLE, VAR},
-    {"jniDebuggable", exactly(1), JNI_DEBUGGABLE, SET},
+    {"jniDebuggable", exactly(1), JNI_DEBUGGABLE, SET, VersionConstraint.gradleBefore("10.0")},
     {"minifyEnabled", property, MINIFY_ENABLED, VAR},
-    {"minifyEnabled", exactly(1), MINIFY_ENABLED, SET},
+    {"minifyEnabled", exactly(1), MINIFY_ENABLED, SET, VersionConstraint.gradleBefore("10.0")},
     {"pseudoLocalesEnabled", property, PSEUDO_LOCALES_ENABLED, VAR},
-    {"pseudoLocalesEnabled", exactly(1), PSEUDO_LOCALES_ENABLED, SET},
+    {"pseudoLocalesEnabled", exactly(1), PSEUDO_LOCALES_ENABLED, SET, VersionConstraint.gradleBefore("10.0")},
     {"renderscriptDebuggable", property, RENDERSCRIPT_DEBUGGABLE, VAR},
-    {"renderscriptDebuggable", exactly(1), RENDERSCRIPT_DEBUGGABLE, SET},
+    {"renderscriptDebuggable", exactly(1), RENDERSCRIPT_DEBUGGABLE, SET, VersionConstraint.gradleBefore("10.0")},
     {"renderscriptOptimLevel", property, RENDERSCRIPT_OPTIM_LEVEL, VAR},
-    {"renderscriptOptimLevel", exactly(1), RENDERSCRIPT_OPTIM_LEVEL, SET},
+    {"renderscriptOptimLevel", exactly(1), RENDERSCRIPT_OPTIM_LEVEL, SET, VersionConstraint.gradleBefore("10.0")},
     {"shrinkResources", property, SHRINK_RESOURCES, VAR},
-    {"shrinkResources", exactly(1), SHRINK_RESOURCES, SET},
+    {"shrinkResources", exactly(1), SHRINK_RESOURCES, SET, VersionConstraint.gradleBefore("10.0")},
     {"testCoverageEnabled", property, TEST_COVERAGE_ENABLED, VAR},
-    {"testCoverageEnabled", exactly(1), TEST_COVERAGE_ENABLED, SET},
+    {"testCoverageEnabled", exactly(1), TEST_COVERAGE_ENABLED, SET, VersionConstraint.gradleBefore("10.0")},
     {"useProguard", property, USE_PROGUARD, VAR},
-    {"useProguard", exactly(1), USE_PROGUARD, SET},
+    {"useProguard", exactly(1), USE_PROGUARD, SET, VersionConstraint.gradleBefore("10.0")},
     {"zipAlignEnabled", property, ZIP_ALIGN_ENABLED, VAR},
-    {"zipAlignEnabled", exactly(1), ZIP_ALIGN_ENABLED, SET},
+    {"zipAlignEnabled", exactly(1), ZIP_ALIGN_ENABLED, SET, VersionConstraint.gradleBefore("10.0")},
     {"enableUnitTestCoverage", property, ENABLE_UNIT_TEST_COVERAGE, VAR},
-    {"enableUnitTestCoverage", exactly(1), ENABLE_UNIT_TEST_COVERAGE, SET},
+    {"enableUnitTestCoverage", exactly(1), ENABLE_UNIT_TEST_COVERAGE, SET, VersionConstraint.gradleBefore("10.0")},
     {"enableAndroidTestCoverage", property, ENABLE_ANDROID_TEST_COVERAGE, VAR},
-    {"enableAndroidTestCoverage", exactly(1), ENABLE_ANDROID_TEST_COVERAGE, SET},
+    {"enableAndroidTestCoverage", exactly(1), ENABLE_ANDROID_TEST_COVERAGE, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap(AbstractFlavorTypeDslElement.groovyToModelNameMap));
 
 

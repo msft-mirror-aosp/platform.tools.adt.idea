@@ -33,6 +33,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslNamedDomainEle
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ExternalToModelMap;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
+import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -59,15 +60,15 @@ public final class SigningConfigDslElement extends GradleDslBlockElement impleme
 
   public static final ExternalToModelMap groovyToModelNameMap = Stream.of(new Object[][]{
     {"keyAlias", property, KEY_ALIAS, VAR},
-    {"keyAlias", exactly(1), KEY_ALIAS, SET},
+    {"keyAlias", exactly(1), KEY_ALIAS, SET, VersionConstraint.gradleBefore("10.0")},
     {"keyPassword", property, KEY_PASSWORD, VAR},
-    {"keyPassword", exactly(1), KEY_PASSWORD, SET},
+    {"keyPassword", exactly(1), KEY_PASSWORD, SET, VersionConstraint.gradleBefore("10.0")},
     {"storeFile", property, STORE_FILE, VAR},
-    {"storeFile", exactly(1), STORE_FILE, SET},
+    {"storeFile", exactly(1), STORE_FILE, SET, VersionConstraint.gradleBefore("10.0")},
     {"storePassword", property, STORE_PASSWORD, VAR},
-    {"storePassword", exactly(1), STORE_PASSWORD, SET},
+    {"storePassword", exactly(1), STORE_PASSWORD, SET, VersionConstraint.gradleBefore("10.0")},
     {"storeType", property, STORE_TYPE, VAR},
-    {"storeType", exactly(1), STORE_TYPE, SET},
+    {"storeType", exactly(1), STORE_TYPE, SET, VersionConstraint.gradleBefore("10.0")},
   }).collect(toModelMap());
 
 
