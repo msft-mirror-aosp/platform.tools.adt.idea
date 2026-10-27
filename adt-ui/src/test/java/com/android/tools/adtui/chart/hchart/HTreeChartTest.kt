@@ -22,10 +22,12 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.SystemInfo.isMac
 import java.awt.Color
 import java.awt.Dimension
+import java.awt.Font
 import java.awt.FontMetrics
 import java.awt.event.KeyEvent.VK_CONTROL
 import java.awt.event.KeyEvent.VK_META
 import java.awt.geom.Rectangle2D
+import kotlin.math.max
 import org.junit.Before
 import org.junit.Test
 
@@ -51,22 +53,24 @@ class HTreeChartTest {
 
   private fun setUp(orientation: HTreeChart.Orientation) {
     myRange = Range(0.0, 100.0)
-    val treeHeight = 4
     myChart =
-      HTreeChart.Builder(HNodeTree(0, treeHeight, 2), myRange, FakeRenderer())
+      HTreeChart.Builder(HNodeTree(0, TREE_HEIGHT, 2), myRange, FakeRenderer())
         .setGlobalXRange(Range(0.0, 100.0))
         .setOrientation(orientation)
         .build()
-    val contentHeight =
-      (HTreeChart.getDefaultNodeHeight(myChart.defaultFontMetrics.height) + HTreeChart.PADDING) * /* Default padding */
-        treeHeight /* Height of tree node. */
-    myTotalHeight = contentHeight + HTreeChart.HEIGHT_PADDING
+    myTotalHeight = expectedMaximumHeight(myChart.font)
 
     myChart.size = Dimension(100, myViewHeight)
     myUi = FakeUi(myChart)
     myChart.yRange.set(10.0, 10.0)
     // Set a root pointing to a tree with more than one nodes, to perform some meaningful drags.
     assertThat(myChart.maximumHeight).isEqualTo(myTotalHeight)
+  }
+
+  /** Returns the chart's expected maximum height, i.e. the height of its content plus padding, when its nodes are sized for [font]. */
+  private fun expectedMaximumHeight(font: Font): Int {
+    val contentHeight = (HTreeChart.getDefaultNodeHeight(myChart.getFontMetrics(font).height) + HTreeChart.PADDING) * TREE_HEIGHT
+    return contentHeight + HTreeChart.HEIGHT_PADDING
   }
 
   /**
@@ -361,6 +365,40 @@ class HTreeChartTest {
     myUi.render()
   }
 
+  @Test
+  fun testNodeHeightFollowsFont() {
+    val largerFont = myChart.font.deriveFont(myChart.font.size2D * 2)
+
+    myChart.font = largerFont
+
+    assertThat(myChart.maximumHeight).isEqualTo(expectedMaximumHeight(largerFont))
+    assertThat(myChart.maximumHeight).isGreaterThan(myTotalHeight)
+    assertThat(myChart.preferredSize.height).isEqualTo(myChart.maximumHeight)
+  }
+
+  @Test
+  fun testUpdateUIKeepsFont() {
+    val customFont = myChart.font.deriveFont(myChart.font.size2D * 2)
+    myChart.font = customFont
+
+    myChart.updateUI()
+
+    assertThat(myChart.font).isSameAs(customFont)
+    assertThat(myChart.maximumHeight).isEqualTo(expectedMaximumHeight(customFont))
+  }
+
+  @Test
+  fun testSmallerFontKeepsScrollPositionWithinContent() {
+    // Scroll to the bottom of the content.
+    val bottom = (myChart.maximumHeight - myViewHeight).toDouble()
+    myChart.yRange.set(bottom, bottom)
+
+    myChart.font = myChart.font.deriveFont(myChart.font.size2D / 2)
+
+    val newBottom = max(0, myChart.maximumHeight - myViewHeight).toDouble()
+    assertThat(myChart.yRange.min).isWithin(EPSILON).of(newBottom)
+  }
+
   class FakeRenderer : DefaultHRenderer<String>() {
     override fun getFillColor(nodeData: String) = Color.white
 
@@ -369,5 +407,6 @@ class HTreeChartTest {
 
   companion object {
     private val EPSILON = 1e-3
+    private const val TREE_HEIGHT = 4
   }
 }

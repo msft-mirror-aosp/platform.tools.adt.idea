@@ -26,6 +26,7 @@ import com.intellij.util.ui.ImageUtil
 import com.intellij.util.ui.UIUtil
 import java.awt.AlphaComposite
 import java.awt.Dimension
+import java.awt.Font
 import java.awt.Graphics2D
 import java.awt.Image
 import java.awt.Point
@@ -99,15 +100,15 @@ class HTreeChart<N : HNode<N>> private constructor(builder: Builder<N>) : Animat
   var maximumHeight = 0
     private set
 
-  /** Height of a tree node in pixels. If not set, we use the default font height. */
+  /** Height of a tree node in pixels. If not set, the height is derived from the chart's font, see [updateNodeHeight]. */
   private val customNodeHeightPx = builder.customNodeHeightPx
 
   /** Vertical and horizontal padding in pixels between tree nodes. */
   private val nodeXPaddingPx = builder.nodeXPaddingPx
   private val nodeYPaddingPx = builder.nodeYPaddingPx
 
-  private val nodeHeight: Int
-    get() = if (customNodeHeightPx > 0) customNodeHeightPx else getDefaultNodeHeight(mDefaultFontMetrics.height)
+  /** Height of a tree node in pixels, kept up to date with the chart's font by [updateNodeHeight]. */
+  private var nodeHeight = 0
 
   init {
     isFocusable = true
@@ -119,12 +120,45 @@ class HTreeChart<N : HNode<N>> private constructor(builder: Builder<N>) : Animat
     rootChanged()
   }
 
+  override fun setFont(font: Font?) {
+    super.setFont(font)
+    fontChanged()
+  }
+
   override fun updateUI() {
     super.updateUI()
-    font = AdtUiUtils.DEFAULT_FONT
+    // Keep the chart's font, which its owner may have set. It is typically a JBFont, which rescales itself when the IDE font size changes,
+    // so the node height has to be measured again.
+    fontChanged()
+  }
+
+  /**
+   * Measures the node height for the chart's font again and redraws the chart. The redraw is needed even if the node height stays the same,
+   * as the cached canvas still shows text in the previous font.
+   */
+  private fun fontChanged() {
+    updateNodeHeight()
     canvas = null
     dataUpdated = true
     opaqueRepaint()
+  }
+
+  /**
+   * Measures the node height for the chart's current font. If it changed, updates the chart's height and keeps the vertical scroll position
+   * within the content.
+   */
+  private fun updateNodeHeight() {
+    val newNodeHeight =
+      if (customNodeHeightPx > 0) customNodeHeightPx else getDefaultNodeHeight(getFontMetrics(font ?: AdtUiUtils.DEFAULT_FONT).height)
+    if (newNodeHeight == nodeHeight) {
+      return
+    }
+    nodeHeight = newNodeHeight
+    rootChanged()
+    val maxYPosition = max(INITIAL_Y_POSITION, maximumHeight - height).toDouble()
+    if (yRange.min > maxYPosition) {
+      yRange.set(maxYPosition, maxYPosition)
+    }
   }
 
   private fun rangeChanged() {

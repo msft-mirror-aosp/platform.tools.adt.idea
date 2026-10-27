@@ -51,6 +51,8 @@ public class HTreeChartVerticalScrollBar<N extends HNode<N>> extends JBScrollBar
         updateValues();
       }
     });
+    // The chart updates its preferred size along with its maximum height, e.g. when its font size changes.
+    chart.addPropertyChangeListener("preferredSize", e -> updateValues());
   }
 
   private void updateValues() {
