@@ -20,9 +20,14 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
+import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.stubs.StubUpdatingIndex
+import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.util.indexing.FileBasedIndex
 import org.junit.Test
 
 @RunsInEdt
@@ -131,6 +136,38 @@ class BlockAidlProcessorTest : AbstractBlockPropertyUnlessNoOpProcessorTestBase(
 
   override fun createProcessor(currentVersion: AgpVersion, newVersion: AgpVersion): AbstractBlockPropertyUnlessNoOpProcessor {
     return BlockAidlProcessor(project, currentVersion, newVersion)
+  }
+
+  @Test
+  fun `Blocked if property present when gradle properties has not been indexed after adding content root`() {
+    val module = projectRule.module
+    val projectDir = project.guessProjectDir()!!
+    ModuleRootModificationUtil.updateModel(module) { model ->
+      model.contentEntries.forEach { model.removeContentEntry(it) }
+    }
+    projectRule.fixture.addFileToProject("gradle.properties", "$propertyKey=${!defaultWhenRemoved}")
+    FileBasedIndex.getInstance().ensureUpToDate(StubUpdatingIndex.INDEX_ID, project, GlobalSearchScope.allScope(project))
+    PsiTestUtil.addContentRoot(module, projectDir)
+
+    val processor = createProcessor(preRemoveVersion, removedVersion)
+    assertThat(processor.isBlocked).isTrue()
+  }
+
+  @Test
+  fun `Non blocked and property removed when gradle properties has not been indexed after adding content root`() {
+    val module = projectRule.module
+    val projectDir = project.guessProjectDir()!!
+    ModuleRootModificationUtil.updateModel(module) { model ->
+      model.contentEntries.forEach { model.removeContentEntry(it) }
+    }
+    val gradleProperties = projectRule.fixture.addFileToProject("gradle.properties", "$propertyKey=$defaultWhenRemoved")
+    FileBasedIndex.getInstance().ensureUpToDate(StubUpdatingIndex.INDEX_ID, project, GlobalSearchScope.allScope(project))
+    PsiTestUtil.addContentRoot(module, projectDir)
+
+    val processor = createProcessor(preRemoveVersion, removedVersion)
+    assertThat(processor.isBlocked).isFalse()
+    processor.run()
+    assertThat(VfsUtilCore.loadText(gradleProperties.virtualFile.also { it.refresh(false, false) })).doesNotContain(propertyKey)
   }
 }
 

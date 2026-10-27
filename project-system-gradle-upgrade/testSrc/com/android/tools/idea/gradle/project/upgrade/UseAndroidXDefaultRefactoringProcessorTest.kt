@@ -20,9 +20,14 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
+import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.stubs.StubUpdatingIndex
+import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.util.indexing.FileBasedIndex
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -66,8 +71,8 @@ class UseAndroidXDefaultRefactoringProcessorTest : UpgradeGradleFileModelTestCas
     projectRule.fixture.addFileToProject("gradle.properties", "android.useAndroidX=false")
     val processor = UseAndroidXDefaultRefactoringProcessor(project, AgpVersion.parse("8.0.0"), AgpVersion.parse("9.0.0"))
     processor.run()
-    assertThat(VfsUtilCore.loadText(project.findGradleProperties()!!.also { it.refresh(false, false) }))
-      .contains("android.useAndroidX=false")
+    assertThat(VfsUtilCore.loadText(project.findGradleProperties()!!.also { it.refresh(false, false) }).trim())
+      .isEqualTo("android.useAndroidX=false")
   }
 
   @Test
@@ -76,8 +81,36 @@ class UseAndroidXDefaultRefactoringProcessorTest : UpgradeGradleFileModelTestCas
     projectRule.fixture.addFileToProject("gradle.properties", "android.useAndroidX=true")
     val processor = UseAndroidXDefaultRefactoringProcessor(project, AgpVersion.parse("8.0.0"), AgpVersion.parse("9.0.0"))
     processor.run()
-    assertThat(VfsUtilCore.loadText(project.findGradleProperties()!!.also { it.refresh(false, false) }))
-      .contains("android.useAndroidX=true")
+    assertThat(VfsUtilCore.loadText(project.findGradleProperties()!!.also { it.refresh(false, false) }).trim())
+      .isEqualTo("android.useAndroidX=true")
+  }
+
+  @Test
+  fun `Property kept if present when gradle properties has not been indexed after adding content root`() {
+    val project = projectRule.project
+    val module = projectRule.module
+    val projectDir = project.guessProjectDir()!!
+    ModuleRootModificationUtil.updateModel(module) { model ->
+      model.contentEntries.forEach { model.removeContentEntry(it) }
+    }
+    projectRule.fixture.addFileToProject("gradle.properties", "android.useAndroidX=true")
+    FileBasedIndex.getInstance().ensureUpToDate(StubUpdatingIndex.INDEX_ID, project, GlobalSearchScope.allScope(project))
+    PsiTestUtil.addContentRoot(module, projectDir)
+
+    val processor = UseAndroidXDefaultRefactoringProcessor(project, AgpVersion.parse("8.0.0"), AgpVersion.parse("9.0.0"))
+    processor.run()
+    assertThat(VfsUtilCore.loadText(project.findGradleProperties()!!.also { it.refresh(false, false) }).trim())
+      .isEqualTo("android.useAndroidX=true")
+  }
+
+  @Test
+  fun `Property kept if key is escaped in gradle properties`() {
+    val project = projectRule.project
+    projectRule.fixture.addFileToProject("gradle.properties", "android\\.useAndroidX=true")
+    val processor = UseAndroidXDefaultRefactoringProcessor(project, AgpVersion.parse("8.0.0"), AgpVersion.parse("9.0.0"))
+    processor.run()
+    assertThat(VfsUtilCore.loadText(project.findGradleProperties()!!.also { it.refresh(false, false) }).trim())
+      .isEqualTo("android\\.useAndroidX=true")
   }
 
   @Test

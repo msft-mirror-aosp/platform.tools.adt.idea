@@ -16,6 +16,8 @@
 package com.android.tools.idea.gradle.project.upgrade
 
 import com.google.common.annotations.VisibleForTesting
+import com.intellij.lang.properties.IProperty
+import com.intellij.lang.properties.psi.PropertiesFile
 
 internal val List<String>.descriptionText: String
   get() {
@@ -57,3 +59,14 @@ internal val List<String>.descriptionText: String
   }
 
 @VisibleForTesting fun computeDescriptionTextForTests(list: List<String>) = list.descriptionText
+
+/**
+ * Looks up a property by its unescaped [key] directly from this [PropertiesFile]'s PSI/stubs without consulting `PropertyKeyIndex`.
+ *
+ * [PropertiesFile.findPropertyByKey] queries `PropertyKeyIndex` whenever the project is not in dumb mode and the file is inside project
+ * content. For single-file scopes, `StubIndexEx` sets `failOnMissedKeys = false` and silently returns `null` if `StubUpdatingIndex` has not
+ * indexed the file yet (for example, while `UnindexedFilesScanner` is still running asynchronously in smart mode after Gradle sync commits
+ * content roots, or in tests with `idea.skip.indices.initialization=true` when `ChangedFilesCollector` was drained before content roots
+ * were added).
+ */
+internal fun PropertiesFile.findPropertyByKeyWithoutIndex(key: String): IProperty? = properties.firstOrNull { it.unescapedKey == key }

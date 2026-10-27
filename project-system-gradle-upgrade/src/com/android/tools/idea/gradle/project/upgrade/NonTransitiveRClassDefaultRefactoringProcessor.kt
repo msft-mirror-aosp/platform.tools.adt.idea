@@ -43,7 +43,7 @@ class NonTransitiveRClassDefaultRefactoringProcessor : AgpUpgradeComponentRefact
     if (gradlePropertiesVirtualFile != null && gradlePropertiesVirtualFile.exists()) {
       val gradlePropertiesPsiFile = PsiManager.getInstance(project).findFile(gradlePropertiesVirtualFile)
       if (gradlePropertiesPsiFile is PropertiesFile) {
-        val property = gradlePropertiesPsiFile.findPropertyByKey("android.nonTransitiveRClass")
+        val property = gradlePropertiesPsiFile.findPropertyByKeyWithoutIndex("android.nonTransitiveRClass")
         if (property == null) {
           val wrappedPsiElement = WrappedPsiElement(gradlePropertiesPsiFile, this, INSERT_PROPERTY)
           usages.add(NonTransitiveRClassUsageInfo(wrappedPsiElement))

@@ -58,7 +58,7 @@ class R8FullModeDefaultRefactoringProcessor : AgpUpgradeComponentRefactoringProc
     if (gradlePropertiesVirtualFile != null && gradlePropertiesVirtualFile.exists()) {
       val gradlePropertiesPsiFile = PsiManager.getInstance(project).findFile(gradlePropertiesVirtualFile)
       if (gradlePropertiesPsiFile is PropertiesFile) {
-        val property = gradlePropertiesPsiFile.findPropertyByKey("android.enableR8.fullMode")
+        val property = gradlePropertiesPsiFile.findPropertyByKeyWithoutIndex("android.enableR8.fullMode")
         val (psiElement, usageType) =
           when (property) {
             null ->

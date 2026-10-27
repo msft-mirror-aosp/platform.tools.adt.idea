@@ -78,7 +78,7 @@ class BuildTypesUnitTestDefaultRefactoringProcessor : AbstractBooleanPropertyDef
       if (gradlePropertiesVirtualFile != null && gradlePropertiesVirtualFile.exists()) {
         val gradlePropertiesPsiFile = PsiManager.getInstance(project).findFile(gradlePropertiesVirtualFile)
         if (gradlePropertiesPsiFile is PropertiesFile) {
-          val property = gradlePropertiesPsiFile.findPropertyByKey(propertyKey)
+          val property = gradlePropertiesPsiFile.findPropertyByKeyWithoutIndex(propertyKey)
           if (property == null) {
             val wrappedPsiElement = WrappedPsiElement(gradlePropertiesPsiFile, this, INSERT_PROPERTY)
             usages.add(GradlePropertyUsageInfo(wrappedPsiElement, propertyKey, oldDefault, tooltip))

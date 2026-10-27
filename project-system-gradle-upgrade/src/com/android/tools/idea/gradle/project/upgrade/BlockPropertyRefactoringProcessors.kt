@@ -63,7 +63,7 @@ abstract class AbstractBlockPropertyUnlessNoOpProcessor : AgpUpgradeComponentRef
     if (gradlePropertiesVirtualFile != null && gradlePropertiesVirtualFile.exists()) {
       val gradlePropertiesPsiFile = PsiManager.getInstance(project).findFile(gradlePropertiesVirtualFile)
       if (gradlePropertiesPsiFile is PropertiesFile) {
-        val property = gradlePropertiesPsiFile.findPropertyByKey(propertyKey)
+        val property = gradlePropertiesPsiFile.findPropertyByKeyWithoutIndex(propertyKey)
         if (property != null) {
           val wrappedPsiElement = WrappedPsiElement(property.psiElement, this, null)
           usages.add(RemovedPropertyUsageInfo(wrappedPsiElement))
@@ -151,7 +151,7 @@ abstract class AbstractBlockPropertyUnlessNoOpProcessor : AgpUpgradeComponentRef
     if (gradlePropertiesVirtualFile != null && gradlePropertiesVirtualFile.exists()) {
       val gradlePropertiesPsiFile = PsiManager.getInstance(project).findFile(gradlePropertiesVirtualFile)
       if (gradlePropertiesPsiFile is PropertiesFile) {
-        val property = gradlePropertiesPsiFile.findPropertyByKey(propertyKey)
+        val property = gradlePropertiesPsiFile.findPropertyByKeyWithoutIndex(propertyKey)
         if (property != null) {
           propertyValue = property.value.toBoolean()
         }
