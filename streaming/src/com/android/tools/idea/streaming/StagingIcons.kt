@@ -39,6 +39,8 @@ object StagingIcons {
 
   @JvmField val LANDSCAPE: Icon = load("icons/landscape.svg", 417612118, 2)
 
+  @JvmField val MICROPHONE: Icon = load("icons/microphone.svg", 779419070, 2)
+
   @JvmField val PHONE: Icon = load("icons/phone.svg", 1626354908, 2)
 
   @JvmField val PORTRAIT: Icon = load("icons/portrait.svg", -996520567, 2)

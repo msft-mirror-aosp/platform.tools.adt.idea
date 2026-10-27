@@ -67,6 +67,7 @@ class EmulatorExtendedControlsActionGroupTest {
     val devicePoseActionId = "android.emulator.device.pose"
     val sensorsActionId = "android.emulator.sensors"
     val fingerprintActionId = "android.emulator.fingerprint"
+    val microphoneActionId = "android.emulator.microphone"
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
     val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -105,6 +106,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(fingerprintDisabled.isVisible).isFalse()
     assertThat(fingerprintDisabled.isEnabled).isFalse()
 
+    val microphoneDisabled = updateAndGetActionPresentation(microphoneActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(microphoneDisabled.isVisible).isFalse()
+    assertThat(microphoneDisabled.isEnabled).isFalse()
+
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
     val presentationEnabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(presentationEnabled.isVisible).isTrue()
@@ -141,6 +146,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val fingerprintEnabled = updateAndGetActionPresentation(fingerprintActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(fingerprintEnabled.isVisible).isTrue()
     assertThat(fingerprintEnabled.isEnabled).isTrue()
+
+    val microphoneEnabled = updateAndGetActionPresentation(microphoneActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(microphoneEnabled.isVisible).isTrue()
+    assertThat(microphoneEnabled.isEnabled).isTrue()
 
     val automotiveView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createAutomotiveAvd(path) })
     val batteryAutomotive = updateAndGetActionPresentation(batteryActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -196,7 +205,7 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(8)
+    assertThat(children).hasLength(9)
     val displaysAction = children[0]
     assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
     assertThat(displaysAction.templatePresentation.icon).isEqualTo(StagingIcons.DISPLAYS)
@@ -228,6 +237,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val fingerprintAction = children[7]
     assertThat(fingerprintAction.templatePresentation.text).isEqualTo("Fingerprint")
     assertThat(fingerprintAction.templatePresentation.icon).isEqualTo(StagingIcons.FINGERPRINT)
+
+    val microphoneAction = children[8]
+    assertThat(microphoneAction.templatePresentation.text).isEqualTo("Microphone")
+    assertThat(microphoneAction.templatePresentation.icon).isEqualTo(StagingIcons.MICROPHONE)
 
     executeAction(displaysAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
     val displaysDlg = findModelessDialog<DialogWrapper>()!!
@@ -281,14 +294,20 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(fingerprintDlg.title).isEqualTo("Fingerprint ($avdName)")
     assertThat(modelessDialogs).containsExactly(fingerprintDlg)
 
+    executeAction(microphoneAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    assertThat(fingerprintDlg.isShowing).isFalse()
+    val microphoneDlg = findModelessDialog<DialogWrapper>()!!
+    assertThat(microphoneDlg.title).isEqualTo("Microphone ($avdName)")
+    assertThat(modelessDialogs).containsExactly(microphoneDlg)
+
     // A second AVD can have its own extended controls dialog open concurrently.
     val view2 = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createAutomotiveAvd(path) })
     val avdName2 = view2.emulator.emulatorId.avdName
     executeAction(cellularAction, view2, emulatorViewRule.project, ActionPlaces.POPUP)
     val cellularDlg2 = findModelessDialog<DialogWrapper> { it.title == "Cellular ($avdName2)" }!!
-    assertThat(modelessDialogs).containsExactly(fingerprintDlg, cellularDlg2)
+    assertThat(modelessDialogs).containsExactly(microphoneDlg, cellularDlg2)
 
-    fingerprintDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
+    microphoneDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
     cellularDlg2.close(DialogWrapper.CLOSE_EXIT_CODE)
     assertThat(modelessDialogs).isEmpty()
   }

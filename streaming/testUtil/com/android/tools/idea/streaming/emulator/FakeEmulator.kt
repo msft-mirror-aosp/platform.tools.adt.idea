@@ -256,7 +256,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
   @Volatile
   var microphoneState: MicrophoneState = MicrophoneState.newBuilder().build()
-    private set(value) {
+    set(value) {
       if (value != field) {
         field = value
         executor.execute { notificationStreamObserver?.sendStreamingResponse(Notification.newBuilder().setMicrophoneState(value).build()) }

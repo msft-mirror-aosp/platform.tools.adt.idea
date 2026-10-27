@@ -305,6 +305,8 @@
                 icon="com.android.tools.idea.streaming.StagingIcons.SENSORS" text="Sensors" description="Open virtual sensors controls"/>
         <action id="android.emulator.fingerprint" class="com.android.tools.idea.streaming.emulator.actions.EmulatorFingerprintAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.FINGERPRINT" text="Fingerprint" description="Open fingerprint controls"/>
+        <action id="android.emulator.microphone" class="com.android.tools.idea.streaming.emulator.actions.EmulatorMicrophoneAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.MICROPHONE" text="Microphone" description="Open microphone controls"/>
       </group>
     </group>
 

@@ -1187,6 +1187,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Microphone",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Migrate BuildConfig to Gradle Build Files",
       "path": "ActionManager"
     },
@@ -1328,6 +1332,10 @@
     },
     {
       "hit": "Open fingerprint controls",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open microphone controls",
       "path": "ActionManager"
     },
     {
