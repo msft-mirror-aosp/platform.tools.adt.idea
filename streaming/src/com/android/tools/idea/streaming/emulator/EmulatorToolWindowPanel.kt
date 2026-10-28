@@ -152,6 +152,7 @@ internal class EmulatorToolWindowPanel(
     when (deviceType) {
       DeviceType.AI_GLASSES -> addTopPanel(EmulatorGlassesInputPanel(emulator, this))
       DeviceType.TV -> addBottomPanel(TvRemotePanel(emulator, project, this))
+      DeviceType.WEAR -> addBottomPanel(RotaryInputPanel(emulator))
       else -> {}
     }
 

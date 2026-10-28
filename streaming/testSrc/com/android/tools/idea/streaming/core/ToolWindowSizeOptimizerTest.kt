@@ -301,8 +301,8 @@ class ToolWindowSizeOptimizerTest {
     doubleClickInView(ui, watchView, watchView.width / 2, 2)
     assertThat(watchView.width).isEqualTo(320)
 
-    // Expand width from 200 to 2x (640) when height is 750 (watchView.height >= 640).
-    toolWindow.decorator.size = Dimension(200, 750)
+    // Expand width from 200 to 2x (640) when height is 880 (watchView.height >= 640).
+    toolWindow.decorator.size = Dimension(200, 880)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, watchView)
     doubleClickInView(ui, watchView, watchView.width / 2, 2)
@@ -311,7 +311,7 @@ class ToolWindowSizeOptimizerTest {
     // Undocked mode (WINDOWED) with scale > 1: shrinks both width and height to integer scale 2x (640x640).
     toolWindow.setType(ToolWindowType.WINDOWED, null)
     dispatchAllEventsInIdeEventQueue()
-    toolWindow.decorator.size = Dimension(800, 800)
+    toolWindow.decorator.size = Dimension(800, 900)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, watchView)
     doubleClickInView(ui, watchView, 2, 2)
@@ -432,7 +432,7 @@ class ToolWindowSizeOptimizerTest {
     dispatchAllEventsInIdeEventQueue()
     FakeToolWindow.split(watchContent, SwingConstants.TOP)
     dispatchAllEventsInIdeEventQueue()
-    toolWindow.decorator.size = Dimension(350, 900)
+    toolWindow.decorator.size = Dimension(350, 1200)
     ui.layoutAndDispatchEvents()
     val topWatchView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == watch.serialNumber }
     waitForCondition(5.seconds) { renderAndGetFrameNumber(ui, topWatchView) > 0u }
@@ -453,7 +453,7 @@ class ToolWindowSizeOptimizerTest {
         }
     outerSplitter.firstComponent = nestedSplitter
     outerSplitter.proportion = 0.6f
-    toolWindow.decorator.size = Dimension(350, 900)
+    toolWindow.decorator.size = Dimension(350, 1200)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, topWatchView)
     doubleClickInView(ui, topWatchView, topWatchView.width / 2, 2)
@@ -769,7 +769,7 @@ class ToolWindowSizeOptimizerTest {
     dispatchAllEventsInIdeEventQueue()
     FakeToolWindow.split(watchContent, SwingConstants.TOP)
     dispatchAllEventsInIdeEventQueue()
-    toolWindow.decorator.size = Dimension(500, 900)
+    toolWindow.decorator.size = Dimension(500, 1200)
     ui.layoutAndDispatchEvents()
     val topWatchView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == watch.serialNumber }
     val bottomPhoneView = ui.getComponent<EmulatorView> { it.deviceSerialNumber == phone.serialNumber }

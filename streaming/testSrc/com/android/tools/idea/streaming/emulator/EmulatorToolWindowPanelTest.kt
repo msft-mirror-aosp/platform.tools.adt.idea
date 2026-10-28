@@ -229,16 +229,16 @@ class EmulatorToolWindowPanelTest {
         Pair("Overview", "AppSwitch"),
       )
     var streamInputCall: GrpcCallRecord? = null
-    for (case in pushButtonCases) {
-      val button = fakeUi.getComponent<ActionButton> { it.action.templateText == case.first }
+    for ((buttonName, keyName) in pushButtonCases) {
+      val button = fakeUi.getComponent<ActionButton> { it.action.templateText == buttonName }
       fakeUi.mousePressOn(button)
       if (streamInputCall == null) {
         streamInputCall = getNextGrpcCallIgnoringStreamScreenshot()
         assertThat(streamInputCall.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
       }
-      assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { key: \"${case.second}\" }")
+      assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { key: \"$keyName\" }")
       fakeUi.mouseRelease()
-      assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { eventType: keyup key: \"${case.second}\" }")
+      assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { eventType: keyup key: \"$keyName\" }")
     }
 
     streamInputCall as GrpcCallRecord
@@ -284,7 +284,7 @@ class EmulatorToolWindowPanelTest {
     // Check appearance.
     var frameNumber = emulatorView.frameNumber
     assertThat(frameNumber).isEqualTo(0u)
-    panel.size = Dimension(430, 450)
+    panel.size = Dimension(430, 578)
     fakeUi.layoutAndDispatchEvents()
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 320 height: 320")
@@ -1221,7 +1221,7 @@ class EmulatorToolWindowPanelTest {
     // Check appearance.
     var frameNumber = emulatorView.frameNumber
     assertThat(frameNumber).isEqualTo(0u)
-    panel.size = Dimension(200, 400)
+    panel.size = Dimension(200, 527)
     fakeUi.layoutAndDispatchEvents()
     val call1 = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(call1.request)).isEqualTo("format: RGB888 width: 168 height: 287")
@@ -1287,7 +1287,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(emulatorView.canZoom(ZoomType.ACTUAL)).isTrue()
     assertThat(emulatorView.canZoom(ZoomType.FIT)).isFalse()
 
-    panel.size = Dimension(1200, 1200)
+    panel.size = Dimension(1200, 1327)
     fakeUi.layoutAndDispatchEvents()
     assertThat(call2.completion.isCancelled).isFalse() // The latest call has not been canceled.
     assertThat(call2.completion.isDone).isFalse() // The latest call is still ongoing.
