@@ -82,8 +82,11 @@ internal val ModuleEntity.gradleAndroidModel: GradleAndroidModelEntity? by Works
 
 fun EntityStorage.getGradleAndroidModel(module: Module): GradleAndroidModel? {
   if (!module.isLinkedAndroidModule()) return null
+  return getGradleAndroidModelForHolder(module.getHolderModule())
+}
 
-  val moduleEntity = module.getHolderModule().findModuleEntity(this) ?: return null
+internal fun EntityStorage.getGradleAndroidModelForHolder(holderModule: Module): GradleAndroidModel? {
+  val moduleEntity = holderModule.findModuleEntity(this) ?: return null
   val gradleAndroidModelEntity = moduleEntity.gradleAndroidModel ?: return null
 
   return gradleAndroidModelEntity.resolvedVariant?.let { variant ->

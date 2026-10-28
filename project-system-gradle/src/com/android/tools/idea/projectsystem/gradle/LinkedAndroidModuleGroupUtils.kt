@@ -24,6 +24,7 @@ import com.intellij.openapi.module.ModulePointer
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
 import org.jetbrains.android.facet.AndroidFacet
+import org.jetbrains.annotations.VisibleForTesting
 
 /**
  * This class, along with the key [LINKED_ANDROID_GRADLE_MODULE_GROUP] is used to track and group modules that are based on the same Gradle
@@ -45,9 +46,21 @@ data class LinkedAndroidGradleModuleGroup(
   override fun toString(): String =
     "holder=${holder.moduleName}, main=${main.moduleName}, unitTest=${unitTest?.moduleName}, " +
       "androidTest=${androidTest?.moduleName}, testFixtures=${testFixtures?.moduleName}, screenshotTest=${screenshotTest?.moduleName}" +
-      {
-        if (testSuites.isNotEmpty()) ", testSuites=${testSuites.map { it.moduleName }}" else ""
+      if (testSuites.isNotEmpty()) ", testSuites=${testSuites.map { it.moduleName }}" else ""
+
+  @VisibleForTesting
+  fun toDiagnosticString(): String {
+    fun ModulePointer?.describe(): String = if (this == null) "null" else "$moduleName(resolved=${module != null})"
+    val suites =
+      if (testSuites.isNotEmpty()) {
+        ", testSuites=${testSuites.map { "${it.moduleName}(resolved=${it.module != null})" }}"
+      } else {
+        ""
       }
+    return "holder=${holder.describe()}, main=${main.describe()}, unitTest=${unitTest.describe()}, " +
+      "androidTest=${androidTest.describe()}, testFixtures=${testFixtures.describe()}, " +
+      "screenshotTest=${screenshotTest.describe()}$suites"
+  }
 }
 
 /**
@@ -56,13 +69,27 @@ data class LinkedAndroidGradleModuleGroup(
  */
 val LINKED_ANDROID_GRADLE_MODULE_GROUP = Key.create<LinkedAndroidGradleModuleGroup>("linked.android.gradle.module.group")
 
-fun Module.isHolderModule(): Boolean = getHolderModule() == this
+fun Module.isHolderModule(): Boolean {
+  val group = getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP) ?: return true
+  val holderModule = group.holder.getMandatoryModuleOrLog(this, group) ?: return group.holder.moduleName == name
+  return holderModule == this
+}
 
-fun Module.getHolderModule(): Module = getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP)?.holder?.getMandatoryModuleOrLog(this) ?: this
+fun Module.getHolderModule(): Module {
+  val group = getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP) ?: return this
+  return group.holder.getMandatoryModuleOrLog(this, group) ?: this
+}
 
-fun Module.isMainModule(): Boolean = getMainModule() == this
+fun Module.isMainModule(): Boolean {
+  val group = getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP) ?: return true
+  val mainModule = group.main.getMandatoryModuleOrLog(this, group) ?: return group.main.moduleName == name
+  return mainModule == this
+}
 
-fun Module.getMainModule(): Module = getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP)?.main?.getMandatoryModuleOrLog(this) ?: this
+fun Module.getMainModule(): Module {
+  val group = getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP) ?: return this
+  return group.main.getMandatoryModuleOrLog(this, group) ?: this
+}
 
 fun Module.isUnitTestModule(): Boolean = getUnitTestModule() == this
 
@@ -85,10 +112,20 @@ fun Module.getTestSuiteModules(): List<Module> =
 
 fun Module.isTestSuiteModule(): Boolean = getTestSuiteModules().contains(this)
 
-private fun ModulePointer.getMandatoryModuleOrLog(originalModule: Module): Module? = module.also {
-  if (it == null) {
+private fun ModulePointer.getMandatoryModuleOrLog(
+  originalModule: Module,
+  group: LinkedAndroidGradleModuleGroup,
+): Module? = module.also {
+  if (it == null && !originalModule.isDisposed) {
+    val app = ApplicationManager.getApplication()
     Logger.getInstance(LinkedAndroidGradleModuleGroup::class.java)
-      .error("Missing mandatory module $moduleName in group for $originalModule")
+      .error(
+        "Missing mandatory module $moduleName in group for $originalModule " +
+          "(isDisposed=${originalModule.isDisposed}, " +
+          "readAccess=${app?.isReadAccessAllowed}, " +
+          "writeAccess=${app?.isWriteAccessAllowed}, " +
+          "group=[${group.toDiagnosticString()}])"
+      )
   }
 }
 

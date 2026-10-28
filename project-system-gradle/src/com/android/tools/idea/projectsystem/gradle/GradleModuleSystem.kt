@@ -35,7 +35,7 @@ import com.android.tools.idea.gradle.model.IdeDeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeDependencies
 import com.android.tools.idea.gradle.model.IdeJavaLibrary
 import com.android.tools.idea.gradle.model.IdeModuleLibrary
-import com.android.tools.idea.gradle.project.entities.getGradleAndroidModel
+import com.android.tools.idea.gradle.project.entities.getGradleAndroidModelForHolder
 import com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.gradleModuleModel
@@ -114,16 +114,29 @@ data class GradleRegisteredDependencyId(val dependency: Dependency) : Registered
   override fun toString(): String = dependency.toString()
 }
 
-class GradleModuleSystem(
+class GradleModuleSystem
+private constructor(
   override val module: Module,
   private val projectBuildModelHandler: ProjectBuildModelHandler,
   private val moduleHierarchyProvider: ModuleHierarchyProvider,
+  holderModule: Module,
 ) :
   AndroidModuleSystem,
   RegisteringModuleSystem<GradleRegisteredDependencyQueryId, GradleRegisteredDependencyId>,
-  SampleDataDirectoryProvider by MainContentRootSampleDataDirectoryProvider(module.getHolderModule()) {
+  SampleDataDirectoryProvider by MainContentRootSampleDataDirectoryProvider(holderModule) {
 
-  override val androidModel: GradleAndroidModel? = module.project.workspaceModel.currentSnapshot.getGradleAndroidModel(module)
+  constructor(
+    module: Module,
+    projectBuildModelHandler: ProjectBuildModelHandler,
+    moduleHierarchyProvider: ModuleHierarchyProvider,
+  ) : this(module, projectBuildModelHandler, moduleHierarchyProvider, module.getHolderModule())
+
+  override val androidModel: GradleAndroidModel? =
+    if (module.isLinkedAndroidModule()) {
+      module.project.workspaceModel.currentSnapshot.getGradleAndroidModelForHolder(holderModule)
+    } else {
+      null
+    }
 
   override val type: Type
     get() =
