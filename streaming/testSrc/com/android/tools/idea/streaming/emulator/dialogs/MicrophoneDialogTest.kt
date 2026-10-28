@@ -98,8 +98,8 @@ class MicrophoneDialogTest {
     assertThat(voiceAssistButton.toolTipText).isEqualTo("Launch the voice assistant on the device")
     assertThat(voiceAssistButton.isEnabled).isTrue()
 
-    val closeButton = rootPane.defaultButton
-    assertThat(closeButton.text).isEqualTo("Close")
+    val closeButton = ui.getComponent<JButton> { it.text == "Close" }
+    assertThat(rootPane.defaultButton).isNull()
     ui.clickOn(closeButton)
     assertThat(dialog.isShowing).isFalse()
   }
@@ -130,7 +130,7 @@ class MicrophoneDialogTest {
     assertThat(hostAudioCheckBox.isSelected).isFalse()
     waitForCondition(5.seconds) { !fakeEmulator.microphoneState.realAudioEnabled }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -193,7 +193,7 @@ class MicrophoneDialogTest {
     assertThat(shortDebugString(inputStreamCall.getNextRequest(2.seconds))).isEqualTo("android_event { type: 5 code: 4 value: 1 }")
     assertThat(shortDebugString(inputStreamCall.getNextRequest(2.seconds))).isEqualTo("android_event { }")
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
 
     // Reopening the dialog preserves the headset and microphone checkbox state.
@@ -205,7 +205,7 @@ class MicrophoneDialogTest {
     assertThat(reopenedMicAttachedCheckBox.isEnabled).isTrue()
     assertThat(reopenedMicAttachedCheckBox.isSelected).isTrue()
 
-    reopenedUi.clickOn(reopenedDialog.rootPane.defaultButton)
+    reopenedUi.clickOn(reopenedUi.getComponent<JButton> { it.text == "Close" })
     assertThat(reopenedDialog.isShowing).isFalse()
   }
 
@@ -249,14 +249,14 @@ class MicrophoneDialogTest {
     val autoDialog = MicrophoneDialog(automotiveController).show()
     val autoUi = FakeUi(autoDialog.rootPane)
     assertThat(autoUi.findComponent<JButton> { it.name == "voiceAssistButton" }).isNull()
-    autoUi.clickOn(autoDialog.rootPane.defaultButton)
+    autoUi.clickOn(autoUi.getComponent<JButton> { it.text == "Close" })
     assertThat(autoDialog.isShowing).isFalse()
 
     val (_, api23Controller) = createAndStartEmulator { FakeEmulator.createPhoneAvd(it, androidVersion = AndroidVersion(23, 0)) }
     val api23Dialog = MicrophoneDialog(api23Controller).show()
     val api23Ui = FakeUi(api23Dialog.rootPane)
     assertThat(api23Ui.findComponent<JButton> { it.name == "voiceAssistButton" }).isNull()
-    api23Ui.clickOn(api23Dialog.rootPane.defaultButton)
+    api23Ui.clickOn(api23Ui.getComponent<JButton> { it.text == "Close" })
     assertThat(api23Dialog.isShowing).isFalse()
   }
 }
