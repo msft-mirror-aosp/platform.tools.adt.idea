@@ -44,7 +44,10 @@ internal class ToggleFloatingXrToolbarAction : ToggleAction("Floating XR Navigat
 
   override fun update(event: AnActionEvent) {
     super.update(event)
-    if (!event.toolWindowContents.any { it.isSelected && (it.component as? AbstractDevicePanel<*>)?.deviceType == DeviceType.XR_HEADSET }) {
+    if (
+      getDeviceType(event) != DeviceType.XR_HEADSET &&
+        !event.toolWindowContents.any { it.isSelected && (it.component as? AbstractDevicePanel<*>)?.deviceType == DeviceType.XR_HEADSET }
+    ) {
       // Enabled only for XR devices.
       event.presentation.isEnabledAndVisible = false
     }

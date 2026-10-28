@@ -73,14 +73,11 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.configurationStore.deserialize
 import com.intellij.configurationStore.serialize
 import com.intellij.ide.ActivityTracker
-import com.intellij.ide.DataManager
 import com.intellij.ide.ui.LafManager
 import com.intellij.ide.ui.laf.UIThemeLookAndFeelInfoImpl
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
-import com.intellij.openapi.actionSystem.ActionUiKind
-import com.intellij.openapi.actionSystem.AnActionEvent.createEvent
 import com.intellij.openapi.actionSystem.Separator
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.application.ApplicationManager
@@ -107,8 +104,6 @@ import java.awt.PointerInfo
 import java.awt.event.FocusEvent
 import java.awt.event.InputEvent.CTRL_DOWN_MASK
 import java.awt.event.InputEvent.SHIFT_DOWN_MASK
-import java.awt.event.KeyEvent
-import java.awt.event.KeyEvent.KEY_RELEASED
 import java.awt.event.KeyEvent.VK_A
 import java.awt.event.KeyEvent.VK_D
 import java.awt.event.KeyEvent.VK_DOWN
@@ -117,7 +112,6 @@ import java.awt.event.KeyEvent.VK_END
 import java.awt.event.KeyEvent.VK_ENTER
 import java.awt.event.KeyEvent.VK_HOME
 import java.awt.event.KeyEvent.VK_LEFT
-import java.awt.event.KeyEvent.VK_P
 import java.awt.event.KeyEvent.VK_PAGE_DOWN
 import java.awt.event.KeyEvent.VK_PAGE_UP
 import java.awt.event.KeyEvent.VK_Q
@@ -243,16 +237,17 @@ class EmulatorToolWindowPanelTest {
 
     streamInputCall as GrpcCallRecord
     // Check EmulatorPowerButtonAction invoked by a keyboard shortcut.
-    var action = ActionManager.getInstance().getAction("android.device.power.button")
-    var keyEvent = KeyEvent(panel, KEY_RELEASED, System.currentTimeMillis(), CTRL_DOWN_MASK, VK_P, KeyEvent.CHAR_UNDEFINED)
-    val dataContext = DataManager.getInstance().getDataContext(panel.primaryDisplayView)
-    action.actionPerformed(createEvent(action, dataContext, null, ActionPlaces.KEYBOARD_SHORTCUT, ActionUiKind.NONE, keyEvent))
+    executeAction("android.device.power.button", emulatorView, project, place = ActionPlaces.KEYBOARD_SHORTCUT)
     assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { eventType: keypress key: \"Power\" }")
 
     // Check EmulatorPowerAndVolumeUpButtonAction invoked by a keyboard shortcut.
-    action = ActionManager.getInstance().getAction("android.device.power.and.volume.up.button")
-    keyEvent = KeyEvent(panel, KEY_RELEASED, System.currentTimeMillis(), CTRL_DOWN_MASK or SHIFT_DOWN_MASK, VK_P, KeyEvent.CHAR_UNDEFINED)
-    action.actionPerformed(createEvent(action, dataContext, null, ActionPlaces.KEYBOARD_SHORTCUT, ActionUiKind.NONE, keyEvent))
+    executeAction(
+      "android.device.power.and.volume.up.button",
+      emulatorView,
+      project,
+      place = ActionPlaces.KEYBOARD_SHORTCUT,
+      modifiers = CTRL_DOWN_MASK or SHIFT_DOWN_MASK,
+    )
     assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { key: \"VolumeUp\" }")
     assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { eventType: keypress key: \"Power\" }")
     assertThat(shortDebugString(streamInputCall.request)).isEqualTo("key_event { eventType: keyup key: \"VolumeUp\" }")
@@ -512,7 +507,7 @@ class EmulatorToolWindowPanelTest {
     assertThat(togglePassthroughButton.isSelected).isTrue()
 
     val toggleAction = ToggleFloatingXrToolbarAction()
-    toggleAction.actionPerformed(createTestEvent(emulatorView, project, ActionPlaces.TOOLWINDOW_POPUP))
+    executeAction(toggleAction, emulatorView, project, ActionPlaces.TOOLWINDOW_POPUP)
     assertAppearance("XrHeadsetToolbarActions2", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
 
     panel.destroyContent()
@@ -1071,10 +1066,7 @@ class EmulatorToolWindowPanelTest {
 
     val foldingGroup = ActionManager.getInstance().getAction("android.device.postures") as ActionGroup
     val event = createTestEvent(emulatorView, project, ActionPlaces.TOOLBAR)
-    waitForCondition(2.seconds) {
-      foldingGroup.update(event)
-      event.presentation.isVisible
-    }
+    waitForCondition(2.seconds) { updateAndGetActionPresentation(foldingGroup, event).isVisible }
     assertThat(event.presentation.isEnabled).isTrue()
     assertThat(event.presentation.text).isEqualTo("Fold/Unfold (currently Open)")
     val foldingActions = foldingGroup.getChildren(event)
@@ -1088,7 +1080,7 @@ class EmulatorToolWindowPanelTest {
         ActionManager.getInstance().getAction(EmulatorShowVirtualSensorsAction.ID),
       )
     for (action in foldingActions) {
-      action.update(event)
+      updateAndGetActionPresentation(action, event)
       assertThat(event.presentation.isEnabled).isTrue()
       assertThat(event.presentation.isVisible).isTrue()
     }
@@ -1114,10 +1106,7 @@ class EmulatorToolWindowPanelTest {
 
     val foldingGroup = ActionManager.getInstance().getAction("android.device.postures") as ActionGroup
     val event = createTestEvent(emulatorView, project, ActionPlaces.TOOLBAR)
-    waitForCondition(2.seconds) {
-      foldingGroup.update(event)
-      event.presentation.isVisible
-    }
+    waitForCondition(2.seconds) { updateAndGetActionPresentation(foldingGroup, event).isVisible }
     assertThat(event.presentation.isEnabled).isTrue()
     assertThat(event.presentation.text).isEqualTo("Fold/Unfold (currently Open)")
     val foldingActions = foldingGroup.getChildren(event)
@@ -1131,22 +1120,19 @@ class EmulatorToolWindowPanelTest {
         ActionManager.getInstance().getAction(EmulatorShowVirtualSensorsAction.ID),
       )
     for (action in foldingActions) {
-      action.update(event)
+      updateAndGetActionPresentation(action, event)
       assertThat(event.presentation.isEnabled).isTrue()
       assertThat(event.presentation.isVisible).isTrue()
     }
     assertThat(emulatorView.deviceDisplaySize).isEqualTo(Dimension(2208, 1840))
 
-    foldingActions.first().actionPerformed(event)
+    executeAction(foldingActions.first(), event)
     call = emulator.getNextGrpcCall(2.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setPhysicalModel")
     assertThat(shortDebugString(call.request)).isEqualTo("target: HINGE_ANGLE0 value { data: 0.0 }")
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 170 height: 296")
-    waitForCondition(2.seconds) {
-      foldingGroup.update(event)
-      event.presentation.text == "Fold/Unfold (currently Closed)"
-    }
+    waitForCondition(2.seconds) { updateAndGetActionPresentation(foldingGroup, event).text == "Fold/Unfold (currently Closed)" }
     panel.waitForFrame(++frameNumber, 2.seconds)
     assertThat(emulatorView.deviceDisplaySize).isEqualTo(Dimension(1080, 2092))
 
@@ -1157,7 +1143,7 @@ class EmulatorToolWindowPanelTest {
     whenever(mockLafManager.currentUIThemeLookAndFeel).thenReturn(mockUIThemeLookAndFeelInfo)
     ApplicationManager.getApplication().replaceService(LafManager::class.java, mockLafManager, testRootDisposable)
 
-    foldingActions.last().actionPerformed(event)
+    executeAction(foldingActions.last(), event)
     call = emulator.getNextGrpcCall(2.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.UiController/setUiTheme")
     assertThat(call.request).isEqualTo(ThemingStyle.newBuilder().setStyle(ThemingStyle.Style.DARK).build())
@@ -1564,7 +1550,7 @@ class EmulatorToolWindowPanelTest {
   }
 
   private fun createWindowPanelForPhone(): EmulatorToolWindowPanel {
-    val avdFolder = FakeEmulator.createPhoneAvd(emulatorRule.avdRoot)
+    val avdFolder = FakeEmulator.createPhoneAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(32, 0))
     return createWindowPanel(avdFolder)
   }
 
