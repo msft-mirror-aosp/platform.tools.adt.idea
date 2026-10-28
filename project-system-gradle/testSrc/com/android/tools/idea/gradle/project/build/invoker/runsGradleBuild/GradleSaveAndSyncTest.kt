@@ -24,8 +24,8 @@ import com.google.common.truth.Truth
 import com.intellij.ide.SaveAndSyncHandler
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.spy
-import org.mockito.Mockito.verify
 
 class GradleSaveAndSyncTest {
   @get:Rule val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
@@ -37,7 +37,10 @@ class GradleSaveAndSyncTest {
     projectRule.replaceService(SaveAndSyncHandler::class.java, saveAndSyncHandler)
     simpleApplication.open { project ->
       val result = project.buildAndWait { buildInvoker -> buildInvoker.assemble() }
-      verify(saveAndSyncHandler).scheduleRefresh()
+      val inOrder = inOrder(saveAndSyncHandler)
+      inOrder.verify(saveAndSyncHandler).blockSyncOnFrameActivation()
+      inOrder.verify(saveAndSyncHandler).unblockSyncOnFrameActivation()
+      inOrder.verify(saveAndSyncHandler).scheduleRefresh()
       Truth.assertThat(result.isBuildSuccessful).isTrue()
     }
   }

@@ -103,6 +103,7 @@ import java.util.Collections.emptyList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit.SECONDS
+import java.util.concurrent.atomic.AtomicBoolean
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.TestOnly
 
@@ -481,8 +482,15 @@ internal constructor(
 
     private var startBuildEventPosted: Boolean = false
 
+    private val syncBlocked: AtomicBoolean = AtomicBoolean(false)
+
     @Suppress("UnstableApiUsage")
     override fun onStart(projectPath: String, id: ExternalSystemTaskId) {
+      if (syncBlocked.compareAndSet(false, true)) {
+        // Block background and frame-activation VFS refreshes while Gradle is actively mutating build
+        // directories, and refresh once at the end of the build in onEnd().
+        SaveAndSyncHandler.getInstance().blockSyncOnFrameActivation()
+      }
       val restartAction: AnAction = RestartAction(request)
 
       buildFailed = false
@@ -545,6 +553,9 @@ internal constructor(
     }
 
     override fun onEnd(projectPath: String, id: ExternalSystemTaskId) {
+      if (syncBlocked.compareAndSet(true, false)) {
+        SaveAndSyncHandler.getInstance().unblockSyncOnFrameActivation()
+      }
       refreshRelevantGradleOutputs()
 
       val eventDispatcherFinished = CountDownLatch(1)

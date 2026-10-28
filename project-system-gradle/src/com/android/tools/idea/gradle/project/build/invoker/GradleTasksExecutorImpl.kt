@@ -339,26 +339,29 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
 
         executeWithoutProcessCanceledException {
           val application = ApplicationManager.getApplication()
-          with(invocationResult) {
-            when {
-              buildError == null -> {
-                buildCompleter.buildFinished(BuildStatus.SUCCESS)
-                taskListener.onSuccess(gradleRootProjectPath, id)
-              }
+          try {
+            with(invocationResult) {
+              when {
+                buildError == null -> {
+                  buildCompleter.buildFinished(BuildStatus.SUCCESS)
+                  taskListener.onSuccess(gradleRootProjectPath, id)
+                }
 
-              wasBuildCanceled(buildError) -> {
-                buildCompleter.buildFinished(BuildStatus.CANCELED)
-                taskListener.onCancel(gradleRootProjectPath, id)
-              }
+                wasBuildCanceled(buildError) -> {
+                  buildCompleter.buildFinished(BuildStatus.CANCELED)
+                  taskListener.onCancel(gradleRootProjectPath, id)
+                }
 
-              else -> {
-                buildCompleter.buildFinished(BuildStatus.FAILED)
-                taskListener.onFailure(gradleRootProjectPath, id, buildError.toFriendlyError())
+                else -> {
+                  buildCompleter.buildFinished(BuildStatus.FAILED)
+                  taskListener.onFailure(gradleRootProjectPath, id, buildError.toFriendlyError())
+                }
               }
             }
+          } finally {
+            taskListener.onEnd(gradleRootProjectPath, id)
+            myBuildStopper.remove(id)
           }
-          taskListener.onEnd(gradleRootProjectPath, id)
-          myBuildStopper.remove(id)
           if (GuiTestingService.getInstance().isGuiTestingMode) {
             val testOutput = application.getUserData(GuiTestingService.GRADLE_BUILD_OUTPUT_IN_GUI_TEST_KEY)
             if (StringUtil.isNotEmpty(testOutput)) {

@@ -22,8 +22,10 @@ import static com.android.tools.idea.gradle.util.BuildMode.COMPILE_JAVA;
 import static com.android.tools.idea.testing.AndroidGradleTestUtilsKt.gradleModule;
 import static com.android.tools.idea.testing.AndroidGradleTestUtilsKt.setupTestProjectFromAndroidModel;
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,7 +38,9 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ListMultimap;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.intellij.ide.SaveAndSyncHandler;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.ProjectUtil;
@@ -45,6 +49,7 @@ import com.intellij.openapi.ui.TestDialog;
 import com.intellij.openapi.ui.TestDialogManager;
 import com.intellij.testFramework.HeavyPlatformTestCase;
 import com.intellij.testFramework.PlatformTestUtil;
+import com.intellij.testFramework.ServiceContainerUtil;
 import com.intellij.xdebugger.XDebugSession;
 import java.io.File;
 import java.nio.file.Path;
@@ -459,6 +464,42 @@ public class GradleBuildInvokerTest extends HeavyPlatformTestCase {
       ":app:assembleDebugUnitTest",
       ":app:assembleDebugAndroidTest"
     ));
+  }
+
+  public void testSaveAndSyncBlockedDuringBuildAndUnblockedBeforeRefresh() {
+    File projectPath = Projects.getBaseDirPath(myProject);
+    SaveAndSyncHandler saveAndSyncHandler = spy(SaveAndSyncHandler.getInstance());
+    ServiceContainerUtil.replaceService(
+      ApplicationManager.getApplication(),
+      SaveAndSyncHandler.class,
+      saveAndSyncHandler,
+      getTestRootDisposable()
+    );
+
+    GradleBuildInvoker.Request request = GradleBuildInvoker.Request.builder(
+      myProject,
+      projectPath,
+      ":app:assembleDebug"
+    ).build();
+
+    ExternalSystemTaskNotificationListener listener =
+      GradleBuildInvokerImpl.Companion.createBuildTaskListenerForTests(
+        myProject,
+        myFileDocumentManager,
+        request,
+        "Build project"
+      );
+
+    listener.onStart(projectPath.getPath(), request.getTaskId());
+    verify(saveAndSyncHandler).blockSyncOnFrameActivation();
+    verify(saveAndSyncHandler, never()).unblockSyncOnFrameActivation();
+    verify(saveAndSyncHandler, never()).scheduleRefresh();
+
+    listener.onEnd(projectPath.getPath(), request.getTaskId());
+    var inOrder = inOrder(saveAndSyncHandler);
+    inOrder.verify(saveAndSyncHandler).blockSyncOnFrameActivation();
+    inOrder.verify(saveAndSyncHandler).unblockSyncOnFrameActivation();
+    inOrder.verify(saveAndSyncHandler).scheduleRefresh();
   }
 
 }
