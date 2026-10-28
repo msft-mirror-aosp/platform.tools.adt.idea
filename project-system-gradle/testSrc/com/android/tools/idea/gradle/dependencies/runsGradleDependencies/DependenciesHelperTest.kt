@@ -258,7 +258,7 @@ class DependenciesHelperTest {
     doTest(
       TEST_SUITES_VERSION_CATALOG,
       { _, moduleModel, helper ->
-        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "test" }!!
+        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "myTestSuite" }!!
         val updates = helper.addTestSuiteEngineDependency(testSuiteModel, "org.junit.platform:junit-platform-launcher:1.13.4")
         assertThat(updates.size).isEqualTo(2)
       },
@@ -278,7 +278,7 @@ class DependenciesHelperTest {
     doTest(
       TEST_SUITES,
       { _, moduleModel, helper ->
-        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "test" }!!
+        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "myTestSuite" }!!
         val updates = helper.addTestSuiteEngineDependency(testSuiteModel, "org.junit.platform:junit-platform-launcher:1.13.4")
         assertThat(updates.size).isEqualTo(1)
       },
@@ -294,7 +294,7 @@ class DependenciesHelperTest {
     doTest(
       TEST_SUITES_VERSION_CATALOG,
       { _, moduleModel, helper ->
-        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "test" }!!
+        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "myTestSuite" }!!
         val updates = helper.addTestSuiteEngineDependency(testSuiteModel, "junit:junit:4.12")
         assertThat(updates.size).isEqualTo(0)
       },
@@ -312,7 +312,7 @@ class DependenciesHelperTest {
     doTest(
       TEST_SUITES,
       { _, moduleModel, helper ->
-        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "test" }!!
+        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "myTestSuite" }!!
         val updates = helper.addTestSuiteEngineDependency(testSuiteModel, "junit:junit:4.12")
         assertThat(updates.size).isEqualTo(0)
       },
@@ -328,7 +328,7 @@ class DependenciesHelperTest {
     doTest(
       TEST_SUITES_VERSION_CATALOG,
       { _, moduleModel, helper ->
-        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "test" }!!
+        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "myTestSuite" }!!
         val updates = helper.addTestSuiteEngineDependency(testSuiteModel, "junit:junit:4.13")
         assertThat(updates.size).isEqualTo(0)
       },
@@ -347,7 +347,7 @@ class DependenciesHelperTest {
     doTest(
       TEST_SUITES,
       { _, moduleModel, helper ->
-        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "test" }!!
+        val testSuiteModel = moduleModel.android().testOptions().suites().find { it.name() == "myTestSuite" }!!
         val updates = helper.addTestSuiteEngineDependency(testSuiteModel, "junit:junit:4.13")
         assertThat(updates.size).isEqualTo(0)
       },

@@ -29,7 +29,7 @@ android {
   }
   testOptions {
     suites {
-      "test" {
+      "myTestSuite" {
         useJunitEngine {
           inputs.add(com.android.build.api.dsl.AgpTestSuiteInputParameters.MERGED_MANIFEST)
           enginesDependencies(libs.junit)
