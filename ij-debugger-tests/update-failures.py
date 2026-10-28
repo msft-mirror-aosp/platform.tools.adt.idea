@@ -106,16 +106,21 @@ def remove_tests_from_expected_results(
     return removed
 
 
-def remove_tests_from_bzl(
-    bzl_file: Path, tests_to_remove: set[str], dry_run: bool = False
+def update_tests_in_bzl(
+    bzl_file: Path,
+    tests_to_update: set[str],
+    comment: str | None = None,
+    dry_run: bool = False,
 ) -> list[str]:
-    """Remove matching test entries from art-k2-failing-tests.bzl file."""
+    """Remove or comment matching test entries in art-k2-failing-tests.bzl file."""
     if not bzl_file.is_file():
         return []
 
     lines = bzl_file.read_text(encoding="utf-8").splitlines()
     new_lines: list[str] = []
-    removed: list[str] = []
+    updated: list[str] = []
+
+    comment_text = comment.lstrip("#").strip() if comment is not None else None
 
     for line in lines:
         stripped = line.strip()
@@ -130,21 +135,33 @@ def remove_tests_from_bzl(
             entry = m.group(1)
             is_match = False
             # Check full name match, or package-prefixed match, or endswith match for class.method
-            if entry in tests_to_remove or f"{PACKAGE_PREFIX}{entry}" in tests_to_remove:
+            if entry in tests_to_update or f"{PACKAGE_PREFIX}{entry}" in tests_to_update:
                 is_match = True
-            elif "." in entry and any(t.endswith(f".{entry}") for t in tests_to_remove):
+            elif "." in entry and any(t.endswith(f".{entry}") for t in tests_to_update):
                 is_match = True
 
             if is_match:
-                removed.append(entry)
+                updated.append(entry)
+                if comment_text is not None:
+                    comment_match = re.match(r"^(.*?)\s*#\s*(.*)$", line.rstrip())
+                    if comment_match:
+                        base_line = comment_match.group(1)
+                        existing_comment = comment_match.group(2).strip()
+                        existing_parts = [c.strip() for c in existing_comment.split(",") if c.strip()]
+                        if comment_text not in existing_parts:
+                            existing_parts.append(comment_text)
+                        combined_comment = ", ".join(existing_parts)
+                        new_lines.append(f"{base_line}  # {combined_comment}")
+                    else:
+                        new_lines.append(f"{line.rstrip()}  # {comment_text}")
                 continue
 
         new_lines.append(line)
 
-    if removed and not dry_run:
+    if updated and not dry_run:
         bzl_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
-    return removed
+    return updated
 
 
 def main() -> None:
@@ -171,10 +188,16 @@ def main() -> None:
         help=f"Path to art-k2-failing-tests.bzl (default: {DEFAULT_BZL_FILE})",
     )
     parser.add_argument(
+        "--comment",
+        type=str,
+        default=None,
+        help="Mark passed tests with this comment in art-k2-failing-tests.bzl instead of deleting them.",
+    )
+    parser.add_argument(
         "--dry-run",
         "-n",
         action="store_true",
-        help="Show what would be removed without making changes to files.",
+        help="Show what would be updated without making changes to files.",
     )
 
     args = parser.parse_args()
@@ -195,31 +218,37 @@ def main() -> None:
     for test in sorted(passed_tests):
         print(test)
 
-    # 1. Remove from corresponding expected-results config file(s)
-    config_files = resolve_config_files(testlogs_dir, DEFAULT_BASE_DIR, args.config_file)
-    print("\nUpdating expected results config files...")
-    total_removed_configs = 0
-    for cfg in config_files:
-        removed_from_cfg = remove_tests_from_expected_results(
-            cfg, passed_tests, dry_run=args.dry_run
-        )
-        if removed_from_cfg:
-            prefix = "[DRY-RUN] Would remove" if args.dry_run else "Removed"
-            print(f"{prefix} {len(removed_from_cfg)} test(s) from {cfg.name}:")
-            for t in removed_from_cfg:
-                print(f"  - {t}")
-            total_removed_configs += len(removed_from_cfg)
-        else:
-            print(f"No matching tests found in {cfg.name}.")
+    if args.comment is None:
+        # 1. Remove from corresponding expected-results config file(s)
+        config_files = resolve_config_files(testlogs_dir, DEFAULT_BASE_DIR, args.config_file)
+        print("\nUpdating expected results config files...")
+        total_removed_configs = 0
+        for cfg in config_files:
+            removed_from_cfg = remove_tests_from_expected_results(
+                cfg, passed_tests, dry_run=args.dry_run
+            )
+            if removed_from_cfg:
+                prefix = "[DRY-RUN] Would remove" if args.dry_run else "Removed"
+                print(f"{prefix} {len(removed_from_cfg)} test(s) from {cfg.name}:")
+                for t in removed_from_cfg:
+                    print(f"  - {t}")
+                total_removed_configs += len(removed_from_cfg)
+            else:
+                print(f"No matching tests found in {cfg.name}.")
 
-    # 2. Remove from art-k2-failing-tests.bzl
+    # 2. Update art-k2-failing-tests.bzl
     bzl_file = args.bzl_file.resolve()
     print(f"\nUpdating {bzl_file.name}...")
-    removed_from_bzl = remove_tests_from_bzl(bzl_file, passed_tests, dry_run=args.dry_run)
-    if removed_from_bzl:
-        prefix = "[DRY-RUN] Would remove" if args.dry_run else "Removed"
-        print(f"{prefix} {len(removed_from_bzl)} test(s) from {bzl_file.name}:")
-        for t in removed_from_bzl:
+    updated_in_bzl = update_tests_in_bzl(
+        bzl_file, passed_tests, comment=args.comment, dry_run=args.dry_run
+    )
+    if updated_in_bzl:
+        if args.comment is not None:
+            action_desc = "[DRY-RUN] Would comment" if args.dry_run else "Commented"
+        else:
+            action_desc = "[DRY-RUN] Would remove" if args.dry_run else "Removed"
+        print(f"{action_desc} {len(updated_in_bzl)} test(s) in {bzl_file.name}:")
+        for t in updated_in_bzl:
             print(f"  - {t}")
     else:
         print(f"No matching tests found in {bzl_file.name}.")

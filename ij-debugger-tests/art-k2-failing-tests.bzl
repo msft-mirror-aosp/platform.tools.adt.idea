@@ -6,11 +6,11 @@ load(":ij-debugger-tests.bzl", "include_k2")
 # K2IndyLambdaKotlinSteppingTestGenerated which are just duplicates of
 # K2IdeK2CodeKotlinEvaluateExpressionTestGenerated and K2IdeK2CodeKotlinSteppingTestGenerated.
 _tests = [
-    "K2IdeK2CodeBreakpointHighlightingTestGenerated.testAnonymousFun",  # b/575539285
+    "K2IdeK2CodeBreakpointHighlightingTestGenerated.testAnonymousFun",  # b/575539285, b/578038532
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testConditionalReturn",  # b/575823083
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testConditionalReturnInLambda",  # b/575823083
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testDefaultLambdaParameter",  # b/578038532
-    "K2IdeK2CodeBreakpointHighlightingTestGenerated.testMultiLineLambda",
+    "K2IdeK2CodeBreakpointHighlightingTestGenerated.testMultiLineLambda",  # b/578123886
     "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFun1",
     "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceFolded",
     "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceFoldedIDEA345945",
@@ -35,27 +35,27 @@ _tests = [
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$ReifiedParamEvaluation.testNoCaching",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$ReifiedParamEvaluation.testReifiedParamEvalWithComplexInvocationLookup",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$Uncategorized.testInlineStackTraceWithTryFinally",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInInlineFunction",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInInlineFunction",  # b/578038532, b/578123886
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testFrameObject",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testIdea352803",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testLambdaOnSecondLine",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testOneLineFunctionalExpression",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testOneLineLambda",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testTwoLambdasOnOneLineFirst",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testLambdaOnSecondLine",  # b/578038532
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testOneLineFunctionalExpression",  # b/578038532
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testOneLineLambda",  # b/578038532
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testTwoLambdasOnOneLineFirst",  # b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testCheckCastOtherClassloader",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testColor",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testInlineWithAnonymousObject",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testLambdaToString",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testOnObjectHeader",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testSmartStepIntoLambdaWithParameterDestructuring",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testSmartStepIntoSamWithParameterDestructuring",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testSmartStepIntoLambdaWithParameterDestructuring",  # b/578038532
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testSmartStepIntoSamWithParameterDestructuring",  # b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoInlineLambdaWithParameterDestructuring2",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoInlineSamWithParameterDestructuring",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoInlineSamWithParameterDestructuring",  # b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoLambdaWithParameterDestructuring",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoSamWithParameterDestructuring",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoSamWithParameterDestructuring",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testAfterDefaultParameterValues2Intf",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testBreakpointInOneLineLambda",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testCoroutineUnitElimination",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testCoroutineUnitElimination",  # b/578123886
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testEquals",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFilterConstructors",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFilterFunctionCallsInTryCatchBlock",
@@ -70,42 +70,42 @@ _tests = [
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFilterSmartStepWithInlineClass",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFilterSuspendCalls",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFinallyBlock",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFunLiteral",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFunctionCallStoredToVariable",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFunLiteral",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFunctionCallStoredToVariable",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testIdea334404",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testIdea362864",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testInitBlocks",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testInsideCallChain",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testLambdaWithImplicitReturn",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testInsideCallChain",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testLambdaWithImplicitReturn",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testLineBreakpointWithMethodReference",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSequentialInlineFunctionCalls",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSeveralFunLiterals",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSeveralFunLiteralsInClass",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSeveralFunLiterals",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSeveralFunLiteralsInClass",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoAsyncLambda",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoDeferredLambdas",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoDeferredSamLambdas",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoDeferredLambdas",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoDeferredSamLambdas",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoEmptyConstructor",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoFunWithDefaultArgs",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoInterfaceImpl",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoJavaLambda",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLabeledLambda",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLambdaWithDefaultArgsFun",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLambdaWithparametersDestructuring",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLambdasOnManyLines",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLambdasOnOneLine",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLambdaWithparametersDestructuring",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLambdasOnManyLines",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLambdasOnOneLine",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLocalFun",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoMethodWithJvmNameAnnotation",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoMultiplyInlinedLambdas",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoOnLambdaBreakpoint",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoSamLambdaFromJavaFunInterface",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoSamLambdaFromKotlinFunInterface",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoStoredLambda",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoOnLambdaBreakpoint",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoSamLambdaFromJavaFunInterface",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoSamLambdaFromKotlinFunInterface",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoStoredLambda",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoSuspendLambda",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoTargetsOrder",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoTargetsOrder",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoToLambdaParameter",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoToLambdaParameterAfterSam",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepWithInlineClass",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testStepOverInvokeMethodInLambda",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoToLambdaParameterAfterSam",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepWithInlineClass",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testStepOverInvokeMethodInLambda",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testStepThroughDefaultArgsConstructor",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSyntheticProvider",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Filters.testStepIntoSpecificKotlinClasses",
@@ -113,10 +113,10 @@ _tests = [
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepInto.testObjectFun",
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testInterfacesJvmDefaultDisable",
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testLocalDelegatedPropertyAndClinit",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testSyntheticMethods",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testSyntheticMethods",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testSyntheticMethodsSkip",
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOut.testStepOutConstructorWithValueClassParam",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Coroutines.testSequenceNested2",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Coroutines.testSequenceNested2",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testKt15652",
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testStepOverConstructorWithValueClassParam",
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testStopInNamelessFunInInlineCall",
@@ -136,7 +136,7 @@ _tests = [
 ART_K2_FAILING = [include_k2(test) for test in _tests]
 
 _tests_with_order_related_failure = [
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInInlineFunction",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$ContextParameters.testContextParametersInInlineFunction",  # b/578038532, b/578123886
     "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesInSuspendContexts",
 ]
 TESTS_WITH_ORDER_RELATED_FAILURE = [include_k2(test) for test in _tests_with_order_related_failure]
