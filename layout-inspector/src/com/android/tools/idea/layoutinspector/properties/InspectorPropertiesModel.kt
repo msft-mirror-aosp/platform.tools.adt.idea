@@ -51,7 +51,9 @@ class InspectorPropertiesModel(parentDisposable: Disposable) : PropertiesModel<I
   }
   private val connectionListener: ConnectionListener = ConnectionListener { handleConnectionChange(it) }
   private val propertiesListener = ResultListener { propertiesProvider, viewNode, propertiesTable ->
-    updateProperties(propertiesProvider, viewNode, propertiesTable)
+    ApplicationManager.getApplication().invokeLater {
+      updateProperties(propertiesProvider, viewNode, propertiesTable)
+    }
   }
 
   var structuralUpdates = 0
@@ -134,6 +136,7 @@ class InspectorPropertiesModel(parentDisposable: Disposable) : PropertiesModel<I
   }
 
   private fun updateProperties(from: PropertiesProvider, view: ViewNode, table: PropertiesTable<InspectorPropertyItem>) {
+    ApplicationManager.getApplication().assertIsDispatchThread()
     val selectedView = layoutInspector?.inspectorModel?.selection
     if (from != provider || selectedView == null || selectedView.drawId != view.drawId) {
       return
