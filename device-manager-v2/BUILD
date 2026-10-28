@@ -23,8 +23,6 @@ iml_module(
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/adt/idea/project-system:intellij.android.projectSystem",
         "//tools/adt/idea/android-adb:intellij.android.adb",
-        "//tools/adt/idea/wizard:intellij.android.wizard",
-        "//tools/adt/idea/wizard-model:intellij.android.wizard.model",
         "//tools/adt/idea/wear-pairing:intellij.android.wear-pairing",
         "//tools/base/adblib:studio.android.sdktools.adblib",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner",
@@ -32,7 +30,6 @@ iml_module(
         "//tools/adt/idea/avd:intellij.android.avd",
         "//tools/adt/idea/intellij.android.device",
         "//tools/adt/idea/adt-ui-compose:intellij.android.adt.ui.compose",
-        "//tools/adt/idea/artwork-compose:intellij.android.artwork-compose",
     ],
 )
 
