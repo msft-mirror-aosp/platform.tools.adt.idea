@@ -11,15 +11,12 @@ parts {
     background {
       image back.png
     }
-    onion {
-      image fore.png
-    }
   }
 }
 layouts {
   landscape {
-    width 1461
-    height 1481
+    width 1460
+    height 1478
     part1 {
       name landscape
       x 0
@@ -28,7 +25,7 @@ layouts {
     part2 {
       name device
       x 218
-      y 124
+      y 121
     }
   }
 }

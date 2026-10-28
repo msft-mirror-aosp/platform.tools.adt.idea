@@ -235,7 +235,6 @@ class SkinDefinitionTest {
     // Old-style skins are not checked by this test. Please don't add any new skins to this list.
     val oldStyleSkins =
       listOf(
-        "automotive_1024",
         "nexus_one",
         "nexus_s",
         "nexus_4",
@@ -261,10 +260,6 @@ class SkinDefinitionTest {
         "pixel_3a_xl",
         "pixel_4",
         "pixel_4_xl",
-        "tv_720p",
-        "tv_1080p",
-        "tv_4k",
-        "wearos_square",
       )
     val skinProblems = mutableListOf<String>()
     val dir = getRootSkinFolder()
