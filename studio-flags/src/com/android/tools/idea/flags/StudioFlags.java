@@ -2819,6 +2819,12 @@ public final class StudioFlags {
                     "Enable OpenUI 1.0 rendering and catalog",
                     "When enabled, renders openui-lang blocks as interactive Compose surfaces and provides the OpenUI prompt and skill.");
 
+  public static final Flag<Boolean> STUDIOBOT_MERMAID_RENDERING_ENABLED =
+    new BooleanFlag(STUDIOBOT, "mermaid.rendering.enabled",
+                    "Render Mermaid diagrams in place",
+                    "When enabled, fenced mermaid code blocks in the agent timeline, artifact editor and change review are rendered as " +
+                    "diagrams (using the bundled Pele renderer) with a View Source toggle, instead of only linking to mermaid.live.");
+
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI

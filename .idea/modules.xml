@@ -97,6 +97,8 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/rag/kb/aiplugin.rag.kb.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/rag/kb/aiplugin.rag.kb.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/rag/lucene/aiplugin.rag.lucene.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/rag/lucene/aiplugin.rag.lucene.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/ios-lang/ios-lang.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/ios-lang/ios-lang.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/ui/mermaid/aiplugin.ui.mermaid.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/ui/mermaid/aiplugin.ui.mermaid.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/ui/mermaid-tests/aiplugin.ui.mermaid-tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/ui/mermaid-tests/aiplugin.ui.mermaid-tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/ui/openui-catalog/aiplugin.ui.openui-catalog.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/ui/openui-catalog/aiplugin.ui.openui-catalog.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/ui/openui-catalog-tests/aiplugin.ui.openui-catalog-tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/ui/openui-catalog-tests/aiplugin.ui.openui-catalog-tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/ui/openui-lang/aiplugin.ui.openui-lang.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/ui/openui-lang/aiplugin.ui.openui-lang.iml" />
