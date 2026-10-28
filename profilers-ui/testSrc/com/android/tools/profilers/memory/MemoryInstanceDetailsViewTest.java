@@ -442,6 +442,16 @@ public class MemoryInstanceDetailsViewTest {
         Truth.assertThat(gcRoot.myChildren).isEmpty();
       });
     }
+
+    // Selecting another instance also shows the path to its nearest GC root
+    {
+      myStage.getCaptureSelection().selectInstanceObject(referer1);
+
+      TreePath selection = myDetailsView.getReferenceTree().getSelectionPath();
+      Truth.assertThat(selection).isNotNull();
+      ReferenceObject gcRoot = (ReferenceObject)((NearestGCRootTreeNode)selection.getLastPathComponent()).getAdapter();
+      Truth.assertThat(gcRoot.getReferenceInstance()).isEqualTo(referer0);
+    }
   }
 
   @Test

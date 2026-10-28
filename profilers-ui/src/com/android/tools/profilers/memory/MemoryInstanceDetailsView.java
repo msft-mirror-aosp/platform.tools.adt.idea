@@ -58,7 +58,6 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
-import java.awt.event.ItemEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -150,12 +149,9 @@ public final class MemoryInstanceDetailsView extends AspectObserver {
 
     myInstanceViewers.add(new BitmapViewer());
 
-    myGCRootCheckBox.addItemListener(e -> {
+    myGCRootCheckBox.addItemListener(ignored -> {
       instanceChanged();
       myTabsPanel.setSelectedComponent(myRefPanel);
-      if (e.getStateChange() == ItemEvent.SELECTED) {
-        repeatedlyExpandFirstReference();
-      }
     });
 
     LongFunction<String> timeFormatter = t ->
@@ -589,7 +585,12 @@ public final class MemoryInstanceDetailsView extends AspectObserver {
     builder.setShowVerticalLines(true);
     builder.setTableIntercellSpacing(new Dimension());
     builder.setShowHeaderTooltips(true);
-    return builder.build();
+    JComponent columnTree = builder.build();
+    // Expand after build(), as its initial sort clears the tree selection.
+    if (myGCRootCheckBox.isSelected()) {
+      repeatedlyExpandFirstReference();
+    }
+    return columnTree;
   }
 
   @VisibleForTesting
