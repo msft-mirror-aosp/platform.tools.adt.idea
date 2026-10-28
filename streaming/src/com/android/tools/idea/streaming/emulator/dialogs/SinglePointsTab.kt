@@ -35,6 +35,7 @@ import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.RowLayout
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.layout.ValidationInfoBuilder
+import com.intellij.util.ui.ListTableModel
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
@@ -55,7 +56,7 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
     field = mutableListOf<SavedPointItem>()
 
   private val pointsTableModel = SavedPointsTableModel()
-  private val pointsTable = SavedLocationTable(pointsTableModel, "savedPointsTable", message("location.dialog.empty.points"))
+  private val pointsTable = ExtendedControlsTable(pointsTableModel, "savedPointsTable", message("location.dialog.empty.points"))
 
   internal val singlePointMap = MapPanel { clickedPoint ->
     onSinglePointMapClicked(clickedPoint)
@@ -443,8 +444,7 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
 
   private fun removeSelectedPoints() {
     TableUtil.stopEditing(pointsTable)
-    val selectionModel = pointsTable.selectionModel
-    val minSelectionIndex = selectionModel.minSelectionIndex
+    val minSelectionIndex = pointsTable.selectionModel.minSelectionIndex
     val toRemove = pointsTable.selectedObjects
     if (toRemove.isEmpty()) return
     savedPoints.removeAll(toRemove.toSet())
@@ -452,16 +452,7 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
     val items = savedPoints.toList()
     pointsTableModel.items = items
     singlePointMap.savedPoints = items
-    selectionModel.clearSelection()
-    if (pointsTable.rowCount > 0) {
-      val index =
-        when {
-          minSelectionIndex < 0 -> 0
-          minSelectionIndex < pointsTable.rowCount -> minSelectionIndex
-          else -> pointsTable.rowCount - 1
-        }
-      selectionModel.setSelectionInterval(index, index)
-    }
+    pointsTable.selectRowAfterRemoval(minSelectionIndex)
     ActivityTracker.getInstance().inc()
     dialog.updateButtonsState()
   }
@@ -473,11 +464,7 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
     dialog.runUpdateUi {
       pointsTableModel.items = items
       val indexToSelect = items.indexOf(selected).takeIf { it >= 0 } ?: (items.size - 1)
-      if (items.isNotEmpty() && indexToSelect >= 0) {
-        val viewRow = pointsTable.convertRowIndexToView(indexToSelect)
-        pointsTable.selectionModel.setSelectionInterval(viewRow, viewRow)
-        TableUtil.scrollSelectionToVisible(pointsTable)
-      }
+      pointsTable.selectModelRow(indexToSelect)
     }
     if (selected != null) {
       onSavedPointSelectionChanged()
@@ -509,4 +496,39 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
   companion object {
     private val gson = Gson()
   }
+}
+
+/** Table model for saved single points. */
+internal class SavedPointsTableModel : ListTableModel<SavedPointItem>() {
+  private val nameColumn =
+    object : TextColumnInfo<SavedPointItem>(message("location.dialog.column.name")) {
+      override fun valueOf(item: SavedPointItem): String = item.name
+    }
+
+  private val coordinatesColumn =
+    object : TextColumnInfo<SavedPointItem>(message("location.dialog.column.coordinates")) {
+      override fun valueOf(item: SavedPointItem): String = item.coordinatesText
+    }
+
+  private val descriptionColumn =
+    object : TextColumnInfo<SavedPointItem>(message("location.dialog.column.description")) {
+      override fun valueOf(item: SavedPointItem): String = item.description
+    }
+
+  init {
+    columnInfos = arrayOf(nameColumn, coordinatesColumn, descriptionColumn)
+    isSortable = false
+  }
+}
+
+/** Represents a saved single point row in [LocationDialog]. */
+internal data class SavedPointItem(
+  val name: String,
+  val latitude: Double,
+  val longitude: Double,
+  val elevation: Double = 0.0,
+  val description: String = "",
+) {
+  val coordinatesText: String
+    get() = String.format(Locale.ROOT, "%.4f, %.4f", latitude, longitude)
 }

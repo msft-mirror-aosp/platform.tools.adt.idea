@@ -45,25 +45,13 @@ import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.ui.layout.ValidationInfoBuilder
 import com.intellij.ui.scale.JBUIScale
-import com.intellij.ui.table.TableView
-import com.intellij.util.ui.ColumnInfo
-import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
-import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.Component
-import java.awt.Dimension
 import java.awt.event.ItemEvent
 import java.awt.event.MouseEvent
 import javax.swing.DefaultComboBoxModel
-import javax.swing.JComponent
 import javax.swing.JPanel
-import javax.swing.JTable
-import javax.swing.ListSelectionModel
 import javax.swing.event.DocumentEvent
-import javax.swing.event.TableModelEvent
-import javax.swing.table.DefaultTableCellRenderer
-import javax.swing.table.JTableHeader
-import javax.swing.table.TableCellRenderer
 import kotlinx.coroutines.launch
 
 /** Dialog for configuring emulator displays, providing functionality similar to the Displays page in extended controls. */
@@ -75,7 +63,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
   private val displaysMap = sortedMapOf<Int, DisplayItem>()
 
   private val displayTableModel = DisplayTableModel()
-  private val displayTable = DisplayTable(displayTableModel)
+  private val displayTable = ExtendedControlsTable(displayTableModel, "displaysTable")
 
   private val displayConfigurationsChannel =
     createStateChannel(
@@ -237,11 +225,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
     val items = getSortedDisplayItems()
     displayTableModel.items = items
     val indexToSelect = items.indexOfFirst { it.displayId == selectedDisplayId }.takeIf { it >= 0 } ?: 0
-    if (items.isNotEmpty()) {
-      val viewRow = displayTable.convertRowIndexToView(indexToSelect)
-      displayTable.selectionModel.setSelectionInterval(viewRow, viewRow)
-      TableUtil.scrollSelectionToVisible(displayTable)
-    }
+    displayTable.selectModelRow(indexToSelect)
     ActivityTracker.getInstance().inc()
   }
 
@@ -318,8 +302,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
 
   private fun removeSelectedDisplays() {
     TableUtil.stopEditing(displayTable)
-    val selectionModel = displayTable.selectionModel
-    val minSelectionIndex = selectionModel.minSelectionIndex
+    val minSelectionIndex = displayTable.selectionModel.minSelectionIndex
     val toRemove = displayTable.selectedObjects.filter { it.isConfigurable }
     if (toRemove.isEmpty()) {
       return
@@ -329,16 +312,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
     }
     stateModified = true
     displayTableModel.items = getSortedDisplayItems()
-    selectionModel.clearSelection()
-    if (displayTable.rowCount > 0) {
-      val index =
-        when {
-          minSelectionIndex < 0 -> 0
-          minSelectionIndex < displayTable.rowCount -> minSelectionIndex
-          else -> displayTable.rowCount - 1
-        }
-      selectionModel.setSelectionInterval(index, index)
-    }
+    displayTable.selectRowAfterRemoval(minSelectionIndex)
     ActivityTracker.getInstance().inc()
     applyChanges()
   }
@@ -360,22 +334,22 @@ internal class DisplaysDialog(emulator: EmulatorController) :
   private class DisplayTableModel : ListTableModel<DisplayItem>() {
 
     private val typeColumn =
-      object : DisplayColumnInfo(message("displays.dialog.column.type")) {
+      object : TextColumnInfo<DisplayItem>(message("displays.dialog.column.type")) {
         override fun valueOf(item: DisplayItem): String = item.description
       }
 
     private val widthColumn =
-      object : DisplayColumnInfo(message("displays.dialog.column.width")) {
+      object : TextColumnInfo<DisplayItem>(message("displays.dialog.column.width")) {
         override fun valueOf(item: DisplayItem): String = item.width.toString()
       }
 
     private val heightColumn =
-      object : DisplayColumnInfo(message("displays.dialog.column.height")) {
+      object : TextColumnInfo<DisplayItem>(message("displays.dialog.column.height")) {
         override fun valueOf(item: DisplayItem): String = item.height.toString()
       }
 
     private val densityColumn =
-      object : DisplayColumnInfo(message("displays.dialog.column.density")) {
+      object : TextColumnInfo<DisplayItem>(message("displays.dialog.column.density")) {
         override fun valueOf(item: DisplayItem): String = item.densityText
       }
 
@@ -385,115 +359,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
     }
   }
 
-  private abstract class DisplayColumnInfo(name: String) : ColumnInfo<DisplayItem, String>(name) {
-    override fun getRenderer(item: DisplayItem): TableCellRenderer = DisplayTextColumnRenderer()
-  }
-
-  private class DisplayTextColumnRenderer : DefaultTableCellRenderer() {
-    override fun getTableCellRendererComponent(
-      table: JTable,
-      value: Any,
-      isSelected: Boolean,
-      hasFocus: Boolean,
-      row: Int,
-      column: Int,
-    ): Component = super.getTableCellRendererComponent(table, value, isSelected, false, row, column)
-  }
-
-  private class DisplayTable(tableModel: DisplayTableModel) : TableView<DisplayItem>(tableModel) {
-
-    private var preferredColumnWidths: IntArray? = null
-
-    override fun getModel(): DisplayTableModel = dataModel as DisplayTableModel
-
-    init {
-      name = "displaysTable"
-      createDefaultColumnsFromModel()
-      setAutoResizeMode(AUTO_RESIZE_ALL_COLUMNS)
-      selectionModel.selectionMode = ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
-
-      addPropertyChangeListener { event ->
-        if (event.propertyName == "model") {
-          preferredColumnWidths = null
-        }
-      }
-    }
-
-    private fun getPreferredColumnWidth(column: Int): Int {
-      var widths = preferredColumnWidths
-      if (widths == null) {
-        widths = calculatePreferredColumnWidths()
-        preferredColumnWidths = widths
-      }
-      return widths[column]
-    }
-
-    private fun calculatePreferredColumnWidths(): IntArray {
-      val widths = IntArray(model.columnCount)
-      val tableWidth = width - insets.left - insets.right
-      if (tableWidth <= 0) {
-        return widths
-      }
-      var totalWidth = 0
-      for (column in model.columnInfos.indices.reversed()) {
-        val preferredColumnWidth =
-          if (column == 0) {
-            // The first column gets the remaining width.
-            (tableWidth - totalWidth).coerceAtLeast(0)
-          } else {
-            calculatePreferredColumnWidth(column)
-          }
-        widths[column] = preferredColumnWidth
-        totalWidth += preferredColumnWidth
-      }
-      return widths
-    }
-
-    override fun prepareRenderer(renderer: TableCellRenderer, row: Int, column: Int): Component {
-      val component = super.prepareRenderer(renderer, row, column) as JComponent
-      val tableColumn = columnModel.getColumn(column)
-      tableColumn.preferredWidth = getPreferredColumnWidth(column)
-      return component
-    }
-
-    override fun tableChanged(event: TableModelEvent) {
-      preferredColumnWidths = null
-      super.tableChanged(event)
-    }
-
-    private fun calculatePreferredColumnWidth(column: Int): Int {
-      return (getColumnHeaderWidth(column).coerceAtLeast(getColumnDataWidth(column))) + JBUIScale.scale(COLUMN_PADDING)
-    }
-
-    private fun getColumnHeaderWidth(column: Int): Int {
-      val tableHeader: JTableHeader = getTableHeader()
-      val headerFontMetrics = tableHeader.getFontMetrics(tableHeader.font)
-      return headerFontMetrics.stringWidth(getColumnName(column)) + JBUIScale.scale(HEADER_GAP)
-    }
-
-    private fun getColumnDataWidth(column: Int): Int {
-      var dataWidth = 0
-      for (row in 0 until rowCount) {
-        val cellRenderer: TableCellRenderer = getCellRenderer(row, column)
-        val c: Component = super.prepareRenderer(cellRenderer, row, column)
-        dataWidth = dataWidth.coerceAtLeast(c.preferredSize.width + intercellSpacing.width)
-      }
-      return dataWidth
-    }
-  }
-
-  private class BorderLayoutPanelWithPreferredSize(private val preferredWidth: Int, private val preferredHeight: Int) :
-    BorderLayoutPanel() {
-
-    override fun getPreferredSize(): Dimension {
-      return if (isPreferredSizeSet) super.getPreferredSize() else JBUI.size(preferredWidth, preferredHeight)
-    }
-  }
-
   companion object {
-    private const val HEADER_GAP = 17
-    private const val COLUMN_PADDING = 16
-
     internal fun isValidResolution(width: Int, height: Int): Boolean {
       return width > 0 &&
         height > 0 &&

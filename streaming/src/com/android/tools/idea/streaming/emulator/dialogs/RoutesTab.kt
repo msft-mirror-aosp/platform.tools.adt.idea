@@ -36,6 +36,7 @@ import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
+import com.intellij.util.ui.ListTableModel
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
 import java.awt.event.ItemEvent
@@ -71,7 +72,7 @@ internal class RoutesTab(private val dialog: LocationDialog) {
 
   private val savedRoutes = mutableListOf<SavedRouteItem>()
   private val routesTableModel = SavedRoutesTableModel()
-  private val routesTable = SavedLocationTable(routesTableModel, "savedRoutesTable", message("location.dialog.empty.routes"))
+  private val routesTable = ExtendedControlsTable(routesTableModel, "savedRoutesTable", message("location.dialog.empty.routes"))
 
   internal val routesMap = MapPanel { clickedPoint ->
     onRoutesMapClicked(clickedPoint)
@@ -530,23 +531,13 @@ internal class RoutesTab(private val dialog: LocationDialog) {
 
   private fun removeSelectedRoutes() {
     TableUtil.stopEditing(routesTable)
-    val selectionModel = routesTable.selectionModel
-    val minSelectionIndex = selectionModel.minSelectionIndex
+    val minSelectionIndex = routesTable.selectionModel.minSelectionIndex
     val toRemove = routesTable.selectedObjects
     if (toRemove.isEmpty()) return
     savedRoutes.removeAll(toRemove.toSet())
     saveRoutesToStorage()
     routesTableModel.items = savedRoutes.toList()
-    selectionModel.clearSelection()
-    if (routesTable.rowCount > 0) {
-      val index =
-        when {
-          minSelectionIndex < 0 -> 0
-          minSelectionIndex < routesTable.rowCount -> minSelectionIndex
-          else -> routesTable.rowCount - 1
-        }
-      selectionModel.setSelectionInterval(index, index)
-    } else {
+    if (!routesTable.selectRowAfterRemoval(minSelectionIndex)) {
       activeRoute = null
       routeOriginPoint = null
       routeDestinationPoint = null
@@ -572,11 +563,7 @@ internal class RoutesTab(private val dialog: LocationDialog) {
     dialog.runUpdateUi {
       routesTableModel.items = items
       val indexToSelect = items.indexOf(selected).takeIf { it >= 0 } ?: (items.size - 1)
-      if (items.isNotEmpty() && indexToSelect >= 0) {
-        val viewRow = routesTable.convertRowIndexToView(indexToSelect)
-        routesTable.selectionModel.setSelectionInterval(viewRow, viewRow)
-        TableUtil.scrollSelectionToVisible(routesTable)
-      }
+      routesTable.selectModelRow(indexToSelect)
     }
     if (selected != null) {
       onSavedRouteSelectionChanged()
@@ -721,3 +708,40 @@ internal class RoutesTab(private val dialog: LocationDialog) {
     private val gson = Gson()
   }
 }
+
+/** Table model for saved routes. */
+internal class SavedRoutesTableModel : ListTableModel<SavedRouteItem>() {
+  private val nameColumn =
+    object : TextColumnInfo<SavedRouteItem>(message("location.dialog.column.name")) {
+      override fun valueOf(item: SavedRouteItem): String = item.name
+    }
+
+  private val modeColumn =
+    object : TextColumnInfo<SavedRouteItem>(message("location.dialog.column.mode")) {
+      override fun valueOf(item: SavedRouteItem): String = item.mode.displayName
+    }
+
+  private val pointsColumn =
+    object : TextColumnInfo<SavedRouteItem>(message("location.dialog.column.points")) {
+      override fun valueOf(item: SavedRouteItem): String = item.points.size.toString()
+    }
+
+  private val durationColumn =
+    object : TextColumnInfo<SavedRouteItem>(message("location.dialog.column.duration")) {
+      override fun valueOf(item: SavedRouteItem): String = GeoMath.formatDuration(item.durationSeconds)
+    }
+
+  init {
+    columnInfos = arrayOf(nameColumn, modeColumn, pointsColumn, durationColumn)
+    isSortable = false
+  }
+}
+
+/** Represents a saved route row in [LocationDialog]. */
+internal data class SavedRouteItem(
+  val name: String,
+  val description: String = "",
+  val mode: TravelMode = TravelMode.DRIVING,
+  val durationSeconds: Int = 0,
+  val points: List<RoutePoint> = emptyList(),
+)

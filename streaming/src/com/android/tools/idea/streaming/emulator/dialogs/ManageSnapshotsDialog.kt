@@ -106,7 +106,6 @@ import javax.imageio.ImageIO
 import javax.swing.AbstractAction
 import javax.swing.Icon
 import javax.swing.JButton
-import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JTable
 import javax.swing.JTextField
@@ -937,6 +936,7 @@ internal class ManageSnapshotsDialog(private val emulator: EmulatorController, p
   private class SnapshotTable(tableModel: SnapshotTableModel) : TableView<SnapshotInfo>(tableModel) {
 
     private var preferredColumnWidths: IntArray? = null
+    private var lastTableWidth: Int = 0
 
     override fun getModel(): SnapshotTableModel {
       return dataModel as SnapshotTableModel
@@ -944,6 +944,7 @@ internal class ManageSnapshotsDialog(private val emulator: EmulatorController, p
 
     init {
       createDefaultColumnsFromModel()
+      getTableHeader().reorderingAllowed = false
       setAutoResizeMode(AUTO_RESIZE_ALL_COLUMNS)
 
       addPropertyChangeListener { event ->
@@ -957,27 +958,28 @@ internal class ManageSnapshotsDialog(private val emulator: EmulatorController, p
       return SnapshotRowSorter(model as SnapshotTableModel)
     }
 
-    private fun getPreferredColumnWidth(column: Int): Int {
+    private fun getPreferredColumnWidth(column: Int): Int? {
+      val tableWidth = width - insets.left - insets.right
+      if (tableWidth <= 0) {
+        return null
+      }
       var widths = preferredColumnWidths
-      if (widths == null) {
-        widths = calculatePreferredColumnWidths()
+      if (widths == null || lastTableWidth != tableWidth) {
+        widths = calculatePreferredColumnWidths(tableWidth)
         preferredColumnWidths = widths
+        lastTableWidth = tableWidth
       }
       return widths[column]
     }
 
-    private fun calculatePreferredColumnWidths(): IntArray {
-      val widths = IntArray(model.columnCount)
-      val tableWidth = width - insets.left - insets.right
-      if (tableWidth <= 0) {
-        return widths
-      }
+    private fun calculatePreferredColumnWidths(tableWidth: Int): IntArray {
+      val widths = IntArray(columnCount)
       var totalWidth = 0
-      for (column in model.columnInfos.indices.reversed()) {
+      for (column in (0 until columnCount).reversed()) {
         val preferredColumnWidth =
           if (column == 0) {
             // The first column gets the remaining width.
-            (tableWidth - totalWidth).coerceAtLeast(0)
+            (tableWidth - totalWidth).coerceAtLeast(getColumnHeaderWidth(0))
           } else {
             calculatePreferredColumnWidth(column)
           }
@@ -987,17 +989,17 @@ internal class ManageSnapshotsDialog(private val emulator: EmulatorController, p
       return widths
     }
 
-    override fun prepareRenderer(renderer: TableCellRenderer, row: Int, column: Int): Component {
-      val component = super.prepareRenderer(renderer, row, column) as JComponent
-      val tableColumn = columnModel.getColumn(column)
-      val preferredWidth = getPreferredColumnWidth(column)
-      tableColumn.preferredWidth = preferredWidth
-      return component
+    override fun doLayout() {
+      for (column in 0 until columnCount) {
+        getPreferredColumnWidth(column)?.let { columnModel.getColumn(column).preferredWidth = it }
+      }
+      super.doLayout()
     }
 
     override fun tableChanged(event: TableModelEvent) {
       preferredColumnWidths = null
       super.tableChanged(event)
+      revalidate()
     }
 
     private fun calculatePreferredColumnWidth(column: Int): Int {
@@ -1014,7 +1016,7 @@ internal class ManageSnapshotsDialog(private val emulator: EmulatorController, p
       var dataWidth = 0
       for (row in 0 until rowCount) {
         val cellRenderer: TableCellRenderer = getCellRenderer(row, column)
-        val c: Component = super.prepareRenderer(cellRenderer, row, column)
+        val c: Component = prepareRenderer(cellRenderer, row, column)
         dataWidth = dataWidth.coerceAtLeast(c.preferredSize.width + intercellSpacing.width)
       }
       return dataWidth
