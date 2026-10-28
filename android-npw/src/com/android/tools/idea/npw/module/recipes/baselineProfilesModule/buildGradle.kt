@@ -17,6 +17,7 @@ package com.android.tools.idea.npw.module.recipes.baselineProfilesModule
 
 import com.android.sdklib.AndroidMajorVersion
 import com.android.sdklib.AndroidVersion
+import com.android.tools.idea.gradle.util.shouldUseKotlinCompilerOptionsDsl
 import com.android.tools.idea.npw.module.recipes.androidModule.gradleToKtsOrDcl
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.BaselineProfilesMacrobenchmarkCommon.flavorsConfigurationsBuildGradle
 import com.android.tools.idea.npw.module.recipes.emptyPluginsBlock
@@ -65,12 +66,27 @@ fun baselineProfilesBuildGradle(
         .trimIndent()
     } else ""
 
+  val isLegacyKgpBeforeAgp9 = newModule.projectTemplateData.kotlinSupport == TemplateKotlinSupport.LEGACY_KOTLIN_GRADLE_PLUGIN_BEFORE_AGP9
+  val useKotlinCompilerOptions = isLegacyKgpBeforeAgp9 && shouldUseKotlinCompilerOptionsDsl(newModule.projectTemplateData.kotlinVersion)
+
   val kotlinOptionsBlock =
-    renderIf(newModule.projectTemplateData.kotlinSupport == TemplateKotlinSupport.LEGACY_KOTLIN_GRADLE_PLUGIN_BEFORE_AGP9) {
+    renderIf(isLegacyKgpBeforeAgp9 && !useKotlinCompilerOptions) {
       """
       kotlinOptions {
           jvmTarget = "11"
         }
+      """
+        .trimIndent()
+    }
+
+  val kotlinCompilerOptionsBlock =
+    renderIf(useKotlinCompilerOptions) {
+      """
+      kotlin {
+        compilerOptions {
+          jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+        }
+      }
       """
         .trimIndent()
     }
@@ -140,6 +156,8 @@ android {
 
     $gmdDefinition
 }
+
+$kotlinCompilerOptionsBlock
 
 $pluginConfiguration
 

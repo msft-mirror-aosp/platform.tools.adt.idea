@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
 import com.android.tools.idea.lint.common.getModuleDir
 import com.android.tools.idea.wizard.template.ModuleTemplateData
 import com.android.tools.idea.wizard.template.ProjectTemplateData
+import com.android.tools.idea.wizard.template.TemplateKotlinSupport
 import com.intellij.openapi.application.ApplicationManager
 import java.io.File
 import org.jetbrains.annotations.SystemDependent
@@ -598,6 +599,200 @@ android-library = { id = "com.android.library", version.ref = "agpVersion" }
       }
       """
         .trimIndent()
+
+    verifyFileContents(myBuildFile, expectedContent)
+  }
+
+  @Test
+  fun testSetJavaKotlinCompileOptions_agp8WithKgpBelow220_usesKotlinOptions() {
+    whenever(mockProjectTemplateData.agpVersion).thenReturn(AgpVersion.parse("8.11.1"))
+    whenever(mockProjectTemplateData.kotlinSupport).thenReturn(TemplateKotlinSupport.LEGACY_KOTLIN_GRADLE_PLUGIN_BEFORE_AGP9)
+    whenever(mockProjectTemplateData.kotlinVersion).thenReturn("2.1.20")
+    writeToBuildFile(if (isGroovy) "plugins {\n  id 'com.android.library'\n}" else "plugins {\n  id(\"com.android.library\")\n}")
+
+    recipeExecutor.setJavaKotlinCompileOptions(isKotlin = true)
+    applyChanges(recipeExecutor.projectBuildModel!!)
+
+    val expectedContent =
+      if (isGroovy) {
+        """
+        plugins {
+          id 'com.android.library'
+        }
+        android {
+          compileOptions {
+            sourceCompatibility JavaVersion.VERSION_11
+            targetCompatibility JavaVersion.VERSION_11
+          }
+          kotlinOptions {
+            jvmTarget = '11'
+          }
+        }
+        """
+          .trimIndent()
+      } else {
+        """
+        plugins {
+          id("com.android.library")
+        }
+        android {
+          compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
+          }
+          kotlinOptions {
+            jvmTarget = "11"
+          }
+        }
+        """
+          .trimIndent()
+      }
+
+    verifyFileContents(myBuildFile, expectedContent)
+  }
+
+  @Test
+  fun testSetJavaKotlinCompileOptions_agp8WithKgp220_usesCompilerOptions() {
+    whenever(mockProjectTemplateData.agpVersion).thenReturn(AgpVersion.parse("8.11.1"))
+    whenever(mockProjectTemplateData.kotlinSupport).thenReturn(TemplateKotlinSupport.LEGACY_KOTLIN_GRADLE_PLUGIN_BEFORE_AGP9)
+    whenever(mockProjectTemplateData.kotlinVersion).thenReturn("2.2.0")
+    writeToBuildFile(if (isGroovy) "plugins {\n  id 'com.android.library'\n}" else "plugins {\n  id(\"com.android.library\")\n}")
+
+    recipeExecutor.setJavaKotlinCompileOptions(isKotlin = true)
+    applyChanges(recipeExecutor.projectBuildModel!!)
+
+    val expectedContent =
+      if (isGroovy) {
+        """
+        plugins {
+          id 'com.android.library'
+        }
+        android {
+          compileOptions {
+            sourceCompatibility JavaVersion.VERSION_11
+            targetCompatibility JavaVersion.VERSION_11
+          }
+        }
+        kotlin {
+          compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+          }
+        }
+        """
+          .trimIndent()
+      } else {
+        """
+        plugins {
+          id("com.android.library")
+        }
+        android {
+          compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
+          }
+        }
+        kotlin {
+          compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+          }
+        }
+        """
+          .trimIndent()
+      }
+
+    verifyFileContents(myBuildFile, expectedContent)
+  }
+
+  @Test
+  fun testSetJavaKotlinCompileOptions_agp8WithKgp220Beta_usesCompilerOptions() {
+    whenever(mockProjectTemplateData.agpVersion).thenReturn(AgpVersion.parse("8.11.1"))
+    whenever(mockProjectTemplateData.kotlinSupport).thenReturn(TemplateKotlinSupport.LEGACY_KOTLIN_GRADLE_PLUGIN_BEFORE_AGP9)
+    whenever(mockProjectTemplateData.kotlinVersion).thenReturn("2.2.0-Beta1")
+    writeToBuildFile(if (isGroovy) "plugins {\n  id 'com.android.library'\n}" else "plugins {\n  id(\"com.android.library\")\n}")
+
+    recipeExecutor.setJavaKotlinCompileOptions(isKotlin = true)
+    applyChanges(recipeExecutor.projectBuildModel!!)
+
+    val expectedContent =
+      if (isGroovy) {
+        """
+        plugins {
+          id 'com.android.library'
+        }
+        android {
+          compileOptions {
+            sourceCompatibility JavaVersion.VERSION_11
+            targetCompatibility JavaVersion.VERSION_11
+          }
+        }
+        kotlin {
+          compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+          }
+        }
+        """
+          .trimIndent()
+      } else {
+        """
+        plugins {
+          id("com.android.library")
+        }
+        android {
+          compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
+          }
+        }
+        kotlin {
+          compilerOptions {
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+          }
+        }
+        """
+          .trimIndent()
+      }
+
+    verifyFileContents(myBuildFile, expectedContent)
+  }
+
+  @Test
+  fun testSetJavaKotlinCompileOptions_agp9BuiltInKotlin_omitsKotlinBlocks() {
+    whenever(mockProjectTemplateData.agpVersion).thenReturn(AgpVersion.parse("9.0.0"))
+    whenever(mockProjectTemplateData.kotlinSupport).thenReturn(TemplateKotlinSupport.IMPLICIT_BUILT_IN_KOTLIN)
+    whenever(mockProjectTemplateData.kotlinVersion).thenReturn("2.2.10")
+    writeToBuildFile(if (isGroovy) "plugins {\n  id 'com.android.library'\n}" else "plugins {\n  id(\"com.android.library\")\n}")
+
+    recipeExecutor.setJavaKotlinCompileOptions(isKotlin = true)
+    applyChanges(recipeExecutor.projectBuildModel!!)
+
+    val expectedContent =
+      if (isGroovy) {
+        """
+        plugins {
+          id 'com.android.library'
+        }
+        android {
+          compileOptions {
+            sourceCompatibility JavaVersion.VERSION_11
+            targetCompatibility JavaVersion.VERSION_11
+          }
+        }
+        """
+          .trimIndent()
+      } else {
+        """
+        plugins {
+          id("com.android.library")
+        }
+        android {
+          compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_11
+            targetCompatibility = JavaVersion.VERSION_11
+          }
+        }
+        """
+          .trimIndent()
+      }
 
     verifyFileContents(myBuildFile, expectedContent)
   }

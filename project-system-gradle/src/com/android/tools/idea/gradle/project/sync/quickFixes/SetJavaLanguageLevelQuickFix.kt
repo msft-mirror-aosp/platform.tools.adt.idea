@@ -272,11 +272,15 @@ fun GradleBuildModel.getTargetJavaVersion(): LanguageLevel? {
  * @param languageLevel the Java language level to set
  * @param isAgpApplied whether the Android Gradle plugin is applied in this module
  * @param isKgpApplied whether the Kotlin Gradle plugin is applied in this module
+ * @param useCompilerOptions whether to configure `kotlin.compilerOptions.jvmTarget` instead of `android.kotlinOptions.jvmTarget` when both
+ *   AGP and KGP are applied
  */
+@JvmOverloads
 fun GradleBuildModel.setJavaKotlinCompileOptions(
   languageLevel: LanguageLevel,
   isAgpApplied: Boolean,
   isKgpApplied: Boolean,
+  useCompilerOptions: Boolean = false,
 ): GradleBuildModel {
   if (isAgpApplied) {
     android().compileOptions().run {
@@ -284,7 +288,11 @@ fun GradleBuildModel.setJavaKotlinCompileOptions(
       targetCompatibility().setLanguageLevel(languageLevel)
     }
     if (isKgpApplied) {
-      android().kotlinOptions().jvmTarget().setLanguageLevel(languageLevel)
+      if (useCompilerOptions) {
+        kotlin().compilerOptions().jvmTarget().setLanguageLevel(languageLevel)
+      } else {
+        android().kotlinOptions().jvmTarget().setLanguageLevel(languageLevel)
+      }
     }
   } else {
     java().run {

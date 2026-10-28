@@ -153,6 +153,50 @@ class GenerateBaselineProfileModuleTest {
     assertThat(startupBenchmarksContent).isEqualTo(FixturesAgp810.STARTUP_BENCHMARKS_JAVA_WITH_AGP_8_1_0)
   }
 
+  @Test
+  fun withKotlinCodeAndBuildGradleKtsAndAgp810AndKgp220() {
+    val (rootDir, srcDir) =
+      runTemplateGeneration(
+        agpVersion = AgpVersion(8, 1, 0),
+        sourceCodeLanguage = Language.Kotlin,
+        dslLanguage = KTS,
+        useGmd = true,
+        projectRuleAgpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_81.withCompileSdk(SDK_VERSION_FOR_NPW_TESTS),
+        kotlinVersion = "2.2.0",
+      )
+
+    val buildGradleContent = rootDir.resolve("build.gradle.kts").readText()
+    assertThat(buildGradleContent).isEqualTo(FixturesAgp810.BUILD_GRADLE_KTS_WITH_GMD_WITH_AGP_8_1_0_AND_KGP_2_2_0)
+
+    val baselineProfileGeneratorContent = srcDir.resolve("BaselineProfileGenerator.kt").readText()
+    assertThat(baselineProfileGeneratorContent).isEqualTo(FixturesAgp810.BASELINE_PROFILE_GENERATOR_KOTLIN_WITH_AGP_8_1_0)
+
+    val startupBenchmarksContent = srcDir.resolve("StartupBenchmarks.kt").readText()
+    assertThat(startupBenchmarksContent).isEqualTo(FixturesAgp810.STARTUP_BENCHMARKS_KOTLIN_WITH_AGP_8_1_0)
+  }
+
+  @Test
+  fun withKotlinCodeAndBuildGradleGroovyAndAgp810AndKgp220() {
+    val (rootDir, srcDir) =
+      runTemplateGeneration(
+        agpVersion = AgpVersion(8, 1, 0),
+        sourceCodeLanguage = Language.Kotlin,
+        dslLanguage = GROOVY,
+        useGmd = false,
+        projectRuleAgpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_81.withCompileSdk(SDK_VERSION_FOR_NPW_TESTS),
+        kotlinVersion = "2.2.0",
+      )
+
+    val buildGradleContent = rootDir.resolve("build.gradle").readText()
+    assertThat(buildGradleContent).isEqualTo(FixturesAgp810.BUILD_GRADLE_GROOVY_WITHOUT_GMD_WITH_AGP_8_1_0_AND_KGP_2_2_0)
+
+    val baselineProfileGeneratorContent = srcDir.resolve("BaselineProfileGenerator.kt").readText()
+    assertThat(baselineProfileGeneratorContent).isEqualTo(FixturesAgp810.BASELINE_PROFILE_GENERATOR_KOTLIN_WITH_AGP_8_1_0)
+
+    val startupBenchmarksContent = srcDir.resolve("StartupBenchmarks.kt").readText()
+    assertThat(startupBenchmarksContent).isEqualTo(FixturesAgp810.STARTUP_BENCHMARKS_KOTLIN_WITH_AGP_8_1_0)
+  }
+
   private fun runTemplateGeneration(
     agpVersion: AgpVersion,
     sourceCodeLanguage: Language,
@@ -160,12 +204,12 @@ class GenerateBaselineProfileModuleTest {
     useGmd: Boolean,
     projectRuleAgpVersion: AgpVersionSoftwareEnvironment,
     androidApi: AndroidApiLevel = StudioFlags.NPW_COMPILE_SDK_VERSION.get(),
+    kotlinVersion: String = "1.9.0",
   ): Pair<File, File> {
     val name = "baselineprofile"
     val buildApi = AndroidVersion(androidApi)
     val targetApi = AndroidMajorVersion(androidApi)
     val minApi = AndroidMajorVersion(34)
-    val kotlinVersion = "1.9.0"
     val packageName = "com.test.packagename"
     val srcDir = tmpFolderRule.root.resolve("src").also { it.mkdir() }
     val rootDir = tmpFolderRule.root
@@ -745,6 +789,101 @@ android {
             systemImageSource = "google"
         }
     }
+}
+
+// This is the configuration block for the Baseline Profile plugin.
+// You can specify to run the generators on a managed devices or connected devices.
+baselineProfile {
+managedDevices += "pixel6Api34"
+useConnectedDevices = false
+}
+
+dependencies {
+}
+"""
+      .trimIndent()
+
+  val BUILD_GRADLE_GROOVY_WITHOUT_GMD_WITH_AGP_8_1_0_AND_KGP_2_2_0 =
+    """
+plugins {
+}
+
+android {
+  namespace = 'com.test.packagename'
+
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+  }
+
+  defaultConfig {
+        minSdk 34
+        targetSdk ${SDK_VERSION_FOR_NPW_TESTS.majorVersion}
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    targetProjectPath = ":app"
+
+}
+
+kotlin {
+  compilerOptions {
+    jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+  }
+}
+
+// This is the configuration block for the Baseline Profile plugin.
+// You can specify to run the generators on a managed devices or connected devices.
+baselineProfile {
+useConnectedDevices = true
+}
+
+dependencies {
+}
+"""
+      .trimIndent()
+
+  val BUILD_GRADLE_KTS_WITH_GMD_WITH_AGP_8_1_0_AND_KGP_2_2_0 =
+    """
+import com.android.build.api.dsl.ManagedVirtualDevice
+
+plugins {
+}
+
+android {
+  namespace = "com.test.packagename"
+
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+  }
+
+  defaultConfig {
+        minSdk = 34
+        targetSdk = ${SDK_VERSION_FOR_NPW_TESTS.majorVersion}
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    targetProjectPath = ":app"
+
+    // This code creates the gradle managed device used to generate baseline profiles.
+    // To use GMD please invoke generation through the command line:
+    // ./gradlew :app:generateBaselineProfile
+    testOptions.managedDevices.allDevices {
+        create<ManagedVirtualDevice>("pixel6Api34") {
+            device = "Pixel 6"
+            apiLevel = 34
+            systemImageSource = "google"
+        }
+    }
+}
+
+kotlin {
+  compilerOptions {
+    jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11
+  }
 }
 
 // This is the configuration block for the Baseline Profile plugin.

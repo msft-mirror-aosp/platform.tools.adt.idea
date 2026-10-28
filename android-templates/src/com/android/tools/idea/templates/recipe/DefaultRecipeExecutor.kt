@@ -45,6 +45,7 @@ import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint
 import com.android.tools.idea.gradle.project.sync.quickFixes.getTargetJavaVersion
 import com.android.tools.idea.gradle.project.sync.quickFixes.setJavaKotlinCompileOptions
 import com.android.tools.idea.gradle.repositories.RepositoryUrlManager
+import com.android.tools.idea.gradle.util.shouldUseKotlinCompilerOptionsDsl
 import com.android.tools.idea.templates.TemplateUtils
 import com.android.tools.idea.templates.TemplateUtils.checkDirectoryIsWriteable
 import com.android.tools.idea.templates.TemplateUtils.checkedCreateDirectoryIfMissing
@@ -589,8 +590,8 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
   }
 
   /**
-   * Sets sourceCompatibility and targetCompatibility in compileOptions and (if needed) jvmTarget in kotlinOptions, based on the Gradle JDK
-   * version
+   * Sets sourceCompatibility and targetCompatibility in compileOptions and (if needed) jvmTarget in kotlinOptions or compilerOptions, based
+   * on the Gradle JDK version
    */
   override fun setJavaKotlinCompileOptions(isKotlin: Boolean, moduleDir: File?) {
     val buildModel =
@@ -611,7 +612,8 @@ class DefaultRecipeExecutor(private val context: RenderingContext) : RecipeExecu
       val kgpApplied =
         if (agpApplied) isKotlin && projectTemplateData.kotlinSupport == TemplateKotlinSupport.LEGACY_KOTLIN_GRADLE_PLUGIN_BEFORE_AGP9
         else isKotlin
-      buildModel.setJavaKotlinCompileOptions(languageLevel, agpApplied, kgpApplied)
+      val useCompilerOptions = kgpApplied && (!agpApplied || shouldUseKotlinCompilerOptionsDsl(projectTemplateData.kotlinVersion))
+      buildModel.setJavaKotlinCompileOptions(languageLevel, agpApplied, kgpApplied, useCompilerOptions)
     }
   }
 

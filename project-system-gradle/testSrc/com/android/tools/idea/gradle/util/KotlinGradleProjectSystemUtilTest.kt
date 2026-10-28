@@ -17,7 +17,9 @@ package com.android.tools.idea.gradle.util
 
 import com.android.ide.common.repository.AgpVersion
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import org.junit.Test
 
 class KotlinGradleProjectSystemUtilTest {
@@ -27,5 +29,40 @@ class KotlinGradleProjectSystemUtilTest {
     assertNull(AgpVersion.parse("8.0.0").getKotlinVersion())
     assertEquals("2.2.10", AgpVersion.parse("9.0.0").getKotlinVersion())
     assertEquals(AGP_BUILT_IN_KOTLIN_VERSION, AgpVersion.parse("100.0.0").getKotlinVersion())
+  }
+
+  @Test
+  fun testShouldUseKotlinCompilerOptionsDsl_below220() {
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("1.7.20"))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("1.8.10"))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("1.9.0"))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("2.0.21"))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("2.1.0"))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("2.1.20"))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("2.1.20-RC"))
+  }
+
+  @Test
+  fun testShouldUseKotlinCompilerOptionsDsl_220AndAbove() {
+    assertTrue(shouldUseKotlinCompilerOptionsDsl("2.2.0-dev-1234"))
+    assertTrue(shouldUseKotlinCompilerOptionsDsl("2.2.0-Beta1"))
+    assertTrue(shouldUseKotlinCompilerOptionsDsl("2.2.0-RC"))
+    assertTrue(shouldUseKotlinCompilerOptionsDsl("2.2.0"))
+    assertTrue(shouldUseKotlinCompilerOptionsDsl("2.2.10"))
+    assertTrue(shouldUseKotlinCompilerOptionsDsl("2.3.0"))
+    assertTrue(shouldUseKotlinCompilerOptionsDsl("2.3.10"))
+    assertTrue(shouldUseKotlinCompilerOptionsDsl("2.5.0-Beta2"))
+    assertTrue(shouldUseKotlinCompilerOptionsDsl("3.0.0"))
+    assertTrue(shouldUseKotlinCompilerOptionsDsl(" 2.2.0 "))
+  }
+
+  @Test
+  fun testShouldUseKotlinCompilerOptionsDsl_nullOrInvalid() {
+    assertFalse(shouldUseKotlinCompilerOptionsDsl(null))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl(""))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("   "))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("+"))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("invalid"))
+    assertFalse(shouldUseKotlinCompilerOptionsDsl("2"))
   }
 }
