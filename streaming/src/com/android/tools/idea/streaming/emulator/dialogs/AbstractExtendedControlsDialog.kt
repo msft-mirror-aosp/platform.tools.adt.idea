@@ -249,7 +249,7 @@ internal abstract class AbstractExtendedControlsDialog(
         Disposer.register(disposable) {
           openDialogs.remove(emulator, this@AbstractExtendedControlsDialog)
           dialogWrapper = null
-          for (callback in disposeCallbacks) {
+          for (callback in disposeCallbacks.asReversed()) {
             callback()
           }
           val dimensionService = DimensionService.getInstance()

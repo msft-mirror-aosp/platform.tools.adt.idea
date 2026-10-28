@@ -40,6 +40,7 @@ import com.android.emulator.control.EmulatorStatus
 import com.android.emulator.control.Environment
 import com.android.emulator.control.ExtendedControlsStatus
 import com.android.emulator.control.Fingerprint
+import com.android.emulator.control.GpsState
 import com.android.emulator.control.Image
 import com.android.emulator.control.ImageFormat
 import com.android.emulator.control.InputEvent
@@ -889,6 +890,42 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
   suspend fun getBattery(): BatteryState {
     val observer = SuspendingStreamObserver<BatteryState>()
     getBattery(observer)
+    return observer.getResult()
+  }
+
+  /** Sets the GPS location of the emulator. */
+  private fun setGps(gpsState: GpsState, streamObserver: StreamObserver<Empty>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("setGps(${shortDebugString(gpsState)})")
+    }
+    emulatorControllerStub.setGps(
+      gpsState,
+      DelegatingStreamObserver(streamObserver, EmulatorControllerGrpc.getSetGpsMethod()),
+    )
+  }
+
+  /** Sets the GPS location of the emulator. */
+  suspend fun setGps(gpsState: GpsState) {
+    val observer = SuspendingStreamObserver<Empty>()
+    setGps(gpsState, observer)
+    observer.getResult()
+  }
+
+  /** Retrieves the GPS location of the emulator. */
+  private fun getGps(streamObserver: StreamObserver<GpsState>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("getGps()")
+    }
+    emulatorControllerStub.getGps(
+      EMPTY_PROTO,
+      DelegatingStreamObserver(streamObserver, EmulatorControllerGrpc.getGetGpsMethod()),
+    )
+  }
+
+  /** Retrieves the GPS location of the emulator. */
+  suspend fun getGps(): GpsState {
+    val observer = SuspendingStreamObserver<GpsState>()
+    getGps(observer)
     return observer.getResult()
   }
 

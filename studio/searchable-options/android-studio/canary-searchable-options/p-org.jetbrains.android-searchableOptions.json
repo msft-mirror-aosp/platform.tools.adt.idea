@@ -1171,6 +1171,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Location",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Logcat",
       "path": "ActionManager"
     },
@@ -1332,6 +1336,10 @@
     },
     {
       "hit": "Open fingerprint controls",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open location controls",
       "path": "ActionManager"
     },
     {

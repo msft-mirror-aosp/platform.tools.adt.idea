@@ -59,6 +59,7 @@ class EmulatorExtendedControlsActionGroupTest {
   fun testFlagEnabledAndDisabledVisibility() {
     val view = emulatorViewRule.newEmulatorView()
     val actionId = "android.emulator.extended.controls"
+    val locationActionId = "android.emulator.location"
     val displaysActionId = "android.emulator.displays"
     val cellularActionId = "android.emulator.cellular"
     val batteryActionId = "android.emulator.battery"
@@ -73,6 +74,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(presentationDisabled.isVisible).isFalse()
     assertThat(presentationDisabled.isEnabled).isFalse()
+
+    val locationDisabled = updateAndGetActionPresentation(locationActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(locationDisabled.isVisible).isFalse()
+    assertThat(locationDisabled.isEnabled).isFalse()
 
     val displaysDisabled = updateAndGetActionPresentation(displaysActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(displaysDisabled.isVisible).isFalse()
@@ -114,6 +119,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val presentationEnabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(presentationEnabled.isVisible).isTrue()
     assertThat(presentationEnabled.isEnabled).isTrue()
+
+    val locationEnabled = updateAndGetActionPresentation(locationActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(locationEnabled.isVisible).isTrue()
+    assertThat(locationEnabled.isEnabled).isTrue()
 
     val displaysEnabled = updateAndGetActionPresentation(displaysActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(displaysEnabled.isVisible).isTrue()
@@ -205,44 +214,54 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(9)
-    val displaysAction = children[0]
+    assertThat(children).hasLength(10)
+    val locationAction = children[0]
+    assertThat(locationAction.templatePresentation.text).isEqualTo("Location")
+    assertThat(locationAction.templatePresentation.icon).isEqualTo(StagingIcons.LOCATION)
+
+    val displaysAction = children[1]
     assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
     assertThat(displaysAction.templatePresentation.icon).isEqualTo(StagingIcons.DISPLAYS)
 
-    val cellularAction = children[1]
+    val cellularAction = children[2]
     assertThat(cellularAction.templatePresentation.text).isEqualTo("Cellular")
     assertThat(cellularAction.templatePresentation.icon).isEqualTo(StagingIcons.CELLULAR)
 
-    val batteryAction = children[2]
+    val batteryAction = children[3]
     assertThat(batteryAction.templatePresentation.text).isEqualTo("Battery")
     assertThat(batteryAction.templatePresentation.icon).isEqualTo(StagingIcons.BATTERY)
 
-    val cameraAction = children[3]
+    val cameraAction = children[4]
     assertThat(cameraAction.templatePresentation.text).isEqualTo("Camera")
     assertThat(cameraAction.templatePresentation.icon).isEqualTo(StagingIcons.CAMERA)
 
-    val phoneAction = children[4]
+    val phoneAction = children[5]
     assertThat(phoneAction.templatePresentation.text).isEqualTo("Phone")
     assertThat(phoneAction.templatePresentation.icon).isEqualTo(StagingIcons.PHONE)
 
-    val devicePoseAction = children[5]
+    val devicePoseAction = children[6]
     assertThat(devicePoseAction.templatePresentation.text).isEqualTo("Device Pose")
     assertThat(devicePoseAction.templatePresentation.icon).isEqualTo(StagingIcons.DEVICE_POSE)
 
-    val sensorsAction = children[6]
+    val sensorsAction = children[7]
     assertThat(sensorsAction.templatePresentation.text).isEqualTo("Sensors")
     assertThat(sensorsAction.templatePresentation.icon).isEqualTo(StagingIcons.SENSORS)
 
-    val fingerprintAction = children[7]
+    val fingerprintAction = children[8]
     assertThat(fingerprintAction.templatePresentation.text).isEqualTo("Fingerprint")
     assertThat(fingerprintAction.templatePresentation.icon).isEqualTo(StagingIcons.FINGERPRINT)
 
-    val microphoneAction = children[8]
+    val microphoneAction = children[9]
     assertThat(microphoneAction.templatePresentation.text).isEqualTo("Microphone")
     assertThat(microphoneAction.templatePresentation.icon).isEqualTo(StagingIcons.MICROPHONE)
 
+    executeAction(locationAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    val locationDlg = findModelessDialog<DialogWrapper>()!!
+    assertThat(locationDlg.title).isEqualTo("Location ($avdName)")
+    assertThat(modelessDialogs).containsExactly(locationDlg)
+
     executeAction(displaysAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
+    assertThat(locationDlg.isShowing).isFalse()
     val displaysDlg = findModelessDialog<DialogWrapper>()!!
     assertThat(displaysDlg.title).isEqualTo("Displays ($avdName)")
     assertThat(modelessDialogs).containsExactly(displaysDlg)
