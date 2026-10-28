@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -53,7 +54,12 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupPositionProvider
 import com.android.tools.profilers.taskbased.common.constants.colors.TaskBasedUxColors.TASK_HOVER_BACKGROUND_COLOR
 import com.android.tools.profilers.taskbased.common.constants.colors.TaskBasedUxColors.TASK_SELECTION_BACKGROUND_COLOR
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions.TASK_HEIGHT_V2_DP
@@ -113,6 +119,29 @@ private fun TaskTooltipContent(task: ProfilerTaskType) {
   Text(text = annotatedString, style = LocalTextStyle.current.copy(color = JewelTheme.tooltipStyle.colors.content))
 }
 
+/**
+ * Places the tooltip below the tile like [TooltipPlacement.ComponentRect], but above the tile when it does not fit below, e.g. when the
+ * tile is cut off at the bottom of a short tool window. Otherwise, the popup moves the tooltip back inside the window, on top of the tile.
+ * If the tooltip fits on neither side, it is placed below as before.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+private object BelowOrAboveTooltipPlacement : TooltipPlacement, PopupPositionProvider {
+  @Composable
+  override fun positionProvider(cursorPosition: Offset): PopupPositionProvider = this
+
+  override fun calculatePosition(
+    anchorBounds: IntRect,
+    windowSize: IntSize,
+    layoutDirection: LayoutDirection,
+    popupContentSize: IntSize,
+  ): IntOffset {
+    val x = anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2
+    val above = anchorBounds.top - popupContentSize.height
+    val fitsBelow = anchorBounds.bottom + popupContentSize.height <= windowSize.height
+    return IntOffset(x, if (fitsBelow || above < 0) anchorBounds.bottom else above)
+  }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TaskIconAndDescriptionWrapperV2(task: ProfilerTaskType, isSelectedTask: Boolean, onTaskSelection: (task: ProfilerTaskType) -> Unit) {
@@ -132,7 +161,7 @@ fun TaskIconAndDescriptionWrapperV2(task: ProfilerTaskType, isSelectedTask: Bool
   ProfilerLingeringTooltip(
     tooltip = { Box(modifier = Modifier.width(TASK_TOOLTIP_WIDTH_V2_DP)) { TaskTooltipContent(task) } },
     lingerMillis = 0,
-    tooltipPlacement = TooltipPlacement.ComponentRect(),
+    tooltipPlacement = BelowOrAboveTooltipPlacement,
   ) {
     // The editor background gives tiles a distinct fill, but the tile text follows the IDE theme. Only use it when both are dark or
     // both are light; otherwise (e.g. Light theme + Dark editor scheme) let the tool window background show through.
