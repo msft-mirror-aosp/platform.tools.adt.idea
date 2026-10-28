@@ -19,9 +19,15 @@ import com.android.SdkConstants
 import com.android.Version
 import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.gradle.project.upgrade.AgpUpgradeComponentNecessity.MANDATORY_CODEPENDENT
+import com.intellij.openapi.project.guessProjectDir
+import com.intellij.openapi.roots.ModuleRootModificationUtil
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.psi.search.GlobalSearchScope
+import com.intellij.psi.stubs.StubUpdatingIndex
+import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.util.indexing.FileBasedIndex
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -192,6 +198,25 @@ class GradleVersionRefactoringProcessorTest : UpgradeGradleFileModelTestCase() {
     val usages = processor.findUsages()
     assertTrue(usages.isNotEmpty())
     usages.forEach { assertNotNull(it.tooltipText) }
+  }
+
+  @Test
+  fun testOldGradleVersionWhenNotIndexedAfterAddingContentRoot() {
+    val module = projectRule.module
+    val projectDir = project.guessProjectDir()!!
+    ModuleRootModificationUtil.updateModel(module) { model ->
+      model.contentEntries.forEach { model.removeContentEntry(it) }
+    }
+    writeToGradleWrapperPropertiesFile(TestFileName("GradleVersion/OldGradleVersion"))
+    FileBasedIndex.getInstance().ensureUpToDate(StubUpdatingIndex.INDEX_ID, project, GlobalSearchScope.allScope(project))
+    PsiTestUtil.addContentRoot(module, projectDir)
+
+    val processor = GradleVersionRefactoringProcessor(project, AgpVersion.parse("3.5.0"), AgpVersion.parse("7.4.0"))
+    processor.run()
+
+    val expectedText = FileUtil.loadFile(TestFileName("GradleVersion/OldGradleVersion740Expected").toFile(testDataPath, ""))
+    val actualText = VfsUtilCore.loadText(gradleWrapperPropertiesFile)
+    assertEquals(expectedText, actualText)
   }
 
   // TODO(b/159420573): test that with a sufficiently new (>= CompatibleGradleVersion.VERSION_MIN) declared version of gradle, this

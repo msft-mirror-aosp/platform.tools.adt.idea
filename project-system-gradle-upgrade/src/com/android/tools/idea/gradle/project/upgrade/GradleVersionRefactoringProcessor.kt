@@ -61,15 +61,11 @@ class GradleVersionRefactoringProcessor : AgpUpgradeComponentRefactoringProcesso
       val virtualFile = VfsUtil.findFileByIoFile(ioFile, false) ?: return@forEach
       if (!virtualFile.isValid) return@forEach
       val propertiesFile = PsiManager.getInstance(project).findFile(virtualFile) as? PropertiesFile ?: return@forEach
-      // TODO(b/262527341): This line looks like it should use propertiesFile.findPropertyByKey().  However, that is implemented by
-      //  looking in indexes, which for some reason under some circumstances doesn't actually contain the keys in
-      //  gradle-wrapper.properties.  Filtering all the properties of the file ourselves is a workaround for this unexplained
-      //  behavior.
-      val urlProperty = propertiesFile.properties.firstOrNull { SdkConstants.GRADLE_DISTRIBUTION_URL_PROPERTY == it.key } ?: return@forEach
+      val urlProperty = propertiesFile.findPropertyByKeyWithoutIndex(SdkConstants.GRADLE_DISTRIBUTION_URL_PROPERTY) ?: return@forEach
       val currentUrl = urlProperty.value?.removeEscapingBackslashes() ?: return@forEach
       val currentGradleVersion = GradleWrapper.getGradleVersion(currentUrl) ?: return@forEach
       val parsedCurrentGradleVersion = runCatching { GradleVersion.version(currentGradleVersion) }.getOrNull() ?: return@forEach
-      val shaProperty = propertiesFile.properties.firstOrNull { it.name == WrapperExecutor.DISTRIBUTION_SHA_256_SUM }
+      val shaProperty = propertiesFile.findPropertyByKeyWithoutIndex(WrapperExecutor.DISTRIBUTION_SHA_256_SUM)
       body(parsedCurrentGradleVersion, currentUrl, urlProperty.psiElement, shaProperty?.psiElement)
     }
   }
