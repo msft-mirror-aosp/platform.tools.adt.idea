@@ -16,6 +16,7 @@
 package com.android.tools.rendering.classloading
 
 import com.android.annotations.concurrency.GuardedBy
+import com.android.annotations.concurrency.Slow
 import com.android.tools.rendering.classloading.loaders.ClassLoaderLoader
 import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
 import com.intellij.openapi.util.SystemInfo
@@ -101,8 +102,38 @@ private const val MAX_CACHED_CONFIGURATIONS = 8
  * (`ModuleClassLoaderUtil`) and standalone preview rendering (`DefaultLoader`).
  */
 object ExternalLibraryClassLoaderPool {
-  private val ourLoaderCachePool = UrlClassLoader.createCachePool()
   private val externalLibraryCacheLock = Any()
+
+  @GuardedBy("externalLibraryCacheLock") private var ourLoaderCachePool = UrlClassLoader.createCachePool()
+
+  /** Tracks the latest `libraryPath -> "$libraryPath@$modificationTime"` identity observed for each library path. */
+  @GuardedBy("externalLibraryCacheLock") private val lastKnownLibraryIdentities = HashMap<String, String>()
+
+  /**
+   * Path segments that identify project or sibling-module build outputs (Gradle subproject JARs under `build/` and IntelliJ/JPS module
+   * outputs under `out/`) as opposed to immutable external dependency archives in Gradle/Maven caches.
+   */
+  private val BUILD_OUTPUT_PATH_SEGMENTS =
+    listOf(
+      "/build/intermediates/",
+      "/build/libs/",
+      "/build/outputs/",
+      "/build/classes/",
+      "/build/generated/",
+      "/build/tmp/",
+      "/out/production/",
+      "/out/test/",
+    )
+
+  /**
+   * Normalized filesystem paths of non-build-output library JARs that have been modified in-place on disk at least once (e.g. a local JAR
+   * in `libs/` overwritten in place).
+   *
+   * Project and sibling-module build outputs are already excluded from [ourLoaderCachePool] upfront via [isMutableBuildOutputPath]. If any
+   * other JAR path that was previously admitted to [ourLoaderCachePool] mutates in-place, it is recorded here so that only its first
+   * mutation resets [ourLoaderCachePool] and subsequent updates only evict the affected [ExternalLibraryClassLoaderEntry].
+   */
+  @GuardedBy("externalLibraryCacheLock") private val mutatedLibraryPaths = HashSet<String>()
 
   @GuardedBy("externalLibraryCacheLock")
   private var externalLibraryCacheRef = SoftReference<ConcurrentHashMap<List<String>, ExternalLibraryClassLoaderEntry>>(null)
@@ -118,6 +149,7 @@ object ExternalLibraryClassLoaderPool {
    * The cache map is held via a [SoftReference] ([externalLibraryCacheRef]) so it can be reclaimed under memory pressure, and is bounded to
    * at most [MAX_CACHED_CONFIGURATIONS] entries to avoid accumulating stale classloaders across repeated dependency updates.
    */
+  @Slow
   fun getOrCreateEntry(
     externalLibraries: List<Path>,
     libraryIdentities: Map<String, String>,
@@ -127,6 +159,14 @@ object ExternalLibraryClassLoaderPool {
       libraryIdentities[normalized] ?: normalized
     }
     return synchronized(externalLibraryCacheLock) {
+      // Any superseded library identity removes all referencing entries from
+      // `externalLibraryCacheRef`. Consequently, a cache hit here guarantees that every identity in
+      // `orderedIdentities` is still current without performing O(N) identity-map updates on warm
+      // preview refreshes.
+      externalLibraryCacheRef.get()?.get(orderedIdentities)?.let {
+        return@synchronized it
+      }
+      updateKnownLibraryIdentitiesLocked(externalLibraries, libraryIdentities)
       val map =
         externalLibraryCacheRef.get()
           ?: ConcurrentHashMap<List<String>, ExternalLibraryClassLoaderEntry>().also {
@@ -136,7 +176,7 @@ object ExternalLibraryClassLoaderPool {
         if (map.size >= MAX_CACHED_CONFIGURATIONS) {
           map.clear()
         }
-        ExternalLibraryClassLoaderEntry(createUrlClassLoader(externalLibraries))
+        ExternalLibraryClassLoaderEntry(createUrlClassLoaderLocked(externalLibraries, !SystemInfo.isWindows))
       }
     }
   }
@@ -145,18 +185,104 @@ object ExternalLibraryClassLoaderPool {
    * Creates a [UrlClassLoader] over [paths] backed by the shared [ourLoaderCachePool] so ZIP central-directory and package-hash metadata
    * are reused across class loaders.
    */
+  @Slow
   @JvmOverloads
   fun createUrlClassLoader(
     paths: List<Path>,
     allowLock: Boolean = !SystemInfo.isWindows,
   ): UrlClassLoader {
-    return UrlClassLoader.build().files(paths).useCache(ourLoaderCachePool) { true }.allowLock(allowLock).get()
+    val identities = computeLibraryIdentities(paths)
+    return synchronized(externalLibraryCacheLock) {
+      updateKnownLibraryIdentitiesLocked(paths, identities)
+      createUrlClassLoaderLocked(paths, allowLock)
+    }
+  }
+
+  @GuardedBy("externalLibraryCacheLock")
+  private fun createUrlClassLoaderLocked(
+    paths: List<Path>,
+    allowLock: Boolean,
+  ): UrlClassLoader {
+    val mutatedPathsSnapshot = if (mutatedLibraryPaths.isEmpty()) emptySet() else HashSet(mutatedLibraryPaths)
+    return UrlClassLoader.build()
+      .files(paths)
+      .useCache(ourLoaderCachePool) { path ->
+        val normalized = FileUtil.toSystemIndependentName(path.toString())
+        !isMutableBuildOutputPath(normalized) && normalized !in mutatedPathsSnapshot
+      }
+      .allowLock(allowLock)
+      .get()
+  }
+
+  /**
+   * Returns `true` if [normalizedPath] represents a mutable project or sibling-module build output (such as a Gradle subproject JAR under
+   * `build/intermediates/` or `build/libs/`, an IntelliJ/JPS output under `out/production/`, or a non-archive class directory) rather than
+   * an immutable external dependency archive.
+   *
+   * Excluding these paths from [ourLoaderCachePool] upfront via `useCache(ourLoaderCachePool, condition)` avoids ever populating—or needing
+   * to reset—the shared [ourLoaderCachePool] when sibling modules are rebuilt in place. Note that `UrlClassLoader` still builds its own
+   * per-instance `ClasspathCache` package index for every entry regardless of the `cachingCondition` predicate, and
+   * [ExternalLibraryClassLoaderPool] reuses the resulting [ExternalLibraryClassLoaderEntry] across warm renders until a file timestamp
+   * changes.
+   */
+  internal fun isMutableBuildOutputPath(normalizedPath: String): Boolean {
+    if (!normalizedPath.endsWith(".jar", ignoreCase = true) && !normalizedPath.endsWith(".zip", ignoreCase = true)) {
+      return true
+    }
+    return BUILD_OUTPUT_PATH_SEGMENTS.any { segment -> normalizedPath.contains(segment) }
+  }
+
+  /**
+   * Tracks the latest `libraryPath -> "$libraryPath@$modificationTime"` identity for each path in [libraries] and evicts any cached
+   * [ExternalLibraryClassLoaderEntry] referencing a superseded identity whenever a previously seen library path changes its identity on
+   * disk.
+   *
+   * Why this is necessary: IntelliJ's `CachePoolImpl` (`UrlClassLoader.createCachePool()`) keys `loaderIndexCache` (package-hash indices)
+   * and `manifestData` strictly by [Path] without modification timestamps and does not expose per-path removal. When a dependency JAR or
+   * directory (such as a sibling Gradle module's `classes.jar`) is rebuilt in place at the same [Path]—for example after switching Git
+   * branches or adding a new package to a library module—reusing a cached `IndexRegistrar` from [ourLoaderCachePool] causes the newly
+   * constructed [UrlClassLoader] to inherit the stale package-hash index and fail with [ClassNotFoundException] for classes in newly added
+   * packages.
+   *
+   * Project and sibling-module build outputs ([isMutableBuildOutputPath]) are excluded from [ourLoaderCachePool] upfront in
+   * [createUrlClassLoaderLocked], so rebuilding them in place never populates or resets [ourLoaderCachePool]. If any other JAR path that
+   * was previously eligible for [ourLoaderCachePool] mutates in-place on disk, it is recorded in [mutatedLibraryPaths] and
+   * [ourLoaderCachePool] is reset once so subsequent loads exclude that path as well.
+   */
+  @GuardedBy("externalLibraryCacheLock")
+  private fun updateKnownLibraryIdentitiesLocked(
+    libraries: List<Path>,
+    libraryIdentities: Map<String, String>,
+  ) {
+    val staleIdentities = HashSet<String>()
+    var shouldResetCachePool = false
+    for (path in libraries) {
+      val normalized = FileUtil.toSystemIndependentName(path.toString())
+      val identity = libraryIdentities[normalized] ?: normalized
+      val previous = lastKnownLibraryIdentities.put(normalized, identity)
+      if (previous != null && previous != identity) {
+        staleIdentities.add(previous)
+        if (!isMutableBuildOutputPath(normalized) && mutatedLibraryPaths.add(normalized)) {
+          // This non-build-output archive was eligible for caching in `ourLoaderCachePool` prior to
+          // its first in-place mutation; reset the shared pool once and exclude this path from
+          // future shared-pool caching via `mutatedLibraryPaths`.
+          shouldResetCachePool = true
+        }
+      }
+    }
+    if (shouldResetCachePool) {
+      ourLoaderCachePool = UrlClassLoader.createCachePool()
+    }
+    if (staleIdentities.isNotEmpty()) {
+      externalLibraryCacheRef.get()?.keys?.removeIf { key -> key.any { it in staleIdentities } }
+    }
   }
 
   /**
    * Computes the `libraryPath -> "$libraryPath@$modificationTime"` identity map for [libraries] using [modificationTimeProvider] (which
    * defaults to reading [Files.getLastModifiedTime]).
    */
+  @Slow
   @JvmOverloads
   fun computeLibraryIdentities(
     libraries: Iterable<Path>,
@@ -222,11 +348,16 @@ object ExternalLibraryClassLoaderPool {
         }
     )
 
+  @TestOnly internal fun getCachePoolForTest(): UrlClassLoader.CachePool = synchronized(externalLibraryCacheLock) { ourLoaderCachePool }
+
   @TestOnly
   fun clearForTest() {
     synchronized(externalLibraryCacheLock) {
       externalLibraryCacheRef.get()?.clear()
       externalLibraryCacheRef.clear()
+      lastKnownLibraryIdentities.clear()
+      mutatedLibraryPaths.clear()
+      ourLoaderCachePool = UrlClassLoader.createCachePool()
     }
   }
 }
