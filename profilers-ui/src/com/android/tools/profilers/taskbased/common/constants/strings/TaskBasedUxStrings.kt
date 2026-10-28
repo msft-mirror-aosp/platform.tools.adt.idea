@@ -259,19 +259,6 @@ object TaskBasedUxStrings {
       ProfilerTaskType.UNSPECIFIED -> ""
     }
 
-  fun getTaskShortName(taskType: ProfilerTaskType, isProfilerHomeTabV2Enabled: Boolean) =
-    when (taskType) {
-      ProfilerTaskType.HEAP_DUMP,
-      ProfilerTaskType.SYSTEM_TRACE,
-      ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
-      ProfilerTaskType.NATIVE_ALLOCATIONS -> taskType.description
-      ProfilerTaskType.LIVE_VIEW -> if (isProfilerHomeTabV2Enabled) "Live Telemetry" else ""
-      ProfilerTaskType.LEAKCANARY -> if (isProfilerHomeTabV2Enabled) "LeakCanary" else ""
-      ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> if (isProfilerHomeTabV2Enabled) "Method Trace" else taskType.description
-      ProfilerTaskType.CALLSTACK_SAMPLE -> if (isProfilerHomeTabV2Enabled) "Stack Sampling" else "Callstack Sample"
-      ProfilerTaskType.UNSPECIFIED -> ""
-    }
-
   fun getTaskDescriptions(taskType: ProfilerTaskType) =
     when (taskType) {
       ProfilerTaskType.HEAP_DUMP -> "Captures all live objects on the Java/Kotlin heap at a single point in time."

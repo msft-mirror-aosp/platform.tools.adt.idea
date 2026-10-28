@@ -26,6 +26,23 @@ enum class ProfilerTaskType(val description: String, val prefersProfileable: Boo
   NATIVE_ALLOCATIONS("Native Allocations", true, 7),
   UNSPECIFIED("Unspecified", false, Int.MAX_VALUE);
 
+  /**
+   * Returns the short name of the task shown in the task-based UI, e.g. in the task grid and the task tab titles. With the Home tab V2,
+   * some tasks are shown under a new name, e.g. "Live Telemetry" for [LIVE_VIEW].
+   */
+  fun getShortName(isProfilerHomeTabV2Enabled: Boolean): String =
+    when (this) {
+      HEAP_DUMP,
+      SYSTEM_TRACE,
+      JAVA_KOTLIN_ALLOCATIONS,
+      NATIVE_ALLOCATIONS -> description
+      LIVE_VIEW -> if (isProfilerHomeTabV2Enabled) "Live Telemetry" else ""
+      LEAKCANARY -> if (isProfilerHomeTabV2Enabled) "LeakCanary" else ""
+      JAVA_KOTLIN_METHOD_RECORDING -> if (isProfilerHomeTabV2Enabled) "Method Trace" else description
+      CALLSTACK_SAMPLE -> if (isProfilerHomeTabV2Enabled) "Stack Sampling" else "Callstack Sample"
+      UNSPECIFIED -> ""
+    }
+
   companion object {
     fun getNthRankedTask(rank: Int) = entries.find { it.rank == rank } ?: UNSPECIFIED
   }

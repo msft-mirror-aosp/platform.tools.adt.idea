@@ -484,7 +484,7 @@ class TaskHomeTabTest {
   }
 
   private fun verifyTaskExistsAndSelect(taskType: ProfilerTaskType, isV2Enabled: Boolean = true) {
-    val taskName = TaskBasedUxStrings.getTaskShortName(taskType, isV2Enabled)
+    val taskName = taskType.getShortName(isV2Enabled)
     composeTestRule.onNodeWithText(taskName).assertIsDisplayed().assertIsEnabled().assertHasClickAction()
     composeTestRule.onNodeWithText(taskName).performClick()
   }

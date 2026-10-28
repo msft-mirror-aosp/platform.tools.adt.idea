@@ -111,7 +111,7 @@ fun TaskIconAndDescriptionWrapper(task: ProfilerTaskType, isSelectedTask: Boolea
 @Composable
 fun TaskIconAndDescription(task: ProfilerTaskType, boxScope: BoxScope) {
   val taskTitle = TaskBasedUxStrings.getTaskTitle(task)
-  val taskSubtitle = TaskBasedUxStrings.getTaskShortName(task, false)
+  val taskSubtitle = task.getShortName(isProfilerHomeTabV2Enabled = false)
 
   with(boxScope) {
     Column(

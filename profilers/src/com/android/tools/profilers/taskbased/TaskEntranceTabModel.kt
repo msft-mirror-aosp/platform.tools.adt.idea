@@ -84,9 +84,7 @@ abstract class TaskEntranceTabModel(val profilers: StudioProfilers) {
     if (currentTaskHandler != null) {
       val dialogTitle = if (isTaskOngoing) "Confirm Termination of Ongoing Recording" else "Confirm Close of Currently Open Task"
       // Prompt/warn the user that there can only be one task tab open at a time, so starting a new task will close the current one first.
-      val dialogMsg =
-        "Profiler displays only one task at this time. Starting a new task or opening a task " +
-          "recording will ${if (isTaskOngoing) "terminate your ongoing recording." else "close your currently open task."}"
+      val dialogMsg = getEnterTaskDialogMessage(isTaskOngoing, selectedTaskTypeForEditor)
 
       // Retrieve user selection for "Do not ask again" checkbox on dialog. Prevent dialog from showing if true.
       val hidePrompt = profilers.ideServices.persistentProfilerPreferences.getBoolean(HIDE_NEW_TASK_PROMPT, false)
@@ -110,6 +108,29 @@ abstract class TaskEntranceTabModel(val profilers: StudioProfilers) {
 
     // Enter the new task
     doEnterTaskButton()
+  }
+
+  /**
+   * Returns the message of the dialog that confirms closing the open task, or terminating the ongoing recording if [isTaskOngoing], before
+   * the [nextTaskType] task is entered.
+   *
+   * With the Home tab V2, the message names what the user is doing, i.e. starting the [nextTaskType] task from the Home tab or opening a
+   * recording of it from the Past Recordings tab, and says that the task can be reopened from Past Recordings. Otherwise, it says that the
+   * Profiler displays only one task at a time.
+   */
+  private fun getEnterTaskDialogMessage(isTaskOngoing: Boolean, nextTaskType: ProfilerTaskType?): String {
+    val consequence = if (isTaskOngoing) "terminate your ongoing recording." else "close your currently open task."
+    if (!profilers.ideServices.featureConfig.isProfilerHomeTabV2Enabled) {
+      return "Profiler displays only one task at this time. Starting a new task or opening a task recording will $consequence"
+    }
+    val nextTaskName = nextTaskType?.getShortName(isProfilerHomeTabV2Enabled = true)?.takeIf { it.isNotEmpty() }
+    val action =
+      if (this is PastRecordingsTabModel) {
+        if (nextTaskName != null) "Opening a $nextTaskName task recording" else "Opening this recording"
+      } else {
+        if (nextTaskName != null) "Starting $nextTaskName" else "Starting a new task"
+      }
+    return "$action will $consequence You can reopen it from Past Recordings."
   }
 
   /**

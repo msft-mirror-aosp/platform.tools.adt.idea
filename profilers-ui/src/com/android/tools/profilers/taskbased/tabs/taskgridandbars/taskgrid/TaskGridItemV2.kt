@@ -126,8 +126,7 @@ private fun TaskTooltipContent(task: ProfilerTaskType) {
  */
 @OptIn(ExperimentalFoundationApi::class)
 private object BelowOrAboveTooltipPlacement : TooltipPlacement, PopupPositionProvider {
-  @Composable
-  override fun positionProvider(cursorPosition: Offset): PopupPositionProvider = this
+  @Composable override fun positionProvider(cursorPosition: Offset): PopupPositionProvider = this
 
   override fun calculatePosition(
     anchorBounds: IntRect,
@@ -193,7 +192,7 @@ fun TaskIconAndDescriptionWrapperV2(task: ProfilerTaskType, isSelectedTask: Bool
           }
           .onHover { isHovered = it }
     ) {
-      val taskTitle = TaskBasedUxStrings.getTaskShortName(task, true)
+      val taskTitle = task.getShortName(isProfilerHomeTabV2Enabled = true)
       val taskDescription = TaskBasedUxStrings.getTaskDescriptions(task)
 
       Column(modifier = Modifier.fillMaxWidth().padding(16.dp).testTag(task.description)) {
