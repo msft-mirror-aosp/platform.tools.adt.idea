@@ -271,7 +271,7 @@ interface AndroidProjectRule : TestRule {
             return base
           }
         }
-      val wrappedRules: TestRule = RuleChain.outerRule(AnalyticsPathsRule()).around(projectRule).around(integrationTestEdtRule)
+      val wrappedRules: TestRule = RuleChain.outerRule(projectRule).around(integrationTestEdtRule)
       return object : IntegrationTestEnvironmentRule, TestRule by wrappedRules {
         override fun getBaseTestPath(): String = projectRule.fixture.tempDirPath
 
@@ -430,53 +430,61 @@ private fun <T : CodeInsightTestFixture, H> chain(
   }
 }
 
-class TestEnvironmentRuleImpl(val withAndroidSdk: Boolean) : NamedExternalResource(), TestEnvironmentRule {
+class TestEnvironmentRuleImpl(val withAndroidSdk: Boolean) : TestEnvironmentRule {
   private val testEnvironmentDisposable: Disposable = Disposer.newDisposable()
   val mockitoCleaner = MockitoThreadLocalsCleaner()
   private var userHome: String? = null
+  private val analyticsPathsRule = AnalyticsPathsRule()
 
-  override fun before(description: Description) {
-    try {
-      doBeforeActions(description)
-    } catch (t: Throwable) {
-      // cleanup if init failed
-      mockitoCleaner.cleanupAndTearDown()
-      throw t
-    }
-  }
+  private val delegate =
+    object : NamedExternalResource() {
+      override fun before(description: Description) {
+        try {
+          doBeforeActions(description)
+        } catch (t: Throwable) {
+          // cleanup if init failed
+          mockitoCleaner.cleanupAndTearDown()
+          throw t
+        }
+      }
 
-  private fun doBeforeActions(description: Description) {
-    // This needs to be called statically once, but it's fine to do it here as it's idempotent
-    initializeTestEnvironment()
-    mockitoCleaner.setup()
+      private fun doBeforeActions(description: Description) {
+        // This needs to be called statically once, but it's fine to do it here as it's idempotent
+        initializeTestEnvironment()
+        mockitoCleaner.setup()
 
-    userHome = System.getProperty("user.home")
-    val testSpecificName = UsefulTestCase.TEMP_DIR_MARKER + description.testClass.simpleName.substringAfterLast('$')
-    // Reset user home directory.
-    System.setProperty("user.home", FileUtils.join(FileUtil.getTempDirectory(), testSpecificName, "nonexistent_user_home"))
+        userHome = System.getProperty("user.home")
+        val testSpecificName = UsefulTestCase.TEMP_DIR_MARKER + description.testClass.simpleName.substringAfterLast('$')
+        // Reset user home directory.
+        System.setProperty("user.home", FileUtils.join(FileUtil.getTempDirectory(), testSpecificName, "nonexistent_user_home"))
 
-    // Disable antivirus checks on Windows.
-    StudioFlags.ANTIVIRUS_METRICS_ENABLED.overrideForTest(false, testEnvironmentDisposable)
-    StudioFlags.ANTIVIRUS_NOTIFICATION_ENABLED.overrideForTest(false, testEnvironmentDisposable)
+        // Disable antivirus checks on Windows.
+        StudioFlags.ANTIVIRUS_METRICS_ENABLED.overrideForTest(false, testEnvironmentDisposable)
+        StudioFlags.ANTIVIRUS_NOTIFICATION_ENABLED.overrideForTest(false, testEnvironmentDisposable)
 
-    initTestApplication()
-    // TODO(b/418973297): Consolidate all init logic in the different test frameworks
-    // Enable phased sync
-    GradleSpecificInitializer.initializePhasedSync()
-  }
+        initTestApplication()
+        // TODO(b/418973297): Consolidate all init logic in the different test frameworks
+        // Enable phased sync
+        GradleSpecificInitializer.initializePhasedSync()
+      }
 
-  override fun after(description: Description) {
-    TelemetryManager.getInstance().forceFlushMetricsBlocking()
-    runInEdtAndWait {
-      if (withAndroidSdk) {
-        removeAllAndroidSdks()
+      override fun after(description: Description) {
+        TelemetryManager.getInstance().forceFlushMetricsBlocking()
+        runInEdtAndWait {
+          if (withAndroidSdk) {
+            removeAllAndroidSdks()
+          }
+        }
+        userHome?.let { System.setProperty("user.home", it) } ?: System.clearProperty("user.home")
+        mockitoCleaner.cleanupAndTearDown()
+        runInEdtAndWait { Disposer.dispose(testEnvironmentDisposable) }
+        checkUndisposedAndroidRelatedObjects()
+        ApplicationManager.getApplication().cleanApplicationState()
       }
     }
-    userHome?.let { System.setProperty("user.home", it) } ?: System.clearProperty("user.home")
-    mockitoCleaner.cleanupAndTearDown()
-    runInEdtAndWait { Disposer.dispose(testEnvironmentDisposable) }
-    checkUndisposedAndroidRelatedObjects()
-    ApplicationManager.getApplication().cleanApplicationState()
+
+  override fun apply(base: Statement, description: Description): Statement {
+    return RuleChain.outerRule(analyticsPathsRule).around(delegate).apply(base, description)
   }
 }
 
