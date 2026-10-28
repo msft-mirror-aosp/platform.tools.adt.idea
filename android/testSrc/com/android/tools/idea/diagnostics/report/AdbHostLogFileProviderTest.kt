@@ -24,6 +24,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.replaceService
+import java.nio.file.Files
 import java.nio.file.Paths
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Before
@@ -42,11 +43,13 @@ class AdbHostLogFileProviderTest {
   @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(disposableRule).around(temporaryFolder)
 
   private val serverStatusState = MutableStateFlow<ServerStatusState>(ServerStatusState.NotConnected)
+  private lateinit var pathProvider: PathProvider
   private lateinit var provider: AdbHostLogFileProvider
 
   @Before
   fun setUp() {
-    provider = AdbHostLogFileProvider(PathProvider(temporaryFolder.root.path, null, null, null))
+    pathProvider = PathProvider(temporaryFolder.root.path, null, null, null)
+    provider = AdbHostLogFileProvider(pathProvider)
     val retriever = mock<AdbServerStatusRetriever>()
     whenever(retriever.serverStatusState).thenReturn(serverStatusState)
     projectRule.project.replaceService(AdbServerStatusRetriever::class.java, retriever, disposableRule.disposable)
@@ -67,9 +70,68 @@ class AdbHostLogFileProviderTest {
 
   @Test
   fun returnsHostLogAndServerStatusFiles() {
-    serverStatusState.value = ServerStatusState.Supported(ServerStatus(version = "35.0.2", absoluteLogPath = "/tmp/adb.log"))
+    val adbLogFile = temporaryFolder.newFile("adb.log")
+    serverStatusState.value = ServerStatusState.Supported(ServerStatus(version = "35.0.2", absoluteLogPath = adbLogFile.path))
 
     assertThat(provider.getFiles(projectRule.project).map { it.destination })
       .containsExactly(Paths.get("adb.log"), Paths.get("server-status.log"))
+  }
+
+  @Test
+  fun returnsOriginalHostLogWhenSizeIsWithinLimit() {
+    val adbLogFile = temporaryFolder.newFile("adb.log").toPath()
+    Files.writeString(adbLogFile, "0123456789")
+    val limitedProvider = AdbHostLogFileProvider(pathProvider, maxLogSizeBytes = 10)
+    serverStatusState.value = ServerStatusState.Supported(ServerStatus(version = "35.0.2", absoluteLogPath = adbLogFile.toString()))
+
+    val files = limitedProvider.getFiles(projectRule.project)
+    val hostLogFileInfo = files.first { it.destination == Paths.get("adb.log") }
+
+    assertThat(hostLogFileInfo.source).isEqualTo(adbLogFile)
+    assertThat(Files.readString(hostLogFileInfo.source)).isEqualTo("0123456789")
+  }
+
+  @Test
+  fun truncatesHostLogAndSkipsPartialFirstLineWhenSizeExceedsLimit() {
+    val adbLogFile = temporaryFolder.newFile("adb.log").toPath()
+    val originalContent = "first line 🚀\nsecond line\nthird line\n"
+    Files.writeString(adbLogFile, originalContent)
+    // Seek offset (size - 28) lands mid-line inside "first line 🚀\n" (and inside the 4-byte UTF-8 emoji).
+    val limitedProvider = AdbHostLogFileProvider(pathProvider, maxLogSizeBytes = 28)
+    serverStatusState.value = ServerStatusState.Supported(ServerStatus(version = "35.0.2", absoluteLogPath = adbLogFile.toString()))
+
+    val files = limitedProvider.getFiles(projectRule.project)
+    val hostLogFileInfo = files.first { it.destination == Paths.get("adb.log") }
+
+    val expectedTruncatedPath =
+      DiagnosticsSummaryFileProvider.getDiagnosticsDirectoryPath(pathProvider.logDir).resolve("adb.log")
+    assertThat(hostLogFileInfo.source).isEqualTo(expectedTruncatedPath)
+    assertThat(Files.readString(hostLogFileInfo.source)).isEqualTo("second line\nthird line\n")
+    assertThat(Files.readString(adbLogFile)).isEqualTo(originalContent)
+  }
+
+  @Test
+  fun omitsHostLogWhenPathIsEmptyOrDirectoryOrRoot() {
+    for (invalidPath in listOf("", "/", temporaryFolder.root.path)) {
+      serverStatusState.value = ServerStatusState.Supported(ServerStatus(version = "35.0.2", absoluteLogPath = invalidPath))
+
+      assertThat(provider.getFiles(projectRule.project).map { it.destination })
+        .containsExactly(Paths.get("server-status.log"))
+    }
+  }
+
+  @Test
+  fun omitsHostLogWhenTruncationFailsWithIoException() {
+    val adbLogFile = temporaryFolder.newFile("adb.log").toPath()
+    Files.writeString(adbLogFile, "first line\nsecond line\nthird line\n")
+    val limitedProvider = AdbHostLogFileProvider(pathProvider, maxLogSizeBytes = 15)
+    // Pre-create a non-empty directory at the destination path so Files.copy throws DirectoryNotEmptyException (IOException).
+    val conflictingDir =
+      DiagnosticsSummaryFileProvider.getDiagnosticsDirectoryPath(pathProvider.logDir).resolve("adb.log")
+    Files.createDirectories(conflictingDir.resolve("nested"))
+    serverStatusState.value = ServerStatusState.Supported(ServerStatus(version = "35.0.2", absoluteLogPath = adbLogFile.toString()))
+
+    assertThat(limitedProvider.getFiles(projectRule.project).map { it.destination })
+      .containsExactly(Paths.get("server-status.log"))
   }
 }
