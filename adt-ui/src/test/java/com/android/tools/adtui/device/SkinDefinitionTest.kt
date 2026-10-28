@@ -264,8 +264,6 @@ class SkinDefinitionTest {
         "tv_720p",
         "tv_1080p",
         "tv_4k",
-        "wearos_large_round", // TODO: Remove exclusion when the skin is fixed.
-        "wearos_small_round", // TODO: Remove exclusion when the skin is fixed.
         "wearos_square",
       )
     val skinProblems = mutableListOf<String>()

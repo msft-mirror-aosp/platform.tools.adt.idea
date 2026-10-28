@@ -14,14 +14,15 @@ parts {
             height  454
             x       0
             y       0
+            corner_radius 200
         }
     }
 }
 
 layouts {
     portrait {
-        width     539
-        height    539
+        width     500
+        height    500
 
         part1 {
             name    portrait
@@ -31,8 +32,8 @@ layouts {
 
         part2 {
             name    device
-            x       42
-            y       42
+            x       23
+            y       23
         }
     }
 }
