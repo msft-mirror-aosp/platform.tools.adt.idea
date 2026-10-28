@@ -33,6 +33,7 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import javax.swing.JButton
 import javax.swing.JSlider
 import javax.swing.JTextField
 import kotlin.time.Duration.Companion.seconds
@@ -93,7 +94,7 @@ class BatteryDialogTest {
     assertThat(healthBox.width).isEqualTo(chargerBox.width)
     assertThat(statusBox.width).isEqualTo(chargerBox.width)
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -127,7 +128,7 @@ class BatteryDialogTest {
         statusBox.selectedItem?.toString() == "Discharging"
     }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -176,8 +177,8 @@ class BatteryDialogTest {
         fakeEmulator.batteryStatus.status == BatteryStatus.DISCHARGING
     }
 
-    val closeButton = rootPane.defaultButton
-    assertThat(closeButton.text).isEqualTo("Close")
+    val closeButton = ui.getComponent<JButton> { it.text == "Close" }
+    assertThat(rootPane.defaultButton).isNull()
     ui.clickOn(closeButton)
     assertThat(dialog.isShowing).isFalse()
   }

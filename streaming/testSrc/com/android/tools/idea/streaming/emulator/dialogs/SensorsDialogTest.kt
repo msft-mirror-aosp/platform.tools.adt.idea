@@ -31,6 +31,7 @@ import com.intellij.testFramework.RunsInEdt
 import java.awt.event.FocusEvent
 import java.awt.event.KeyEvent
 import java.nio.file.Path
+import javax.swing.JButton
 import javax.swing.JSlider
 import javax.swing.JTextField
 import javax.swing.SwingUtilities
@@ -182,7 +183,7 @@ class SensorsDialogTest {
     assertThat(lightSlider.width).isEqualTo(sliderWidth)
     assertThat(humiditySlider.width).isEqualTo(sliderWidth)
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -230,7 +231,7 @@ class SensorsDialogTest {
     assertThat(lightField.text).isEqualTo("12500.0")
     assertThat(humidityField.text).isEqualTo("65.4")
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -350,7 +351,7 @@ class SensorsDialogTest {
     assertThat(magNorthField.text).isEqualTo("-1000.0")
     waitForCondition(5.seconds) { abs(fakeEmulator.magneticField[0] - (-1000.0f)) < 0.05f }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -385,7 +386,7 @@ class SensorsDialogTest {
     assertThat(heartRateSlider.value).isEqualTo(855)
     waitForCondition(5.seconds) { abs(fakeEmulator.heartRate - 85.5f) < 0.05f }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 }

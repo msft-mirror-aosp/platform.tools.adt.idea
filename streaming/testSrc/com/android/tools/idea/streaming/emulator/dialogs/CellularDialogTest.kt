@@ -31,6 +31,7 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import javax.swing.JButton
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -86,7 +87,7 @@ class CellularDialogTest {
     assertThat(dataStatusBox.selectedItem?.toString()).isEqualTo("Home")
     assertThat(meterStatusBox.selectedItem?.toString()).isEqualTo("Metered")
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -119,7 +120,7 @@ class CellularDialogTest {
         meterStatusBox.selectedItem?.toString() == "Temporarily not metered"
     }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -169,8 +170,8 @@ class CellularDialogTest {
         fakeEmulator.cellInfo.cellMeterStatus == CellInfo.CellMeterStatus.CELL_METER_STATUS_TEMPORARILY_NOT_METERED
     }
 
-    val closeButton = rootPane.defaultButton
-    assertThat(closeButton.text).isEqualTo("Close")
+    val closeButton = ui.getComponent<JButton> { it.text == "Close" }
+    assertThat(rootPane.defaultButton).isNull()
     ui.clickOn(closeButton)
     assertThat(dialog.isShowing).isFalse()
   }

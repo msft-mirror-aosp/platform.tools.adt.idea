@@ -96,7 +96,7 @@ class PhoneDialogTest {
     assertThat(numberBox.width).isGreaterThan(callButton.width)
     assertThat(smsMessageArea.width).isGreaterThan(callButton.width)
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -123,7 +123,7 @@ class PhoneDialogTest {
       !numberBox.isEnabled && holdCallButton.isEnabled && holdCallButton.text == "Resume Call" && callButton.text == "End Call"
     }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -174,7 +174,7 @@ class PhoneDialogTest {
         callButton.text == "Call Device"
     }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -200,7 +200,7 @@ class PhoneDialogTest {
       numberBox.isEnabled && !holdCallButton.isEnabled && callButton.text == "Call Device"
     }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -231,7 +231,7 @@ class PhoneDialogTest {
     assertThat(fakeEmulator.receivedSms[1].number).isEqualTo("Android")
     assertThat(fakeEmulator.receivedSms[1].text).isEqualTo("Verification code: 1234")
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -272,7 +272,7 @@ class PhoneDialogTest {
     smsMessageArea.text = "a".repeat(PhoneDialog.MAX_SMS_MSG_SIZE)
     assertThat(sendSmsButton.isEnabled).isTrue()
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -290,7 +290,7 @@ class PhoneDialogTest {
     assertThat(smsMessageArea.isEnabled).isFalse()
     assertThat(sendSmsButton.isEnabled).isFalse()
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -365,7 +365,7 @@ class PhoneDialogTest {
       )
     assertThat(items()).containsExactlyElementsIn(expectedAfterReuse).inOrder()
 
-    ui1.clickOn(rootPane1.defaultButton)
+    ui1.clickOn(ui1.getComponent<JButton> { it.text == "Close" })
     assertThat(dlg1.isShowing).isFalse()
 
     // Reopening the dialog preserves the 8 recently used numbers.
@@ -390,7 +390,7 @@ class PhoneDialogTest {
       .inOrder()
     assertThat(numberBox2.selectedItem).isEqualTo("800-555-0003")
 
-    ui2.clickOn(rootPane2.defaultButton)
+    ui2.clickOn(ui2.getComponent<JButton> { it.text == "Close" })
     assertThat(dlg2.isShowing).isFalse()
   }
 

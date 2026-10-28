@@ -135,7 +135,7 @@ class DevicePoseDialogTest {
     assertThat(rightPanelTopLeft.y).isEqualTo(controlsTopLeft.y)
     assertThat(rightPanel.height).isEqualTo(controlsPanel.height)
 
-    val closeButton = rootPane.defaultButton
+    val closeButton = ui.getComponent<JButton> { it.text == "Close" }
     val closeButtonTopLeft = SwingUtilities.convertPoint(closeButton.parent, closeButton.location, rootPane)
     assertThat(closeButtonTopLeft.x + closeButton.width).isEqualTo(widgetTopLeft.x + device3DWidget.width)
 
@@ -158,7 +158,7 @@ class DevicePoseDialogTest {
     device3DWidget.paint(g)
     g.dispose()
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -211,7 +211,7 @@ class DevicePoseDialogTest {
     assertThat(yMoveField.text).isEqualTo("-0.04 m")
     assertThat(zMoveField.text).isEqualTo("0.03 m")
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -302,7 +302,7 @@ class DevicePoseDialogTest {
     }
     assertHighlightedOrientationButton(null)
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -377,7 +377,7 @@ class DevicePoseDialogTest {
       foldSlider.value == 1800 && foldField.text == "180.0°" && openButton.isSelected
     }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -405,7 +405,7 @@ class DevicePoseDialogTest {
       fakeEmulator.devicePosture == PostureValue.POSTURE_HALF_OPENED && abs(fakeEmulator.rollablePercentages[0] - 80f) < 0.1f
     }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -444,7 +444,7 @@ class DevicePoseDialogTest {
       abs(fakeEmulator.devicePosition[0] - 0.08f) < 0.001f
     }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -463,7 +463,7 @@ class DevicePoseDialogTest {
     val device3DWidget = ui.getComponent<Device3DWidget> { it.name == "device3DWidget" }
     waitForCondition(5.seconds) { device3DWidget.screenImage != null }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
     streamScreenshotCall.waitForCancellation(2.seconds)
   }

@@ -94,8 +94,8 @@ class FingerprintDialogTest {
     assertThat(fingerBox.selectedItem?.toString()).isEqualTo("Finger 1")
     assertThat(touchButton.text).isEqualTo("Touch Sensor")
 
-    val closeButton = rootPane.defaultButton
-    assertThat(closeButton.text).isEqualTo("Close")
+    val closeButton = ui.getComponent<JButton> { it.text == "Close" }
+    assertThat(rootPane.defaultButton).isNull()
     ui.clickOn(closeButton)
     assertThat(dialog.isShowing).isFalse()
   }
@@ -149,7 +149,7 @@ class FingerprintDialogTest {
       !fakeEmulator.fingerprint.isTouching && fakeEmulator.fingerprint.touchId == 0
     }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 

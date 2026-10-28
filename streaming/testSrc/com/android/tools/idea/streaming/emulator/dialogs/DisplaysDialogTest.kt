@@ -43,6 +43,7 @@ import com.intellij.ui.components.JBTextField
 import com.intellij.ui.dsl.gridLayout.GridLayout
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.ui.table.TableView
+import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JLayeredPane
 import kotlin.time.Duration.Companion.seconds
@@ -95,7 +96,7 @@ class DisplaysDialogTest {
     assertThat(table.getValueAt(0, 2)).isEqualTo("2960")
     assertThat(table.getValueAt(0, 3)).isEqualTo("480 dpi")
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -136,7 +137,7 @@ class DisplaysDialogTest {
     assertThat(isPresentationEnabled(getEditAction(actionsPanel))).isFalse()
     assertThat(isPresentationEnabled(getRemoveAction(actionsPanel))).isFalse()
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -195,8 +196,8 @@ class DisplaysDialogTest {
         fakeEmulator.displays[1].dpi == 240
     }
 
-    val closeButton = rootPane.defaultButton
-    assertThat(closeButton.text).isEqualTo("Close")
+    val closeButton = ui.getComponent<JButton> { it.text == "Close" }
+    assertThat(rootPane.defaultButton).isNull()
     ui.clickOn(closeButton)
     assertThat(dialog.isShowing).isFalse()
   }
@@ -243,7 +244,7 @@ class DisplaysDialogTest {
     assertThat(table.items[0]).isNotSameAs(initialItem)
     assertThat(tableModelEventsCount).isGreaterThan(0)
 
-    val closeButton = rootPane.defaultButton
+    val closeButton = ui.getComponent<JButton> { it.text == "Close" }
     ui.clickOn(closeButton)
     assertThat(dialog.isShowing).isFalse()
   }

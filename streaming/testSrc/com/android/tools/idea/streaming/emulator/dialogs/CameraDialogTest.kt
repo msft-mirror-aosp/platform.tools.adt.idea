@@ -46,6 +46,7 @@ import java.awt.image.BufferedImage
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.imageio.ImageIO
+import javax.swing.JButton
 import javax.swing.JSlider
 import javax.swing.JTextField
 import kotlin.time.Duration.Companion.seconds
@@ -114,7 +115,7 @@ class CameraDialogTest {
     assertThat(tableSizeSlider.isShowing).isFalse()
     assertThat(enableAnimationsCheckBox.isSelected).isTrue()
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -157,7 +158,7 @@ class CameraDialogTest {
         !enableAnimationsCheckBox.isSelected
     }
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 
@@ -226,8 +227,8 @@ class CameraDialogTest {
       fakeEmulator.animationState.tvOn
     }
 
-    val closeButton = rootPane.defaultButton
-    assertThat(closeButton.text).isEqualTo("Close")
+    val closeButton = ui.getComponent<JButton> { it.text == "Close" }
+    assertThat(rootPane.defaultButton).isNull()
     ui.clickOn(closeButton)
     assertThat(dialog.isShowing).isFalse()
   }
@@ -259,7 +260,7 @@ class CameraDialogTest {
     val unsupportedEvent = createDragEvent(listOf(unsupportedTxt.toFile()))
     assertThat(CameraDialog.getDroppedImageFile(unsupportedEvent)).isNull()
 
-    ui.clickOn(rootPane.defaultButton)
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 

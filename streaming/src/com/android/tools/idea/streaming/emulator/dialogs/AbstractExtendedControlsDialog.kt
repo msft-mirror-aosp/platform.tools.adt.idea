@@ -230,7 +230,7 @@ internal abstract class AbstractExtendedControlsDialog(
         project = project,
         parent = parent,
         modality = IdeModalityType.MODELESS,
-        createActions = { listOf(CloseDialogAction(dialogPanel, isDefault = true)) },
+        createActions = { listOf(CloseDialogAction(dialogPanel)) },
       )
       .apply {
         isModal = false
