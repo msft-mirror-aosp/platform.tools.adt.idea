@@ -152,7 +152,8 @@ def collection_struct_contains_exactly(self, expecteds):
         [`Ordered`] (see `_ordered_incorrectly_new`).
     """
     if len(self.actual) != len(expecteds):
-        self.meta.add_failure(msg = "The size of actual and expected are not the same. Actual: {}. Expected: {}".format(self.actual, expecteds))
+        self.meta.add_failure("The size of actual and expected are not the same. Actual: {}. Expected: {}".format(self.actual, expecteds), "")
+        return
 
     for i in range(len(self.actual)):
         actual = self.actual[i]
