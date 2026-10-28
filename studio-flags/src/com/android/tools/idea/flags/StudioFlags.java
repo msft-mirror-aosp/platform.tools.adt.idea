@@ -432,6 +432,11 @@ public final class StudioFlags {
     PROFILER, "perfetto.ai.trace.analysis", "Analyze Perfetto traces",
     "Uses AI to analyze Perfetto traces");
 
+  public static final Flag<Boolean> PROFILER_PERFETTO_AGENT_TOOLS = new BooleanFlag(
+    PROFILER, "perfetto.agent.tools", "Perfetto trace viewer agent tools",
+    "Lets AI agents query system traces and navigate the trace viewer. " +
+    "Requires profiler.system.trace.in.editor to be on to take effect");
+
   public static final Flag<Boolean> PROFILER_DEOBFUSCATION_FOR_NATIVE_ALLOCATIONS = new BooleanFlag(
     PROFILER, "deobfuscation.for.native.allocations", "Symbolization/Deobfuscation for Native Allocations",
     "Enable symbolization and deobfuscation for native allocations captures");
