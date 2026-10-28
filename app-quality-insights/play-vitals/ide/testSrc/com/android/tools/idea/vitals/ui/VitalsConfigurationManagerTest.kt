@@ -33,7 +33,6 @@ import com.google.gct.login2.LoginFeature
 import com.google.gct.login2.LoginUsersRule
 import com.intellij.openapi.components.service
 import com.intellij.openapi.util.Disposer
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -44,6 +43,7 @@ import org.mockito.Mockito.`when`
 import org.mockito.kotlin.mock
 
 private val APP_CONNECTION1 = AppConnection("app1", "Test App 1")
+private val APP_CONNECTION2 = AppConnection("app2", "Test App 2")
 
 class VitalsConfigurationManagerTest {
 
@@ -66,9 +66,8 @@ class VitalsConfigurationManagerTest {
         VitalsConfigurationManager(
           projectRule.project,
           AppInsightsCacheImpl(VitalsInsightsProvider),
-          MutableStateFlow(true),
-          projectRule.testRootDisposable,
-          client,
+          parentDisposable = projectRule.testRootDisposable,
+          testClient = client,
         )
       Disposer.register(projectRule.testRootDisposable, configManager)
 
@@ -93,9 +92,11 @@ class VitalsConfigurationManagerTest {
       Disposer.register(projectRule.testRootDisposable, configManager)
 
       configManager.refreshConfiguration()
-      configManager.configuration.first { it is AppInsightsModel.Authenticated }
+      val controller = configManager.configuration.filterIsInstance<AppInsightsModel.Authenticated>().first().controller
+      controller.connections.first { it.items.isNotEmpty() }
       loginUsersRule.logOut("foo@goo.com")
       configManager.configuration.first { it is AppInsightsModel.Unauthenticated }
+      controller.connections.first { it.items.isEmpty() && it.selected == null }
       loginUsersRule.setActiveUser("foo@goo.com", features = listOf(LoginFeature.feature<VitalsLoginFeature>()))
       configManager.configuration.first { it is AppInsightsModel.Authenticated }
     }
@@ -173,5 +174,30 @@ class VitalsConfigurationManagerTest {
 
       projectRule.project.service<AppInsightsFilterSelector>().selectedAppId.value = "not matched"
       state.first { it.connections.selected == null }
+    }
+
+  @Test
+  fun `switching users refreshes connections for the new user`() =
+    runBlocking<Unit> {
+      val client = mock<AppInsightsClient>()
+      `when`(client.listConnections()).thenReturn(LoadingState.Ready(listOf(APP_CONNECTION1)))
+      loginUsersRule.setActiveUser("user1@goo.com", features = listOf(LoginFeature.feature<VitalsLoginFeature>()))
+
+      val configManager =
+        VitalsConfigurationManager(
+          projectRule.project,
+          AppInsightsCacheImpl(VitalsInsightsProvider),
+          parentDisposable = projectRule.testRootDisposable,
+          testClient = client,
+        )
+      Disposer.register(projectRule.testRootDisposable, configManager)
+      configManager.refreshConfiguration()
+
+      val controller = configManager.configuration.filterIsInstance<AppInsightsModel.Authenticated>().first().controller
+      controller.connections.first { it.items.map { conn -> conn.appId } == listOf(APP_CONNECTION1.appId) }
+
+      `when`(client.listConnections()).thenReturn(LoadingState.Ready(listOf(APP_CONNECTION2)))
+      loginUsersRule.setActiveUser("user2@goo.com", features = listOf(LoginFeature.feature<VitalsLoginFeature>()))
+      controller.connections.first { it.items.map { conn -> conn.appId } == listOf(APP_CONNECTION2.appId) }
     }
 }

@@ -43,6 +43,7 @@ import com.android.tools.idea.vitals.VitalsLoginFeature
 import com.android.tools.idea.vitals.client.VitalsClient
 import com.android.tools.idea.vitals.createVitalsFilters
 import com.android.tools.idea.vitals.datamodel.VitalsConnection
+import com.google.gct.login2.CredentialedUser
 import com.google.gct.login2.GoogleLoginService
 import com.google.gct.login2.LoginFeature
 import com.intellij.openapi.Disposable
@@ -66,7 +67,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
@@ -86,7 +87,7 @@ class VitalsConfigurationService(project: Project) : Disposable {
 class VitalsConfigurationManager(
   override val project: Project,
   @VisibleForTesting val cache: AppInsightsCache,
-  loginState: Flow<Boolean> = GoogleLoginService.instance.activeUserFlow.map { it != null },
+  activeUserFlow: Flow<CredentialedUser?> = GoogleLoginService.instance.activeUserFlow,
   parentDisposable: Disposable,
   @TestOnly private val testClient: AppInsightsClient? = null,
 ) : AppInsightsConfigurationManager, Disposable {
@@ -96,24 +97,22 @@ class VitalsConfigurationManager(
   private val refreshConfigurationFlow = MutableSharedFlow<Unit>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
   private val loader = ComponentLoader()
 
-  private val queryConnectionsFlow = flow {
-    // Wait for the client and controller to finish initializing before emitting from this flow.
-    loader.getController()
-    refreshConfigurationFlow
-      .combine(loginState) { _, _ -> LoginFeature.feature<VitalsLoginFeature>().isLoggedIn() }
-      .collect { isLoggedIn ->
-        if (!isLoggedIn) {
-          emit(LoadingState.Unauthorized("Android Vitals is not an allowed feature for current user"))
+  private val queryConnectionsFlow =
+    combine(refreshConfigurationFlow, activeUserFlow) { _, user -> user }
+      .mapLatest { user ->
+        // Wait for the client and controller to finish initializing before emitting from this flow.
+        loader.getController()
+        if (user == null || !LoginFeature.feature<VitalsLoginFeature>().isLoggedIn()) {
+          LoadingState.Unauthorized("Android Vitals is not an allowed feature for current user")
         } else {
-          val connections = loader.getClient().listConnections()
-          if (connections is LoadingState.Ready) {
-            logger.info("Accessible Android Vitals connections: ${connections.value}")
+          loader.getClient().listConnections().also { connections ->
+            if (connections is LoadingState.Ready) {
+              logger.info("Accessible Android Vitals connections: ${connections.value}")
+            }
           }
-          emit(connections)
         }
       }
-  }
-    .shareIn(scope, SharingStarted.Eagerly, replay = 1)
+      .shareIn(scope, SharingStarted.Eagerly, replay = 1)
 
   override val offlineStatusManager = OfflineStatusManagerImpl()
 
@@ -171,6 +170,7 @@ class VitalsConfigurationManager(
         offlineStatusManager.enterMode(ConnectionMode.OFFLINE)
         cache.getRecentConnections()
       }
+      is LoadingState.Unauthorized -> emptyList<VitalsConnection>().also { cache.populateConnections(it) }
       else -> null
     }
   }
