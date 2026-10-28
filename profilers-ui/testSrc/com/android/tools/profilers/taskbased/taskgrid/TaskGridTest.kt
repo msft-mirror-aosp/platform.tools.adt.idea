@@ -43,6 +43,7 @@ import com.android.tools.profilers.taskbased.task.TaskGridModel
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandlerFactory
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.ApplicationRule
 import org.junit.Before
 import org.junit.Ignore
 import org.junit.Rule
@@ -51,6 +52,8 @@ import org.junit.Test
 class TaskGridTest {
   private val myTimer = FakeTimer()
   private val myTransportService = FakeTransportService(myTimer, false)
+
+  @get:Rule val applicationRule = ApplicationRule()
 
   @get:Rule val composeTestRule = createStudioComposeTestRule()
 
