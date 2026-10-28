@@ -1,10 +1,10 @@
 android {
   defaultConfig {
-    testInstrumentationRunnerArguments foo: 'bar', baz: 'quux'
+    testInstrumentationRunnerArguments = [foo: 'bar', baz: 'quux']
   }
   productFlavors {
     foo {
-      testInstrumentationRunnerArguments a: 'b'
+      testInstrumentationRunnerArguments = [a: 'b']
     }
   }
 }

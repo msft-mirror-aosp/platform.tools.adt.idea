@@ -1,8 +1,8 @@
 repositories {
   jcenter()
   maven {
-    url 'good.url'
-    name 'Good Name'
+    url = 'good.url'
+    name = 'Good Name'
     artifactUrls 'nice.url', 'other.nice.url'
   }
 }

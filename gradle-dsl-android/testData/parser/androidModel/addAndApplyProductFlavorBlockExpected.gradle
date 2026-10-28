@@ -1,8 +1,8 @@
 android {
   productFlavors {
     flavor {
-      applicationId 'abc.xyz'
-      isDefault true
+      applicationId = 'abc.xyz'
+      isDefault = true
     }
   }
 }

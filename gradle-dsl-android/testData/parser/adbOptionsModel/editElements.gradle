@@ -1,6 +1,6 @@
 android {
   adbOptions {
-    installOptions 'abcd', 'efgh'
+    installOptions = ['abcd', 'efgh']
     timeOutInMs = 200
   }
 }

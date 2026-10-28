@@ -12,6 +12,6 @@ buildscript {
 }
 android {
   defaultConfig {
-    applicationId VERSION
+    applicationId = VERSION
   }
 }

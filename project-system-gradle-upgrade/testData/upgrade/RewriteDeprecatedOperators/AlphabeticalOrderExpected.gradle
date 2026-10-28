@@ -1,36 +1,36 @@
 android {
-  buildToolsVersion '1.2.3'
+  buildToolsVersion = '1.2.3'
   compileSdkVersion(30)
   flavorDimensions 'paid', 'country'
   defaultConfig {
-    manifestPlaceholders a: 'b'
+    manifestPlaceholders = [a: 'b']
     matchingFallbacks = ['demo', 'trial']
     maxSdkVersion(30)
     minSdkVersion(28)
     resourceConfigurations += ['en', 'fr']
     targetSdkVersion(29)
-    testFunctionalTest true
-    testHandleProfiling false
-    testInstrumentationRunnerArguments one: 'two'
+    testFunctionalTest = true
+    testHandleProfiling = false
+    testInstrumentationRunnerArguments = [one: 'two']
   }
   buildTypes {
     mumble {
-      manifestPlaceholders c: 'd'
+      manifestPlaceholders = [c: 'd']
       matchingFallbacks = ['demo']
     }
   }
   productFlavors {
     foo {
-      dimension 'paid'
-      manifestPlaceholders e: 'f', g: 'h'
+      dimension = 'paid'
+      manifestPlaceholders = [e: 'f', g: 'h']
       matchingFallbacks = ['trial']
       maxSdkVersion(29)
       minSdkVersion(27)
       resourceConfigurations += ['uk']
       targetSdkVersion(28)
-      testFunctionalTest false
-      testHandleProfiling true
-      testInstrumentationRunnerArguments three: 'four', five: 'six'
+      testFunctionalTest = false
+      testHandleProfiling = true
+      testInstrumentationRunnerArguments = [three: 'four', five: 'six']
     }
   }
 }

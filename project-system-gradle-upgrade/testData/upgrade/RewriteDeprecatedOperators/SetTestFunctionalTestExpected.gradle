@@ -1,10 +1,10 @@
 android {
   defaultConfig {
-    testFunctionalTest true
+    testFunctionalTest = true
   }
   productFlavors {
     foo {
-      testFunctionalTest false
+      testFunctionalTest = false
     }
   }
 }

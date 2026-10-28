@@ -1,10 +1,10 @@
 android {
   defaultConfig {
-    testHandleProfiling true
+    testHandleProfiling = true
   }
   productFlavors {
     foo {
-      testHandleProfiling false
+      testHandleProfiling = false
     }
   }
 }

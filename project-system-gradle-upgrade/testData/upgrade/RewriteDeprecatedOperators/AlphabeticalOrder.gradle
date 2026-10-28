@@ -1,5 +1,5 @@
 android {
-  buildToolsVersion '1.2.3'
+  buildToolsVersion = '1.2.3'
   compileSdkVersion(30)
   flavorDimensions 'paid', 'country'
   defaultConfig {

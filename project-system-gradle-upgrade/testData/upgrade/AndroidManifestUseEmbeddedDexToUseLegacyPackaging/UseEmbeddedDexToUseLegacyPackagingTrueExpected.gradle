@@ -1,5 +1,5 @@
 android {
-  compileSdk 30
+  compileSdk = 30
   packagingOptions {
     dex {
       useLegacyPackaging true

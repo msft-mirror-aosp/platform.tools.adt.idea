@@ -2,37 +2,37 @@ android {
   sourceSets {
     main {
       aidl {
-        srcDirs 'aidlSource'
+        srcDirs = ['aidlSource']
       }
       assets {
-        srcDirs 'assetsSource'
+        srcDirs = ['assetsSource']
       }
       java {
-        srcDirs 'javaSource'
+        srcDirs = ['javaSource']
       }
       jni {
-        srcDirs 'jniSource'
+        srcDirs = ['jniSource']
       }
       jniLibs {
-        srcDirs 'jniLibsSource'
+        srcDirs = ['jniLibsSource']
       }
       manifest {
         srcFile 'manifestSource.xml'
       }
       mlModels {
-        srcDirs 'mlModelsSource'
+        srcDirs = ['mlModelsSource']
       }
       renderscript {
-        srcDirs 'renderscriptSource'
+        srcDirs = ['renderscriptSource']
       }
       res {
-        srcDirs 'resSource'
+        srcDirs = ['resSource']
       }
       resources {
-        srcDirs 'resourcesSource'
+        srcDirs = ['resourcesSource']
       }
       shaders {
-        srcDirs 'shadersSource'
+        srcDirs = ['shadersSource']
       }
     }
   }

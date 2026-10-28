@@ -8,7 +8,7 @@ configurations {
   newConfig {
   }
   otherNewConfig {
-    transitive true
+    transitive = true
   }
 }
 

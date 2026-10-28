@@ -1,5 +1,5 @@
 sourceCompatibility = 1.5
 java {
-  targetCompatibility JavaVersion.VERSION_1_5
+  targetCompatibility = JavaVersion.VERSION_1_5
 }
 dependencies {}

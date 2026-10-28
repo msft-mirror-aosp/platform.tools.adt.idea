@@ -1,7 +1,7 @@
 android {
   buildTypes {
     create('of') {
-      applicationIdSuffix 'foo'
+      applicationIdSuffix = 'foo'
     }
   }
 }

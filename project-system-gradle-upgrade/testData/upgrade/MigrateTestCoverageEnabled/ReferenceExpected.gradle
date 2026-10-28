@@ -6,20 +6,20 @@ ext {
 android {
   buildTypes {
     release {
-      enableUnitTestCoverage fancyF
-      enableAndroidTestCoverage fancyF
+      enableUnitTestCoverage = fancyF
+      enableAndroidTestCoverage = fancyF
     }
     debug {
-      enableUnitTestCoverage fancyT
-      enableAndroidTestCoverage fancyT
+      enableUnitTestCoverage = fancyT
+      enableAndroidTestCoverage = fancyT
     }
     otherF {
-      enableUnitTestCoverage fancyF
-      enableAndroidTestCoverage fancyF
+      enableUnitTestCoverage = fancyF
+      enableAndroidTestCoverage = fancyF
     }
     otherT {
-      enableUnitTestCoverage fancyT
-      enableAndroidTestCoverage fancyT
+      enableUnitTestCoverage = fancyT
+      enableAndroidTestCoverage = fancyT
     }
     otherMissing {
     }

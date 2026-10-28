@@ -1,8 +1,7 @@
 android {
   defaultConfig {
-    minSdk 18
-    maxSdk 24
-    targetSdk 24
+    minSdk = 18
+    maxSdk = 24
+    targetSdk = 24
   }
 }
-

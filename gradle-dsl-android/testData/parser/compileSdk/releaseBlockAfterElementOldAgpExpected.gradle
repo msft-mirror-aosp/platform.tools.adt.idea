@@ -1,6 +1,6 @@
 android {
-  namespace 'namespace'
-  compileSdk 33
+  namespace = 'namespace'
+  compileSdk = 33
   defaultConfig {
     minSdk = 34
   }

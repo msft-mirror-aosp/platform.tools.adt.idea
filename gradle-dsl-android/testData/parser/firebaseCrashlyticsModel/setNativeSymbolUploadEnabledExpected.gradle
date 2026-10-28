@@ -2,7 +2,7 @@ android {
   buildTypes {
     release {
       firebaseCrashlytics {
-        nativeSymbolUploadEnabled true
+        nativeSymbolUploadEnabled = true
       }
     }
   }

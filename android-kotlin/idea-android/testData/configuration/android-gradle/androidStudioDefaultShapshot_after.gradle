@@ -5,8 +5,8 @@ buildscript {
     repositories {
         mavenCentral()
         maven {
-            url 'https://oss.sonatype.org/content/repositories/snapshots'
-            name 'Sonatype OSS Snapshot Repository'
+            url = 'https://oss.sonatype.org/content/repositories/snapshots'
+            name = 'Sonatype OSS Snapshot Repository'
         }
     }
     dependencies {
@@ -20,14 +20,14 @@ apply plugin: 'org.jetbrains.kotlin.android'
 repositories {
     mavenCentral()
     maven {
-        url 'https://oss.sonatype.org/content/repositories/snapshots'
-        name 'Sonatype OSS Snapshot Repository'
+        url = 'https://oss.sonatype.org/content/repositories/snapshots'
+        name = 'Sonatype OSS Snapshot Repository'
     }
 }
 
 android {
     compileSdkVersion 17
-    buildToolsVersion "17.0.0"
+    buildToolsVersion = "17.0.0"
 
     defaultConfig {
         minSdkVersion 7

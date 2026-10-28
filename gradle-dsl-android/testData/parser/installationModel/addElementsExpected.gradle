@@ -1,6 +1,6 @@
 android {
   installation {
-    installOptions 'abcd'
-    timeOutInMs 100
+    installOptions = ['abcd']
+    timeOutInMs = 100
   }
 }

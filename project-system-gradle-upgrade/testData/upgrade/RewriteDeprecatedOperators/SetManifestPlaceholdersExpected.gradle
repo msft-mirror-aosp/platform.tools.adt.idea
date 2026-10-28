@@ -1,15 +1,15 @@
 android {
   defaultConfig {
-    manifestPlaceholders a: 'b'
+    manifestPlaceholders = [a: 'b']
   }
   buildTypes {
     mumble {
-      manifestPlaceholders c: 'd'
+      manifestPlaceholders = [c: 'd']
     }
   }
   productFlavors {
     foo {
-      manifestPlaceholders e: 'f', g: 'h'
+      manifestPlaceholders = [e: 'f', g: 'h']
     }
   }
 }

@@ -1,5 +1,5 @@
 android {
   buildFeatures {
-    viewBinding false
+    viewBinding = false
   }
 }

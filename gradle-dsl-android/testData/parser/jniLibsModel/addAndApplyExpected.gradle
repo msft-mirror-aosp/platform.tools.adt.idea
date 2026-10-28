@@ -1,7 +1,7 @@
 android {
   packagingOptions {
     jniLibs {
-      useLegacyPackaging true
+      useLegacyPackaging = true
       excludes += ['foo']
       pickFirsts += ['bar', 'baz']
       keepDebugSymbols += ['a', 'b', 'c']

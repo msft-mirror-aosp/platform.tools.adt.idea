@@ -4,6 +4,6 @@ ext {
 
 android {
   buildFeatures {
-    viewBinding fancy
+    viewBinding = fancy
   }
 }

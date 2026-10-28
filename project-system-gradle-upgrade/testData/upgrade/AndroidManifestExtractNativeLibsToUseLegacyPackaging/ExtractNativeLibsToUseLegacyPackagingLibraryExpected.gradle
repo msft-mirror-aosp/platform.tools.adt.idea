@@ -4,5 +4,5 @@ plugins {
 }
 
 android {
-  compileSdk 30
+  compileSdk = 30
 }

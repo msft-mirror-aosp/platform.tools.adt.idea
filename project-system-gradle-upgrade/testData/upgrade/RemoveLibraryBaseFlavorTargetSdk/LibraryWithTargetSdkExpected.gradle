@@ -8,9 +8,9 @@ android {
     minSdkVersion 21
   }
   lint {
-    targetSdk 27
+    targetSdk = 27
   }
   testOptions {
-    targetSdk 27
+    targetSdk = 27
   }
 }

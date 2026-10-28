@@ -32,5 +32,5 @@ android {
   }
   flavorDimensions 'paid', 'country'
   compileSdkVersion(30)
-  buildToolsVersion '1.2.3'
+  buildToolsVersion = '1.2.3'
 }

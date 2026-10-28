@@ -4,6 +4,6 @@ ext {
 
 android {
   buildFeatures {
-    dataBinding fancy
+    dataBinding = fancy
   }
 }

@@ -1,19 +1,19 @@
 android {
   testOptions {
-    reportDir 'reportDirectory'
-    resultsDir 'resultsDirectory'
-    execution 'ANDROID_TEST_ORCHESTRATOR'
+    reportDir = 'reportDirectory'
+    resultsDir = 'resultsDirectory'
+    execution = 'ANDROID_TEST_ORCHESTRATOR'
     unitTests {
-      returnDefaultValues true
+      returnDefaultValues = true
     }
     failureRetention {
-      enable true
-      maxSnapshots 3
+      enable = true
+      maxSnapshots = 3
     }
     emulatorSnapshots {
-      compressSnapshots false
-      enableForTestFailures true
-      maxSnapshotsForTestFailures 4
+      compressSnapshots = false
+      enableForTestFailures = true
+      maxSnapshotsForTestFailures = 4
     }
     suites {
       journeysTest {
