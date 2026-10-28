@@ -16,21 +16,36 @@
 package com.android.tools.idea.gradle.project
 
 import com.android.SdkConstants.FN_LOCAL_PROPERTIES
+import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity
+import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity
+import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
+import com.android.tools.idea.gradle.project.model.GradleAndroidModel
+import com.android.tools.idea.gradle.project.model.gradleModuleModel
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
 import com.android.tools.idea.gradle.project.sync.GradleSyncListener
+import com.android.tools.idea.projectsystem.gradle.LINKED_ANDROID_GRADLE_MODULE_GROUP
+import com.android.tools.idea.projectsystem.gradle.getAndroidTestModule
+import com.android.tools.idea.projectsystem.gradle.getMainModule
+import com.android.tools.idea.projectsystem.gradle.getUnitTestModule
+import com.android.tools.idea.projectsystem.gradle.isLinkedAndroidModule
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
+import com.android.tools.idea.testing.gradleModule
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.testing.runDispatching
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger
+import com.intellij.facet.FacetManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
 import java.io.File
+import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.kotlin.idea.core.util.toVirtualFile
 import org.junit.After
 import org.junit.Before
@@ -89,6 +104,50 @@ class LocalPropertiesScenariosForStartupActivityTest {
     executeMyStartupActivity()
     assertThat(myRequest).isNotNull()
     assertThat(myRequest!!.trigger).isEqualTo(Trigger.TRIGGER_PROJECT_MODIFIED)
+  }
+
+  @Test
+  fun `test cached models and linked module groups are attached when sync is requested`() {
+    val project = projectRule.project
+    val appHolder = project.gradleModule(":app")!!
+
+    // Simulate a freshly reopened project before AndroidGradleProjectStartupActivity attaches transient module groups, facet external
+    // sources, and cached Android/Gradle workspace model entities.
+    ModuleManager.getInstance(project).modules.forEach { module ->
+      module.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, null)
+      FacetManager.getInstance(module).let { facetManager ->
+        (facetManager.getFacetsByType(GradleFacet.getFacetTypeId()) + facetManager.getFacetsByType(AndroidFacet.ID)).forEach { facet ->
+          facet.externalSource = null
+        }
+      }
+    }
+    runWriteAction {
+      project.workspaceModel.updateProjectModel("Clear cached entities for reopen test") { storage ->
+        storage.entities(GradleAndroidModelEntity::class.java).toList().forEach(storage::removeEntity)
+        storage.entities(GradleModuleModelEntity::class.java).toList().forEach(storage::removeEntity)
+      }
+    }
+    ProjectStructure.getInstance(project).analyzeProjectStructure()
+
+    assertThat(appHolder.isLinkedAndroidModule()).isFalse()
+    assertThat(GradleAndroidModel.get(appHolder)).isNull()
+    assertThat(appHolder.gradleModuleModel).isNull()
+    assertThat(ProjectStructure.getInstance(project).appHolderModules).isEmpty()
+
+    deleteLocalProperties()
+    executeMyStartupActivity()
+
+    assertThat(myRequest).isNotNull()
+    assertThat(myRequest!!.trigger).isEqualTo(Trigger.TRIGGER_PROJECT_MODIFIED)
+    assertThat(appHolder.isLinkedAndroidModule()).isTrue()
+    assertThat(appHolder.getMainModule()).isNotEqualTo(appHolder)
+    assertThat(appHolder.getUnitTestModule()).isNotNull()
+    assertThat(appHolder.getAndroidTestModule()).isNotNull()
+    assertThat(GradleAndroidModel.get(appHolder)).isNotNull()
+    assertThat(appHolder.gradleModuleModel).isNotNull()
+    assertThat(ProjectStructure.getInstance(project).appHolderModules).containsExactly(appHolder)
+    assertThat(AndroidFacet.getInstance(appHolder)!!.externalSource).isNotNull()
+    assertThat(GradleFacet.getInstance(appHolder)!!.externalSource).isNotNull()
   }
 
   private fun executeMyStartupActivity() {

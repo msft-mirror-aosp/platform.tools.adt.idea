@@ -171,17 +171,16 @@ private suspend fun performActivity(project: Project) {
      * Attempts to see if the models cached by IDEAs external system are valid, if they are then we attach them to the facet, if they are
      * not then we request a project sync in order to ensure that the IDE has access to all the models it needs to function.
      */
-    try {
-      attachCachedModelsOrTriggerSyncBody(project, gradleProjectInfo)
-    } catch (e: RequestSyncThrowable) {
+    val syncRequest = attachCachedModelsOrTriggerSyncBody(project, gradleProjectInfo)
+    if (syncRequest != null) {
       if (AutoSyncSettingStore.autoSyncBehavior == AutoSyncBehavior.Default) {
         // TODO(b/155467517): Reconsider the way we launch sync when GradleSyncInvoker is deleted. We may want to handle each external
         // project
         //  path individually.
-        LOG.info("Requesting Gradle sync (${e.reason}).")
-        GradleSyncInvoker.getInstance().requestProjectSync(project, GradleSyncInvoker.Request(e.trigger))
+        LOG.info("Requesting Gradle sync (${syncRequest.reason}).")
+        GradleSyncInvoker.getInstance().requestProjectSync(project, GradleSyncInvoker.Request(syncRequest.trigger))
       } else {
-        LOG.info("Requesting Gradle sync (${e.reason}) cancelled by Auto Sync disabled.")
+        LOG.info("Requesting Gradle sync (${syncRequest.reason}) cancelled by Auto Sync disabled.")
         SyncDueMessage.maybeShow(project)
       }
     }
@@ -268,19 +267,23 @@ private suspend fun removeModules(moduleManager: ModuleManager, modules: List<Pa
   }
 }
 
-private class RequestSyncThrowable(val reason: String, val trigger: Trigger) : Throwable()
+private class SyncRequest(val reason: String, val trigger: Trigger)
 
-private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradleProjectInfo: GradleProjectInfo) {
+private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradleProjectInfo: GradleProjectInfo): SyncRequest? {
   val moduleManager = ModuleManager.getInstance(project)
   val projectDataManager = ProjectDataManager.getInstance()
 
   fun DataNode<ProjectData>.modules(): Collection<DataNode<ModuleData>> = ExternalSystemApiUtil.findAllRecursively(this, ProjectKeys.MODULE)
 
-  fun requestSync(reason: String, trigger: Trigger? = null): Nothing {
-    throw RequestSyncThrowable(
-      reason,
-      trigger ?: if (gradleProjectInfo.isNewProject) Trigger.TRIGGER_PROJECT_NEW else Trigger.TRIGGER_PROJECT_REOPEN,
-    )
+  var syncRequest: SyncRequest? = null
+  fun requestSync(reason: String, trigger: Trigger? = null) {
+    if (syncRequest == null) {
+      syncRequest =
+        SyncRequest(
+          reason,
+          trigger ?: if (gradleProjectInfo.isNewProject) Trigger.TRIGGER_PROJECT_NEW else Trigger.TRIGGER_PROJECT_REOPEN,
+        )
+    }
   }
 
   val existingGradleModules = moduleManager.modules.filter { ExternalSystemApiUtil.isExternalSystemAwareModule(GRADLE_SYSTEM_ID, it) }
@@ -288,10 +291,13 @@ private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradle
   val modulesById =
     existingGradleModules
       .mapNotNull { module ->
-        val externalId =
-          ExternalSystemApiUtil.getExternalProjectId(module)
-            ?: requestSync("Unable to get external project id for ${module.name} from project ${project.name}.")
-        externalId to module
+        val externalId = ExternalSystemApiUtil.getExternalProjectId(module)
+        if (externalId == null) {
+          requestSync("Unable to get external project id for ${module.name} from project ${project.name}.")
+          null
+        } else {
+          externalId to module
+        }
       }
       .toMap()
 
@@ -302,7 +308,7 @@ private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradle
       .linkedProjectsSettings
       .mapNotNull { it.externalProjectPath }
       .toSet()
-      .map { externalProjectPath ->
+      .mapNotNull { externalProjectPath ->
         val externalProjectInfo = projectDataManager.getExternalProjectData(project, GradleConstants.SYSTEM_ID, externalProjectPath)
         if (externalProjectInfo != null && externalProjectInfo.lastImportTimestamp != externalProjectInfo.lastSuccessfulImportTimestamp) {
           requestSync("Sync failed in last import attempt. Path: ${externalProjectInfo.externalProjectPath}")
@@ -318,14 +324,16 @@ private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradle
         val localAndroidSdkPath = LocalProperties(File(externalProjectPath)).androidSdkPath
         if (localAndroidSdkPath == null || localAndroidSdkPath.path.isNullOrBlank()) {
           requestSync("No SDK path defined in local.properties.", Trigger.TRIGGER_PROJECT_MODIFIED)
-        }
-        if (localAndroidSdkPath.path != IdeSdks.getInstance().androidSdkPath?.path) {
+        } else if (localAndroidSdkPath.path != IdeSdks.getInstance().androidSdkPath?.path) {
           requestSync("SDK path defined in local.properties is invalid.", Trigger.TRIGGER_PROJECT_MODIFIED)
         }
 
         val moduleVariants = project.getSelectedVariantAndAbis()
-        externalProjectInfo?.findAndSetupSelectedCachedVariantData(moduleVariants)
-          ?: requestSync("DataNode<ProjectData> not found for $externalProjectPath. Variants: $moduleVariants")
+        val projectDataNode = externalProjectInfo?.findAndSetupSelectedCachedVariantData(moduleVariants)
+        if (projectDataNode == null) {
+          requestSync("DataNode<ProjectData> not found for $externalProjectPath. Variants: $moduleVariants")
+        }
+        projectDataNode
       }
 
   if (projectDataNodes.isEmpty()) {
@@ -374,14 +382,25 @@ private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradle
       val sourceSets = ExternalSystemApiUtil.findAll(node, GradleSourceSetData.KEY)
 
       val externalId = node.data.id
-      val module = modulesById[externalId] ?: requestSync("Module $externalId not found")
+      val module = modulesById[externalId]
+      if (module == null) {
+        requestSync("Module $externalId not found")
+        return@inner emptyList()
+      }
 
       if (sourceSets.isEmpty()) {
         listOf(ModuleSetupData(module, node, libraryResolver, modelFactory))
       } else {
         sourceSets.mapNotNull { sourceSet ->
-          val moduleId = modulesById[sourceSet.data.id] ?: requestSync("Module ${sourceSet.data.id} not found")
-          if (moduleId.isAndroidModule()) ModuleSetupData(moduleId, sourceSet, libraryResolver, modelFactory) else null
+          val moduleId = modulesById[sourceSet.data.id]
+          if (moduleId == null) {
+            requestSync("Module ${sourceSet.data.id} not found")
+            null
+          } else if (moduleId.isAndroidModule()) {
+            ModuleSetupData(moduleId, sourceSet, libraryResolver, modelFactory)
+          } else {
+            null
+          }
         } + ModuleSetupData(module, node, libraryResolver, modelFactory)
       }
     }
@@ -401,12 +420,17 @@ private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradle
       getFacet: (Module) -> V?,
       attach: V.(T, MutableEntityStorage) -> Unit,
       validate: T.() -> Boolean = { true },
-    ): ((MutableEntityStorage) -> Unit) {
-      val model = getModel(data.dataNode, dataKey) ?: return { /* No model for datanode/datakey pair */ }
+    ): ((MutableEntityStorage) -> Unit)? {
+      val model = getModel(data.dataNode, dataKey) ?: return null
       if (!model.validate()) {
         requestSync("invalid model found for $dataKey in ${data.module.name}")
+        return null
       }
-      val facet = getFacet(data.module) ?: requestSync("no facet found for $dataKey in ${data.module.name} module")
+      val facet = getFacet(data.module)
+      if (facet == null) {
+        requestSync("no facet found for $dataKey in ${data.module.name} module")
+        return null
+      }
       facets.remove(facet)
       return { storage -> facet.attach(model, storage) }
     }
@@ -419,7 +443,7 @@ private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradle
     }
     // In some cases when phased sync aborts early, the data nodes will have the final say on what should be on the model, so setting the
     // workspace model entities below for compatibility with data services on startup.
-    listOf(
+    listOfNotNull(
       prepare(
         ANDROID_MODEL,
         getModelForMaybeSourceSetDataNode(),
@@ -446,11 +470,23 @@ private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradle
     requestSync("Cached models not available for:\n" + facets.joinToString(separator = ",\n") { "${it.module.name} : ${it.typeId}" })
   }
 
+  // Always attach any valid cached models before potentially triggering sync so that the reopened project retains linked Android module
+  // groups and cached models if sync is disabled or fails (b/211782178).
+  if (attachModelActions.isNotEmpty()) {
+    project.workspaceModel.update("Update Android entities") { storage -> attachModelActions.forEach { action -> action(storage) } }
+    ProjectStructure.getInstance(project).analyzeProjectStructure()
+  }
+
+  val request = syncRequest
+  if (request != null) {
+    return request
+  }
+
   LOG.info("Up-to-date models found in the cache. Not invoking Gradle sync.")
-  project.workspaceModel.update("Update Android entities") { storage -> attachModelActions.forEach { action -> action(storage) } }
   additionalProjectSetup(project)
 
   GradleSyncStateHolder.getInstance(project).syncSkipped(null)
+  return null
 }
 
 private val isPhasedSyncWithDataServiceDisabled: Boolean
@@ -489,7 +525,6 @@ private suspend fun additionalProjectSetup(project: Project) {
   AndroidPluginInfo.findFromModel(project)?.let { info ->
     project.getService(AssistantInvoker::class.java).maybeForceOrRecommendPluginUpgrade(project, info)
   }
-  ProjectStructure.getInstance(project).analyzeProjectStructure()
   GradleVersionCatalogDetector.getInstance(project).maybeSuggestToml(project)
 }
 

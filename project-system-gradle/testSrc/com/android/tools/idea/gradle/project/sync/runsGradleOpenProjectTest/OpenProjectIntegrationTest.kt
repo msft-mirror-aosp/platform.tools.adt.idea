@@ -166,7 +166,6 @@ class OpenProjectIntegrationTest {
   }
 
   @Test
-  @Ignore("b/211782178")
   fun testReopenProjectAfterFailedSync() {
     val preparedProject = projectRule.prepareTestProject(TestProject.SIMPLE_APPLICATION)
     val buildFile = VfsUtil.findFileByIoFile(preparedProject.root.resolve("app/build.gradle"), true)!!
