@@ -689,12 +689,14 @@ private fun getVariantRequirementAttributesInformation(
     } else if (variantToPropagate == null) {
       dsl.productFlavors
         .filter { variant.productFlavors.contains(it.name) }
-        .associate { flavor ->
+        .mapNotNull { flavor ->
+          val dimension = flavor.dimension?.takeUnless { it == FAKE_DIMENSION } ?: return@mapNotNull null
           val fallbacks =
             if (modelVersions[ModelFeature.HAS_MATCHING_FALLBACKS]) flavor.matchingFallbacks
             else legacyProps?.productFlavorsMatchingFallbacks?.get(flavor.name) ?: emptyList()
-          flavor.dimension!! to VariantAttributeAndFallbacks(flavor.name, variant.name, fallbacks, priority)
+          dimension to VariantAttributeAndFallbacks(flavor.name, variant.name, fallbacks, priority)
         }
+        .toMap()
     } else emptyMap()
 
   // 3. Determine Strategies.

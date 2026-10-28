@@ -21,11 +21,12 @@ import com.android.tools.idea.gradle.model.IdeVariantCore
 const val FAKE_DIMENSION = "agp-missing-dimension-for-sync-only"
 
 fun buildVariantNameResolver(androidProject: IdeAndroidProject, v2Variants: Collection<IdeVariantCore>): AndroidVariantResolver {
-  val availableDimensions = androidProject.multiVariantData?.productFlavors.orEmpty().mapNotNull { it.productFlavor.dimension }.toSet()
+  val availableDimensions =
+    androidProject.multiVariantData?.productFlavors.orEmpty().map { it.productFlavor.dimension ?: FAKE_DIMENSION }.toSet()
   val dimensions =
     androidProject.flavorDimensions
       .filter { availableDimensions.contains(it) }
-      // See: b/242856048 and b/242289523: `FAKE_DIMENSION` is not reported by the AGP in `androidProject.flavorDimensions`.
+      // See: b/242856048 and b/242289523: Flavors without a dimension have `dimension == null` and are not in `flavorDimensions`.
       .takeUnless { it.isEmpty() } ?: (if (availableDimensions == setOf(FAKE_DIMENSION)) availableDimensions else emptySet())
 
   val map = v2Variants.associate { variant -> variant.productFlavors.toList() + listOfNotNull(variant.buildType) to variant.name }

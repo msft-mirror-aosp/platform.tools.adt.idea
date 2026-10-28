@@ -956,7 +956,6 @@ MODULE                        : project.app
     ProductFlavors
         ProductFlavor
             Name                          : example
-            Dimension                     : agp-missing-dimension-for-sync-only
             VectorDrawables
         SourceProvider
             Name                          : example

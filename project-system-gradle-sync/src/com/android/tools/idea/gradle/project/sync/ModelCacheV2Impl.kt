@@ -386,7 +386,7 @@ fun modelCacheV2Impl(
       testInstrumentationRunnerArguments = flavor.testInstrumentationRunnerArguments.deduplicateStrings(),
       resourceConfigurations = flavor.resourceConfigurations.deduplicateStrings().toList(),
       vectorDrawables = vectorDrawablesOptionsFrom(flavor.vectorDrawables),
-      dimension = flavor.dimension?.deduplicate(),
+      dimension = flavor.dimension?.takeUnless { it == FAKE_DIMENSION }?.deduplicate(),
       applicationId = flavor.applicationId?.deduplicate(),
       versionCode = flavor.versionCode,
       versionName = flavor.versionName?.deduplicate(),

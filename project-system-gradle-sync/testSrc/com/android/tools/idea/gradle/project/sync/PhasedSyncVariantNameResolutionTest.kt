@@ -955,6 +955,34 @@ class PhasedSyncVariantNameResolutionTest {
   }
 
   @Test
+  fun `resolves variants when product flavor has null dimension and flavorDimensions is empty`() {
+    val projects =
+      listOf(
+        ProjectSetup(
+          moduleId = ":app",
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+          dependencies = listOf(":lib"),
+          defaultVariant = "exampleDebug",
+          variants = listOf("exampleDebug", "exampleRelease"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+          productFlavors = listOf(TestProductFlavor("example", null)),
+        ),
+        ProjectSetup(
+          moduleId = ":lib",
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          defaultVariant = "release",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+      )
+
+    val selected = sortProjectsAndGetSelectedVariants(projects)
+    assertThat(selected[":app"]).isEqualTo("exampleDebug")
+    assertThat(selected[":lib"]).isEqualTo("debug")
+  }
+
+  @Test
   fun `test project synchronizes with its target app variant when possible`() {
     // Setup:
     // App (:app) -> Root App
@@ -1481,7 +1509,7 @@ class PhasedSyncVariantNameResolutionTest {
     val dimensions = mutableListOf<String>()
     val productFlavors =
       project.productFlavors.map { testProductFlavor ->
-        dimensions.add(testProductFlavor.dimension)
+        testProductFlavor.dimension?.let { dimensions.add(it) }
         val flavor = Mockito.mock(ProductFlavor::class.java)
         whenever(flavor.name).thenReturn(testProductFlavor.name)
         whenever(flavor.dimension).thenReturn(testProductFlavor.dimension)
@@ -1611,7 +1639,7 @@ class PhasedSyncVariantNameResolutionTest {
 
   private data class TestProductFlavor(
     val name: String,
-    val dimension: String,
+    val dimension: String?,
     val matchingFallbacks: List<String> = emptyList(),
     val missingDimensionStrategy: Map<String, List<String>> = emptyMap(),
   )

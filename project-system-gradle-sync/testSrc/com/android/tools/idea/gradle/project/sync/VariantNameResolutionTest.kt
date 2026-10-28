@@ -32,6 +32,60 @@ class VariantNameResolutionTest {
 
   @Test fun `matches when flavors reordered`() = matches(reorderFlavors = true)
 
+  @Test
+  fun `matches when flavor has null dimension and flavorDimensions is empty`() {
+    val projectModelBuilder =
+      AndroidProjectBuilder(
+          flavorDimensions = { listOf(FAKE_DIMENSION) },
+          productFlavorsStub = { _ ->
+            listOf(
+              IdeProductFlavorImpl(
+                name = "example",
+                applicationIdSuffix = null,
+                versionNameSuffix = null,
+                resValues = emptyMap(),
+                proguardFiles = emptyList(),
+                consumerProguardFiles = emptyList(),
+                manifestPlaceholders = emptyMap(),
+                multiDexEnabled = null,
+                dimension = null,
+                applicationId = null,
+                versionCode = null,
+                versionName = null,
+                minSdkVersion = null,
+                targetSdkVersion = null,
+                maxSdkVersion = null,
+                testApplicationId = null,
+                testInstrumentationRunner = null,
+                testInstrumentationRunnerArguments = emptyMap(),
+                testHandleProfiling = null,
+                testFunctionalTest = null,
+                resourceConfigurations = emptyList(),
+                vectorDrawables = null,
+                matchingFallbacks = emptyList(),
+                missingDimensionStrategy = emptyMap(),
+                isDefault = null,
+              )
+            )
+          },
+          androidProject = { buildAndroidProjectStub().copy(flavorDimensions = emptyList()) },
+        )
+        .build()
+    val (androidProject, variants, _) =
+      projectModelBuilder("projectName", ":app", PROJECT_ROOT, APP_MODULE_ROOT, "99.99.99-agp-version", InternedModels(null))
+
+    val resolver = buildVariantNameResolver(androidProject, variants)
+    Truth.assertThat(
+        resolver.resolveVariant("debug") { dimension ->
+          when (dimension) {
+            FAKE_DIMENSION -> "example"
+            else -> error("Unexpected dimension: $dimension")
+          }
+        }
+      )
+      .isEqualTo("exampleDebug")
+  }
+
   private fun matches(reorderFlavors: Boolean) {
     val projectModelBuilder =
       AndroidProjectBuilder(
