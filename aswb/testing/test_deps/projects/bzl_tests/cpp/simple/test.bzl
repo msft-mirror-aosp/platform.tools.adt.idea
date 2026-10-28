@@ -10,6 +10,7 @@ CC_BINARY_TARGET = "simple"
 TEST_TARGET_PACKAGE = "bzl_tests/cpp/simple"
 BAZEL_OUT_FASTBUILD = "bazel-out/k8-fastbuild/bin"
 CC_TOOLCHAIN_TARGET = "@rules_cc//cc:current_cc_toolchain"
+CC_TOOLCHAIN_TARGET_ARM = "@rules_cc//cc:current_cc_toolchain"
 CC_TOOLCHAIN_TARGET_LABEL = "@@rules_cc+//cc:current_cc_toolchain"
 COMPILER = "gcc"
 GNU_SYSTEM_NAME = "*"
@@ -40,7 +41,8 @@ def _cc_library_test_impl(env, target):
         ),
     )
     if actual.toolchain_target().actual != None:
-        actual.toolchain_target().equals(CC_TOOLCHAIN_TARGET)
+        expected_toolchain = CC_TOOLCHAIN_TARGET_ARM if env.ctx.var.get("TARGET_CPU") in ["arm", "aarch64"] else CC_TOOLCHAIN_TARGET
+        actual.toolchain_target().equals(expected_toolchain)
 
 def _cc_binary_test(name, **test_kwargs):
     analysis_test(name = name, impl = _cc_binary_test_impl, target = ":cc_binary_test_fixture", **test_kwargs)
@@ -69,7 +71,8 @@ def _cc_binary_test_impl(env, target):
         ),
     )
     if actual.toolchain_target().actual != None:
-        actual.toolchain_target().equals(CC_TOOLCHAIN_TARGET)
+        expected_toolchain = CC_TOOLCHAIN_TARGET_ARM if env.ctx.var.get("TARGET_CPU") in ["arm", "aarch64"] else CC_TOOLCHAIN_TARGET
+        actual.toolchain_target().equals(expected_toolchain)
 
 def _cc_toolchain_test(name, **test_kwargs):
     analysis_test(name = name, impl = _cc_toolchain_test_impl, target = ":cc_toolchain_test_fixture", **test_kwargs)
