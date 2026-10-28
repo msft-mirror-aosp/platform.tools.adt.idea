@@ -39,7 +39,6 @@ import javax.xml.transform.OutputKeys
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestName
@@ -64,7 +63,6 @@ class ManifestPanelContentTest : SnapshotComparisonTest {
   override fun getName(): String = testName.methodName
 
   @Test
-  @Ignore("Snapshots change but it seems flaky for some reason after flipping the flags") // TODO(b/439806981): Remove this
   fun testProject_navigationEditor_includeFromLib() {
     testProject(AndroidCoreTestProject.NAVIGATION_EDITOR_INCLUDE_FROM_LIB)
   }

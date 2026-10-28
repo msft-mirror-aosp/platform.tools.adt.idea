@@ -713,7 +713,7 @@ private fun AndroidFacet.getLibraryManifests(dependencies: List<AndroidFacet>): 
       .flatMap { androidFacet ->
         GradleAndroidDependencyModel.get(androidFacet)
           ?.mainArtifactWithDependencies
-          ?.compileClasspath
+          ?.runtimeClasspath
           ?.libraries
           ?.filterIsInstance<IdeAndroidLibrary>()
           ?.mapNotNull { it.manifestFile() }

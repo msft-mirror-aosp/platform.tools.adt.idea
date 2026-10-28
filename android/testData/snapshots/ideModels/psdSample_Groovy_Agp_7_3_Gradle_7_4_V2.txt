@@ -2905,8 +2905,8 @@ MODULE                        : project.dyn_feature
             ApiLevel                      : 1
             ApiString                     : 1
         targetSdk
-            ApiLevel                      : 27
-            ApiString                     : 27
+            ApiLevel                      : 24
+            ApiString                     : 24
     RootBuildId                   : <ROOT>
     BuildId                       : <ROOT>
     ProjectPath                   : :dyn_feature
