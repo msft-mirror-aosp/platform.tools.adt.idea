@@ -3141,6 +3141,17 @@ public final class StudioFlags {
 
   // endregion Android CLI
 
+  // region Automated Updates Flow
+  private static final FlagGroup AUTOMATED_UPDATES = new FlagGroup(FLAGS, "automated.updates", "Automated Updates");
+  public static final Flag<Boolean> AUTOMATED_UPDATES_FLOW =
+    new BooleanFlag(
+      AUTOMATED_UPDATES,
+      "use.automated.updates.flow",
+      "Use Automated Updates Flow",
+      "Modifies IntelliJ's IDE update flow to enable automated updates and encourage more frequent updates"
+    );
+  // endregion Automated Updates Flow
+
   private StudioFlags() { }
 
   private static Boolean isUnitTestMode() {
