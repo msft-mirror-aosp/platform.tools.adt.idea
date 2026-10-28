@@ -62,6 +62,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 import javax.swing.JScrollPane;
+import javax.swing.JTable;
 import javax.swing.JTree;
 import javax.swing.tree.TreePath;
 import org.jetbrains.annotations.NotNull;
@@ -177,6 +178,25 @@ public class MemoryClassSetViewTest {
   public void testResetInstanceView() {
     myClassSetView.reset();
     assertThat(myClassSetView.getTree()).isNull();
+  }
+
+  @Test
+  public void descendingSortIsPassedToClassSet() {
+    List<String> sorts = new ArrayList<>();
+    ClassSet classSet = new ClassSet(((ClassSet)myClassSetRootNode.getAdapter()).getClassEntry()) {
+      @Override
+      public void setSort(@NotNull CaptureObject.InstanceAttribute attribute, boolean isDescending) {
+        sorts.add(attribute.name() + (isDescending ? " descending" : " ascending"));
+      }
+    };
+    myStage.getCaptureSelection().selectClassSet(classSet);
+
+    JScrollPane columnTreePane = (JScrollPane)myClassSetView.getColumnTree().getComponent(0);
+    JTable table = new ColumnTreeTestInfo(myClassSetTree, columnTreePane).getTable();
+    int depthColumn = table.getColumn("Depth").getModelIndex();
+    table.getRowSorter().toggleSortOrder(depthColumn); // Ascending first
+    table.getRowSorter().toggleSortOrder(depthColumn); // Then descending
+    assertThat(sorts).contains("DEPTH descending");
   }
 
   @Test

@@ -85,9 +85,10 @@ public final class MemoryClassSetView extends AspectObserver {
 
   @NotNull private final Map<InstanceAttribute, AttributeColumn<MemoryObject>> myAttributeColumns = new HashMap<>();
 
-  @NotNull private final Map<Comparator<?>, InstanceAttribute> myComparatorAttributes = new java.util.IdentityHashMap<>();
+  // Not identity maps: descending sorts pass a new Collections.reverseOrder() wrapper, which only equals() the stored one.
+  @NotNull private final Map<Comparator<?>, InstanceAttribute> myComparatorAttributes = new HashMap<>();
 
-  @NotNull private final Map<Comparator<?>, Boolean> myComparatorIsDescending = new java.util.IdentityHashMap<>();
+  @NotNull private final Map<Comparator<?>, Boolean> myComparatorIsDescending = new HashMap<>();
 
   @NotNull private final JPanel myInstancesPanel = new JPanel(new BorderLayout());
 
