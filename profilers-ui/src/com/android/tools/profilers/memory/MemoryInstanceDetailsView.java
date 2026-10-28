@@ -556,9 +556,9 @@ public final class MemoryInstanceDetailsView extends AspectObserver {
 
         HeapSet heapSet = mySelection.getSelectedCapture().getHeapSet(selectedObject.getHeapId());
         assert heapSet != null;
+        mySelection.selectHeapSet(heapSet);
         ClassifierSet classifierSet = heapSet.findContainingClassifierSet(selectedObject);
         assert classifierSet instanceof ClassSet;
-        mySelection.selectHeapSet(heapSet);
         mySelection.selectClassSet((ClassSet)classifierSet);
         mySelection.selectInstanceObject(selectedObject);
         mySelection.selectFieldObjectPath(Collections.emptyList());
