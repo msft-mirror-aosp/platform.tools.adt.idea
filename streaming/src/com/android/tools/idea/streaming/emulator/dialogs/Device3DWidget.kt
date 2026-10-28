@@ -18,6 +18,7 @@ package com.android.tools.idea.streaming.emulator.dialogs
 import com.android.emulator.control.Posture.PostureValue
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.adtui.device.SkinDefinition
+import com.android.tools.idea.streaming.emulator.EmulatorConfiguration
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.PostureDescriptor.ValueType
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.intellij.ui.JBColor
@@ -48,7 +49,6 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
-import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -99,7 +99,7 @@ internal class Device3DWidget(
     }
 
   private val skinOutline: SkinOutline? = skin?.let(::analyzeSkinOutline)
-  private val baseHalfExtents: Pair<Float, Float> = computeBaseHalfExtents()
+  private val baseHalfExtents: Pair<Float, Float> = computeBaseHalfExtents(emulator.emulatorConfig)
   private val hingeX: Float =
     if (hasPostures && !isRollable && skinOutline != null) {
       skinOutline.normalizedDisplayCenterX * 2f * baseHalfExtents.first
@@ -312,16 +312,12 @@ internal class Device3DWidget(
   /** Returns true when a foldable device is in the closed posture so the outer display is active instead of the inner display. */
   internal fun isOuterDisplayActive(): Boolean = hasPostures && !isRollable && currentPosture == PostureValue.POSTURE_CLOSED
 
-  private fun computeBaseHalfExtents(): Pair<Float, Float> {
-    if (skinOutline != null) {
-      val aspect = skinOutline.frameWidth.toFloat() / skinOutline.frameHeight.coerceAtLeast(1).toFloat()
-      val maxAspect = 1.25f
-      return if (aspect <= maxAspect) {
-        Pair(PHONE_HALF_HEIGHT * aspect, PHONE_HALF_HEIGHT)
-      } else {
-        val maxHalfW = PHONE_HALF_HEIGHT * maxAspect
-        Pair(maxHalfW, maxHalfW / aspect)
-      }
+  private fun computeBaseHalfExtents(config: EmulatorConfiguration): Pair<Float, Float> {
+    if (skinOutline != null && skinOutline.frameWidth > 0 && skinOutline.frameHeight > 0) {
+      return computeHalfExtentsForAspect(skinOutline.frameWidth.toFloat() / skinOutline.frameHeight.toFloat())
+    }
+    if (!hasPostures && config.displayWidth > 0 && config.displayHeight > 0) {
+      return computeHalfExtentsForAspect(config.displayWidth.toFloat() / config.displayHeight.toFloat())
     }
     val halfW =
       when {
@@ -330,6 +326,16 @@ internal class Device3DWidget(
         else -> PHONE_HALF_WIDTH
       }
     return Pair(halfW, PHONE_HALF_HEIGHT)
+  }
+
+  private fun computeHalfExtentsForAspect(aspect: Float): Pair<Float, Float> {
+    val maxAspect = 1.25f
+    return if (aspect <= maxAspect) {
+      Pair(PHONE_HALF_HEIGHT * aspect, PHONE_HALF_HEIGHT)
+    } else {
+      val maxHalfW = PHONE_HALF_HEIGHT * maxAspect
+      Pair(maxHalfW, maxHalfW / aspect)
+    }
   }
 
   /** Computes the `(halfW, halfH)` 3D model extents in meters for the current posture/roll state. */
@@ -361,7 +367,7 @@ internal class Device3DWidget(
     }
     val width = 2f * halfW
     val height = 2f * halfH
-    val cornerRadius = min(width, height) * GENERIC_CORNER_RATIO
+    val cornerRadius = 2f * minOf(halfW, halfH, PHONE_HALF_WIDTH) * GENERIC_CORNER_RATIO
     val roundRect =
       RoundRectangle2D.Float(
         -halfW,
@@ -492,14 +498,14 @@ internal class Device3DWidget(
       g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
       g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
 
-      val minDim = min(texW, texH).toFloat()
-      val outerRadius = minDim * GENERIC_CORNER_RATIO
+      val referenceDim = TEXTURE_MAX_DIMENSION * (minOf(halfW, halfH, PHONE_HALF_WIDTH) / maxHalf)
+      val outerRadius = referenceDim * GENERIC_CORNER_RATIO
       val outerArc = outerRadius * 2f
       val outerRect = RoundRectangle2D.Float(0f, 0f, texW.toFloat(), texH.toFloat(), outerArc, outerArc)
       g.color = DEVICE_FRONT_COLOR
       g.fill(outerRect)
 
-      val inset = minDim * GENERIC_BEZEL_RATIO
+      val inset = referenceDim * GENERIC_BEZEL_RATIO
       val screenW = (texW - 2f * inset).coerceAtLeast(1f)
       val screenH = (texH - 2f * inset).coerceAtLeast(1f)
       val innerRadius = (outerRadius - inset).coerceAtLeast(0f)

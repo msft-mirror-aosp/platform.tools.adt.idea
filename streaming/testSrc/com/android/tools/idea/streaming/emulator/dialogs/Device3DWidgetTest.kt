@@ -292,9 +292,22 @@ class Device3DWidgetTest {
     assertThat(bottomThickness).isEqualTo(leftThickness)
 
     val diagOuter = (0 until midX).first { ((faceTexture.getRGB(it, it) ushr 24) and 0xFF) >= 128 }
-    val diagInner = (diagOuter until midX).first { (faceTexture.getRGB(it, it) and 0xFFFFFF) != frameRgb }
+    val diagFrame = (diagOuter until midX).first { (faceTexture.getRGB(it, it) and 0xFFFFFF) == frameRgb }
+    val diagInner = (diagFrame until midX).first { (faceTexture.getRGB(it, it) and 0xFFFFFF) != frameRgb }
     val cornerThickness = (diagInner - diagOuter) * sqrt(2.0)
     assertThat(abs(cornerThickness - leftThickness)).isLessThan(2.0)
+
+    // Verify a skinless foldable (Resizable AVD) uses the same physical corner radius and bezel inset on its inner and outer displays.
+    val (_, resizableController) = createAndStartEmulator { FakeEmulator.createResizableAvd(it) }
+    val resizableWidget = createWidget(resizableController)
+    val (resHalfW, resHalfH) = resizableWidget.computeModelHalfExtents()
+    val innerTexture = resizableWidget.getFaceTexture()
+    val outerTexture = resizableWidget.getOuterFaceTexture()
+    val innerDiagOuter = (0 until innerTexture.width / 2).first { ((innerTexture.getRGB(it, it) ushr 24) and 0xFF) >= 128 }
+    val outerDiagOuter = (0 until outerTexture.width / 2).first { ((outerTexture.getRGB(it, it) ushr 24) and 0xFF) >= 128 }
+    val innerCornerMeters = innerDiagOuter.toFloat() / innerTexture.height * (2f * resHalfH)
+    val outerCornerMeters = outerDiagOuter.toFloat() / outerTexture.height * (2f * resHalfH)
+    assertThat(abs(innerCornerMeters - outerCornerMeters)).isLessThan(0.002f)
   }
 
   private fun createAndStartEmulator(
