@@ -149,10 +149,7 @@ public final class MemoryInstanceDetailsView extends AspectObserver {
 
     myInstanceViewers.add(new BitmapViewer());
 
-    myGCRootCheckBox.addItemListener(ignored -> {
-      instanceChanged();
-      myTabsPanel.setSelectedComponent(myRefPanel);
-    });
+    myGCRootCheckBox.addItemListener(ignored -> rebuildReferenceColumnTree());
 
     LongFunction<String> timeFormatter = t ->
       TimeFormatter.getSemiSimplifiedClockString(timeline.convertToRelativeTimeUs(t));
@@ -325,6 +322,24 @@ public final class MemoryInstanceDetailsView extends AspectObserver {
     });
 
     getComponent().setVisible(hasContent);
+  }
+
+  /**
+   * Rebuilds only the References tree, since rebuilding every tab also rebuilds the Fields tree, which can run out of memory for
+   * large arrays.
+   */
+  private void rebuildReferenceColumnTree() {
+    CaptureObject capture = mySelection.getSelectedCapture();
+    InstanceObject instance = mySelection.getSelectedInstanceObject();
+    if (capture == null || instance == null || myReferenceColumnTree == null) {
+      return;
+    }
+    myRefPanel.remove(myReferenceColumnTree);
+    myReferenceColumnTree = buildReferenceColumnTree(capture, instance);
+    assert myReferenceColumnTree != null;
+    myRefPanel.add(myReferenceColumnTree, BorderLayout.CENTER);
+    myRefPanel.revalidate();
+    myRefPanel.repaint();
   }
 
   private void fieldChanged() {

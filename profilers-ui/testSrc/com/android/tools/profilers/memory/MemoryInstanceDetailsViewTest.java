@@ -452,6 +452,17 @@ public class MemoryInstanceDetailsViewTest {
       ReferenceObject gcRoot = (ReferenceObject)((NearestGCRootTreeNode)selection.getLastPathComponent()).getAdapter();
       Truth.assertThat(gcRoot.getReferenceInstance()).isEqualTo(referer0);
     }
+
+    // Toggling the checkbox only rebuilds the reference tree
+    {
+      JTree fieldTree = myDetailsView.getFieldTree();
+      Truth.assertThat(fieldTree).isNotNull();
+
+      myDetailsView.getGCRootCheckBox().setSelected(false);
+
+      Truth.assertThat(myDetailsView.getFieldTree()).isSameAs(fieldTree);
+      Truth.assertThat(myDetailsView.getReferenceTree().getModel().getRoot()).isNotInstanceOf(NearestGCRootTreeNode.class);
+    }
   }
 
   @Test
