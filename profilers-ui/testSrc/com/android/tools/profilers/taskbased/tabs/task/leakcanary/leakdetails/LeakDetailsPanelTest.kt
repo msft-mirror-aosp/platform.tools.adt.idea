@@ -19,8 +19,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -28,6 +32,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performKeyInput
+import androidx.compose.ui.test.pressKey
+import androidx.compose.ui.test.requestFocus
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.codenavigation.CodeLocation
@@ -422,6 +429,121 @@ class LeakDetailsPanelTest : WithFakeTimer {
 
   @Test
   fun `test occurrence stepper updates displayed trace nodes`() {
+    val selectedLeak = twoOccurrenceLeak()
+
+    var selectedIndex by mutableStateOf(0)
+
+    composeTestRule.setContent {
+      LeakDetailsPanel(
+        selectedLeak = selectedLeak,
+        selectedLeakOccurrenceIndex = selectedIndex,
+        isOccurrencesEnabled = true,
+        onPreviousOccurrence = { selectedIndex-- },
+        onNextOccurrence = { selectedIndex++ },
+        gotoDeclaration = leakCanaryModel::goToDeclaration,
+        isRecording = true,
+        isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
+        openStates = emptyList(),
+        onOpenStatesChange = {},
+        onCopy = {},
+      )
+    }
+
+    composeTestRule.onNodeWithText(TaskBasedUxStrings.LEAKCANARY_OCCURRENCE_LABEL).assertIsDisplayed()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.getLeakCanaryOccurrencePosition(1, 2)).assertIsDisplayed()
+    // Screen readers get "Occurrence 1 of 2", not the raw "1/2".
+    composeTestRule.onNodeWithText("1/2").assertDoesNotExist()
+    composeTestRule.onNodeWithTag("class1").assertIsDisplayed()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_PREVIOUS_OCCURRENCE).assertIsNotEnabled()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_NEXT_OCCURRENCE).performClick()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.getLeakCanaryOccurrencePosition(2, 2)).assertIsDisplayed()
+    composeTestRule.onNodeWithTag("class2").assertIsDisplayed()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_NEXT_OCCURRENCE).assertIsNotEnabled()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_PREVIOUS_OCCURRENCE).performClick()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.getLeakCanaryOccurrencePosition(1, 2)).assertIsDisplayed()
+    composeTestRule.onNodeWithTag("class1").assertIsDisplayed()
+  }
+
+  @Test
+  fun `test occurrence stepper stays visible with a long leak name`() {
+    val longClassName = "com.example." + "VeryLongClassName".repeat(30)
+    val trace =
+      LeakTrace.fromString(
+        """
+        ┬───
+        │ GC Root: Input or output parameters in native code
+        │
+        ╰→ $longClassName instance
+        ​     Leaking: YES
+        """
+          .trimIndent()
+      )
+    val selectedLeak =
+      Leak(
+        type = LeakType.APPLICATION_LEAKS,
+        retainedByteSize = 2200,
+        signature = "41c3c2258578581a1b0c9f78b59966266ed118b9",
+        leakTraceCount = 2,
+        displayedLeakTrace = listOf(trace, trace),
+      )
+
+    composeTestRule.setContent {
+      LeakDetailsPanel(
+        selectedLeak = selectedLeak,
+        selectedLeakOccurrenceIndex = 0,
+        isOccurrencesEnabled = true,
+        gotoDeclaration = leakCanaryModel::goToDeclaration,
+        isRecording = true,
+        isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
+        openStates = emptyList(),
+        onOpenStatesChange = {},
+        onCopy = {},
+      )
+    }
+
+    // The long name is cut, so the stepper and the toolbar buttons stay on screen.
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.getLeakCanaryOccurrencePosition(1, 2)).assertIsDisplayed()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_NEXT_OCCURRENCE).assertIsDisplayed()
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_COPY_TO_CLIPBOARD).assertIsDisplayed()
+  }
+
+  @OptIn(ExperimentalTestApi::class)
+  @Test
+  fun `test occurrence stepper works with the keyboard`() {
+    val selectedLeak = twoOccurrenceLeak()
+    var selectedIndex by mutableStateOf(0)
+
+    composeTestRule.setContent {
+      LeakDetailsPanel(
+        selectedLeak = selectedLeak,
+        selectedLeakOccurrenceIndex = selectedIndex,
+        isOccurrencesEnabled = true,
+        onPreviousOccurrence = { selectedIndex-- },
+        onNextOccurrence = { selectedIndex++ },
+        gotoDeclaration = leakCanaryModel::goToDeclaration,
+        isRecording = true,
+        isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
+        openStates = emptyList(),
+        onOpenStatesChange = {},
+        onCopy = {},
+      )
+    }
+
+    val next = composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_NEXT_OCCURRENCE)
+    next.requestFocus()
+    next.assertIsFocused()
+    next.performKeyInput { pressKey(Key.Enter) }
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.getLeakCanaryOccurrencePosition(2, 2)).assertIsDisplayed()
+
+    val previous = composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_PREVIOUS_OCCURRENCE)
+    previous.requestFocus()
+    previous.assertIsFocused()
+    previous.performKeyInput { pressKey(Key.Spacebar) }
+    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.getLeakCanaryOccurrencePosition(1, 2)).assertIsDisplayed()
+  }
+
+  /** A leak with two occurrences, whose last nodes are class1 and class2. */
+  private fun twoOccurrenceLeak(): Leak {
     val trace1 =
       LeakTrace.fromString(
         """
@@ -444,37 +566,12 @@ class LeakDetailsPanelTest : WithFakeTimer {
         """
           .trimIndent()
       )
-    val selectedLeak =
-      Leak(
-        type = LeakType.APPLICATION_LEAKS,
-        retainedByteSize = 2200,
-        signature = "41c3c2258578581a1b0c9f78b59966266ed118b9",
-        leakTraceCount = 2,
-        displayedLeakTrace = listOf(trace1, trace2),
-      )
-
-    var selectedIndex by mutableStateOf(0)
-
-    composeTestRule.setContent {
-      LeakDetailsPanel(
-        selectedLeak = selectedLeak,
-        selectedLeakOccurrenceIndex = selectedIndex,
-        isOccurrencesEnabled = true,
-        onPreviousOccurrence = { selectedIndex-- },
-        onNextOccurrence = { selectedIndex++ },
-        gotoDeclaration = leakCanaryModel::goToDeclaration,
-        isRecording = true,
-        isDeclarationAvailableAsync = leakCanaryModel::isDeclarationAvailableAsync,
-        openStates = emptyList(),
-        onOpenStatesChange = {},
-        onCopy = {},
-      )
-    }
-
-    composeTestRule.onNodeWithTag("class1").assertIsDisplayed()
-    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_NEXT_OCCURRENCE).performClick()
-    composeTestRule.onNodeWithTag("class2").assertIsDisplayed()
-    composeTestRule.onNodeWithContentDescription(TaskBasedUxStrings.LEAKCANARY_PREVIOUS_OCCURRENCE).performClick()
-    composeTestRule.onNodeWithTag("class1").assertIsDisplayed()
+    return Leak(
+      type = LeakType.APPLICATION_LEAKS,
+      retainedByteSize = 2200,
+      signature = "41c3c2258578581a1b0c9f78b59966266ed118b9",
+      leakTraceCount = 2,
+      displayedLeakTrace = listOf(trace1, trace2),
+    )
   }
 }
