@@ -32,9 +32,9 @@ import com.android.testutils.retryUntilPassing
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.AppFinding
-import com.android.tools.idea.findings.model.FindingData
+import com.android.tools.idea.findings.model.FindingCategory
+import com.android.tools.idea.findings.model.FindingContext
 import com.android.tools.idea.findings.model.FindingSeverity
-import com.android.tools.idea.findings.model.FindingType
 import com.android.tools.idea.findings.model.StackTrace
 import com.android.tools.idea.findings.model.VisualEvidence
 import com.google.common.truth.Truth.assertThat
@@ -77,18 +77,12 @@ class FindingsDetailsPanelTest {
   }
 
   private val sampleFinding =
-    AppFinding.Supported(
+    AppFinding(
       name = "finding-drm",
-      type = FindingType.DRM_APP_COMPAT,
+      category = FindingCategory.TECHNICAL_QUALITY,
       severity = FindingSeverity.WARNING,
-      findingData =
-        FindingData.DrmAppCompat(
-          drmPackageName = "com.example.drm",
-          drmDisplayName = "Example DRM",
-          drmVersion = "1.0",
-          recommendedDrmVersion = "2.0",
-          learnMoreUrl = "https://example.com/drm",
-        ),
+      displayName = "Bad version of your app protection service",
+      description = "Sample DRM compatibility description.",
       affectedScopes = listOf(AffectedScope.Artifact("101")),
     )
 
@@ -103,7 +97,7 @@ class FindingsDetailsPanelTest {
     composeTestRule.onNodeWithContentDescription(sampleFinding.severity.name, useUnmergedTree = true).assertIsDisplayed()
     composeTestRule.onNodeWithTag("finding_category_badge", useUnmergedTree = true).assertIsDisplayed()
     composeTestRule.onNodeWithText(sampleFinding.category.displayName, useUnmergedTree = true).assertIsDisplayed()
-    composeTestRule.onNodeWithTag("finding_description", useUnmergedTree = true).assertTextEquals(sampleFinding.details)
+    composeTestRule.onNodeWithTag("finding_description", useUnmergedTree = true).assertTextEquals(sampleFinding.description)
   }
 
   @Test
@@ -127,15 +121,12 @@ class FindingsDetailsPanelTest {
     composeTestRule.setContent { Box(Modifier.size(250.dp, 150.dp)) { panel.FindingsDetailsContent() } }
 
     val longFinding =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-long",
-        type = FindingType.EDGE_TO_EDGE_COMPAT,
+        category = FindingCategory.USER_EXPERIENCE,
         severity = FindingSeverity.WARNING,
-        findingData =
-          FindingData.EdgeToEdge(
-            manualReviewMessage = (1..30).joinToString("\n") { "Line $it of long finding description" },
-            versionCode = "101",
-          ),
+        displayName = "Edge-to-edge display not supported",
+        description = (1..30).joinToString("\n") { "Line $it of long finding description" },
       )
 
     panel.updateFinding(longFinding)
@@ -162,18 +153,11 @@ class FindingsDetailsPanelTest {
     composeTestRule.setContent { panel.FindingsDetailsContent() }
 
     val findingWithoutScreenshot =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-drm",
-        type = FindingType.DRM_APP_COMPAT,
+        category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.WARNING,
-        findingData =
-          FindingData.DrmAppCompat(
-            drmPackageName = "com.example.drm",
-            drmDisplayName = "Example DRM",
-            drmVersion = "1.0",
-            recommendedDrmVersion = "2.0",
-            learnMoreUrl = null,
-          ),
+        displayName = "Bad version of your app protection service",
       )
 
     panel.updateFinding(findingWithoutScreenshot)
@@ -196,15 +180,12 @@ class FindingsDetailsPanelTest {
     composeTestRule.setContent { panel.FindingsDetailsContent() }
 
     val findingWithScreenshot =
-      AppFinding.Supported(
+      AppFinding(
         name = "applications/com.example.app/findings/10",
-        type = FindingType.LARGE_SCREENS_LAYOUT,
+        category = FindingCategory.USER_EXPERIENCE,
         severity = FindingSeverity.WARNING,
-        findingData =
-          FindingData.LargeScreens(
-            layoutIssueType = "LETTERBOXING",
-            visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png")),
-          ),
+        displayName = "Large screens layout issue",
+        context = FindingContext(visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png"))),
       )
 
     panel.updateFinding(findingWithScreenshot)
@@ -230,15 +211,12 @@ class FindingsDetailsPanelTest {
     composeTestRule.setContent { panel.FindingsDetailsContent() }
 
     val findingWithScreenshot =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-large-screen",
-        type = FindingType.LARGE_SCREENS_LAYOUT,
+        category = FindingCategory.USER_EXPERIENCE,
         severity = FindingSeverity.WARNING,
-        findingData =
-          FindingData.LargeScreens(
-            layoutIssueType = "LETTERBOXING",
-            visualEvidences = listOf(VisualEvidence("https://example.com/broken-screenshot.png")),
-          ),
+        displayName = "Large screens layout issue",
+        context = FindingContext(visualEvidences = listOf(VisualEvidence("https://example.com/broken-screenshot.png"))),
       )
 
     panel.updateFinding(findingWithScreenshot)
@@ -257,15 +235,12 @@ class FindingsDetailsPanelTest {
     composeTestRule.setContent { panel.FindingsDetailsContent() }
 
     val findingWithScreenshot =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-large-screen",
-        type = FindingType.LARGE_SCREENS_LAYOUT,
+        category = FindingCategory.USER_EXPERIENCE,
         severity = FindingSeverity.WARNING,
-        findingData =
-          FindingData.LargeScreens(
-            layoutIssueType = "LETTERBOXING",
-            visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png")),
-          ),
+        displayName = "Large screens layout issue",
+        context = FindingContext(visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png"))),
       )
 
     panel.updateFinding(findingWithScreenshot)
@@ -292,11 +267,12 @@ class FindingsDetailsPanelTest {
         .trimIndent()
 
     val crashFinding =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-large-screen-crash",
-        type = FindingType.LARGE_SCREENS_CRASH,
+        category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.SEVERE,
-        findingData = FindingData.LargeScreens(stackTrace = StackTrace(sampleStackTrace)),
+        displayName = "Large screen crash on configuration change",
+        context = FindingContext(stackTrace = StackTrace(sampleStackTrace)),
       )
 
     composeTestRule.onNodeWithTag("finding_stack_trace", useUnmergedTree = true).assertDoesNotExist()
@@ -314,11 +290,11 @@ class FindingsDetailsPanelTest {
     composeTestRule.setContent { panel.FindingsDetailsContent() }
 
     val crashFinding =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-log-only",
-        type = FindingType.LARGE_SCREENS_CRASH,
+        category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.SEVERE,
-        findingData = FindingData.LargeScreens(),
+        displayName = "Large screen crash on configuration change",
       )
 
     panel.updateFinding(crashFinding)
@@ -334,11 +310,12 @@ class FindingsDetailsPanelTest {
     composeTestRule.setContent { panel.FindingsDetailsContent() }
 
     val crashFinding =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-crash",
-        type = FindingType.LARGE_SCREENS_CRASH,
+        category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.SEVERE,
-        findingData = FindingData.LargeScreens(stackTrace = StackTrace("java.lang.IllegalStateException: failed")),
+        displayName = "Large screen crash on configuration change",
+        context = FindingContext(stackTrace = StackTrace("java.lang.IllegalStateException: failed")),
       )
 
     panel.updateFinding(crashFinding)
@@ -357,11 +334,12 @@ class FindingsDetailsPanelTest {
     composeTestRule.setContent { panel.FindingsDetailsContent() }
 
     val crashFinding =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-crash-wrap",
-        type = FindingType.LARGE_SCREENS_CRASH,
+        category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.SEVERE,
-        findingData = FindingData.LargeScreens(stackTrace = StackTrace("java.lang.NullPointerException")),
+        displayName = "Large screen crash on configuration change",
+        context = FindingContext(stackTrace = StackTrace("java.lang.NullPointerException")),
       )
 
     panel.updateFinding(crashFinding)
@@ -380,12 +358,13 @@ class FindingsDetailsPanelTest {
     composeTestRule.setContent { panel.FindingsDetailsContent() }
 
     val finding =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-crash-and-screenshot",
-        type = FindingType.LARGE_SCREENS_CRASH,
+        category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.SEVERE,
-        findingData =
-          FindingData.LargeScreens(
+        displayName = "Large screen crash on configuration change",
+        context =
+          FindingContext(
             visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png")),
             stackTrace = StackTrace("java.lang.NullPointerException: crash"),
           ),

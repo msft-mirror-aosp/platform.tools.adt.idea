@@ -28,7 +28,7 @@ enum class FindingSeverity(val displayName: String) {
   BLOCKING("Blocking");
 
   /** Converts this domain [FindingSeverity] to its Protobuf [ProtoFinding.Severity] counterpart. */
-  fun toProto(): ProtoFinding.Severity =
+  internal fun toProto(): ProtoFinding.Severity =
     when (this) {
       INFO -> ProtoFinding.Severity.INFO
       WARNING -> ProtoFinding.Severity.WARNING
@@ -38,13 +38,14 @@ enum class FindingSeverity(val displayName: String) {
 }
 
 /** Extension to convert a Protobuf [ProtoFinding.Severity] to its domain [FindingSeverity] counterpart. */
-fun ProtoFinding.Severity.toDomain(): FindingSeverity =
+internal fun ProtoFinding.Severity.toDomain(): FindingSeverity =
   when (this) {
     ProtoFinding.Severity.INFO -> FindingSeverity.INFO
     ProtoFinding.Severity.WARNING -> FindingSeverity.WARNING
     ProtoFinding.Severity.SEVERE -> FindingSeverity.SEVERE
     ProtoFinding.Severity.BLOCKING -> FindingSeverity.BLOCKING
-    else -> {
+    ProtoFinding.Severity.SEVERITY_UNSPECIFIED,
+    ProtoFinding.Severity.UNRECOGNIZED -> {
       LOG.warn("Encountered unknown severity: $this")
       // The Severity enum is officially frozen in the API.
       // Fall back to INFO as a safe default for robustness.

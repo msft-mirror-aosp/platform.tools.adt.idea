@@ -19,46 +19,21 @@ package com.android.tools.idea.findings.model
  * Represents a finding for an application from the Play Console.
  *
  * @property name The unique identifier of the finding.
- * @property type The type of the finding (e.g., [FindingType.DRM_APP_COMPAT]).
+ * @property category The high-level [FindingCategory] this finding belongs to.
  * @property severity The severity (e.g., [FindingSeverity.WARNING]).
- * @property findingData The structured data payload. Use [FindingData.Empty] if no data is present.
+ * @property displayName The user-facing display name describing the finding.
+ * @property description Detailed description or explanation for the finding.
  * @property affectedScopes Scopes within the app that this finding refers to.
+ * @property context Optional diagnostic and UI attachments associated with the finding.
+ * @property jsonPayload Serialized JSON representation of the parsed [com.google.play.androidpublisher.v3.Finding] proto for AI context.
  */
-sealed interface AppFinding {
-  val name: String
-  val type: FindingType
-  val severity: FindingSeverity
-  val findingData: FindingData
-  val affectedScopes: List<AffectedScope>
-
-  /** The user-facing display name describing the finding type. */
-  val displayName: String
-    get() = getFindingDisplayName(type, findingData)
-
-  /** The high-level [FindingCategory] this finding belongs to. */
-  val category: FindingCategory
-    get() = type.toFindingCategory()
-
-  /** Detailed description or explanation for the finding and its associated data. */
-  val details: String
-    get() = getFindingDetails(type, findingData) ?: "" // TODO(b/517599039): display "No extra details available for this finding."?
-
-  /** Represents any recognized, supported finding from the Play Console. */
-  data class Supported(
-    override val name: String,
-    override val type: FindingType,
-    override val severity: FindingSeverity,
-    override val findingData: FindingData,
-    override val affectedScopes: List<AffectedScope> = emptyList(),
-  ) : AppFinding
-
-  /** Represents an unrecognized finding type for forward compatibility. */
-  data class Unknown(
-    override val name: String,
-    override val severity: FindingSeverity,
-    override val findingData: FindingData,
-    override val affectedScopes: List<AffectedScope> = emptyList(),
-  ) : AppFinding {
-    override val type: FindingType = FindingType.UNKNOWN
-  }
-}
+data class AppFinding(
+  val name: String,
+  val category: FindingCategory,
+  val severity: FindingSeverity,
+  val displayName: String,
+  val description: String = "",
+  val affectedScopes: List<AffectedScope> = emptyList(),
+  val context: FindingContext = FindingContext.EMPTY,
+  val jsonPayload: String = "",
+)

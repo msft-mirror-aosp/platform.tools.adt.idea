@@ -291,7 +291,7 @@ class FindingsProjectLevelControllerTest {
   fun testRefresh_preservesAndUpdatesSelectedFindingWhenStillPresent() = runTest {
     val mockClient = mock<FindingsClient>()
     val allFindings = (fakeClient.fetchFindings(FetchFindingsRequest(FakeFindingsClient.TEST_PACKAGE_NAME)) as LoadingState.Ready).value
-    val firstFinding = allFindings.first() as AppFinding.Supported
+    val firstFinding = allFindings.first()
     val updatedFirstFinding = firstFinding.copy(affectedScopes = emptyList())
 
     whenever(mockClient.fetchFindings(any())).thenReturn(LoadingState.Ready(allFindings))

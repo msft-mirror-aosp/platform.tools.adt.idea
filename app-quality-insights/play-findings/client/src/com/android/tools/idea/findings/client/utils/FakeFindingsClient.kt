@@ -17,16 +17,22 @@ package com.android.tools.idea.findings.client.utils
 
 import com.android.tools.idea.findings.client.FetchFindingsRequest
 import com.android.tools.idea.findings.client.FindingsClient
+import com.android.tools.idea.findings.client.toDomain
 import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.AppFinding
-import com.android.tools.idea.findings.model.FindingData
 import com.android.tools.idea.findings.model.FindingSeverity
-import com.android.tools.idea.findings.model.FindingType
-import com.android.tools.idea.findings.model.StackTrace
-import com.android.tools.idea.findings.model.VitalsMetric
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.Selection
 import com.android.tools.idea.insights.model.connection.Connection
+import com.google.play.androidpublisher.v3.DrmAppCompatFindingData
+import com.google.play.androidpublisher.v3.EdgeToEdgeCompatFindingData
+import com.google.play.androidpublisher.v3.Finding as ProtoFinding
+import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
+import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
+import com.google.play.androidpublisher.v3.LargeScreensCrashFindingData
+import com.google.play.androidpublisher.v3.VitalsAnomalyFindingData
+import com.google.play.androidpublisher.v3.VitalsBadBehaviorFindingData
+import com.google.play.androidpublisher.v3.VitalsDeviceBadBehaviorFindingData
 import kotlinx.coroutines.delay
 
 /**
@@ -87,117 +93,116 @@ class FakeFindingsClient(private val delayMs: Long = DEFAULT_DELAY_MS) : Finding
   private val database =
     listOf(
       // Findings for com.example.app
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/1",
-        type = FindingType.DRM_APP_COMPAT,
+        type = ProtoFinding.Type.DRM_APP_COMPAT,
         severity = FindingSeverity.WARNING,
-        findingData =
-          FindingData.DrmAppCompat(
-            drmPackageName = "com.bad.sdk",
-            drmDisplayName = "Bad SDK",
-            drmVersion = "1.0",
-            recommendedDrmVersion = "1.1",
-            learnMoreUrl = "http://example.com/drm",
-          ),
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setDrmAppCompat(
+              DrmAppCompatFindingData.newBuilder()
+                .setDrmPackageName("com.bad.sdk")
+                .setDrmDisplayName("Bad SDK")
+                .setDrmVersion("1.0")
+                .setRecommendedDrmVersion("1.1")
+                .setLearnMoreUrl("http://example.com/drm")
+            )
+            .build(),
         affectedScopes = listOf(AffectedScope.Artifact("101")),
       ),
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/2",
-        type = FindingType.DRM_APP_COMPAT,
+        type = ProtoFinding.Type.DRM_APP_COMPAT,
         severity = FindingSeverity.SEVERE,
-        findingData =
-          FindingData.DrmAppCompat(
-            drmPackageName = "com.worst.sdk",
-            drmDisplayName = "Worst SDK",
-            drmVersion = "2.0",
-            recommendedDrmVersion = null,
-            learnMoreUrl = null,
-          ),
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setDrmAppCompat(
+              DrmAppCompatFindingData.newBuilder().setDrmPackageName("com.worst.sdk").setDrmDisplayName("Worst SDK").setDrmVersion("2.0")
+            )
+            .build(),
         affectedScopes = listOf(AffectedScope.Artifact("102")),
       ),
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/3",
-        type = FindingType.DRM_APP_COMPAT,
+        type = ProtoFinding.Type.DRM_APP_COMPAT,
         severity = FindingSeverity.INFO,
-        findingData =
-          FindingData.DrmAppCompat(
-            drmPackageName = "com.info.sdk",
-            drmDisplayName = "Info SDK",
-            drmVersion = "0.9",
-            recommendedDrmVersion = "1.0",
-            learnMoreUrl = null,
-          ),
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setDrmAppCompat(
+              DrmAppCompatFindingData.newBuilder()
+                .setDrmPackageName("com.info.sdk")
+                .setDrmDisplayName("Info SDK")
+                .setDrmVersion("0.9")
+                .setRecommendedDrmVersion("1.0")
+            )
+            .build(),
         affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
       ),
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/4",
-        type = FindingType.EDGE_TO_EDGE_COMPAT,
+        type = ProtoFinding.Type.EDGE_TO_EDGE_COMPAT,
         severity = FindingSeverity.WARNING,
-        findingData =
-          FindingData.EdgeToEdge(
-            manualReviewMessage = "Your app does not draw content edge-to-edge.",
-            versionCode = "101",
-            xmlFiles = listOf("res/layout/activity_main.xml"),
-            invocations = listOf("com.example.app.MainActivity.onCreate"),
-          ),
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setEdgeToEdgeCompat(EdgeToEdgeCompatFindingData.newBuilder().setReviewMessage("Your app does not draw content edge-to-edge."))
+            .build(),
         affectedScopes = listOf(AffectedScope.Artifact("101")),
       ),
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/7",
-        type = FindingType.VITALS_BAD_BEHAVIOR,
+        type = ProtoFinding.Type.VITALS_BAD_BEHAVIOR,
         severity = FindingSeverity.SEVERE,
-        findingData =
-          FindingData.VitalsBadBehavior(
-            metric = VitalsMetric.UserPerceivedCrashRate,
-            threshold = 0.0109,
-            metricValue = 0.035,
-          ),
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setVitalsBadBehavior(
+              VitalsBadBehaviorFindingData.newBuilder().setMetric("userPerceivedCrashRate").setThreshold(0.0109).setMetricValue(0.035)
+            )
+            .build(),
         affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
       ),
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/8",
-        type = FindingType.VITALS_ANOMALY,
+        type = ProtoFinding.Type.VITALS_ANOMALY,
         severity = FindingSeverity.INFO,
-        findingData =
-          FindingData.VitalsAnomaly(
-            metric = VitalsMetric.UserPerceivedAnrRate,
-            metricValue = 0.042,
-            isHourly = true,
-          ),
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setVitalsAnomaly(VitalsAnomalyFindingData.newBuilder().setMetric("userPerceivedAnrRate").setMetricValue(0.042))
+            .build(),
         affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
       ),
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/9",
-        type = FindingType.VITALS_DEVICE_BAD_BEHAVIOR,
+        type = ProtoFinding.Type.VITALS_DEVICE_BAD_BEHAVIOR,
         severity = FindingSeverity.SEVERE,
-        findingData =
-          FindingData.VitalsDeviceBadBehavior(
-            metric = VitalsMetric.Unknown("Excessive background wakelocks"),
-            threshold = 0.02,
-            affectedDeviceModelsCount = 3,
-            isEmerging = false,
-            affectedInstallsRatio = 0.08,
-          ),
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setVitalsDeviceBadBehavior(
+              VitalsDeviceBadBehaviorFindingData.newBuilder()
+                .setMetric("Excessive background wakelocks")
+                .setThreshold(0.02)
+                .setAffectedDeviceModelCount(3)
+                .setAffectedInstallsRatio(0.08)
+            )
+            .build(),
         affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
       ),
       // Large screen continuity (state loss on fold/unfold/resize)
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/15",
-        type = FindingType.LARGE_SCREENS_CONTINUITY,
+        type = ProtoFinding.Type.LARGE_SCREENS_CONTINUITY,
         severity = FindingSeverity.WARNING,
-        findingData = FindingData.LargeScreens(),
         affectedScopes = listOf(AffectedScope.Artifact("101")),
       ),
       // Large screen crash on configuration change
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/16",
-        type = FindingType.LARGE_SCREENS_CRASH,
+        type = ProtoFinding.Type.LARGE_SCREENS_CRASH,
         severity = FindingSeverity.SEVERE,
-        findingData =
-          FindingData.LargeScreens(
-            stackTrace =
-              StackTrace(
-                raw =
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setLargeScreensCrash(
+              LargeScreensCrashFindingData.newBuilder()
+                .setStackTrace(
                   """
                   java.lang.NullPointerException: Attempt to invoke virtual method 'void android.widget.TextView.setText(java.lang.CharSequence)' on a null object reference
                   	at com.example.app.ui.detail.DetailFragment.onViewCreated(DetailFragment.kt:74)
@@ -215,48 +220,50 @@ class FakeFindingsClient(private val delayMs: Long = DEFAULT_DELAY_MS) : Finding
                   	at android.app.ActivityThread.main(ActivityThread.java:8919)
                   """
                     .trimIndent()
-              )
-          ),
+                )
+            )
+            .build(),
         affectedScopes = listOf(AffectedScope.Artifact("101")),
       ),
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$TEST_PACKAGE_NAME/findings/18",
-        type = FindingType.SDK_HAS_CRASH_ANNOTATION,
+        type = ProtoFinding.Type.SDK_HAS_CRASH_ANNOTATION,
         severity = FindingSeverity.INFO,
-        findingData = FindingData.Empty,
         affectedScopes = listOf(AffectedScope.Release("release-v1.0")),
       ),
       // Findings for com.other.app
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$OTHER_PACKAGE_NAME/findings/4",
-        type = FindingType.DRM_APP_COMPAT,
+        type = ProtoFinding.Type.DRM_APP_COMPAT,
         severity = FindingSeverity.WARNING,
-        findingData =
-          FindingData.DrmAppCompat(
-            drmPackageName = "com.another.bad.sdk",
-            drmDisplayName = "Another Bad SDK",
-            drmVersion = "1.5",
-            recommendedDrmVersion = "1.6",
-            learnMoreUrl = null,
-          ),
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setDrmAppCompat(
+              DrmAppCompatFindingData.newBuilder()
+                .setDrmPackageName("com.another.bad.sdk")
+                .setDrmDisplayName("Another Bad SDK")
+                .setDrmVersion("1.5")
+                .setRecommendedDrmVersion("1.6")
+            )
+            .build(),
         affectedScopes = emptyList(),
       ),
-      AppFinding.Supported(
+      createFinding(
         name = "applications/$OTHER_PACKAGE_NAME/findings/7",
-        type = FindingType.VITALS_BAD_BEHAVIOR,
+        type = ProtoFinding.Type.VITALS_BAD_BEHAVIOR,
         severity = FindingSeverity.SEVERE,
-        findingData =
-          FindingData.VitalsBadBehavior(
-            metric = VitalsMetric.UserPerceivedCrashRate,
-            threshold = 0.0109,
-            metricValue = 0.025,
-          ),
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setVitalsBadBehavior(
+              VitalsBadBehaviorFindingData.newBuilder().setMetric("userPerceivedCrashRate").setThreshold(0.0109).setMetricValue(0.025)
+            )
+            .build(),
         affectedScopes = listOf(AffectedScope.Release("release-v2.0")),
       ),
-      AppFinding.Unknown(
+      createFinding(
         name = "applications/$OTHER_PACKAGE_NAME/findings/5",
+        type = ProtoFinding.Type.TYPE_UNSPECIFIED,
         severity = FindingSeverity.INFO,
-        findingData = FindingData.Unknown("{\n  \"rawKey\": \"rawValue\"\n}"),
         affectedScopes = emptyList(),
       ),
     )
@@ -268,10 +275,33 @@ class FakeFindingsClient(private val delayMs: Long = DEFAULT_DELAY_MS) : Finding
     }
     val filtered = database.filter { finding ->
       val matchesPackage = finding.name.startsWith("applications/${request.packageName}/findings/")
-      val matchesType = request.filters.findingTypes.isEmpty() || request.filters.findingTypes.contains(finding.type)
       val matchesSeverity = request.filters.severities.isEmpty() || request.filters.severities.contains(finding.severity)
-      matchesPackage && matchesType && matchesSeverity
+      matchesPackage && matchesSeverity
     }
     return LoadingState.Ready(filtered)
   }
 }
+
+private fun createFinding(
+  name: String,
+  type: ProtoFinding.Type,
+  severity: FindingSeverity,
+  protoData: ProtoFindingData? = null,
+  affectedScopes: List<AffectedScope> = emptyList(),
+): AppFinding =
+  ProtoFinding.newBuilder()
+    .setName(name)
+    .setFindingType(type)
+    .setFindingSeverity(severity.toProto())
+    .apply { if (protoData != null) setFindingData(protoData) }
+    .addAllInAppLocations(affectedScopes.map { it.toProto() })
+    .build()
+    .toDomain()
+
+private fun AffectedScope.toProto(): ProtoInAppLocation =
+  when (this) {
+    is AffectedScope.Artifact ->
+      ProtoInAppLocation.newBuilder().setArtifact(ProtoInAppLocation.Artifact.newBuilder().setVersionCode(versionCode)).build()
+    is AffectedScope.Release ->
+      ProtoInAppLocation.newBuilder().setRelease(ProtoInAppLocation.Release.newBuilder().setReleaseName(releaseName)).build()
+  }

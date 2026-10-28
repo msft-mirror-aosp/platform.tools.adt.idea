@@ -17,9 +17,7 @@ package com.android.tools.idea.play.findings.ui
 
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingCategory
-import com.android.tools.idea.findings.model.FindingData
 import com.android.tools.idea.findings.model.FindingSeverity
-import com.android.tools.idea.findings.model.FindingType
 import com.android.tools.idea.insights.model.common.WithCount
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -27,25 +25,25 @@ import org.junit.Test
 class FindingsFilterTest {
 
   private val finding1 =
-    AppFinding.Supported(
+    AppFinding(
       name = "finding-1",
-      type = FindingType.EDGE_TO_EDGE_COMPAT,
+      category = FindingCategory.USER_EXPERIENCE,
       severity = FindingSeverity.WARNING,
-      findingData = FindingData.Empty,
+      displayName = "Edge-to-edge display not supported",
     )
   private val finding2 =
-    AppFinding.Supported(
+    AppFinding(
       name = "finding-2",
-      type = FindingType.EDGE_TO_EDGE_COMPAT,
+      category = FindingCategory.USER_EXPERIENCE,
       severity = FindingSeverity.SEVERE,
-      findingData = FindingData.Empty,
+      displayName = "Edge-to-edge display not supported",
     )
   private val finding3 =
-    AppFinding.Supported(
+    AppFinding(
       name = "finding-3",
-      type = FindingType.DRM_APP_COMPAT,
+      category = FindingCategory.TECHNICAL_QUALITY,
       severity = FindingSeverity.SEVERE,
-      findingData = FindingData.Empty,
+      displayName = "Bad version of your app protection service",
     )
 
   @Test
@@ -89,11 +87,11 @@ class FindingsFilterTest {
 
     // Refresh with updated counts -> only TECHNICAL_QUALITY remains selected with its updated count
     val extraFinding =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-4",
-        type = FindingType.DRM_APP_COMPAT,
+        category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.INFO,
-        findingData = FindingData.Empty,
+        displayName = "Bad version of your app protection service",
       )
     filterGroup.apply(listOf(finding1, finding3, extraFinding))
 
@@ -113,11 +111,11 @@ class FindingsFilterTest {
     filter.select(setOf(FindingSeverity.WARNING, FindingSeverity.SEVERE))
     assertThat(filter.selectionFlow.value.allSelected()).isTrue()
     val infoFinding =
-      AppFinding.Supported(
+      AppFinding(
         name = "finding-info",
-        type = FindingType.DRM_APP_COMPAT,
+        category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.INFO,
-        findingData = FindingData.Empty,
+        displayName = "Bad version of your app protection service",
       )
     filterGroup.apply(listOf(finding1, finding2, infoFinding))
     assertThat(filter.selectionFlow.value.allSelected()).isTrue()

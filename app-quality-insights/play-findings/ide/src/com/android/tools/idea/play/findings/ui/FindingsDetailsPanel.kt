@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.android.tools.adtui.common.primaryContentBackground
 import com.android.tools.adtui.compose.StudioComposePanel
 import com.android.tools.idea.findings.model.AppFinding
-import com.android.tools.idea.findings.model.FindingData
+import com.android.tools.idea.findings.model.FindingContext
 import com.android.tools.idea.findings.model.VisualEvidence
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
@@ -127,7 +127,7 @@ class FindingsDetailsPanel(
     val scrollState = remember(finding) { ScrollState(0) }
     val density = LocalDensity.current
     var headerSectionHeightPx by remember { mutableIntStateOf(0) }
-    val availableTabs = remember(finding) { getAvailableSubTabs(finding.findingData) }
+    val availableTabs = remember(finding) { getAvailableSubTabs(finding.context) }
     var selectedTab by remember(finding) { mutableStateOf(availableTabs.firstOrNull()) }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -172,7 +172,7 @@ class FindingsDetailsPanel(
 
             SelectionContainer {
               Text(
-                text = finding.details,
+                text = finding.description,
                 modifier = Modifier.testTag("finding_description"),
               )
             }
@@ -254,15 +254,10 @@ class FindingsDetailsPanel(
   }
 }
 
-private fun getAvailableSubTabs(findingData: FindingData): List<FindingDetailSubTab> =
-  when (findingData) {
-    is FindingData.LargeScreens ->
-      buildList {
-        findingData.stackTrace?.let { add(FindingDetailSubTab.StackTrace(it.raw)) }
-        val validEvidences = findingData.visualEvidences.filter { it.url.isNotBlank() }
-        if (validEvidences.isNotEmpty()) {
-          add(FindingDetailSubTab.VisualEvidences(validEvidences))
-        }
-      }
-    else -> emptyList()
+private fun getAvailableSubTabs(context: FindingContext): List<FindingDetailSubTab> = buildList {
+  context.stackTrace?.let { add(FindingDetailSubTab.StackTrace(it.raw)) }
+  val validEvidences = context.visualEvidences.filter { it.url.isNotBlank() }
+  if (validEvidences.isNotEmpty()) {
+    add(FindingDetailSubTab.VisualEvidences(validEvidences))
   }
+}

@@ -17,9 +17,7 @@ package com.android.tools.idea.play.findings.ui
 
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingCategory
-import com.android.tools.idea.findings.model.FindingData
 import com.android.tools.idea.findings.model.FindingSeverity
-import com.android.tools.idea.findings.model.FindingType
 import com.android.tools.idea.insights.InsightsProvider
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.Selection
@@ -68,30 +66,20 @@ class FindingsTabTest {
     get() = tab.detailsPanel.currentFinding?.displayName
 
   private val findingEdgeToEdge =
-    AppFinding.Supported(
+    AppFinding(
       name = "finding-edge-to-edge",
-      type = FindingType.EDGE_TO_EDGE_COMPAT,
+      category = FindingCategory.USER_EXPERIENCE,
       severity = FindingSeverity.WARNING,
-      findingData =
-        FindingData.EdgeToEdge(
-          manualReviewMessage = "App does not draw edge to edge",
-          versionCode = "101",
-        ),
+      displayName = "Edge-to-edge display not supported",
+      description = "App does not draw edge to edge",
     )
 
   private val findingDrm =
-    AppFinding.Supported(
+    AppFinding(
       name = "finding-drm",
-      type = FindingType.DRM_APP_COMPAT,
+      category = FindingCategory.TECHNICAL_QUALITY,
       severity = FindingSeverity.SEVERE,
-      findingData =
-        FindingData.DrmAppCompat(
-          drmPackageName = "com.example.drm",
-          drmDisplayName = "Example DRM",
-          drmVersion = "1.0",
-          recommendedDrmVersion = "2.0",
-          learnMoreUrl = null,
-        ),
+      displayName = "Bad version of your app protection service",
     )
 
   @Before

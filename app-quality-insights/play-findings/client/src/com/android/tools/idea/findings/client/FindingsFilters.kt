@@ -16,8 +16,6 @@
 package com.android.tools.idea.findings.client
 
 import com.android.tools.idea.findings.model.FindingSeverity
-import com.android.tools.idea.findings.model.FindingType
-import com.android.tools.idea.findings.model.toProto
 
 /**
  * Structured filters for querying findings.
@@ -25,11 +23,9 @@ import com.android.tools.idea.findings.model.toProto
  * By default, properties are initialized to empty sets. **An empty set represents the "ALL" state**, meaning no filtering restrictions are
  * applied for that category.
  *
- * @property findingTypes Filter by specific finding types (e.g., [FindingType.DRM_APP_COMPAT]). If empty, findings of all types are
- *   returned.
  * @property severities Filter by finding severity (e.g., [FindingSeverity.WARNING]). If empty, findings of all severities are returned.
  */
-data class FindingsFilters(val findingTypes: Set<FindingType> = emptySet(), val severities: Set<FindingSeverity> = emptySet()) {
+data class FindingsFilters(val severities: Set<FindingSeverity> = emptySet()) {
   companion object {
     /** Represents filters that select all findings (i.e., no filtering applied). */
     val ALL = FindingsFilters()
@@ -39,23 +35,13 @@ data class FindingsFilters(val findingTypes: Set<FindingType> = emptySet(), val 
 /**
  * Extension to convert [FindingsFilters] to the serialized AIP-160 compatible filter string.
  *
- * Returns an empty string if no filters are defined (representing "ALL"). Individual categories (types, severities) are joined with AND,
- * while multiple values within a category are joined with OR. [FindingType.UNKNOWN] values are filtered out.
+ * Returns an empty string if no filters are defined (representing "ALL"). Multiple values within a category are joined with OR.
  */
 fun FindingsFilters.toFilterString(): String {
-  val parts = mutableListOf<String>()
-
-  val typeNames = findingTypes.mapNotNull { it.toProto()?.name }.sorted()
-  if (typeNames.isNotEmpty()) {
-    val typesStr = typeNames.joinToString(separator = " OR ") { "finding_type = \"$it\"" }
-    parts.add("($typesStr)")
-  }
-
   val severityNames = severities.map { it.toProto().name }.sorted()
-  if (severityNames.isNotEmpty()) {
-    val severitiesStr = severityNames.joinToString(separator = " OR ") { "finding_severity = \"$it\"" }
-    parts.add("($severitiesStr)")
+  if (severityNames.isEmpty()) {
+    return ""
   }
-
-  return parts.joinToString(separator = " AND ")
+  val severitiesStr = severityNames.joinToString(separator = " OR ") { "finding_severity = \"$it\"" }
+  return "($severitiesStr)"
 }

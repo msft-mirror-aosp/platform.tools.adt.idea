@@ -18,12 +18,11 @@ package com.android.tools.idea.findings.client
 import com.android.tools.findings.client.PlayFindingsClient
 import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.DeviceInfo
-import com.android.tools.idea.findings.model.FindingData
+import com.android.tools.idea.findings.model.FindingCategory
+import com.android.tools.idea.findings.model.FindingContext
 import com.android.tools.idea.findings.model.FindingSeverity
-import com.android.tools.idea.findings.model.FindingType
 import com.android.tools.idea.findings.model.StackTrace
 import com.android.tools.idea.findings.model.VisualEvidence
-import com.android.tools.idea.findings.model.VitalsMetric
 import com.android.tools.idea.insights.LoadingState
 import com.google.common.truth.Truth.assertThat
 import com.google.play.androidpublisher.v3.ComputeFindingsResponse
@@ -59,8 +58,7 @@ import org.mockito.kotlin.whenever
 
 /**
  * Unit tests for [StudioFindingsClient].
- * 1. **Verify network contract**: Validates the actual JSON serialization/deserialization logic against mock HTTP payloads. Ensures GSON
- *    matches the expected model constraints (e.g., handling nullables, mapping sealed classes for oneofs).
+ * 1. **Verify network contract**: Validates the actual JSON serialization/deserialization logic against mock HTTP payloads.
  * 2. **Network error robustness**: Tests how the client translates HTTP status codes (like 500, non-200) and transport errors (like
  *    [IOException]) into clean domain [LoadingState] objects.
  */
@@ -111,12 +109,13 @@ class StudioFindingsClientTest {
 
     val finding1 = findings[0]
     assertThat(finding1.name).isEqualTo("applications/com.example.app/findings/1")
-    assertThat(finding1.type).isEqualTo(FindingType.DRM_APP_COMPAT)
+    assertThat(finding1.category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
     assertThat(finding1.severity).isEqualTo(FindingSeverity.WARNING)
-    assertThat(finding1.findingData).isInstanceOf(FindingData.DrmAppCompat::class.java)
-    val parsedDrmData = finding1.findingData as FindingData.DrmAppCompat
-    assertThat(parsedDrmData.drmPackageName).isEqualTo("com.bad.sdk")
-    assertThat(parsedDrmData.recommendedDrmVersion).isEqualTo("1.1")
+    assertThat(finding1.displayName).isEqualTo("Bad version of your app protection service")
+    assertThat(finding1.description).contains("Version 1.0 of the com.bad.sdk app protection service")
+    assertThat(finding1.description).contains("version 1.1 or later")
+    assertThat(finding1.jsonPayload).contains("\"drmPackageName\":\"com.bad.sdk\"")
+    assertThat(finding1.jsonPayload).contains("\"recommendedDrmVersion\":\"1.1\"")
     assertThat(finding1.affectedScopes).hasSize(1)
     val location1 = finding1.affectedScopes[0]
     assertThat(location1).isInstanceOf(AffectedScope.Artifact::class.java)
@@ -124,7 +123,7 @@ class StudioFindingsClientTest {
 
     val finding2 = findings[1]
     assertThat(finding2.name).isEqualTo("applications/com.example.app/findings/2")
-    assertThat(finding2.type).isEqualTo(FindingType.DRM_APP_COMPAT)
+    assertThat(finding2.category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
     assertThat(finding2.severity).isEqualTo(FindingSeverity.INFO)
     assertThat(finding2.affectedScopes).hasSize(1)
     val location2 = finding2.affectedScopes[0]
@@ -155,9 +154,10 @@ class StudioFindingsClientTest {
     assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
     val findings = (result as LoadingState.Ready).value
     assertThat(findings).hasSize(1)
-    assertThat(findings[0].type).isEqualTo(FindingType.EDGE_TO_EDGE_COMPAT)
+    assertThat(findings[0].category).isEqualTo(FindingCategory.USER_EXPERIENCE)
     assertThat(findings[0].severity).isEqualTo(FindingSeverity.WARNING)
-    assertThat(findings[0].findingData).isEqualTo(FindingData.EdgeToEdge(manualReviewMessage = "Draw edge to edge"))
+    assertThat(findings[0].description).isEqualTo("Draw edge to edge")
+    assertThat(findings[0].jsonPayload).contains("\"reviewMessage\":\"Draw edge to edge\"")
   }
 
   @Test
@@ -205,13 +205,13 @@ class StudioFindingsClientTest {
     val findings = (result as LoadingState.Ready).value
     assertThat(findings).hasSize(2)
 
-    assertThat(findings[0].type).isEqualTo(FindingType.VITALS_ANOMALY)
-    assertThat(findings[0].findingData)
-      .isEqualTo(FindingData.VitalsAnomaly(metric = VitalsMetric.UserPerceivedCrashRate, metricValue = 0.045, isHourly = true))
+    assertThat(findings[0].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
+    assertThat(findings[0].displayName).isEqualTo("Vitals anomaly detected: User-perceived crash rate")
+    assertThat(findings[0].description).contains("4.5%")
 
-    assertThat(findings[1].type).isEqualTo(FindingType.VITALS_ANOMALY)
-    assertThat(findings[1].findingData)
-      .isEqualTo(FindingData.VitalsAnomaly(metric = VitalsMetric.UserPerceivedAnrRate, metricValue = 0.012, isHourly = false))
+    assertThat(findings[1].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
+    assertThat(findings[1].displayName).isEqualTo("Vitals anomaly detected: User-perceived ANR rate")
+    assertThat(findings[1].description).contains("1.2%")
   }
 
   @Test
@@ -242,10 +242,10 @@ class StudioFindingsClientTest {
     assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
     val findings = (result as LoadingState.Ready).value
     assertThat(findings).hasSize(1)
-    assertThat(findings[0].type).isEqualTo(FindingType.VITALS_BAD_BEHAVIOR)
+    assertThat(findings[0].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
     assertThat(findings[0].severity).isEqualTo(FindingSeverity.SEVERE)
-    assertThat(findings[0].findingData)
-      .isEqualTo(FindingData.VitalsBadBehavior(metric = VitalsMetric.UserPerceivedCrashRate, threshold = 0.0109, metricValue = 0.032))
+    assertThat(findings[0].displayName).isEqualTo("Vitals bad behavior threshold exceeded: User-perceived crash rate")
+    assertThat(findings[0].description).contains("threshold of 1.09% (actual: 3.20%)")
   }
 
   @Test
@@ -278,18 +278,10 @@ class StudioFindingsClientTest {
     assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
     val findings = (result as LoadingState.Ready).value
     assertThat(findings).hasSize(1)
-    assertThat(findings[0].type).isEqualTo(FindingType.VITALS_DEVICE_BAD_BEHAVIOR)
+    assertThat(findings[0].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
     assertThat(findings[0].severity).isEqualTo(FindingSeverity.SEVERE)
-    assertThat(findings[0].findingData)
-      .isEqualTo(
-        FindingData.VitalsDeviceBadBehavior(
-          metric = VitalsMetric.UserPerceivedCrashRate,
-          threshold = 0.02,
-          affectedDeviceModelsCount = 4,
-          isEmerging = true,
-          affectedInstallsRatio = 0.07,
-        )
-      )
+    assertThat(findings[0].displayName).isEqualTo("Per-device vitals bad behavior: User-perceived crash rate")
+    assertThat(findings[0].description).contains("4 device model(s) exceed the emerging bad behavior threshold")
   }
 
   @Test
@@ -311,9 +303,9 @@ class StudioFindingsClientTest {
     assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
     val findings = (result as LoadingState.Ready).value
     assertThat(findings).hasSize(1)
-    assertThat(findings[0].type).isEqualTo(FindingType.SDK_HAS_CRASH_ANNOTATION)
+    assertThat(findings[0].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
     assertThat(findings[0].severity).isEqualTo(FindingSeverity.INFO)
-    assertThat(findings[0].findingData).isEqualTo(FindingData.Empty)
+    assertThat(findings[0].context).isEqualTo(FindingContext.EMPTY)
   }
 
   @Test
@@ -387,29 +379,29 @@ class StudioFindingsClientTest {
     val findings = (result as LoadingState.Ready).value
     assertThat(findings).hasSize(3)
 
-    assertThat(findings[0].type).isEqualTo(FindingType.LARGE_SCREENS_LAYOUT)
-    assertThat(findings[0].findingData)
+    assertThat(findings[0].category).isEqualTo(FindingCategory.USER_EXPERIENCE)
+    assertThat(findings[0].displayName).isEqualTo("App does not use entire screen")
+    assertThat(findings[0].context)
       .isEqualTo(
-        FindingData.LargeScreens(
-          layoutIssueType = "DOES_NOT_USE_ENTIRE_SCREEN",
+        FindingContext(
           visualEvidences = listOf(VisualEvidence(url = "https://lh3.googleusercontent.com/layout-screenshot")),
           deviceInfo = expectedDeviceInfo,
         )
       )
 
-    assertThat(findings[1].type).isEqualTo(FindingType.LARGE_SCREENS_CAMERA_STRETCHED)
-    assertThat(findings[1].findingData)
+    assertThat(findings[1].category).isEqualTo(FindingCategory.USER_EXPERIENCE)
+    assertThat(findings[1].context)
       .isEqualTo(
-        FindingData.LargeScreens(
+        FindingContext(
           visualEvidences = listOf(VisualEvidence(url = "https://lh3.googleusercontent.com/camera-screenshot")),
           deviceInfo = expectedDeviceInfo,
         )
       )
 
-    assertThat(findings[2].type).isEqualTo(FindingType.LARGE_SCREENS_CRASH)
-    assertThat(findings[2].findingData)
+    assertThat(findings[2].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
+    assertThat(findings[2].context)
       .isEqualTo(
-        FindingData.LargeScreens(
+        FindingContext(
           stackTrace = StackTrace(raw = "java.lang.IllegalStateException: Crash on fold"),
           deviceInfo = expectedDeviceInfo,
         )
@@ -471,8 +463,9 @@ class StudioFindingsClientTest {
     assertThat(findings).hasSize(1)
     val finding = findings[0]
     assertThat(finding.name).isEqualTo("applications/com.example.app/findings/1")
-    assertThat(finding.type).isEqualTo(FindingType.UNKNOWN)
-    assertThat(finding.findingData).isEqualTo(FindingData.Empty)
+    assertThat(finding.category).isEqualTo(FindingCategory.OTHER)
+    assertThat(finding.displayName).isEqualTo("Unknown Finding")
+    assertThat(finding.context).isEqualTo(FindingContext.EMPTY)
   }
 
   @Test
@@ -499,9 +492,9 @@ class StudioFindingsClientTest {
     assertThat(findings).hasSize(1)
     val finding = findings[0]
     assertThat(finding.name).isEmpty()
-    assertThat(finding.type).isEqualTo(FindingType.UNKNOWN)
+    assertThat(finding.category).isEqualTo(FindingCategory.OTHER)
     assertThat(finding.severity).isEqualTo(FindingSeverity.INFO)
-    assertThat(finding.findingData).isEqualTo(FindingData.Empty)
+    assertThat(finding.context).isEqualTo(FindingContext.EMPTY)
     assertThat(finding.affectedScopes).isEmpty()
   }
 
@@ -509,13 +502,12 @@ class StudioFindingsClientTest {
   fun testFetchFindings_WithFilters() = runBlocking {
     whenever(mockPlayClient.fetchFindings(any(), anyOrNull())).thenReturn("""{ "findings": [] }""")
 
-    val filters =
-      FindingsFilters(findingTypes = setOf(FindingType.DRM_APP_COMPAT, FindingType.UNKNOWN), severities = setOf(FindingSeverity.WARNING))
+    val filters = FindingsFilters(severities = setOf(FindingSeverity.WARNING))
     client.fetchFindings(FetchFindingsRequest("com.example.app", filters))
 
     val filterCaptor = ArgumentCaptor.forClass(String::class.java)
     verify(mockPlayClient).fetchFindings(eq("com.example.app"), filterCaptor.capture())
-    assertThat(filterCaptor.value).isEqualTo("(finding_type = \"DRM_APP_COMPAT\") AND (finding_severity = \"WARNING\")")
+    assertThat(filterCaptor.value).isEqualTo("(finding_severity = \"WARNING\")")
   }
 }
 

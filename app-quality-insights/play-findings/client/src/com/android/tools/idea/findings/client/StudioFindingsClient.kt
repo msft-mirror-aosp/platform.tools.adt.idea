@@ -20,12 +20,13 @@ import com.android.tools.findings.client.PlayFindingsEndpoints
 import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.DeviceInfo
-import com.android.tools.idea.findings.model.FindingData
-import com.android.tools.idea.findings.model.FindingType
+import com.android.tools.idea.findings.model.FindingContext
 import com.android.tools.idea.findings.model.StackTrace
 import com.android.tools.idea.findings.model.VisualEvidence
-import com.android.tools.idea.findings.model.VitalsMetric
+import com.android.tools.idea.findings.model.getFindingDescription
+import com.android.tools.idea.findings.model.getFindingDisplayName
 import com.android.tools.idea.findings.model.toDomain
+import com.android.tools.idea.findings.model.toFindingCategory
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.LoadingState
 import com.google.gct.login2.fstLoginFeature
@@ -34,8 +35,6 @@ import com.google.play.androidpublisher.v3.Finding as ProtoFinding
 import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
 import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
 import com.google.play.androidpublisher.v3.LargeScreensDeviceInfo as ProtoLargeScreensDeviceInfo
-import com.google.play.androidpublisher.v3.LargeScreensLayoutFindingData as ProtoLargeScreensLayoutFindingData
-import com.google.play.androidpublisher.v3.VitalsDeviceBadBehaviorFindingData as ProtoVitalsDeviceBadBehaviorFindingData
 import com.google.protobuf.util.JsonFormat
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
@@ -103,87 +102,54 @@ class StudioFindingsClient(private val playClient: PlayFindingsClient, parentDis
   }
 }
 
-private fun ProtoFinding.toDomain(): AppFinding {
-  val domainSeverity = findingSeverity.toDomain()
-  val domainScopes = inAppLocationsList.mapNotNull { it.toDomain() }
-  val domainData = if (hasFindingData()) findingData.toDomain() else FindingData.Empty
+/** Converts a Protobuf [ProtoFinding] to its domain [AppFinding] counterpart. */
+internal fun ProtoFinding.toDomain(): AppFinding {
+  val protoData = if (hasFindingData()) findingData else null
+  // TODO(b/517599039): Because the HTTP response is parsed into ProtoComputeFindingsResponse with
+  //  ignoringUnknownFields(), re-serializing ProtoFinding here drops any new fields not yet in
+  //  Studio's compiled proto. Revisit how to better support forward-compatibility for new API
+  //  finding types/details.
+  val jsonPayload = runCatching { JsonFormat.printer().omittingInsignificantWhitespace().print(this) }.getOrDefault("")
 
-  val domainType = findingType.toDomain()
-  return if (domainType != FindingType.UNKNOWN) {
-    AppFinding.Supported(name, domainType, domainSeverity, domainData, domainScopes)
-  } else {
-    AppFinding.Unknown(name, domainSeverity, FindingData.Empty, domainScopes)
-  }
+  return AppFinding(
+    name = name,
+    category = findingType.toFindingCategory(),
+    severity = findingSeverity.toDomain(),
+    displayName = getFindingDisplayName(findingType, protoData),
+    description = getFindingDescription(findingType, protoData) ?: "",
+    affectedScopes = inAppLocationsList.mapNotNull { it.toDomain() },
+    context = protoData?.toFindingContext() ?: FindingContext.EMPTY,
+    jsonPayload = jsonPayload,
+  )
 }
 
-private fun ProtoFindingData.toDomain(): FindingData =
+private fun ProtoFindingData.toFindingContext(): FindingContext =
   when (dataTypeCase) {
-    ProtoFindingData.DataTypeCase.DRM_APP_COMPAT ->
-      drmAppCompat.run {
-        FindingData.DrmAppCompat(
-          drmPackageName = drmPackageName,
-          drmDisplayName = drmDisplayName,
-          drmVersion = drmVersion,
-          recommendedDrmVersion = recommendedDrmVersion.takeIf { it.isNotEmpty() },
-          learnMoreUrl = learnMoreUrl.takeIf { it.isNotEmpty() },
-        )
-      }
-    ProtoFindingData.DataTypeCase.EDGE_TO_EDGE_COMPAT -> FindingData.EdgeToEdge(manualReviewMessage = edgeToEdgeCompat.reviewMessage)
-    ProtoFindingData.DataTypeCase.VITALS_ANOMALY ->
-      vitalsAnomaly.run {
-        FindingData.VitalsAnomaly(
-          metric = VitalsMetric.fromProto(metric),
-          metricValue = metricValue,
-          isHourly = hasHourlyTime(),
-        )
-      }
-    ProtoFindingData.DataTypeCase.VITALS_BAD_BEHAVIOR ->
-      vitalsBadBehavior.run {
-        FindingData.VitalsBadBehavior(
-          metric = VitalsMetric.fromProto(metric),
-          threshold = threshold,
-          metricValue = metricValue,
-        )
-      }
-    ProtoFindingData.DataTypeCase.VITALS_DEVICE_BAD_BEHAVIOR ->
-      vitalsDeviceBadBehavior.run {
-        FindingData.VitalsDeviceBadBehavior(
-          metric = VitalsMetric.fromProto(metric),
-          threshold = threshold,
-          affectedDeviceModelsCount = affectedDeviceModelCount.toInt(),
-          isEmerging = badBehaviorType == ProtoVitalsDeviceBadBehaviorFindingData.Type.EMERGING_BAD_BEHAVIOR,
-          affectedInstallsRatio = affectedInstallsRatio.takeIf { it > 0.0 },
-        )
-      }
     ProtoFindingData.DataTypeCase.LARGE_SCREENS_LAYOUT ->
       largeScreensLayout.run {
-        FindingData.LargeScreens(
-          layoutIssueType =
-            layoutIssueType
-              .takeIf {
-                it != ProtoLargeScreensLayoutFindingData.LayoutIssueType.LAYOUT_ISSUE_TYPE_UNSPECIFIED &&
-                  it != ProtoLargeScreensLayoutFindingData.LayoutIssueType.UNRECOGNIZED
-              }
-              ?.name,
+        FindingContext(
           visualEvidences = screenshotFifeUrl.takeIf { it.isNotBlank() }?.let { listOf(VisualEvidence(url = it)) } ?: emptyList(),
           deviceInfo = if (hasDeviceInfo()) deviceInfo.toDomain() else null,
         )
       }
     ProtoFindingData.DataTypeCase.LARGE_SCREENS_VISUAL ->
       largeScreensVisual.run {
-        FindingData.LargeScreens(
+        FindingContext(
           visualEvidences = screenshotFifeUrl.takeIf { it.isNotBlank() }?.let { listOf(VisualEvidence(url = it)) } ?: emptyList(),
           deviceInfo = if (hasDeviceInfo()) deviceInfo.toDomain() else null,
         )
       }
     ProtoFindingData.DataTypeCase.LARGE_SCREENS_CRASH ->
       largeScreensCrash.run {
-        FindingData.LargeScreens(
+        FindingContext(
           stackTrace = stackTrace.takeIf { it.isNotBlank() }?.let { StackTrace(raw = it) },
           deviceInfo = if (hasDeviceInfo()) deviceInfo.toDomain() else null,
         )
       }
-    else -> FindingData.Empty
+    // TODO(b/579509763): Populate FindingContext for Vitals findings (VITALS_ANOMALY, VITALS_BAD_BEHAVIOR,
+    //  VITALS_DEVICE_BAD_BEHAVIOR) to either fetch device breakdowns and top crash/ANR stack traces via the
+    //  Play Developer Reporting API, or navigate the user to the Android Vitals tab with matching filters.
+    else -> FindingContext.EMPTY
   }
 
 private fun ProtoLargeScreensDeviceInfo.toDomain(): DeviceInfo =
