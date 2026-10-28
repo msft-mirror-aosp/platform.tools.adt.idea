@@ -236,11 +236,12 @@ object TaskBasedUxStrings {
   const val PROFILEABLE_REBUILD_INSTRUCTION_TOOLTIP =
     "You can restart the process as 'profileable' by clicking " +
       "'${PROFILE_WITH_LOW_OVERHEAD_ACTION_NAME}' in the main toolbar's more " +
-      "actions menu. This will trigger a rebuild."
+      "actions menu (⋮). This will trigger a rebuild."
   const val DEBUGGABLE_REBUILD_INSTRUCTION_TOOLTIP =
     "You can restart the process as 'debuggable' by clicking " +
       "'${PROFILE_WITH_COMPLETE_DATA_ACTION_NAME}' in the main toolbar's more " +
-      "actions menu. This will trigger a rebuild."
+      "actions menu (⋮). This will trigger a rebuild."
+  const val DEBUGGABLE_PROCESS_SELECTION_INSTRUCTION_TOOLTIP = "You can select a 'debuggable' process to run this task."
 
   fun getTaskTitle(taskType: ProfilerTaskType) =
     when (taskType) {
@@ -324,6 +325,20 @@ object TaskBasedUxStrings {
 
     return "$errorMessage. ${taskStartError.actionableInfo}."
   }
+
+  /**
+   * Returns the secondary text of the tooltip for [taskStartError], or null if there is none.
+   *
+   * Only the current project's app can be restarted as 'debuggable' from Android Studio, so when the task requires a debuggable process,
+   * the instruction to do so is shown only if [isPreferredProcessSelected]. Other processes, e.g. system processes, get a hint to select a
+   * debuggable process instead.
+   */
+  fun getStartTaskErrorTooltipSubText(taskStartError: StartTaskSelectionError, isPreferredProcessSelected: Boolean): String? =
+    if (taskStartError.startTaskSelectionErrorCode == StartTaskSelectionErrorCode.TASK_REQUIRES_DEBUGGABLE_PROCESS) {
+      if (isPreferredProcessSelected) DEBUGGABLE_REBUILD_INSTRUCTION_TOOLTIP else DEBUGGABLE_PROCESS_SELECTION_INSTRUCTION_TOOLTIP
+    } else {
+      taskStartError.actionableInfo
+    }
 
   fun getLeakStatusText(leakingStatus: LeakingStatus): String {
     return when (leakingStatus) {

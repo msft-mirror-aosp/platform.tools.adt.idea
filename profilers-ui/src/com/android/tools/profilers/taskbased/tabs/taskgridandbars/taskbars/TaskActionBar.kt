@@ -174,7 +174,7 @@ fun TaskActionBar(taskHomeTabModel: TaskHomeTabModel) {
             ) {
               Text(text = TaskBasedUxStrings.LEAKCANARY_CHECKING_PRESENCE)
             } else {
-              StartTaskError(startTaskError)
+              StartTaskError(startTaskError, isSelectedProcessPreferred(selectedProcess, profilers))
             }
           } else if (isProfileablePreferredButNotPresent) {
             ProfileablePreferredWarning(isSelectedProcessPreferred(selectedProcess, profilers))

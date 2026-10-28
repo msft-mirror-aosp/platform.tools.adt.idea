@@ -16,26 +16,23 @@
 package com.android.tools.profilers.taskbased.tabs.taskgridandbars.taskbars.notifications
 
 import androidx.compose.runtime.Composable
-import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.DEBUGGABLE_REBUILD_INSTRUCTION_TOOLTIP
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.START_TASK_SELECTION_ERROR_ICON_DESC
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.getStartTaskErrorMessage
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.getStartTaskErrorNotificationText
+import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.getStartTaskErrorTooltipSubText
 import com.android.tools.profilers.taskbased.home.StartTaskSelectionError
-import com.android.tools.profilers.taskbased.home.StartTaskSelectionError.StartTaskSelectionErrorCode
 import icons.StudioIconsCompose
 
+/**
+ * Shows why the selected task can't start. [isPreferredProcessSelected] tells whether the selected process is the current project's app,
+ * which decides the hint in the tooltip, see [getStartTaskErrorTooltipSubText].
+ */
 @Composable
-fun StartTaskError(error: StartTaskSelectionError) {
-  val errorCode = error.startTaskSelectionErrorCode
-  var subText = error.actionableInfo
-  if (errorCode == StartTaskSelectionErrorCode.TASK_REQUIRES_DEBUGGABLE_PROCESS) {
-    subText = DEBUGGABLE_REBUILD_INSTRUCTION_TOOLTIP
-  }
-
+fun StartTaskError(error: StartTaskSelectionError, isPreferredProcessSelected: Boolean) {
   NotificationWithTooltip(
     notificationText = getStartTaskErrorNotificationText(error),
-    tooltipMainText = getStartTaskErrorMessage(errorCode),
-    tooltipSubText = subText,
+    tooltipMainText = getStartTaskErrorMessage(error.startTaskSelectionErrorCode),
+    tooltipSubText = getStartTaskErrorTooltipSubText(error, isPreferredProcessSelected),
     iconKey = StudioIconsCompose.Common.Error,
     iconDescription = START_TASK_SELECTION_ERROR_ICON_DESC,
   )
