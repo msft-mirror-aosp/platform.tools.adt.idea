@@ -17,15 +17,10 @@ package com.android.tools.idea.gradle.project.sync.listeners
 
 import com.android.tools.idea.gradle.project.sync.GradleSyncListenerWithRoot
 import com.google.common.annotations.VisibleForTesting
-import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.io.FileUtil
 import com.intellij.ui.AppUIUtil
 import com.intellij.ui.EditorNotifications
 import org.jetbrains.annotations.SystemIndependent
-
-private val LOG = Logger.getInstance(StateChangeNotification::class.java)
 
 open class StateChangeNotification(private val project: Project) : GradleSyncListenerWithRoot {
 
@@ -35,24 +30,14 @@ open class StateChangeNotification(private val project: Project) : GradleSyncLis
 
   override fun syncFailed(project: Project, errorMessage: String, rootProjectPath: @SystemIndependent String) = notifyStateChanged()
 
+  override fun syncCancelled(project: Project, rootProjectPath: @SystemIndependent String) = notifyStateChanged()
+
   override fun syncSkipped(project: Project) = Unit
 
   @VisibleForTesting
   open fun notifyStateChanged() {
     AppUIUtil.invokeLaterIfProjectAlive(project) {
-      val editorNotifications = EditorNotifications.getInstance(project)
-      FileEditorManager.getInstance(project).openFiles.forEach { file ->
-        try {
-          editorNotifications.updateNotifications(file)
-        } catch (e: Throwable) {
-          LOG.info(
-            "Failed to update editor notifications for file '${
-              FileUtil.toSystemDependentName(file.path)
-            }'",
-            e,
-          )
-        }
-      }
+      EditorNotifications.getInstance(project).updateAllNotifications()
     }
   }
 }
