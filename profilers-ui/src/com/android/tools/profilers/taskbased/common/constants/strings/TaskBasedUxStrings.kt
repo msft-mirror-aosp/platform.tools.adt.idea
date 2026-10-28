@@ -73,6 +73,9 @@ object TaskBasedUxStrings {
   const val STARTUP_STARTING_POINT_DROPDOWN_OPTION_SECONDARY_TEXT_RESTART = "restarts process"
   const val NOW_STARTING_POINT_DROPDOWN_OPTION_PRIMARY_TEXT = "Now"
   const val NOW_STARTING_POINT_DROPDOWN_OPTION_SECONDARY_TEXT = "attaches to selected process"
+  const val STARTING_POINT_SELECTION_INSTRUCTION_TOOLTIP =
+    "You can select a task starting point by clicking '${NOW_STARTING_POINT_DROPDOWN_OPTION_PRIMARY_TEXT}' or " +
+      "'${STARTUP_STARTING_POINT_DROPDOWN_OPTION_PRIMARY_TEXT}' in the '${STARTING_POINT_DROPDOWN_TITLE}' dropdown."
 
   // Task recording type dropdown strings (only available for the ART-based task)
   const val RECORDING_TYPE_DROPDOWN_TITLE = "Recording type"
@@ -334,10 +337,11 @@ object TaskBasedUxStrings {
    * debuggable process instead.
    */
   fun getStartTaskErrorTooltipSubText(taskStartError: StartTaskSelectionError, isPreferredProcessSelected: Boolean): String? =
-    if (taskStartError.startTaskSelectionErrorCode == StartTaskSelectionErrorCode.TASK_REQUIRES_DEBUGGABLE_PROCESS) {
-      if (isPreferredProcessSelected) DEBUGGABLE_REBUILD_INSTRUCTION_TOOLTIP else DEBUGGABLE_PROCESS_SELECTION_INSTRUCTION_TOOLTIP
-    } else {
-      taskStartError.actionableInfo
+    when (taskStartError.startTaskSelectionErrorCode) {
+      StartTaskSelectionErrorCode.TASK_REQUIRES_DEBUGGABLE_PROCESS ->
+        if (isPreferredProcessSelected) DEBUGGABLE_REBUILD_INSTRUCTION_TOOLTIP else DEBUGGABLE_PROCESS_SELECTION_INSTRUCTION_TOOLTIP
+      StartTaskSelectionErrorCode.NO_STARTING_POINT_SELECTED -> STARTING_POINT_SELECTION_INSTRUCTION_TOOLTIP
+      else -> taskStartError.actionableInfo
     }
 
   fun getLeakStatusText(leakingStatus: LeakingStatus): String {
