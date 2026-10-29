@@ -55,8 +55,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
-import com.intellij.openapi.roots.ModuleRootModificationUtil;
-import com.intellij.openapi.roots.libraries.Library;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -357,14 +355,12 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
       }
     }
 
-    Library library = PsiTestUtil.addProjectLibrary(
+    PsiTestUtil.addProjectLibrary(
       module,
       libraryName + ".aar",
       Lists.newArrayList(VfsUtil.findFileByIoFile(resFolder, true)),
       Collections.emptyList()
     );
-
-    ModuleRootModificationUtil.addDependency(module, library);
 
     return fontsFolder;
   }
