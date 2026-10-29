@@ -25,28 +25,33 @@ import com.android.tools.idea.serverflags.protos.Date
 import com.android.tools.idea.serverflags.protos.DevServicesDeprecationMetadata
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.replaceService
 import com.intellij.util.application
 import com.intellij.util.text.DateTimeFormatManager
 import java.util.concurrent.TimeoutException
+import kotlin.test.fail
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 
 @RunWith(JUnit4::class)
-class ServerFlagBasedDevServicesDeprecationDataProviderTest : BasePlatformTestCase() {
+class ServerFlagBasedDevServicesDeprecationDataProviderTest {
 
+  @get:Rule val applicationRule = ApplicationRule()
+  @get:Rule val disposableRule = DisposableRule()
   private val fakeDynamicServerFlagService = FakeDynamicServerFlagService { emptyMap() }
   private lateinit var provider: ServerFlagBasedDevServicesDeprecationDataProvider
 
   @Before
   fun setup() {
-    provider = ServerFlagBasedDevServicesDeprecationDataProvider(testRootDisposable.createCoroutineScope())
-    application.replaceService(DynamicServerFlagService::class.java, fakeDynamicServerFlagService, testRootDisposable)
+    provider = ServerFlagBasedDevServicesDeprecationDataProvider(disposableRule.disposable.createCoroutineScope())
+    application.replaceService(DynamicServerFlagService::class.java, fakeDynamicServerFlagService, disposableRule.disposable)
   }
 
   @Test
@@ -184,9 +189,9 @@ class ServerFlagBasedDevServicesDeprecationDataProviderTest : BasePlatformTestCa
   fun `registered listener gets notified on register`() = runTest {
     registerStudioProto(DevServicesDeprecationMetadata.newBuilder().apply { header = "StudioProto" }.build())
 
-    val stateFlow = provider.registerServiceForChange("service", "", testRootDisposable)
-    assertThat(stateFlow.value).isEqualTo(DevServicesDeprecationData.EMPTY)
-    delayUntilCondition(200) { stateFlow.value.header == "StudioProto" }
+    val stateFlow = provider.registerServiceForChange("service", "", disposableRule.disposable)
+    delayUntilCondition(200) { stateFlow.value != DevServicesDeprecationData.EMPTY }
+    assertThat(stateFlow.value.header).isEqualTo("StudioProto")
   }
 
   @Test
@@ -223,7 +228,7 @@ class ServerFlagBasedDevServicesDeprecationDataProviderTest : BasePlatformTestCa
 
     try {
       waitForCondition(1.seconds) { stateFlow.value.header == "StudioProtoChanged" }
-      fail("Statflow value should not have changed")
+      fail("Stateflow value should not have changed")
     } catch (_: TimeoutException) {}
   }
 
