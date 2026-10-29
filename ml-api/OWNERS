@@ -1,7 +1,5 @@
 # Bug component: 1312333
-# Europe
-sebp@google.com
 
-# MTV
-blakegallay@google.com
-vsiva@google.com
+# Let anyone approve, i.e., No code OWNERS.
+# https://android-review.googlesource.com/plugins/code-owners/Documentation/backend-find-owners.html#all-users
+*
