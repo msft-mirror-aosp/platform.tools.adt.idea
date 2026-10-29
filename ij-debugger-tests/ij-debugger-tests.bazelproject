@@ -8,7 +8,9 @@ directories:
   tools/base/bazel
 
 targets:
-  //tools/adt/idea/ij-debugger-tests/lib
+  //tools/adt/idea/ij-debugger-tests/lib:art-attacher
+  //tools/adt/idea/ij-debugger-tests/lib:expected-failures-interceptor
+  //tools/adt/idea/ij-debugger-tests/lib:bazel-runner
   @tools_idea//platform/testFramework/bootstrap:tools-testsBootstrap
   @tools_idea//plugins/kotlin/jvm-debugger/testFramework:testFramework_test_lib
 
