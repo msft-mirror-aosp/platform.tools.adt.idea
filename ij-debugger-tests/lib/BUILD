@@ -35,6 +35,7 @@ kotlin_library(
         "@tools_idea//platform/testFramework",
         "@tools_idea//platform/util",
         "@tools_idea//platform/util-ex",
+        "@tools_idea//plugins/kotlin/jvm-debugger/core",
         "@tools_idea//plugins/kotlin/jvm-debugger/evaluation",
         "@tools_idea//plugins/kotlin/jvm-debugger/testFramework:testFramework_test_lib",
         "@tools_idea//plugins/kotlin/tests-common:common-tests_test_lib",

@@ -18,6 +18,7 @@ package com.google.android.tools.debugger.test.lib
 
 import com.android.tools.idea.debug.AndroidFieldVisibilityProvider
 import com.android.tools.idea.debug.AndroidJdiHelperClassLoader
+import com.android.tools.idea.debug.DexBytecodeInspectorImpl
 import com.android.tools.idea.debug.DexFinder
 import com.android.tools.idea.debug.childrenrenderer.AndroidKotlinRendererProvider
 import com.android.tools.idea.flags.StudioFlags
@@ -64,6 +65,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import org.jetbrains.kotlin.android.debugger.AndroidDexerImpl
+import org.jetbrains.kotlin.idea.debugger.core.DexBytecodeInspector
 import org.jetbrains.kotlin.idea.debugger.evaluate.classLoading.AndroidDexer
 import org.jetbrains.kotlin.idea.debugger.test.KotlinDescriptorTestCase
 import org.jetbrains.kotlin.idea.debugger.test.VmAttacher
@@ -94,6 +96,9 @@ private val FIELD_VISIBILITY_PROVIDER_EP =
   ExtensionPointName.create<FieldVisibilityProvider>("com.intellij.debugger.fieldVisibilityProvider")
 
 private val JDI_HELPER_CLASS_LOADER_EP = ExtensionPointName.create<JdiHelperClassLoader>("com.intellij.debugger.jdiHelperClassLoader")
+
+private val DEX_BYTECODE_INSPECTOR_EP: ExtensionPointName<DexBytecodeInspector> =
+  ExtensionPointName.create("com.intellij.debugger.dexBytecodeInspector")
 
 /** Attaches to an ART VM */
 @Suppress("unused")
@@ -132,6 +137,7 @@ internal class ArtAttacher : VmAttacher {
     project.registerExtension(AndroidDexer.extensionPointName, AndroidDexerImpl(project), disposable)
     application.registerExtension(FIELD_VISIBILITY_PROVIDER_EP, AndroidFieldVisibilityProvider(), disposable)
     application.registerExtension(JDI_HELPER_CLASS_LOADER_EP, AndroidJdiHelperClassLoader(), disposable)
+    application.registerExtension(DEX_BYTECODE_INSPECTOR_EP, DexBytecodeInspectorImpl(), disposable)
     application.registerExtension(
       CompoundRendererProvider.EP_NAME,
       AndroidKotlinRendererProvider(),
