@@ -19,7 +19,6 @@ import com.android.testutils.delayUntilCondition
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.gemini.GeminiPluginApi
 import com.android.tools.idea.insights.AppInsightsCrashController
 import com.android.tools.idea.insights.AppInsightsCrashState
 import com.android.tools.idea.insights.CONNECTION1
@@ -36,7 +35,6 @@ import com.android.tools.idea.insights.ai.AiModelInfo
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.ui.AI_INSIGHT_TOOLKIT_KEY
 import com.android.tools.idea.insights.ui.APP_INSIGHTS_TRACKER_KEY
-import com.android.tools.idea.insights.ui.FakeGeminiPluginApi
 import com.android.tools.idea.insights.ui.SELECTED_APP_ID_KEY
 import com.android.tools.idea.testing.disposable
 import com.android.tools.idea.testing.flags.overrideForTest
@@ -45,7 +43,6 @@ import com.google.gct.login2.LoginFeatureRule
 import com.google.wireless.android.sdk.stats.AppQualityInsightsUsageEvent.GenerateInsightsAction.Action
 import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.testFramework.EdtRule
-import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.HyperlinkLabel
@@ -100,7 +97,6 @@ class InsightContentPanelTest {
 
   private val mockTracker = mock<AppInsightsTracker>()
 
-  private lateinit var fakeGeminiPluginApi: FakeGeminiPluginApi
   private val scope = CoroutineScope(EmptyCoroutineContext)
 
   @Before
@@ -119,9 +115,6 @@ class InsightContentPanelTest {
     doReturn(projectRule.project).whenever(mockController).project
     doReturn(mockAiInsightToolkit).whenever(mockController).aiInsightToolkit
     doReturn(FAKE_INSIGHTS_PROVIDER).whenever(mockController).provider
-    fakeGeminiPluginApi = FakeGeminiPluginApi()
-    fakeGeminiPluginApi.available = false
-    ExtensionTestUtil.maskExtensions(GeminiPluginApi.EP_NAME, listOf(fakeGeminiPluginApi), projectRule.disposable)
     currentInsightFlow = MutableStateFlow(LoadingState.Ready(AiInsight("insight", ISSUE1.sampleEvent)))
     insightContentPanel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
   }

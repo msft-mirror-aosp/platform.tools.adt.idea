@@ -30,19 +30,12 @@ import org.junit.runners.JUnit4
 private class FakeGeminiPluginApi : GeminiPluginApi {
   var contextAllowed = true
   var fileExcluded = false
-  var sentPrompt: LlmPrompt? = null
 
   override val MAX_QUERY_CHARS = Int.MAX_VALUE
 
   override fun isContextAllowed(project: Project) = contextAllowed
 
   override fun isFileExcluded(project: Project, file: VirtualFile) = fileExcluded
-
-  override fun sendChatQuery(project: Project, prompt: LlmPrompt, displayText: String?, requestSource: GeminiPluginApi.RequestSource) {
-    sentPrompt = prompt
-  }
-
-  override fun stageChatQuery(project: Project, prompt: String, requestSource: GeminiPluginApi.RequestSource) {}
 }
 
 @RunWith(JUnit4::class)

@@ -16,19 +16,13 @@
 package com.android.tools.idea.insights.ai
 
 import com.android.tools.idea.gemini.GeminiPluginApi
-import com.android.tools.idea.gemini.LlmPrompt
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 
 class FakeGeminiPluginApi : GeminiPluginApi {
   var available = true
   var contextAllowed = true
   var excludedFilePaths = setOf<String>()
-
-  var receivedPrompt: LlmPrompt? = null
-  var generateResponse: String = ""
 
   override var MAX_QUERY_CHARS = Int.MAX_VALUE
 
@@ -37,15 +31,4 @@ class FakeGeminiPluginApi : GeminiPluginApi {
   override fun isContextAllowed(project: Project) = contextAllowed
 
   override fun isFileExcluded(project: Project, file: VirtualFile) = excludedFilePaths.contains(file.path)
-
-  override fun sendChatQuery(project: Project, prompt: LlmPrompt, displayText: String?, requestSource: GeminiPluginApi.RequestSource) {
-    receivedPrompt = prompt
-  }
-
-  override fun stageChatQuery(project: Project, prompt: String, requestSource: GeminiPluginApi.RequestSource) {}
-
-  override fun generate(project: Project, prompt: LlmPrompt): Flow<String> {
-    receivedPrompt = prompt
-    return flowOf(generateResponse)
-  }
 }
