@@ -18,8 +18,6 @@ package com.android.tools.rendering
 import com.android.ide.common.rendering.api.ActionBarCallback
 import com.android.ide.common.rendering.api.AdapterBinding
 import com.android.ide.common.rendering.api.ILayoutPullParser
-import com.android.ide.common.rendering.api.ResourceNamespace
-import com.android.ide.common.rendering.api.ResourceNamespace.Resolver.EMPTY_RESOLVER
 import com.android.ide.common.rendering.api.ResourceReference
 import com.android.ide.common.rendering.api.ResourceValue
 import com.android.tools.rendering.parsers.TagSnapshot
@@ -131,8 +129,6 @@ internal class LayoutlibCallbackExDelegate(parentDisposable: Disposable, delegat
   override fun findClass(name: String): Class<*> = getDelegate()?.findClass(name) ?: throw ClassNotFoundException(name)
 
   override fun isClassLoaded(name: String): Boolean = getDelegate()?.isClassLoaded(name) ?: false
-
-  override fun getImplicitNamespaces(): ResourceNamespace.Resolver = getDelegate()?.implicitNamespaces ?: EMPTY_RESOLVER
 
   override fun hasLegacyAppCompat(): Boolean = getDelegate()?.hasLegacyAppCompat() == true
 

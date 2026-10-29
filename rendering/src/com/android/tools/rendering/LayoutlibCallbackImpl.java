@@ -800,12 +800,6 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
     return myViewLoader.isClassLoaded(name);
   }
 
-  @NotNull
-  @Override
-  public ResourceNamespace.Resolver getImplicitNamespaces() {
-    return ResourceNamespace.Resolver.TOOLS_ONLY;
-  }
-
   @Override
   public boolean hasLegacyAppCompat() {
     return myHasLegacyAppCompat;
