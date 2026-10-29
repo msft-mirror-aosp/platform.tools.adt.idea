@@ -147,6 +147,14 @@ class LayoutlibSceneRenderConfiguration(
   /** Value in the range [0f..1f] to set the quality of the rendering, 0 meaning the lowest quality. */
   var quality = 1f
 
+  /**
+   * On-screen physical pixels per dp (surface zoom x screen scaling factor) that the rendering should match. The render is upscaled on top
+   * of [quality] by max(1, screenScale / device density scale), so zoomed-in or low-density previews match the display resolution. It is
+   * density independent, so it stays valid when the device changes in place (e.g. from the ResizePanel). 0f (the default) disables
+   * upscaling.
+   */
+  var screenScale = 0f
+
   /** The time for which the frame to be rendered will be selected. */
   var elapsedFrameTimeMs: Long = -1
 

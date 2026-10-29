@@ -281,7 +281,12 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
   private val allowQualityChangeIfInactive = AtomicBoolean(false)
 
   /** [RenderQualityPolicy] used to configure the [qualityManager] */
-  private val qualityPolicy = DefaultRenderQualityPolicy { surface.zoomController.screenScalingFactor }
+  private val qualityPolicy =
+    DefaultRenderQualityPolicy(
+      screenScalingFactorProvider = { surface.zoomController.screenScalingFactor },
+      // Interactive and animation previews render continuously, so they are not upscaled to keep frames cheap.
+      isUpscalingEnabled = { previewModeManager.mode.value !is PreviewMode.SingleItemMode<*> },
+    )
 
   private val previewModeManager = CommonPreviewModeManager()
 
@@ -563,7 +568,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
             },
             refreshOrder = { sceneManager ->
               // decreasing quality before increasing
-              qualityManager.getTargetQuality(sceneManager).compareTo(sceneManager.lastRenderQuality)
+              qualityManager.compareTargetToLastRender(sceneManager)
             },
             refreshEventBuilder = request.refreshEventBuilder,
           )
@@ -708,6 +713,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
       }
       config.usePrivateClassLoader = mode.value is PreviewMode.Interactive
       config.quality = qualityManager.getTargetQuality(this@apply)
+      config.screenScale = qualityManager.getTargetScreenScale(this@apply)
     }
   }
 

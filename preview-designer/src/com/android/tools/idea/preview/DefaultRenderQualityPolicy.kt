@@ -21,8 +21,14 @@ import com.android.tools.idea.flags.StudioFlags
  * Default implementation of [RenderQualityPolicy] . A [screenScalingFactorProvider] is needed for the [scaleVisibilityThreshold] to work
  * correctly. Also note that it needs to be a provider and not a fixed value for the policy to properly work and get dynamically adjusted
  * when the user has different screens with different scale factors.
+ *
+ * [isUpscalingEnabled] allows disabling [getTargetScreenScale] upscaling, e.g. for modes that render continuously such as interactive
+ * preview.
  */
-class DefaultRenderQualityPolicy(val screenScalingFactorProvider: () -> Double) : RenderQualityPolicy {
+class DefaultRenderQualityPolicy(
+  val screenScalingFactorProvider: () -> Double,
+  private val isUpscalingEnabled: () -> Boolean = { true },
+) : RenderQualityPolicy {
   companion object {
     /** When the scale is lower than this value, then all previews are treated as not visible. */
     val scaleVisibilityThreshold: Float
@@ -47,6 +53,12 @@ class DefaultRenderQualityPolicy(val screenScalingFactorProvider: () -> Double) 
       return lowestQuality
     }
     return scale.toFloat().coerceAtMost(getDefaultPreviewQuality()).coerceAtLeast(lowestQuality)
+  }
+
+  override fun getTargetScreenScale(scale: Double, targetQuality: Float): Float {
+    if (targetQuality <= lowestQuality || !isUpscalingEnabled()) return 0f
+    // Surface scale maps dp to Swing pixels, so on-screen physical pixels per dp are scale * screenScaling.
+    return (scale * screenScalingFactorProvider()).toFloat()
   }
 
   fun activate() {

@@ -19,6 +19,7 @@ import com.android.SdkConstants
 import com.android.ide.common.rendering.api.RecyclableImage
 import com.android.ide.common.rendering.api.Result
 import com.android.ide.common.rendering.api.ViewInfo
+import com.android.resources.Density
 import com.android.testutils.delayUntilCondition
 import com.android.tools.idea.common.SyncNlModel
 import com.android.tools.idea.common.model.NlModelUpdaterInterface
@@ -60,6 +61,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.future.asCompletableFuture
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -72,6 +75,8 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.clearInvocations
 import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
@@ -455,6 +460,46 @@ class LayoutlibSceneRendererTest {
       verifyNoMoreInteractions()
     }
     verifyNoMoreInteractions(modelUpdater)
+  }
+
+  // Regression test for b/442315045
+  @Test
+  fun testTargetScaleIsPassedToRenderTask() = runTest {
+    // Upscaling is disabled by default (screenScale = 0f), e.g. for the Layout Editor
+    withContext(Dispatchers.Default) { renderer.requestRenderAndWait(trigger = null) }
+    verify(renderTaskMock).setTargetScale(0f)
+
+    // The density independent screen scale is divided by the current device density scale
+    clearInvocations(renderTaskMock)
+    val densityScale = nlModel.configuration.density.dpiValue / Density.DEFAULT_DENSITY.toFloat()
+    renderer.sceneRenderConfiguration.screenScale = 3f * densityScale
+    whenever(renderTaskMock.targetScale).thenReturn(3f)
+    withContext(Dispatchers.Default) { renderer.requestRenderAndWait(trigger = null) }
+    argumentCaptor<Float>().apply {
+      verify(renderTaskMock).setTargetScale(capture())
+      assertEquals(3f, firstValue, 0.001f)
+    }
+    assertEquals(3f, renderer.lastRenderScale, 0.001f)
+
+    // lastRenderScale records the effective scale reported by the RenderTask, e.g. 1f during the layout scanner pass
+    whenever(renderTaskMock.targetScale).thenReturn(1f)
+    withContext(Dispatchers.Default) { renderer.requestRenderAndWait(trigger = null) }
+    assertEquals(1f, renderer.lastRenderScale, 0.001f)
+  }
+
+  @Test
+  fun testUpscaledRenderFollowsLayoutScannerRender() = runTest {
+    // The layout scanner forces a 1x first render; once it is disabled, the requested upscaling applies without waiting for pan/zoom
+    withContext(Dispatchers.Default) { renderer.requestRenderAndWait(trigger = null) }
+    val rendersBefore = taskRenderCount.get()
+    whenever(renderTaskMock.targetScale).thenReturn(1f, 3f)
+    withContext(Dispatchers.Default) { renderer.requestRenderAndWait(trigger = null) }
+    assertEquals(rendersBefore + 2, taskRenderCount.get())
+    assertEquals(3f, renderer.lastRenderScale, 0.001f)
+
+    // Without a blocked upscaling, a request renders once
+    withContext(Dispatchers.Default) { renderer.requestRenderAndWait(trigger = null) }
+    assertEquals(rendersBefore + 3, taskRenderCount.get())
   }
 
   private fun blockInflationAndRequestRender() = runBlocking {

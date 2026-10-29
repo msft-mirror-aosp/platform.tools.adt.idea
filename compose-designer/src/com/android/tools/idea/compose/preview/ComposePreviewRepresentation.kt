@@ -268,6 +268,7 @@ fun configureLayoutlibSceneManager(
   runVisualAnalysis: Boolean,
   quality: Float,
   disableAnimation: Boolean,
+  screenScale: Float = 0f,
 ): LayoutlibSceneManager = sceneManager.apply {
   sceneRenderConfiguration.let { config ->
     config.useTransparentRendering = !showDecorations
@@ -292,6 +293,7 @@ fun configureLayoutlibSceneManager(
     // Scene Manager to not report it via the regular log.
     config.reportOutOfDateUserClasses = false
     config.quality = quality
+    config.screenScale = screenScale
     config.customContentHierarchyParser = if (runVisualAnalysis) accessibilityBasedHierarchyParser else null
     config.layoutScannerConfig.isLayoutScannerEnabled = runVisualAnalysis
     config.disableAnimation = disableAnimation
@@ -811,7 +813,12 @@ constructor(
 
   private val previewModeManager: PreviewModeManager = CommonPreviewModeManager()
   private val allowQualityChangeIfInactive = AtomicBoolean(false)
-  private val qualityPolicy = DefaultRenderQualityPolicy { surface.zoomController.screenScalingFactor }
+  private val qualityPolicy =
+    DefaultRenderQualityPolicy(
+      screenScalingFactorProvider = { surface.zoomController.screenScalingFactor },
+      // Interactive and animation previews render continuously, so they are not upscaled to keep frames cheap.
+      isUpscalingEnabled = { previewModeManager.mode.value !is PreviewMode.SingleItemMode<*> },
+    )
   private val qualityManager: RenderQualityManager =
     CommonPreviewRenderQualityManager(
       previewModeManager,
@@ -1094,6 +1101,7 @@ constructor(
       runVisualAnalysis = mode.value is PreviewMode.UiCheck,
       quality = qualityManager.getTargetQuality(layoutlibSceneManager),
       disableAnimation = mode.value.isNormal,
+      screenScale = qualityManager.getTargetScreenScale(layoutlibSceneManager),
     )
   }
 
@@ -1412,7 +1420,7 @@ constructor(
               },
               refreshOrder = { sceneManager ->
                 // decreasing quality before increasing
-                qualityManager.getTargetQuality(sceneManager).compareTo(sceneManager.lastRenderQuality)
+                qualityManager.compareTargetToLastRender(sceneManager)
               },
               refreshEventBuilder = refreshRequest.refreshEventBuilder,
             )

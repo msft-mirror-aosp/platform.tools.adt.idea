@@ -42,6 +42,7 @@ import static org.mockito.Mockito.when;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.rendering.api.ResourceValueImpl;
 import com.android.ide.common.rendering.api.Result;
+import com.android.ide.common.rendering.api.SessionParams;
 import com.android.ide.common.rendering.api.ViewInfo;
 import com.android.resources.ResourceType;
 import com.android.testutils.ImageDiffUtil;
@@ -49,6 +50,7 @@ import com.android.tools.analytics.crash.CrashReport;
 import com.android.tools.analytics.crash.CrashReporter;
 import com.android.tools.configurations.Configuration;
 import com.android.tools.configurations.Wallpaper;
+import com.android.tools.idea.rendering.parsers.PsiXmlFile;
 import com.android.tools.idea.testing.AndroidProjectRule;
 import com.android.tools.rendering.HtmlLinkManager;
 import com.android.tools.rendering.RenderExecutor;
@@ -59,6 +61,7 @@ import com.android.tools.rendering.RenderTask;
 import com.google.common.io.Files;
 import com.google.common.util.concurrent.Futures;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
@@ -69,9 +72,11 @@ import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
+import com.intellij.psi.xml.XmlFile;
 import com.intellij.testFramework.PsiTestUtil;
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -1148,5 +1153,62 @@ public class RenderTaskTest {
         fail(e.getMessage()); // Fail the test if an exception occurs
       }
     });
+  }
+
+  // Regression test for b/442315045
+  @Test
+  public void testTargetScaleUpscalesShrinkRenderOnLowDensityDevice() throws Exception {
+    @Language("XML")
+    String shrinkLayout =
+      "<FrameLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
+      "    android:layout_width=\"wrap_content\"\n" +
+      "    android:layout_height=\"wrap_content\">\n" +
+      "  <View\n" +
+      "      android:layout_width=\"120dp\"\n" +
+      "      android:layout_height=\"40dp\"\n" +
+      "      android:background=\"#FF0088FF\" />\n" +
+      "</FrameLayout>";
+    VirtualFile layoutFile = myFixture.addFileToProject("res/layout/shrink_desktop.xml", shrinkLayout).getVirtualFile();
+    Configuration configuration = RenderTestUtil.getConfiguration(myModule, layoutFile, "desktop_large");
+    XmlFile xmlFile = (XmlFile)ReadAction.compute(() -> PsiManager.getInstance(myModule.getProject()).findFile(layoutFile));
+    assertNotNull(xmlFile);
+
+    RenderService renderService = StudioRenderService.getInstance(myModule.getProject());
+    RenderLogger logger = renderService.createLogger(myModule.getProject());
+    RenderTask task =
+      StudioRenderServiceKt.taskBuilder(renderService, AndroidBuildTargetReference.gradleOnly(myFacet), configuration, logger)
+        .withPsiFile(new PsiXmlFile(xmlFile))
+        .withRenderingMode(SessionParams.RenderingMode.SHRINK)
+        .disableDecorations()
+        .disableSecurityManager()
+        .build()
+        .get(10, TimeUnit.SECONDS);
+    assertNotNull(task);
+    try {
+      RenderResult initialResult = task.render().get(10, TimeUnit.SECONDS);
+      assertEquals(new Dimension(120, 40), initialResult.getRootViewDimensions());
+      assertEquals(120, initialResult.getRenderedImage().getWidth());
+      assertEquals(40, initialResult.getRenderedImage().getHeight());
+
+      // While layout scanner is enabled, targetScale must stay at 1x
+      task.setEnableLayoutScanner(true);
+      task.setTargetScale(4f);
+      assertEquals(1f, task.getTargetScale(), 0f);
+      RenderResult scannerResult = task.render().get(10, TimeUnit.SECONDS);
+      assertEquals(new Dimension(120, 40), scannerResult.getRootViewDimensions());
+      assertEquals(120, scannerResult.getRenderedImage().getWidth());
+      assertEquals(40, scannerResult.getRenderedImage().getHeight());
+
+      // Once layout scanner is disabled, targetScale upscales the rendered image while keeping 1x rootViewDimensions
+      task.setEnableLayoutScanner(false);
+      assertEquals(4f, task.getTargetScale(), 0f);
+      RenderResult upscaledResult = task.render().get(10, TimeUnit.SECONDS);
+      assertEquals(new Dimension(120, 40), upscaledResult.getRootViewDimensions());
+      assertEquals(480, upscaledResult.getRenderedImage().getWidth());
+      assertEquals(160, upscaledResult.getRenderedImage().getHeight());
+    }
+    finally {
+      task.disposeAsync().get(5, TimeUnit.SECONDS);
+    }
   }
 }

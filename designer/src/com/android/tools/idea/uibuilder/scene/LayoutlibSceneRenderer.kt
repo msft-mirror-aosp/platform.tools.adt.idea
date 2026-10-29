@@ -19,6 +19,7 @@ import com.android.annotations.concurrency.GuardedBy
 import com.android.ide.common.rendering.api.ILayoutLog
 import com.android.ide.common.rendering.api.RecyclableImage
 import com.android.ide.common.rendering.api.ViewInfo
+import com.android.resources.Density
 import com.android.tools.configurations.Configuration
 import com.android.tools.idea.common.analytics.CommonUsageTracker
 import com.android.tools.idea.common.diagnostics.NlDiagnosticsManager
@@ -124,7 +125,13 @@ class LayoutlibSceneRenderer(
    * The quality used the last time the content of this scene manager was successfully rendered. Defaults to 0 until a successful render
    * happens.
    */
+  @Volatile
   var lastRenderQuality = 0f
+    private set
+
+  /** The linear target scale (>= 1f) used the last time the content of this scene manager was successfully rendered. */
+  @Volatile
+  var lastRenderScale = 1f
     private set
 
   @GuardedBy("renderTaskLock")
@@ -229,8 +236,8 @@ class LayoutlibSceneRenderer(
           if (isActive.get()) {
             val doubleRender = sceneRenderConfiguration.doubleRender.getAndSet(false)
             val executeCallbacks = sceneRenderConfiguration.executeCallbacksAfterRender.getAndSet(false)
-            doRender(it, executeCallbacks)
-            if (doubleRender) {
+            val upscalingWasBlockedByScanner = doRender(it, executeCallbacks)
+            if (doubleRender || upscalingWasBlockedByScanner) {
               doRender(it, executeCallbacks)
             }
           } else {
@@ -300,10 +307,13 @@ class LayoutlibSceneRenderer(
    *
    * This method will also [inflate] the model when forced or needed (i.e. when [LayoutlibSceneRenderConfiguration.needsInflation] is true
    * or when [renderTask] is null).
+   *
+   * Returns true when the layout scanner forced a 1x render although upscaling was requested, so that a follow-up render can apply it.
    */
   @RequiresBackgroundThread
-  private suspend fun doRender(request: RenderRequest, executeCallbacks: Boolean) {
+  private suspend fun doRender(request: RenderRequest, executeCallbacks: Boolean): Boolean {
     var result: RenderResult? = null
+    var upscalingWasBlockedByScanner = false
     val renderStartTimeMs = System.currentTimeMillis()
 
     // Wrapping into blockingContext because model.file requires read action
@@ -316,22 +326,28 @@ class LayoutlibSceneRenderer(
       val inflateResult = if (sceneRenderConfiguration.needsInflation.getAndSet(false) || renderTask == null) inflate() else null
       if (inflateResult?.renderResult?.isSuccess == false) {
         surface.updateErrorDisplay()
-        return
+        return false
       }
       renderTask?.let {
         if (sceneRenderConfiguration.elapsedFrameTimeMs != -1L) {
           it.setElapsedFrameTimeNanos(TimeUnit.MILLISECONDS.toNanos(sceneRenderConfiguration.elapsedFrameTimeMs))
         }
 
-        // Make sure that the task's quality is up-to-date before rendering
+        // Make sure that the task's quality and target scale are up-to-date before rendering
         val quality = sceneRenderConfiguration.quality
         it.setQuality(quality)
+        val densityScale = model.configuration.density.dpiValue / Density.DEFAULT_DENSITY.toFloat()
+        it.setTargetScale(if (densityScale > 0f) sceneRenderConfiguration.screenScale / densityScale else 1f)
+        // The effective target scale is 1f while the layout scanner is enabled
+        val targetScale = it.targetScale
         result = it.render().await() // await is the suspendable version of join
         if (result?.renderResult?.isSuccess == true) {
           lastRenderQuality = quality
+          lastRenderScale = targetScale
           // After the first successful render of a render task, layout validation doesn't need to
           // be executed again for this render task.
           renderTask?.setEnableLayoutScanner(false)
+          upscalingWasBlockedByScanner = it.targetScale > targetScale
           // When the layout was inflated in this same call, we do not have to update the hierarchy
           // again
           if (inflateResult == null) updateHierarchy(result)
@@ -367,6 +383,7 @@ class LayoutlibSceneRenderer(
         }
       }
     }
+    return upscalingWasBlockedByScanner
   }
 
   /**

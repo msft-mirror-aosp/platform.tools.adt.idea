@@ -169,17 +169,23 @@ public class RenderTask {
    *  using this render task. It can be updated while setting up the render task using
    *  {@link RenderTask#setQuality(float)}
    */
-  private float myTargetQuality = 1f;
+  private volatile float myTargetQuality = 1f;
   /**
    *  Indicates the quality value used in the last {@link RenderTask#render()},
    *  or in the current one when a render is being executed.
    */
-  private float myCurrentQuality = 1f;
+  private volatile float myCurrentQuality = 1f;
+  /**
+   *  Linear scale multiplier (>= 1f) to render above 1x Android layout pixels when zoomed in or on
+   *  HiDPI displays, bounded by {@link ConstrainedRenderSizeProvider#MAX_UPSCALED_IMAGE_SIZE}.
+   */
+  private volatile float myTargetScale = 1f;
+  private volatile float myCurrentScale = 1f;
   @Nullable private IncludeReference myIncludedWithin;
   @NotNull private RenderingMode myRenderingMode = RenderingMode.NORMAL;
   private boolean mySetTransparentBackground = false;
   private boolean myShowDecorations = true;
-  private boolean myEnableLayoutScanner = false;
+  private volatile boolean myEnableLayoutScanner = false;
   private boolean myShowWithToolsVisibilityAndPosition = true;
   private boolean myForceMonochromeIcon = false;
   private Function<Object, List<ViewInfo>> myCustomContentHierarchyParser = null;
@@ -287,7 +293,11 @@ public class RenderTask {
         myLayoutlibCallback.loadAndParseRClass();
       }
       myLocale = renderContext.getConfiguration().getLocale();
-      mySizeProvider = new ConstrainedRenderSizeProvider(MAX_IMAGE_SIZE, () -> myTargetQuality);
+      mySizeProvider = new ConstrainedRenderSizeProvider(
+        MAX_IMAGE_SIZE,
+        () -> myTargetQuality,
+        this::getTargetScale
+      );
       setQuality(quality);
 
       stackTraceCaptureElement.bind(this);
@@ -305,6 +315,21 @@ public class RenderTask {
     if (myEnableLayoutScanner) quality = 1f;
     quality = Math.max(0f, Math.min(quality, 1f));
     myTargetQuality = quality;
+  }
+
+  /**
+   * Sets the linear target scale (>= 1f) to upscale rendering when on-screen resolution exceeds 1x Android layout pixels.
+   * Ignored while layout validation is enabled.
+   */
+  public void setTargetScale(float targetScale) {
+    myTargetScale = Math.max(1f, targetScale);
+  }
+
+  /**
+   * Returns the linear target scale (>= 1f) that the next render will use, which is 1f while layout validation is enabled.
+   */
+  public float getTargetScale() {
+    return myEnableLayoutScanner ? 1f : myTargetScale;
   }
 
   public void setXmlFile(@NotNull RenderXmlFile file) {
@@ -1238,10 +1263,11 @@ public class RenderTask {
    */
   @NotNull
   public CompletableFuture<RenderResult> render() {
-    // If a re-render is happening after changing the quality up, then we need to re-measure
-    // to avoid the rendered image to show things out of place. Also if size has changed, we need to re-measure.
-    boolean forceMeasure = myTargetQuality > myCurrentQuality || isSizeChanged.getAndSet(false);
+    // If a re-render is happening after changing the quality or target scale up, then we need to
+    // re-measure to avoid the rendered image to show things out of place. Also if size has changed, we need to re-measure.
+    boolean forceMeasure = myTargetQuality > myCurrentQuality || getTargetScale() > myCurrentScale || isSizeChanged.getAndSet(false);
     myCurrentQuality = myTargetQuality;
+    myCurrentScale = getTargetScale();
     return renderInner(forceMeasure);
   }
 

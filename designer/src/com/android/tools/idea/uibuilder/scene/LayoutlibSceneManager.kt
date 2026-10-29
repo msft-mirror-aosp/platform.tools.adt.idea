@@ -130,6 +130,10 @@ open class LayoutlibSceneManager(
   val lastRenderQuality: Float
     get() = layoutlibSceneRenderer.lastRenderQuality
 
+  /** The linear target scale (>= 1f) used in the latest successful render. */
+  val lastRenderScale: Float
+    get() = layoutlibSceneRenderer.lastRenderScale
+
   /** Reset the last [RenderResult] to avoid using it as part of the cache in the next render. */
   fun invalidateCachedResponse() {
     layoutlibSceneRenderer.renderResult = null
