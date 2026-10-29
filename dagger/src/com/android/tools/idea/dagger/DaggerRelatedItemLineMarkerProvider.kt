@@ -176,12 +176,12 @@ class DaggerRelatedItemLineMarkerProvider : RelatedItemLineMarkerProvider() {
     private val fromElementType = fromElement.metricsElementType
     private val toElementType = toElement.metricsElementType
 
-    override fun navigate() {
-      element
-        ?.project
-        ?.service<DaggerAnalyticsTracker>()
-        ?.trackNavigation(DaggerEditorEvent.NavigationMetadata.NavigationContext.CONTEXT_GUTTER, fromElementType, toElementType)
-      super.navigate()
+    @Suppress("UnstableApiUsage")
+    override fun onChosen() {
+      val project = project?.takeUnless { it.isDisposed } ?: return
+      project
+        .service<DaggerAnalyticsTracker>()
+        .trackNavigation(DaggerEditorEvent.NavigationMetadata.NavigationContext.CONTEXT_GUTTER, fromElementType, toElementType)
     }
 
     override fun getCustomName() = customDisplayName

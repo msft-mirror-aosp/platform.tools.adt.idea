@@ -33,17 +33,21 @@ import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
 import com.intellij.codeInsight.daemon.GutterMark
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
+import com.intellij.codeInsight.navigation.navigateToRelatedItem
 import com.intellij.ide.IdeEventQueue
 import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.navigation.GotoRelatedItem
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.platform.ide.navigation.NavigationOptions
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiNamedElement
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.awaitPendingNavigationAndEditorOpen
 import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.testFramework.registerServiceInstance
 import com.intellij.util.application
@@ -90,6 +94,15 @@ class DaggerRelatedItemLineMarkerProviderDaggerTest : DaggerTestCase() {
       // appropriately disposed when it closes, which otherwise may not happen in a test context due
       // to being headless.
       IdeEventQueue.getInstance().popupManager.closeAllPopups()
+      awaitPendingNavigationAndEditorOpen(project)
+    }
+  }
+
+  @Suppress("UnstableApiUsage")
+  private fun chooseFromPopup(item: GotoRelatedItem) {
+    application.invokeAndWait {
+      navigateToRelatedItem(project, item, NavigationOptions.defaultOptions())
+      awaitPendingNavigationAndEditorOpen(project)
     }
   }
 
@@ -502,7 +515,7 @@ class DaggerRelatedItemLineMarkerProviderDaggerTest : DaggerTestCase() {
     assertThat(trackerService.calledMethods[0]).startsWith("trackGutterWasDisplayed owner: MODULE time: ")
     assertThat(trackerService.calledMethods[1]).isEqualTo("trackClickOnGutter MODULE")
 
-    application.invokeAndWait { gotoRelatedItems.find { it.group == "Included in components" }!!.navigate() }
+    chooseFromPopup(gotoRelatedItems.find { it.group == "Included in components" }!!)
     assertThat(trackerService.calledMethods.last()).isEqualTo("trackNavigation CONTEXT_GUTTER MODULE COMPONENT")
   }
 
@@ -1233,7 +1246,7 @@ class DaggerRelatedItemLineMarkerProviderDaggerTest : DaggerTestCase() {
 
     clickOnIcon(icon)
     assertThat(trackerService.calledMethods.last()).isEqualTo("trackClickOnGutter SUBCOMPONENT")
-    application.invokeAndWait { gotoRelatedItems.find { it.group == "Subcomponents" }!!.navigate() }
+    chooseFromPopup(gotoRelatedItems.find { it.group == "Subcomponents" }!!)
     assertThat(trackerService.calledMethods.last()).isEqualTo("trackNavigation CONTEXT_GUTTER SUBCOMPONENT SUBCOMPONENT")
   }
 
@@ -1325,7 +1338,7 @@ class DaggerRelatedItemLineMarkerProviderDaggerTest : DaggerTestCase() {
       assertThat(method.customName).isEqualTo("MyEntryPoint")
     }
 
-    application.invokeAndWait { method.navigate() }
+    chooseFromPopup(method)
     assertThat(trackerService.calledMethods.last()).isEqualTo("trackNavigation CONTEXT_GUTTER PROVIDER ENTRY_POINT_METHOD")
   }
 
@@ -1345,7 +1358,9 @@ class DaggerRelatedItemLineMarkerProviderDaggerTest : DaggerTestCase() {
         .trimIndent(),
     )
 
-    application.invokeAndWait { clickOnIcon(myFixture.findGuttersAtCaret().single() as LineMarkerInfo.LineMarkerGutterIconRenderer<*>) }
+    lateinit var icon: LineMarkerInfo.LineMarkerGutterIconRenderer<*>
+    application.invokeAndWait { icon = myFixture.findGuttersAtCaret().single() as LineMarkerInfo.LineMarkerGutterIconRenderer<*> }
+    clickOnIcon(icon)
 
     myFixture.checkResult(
       // language=kotlin
@@ -1357,6 +1372,57 @@ class DaggerRelatedItemLineMarkerProviderDaggerTest : DaggerTestCase() {
 
       @Component(dependencies = [MyComponent::class])
       interface <caret>MyDependentComponent
+      """
+        .trimIndent()
+    )
+  }
+
+  fun testPopupNavigationGoesToTargetElement() {
+    myFixture.configureByText(
+      "Components.kt",
+      // language=kotlin
+      """
+      import dagger.Component
+
+      @Component
+      interface MyComp<caret>onent {}
+
+      @Component(dependencies = [MyComponent::class])
+      interface MyDependentComponent1
+
+      @Component(dependencies = [MyComponent::class])
+      interface MyDependentComponent2
+      """
+        .trimIndent(),
+    )
+
+    lateinit var icon: LineMarkerInfo.LineMarkerGutterIconRenderer<*>
+    application.invokeAndWait { icon = myFixture.findGuttersAtCaret().single() as LineMarkerInfo.LineMarkerGutterIconRenderer<*> }
+    val gotoRelatedItems = getGotoElements(icon)
+    assertThat(gotoRelatedItems).hasSize(2)
+
+    clickOnIcon(icon)
+    val targetItem =
+      ReadAction.nonBlocking<GotoRelatedItem> {
+          gotoRelatedItems.single { (it.element as? KtClass)?.name == "MyDependentComponent2" }
+        }
+        .executeSynchronously()
+    chooseFromPopup(targetItem)
+
+    assertThat(trackerService.calledMethods.last()).isEqualTo("trackNavigation CONTEXT_GUTTER COMPONENT COMPONENT")
+    myFixture.checkResult(
+      // language=kotlin
+      """
+      import dagger.Component
+
+      @Component
+      interface MyComponent {}
+
+      @Component(dependencies = [MyComponent::class])
+      interface MyDependentComponent1
+
+      @Component(dependencies = [MyComponent::class])
+      interface <caret>MyDependentComponent2
       """
         .trimIndent()
     )
