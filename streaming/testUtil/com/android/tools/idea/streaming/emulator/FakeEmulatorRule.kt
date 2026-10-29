@@ -25,10 +25,13 @@ import com.android.tools.idea.io.grpc.inprocess.InProcessChannelBuilder
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.AndroidSdksImpl
 import com.android.tools.idea.sdk.IdeAvdManagers
+import com.android.tools.idea.testing.AnalyticsPathsRule
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.registerOrReplaceServiceInstance
 import java.nio.file.Files
@@ -97,7 +100,14 @@ class FakeEmulatorRule : TestRule {
     }
 
   override fun apply(base: Statement, description: Description): Statement {
-    return tempDirectory.apply(emulatorResource.apply(ProcessHandleProviderRule().apply(base, description), description), description)
+    return RuleChain(
+        AnalyticsPathsRule(),
+        ApplicationRule(),
+        tempDirectory,
+        emulatorResource,
+        ProcessHandleProviderRule(),
+      )
+      .apply(base, description)
   }
 
   fun newPath(): Path = tempDirectory.newPath()
