@@ -136,22 +136,6 @@ class StudioLabsSettingsConfigurable : SearchableConfigurable, Promo, Configurab
       //      imageDescription = "Prompt Library settings",
       //    )
 
-      add(
-        StudioLabsFeaturePanelUi(
-          flag = StudioFlags.JOURNEYS_TEST_SUITE_EXECUTION,
-          heading = "Journeys",
-          description =
-            """
-            Use the vision and reasoning capabilities of AI to convert natural language instructions into automated tests.
-
-            An IDE restart is required for this change to take effect.
-            """
-              .trimIndent(),
-          imageKey = StudioLabsIcons.Features.Journeys,
-          imageDescription = "Journeys",
-        )
-      )
-
       if (StudioFlags.STUDIO_LABS_SETTINGS_FAKE_FEATURE_ENABLED.get()) {
         // Add a fake feature so that QA can test out Studio Labs in scenarios
         // where there are no real features available under Labs.

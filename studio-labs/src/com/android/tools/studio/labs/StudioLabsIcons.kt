@@ -26,6 +26,5 @@ internal object StudioLabsIcons {
     val SuggestedFix = IntelliJIconKey("images/studio_labs/suggested-fix.png", "images/studio_labs/suggested-fix.png", javaClass)
     val TransformComposePreview =
       IntelliJIconKey("images/studio_labs/transform-compose-preview.png", "images/studio_labs/transform-compose-preview.png", javaClass)
-    val Journeys = IntelliJIconKey("images/studio_labs/journeys.png", "images/studio_labs/journeys.png", javaClass)
   }
 }
