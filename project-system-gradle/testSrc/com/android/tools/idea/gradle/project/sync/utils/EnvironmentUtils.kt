@@ -38,6 +38,10 @@ object EnvironmentUtils {
   fun overrideEnvironmentVariables(environmentVariablesMap: Map<String, String>, disposable: Disposable) {
     val systemEnvironment = TestSystemEnvironment()
     ApplicationManager.getApplication().replaceService(Environment::class.java, systemEnvironment, disposable)
+    systemEnvironment.properties(
+      "user.home" to System.getProperty("user.home"),
+      "gradle.user.home" to System.getProperty("gradle.user.home"),
+    )
     systemEnvironment.variables(*environmentVariablesMap.toList().toTypedArray())
 
     // Workaround registering an GradleJvmResolver to resolve gradleJVM = '#JAVA_HOME', since EelApi implementation
