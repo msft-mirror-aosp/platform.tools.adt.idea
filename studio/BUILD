@@ -917,7 +917,6 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/rag/indexer:aiplugin.rag.indexer",
             "//tools/vendor/google/ml/aiplugin/rag/kb:aiplugin.rag.kb",
             "//tools/vendor/google/ml/aiplugin/rag/lucene:aiplugin.rag.lucene",
-            "//tools/vendor/google/ml:aiplugin.login.sdkcompat",
             "//tools/vendor/google/ml/gemini-coder",
         ] + AIPLUGIN_CORE_MODULES,
     },
