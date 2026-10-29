@@ -58,7 +58,7 @@ public class MemoryHeapView extends AspectObserver {
       .onChange(CaptureSelectionAspect.CURRENT_HEAP, this::refreshHeap);
 
     JLabel heapLabel = new JLabel("Heap:");
-    heapLabel.setForeground(UIUtil.getLabelDisabledForeground());
+    heapLabel.setForeground(UIUtil.getContextHelpForeground());
     heapLabel.setBorder(JBUI.Borders.empty(1, 12, 0, 0));
     myHeapToolbar.add(heapLabel);
 

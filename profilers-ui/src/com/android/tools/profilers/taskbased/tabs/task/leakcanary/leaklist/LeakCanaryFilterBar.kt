@@ -42,13 +42,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.android.tools.profilers.leakcanary.LeakCanaryModel
 import com.android.tools.profilers.leakcanary.LeakFilterScope
-import com.android.tools.profilers.taskbased.common.constants.colors.TaskBasedUxColors
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import com.android.tools.profilers.taskbased.common.dropdowns.DropdownOptionText
 import com.android.tools.profilers.taskbased.common.dropdowns.ProfilerComposeDropdown
 import com.android.tools.profilers.taskbased.common.text.EllipsisText
 import icons.StudioIconsCompose
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
@@ -77,11 +77,12 @@ fun LeakCanaryFilterBar(leakCanaryModel: LeakCanaryModel, modifier: Modifier = M
   }
 
   LaunchedEffect(searchFieldTextState) {
-    snapshotFlow { searchFieldTextState.text.toString() }.collect { newText ->
-      if (newText != leakCanaryModel.searchQuery.value) {
-        leakCanaryModel.setSearchQuery(newText)
+    snapshotFlow { searchFieldTextState.text.toString() }
+      .collect { newText ->
+        if (newText != leakCanaryModel.searchQuery.value) {
+          leakCanaryModel.setSearchQuery(newText)
+        }
       }
-    }
   }
 
   Row(
@@ -94,7 +95,7 @@ fun LeakCanaryFilterBar(leakCanaryModel: LeakCanaryModel, modifier: Modifier = M
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.Start,
   ) {
-    Text(text = TaskBasedUxStrings.LEAKCANARY_FILTER_TYPE, color = TaskBasedUxColors.LABEL_DISABLED_FOREGROUND)
+    Text(text = TaskBasedUxStrings.LEAKCANARY_FILTER_TYPE, color = JewelTheme.globalColors.text.info)
     Tooltip(tooltip = { Text(TaskBasedUxStrings.LEAKCANARY_TOOLTIP_FILTER_TYPE) }) {
       ProfilerComposeDropdown(
         modifier = Modifier.testTag("LeakFilterScopeDropdown"),

@@ -36,9 +36,6 @@ object TaskBasedUxColors {
   val TABLE_SEPARATOR_COLOR
     get() = retrieveColorOrUnspecified("TableHeader.separatorColor")
 
-  val LABEL_DISABLED_FOREGROUND
-    get() = retrieveColorOrUnspecified("Label.disabledForeground")
-
   val DROPDOWN_SEC_TEXT_COLOR
     get() = retrieveColorOrUnspecified("Component.infoForeground")
 

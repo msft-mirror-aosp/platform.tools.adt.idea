@@ -57,7 +57,7 @@ class MemoryClassGrouping(private val selection: MemoryCaptureSelection) : Aspec
         add(
           JLabel("Arrange by:").apply {
             border = JBUI.Borders.empty(1, 12, 0, 2)
-            foreground = UIUtil.getLabelDisabledForeground()
+            foreground = UIUtil.getContextHelpForeground()
           }
         )
         add(dropDown)

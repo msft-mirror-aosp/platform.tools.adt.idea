@@ -349,7 +349,7 @@ class AllocationSamplingMenu(private val stage: AllocationStage) {
     JPanel(createToolbarLayout()).apply {
       add(
         JLabel("Allocation Tracking:").apply {
-          foreground = UIUtil.getLabelDisabledForeground()
+          foreground = UIUtil.getContextHelpForeground()
           border = JBUI.Borders.empty(4, 12, 0, 2)
         }
       )

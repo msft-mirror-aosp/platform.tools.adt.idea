@@ -36,7 +36,7 @@ internal class IssueTypeFilterMenu(selection: MemoryCaptureSelection) :
   override fun createComponent(dropDown: ProfilerDropDownComponent<CaptureObjectInstanceFilter?>): JPanel {
     val label =
       JLabel("Filter by:").apply {
-        foreground = UIUtil.getLabelDisabledForeground()
+        foreground = UIUtil.getContextHelpForeground()
         border = JBUI.Borders.empty(1, 12, 0, 0)
       }
     return JPanel(createToolbarLayout()).apply {

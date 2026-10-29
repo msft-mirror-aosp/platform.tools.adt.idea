@@ -99,7 +99,7 @@ internal constructor(
       val components: MutableList<Component> = ArrayList()
       val viewByLabel =
         JLabel("View by:").apply {
-          foreground = UIUtil.getLabelDisabledForeground()
+          foreground = UIUtil.getContextHelpForeground()
           border = JBUI.Borders.empty(1, 12, 0, 0)
         }
       components.add(viewByLabel)
