@@ -29,7 +29,6 @@ public final class TestProjectToSnapshotPaths {
   public static final String MAIN_IN_ROOT = "projects/mainInRoot";
   public static final String MIGRATE_TO_NON_TRANSITIVE_R_CLASSES = "projects/migrateToNonTransitiveRClasses";
   public static final String MULTI_FLAVOR = "projects/multiFlavor";
-  public static final String NAMESPACES = "projects/namespaces";
   public static final String NAVIGATOR_PACKAGEVIEW_COMMONROOTS = "projects/navigator/packageview/commonroots";
   public static final String NAVIGATOR_PACKAGEVIEW_SIMPLE = "projects/navigator/packageview/simple";
   public static final String NESTED_MODULE = "projects/nestedModule";

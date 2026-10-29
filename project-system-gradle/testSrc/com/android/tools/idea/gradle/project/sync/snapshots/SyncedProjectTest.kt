@@ -163,8 +163,6 @@ abstract class SyncedProjectTest(selfTest: Boolean = false, agpVersion: AgpVersi
 
   @Test fun testMultiFlavorWithFiltering() = testProject(TestProject.MULTI_FLAVOR_WITH_FILTERING)
 
-  @Test fun testNamespaces() = testProject(TestProject.NAMESPACES)
-
   @Test fun testIncludeFromLib() = testProject(TestProject.INCLUDE_FROM_LIB)
 
   @Test fun testLocalAarsAsModules() = testProject(TestProject.LOCAL_AARS_AS_MODULES)
