@@ -73,6 +73,7 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.project.VetoableProjectManagerListener
 import com.intellij.openapi.ui.MessageType
 import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.util.registry.Registry
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.wm.WindowManager
 import com.intellij.openapi.wm.ex.ProgressIndicatorEx
@@ -98,6 +99,7 @@ import org.gradle.tooling.LongRunningOperation
 import org.gradle.tooling.ProjectConnection
 import org.gradle.tooling.events.OperationType
 import org.gradle.tooling.model.build.BuildEnvironment
+import org.jetbrains.plugins.gradle.service.GradleFileModificationTracker
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionContextImpl
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper
@@ -289,6 +291,15 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
             // Add trace arguments to jvmArguments.
             Trace.addVmArgs(traceJvmArgs)
             executionSettings.withVmOptions(traceJvmArgs).withArguments(commandLineArguments)
+            // Mirrors GradleTaskManager.executeTasks in the IntelliJ Gradle plugin, which Studio
+            // bypasses by routing tasks through this executor. Notify the Gradle daemon about
+            // recently saved VFS paths before starting the build (after getBuildEnvironment so the
+            // wrapper is already downloaded).
+            if (Registry.`is`("gradle.report.recently.saved.paths")) {
+              ApplicationManager.getApplication()
+                .getService(GradleFileModificationTracker::class.java)
+                .notifyConnectionAboutChangedPaths(connection)
+            }
             val operation = connection.newBuild()
             val gradleVersion = context.buildEnvironment?.gradle?.gradleVersion?.let(GradleInstallationManager::getGradleVersionSafe)
             // Mirrors GradleTaskManager.setupBuiltInTestEvents in the IntelliJ Gradle plugin, which
