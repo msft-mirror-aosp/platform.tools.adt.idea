@@ -11,26 +11,26 @@ _tests = [
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testConditionalReturnInLambda",  # b/575823083
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testDefaultLambdaParameter",  # b/578038532
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testMultiLineLambda",  # b/578123886
-    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFun1",
-    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceFolded",
-    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceFoldedIDEA345945",
-    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceHidden",
-    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunWithInner",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Todo$Skipped_suspend_frame.testSuspendFramesBeforeLaunch",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testChannel",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testFramesAboveCoroutineOwner",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedLaunches",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedScopes1",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedScopesWithSyncFrame",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedWithContexts1",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedWithContexts2",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testSuspendFramesBeforeWithContext",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testTwoWithContextBlocks",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithContextDispatched1",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithContextDispatched2",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithContextUndispatched1",
-    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithTimeout",
-    "K2IdeK2CodeCoroutineDumpTestGenerated.testTwoDumps",
+    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFun1",  # b/579461799
+    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceFolded",  # b/579461799
+    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceFoldedIDEA345945",  # b/579461799
+    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceHidden",  # b/579461799
+    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunWithInner",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Todo$Skipped_suspend_frame.testSuspendFramesBeforeLaunch",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testChannel",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testFramesAboveCoroutineOwner",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedLaunches",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedScopes1",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedScopesWithSyncFrame",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedWithContexts1",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testNestedWithContexts2",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testSuspendFramesBeforeWithContext",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testTwoWithContextBlocks",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithContextDispatched1",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithContextDispatched2",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithContextUndispatched1",  # b/579461799
+    "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithTimeout",  # b/579461799
+    "K2IdeK2CodeCoroutineDumpTestGenerated.testTwoDumps",  # b/579461799
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$ReifiedParamEvaluation.testMultilineCall",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$ReifiedParamEvaluation.testNoCaching",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$ReifiedParamEvaluation.testReifiedParamEvalWithComplexInvocationLookup",
