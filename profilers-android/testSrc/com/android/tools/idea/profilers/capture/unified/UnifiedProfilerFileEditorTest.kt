@@ -15,22 +15,31 @@
  */
 package com.android.tools.idea.profilers.capture.unified
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.profilers.AndroidProfilerToolWindow
 import com.android.tools.idea.profilers.AndroidProfilerToolWindowFactory
 import com.android.tools.profilers.MinWidthScrollPane
 import com.android.tools.profilers.tasks.ProfilerTaskType
+import com.android.tools.sherlock.common.system.editor.getPerfettoFileEditor
+import com.android.tools.sherlock.common.system.services.TraceProcessorServerService
 import com.google.common.truth.Truth.assertThat
+import com.google.common.util.concurrent.SettableFuture
+import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.mock.MockProjectEx
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.LightVirtualFile
+import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.ui.content.ContentManager
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.UIUtil
 import java.awt.Dimension
 import javax.swing.JPanel
 import org.junit.After
@@ -43,6 +52,7 @@ import org.mockito.Mockito.never
 import org.mockito.Mockito.spy
 import org.mockito.Mockito.timeout
 import org.mockito.Mockito.verify
+import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 
 class UnifiedProfilerFileEditorTest {
@@ -72,10 +82,13 @@ class UnifiedProfilerFileEditorTest {
     mockProfilerToolWindow = mock(AndroidProfilerToolWindow::class.java)
     whenever(mockProfilerToolWindow.profilersPanel).thenReturn(JPanel())
     AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP[project] = mockProfilerToolWindow
+    // The headless test DataManager ignores component data; use the production one, as in the IDE.
+    HeadlessDataManager.fallbackToProductionDataManager(disposableRule.disposable)
   }
 
   @After
   fun tearDown() {
+    StudioFlags.PROFILER_SYSTEM_TRACE_IN_EDITOR.clearOverride()
     AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP.remove(project)
   }
 
@@ -127,7 +140,29 @@ class UnifiedProfilerFileEditorTest {
     val editor = UnifiedProfilerFileEditor(project, virtualFile)
     Disposer.register(disposableRule.disposable, editor)
 
-    assertThat(editor.component).isInstanceOf(MinWidthScrollPane::class.java)
+    assertThat(UIUtil.findComponentOfType(editor.component, MinWidthScrollPane::class.java)).isNotNull()
     assertThat(editor.component.minimumSize.width).isLessThan(JBUI.scale(UnifiedProfilerFileEditor.MIN_CONTENT_WIDTH))
+  }
+
+  @Test
+  fun `system trace editor exposes its trace viewer`() {
+    StudioFlags.PROFILER_SYSTEM_TRACE_IN_EDITOR.override(true)
+    project.registerService(ProjectFileIndex::class.java, mock(ProjectFileIndex::class.java))
+    // PerfettoView eagerly starts loading in unit tests; stub the server service so no daemon is spawned.
+    val serverService =
+      mock(TraceProcessorServerService::class.java).also {
+        whenever(it.createClient(any(), any(), any())).thenReturn(SettableFuture.create())
+      }
+    project.registerService(TraceProcessorServerService::class.java, serverService)
+
+    val traceFile = LightVirtualFile("trace.pftrace")
+    val editor = runInEdtAndGet {
+      UnifiedProfilerFileEditor(project, traceFile).also { Disposer.register(disposableRule.disposable, it) }
+    }
+
+    val traceViewer = runInEdtAndGet { editor.getPerfettoFileEditor() }
+    assertThat(traceViewer).isNotNull()
+    assertThat(traceViewer!!.file).isSameAs(traceFile)
+    assertThat(UIUtil.isAncestor(editor.component, runInEdtAndGet { traceViewer.component })).isTrue()
   }
 }

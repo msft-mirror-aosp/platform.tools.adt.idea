@@ -22,6 +22,8 @@ import com.android.tools.profilers.StageView
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
 import com.android.tools.sherlock.common.system.editor.PerfettoFileEditor
+import com.android.tools.sherlock.common.system.perfetto.PerfettoDataKeys
+import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorLocation
@@ -61,8 +63,16 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
   /** Holds the recording's UI: the profiler views, or the component of [delegate]. */
   private val component: JPanel = JPanel(BorderLayout())
 
-  /** The component shown in the editor tab: [component], laid out at no less than [MIN_CONTENT_WIDTH] and scrolled when narrower. */
-  private val rootComponent = MinWidthScrollPane(component) { JBUI.scale(MIN_CONTENT_WIDTH) }
+  /**
+   * The component shown in the editor tab: [component] at no less than [MIN_CONTENT_WIDTH], scrolled when narrower. Provides [delegate] as
+   * UI data when it's a trace viewer.
+   */
+  private val rootComponent =
+    UiDataProvider.wrapComponent(MinWidthScrollPane(component) { JBUI.scale(MIN_CONTENT_WIDTH) }) { sink ->
+      when (delegate) {
+        is PerfettoFileEditor -> sink[PerfettoDataKeys.FILE_EDITOR] = delegate
+      }
+    }
 
   // Strong references to prevent garbage collection of AspectObservers
   private var profilersView: StudioProfilersView? = null
