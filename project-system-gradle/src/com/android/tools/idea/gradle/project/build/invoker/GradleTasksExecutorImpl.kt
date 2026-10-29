@@ -59,7 +59,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.compiler.CompilerManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.externalSystem.model.ExternalSystemException
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationEvent
 import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
@@ -98,6 +97,7 @@ import org.gradle.tooling.GradleConnector
 import org.gradle.tooling.LongRunningOperation
 import org.gradle.tooling.ProjectConnection
 import org.gradle.tooling.events.OperationType
+import org.gradle.tooling.model.build.BuildEnvironment
 import org.jetbrains.plugins.gradle.service.GradleFileModificationTracker
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleExecutionContextImpl
@@ -198,190 +198,6 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
     }
 
     private fun invokeGradleTasks(): GradleInvocationResult {
-      val project = myRequest.project
-      val executionSettings = myRequest.toExecutionSettings()
-      val model = AtomicReference<Any?>(null)
-      val gradleRootProjectPath = myRequest.rootProjectPath.path
-      val id = myRequest.taskId
-      val taskListener = myListener
-      val cancellationTokenSource = GradleConnector.newCancellationTokenSource()
-      val cancellationToken = cancellationTokenSource.token()
-      val listener = object : ExternalSystemTaskNotificationListener {
-        override fun onStatusChange(event: ExternalSystemTaskNotificationEvent) {
-          if (myBuildStopper.contains(id)) {
-            taskListener.onStatusChange(event)
-          }
-        }
-
-        override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
-          // For test use only: save the logs to a file. Note that if there are multiple tasks at once
-          // the output will be interleaved.
-          if (StudioFlags.GRADLE_SAVE_LOG_TO_FILE.get()) {
-            try {
-              val path = Paths.get(PathManager.getLogPath(), "gradle.log")
-              Files.writeString(path, text, StandardOpenOption.APPEND, StandardOpenOption.CREATE)
-            } catch (e: IOException) {
-              // Ignore
-            }
-          }
-          if (myBuildStopper.contains(id)) {
-            taskListener.onTaskOutput(id, text, processOutputType)
-          }
-        }
-      }
-      val context = GradleTaskExecutionContextImpl(gradleRootProjectPath, id, listener)
-      val executionContext = GradleExecutionContextImpl(context.projectPath, context.taskId, executionSettings, context.listener, cancellationToken)
-        .also { context.executionContext = it }
-      val executeTasksFunction = Function { connection: ProjectConnection ->
-        val stopwatch = Stopwatch.createStarted()
-        val gradleTasks = myRequest.gradleTasks
-        val executingTasksText = "Executing tasks: $gradleTasks in project $gradleRootProjectPath"
-        expireOldEvents()
-        addToEventLog(executingTasksText, MessageType.INFO)
-        myBuildStopper.register(id, cancellationTokenSource)
-        taskListener.onStart(gradleRootProjectPath, id)
-        taskListener.onTaskOutput(id, executingTasksText + System.lineSeparator() + System.lineSeparator(), ProcessOutputType.STDOUT)
-        val buildState = GradleBuildState.getInstance(project)
-        val buildCompleter = buildState.buildStarted(BuildContext(myRequest))
-        var buildAttributionManager: BuildAttributionManager? = null
-        val enableBuildAttribution = isBuildAttributionEnabledForProject(project)
-        val invocationResult =
-          try {
-            val buildConfiguration = AndroidGradleBuildConfiguration.getInstance(project)
-            val commandLineArguments: MutableList<String?> = Lists.newArrayList(*buildConfiguration.commandLineOptions)
-            if (
-              !commandLineArguments.contains(GradleBuilds.PARALLEL_BUILD_OPTION) &&
-                CompilerConfiguration.getInstance(project).isParallelCompilationEnabled
-            ) {
-              commandLineArguments.add(GradleBuilds.PARALLEL_BUILD_OPTION)
-            }
-            commandLineArguments.add(AndroidGradleSettings.createProjectProperty(PROPERTY_INVOKED_FROM_IDE, true))
-            addAndroidStudioPluginVersion(commandLineArguments)
-            if (enableBuildAttribution) {
-              val attributionFileDir = getAgpAttributionFileDir(myRequest.data)
-              commandLineArguments.add(
-                AndroidGradleSettings.createProjectProperty(PROPERTY_ATTRIBUTION_FILE_LOCATION, attributionFileDir.absolutePath)
-              )
-            }
-
-            // Inject embedded repository if it's enabled by user.
-            if (!GuiTestingService.isInTestingMode()) {
-              GradleInitScripts.getInstance().addLocalMavenRepoInitScriptCommandLineArg(commandLineArguments)
-              GradleProjectSystemUtil.attemptToUseEmbeddedGradle(project)
-            }
-
-            // Don't include passwords in the log
-            var logMessage = "Build command line options: $commandLineArguments"
-            if (logMessage.contains(PASSWORD_KEY_SUFFIX)) {
-              val replaced: MutableList<String?> = ArrayList(commandLineArguments.size)
-              for (option in commandLineArguments) {
-                // -Pandroid.injected.signing.store.password=, -Pandroid.injected.signing.key.password=
-                val index = option!!.indexOf(".password=")
-                if (index == -1) {
-                  replaced.add(option)
-                } else {
-                  replaced.add(option.substring(0, index + PASSWORD_KEY_SUFFIX.length) + "*********")
-                }
-              }
-              logMessage = replaced.toString()
-            }
-            logger.info(logMessage)
-            val traceJvmArgs: List<String> = emptyList()
-            // Add trace arguments to jvmArguments.
-            Trace.addVmArgs(traceJvmArgs)
-            executionSettings.withVmOptions(traceJvmArgs).withArguments(commandLineArguments)
-            // Mirrors GradleTaskManager.executeTasks in the IntelliJ Gradle plugin, which Studio
-            // bypasses by routing tasks through this executor. Notify the Gradle daemon about
-            // recently saved VFS paths before starting the build (after getBuildEnvironment so the
-            // wrapper is already downloaded).
-            if (Registry.`is`("gradle.report.recently.saved.paths")) {
-              ApplicationManager.getApplication()
-                .getService(GradleFileModificationTracker::class.java)
-                .notifyConnectionAboutChangedPaths(connection)
-            }
-            val operation = connection.newBuild()
-            val gradleVersion = executionContext.buildEnvironment?.gradle?.gradleVersion?.let(GradleInstallationManager::getGradleVersionSafe)
-            // Mirrors GradleTaskManager.setupBuiltInTestEvents in the IntelliJ Gradle plugin, which
-            // enables built-in (Tooling API) test events for Gradle 7.6+. That method is only called
-            // from GradleTaskManager.executeTasks, which Studio bypasses by routing tasks through
-            // this executor. Without it, the legacy init-script test logger is used, which does not
-            // report test events from included builds.
-            // Runs whose results are shown in AndroidTestSuiteView keep using the legacy test logger,
-            // because GradleAndroidTestsExecutionConsoleManager only processes its stdout XML events
-            // and does not handle Tooling API test events.
-            if (
-              gradleVersion != null &&
-                GradleVersionUtil.isGradleAtLeast(gradleVersion, "7.6") &&
-                executionSettings.getUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey) != true
-            ) {
-              executionSettings.isBuiltInTestEventsUsed = true
-            }
-            GradleTaskManager.configureTasks(executionSettings, context)
-            GradleExecutionHelper.prepareForExecution(operation, executionContext)
-            if (enableBuildAttribution) {
-              buildAttributionManager = project.getService(BuildAttributionManager::class.java)
-              setUpBuildAttributionManager(
-                operation,
-                buildAttributionManager, // In some tests we don't care about build attribution being setup
-                ApplicationManager.getApplication().isUnitTestMode,
-              )
-            }
-            operation.forTasks(*ArrayUtil.toStringArray(gradleTasks))
-            operation.run()
-            val buildInfo = buildAttributionManager?.onBuildSuccess(myRequest)
-            val skipAgpVersionCheck = executionSettings.getUserData(SKIP_POST_BUILD_AGP_VERSION_CHECK) ?: false
-            val isJavaHomeOperation = executionSettings.getUserData(AUTO_JAVA_HOME) ?: false
-            if (buildInfo?.agpVersion != null && !skipAgpVersionCheck && !isJavaHomeOperation) {
-              reportAgpVersionMismatch(project, buildInfo)
-            }
-            GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, null, model.get())
-          } catch (e: Throwable) {
-            val failure =
-              runCatching {
-                buildAttributionManager?.onBuildFailure(myRequest)
-                if (e !is BuildException) {
-                  handleTaskExecutionError(e)
-                }
-              }
-                .exceptionOrNull() ?: e
-            GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, failure, model.get(), executionContext.buildEnvironment)
-          }
-
-        executeWithoutProcessCanceledException {
-          val application = ApplicationManager.getApplication()
-          try {
-            with(invocationResult) {
-              when {
-                buildError == null -> {
-                  buildCompleter.buildFinished(BuildStatus.SUCCESS)
-                  taskListener.onSuccess(gradleRootProjectPath, id)
-                }
-
-                wasBuildCanceled(buildError) -> {
-                  buildCompleter.buildFinished(BuildStatus.CANCELED)
-                  taskListener.onCancel(gradleRootProjectPath, id)
-                }
-
-                else -> {
-                  buildCompleter.buildFinished(BuildStatus.FAILED)
-                  taskListener.onFailure(gradleRootProjectPath, id, buildError.toFriendlyError())
-                }
-              }
-            }
-          } finally {
-            taskListener.onEnd(gradleRootProjectPath, id)
-            myBuildStopper.remove(id)
-          }
-          if (GuiTestingService.getInstance().isGuiTestingMode) {
-            val testOutput = application.getUserData(GuiTestingService.GRADLE_BUILD_OUTPUT_IN_GUI_TEST_KEY)
-            if (StringUtil.isNotEmpty(testOutput)) {
-              application.putUserData(GuiTestingService.GRADLE_BUILD_OUTPUT_IN_GUI_TEST_KEY, null)
-            }
-          }
-          application.invokeLater { notifyGradleInvocationCompleted(buildState, stopwatch.elapsed(TimeUnit.MILLISECONDS)) }
-        }
-        invocationResult
-      }
       if (GuiTestingService.getInstance().isGuiTestingMode) {
         // We use this task in GUI tests to simulate errors coming from Gradle project sync.
         val application = ApplicationManager.getApplication()
@@ -391,16 +207,209 @@ internal class GradleTasksExecutorImpl : GradleTasksExecutor {
           task.run()
         }
       }
-      return try {
-        GradleExecutionHelper.execute(executionContext, executeTasksFunction)
-      } catch (e: ExternalSystemException) {
-        if (e.originalReason.startsWith("com.intellij.openapi.progress.ProcessCanceledException")) {
-          logger.info("Gradle execution cancelled.", e)
-          GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, e)
-        } else {
-          throw e
+      val project = myRequest.project
+      val executionSettings = myRequest.toExecutionSettings()
+      val model = AtomicReference<Any?>(null)
+      val gradleRootProjectPath = myRequest.rootProjectPath.path
+      val id = myRequest.taskId
+      val taskListener = myListener
+      val cancellationTokenSource = GradleConnector.newCancellationTokenSource()
+      val cancellationToken = cancellationTokenSource.token()
+      val listener =
+        object : ExternalSystemTaskNotificationListener {
+          override fun onStatusChange(event: ExternalSystemTaskNotificationEvent) {
+            if (myBuildStopper.contains(id)) {
+              taskListener.onStatusChange(event)
+            }
+          }
+
+          override fun onTaskOutput(id: ExternalSystemTaskId, text: String, processOutputType: ProcessOutputType) {
+            // For test use only: save the logs to a file. Note that if there are multiple tasks at once
+            // the output will be interleaved.
+            if (StudioFlags.GRADLE_SAVE_LOG_TO_FILE.get()) {
+              try {
+                val path = Paths.get(PathManager.getLogPath(), "gradle.log")
+                Files.writeString(path, text, StandardOpenOption.APPEND, StandardOpenOption.CREATE)
+              } catch (e: IOException) {
+                // Ignore
+              }
+            }
+            if (myBuildStopper.contains(id)) {
+              taskListener.onTaskOutput(id, text, processOutputType)
+            }
+          }
+        }
+      val context = GradleTaskExecutionContextImpl(gradleRootProjectPath, id, listener)
+      val executionContext =
+        GradleExecutionContextImpl(context.projectPath, context.taskId, executionSettings, context.listener, cancellationToken).also {
+          context.executionContext = it
+        }
+      val stopwatch = Stopwatch.createStarted()
+      val gradleTasks = myRequest.gradleTasks
+      val executingTasksText = "Executing tasks: $gradleTasks in project $gradleRootProjectPath"
+      expireOldEvents()
+      addToEventLog(executingTasksText, MessageType.INFO)
+      myBuildStopper.register(id, cancellationTokenSource)
+      taskListener.onStart(gradleRootProjectPath, id)
+      taskListener.onTaskOutput(id, executingTasksText + System.lineSeparator() + System.lineSeparator(), ProcessOutputType.STDOUT)
+      val buildState = GradleBuildState.getInstance(project)
+      val buildCompleter = buildState.buildStarted(BuildContext(myRequest))
+      var buildAttributionManager: BuildAttributionManager? = null
+      val enableBuildAttribution = isBuildAttributionEnabledForProject(project)
+      var buildEnvironment: BuildEnvironment? = null
+
+      fun createFailureResult(e: Throwable): GradleInvocationResult {
+        val failure =
+          runCatching {
+            buildAttributionManager?.onBuildFailure(myRequest)
+            if (e !is BuildException) {
+              handleTaskExecutionError(e)
+            }
+          }
+            .exceptionOrNull() ?: e
+        return GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, failure, model.get(), buildEnvironment)
+      }
+
+      val executeTasksFunction = Function { connection: ProjectConnection ->
+        try {
+          buildEnvironment = executionContext.buildEnvironment
+          val buildConfiguration = AndroidGradleBuildConfiguration.getInstance(project)
+          val commandLineArguments: MutableList<String?> = Lists.newArrayList(*buildConfiguration.commandLineOptions)
+          if (
+            !commandLineArguments.contains(GradleBuilds.PARALLEL_BUILD_OPTION) &&
+              CompilerConfiguration.getInstance(project).isParallelCompilationEnabled
+          ) {
+            commandLineArguments.add(GradleBuilds.PARALLEL_BUILD_OPTION)
+          }
+          commandLineArguments.add(AndroidGradleSettings.createProjectProperty(PROPERTY_INVOKED_FROM_IDE, true))
+          addAndroidStudioPluginVersion(commandLineArguments)
+          if (enableBuildAttribution) {
+            val attributionFileDir = getAgpAttributionFileDir(myRequest.data)
+            commandLineArguments.add(
+              AndroidGradleSettings.createProjectProperty(PROPERTY_ATTRIBUTION_FILE_LOCATION, attributionFileDir.absolutePath)
+            )
+          }
+
+          // Inject embedded repository if it's enabled by user.
+          if (!GuiTestingService.isInTestingMode()) {
+            GradleInitScripts.getInstance().addLocalMavenRepoInitScriptCommandLineArg(commandLineArguments)
+            GradleProjectSystemUtil.attemptToUseEmbeddedGradle(project)
+          }
+
+          // Don't include passwords in the log
+          var logMessage = "Build command line options: $commandLineArguments"
+          if (logMessage.contains(PASSWORD_KEY_SUFFIX)) {
+            val replaced: MutableList<String?> = ArrayList(commandLineArguments.size)
+            for (option in commandLineArguments) {
+              // -Pandroid.injected.signing.store.password=, -Pandroid.injected.signing.key.password=
+              val index = option!!.indexOf(".password=")
+              if (index == -1) {
+                replaced.add(option)
+              } else {
+                replaced.add(option.substring(0, index + PASSWORD_KEY_SUFFIX.length) + "*********")
+              }
+            }
+            logMessage = replaced.toString()
+          }
+          logger.info(logMessage)
+          val traceJvmArgs: List<String> = emptyList()
+          // Add trace arguments to jvmArguments.
+          Trace.addVmArgs(traceJvmArgs)
+          executionSettings.withVmOptions(traceJvmArgs).withArguments(commandLineArguments)
+          // Mirrors GradleTaskManager.executeTasks in the IntelliJ Gradle plugin, which Studio
+          // bypasses by routing tasks through this executor. Notify the Gradle daemon about
+          // recently saved VFS paths before starting the build (after getBuildEnvironment so the
+          // wrapper is already downloaded).
+          if (Registry.`is`("gradle.report.recently.saved.paths")) {
+            ApplicationManager.getApplication()
+              .getService(GradleFileModificationTracker::class.java)
+              .notifyConnectionAboutChangedPaths(connection)
+          }
+          val operation = connection.newBuild()
+          val gradleVersion = buildEnvironment?.gradle?.gradleVersion?.let(GradleInstallationManager::getGradleVersionSafe)
+          // Mirrors GradleTaskManager.setupBuiltInTestEvents in the IntelliJ Gradle plugin, which
+          // enables built-in (Tooling API) test events for Gradle 7.6+. That method is only called
+          // from GradleTaskManager.executeTasks, which Studio bypasses by routing tasks through
+          // this executor. Without it, the legacy init-script test logger is used, which does not
+          // report test events from included builds.
+          // Runs whose results are shown in AndroidTestSuiteView keep using the legacy test logger,
+          // because GradleAndroidTestsExecutionConsoleManager only processes its stdout XML events
+          // and does not handle Tooling API test events.
+          if (
+            gradleVersion != null &&
+              GradleVersionUtil.isGradleAtLeast(gradleVersion, "7.6") &&
+              executionSettings.getUserData(SHOW_TEST_RESULT_IN_ANDROID_TEST_SUITE_VIEW.userDataKey) != true
+          ) {
+            executionSettings.isBuiltInTestEventsUsed = true
+          }
+          GradleTaskManager.configureTasks(executionSettings, context)
+          GradleExecutionHelper.prepareForExecution(operation, executionContext)
+          if (enableBuildAttribution) {
+            buildAttributionManager = project.getService(BuildAttributionManager::class.java)
+            setUpBuildAttributionManager(
+              operation,
+              buildAttributionManager, // In some tests we don't care about build attribution being setup
+              ApplicationManager.getApplication().isUnitTestMode,
+            )
+          }
+          operation.forTasks(*ArrayUtil.toStringArray(gradleTasks))
+          operation.run()
+          val buildInfo = buildAttributionManager?.onBuildSuccess(myRequest)
+          val skipAgpVersionCheck = executionSettings.getUserData(SKIP_POST_BUILD_AGP_VERSION_CHECK) ?: false
+          val isJavaHomeOperation = executionSettings.getUserData(AUTO_JAVA_HOME) ?: false
+          if (buildInfo?.agpVersion != null && !skipAgpVersionCheck && !isJavaHomeOperation) {
+            reportAgpVersionMismatch(project, buildInfo)
+          }
+          GradleInvocationResult(myRequest.rootProjectPath, myRequest.gradleTasks, null, model.get(), buildEnvironment)
+        } catch (e: Throwable) {
+          createFailureResult(e)
         }
       }
+
+      val invocationResult =
+        try {
+          GradleExecutionHelper.execute(executionContext, executeTasksFunction)
+        } catch (e: Throwable) {
+          if (wasBuildCanceled(e)) {
+            logger.info("Gradle execution cancelled.", e)
+          }
+          createFailureResult(e)
+        }
+
+      executeWithoutProcessCanceledException {
+        val application = ApplicationManager.getApplication()
+        try {
+          with(invocationResult) {
+            when {
+              buildError == null -> {
+                buildCompleter.buildFinished(BuildStatus.SUCCESS)
+                taskListener.onSuccess(gradleRootProjectPath, id)
+              }
+
+              wasBuildCanceled(buildError) -> {
+                buildCompleter.buildFinished(BuildStatus.CANCELED)
+                taskListener.onCancel(gradleRootProjectPath, id)
+              }
+
+              else -> {
+                buildCompleter.buildFinished(BuildStatus.FAILED)
+                taskListener.onFailure(gradleRootProjectPath, id, buildError.toFriendlyError())
+              }
+            }
+          }
+        } finally {
+          taskListener.onEnd(gradleRootProjectPath, id)
+          myBuildStopper.remove(id)
+        }
+        if (GuiTestingService.getInstance().isGuiTestingMode) {
+          val testOutput = application.getUserData(GuiTestingService.GRADLE_BUILD_OUTPUT_IN_GUI_TEST_KEY)
+          if (StringUtil.isNotEmpty(testOutput)) {
+            application.putUserData(GuiTestingService.GRADLE_BUILD_OUTPUT_IN_GUI_TEST_KEY, null)
+          }
+        }
+        application.invokeLater { notifyGradleInvocationCompleted(buildState, stopwatch.elapsed(TimeUnit.MILLISECONDS)) }
+      }
+      return invocationResult
     }
 
     private fun reportAgpVersionMismatch(project: Project, buildInfo: BasicBuildAttributionInfo) {

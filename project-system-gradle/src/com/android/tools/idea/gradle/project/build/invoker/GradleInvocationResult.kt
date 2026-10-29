@@ -51,7 +51,8 @@ constructor(
     get() = buildError == null
 
   fun Throwable.toFriendlyError(): ExternalSystemException =
-    GradleProjectResolver.createProjectResolverChain().getUserFriendlyError(buildEnvironment, this, rootProjectPath.toString(), null)
+    this as? ExternalSystemException
+      ?: GradleProjectResolver.createProjectResolverChain().getUserFriendlyError(buildEnvironment, this, rootProjectPath.toString(), null)
 }
 
 class GradleMultiInvocationResult(val invocations: List<GradleInvocationResult>) : GradleBuildResult {
