@@ -29,6 +29,8 @@ object StagingIcons {
 
   @JvmField val CAMERA: Icon = load("icons/camera.svg", 781850088, 2)
 
+  @JvmField val CAR_ROTARY: Icon = load("icons/car-rotary.svg", 2057395957, 2)
+
   @JvmField val CELLULAR: Icon = load("icons/cellular.svg", 206072347, 2)
 
   @JvmField val DEVICE_POSE: Icon = load("icons/device-pose.svg", 1721416520, 2)

@@ -722,6 +722,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Car Rotary",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Cellular",
       "path": "ActionManager"
     },
@@ -1315,6 +1319,10 @@
     },
     {
       "hit": "Open camera settings",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open car rotary controls",
       "path": "ActionManager"
     },
     {

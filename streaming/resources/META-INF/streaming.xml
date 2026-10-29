@@ -309,6 +309,8 @@
                 icon="com.android.tools.idea.streaming.StagingIcons.FINGERPRINT" text="Fingerprint" description="Open fingerprint controls"/>
         <action id="android.emulator.microphone" class="com.android.tools.idea.streaming.emulator.actions.EmulatorMicrophoneAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.MICROPHONE" text="Microphone" description="Open microphone controls"/>
+        <action id="android.emulator.car.rotary" class="com.android.tools.idea.streaming.emulator.actions.EmulatorCarRotaryAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.CAR_ROTARY" text="Car Rotary" description="Open car rotary controls"/>
       </group>
     </group>
 

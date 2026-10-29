@@ -69,6 +69,7 @@ class EmulatorExtendedControlsActionGroupTest {
     val sensorsActionId = "android.emulator.sensors"
     val fingerprintActionId = "android.emulator.fingerprint"
     val microphoneActionId = "android.emulator.microphone"
+    val carRotaryActionId = "android.emulator.car.rotary"
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
     val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -115,6 +116,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(microphoneDisabled.isVisible).isFalse()
     assertThat(microphoneDisabled.isEnabled).isFalse()
 
+    val carRotaryDisabled = updateAndGetActionPresentation(carRotaryActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(carRotaryDisabled.isVisible).isFalse()
+    assertThat(carRotaryDisabled.isEnabled).isFalse()
+
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
     val presentationEnabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(presentationEnabled.isVisible).isTrue()
@@ -160,6 +165,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(microphoneEnabled.isVisible).isTrue()
     assertThat(microphoneEnabled.isEnabled).isTrue()
 
+    val carRotaryPhone = updateAndGetActionPresentation(carRotaryActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(carRotaryPhone.isVisible).isFalse()
+    assertThat(carRotaryPhone.isEnabled).isFalse()
+
     val automotiveView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createAutomotiveAvd(path) })
     val batteryAutomotive = updateAndGetActionPresentation(batteryActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(batteryAutomotive.isVisible).isFalse()
@@ -177,6 +186,27 @@ class EmulatorExtendedControlsActionGroupTest {
     val sensorsAutomotive = updateAndGetActionPresentation(sensorsActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(sensorsAutomotive.isVisible).isTrue()
     assertThat(sensorsAutomotive.isEnabled).isTrue()
+
+    val carRotaryAutomotive =
+      updateAndGetActionPresentation(carRotaryActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(carRotaryAutomotive.isVisible).isTrue()
+    assertThat(carRotaryAutomotive.isEnabled).isTrue()
+
+    StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
+    val carRotaryAutomotiveFlagDisabled =
+      updateAndGetActionPresentation(carRotaryActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(carRotaryAutomotiveFlagDisabled.isVisible).isFalse()
+    assertThat(carRotaryAutomotiveFlagDisabled.isEnabled).isFalse()
+    StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
+
+    val automotiveApi29View =
+      emulatorViewRule.newEmulatorView(
+        avdCreator = { path -> FakeEmulator.createAutomotiveAvd(path, androidVersion = AndroidVersion(29, 0)) }
+      )
+    val carRotaryAutomotiveApi29 =
+      updateAndGetActionPresentation(carRotaryActionId, automotiveApi29View, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(carRotaryAutomotiveApi29.isVisible).isFalse()
+    assertThat(carRotaryAutomotiveApi29.isEnabled).isFalse()
 
     val watchView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createWatchAvd(path) })
     val devicePoseWatch = updateAndGetActionPresentation(devicePoseActionId, watchView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -214,7 +244,7 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(10)
+    assertThat(children).hasLength(11)
     val locationAction = children[0]
     assertThat(locationAction.templatePresentation.text).isEqualTo("Location")
     assertThat(locationAction.templatePresentation.icon).isEqualTo(StagingIcons.LOCATION)
@@ -254,6 +284,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val microphoneAction = children[9]
     assertThat(microphoneAction.templatePresentation.text).isEqualTo("Microphone")
     assertThat(microphoneAction.templatePresentation.icon).isEqualTo(StagingIcons.MICROPHONE)
+
+    val carRotaryAction = children[10]
+    assertThat(carRotaryAction.templatePresentation.text).isEqualTo("Car Rotary")
+    assertThat(carRotaryAction.templatePresentation.icon).isEqualTo(StagingIcons.CAR_ROTARY)
 
     executeAction(locationAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
     val locationDlg = findModelessDialog<DialogWrapper>()!!
@@ -326,8 +360,13 @@ class EmulatorExtendedControlsActionGroupTest {
     val cellularDlg2 = findModelessDialog<DialogWrapper> { it.title == "Cellular ($avdName2)" }!!
     assertThat(modelessDialogs).containsExactly(microphoneDlg, cellularDlg2)
 
+    executeAction(carRotaryAction, view2, emulatorViewRule.project, ActionPlaces.POPUP)
+    assertThat(cellularDlg2.isShowing).isFalse()
+    val carRotaryDlg2 = findModelessDialog<DialogWrapper> { it.title == "Car Rotary ($avdName2)" }!!
+    assertThat(modelessDialogs).containsExactly(microphoneDlg, carRotaryDlg2)
+
     microphoneDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
-    cellularDlg2.close(DialogWrapper.CLOSE_EXIT_CODE)
+    carRotaryDlg2.close(DialogWrapper.CLOSE_EXIT_CODE)
     assertThat(modelessDialogs).isEmpty()
   }
 }
