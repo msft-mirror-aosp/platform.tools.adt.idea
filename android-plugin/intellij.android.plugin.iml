@@ -82,6 +82,7 @@
     <orderEntry type="module" module-name="intellij.android.tracer" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.app-publishing" scope="RUNTIME" />
     <orderEntry type="module" module-name="intellij.android.play-publishing" scope="RUNTIME" />
+    <orderEntry type="module" module-name="intellij.android.automated-updates" scope="RUNTIME" />
     <orderEntry type="module" module-name="cli-server.server" scope="RUNTIME" />
     <orderEntry type="module" module-name="cli-server.command-handler" scope="RUNTIME" />
   </component>

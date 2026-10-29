@@ -148,4 +148,5 @@
   <xi:include href="/META-INF/tracer.xml" />
   <xi:include href="/META-INF/app-publishing.xml" />
   <xi:include href="/META-INF/play-publishing.xml" />
+  <xi:include href="/META-INF/automated-updates.xml" />
 </idea-plugin>

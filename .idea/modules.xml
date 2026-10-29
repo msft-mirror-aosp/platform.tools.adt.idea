@@ -731,6 +731,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/app-link-assistant-ai/app-link-assistant-ai.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/app-link-assistant-ai/app-link-assistant-ai.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/usb-devices/usb-devices.iml" filepath="$PROJECT_DIR$/../../base/usb-devices/usb-devices.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../base/usb-devices/usb-devices.tests.iml" filepath="$PROJECT_DIR$/../../base/usb-devices/usb-devices.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/automated-updates/intellij.android.automated-updates.iml" filepath="$PROJECT_DIR$/automated-updates/intellij.android.automated-updates.iml" />
       <module fileurl="file://$PROJECT_DIR$/utp/utp.iml" filepath="$PROJECT_DIR$/utp/utp.iml" />
       <module fileurl="file://$PROJECT_DIR$/utp/utp.tests.iml" filepath="$PROJECT_DIR$/utp/utp.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/whats-new-assistant/whats-new-assistant.iml" filepath="$PROJECT_DIR$/whats-new-assistant/whats-new-assistant.iml" />

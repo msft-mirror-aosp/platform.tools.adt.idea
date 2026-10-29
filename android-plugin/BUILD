@@ -82,6 +82,7 @@ iml_module(
         "//tools/adt/idea/tracer:intellij.android.tracer",
         "//tools/adt/idea/app-publishing:intellij.android.app-publishing",
         "//tools/adt/idea/play-publishing:intellij.android.play-publishing",
+        "//tools/adt/idea/automated-updates:intellij.android.automated-updates",
         "//tools/adt/idea/cli-server/server:cli-server.server",
         "//tools/adt/idea/cli-server/command-handler:cli-server.command-handler",
     ],
