@@ -90,7 +90,7 @@ class GradleDistributionInstallIssueCheckerTest : AbstractIssueCheckerIntegratio
         failure {
           error {
             exception: java.lang.RuntimeException
-              at: [0]org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper#getBuildEnvironment
+              at: [0]org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper#getModel
             exception: org.gradle.tooling.GradleConnectionException
               at: [0]org.gradle.tooling.internal.consumer.DistributionFactory${'$'}ZippedDistribution#getToolingImplementationClasspath
             exception: java.lang.RuntimeException
@@ -154,7 +154,7 @@ class GradleDistributionInstallIssueCheckerTest : AbstractIssueCheckerIntegratio
         failure {
           error {
             exception: java.lang.RuntimeException
-              at: [0]org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper#getBuildEnvironment
+              at: [0]org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper#getModel
             exception: org.gradle.tooling.GradleConnectionException
               at: [0]org.gradle.tooling.internal.consumer.DistributionFactory${'$'}ZippedDistribution#getToolingImplementationClasspath
             exception: java.net.ConnectException
@@ -225,7 +225,7 @@ class GradleDistributionInstallIssueCheckerTest : AbstractIssueCheckerIntegratio
         failure {
           error {
             exception: java.lang.RuntimeException
-              at: [0]org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper#getBuildEnvironment
+              at: [0]org.jetbrains.plugins.gradle.service.execution.GradleExecutionHelper#getModel
             exception: org.gradle.tooling.GradleConnectionException
               at: [0]org.gradle.tooling.internal.consumer.DistributionFactory${'$'}ZippedDistribution#getToolingImplementationClasspath
             exception: java.net.UnknownHostException
