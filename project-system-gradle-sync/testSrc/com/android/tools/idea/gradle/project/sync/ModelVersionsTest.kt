@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.project.sync
 
 import com.android.ide.common.repository.AgpVersion
 import com.google.common.truth.Truth.assertThat
+import kotlin.test.assertFailsWith
 import org.junit.Test
 
 class ModelVersionsTest {
@@ -81,5 +82,70 @@ class ModelVersionsTest {
     assertDoesNotSupportParallelSync(agpVersion = "7.3.0-alpha03")
     assertSupportsParallelSync(agpVersion = "7.3.0-alpha04")
     assertSupportsParallelSync(agpVersion = "7.3.0")
+  }
+
+  @Test
+  fun futureAgpIsAcceptedWhenStudioMeetsMinimumModelConsumerVersion() {
+    val versions = modelVersions(agp = "99.0.0", minimumModelConsumer = STUDIO_MODEL_CONSUMER_VERSION)
+
+    // Accepted even though it is newer than the latest known AGP...
+    versions.checkAgpVersionCompatibility(syncFlags(supportFutureAgpVersions = true))
+    // ...which would be rejected if the minimum model consumer version were not respected.
+    assertFailsWith<AgpVersionTooNew> { versions.checkAgpVersionCompatibility(syncFlags(supportFutureAgpVersions = false)) }
+  }
+
+  @Test
+  fun futureAgpIsRejectedWhenStudioIsOlderThanMinimumModelConsumerVersion() {
+    val versions = modelVersions(agp = "99.0.0", minimumModelConsumer = ModelConsumerVersion(10, 1, "newer Studio"))
+
+    val exception = assertFailsWith<AgpVersionTooNew> { versions.checkAgpVersionCompatibility(syncFlags(supportFutureAgpVersions = true)) }
+
+    assertThat(exception.type).isEqualTo(AndroidSyncExceptionType.AGP_VERSION_TOO_NEW)
+    assertThat(exception.message).contains("AGP 99.0.0")
+    assertThat(exception.message).contains("Latest supported version is AGP $LATEST_KNOWN_AGP")
+  }
+
+  @Test
+  fun agpBelowMinimumSupportedIsRejectedEvenWithMinimumModelConsumerVersion() {
+    val versions = modelVersions(agp = "1.0.0", minimumModelConsumer = STUDIO_MODEL_CONSUMER_VERSION)
+
+    val exception = assertFailsWith<AgpVersionTooOld> { versions.checkAgpVersionCompatibility(syncFlags(supportFutureAgpVersions = true)) }
+
+    assertThat(exception.type).isEqualTo(AndroidSyncExceptionType.AGP_VERSION_TOO_OLD)
+    assertThat(exception.message).contains("AGP 1.0.0")
+  }
+
+  private fun modelVersions(agp: String, minimumModelConsumer: ModelConsumerVersion?) =
+    ModelVersions(
+      agp = AgpVersion.parse(agp),
+      modelVersion = ModelVersion(Int.MAX_VALUE, Int.MAX_VALUE, ""),
+      minimumModelConsumer = minimumModelConsumer,
+    )
+
+  private fun syncFlags(supportFutureAgpVersions: Boolean) =
+    GradleSyncStudioFlags(
+      modelConsumerVersion = STUDIO_MODEL_CONSUMER_VERSION,
+      studioLatestKnownAgpVersion = LATEST_KNOWN_AGP,
+      studioFlagParallelSyncEnabled = false,
+      studioFlagParallelSyncPrefetchVariantsEnabled = false,
+      studioFlagUseV2BuilderModels = true,
+      studioFlagDisableForcedUpgrades = false,
+      studioFlagSyncStatsOutputDirectory = "",
+      studioHprofOutputDirectory = "",
+      studioHeapAnalysisOutputDirectory = "",
+      studioHeapAnalysisLightweightMode = false,
+      studioFlagMultiVariantAdditionalArtifactSupport = false,
+      studioFlagSkipRuntimeClasspathForLibraries = false,
+      studioFlagBuildRuntimeClasspathForLibraryUnitTests = false,
+      studioFlagBuildRuntimeClasspathForLibraryScreenshotTests = false,
+      studioFlagSupportFutureAgpVersions = supportFutureAgpVersions,
+      studioFlagFetchKotlinModelsInParallel = false,
+      studioFlagUsedPhasedSyncVariantResolution = false,
+      studioFlagPhasedSyncDependencyResolutionEnabled = false,
+    )
+
+  private companion object {
+    const val LATEST_KNOWN_AGP = "8.0.0"
+    val STUDIO_MODEL_CONSUMER_VERSION = ModelConsumerVersion(10, 0, "this Studio")
   }
 }
