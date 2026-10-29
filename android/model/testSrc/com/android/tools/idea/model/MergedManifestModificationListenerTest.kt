@@ -66,6 +66,23 @@ class MergedManifestModificationListenerTest : AndroidTestCase() {
     waitForCondition(2, TimeUnit.SECONDS) { mergedManifestTracker.modificationCount == baseMergedManifestTrackerCount + 1 }
   }
 
+  fun testNonManifestXmlFileUpdateIgnored() {
+    val stringsXml =
+      myFixture.addFileToProject("res/values/strings.xml", "<resources><string name='app_name'>App</string></resources>").virtualFile
+    val baseMergedManifestTrackerCount: Long = mergedManifestTracker.modificationCount
+
+    runWriteCommandAction(project) {
+      with(FileDocumentManager.getInstance().getDocument(stringsXml)!!) {
+        setText("<resources><string name='app_name'>Updated</string></resources>")
+        PsiDocumentManager.getInstance(project).commitDocument(this)
+        FileDocumentManager.getInstance().saveDocument(this)
+      }
+    }
+    updatePrimaryManifestXml { addPermissionWithSaving("com.example.SEND_MESSAGE") }
+
+    waitForCondition(2, TimeUnit.SECONDS) { mergedManifestTracker.modificationCount == baseMergedManifestTrackerCount + 1 }
+  }
+
   fun testAncestorDirectoryDeleted() {
     val baseMergedManifestTrackerCount: Long = mergedManifestTracker.modificationCount
 

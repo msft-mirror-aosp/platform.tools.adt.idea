@@ -78,7 +78,10 @@ class MergedManifestModificationListener(project: Project) :
 
   // If a directory was deleted, we won't get a separate event for each descendant, so we
   // must let directories pass through this fail-fast filter in case they contain relevant files.
-  override fun isPossiblyRelevant(file: VirtualFile) = file.isDirectory || file.extension == "xml"
+  // For non-directories, only AndroidManifest.xml files can be relevant (see isRelevant), so avoid
+  // looking up the containing module and AndroidFacet for all other XML files (such as layouts,
+  // drawables, values, or IDE configuration files).
+  override fun isPossiblyRelevant(file: VirtualFile) = file.isDirectory || file.name == SdkConstants.FN_ANDROID_MANIFEST_XML
 
   /**
    * Determines if the changed file contributes to merged manifest attributes computed using the [AndroidManifestIndex]. This means the file

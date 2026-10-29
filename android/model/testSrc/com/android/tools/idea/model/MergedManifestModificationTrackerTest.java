@@ -32,6 +32,7 @@ import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
 import com.intellij.openapi.module.JavaModuleType;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.roots.ModuleRootModificationUtil;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.testFramework.HeavyPlatformTestCase;
 import com.intellij.testFramework.PlatformTestUtil;
 import com.intellij.testFramework.ServiceContainerUtil;
@@ -116,6 +117,26 @@ public class MergedManifestModificationTrackerTest extends HeavyPlatformTestCase
       assertThat(dependencyModuleTracker.getModificationCount()).isEqualTo(startingDependencyCount + 1);
       assertThat(myModuleTracker.getModificationCount()).isEqualTo(startingModuleCount + 1);
     }
+  }
+
+  public void testIsPossiblyRelevantFiltersNonManifestXmlFiles() {
+    MergedManifestModificationListener modificationListener = new MergedManifestModificationListener(myProject);
+
+    VirtualFile directory = mock(VirtualFile.class);
+    when(directory.isDirectory()).thenReturn(true);
+    when(directory.getName()).thenReturn("res");
+
+    VirtualFile manifestFile = mock(VirtualFile.class);
+    when(manifestFile.isDirectory()).thenReturn(false);
+    when(manifestFile.getName()).thenReturn("AndroidManifest.xml");
+
+    VirtualFile stringsXml = mock(VirtualFile.class);
+    when(stringsXml.isDirectory()).thenReturn(false);
+    when(stringsXml.getName()).thenReturn("strings.xml");
+
+    assertThat(modificationListener.isPossiblyRelevant(directory)).isTrue();
+    assertThat(modificationListener.isPossiblyRelevant(manifestFile)).isTrue();
+    assertThat(modificationListener.isPossiblyRelevant(stringsXml)).isFalse();
   }
 
   public void testCombinationCases() throws Exception {
