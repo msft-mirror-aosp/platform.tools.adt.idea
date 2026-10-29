@@ -65,7 +65,7 @@ protected constructor(
   parent: Disposable,
   val buildTarget: AndroidBuildTargetReference,
   val virtualFile: VirtualFile,
-  var configuration: Configuration,
+  @Volatile var configuration: Configuration,
   private val componentRegistrar: Consumer<NlComponent>,
   private val xmlFileProvider: BiFunction<Project, VirtualFile, XmlFile>,
   override var dataProvider: NlDataProvider?,

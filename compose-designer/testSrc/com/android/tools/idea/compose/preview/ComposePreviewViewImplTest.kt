@@ -25,8 +25,10 @@ import com.android.tools.adtui.instructions.TextInstruction
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.compose.COMPOSABLE_ANNOTATION_FQ_NAME
+import com.android.tools.configurations.Configuration
 import com.android.tools.idea.common.model.DefaultModelUpdater
 import com.android.tools.idea.common.model.NlDataProvider
+import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.NopInteractionHandler
 import com.android.tools.idea.common.surface.SceneViewPanel
 import com.android.tools.idea.common.surface.SceneViewPeerPanel
@@ -40,6 +42,7 @@ import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.editors.build.RenderingBuildStatus
 import com.android.tools.idea.editors.build.RenderingBuildStatusManager
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
+import com.android.tools.idea.preview.PreviewElementModelAdapter
 import com.android.tools.idea.preview.createOrReuseModelForPreviewElement
 import com.android.tools.idea.preview.find.PreviewElementProvider
 import com.android.tools.idea.preview.modes.PreviewMode
@@ -612,7 +615,23 @@ class ComposePreviewViewImplTest {
     val composePreviewManager = TestComposePreviewManager()
     val fakePreviewElement =
       SingleComposePreviewElementInstance.forTesting<SmartPsiElementPointer<PsiElement>>("Fake Test Method", "Display1")
-    val testPreviewElementModelAdapter = createPreviewElementModelAdapter(composePreviewManager)
+    var configurationDuringReuse: Configuration? = null
+    var modelConfigurationDuringReuse: Configuration? = null
+    var createdModel: NlModel? = null
+    val delegateAdapter = createPreviewElementModelAdapter(composePreviewManager)
+    val testPreviewElementModelAdapter =
+      object : PreviewElementModelAdapter<PsiComposePreviewElementInstance, NlModel> by delegateAdapter {
+        override fun applyToConfiguration(
+          previewElement: PsiComposePreviewElementInstance,
+          configuration: Configuration,
+        ) {
+          createdModel?.let {
+            configurationDuringReuse = configuration
+            modelConfigurationDuringReuse = it.configuration
+          }
+          delegateAdapter.applyToConfiguration(previewElement, configuration)
+        }
+      }
     val configurationManager = ConfigurationManager.getOrCreateInstance(projectRule.module)
     previewView.mainSurface.colorBlindMode = ColorBlindMode.PROTANOMALY
 
@@ -629,6 +648,7 @@ class ComposePreviewViewImplTest {
           parentDisposable = fixture.testRootDisposable,
           facet = projectRule.module.androidFacet!!,
         )
+      createdModel = modelToCreate
       val configuration = modelToCreate.configuration
 
       val modelToReuse =
@@ -644,6 +664,9 @@ class ComposePreviewViewImplTest {
           facet = projectRule.module.androidFacet!!,
         )
       assertEquals(modelToReuse, modelToCreate)
+      assertEquals(configuration, modelConfigurationDuringReuse)
+      assertNotEquals(configuration, configurationDuringReuse)
+      assertEquals(configurationDuringReuse, modelToReuse.configuration)
       assertNotEquals(configuration, modelToReuse.configuration)
       assertNotNull(modelToReuse.configuration.imageTransformation)
     }

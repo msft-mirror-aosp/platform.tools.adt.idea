@@ -201,7 +201,6 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.updatePreviewsAndRefresh(
         val offset = readAction { previewElement.previewElementDefinition?.element?.textOffset ?: 0 }
         val defaultFile = previewElement.previewElementDefinition?.virtualFile?.let { getPsiFileSafely(project, it) } ?: psiFile
         navigationHandler.setDefaultLocation(newModel, defaultFile, offset)
-        readAction { previewElementModelAdapter.applyToConfiguration(previewElement, newModel.configuration) }
 
         previewElement to newModel
       }
@@ -268,9 +267,12 @@ suspend fun <T : PsiPreviewElement> NlDesignSurface.createOrReuseModelForPreview
   var newModel: NlModel
   val newConfiguration: Configuration =
     Configuration.create(configurationManager, FolderConfiguration.createDefault()).also {
+      readAction { previewElementModelAdapter.applyToConfiguration(previewElement, it) }
       // Always use the imageTransformation from the surface, regardless of whether the model is
-      // reused or new.
-      it.setImageTransformation(Configuration.ImageTransformationType.COLOR_BLIND_MODE, getGlobalImageTransformation())
+      // reused or new, unless the previewElement itself already configured one (e.g. in UI Check).
+      getGlobalImageTransformation()?.let { globalTransformation ->
+        it.setImageTransformation(Configuration.ImageTransformationType.COLOR_BLIND_MODE, globalTransformation)
+      }
     }
   if (modelToReuse != null) {
     var forceReinflate = true
