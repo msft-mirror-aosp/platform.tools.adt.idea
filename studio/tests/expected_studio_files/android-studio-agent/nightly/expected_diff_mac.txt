@@ -3126,7 +3126,6 @@
 +++Android Studio Nightly.app/Contents/plugins/gemini/lib/libgoogle_auth_intellij_lib.jar
 +++Android Studio Nightly.app/Contents/plugins/gemini/lib/libserviceusage_v1_java_lib.jar
 +++Android Studio Nightly.app/Contents/plugins/gemini/lib/libv1internal_java_rest.jar
-+++Android Studio Nightly.app/Contents/plugins/gemini/lib/log-1.1.0.jar
 +++Android Studio Nightly.app/Contents/plugins/gemini/lib/logging-interceptor-4.12.0.jar
 +++Android Studio Nightly.app/Contents/plugins/gemini/lib/lucene-aiplugin-shaded.jar
 +++Android Studio Nightly.app/Contents/plugins/gemini/lib/mcp-sdk-libraries.jar
@@ -3134,11 +3133,7 @@
 +++Android Studio Nightly.app/Contents/plugins/gemini/lib/openai-java-client-okhttp-4.32.0.jar
 +++Android Studio Nightly.app/Contents/plugins/gemini/lib/openai-java-core-4.32.0.jar
 +++Android Studio Nightly.app/Contents/plugins/gemini/lib/pdfbox-2.0.31.jar
-+++Android Studio Nightly.app/Contents/plugins/gemini/lib/pele.jar
-+++Android Studio Nightly.app/Contents/plugins/gemini/lib/quickjs4j-0.1.1.jar
-+++Android Studio Nightly.app/Contents/plugins/gemini/lib/runtime-1.1.0.jar
-+++Android Studio Nightly.app/Contents/plugins/gemini/lib/wasi-1.1.0.jar
-+++Android Studio Nightly.app/Contents/plugins/gemini/lib/wasm-1.1.0.jar
++++Android Studio Nightly.app/Contents/plugins/gemini/lib/pele-kotlin-1.12.0.1.jar
 +++Android Studio Nightly.app/Contents/plugins/gemini/resources/kb_zip/dac.zip
 +++Android Studio Nightly.app/Contents/plugins/gemini/resources/llamacpp/LICENSE
 +++Android Studio Nightly.app/Contents/plugins/gemini/resources/llamacpp/libggml-base.0.15.1.dylib
@@ -6950,7 +6945,6 @@
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/libgoogle_auth_intellij_lib.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/libserviceusage_v1_java_lib.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/libv1internal_java_rest.jar
----Android Studio Preview.app/Contents/plugins/gemini/lib/log-1.1.0.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/logging-interceptor-4.12.0.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/lucene-aiplugin-shaded.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/mcp-sdk-libraries.jar
@@ -6958,11 +6952,7 @@
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/openai-java-client-okhttp-4.32.0.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/openai-java-core-4.32.0.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/lib/pdfbox-2.0.31.jar
----Android Studio Preview.app/Contents/plugins/gemini/lib/pele.jar
----Android Studio Preview.app/Contents/plugins/gemini/lib/quickjs4j-0.1.1.jar
----Android Studio Preview.app/Contents/plugins/gemini/lib/runtime-1.1.0.jar
----Android Studio Preview.app/Contents/plugins/gemini/lib/wasi-1.1.0.jar
----Android Studio Preview.app/Contents/plugins/gemini/lib/wasm-1.1.0.jar
+---Android Studio Preview.app/Contents/plugins/gemini/lib/pele-kotlin-1.12.0.1.jar
 ---Android Studio Preview.app/Contents/plugins/gemini/resources/kb_zip/dac.zip
 ---Android Studio Preview.app/Contents/plugins/gemini/resources/llamacpp/LICENSE
 ---Android Studio Preview.app/Contents/plugins/gemini/resources/llamacpp/libggml-base.0.15.1.dylib
