@@ -110,6 +110,9 @@ public class DynamicValueResourceRepository extends LocalResourceRepository<Virt
   }
 
   private void notifyProjectSynced() {
+    if (myFacet.isDisposed()) {
+      return;
+    }
     synchronized (ITEM_MAP_LOCK) {
       myResourceTable.clear(); // Computed lazily in getMap.
       invalidateParentCaches(this, ResourceType.values());
@@ -174,7 +177,7 @@ public class DynamicValueResourceRepository extends LocalResourceRepository<Virt
   @GuardedBy("ITEM_MAP_LOCK")
   @NotNull
   private Map<ResourceType, ListMultimap<String, ResourceItem>> getResourceTable() {
-    if (myResourceTable.isEmpty()) {
+    if (myResourceTable.isEmpty() && !myFacet.isDisposed()) {
       AndroidModel androidModel = AndroidModel.get(myFacet.getModule());
       if (androidModel != null) {
         addValues(androidModel.getResValues());

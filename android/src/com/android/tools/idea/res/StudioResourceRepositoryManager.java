@@ -683,6 +683,9 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
   }
 
   void updateRootsAndLibraries() {
+    if (myFacet.isDisposed()) {
+      return;
+    }
     try {
       ProjectResourceRepository projectResources = (ProjectResourceRepository)getCachedProjectResources();
       AppResourceRepository appResources = (AppResourceRepository)getCachedAppResources();

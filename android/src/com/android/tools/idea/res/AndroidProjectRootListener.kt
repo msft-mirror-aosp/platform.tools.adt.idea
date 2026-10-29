@@ -19,6 +19,7 @@ import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.projectsystem.PROJECT_SYSTEM_SYNC_TOPIC
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
@@ -70,7 +71,7 @@ class AndroidProjectRootListener private constructor(private val project: Projec
   }
 
   private fun hasAndroidFacets(): Boolean {
-    return ModuleManager.getInstance(project).modules.any { AndroidFacet.getInstance(it) != null }
+    return ModuleManager.getInstance(project).modules.any { !it.isDisposed && AndroidFacet.getInstance(it) != null }
   }
 
   companion object {
@@ -106,6 +107,9 @@ private class RootsChangedDumbModeTask(private val project: Project, parent: Dis
         log.warn("Project is disposed, aborting resource update.")
         return
       }
+      if (module.isDisposed) {
+        continue
+      }
       moduleRootsOrDependenciesChanged(module)
     }
   }
@@ -120,13 +124,18 @@ private class RootsChangedDumbModeTask(private val project: Project, parent: Dis
    * @param module the module whose roots changed
    */
   private fun moduleRootsOrDependenciesChanged(module: Module) {
-    val facet = AndroidFacet.getInstance(module) ?: return
+    val facet =
+      runReadAction {
+        if (module.isDisposed) return@runReadAction null
+        val facet = AndroidFacet.getInstance(module)?.takeIf { !it.isDisposed } ?: return@runReadAction null
 
-    if (AndroidModel.isRequired(facet) && AndroidModel.get(facet) == null) {
-      // Project not yet fully initialized. No need to do a sync now because our
-      // GradleProjectAvailableListener will be called as soon as it is and do a proper sync.
-      return
-    }
+        if (AndroidModel.isRequired(facet) && AndroidModel.get(facet) == null) {
+          // Project not yet fully initialized. No need to do a sync now because our
+          // GradleProjectAvailableListener will be called as soon as it is and do a proper sync.
+          return@runReadAction null
+        }
+        facet
+      } ?: return
 
     AndroidDependenciesCache.getInstance(module).dropCache()
     ResourceFolderManager.getInstance(facet).checkForChanges()

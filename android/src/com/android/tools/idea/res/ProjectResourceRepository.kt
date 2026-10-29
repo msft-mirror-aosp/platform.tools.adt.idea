@@ -35,6 +35,9 @@ private constructor(
   }
 
   override fun refreshChildren() {
+    if (facet.isDisposed) {
+      return
+    }
     val repositories = computeRepositories(facet)
     invalidateResourceDirs()
     setChildren(repositories, emptyList(), emptyList())
@@ -44,6 +47,9 @@ private constructor(
     @JvmStatic fun create(facet: AndroidFacet, parentDisposable: Disposable) = ProjectResourceRepository(facet, parentDisposable)
 
     private fun computeRepositories(facet: AndroidFacet): List<LocalResourceRepository<VirtualFile>> {
+      if (facet.isDisposed) {
+        return emptyList()
+      }
       val main = StudioResourceRepositoryManager.getModuleResources(facet)
 
       // List of module facets the given module depends on.
@@ -55,7 +61,9 @@ private constructor(
       val resources: MutableList<LocalResourceRepository<VirtualFile>> = ArrayList(dependencies.size + 1)
       resources.add(main)
       for (dependency in dependencies) {
-        resources.add(StudioResourceRepositoryManager.getModuleResources(dependency))
+        if (!dependency.isDisposed) {
+          resources.add(StudioResourceRepositoryManager.getModuleResources(dependency))
+        }
       }
 
       return resources

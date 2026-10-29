@@ -23,7 +23,10 @@ import com.android.AndroidProjectTypes;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.resources.ResourceRepository;
 import com.android.ide.common.resources.SingleNamespaceResourceRepository;
+import com.android.resources.ResourceType;
 import com.android.tools.idea.model.AndroidModel;
+import com.android.tools.idea.projectsystem.ProjectSystemSyncManager;
+import com.android.tools.idea.projectsystem.ProjectSystemSyncUtil;
 import com.android.tools.res.LocalResourceRepository;
 import com.android.tools.res.MultiResourceRepository;
 import com.google.common.collect.Iterables;
@@ -73,6 +76,26 @@ public class StudioResourceRepositoryManagerTest extends AndroidTestCase {
           .isFalse();
       }
     }
+  }
+
+  public void testDisposedFacetIgnoredByDynamicValueRepositoryAndUpdateRoots() {
+    myFacet.getProperties().ALLOW_USER_CONFIGURATION = false;
+    assertThat(AndroidModel.isRequired(myFacet)).named("module uses a model").isTrue();
+
+    StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(myFacet);
+    DynamicValueResourceRepository dynamicRepo =
+      DynamicValueResourceRepository.create(myFacet, getTestRootDisposable());
+
+    Disposer.dispose(myFacet);
+    assertThat(myFacet.isDisposed()).isTrue();
+
+    // Sync notifications, resource queries, and root updates after facet disposal should be no-ops.
+    getProject()
+      .getMessageBus()
+      .syncPublisher(ProjectSystemSyncUtil.PROJECT_SYSTEM_SYNC_TOPIC)
+      .syncEnded(ProjectSystemSyncManager.SyncResult.SUCCESS);
+    assertThat(dynamicRepo.getResources(ResourceNamespace.RES_AUTO, ResourceType.STRING)).isEmpty();
+    repositoryManager.updateRootsAndLibraries();
   }
 
   public void testConcurrentGetAppResources() throws Exception {

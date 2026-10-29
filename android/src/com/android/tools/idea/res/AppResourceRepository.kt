@@ -61,6 +61,9 @@ private constructor(
   }
 
   override fun refreshChildren() {
+    if (facet.isDisposed) {
+      return
+    }
     val manager = StudioResourceRepositoryManager.getInstance(facet)
     refreshChildren(computeLocalRepositories(facet, manager), computeLibraryResources(manager))
   }
@@ -102,8 +105,9 @@ private constructor(
       val androidModuleSystem = facet.module.getModuleSystem()
       val extraModules = TestResourceResolutionToken.getAdditionalLocalResourceDependencies(androidModuleSystem)
       for (extraModule in extraModules) {
+        if (extraModule.isDisposed) continue
         val extraFacet = extraModule.androidFacet
-        if (extraFacet != null && extraFacet != facet) {
+        if (extraFacet != null && !extraFacet.isDisposed && extraFacet != facet) {
           localRepositories.add(StudioResourceRepositoryManager.getProjectResources(extraFacet))
         }
       }
