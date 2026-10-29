@@ -317,6 +317,27 @@ class UpdateReferenceImagesInClassActionTest {
   }
 
   @Test
+  fun testUpdate_disabledWithoutScreenshotTestSuites() {
+    val ktFile =
+      projectRule.fixture.addFileToProject(
+        "app/src/screenshotTest/java/com/example/NoSuiteTest.kt",
+        """
+        package com.example
+        import com.android.tools.screenshot.PreviewTest
+        class NoSuiteTest {
+          @PreviewTest fun test() {}
+        }
+        """
+          .trimIndent(),
+      )
+
+    assertTrue(isEnabledAndVisible(ktFile))
+
+    // Without the legacy screenshot plugin, screenshot tests can only run through screenshot test suites.
+    withoutScreenshotTestSuites(projectRule.project) { assertFalse(isEnabledAndVisible(ktFile)) }
+  }
+
+  @Test
   fun testUpdate_disabledForMissingLocation() {
     val noLocationContext = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, projectRule.project).build()
     val noLocationEvent = TestActionEvent.createTestEvent(action, noLocationContext)

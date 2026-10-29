@@ -43,6 +43,19 @@ interface IdeTestSuite {
 }
 
 /**
+ * The JUnit Platform `TestEngine.getId()` of the engine that runs Compose Preview screenshot tests.
+ *
+ * Must match `PreviewScreenshotTestEngine.getId()` (in `screenshot-validation-junit-engine`) and
+ * `ScreenshotAgpTestSuiteImpl.SCREENSHOT_TEST_ENGINE_ID` (in `ScreenshotTestSuiteImpl.kt` in AGP), which adds this ID to
+ * [IdeJUnitEngineInfo.includedEngines] for screenshot test suites. Defined here as the single Studio-side constant because neither
+ * `sdk-common` nor `builder-model` exposes JUnit engine IDs.
+ */
+const val SCREENSHOT_TEST_ENGINE_ID = "preview-screenshot-test-engine"
+
+/** Whether this test suite runs Compose Preview screenshot tests, i.e. includes the [SCREENSHOT_TEST_ENGINE_ID] JUnit engine. */
+fun IdeTestSuite.isScreenshotTestSuite(): Boolean = junitEngineInfo.includedEngines.contains(SCREENSHOT_TEST_ENGINE_ID)
+
+/**
  * The source set names of this test suite, one per source. Studio creates one IDE module per source set.
  *
  * AGP names the only source of a single-source test suite after the test suite, and the sources of a test suite with several sources

@@ -17,9 +17,12 @@ package com.android.screenshottest.producers
 
 import com.android.flags.junit.FlagRule
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeTestSuiteSource
+import com.android.tools.idea.gradle.model.SCREENSHOT_TEST_ENGINE_ID
 import com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
 import com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl
 import com.android.tools.idea.gradle.model.impl.toImpl
@@ -29,6 +32,9 @@ import com.android.tools.idea.gradle.project.entities.gradleModuleModel
 import com.android.tools.idea.gradle.project.entities.modifyGradleAndroidModelEntity
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl
 import com.android.tools.idea.gradle.project.model.GradleModuleModel
+import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
+import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
+import com.android.tools.idea.projectsystem.gradle.getTestSuiteSourceSetName
 import com.android.tools.idea.testartifacts.TestConfigurationTestingUtil
 import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromClass
 import com.android.tools.idea.testartifacts.createAndroidGradleTestConfigurationFromDirectory
@@ -39,6 +45,7 @@ import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.onEdt
 import com.android.utils.FileUtils
 import com.google.common.truth.Truth.assertThat
+import com.intellij.execution.PsiLocation
 import com.intellij.execution.actions.ConfigurationFromContextImpl
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.module.ModuleManager
@@ -47,10 +54,15 @@ import com.intellij.openapi.vfs.VfsUtil.findFileByIoFile
 import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
 import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.RunsInEdt
 import java.io.File
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.plugins.gradle.service.execution.GradleRunConfiguration
 import org.junit.Assert
 import org.junit.Before
@@ -60,6 +72,8 @@ import org.junit.Test
 @RunsInEdt
 class ScreenshotTestGradleRunConfigurationProducersTest {
   @get:Rule val flagRule = FlagRule(StudioFlags.ENABLE_SCREENSHOT_TESTING, true)
+
+  @get:Rule val testSuitesFlagRule = FlagRule(StudioFlags.AGP_TEST_SUITES_ENABLED, true)
 
   @get:Rule val projectRule = AndroidGradleProjectRule().onEdt()
 
@@ -82,6 +96,9 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     createProjectStructureForTest()
     val screenshotTestDir = findFileByIoFile(File(projectRule.project.basePath + "/app/src/screenshotTest"), true)
     PsiTestUtil.addSourceRoot(projectRule.fixture.module, screenshotTestDir!!, true)
+    // Without the legacy screenshot plugin, screenshot tests can only run through screenshot test suites, so declare a screenshot test
+    // suite named `screenshotTest` for the `screenshotTest` sources, which runs with `test<Variant>ScreenshotTestDefaultTestSuite`.
+    setScreenshotTestSuites(listOf(createScreenshotTestSuite()))
   }
 
   @Test
@@ -429,7 +446,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     val context = TestConfigurationTestingUtil.createContext(project, psiFile)
     val contextConfiguration =
       context.configurationsFromContext?.firstOrNull {
-        it.configuration.name.contains("Screenshot")
+        (it.configuration as? GradleRunConfiguration)?.getUserData<Boolean>(IS_SCREENSHOT_TEST_CONFIGURATION) == true
       } as ConfigurationFromContextImpl?
     val runConfiguration = contextConfiguration!!.configuration as GradleRunConfiguration
     requireNotNull(runConfiguration)
@@ -453,7 +470,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     val context = TestConfigurationTestingUtil.createContext(project, psiFile)
     val contextConfiguration =
       context.configurationsFromContext?.firstOrNull {
-        it.configuration.name.contains("Screenshot")
+        (it.configuration as? GradleRunConfiguration)?.getUserData<Boolean>(IS_SCREENSHOT_TEST_CONFIGURATION) == true
       } as ConfigurationFromContextImpl?
     val runConfiguration = contextConfiguration!!.configuration as GradleRunConfiguration
     requireNotNull(runConfiguration)
@@ -490,7 +507,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     val context = TestConfigurationTestingUtil.createContext(project, psiFile)
     val contextConfiguration =
       context.configurationsFromContext?.firstOrNull {
-        it.configuration.name.contains("Screenshot")
+        (it.configuration as? GradleRunConfiguration)?.getUserData<Boolean>(IS_SCREENSHOT_TEST_CONFIGURATION) == true
       } as ConfigurationFromContextImpl?
     val runConfiguration = contextConfiguration!!.configuration as GradleRunConfiguration
     requireNotNull(runConfiguration)
@@ -514,7 +531,7 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     val context = TestConfigurationTestingUtil.createContext(project, psiFile)
     val contextConfiguration =
       context.configurationsFromContext?.firstOrNull {
-        it.configuration.name.contains("Screenshot")
+        (it.configuration as? GradleRunConfiguration)?.getUserData<Boolean>(IS_SCREENSHOT_TEST_CONFIGURATION) == true
       } as ConfigurationFromContextImpl?
     Assert.assertNull(contextConfiguration)
   }
@@ -892,6 +909,41 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
   }
 
   @Test
+  fun testLegacyPluginTaskResolutionWithoutScreenshotTestSuites() {
+    setModuleTasks(listOf("validateDebugScreenshotTest"), hasComposeScreenshotPlugin = true)
+    setScreenshotTestSuites(emptyList())
+    val project = projectRule.project
+    val runConfiguration =
+      createAndroidGradleTestConfigurationFromClass(
+        project,
+        "com.example.application.MyScreenshotTest",
+      )
+    requireNotNull(runConfiguration)
+    assertEquals(":app:validateDebugScreenshotTest", runConfiguration.settings.taskNames[0])
+  }
+
+  @Test
+  fun testNoConfigurationWithoutLegacyPluginAndScreenshotTestSuites() {
+    setModuleTasks(emptyList(), hasComposeScreenshotPlugin = false)
+    setScreenshotTestSuites(emptyList())
+    val project = projectRule.project
+
+    Assert.assertNull(createAndroidGradleTestConfigurationFromClass(project, "com.example.application.MyScreenshotTest"))
+    Assert.assertNull(createAndroidGradleTestConfigurationFromMethod(project, "com.example.application.MyScreenshotTest", "PreviewMethod"))
+    for (directory in listOf("app", "app/src", "app/src/screenshotTest/java", "app/src/screenshotTest/java/com/example")) {
+      val psiElement = TestConfigurationTestingUtil.getPsiElement(project, directory, true)
+      val context = TestConfigurationTestingUtil.createContext(project, psiElement)
+      // Other producers, e.g. the Gradle test producers, can still create configurations, so only look for screenshot test ones.
+      val configurations = context.configurationsFromContext.orEmpty()
+      Assert.assertNull(
+        configurations.firstOrNull {
+          (it.configuration as? GradleRunConfiguration)?.getUserData<Boolean>(IS_SCREENSHOT_TEST_CONFIGURATION) == true
+        }
+      )
+    }
+  }
+
+  @Test
   fun testTestSuiteTaskResolution() {
     setModuleTasks(
       listOf("testDebugScreenshotTestDefaultTestSuite"),
@@ -910,13 +962,13 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     )
   }
 
-  private fun createHostJarTestSuiteSource(testSuitePath: File): IdeTestSuiteSourceImpl {
+  private fun createHostJarTestSuiteSource(testSuitePath: File, name: String = "hostJar"): IdeTestSuiteSourceImpl {
     return IdeTestSuiteSourceImpl(
-      name = "hostJar",
+      name = name,
       type = IdeTestSuiteSource.SourceType.HOST_JAR,
       sourceProvider =
         IdeSourceProvider(
-          name = "hostJar",
+          name = name,
           folder = testSuitePath,
           manifestFile = "AndroidManifest.xml",
           javaDirectories = listOf(testSuitePath.absolutePath),
@@ -937,25 +989,65 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
     )
   }
 
-  private fun withCustomScreenshotTestSuites(suites: List<IdeTestSuiteImpl>, action: () -> Unit) {
+  /** Returns a screenshot test suite named `screenshotTest` whose only source is in `app/src/screenshotTest`. */
+  private fun createScreenshotTestSuite(): IdeTestSuiteImpl =
+    IdeTestSuiteImpl(
+      name = "screenshotTest",
+      sources = listOf(createHostJarTestSuiteSource(File(projectRule.project.basePath!!, "app/src/screenshotTest"))),
+      junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(SCREENSHOT_TEST_ENGINE_ID)),
+      targetedVariants = listOf("debug"),
+    )
+
+  /**
+   * Sets the test suites of the Android models of all modules to [suites], and returns their previous models so that they can be restored.
+   */
+  private fun setScreenshotTestSuites(
+    suites: List<IdeTestSuiteImpl>,
+    removeLegacyScreenshotArtifact: Boolean = false,
+    testSuiteComponents: List<IdeTestSuiteComponentCoreImpl>? = null,
+  ): Map<ModuleId, GradleAndroidModelImpl> {
     val project = projectRule.project
     val modules = ModuleManager.getInstance(project).modules
     val originalModels = mutableMapOf<ModuleId, GradleAndroidModelImpl>()
-    try {
-      runWriteAction {
-        project.workspaceModel.updateProjectModel("Set custom testSuites") { storage ->
-          for (module in modules) {
-            val moduleId = ModuleId(module.name)
-            val entity = storage.resolve(GradleAndroidModelEntityId(moduleId)) ?: continue
-            val originalModel = entity.gradleAndroidModel
-            originalModels[moduleId] = originalModel
-            val newAndroidProject = originalModel.data.androidProject.copy(testSuites = suites)
-            val newData = originalModel.data.copy(androidProject = newAndroidProject)
-            val customModel = GradleAndroidModelImpl(newData)
-            storage.modifyGradleAndroidModelEntity(entity) { gradleAndroidModel = customModel }
-          }
+    runWriteAction {
+      project.workspaceModel.updateProjectModel("Set custom testSuites") { storage ->
+        for (module in modules) {
+          val moduleId = ModuleId(module.name)
+          val entity = storage.resolve(GradleAndroidModelEntityId(moduleId)) ?: continue
+          val originalModel = entity.gradleAndroidModel
+          originalModels[moduleId] = originalModel
+          val newAndroidProject = originalModel.data.androidProject.copy(testSuites = suites)
+          val newVariants =
+            originalModel.data.variants.map { variant ->
+              variant.copy(
+                hostTestArtifacts =
+                  if (removeLegacyScreenshotArtifact) {
+                    variant.hostTestArtifacts.filter { it.name != IdeArtifactName.SCREENSHOT_TEST }
+                  } else {
+                    variant.hostTestArtifacts
+                  },
+                testSuiteComponents = testSuiteComponents ?: variant.testSuiteComponents,
+              )
+            }
+          val newData = originalModel.data.copy(androidProject = newAndroidProject, variants = newVariants)
+          val customModel = GradleAndroidModelImpl(newData)
+          storage.modifyGradleAndroidModelEntity(entity) { gradleAndroidModel = customModel }
         }
       }
+    }
+    return originalModels
+  }
+
+  private fun withCustomScreenshotTestSuites(
+    suites: List<IdeTestSuiteImpl>,
+    removeLegacyScreenshotArtifact: Boolean = false,
+    testSuiteComponents: List<IdeTestSuiteComponentCoreImpl>? = null,
+    action: () -> Unit,
+  ) {
+    val project = projectRule.project
+    var originalModels = emptyMap<ModuleId, GradleAndroidModelImpl>()
+    try {
+      originalModels = setScreenshotTestSuites(suites, removeLegacyScreenshotArtifact, testSuiteComponents)
       action()
     } finally {
       runWriteAction {
@@ -980,10 +1072,38 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
       IdeTestSuiteImpl(
         name = "customScreenshotSuite",
         sources = listOf(createHostJarTestSuiteSource(File(project.basePath!!, "app/src/screenshotTest"))),
-        junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("preview-screenshot-test-engine")),
+        junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(SCREENSHOT_TEST_ENGINE_ID)),
         targetedVariants = listOf("debug"),
       )
     withCustomScreenshotTestSuites(listOf(customSuite)) {
+      val runConfiguration =
+        createAndroidGradleTestConfigurationFromClass(
+          project,
+          "com.example.application.MyScreenshotTest",
+        )
+      requireNotNull(runConfiguration)
+      assertEquals(
+        ":app:testDebugCustomScreenshotSuiteDefaultTestSuite",
+        runConfiguration.settings.taskNames[0],
+      )
+    }
+  }
+
+  @Test
+  fun testConfigurationFromTestSuiteWithoutLegacyScreenshotArtifact() {
+    setModuleTasks(
+      listOf("testDebugCustomScreenshotSuiteDefaultTestSuite"),
+      hasComposeScreenshotPlugin = false,
+    )
+    val project = projectRule.project
+    val customSuite =
+      IdeTestSuiteImpl(
+        name = "customScreenshotSuite",
+        sources = listOf(createHostJarTestSuiteSource(File(project.basePath!!, "app/src/screenshotTest"))),
+        junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(SCREENSHOT_TEST_ENGINE_ID)),
+        targetedVariants = listOf("debug"),
+      )
+    withCustomScreenshotTestSuites(listOf(customSuite), removeLegacyScreenshotArtifact = true) {
       val runConfiguration =
         createAndroidGradleTestConfigurationFromClass(
           project,
@@ -1011,34 +1131,198 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
       IdeTestSuiteImpl(
         name = "uiScreenshotSuite",
         sources = listOf(createHostJarTestSuiteSource(File(project.basePath!!, "app/src/uiScreenshotTest"))),
-        junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("preview-screenshot-test-engine")),
+        junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(SCREENSHOT_TEST_ENGINE_ID)),
         targetedVariants = listOf("debug"),
       )
     val featureSuite =
       IdeTestSuiteImpl(
         name = "featureScreenshotSuite",
         sources = listOf(createHostJarTestSuiteSource(File(project.basePath!!, "app/src/featureScreenshotTest"))),
-        junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf("preview-screenshot-test-engine")),
+        junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(SCREENSHOT_TEST_ENGINE_ID)),
         targetedVariants = listOf("debug"),
       )
-    withCustomScreenshotTestSuites(listOf(uiSuite, featureSuite)) {
+    // Not in the `app` directory, so it only runs if all screenshot test suites run because none matches the directory.
+    val otherSuite =
+      IdeTestSuiteImpl(
+        name = "otherScreenshotSuite",
+        sources = listOf(createHostJarTestSuiteSource(File(project.basePath!!, "other/src/otherScreenshotSuite"))),
+        junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(SCREENSHOT_TEST_ENGINE_ID)),
+        targetedVariants = listOf("debug"),
+      )
+    withCustomScreenshotTestSuites(listOf(uiSuite, featureSuite, otherSuite), removeLegacyScreenshotArtifact = true) {
       val psiFile = TestConfigurationTestingUtil.getPsiElement(project, "app", true)
       val context = TestConfigurationTestingUtil.createContext(project, psiFile)
       val contextConfiguration =
         context.configurationsFromContext?.firstOrNull {
-          it.configuration.name.contains("Screenshot")
+          (it.configuration as? GradleRunConfiguration)?.getUserData<Boolean>(IS_SCREENSHOT_TEST_CONFIGURATION) == true
         } as ConfigurationFromContextImpl?
       val runConfiguration = contextConfiguration!!.configuration as GradleRunConfiguration
       requireNotNull(runConfiguration)
-      assertEquals(2, runConfiguration.settings.taskNames.size)
       assertEquals(
-        ":app:testDebugUiScreenshotSuiteDefaultTestSuite",
-        runConfiguration.settings.taskNames[0],
+        listOf(
+          ":app:testDebugUiScreenshotSuiteDefaultTestSuite",
+          ":app:testDebugFeatureScreenshotSuiteDefaultTestSuite",
+        ),
+        runConfiguration.settings.taskNames,
       )
-      assertEquals(
-        ":app:testDebugFeatureScreenshotSuiteDefaultTestSuite",
-        runConfiguration.settings.taskNames[1],
+    }
+  }
+
+  @Test
+  fun testFileInTestSuiteSourceSetModuleIsScreenshotTestSourceOnlyForScreenshotTestSuite() {
+    val project = projectRule.project
+    val sourceSetModule =
+      ModuleManager.getInstance(project).modules.first { module ->
+        val path = module.getGradleProjectPath() as? GradleSourceSetProjectPath ?: return@first false
+        path.path == ":app" && path.sourceSet.sourceSetName != "main"
+      }
+    val sourceSetName = (sourceSetModule.getGradleProjectPath() as GradleSourceSetProjectPath).sourceSet.sourceSetName
+    val facet = requireNotNull(AndroidFacet.getInstance(sourceSetModule))
+
+    // A generated source of the test suite module, outside of the static source directories of its test suite, so it is only matched to
+    // its test suite through the module.
+    val testFile =
+      createRelativeFileWithContent(
+        "app/build/generated/ksp/moduleSuite/kotlin/com/example/modulesuite/ModuleSuiteTest.kt",
+        """
+        package com.example.modulesuite
+
+        class ModuleSuiteTest
+        """
+          .trimIndent(),
       )
+    val sourceRoot = findFileByIoFile(File(project.basePath!!, "app/build/generated/ksp/moduleSuite/kotlin"), true)!!
+    PsiTestUtil.addSourceRoot(sourceSetModule, sourceRoot, true)
+    try {
+      val psiFile = requireNotNull(PsiManager.getInstance(project).findFile(findFileByIoFile(testFile, true)!!))
+      fun moduleSuite(engineId: String) =
+        IdeTestSuiteImpl(
+          name = "moduleSuite",
+          sources = listOf(createHostJarTestSuiteSource(File(project.basePath!!, "app/src/moduleSuite"), name = sourceSetName)),
+          junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(engineId)),
+          targetedVariants = listOf("debug"),
+        )
+      val screenshotSuite =
+        IdeTestSuiteImpl(
+          name = "uiScreenshotSuite",
+          sources = listOf(createHostJarTestSuiteSource(File(project.basePath!!, "app/src/uiScreenshotSuite"), name = "uiScreenshotSuite")),
+          junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(SCREENSHOT_TEST_ENGINE_ID)),
+          targetedVariants = listOf("debug"),
+        )
+      val components =
+        listOf(
+          IdeTestSuiteComponentCoreImpl(suiteName = "moduleSuite", targets = emptyList()),
+          IdeTestSuiteComponentCoreImpl(suiteName = "uiScreenshotSuite", targets = emptyList()),
+        )
+
+      withCustomScreenshotTestSuites(
+        suites = listOf(moduleSuite(engineId = "junit-jupiter"), screenshotSuite),
+        removeLegacyScreenshotArtifact = true,
+        testSuiteComponents = components,
+      ) {
+        assertEquals(sourceSetName, sourceSetModule.getTestSuiteSourceSetName())
+        assertFalse(isScreenshotTestSourceSet(PsiLocation<PsiElement>(psiFile), facet))
+      }
+      withCustomScreenshotTestSuites(
+        suites = listOf(moduleSuite(engineId = SCREENSHOT_TEST_ENGINE_ID), screenshotSuite),
+        removeLegacyScreenshotArtifact = true,
+        testSuiteComponents = components,
+      ) {
+        assertTrue(isScreenshotTestSourceSet(PsiLocation<PsiElement>(psiFile), facet))
+      }
+    } finally {
+      PsiTestUtil.removeSourceRoot(sourceSetModule, sourceRoot)
+      FileUtil.delete(File(project.basePath!!, "app/build/generated/ksp/moduleSuite"))
+    }
+  }
+
+  @Test
+  fun testConfigurationFromGeneratedSourceInTestSuiteSourceSetModule() {
+    setModuleTasks(
+      listOf(
+        "testDebugUiScreenshotSuiteDefaultTestSuite",
+        "testDebugFeatureScreenshotSuiteDefaultTestSuite",
+      ),
+      hasComposeScreenshotPlugin = false,
+    )
+    val project = projectRule.project
+    val sourceSetModule =
+      ModuleManager.getInstance(project).modules.first { module ->
+        val path = module.getGradleProjectPath() as? GradleSourceSetProjectPath ?: return@first false
+        path.path == ":app" && path.sourceSet.sourceSetName != "main"
+      }
+    val sourceSetName = (sourceSetModule.getGradleProjectPath() as GradleSourceSetProjectPath).sourceSet.sourceSetName
+
+    createRelativeFileWithContent(
+      "app/build/generated/ksp/uiScreenshotSuite/kotlin/com/android/tools/screenshot/GeneratedPreviewTestStub.kt",
+      """
+      package com.android.tools.screenshot
+
+      annotation class PreviewTest
+      """
+        .trimIndent(),
+    )
+    createRelativeFileWithContent(
+      "app/build/generated/ksp/uiScreenshotSuite/kotlin/com/example/generated/GeneratedScreenshotTest.kt",
+      """
+      package com.example.generated
+
+      import com.android.tools.screenshot.PreviewTest
+
+      class GeneratedScreenshotTest {
+        @PreviewTest
+        fun GeneratedPreviewMethod() {}
+      }
+      """
+        .trimIndent(),
+    )
+    val generatedRoot = findFileByIoFile(File(project.basePath!!, "app/build/generated/ksp/uiScreenshotSuite/kotlin"), true)!!
+    PsiTestUtil.addSourceRoot(sourceSetModule, generatedRoot, true)
+    try {
+      // Static suite source directories intentionally do NOT include `app/build/generated/...`.
+      val uiSuite =
+        IdeTestSuiteImpl(
+          name = "uiScreenshotSuite",
+          sources = listOf(createHostJarTestSuiteSource(File(project.basePath!!, "app/src/uiScreenshotSuite"), name = sourceSetName)),
+          junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(SCREENSHOT_TEST_ENGINE_ID)),
+          targetedVariants = listOf("debug"),
+        )
+      val featureSuite =
+        IdeTestSuiteImpl(
+          name = "featureScreenshotSuite",
+          sources = listOf(createHostJarTestSuiteSource(File(project.basePath!!, "app/src/featureScreenshotSuite"), name = "featureSuite")),
+          junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(SCREENSHOT_TEST_ENGINE_ID)),
+          targetedVariants = listOf("debug"),
+        )
+      val components =
+        listOf(
+          IdeTestSuiteComponentCoreImpl(suiteName = "uiScreenshotSuite", targets = emptyList()),
+          IdeTestSuiteComponentCoreImpl(suiteName = "featureScreenshotSuite", targets = emptyList()),
+        )
+      withCustomScreenshotTestSuites(
+        suites = listOf(uiSuite, featureSuite),
+        removeLegacyScreenshotArtifact = true,
+        testSuiteComponents = components,
+      ) {
+        assertEquals(sourceSetName, sourceSetModule.getTestSuiteSourceSetName())
+        val runConfiguration =
+          createAndroidGradleTestConfigurationFromClass(
+            project,
+            "com.example.generated.GeneratedScreenshotTest",
+          )
+        requireNotNull(runConfiguration)
+        assertEquals(
+          listOf(
+            ":app:testDebugUiScreenshotSuiteDefaultTestSuite",
+            "--tests",
+            "\"com.example.generated.GeneratedScreenshotTest\"",
+          ),
+          runConfiguration.settings.taskNames,
+        )
+      }
+    } finally {
+      PsiTestUtil.removeSourceRoot(sourceSetModule, generatedRoot)
+      FileUtil.delete(File(project.basePath!!, "app/build/generated/ksp"))
     }
   }
 }

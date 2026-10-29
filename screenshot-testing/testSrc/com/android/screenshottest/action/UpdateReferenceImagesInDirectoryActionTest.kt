@@ -183,6 +183,20 @@ class UpdateReferenceImagesInDirectoryActionTest {
   }
 
   @Test
+  fun testUpdate_disabledWithoutScreenshotTestSuites() {
+    val screenshotFile =
+      projectRule.fixture.addFileToProject(
+        "app/src/screenshotTest/java/com/example/MyScreenshotTest.kt",
+        "package com.example\nclass MyScreenshotTest",
+      )
+    val directory = screenshotFile.containingDirectory
+    assertTrue(isEnabledAndVisible(directory))
+
+    // Without the legacy screenshot plugin, screenshot tests can only run through screenshot test suites.
+    withoutScreenshotTestSuites(projectRule.project) { assertFalse(isEnabledAndVisible(directory)) }
+  }
+
+  @Test
   fun testUpdate_disabledForMissingLocation() {
     val noLocationContext = SimpleDataContext.builder().add(CommonDataKeys.PROJECT, projectRule.project).build()
     val noLocationEvent = TestActionEvent.createTestEvent(action, noLocationContext)

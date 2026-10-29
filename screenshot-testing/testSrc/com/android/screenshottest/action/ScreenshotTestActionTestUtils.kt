@@ -17,6 +17,11 @@ package com.android.screenshottest.action
 
 import com.android.screenshottest.ui.UpdateReferenceImagesDialog
 import com.android.screenshottest.util.UpdateReferenceImagesDialogManager
+import com.android.tools.idea.gradle.model.IdeTestSuiteSource
+import com.android.tools.idea.gradle.model.SCREENSHOT_TEST_ENGINE_ID
+import com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl
 import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntityId
 import com.android.tools.idea.gradle.project.entities.modifyGradleAndroidModelEntity
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl
@@ -25,11 +30,13 @@ import com.android.tools.idea.testartifacts.instrumented.testsuite.model.Android
 import com.android.tools.idea.testing.AndroidModuleModelBuilder
 import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.AndroidProjectStubBuilder
 import com.android.tools.idea.testing.EdtAndroidProjectRule
 import com.android.tools.idea.testing.JavaModuleModelBuilder
 import com.android.tools.idea.testing.buildDefaultConfigStub
 import com.android.tools.idea.testing.buildScreenshotTestSourceProviderContainerStub
 import com.android.tools.idea.testing.onEdt
+import com.android.tools.idea.testing.sourceProvider
 import com.intellij.execution.DefaultExecutionTarget
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.Location
@@ -99,12 +106,30 @@ internal fun createScreenshotTestProjectRule(): EdtAndroidProjectRule =
                       buildScreenshotTestSourceProviderContainerStub(),
                     )
                 )
-            }
+            },
+            // Without the legacy screenshot plugin, screenshot tests can only run through screenshot test suites.
+            testSuites = { listOf(buildScreenshotTestSuiteStub()) },
           ),
       ),
       JavaModuleModelBuilder(gradlePath = ":nonAndroidModule"),
     )
     .onEdt()
+
+/** A screenshot test suite named `screenshotTest` whose only source is the `screenshotTest` source set. */
+private fun AndroidProjectStubBuilder.buildScreenshotTestSuiteStub(): IdeTestSuiteImpl =
+  IdeTestSuiteImpl(
+    name = "screenshotTest",
+    sources =
+      listOf(
+        IdeTestSuiteSourceImpl(
+          name = "screenshotTest",
+          type = IdeTestSuiteSource.SourceType.HOST_JAR,
+          sourceProvider = sourceProvider("screenshotTest"),
+        )
+      ),
+    junitEngineInfo = IdeJUnitEngineInfoImpl(includedEngines = setOf(SCREENSHOT_TEST_ENGINE_ID)),
+    targetedVariants = listOf("debug"),
+  )
 
 internal fun linkGradleProjectModules(projectRule: EdtAndroidProjectRule) {
   val rootPath = projectRule.fixture.tempDirPath
@@ -265,6 +290,37 @@ internal fun withNonDebuggableBuildTypes(project: Project, block: () -> Unit) {
   } finally {
     runWriteAction {
       project.workspaceModel.updateProjectModel("Restore build types") { storage ->
+        for ((moduleId, originalModel) in originalModels) {
+          val entity = storage.resolve(GradleAndroidModelEntityId(moduleId)) ?: continue
+          storage.modifyGradleAndroidModelEntity(entity) { gradleAndroidModel = originalModel }
+        }
+      }
+    }
+  }
+}
+
+/** Runs [block] with no test suites in the Android models of the modules of [project], and then restores them. */
+internal fun withoutScreenshotTestSuites(project: Project, block: () -> Unit) {
+  val modules = ModuleManager.getInstance(project).modules
+  val originalModels = mutableMapOf<ModuleId, GradleAndroidModelImpl>()
+  try {
+    runWriteAction {
+      project.workspaceModel.updateProjectModel("Remove test suites") { storage ->
+        for (module in modules) {
+          val moduleId = ModuleId(module.name)
+          val entity = storage.resolve(GradleAndroidModelEntityId(moduleId)) ?: continue
+          val originalModel = entity.gradleAndroidModel
+          originalModels[moduleId] = originalModel
+          val newAndroidProject = originalModel.data.androidProject.copy(testSuites = emptyList())
+          val customModel = GradleAndroidModelImpl(originalModel.data.copy(androidProject = newAndroidProject))
+          storage.modifyGradleAndroidModelEntity(entity) { gradleAndroidModel = customModel }
+        }
+      }
+    }
+    block()
+  } finally {
+    runWriteAction {
+      project.workspaceModel.updateProjectModel("Restore test suites") { storage ->
         for ((moduleId, originalModel) in originalModels) {
           val entity = storage.resolve(GradleAndroidModelEntityId(moduleId)) ?: continue
           storage.modifyGradleAndroidModelEntity(entity) { gradleAndroidModel = originalModel }

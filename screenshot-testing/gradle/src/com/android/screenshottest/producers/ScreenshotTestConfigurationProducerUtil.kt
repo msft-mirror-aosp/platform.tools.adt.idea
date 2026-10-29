@@ -16,12 +16,15 @@
 package com.android.screenshottest.producers
 
 import com.android.tools.idea.gradle.model.IdeTestSuite
+import com.android.tools.idea.gradle.model.isScreenshotTestSuite
+import com.android.tools.idea.gradle.model.sourceSetNames
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.gradleModuleModel
 import com.android.tools.idea.projectsystem.CommonTestType
 import com.android.tools.idea.projectsystem.IdeaSourceProvider
 import com.android.tools.idea.projectsystem.SourceProviderManager
 import com.android.tools.idea.projectsystem.containsFile
+import com.android.tools.idea.projectsystem.gradle.getTestSuiteSourceSetName
 import com.android.tools.idea.testartifacts.testsuite.runconfiguration.TestSuiteUtils
 import com.intellij.execution.Location
 import com.intellij.execution.actions.ConfigurationContext
@@ -37,9 +40,8 @@ import java.util.Locale
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.android.util.AndroidUtils
 import org.jetbrains.plugins.gradle.util.GradleUtil
-import org.jetbrains.plugins.gradle.util.gradleIdentityPath
+import org.jetbrains.plugins.gradle.util.gradleIdentityPathOrNull
 
-const val SCREENSHOT_TEST_ENGINE_ID = "preview-screenshot-test-engine"
 const val DEFAULT_VERIFICATION_TARGET_NAME = "Default"
 
 private const val PREVIEW_TEST_ANNOTATION = "com.android.tools.screenshot.PreviewTest"
@@ -47,19 +49,47 @@ private const val PREVIEW_TEST_ANNOTATION = "com.android.tools.screenshot.Previe
 val IS_SCREENSHOT_TEST_CONFIGURATION = Key.create<Boolean>("com.android.tools.idea.testartifacts.screenshot.isScreenshotTest")
 val IS_SCREENSHOT_UPDATE_CONFIGURATION = Key.create<Boolean>("com.android.tools.idea.testartifacts.screenshot.isScreenshotUpdate")
 
-/** Returns true if this [IdeTestSuite] uses the screenshot validation test engine. */
-fun IdeTestSuite.isScreenshotTestSuite(): Boolean {
-  return junitEngineInfo.includedEngines.contains(SCREENSHOT_TEST_ENGINE_ID)
-}
-
 private fun String.capitalize(): String = replaceFirstChar {
   if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
+}
+
+/** Returns the test suites of this model that run Compose Preview screenshot tests. */
+private fun GradleAndroidModel.getScreenshotTestSuites(): List<IdeTestSuite> = testSuites.filter { it.isScreenshotTestSuite() }
+
+/**
+ * Returns the test suites in [screenshotSuites] that [virtualFile] in [module] belongs to: the test suite of [module] if it is a test suite
+ * source set module, or else the test suites matched by [TestSuiteUtils.findMatchingTestSuites].
+ */
+private fun findMatchingScreenshotTestSuites(
+  module: Module,
+  screenshotSuites: List<IdeTestSuite>,
+  virtualFile: VirtualFile?,
+): List<IdeTestSuite> {
+  if (screenshotSuites.isEmpty()) {
+    return emptyList()
+  }
+
+  // A test suite source set module only contains the sources, including the generated ones, of its own test suite, which is not
+  // necessarily a screenshot test suite.
+  val sourceSetName = module.getTestSuiteSourceSetName()
+  if (sourceSetName != null) {
+    return listOfNotNull(screenshotSuites.find { sourceSetName in it.sourceSetNames })
+  }
+
+  if (virtualFile == null) {
+    return emptyList()
+  }
+  return TestSuiteUtils.findMatchingTestSuites(screenshotSuites, virtualFile)
 }
 
 /**
  * Checks if the given location belongs to screenshot test source set. It verifies if the virtual file associated with the location either
  * - is contained within the screenshot test or generated screenshot test source roots, or
- * - contains the screenshot test or generated screenshot test source sets
+ * - contains the screenshot test or generated screenshot test source sets, or
+ * - belongs to a screenshot test suite.
+ *
+ * Without the legacy screenshot plugin, screenshot tests can only run through screenshot test suites, so this returns `false` if the module
+ * has neither (see [getScreenshotTestTaskNames]).
  *
  * @param location The location of the PSI element to check.
  * @param facet The Android facet associated with the project.
@@ -68,17 +98,20 @@ private fun String.capitalize(): String = replaceFirstChar {
 fun isScreenshotTestSourceSet(location: Location<PsiElement>, facet: AndroidFacet): Boolean {
   val sourceProviders = SourceProviderManager.getInstance(facet)
   val virtualFile = PsiUtilCore.getVirtualFile(location.psiElement) ?: return false
-  sourceProviders.hostTestSources[CommonTestType.SCREENSHOT_TEST]?.let {
-    if (it.containsFile(virtualFile) || it.containedIn(virtualFile)) {
-      return true
-    }
+  val androidModel = GradleAndroidModel.get(facet) ?: return false
+  val screenshotSuites = androidModel.getScreenshotTestSuites()
+  if (!isLegacyScreenshotPluginApplied(facet.module) && screenshotSuites.isEmpty()) {
+    return false
   }
-  sourceProviders.generatedHostTestSources[CommonTestType.SCREENSHOT_TEST]?.let {
-    if (it.containsFile(virtualFile) || it.containedIn(virtualFile)) {
-      return true
-    }
+  val screenshotSources =
+    listOfNotNull(
+      sourceProviders.hostTestSources[CommonTestType.SCREENSHOT_TEST],
+      sourceProviders.generatedHostTestSources[CommonTestType.SCREENSHOT_TEST],
+    )
+  if (screenshotSources.any { it.containsFile(virtualFile) || it.containedIn(virtualFile) }) {
+    return true
   }
-  return false
+  return findMatchingScreenshotTestSuites(facet.module, screenshotSuites, virtualFile).isNotEmpty()
 }
 
 /** Checks if the module has the legacy standalone screenshot plugin applied. */
@@ -91,47 +124,36 @@ fun isLegacyScreenshotPluginApplied(module: Module): Boolean {
  * Retrieves the Gradle task name(s) for screenshot validation.
  *
  * For legacy screenshot plugin consumers, this resolves to the standard `:validate<Variant>ScreenshotTest` task. For AGP native screenshot
- * test suites, this maps the clicked file to its containing test suite and constructs the Gradle 9 test suite execution task for the
- * default verification target (e.g. `:test<SuiteName>Default<VariantName>TestSuite`).
+ * test suites, this maps the clicked file to its screenshot test suite(s) and constructs the Gradle test suite task of the default
+ * verification target for each of them, `:test<Variant><Suite>DefaultTestSuite` (e.g. `:app:testDebugScreenshotTestDefaultTestSuite`).
  *
  * Note: Target resolution is currently hardcoded to the default verification target to prevent accidentally executing companion
  * recording/update tasks from IDE run configurations.
  *
  * @param context The configuration context.
- * @return A list of Strings containing the screenshot test task name(s), or `null` if required information is missing.
+ * @return A list of Strings containing the screenshot test task name(s), or `null` if required information is missing or, without the
+ *   legacy screenshot plugin, if the model has no screenshot test suite.
  */
 fun getScreenshotTestTaskNames(context: ConfigurationContext): List<String>? {
   val myModule = AndroidUtils.getAndroidModule(context) ?: return null
   val facet = AndroidFacet.getInstance(myModule) ?: return null
   val androidModel = GradleAndroidModel.get(facet) ?: return null
-  val moduleData = GradleUtil.findGradleModuleData(myModule)?.data ?: return null
-  val modulePath = moduleData.gradleIdentityPath.trimEnd(':')
+  val modulePath = GradleUtil.findGradleModuleData(myModule)?.data?.gradleIdentityPathOrNull?.trimEnd(':') ?: return null
 
   if (isLegacyScreenshotPluginApplied(myModule)) {
     val taskName = androidModel.getGradleScreenshotTestTaskNameForSelectedVariant("validate")
     return listOf("$modulePath:$taskName")
   } else {
     val variantName = androidModel.selectedVariantName.capitalize()
-    val screenshotSuites = androidModel.testSuites.filter { it.isScreenshotTestSuite() }
-
+    val screenshotSuites = androidModel.getScreenshotTestSuites()
+    // Without the legacy screenshot plugin, screenshot tests can only run through screenshot test suites.
+    if (screenshotSuites.isEmpty()) {
+      return null
+    }
     val virtualFile = context.location?.psiElement?.let { PsiUtilCore.getVirtualFile(it) }
-
-    val matchingSuite =
-      if (virtualFile != null) {
-        TestSuiteUtils.getTestSuiteAtRoot(screenshotSuites, virtualFile)
-          ?: TestSuiteUtils.getTestSuiteContainingFile(screenshotSuites, virtualFile)
-      } else {
-        null
-      }
-
-    val suiteNames =
-      if (matchingSuite != null) {
-        listOf(matchingSuite.name)
-      } else if (screenshotSuites.isNotEmpty()) {
-        screenshotSuites.map { it.name }
-      } else {
-        listOf("screenshotTest")
-      }
+    val matchingSuites = findMatchingScreenshotTestSuites(myModule, screenshotSuites, virtualFile)
+    // If the location does not match a screenshot test suite, run all of them.
+    val suiteNames = matchingSuites.ifEmpty { screenshotSuites }.map { it.name }
 
     // TODO(b/530362351): The target name is currently hardcoded to "Default" to ensure we only
     // execute

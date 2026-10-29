@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.testartifacts.scopes;
 
+import static com.android.tools.idea.projectsystem.gradle.GradleProjectPathKt.getGradleProjectPath;
 import static com.android.tools.idea.projectsystem.gradle.LinkedAndroidModuleGroupUtilsKt.getAndroidTestModule;
 import static com.android.tools.idea.projectsystem.gradle.LinkedAndroidModuleGroupUtilsKt.getMainModule;
 import static com.android.tools.idea.projectsystem.gradle.LinkedAndroidModuleGroupUtilsKt.getScreenshotTestModule;
@@ -22,16 +23,26 @@ import static com.android.tools.idea.projectsystem.gradle.LinkedAndroidModuleGro
 import static com.android.tools.idea.projectsystem.gradle.LinkedAndroidModuleGroupUtilsKt.getUnitTestModule;
 import static com.android.tools.idea.projectsystem.ProjectSystemUtil.getModuleSystem;
 
+import com.android.tools.idea.gradle.model.IdeTestSuite;
+import com.android.tools.idea.gradle.model.IdeTestSuiteKt;
+import com.android.tools.idea.gradle.project.model.GradleAndroidModel;
 import com.android.tools.idea.projectsystem.AndroidModuleSystem.Type;
 import com.android.tools.idea.projectsystem.TestArtifactSearchScopes;
+import com.android.tools.idea.projectsystem.gradle.GradleProjectPath;
+import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.search.GlobalSearchScope;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Gradle implementation of {@link TestArtifactSearchScopes}, differentiates {@code test/}, {@code screenshotTest/},
- * and {@code androidTest/} sources based on information from the model.
+ * and {@code androidTest/} sources based on information from the model. Sources of AGP test suites are test sources,
+ * and sources of test suites that run Compose Preview screenshot tests are also screenshot test sources.
  */
 public final class GradleTestArtifactSearchScopes implements TestArtifactSearchScopes {
   @NotNull private final Module myModule;
@@ -95,6 +106,39 @@ public final class GradleTestArtifactSearchScopes implements TestArtifactSearchS
   @NotNull
   public GlobalSearchScope getScreenshotTestSourceScope() {
     Module screenshotTestModule = getScreenshotTestModule(myModule);
-    return screenshotTestModule != null ? screenshotTestModule.getModuleContentScope() : GlobalSearchScope.EMPTY_SCOPE;
+    GlobalSearchScope scope = screenshotTestModule != null ? screenshotTestModule.getModuleContentScope() : GlobalSearchScope.EMPTY_SCOPE;
+    List<Module> testSuiteModules = getTestSuiteModules(myModule);
+    GradleAndroidModel androidModel = testSuiteModules.isEmpty() ? null : GradleAndroidModel.get(myModule);
+    if (androidModel == null) {
+      return scope;
+    }
+    // The source set names of the test suites that run Compose Preview screenshot tests.
+    Set<String> screenshotSourceSetNames = new HashSet<>();
+    for (IdeTestSuite suite : androidModel.getTestSuites()) {
+      if (IdeTestSuiteKt.isScreenshotTestSuite(suite)) {
+        screenshotSourceSetNames.addAll(IdeTestSuiteKt.getSourceSetNames(suite));
+      }
+    }
+    if (screenshotSourceSetNames.isEmpty()) {
+      return scope;
+    }
+    for (Module testSuiteModule : testSuiteModules) {
+      if (screenshotSourceSetNames.contains(getSourceSetName(testSuiteModule))) {
+        scope = scope.uniteWith(testSuiteModule.getModuleContentScope());
+      }
+    }
+    return scope;
+  }
+
+  /**
+   * Returns the source set name of the given test suite module. Test suite modules are source set modules, so this reads it from their
+   * Gradle project path rather than with {@code getTestSuiteSourceSetName}, which resolves the module group again for each module.
+   */
+  @Nullable
+  private static String getSourceSetName(@NotNull Module testSuiteModule) {
+    GradleProjectPath gradleProjectPath = getGradleProjectPath(testSuiteModule);
+    return gradleProjectPath instanceof GradleSourceSetProjectPath
+           ? ((GradleSourceSetProjectPath)gradleProjectPath).getSourceSet().getSourceSetName()
+           : null;
   }
 }
