@@ -2737,7 +2737,7 @@ MODULE                        : project.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             basicBarDebugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -2755,7 +2755,7 @@ MODULE                        : project.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             basicBarDebugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -2772,7 +2772,7 @@ MODULE                        : project.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -4308,7 +4308,7 @@ MODULE                        : project.dyn_feature
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             basicBarDebugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -4326,7 +4326,7 @@ MODULE                        : project.dyn_feature
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             basicBarDebugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -4343,7 +4343,7 @@ MODULE                        : project.dyn_feature
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -5483,7 +5483,7 @@ MODULE                        : project.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -5501,7 +5501,7 @@ MODULE                        : project.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -5518,7 +5518,7 @@ MODULE                        : project.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -5927,7 +5927,7 @@ MODULE                        : project.nested1
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -5945,7 +5945,7 @@ MODULE                        : project.nested1
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -5962,7 +5962,7 @@ MODULE                        : project.nested1
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -6375,7 +6375,7 @@ MODULE                        : project.nested1.deep
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -6393,7 +6393,7 @@ MODULE                        : project.nested1.deep
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -6410,7 +6410,7 @@ MODULE                        : project.nested1.deep
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -7035,7 +7035,7 @@ MODULE                        : project.nested2
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             basicDebugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -7053,7 +7053,7 @@ MODULE                        : project.nested2
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             basicDebugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -7070,7 +7070,7 @@ MODULE                        : project.nested2
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -7477,7 +7477,7 @@ MODULE                        : project.nested2.deep
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -7495,7 +7495,7 @@ MODULE                        : project.nested2.deep
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -7512,7 +7512,7 @@ MODULE                        : project.nested2.deep
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -7932,7 +7932,7 @@ MODULE                        : project.nested2.trans.deep2
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -7950,7 +7950,7 @@ MODULE                        : project.nested2.trans.deep2
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -7967,7 +7967,7 @@ MODULE                        : project.nested2.trans.deep2
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true

@@ -197,15 +197,7 @@ PROJECT                       : My Application
         *isInherited                  : true
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: liba.jar [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY                       : Gradle: liba.jar
-                *CLASSES                      : jar://<PROJECT>/lib1/liba.jar!/
-        LIBRARY                       : Gradle: liba.jar [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY                       : Gradle: liba.jar
-                *CLASSES                      : jar://<PROJECT>/lib2/liba.jar!/
+        LIBRARY                       : Gradle: liba.jar (xxxxxxxx) [=]
         Classes
             -                             : file://<PROJECT>/lib/build/classes/java/main
             -                             : file://<PROJECT>/lib/build/resources/main
@@ -233,15 +225,7 @@ PROJECT                       : My Application
         *isInherited                  : true
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: liba.jar [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY                       : Gradle: liba.jar
-                *CLASSES                      : jar://<PROJECT>/lib1/liba.jar!/
-        LIBRARY                       : Gradle: liba.jar [=]
-            LibraryLevel                  : module
-            IsModuleLevel                 : true
-            LIBRARY                       : Gradle: liba.jar
-                *CLASSES                      : jar://<PROJECT>/lib2/liba.jar!/
+        LIBRARY                       : Gradle: liba.jar (xxxxxxxx) [=]
         ORDER_ENTRY                   : My_Application.lib.main
         BUILD_TASKS
                 ASSEMBLE                      : :lib:testClasses
@@ -447,6 +431,10 @@ PROJECT                       : My Application
         LIBRARY                       : Gradle: ./lib1/liba.jar
             *CLASSES                      : jar://<PROJECT>/lib1/liba.jar!/
         LIBRARY                       : Gradle: ./lib2/liba.jar
+            *CLASSES                      : jar://<PROJECT>/lib2/liba.jar!/
+        LIBRARY                       : Gradle: liba.jar
+            *CLASSES                      : jar://<PROJECT>/lib1/liba.jar!/
+        LIBRARY                       : Gradle: liba.jar (xxxxxxxx)
             *CLASSES                      : jar://<PROJECT>/lib2/liba.jar!/
         LIBRARY                       : Gradle: org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
             *CLASSES                      : jar://<M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar!/

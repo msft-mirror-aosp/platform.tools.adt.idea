@@ -1762,7 +1762,7 @@ MODULE                        : MainActivity.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             localDebugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -1780,7 +1780,7 @@ MODULE                        : MainActivity.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             localDebugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -1797,7 +1797,7 @@ MODULE                        : MainActivity.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -1848,7 +1848,7 @@ MODULE                        : MainActivity.javaLib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             test
                 compilerArguments             : K2JVMCompilerArguments
@@ -1865,7 +1865,7 @@ MODULE                        : MainActivity.javaLib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -2992,7 +2992,7 @@ MODULE                        : MainActivity.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -3010,7 +3010,7 @@ MODULE                        : MainActivity.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -3027,7 +3027,7 @@ MODULE                        : MainActivity.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true

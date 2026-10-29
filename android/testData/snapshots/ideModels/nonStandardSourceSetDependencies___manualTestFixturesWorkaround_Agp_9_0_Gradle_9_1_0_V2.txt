@@ -2173,7 +2173,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -2191,7 +2191,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -2208,7 +2208,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -2324,13 +2324,14 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : jvmMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : jvm
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/common/src/jvmMain/kotlin
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/common/build/classes/kotlin/jvm/main [-]
                     - classesDirs                 : <ROOT>/common/build/classes/java/jvmMain [-]
@@ -2405,7 +2406,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : jvmTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : jvm
@@ -2413,6 +2414,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/common/src/jvmTest/kotlin [-]
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/common/build/classes/kotlin/jvm/test [-]
                     - classesDirs                 : <ROOT>/common/build/classes/java/jvmTest [-]
@@ -2473,7 +2475,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             test
                 compilerArguments             : K2JVMCompilerArguments
@@ -2497,7 +2499,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -3568,7 +3570,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -3586,7 +3588,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -3603,7 +3605,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -3853,13 +3855,14 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : androidMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/feature-b/src/androidMain/kotlin [-]
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/feature-b/build/classes/kotlin/android/main [-]
                     effectiveClassesDir           : <ROOT>/feature-b/build/classes/kotlin/android/main [-]
@@ -3925,7 +3928,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             test
                 compilerArguments             : K2JVMCompilerArguments
@@ -3949,7 +3952,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             testEnv
                 compilerArguments             : K2JVMCompilerArguments
@@ -3973,7 +3976,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -4103,7 +4106,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : jvmMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : jvm
@@ -4186,7 +4189,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : jvmTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : jvm
@@ -4590,7 +4593,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -4608,7 +4611,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -4625,7 +4628,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -5150,7 +5153,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -5168,7 +5171,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -5185,7 +5188,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true

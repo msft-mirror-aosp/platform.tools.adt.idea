@@ -1170,7 +1170,7 @@ MODULE                        : project.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true

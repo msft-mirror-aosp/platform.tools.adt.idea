@@ -2687,7 +2687,7 @@ MODULE                        : project.app
                     explicitReturnTypes           : disable
                     headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compose-compiler-plugin-embeddable/<KOTLIN_VERSION>/kotlin-compose-compiler-plugin-embeddable-<KOTLIN_VERSION>.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -2707,7 +2707,7 @@ MODULE                        : project.app
                     explicitReturnTypes           : disable
                     headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compose-compiler-plugin-embeddable/<KOTLIN_VERSION>/kotlin-compose-compiler-plugin-embeddable-<KOTLIN_VERSION>.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -2726,7 +2726,7 @@ MODULE                        : project.app
                     explicitReturnTypes           : disable
                     headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-compose-compiler-plugin-embeddable/<KOTLIN_VERSION>/kotlin-compose-compiler-plugin-embeddable-<KOTLIN_VERSION>.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true

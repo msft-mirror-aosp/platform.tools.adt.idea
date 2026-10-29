@@ -2006,7 +2006,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             typeoneModetwoDebugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -2024,7 +2024,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             typeoneModetwoDebugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -2041,7 +2041,7 @@ MODULE                        : Kotlin_Multiplatform.androidLib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -2586,7 +2586,7 @@ MODULE                        : Kotlin_Multiplatform.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -2604,7 +2604,7 @@ MODULE                        : Kotlin_Multiplatform.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -2621,7 +2621,7 @@ MODULE                        : Kotlin_Multiplatform.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -3223,7 +3223,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : androidDeviceTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
@@ -3231,6 +3231,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/kmpFirstLib/src/androidDeviceTest/kotlin
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/kmpFirstLib/build/classes/kotlin/android/deviceTest [-]
                     effectiveClassesDir           : <ROOT>/kmpFirstLib/build/classes/kotlin/android/deviceTest [-]
@@ -3286,7 +3287,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : androidHostTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
@@ -3294,6 +3295,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/kmpFirstLib/src/androidHostTest/kotlin
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/kmpFirstLib/build/classes/kotlin/android/hostTest [-]
                     effectiveClassesDir           : <ROOT>/kmpFirstLib/build/classes/kotlin/android/hostTest [-]
@@ -3358,13 +3360,14 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : androidMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/kmpFirstLib/src/androidMain/kotlin
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/kmpFirstLib/build/classes/kotlin/android/main [-]
                     effectiveClassesDir           : <ROOT>/kmpFirstLib/build/classes/kotlin/android/main [-]
@@ -3487,13 +3490,14 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : jvmMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : jvm
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/kmpJvmOnly/src/jvmMain/kotlin
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/kmpJvmOnly/build/classes/kotlin/jvm/main [-]
                     - classesDirs                 : <ROOT>/kmpJvmOnly/build/classes/java/jvmMain [-]
@@ -3568,7 +3572,7 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : jvmTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : jvm
@@ -3576,6 +3580,7 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/kmpJvmOnly/src/jvmTest/kotlin [-]
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/kmpJvmOnly/build/classes/kotlin/jvm/test [-]
                     - classesDirs                 : <ROOT>/kmpJvmOnly/build/classes/java/jvmTest [-]
@@ -3823,13 +3828,14 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : androidMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/kmpSecondLib/src/androidMain/kotlin
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/kmpSecondLib/build/classes/kotlin/android/main [-]
                     effectiveClassesDir           : <ROOT>/kmpSecondLib/build/classes/kotlin/android/main [-]
@@ -3886,13 +3892,14 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : jvmMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : jvm
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/kmpSecondLib/src/jvmMain/kotlin
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/kmpSecondLib/build/classes/kotlin/jvm/main [-]
                     - classesDirs                 : <ROOT>/kmpSecondLib/build/classes/java/jvmMain [-]
@@ -3967,7 +3974,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : jvmTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : jvm
@@ -3975,6 +3982,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/kmpSecondLib/src/jvmTest/kotlin [-]
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/kmpSecondLib/build/classes/kotlin/jvm/test [-]
                     - classesDirs                 : <ROOT>/kmpSecondLib/build/classes/java/jvmTest [-]
@@ -4296,7 +4304,7 @@ MODULE                        : build-logic.lib-foo
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : androidDeviceTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
@@ -4304,6 +4312,7 @@ MODULE                        : build-logic.lib-foo
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/build-logic/lib-foo/src/androidDeviceTest/kotlin [-]
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/build-logic/lib-foo/build/classes/kotlin/android/deviceTest [-]
                     effectiveClassesDir           : <ROOT>/build-logic/lib-foo/build/classes/kotlin/android/deviceTest [-]
@@ -4376,7 +4385,7 @@ MODULE                        : build-logic.lib-foo
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : androidHostTest (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
@@ -4384,6 +4393,7 @@ MODULE                        : build-logic.lib-foo
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/build-logic/lib-foo/src/androidHostTest/kotlin [-]
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/build-logic/lib-foo/build/classes/kotlin/android/hostTest [-]
                     effectiveClassesDir           : <ROOT>/build-logic/lib-foo/build/classes/kotlin/android/hostTest [-]
@@ -4448,13 +4458,14 @@ MODULE                        : build-logic.lib-foo
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
                 - declaredSourceSets          : androidMain (KotlinSourceSetImpl) (*seen*)
                 disambiguationClassifier      : android
                 kotlinTaskProperties          : KotlinTaskPropertiesImpl
                     incremental                   : true
                     pluginVersion                 : <CUT>
+                    - pureKotlinSourceFolders     : <ROOT>/build-logic/lib-foo/src/androidMain/kotlin
                 output                        : KotlinCompilationOutputImpl
                     - classesDirs                 : <ROOT>/build-logic/lib-foo/build/classes/kotlin/android/main [-]
                     effectiveClassesDir           : <ROOT>/build-logic/lib-foo/build/classes/kotlin/android/main [-]

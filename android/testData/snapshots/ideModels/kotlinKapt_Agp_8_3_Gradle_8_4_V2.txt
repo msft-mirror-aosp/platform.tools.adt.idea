@@ -1780,7 +1780,7 @@ MODULE                        : MainActivity.app
                     explicitReturnTypes           : disable
                     headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-annotation-processing-gradle/<KOTLIN_VERSION>/kotlin-annotation-processing-gradle-<KOTLIN_VERSION>.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             localDebugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -1799,7 +1799,7 @@ MODULE                        : MainActivity.app
                     explicitReturnTypes           : disable
                     headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-annotation-processing-gradle/<KOTLIN_VERSION>/kotlin-annotation-processing-gradle-<KOTLIN_VERSION>.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             localDebugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -1818,7 +1818,7 @@ MODULE                        : MainActivity.app
                     explicitReturnTypes           : disable
                     headerModeType                : any
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-annotation-processing-gradle/<KOTLIN_VERSION>/kotlin-annotation-processing-gradle-<KOTLIN_VERSION>.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -1829,12 +1829,16 @@ MODULE                        : MainActivity.app
             localDebug                    : KotlinTaskPropertiesImpl
                 incremental                   : true
                 pluginVersion                 : <CUT>
+                - pureKotlinSourceFolders     : <ROOT>/app/src/localDebug/kotlin [-]
+                - pureKotlinSourceFolders     : <ROOT>/app/src/localDebug/java [-]
             localDebugAndroidTest         : KotlinTaskPropertiesImpl
                 incremental                   : true
                 pluginVersion                 : <CUT>
+                - pureKotlinSourceFolders     : <ROOT>/app/src/localDebugAndroidTest/kotlin [-]
             localDebugUnitTest            : KotlinTaskPropertiesImpl
                 incremental                   : true
                 pluginVersion                 : <CUT>
+                - pureKotlinSourceFolders     : <ROOT>/app/src/localDebugUnitTest/kotlin [-]
     kaptGradleModel               : <PROXY>
         isEnabled                     : true
         buildDirectory                : <ROOT>/app/build
@@ -1903,7 +1907,7 @@ MODULE                        : MainActivity.javaLib
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             test
                 compilerArguments             : K2JVMCompilerArguments
@@ -1928,7 +1932,7 @@ MODULE                        : MainActivity.javaLib
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
                     - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -3066,7 +3070,7 @@ MODULE                        : MainActivity.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -3084,7 +3088,7 @@ MODULE                        : MainActivity.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             debugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -3102,7 +3106,7 @@ MODULE                        : MainActivity.lib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
@@ -3113,12 +3117,16 @@ MODULE                        : MainActivity.lib
             debug                         : KotlinTaskPropertiesImpl
                 incremental                   : true
                 pluginVersion                 : <CUT>
+                - pureKotlinSourceFolders     : <ROOT>/lib/src/debug/kotlin [-]
+                - pureKotlinSourceFolders     : <ROOT>/lib/src/debug/java [-]
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
                 pluginVersion                 : <CUT>
+                - pureKotlinSourceFolders     : <ROOT>/lib/src/debugAndroidTest/kotlin [-]
             debugUnitTest                 : KotlinTaskPropertiesImpl
                 incremental                   : true
                 pluginVersion                 : <CUT>
+                - pureKotlinSourceFolders     : <ROOT>/lib/src/debugUnitTest/kotlin [-]
     externalProject               : :lib (DefaultExternalProject) (*seen*)
 MODULE                        : MainActivity.lib.androidTest
 MODULE                        : MainActivity.lib.main

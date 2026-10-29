@@ -91,9 +91,19 @@ PROJECT                       : kotlinMultiPlatform
         *isInherited                  : true
         ORDER_ENTRY                   : <Module source>
         LIBRARY                       : Gradle: com.android.support.test:monitor:<VERSION> [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
             Scope                         : Test
+            LIBRARY                       : Gradle: com.android.support.test:monitor:<VERSION>
+                *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/monitor-<VERSION>/AndroidManifest.xml
+                *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/monitor-<VERSION>/jars/classes.jar!/
         LIBRARY                       : Gradle: com.android.support.test:runner:<VERSION> [=]
+            LibraryLevel                  : module
+            IsModuleLevel                 : true
             Scope                         : Test
+            LIBRARY                       : Gradle: com.android.support.test:runner:<VERSION>
+                *CLASSES                      : file://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/runner-<VERSION>/AndroidManifest.xml
+                *CLASSES                      : jar://<GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/runner-<VERSION>/jars/classes.jar!/
         LIBRARY                       : Gradle: com.android.support:support-annotations:<VERSION> [=]
             Scope                         : Test
         LIBRARY                       : Gradle: junit:junit:4.12 [=]

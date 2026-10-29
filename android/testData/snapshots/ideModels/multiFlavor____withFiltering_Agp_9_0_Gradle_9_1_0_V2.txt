@@ -809,7 +809,7 @@ MODULE                        : MultiFlavor.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             firstAbcSecondAbcDebugAndroidTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -827,7 +827,7 @@ MODULE                        : MultiFlavor.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
             firstAbcSecondAbcDebugUnitTest
                 compilerArguments             : K2JVMCompilerArguments
@@ -844,7 +844,7 @@ MODULE                        : MultiFlavor.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
-                    returnValueChecker            : disable
+                    returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
