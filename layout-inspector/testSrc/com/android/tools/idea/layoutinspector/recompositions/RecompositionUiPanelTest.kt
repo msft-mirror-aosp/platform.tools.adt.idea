@@ -37,6 +37,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.DataProvider
 import com.intellij.openapi.actionSystem.impl.ActionButton
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.ui.getUserData
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
@@ -156,13 +157,11 @@ class RecompositionUiPanelTest {
       val panel = RecompositionUiPanel(model, projectRule.project, { stats }, createChildScope(), disposable)
       model.show.value = true
       advanceUntilIdle()
-      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
       val editor = panel.getUserData(STATE_READ_EDITOR_KEY)!!
       assertThat(editor.document.text).isEqualTo("")
 
       model.content.value = RecompositionContent(detailsText = "Testing")
       advanceUntilIdle()
-      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
       assertThat(editor.document.text).isEqualTo("Testing")
     }
 
@@ -197,15 +196,17 @@ class RecompositionUiPanelTest {
       assertThat(editor.getUserData(LAYOUT_INSPECTOR_COMPOSABLE_INSPECTED_KEY)).isEqualTo(data)
     }
 
-  private fun TestScope.advanceUntilIdle() {
-    // The write action in StateInspectionPanel.setTextInEditor may not complete with...
+  private suspend fun TestScope.advanceUntilIdle() {
     this.testScheduler.advanceUntilIdle()
-
-    // Perform the write action:
-    PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-
-    // Finish the coroutine after the write action finishes:
-    this.testScheduler.advanceUntilIdle()
+    // InnerStateInspectionPanel.setTextInEditor and RecompositionFoldingDetector.detectFolding
+    // execute sequential edtWriteAction calls, each of which suspends onto the single-threaded
+    // edtWriteActionAcquisitionDispatcher before dispatching back to the EDT. Pumping both
+    // edtWriteAction and the IDE event queue across those hops ensures all UI updates complete.
+    repeat(3) {
+      edtWriteAction {}
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      this.testScheduler.advanceUntilIdle()
+    }
   }
 
   private fun testButton(buttonAction: TestAction) =
