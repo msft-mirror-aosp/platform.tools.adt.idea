@@ -292,7 +292,7 @@ public class IdeSdksTest extends HeavyPlatformTestCase {
   public void testSdkInterfaceMethodsExposed() {
     List<String> expectedMethodNames = Arrays.asList(
       "clone", "getHomeDirectory", "getHomePath", "getName", "getRootProvider", "getSdkAdditionalData", "getSdkModificator",
-      "getSdkType", "getUserData", "getVersionString", "putUserData"
+      "getSdkType", "getUserData", "getVersionString", "putUserData", "putUserDataIfAbsent", "replace"
     );
     List<String> currentMethodNames = Arrays.stream(Sdk.class.getMethods())
       .map(Method::getName)
