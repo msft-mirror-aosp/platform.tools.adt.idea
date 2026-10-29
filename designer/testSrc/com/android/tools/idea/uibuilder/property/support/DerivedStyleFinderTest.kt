@@ -38,7 +38,7 @@ class DerivedStyleFinderTest {
   private val auto = ResourceNamespace.RES_AUTO
   private var finder: DerivedStyleFinder? = null
   private val theme =
-    ResourceUrl.parseStyleParentReference("AppTheme")!!.resolve(ResourceNamespace.TODO(), ResourceNamespace.Resolver.EMPTY_RESOLVER)
+    ResourceUrl.parseStyleParentReference("AppTheme")!!.resolve(ResourceNamespace.RES_AUTO, ResourceNamespace.Resolver.EMPTY_RESOLVER)
   private var resolver: ResourceResolver? =
     ResourceResolver.create(
       mapOf(

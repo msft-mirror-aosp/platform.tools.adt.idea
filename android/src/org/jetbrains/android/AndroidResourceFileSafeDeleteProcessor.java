@@ -103,7 +103,7 @@ public class AndroidResourceFileSafeDeleteProcessor extends SafeDeleteProcessorD
     final String name = vFile.getName();
 
     LocalResourceManager resourceManager = ModuleResourceManagers.getInstance(facet).getLocalResourceManager();
-    Collection<PsiFile> resourceFiles = resourceManager.findResourceFiles(ResourceNamespace.TODO(), folderType,
+    Collection<PsiFile> resourceFiles = resourceManager.findResourceFiles(ResourceNamespace.RES_AUTO, folderType,
                                                                           SdkUtils.fileNameToResourceName(name), true, false);
 
     final List<PsiElement> result = new ArrayList<>();

@@ -18,7 +18,6 @@ package com.google.idea.blaze.android.resources;
 import static org.jetbrains.android.AndroidResolveScopeEnlarger.LIGHT_CLASS_KEY;
 import static org.jetbrains.android.AndroidResolveScopeEnlarger.MODULE_POINTER_KEY;
 
-import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.tools.idea.res.ResourceRepositoryRClass;
 import com.android.tools.idea.res.StudioResourceRepositoryManager;
 import com.android.tools.res.LocalResourceRepository;
@@ -56,11 +55,6 @@ public class BlazeRClass extends ResourceRepositoryRClass {
           @Override
           public LocalResourceRepository getResourceRepository() {
             return StudioResourceRepositoryManager.getAppResources(androidFacet);
-          }
-
-          @Override
-          public ResourceNamespace getResourceNamespace() {
-            return ResourceNamespace.RES_AUTO;
           }
 
           @Override

@@ -190,7 +190,7 @@ public class ImageViewHandler extends ViewHandler {
     if (PredefinedSampleDataResourceRepository.NAMESPACE.equals(namespace)) {
       prefix = TOOLS_SAMPLE_PREFIX;
     }
-    else if (ResourceNamespace.TODO().equals(namespace)) {
+    else if (ResourceNamespace.RES_AUTO.equals(namespace)) {
       prefix = SAMPLE_PREFIX;
     }
     else {

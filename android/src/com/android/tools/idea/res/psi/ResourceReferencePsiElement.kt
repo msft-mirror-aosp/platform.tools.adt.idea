@@ -237,7 +237,7 @@ class ResourceReferencePsiElement(val delegate: PsiElement, val resourceReferenc
           } else {
             if (!type.isValueBased()) return null
             val name = element.value
-            ResourceReference(ResourceNamespace.TODO(), type, name)
+            ResourceReference(ResourceNamespace.RES_AUTO, type, name)
           }
         return ResourceReferencePsiElement(element, resourceReference)
       }

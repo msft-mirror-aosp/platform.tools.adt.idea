@@ -59,7 +59,7 @@ public class ThemeEditorStyle {
   @NotNull
   public String getQualifiedName() {
     ResourceRepositoryManager repositoryManager = mySettings.getConfigModule().getResourceRepositoryManager();
-    if (repositoryManager == null || repositoryManager.getNamespace().equals(myStyleReference.getNamespace())) {
+    if (repositoryManager == null || ResourceNamespace.RES_AUTO.equals(myStyleReference.getNamespace())) {
       return myStyleReference.getName();
     }
     return myStyleReference.getQualifiedName();

@@ -384,7 +384,7 @@ public class AndroidJavaDocRenderer {
                                                @NotNull ResourceType type,
                                                @NotNull String name,
                                                @NotNull List<ItemInfo> results) {
-      ResourceNamespace namespace = isFramework ? ResourceNamespace.ANDROID : ResourceNamespace.TODO();
+      ResourceNamespace namespace = isFramework ? ResourceNamespace.ANDROID : ResourceNamespace.RES_AUTO;
       List<ResourceItem> items = resources.getResources(namespace, type, name);
       for (ResourceItem item : items) {
         String folderName = null;
@@ -749,7 +749,6 @@ public class AndroidJavaDocRenderer {
 
             builder.addNbsps(4);
             if (attr != null && attr.getNamespace() == ResourceNamespace.ANDROID) {
-              // TODO: namespaces
               builder.add(PREFIX_ANDROID);
             }
             builder.addBold(name).add(" = ").add(value == null ? "null" : value);
@@ -823,7 +822,6 @@ public class AndroidJavaDocRenderer {
 
   @NotNull
   private static ResourceReference urlToReference(ResourceUrl url) {
-    // TODO: namespaces.
     return new ResourceReference(ResourceNamespace.fromBoolean(url.isFramework()), url.type, url.name);
   }
 

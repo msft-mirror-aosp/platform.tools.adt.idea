@@ -183,7 +183,7 @@ public class RecyclerViewAssistant extends AssistantPopupPanel {
       // If the RecyclerView listitem is already pointing to a layout, we verify if that layout is one of the templates
       // we use. If it is, we pre-select it on the drop-down.
       ResourceUrl url = ResourceUrl.parse(originalListItem);
-      ResourceReference reference = url != null ? url.resolve(ResourceNamespace.TODO(), ResourceNamespace.Resolver.EMPTY_RESOLVER) : null;
+      ResourceReference reference = url != null ? url.resolve(ResourceNamespace.RES_AUTO, ResourceNamespace.Resolver.EMPTY_RESOLVER) : null;
       if (reference != null) {
         int originalTemplateIndex = getIndexOfMatchingTemplate(availableTemplates, facet, reference);
         if (originalTemplateIndex >= 0) {
@@ -267,7 +267,7 @@ public class RecyclerViewAssistant extends AssistantPopupPanel {
       resourceName = resourceNameRoot + (index < 1 ? "" : "_" + index);
       index++;
     }
-    while (!localResourceRepository.getResources(ResourceNamespace.TODO(), ResourceType.LAYOUT, resourceName).isEmpty());
+    while (!localResourceRepository.getResources(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, resourceName).isEmpty());
     return resourceName;
   }
 

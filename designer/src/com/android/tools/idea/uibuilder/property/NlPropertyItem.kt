@@ -261,7 +261,7 @@ internal constructor(
 
   fun resolveValueAsReference(value: String?): ResourceReference? {
     if (value == null) return null
-    return ResourceUrl.parse(value)?.resolve(computeDefaultNamespace(), namespaceResolver)
+    return ResourceUrl.parse(value)?.resolve(ResourceNamespace.RES_AUTO, namespaceResolver)
   }
 
   fun resolveValueAsColor(value: String?): Color? {
@@ -334,7 +334,7 @@ internal constructor(
     // The value of the remaining resource types are file names or ids.
     // We don't want to show the file names and the ids don't have a value.
     // Instead show the url of this resolved resource.
-    return resValue.asReference().getRelativeResourceUrl(computeDefaultNamespace(), namespaceResolver).toString()
+    return resValue.asReference().getRelativeResourceUrl(ResourceNamespace.RES_AUTO, namespaceResolver).toString()
   }
 
   val tagName: String
@@ -359,9 +359,6 @@ internal constructor(
 
   private val nlModel: NlModel?
     get() = firstComponent?.model
-
-  private fun computeDefaultNamespace(): ResourceNamespace =
-    ReadAction.compute<ResourceNamespace, RuntimeException> { StudioResourceRepositoryManager.getInstance(model.facet).namespace }
 
   private fun isReferenceValue(value: String?): Boolean {
     return value != null && (value.startsWith("?") || value.startsWith("@") && !isId(value))
@@ -409,16 +406,16 @@ internal constructor(
     val localRepository = repositoryManager.appResources
     val frameworkRepository = repositoryManager.getFrameworkResources(emptySet())
     val types = type.resourceTypes
-    val defaultNamespace = computeDefaultNamespace()
-    val toName = { item: ResourceItem -> item.referenceToSelf.getRelativeResourceUrl(defaultNamespace, namespaceResolver).toString() }
+    val toName = { item: ResourceItem ->
+      item.referenceToSelf.getRelativeResourceUrl(ResourceNamespace.RES_AUTO, namespaceResolver).toString()
+    }
     if (types.isNotEmpty()) {
       // Resources may contain multiple entries for the same name
       val valueSet = mutableSetOf<String>()
 
       // Local resources.
       for (type in types) {
-        // TODO(namespaces): Exclude non-public resources from library modules.
-        localRepository.getResources(defaultNamespace, type).values().filter { it.libraryName == null }.mapTo(valueSet, toName)
+        localRepository.getResources(ResourceNamespace.RES_AUTO, type).values().filter { it.libraryName == null }.mapTo(valueSet, toName)
       }
 
       // Sort and add to the result list:

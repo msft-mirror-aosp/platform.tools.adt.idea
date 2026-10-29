@@ -45,10 +45,6 @@ interface ResourceRepositoryManager {
    */
   @get:Slow val projectResources: ResourceRepository
 
-  /** Returns the [ResourceNamespace] used by the current module. */
-  val namespace: ResourceNamespace
-    get() = ResourceNamespace.RES_AUTO
-
   /** Returns all locales of the project resources. */
   val localesInProject: ImmutableList<Locale>
 

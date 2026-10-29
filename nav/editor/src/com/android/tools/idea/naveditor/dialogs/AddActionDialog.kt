@@ -517,11 +517,11 @@ open class AddActionDialog(
       val appResources = repoManager.appResources
       val result: MutableList<ValueWithDisplayString> =
         appResources
-          .getResourceItems(ResourceNamespace.TODO(), ResourceType.ANIM, ResourceVisibility.PUBLIC)
+          .getResourceItems(ResourceNamespace.RES_AUTO, ResourceType.ANIM, ResourceVisibility.PUBLIC)
           .map { ValueWithDisplayString(it, "@${ResourceType.ANIM.getName()}/$it") }
           .toMutableList()
       if (includeAnimators) {
-        appResources.getResourceItems(ResourceNamespace.TODO(), ResourceType.ANIMATOR, ResourceVisibility.PUBLIC).mapTo(result) {
+        appResources.getResourceItems(ResourceNamespace.RES_AUTO, ResourceType.ANIMATOR, ResourceVisibility.PUBLIC).mapTo(result) {
           ValueWithDisplayString(it, "@${ResourceType.ANIMATOR.getName()}/$it")
         }
       }

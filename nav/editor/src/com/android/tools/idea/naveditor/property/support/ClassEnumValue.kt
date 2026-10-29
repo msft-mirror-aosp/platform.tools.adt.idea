@@ -75,7 +75,7 @@ data class ClassEnumValue(override val value: String, override val display: Stri
     val resourceManager = LocalResourceManager.getInstance(module) ?: return null
 
     for (resourceFile in
-      resourceManager.findResourceFiles(ResourceNamespace.TODO(), ResourceFolderType.LAYOUT).filterIsInstance<XmlFile>()) {
+      resourceManager.findResourceFiles(ResourceNamespace.RES_AUTO, ResourceFolderType.LAYOUT).filterIsInstance<XmlFile>()) {
       val contextClass = AndroidUtils.getContextClass(module, resourceFile) ?: continue
       if (contextClass.qualifiedName == className) {
         return "@layout/" + FileUtil.getNameWithoutExtension(resourceFile.name)

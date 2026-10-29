@@ -39,7 +39,7 @@ public class LocalResourceRepositoryTest extends AndroidTestCase {
     LocalResourceRepository<?> resources = StudioResourceRepositoryManager.getModuleResources(myModule);
     assertNotNull(resources);
 
-    Collection<String> layouts = resources.getResources(ResourceNamespace.TODO(), ResourceType.LAYOUT).keySet();
+    Collection<String> layouts = resources.getResources(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT).keySet();
     assertEquals(2, layouts.size());
 
     assertNotNull(resources.getResources(RES_AUTO, ResourceType.LAYOUT, "layout1"));
@@ -50,25 +50,25 @@ public class LocalResourceRepositoryTest extends AndroidTestCase {
     PsiFile psiFile3 = PsiManager.getInstance(getProject()).findFile(file3);
     assertNotNull(psiFile3);
 
-    layouts = resources.getResources(ResourceNamespace.TODO(), ResourceType.LAYOUT).keySet();
+    layouts = resources.getResources(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT).keySet();
     assertEquals(3, layouts.size());
 
-    Collection<String> drawables = resources.getResources(ResourceNamespace.TODO(), ResourceType.DRAWABLE).keySet();
+    Collection<String> drawables = resources.getResources(ResourceNamespace.RES_AUTO, ResourceType.DRAWABLE).keySet();
     assertEquals(drawables.toString(), 0, drawables.size());
     VirtualFile file4 = myFixture.copyFileToProject(TEST_FILE, "res/drawable-mdpi/foo.png");
     waitForResourceRepositoryUpdates();
     PsiFile psiFile4 = PsiManager.getInstance(getProject()).findFile(file4);
     assertNotNull(psiFile4);
-    drawables = resources.getResources(ResourceNamespace.TODO(), ResourceType.DRAWABLE).keySet();
+    drawables = resources.getResources(ResourceNamespace.RES_AUTO, ResourceType.DRAWABLE).keySet();
     assertEquals(1, drawables.size());
     assertEquals("foo", drawables.iterator().next());
 
     WriteCommandAction.runWriteCommandAction(null, psiFile4::delete);
     waitForUpdates(resources);
-    drawables = resources.getResources(ResourceNamespace.TODO(), ResourceType.DRAWABLE).keySet();
+    drawables = resources.getResources(ResourceNamespace.RES_AUTO, ResourceType.DRAWABLE).keySet();
     assertEquals(0, drawables.size());
 
-    Collection<String> fonts = resources.getResources(ResourceNamespace.TODO(), ResourceType.FONT).keySet();
+    Collection<String> fonts = resources.getResources(ResourceNamespace.RES_AUTO, ResourceType.FONT).keySet();
     assertEquals(1, fonts.size());
     assertEquals("customfont", fonts.iterator().next());
 

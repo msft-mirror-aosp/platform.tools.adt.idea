@@ -126,7 +126,7 @@ public class AndroidFindStyleApplicationsAction extends AndroidBaseXmlRefactorin
     }
 
     PsiElement[] declarationTargets = AndroidResourceToPsiResolver.getInstance()
-      .getGotoDeclarationTargets(new ResourceReference(ResourceNamespace.TODO(), ResourceType.STYLE, styleRef.getStyleName()), context);
+      .getGotoDeclarationTargets(new ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.STYLE, styleRef.getStyleName()), context);
     return declarationTargets.length == 0 ? null : declarationTargets[0];
   }
 

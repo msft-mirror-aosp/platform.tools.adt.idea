@@ -21,7 +21,6 @@ import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.tools.dom.attrs.AttributeDefinition;
 import com.android.tools.dom.attrs.AttributeDefinitions;
 import com.android.tools.dom.attrs.StyleableDefinition;
-import com.android.tools.idea.res.StudioResourceRepositoryManager;
 import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.android.resourceManagers.LocalResourceManager;
 import org.jetbrains.android.resourceManagers.ModuleResourceManagers;
@@ -94,10 +93,9 @@ public class AttributeDefinitionsTest extends AndroidTestCase {
   }
 
   public void testStyleableAttributes() {
-    ResourceNamespace appNamespace = StudioResourceRepositoryManager.getInstance(myFacet).getNamespace();
-    StyleableDefinition theme = styleableDef(ResourceReference.styleable(appNamespace, "Theme"));
+    StyleableDefinition theme = styleableDef(ResourceReference.styleable(ResourceNamespace.RES_AUTO, "Theme"));
     assertThat(theme).isNotNull();
-    assertThat(theme.getAttributes()).contains(attrDef(ResourceReference.attr(appNamespace, "colorForeground")));
+    assertThat(theme.getAttributes()).contains(attrDef(ResourceReference.attr(ResourceNamespace.RES_AUTO, "colorForeground")));
 
     StyleableDefinition view = styleableDef(ResourceReference.styleable(ResourceNamespace.ANDROID, "View"));
     assertThat(view).isNotNull();

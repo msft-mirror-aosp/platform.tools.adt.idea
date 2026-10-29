@@ -86,7 +86,7 @@ class AndroidImplementationViewSessionFactory : ImplementationViewSessionFactory
     return when (element) {
       is AndroidXmlDocumentationProvider.ResourceReferenceCompletionElement -> {
         val resourceReference =
-          ResourceUrl.parse(element.resource)?.resolve(ResourceNamespace.TODO(), ResourceNamespace.Resolver.EMPTY_RESOLVER) ?: return null
+          ResourceUrl.parse(element.resource)?.resolve(ResourceNamespace.RES_AUTO, ResourceNamespace.Resolver.EMPTY_RESOLVER) ?: return null
         ResourceReferencePsiElement(contextElement, resourceReference)
       }
       is PsiElement -> ResourceReferencePsiElement.create(element)

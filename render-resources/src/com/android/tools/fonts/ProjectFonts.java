@@ -94,7 +94,7 @@ public class ProjectFonts {
   public List<FontFamily> getFonts() {
     List<FontFamily> fonts = new ArrayList<>();
     ListMultimap<String, ResourceItem>
-      fontResources = myResourceRepository.getProjectResources().getResources(ResourceNamespace.TODO(), ResourceType.FONT);
+      fontResources = myResourceRepository.getProjectResources().getResources(ResourceNamespace.RES_AUTO, ResourceType.FONT);
     List<String> names = fontResources.keySet().stream().sorted().collect(Collectors.toList());
     for (String name : names) {
       fonts.add(resolveFont("@font/" + name));
@@ -231,7 +231,7 @@ public class ProjectFonts {
       return;
     }
     ListMultimap<String, ResourceItem> fonts =
-      myResourceRepository.getAppResources().getResources(ResourceNamespace.TODO(), ResourceType.FONT);
+      myResourceRepository.getAppResources().getResources(ResourceNamespace.RES_AUTO, ResourceType.FONT);
     String fontName = StringsKt.removePrefix(name, "@font/");
     if (!fonts.keySet().contains(fontName)) {
       createUnresolvedFontFamily(name);

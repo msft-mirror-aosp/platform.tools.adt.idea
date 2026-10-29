@@ -49,12 +49,12 @@ data class ActionDialogData(
       val appResources = repoManager.appResources
       val anim =
         appResources
-          .getResourceItems(ResourceNamespace.TODO(), ResourceType.ANIM, ResourceVisibility.PUBLIC)
+          .getResourceItems(ResourceNamespace.RES_AUTO, ResourceType.ANIM, ResourceVisibility.PUBLIC)
           .map { ValueWithDisplayString(it, "@${ResourceType.ANIM.getName()}/$it") }
           .sortedBy { it.display }
       val animators =
         appResources
-          .getResourceItems(ResourceNamespace.TODO(), ResourceType.ANIMATOR, ResourceVisibility.PUBLIC)
+          .getResourceItems(ResourceNamespace.RES_AUTO, ResourceType.ANIMATOR, ResourceVisibility.PUBLIC)
           .map { ValueWithDisplayString(it, "@${ResourceType.ANIMATOR.getName()}/$it") }
           .sortedBy { it.display }
       return ActionDialogData(anim, animators, visibleDestinations)

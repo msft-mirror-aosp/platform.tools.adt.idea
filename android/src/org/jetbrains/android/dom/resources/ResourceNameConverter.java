@@ -140,7 +140,7 @@ public class ResourceNameConverter extends ResolvingConverter<String> implements
       return Collections.emptyList();
     }
     ResourceRepository appResources = StudioResourceRepositoryManager.getAppResources(facet);
-    final Collection<String> styleNames = appResources.getResources(ResourceNamespace.TODO(), ResourceType.STYLE).keySet();
+    final Collection<String> styleNames = appResources.getResources(ResourceNamespace.RES_AUTO, ResourceType.STYLE).keySet();
     final List<String> result = new ArrayList<>();
 
     String currentValue = element.getStringValue();
@@ -209,7 +209,7 @@ public class ResourceNameConverter extends ResolvingConverter<String> implements
 
   public static boolean hasExplicitParent(@NotNull AndroidFacet facet, @NotNull String localStyleName) {
     ResourceRepository repository = StudioResourceRepositoryManager.getAppResources(facet);
-    List<ResourceItem> styles = repository.getResources(ResourceNamespace.TODO(), ResourceType.STYLE, localStyleName);
+    List<ResourceItem> styles = repository.getResources(ResourceNamespace.RES_AUTO, ResourceType.STYLE, localStyleName);
     if (styles.isEmpty()) {
       return false;
     }

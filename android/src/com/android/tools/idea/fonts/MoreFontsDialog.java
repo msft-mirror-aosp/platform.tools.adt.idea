@@ -458,7 +458,7 @@ public class MoreFontsDialog extends DialogWrapper {
     if (!myFontNameEditor.isVisible()) {
       return Result.OK;
     }
-    if (myResourceRepository.getProjectResources().getResources(ResourceNamespace.TODO(), ResourceType.FONT).containsKey(fontName)) {
+    if (myResourceRepository.getProjectResources().getResources(ResourceNamespace.RES_AUTO, ResourceType.FONT).containsKey(fontName)) {
       return new Result(Severity.ERROR, "A font named: \"" + fontName + "\" already exists");
     }
     if (fontName.isEmpty()) {

@@ -38,7 +38,6 @@ import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Table
 
 /** Cache for resolved resources. */
-// TODO(namespaces): Cache AAR contents if namespaces are used.
 class ResourceResolverCache(
   /** The configuration manager this cache corresponds to. */
   private val settings: ConfigurationSettings
@@ -152,12 +151,10 @@ class ResourceResolverCache(
     val allResources: Map<ResourceNamespace, Map<ResourceType, ResourceValueMap>> =
       DisjointUnionMap(mapOf(ResourceNamespace.ANDROID to targetFrameworkResources), configuredAppRes.rowMap())
 
-    // TODO(namespaces): the ResourceReference needs to be created by the caller, by resolving prefixes in the Manifest.
     var theme: ResourceReference? = null
     val themeUrl = ResourceUrl.parse(themeStyle)
     if (themeUrl != null) {
-      val contextNamespace = repositoryManager.namespace
-      theme = themeUrl.resolve(contextNamespace, ResourceNamespace.Resolver.EMPTY_RESOLVER)
+      theme = themeUrl.resolve(ResourceNamespace.RES_AUTO, ResourceNamespace.Resolver.EMPTY_RESOLVER)
     }
 
     val resolver = ResourceResolver.create(allResources, theme)

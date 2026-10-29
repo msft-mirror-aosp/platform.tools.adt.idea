@@ -108,7 +108,7 @@ suspend fun createValueResourceAsync(
         for (resources in resourcesElements) {
           if (resources != null) {
             if (resourceType == ResourceType.ATTR) {
-              resources.addAttr().name.setValue(ResourceReference.attr(ResourceNamespace.TODO(), resourceName))
+              resources.addAttr().name.setValue(ResourceReference.attr(ResourceNamespace.RES_AUTO, resourceName))
             } else {
               val element = addValueResource(resourceType, resources, resourceValue)
               element.name.value = resourceName

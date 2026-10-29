@@ -73,7 +73,7 @@ public class ResolutionUtils {
     }
     else {
       assert themeName.indexOf(':') < 0;
-      return ResourceReference.style(ResourceNamespace.TODO(), themeName);
+      return ResourceReference.style(ResourceNamespace.RES_AUTO, themeName);
     }
   }
 
@@ -194,7 +194,7 @@ public class ResolutionUtils {
     else {
       ResourceRepository localResourceRepository = StudioResourceRepositoryManager.getAppResources(facet);
       configurables =
-        localResourceRepository.getResources(ResourceNamespace.TODO(), resolvedValue.getResourceType(), resolvedValue.getName());
+        localResourceRepository.getResources(ResourceNamespace.RES_AUTO, resolvedValue.getResourceType(), resolvedValue.getName());
     }
     Configurable configurable = configuration.findMatchingConfigurable(configurables);
     assert configurable != null;

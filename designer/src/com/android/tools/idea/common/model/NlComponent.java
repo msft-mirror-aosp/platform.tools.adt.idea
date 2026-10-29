@@ -565,7 +565,7 @@ public class NlComponent implements NlAttributesHolder {
           return null;
         }
 
-        ResourceNamespace resNamespace = namespace != null ? ResourceNamespace.fromNamespaceUri(namespace) : ResourceNamespace.TODO();
+        ResourceNamespace resNamespace = namespace != null ? ResourceNamespace.fromNamespaceUri(namespace) : ResourceNamespace.RES_AUTO;
         if (resNamespace == null) {
           return null;
         }

@@ -209,6 +209,5 @@ private fun isForPrivateResource(result: CompletionResult, facet: AndroidFacet):
       ?.takeIf { it.containingClass?.name == SdkConstants.R_CLASS } // Don't bother if it's not under R.
       ?.name
       ?.let { ResourceType.fromClassName(it) } ?: return false // If there's no type, we can't look it up, so return false.
-  val namespace = StudioResourceRepositoryManager.getInstance(facet).namespace
-  return !isAccessible(namespace, resourceType, psiField.name, facet)
+  return !isAccessible(ResourceNamespace.RES_AUTO, resourceType, psiField.name, facet)
 }

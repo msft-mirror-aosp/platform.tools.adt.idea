@@ -159,7 +159,7 @@ public class ThemeResolver {
     }
     ResourceRepository repository = repositoryManager.getAppResources();
     ResourceValueMap configuredResources =
-        ResourceRepositoryUtil.getConfiguredResources(repository, repositoryManager.getNamespace(), ResourceType.STYLE,
+        ResourceRepositoryUtil.getConfiguredResources(repository, ResourceNamespace.RES_AUTO, ResourceType.STYLE,
                                                       myConfiguration.getFullConfig());
     return getNonFrameworkThemes(configuredResources);
   }

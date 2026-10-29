@@ -53,7 +53,7 @@ class GenerateMotionSceneFix(val url: ResourceUrl) : DefaultLintQuickFix("Genera
   override fun isApplicable(startElement: PsiElement, endElement: PsiElement, contextType: AndroidQuickfixContexts.ContextType): Boolean {
     val facet = AndroidFacet.getInstance(startElement) ?: return false
     val appResources = StudioResourceRepositoryManager.getAppResources(facet)
-    return !(appResources.getResources(ResourceNamespace.TODO(), ResourceType.XML).keySet().contains(url.name))
+    return !(appResources.getResources(ResourceNamespace.RES_AUTO, ResourceType.XML).keySet().contains(url.name))
   }
 
   override fun apply(startElement: PsiElement, endElement: PsiElement, context: AndroidQuickfixContexts.Context) {

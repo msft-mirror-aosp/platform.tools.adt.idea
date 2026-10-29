@@ -55,7 +55,7 @@ import org.jetbrains.android.facet.ResourceFolderManager
 private val logger: Logger by lazy { Logger.getInstance("DesignSurfaceHelper") }
 
 internal fun moduleContainsResource(facet: AndroidFacet, type: ResourceType, name: String): Boolean {
-  return StudioResourceRepositoryManager.getModuleResources(facet).hasResources(ResourceNamespace.TODO(), type, name)
+  return StudioResourceRepositoryManager.getModuleResources(facet).hasResources(ResourceNamespace.RES_AUTO, type, name)
 }
 
 fun copyVectorAssetToMainModuleSourceSet(project: Project, facet: AndroidFacet, asset: String) {

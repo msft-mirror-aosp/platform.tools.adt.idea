@@ -150,7 +150,7 @@ private class StringResourceRepositoryImpl(repository: LocalResourceRepository<V
       resourceDirectoryRepositoryMap
         .filter { !it.key.isGenerated }
         .flatMap { (dir, repo) ->
-          repo.getResources(ResourceNamespace.TODO(), ResourceType.STRING).values().map { item ->
+          repo.getResources(ResourceNamespace.RES_AUTO, ResourceType.STRING).values().map { item ->
             val isFromDoNotTranslate = item.source?.fileName == "donottranslate.xml"
             StringResourceKey(item.name, dir, isFromDoNotTranslate)
           }
@@ -158,12 +158,12 @@ private class StringResourceRepositoryImpl(repository: LocalResourceRepository<V
         .distinct()
     }
     val dynamicResourceKeys =
-      dynamicResourceRepository.getResourceNames(ResourceNamespace.TODO(), ResourceType.STRING).map(::StringResourceKey)
+      dynamicResourceRepository.getResourceNames(ResourceNamespace.RES_AUTO, ResourceType.STRING).map(::StringResourceKey)
     return resourceDirectoryKeys + dynamicResourceKeys
   }
 
   override fun getItems(key: StringResourceKey): List<ResourceItem> =
-    key.getRepository().getResources(ResourceNamespace.TODO(), ResourceType.STRING, key.name)
+    key.getRepository().getResources(ResourceNamespace.RES_AUTO, ResourceType.STRING, key.name)
 
   override fun getDefaultValue(key: StringResourceKey): ResourceItem? = getItems(key).find { it.configuration.localeQualifier == null }
 

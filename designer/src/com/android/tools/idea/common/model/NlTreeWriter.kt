@@ -107,7 +107,7 @@ class NlTreeWriter(
   val ids: Set<String>
     get() {
       val resources: ResourceRepository = StudioResourceRepositoryManager.getAppResources(facet)
-      var ids: Set<String> = HashSet(resources.getResources(ResourceNamespace.TODO(), ResourceType.ID).keySet())
+      var ids: Set<String> = HashSet(resources.getResources(ResourceNamespace.RES_AUTO, ResourceType.ID).keySet())
       val pendingIds = pendingIds
       if (pendingIds.isNotEmpty()) {
         val all: MutableSet<String> = HashSet(pendingIds.size + ids.size)

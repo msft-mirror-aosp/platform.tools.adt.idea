@@ -87,8 +87,6 @@ class ModuleRClass(
     private val transitivity: Transitivity,
     val _fieldModifier: AndroidLightField.FieldModifier,
   ) : ResourcesSource {
-    override fun getResourceNamespace() = StudioResourceRepositoryManager.getInstance(facet).namespace
-
     override fun getFieldModifier() = _fieldModifier
 
     override fun getPackageName() =

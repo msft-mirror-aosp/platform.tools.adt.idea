@@ -134,7 +134,7 @@ public final class AttributeDefinition implements Cloneable {
     if (parentStyleable == null || myDescriptionsInStyleableContexts == null) {
       return myGlobalDescription;
     }
-    String description = myDescriptionsInStyleableContexts.get(ResourceReference.styleable(ResourceNamespace.TODO(), parentStyleable));
+    String description = myDescriptionsInStyleableContexts.get(ResourceReference.styleable(ResourceNamespace.RES_AUTO, parentStyleable));
     if (description == null) {
       description = myDescriptionsInStyleableContexts.get(ResourceReference.styleable(ResourceNamespace.ANDROID, parentStyleable));
     }

@@ -184,7 +184,7 @@ open class AddDestinationMenu(surface: NavDesignSurface) :
       val existingIncludes = parent.children.filter { it.isInclude }.map { it.includeFile }
 
       for (navPsi in
-        resourceManager.findResourceFiles(ResourceNamespace.TODO(), ResourceFolderType.NAVIGATION).filterIsInstance<XmlFile>()) {
+        resourceManager.findResourceFiles(ResourceNamespace.RES_AUTO, ResourceFolderType.NAVIGATION).filterIsInstance<XmlFile>()) {
         if (model.file == navPsi || existingIncludes.contains(navPsi)) {
           continue
         }
@@ -483,9 +483,12 @@ open class AddDestinationMenu(surface: NavDesignSurface) :
   private fun getLayoutFilesForModule(module: Module): Map<PsiClass?, XmlFile> {
     val resourceManager = LocalResourceManager.getInstance(module) ?: return mapOf()
 
-    return resourceManager.findResourceFiles(ResourceNamespace.TODO(), ResourceFolderType.LAYOUT).filterIsInstance<XmlFile>().associateBy {
-      AndroidUtils.getContextClass(module, it)
-    }
+    return resourceManager
+      .findResourceFiles(ResourceNamespace.RES_AUTO, ResourceFolderType.LAYOUT)
+      .filterIsInstance<XmlFile>()
+      .associateBy {
+        AndroidUtils.getContextClass(module, it)
+      }
   }
 }
 

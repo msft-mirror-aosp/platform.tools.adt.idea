@@ -281,7 +281,7 @@ public class AndroidFindStyleApplicationsProcessor extends BaseRefactoringProces
     }
     StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(facet);
     ResourceRepository repository = repositoryManager.getAppResources();
-    List<ResourceItem> styles = repository.getResources(ResourceNamespace.TODO(), ResourceType.STYLE, styleName);
+    List<ResourceItem> styles = repository.getResources(ResourceNamespace.RES_AUTO, ResourceType.STYLE, styleName);
     if (styles.size() == 1) {
       resDirs.addAll(repositoryManager.getAllResourceDirs());
     }

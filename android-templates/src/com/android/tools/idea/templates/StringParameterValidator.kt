@@ -248,7 +248,7 @@ fun existsResourceFile(
     if (facet != null) {
       val virtualResDir = VfsUtil.findFileByIoFile(resDir, false) ?: return@any false
       val folderRepository = ResourceFolderRegistry.getInstance(facet.module.project).get(facet, virtualResDir)
-      val resourceItemList = folderRepository.getResources(ResourceNamespace.TODO(), resourceType, name)
+      val resourceItemList = folderRepository.getResources(ResourceNamespace.RES_AUTO, resourceType, name)
       resourceItemList.isNotEmpty()
     } else {
       existsResourceFile(resDir, resourceFolderType, name)
@@ -334,5 +334,5 @@ private fun resourceExists(paths: AndroidModulePaths, resourceType: ResourceFold
 /** Like [resourceExists] but a useful fallback if information about the current paths is not known. */
 private fun resourceExists(facet: AndroidFacet, resourceType: ResourceType, name: String): Boolean {
   val repository = StudioResourceRepositoryManager.getAppResources(facet)
-  return repository.hasResources(ResourceNamespace.TODO(), resourceType, name)
+  return repository.hasResources(ResourceNamespace.RES_AUTO, resourceType, name)
 }

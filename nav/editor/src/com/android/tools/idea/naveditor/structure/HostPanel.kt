@@ -291,7 +291,7 @@ internal fun findReferences(psi: XmlFile, module: Module): List<XmlTag> {
       continue
     }
     val attribute = element.parent as? XmlAttribute ?: continue
-    if (attribute.localName != ATTR_NAV_GRAPH || attribute.namespace != ResourceNamespace.TODO().xmlNamespaceUri) {
+    if (attribute.localName != ATTR_NAV_GRAPH || attribute.namespace != ResourceNamespace.RES_AUTO.xmlNamespaceUri) {
       continue
     }
     val tag = attribute.parent

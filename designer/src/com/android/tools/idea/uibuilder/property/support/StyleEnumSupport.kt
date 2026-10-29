@@ -18,7 +18,6 @@ package com.android.tools.idea.uibuilder.property.support
 import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.rendering.api.StyleResourceValue
 import com.android.resources.ResourceUrl
-import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.uibuilder.handlers.ViewHandlerManager
 import com.android.tools.idea.uibuilder.property.NlPropertyItem
 import com.android.tools.property.panel.api.EnumSupport
@@ -65,13 +64,11 @@ open class StyleEnumSupport(val property: NlPropertyItem) : CachedEnumSupport {
 
   /** Convert the sorted list of styles into a sorted list of [EnumValue]s with group headers. */
   protected fun convertStyles(styles: List<StyleResourceValue>): List<EnumValue> {
-    val resourceManager = StudioResourceRepositoryManager.getInstance(facet)
-    val currentNamespace = resourceManager.namespace
     val namespaceResolver = property.namespaceResolver
     var prev: StyleResourceValue? = null
     val result = mutableListOf<EnumValue>()
     for (style in styles) {
-      val xmlValue = style.asReference().getRelativeResourceUrl(currentNamespace, namespaceResolver).toString()
+      val xmlValue = style.asReference().getRelativeResourceUrl(ResourceNamespace.RES_AUTO, namespaceResolver).toString()
       val value = EnumValue.indented(xmlValue, displayName(style))
       if (prev != null && style.namespace == prev.namespace && style.libraryName == prev.libraryName) {
         result.add(value)
@@ -79,7 +76,7 @@ open class StyleEnumSupport(val property: NlPropertyItem) : CachedEnumSupport {
         val header =
           when (style.namespace) {
             ResourceNamespace.ANDROID -> ANDROID_HEADER
-            ResourceNamespace.TODO() -> determineHeaderFromLibraryName(style.libraryName)
+            ResourceNamespace.RES_AUTO -> determineHeaderFromLibraryName(style.libraryName)
             else -> StringUtil.getShortName(style.namespace.packageName ?: OTHER_HEADER, '.')
           }
         result.add(EnumValue.header(header))

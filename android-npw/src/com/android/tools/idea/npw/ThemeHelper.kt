@@ -47,7 +47,8 @@ class ThemeHelper(private val module: Module) {
   fun isLocalTheme(themeName: String) = themeName.toProjectStyleResource() != null
 
   private fun String.toProjectStyleResource(): StyleResourceValue? =
-    projectRepository!!.getResources(ResourceNamespace.TODO(), ResourceType.STYLE, this).firstOrNull()?.resourceValue as StyleResourceValue?
+    projectRepository!!.getResources(ResourceNamespace.RES_AUTO, ResourceType.STYLE, this).firstOrNull()?.resourceValue
+      as StyleResourceValue?
 
   companion object {
     fun themeExists(configuration: Configuration, themeName: String): Boolean = getStyleResource(configuration, themeName) != null
@@ -55,17 +56,15 @@ class ThemeHelper(private val module: Module) {
     fun hasActionBar(configuration: Configuration, themeName: String): Boolean? {
       val theme = getStyleResource(configuration, themeName) ?: return null
       val resolver = configuration.resourceResolver
-      // TODO(namespaces): resolve themeName in the context of the right manifest file.
       val value =
-        resolver.resolveResValue(resolver.findItemInStyle(theme, ResourceReference.attr(ResourceNamespace.TODO(), "windowActionBar")))
+        resolver.resolveResValue(resolver.findItemInStyle(theme, ResourceReference.attr(ResourceNamespace.RES_AUTO, "windowActionBar")))
       return (value == null || value.value == null) || SdkConstants.VALUE_TRUE == value.value
     }
 
     private fun getStyleResource(configuration: Configuration, themeName: String): StyleResourceValue? {
       configuration.setTheme(themeName)
       val url = ResourceUrl.parse(themeName) ?: return null
-      // TODO(namespaces): resolve themeName in the context of the right manifest file.
-      val reference = url.resolve(ResourceNamespace.TODO(), Resolver.EMPTY_RESOLVER) ?: return null
+      val reference = url.resolve(ResourceNamespace.RES_AUTO, Resolver.EMPTY_RESOLVER) ?: return null
       return configuration.resourceResolver.getStyle(reference)
     }
   }

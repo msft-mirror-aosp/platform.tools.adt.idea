@@ -19,6 +19,7 @@ import static com.android.tools.idea.npw.assetstudio.AssetStudioUtils.DEFAULT_AS
 import static com.android.tools.idea.npw.assetstudio.ui.SliderUtils.bindTwoWay;
 import static com.android.tools.idea.npw.assetstudio.ui.SliderUtils.inRange;
 
+import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.resources.ResourceItem;
 import com.android.ide.common.resources.ResourceRepository;
@@ -380,7 +381,7 @@ public class ConfigureTvBannerPanel extends JPanel implements Disposable, Config
     ApplicationManager.getApplication().executeOnPooledThread(() -> {
       StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(myFacet);
       ResourceRepository projectResources = repositoryManager.getProjectResources();
-      List<ResourceItem> items = projectResources.getResources(repositoryManager.getNamespace(), ResourceType.STRING, "app_name");
+      List<ResourceItem> items = projectResources.getResources(ResourceNamespace.RES_AUTO, ResourceType.STRING, "app_name");
       ResourceValue resourceValue = !items.isEmpty() ? items.get(0).getResourceValue() : null;
       String defaultIconText = resourceValue == null || resourceValue.getValue() == null ? "Application Name" : resourceValue.getValue();
       UIUtil.invokeLaterIfNeeded(() -> {

@@ -36,7 +36,7 @@ class AnimationInspectorBuilder(private val editorProvider: EditorProvider<NlPro
     val titleModel = inspector.addExpandableTitle("Animations")
 
     for (propertyName in arrayOf(ATTR_ENTER_ANIM, ATTR_EXIT_ANIM, ATTR_POP_ENTER_ANIM, ATTR_POP_EXIT_ANIM)) {
-      val property = properties.getOrNull(ResourceNamespace.TODO().xmlNamespaceUri, propertyName) ?: continue
+      val property = properties.getOrNull(ResourceNamespace.RES_AUTO.xmlNamespaceUri, propertyName) ?: continue
       inspector.addEditor(editorProvider.createEditor(property), titleModel)
     }
   }

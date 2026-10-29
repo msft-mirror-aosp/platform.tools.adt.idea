@@ -83,7 +83,7 @@ public class ActionBarHandler extends ActionBarCallback {
     return myRenderTask.getContext().getFolderType() == ResourceFolderType.MENU;
   }
 
-  private void updateMenusInBackground(@NotNull Project project, @NotNull String fqn, @NotNull ResourceNamespace namespace) {
+  private void updateMenusInBackground(@NotNull Project project, @NotNull String fqn) {
     Callable<Collection<ResourceReference>> calculateMenus = () -> {
       // Glance at the onCreateOptionsMenu of the associated context and use any menus found there.
       // This is just a simple textual search; we need to replace this with a proper model lookup.
@@ -104,7 +104,7 @@ public class ActionBarHandler extends ActionBarCallback {
           while (true) {
             if (matcher.find(index)) {
               String name = matcher.group(1);
-              menus.add(new ResourceReference(namespace, ResourceType.MENU, name));
+              menus.add(new ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.MENU, name));
               index = matcher.end();
             }
             else {
@@ -143,18 +143,17 @@ public class ActionBarHandler extends ActionBarCallback {
       if (renderModule.isDisposed()) {
         return Collections.emptyList();
       }
-      ResourceNamespace namespace = renderModule.getResourceRepositoryManager().getNamespace();
       RenderXmlFile xmlFile = myRenderTask.getXmlFile();
       String commaSeparatedMenus = xmlFile == null ? null : xmlFile.getRootTagAttribute(ATTR_MENU, TOOLS_URI);
       if (commaSeparatedMenus != null) {
         List<String> names = Splitter.on(',').trimResults().omitEmptyStrings().splitToList(commaSeparatedMenus);
         myMenus = names.stream()
-          .map(name -> new ResourceReference(namespace, ResourceType.MENU, name))
+          .map(name -> new ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.MENU, name))
           .collect(ImmutableList.toImmutableList());
       } else {
         String fqn = xmlFile == null ? null : AndroidXmlFiles.getDeclaredContextFqcn(myRenderTask.getContext().getModule().getResourcePackage(), xmlFile);
         if (fqn != null) {
-          updateMenusInBackground(xmlFile.getProject(), fqn, namespace);
+          updateMenusInBackground(xmlFile.getProject(), fqn);
         }
        }
 

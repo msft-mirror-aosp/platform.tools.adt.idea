@@ -55,7 +55,7 @@ class ResourceRepositoryInnerRClass(
     // Bail if this is a scenario we don't fully support.
     if (scenarioUnsupported(name)) return super.findFieldByName(name, checkBases)
 
-    if (!resourcesSource.resourceRepository.hasResources(resourcesSource.resourceNamespace, resourceType, name)) return null
+    if (!resourcesSource.resourceRepository.hasResources(ResourceNamespace.RES_AUTO, resourceType, name)) return null
 
     return ResourceLightField(
       name,
@@ -91,7 +91,7 @@ class ResourceRepositoryInnerRClass(
       with(resourcesSource) {
         buildResourceFields(
           resourceRepository,
-          resourceNamespace,
+          ResourceNamespace.RES_AUTO,
           fieldModifier,
           resourceType,
           context,

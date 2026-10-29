@@ -215,7 +215,7 @@ class NlPropertiesProviderTest {
     val model = NlPropertiesModel(projectRule.testRootDisposable, facet)
     val components = createComponents(component(IMAGE_VIEW).viewObjectClassName(APPCOMPAT_IMAGE_VIEW))
     val properties = provider.getProperties(model, null, components)
-    assertThat(properties[ResourceNamespace.TODO().xmlNamespaceUri, ATTR_SRC_COMPAT].componentName).isEqualTo(APPCOMPAT_IMAGE_VIEW)
+    assertThat(properties[ResourceNamespace.RES_AUTO.xmlNamespaceUri, ATTR_SRC_COMPAT].componentName).isEqualTo(APPCOMPAT_IMAGE_VIEW)
     assertThat(properties[ANDROID_URI, ATTR_SCALE_TYPE].componentName).isEqualTo(FQCN_IMAGE_VIEW)
     assertThat(properties[ANDROID_URI, ATTR_VISIBILITY].componentName).isEqualTo(CLASS_VIEW)
   }

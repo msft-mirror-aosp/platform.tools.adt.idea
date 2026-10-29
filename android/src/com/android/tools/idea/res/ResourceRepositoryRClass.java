@@ -37,7 +37,7 @@ public abstract class ResourceRepositoryRClass extends AndroidRClassBase {
   private static final Logger LOG = Logger.getInstance(ResourceRepositoryRClass.class);
 
   /**
-   * Determines the package name, where the resources should come from and which namespace is used to find them in the repository.
+   * Determines the package name and where the resources should come from.
    */
   public interface ResourcesSource {
     @Nullable String getPackageName();
@@ -46,7 +46,6 @@ public abstract class ResourceRepositoryRClass extends AndroidRClassBase {
     StudioResourceRepositoryManager getResourceRepositoryManager();
     @NotNull
     CacheableResourceRepository getResourceRepository();
-    @NotNull ResourceNamespace getResourceNamespace();
     @NotNull AndroidLightField.FieldModifier getFieldModifier();
   }
 
@@ -74,7 +73,7 @@ public abstract class ResourceRepositoryRClass extends AndroidRClassBase {
     }
     ResourceType[] types;
     if (mySource.getTransitivity() == Transitivity.TRANSITIVE) {
-      types = mySource.getResourceRepository().getResourceTypes(mySource.getResourceNamespace()).toArray(new ResourceType[0]);
+      types = mySource.getResourceRepository().getResourceTypes(ResourceNamespace.RES_AUTO).toArray(new ResourceType[0]);
     } else {
       // For Non-Transitive Classes we want to show every resource type for ModuleRClasses, so that we can recommend resource fields from
       // other R classes.

@@ -891,7 +891,7 @@ class LayoutlibCallbackImpl extends LayoutlibCallbackEx {
     if (myActionBarHandler != null) {
       ResourceReference menuResource =
         new ResourceReference(
-          myRenderModule.getResourceRepositoryManager().getNamespace(),
+          ResourceNamespace.RES_AUTO,
           ResourceType.MENU,
           SdkUtils.fileNameToResourceName(resourceName));
       myActionBarHandler.setMenuIds(Collections.singletonList(menuResource));

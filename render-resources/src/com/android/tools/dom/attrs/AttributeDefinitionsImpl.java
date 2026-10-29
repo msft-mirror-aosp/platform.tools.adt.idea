@@ -374,7 +374,7 @@ public final class AttributeDefinitionsImpl implements AttributeDefinitions {
   @Override
   @Nullable
   public StyleableDefinition getStyleableByName(@NotNull String name) {
-    StyleableDefinition styleable = getStyleableDefinition(ResourceReference.styleable(ResourceNamespace.TODO(), name));
+    StyleableDefinition styleable = getStyleableDefinition(ResourceReference.styleable(ResourceNamespace.RES_AUTO, name));
     if (styleable == null) {
       styleable = getStyleableDefinition(ResourceReference.styleable(ResourceNamespace.ANDROID, name));
     }
@@ -411,7 +411,7 @@ public final class AttributeDefinitionsImpl implements AttributeDefinitions {
     }
     else {
       // This object represents all attributes.
-      attr = ResourceReference.attr(ResourceNamespace.TODO(), name);
+      attr = ResourceReference.attr(ResourceNamespace.RES_AUTO, name);
     }
     return getAttrDefinition(attr);
   }

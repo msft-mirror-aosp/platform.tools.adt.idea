@@ -54,7 +54,7 @@ class ActionInspectorBuilder(private val editorProvider: EditorProvider<NlProper
     val titleModel = inspector.addExpandableTitle(title)
 
     for (propertyName in propertyNames) {
-      val property = properties.getOrNull(ResourceNamespace.TODO().xmlNamespaceUri, propertyName) ?: continue
+      val property = properties.getOrNull(ResourceNamespace.RES_AUTO.xmlNamespaceUri, propertyName) ?: continue
       inspector.addEditor(editorProvider.createEditor(property), titleModel)
     }
   }

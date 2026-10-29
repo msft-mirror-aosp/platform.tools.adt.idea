@@ -62,7 +62,7 @@ private constructor(
 
     /** Returns a set of strings representing the names of resources already present in the given [ResourceRepository]. */
     private fun getExistingNames(existing: ResourceRepository?, type: ResourceType): Set<String> =
-      existing?.getResources(ResourceNamespace.TODO(), type)?.keySet() ?: emptySet()
+      existing?.getResources(ResourceNamespace.RES_AUTO, type)?.keySet() ?: emptySet()
 
     /**
      * Creates an [IdeResourceNameValidator] that checks if the input is a valid filename in a given folder type. Note that there are no

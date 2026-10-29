@@ -78,7 +78,7 @@ class IdEnumSupportTest {
   fun testConstraintLayoutAttribute() {
     val util = SupportTestUtil(projectRule, TEXT_VIEW, BUTTON, TEXT_VIEW, BUTTON, parentTag = CONSTRAINT_LAYOUT.newName())
     val textView = util.findSiblingById("textview1")!!
-    val definition = AttributeDefinition(ResourceNamespace.TODO(), SdkConstants.ATTR_LAYOUT_START_TO_END_OF)
+    val definition = AttributeDefinition(ResourceNamespace.RES_AUTO, SdkConstants.ATTR_LAYOUT_START_TO_END_OF)
     val property =
       NlPropertyItem(
         AUTO_URI,

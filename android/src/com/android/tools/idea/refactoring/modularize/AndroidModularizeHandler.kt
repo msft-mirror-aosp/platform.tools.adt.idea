@@ -320,7 +320,7 @@ class AndroidModularizeHandler : RefactoringActionHandler {
       private fun processPotentialReference(text: String) {
         val url = ResourceUrl.parse(text) ?: return
         if (!url.isFramework && !url.isCreate && url.type != ResourceType.ID) {
-          val matches: List<ResourceItem> = myResourceRepository.getResources(ResourceNamespace.TODO(), url.type, url.name)
+          val matches: List<ResourceItem> = myResourceRepository.getResources(ResourceNamespace.RES_AUTO, url.type, url.name)
           for (match in matches) {
             getResourceDefinition(match)?.let { target ->
               if (resourceReferences.add(match)) {
@@ -388,7 +388,7 @@ class AndroidModularizeHandler : RefactoringActionHandler {
                   reference.text
                 }
 
-              val matches = myResourceRepository.getResources(ResourceNamespace.TODO(), type, name)
+              val matches = myResourceRepository.getResources(ResourceNamespace.RES_AUTO, type, name)
               for (match in matches) {
                 getResourceDefinition(match)?.let { target ->
                   if (resourceReferences.add(match)) {

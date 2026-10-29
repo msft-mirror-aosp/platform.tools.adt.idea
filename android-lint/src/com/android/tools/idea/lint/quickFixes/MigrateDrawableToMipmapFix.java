@@ -82,7 +82,7 @@ public class MigrateDrawableToMipmapFix extends DefaultLintQuickFix {
 
     GlobalSearchScope useScope = GlobalSearchScope.projectScope(project);
     ResourceRepository projectResources = StudioResourceRepositoryManager.getProjectResources(facet);
-    List<ResourceItem> resourceItems = projectResources.getResources(ResourceNamespace.TODO(), myUrl.type, myUrl.name);
+    List<ResourceItem> resourceItems = projectResources.getResources(ResourceNamespace.RES_AUTO, myUrl.type, myUrl.name);
     for (ResourceItem item : resourceItems) {
       PsiFile file = IdeResourcesUtil.getItemPsiFile(project, item);
       if (file == null) {

@@ -383,7 +383,7 @@ public class RtlSupportProcessor extends BaseRefactoringProcessor {
         }
         else {
           LocalResourceManager resourceManager = ModuleResourceManagers.getInstance(facet).getLocalResourceManager();
-          resourceManager.findResourceFiles(ResourceNamespace.TODO(), ResourceFolderType.LAYOUT, null, true, false)
+          resourceManager.findResourceFiles(ResourceNamespace.RES_AUTO, ResourceFolderType.LAYOUT, null, true, false)
             .forEach(psiFile -> list.addAll(getLayoutRefactoringForFile(psiFile, false /* do not create the v17 version */, minSdk)));
         }
       }

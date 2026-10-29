@@ -1368,7 +1368,7 @@ public class RenderTask {
     if (actionBarHandler != null) {
       ResourceReference menuResource =
         new ResourceReference(
-          myContext.getModule().getResourceRepositoryManager().getNamespace(),
+          ResourceNamespace.RES_AUTO,
           ResourceType.MENU,
           SdkUtils.fileNameToResourceName(resourceName));
       actionBarHandler.setMenuIds(Collections.singletonList(menuResource));

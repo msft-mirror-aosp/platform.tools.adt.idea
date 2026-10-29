@@ -155,7 +155,7 @@ public class UsageTrackerUtil {
       return new NamespaceAndLibraryNamePair(AndroidAttribute.AttributeNamespace.APPLICATION);
     }
     AttributeDefinition definition =
-        localAttributeDefinitions.getAttrDefinition(ResourceReference.attr(ResourceNamespace.TODO(), attributeName));
+        localAttributeDefinitions.getAttrDefinition(ResourceReference.attr(ResourceNamespace.RES_AUTO, attributeName));
     if (definition == null) {
       return new NamespaceAndLibraryNamePair(AndroidAttribute.AttributeNamespace.APPLICATION);
     }

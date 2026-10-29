@@ -91,7 +91,7 @@ class NavActionManagerTest : NavTestCase() {
 
   fun testAddElement() {
     val resourceFiles =
-      LocalResourceManager.getInstance(myFacet.module)!!.findResourceFiles(ResourceNamespace.TODO(), ResourceFolderType.LAYOUT)
+      LocalResourceManager.getInstance(myFacet.module)!!.findResourceFiles(ResourceNamespace.RES_AUTO, ResourceFolderType.LAYOUT)
     val layout = resourceFiles.stream().filter { file -> file.name == "activity_main.xml" }.findFirst().get() as XmlFile
     WriteCommandAction.runWriteCommandAction(project) {
       val destinationClass =

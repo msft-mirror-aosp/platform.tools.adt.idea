@@ -51,14 +51,12 @@ private const val DISPLAY4 = "Display4"
 class TextAppearanceEnumSupport(property: NlPropertyItem) : StyleEnumSupport(property) {
 
   companion object {
-    // TODO: Replace with namespace for the appcompat styles
-    private val appcompatNamespace = ResourceNamespace.TODO()
     private val accepted = setOf(SMALL, MEDIUM, LARGE, BODY1, BODY2, DISPLAY1, DISPLAY2, DISPLAY3, DISPLAY4)
   }
 
   override fun generate(): List<EnumValue> {
     val base = findBaseStyle(ResourceNamespace.ANDROID, TEXT_APPEARANCE) ?: return emptyList()
-    val appcompat = findBaseStyle(appcompatNamespace, TEXT_APPEARANCE_APPCOMPAT)
+    val appcompat = findBaseStyle(ResourceNamespace.RES_AUTO, TEXT_APPEARANCE_APPCOMPAT)
     val includeMaterialStyles = appcompat == null
     val filter = { style: StyleResourceValue -> styleFilter(style, includeMaterialStyles) }
     val sortOrder = { style: StyleResourceValue -> displayName(style) }
@@ -69,7 +67,7 @@ class TextAppearanceEnumSupport(property: NlPropertyItem) : StyleEnumSupport(pro
   private fun styleFilter(style: StyleResourceValue, includeMaterialStyles: Boolean): Boolean {
     if (style.isUserDefined) return true
     if (includeMaterialStyles && style.namespace != ResourceNamespace.ANDROID) return false
-    if (!includeMaterialStyles && style.namespace != ResourceNamespace.TODO()) return false
+    if (!includeMaterialStyles && style.namespace != ResourceNamespace.RES_AUTO) return false
 
     val base = if (includeMaterialStyles) MATERIAL_DOT else APPCOMPAT_DOT
     if (!style.name.startsWith(base)) return false

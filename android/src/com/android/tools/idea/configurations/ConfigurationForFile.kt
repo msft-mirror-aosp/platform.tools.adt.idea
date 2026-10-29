@@ -67,7 +67,7 @@ class ConfigurationForFile(val file: VirtualFile, manager: ConfigurationManager,
           // We get instead all the available folders and check that there is one compatible.
           val resourceManager = LocalResourceManager.getInstance(module)
           if (resourceManager != null) {
-            for (resourceFile in resourceManager.findResourceFiles(ResourceNamespace.TODO(), ResourceFolderType.VALUES)) {
+            for (resourceFile in resourceManager.findResourceFiles(ResourceNamespace.RES_AUTO, ResourceFolderType.VALUES)) {
               if (file != resourceFile.virtualFile) continue
               val parent = AndroidPsiUtils.getPsiDirectorySafely(resourceFile)
               if (parent != null) {
@@ -83,7 +83,7 @@ class ConfigurationForFile(val file: VirtualFile, manager: ConfigurationManager,
           if (types.isNotEmpty()) {
             val type = types[0]
             val resources: ResourceRepository = repositoryManager.appResources
-            val matches = ConfigurationMatcher.getMatchingFiles(resources, file, ResourceNamespace.TODO(), type, currentConfig)
+            val matches = ConfigurationMatcher.getMatchingFiles(resources, file, ResourceNamespace.RES_AUTO, type, currentConfig)
             if (matches.contains(file)) {
               return device
             }

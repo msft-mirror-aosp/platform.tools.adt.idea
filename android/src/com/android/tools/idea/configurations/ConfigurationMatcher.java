@@ -89,7 +89,6 @@ public class ConfigurationMatcher {
   @NotNull private final ConfigurationForFile myConfiguration;
   @NotNull private final ConfigurationManager myManager;
   @Nullable private final ResourceRepository myResources;
-  @Nullable private final ResourceNamespace myNamespace;
   @Nullable private final VirtualFile myFile;
 
   public ConfigurationMatcher(@NotNull ConfigurationForFile configuration, @Nullable VirtualFile file) {
@@ -98,14 +97,7 @@ public class ConfigurationMatcher {
 
     myManager = myConfiguration.getSettings();
     ResourceRepositoryManager repositoryManager = myManager.getConfigModule().getResourceRepositoryManager();
-    if (repositoryManager == null) {
-      myResources = null;
-      myNamespace = null;
-    }
-    else {
-      myResources = repositoryManager.getAppResources();
-      myNamespace = repositoryManager.getNamespace();
-    }
+    myResources = repositoryManager == null ? null : repositoryManager.getAppResources();
   }
 
   // ---- Finding matching configurations ----
@@ -167,8 +159,8 @@ public class ConfigurationMatcher {
    * @return true if the current edited file is the best match in the project for the given config.
    */
   public boolean isCurrentFileBestMatchFor(@NotNull FolderConfiguration config) {
-    if (myResources != null && myNamespace != null && myFile != null) {
-      ResourceReference reference = new ResourceReference(myNamespace, getResourceType(myFile),
+    if (myResources != null && myFile != null) {
+      ResourceReference reference = new ResourceReference(ResourceNamespace.RES_AUTO, getResourceType(myFile),
                                                           SdkUtils.fileNameToResourceName(myFile.getName()));
       List<VirtualFile> files = getMatchingFiles(myResources, reference, config, new HashSet<>(), true, 0);
       VirtualFile match = files.isEmpty() ? null : files.get(0);
@@ -208,12 +200,12 @@ public class ConfigurationMatcher {
    */
   @NotNull
   public List<VirtualFile> getBestFileMatches() {
-    if (myResources != null && myNamespace != null && myFile != null) {
+    if (myResources != null && myFile != null) {
       FolderConfiguration config = myConfiguration.getFullConfig();
       VersionQualifier prevQualifier = config.getVersionQualifier();
       try {
         config.setVersionQualifier(null);
-        return getMatchingFiles(myResources, myFile, myNamespace, getResourceType(myFile), config);
+        return getMatchingFiles(myResources, myFile, ResourceNamespace.RES_AUTO, getResourceType(myFile), config);
       }
       finally {
         config.setVersionQualifier(prevQualifier);
@@ -711,7 +703,7 @@ public class ConfigurationMatcher {
             List<ResourceType> types = FolderTypeRelationship.getRelatedResourceTypes(folderType);
             if (!types.isEmpty()) {
               ResourceType type = types.get(0);
-              List<VirtualFile> matches = getMatchingFiles(resources, file, repositoryManager.getNamespace(), type, currentConfig);
+              List<VirtualFile> matches = getMatchingFiles(resources, file, ResourceNamespace.RES_AUTO, type, currentConfig);
               if (!matches.contains(file) && !matches.isEmpty()) {
                 return matches.get(0);
               }

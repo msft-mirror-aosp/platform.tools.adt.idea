@@ -402,12 +402,10 @@ fun isDirectlyInPackage(qualifiedName: String, packagePrefix: String): Boolean {
  * @param project the current project
  * @return the corresponding [Color] color, or null
  */
-// TODO(namespaces): require more information here as context for namespaced lookup
 fun RenderResources.resolveColor(colorValue: ResourceValue?, project: Project): Color? {
   return resolveColor(colorValue, project, 0)
 }
 
-// TODO(namespaces): require more information here as context for namespaced lookup
 private fun RenderResources.resolveColor(colorValue: ResourceValue?, project: Project, depth: Int): Color? {
   if (depth >= MAX_RESOURCE_INDIRECTION) {
     LOG.warn("too deep $colorValue")
@@ -478,7 +476,6 @@ private fun RenderResources.resolveAsDrawable(value: ResourceValue?, facet: Andr
 }
 
 /** Tries to resolve colors from given resource value. When state list is encountered all possibilities are explored. */
-// TODO(namespaces): require more information here as context for namespaced lookup
 private fun RenderResources.resolveMultipleColors(value: ResourceValue?, project: Project, depth: Int): List<Color> {
   if (depth >= MAX_RESOURCE_INDIRECTION) {
     LOG.warn("too deep $value")
@@ -520,7 +517,6 @@ private fun RenderResources.resolveMultipleColors(value: ResourceValue?, project
   return result
 }
 
-// TODO(namespaces): require more information here as context for namespaced lookup
 fun RenderResources.resolveStringValue(value: String): String {
   val resValue = findResValue(value, false) ?: return value
   return resolveNullableResValue(resValue)?.value ?: value
@@ -579,13 +575,11 @@ val PsiElement.resourceNamespace: ResourceNamespace?
       getUserData(ModuleUtilCore.KEY_MODULE) != null ||
         (vFile != null && (projectFileIndex.isInSource(vFile) || projectFileIndex.getModuleForFile(vFile) != null))
     ) {
-      AndroidFacet.getInstance(this)?.let { StudioResourceRepositoryManager.getInstance(it) }?.namespace
+      if (AndroidFacet.getInstance(this) != null) ResourceNamespace.RES_AUTO else null
     } else {
       vFile?.let { file ->
         when {
           projectFileIndex.findContainingSdks(file).isNotEmpty() -> ResourceNamespace.ANDROID
-          // TODO(b/110082720): Handle sources for namespaced libraries and return the correct
-          // namespace here.
           projectFileIndex.isInLibrary(file) -> ResourceNamespace.RES_AUTO
           else -> null
         }
@@ -630,7 +624,6 @@ private fun RenderResources.makeColorWithAlpha(color: Color, alphaValue: String?
 /** Returns a [StateList] description of the state list value, or null if value is not a state list. */
 fun RenderResources.resolveStateList(value: ResourceValue, project: Project): StateList? = resolveStateList(value, project, 0)
 
-// TODO(namespaces): require more information here as context for namespaced lookup
 private fun RenderResources.resolveStateList(resourceValue: ResourceValue, project: Project, depth: Int): StateList? {
   if (depth >= MAX_RESOURCE_INDIRECTION) {
     LOG.warn("too deep $resourceValue")
@@ -726,7 +719,6 @@ fun RenderResources.resolveDrawable(drawable: ResourceValue?, project: Project):
  * @param layout the layout to resolve
  * @return the corresponding [PathString], or null
  */
-// TODO(namespaces): require more information here as context for namespaced lookup
 fun RenderResources.resolveLayout(layout: ResourceValue?): VirtualFile? {
   var resolvedLayout = resolveNullableResValue(layout) ?: return null
   var value = resolvedLayout.value
@@ -961,8 +953,8 @@ fun isAccessible(namespace: ResourceNamespace, type: ResourceType, name: String,
   // For some unclear reason nonexistent resources in the application workspace are treated
   // differently from the framework ones.
   // This non-intuitive behavior is required for the DerivedStyleFinderTest to pass.
-  val resource = repository?.getResources(namespace, type, name)?.firstOrNull() ?: return namespace == repositoryManager.namespace
-  if (namespace == repositoryManager.namespace && resource.libraryName == null) {
+  val resource = repository?.getResources(namespace, type, name)?.firstOrNull() ?: return namespace == ResourceNamespace.RES_AUTO
+  if (namespace == ResourceNamespace.RES_AUTO && resource.libraryName == null) {
     return true // Project resource.
   }
   if (resource is ResourceItemWithVisibility) {
@@ -1593,7 +1585,7 @@ private fun addValueResource(
   writeCommandAction(project, *psiFiles.toTypedArray()).withName("Add Resource").run<RuntimeException> {
     for (resources in resourcesElements) {
       if (resourceType == ResourceType.ATTR) {
-        resources!!.addAttr().name.setValue(ResourceReference.attr(ResourceNamespace.TODO(), resourceName))
+        resources!!.addAttr().name.setValue(ResourceReference.attr(ResourceNamespace.RES_AUTO, resourceName))
       } else {
         val element = addValueResource(resourceType, resources!!, resourceValue)
         element.name.value = resourceName
