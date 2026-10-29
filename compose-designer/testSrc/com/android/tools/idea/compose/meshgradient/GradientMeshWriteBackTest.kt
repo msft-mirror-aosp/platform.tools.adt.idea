@@ -603,6 +603,42 @@ class GradientMeshWriteBackTest {
     assertTrue(text, text.contains("import androidx.compose.ui.graphics.Color\n"))
   }
 
+  @Test
+  fun inPlaceVertexEditWithInlineCommentFailsRatherThanDeletingComment() {
+    val file =
+      addFile(
+        """
+        val painter = MeshGradientPainter(rows = 1, columns = 1) {
+            setVertex(0, 0, Offset(0f /* left */, 0f), Color(0xFFFF0000 /* red */), rightControlPoint = Offset(0.25f /* handle */, 0f))
+            setVertex(0, 1, Offset(1f, 0f), Color.Blue)
+            setVertex(1, 0, Offset(0f, 1f), Color.Green)
+            setVertex(1, 1, Offset(1f, 1f), Color.Yellow)
+        }
+        """
+      )
+    val originalText = file.currentText()
+    val commentsError = GradientWriteResult.Failed(message("gradient.editor.error.comments"))
+
+    assertEquals(
+      commentsError,
+      writeMesh(file) { points ->
+        MeshValues(points.updated(0, 0) { it.copy(position = Offset(0.1f, 0.1f), positionExpression = null) }, false)
+      },
+    )
+    assertEquals(commentsError, edit(file) { updateVertexColor(0, 0, Color(0xFF123456)) })
+    assertEquals(
+      commentsError,
+      writeMesh(file) { points -> MeshValues(points.updated(0, 0) { it.copy(rightBezierOffset = Offset(0.5f, 0f)) }, false) },
+    )
+    assertEquals(originalText, file.currentText())
+
+    assertEquals(GradientWriteResult.Written, edit(file) { updateVertexColor(0, 1, Color(0xFF123456)) })
+    assertEquals(
+      originalText.replace("setVertex(0, 1, Offset(1f, 0f), Color.Blue)", "setVertex(0, 1, Offset(1f, 0f), Color(0xFF123456))"),
+      file.currentText(),
+    )
+  }
+
   private fun List<List<MeshGradientPoint>>.updated(row: Int, col: Int, transform: (MeshGradientPoint) -> MeshGradientPoint) =
     mapIndexed { r, points ->
       points.mapIndexed { c, point -> if (r == row && c == col) transform(point) else point }

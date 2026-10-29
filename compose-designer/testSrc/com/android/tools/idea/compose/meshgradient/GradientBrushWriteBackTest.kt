@@ -230,6 +230,88 @@ class GradientBrushWriteBackTest {
   }
 
   @Test
+  fun inPlaceArgumentEditWithInlineCommentFailsRatherThanDeletingComment() {
+    val file =
+      addFile("Brush.linearGradient(colors = listOf(Color.Red, Color.Blue), start = Offset(0f, 0f /* start */), end = Offset(10f, 10f))")
+
+    assertEditFails(file, "linearGradient", message("gradient.editor.error.comments")) { start = Offset(1f, 1f) }
+  }
+
+  @Test
+  fun inPlaceColorEditWithInlineCommentFailsRatherThanDeletingComment() {
+    val file = addFile("Brush.linearGradient(colors = listOf(Color(0xFFFF0000 /* red */), Color.Blue))")
+
+    assertEditFails(file, "linearGradient", message("gradient.editor.error.comments")) { updateStopColor(stops[0].id, Color.Green) }
+
+    assertEquals(GradientWriteResult.Written, edit(file, "linearGradient") { updateStopColor(stops[1].id, Color.Green) })
+    assertEquals("Brush.linearGradient(colors = listOf(Color(0xFFFF0000 /* red */), Color(0xFF00FF00)))", file.brushText())
+  }
+
+  @Test
+  fun inPlaceStopEditWithInlineCommentFailsRatherThanDeletingComment() {
+    val file = addFile("Brush.linearGradient(0f to Color(0xFFFF0000 /* red */), 1f to Color.Blue)")
+
+    assertEditFails(file, "linearGradient", message("gradient.editor.error.comments")) { updateStopColor(stops[0].id, Color.Green) }
+
+    assertEquals(GradientWriteResult.Written, edit(file, "linearGradient") { updateStopFraction(stops[0].id, 0.25f) })
+    assertEquals("Brush.linearGradient(0.25f to Color(0xFFFF0000 /* red */), 1f to Color.Blue)", file.brushText())
+  }
+
+  @Test
+  fun argumentEditWithVariableReferenceFailsWhileUnchangedReferenceIsKept() {
+    val file =
+      projectRule.fixture.addFileToProject(
+        "src/test/Brushes.kt",
+        """
+        package test
+
+        $DEFAULT_IMPORTS
+
+        val myStart = Offset(0f, 0f)
+        val brush = Brush.linearGradient(0f to Color.Red, 1f to Color.Blue, start = myStart, end = Offset(10f, 10f))
+        """
+          .trimIndent(),
+      ) as KtFile
+
+    withGradientEditorDialog(project, file.findCall("linearGradient")) { dialog ->
+      assertFalse(dialog.state.hasDynamicOrUnresolvedValues)
+    }
+
+    assertEditFails(file, "linearGradient", message("gradient.editor.error.argument.unresolved", ARG_START)) { start = Offset(1f, 1f) }
+
+    assertEditFails(file, "linearGradient", message("gradient.editor.error.argument.unresolved", ARG_START)) {
+      start = Offset(1f, 1f)
+      addColorStop(Color.Green)
+    }
+
+    assertEquals(GradientWriteResult.Written, edit(file, "linearGradient") { addColorStop(Color.Green) })
+    assertEquals(
+      "Brush.linearGradient(0f to Color.Red, 0.5f to Color(0xFF00FF00), 1f to Color.Blue, start = myStart, end = Offset(10f, 10f))",
+      file.brushText(),
+    )
+  }
+
+  @Test
+  fun directlyImportedTileModeCanBeEdited() {
+    val file =
+      addFile(
+        "Brush.linearGradient(colors = listOf(Color.Red, Color.Blue), tileMode = Mirror)",
+        imports =
+          """
+          import androidx.compose.ui.graphics.Brush
+          import androidx.compose.ui.graphics.Color
+          import androidx.compose.ui.graphics.TileMode.Mirror
+          """
+            .trimIndent(),
+      )
+
+    val result = edit(file, "linearGradient") { tileMode = TileMode.Repeated }
+
+    assertEquals(GradientWriteResult.Written, result)
+    assertEquals("Brush.linearGradient(colors = listOf(Color.Red, Color.Blue), tileMode = TileMode.Repeated)", file.brushText())
+  }
+
+  @Test
   fun untouchedDefaultsAreNotWritten() {
     val file = addFile("Brush.radialGradient(colors = listOf(Color.Red, Color.Blue))")
 

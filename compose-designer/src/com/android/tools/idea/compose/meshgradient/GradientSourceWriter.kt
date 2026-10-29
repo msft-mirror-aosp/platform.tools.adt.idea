@@ -79,6 +79,15 @@ internal class GradientSourceWriter(private val project: Project) {
 
   private fun replaceEdit(target: KtExpression, source: Source) = Edit.Replace(target, psiFactory.createExpression(source.text), source)
 
+  /**
+   * Plans replacing [target] with [source], or returns [commentsLost] if [target] contains comments (which would be lost by replacing it).
+   */
+  private fun MutableList<Edit>.replaceIfNoComments(target: KtExpression, source: Source): GradientWriteResult.Failed? {
+    if (!areCommentsKept(target, emptyList())) return commentsLost()
+    add(replaceEdit(target, source))
+    return null
+  }
+
   private fun addArgumentEdit(argumentList: KtValueArgumentList, source: Source) =
     Edit.AddArgument(argumentList, psiFactory.createArgument(source.text), source)
 
@@ -183,11 +192,15 @@ internal class GradientSourceWriter(private val project: Project) {
           for ((movedVertex, movedCall) in calls) {
             if (movedVertex.row != r) {
               val rowExpr = movedCall.findValueArgument(ARG_ROW, INDEX_ROW)?.getArgumentExpression() ?: return stale()
-              structuralEdits.add(replaceEdit(rowExpr, Source.generated(r.toString())))
+              structuralEdits.replaceIfNoComments(rowExpr, Source.generated(r.toString()))?.let {
+                return it
+              }
             }
             if (movedVertex.col != c) {
               val colExpr = movedCall.findValueArgument(ARG_COLUMN, INDEX_COLUMN)?.getArgumentExpression() ?: return stale()
-              structuralEdits.add(replaceEdit(colExpr, Source.generated(c.toString())))
+              structuralEdits.replaceIfNoComments(colExpr, Source.generated(c.toString()))?.let {
+                return it
+              }
             }
           }
         }
@@ -211,18 +224,24 @@ internal class GradientSourceWriter(private val project: Project) {
     // The size arguments are only replaced when they change, so that expressions such as `rows = N - 1` are kept.
     if (targetRows != initialRows) {
       val rowsExpr = call.findValueArgument(ARG_ROWS, 0)?.getArgumentExpression() ?: return stale()
-      edits.add(replaceEdit(rowsExpr, Source.generated((targetRows - 1).toString())))
+      edits.replaceIfNoComments(rowsExpr, Source.generated((targetRows - 1).toString()))?.let {
+        return it
+      }
     }
     if (targetCols != initialCols) {
       val colsExpr = call.findValueArgument(ARG_COLUMNS, 1)?.getArgumentExpression() ?: return stale()
-      edits.add(replaceEdit(colsExpr, Source.generated((targetCols - 1).toString())))
+      edits.replaceIfNoComments(colsExpr, Source.generated((targetCols - 1).toString()))?.let {
+        return it
+      }
     }
     if (target.hasBicubicColor != initial.hasBicubicColor) {
       if (!mesh.isBicubicColorParsed) return unresolved(ARG_HAS_BICUBIC_COLOR)
       val bicubicExpr = call.findValueArgument(ARG_HAS_BICUBIC_COLOR, 2)?.getArgumentExpression()
       val value = Source.generated(target.hasBicubicColor.toString())
       if (bicubicExpr != null) {
-        edits.add(replaceEdit(bicubicExpr, value))
+        edits.replaceIfNoComments(bicubicExpr, value)?.let {
+          return it
+        }
       } else {
         val argumentList = call.valueArgumentList ?: return stale()
         edits.add(addArgumentEdit(argumentList, Source("$ARG_HAS_BICUBIC_COLOR = ") + value))
@@ -243,12 +262,16 @@ internal class GradientSourceWriter(private val project: Project) {
     if (target.position != initial.position || target.positionExpression != initial.positionExpression) {
       if (ARG_POSITION in vertex.unparsedArguments) return unresolved(ARG_POSITION)
       val positionExpr = call.findValueArgument(ARG_POSITION, INDEX_POSITION)?.getArgumentExpression() ?: return stale()
-      edits.add(replaceEdit(positionExpr, positionSource(target, names)))
+      edits.replaceIfNoComments(positionExpr, positionSource(target, names))?.let {
+        return it
+      }
     }
     if (target.color != initial.color || target.colorExpression != initial.colorExpression) {
       if (ARG_COLOR in vertex.unparsedArguments) return unresolved(ARG_COLOR)
       val colorExpr = call.findValueArgument(ARG_COLOR, INDEX_COLOR)?.getArgumentExpression() ?: return stale()
-      edits.add(replaceEdit(colorExpr, colorSource(target, names)))
+      edits.replaceIfNoComments(colorExpr, colorSource(target, names))?.let {
+        return it
+      }
     }
     val initialControlPoints = initial.controlPoints()
     val targetControlPoints = target.controlPoints()
@@ -259,7 +282,10 @@ internal class GradientSourceWriter(private val project: Project) {
       val source = Source.generated(generateOffsetSource(controlPoint, names.offset))
       val controlPointExpr = call.findValueArgument(name, INDEX_FIRST_CONTROL_POINT + i)?.getArgumentExpression()
       when {
-        controlPointExpr != null -> edits.add(replaceEdit(controlPointExpr, source))
+        controlPointExpr != null ->
+          edits.replaceIfNoComments(controlPointExpr, source)?.let {
+            return it
+          }
         controlPoint != Offset.Unspecified ->
           edits.add(addArgumentEdit(call.valueArgumentList ?: return stale(), Source("$name = ") + source))
       }
@@ -355,7 +381,9 @@ internal class GradientSourceWriter(private val project: Project) {
       }
       if (!argument.isParsed) return unresolved(name)
       val expr = argument.pointer.element?.getArgumentExpression() ?: return stale()
-      edits.add(replaceEdit(expr, valueSource(value, names)))
+      edits.replaceIfNoComments(expr, valueSource(value, names))?.let {
+        return it
+      }
     }
     return null
   }
@@ -382,9 +410,13 @@ internal class GradientSourceWriter(private val project: Project) {
           val element = sourceElements[i]
           if (colors.isStops) {
             @Suppress("UNCHECKED_CAST")
-            planStop(element, initialElements[i] as Pair<Float, Color>, targetElements[i] as Pair<Float, Color>, names, edits)
+            planStop(element, initialElements[i] as Pair<Float, Color>, targetElements[i] as Pair<Float, Color>, names, edits)?.let {
+              return it
+            }
           } else {
-            edits.add(replaceEdit(element, Source.generated(generateColorSource(targetElements[i] as Color, names.color))))
+            edits.replaceIfNoComments(element, Source.generated(generateColorSource(targetElements[i] as Color, names.color)))?.let {
+              return it
+            }
           }
         }
         return null
@@ -418,7 +450,7 @@ internal class GradientSourceWriter(private val project: Project) {
     target: Pair<Float, Color>,
     names: ComposeNames,
     edits: MutableList<Edit>,
-  ) {
+  ): GradientWriteResult.Failed? {
     val (fractionExpr, colorExpr) =
       when {
         element is KtBinaryExpression && element.operationReference.text == OP_TO -> element.left to element.right
@@ -427,13 +459,19 @@ internal class GradientSourceWriter(private val project: Project) {
         else -> null to null
       }
     if (fractionExpr == null || colorExpr == null) {
-      edits.add(replaceEdit(element, stopSource(target, names)))
-      return
+      return edits.replaceIfNoComments(element, stopSource(target, names))
     }
-    if (target.first != initial.first) edits.add(replaceEdit(fractionExpr, Source.generated(generateFloatSource(target.first))))
+    if (target.first != initial.first) {
+      edits.replaceIfNoComments(fractionExpr, Source.generated(generateFloatSource(target.first)))?.let {
+        return it
+      }
+    }
     if (target.second != initial.second) {
-      edits.add(replaceEdit(colorExpr, Source.generated(generateColorSource(target.second, names.color))))
+      edits.replaceIfNoComments(colorExpr, Source.generated(generateColorSource(target.second, names.color)))?.let {
+        return it
+      }
     }
+    return null
   }
 
   /**

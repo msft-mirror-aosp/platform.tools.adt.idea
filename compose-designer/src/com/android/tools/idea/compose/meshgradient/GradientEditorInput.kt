@@ -77,8 +77,8 @@ internal class ParsedBrush(
 }
 
 /**
- * An explicitly passed `Brush` gradient argument. [isParsed] is false when its value could not be statically evaluated, or depends on
- * runtime state such as an animation.
+ * An explicitly passed `Brush` gradient argument. [isParsed] is false when its value could not be statically evaluated, depends on runtime
+ * state such as an animation, or resolves a property reference (which should not be overwritten with a literal).
  */
 internal class BrushArgument(val pointer: SmartPsiElementPointer<KtValueArgument>, val isParsed: Boolean)
 
