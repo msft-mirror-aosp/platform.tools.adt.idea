@@ -1,9 +1,13 @@
 // Copyright 2000-2023 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.android.tools.idea.gradle.navigation
 
+import com.android.tools.idea.projectsystem.gradle.isHolderModule
 import com.intellij.lang.java.beans.PropertyKind
 import com.intellij.openapi.application.QueryExecutorBase
 import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
 import com.intellij.psi.PsiReferenceBase
@@ -18,6 +22,10 @@ import org.jetbrains.kotlin.idea.core.script.v1.KotlinScriptSearchScope
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtPsiFactory
+import org.jetbrains.plugins.gradle.service.resolve.getVersionCatalogFiles
+import org.jetbrains.plugins.gradle.service.resolve.isInVersionCatalog
+import org.jetbrains.plugins.gradle.util.GradleConstants
+import org.toml.lang.psi.TomlElement
 import org.toml.lang.psi.TomlKeySegment
 import org.toml.lang.psi.TomlKeyValue
 
@@ -29,18 +37,23 @@ class GradleKtsVersionCatalogReferencesSearcher : QueryExecutorBase<PsiReference
       return
     }
 
-    val (keyValue, name) = runReadAction { element.parentOfType<TomlKeyValue>() to element.name }
-    keyValue ?: return
-    val nameParts = name?.getVersionCatalogParts() ?: return
+    val (keyValue, name, searchScope) =
+      runReadAction {
+        if (!isInVersionCatalogFile(element)) return@runReadAction null
+        val keyValue = element.parentOfType<TomlKeyValue>() ?: return@runReadAction null
+        val name = element.name ?: return@runReadAction null
+        val project = element.project
+        val ktsScope = queryParameters.effectiveSearchScope.intersectWith(GradleKtsBuildscriptSearchScope(project))
+        val scope =
+          when (ktsScope) {
+            is GlobalSearchScope -> KotlinScriptSearchScope(project, ktsScope)
+            else -> ktsScope
+          }
+        Triple(keyValue, name, scope)
+      } ?: return
+    val nameParts = name.getVersionCatalogParts()
     val identifier = nameParts.lastOrNull() ?: return
     val getter = PropertyUtilBase.getAccessorName(identifier, PropertyKind.GETTER)
-
-    val project = element.project
-    val searchScope =
-      when (val effectiveScope = queryParameters.effectiveSearchScope) {
-        is GlobalSearchScope -> KotlinScriptSearchScope(project, effectiveScope)
-        else -> effectiveScope
-      }
     val searchContext = UsageSearchContext.IN_CODE
     val processor = MyProcessor(keyValue, nameParts)
     val search: (String) -> Unit = { queryParameters.optimizer.searchWord(it, searchScope, searchContext, true, element, processor) }
@@ -107,6 +120,19 @@ class GradleKtsVersionCatalogReferencesSearcher : QueryExecutorBase<PsiReference
       return newElement.firstChild.let { it as? KtNameReferenceExpression to it?.nextSibling?.nextSibling as? KtNameReferenceExpression }
     }
   }
+
+  private class GradleKtsBuildscriptSearchScope(project: Project) : GlobalSearchScope(project) {
+    override fun contains(file: VirtualFile): Boolean = file.name.endsWith(GradleConstants.KOTLIN_DSL_SCRIPT_EXTENSION)
+
+    override fun isSearchInModuleContent(aModule: Module): Boolean = aModule.isHolderModule()
+
+    override fun isSearchInLibraries(): Boolean = false
+  }
+}
+
+private fun isInVersionCatalogFile(element: TomlElement): Boolean {
+  val containingFile = element.containingFile?.virtualFile ?: return false
+  return isInVersionCatalog(element) || containingFile in getVersionCatalogFiles(element.project).values
 }
 
 private fun String.getVersionCatalogParts(): List<String> = split("_", "-")
