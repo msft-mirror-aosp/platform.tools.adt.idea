@@ -143,17 +143,22 @@ data class HighlightProjectTestDef(
 
     private fun validateNoUnresolvedReferences(fixture: JavaCodeInsightTestFixture) {
       val unresolvedReferenceWarnings =
-        fixture.doHighlighting(HighlightSeverity.WARNING).map { it.description }.filter { it.startsWith("[UNRESOLVED_REFERENCE]") }
+        fixture
+          .doHighlighting(HighlightSeverity.WARNING)
+          .filter { it.description?.startsWith("[UNRESOLVED_REFERENCE]") == true }
+          .map { it.description }
       assertThat(unresolvedReferenceWarnings).isEmpty()
     }
 
     private fun validateNonTransitiveRClass(fixture: JavaCodeInsightTestFixture) = validateNoUnresolvedReferences(fixture)
 
     private fun validateNonTransitiveRClassTrue(fixture: JavaCodeInsightTestFixture) {
-      val unresolvedReferenceWarnings =
-        fixture.doHighlighting(HighlightSeverity.WARNING).map { it.description }.filter { it.startsWith("[UNRESOLVED_REFERENCE]") }
-      val expectedWarnings = arrayOf("[UNRESOLVED_REFERENCE] Unresolved reference 'view_in_lib'.")
-      assertThat(unresolvedReferenceWarnings).containsExactly(*expectedWarnings)
+      val unresolvedReferenceSymbols =
+        fixture
+          .doHighlighting(HighlightSeverity.WARNING)
+          .filter { it.description?.startsWith("[UNRESOLVED_REFERENCE]") == true }
+          .map { it.text }
+      assertThat(unresolvedReferenceSymbols).containsExactly("view_in_lib")
     }
 
     private fun validateRClassResolutionInKmpAndroid(fixture: JavaCodeInsightTestFixture) {
