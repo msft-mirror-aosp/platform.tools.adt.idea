@@ -24,11 +24,10 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.filterToOne
-import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
-import androidx.compose.ui.test.onChild
 import androidx.compose.ui.test.onChildren
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -264,7 +263,7 @@ class AdditionalSettingsPanelTest {
 
     // Act
     rule.onRamDropdown().performClick()
-    rule.onRamDropdownPopupChildren().filterToOne(hasText("MB")).performClick()
+    rule.onNode(hasText("MB") and hasAnyAncestor(isPopup())).performClick()
     rule.onRamTextField().lingerMouseHover(rule)
 
     // Assert
@@ -374,9 +373,6 @@ private fun SemanticsNodeInteractionsProvider.onRamTextField() = onNodeWithTag("
 
 private fun SemanticsNodeInteractionsProvider.onRamDropdown() =
   onNodeWithTag("RamRow").onChildren().filterToOne(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.DropdownList))
-
-private fun SemanticsNodeInteractionsProvider.onRamDropdownPopupChildren() =
-  onNode(isPopup()).onChild().onChildren().filterToOne(hasScrollAction()).onChildren()
 
 private fun SemanticsNodeInteractionsProvider.onVMHeapSizeTextField() =
   onNodeWithTag("VMHeapSizeRow").onChildren().filterToOne(hasSetTextAction())
