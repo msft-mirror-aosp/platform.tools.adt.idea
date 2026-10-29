@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.project.build.output
 
 import com.intellij.build.events.MessageEvent
+import org.jetbrains.plugins.gradle.execution.build.output.GradleOutputDispatcherFactory.TaskNameId
 import org.junit.Test
 
 class JavaLanguageLevelDeprecationOutputParserTest : BuildOutputParserTest() {
@@ -359,6 +360,43 @@ class JavaLanguageLevelDeprecationOutputParserTest : BuildOutputParserTest() {
 
               <a href="set.java.toolchain.11">Set Java Toolchain to 11</a>
               <a href="set.java.level.JDK_11.all">Change Java language level and jvmTarget to 11 in all modules if using a lower level.</a>
+              <a href="PickLanguageLevelInPSD">Pick a different compatibility level...</a>
+              <a href="open.gradle.jdk.settings">Pick a different JDK to run Gradle...</a>
+              <a href="OpenBuildJdkInfoLinkQuickFix">More information...</a>
+              """
+                .trimIndent(),
+          )
+        ),
+    )
+  }
+
+  @Test
+  fun testErrorWithTaskNameId() {
+    val taskNameId = TaskNameId(":app:compileDebugAndroidTestJavaWithJavac")
+    parseOutput(
+      parentEventId = taskNameId,
+      gradleOutput =
+        """
+        error: Source option 6 is no longer supported. Use 7 or later.
+        error: Target option 6 is no longer supported. Use 7 or later.
+        """
+          .trimIndent(),
+      expectedEvents =
+        listOf(
+          ExpectedEvent(
+            message = "Java compiler has removed support for compiling with source/target compatibility version 6.",
+            isFileMessageEvent = false,
+            isBuildIssueEvent = true,
+            isDuplicateMessageAware = false,
+            group = "Build Issues",
+            kind = MessageEvent.Kind.ERROR,
+            parentId = taskNameId,
+            description =
+              """
+              Java compiler has removed support for compiling with source/target compatibility version 6.
+
+              <a href="set.java.toolchain.8">Set Java Toolchain to 8</a>
+              <a href="set.java.level.JDK_1_8.all">Change Java language level and jvmTarget to 8 in all modules if using a lower level.</a>
               <a href="PickLanguageLevelInPSD">Pick a different compatibility level...</a>
               <a href="open.gradle.jdk.settings">Pick a different JDK to run Gradle...</a>
               <a href="OpenBuildJdkInfoLinkQuickFix">More information...</a>

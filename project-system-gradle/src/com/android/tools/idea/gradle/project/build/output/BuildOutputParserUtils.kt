@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.project.build.output
 import com.google.common.base.Splitter
 import com.intellij.build.output.BuildOutputInstantReader
 import java.util.regex.Pattern
+import org.jetbrains.plugins.gradle.execution.build.output.GradleOutputDispatcherFactory
 
 object BuildOutputParserUtils {
   const val MESSAGE_GROUP_INFO_SUFFIX = " info"
@@ -44,7 +45,11 @@ object BuildOutputParserUtils {
       this.contains("compiler failed")
 
   /** Extracts task name from @param [parentEventId]. */
+  @Suppress("UnstableApiUsage")
   fun extractTaskNameFromId(parentEventId: Any): String? {
+    if (parentEventId is GradleOutputDispatcherFactory.TaskNameId) {
+      return parentEventId.name
+    }
     if (parentEventId !is String) {
       return null
     }

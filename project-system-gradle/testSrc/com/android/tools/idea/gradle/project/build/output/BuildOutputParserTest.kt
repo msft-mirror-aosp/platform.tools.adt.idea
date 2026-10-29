@@ -99,7 +99,7 @@ abstract class BuildOutputParserTest {
       .registerExtension(GradleErrorQuickFixProvider.EP_NAME, gradleErrorQuickFixProvider, projectRule.testRootDisposable)
   }
 
-  private fun parseOutput(parentEventId: String, gradleOutput: String, expectedEvents: String) {
+  private fun parseOutput(parentEventId: Any, gradleOutput: String, expectedEvents: String) {
     val messageEvents = arrayListOf<MessageEvent>()
     val progressListener =
       object : BuildProgressListener {
@@ -136,7 +136,7 @@ abstract class BuildOutputParserTest {
     Truth.assertThat(eventsDump).isEqualTo(expectedEvents)
   }
 
-  fun parseOutput(parentEventId: String, gradleOutput: String, expectedEvents: List<ExpectedEvent>) {
+  fun parseOutput(parentEventId: Any, gradleOutput: String, expectedEvents: List<ExpectedEvent>) {
     val expectedEventsDump: String =
       expectedEvents.joinToString(separator = "\n") {
         buildString {
