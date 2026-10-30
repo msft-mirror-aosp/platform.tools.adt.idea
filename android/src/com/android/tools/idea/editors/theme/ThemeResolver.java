@@ -29,7 +29,6 @@ import com.android.ide.common.resources.ResourceRepository;
 import com.android.ide.common.resources.ResourceRepositoryUtil;
 import com.android.ide.common.resources.ResourceResolver;
 import com.android.ide.common.resources.ResourceValueMap;
-import com.android.ide.common.resources.SingleNamespaceResourceRepository;
 import com.android.resources.ResourceType;
 import com.android.sdklib.IAndroidTarget;
 import com.android.tools.configurations.Configuration;
@@ -191,9 +190,9 @@ public class ThemeResolver {
       return;
     }
 
-    ResourceNamespace namespace = ((SingleNamespaceResourceRepository) repository).getNamespace();
     ResourceValueMap configuredResources =
-      ResourceRepositoryUtil.getConfiguredResources(repository, namespace, ResourceType.STYLE, myConfiguration.getFullConfig());
+        ResourceRepositoryUtil.getConfiguredResources(repository, ResourceNamespace.RES_AUTO, ResourceType.STYLE,
+                                                      myConfiguration.getFullConfig());
     for (StyleResourceValue value : getNonFrameworkThemes(configuredResources)) {
       sink.add(Pair.create(value, module));
     }

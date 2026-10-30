@@ -265,7 +265,6 @@ public abstract class LocalResourceRepository<T> extends AbstractResourceReposit
   @Override
   @NotNull
   public Collection<ResourceItem> getPublicResources(@NotNull ResourceNamespace namespace, @NotNull ResourceType type) {
-    // TODO(namespaces): Implement.
     throw new UnsupportedOperationException("Not implemented yet");
   }
 
@@ -289,11 +288,8 @@ public abstract class LocalResourceRepository<T> extends AbstractResourceReposit
   }
 
   public static final class EmptyRepository<T> extends LocalResourceRepository<T> implements SingleNamespaceResourceRepository {
-    @NotNull private final ResourceNamespace myNamespace;
-
-    public EmptyRepository(@NotNull ResourceNamespace namespace) {
+    public EmptyRepository() {
       super("");
-      myNamespace = namespace;
     }
 
     @Override
@@ -312,13 +308,13 @@ public abstract class LocalResourceRepository<T> extends AbstractResourceReposit
     @Override
     @NotNull
     public ResourceNamespace getNamespace() {
-      return myNamespace;
+      return ResourceNamespace.RES_AUTO;
     }
 
     @Override
     @Nullable
     public String getPackageName() {
-      return myNamespace.getPackageName();
+      return null;
     }
 
     @NotNull

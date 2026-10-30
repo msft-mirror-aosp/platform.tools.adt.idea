@@ -34,7 +34,6 @@ public class ModuleResourceManagers {
   private final Module myModule;
 
   private FrameworkResourceManager myPublicFrameworkResourceManager;
-  private FrameworkResourceManager myFullFrameworkResourceManager;
 
   private LocalResourceManager myLocalResourceManager;
 
@@ -55,13 +54,10 @@ public class ModuleResourceManagers {
       public void rootsChanged(@NotNull ModuleRootEvent event) {
         myLocalResourceManager = null;
 
-        // The system resource managers cache data only from the platform, so they only need to be cleared if the platform changes
+        // The system resource manager caches data only from the platform, so it only needs to be cleared if the platform changes
         Sdk newSdk = ModuleRootManager.getInstance(module).getSdk();
-        if (myPublicFrameworkResourceManager != null || myFullFrameworkResourceManager != null) {
-          if (!Objects.equals(myPrevSdk, newSdk)) {
-            myPublicFrameworkResourceManager = null;
-            myFullFrameworkResourceManager = null;
-          }
+        if (myPublicFrameworkResourceManager != null && !Objects.equals(myPrevSdk, newSdk)) {
+          myPublicFrameworkResourceManager = null;
         }
         myPrevSdk = newSdk;
       }

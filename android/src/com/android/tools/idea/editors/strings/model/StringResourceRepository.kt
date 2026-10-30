@@ -139,7 +139,7 @@ private class StringResourceRepositoryImpl(repository: LocalResourceRepository<V
     }
 
     if (dynamicRepository == null) {
-      dynamicRepository = EmptyRepository(ResourceNamespace.RES_AUTO)
+      dynamicRepository = EmptyRepository()
     }
     resourceDirectoryRepositoryMap = repositoryMap
     dynamicResourceRepository = dynamicRepository

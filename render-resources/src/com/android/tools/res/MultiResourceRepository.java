@@ -70,10 +70,9 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
   @GuardedBy("ITEM_MAP_LOCK")
   @NotNull private ImmutableListMultimap<ResourceNamespace, SingleNamespaceResourceRepository> myLeafsByNamespace =
       ImmutableListMultimap.of();
-  /** Contained single-namespace resource repositories keyed by namespace. */
+  /** Contained resource namespaces. */
   @GuardedBy("ITEM_MAP_LOCK")
-  @NotNull private ImmutableListMultimap<ResourceNamespace, SingleNamespaceResourceRepository> myRepositoriesByNamespace =
-      ImmutableListMultimap.of();
+  @NotNull private ImmutableSet<ResourceNamespace> myNamespaces = ImmutableSet.of();
 
   @GuardedBy("ITEM_MAP_LOCK")
   @NotNull private PerConfigResourceMap.ResourceItemComparator myResourceComparator =
@@ -113,9 +112,9 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
       computeLeafs(this, mapBuilder);
       myLeafsByNamespace = mapBuilder.build();
 
-      mapBuilder = ImmutableListMultimap.builder();
-      computeNamespaceMap(this, mapBuilder);
-      myRepositoriesByNamespace = mapBuilder.build();
+      ImmutableSet.Builder<ResourceNamespace> namespacesBuilder = ImmutableSet.builder();
+      computeNamespaces(this, namespacesBuilder);
+      myNamespaces = namespacesBuilder.build();
 
       myResourceComparator = new PerConfigResourceMap.ResourceItemComparator(myLeafsByNamespace.values());
 
@@ -153,18 +152,19 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
   }
 
   @GuardedBy("ITEM_MAP_LOCK")
-  private static <T> void computeNamespaceMap(
+  private static void computeNamespaces(
       @NotNull ResourceRepository repository,
-      @NotNull ImmutableListMultimap.Builder<ResourceNamespace, SingleNamespaceResourceRepository> result) {
+      @NotNull ImmutableSet.Builder<ResourceNamespace> result) {
     if (repository instanceof SingleNamespaceResourceRepository) {
-      SingleNamespaceResourceRepository singleNamespaceRepository = (SingleNamespaceResourceRepository)repository;
-      ResourceNamespace namespace = singleNamespaceRepository.getNamespace();
-      result.put(namespace, singleNamespaceRepository);
+      result.add(((SingleNamespaceResourceRepository)repository).getNamespace());
     }
     else if (repository instanceof MultiResourceRepository) {
-      for (ResourceRepository child : ((MultiResourceRepository<T>)repository).myChildren) {
-        computeNamespaceMap(child, result);
+      for (ResourceRepository child : ((MultiResourceRepository<?>)repository).myChildren) {
+        computeNamespaces(child, result);
       }
+    }
+    else {
+      result.addAll(repository.getNamespaces());
     }
   }
 
@@ -178,21 +178,6 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
   public final List<ResourceRepository> getChildren() {
     synchronized (ITEM_MAP_LOCK) {
       return myChildren;
-    }
-  }
-
-  /**
-   * Returns resource repositories for the given namespace. In case of nested single-namespace repositories only the outermost
-   * repositories are returned. Collectively the returned repositories are guaranteed to contain all resources in the given namespace
-   * contained in this repository.
-   *
-   * @param namespace the namespace to return resource repositories for
-   * @return a list of namespaces for the given namespace
-   */
-  @NotNull
-  public final List<SingleNamespaceResourceRepository> getRepositoriesForNamespace(@NotNull ResourceNamespace namespace) {
-    synchronized (ITEM_MAP_LOCK) {
-      return myRepositoriesByNamespace.get(namespace);
     }
   }
 
@@ -229,7 +214,7 @@ public abstract class MultiResourceRepository<T> extends LocalResourceRepository
   @NotNull
   public Set<ResourceNamespace> getNamespaces() {
     synchronized (ITEM_MAP_LOCK) {
-      return myRepositoriesByNamespace.keySet();
+      return myNamespaces;
     }
   }
 

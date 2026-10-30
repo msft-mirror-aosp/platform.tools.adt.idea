@@ -16,12 +16,9 @@
 package org.jetbrains.android.dom.converters
 
 import com.android.ide.common.rendering.api.ResourceNamespace
-import com.android.tools.idea.projectsystem.getModuleSystem
-import com.android.tools.idea.res.AndroidDependenciesCache
 import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.res.resolveResourceNamespace
 import com.intellij.openapi.util.TextRange
-import com.intellij.psi.NavigatablePsiElement
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReferenceBase
 import com.intellij.psi.impl.FakePsiElement
@@ -29,9 +26,7 @@ import com.intellij.psi.xml.XmlElement
 import com.intellij.util.text.nullize
 import com.intellij.util.xml.DomUtil
 import com.intellij.util.xml.GenericDomValue
-import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.dom.resources.ResourceValue
-import org.jetbrains.kotlin.idea.base.util.module
 
 /**
  * PSI Reference to a resource namespace, created in the namespace part of an XML resource reference (e.g. `@com.example:string/foo`).
@@ -70,24 +65,12 @@ class ResourceNamespaceReference(domValue: GenericDomValue<*>, private val resou
 /**
  * Fake PSI element that represents an aapt namespace.
  *
- * Provides a readable text description for [com.intellij.codeInsight.navigation.CtrlMouseHandler] and handles navigation (for now rather
- * naively).
- *
- * TODO(namespaces): Create PSI references to these from XML namespace URIs.
+ * Provides a readable text description for [com.intellij.codeInsight.navigation.CtrlMouseHandler].
  */
-class ResourceNamespaceFakePsiElement(private val resourceNamespace: ResourceNamespace, private val parent: XmlElement) :
-  FakePsiElement(), NavigatablePsiElement {
+class ResourceNamespaceFakePsiElement(private val resourceNamespace: ResourceNamespace, private val parent: XmlElement) : FakePsiElement() {
   override fun getParent(): PsiElement? = parent
 
-  override fun canNavigate(): Boolean = true
-
-  override fun getNavigationElement(): PsiElement {
-    val module = parent.module ?: return this
-    val androidDependencies = AndroidDependenciesCache.getAllAndroidDependencies(module, true)
-    val androidFacet =
-      androidDependencies.firstOrNull { it.module.getModuleSystem().getPackageName() == resourceNamespace.packageName } ?: return this
-    return Manifest.getMainManifest(androidFacet)?.`package`?.xmlAttribute ?: this
-  }
+  override fun canNavigate(): Boolean = false
 
   override fun getName(): String? {
     // An empty name makes the presentable text appear in the hover popup.

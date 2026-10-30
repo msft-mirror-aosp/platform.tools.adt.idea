@@ -52,7 +52,7 @@ import org.jetbrains.android.dom.manifest.Manifest
  * TODO: Test the manifest-oriented logic in [AndroidGotoDeclarationHandler]
  * TODO: Test jumping from a layout to an XML declare styleable attribute!
  */
-abstract class AndroidGotoDeclarationHandlerTestBase : AndroidTestCase() {
+class AndroidGotoDeclarationHandlerTest : AndroidTestCase() {
   val basePath = "/gotoDeclaration/"
 
   override fun configureAdditionalModules(
@@ -75,7 +75,7 @@ abstract class AndroidGotoDeclarationHandlerTestBase : AndroidTestCase() {
       }
   }
 
-  protected val JavaCodeInsightTestFixture.elementAtCurrentOffset: PsiElement
+  private val JavaCodeInsightTestFixture.elementAtCurrentOffset: PsiElement
     get() = file.findElementAt(editor.caretModel.offset)!!
 
   override fun setUp() {
@@ -642,7 +642,7 @@ abstract class AndroidGotoDeclarationHandlerTestBase : AndroidTestCase() {
     )
   }
 
-  open fun testGotoAarResourceFromCode_libRClass() {
+  fun testGotoAarResourceFromCode_libRClass() {
     addAarDependencyToMyModule()
 
     val virtualFile =
@@ -700,7 +700,7 @@ abstract class AndroidGotoDeclarationHandlerTestBase : AndroidTestCase() {
     )
   }
 
-  open fun testGotoPermission() {
+  fun testGotoPermission() {
     WriteCommandAction.runWriteCommandAction(project) {
       Manifest.getMainManifest(myFacet)!!.addPermission()?.apply { name.value = "com.example.SEND_MESSAGE" }
       Manifest.getMainManifest(myFacet)!!.addPermission()?.apply { name.value = "com.example.SEND-MESSAGE" }
@@ -742,7 +742,7 @@ abstract class AndroidGotoDeclarationHandlerTestBase : AndroidTestCase() {
     )
   }
 
-  protected fun getDeclarationsFrom(file: VirtualFile): Array<PsiElement> {
+  private fun getDeclarationsFrom(file: VirtualFile): Array<PsiElement> {
     myFixture.configureFromExistingVirtualFile(file)
 
     // AndroidGotoDeclarationHandler only handles .java files. We also want to check .xml files, so
@@ -757,12 +757,7 @@ abstract class AndroidGotoDeclarationHandlerTestBase : AndroidTestCase() {
       ?: PsiElement.EMPTY_ARRAY
   }
 
-  protected abstract fun addAarDependencyToMyModule()
-}
-
-class AndroidGotoDeclarationHandlerTestNonNamespaced : AndroidGotoDeclarationHandlerTestBase() {
-
-  override fun addAarDependencyToMyModule() {
+  private fun addAarDependencyToMyModule() {
     addAarDependency(myFixture, myModule, "aarLib", "com.example.aarLib") { resDir ->
       resDir.parentFile
         .resolve(SdkConstants.FN_RESOURCE_TEXT)

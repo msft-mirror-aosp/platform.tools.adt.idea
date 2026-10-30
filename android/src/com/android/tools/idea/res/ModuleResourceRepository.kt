@@ -203,8 +203,7 @@ private constructor(
       parentDisposable: Disposable,
       addDynamicResources: Boolean,
     ): LocalResourceRepository<VirtualFile> =
-      if (!AndroidModel.isRequired(facet) && ResourceFolderManager.getInstance(facet).folders.isEmpty())
-        EmptyRepository(ResourceNamespace.RES_AUTO)
+      if (!AndroidModel.isRequired(facet) && ResourceFolderManager.getInstance(facet).folders.isEmpty()) EmptyRepository()
       else ModuleResourceRepository(facet, parentDisposable, addDynamicResources)
 
     @TestOnly
