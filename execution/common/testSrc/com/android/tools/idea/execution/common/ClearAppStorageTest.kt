@@ -76,6 +76,7 @@ private fun mockDevice(packageName: String, clearAppStorageSuccess: Boolean = tr
       when {
         command == "pm clear $packageName" -> if (clearAppStorageSuccess) "Success" else "Failed"
         command.startsWith("pm list packages ") -> if (command.endsWith(" $packageName")) "package:$packageName" else ""
+        command.startsWith("pm list packages") -> "some.package"
         else -> fail("""Command "$command" not setup in mock""")
       }
     whenever(mock.name).thenReturn("device1")
