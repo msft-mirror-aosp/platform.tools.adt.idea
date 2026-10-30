@@ -43,6 +43,7 @@ iml_module(
         "//tools/base/resource-repository:studio.android.sdktools.resource-repository.tests",
         "//tools/base/sdk-common:studio.android.sdktools.sdk-common.tests",
     ],
+    test_shard_count = 4,
     test_srcs = ["testSrc"],
     test_timeout = "long",
     visibility = ["//visibility:public"],

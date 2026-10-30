@@ -80,6 +80,7 @@ iml_module(
         "//tools/adt/idea/layout-ui:intellij.android.layout-ui.tests",
     ],
     test_friends = ["//tools/adt/idea/nav/editor:intellij.android.nav.editor"],
+    test_shard_count = 5,
     test_srcs = ["testSrc"],
     test_timeout = "long",
     visibility = ["//visibility:public"],

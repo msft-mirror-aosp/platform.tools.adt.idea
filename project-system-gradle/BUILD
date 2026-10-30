@@ -151,6 +151,7 @@ iml_module(
                 "//tools/base/build-system:gradle-runtime-maven",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
             ],
+            "shard_count": 3,
             "tags": [
                 "cpu:4",
                 "noci:studio-win",
@@ -304,7 +305,7 @@ iml_module(
         },
         "runs_gradle_errors": {
             "test_filter": ".runsGradleErrors",
-            "shard_count": 2,
+            "shard_count": 4,
             "tags": [
                 "cpu:4",
                 "noci:studio-win",
@@ -365,7 +366,7 @@ iml_module(
                 "cpu:4",
                 "noci:studio-win",
             ],
-            "shard_count": 3,
+            "shard_count": 6,
             "data": [
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -475,6 +476,7 @@ iml_module(
         "runs_indexing_with_gradle_variants": {
             "test_filter": ".runsIndexingWithGradleVariant",
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
+            "shard_count": 3,
             "tags": [
                 "cpu:4",
                 "noci:studio-win",
@@ -614,6 +616,7 @@ iml_module(
         },
         "other": {
             "additional_jvm_args": ["-Didea.skip.indices.initialization=false"],
+            "shard_count": 3,
             "tags": ["ci:studio-win"],
             # Note: we do not include AGP/Gradle artifacts in this test target, to enforce the separation between tests which require Gradle
             # to run (in split targets above) and this catch-all target.

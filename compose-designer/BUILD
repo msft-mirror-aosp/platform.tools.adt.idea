@@ -127,7 +127,9 @@ iml_module(
         "ComposePreviewRepresentationTest": {
             "test_filter": "com.android.tools.idea.compose.preview.ComposePreviewRepresentationTest",
         },
-        "other": {},
+        "other": {
+            "shard_count": 3,
+        },
     },
     tags = ["noci:studio-win"],
     test_class = "com.android.tools.idea.compose.preview.ComposePreviewTestSuite",
