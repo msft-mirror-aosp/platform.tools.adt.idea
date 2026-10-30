@@ -20,6 +20,7 @@ import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.DeviceInfo
 import com.android.tools.idea.findings.model.FindingCategory
 import com.android.tools.idea.findings.model.FindingContext
+import com.android.tools.idea.findings.model.FindingOccurrence
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.findings.model.StackTrace
 import com.android.tools.idea.findings.model.VisualEvidence
@@ -33,9 +34,15 @@ import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
 import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
 import com.google.play.androidpublisher.v3.LabCrashNoTelemetryFindingData
 import com.google.play.androidpublisher.v3.LabCrashSixteenKbFindingData
+import com.google.play.androidpublisher.v3.LargeScreensContinuityEvent
+import com.google.play.androidpublisher.v3.LargeScreensContinuityFindingData
 import com.google.play.androidpublisher.v3.LargeScreensCrashFindingData
 import com.google.play.androidpublisher.v3.LargeScreensDeviceInfo as ProtoLargeScreensDeviceInfo
+import com.google.play.androidpublisher.v3.LargeScreensEvidenceStep
 import com.google.play.androidpublisher.v3.LargeScreensLayoutFindingData
+import com.google.play.androidpublisher.v3.LargeScreensScreenCapture
+import com.google.play.androidpublisher.v3.LargeScreensVisualEvent
+import com.google.play.androidpublisher.v3.LargeScreensVisualEvidence
 import com.google.play.androidpublisher.v3.LargeScreensVisualFindingData
 import com.google.play.androidpublisher.v3.VitalsAnomalyFindingData
 import com.google.play.androidpublisher.v3.VitalsBadBehaviorFindingData
@@ -374,7 +381,7 @@ class StudioFindingsClientTest {
   fun testFetchFindings_LargeScreens() = runBlocking {
     val protoDeviceInfo =
       ProtoLargeScreensDeviceInfo.newBuilder()
-        .setDeviceBrandName("samsung")
+        .setDeviceBrand("samsung")
         .setDeviceModel("sm-f946b")
         .setAndroidVersion("14")
         .setAndroidSdkVersion(34)
@@ -399,8 +406,18 @@ class StudioFindingsClientTest {
                 .setLargeScreensLayout(
                   LargeScreensLayoutFindingData.newBuilder()
                     .setLayoutIssueType(LargeScreensLayoutFindingData.LayoutIssueType.DOES_NOT_USE_ENTIRE_SCREEN)
-                    .setScreenshotFifeUrl("https://lh3.googleusercontent.com/layout-screenshot=s0")
-                    .setDeviceInfo(protoDeviceInfo)
+                    .addEvents(
+                      LargeScreensVisualEvent.newBuilder()
+                        .setDeviceInfo(protoDeviceInfo)
+                        .addCaptures(
+                          LargeScreensScreenCapture.newBuilder()
+                            .setScreenshotUrl("https://lh3.googleusercontent.com/layout-screenshot=s0")
+                            .setUiHierarchyDownloadUrl("https://lh3.googleusercontent.com/layout-hierarchy.xml?token=abc&sig=123")
+                        )
+                        .addCaptures(
+                          LargeScreensScreenCapture.newBuilder().setScreenshotUrl("https://lh3.googleusercontent.com/layout-screenshot-2")
+                        )
+                    )
                 )
             )
         )
@@ -413,8 +430,51 @@ class StudioFindingsClientTest {
               ProtoFindingData.newBuilder()
                 .setLargeScreensVisual(
                   LargeScreensVisualFindingData.newBuilder()
-                    .setScreenshotFifeUrl("https://lh3.googleusercontent.com/camera-screenshot")
-                    .setDeviceInfo(protoDeviceInfo)
+                    .addEvents(
+                      LargeScreensVisualEvent.newBuilder()
+                        .setDeviceInfo(protoDeviceInfo)
+                        .addCaptures(
+                          LargeScreensScreenCapture.newBuilder().setScreenshotUrl("https://lh3.googleusercontent.com/camera-screenshot")
+                        )
+                    )
+                )
+            )
+        )
+        .addFindings(
+          ProtoFinding.newBuilder()
+            .setName("applications/com.example.app/findings/ls-continuity")
+            .setFindingType(ProtoFinding.Type.LARGE_SCREENS_CONTINUITY)
+            .setFindingSeverity(ProtoFinding.Severity.WARNING)
+            .setFindingData(
+              ProtoFindingData.newBuilder()
+                .setLargeScreensContinuity(
+                  LargeScreensContinuityFindingData.newBuilder()
+                    .addEvents(
+                      LargeScreensContinuityEvent.newBuilder()
+                        .setDeviceInfo(protoDeviceInfo)
+                        .setEvidence(
+                          LargeScreensVisualEvidence.newBuilder()
+                            .addSteps(
+                              LargeScreensEvidenceStep.newBuilder()
+                                .setConfigurationChange(LargeScreensEvidenceStep.ConfigurationChange.NONE)
+                                .setCapture(
+                                  LargeScreensScreenCapture.newBuilder()
+                                    .setScreenshotUrl("https://lh3.googleusercontent.com/step1-folded")
+                                    .setUiHierarchyDownloadUrl("https://lh3.googleusercontent.com/step1-hierarchy.xml")
+                                )
+                                .setShowsIssue(false)
+                            )
+                            .addSteps(
+                              LargeScreensEvidenceStep.newBuilder()
+                                .setConfigurationChange(LargeScreensEvidenceStep.ConfigurationChange.UNFOLD)
+                                .setCapture(
+                                  LargeScreensScreenCapture.newBuilder()
+                                    .setScreenshotUrl("https://lh3.googleusercontent.com/step2-unfolded")
+                                )
+                                .setShowsIssue(true)
+                            )
+                        )
+                    )
                 )
             )
         )
@@ -427,8 +487,11 @@ class StudioFindingsClientTest {
               ProtoFindingData.newBuilder()
                 .setLargeScreensCrash(
                   LargeScreensCrashFindingData.newBuilder()
-                    .setStackTrace("java.lang.IllegalStateException: Crash on fold")
-                    .setDeviceInfo(protoDeviceInfo)
+                    .addEvents(
+                      LargeScreensCrashFindingData.CrashEvent.newBuilder()
+                        .setStackTrace("java.lang.IllegalStateException: Crash on fold")
+                        .setDeviceInfo(protoDeviceInfo)
+                    )
                 )
             )
         )
@@ -439,37 +502,186 @@ class StudioFindingsClientTest {
     val result = client.fetchFindings(FetchFindingsRequest("com.example.app"))
     assertThat(result).isInstanceOf(LoadingState.Ready::class.java)
     val findings = (result as LoadingState.Ready).value
-    assertThat(findings).hasSize(3)
+    assertThat(findings).hasSize(4)
 
     assertThat(findings[0].category).isEqualTo(FindingCategory.USER_EXPERIENCE)
     assertThat(findings[0].displayName).isEqualTo("App does not use entire screen")
-    // The JSON payload keeps asset URLs unescaped ('=' is not written as \u003d) so they match VisualEvidence.
-    assertThat(findings[0].jsonPayload).contains("\"https://lh3.googleusercontent.com/layout-screenshot=s0\"")
+    assertThat(findings[0].description)
+      .isEqualTo("App content does not fill the available screen area. Optimize your layouts for tablets, foldables, and desktop devices.")
     assertThat(findings[0].context)
       .isEqualTo(
         FindingContext(
-          visualEvidences = listOf(VisualEvidence(url = "https://lh3.googleusercontent.com/layout-screenshot=s0")),
-          deviceInfo = expectedDeviceInfo,
+          occurrences =
+            listOf(
+              FindingOccurrence(
+                deviceInfo = expectedDeviceInfo,
+                visualEvidences =
+                  listOf(
+                    VisualEvidence(
+                      url = "https://lh3.googleusercontent.com/layout-screenshot=s0",
+                      uiHierarchyUrl = "https://lh3.googleusercontent.com/layout-hierarchy.xml?token=abc&sig=123",
+                    ),
+                    VisualEvidence(url = "https://lh3.googleusercontent.com/layout-screenshot-2"),
+                  ),
+              )
+            )
         )
       )
+    // The JSON payload keeps asset URLs unescaped ('=' is not written as \u003d) so they match VisualEvidence.
+    assertThat(findings[0].jsonPayload).contains("\"https://lh3.googleusercontent.com/layout-screenshot=s0\"")
+    assertThat(findings[0].jsonPayload).contains("https://lh3.googleusercontent.com/layout-hierarchy.xml?token=abc&sig=123")
 
     assertThat(findings[1].category).isEqualTo(FindingCategory.USER_EXPERIENCE)
     assertThat(findings[1].context)
       .isEqualTo(
         FindingContext(
-          visualEvidences = listOf(VisualEvidence(url = "https://lh3.googleusercontent.com/camera-screenshot")),
-          deviceInfo = expectedDeviceInfo,
+          occurrences =
+            listOf(
+              FindingOccurrence(
+                deviceInfo = expectedDeviceInfo,
+                visualEvidences = listOf(VisualEvidence(url = "https://lh3.googleusercontent.com/camera-screenshot")),
+              )
+            )
         )
       )
 
-    assertThat(findings[2].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
+    assertThat(findings[2].category).isEqualTo(FindingCategory.USER_EXPERIENCE)
+    assertThat(findings[2].displayName).isEqualTo("Large screen continuity issue")
     assertThat(findings[2].context)
       .isEqualTo(
         FindingContext(
-          stackTrace = StackTrace(raw = "java.lang.IllegalStateException: Crash on fold"),
-          deviceInfo = expectedDeviceInfo,
+          occurrences =
+            listOf(
+              FindingOccurrence(
+                deviceInfo = expectedDeviceInfo,
+                visualEvidences =
+                  listOf(
+                    VisualEvidence(
+                      url = "https://lh3.googleusercontent.com/step1-folded",
+                      label = "Step 1: Initial state",
+                      uiHierarchyUrl = "https://lh3.googleusercontent.com/step1-hierarchy.xml",
+                    ),
+                    VisualEvidence(
+                      url = "https://lh3.googleusercontent.com/step2-unfolded",
+                      label = "Step 2: Unfold (Issue detected)",
+                      highlighted = true,
+                    ),
+                  ),
+              )
+            )
         )
       )
+
+    assertThat(findings[3].category).isEqualTo(FindingCategory.TECHNICAL_QUALITY)
+    assertThat(findings[3].context)
+      .isEqualTo(
+        FindingContext(
+          occurrences =
+            listOf(
+              FindingOccurrence(
+                deviceInfo = expectedDeviceInfo,
+                stackTrace = StackTrace(raw = "java.lang.IllegalStateException: Crash on fold"),
+              )
+            )
+        )
+      )
+  }
+
+  @Test
+  fun testToDomain_continuityStepLabelsAndHighlight() {
+    fun step(change: LargeScreensEvidenceStep.ConfigurationChange, url: String, showsIssue: Boolean? = null) =
+      LargeScreensEvidenceStep.newBuilder()
+        .setConfigurationChange(change)
+        .setCapture(LargeScreensScreenCapture.newBuilder().setScreenshotUrl(url))
+        .apply { showsIssue?.let { setShowsIssue(it) } }
+
+    val finding =
+      ProtoFinding.newBuilder()
+        .setName("applications/com.example.app/findings/ls-continuity-steps")
+        .setFindingType(ProtoFinding.Type.LARGE_SCREENS_CONTINUITY)
+        .setFindingData(
+          ProtoFindingData.newBuilder()
+            .setLargeScreensContinuity(
+              LargeScreensContinuityFindingData.newBuilder()
+                .addEvents(
+                  LargeScreensContinuityEvent.newBuilder()
+                    .setEvidence(
+                      LargeScreensVisualEvidence.newBuilder()
+                        .addSteps(step(LargeScreensEvidenceStep.ConfigurationChange.FOLD, "https://example.com/1", showsIssue = false))
+                        .addSteps(step(LargeScreensEvidenceStep.ConfigurationChange.ROTATE, "https://example.com/2"))
+                        .addSteps(step(LargeScreensEvidenceStep.ConfigurationChange.RESIZE, "https://example.com/3", showsIssue = true))
+                        .addSteps(
+                          step(LargeScreensEvidenceStep.ConfigurationChange.CONFIGURATION_CHANGE_UNSPECIFIED, "https://example.com/4")
+                        )
+                    )
+                )
+            )
+        )
+        .build()
+        .toDomain()
+
+    assertThat(finding.context.occurrences.single().visualEvidences)
+      .containsExactly(
+        VisualEvidence(url = "https://example.com/1", label = "Step 1: Fold"),
+        VisualEvidence(url = "https://example.com/2", label = "Step 2: Rotate"),
+        VisualEvidence(url = "https://example.com/3", label = "Step 3: Resize (Issue detected)", highlighted = true),
+        VisualEvidence(url = "https://example.com/4", label = "Step 4"),
+      )
+      .inOrder()
+  }
+
+  @Test
+  fun testToDomain_emptyDeviceInfoAndMissingSdkVersion() {
+    val finding =
+      ProtoFinding.newBuilder()
+        .setName("applications/com.example.app/findings/ls-device-edge-cases")
+        .setFindingType(ProtoFinding.Type.LARGE_SCREENS_LAYOUT)
+        .setFindingData(
+          ProtoFindingData.newBuilder()
+            .setLargeScreensLayout(
+              LargeScreensLayoutFindingData.newBuilder()
+                // Device without optional android_sdk_version -> androidSdkVersion is null.
+                .addEvents(
+                  LargeScreensVisualEvent.newBuilder()
+                    .setDeviceInfo(
+                      ProtoLargeScreensDeviceInfo.newBuilder()
+                        .setDeviceBrand("google")
+                        .setDeviceModel("pixel_tablet")
+                        .setAndroidVersion("15")
+                    )
+                    .addCaptures(LargeScreensScreenCapture.newBuilder().setScreenshotUrl("https://example.com/1.png"))
+                )
+                // Empty device_info with a capture -> occurrence kept with deviceInfo = null.
+                .addEvents(
+                  LargeScreensVisualEvent.newBuilder()
+                    .setDeviceInfo(ProtoLargeScreensDeviceInfo.getDefaultInstance())
+                    .addCaptures(LargeScreensScreenCapture.newBuilder().setScreenshotUrl("https://example.com/2.png"))
+                )
+                // Empty device_info with no captures -> empty occurrence is filtered out.
+                .addEvents(LargeScreensVisualEvent.newBuilder().setDeviceInfo(ProtoLargeScreensDeviceInfo.getDefaultInstance()))
+            )
+        )
+        .build()
+        .toDomain()
+
+    assertThat(finding.context.occurrences)
+      .containsExactly(
+        FindingOccurrence(
+          deviceInfo =
+            DeviceInfo(
+              deviceBrandName = "google",
+              deviceModel = "pixel_tablet",
+              androidVersion = "15",
+              androidSdkVersion = null,
+            ),
+          visualEvidences = listOf(VisualEvidence(url = "https://example.com/1.png")),
+        ),
+        FindingOccurrence(
+          deviceInfo = null,
+          visualEvidences = listOf(VisualEvidence(url = "https://example.com/2.png")),
+        ),
+      )
+      .inOrder()
   }
 
   @Test

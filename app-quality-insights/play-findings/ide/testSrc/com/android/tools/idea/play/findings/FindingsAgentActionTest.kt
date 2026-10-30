@@ -18,6 +18,7 @@ package com.android.tools.idea.play.findings
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingCategory
 import com.android.tools.idea.findings.model.FindingContext
+import com.android.tools.idea.findings.model.FindingOccurrence
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.findings.model.VisualEvidence
 import com.android.tools.idea.gemini.GeminiPluginApiV2
@@ -60,6 +61,16 @@ class FindingsAgentActionTest {
   private val disposableRule = DisposableRule()
 
   @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(disposableRule)
+
+  private val testHierarchyXml =
+    """
+    <hierarchy rotation="0">
+      <node index="0" class="android.widget.FrameLayout" package="com.example.app" bounds="[0,0][1248,1972]">
+        <node index="0" text="Sign in" class="android.widget.Button" bounds="[42,1482][1206,1619]" />
+      </node>
+    </hierarchy>
+    """
+      .trimIndent()
 
   private fun fakeGeminiPluginApi(
     available: Boolean = true,
@@ -108,7 +119,9 @@ class FindingsAgentActionTest {
       networkFetchUrls.add(url)
       when (url) {
         "https://play.google.com/artifacts/1" -> LoadedAsset(image1Bytes, "image/png")
+        "https://play.google.com/artifacts/1.xml" -> LoadedAsset("<hierarchy step=\"1\"/>".toByteArray(), "application/xml")
         "https://play.google.com/artifacts/broken.png" -> throw RuntimeException("Expired URL")
+        "https://play.google.com/artifacts/2.xml" -> LoadedAsset("<hierarchy step=\"2\"/>".toByteArray(), "text/xml")
         "https://play.google.com/artifacts/3.png" -> LoadedAsset(image2Bytes, "image/webp")
         else -> error("Unexpected URL fetched: $url")
       }
@@ -119,7 +132,7 @@ class FindingsAgentActionTest {
     networkFetchUrls.clear()
 
     val jsonPayload =
-      """{"learnMoreUrl":"https://developer.android.com/large-screens","reviewMessage":"See https://play.google.com/docs","steps":[{"screenshot":"https://play.google.com/artifacts/1"},{"screenshot":"https://play.google.com/artifacts/broken.png"},{"screenshot":"https://play.google.com/artifacts/3.png"}]}"""
+      """{"learnMoreUrl":"https://developer.android.com/large-screens","reviewMessage":"See https://play.google.com/docs","steps":[{"screenshot":"https://play.google.com/artifacts/1","hierarchy":"https://play.google.com/artifacts/1.xml"},{"screenshot":"https://play.google.com/artifacts/broken.png","hierarchy":"https://play.google.com/artifacts/2.xml"},{"screenshot":"https://play.google.com/artifacts/3.png"}]}"""
     val finding =
       AppFinding(
         name = "findings/large_screen_1",
@@ -129,11 +142,22 @@ class FindingsAgentActionTest {
         jsonPayload = jsonPayload,
         context =
           FindingContext(
-            visualEvidences =
+            occurrences =
               listOf(
-                VisualEvidence(url = "https://play.google.com/artifacts/1"),
-                VisualEvidence(url = "https://play.google.com/artifacts/broken.png"),
-                VisualEvidence(url = "https://play.google.com/artifacts/3.png"),
+                FindingOccurrence(
+                  visualEvidences =
+                    listOf(
+                      VisualEvidence(
+                        url = "https://play.google.com/artifacts/1",
+                        uiHierarchyUrl = "https://play.google.com/artifacts/1.xml",
+                      ),
+                      VisualEvidence(
+                        url = "https://play.google.com/artifacts/broken.png",
+                        uiHierarchyUrl = "https://play.google.com/artifacts/2.xml",
+                      ),
+                      VisualEvidence(url = "https://play.google.com/artifacts/3.png"),
+                    )
+                )
               )
           ),
       )
@@ -141,33 +165,46 @@ class FindingsAgentActionTest {
     val multimodal = finding.resolvePayload(assetLoader)
     assertThat(multimodal.json)
       .isEqualTo(
-        """{"learnMoreUrl":"https://developer.android.com/large-screens","reviewMessage":"See https://play.google.com/docs","steps":[{"screenshot":"[Attachment 1]"},{"screenshot":"https://play.google.com/artifacts/broken.png"},{"screenshot":"[Attachment 2]"}]}"""
+        """{"learnMoreUrl":"https://developer.android.com/large-screens","reviewMessage":"See https://play.google.com/docs","steps":[{"screenshot":"[Image 1]","hierarchy":"[Text Attachment 1]"},{"screenshot":"https://play.google.com/artifacts/broken.png","hierarchy":"[Text Attachment 2]"},{"screenshot":"[Image 2]"}]}"""
       )
     assertThat(multimodal.images).hasSize(2)
     assertThat(multimodal.images[0].data).isEqualTo(image1Bytes)
     assertThat(multimodal.images[0].mimeType).isEqualTo("image/png")
     assertThat(multimodal.images[1].data).isEqualTo(image2Bytes)
     assertThat(multimodal.images[1].mimeType).isEqualTo("image/webp")
+    assertThat(multimodal.textAttachments)
+      .containsExactly(
+        TextAttachment("[Text Attachment 1]", "<hierarchy step=\"1\"/>"),
+        TextAttachment("[Text Attachment 2]", "<hierarchy step=\"2\"/>"),
+      )
+      .inOrder()
 
     // Non-asset URLs (learnMoreUrl, reviewMessage) were never fetched, and artifacts/1 was served from cache.
-    assertThat(networkFetchUrls).containsExactly("https://play.google.com/artifacts/broken.png", "https://play.google.com/artifacts/3.png")
+    assertThat(networkFetchUrls)
+      .containsExactly(
+        "https://play.google.com/artifacts/1.xml",
+        "https://play.google.com/artifacts/broken.png",
+        "https://play.google.com/artifacts/2.xml",
+        "https://play.google.com/artifacts/3.png",
+      )
   }
 
   @Test
-  fun testResolvePayload_handlesDuplicateUrlsPrefixOverlapProseAndNonImageAssets(): Unit = runBlocking {
+  fun testResolvePayload_handlesDuplicateUrlsPrefixOverlapProseAndUnsupportedAssets(): Unit = runBlocking {
     val fetchedUrls = Collections.synchronizedList(mutableListOf<String>())
     val assetLoader = FindingsAssetLoader { url ->
       fetchedUrls += url
       when (url) {
         "https://example.com/1" -> LoadedAsset(byteArrayOf(1, 2), "image/png")
-        "https://example.com/10" -> LoadedAsset(byteArrayOf(3, 4), "image/png")
+        "https://example.com/10" -> LoadedAsset("<hierarchy id=\"10\"/>".toByteArray(), "text/xml")
+        "https://example.com/blank.xml" -> LoadedAsset("   \n  ".toByteArray(), "text/xml")
         "https://example.com/recording.mp4" -> LoadedAsset(byteArrayOf(0x00, 0xFF.toByte(), 0x80.toByte()), "video/mp4")
         else -> error("Unexpected URL: $url")
       }
     }
 
     val jsonPayload =
-      """{"note":"See https://example.com/1 in docs","first":"https://example.com/1","prefixOverlap":"https://example.com/10","duplicate":"https://example.com/1","video":"https://example.com/recording.mp4"}"""
+      """{"note":"See https://example.com/1 in docs","first":"https://example.com/1","prefixOverlap":"https://example.com/10","duplicate":"https://example.com/1","blank":"https://example.com/blank.xml","video":"https://example.com/recording.mp4"}"""
     val finding =
       AppFinding(
         name = "findings/overlap_1",
@@ -177,39 +214,50 @@ class FindingsAgentActionTest {
         jsonPayload = jsonPayload,
         context =
           FindingContext(
-            visualEvidences =
+            occurrences =
               listOf(
-                VisualEvidence(url = "https://example.com/1"),
-                VisualEvidence(url = "https://example.com/10"),
-                VisualEvidence(url = "https://example.com/1"),
-                VisualEvidence(url = "https://example.com/recording.mp4"),
+                FindingOccurrence(
+                  visualEvidences =
+                    listOf(
+                      VisualEvidence(url = "https://example.com/1", uiHierarchyUrl = "https://example.com/10"),
+                      VisualEvidence(url = "https://example.com/1", uiHierarchyUrl = "https://example.com/blank.xml"),
+                      VisualEvidence(url = "https://example.com/recording.mp4"),
+                    )
+                )
               )
           ),
       )
     val multimodal = finding.resolvePayload(assetLoader)
 
-    assertThat(fetchedUrls).containsExactly("https://example.com/1", "https://example.com/10", "https://example.com/recording.mp4")
+    assertThat(fetchedUrls)
+      .containsExactly(
+        "https://example.com/1",
+        "https://example.com/10",
+        "https://example.com/blank.xml",
+        "https://example.com/recording.mp4",
+      )
 
     assertThat(multimodal.json)
       .isEqualTo(
-        """{"note":"See https://example.com/1 in docs","first":"[Attachment 1]","prefixOverlap":"[Attachment 2]","duplicate":"[Attachment 1]","video":"https://example.com/recording.mp4"}"""
+        """{"note":"See https://example.com/1 in docs","first":"[Image 1]","prefixOverlap":"[Text Attachment 1]","duplicate":"[Image 1]","blank":"https://example.com/blank.xml","video":"https://example.com/recording.mp4"}"""
       )
-    assertThat(multimodal.images).hasSize(2)
+    assertThat(multimodal.images).hasSize(1)
+    assertThat(multimodal.textAttachments).containsExactly(TextAttachment("[Text Attachment 1]", "<hierarchy id=\"10\"/>"))
   }
 
   @Test
   fun testResolvePayload_fetchesAssetsInParallelWithDeterministicAttachmentOrder(): Unit = runBlocking {
     val allStartedLatch = CountDownLatch(3)
-    val url1 = "https://example.com/1.png"
-    val url2 = "https://example.com/2.png"
-    val url3 = "https://example.com/3.png"
+    val url1 = "https://example.com/1.xml"
+    val url2 = "https://example.com/2.xml"
+    val url3 = "https://example.com/3.xml"
     val assetLoader = FindingsAssetLoader { url ->
       allStartedLatch.countDown()
       check(allStartedLatch.await(5, TimeUnit.SECONDS)) { "Expected concurrent asset fetches to overlap on IO threads" }
-      LoadedAsset(url.toByteArray(), "image/png")
+      LoadedAsset("<node url=\"$url\"/>".toByteArray(), "text/xml")
     }
 
-    val jsonPayload = """{"captures":[{"png":"$url1"},{"png":"$url2"},{"png":"$url3"}]}"""
+    val jsonPayload = """{"captures":[{"xml":"$url1"},{"xml":"$url2"},{"xml":"$url3"}]}"""
     val finding =
       AppFinding(
         name = "findings/parallel_test",
@@ -218,51 +266,82 @@ class FindingsAgentActionTest {
         displayName = "Layout issue",
         jsonPayload = jsonPayload,
         context =
-          FindingContext(visualEvidences = listOf(VisualEvidence(url = url1), VisualEvidence(url = url2), VisualEvidence(url = url3))),
+          FindingContext(
+            occurrences =
+              listOf(
+                FindingOccurrence(
+                  visualEvidences =
+                    listOf(
+                      VisualEvidence(url = "", uiHierarchyUrl = url1),
+                      VisualEvidence(url = "", uiHierarchyUrl = url2),
+                      VisualEvidence(url = "", uiHierarchyUrl = url3),
+                    )
+                )
+              )
+          ),
       )
 
     val formatted = finding.resolvePayload(assetLoader)
 
-    assertThat(formatted.json).isEqualTo("""{"captures":[{"png":"[Attachment 1]"},{"png":"[Attachment 2]"},{"png":"[Attachment 3]"}]}""")
-    assertThat(formatted.images.map { it.data.toString(Charsets.UTF_8) }).containsExactly(url1, url2, url3).inOrder()
+    assertThat(formatted.json)
+      .isEqualTo("""{"captures":[{"xml":"[Text Attachment 1]"},{"xml":"[Text Attachment 2]"},{"xml":"[Text Attachment 3]"}]}""")
+    assertThat(formatted.textAttachments)
+      .containsExactly(
+        TextAttachment("[Text Attachment 1]", "<node url=\"$url1\"/>"),
+        TextAttachment("[Text Attachment 2]", "<node url=\"$url2\"/>"),
+        TextAttachment("[Text Attachment 3]", "<node url=\"$url3\"/>"),
+      )
+      .inOrder()
   }
 
   @Test
-  fun testResolvePayload_limitsConcurrentAssetLoads(): Unit = runBlocking {
+  fun testResolvePayload_attachesOnlyFirstOccurrenceAndLimitsConcurrentLoads(): Unit = runBlocking {
     val inFlight = AtomicInteger(0)
     val maxInFlight = AtomicInteger(0)
+    val fetchedUrls = Collections.synchronizedList(mutableListOf<String>())
     val assetLoader = FindingsAssetLoader { url ->
+      fetchedUrls += url
       val current = inFlight.incrementAndGet()
       maxInFlight.accumulateAndGet(current, ::maxOf)
       Thread.sleep(50)
       inFlight.decrementAndGet()
-      LoadedAsset(url.toByteArray(), "image/png")
+      if (url.endsWith(".png")) LoadedAsset(byteArrayOf(1, 2), "image/png") else LoadedAsset("<node/>".toByteArray(), "text/xml")
     }
-    val captures = (1..8).map { VisualEvidence(url = "https://example.com/$it.png") }
+    // 3 occurrences: the first has 5 captures (10 assets), the others 1 each. Only the first occurrence is attached.
+    val captures = (1..7).map { VisualEvidence(url = "https://example.com/$it.png", uiHierarchyUrl = "https://example.com/$it.xml") }
+    val occurrences =
+      listOf(FindingOccurrence(visualEvidences = captures.take(5))) +
+        captures.drop(5).map { FindingOccurrence(visualEvidences = listOf(it)) }
     val finding =
       AppFinding(
-        name = "findings/many_captures",
+        name = "findings/many_occurrences",
         category = FindingCategory.USER_EXPERIENCE,
         severity = FindingSeverity.WARNING,
         displayName = "Layout issue",
-        jsonPayload = """{"captures":[${captures.joinToString(",") { "\"${it.url}\"" }}]}""",
-        context = FindingContext(visualEvidences = captures),
+        jsonPayload = """{"captures":[${captures.joinToString(",") { "{\"png\":\"${it.url}\",\"xml\":\"${it.uiHierarchyUrl}\"}" }}]}""",
+        context = FindingContext(occurrences = occurrences),
       )
 
     val formatted = finding.resolvePayload(assetLoader)
 
-    assertThat(formatted.images).hasSize(8)
+    assertThat(formatted.images).hasSize(5)
+    assertThat(formatted.textAttachments).hasSize(5)
+    assertThat(fetchedUrls)
+      .containsExactlyElementsIn((1..5).flatMap { listOf("https://example.com/$it.png", "https://example.com/$it.xml") })
+    // The other occurrences keep their URLs in the JSON.
+    assertThat(formatted.json).contains(""""png":"[Image 5]","xml":"[Text Attachment 5]"""")
+    assertThat(formatted.json).contains(""""png":"https://example.com/6.png","xml":"https://example.com/6.xml"""")
+    assertThat(formatted.json).contains(""""png":"https://example.com/7.png","xml":"https://example.com/7.xml"""")
     assertThat(maxInFlight.get()).isAtMost(4)
   }
 
   @Test
-  fun testResolvePayload_requiresNonEmptyImageForScreenshots(): Unit = runBlocking {
+  fun testResolvePayload_attachesHierarchyRegardlessOfContentTypeButRequiresImageMimeForScreenshots(): Unit = runBlocking {
     val assetLoader = FindingsAssetLoader { url ->
       when (url) {
+        "https://example.com/octet.xml" -> LoadedAsset("<hierarchy id=\"1\"/>".toByteArray(), "application/octet-stream")
+        "https://example.com/untyped.xml" -> LoadedAsset("<hierarchy id=\"2\"/>".toByteArray(), null)
         "https://example.com/error-page.png" -> LoadedAsset("<html>Access denied</html>".toByteArray(), "text/html")
-        "https://example.com/untyped.png" -> LoadedAsset(byteArrayOf(1, 2), null)
-        "https://example.com/empty.png" -> LoadedAsset(byteArrayOf(), "image/png")
-        "https://example.com/ok.png" -> LoadedAsset(byteArrayOf(3, 4), "image/png")
         else -> error("Unexpected URL: $url")
       }
     }
@@ -273,27 +352,33 @@ class FindingsAgentActionTest {
         severity = FindingSeverity.WARNING,
         displayName = "Layout issue",
         jsonPayload =
-          """{"a":"https://example.com/error-page.png","b":"https://example.com/untyped.png","c":"https://example.com/empty.png","d":"https://example.com/ok.png"}""",
+          """{"a":"https://example.com/octet.xml","b":"https://example.com/untyped.xml","c":"https://example.com/error-page.png"}""",
         context =
           FindingContext(
-            visualEvidences =
+            occurrences =
               listOf(
-                VisualEvidence(url = "https://example.com/error-page.png"),
-                VisualEvidence(url = "https://example.com/untyped.png"),
-                VisualEvidence(url = "https://example.com/empty.png"),
-                VisualEvidence(url = "https://example.com/ok.png"),
+                FindingOccurrence(
+                  visualEvidences =
+                    listOf(
+                      VisualEvidence(url = "https://example.com/error-page.png", uiHierarchyUrl = "https://example.com/octet.xml"),
+                      VisualEvidence(url = "https://example.com/error-page.png", uiHierarchyUrl = "https://example.com/untyped.xml"),
+                    )
+                )
               )
           ),
       )
 
     val formatted = finding.resolvePayload(assetLoader)
 
-    assertThat(formatted.images).hasSize(1)
-    assertThat(formatted.images[0].data).isEqualTo(byteArrayOf(3, 4))
+    assertThat(formatted.images).isEmpty()
     assertThat(formatted.json)
-      .isEqualTo(
-        """{"a":"https://example.com/error-page.png","b":"https://example.com/untyped.png","c":"https://example.com/empty.png","d":"[Attachment 1]"}"""
+      .isEqualTo("""{"a":"[Text Attachment 1]","b":"[Text Attachment 2]","c":"https://example.com/error-page.png"}""")
+    assertThat(formatted.textAttachments)
+      .containsExactly(
+        TextAttachment("[Text Attachment 1]", "<hierarchy id=\"1\"/>"),
+        TextAttachment("[Text Attachment 2]", "<hierarchy id=\"2\"/>"),
       )
+      .inOrder()
   }
 
   @Test
@@ -312,8 +397,11 @@ class FindingsAgentActionTest {
 
     val screenshot1Bytes = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47)
     val screenshot2Bytes = byteArrayOf(0x52, 0x49, 0x46, 0x46)
+    val secondHierarchyXml = "<hierarchy rotation=\"1\" note=\"```fenced```\"/>"
     val screenshot1Url = "https://example.com/1.png"
+    val hierarchy1Url = "https://example.com/screen-1.xml"
     val brokenScreenshotUrl = "https://example.com/broken.png"
+    val hierarchy2Url = "https://example.com/screen-2.xml"
     val screenshot2Url = "https://example.com/2.webp"
     val requestedUrls = Collections.synchronizedList(mutableListOf<String>())
     projectRule.project.replaceService(
@@ -322,7 +410,9 @@ class FindingsAgentActionTest {
         requestedUrls.add(url)
         when (url) {
           screenshot1Url -> LoadedAsset(screenshot1Bytes, "image/png")
+          hierarchy1Url -> LoadedAsset(testHierarchyXml.toByteArray(), "application/xml")
           brokenScreenshotUrl -> throw RuntimeException("Expired URL")
+          hierarchy2Url -> LoadedAsset(secondHierarchyXml.toByteArray(), "text/xml")
           screenshot2Url -> LoadedAsset(screenshot2Bytes, "image/webp")
           else -> error("Unexpected URL: $url")
         }
@@ -331,7 +421,7 @@ class FindingsAgentActionTest {
     )
 
     val jsonPayload =
-      """{"note":"```fenced```","steps":[{"screenshot":"$screenshot1Url"},{"screenshot":"$brokenScreenshotUrl"},{"screenshot":"$screenshot2Url"}]}"""
+      """{"steps":[{"screenshot":"$screenshot1Url","hierarchy":"$hierarchy1Url"},{"screenshot":"$brokenScreenshotUrl","hierarchy":"$hierarchy2Url"},{"screenshot":"$screenshot2Url"}]}"""
     val finding =
       AppFinding(
         name = "findings/large_screen_1",
@@ -341,11 +431,16 @@ class FindingsAgentActionTest {
         jsonPayload = jsonPayload,
         context =
           FindingContext(
-            visualEvidences =
+            occurrences =
               listOf(
-                VisualEvidence(url = screenshot1Url),
-                VisualEvidence(url = brokenScreenshotUrl),
-                VisualEvidence(url = screenshot2Url),
+                FindingOccurrence(
+                  visualEvidences =
+                    listOf(
+                      VisualEvidence(url = screenshot1Url, uiHierarchyUrl = hierarchy1Url),
+                      VisualEvidence(url = brokenScreenshotUrl, uiHierarchyUrl = hierarchy2Url),
+                      VisualEvidence(url = screenshot2Url),
+                    )
+                )
               )
           ),
       )
@@ -357,7 +452,7 @@ class FindingsAgentActionTest {
     )
 
     assertThat(submittedQuery).isEqualTo("Suggest a fix for the Play Console finding \"App does not use entire screen\".")
-    assertThat(requestedUrls).containsExactly(screenshot1Url, brokenScreenshotUrl, screenshot2Url)
+    assertThat(requestedUrls).containsExactly(screenshot1Url, hierarchy1Url, brokenScreenshotUrl, hierarchy2Url, screenshot2Url)
     assertThat(submittedBlobs).isNotNull()
     assertThat(submittedBlobs).hasSize(2)
     assertThat(submittedBlobs!![0].data).isEqualTo(screenshot1Bytes)
@@ -368,11 +463,22 @@ class FindingsAgentActionTest {
       .containsExactly(
         LlmUserQueryPayload.Reference(
           promptString =
-            """{"note":"fenced","steps":[{"screenshot":"[Attachment 1]"},{"screenshot":"$brokenScreenshotUrl"},{"screenshot":"[Attachment 2]"}]}""",
+            """{"steps":[{"screenshot":"[Image 1]","hierarchy":"[Text Attachment 1]"},{"screenshot":"$brokenScreenshotUrl","hierarchy":"[Text Attachment 2]"},{"screenshot":"[Image 2]"}]}""",
           textRangeStart = 0,
           textRangeEnd = 0,
-        )
+        ),
+        LlmUserQueryPayload.Reference(
+          promptString = "[Text Attachment 1]\n$testHierarchyXml",
+          textRangeStart = 0,
+          textRangeEnd = 0,
+        ),
+        LlmUserQueryPayload.Reference(
+          promptString = "[Text Attachment 2]\n<hierarchy rotation=\"1\" note=\"fenced\"/>",
+          textRangeStart = 0,
+          textRangeEnd = 0,
+        ),
       )
+      .inOrder()
   }
 
   @Test

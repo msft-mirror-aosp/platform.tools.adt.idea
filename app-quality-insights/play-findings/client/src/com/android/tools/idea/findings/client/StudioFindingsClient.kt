@@ -21,6 +21,7 @@ import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.DeviceInfo
 import com.android.tools.idea.findings.model.FindingContext
+import com.android.tools.idea.findings.model.FindingOccurrence
 import com.android.tools.idea.findings.model.StackTrace
 import com.android.tools.idea.findings.model.VisualEvidence
 import com.android.tools.idea.findings.model.getFindingDescription
@@ -37,6 +38,9 @@ import com.google.play.androidpublisher.v3.Finding as ProtoFinding
 import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
 import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
 import com.google.play.androidpublisher.v3.LargeScreensDeviceInfo as ProtoLargeScreensDeviceInfo
+import com.google.play.androidpublisher.v3.LargeScreensEvidenceStep as ProtoLargeScreensEvidenceStep
+import com.google.play.androidpublisher.v3.LargeScreensScreenCapture as ProtoLargeScreensScreenCapture
+import com.google.play.androidpublisher.v3.LargeScreensVisualEvent as ProtoLargeScreensVisualEvent
 import com.google.protobuf.util.JsonFormat
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
@@ -136,25 +140,40 @@ internal fun ProtoFinding.toDomain(): AppFinding {
 
 private fun ProtoFindingData.toFindingContext(): FindingContext =
   when (dataTypeCase) {
-    ProtoFindingData.DataTypeCase.LARGE_SCREENS_LAYOUT ->
-      largeScreensLayout.run {
-        FindingContext(
-          visualEvidences = screenshotFifeUrl.takeIf { it.isNotBlank() }?.let { listOf(VisualEvidence(url = it)) } ?: emptyList(),
-          deviceInfo = if (hasDeviceInfo()) deviceInfo.toDomain() else null,
-        )
-      }
-    ProtoFindingData.DataTypeCase.LARGE_SCREENS_VISUAL ->
-      largeScreensVisual.run {
-        FindingContext(
-          visualEvidences = screenshotFifeUrl.takeIf { it.isNotBlank() }?.let { listOf(VisualEvidence(url = it)) } ?: emptyList(),
-          deviceInfo = if (hasDeviceInfo()) deviceInfo.toDomain() else null,
-        )
-      }
+    ProtoFindingData.DataTypeCase.LARGE_SCREENS_LAYOUT -> largeScreensLayout.eventsList.toVisualFindingContext()
+    ProtoFindingData.DataTypeCase.LARGE_SCREENS_VISUAL -> largeScreensVisual.eventsList.toVisualFindingContext()
+    ProtoFindingData.DataTypeCase.LARGE_SCREENS_CONTINUITY ->
+      FindingContext(
+        occurrences =
+          largeScreensContinuity.eventsList.mapNotNull { event ->
+            val visualEvidences =
+              event.evidence.stepsList.mapIndexedNotNull { stepIndex, step ->
+                step.capture.toVisualEvidence(
+                  label = formatContinuityStepLabel(stepIndex + 1, step),
+                  highlighted = step.hasShowsIssue() && step.showsIssue,
+                )
+              }
+            val device = if (event.hasDeviceInfo()) event.deviceInfo.toDomain() else null
+            if (visualEvidences.isEmpty() && device == null) {
+              null
+            } else {
+              FindingOccurrence(deviceInfo = device, visualEvidences = visualEvidences)
+            }
+          }
+      )
     ProtoFindingData.DataTypeCase.LARGE_SCREENS_CRASH ->
       largeScreensCrash.run {
         FindingContext(
-          stackTrace = stackTrace.takeIf { it.isNotBlank() }?.let { StackTrace(raw = it) },
-          deviceInfo = if (hasDeviceInfo()) deviceInfo.toDomain() else null,
+          occurrences =
+            eventsList.mapNotNull { event ->
+              val stackTrace = event.stackTrace.takeIf { it.isNotBlank() }?.let { StackTrace(raw = it) }
+              val device = if (event.hasDeviceInfo()) event.deviceInfo.toDomain() else null
+              if (stackTrace == null && device == null) {
+                null
+              } else {
+                FindingOccurrence(deviceInfo = device, stackTrace = stackTrace)
+              }
+            }
         )
       }
     // TODO(b/579509763): Populate FindingContext for Vitals findings (VITALS_ANOMALY, VITALS_BAD_BEHAVIOR,
@@ -163,13 +182,55 @@ private fun ProtoFindingData.toFindingContext(): FindingContext =
     else -> FindingContext.EMPTY
   }
 
-private fun ProtoLargeScreensDeviceInfo.toDomain(): DeviceInfo =
-  DeviceInfo(
-    deviceBrandName = deviceBrandName,
-    deviceModel = deviceModel,
-    androidVersion = androidVersion,
-    androidSdkVersion = androidSdkVersion,
+private fun List<ProtoLargeScreensVisualEvent>.toVisualFindingContext(): FindingContext =
+  FindingContext(
+    occurrences =
+      mapNotNull { event ->
+        val visualEvidences = event.capturesList.mapNotNull { capture -> capture.toVisualEvidence() }
+        val device = if (event.hasDeviceInfo()) event.deviceInfo.toDomain() else null
+        if (visualEvidences.isEmpty() && device == null) {
+          null
+        } else {
+          FindingOccurrence(deviceInfo = device, visualEvidences = visualEvidences)
+        }
+      }
   )
+
+private fun ProtoLargeScreensScreenCapture.toVisualEvidence(label: String? = null, highlighted: Boolean = false): VisualEvidence? =
+  screenshotUrl
+    .takeIf { it.isNotBlank() }
+    ?.let { url ->
+      VisualEvidence(
+        url = url,
+        label = label,
+        uiHierarchyUrl = uiHierarchyDownloadUrl.takeIf { it.isNotBlank() },
+        highlighted = highlighted,
+      )
+    }
+
+private fun formatContinuityStepLabel(stepNumber: Int, step: ProtoLargeScreensEvidenceStep): String {
+  val changeText =
+    when (step.configurationChange) {
+      ProtoLargeScreensEvidenceStep.ConfigurationChange.NONE -> "Initial state"
+      ProtoLargeScreensEvidenceStep.ConfigurationChange.FOLD -> "Fold"
+      ProtoLargeScreensEvidenceStep.ConfigurationChange.UNFOLD -> "Unfold"
+      ProtoLargeScreensEvidenceStep.ConfigurationChange.ROTATE -> "Rotate"
+      ProtoLargeScreensEvidenceStep.ConfigurationChange.RESIZE -> "Resize"
+      ProtoLargeScreensEvidenceStep.ConfigurationChange.CONFIGURATION_CHANGE_UNSPECIFIED,
+      ProtoLargeScreensEvidenceStep.ConfigurationChange.UNRECOGNIZED -> null
+    }
+  val base = if (changeText != null) "Step $stepNumber: $changeText" else "Step $stepNumber"
+  return if (step.hasShowsIssue() && step.showsIssue) "$base (Issue detected)" else base
+}
+
+private fun ProtoLargeScreensDeviceInfo.toDomain(): DeviceInfo? =
+  DeviceInfo(
+      deviceBrandName = deviceBrand,
+      deviceModel = deviceModel,
+      androidVersion = androidVersion,
+      androidSdkVersion = if (hasAndroidSdkVersion()) androidSdkVersion else null,
+    )
+    .takeIf { it.displayName.isNotBlank() || it.androidVersionDisplayText.isNotBlank() }
 
 private fun ProtoInAppLocation.toDomain(): AffectedScope? =
   when (locationTypeCase) {

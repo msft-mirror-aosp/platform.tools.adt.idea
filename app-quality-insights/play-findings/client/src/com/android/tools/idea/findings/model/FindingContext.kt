@@ -18,30 +18,78 @@ package com.android.tools.idea.findings.model
 /**
  * Optional diagnostic and UI context associated with an [AppFinding].
  *
- * Groups type-specific attachments and metadata (such as crash stack traces, screenshots, and device info) without requiring a separate
- * subclass per finding type.
+ * Holds the observed [occurrences] of the finding. Each occurrence is one time the issue was observed on a specific device, with that
+ * device's info and the evidence captured there: a crash stack trace, or screenshots (including multi-step continuity captures). Findings
+ * without such evidence have no occurrences.
  */
 // TODO(b/517599039): Add a generic learnMoreUrl field once the details panel UI supports rendering a "Learn more" link.
-data class FindingContext(
-  val visualEvidences: List<VisualEvidence> = emptyList(),
-  val stackTrace: StackTrace? = null,
-  val deviceInfo: DeviceInfo? = null,
-) {
+data class FindingContext(val occurrences: List<FindingOccurrence> = emptyList()) {
   companion object {
     val EMPTY = FindingContext()
   }
 }
 
-/** Visual evidence (such as a screenshot) associated with a finding. */
-data class VisualEvidence(val url: String)
+/**
+ * A single observed occurrence of a finding (for example, on a specific test device), carrying its device metadata and any captured
+ * diagnostic evidence.
+ */
+data class FindingOccurrence(
+  val deviceInfo: DeviceInfo? = null,
+  val visualEvidences: List<VisualEvidence> = emptyList(),
+  val stackTrace: StackTrace? = null,
+)
 
-/** Crash stack trace associated with a finding. */
+/**
+ * Visual evidence (such as a screenshot and optional UI hierarchy dump) associated with a finding occurrence.
+ *
+ * @property url Signed URL of the screenshot image.
+ * @property label Optional human-readable caption describing the capture (e.g., continuity step).
+ * @property uiHierarchyUrl Optional download URL of the UI hierarchy XML dump captured with the screenshot.
+ * @property highlighted Whether this capture should be highlighted (e.g., the continuity step where the issue was detected).
+ */
+data class VisualEvidence(
+  val url: String,
+  val label: String? = null,
+  val uiHierarchyUrl: String? = null,
+  val highlighted: Boolean = false,
+)
+
+/** Crash stack trace associated with a finding occurrence. */
 data class StackTrace(val raw: String)
 
-/** Device information associated with a finding. */
+/** Device information associated with a finding occurrence. */
 data class DeviceInfo(
   val deviceBrandName: String,
   val deviceModel: String,
   val androidVersion: String,
-  val androidSdkVersion: Int,
-)
+  val androidSdkVersion: Int? = null,
+) {
+  /**
+   * Human-readable device name combining [deviceBrandName] and [deviceModel], omitting [deviceBrandName] if [deviceModel] already starts
+   * with it, or empty string if neither is present.
+   */
+  val displayName: String
+    get() {
+      val brand = deviceBrandName.trim()
+      val model = deviceModel.trim()
+      return when {
+        brand.isEmpty() -> model
+        model.isEmpty() -> brand
+        model.equals(brand, ignoreCase = true) || model.startsWith("$brand ", ignoreCase = true) -> model
+        else -> "$brand $model"
+      }
+    }
+
+  /** Human-readable Android version and API level (e.g. `"Android 14 (API 34)"`), or empty string if neither is present. */
+  val androidVersionDisplayText: String
+    get() {
+      val version = androidVersion.trim()
+      val sdk = androidSdkVersion?.takeIf { it > 0 }
+      return when {
+        version.isNotEmpty() && sdk != null -> "Android $version (API $sdk)"
+        version.isNotEmpty() -> "Android $version"
+        sdk != null -> "API $sdk"
+        else -> ""
+      }
+    }
+}

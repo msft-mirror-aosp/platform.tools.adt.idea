@@ -62,13 +62,17 @@ message FindingData {
     LargeScreensLayoutFindingData large_screens_layout = 9;
 
     // Data for Large Screens Visual findings
-    // [Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED],
-    // [Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS],
-    // [Finding.Type.LARGE_SCREENS_CONTINUITY][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CONTINUITY].
+    // ([Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED]
+    // and
+    // [Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS]).
     LargeScreensVisualFindingData large_screens_visual = 10;
 
     // Data for Large Screens Crash findings
     // [Finding.Type.LARGE_SCREENS_CRASH][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CRASH].
     LargeScreensCrashFindingData large_screens_crash = 11;
+
+    // Data for Large Screens Continuity findings
+    // [Finding.Type.LARGE_SCREENS_CONTINUITY][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CONTINUITY].
+    LargeScreensContinuityFindingData large_screens_continuity = 12;
   }
 }

@@ -31,7 +31,10 @@ import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
 import com.google.play.androidpublisher.v3.InAppLocation as ProtoInAppLocation
 import com.google.play.androidpublisher.v3.LabCrashNoTelemetryFindingData
 import com.google.play.androidpublisher.v3.LabCrashSixteenKbFindingData
+import com.google.play.androidpublisher.v3.LargeScreensContinuityEvent
+import com.google.play.androidpublisher.v3.LargeScreensContinuityFindingData
 import com.google.play.androidpublisher.v3.LargeScreensCrashFindingData
+import com.google.play.androidpublisher.v3.LargeScreensDeviceInfo
 import com.google.play.androidpublisher.v3.VitalsAnomalyFindingData
 import com.google.play.androidpublisher.v3.VitalsBadBehaviorFindingData
 import com.google.play.androidpublisher.v3.VitalsDeviceBadBehaviorFindingData
@@ -218,6 +221,22 @@ class FakeFindingsClient(private val delayMs: Long = DEFAULT_DELAY_MS) : Finding
         name = "applications/$TEST_PACKAGE_NAME/findings/15",
         type = ProtoFinding.Type.LARGE_SCREENS_CONTINUITY,
         severity = FindingSeverity.WARNING,
+        protoData =
+          ProtoFindingData.newBuilder()
+            .setLargeScreensContinuity(
+              LargeScreensContinuityFindingData.newBuilder()
+                .addEvents(
+                  LargeScreensContinuityEvent.newBuilder()
+                    .setDeviceInfo(
+                      LargeScreensDeviceInfo.newBuilder()
+                        .setDeviceBrand("Google")
+                        .setDeviceModel("Pixel Fold")
+                        .setAndroidVersion("14")
+                        .setAndroidSdkVersion(34)
+                    )
+                )
+            )
+            .build(),
         affectedScopes = listOf(AffectedScope.Artifact("101")),
       ),
       // Large screen crash on configuration change
@@ -229,24 +248,34 @@ class FakeFindingsClient(private val delayMs: Long = DEFAULT_DELAY_MS) : Finding
           ProtoFindingData.newBuilder()
             .setLargeScreensCrash(
               LargeScreensCrashFindingData.newBuilder()
-                .setStackTrace(
-                  """
-                  java.lang.NullPointerException: Attempt to invoke virtual method 'void android.widget.TextView.setText(java.lang.CharSequence)' on a null object reference
-                  	at com.example.app.ui.detail.DetailFragment.onViewCreated(DetailFragment.kt:74)
-                  	at androidx.fragment.app.Fragment.performViewCreated(Fragment.java:3146)
-                  	at androidx.fragment.app.FragmentStateManager.createView(FragmentStateManager.java:588)
-                  	at androidx.fragment.app.FragmentStateManager.moveToExpectedState(FragmentStateManager.java:272)
-                  	at androidx.fragment.app.FragmentManager.executeOpsTogether(FragmentManager.java:1943)
-                  	at androidx.fragment.app.FragmentManager.removeRedundantOperationsAndExecute(FragmentManager.java:1845)
-                  	at androidx.fragment.app.FragmentManager.execPendingActions(FragmentManager.java:1782)
-                  	at androidx.fragment.app.FragmentManager${'$'}5.run(FragmentManager.java:562)
-                  	at android.os.Handler.handleCallback(Handler.java:958)
-                  	at android.os.Handler.dispatchMessage(Handler.java:99)
-                  	at android.os.Looper.loopOnce(Looper.java:230)
-                  	at android.os.Looper.loop(Looper.java:319)
-                  	at android.app.ActivityThread.main(ActivityThread.java:8919)
-                  """
-                    .trimIndent()
+                .addEvents(
+                  LargeScreensCrashFindingData.CrashEvent.newBuilder()
+                    .setDeviceInfo(
+                      LargeScreensDeviceInfo.newBuilder()
+                        .setDeviceBrand("Google")
+                        .setDeviceModel("Pixel Fold")
+                        .setAndroidVersion("14")
+                        .setAndroidSdkVersion(34)
+                    )
+                    .setStackTrace(
+                      """
+                      java.lang.NullPointerException: Attempt to invoke virtual method 'void android.widget.TextView.setText(java.lang.CharSequence)' on a null object reference
+                      	at com.example.app.ui.detail.DetailFragment.onViewCreated(DetailFragment.kt:74)
+                      	at androidx.fragment.app.Fragment.performViewCreated(Fragment.java:3146)
+                      	at androidx.fragment.app.FragmentStateManager.createView(FragmentStateManager.java:588)
+                      	at androidx.fragment.app.FragmentStateManager.moveToExpectedState(FragmentStateManager.java:272)
+                      	at androidx.fragment.app.FragmentManager.executeOpsTogether(FragmentManager.java:1943)
+                      	at androidx.fragment.app.FragmentManager.removeRedundantOperationsAndExecute(FragmentManager.java:1845)
+                      	at androidx.fragment.app.FragmentManager.execPendingActions(FragmentManager.java:1782)
+                      	at androidx.fragment.app.FragmentManager${'$'}5.run(FragmentManager.java:562)
+                      	at android.os.Handler.handleCallback(Handler.java:958)
+                      	at android.os.Handler.dispatchMessage(Handler.java:99)
+                      	at android.os.Looper.loopOnce(Looper.java:230)
+                      	at android.os.Looper.loop(Looper.java:319)
+                      	at android.app.ActivityThread.main(ActivityThread.java:8919)
+                      """
+                        .trimIndent()
+                    )
                 )
             )
             .build(),

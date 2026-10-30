@@ -160,9 +160,7 @@ class FindingMapperTest {
     assertThat(layoutFinding.category).isEqualTo(FindingCategory.USER_EXPERIENCE)
     assertThat(layoutFinding.displayName).isEqualTo("App does not use entire screen")
     assertThat(layoutFinding.description)
-      .isEqualTo(
-        "App does not use entire screen (letterboxed / pillarboxed). Optimize your layouts for tablets, foldables, and desktop devices."
-      )
+      .isEqualTo("App content does not fill the available screen area. Optimize your layouts for tablets, foldables, and desktop devices.")
 
     val cutOffData =
       ProtoFindingData.newBuilder()
@@ -171,9 +169,11 @@ class FindingMapperTest {
             .setLayoutIssueType(LargeScreensLayoutFindingData.LayoutIssueType.CONTENT_CUT_OFF_ON_SCREEN)
         )
         .build()
-    assertThat(getFindingDisplayName(ProtoFinding.Type.LARGE_SCREENS_LAYOUT, cutOffData)).isEqualTo("Content cut off on screen")
+    assertThat(getFindingDisplayName(ProtoFinding.Type.LARGE_SCREENS_LAYOUT, cutOffData)).isEqualTo("Content is cut off on screen")
     assertThat(getFindingDescription(ProtoFinding.Type.LARGE_SCREENS_LAYOUT, cutOffData))
-      .isEqualTo("Content cut off on screen. Optimize your layouts for tablets, foldables, and desktop devices.")
+      .isEqualTo(
+        "Text or UI elements are cut off or clipped at screen edges. Optimize your layouts for tablets, foldables, and desktop devices."
+      )
 
     val overlappingData =
       ProtoFindingData.newBuilder()
@@ -181,9 +181,9 @@ class FindingMapperTest {
           LargeScreensLayoutFindingData.newBuilder().setLayoutIssueType(LargeScreensLayoutFindingData.LayoutIssueType.OVERLAPPING)
         )
         .build()
-    assertThat(getFindingDisplayName(ProtoFinding.Type.LARGE_SCREENS_LAYOUT, overlappingData)).isEqualTo("Overlapping UI elements")
+    assertThat(getFindingDisplayName(ProtoFinding.Type.LARGE_SCREENS_LAYOUT, overlappingData)).isEqualTo("UI components overlap each other")
     assertThat(getFindingDescription(ProtoFinding.Type.LARGE_SCREENS_LAYOUT, overlappingData))
-      .isEqualTo("Overlapping UI elements detected. Optimize your layouts for tablets, foldables, and desktop devices.")
+      .isEqualTo("UI elements or text overlap with each other. Optimize your layouts for tablets, foldables, and desktop devices.")
 
     val excessiveWhiteSpaceData =
       ProtoFindingData.newBuilder()
@@ -192,10 +192,21 @@ class FindingMapperTest {
         )
         .build()
     assertThat(getFindingDisplayName(ProtoFinding.Type.LARGE_SCREENS_LAYOUT, excessiveWhiteSpaceData))
-      .isEqualTo("Large screens layout issue: EXCESSIVE_WHITE_SPACE")
+      .isEqualTo("Excessive empty or unused space")
     assertThat(getFindingDescription(ProtoFinding.Type.LARGE_SCREENS_LAYOUT, excessiveWhiteSpaceData))
+      .isEqualTo("Layout contains excessive empty or unused space. Optimize your layouts for tablets, foldables, and desktop devices.")
+
+    val edgeToEdgeData =
+      ProtoFindingData.newBuilder()
+        .setLargeScreensLayout(
+          LargeScreensLayoutFindingData.newBuilder().setLayoutIssueType(LargeScreensLayoutFindingData.LayoutIssueType.EDGE_TO_EDGE)
+        )
+        .build()
+    assertThat(getFindingDisplayName(ProtoFinding.Type.LARGE_SCREENS_LAYOUT, edgeToEdgeData))
+      .isEqualTo("Content or controls overlap system bars or display cutouts")
+    assertThat(getFindingDescription(ProtoFinding.Type.LARGE_SCREENS_LAYOUT, edgeToEdgeData))
       .isEqualTo(
-        "UI layout issue detected on large screens: EXCESSIVE_WHITE_SPACE. Optimize your layouts for tablets, foldables, and desktop devices."
+        "Content or controls overlap system bars, display cutouts, or navigation bars. Optimize your layouts for tablets, foldables, and desktop devices."
       )
 
     assertThat(getFindingDisplayName(ProtoFinding.Type.LARGE_SCREENS_LAYOUT)).isEqualTo("Large screens layout issue")
@@ -227,7 +238,11 @@ class FindingMapperTest {
     val crashData =
       ProtoFindingData.newBuilder()
         .setLargeScreensCrash(
-          LargeScreensCrashFindingData.newBuilder().setStackTrace("java.lang.NullPointerException: Missing view\n\tat Foo.bar(Foo.kt:10)")
+          LargeScreensCrashFindingData.newBuilder()
+            .addEvents(
+              LargeScreensCrashFindingData.CrashEvent.newBuilder()
+                .setStackTrace("java.lang.NullPointerException: Missing view\n\tat Foo.bar(Foo.kt:10)")
+            )
         )
         .build()
     val crashFinding =

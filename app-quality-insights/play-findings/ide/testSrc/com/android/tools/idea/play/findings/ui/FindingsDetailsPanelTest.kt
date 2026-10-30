@@ -34,6 +34,7 @@ import com.android.tools.idea.findings.model.AffectedScope
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingCategory
 import com.android.tools.idea.findings.model.FindingContext
+import com.android.tools.idea.findings.model.FindingOccurrence
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.findings.model.StackTrace
 import com.android.tools.idea.findings.model.VisualEvidence
@@ -202,7 +203,10 @@ class FindingsDetailsPanelTest {
         category = FindingCategory.USER_EXPERIENCE,
         severity = FindingSeverity.WARNING,
         displayName = "Large screens layout issue",
-        context = FindingContext(visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png"))),
+        context =
+          FindingContext(
+            occurrences = listOf(FindingOccurrence(visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png"))))
+          ),
       )
 
     panel.updateFinding(findingWithScreenshot)
@@ -233,7 +237,10 @@ class FindingsDetailsPanelTest {
         category = FindingCategory.USER_EXPERIENCE,
         severity = FindingSeverity.WARNING,
         displayName = "Large screens layout issue",
-        context = FindingContext(visualEvidences = listOf(VisualEvidence("https://example.com/broken-screenshot.png"))),
+        context =
+          FindingContext(
+            occurrences = listOf(FindingOccurrence(visualEvidences = listOf(VisualEvidence("https://example.com/broken-screenshot.png"))))
+          ),
       )
 
     panel.updateFinding(findingWithScreenshot)
@@ -257,7 +264,10 @@ class FindingsDetailsPanelTest {
         category = FindingCategory.USER_EXPERIENCE,
         severity = FindingSeverity.WARNING,
         displayName = "Large screens layout issue",
-        context = FindingContext(visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png"))),
+        context =
+          FindingContext(
+            occurrences = listOf(FindingOccurrence(visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png"))))
+          ),
       )
 
     panel.updateFinding(findingWithScreenshot)
@@ -289,7 +299,7 @@ class FindingsDetailsPanelTest {
         category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.SEVERE,
         displayName = "Large screen crash on configuration change",
-        context = FindingContext(stackTrace = StackTrace(sampleStackTrace)),
+        context = FindingContext(occurrences = listOf(FindingOccurrence(stackTrace = StackTrace(sampleStackTrace)))),
       )
 
     composeTestRule.onNodeWithTag("finding_stack_trace", useUnmergedTree = true).assertDoesNotExist()
@@ -332,7 +342,8 @@ class FindingsDetailsPanelTest {
         category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.SEVERE,
         displayName = "Large screen crash on configuration change",
-        context = FindingContext(stackTrace = StackTrace("java.lang.IllegalStateException: failed")),
+        context =
+          FindingContext(occurrences = listOf(FindingOccurrence(stackTrace = StackTrace("java.lang.IllegalStateException: failed")))),
       )
 
     panel.updateFinding(crashFinding)
@@ -356,7 +367,7 @@ class FindingsDetailsPanelTest {
         category = FindingCategory.TECHNICAL_QUALITY,
         severity = FindingSeverity.SEVERE,
         displayName = "Large screen crash on configuration change",
-        context = FindingContext(stackTrace = StackTrace("java.lang.NullPointerException")),
+        context = FindingContext(occurrences = listOf(FindingOccurrence(stackTrace = StackTrace("java.lang.NullPointerException")))),
       )
 
     panel.updateFinding(crashFinding)
@@ -382,8 +393,13 @@ class FindingsDetailsPanelTest {
         displayName = "Large screen crash on configuration change",
         context =
           FindingContext(
-            visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png")),
-            stackTrace = StackTrace("java.lang.NullPointerException: crash"),
+            occurrences =
+              listOf(
+                FindingOccurrence(
+                  visualEvidences = listOf(VisualEvidence("https://example.com/screenshot.png")),
+                  stackTrace = StackTrace("java.lang.NullPointerException: crash"),
+                )
+              )
           ),
       )
 

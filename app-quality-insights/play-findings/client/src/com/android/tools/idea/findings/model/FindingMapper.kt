@@ -58,13 +58,20 @@ internal fun getFindingDisplayName(type: ProtoFinding.Type, data: ProtoFindingDa
     ProtoFinding.Type.LARGE_SCREENS_LAYOUT -> {
       val issueType = data?.takeIf { it.hasLargeScreensLayout() }?.largeScreensLayout?.layoutIssueType
       when (issueType) {
+        LayoutIssueType.EXCESSIVE_WHITE_SPACE -> "Excessive empty or unused space"
         LayoutIssueType.DOES_NOT_USE_ENTIRE_SCREEN -> "App does not use entire screen"
-        LayoutIssueType.CONTENT_CUT_OFF_ON_SCREEN -> "Content cut off on screen"
-        LayoutIssueType.OVERLAPPING -> "Overlapping UI elements"
+        LayoutIssueType.OVERLAPPING -> "UI components overlap each other"
+        LayoutIssueType.IMAGES_OR_TEXT_ARE_TOO_LARGE_OR_BLOWN_UP -> "Images or text scaled disproportionately large"
+        LayoutIssueType.PIXELS_LOOK_BLURRED_OR_STRETCHED -> "Low-resolution or blurry visual assets"
+        LayoutIssueType.CONTENT_CUT_OFF_ON_SCREEN -> "Content is cut off on screen"
+        LayoutIssueType.BUTTONS_OR_CONTROLS_PLACEMENTS_ARE_NOT_UNIFORM -> "Misaligned buttons or interactive controls"
+        LayoutIssueType.IMAGES_OR_TEXT_ARE_STRETCHED -> "Stretched images or distorted aspect ratios"
+        LayoutIssueType.SUBNAVS_LOOK_CRUNCHED_OR_SQUISHED -> "Cramped navigation bars or sub-menus"
+        LayoutIssueType.BUTTONS_OR_CONTROLS_ARE_TOO_BIG -> "Oversized buttons or interactive controls"
+        LayoutIssueType.EDGE_TO_EDGE -> "Content or controls overlap system bars or display cutouts"
         null,
         LayoutIssueType.LAYOUT_ISSUE_TYPE_UNSPECIFIED,
         LayoutIssueType.UNRECOGNIZED -> "Large screens layout issue"
-        else -> "Large screens layout issue: ${issueType.name}"
       }
     }
     ProtoFinding.Type.LARGE_SCREENS_CAMERA_STRETCHED -> "Camera preview stretched on large screens"
@@ -155,13 +162,20 @@ internal fun getFindingDescription(type: ProtoFinding.Type, data: ProtoFindingDa
       val issueType = data?.takeIf { it.hasLargeScreensLayout() }?.largeScreensLayout?.layoutIssueType
       val issueDesc =
         when (issueType) {
-          LayoutIssueType.DOES_NOT_USE_ENTIRE_SCREEN -> "App does not use entire screen (letterboxed / pillarboxed)."
-          LayoutIssueType.CONTENT_CUT_OFF_ON_SCREEN -> "Content cut off on screen."
-          LayoutIssueType.OVERLAPPING -> "Overlapping UI elements detected."
+          LayoutIssueType.EXCESSIVE_WHITE_SPACE -> "Layout contains excessive empty or unused space."
+          LayoutIssueType.DOES_NOT_USE_ENTIRE_SCREEN -> "App content does not fill the available screen area."
+          LayoutIssueType.OVERLAPPING -> "UI elements or text overlap with each other."
+          LayoutIssueType.IMAGES_OR_TEXT_ARE_TOO_LARGE_OR_BLOWN_UP -> "Images or text appear disproportionately large or scaled up."
+          LayoutIssueType.PIXELS_LOOK_BLURRED_OR_STRETCHED -> "Images or visual assets appear blurry or low-resolution."
+          LayoutIssueType.CONTENT_CUT_OFF_ON_SCREEN -> "Text or UI elements are cut off or clipped at screen edges."
+          LayoutIssueType.BUTTONS_OR_CONTROLS_PLACEMENTS_ARE_NOT_UNIFORM -> "Buttons or interactive controls are inconsistently aligned."
+          LayoutIssueType.IMAGES_OR_TEXT_ARE_STRETCHED -> "Images or text appear stretched with distorted aspect ratios."
+          LayoutIssueType.SUBNAVS_LOOK_CRUNCHED_OR_SQUISHED -> "Navigation bars or sub-menus appear cramped or compressed."
+          LayoutIssueType.BUTTONS_OR_CONTROLS_ARE_TOO_BIG -> "Buttons or controls are oversized for large screen layouts."
+          LayoutIssueType.EDGE_TO_EDGE -> "Content or controls overlap system bars, display cutouts, or navigation bars."
           null,
           LayoutIssueType.LAYOUT_ISSUE_TYPE_UNSPECIFIED,
           LayoutIssueType.UNRECOGNIZED -> "Layout issues detected on large screen devices."
-          else -> "UI layout issue detected on large screens: ${issueType.name}."
         }
       "$issueDesc Optimize your layouts for tablets, foldables, and desktop devices."
     }
@@ -179,7 +193,12 @@ internal fun getFindingDescription(type: ProtoFinding.Type, data: ProtoFindingDa
     }
 
     ProtoFinding.Type.LARGE_SCREENS_CRASH -> {
-      val stackTrace = data?.takeIf { it.hasLargeScreensCrash() }?.largeScreensCrash?.stackTrace
+      val stackTrace =
+        data
+          ?.takeIf { it.hasLargeScreensCrash() }
+          ?.largeScreensCrash
+          ?.eventsList
+          ?.firstNotNullOfOrNull { it.stackTrace.takeIf(String::isNotBlank) }
       val exceptionLine = stackTrace?.lineSequence()?.firstOrNull { it.isNotBlank() }?.trim()
       if (exceptionLine != null) {
         "App crashed during a configuration change: $exceptionLine. Handle configuration changes or avoid lifecycle destruction issues."

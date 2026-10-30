@@ -260,9 +260,11 @@ class FindingsDetailsPanel(
   }
 }
 
+// Shows the first occurrence's evidence; a follow-up change adds an occurrence selector.
 private fun getAvailableSubTabs(context: FindingContext): List<FindingDetailSubTab> = buildList {
-  context.stackTrace?.let { add(FindingDetailSubTab.StackTrace(it.raw)) }
-  val validEvidences = context.visualEvidences.filter { it.url.isNotBlank() }
+  val occurrence = context.occurrences.firstOrNull() ?: return@buildList
+  occurrence.stackTrace?.let { add(FindingDetailSubTab.StackTrace(it.raw)) }
+  val validEvidences = occurrence.visualEvidences.filter { it.url.isNotBlank() }
   if (validEvidences.isNotEmpty()) {
     add(FindingDetailSubTab.VisualEvidences(validEvidences))
   }

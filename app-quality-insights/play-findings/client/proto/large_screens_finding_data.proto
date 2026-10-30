@@ -6,40 +6,63 @@ option java_package = "com.google.play.androidpublisher.v3";
 option java_multiple_files = true;
 option java_outer_classname = "LargeScreensFindingDataProto";
 
-// The device a Large Screens finding was observed on.
+// TODO(b/517599039): Re-sync once the v3 ComputeFindings schema is finalized.
+
+// The device a Large Screens defect was observed on.
 //
-// Large Screens findings are always device scoped: the defect, the repro steps
-// and often the fix depend on the form factor, the OEM's framework
-// customizations and the Android version. The same defect observed on two
-// devices is therefore reported as two findings, each carrying its own
-// device_info, rather than as one finding with a list of devices.
+// Large Screens defects are device scoped: the defect, the repro steps and
+// often the fix depend on the form factor, the OEM's framework customizations
+// and the Android version, so each event of a finding carries the device it was
+// observed on.
 message LargeScreensDeviceInfo {
   // Brand of the device, i.e. "ro.product.brand" (e.g. "samsung", "google").
-  string device_brand_name = 1;
+  string device_brand = 1;
 
   // Model of the device, i.e. "ro.product.model" (e.g. "sm-i610").
-  //
-  // This is the model identifier reported by the device, which is not
-  // necessarily its marketing name ("Galaxy Z Fold 8"), so it is only
-  // meaningful next to device_brand_name.
   string device_model = 2;
 
   // Android platform version the device was running (e.g. "14", "17").
   string android_version = 3;
 
   // Android SDK (API) level the device was running (e.g. 34).
-  //
-  // Unambiguous API level developers compare their targetSdk against.
-  int32 android_sdk_version = 4;
+  // Unset when unknown.
+  optional int32 android_sdk_version = 4;
 }
 
-// Finding data for Large Screens layout findings
-// [Finding.Type.LARGE_SCREENS_LAYOUT][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_LAYOUT].
-//
-// Layout issues are evidenced by a screenshot, the device the defect was
-// observed on, and classified with a specific layout issue type.
+// A single capture of the screen: the screenshot and the UI hierarchy that was
+// on screen when it was taken.
+message LargeScreensScreenCapture {
+  // Signed image URL of the screenshot.
+  //
+  // The link is valid for 24 hours from when the findings were computed, so
+  // clients must not cache or store it.
+  string screenshot_url = 1;
+
+  // Download URL of the UI hierarchy dump captured with the screenshot: the
+  // tree of on-screen UI elements and their bounds.
+  //
+  // Empty when no dump was captured. The link is valid for 24 hours from when
+  // the findings were computed, so clients must not cache or store it.
+  string ui_hierarchy_download_url = 2;
+}
+
+// One occurrence of a Large Screens visual or layout defect: one time it was
+// observed, on a specific device and screen.
+message LargeScreensVisualEvent {
+  // The device the defect was observed on.
+  LargeScreensDeviceInfo device_info = 1;
+
+  // The captures of the screen showing the defect, e.g. the screen before and
+  // after scrolling, or the defect in several places of the same screen.
+  // Contains at least one and at most 10 captures.
+  repeated LargeScreensScreenCapture captures = 2;
+}
+
+// Finding data for Large Screens layout findings (LARGE_SCREENS_LAYOUT).
 message LargeScreensLayoutFindingData {
   // Types of UI layout issues identified on large screens.
+  // This enum is not frozen. New values may be added in the future,
+  // and clients should handle unknown values gracefully.
   enum LayoutIssueType {
     // Unspecified layout issue type.
     LAYOUT_ISSUE_TYPE_UNSPECIFIED = 0;
@@ -84,45 +107,99 @@ message LargeScreensLayoutFindingData {
   // The specific type of layout issue detected.
   LayoutIssueType layout_issue_type = 1;
 
-  // Required. FIFE/signed image URL for the screenshot illustrating the issue.
-  string screenshot_fife_url = 2;
-
-  // The device the defect was observed on.
-  LargeScreensDeviceInfo device_info = 3;
+  // Occurrences of this layout issue across tested devices and screens. Capped
+  // to 10 events.
+  repeated LargeScreensVisualEvent events = 2;
 }
 
-// Finding data for Large Screens visual findings that do not have layout issue
-// types.
-//
-// Applies to
-// [Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_STRETCHED],
-// [Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CAMERA_SIDEWAYS]
-// and
-// [Finding.Type.LARGE_SCREENS_CONTINUITY][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CONTINUITY].
-// All of them carry a screenshot and the device the defect was observed on.
+// Finding data for Large Screens visual findings
+// (LARGE_SCREENS_CAMERA_STRETCHED and LARGE_SCREENS_CAMERA_SIDEWAYS).
 message LargeScreensVisualFindingData {
-  // Required. FIFE/signed image URL for the screenshot illustrating the issue.
-  string screenshot_fife_url = 1;
-
-  // The device the defect was observed on.
-  LargeScreensDeviceInfo device_info = 2;
+  // Occurrences of this visual issue across tested devices and screens. Capped
+  // to 10 events.
+  repeated LargeScreensVisualEvent events = 1;
 }
 
-// Finding data for
-// [Finding.Type.LARGE_SCREENS_CRASH][google.play.androidpublisher.v3.Finding.Type.LARGE_SCREENS_CRASH].
+// Visual evidence made of one or more app states in chronological order.
 //
-// Crashes have no screenshot and no UI hierarchy dump, so the evidence this
-// payload carries is the stack trace and the device the app crashed on.
-message LargeScreensCrashFindingData {
-  // The device the crash was observed on.
+// Each state is optionally reached by a configuration change and is shown by
+// one screen capture.
+message LargeScreensVisualEvidence {
+  // The app states, in chronological order. Contains at least one and at most
+  // 10 steps.
+  repeated LargeScreensEvidenceStep steps = 1;
+}
+
+// One state of the app and the screen capture that shows it.
+message LargeScreensEvidenceStep {
+  // A configuration change performed on the device or the app window. See
+  // https://developer.android.com/docs/quality-guidelines/adaptive-app-quality/tier-3.
+  // This enum is not frozen. New values may be added in the future,
+  // and clients should handle unknown values gracefully.
+  enum ConfigurationChange {
+    // Unspecified configuration change.
+    CONFIGURATION_CHANGE_UNSPECIFIED = 0;
+
+    // No configuration change; captures the initial app state.
+    NONE = 1;
+
+    // The device was folded.
+    FOLD = 2;
+
+    // The device was unfolded.
+    UNFOLD = 3;
+
+    // The device was rotated.
+    ROTATE = 4;
+
+    // The app window was resized (split screen or desktop windowing).
+    RESIZE = 5;
+  }
+
+  // The configuration change that led to this state: NONE for the first step,
+  // CONFIGURATION_CHANGE_UNSPECIFIED when the test run did not record it.
+  ConfigurationChange configuration_change = 1;
+
+  // The capture of the screen in this state: one state is shown by one
+  // screenshot, plus the UI hierarchy dump when the test run captured one.
+  LargeScreensScreenCapture capture = 2;
+
+  // Whether the defect is visible in this state, so clients can highlight it.
+  // Unset when the test run did not record which state shows the defect.
+  optional bool shows_issue = 3;
+}
+
+// Finding data for Large Screens continuity findings
+// (LARGE_SCREENS_CONTINUITY): app state lost across one or more configuration
+// changes.
+message LargeScreensContinuityFindingData {
+  // Occurrences of this continuity issue across tested devices. Capped to 10
+  // events.
+  repeated LargeScreensContinuityEvent events = 1;
+}
+
+// One continuity event: the app states observed on one device.
+message LargeScreensContinuityEvent {
+  // The device the defect was observed on.
   LargeScreensDeviceInfo device_info = 1;
 
-  // Stack trace of the crash, as captured by the Android DropBox entry with
-  // the trailing logcat buffer removed.
-  //
-  // This is the same text the app's own crash handler would have logged, so it
-  // contains only frames and messages produced by the app under test and by
-  // the Android framework. Empty when the test run predates stack trace
-  // capture or when the DropBox entry could not be read.
-  string stack_trace = 2;
+  // The app states in chronological order: the initial state, then one state
+  // per configuration change when the test run records them. Contains at least
+  // one and at most 10 steps.
+  LargeScreensVisualEvidence evidence = 2;
+}
+
+// Finding data for Large Screens crash findings (LARGE_SCREENS_CRASH).
+message LargeScreensCrashFindingData {
+  // One occurrence of the crash, on a specific device.
+  message CrashEvent {
+    // The device the crash was observed on.
+    LargeScreensDeviceInfo device_info = 1;
+
+    // Stack trace of the crash.
+    string stack_trace = 2;
+  }
+
+  // Occurrences of this crash across tested devices. Capped to 10 events.
+  repeated CrashEvent events = 1;
 }
