@@ -63,10 +63,10 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
         buildModels.flatMap { buildModel ->
           // For each build, build a map per-project to indicate whether it has inbound dependencies
           // This is used as an optimization when determining whether to skip library runtime classpaths
-          val hasInboundDependencyByPath = mutableMapOf<String, Boolean>()
+          val hasInboundDependencyByPath = mutableSetOf<String>()
           buildModel.projects.forEach {
             cachedData.data[it]?.allOutgoingProjectDependencies.orEmpty().forEach { gradleProjectPath ->
-              hasInboundDependencyByPath[gradleProjectPath] = true
+              hasInboundDependencyByPath.add(gradleProjectPath)
             }
           }
 
@@ -85,21 +85,18 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
                     modelVersions = data.modelVersions,
                     variantName = data.selectedVariantName,
                   ) {
-                    // If the studio flag for it is enabled, we don't fetch runtime classpath for libraries with inbound depenencis
-                    if (
+                    when {
+                      !hasInboundDependencyByPath.contains(gradleProject.path) ->
+                        it.buildAllRuntimeClasspaths(syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport)
                       data.shouldSkipRuntimeClassPathForLibraries &&
-                        ideAndroidProject.projectType == IdeAndroidProjectType.PROJECT_TYPE_LIBRARY &&
-                        hasInboundDependencyByPath[gradleProject.path] == true
-                    ) {
-                      it.buildOnlyTestRuntimeClasspaths(
-                        syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryUnitTests,
-                        syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryScreenshotTests,
-                        addAdditionalArtifactsInModel = syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport,
-                      )
-                    } else {
-                      it.buildAllRuntimeClasspaths(
-                        addAdditionalArtifactsInModel = syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport
-                      )
+                        ideAndroidProject.projectType == IdeAndroidProjectType.PROJECT_TYPE_LIBRARY ->
+                        it.buildOnlyTestRuntimeClasspaths(
+                          buildUnitTestsRuntime = syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryUnitTests,
+                          buildScreenshotTestsRuntime = syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryScreenshotTests,
+                          addAdditionalArtifactsInModel = syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport,
+                        )
+
+                      else -> it.buildAllRuntimeClasspaths(syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport)
                     }
                   } ?: return@BuildAction null
                 val selectedVariant = ideAndroidProject.coreVariants.single { it.name == data.selectedVariantName }

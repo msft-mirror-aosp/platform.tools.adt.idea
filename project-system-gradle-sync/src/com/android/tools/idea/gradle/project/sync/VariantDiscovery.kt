@@ -65,6 +65,14 @@ internal class VariantDiscovery(
   private val inputModules = androidModulesById.values
   private val moduleFetchResults = Collections.synchronizedMap(HashMap<FetchedVariant, FetchedVariantResult>())
 
+  private val hasInboundDependencyByPath: Set<String> by lazy {
+    inputModules
+      .flatMap { module ->
+        module.declaredDependencies?.allOutgoingProjectsDependenciesToConfigurations?.keys.orEmpty()
+      }
+      .toSet()
+  }
+
   fun syncAllVariants() {
     if (inputModules.isEmpty()) return
 
@@ -129,7 +137,9 @@ internal class VariantDiscovery(
       syncOptions.flags.studioFlagUsedPhasedSyncVariantResolution &&
         syncOptions.flags.studioFlagPhasedSyncDependencyResolutionEnabled &&
         buildInfo.buildIdMap.keys.size == 1 &&
-        inputModules.all { it is AndroidModule.V2 && it.nativeModelVersion == AndroidModule.NativeModelVersion.None }
+        inputModules.all {
+          it is AndroidModule.V2 && it.nativeModelVersion == AndroidModule.NativeModelVersion.None && !it.hasKotlinMultiPlatform
+        }
 
     if (shouldUsePreviouslyResolvedVariants) {
       val modulesToSetUpWithPriority = prepareRequestedOrDefaultModuleConfigurations()
@@ -314,7 +324,12 @@ internal class VariantDiscovery(
         ModuleConfiguration(module.id, selectedVariantName, selectedAbi, isRoot = true)
       }
       else -> {
-        ModuleConfiguration(module.id, selectedVariantName, selectedAbi, isRoot = false)
+        ModuleConfiguration(
+          module.id,
+          selectedVariantName,
+          selectedAbi,
+          isRoot = !hasInboundDependencyByPath.contains(module.gradleProject.path),
+        )
       }
     }
   }

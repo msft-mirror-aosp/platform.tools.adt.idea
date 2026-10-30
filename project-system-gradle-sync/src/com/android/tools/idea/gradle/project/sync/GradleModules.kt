@@ -61,7 +61,10 @@ sealed interface HasBasicGradleProject {
   val gradleProject: BasicGradleProject
 }
 
-sealed class GradleModule(override val gradleProject: BasicGradleProject) : HasBasicGradleProject {
+sealed class GradleModule(
+  override val gradleProject: BasicGradleProject,
+  val hasKotlinMultiPlatform: Boolean = false,
+) : HasBasicGradleProject {
   val findModelRoot: Model
     get() = gradleProject
 
@@ -91,7 +94,8 @@ class JavaModule(
   gradleProject: BasicGradleProject,
   private val kotlinGradleModel: KotlinGradleModel?,
   private val kaptGradleModel: KaptGradleModel?,
-) : GradleModule(gradleProject) {
+  hasKotlinMultiPlatform: Boolean = false,
+) : GradleModule(gradleProject, hasKotlinMultiPlatform) {
   override fun getFetchSyncIssuesAction(): ActionToRun<Unit>? = null
 
   override fun prepare(indexedModels: IndexedModels): DeliverableGradleModule {
@@ -124,7 +128,8 @@ constructor(
   val basicAndroidProject: BasicAndroidProject? = null,
   val androidProjectV2: AndroidProjectV2? = null,
   val declaredDependencies: DeclaredDependencies?,
-) : GradleModule(gradleProject), ResolvedAndroidProjectPath {
+  hasKotlinMultiPlatform: Boolean = false,
+) : GradleModule(gradleProject, hasKotlinMultiPlatform), ResolvedAndroidProjectPath {
   val projectType: IdeAndroidProjectType
     get() = androidProject.projectType
 
@@ -177,6 +182,7 @@ constructor(
     androidProjectV2: AndroidProjectV2? = null,
     androidDsl: AndroidDsl,
     declaredDependencies: DeclaredDependencies? = null,
+    hasKotlinMultiPlatform: Boolean = false,
   ) :
     AndroidModule(
       modelVersions = modelVersions,
@@ -193,6 +199,7 @@ constructor(
       basicAndroidProject = basicAndroidProject,
       androidProjectV2 = androidProjectV2,
       declaredDependencies = declaredDependencies,
+      hasKotlinMultiPlatform = hasKotlinMultiPlatform,
     ) {
     override fun getFetchSyncIssuesAction(): ActionToRun<Unit> {
       return ActionToRun(

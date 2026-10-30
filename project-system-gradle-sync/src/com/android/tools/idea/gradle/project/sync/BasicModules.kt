@@ -20,6 +20,7 @@ import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.ndk.NativeModule
 import com.android.ide.common.repository.AgpVersion
+import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginPropertiesModelParameters
@@ -227,10 +228,8 @@ internal class BasicV2AndroidModuleGradleProject(
           controller.findModel(gradleProject, GradlePropertiesModel::class.java)
             ?: error("Cannot get GradlePropertiesModel (V2) for project '$gradleProject'")
 
-        val declaredDependencies =
-          if (syncActionOptions.flags.studioFlagUsedPhasedSyncVariantResolution)
-            controller.findModel(gradleProject, DeclaredDependencies::class.java)
-          else null
+        val declaredDependencies = controller.findModel(gradleProject, DeclaredDependencies::class.java)
+        val hasKotlinMultiPlatform = controller.findModel(gradleProject, GradlePluginModel::class.java)?.hasKotlinMultiPlatform() == true
 
         val modelCache = modelCacheV2Impl(internedModels, modelVersions, syncActionOptions.syncTestMode)
         val rootBuildId = buildInfo.buildPathMap[":"] ?: error("Root build (':') not found")
@@ -263,7 +262,15 @@ internal class BasicV2AndroidModuleGradleProject(
             // TODO(solodkyy): Perhaps request the version interface depending on AGP version.
             val nativeModule = controller.findNativeModuleModel(gradleProject, syncAllVariantsAndAbis = false)
 
-            createAndroidModuleV2(modelVersions, gradleProject, androidProjectResult, nativeModule, buildInfo.buildPathMap, modelCache)
+            createAndroidModuleV2(
+              modelVersions,
+              gradleProject,
+              androidProjectResult,
+              nativeModule,
+              buildInfo.buildPathMap,
+              modelCache,
+              hasKotlinMultiPlatform,
+            )
           }
           .let {
             val result =
@@ -272,7 +279,12 @@ internal class BasicV2AndroidModuleGradleProject(
                 // users
                 // access to at least build configuration files.
                 // TODO(b/254045637): Provide a fallback in the case when `BasicAndroidProject` is available but `AndroidProject` is not.
-                ?: JavaModule(gradleProject, kotlinGradleModel = null, kaptGradleModel = null)
+                ?: JavaModule(
+                  gradleProject,
+                  kotlinGradleModel = null,
+                  kaptGradleModel = null,
+                  hasKotlinMultiPlatform = hasKotlinMultiPlatform,
+                )
             result.recordExceptions(it.exceptions)
             result
           }
@@ -300,7 +312,8 @@ internal class BasicNonAndroidIncompleteGradleModule(gradleProject: BasicGradleP
       fun(controller: BuildController): GradleModule {
         val kotlinGradleModel = controller.findModel(gradleProject, KotlinGradleModel::class.java)
         val kaptGradleModel = controller.findModel(gradleProject, KaptGradleModel::class.java)
-        return JavaModule(gradleProject, kotlinGradleModel, kaptGradleModel)
+        val hasKotlinMultiPlatform = controller.findModel(gradleProject, GradlePluginModel::class.java)?.hasKotlinMultiPlatform() == true
+        return JavaModule(gradleProject, kotlinGradleModel, kaptGradleModel, hasKotlinMultiPlatform)
       },
       fetchesV1Models = false,
       fetchesKotlinModels = true,
@@ -315,6 +328,7 @@ private fun createAndroidModuleV2(
   nativeModule: NativeModule?,
   buildPathMap: Map<String, BuildId>,
   modelCache: ModelCache,
+  hasKotlinMultiPlatform: Boolean,
 ): AndroidModule {
 
   val ideAndroidProject = androidProjectResult.ideAndroidProject
@@ -338,5 +352,6 @@ private fun createAndroidModuleV2(
     androidProjectV2 = androidProjectResult.androidProjectV2,
     androidDsl = androidProjectResult.androidDsl,
     declaredDependencies = androidProjectResult.declaredDependencies,
+    hasKotlinMultiPlatform = hasKotlinMultiPlatform,
   )
 }
