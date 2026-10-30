@@ -40,6 +40,10 @@
     <!-- Disable JetBrains feedback surveys (b/402895189). Tested by AndroidStudioJetBrainsSurveysTest. -->
     <registryKey overrides="true" key="platform.feedback" defaultValue="false" description="Enables JetBrains feedback surveys"/>
 
+    <!-- Disable JetBrains Terminal AI agents in Android Studio (b/578854528). Tested by AndroidStudioTerminalAiAgentsTest. -->
+    <registryKey overrides="true" key="terminal.agent.predefined.actions.enabled" defaultValue="false"
+                 description="Show AI agent actions in the terminal title and predefined terminal sessions"/>
+
     <welcomeScreen implementation="com.android.tools.idea.welcome.wizard.AndroidStudioWelcomeScreenProvider"/>
 
     <codeStyleSettingsProvider implementation="org.jetbrains.android.formatter.AndroidStudioCodeStyleSettingsProvider" order="last"/>
