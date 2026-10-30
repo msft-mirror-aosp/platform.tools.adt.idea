@@ -15,8 +15,8 @@
  */
 package com.android.tools.idea.debug
 
-import com.intellij.debugger.PositionManager
 import com.intellij.debugger.engine.DebugProcessImpl
+import com.intellij.debugger.engine.PositionManagerAsync
 import com.intellij.openapi.application.readAction
 import com.intellij.psi.util.parentOfType
 import com.sun.jdi.Location
@@ -29,6 +29,7 @@ import kexter.DexMethodDebugInfo
 import kexter.InvokeInstruction
 import kexter.LineTableEntry
 import kexter.Opcode
+import org.jetbrains.kotlin.idea.debugger.base.util.safeGetSourcePositionAsync
 import org.jetbrains.kotlin.idea.debugger.base.util.safeMethod
 import org.jetbrains.kotlin.idea.debugger.core.DexBytecodeInspector
 import org.jetbrains.kotlin.idea.debugger.core.getInlineFunctionAndArgumentVariablesToBordersMap
@@ -223,10 +224,9 @@ private fun extractInlineCalls(location: Location): List<InlineCallInfo> =
     .filterNot { location.codeIndex() in it.bciRange }
     .sortedBy { it.bciRange.first }
 
-private suspend fun getCalledInlineFunction(positionManager: PositionManager, location: Location): KtNamedFunction? {
-  return readAction {
-    val sourcePosition = positionManager.getSourcePosition(location) ?: return@readAction null
-    sourcePosition.elementAt?.parentOfType<KtNamedFunction>()
-  }
+@Suppress("UnstableApiUsage")
+private suspend fun getCalledInlineFunction(positionManager: PositionManagerAsync, location: Location): KtNamedFunction? {
+  val sourcePosition = positionManager.safeGetSourcePositionAsync(location) ?: return null
+  return readAction { sourcePosition.elementAt?.parentOfType<KtNamedFunction>() }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
