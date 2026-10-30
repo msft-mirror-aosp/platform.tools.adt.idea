@@ -89,6 +89,8 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/mcp/test-utils/aiplugin.mcp.test-utils.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/mcp/test-utils/aiplugin.mcp.test-utils.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/model/api/aiplugin.model.api.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/model/api/aiplugin.model.api.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/model/api-tests/aiplugin.model.api-tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/model/api-tests/aiplugin.model.api-tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/profiler/aiplugin.profiler.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/profiler/aiplugin.profiler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/profiler/aiplugin.profiler.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/profiler/aiplugin.profiler.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/rag/evaluation/aiplugin.rag.evaluation.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/rag/evaluation/aiplugin.rag.evaluation.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/rag/evaluation/aiplugin.rag.evaluation.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/rag/evaluation/aiplugin.rag.evaluation.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/ml/aiplugin/rag/indexer/aiplugin.rag.indexer.iml" filepath="$PROJECT_DIR$/../../vendor/google/ml/aiplugin/rag/indexer/aiplugin.rag.indexer.iml" />
@@ -706,6 +708,7 @@
       <module fileurl="file://$PROJECT_DIR$/samples-browser/samples-browser.iml" filepath="$PROJECT_DIR$/samples-browser/samples-browser.iml" />
       <module fileurl="file://$PROJECT_DIR$/samples-browser/samples-browser.tests.iml" filepath="$PROJECT_DIR$/samples-browser/samples-browser.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../profiler/common/sherlock.common.iml" filepath="$PROJECT_DIR$/../../profiler/common/sherlock.common.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../profiler/common/sdkcompat/sherlock.common.sdkcompat.iml" filepath="$PROJECT_DIR$/../../profiler/common/sdkcompat/sherlock.common.sdkcompat.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../profiler/common/sherlock.common.tests.iml" filepath="$PROJECT_DIR$/../../profiler/common/sherlock.common.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../profiler/integration/sherlock.integration.iml" filepath="$PROJECT_DIR$/../../profiler/integration/sherlock.integration.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/soong/parser-prereqs/soong-parser-prereqs.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/soong/parser-prereqs/soong-parser-prereqs.iml" />
