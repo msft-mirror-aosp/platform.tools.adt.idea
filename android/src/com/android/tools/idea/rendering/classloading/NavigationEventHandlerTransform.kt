@@ -23,23 +23,30 @@ import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
 
 private const val LOCAL_NAVIGATION_EVENT_HANDLER_CLASS_PATH = "androidx/navigationevent/compose/NavigationEventHandler_androidKt"
+private const val NAVIGATION_EVENT_HANDLER_CLASS_PATH = "androidx/navigationevent/compose/NavigationEventHandlerKt"
 private const val IS_INSPECTION_MODE_METHOD_NAME = "isInspectionMode"
+private const val NAVIGATION_BACK_HANDLER_METHOD_NAME = "NavigationBackHandler"
 
 /**
- * A [ClassVisitor] that transforms `NavigationEventHandler` to force `isInspectionMode` to return `false`.
+ * A [ClassVisitor] that transforms `NavigationEventHandler` to force `isInspectionMode` to return `false` and `isBackEnabled` in
+ * `NavigationBackHandler` to `true`.
  *
  * TODO(b/483631567): Remove this transform (along with LocalNavigationEventTransform) once we implement the permanent solution.
  * TODO(b/501380551): Inspection mode is disabled in androidx navigation3 library version 1.1.0, which breaks Predictive Back in Interactive
  *   Preview. This transform overrides that behavior to ensure Predictive Back works correctly in the preview environment. Remove this
  *   transform when navigation3 version would be updated to version subsequent to 1.1.0
+ * TODO(b/475131638): Remove the `NavigationBackHandler` transformation once `androidx.navigationevent` exposes the current destination in
+ *   history when `isBackEnabled` is `false`.
  */
 class NavigationEventHandlerTransform(delegate: ClassVisitor) : ClassVisitor(Opcodes.ASM9, delegate), ClassVisitorUniqueIdProvider {
   override val uniqueId: String = NavigationEventHandlerTransform::class.qualifiedName!!
 
+  private var isLocalNavigationEventHandlerClass = false
   private var isNavigationEventHandlerClass = false
 
   override fun visit(version: Int, access: Int, name: String?, signature: String?, superName: String?, interfaces: Array<out String?>?) {
-    isNavigationEventHandlerClass = name == LOCAL_NAVIGATION_EVENT_HANDLER_CLASS_PATH
+    isLocalNavigationEventHandlerClass = name == LOCAL_NAVIGATION_EVENT_HANDLER_CLASS_PATH
+    isNavigationEventHandlerClass = name == NAVIGATION_EVENT_HANDLER_CLASS_PATH
     super.visit(version, access, name, signature, superName, interfaces)
   }
 
@@ -51,16 +58,15 @@ class NavigationEventHandlerTransform(delegate: ClassVisitor) : ClassVisitor(Opc
     exceptions: Array<out String?>?,
   ): MethodVisitor? {
     val delegate = super.visitMethod(access, name, descriptor, signature, exceptions) ?: return null
-    // Ensure we visit and transform the method only if Predictive Back feature is enabled and we have found the
-    // [NavigationEventHandler_androidKt] class and the [isInspectionMode] method.
-    return if (
-      StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get() &&
-        isNavigationEventHandlerClass &&
-        name == IS_INSPECTION_MODE_METHOD_NAME
-    ) {
-      LocalInspectionModeMethodVisitor(delegate)
-    } else {
-      delegate
+    if (!StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get()) {
+      return delegate
+    }
+    // Transform [isInspectionMode] in [NavigationEventHandler_androidKt] to return false, and [NavigationBackHandler] in
+    // [NavigationEventHandlerKt] to force isBackEnabled to true so the root screen remains in the navigation history.
+    return when {
+      isLocalNavigationEventHandlerClass && name == IS_INSPECTION_MODE_METHOD_NAME -> LocalInspectionModeMethodVisitor(delegate)
+      isNavigationEventHandlerClass && name == NAVIGATION_BACK_HANDLER_METHOD_NAME -> NavigationBackHandlerMethodVisitor(delegate)
+      else -> delegate
     }
   }
 
@@ -86,6 +92,19 @@ class NavigationEventHandlerTransform(delegate: ClassVisitor) : ClassVisitor(Opc
         super.visitInsn(Opcodes.ICONST_0)
       }
       super.visitInsn(opcode)
+    }
+  }
+
+  /**
+   * Forces the `isBackEnabled` parameter (local variable slot 1) in `NavigationBackHandler` to `true` (`ICONST_1`) so the handler remains
+   * active and the initial screen stays visible in the navigation history even when there are no previous entries to pop.
+   */
+  private class NavigationBackHandlerMethodVisitor(delegate: MethodVisitor) : MethodVisitor(Opcodes.ASM9, delegate) {
+    override fun visitCode() {
+      super.visitCode()
+      // Overwrite the isBackEnabled boolean parameter at local variable slot 1 with true (ICONST_1).
+      super.visitInsn(Opcodes.ICONST_1)
+      super.visitVarInsn(Opcodes.ISTORE, 1)
     }
   }
 }

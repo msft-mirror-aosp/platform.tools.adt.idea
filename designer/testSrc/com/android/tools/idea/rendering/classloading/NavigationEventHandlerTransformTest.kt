@@ -43,6 +43,7 @@ private const val CLASSES_TO_LOAD_JAR_NAME = "localnavigationevent.jar"
  */
 class NavigationEventHandlerTransformTest {
 
+  private lateinit var localNavigationEventHandlerClass: Class<*>
   private lateinit var navigationEventHandlerClass: Class<*>
   private lateinit var fakeComposer: Any
 
@@ -50,7 +51,8 @@ class NavigationEventHandlerTransformTest {
   fun setUp() {
     StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.override(true)
     val loader = NavigationEventHandlerLoader()
-    navigationEventHandlerClass = loader.loadClass("androidx.navigationevent.compose.NavigationEventHandler_androidKt")
+    localNavigationEventHandlerClass = loader.loadClass("androidx.navigationevent.compose.NavigationEventHandler_androidKt")
+    navigationEventHandlerClass = loader.loadClass("androidx.navigationevent.compose.NavigationEventHandlerKt")
     fakeComposer = loader.loadClass("androidx.compose.runtime.FakeComposer").getDeclaredConstructor().newInstance()
   }
 
@@ -63,17 +65,42 @@ class NavigationEventHandlerTransformTest {
   fun `isInspectionMode_Original doesn't exist when flag is off`() {
     StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.override(false)
     val loader = NavigationEventHandlerLoader()
-    val navigationEventHandlerClass = loader.loadClass("androidx.navigationevent.compose.NavigationEventHandler_androidKt")
-    assertNull(navigationEventHandlerClass.declaredMethods.firstOrNull { it.name == "isInspectionMode_Original" })
+    val localNavigationEventHandlerClass = loader.loadClass("androidx.navigationevent.compose.NavigationEventHandler_androidKt")
+    assertNull(localNavigationEventHandlerClass.declaredMethods.firstOrNull { it.name == "isInspectionMode_Original" })
     StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.clearOverride()
   }
 
   @Test
   fun `isInspectionMode returns false after transformation`() {
     // Original implementation in test data returns true
-    val isInspectionModeMethod = navigationEventHandlerClass.declaredMethods.first { it.name == "isInspectionMode" }
+    val isInspectionModeMethod = localNavigationEventHandlerClass.declaredMethods.first { it.name == "isInspectionMode" }
     val result = isInspectionModeMethod.invoke(null, fakeComposer, 0)
     assertEquals(false, result)
+  }
+
+  @Test
+  fun `NavigationBackHandler forces isBackEnabled to true after transformation`() {
+    // Find the transformed NavigationBackHandler method
+    val navigationBackHandlerMethod = navigationEventHandlerClass.declaredMethods.first { it.name == "NavigationBackHandler" }
+    val emptyCallback = {}
+    // Invoke NavigationBackHandler with isBackEnabled set to false and verify the transform forces it to true
+    val result = navigationBackHandlerMethod.invoke(null, null, false, emptyCallback, emptyCallback, fakeComposer, 0)
+    assertEquals(true, result)
+  }
+
+  @Test
+  fun `NavigationBackHandler preserves isBackEnabled when flag is off`() {
+    // Disable the Predictive Back flag so the bytecode transform is skipped
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.override(false)
+    val loader = NavigationEventHandlerLoader()
+    val untransformedHandlerClass = loader.loadClass("androidx.navigationevent.compose.NavigationEventHandlerKt")
+    val navigationBackHandlerMethod = untransformedHandlerClass.declaredMethods.first { it.name == "NavigationBackHandler" }
+    val untransformedFakeComposer = loader.loadClass("androidx.compose.runtime.FakeComposer").getDeclaredConstructor().newInstance()
+    val emptyCallback = {}
+    // Verify that passing false for isBackEnabled remains false when the flag is off
+    val result = navigationBackHandlerMethod.invoke(null, null, false, emptyCallback, emptyCallback, untransformedFakeComposer, 0)
+    assertEquals(false, result)
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.clearOverride()
   }
 
   @Test
@@ -97,7 +124,7 @@ class NavigationEventHandlerTransformTest {
     DelegatingClassLoader(
       object : ClassLoader(this.javaClass.classLoader) {
         override fun loadClass(name: String, resolve: Boolean): Class<*> {
-          if (name.startsWith("androidx.compose.runtime")) {
+          if (name.startsWith("androidx.compose.runtime") || name.startsWith("androidx.navigationevent.compose")) {
             throw ClassNotFoundException(name)
           }
           return super.loadClass(name, resolve)
