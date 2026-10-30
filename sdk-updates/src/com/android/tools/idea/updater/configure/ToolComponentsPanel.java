@@ -59,6 +59,7 @@ public class ToolComponentsPanel {
   private static final Set<String> MULTI_VERSION_PREFIXES =
     ImmutableSet.of(SdkConstants.FD_BUILD_TOOLS, SdkConstants.FD_LLDB, SdkConstants.FD_CMAKE,
                     SdkConstants.FD_NDK_SIDE_BY_SIDE, SdkConstants.FD_CMDLINE_TOOLS, SdkConstants.FD_EMULATORS,
+                    SdkConstants.LIGHTBUILD_SDK_PACKAGE_PREFIX,
                     String.join(String.valueOf(RepoPackage.PATH_SEPARATOR),
                                 SdkConstants.FD_EXTRAS,
                                 SdkConstants.FD_ANDROID_EXTRAS,
