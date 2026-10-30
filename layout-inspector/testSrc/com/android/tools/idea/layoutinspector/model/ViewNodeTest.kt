@@ -29,7 +29,7 @@ import org.junit.Rule
 import org.junit.Test
 
 private val LAYOUT_SCREEN_SIMPLE = ResourceReference(ResourceNamespace.ANDROID, ResourceType.LAYOUT, "screen_simple")
-private val LAYOUT_APPCOMPAT_SCREEN_SIMPLE = ResourceReference(ResourceNamespace.APPCOMPAT, ResourceType.LAYOUT, "abc_screen_simple")
+private val LAYOUT_APPCOMPAT_SCREEN_SIMPLE = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "abc_screen_simple")
 private val LAYOUT_MAIN = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "activity_main")
 
 class ViewNodeTest {

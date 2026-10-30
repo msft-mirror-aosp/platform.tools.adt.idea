@@ -602,7 +602,7 @@ class EmbeddedRendererModelTest {
     treeSettings.hideSystemNodes = false
     testScheduler.advanceUntilIdle()
 
-    val layoutAppcompat = ResourceReference(ResourceNamespace.APPCOMPAT, ResourceType.LAYOUT, "abc_screen_simple")
+    val layoutAppcompat = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "abc_screen_simple")
     val systemNodesWindow =
       viewWindow(ROOT, 0, 0, 100, 100) {
         view(VIEW2, 0, 0, 10, 10) {}
@@ -665,7 +665,7 @@ class EmbeddedRendererModelTest {
     treeSettings.hideSystemNodes = false
     testScheduler.advanceUntilIdle()
 
-    val layoutAppcompat = ResourceReference(ResourceNamespace.APPCOMPAT, ResourceType.LAYOUT, "abc_screen_simple")
+    val layoutAppcompat = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "abc_screen_simple")
     val systemNodesWindow =
       viewWindow(ROOT, 0, 0, 100, 100) {
         view(VIEW1, 0, 0, 50, 50, layout = layoutAppcompat) {}
@@ -709,7 +709,7 @@ class EmbeddedRendererModelTest {
     treeSettings.hideSystemNodes = false
     testScheduler.advanceUntilIdle()
 
-    val layoutAppcompat = ResourceReference(ResourceNamespace.APPCOMPAT, ResourceType.LAYOUT, "abc_screen_simple")
+    val layoutAppcompat = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "abc_screen_simple")
     val systemNodesWindow =
       viewWindow(ROOT, 0, 0, 100, 100) {
         view(VIEW1, 0, 0, 50, 50, layout = layoutAppcompat) {}

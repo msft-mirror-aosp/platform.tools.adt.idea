@@ -287,7 +287,7 @@ class TreeSettingsActionsTest {
 
   private fun createModel(): InspectorModel {
     val screenSimple = ResourceReference(ResourceNamespace.ANDROID, ResourceType.LAYOUT, "screen_simple")
-    val appcompatScreenSimple = ResourceReference(ResourceNamespace.APPCOMPAT, ResourceType.LAYOUT, "abc_screen_simple")
+    val appcompatScreenSimple = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "abc_screen_simple")
     val mainLayout = ResourceReference(ResourceNamespace.RES_AUTO, ResourceType.LAYOUT, "activity_main")
     return model(disposableRule.disposable) {
       view(ROOT) { view(VIEW1, layout = mainLayout) { view(VIEW2, layout = screenSimple) { view(VIEW3, layout = appcompatScreenSimple) } } }
