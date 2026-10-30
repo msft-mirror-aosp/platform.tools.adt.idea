@@ -29,9 +29,11 @@ import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeAndroidProject
+import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeSyncIssue
 import com.android.tools.idea.gradle.model.IdeSyncIssue.Companion.SEVERITY_WARNING
 import com.android.tools.idea.gradle.model.IdeSyncIssue.Companion.TYPE_GENERIC
+import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.ignoreExceptionsAndGet
 import com.android.utils.appendCapitalized
@@ -162,8 +164,30 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
         )
         .filterNotNull()
 
+    // Prepare Android projects to map dynamic features to their target Apps.
+    val indexedModels =
+      IndexedModels(
+        dynamicFeatureToBaseFeatureMap =
+          results
+            .flatMap { (gradleProject, data) ->
+              val projectIdentifier = gradleProject.projectIdentifier
+              val rootDir = projectIdentifier.buildIdentifier.rootDir
+              data.ideAndroidProject.dynamicFeatures.map { ModuleId(it, rootDir.path) }.map { it to gradleProject.toModuleId() }
+            }
+            .toMap()
+      )
+
+    fun IdeAndroidProjectImpl.populateBaseFeature(gradleProject: BasicGradleProject): IdeAndroidProjectImpl {
+      return if (this.projectType != IdeAndroidProjectType.PROJECT_TYPE_DYNAMIC_FEATURE) this
+      else copy(baseFeature = indexedModels.dynamicFeatureToBaseFeatureMap[gradleProject.toModuleId()]?.gradlePath)
+    }
+    // Update results so that ideAndroidProject has baseFeature populated
+    val updatedResults = results.map { (gradleProject, data) ->
+      gradleProject to data.copy(ideAndroidProject = data.ideAndroidProject.populateBaseFeature(gradleProject))
+    }
+
     // Consume the required models.
-    results.forEach { (gradleProject, data) ->
+    updatedResults.forEach { (gradleProject, data) ->
       // Required models
       modelConsumer.consumeProjectModel(gradleProject, data.versions, Versions::class.java)
       modelConsumer.consumeProjectModel(gradleProject, data.basicAndroidProject, BasicAndroidProject::class.java)
@@ -178,9 +202,9 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
     // Store the list of issues from the variant resolution if any.
     val variantsResolutionIssues = mutableMapOf<BasicGradleProject, Throwable>()
     if (syncOptions.flags.studioFlagUsedPhasedSyncVariantResolution) {
-      setupProjectsVariantsAndConsume(results, syncOptions, modelConsumer, cachedModels, variantsResolutionIssues)
+      setupProjectsVariantsAndConsume(updatedResults, syncOptions, modelConsumer, cachedModels, variantsResolutionIssues)
     } else {
-      results.forEach { (gradleProject, data) ->
+      updatedResults.forEach { (gradleProject, data) ->
         cacheAndroidDataAndConsumeProjectVariant(
           gradleProject,
           data.selectedVariantName,

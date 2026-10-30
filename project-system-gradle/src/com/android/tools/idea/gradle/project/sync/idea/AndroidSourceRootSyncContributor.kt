@@ -209,7 +209,6 @@ internal class SyncContributorAndroidProjectContext(
 
   internal val gradleAndroidModelDataFactory: (String, IdeVariantCoreImpl?) -> GradleAndroidModelData
     get() = { moduleName, resolvedVariant ->
-      val ideAndroidProject = ideAndroidProject.copy(baseFeature = baseFeature)
       GradleAndroidModelData.create(
         moduleName = moduleName,
         rootDirPath = File(externalProject.projectDir.path),
@@ -237,7 +236,6 @@ internal class SyncContributorAndroidProjectContext(
   // Mutable state
   val contentRootIndex = GradleContentRootIndex()
   val moduleActions = mutableMapOf<String, MutableList<ModuleAction>>()
-  var baseFeature: String? = null
 
   fun registerModuleAction(moduleName: String, action: ModuleAction) {
     moduleActions.computeIfAbsent(moduleName) { mutableListOf() } += action
@@ -426,16 +424,6 @@ internal class AndroidSourceRootSyncSourceSetPhaseContributor : GradleSyncContri
     if (allAndroidContexts.isEmpty()) {
       LOG.debug("Nothing to set up!")
     }
-
-    val featureToAppMapping =
-      allAndroidContexts
-        .flatMap {
-          it.ideAndroidProject.dynamicFeatures.mapNotNull { feature ->
-            (feature to it.holderModuleEntity.exModuleOptions?.linkedProjectId).takeIf { it.second != null }
-          }
-        }
-        .toMap()
-    allAndroidContexts.forEach { it.baseFeature = featureToAppMapping[it.ideAndroidProject.projectPath.projectPath] }
 
     allAndroidContexts.forEach {
       with(it) {
