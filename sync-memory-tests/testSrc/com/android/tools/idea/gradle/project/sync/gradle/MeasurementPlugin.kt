@@ -25,10 +25,14 @@ import javax.inject.Inject
 import javax.management.MBeanServer
 import javax.management.ObjectName
 import kotlin.time.Duration.Companion.milliseconds
+import org.gradle.api.Action
 import org.gradle.api.Plugin
-import org.gradle.api.invocation.Gradle
+import org.gradle.api.initialization.Settings
+import org.gradle.api.provider.Property
+import org.gradle.api.provider.SetProperty
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
+import org.gradle.api.services.BuildServiceSpec
 import org.gradle.build.event.BuildEventsListenerRegistry
 import org.gradle.tooling.events.FinishEvent
 import org.gradle.tooling.events.OperationCompletionListener
@@ -57,9 +61,8 @@ object MeasurementPluginConfig {
     val src = File("tools/adt/idea/sync-memory-tests/testSrc/com/android/tools/idea/gradle/project/sync/gradle/MeasurementPlugin.kt")
     val initScript = File(System.getProperty("gradle.user.home")).resolve("init.gradle.kts")
     src.copyTo(initScript, overwrite = true)
-    // The plugin is instantiated directly instead of using `apply<MeasurementPlugin>()`, as applying a plugin to the Gradle instance
-    // makes Gradle report a Project Isolation violation and discard the configuration cache entry.
-    // TODO: Don't use the internal GradleInternal API to get the BuildEventsListenerRegistry.
+    // Apply the plugin to Settings via beforeSettings instead of applying it to the Gradle instance at the top level, as applying a
+    // plugin to the Gradle instance makes Gradle report a Project Isolation violation and discard the configuration cache entry.
     initScript.appendText(
       """
       ${this::class.simpleName}.${this::outputPath.name} = "$outputPath"
@@ -67,9 +70,9 @@ object MeasurementPluginConfig {
       ${this::class.simpleName}.${this::captureTypes.name} = setOf(${
       captureTypes.joinToString(",") { "${CaptureType::class.simpleName}.$it" }
     })
-      ${MeasurementPlugin::class.simpleName}(
-        (gradle as org.gradle.api.internal.GradleInternal).services.get(BuildEventsListenerRegistry::class.java)
-      ).apply(gradle)
+      beforeSettings {
+        apply<${MeasurementPlugin::class.simpleName}>()
+      }
     """
         .trimIndent()
     )
@@ -78,26 +81,46 @@ object MeasurementPluginConfig {
 
 // Uses lifecycle callbacks instead of build listeners so that it is compatible with the configuration cache. Note that when the
 // configuration cache is reused, configuration callbacks do not run, so CONFIGURATION_FINISHED is not recorded for such builds.
-class MeasurementPlugin @Inject constructor(private val registry: BuildEventsListenerRegistry) : Plugin<Gradle> {
-  override fun apply(gradle: Gradle) {
+class MeasurementPlugin @Inject constructor(private val registry: BuildEventsListenerRegistry) : Plugin<Settings> {
+  override fun apply(settings: Settings) {
     if (MeasurementPluginConfig.captureJfr) {
       EventRecorder.startJavaFlightRecording()
     }
-    gradle.projectsEvaluated { EventRecorder.recordEvent(MeasurementCheckpoint.CONFIGURATION_FINISHED) }
+    settings.gradle.projectsEvaluated { EventRecorder.recordEvent(MeasurementCheckpoint.CONFIGURATION_FINISHED) }
 
-    val serviceProvider = gradle.sharedServices.registerIfAbsent("measurement-service", MeasurementService::class.java) {}
+    val serviceProvider =
+      settings.gradle.sharedServices.registerIfAbsent(
+        "measurement-service",
+        MeasurementService::class.java,
+        object : Action<BuildServiceSpec<MeasurementServiceParams>> {
+          override fun execute(spec: BuildServiceSpec<MeasurementServiceParams>) {
+            spec.parameters.outputPath.set(MeasurementPluginConfig.outputPath)
+            spec.parameters.captureTypes.set(MeasurementPluginConfig.captureTypes)
+            spec.parameters.captureJfr.set(MeasurementPluginConfig.captureJfr)
+          }
+        },
+      )
     registry.onTaskCompletion(serviceProvider)
     serviceProvider.get()
   }
 }
 
-open class MeasurementServiceParams : BuildServiceParameters
+interface MeasurementServiceParams : BuildServiceParameters {
+  val outputPath: Property<String>
+  val captureTypes: SetProperty<CaptureType>
+  val captureJfr: Property<Boolean>
+}
 
 abstract class MeasurementService : OperationCompletionListener, Closeable, BuildService<MeasurementServiceParams> {
   // Ignored event, we only care about the one right before closing
   override fun onFinish(event: FinishEvent?) {}
 
   override fun close() {
+    // When the configuration cache is reused, the init script does not run and MeasurementService may be deserialized in a fresh
+    // ClassLoader, so restore MeasurementPluginConfig from the serialized BuildServiceParameters before recording events.
+    MeasurementPluginConfig.outputPath = parameters.outputPath.get()
+    MeasurementPluginConfig.captureTypes = parameters.captureTypes.get()
+    MeasurementPluginConfig.captureJfr = parameters.captureJfr.get()
     if (MeasurementPluginConfig.captureJfr) {
       EventRecorder.stopJavaFlightRecording()
     }
