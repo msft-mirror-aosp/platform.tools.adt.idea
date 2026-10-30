@@ -47,6 +47,8 @@ public class GradlePropertiesTest extends HeavyPlatformTestCase {
   protected void tearDown() throws Exception {
     try {
       ProxySettings.getInstance().setProxyConfiguration(ProxySettings.getDefaultProxyConfiguration());
+      // Proxy credentials are stored application-wide, so they leak into later tests unless cleared.
+      ProxyCredentialStore.getInstance().clearAllCredentials();
     } finally {
       super.tearDown();
     }
