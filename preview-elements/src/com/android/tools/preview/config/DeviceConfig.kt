@@ -346,12 +346,7 @@ open class DeviceConfig(
       // Find if the given spec belongs to a reference device and if it does, use that as device id.
       val referenceDeviceId = referenceDeviceIds[serialized]
       val deviceIdMap = referenceDeviceId?.let { mapOf(PARAMETER_ID to it) } ?: emptyMap()
-      val paramsMap =
-        deviceIdMap +
-          configString
-            .split(SEPARATOR)
-            .filter { it.length >= 3 && it.contains(OPERATOR) }
-            .associate { paramString -> Pair(paramString.substringBefore(OPERATOR).trim(), paramString.substringAfter(OPERATOR).trim()) }
+      val paramsMap = deviceIdMap + parseDeviceSpecParameters(configString)
       return parseDeviceSpecLanguage(paramsMap, availableDevices)
     }
 
@@ -795,6 +790,16 @@ private fun parseAndroidNumberOrNull(text: String?): AndroidDimension? {
   val value = text.dropLast(2).toFloatOrNull() ?: return null
   return AndroidDimension(value = value, unit = dimUnit)
 }
+
+/**
+ * Parses the parameters of a DeviceSpec Language string (without the `spec:` prefix) into a name-value map. Malformed parameters are
+ * ignored.
+ */
+private fun parseDeviceSpecParameters(configString: String): Map<String, String> =
+  configString
+    .split(SEPARATOR)
+    .filter { it.length >= 3 && it.contains(OPERATOR) }
+    .associate { paramString -> Pair(paramString.substringBefore(OPERATOR).trim(), paramString.substringAfter(OPERATOR).trim()) }
 
 private fun StringBuilder.appendParamValue(parameterName: String, value: String): StringBuilder = append("$parameterName$OPERATOR$value")
 
