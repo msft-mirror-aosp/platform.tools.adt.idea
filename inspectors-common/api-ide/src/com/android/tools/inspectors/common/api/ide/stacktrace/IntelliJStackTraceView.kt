@@ -73,8 +73,11 @@ import javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
 import javax.swing.SwingUtilities
 import javax.swing.event.ListSelectionListener
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 private val LIST_ROW_INSETS: Insets = JBUI.insets(2, 10, 0, 0)
@@ -99,6 +102,12 @@ internal constructor(
       }
     }
   private val renderer: StackElementRenderer
+  private val updateLock = Any()
+  private var currentUpdateJob: Job? = null
+
+  @get:VisibleForTesting
+  val isUpdating: Boolean
+    get() = synchronized(updateLock) { currentUpdateJob?.isCompleted == false }
 
   constructor(
     project: Project,
@@ -170,20 +179,31 @@ internal constructor(
     // A scope that we will be using to load the list model in the background
     val scope = AndroidCoroutineScope(parentDisposable)
     val dispatcher = MoreExecutors.newSequentialExecutor(AndroidExecutors.getInstance().workerThreadExecutor).asCoroutineDispatcher()
+    val updateMutex = Mutex()
     model
       .addDependency(this)
       .onChange(STACK_FRAMES) {
-        scope.launch(dispatcher) {
-          val elements = model.codeLocations.map { generator(project, it) }
-          withContext(Dispatchers.EDT) {
-            listModel.removeAllElements()
-            listView.clearSelection()
-            listModel.addAll(elements)
-            val threadId = model.threadId
-            if (threadId != INVALID_THREAD_ID) {
-              listModel.addElement(ThreadElement(threadId))
+        synchronized(updateLock) {
+          val codeLocations = model.codeLocations.toList()
+          val threadId = model.threadId
+          currentUpdateJob?.cancel()
+          currentUpdateJob =
+            scope.launch(dispatcher) {
+              updateMutex.withLock {
+                val elements =
+                  buildList(codeLocations.size + 1) {
+                    codeLocations.mapTo(this) { generator(project, it) }
+                    if (threadId != INVALID_THREAD_ID) {
+                      add(ThreadElement(threadId))
+                    }
+                  }
+                withContext(Dispatchers.EDT) {
+                  listModel.removeAllElements()
+                  listView.clearSelection()
+                  listModel.addAll(elements)
+                }
+              }
             }
-          }
         }
       }
       .onChange(SELECTED_LOCATION) {

@@ -46,12 +46,19 @@ import com.intellij.openapi.project.Project;
 import com.intellij.testFramework.DisposableRule;
 import com.intellij.testFramework.ProjectRule;
 import java.awt.datatransfer.DataFlavor;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.JList;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Rule;
@@ -156,6 +163,94 @@ public class IntelliJStackTraceViewTest {
     Object threadElement = model.getElementAt(model.getSize() - 1);
     assertThat(threadElement).isInstanceOf(ThreadElement.class);
     assertThat(((ThreadElement)threadElement).getThreadId()).isEqualTo(new ThreadId(5));
+  }
+
+  @Test
+  public void concurrentSetStackFramesDoesNotMixStates() throws Exception {
+    StackTraceModel stackModel = createStackTraceModel();
+    CountDownLatch firstUpdateEnteredGenerator = new CountDownLatch(1);
+    CountDownLatch releaseFirstUpdateGenerator = new CountDownLatch(1);
+    AtomicBoolean blockNextGeneratorCall = new AtomicBoolean(true);
+
+    IntelliJStackTraceView view = new IntelliJStackTraceView(
+      myProjectRule.getProject(),
+      stackModel,
+      myDisposableRule.getDisposable(),
+      (project, location) -> {
+        if (blockNextGeneratorCall.compareAndSet(true, false)) {
+          firstUpdateEnteredGenerator.countDown();
+          try {
+            assertThat(releaseFirstUpdateGenerator.await(5, SECONDS)).isTrue();
+          }
+          catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        }
+        return new FakeCodeElement(location);
+      });
+
+    List<Integer> observedNonZeroSizes = new CopyOnWriteArrayList<>();
+    ListModel<StackElement> listModel = view.getListView().getModel();
+    listModel.addListDataListener(new ListDataListener() {
+      @Override
+      public void intervalAdded(ListDataEvent e) {
+        int size = listModel.getSize();
+        if (size > 0) {
+          observedNonZeroSizes.add(size);
+        }
+      }
+
+      @Override
+      public void intervalRemoved(ListDataEvent e) {}
+
+      @Override
+      public void contentsChanged(ListDataEvent e) {}
+    });
+
+    // Update 1: 10 locations, NO thread ID (valid size = 10).
+    stackModel.setStackFrames(INVALID_THREAD_ID, CODE_LOCATIONS);
+    assertThat(firstUpdateEnteredGenerator.await(5, SECONDS)).isTrue();
+
+    // Update 2 while Update 1 is in flight: 2 locations + ThreadId(5) (valid size = 3).
+    List<CodeLocation> twoLocations = CODE_LOCATIONS.subList(0, 2);
+    stackModel.setStackFrames(new ThreadId(5), twoLocations);
+    releaseFirstUpdateGenerator.countDown();
+
+    myStackView = view;
+    waitForModel();
+
+    // Neither a mixed state (11 = 10 locations + ThreadId(5)) nor a partial pre-ThreadElement
+    // state (2 = 2 locations before ThreadId(5)) should ever be published to listModel.
+    assertThat(observedNonZeroSizes).containsExactly(3);
+    assertThat(listModel.getSize()).isEqualTo(3);
+    assertThat(listModel.getElementAt(2)).isInstanceOf(ThreadElement.class);
+    assertThat(((ThreadElement)listModel.getElementAt(2)).getThreadId()).isEqualTo(new ThreadId(5));
+  }
+
+  @Test
+  public void consecutiveSameSizeSetStackFramesWaitsForNewElements() {
+    StackTraceModel stackModel = createStackTraceModel();
+    IntelliJStackTraceView view = new IntelliJStackTraceView(
+      myProjectRule.getProject(),
+      stackModel,
+      myDisposableRule.getDisposable(),
+      (project, location) -> {
+        Thread.yield();
+        return new FakeCodeElement(location);
+      });
+    myStackView = view;
+
+    stackModel.setStackFrames(INVALID_THREAD_ID, CODE_LOCATIONS);
+    waitForModel();
+
+    List<CodeLocation> reversedLocations = new ArrayList<>(CODE_LOCATIONS);
+    Collections.reverse(reversedLocations);
+    stackModel.setStackFrames(INVALID_THREAD_ID, reversedLocations);
+    waitForModel();
+
+    ListModel<StackElement> listModel = view.getListView().getModel();
+    assertThat(listModel.getSize()).isEqualTo(reversedLocations.size());
+    assertThat(((CodeElement)listModel.getElementAt(0)).getCodeLocation()).isEqualTo(reversedLocations.get(0));
   }
 
   @Test
@@ -286,10 +381,10 @@ public class IntelliJStackTraceViewTest {
     int expectedElements = locations.size() + (myStackView.getModel().getThreadId() == INVALID_THREAD_ID ? 0 : 1);
 
     try {
-      AsyncTestUtils.waitForCondition(5, SECONDS, () -> listModel.getSize() == expectedElements);
+      AsyncTestUtils.waitForCondition(5, SECONDS, () -> !myStackView.isUpdating() && listModel.getSize() == expectedElements);
     }
     catch (TimeoutException e) {
-      fail(String.format("Expected %d frames but got %d", expectedElements, listModel.getSize()));
+      fail(String.format("Expected %d frames (updating=%b) but got %d", expectedElements, myStackView.isUpdating(), listModel.getSize()));
     }
   }
 
