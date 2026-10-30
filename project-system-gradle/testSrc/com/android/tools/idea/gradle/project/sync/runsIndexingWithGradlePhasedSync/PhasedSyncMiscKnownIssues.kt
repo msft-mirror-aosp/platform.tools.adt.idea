@@ -117,9 +117,7 @@ internal object UnactionableConsistencyIssues {
       TestProject.MAIN_IN_ROOT ->
         setOf(
           // This is incorrectly populated as a content root(!) in old sync
-          "project</>app</>AndroidManifest.xml",
-          // This is incorrectly missing from the old sync content roots
-          "project</>app</>src</>debug",
+          "project</>app</>AndroidManifest.xml"
         )
       // TODO:(b/384022658): When syncing an already existing project with iml
       TestProject.COMPATIBILITY_TESTS_AS_36 ->
@@ -152,18 +150,6 @@ internal object UnactionableConsistencyIssues {
       // The models for phased sync is fetched too early and are missing this, but it's fine as we have the rest of the tasks for variants
       TestProject.PSD_SAMPLE_GROOVY -> setOf("/taskNames (testDebugUnitTest)")
       TestProject.TWO_JARS -> setOf("/taskNames (test)")
-      else -> emptySet()
-    }
-}
-
-internal object UnactionableResyncIssues {
-  fun projectStructure(testProject: TestProject) =
-    when (testProject) {
-      TestProject.MAIN_IN_ROOT ->
-        setOf(
-          // This is incorrectly missing from the old sync content roots
-          "project</>app</>src</>debug"
-        )
       else -> emptySet()
     }
 }

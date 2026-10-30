@@ -93,7 +93,7 @@ internal fun SyncContributorAndroidProjectContext.getSourceSetDataForBasicAndroi
         }
       } else {
         it.androidTestArtifact?.let {
-          processBasicArtifact(it, IdeArtifactName.UNIT_TEST, isProduction = false)
+          processBasicArtifact(it, IdeArtifactName.ANDROID_TEST, isProduction = false)
           containers.forEach {
             it.androidTestSourceProvider?.let {
               sourceSets += createSourceSetDataForSourceProvider(IdeArtifactName.ANDROID_TEST, it, isProduction = false, versions)
@@ -189,7 +189,7 @@ private fun SyncContributorAndroidProjectContext.createTestSuiteSourceSetData(
 ): Map<out ExternalSystemSourceType?, Set<File>> {
   val sourceSetData = mutableMapOf<ExternalSystemSourceType?, MutableSet<File>>()
   testSuiteSource.sourceProvider.processAll(forTest = true) { path, sourceType ->
-    sourceSetData.getOrPut(sourceType) { mutableSetOf() }.add(File(path))
+    sourceSetData.getOrPut(sourceType) { mutableSetOf() }.add(File(path).normalize())
   }
   return sourceSetData
 }
@@ -207,16 +207,16 @@ private fun SyncContributorAndroidProjectContext.createSourceSetDataForSourcePro
         provider.renderscriptDirectories.orEmpty() +
         provider.shadersDirectories.orEmpty() +
         (if (versions[ModelFeature.HAS_KEEP_RULES_SOURCES]) provider.keepRulesDirectories.orEmpty() else emptySet()))
-      .toSet()
+      .toNormalizedSet()
 
   // TODO(b/384022658): Handle custom directories
   val resourceDirectories =
-    provider.resourcesDirectories.toSet() +
-      provider.resDirectories.orEmpty() +
-      provider.mlModelsDirectories.orEmpty() +
-      provider.assetsDirectories.orEmpty() +
-      (if (versions[ModelFeature.HAS_BASELINE_PROFILE_DIRECTORIES]) provider.baselineProfileDirectories.orEmpty() else emptySet()) -
-      sourceDirectories // exclude source directories in case they are shared
+    (provider.resourcesDirectories.toSet() +
+        provider.resDirectories.orEmpty() +
+        provider.mlModelsDirectories.orEmpty() +
+        provider.assetsDirectories.orEmpty() +
+        (if (versions[ModelFeature.HAS_BASELINE_PROFILE_DIRECTORIES]) provider.baselineProfileDirectories.orEmpty() else emptySet()))
+      .toNormalizedSet() - sourceDirectories // exclude source directories in case they are shared
 
   return listOf(
     name to
@@ -225,8 +225,8 @@ private fun SyncContributorAndroidProjectContext.createSourceSetDataForSourcePro
         (if (isProduction) ExternalSystemSourceType.RESOURCE else ExternalSystemSourceType.TEST_RESOURCE) to resourceDirectories,
       ) +
         provider.manifestFile
-          ?.parentFile
-          ?.takeUnless { it.path == projectModel.projectDirectory.path }
+          ?.normalize()
+          ?.takeUnless { it.parentFile?.path == projectModel.projectDirectory.normalize().path }
           ?.let { mapOf(null to setOf(it)) }
           .orEmpty()
   )
@@ -238,12 +238,12 @@ private fun SyncContributorAndroidProjectContext.createSourceSetDataForAndroidAr
   isProduction: Boolean,
 ): List<SourceSetData> {
   return generatedSourceFoldersToUseForArtifact(name, artifact, basicAndroidProject.buildFolder).map {
-    name to mapOf((if (isProduction) ExternalSystemSourceType.SOURCE_GENERATED else ExternalSystemSourceType.TEST_GENERATED) to setOf(it))
+    name to it.toSourceSetMap(if (isProduction) ExternalSystemSourceType.SOURCE_GENERATED else ExternalSystemSourceType.TEST_GENERATED)
   } +
     artifact.generatedResourceFolders.map {
       name to
-        mapOf(
-          (if (isProduction) ExternalSystemSourceType.RESOURCE_GENERATED else ExternalSystemSourceType.TEST_RESOURCE_GENERATED) to setOf(it)
+        it.toSourceSetMap(
+          if (isProduction) ExternalSystemSourceType.RESOURCE_GENERATED else ExternalSystemSourceType.TEST_RESOURCE_GENERATED
         )
     }
 }
@@ -253,9 +253,14 @@ private fun SyncContributorAndroidProjectContext.createSourceSetDataForTestJavaA
   artifact: JavaArtifact,
 ): List<SourceSetData> {
   return generatedSourceFoldersToUseForArtifact(name, artifact, basicAndroidProject.buildFolder).map {
-    name to mapOf(ExternalSystemSourceType.TEST_GENERATED to setOf(it))
+    name to it.toSourceSetMap(ExternalSystemSourceType.TEST_GENERATED)
   }
 }
+
+private fun Iterable<File>.toNormalizedSet(): Set<File> = mapTo(mutableSetOf()) { it.normalize() }
+
+private fun File.toSourceSetMap(sourceType: ExternalSystemSourceType): Map<ExternalSystemSourceType, Set<File>> =
+  mapOf(sourceType to setOf(normalize()))
 
 private fun SyncContributorAndroidProjectContext.generatedSourceFoldersToUseForArtifact(
   name: IdeArtifactName,
@@ -290,8 +295,17 @@ private fun List<SourceSetData>.deduplicate(): Set<SourceSetData> {
       // Remove all but first occurrence of each file and then filter out any elements with empty maps
       artifactName to filesMap.mapValues { (_, files) -> files.minus(seen).also { seen.addAll(files) } }.filterValues { it.isNotEmpty() }
     }
-    .filter { it.second.isNotEmpty() }
+    .mergeByArtifactName()
     .toSet()
 }
+
+/** Merges [SourceSetData] entries that share the same [IdeArtifactName] into a single entry per artifact. */
+private fun List<SourceSetData>.mergeByArtifactName(): List<SourceSetData> =
+  groupBy({ it.first }, { it.second })
+    .mapValues { (_, filesMaps) ->
+      filesMaps.flatMap { it.entries }.groupBy({ it.key }, { it.value }).mapValues { (_, fileSets) -> fileSets.flatten().toSet() }
+    }
+    .filterValues { it.isNotEmpty() }
+    .map { (artifactName, filesMap) -> artifactName to filesMap }
 
 internal fun GradleLightProject.moduleId() = Modules.createUniqueModuleId(projectIdentifier.buildIdentifier.rootDir, path)

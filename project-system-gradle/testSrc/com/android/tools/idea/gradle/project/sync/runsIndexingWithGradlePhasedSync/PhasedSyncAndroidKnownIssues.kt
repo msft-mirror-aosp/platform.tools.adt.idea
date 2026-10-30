@@ -41,8 +41,7 @@ internal object AndroidConsistencyIssues {
 }
 
 internal object AndroidResyncIssues {
-  fun projectStructure(testProject: TestProject) =
-    MiscResyncIssues.projectStructure(testProject) + UnactionableResyncIssues.projectStructure(testProject)
+  fun projectStructure(testProject: TestProject) = MiscResyncIssues.projectStructure(testProject)
 
   fun ideModels(testProject: TestProject) = UnactionableConsistencyIssues.ideModels(testProject)
 }
