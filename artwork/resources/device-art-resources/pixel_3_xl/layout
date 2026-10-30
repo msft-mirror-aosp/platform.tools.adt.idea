@@ -15,15 +15,12 @@ parts {
       mask round_corners.webp
       cutout emu01
     }
-    onion {
-      image port_fore.webp
-    }
   }
 }
 layouts {
   portrait {
-    width 1684
-    height 3246
+    width 1584
+    height 3245
     event EV_SW:0:1
     part1 {
       name portrait
@@ -32,7 +29,7 @@ layouts {
     }
     part2 {
       name device
-      x 126
+      x 65
       y 72
     }
   }

@@ -14,9 +14,6 @@ parts {
     foreground {
       mask round_corners.webp
     }
-    onion {
-      image port_fore.webp
-    }
   }
 }
 layouts {

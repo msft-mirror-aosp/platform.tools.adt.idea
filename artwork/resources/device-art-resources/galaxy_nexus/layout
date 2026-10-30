@@ -11,23 +11,12 @@ parts {
     background {
       image port_back.webp
     }
-    onion {
-      image port_fore.webp
-    }
-  }
-  landscape {
-    background {
-      image land_back.webp
-    }
-    onion {
-      image land_fore.webp
-    }
   }
 }
 layouts {
   portrait {
-    width 1101
-    height 1709
+    width 856
+    height 1676
     event EV_SW:0:1
     part1 {
       name portrait
@@ -36,24 +25,8 @@ layouts {
     }
     part2 {
       name device
-      x 192
+      x 68
       y 213
-    }
-  }
-  landscape {
-    width 1847
-    height 886
-    event EV_SW:0:0
-    part1 {
-      name landscape
-      x 0
-      y 0
-    }
-    part2 {
-      name device
-      x 304
-      y 788
-      rotation 3
     }
   }
 }

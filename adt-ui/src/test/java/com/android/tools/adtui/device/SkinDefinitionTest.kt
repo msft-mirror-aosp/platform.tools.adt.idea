@@ -232,44 +232,11 @@ class SkinDefinitionTest {
 
   @Test
   fun testSkinConsistency() {
-    // Old-style skins are not checked by this test. Please don't add any new skins to this list.
-    val oldStyleSkins =
-      listOf(
-        "nexus_one",
-        "nexus_s",
-        "nexus_4",
-        "nexus_5",
-        "nexus_5x",
-        "nexus_6",
-        "nexus_6p",
-        "nexus_7",
-        "nexus_7_2013",
-        "nexus_9",
-        "nexus_10",
-        "galaxy_nexus",
-        "pixel",
-        "pixel_xl",
-        "pixel_c",
-        "pixel_silver",
-        "pixel_xl_silver",
-        "pixel_2",
-        "pixel_2_xl",
-        "pixel_3",
-        "pixel_3_xl",
-        "pixel_3a",
-        "pixel_3a_xl",
-        "pixel_4",
-        "pixel_4_xl",
-      )
     val skinProblems = mutableListOf<String>()
     val dir = getRootSkinFolder()
     Files.walk(dir, 3).use { stream ->
       stream.forEach { skinFolder ->
-        if (
-          Files.isDirectory(skinFolder) &&
-            !oldStyleSkins.contains(skinFolder.fileName.toString()) &&
-            Files.exists(skinFolder.resolve("layout"))
-        ) {
+        if (Files.isDirectory(skinFolder) && Files.exists(skinFolder.resolve("layout"))) {
           val skinName = skinFolder.subpath(dir.nameCount, skinFolder.nameCount)
           try {
             val skin = SkinDefinition.create(skinFolder)

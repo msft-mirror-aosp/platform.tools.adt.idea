@@ -11,98 +11,49 @@ parts {
     background {
       image port_back.webp
     }
-    onion {
-      image port_fore.webp
-    }
     buttons {
       back {
         image button.png
-        x 161
+        x 89
         y 945
       }
       soft-left {
         image button.png
-        x 282
+        x 210
         y 945
       }
       home {
         image button.png
-        x 402
+        x 330
         y 945
       }
       search {
         image button.png
-        x 524
+        x 452
         y 945
       }
       volume-up {
         image volume_up.png
-        x 23
+        x -49
         y 196
       }
       volume-down {
         image volume_down.png
-        x 23
+        x -49
         y 258
       }
       power {
         image power.png
-        x 147
+        x 75
         y 0
-      }
-    }
-
-  }
-  landscape {
-    background {
-      image land_back.webp
-    }
-    onion {
-      image land_fore.webp
-    }
-    buttons {
-      back {
-        image button.png
-        x 1015
-        y 449
-      }
-      soft-left {
-        image button.png
-        x 1015
-        y 327
-      }
-      home {
-        image button.png
-        x 1015
-        y 207
-      }
-      search {
-        image button.png
-        x 1014
-        y 86
-      }
-      volume-up {
-        image volume_up_land.png
-        x 262
-        y 534
-      }
-      volume-down {
-        image volume_down_land.png
-        x 323
-        y 534
-      }
-      power {
-        image power_land.png
-        x 38
-        y 422
       }
     }
   }
 }
 layouts {
   portrait {
-    width 732
-    height 1178
+    width 585
+    height 1161
     event EV_SW:0:1
     part1 {
       name portrait
@@ -111,24 +62,8 @@ layouts {
     }
     part2 {
       name device
-      x 125
+      x 53
       y 131
-    }
-  }
-  landscape {
-    width 1300
-    height 612
-    event EV_SW:0:0
-    part1 {
-      name landscape
-      x 0
-      y 0
-    }
-    part2 {
-      name device
-      x 200
-      y 532
-      rotation 3
     }
   }
 }
