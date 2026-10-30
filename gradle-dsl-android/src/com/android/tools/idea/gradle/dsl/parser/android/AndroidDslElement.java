@@ -108,7 +108,6 @@ public class AndroidDslElement extends GradleDslBlockElement {
     {"generatePureSplits", property, GENERATE_PURE_SPLITS, VAR},
     {"namespace", property, NAMESPACE, VAR},
     {"ndkVersion", property, NDK_VERSION, VAR},
-    {"resourcePrefix", property, RESOURCE_PREFIX, VAL},
     {"targetProjectPath", property, TARGET_PROJECT_PATH, VAR},
     {"testNamespace", property, TEST_NAMESPACE, VAR},
   }).collect(toModelMap());
@@ -125,6 +124,7 @@ public class AndroidDslElement extends GradleDslBlockElement {
     {"flavorDimensions", atLeast(0), FLAVOR_DIMENSIONS, ADD_AS_LIST, VersionConstraint.agpBefore("8.0.0")},
     {"generatePureSplits", exactly(1), GENERATE_PURE_SPLITS, SET},
     {"setPublishNonDefault", exactly(1), PUBLISH_NON_DEFAULT, SET},
+    {"resourcePrefix", property, RESOURCE_PREFIX, VAL},
     {"resourcePrefix", exactly(1), RESOURCE_PREFIX, SET},
     {"targetProjectPath", exactly(1), TARGET_PROJECT_PATH, SET},
   }).collect(toModelMap(commonToModelNameMap));
@@ -136,6 +136,7 @@ public class AndroidDslElement extends GradleDslBlockElement {
     {"flavorDimensions", atLeast(0), FLAVOR_DIMENSIONS, ADD_AS_LIST},
     {"flavorDimensions", property, FLAVOR_DIMENSIONS, VAR, VersionConstraint.agpFrom("4.1.0")},
     {"publishNonDefault", property, PUBLISH_NON_DEFAULT, VAR},
+    {"resourcePrefix", property, RESOURCE_PREFIX, VAR, VersionConstraint.agpFrom("4.1.0")},
     {"buildToolsVersion", exactly(1), BUILD_TOOLS_VERSION, SET, VersionConstraint.gradleBefore("10.0")},
     {"compileSdk", exactly(1), COMPILE_SDK_VERSION, SET, VersionConstraint.agpFrom("4.1.0").andGradleBefore("10.0")},
     {"compileSdkExtension", exactly(1), COMPILE_SDK_EXTENSION, SET, VersionConstraint.agpFrom("4.1.0").andGradleBefore("10.0")},

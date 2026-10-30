@@ -5,7 +5,7 @@ android {
   generatePureSplits = false
   namespace = 'com.my.namespace'
   publishNonDefault = true
-  resourcePrefix 'efgh'
+  resourcePrefix = 'efgh'
   targetProjectPath = ':tpp'
   testNamespace = 'com.my.namespace.test'
 }
