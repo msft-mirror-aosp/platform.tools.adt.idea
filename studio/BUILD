@@ -1066,6 +1066,8 @@ studio_plugin(
             "//tools/vendor/google/ml/aiplugin/editor/prediction:aiplugin.editor.prediction",
             "//tools/vendor/google/ml/aiplugin/editor/change-review:aiplugin.editor.change-review",
             "//tools/vendor/google/ml/aiplugin/lang/kotlin:aiplugin.lang.kotlin",
+            "//tools/vendor/google/ml/aiplugin/profiler:aiplugin.profiler",
+            "//tools/profiler/common:sherlock.common.sdkcompat",
             "//tools/vendor/google/ml/aiplugin/rag/indexer:aiplugin.rag.indexer",
             "//tools/vendor/google/ml/aiplugin/rag/kb:aiplugin.rag.kb",
             "//tools/vendor/google/ml/aiplugin/rag/lucene:aiplugin.rag.lucene",
