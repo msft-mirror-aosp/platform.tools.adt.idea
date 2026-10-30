@@ -97,15 +97,15 @@ class DexBytecodeInspectorImpl : DexBytecodeInspector {
 
   override suspend fun filterAlreadyExecutedTargets(
     targets: List<KotlinMethodSmartStepTarget>,
-    context: SmartStepIntoContext,
+    @Suppress("UnstableApiUsage") context: SmartStepIntoContext,
   ): List<KotlinMethodSmartStepTarget> {
-    val (expression, debugProcess, _, _, location) = context
+    val (expression, debugProcess, _, lines, location) = context
     val method = location.safeMethod() ?: return targets
 
     val dex = DexFinder.findDex(debugProcess, expression, location) ?: return targets
 
     val filterer = KotlinSmartStepTargetFilterer(targets, debugProcess)
-    filterer.visitMethodUntilLocation(debugProcess, method, location, dex)
+    filterer.visitMethodUntilLocation(debugProcess, method, lines, location, dex)
     return filterer.getUnvisitedTargets()
   }
 }
@@ -113,6 +113,7 @@ class DexBytecodeInspectorImpl : DexBytecodeInspector {
 private suspend fun KotlinSmartStepTargetFilterer.visitMethodUntilLocation(
   debugProcess: DebugProcessImpl,
   method: Method,
+  lines: ClosedRange<Int>,
   location: Location,
   dex: Dex,
 ) {
@@ -144,7 +145,7 @@ private suspend fun KotlinSmartStepTargetFilterer.visitMethodUntilLocation(
       }
     }
 
-    if (currentLineNumber == location.lineNumber()) {
+    if (currentLineNumber != null && (currentLineNumber - 1) in lines) {
       lineEverMatched = true
       if (insn is InvokeInstruction) {
         val methodInfo = dex.retrieveMethod(insn.methodIndex())
@@ -155,7 +156,7 @@ private suspend fun KotlinSmartStepTargetFilterer.visitMethodUntilLocation(
     }
 
     if (sortedInlineCalls.isNotEmpty() && lineEverMatched) {
-      while (sortedInlineCalls.first.bciRange.last.toUInt() < insn.index) {
+      while (sortedInlineCalls.first().bciRange.last.toUInt() < insn.index) {
         sortedInlineCalls.pop()
       }
       val inlineCall = sortedInlineCalls.firstOrNull { insn.index.toLong() in it.bciRange }
@@ -223,7 +224,9 @@ private fun extractInlineCalls(location: Location): List<InlineCallInfo> =
     .sortedBy { it.bciRange.first }
 
 private suspend fun getCalledInlineFunction(positionManager: PositionManager, location: Location): KtNamedFunction? {
-  val sourcePosition = positionManager.getSourcePosition(location) ?: return null
-  return readAction { sourcePosition.elementAt?.parentOfType<KtNamedFunction>() }
+  return readAction {
+    val sourcePosition = positionManager.getSourcePosition(location) ?: return@readAction null
+    sourcePosition.elementAt?.parentOfType<KtNamedFunction>()
+  }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
