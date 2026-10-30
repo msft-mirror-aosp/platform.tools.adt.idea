@@ -18,7 +18,9 @@ package com.android.tools.idea.gradle.project.entities
 import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
+import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import com.intellij.platform.workspace.storage.EntitySource
+import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.platform.workspace.storage.SymbolicEntityId
 import com.intellij.platform.workspace.storage.WorkspaceEntity
 import com.intellij.platform.workspace.storage.WorkspaceEntityWithSymbolicId
@@ -45,3 +47,21 @@ data class GradleProjectPathSymbolicId(val gradleProjectPath: GradleProjectPath)
 object GradleProjectPathEntitySource : EntitySource
 
 internal val ModuleEntity.gradleProjectPath: GradleProjectPathEntity? by WorkspaceEntity.extension()
+
+internal fun MutableEntityStorage.setGradleProjectPath(
+  moduleEntity: ModuleEntity,
+  gradleProjectPath: GradleProjectPath,
+) {
+  if (moduleEntity.gradleProjectPath?.gradleProjectPath == gradleProjectPath) return
+  val existingEntity = resolve(GradleProjectPathSymbolicId(gradleProjectPath))
+  if (existingEntity != null) {
+    removeEntity(existingEntity)
+  }
+  modifyModuleEntity(moduleEntity) {
+    this.gradleProjectPath =
+      GradleProjectPathEntity(
+        gradleProjectPath = gradleProjectPath,
+        entitySource = GradleProjectPathEntitySource,
+      )
+  }
+}

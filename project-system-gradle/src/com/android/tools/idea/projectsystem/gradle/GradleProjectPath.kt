@@ -17,6 +17,7 @@ package com.android.tools.idea.projectsystem.gradle
 
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
+import com.android.tools.idea.gradle.project.entities.GradleProjectPathSymbolicId
 import com.android.tools.idea.gradle.project.entities.gradleProjectPath
 import com.android.tools.idea.projectsystem.ProjectSyncModificationTracker
 import com.android.utils.FileUtils
@@ -26,9 +27,12 @@ import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootModificationTracker
+import com.intellij.platform.backend.workspace.WorkspaceModel
+import com.intellij.platform.workspace.storage.EntityStorage
 import com.intellij.psi.util.CachedValueProvider
 import com.intellij.psi.util.CachedValuesManager
 import com.intellij.util.text.nullize
+import com.intellij.workspaceModel.ide.legacyBridge.findModule
 import com.intellij.workspaceModel.ide.legacyBridge.findModuleEntity
 import java.io.File
 import org.jetbrains.annotations.SystemIndependent
@@ -148,14 +152,21 @@ fun Module.getGradleIdentityPath(): String? {
   return CachedModuleDataFinder.getGradleModuleData(this)?.moduleData?.gradleIdentityPathOrNull
 }
 
-fun Module.getGradleProjectPath(): GradleProjectPath? {
+internal fun Module.getGradleProjectPath(storage: EntityStorage): GradleProjectPath? {
+  if (isDisposed) return null
+  val moduleEntity = findModuleEntity(storage) ?: return null
+  moduleEntity.gradleProjectPath?.gradleProjectPath?.let {
+    return it
+  }
   return CachedValuesManager.getManager(project).getCachedValue(this) {
     CachedValueProvider.Result.create(
-      internalGetGradleProjectPathFromEntityStorage() ?: internalGetGradleProjectPath(),
+      internalGetGradleProjectPath(),
       gradleProjectPathModificationTrackers(project),
     )
   }
 }
+
+fun Module.getGradleProjectPath(): GradleProjectPath? = getGradleProjectPath(WorkspaceModel.getInstance(project).currentSnapshot)
 
 @VisibleForTesting
 fun Module.getGradleProjectPathWithoutCache(useWorkspace: Boolean): GradleProjectPath? {
@@ -166,14 +177,32 @@ fun Module.getGradleProjectPathWithoutCache(useWorkspace: Boolean): GradleProjec
   }
 }
 
-fun Project.findModule(gradleProjectPath: GradleProjectPath): Module? {
-  return CachedValuesManager.getManager(this)
-    .getCachedValue(this) {
+internal fun GradleProjectPath.resolveIn(
+  project: Project,
+  storage: EntityStorage,
+): Module? {
+  storage
+    .resolve(GradleProjectPathSymbolicId(this))
+    ?.module
+    ?.findModule(storage)
+    ?.takeIf { !it.isDisposed }
+    ?.let {
+      return it
+    }
+  return CachedValuesManager.getManager(project)
+    .getCachedValue(project) {
       val moduleMap =
-        ModuleManager.getInstance(this).modules.mapNotNull { (it.getGradleProjectPath() ?: return@mapNotNull null) to it }.toMap()
-      CachedValueProvider.Result.create(moduleMap, gradleProjectPathModificationTrackers(this))
-    }[gradleProjectPath]
+        ModuleManager.getInstance(project).modules.mapNotNull { (it.getGradleProjectPath() ?: return@mapNotNull null) to it }.toMap()
+      CachedValueProvider.Result.create(moduleMap, gradleProjectPathModificationTrackers(project))
+    }[this]
+    // The CachedValue map is built from currentSnapshot and only invalidated on root/sync modification
+    // trackers, so verify the module still maps to this path in the given storage (guarding against stale
+    // entries when GradleProjectPathEntity was updated in storage without triggering a tracker).
+    ?.takeIf { !it.isDisposed && it.getGradleProjectPath(storage) == this }
 }
+
+fun Project.findModule(gradleProjectPath: GradleProjectPath): Module? =
+  gradleProjectPath.resolveIn(this, WorkspaceModel.getInstance(this).currentSnapshot)
 
 fun GradleProjectPath.resolveIn(project: Project): Module? = project.findModule(this)
 

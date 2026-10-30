@@ -18,21 +18,15 @@
 package com.android.tools.idea.gradle.project.sync.idea
 
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
-import com.android.tools.idea.gradle.project.entities.GradleProjectPathEntity
-import com.android.tools.idea.gradle.project.entities.GradleProjectPathEntitySource
-import com.android.tools.idea.gradle.project.entities.GradleProjectPathSymbolicId
-import com.android.tools.idea.gradle.project.entities.gradleProjectPath
-import com.android.tools.idea.gradle.project.entities.modifyGradleProjectPathEntity
+import com.android.tools.idea.gradle.project.entities.setGradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
 import com.android.tools.idea.projectsystem.gradle.toSourceSetPath
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
-import com.intellij.platform.workspace.jps.entities.ModuleEntityBuilder
 import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.exModuleOptions
-import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import com.intellij.platform.workspace.storage.EntityStorage
 import com.intellij.platform.workspace.storage.MutableEntityStorage
 import com.intellij.platform.workspace.storage.entities
@@ -58,19 +52,31 @@ class GradleProjectPathSyncExtension : GradleSyncExtension {
   }
 
   companion object {
-    private fun ModuleEntityBuilder.updateGradleProjectPath(projectStorage: MutableEntityStorage, gradleProjectPath: GradleProjectPath) {
-      val existingEntity = projectStorage.resolve(GradleProjectPathSymbolicId(gradleProjectPath))
-      if (existingEntity != null) {
-        projectStorage.modifyGradleProjectPathEntity(existingEntity) { this.gradleProjectPath = gradleProjectPath }
-        return
-      }
-      this@updateGradleProjectPath.gradleProjectPath =
-        GradleProjectPathEntity(gradleProjectPath = gradleProjectPath, entitySource = GradleProjectPathEntitySource)
-    }
-
     internal fun populateGradleProjectPath(
       context: ProjectResolverContext,
       syncStorage: MutableEntityStorage,
+      projectStorage: MutableEntityStorage,
+    ) {
+      populateHolderGradleProjectPaths(context, projectStorage)
+      val contexts = checkNotNull(context.getUserData(SOURCE_SET_UPDATE_RESULT_KEY)).allAndroidProjectContexts
+      // use syncStorage as the source of truth to update projectStorage
+
+      val holderModuleEntityToGppMap: Map<String, GradleHolderProjectPath> =
+        buildGppMapForAndroidProjects(contexts) + buildGppMapForJavaProjects(syncStorage, context)
+
+      projectStorage.entities<ModuleEntity>().toList().forEach {
+        // projectStorage contains modules from all linked Gradle build roots in the project, whereas
+        // syncStorage only contains modules for the Gradle build currently being synced. Skip modules
+        // from other linked Gradle builds so colliding linkedProjectIds (e.g. ":app:main") don't
+        // overwrite their GradleProjectPathEntity with the current build root.
+        if (syncStorage.resolve(it.symbolicId) == null) return@forEach
+        val sourceSetProjectPath = it.getSourceSetProjectPath(holderModuleEntityToGppMap) ?: return@forEach
+        projectStorage.setGradleProjectPath(it, sourceSetProjectPath)
+      }
+    }
+
+    private fun populateHolderGradleProjectPaths(
+      context: ProjectResolverContext,
       projectStorage: MutableEntityStorage,
     ) {
       val allContexts =
@@ -85,23 +91,11 @@ class GradleProjectPathSyncExtension : GradleSyncExtension {
         with(context) {
           val holderModuleEntity = projectStorage.resolve(ModuleId(resolveHolderModuleName())) ?: return@forEach
           // store in the project storage as it's a custom entity source - to avoid being replaced by .replaceBySource
-          projectStorage.modifyModuleEntity(holderModuleEntity) {
-            updateGradleProjectPath(
-              projectStorage,
-              GradleHolderProjectPath(PathUtil.toSystemIndependentName(buildModel.buildIdentifier.rootDir.path), projectModel.path),
-            )
-          }
+          projectStorage.setGradleProjectPath(
+            holderModuleEntity,
+            GradleHolderProjectPath(PathUtil.toSystemIndependentName(buildModel.buildIdentifier.rootDir.path), projectModel.path),
+          )
         }
-      }
-      val contexts = checkNotNull(context.getUserData(SOURCE_SET_UPDATE_RESULT_KEY)).allAndroidProjectContexts
-      // use syncStorage as the source of truth to update projectStorage
-
-      val holderModuleEntityToGppMap: Map<String, GradleHolderProjectPath> =
-        buildGppMapForAndroidProjects(contexts) + buildGppMapForJavaProjects(syncStorage, context)
-
-      projectStorage.entities<ModuleEntity>().forEach {
-        val sourceSetProjectPath = it.getSourceSetProjectPath(holderModuleEntityToGppMap) ?: return@forEach
-        projectStorage.modifyModuleEntity(it) { updateGradleProjectPath(projectStorage, sourceSetProjectPath) }
       }
     }
   }
