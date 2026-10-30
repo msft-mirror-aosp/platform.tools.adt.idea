@@ -24,6 +24,7 @@ import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.codeInsight.daemon.ProblemHighlightFilter
 import com.intellij.codeInspection.LocalInspectionEP
+import com.intellij.gradle.codeInsight.backend.inspections.declarations.GradleAvoidDuplicateDependenciesInspection
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.project.guessModuleDir
 import com.intellij.openapi.vfs.VfsUtil
@@ -37,12 +38,11 @@ import com.intellij.psi.util.descendantsOfType
 import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.RunsInEdt
 import java.io.File
-import org.jetbrains.kotlin.idea.core.script.k2.modules.KotlinScriptEntity
-import org.jetbrains.kotlin.idea.core.script.k2.modules.KotlinScriptLibraryEntity
+import org.jetbrains.kotlin.idea.core.script.modules.KotlinScriptEntity
+import org.jetbrains.kotlin.idea.core.script.modules.KotlinScriptLibraryEntity
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.plugins.gradle.codeInspection.GradleAvoidDuplicateDependenciesInspection
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test

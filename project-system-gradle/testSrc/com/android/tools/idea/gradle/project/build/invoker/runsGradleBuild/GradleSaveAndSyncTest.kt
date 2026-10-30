@@ -24,18 +24,14 @@ import com.google.common.truth.Truth
 import com.intellij.ide.SaveAndSyncHandler
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteAction
-import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId
-import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.testFramework.replaceService
 import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.function.Function
-import org.gradle.tooling.CancellationToken
 import org.gradle.tooling.ProjectConnection
 import org.jetbrains.plugins.gradle.connection.GradleConnectorService
-import org.jetbrains.plugins.gradle.settings.GradleExecutionSettings
+import org.jetbrains.plugins.gradle.service.execution.GradleExecutionContext
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.inOrder
@@ -68,21 +64,8 @@ class GradleSaveAndSyncTest {
       project.replaceService(
         GradleConnectorService::class.java,
         object : GradleConnectorService by delegateConnectorService {
-          override fun <R> withGradleConnection(
-            projectPath: String,
-            taskId: ExternalSystemTaskId?,
-            executionSettings: GradleExecutionSettings?,
-            listener: ExternalSystemTaskNotificationListener?,
-            cancellationToken: CancellationToken?,
-            function: Function<ProjectConnection, R>,
-          ): R {
-            return delegateConnectorService.withGradleConnection(
-              projectPath,
-              taskId,
-              executionSettings,
-              listener,
-              cancellationToken,
-            ) { connection ->
+          override fun <R> withGradleConnection(context: GradleExecutionContext, function: (ProjectConnection) -> R): R {
+            return delegateConnectorService.withGradleConnection(context) { connection ->
               val wrappedConnection =
                 object : ProjectConnection by connection {
                   override fun notifyDaemonsAboutChangedPaths(changedPaths: List<Path>) {
@@ -90,7 +73,7 @@ class GradleSaveAndSyncTest {
                     connection.notifyDaemonsAboutChangedPaths(changedPaths)
                   }
                 }
-              function.apply(wrappedConnection)
+              function(wrappedConnection)
             }
           }
         },

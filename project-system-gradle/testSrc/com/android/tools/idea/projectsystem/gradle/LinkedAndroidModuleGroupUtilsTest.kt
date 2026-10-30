@@ -26,10 +26,10 @@ import com.android.tools.idea.gradle.project.entities.gradleProjectPath
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.module.JavaModuleType
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.module.ModulePointerManager
-import com.intellij.openapi.module.StdModuleTypes
 import com.intellij.platform.backend.workspace.WorkspaceModel
 import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
@@ -43,7 +43,7 @@ class LinkedAndroidModuleGroupUtilsTest : AndroidTestCase() {
   private val holderPath = GradleHolderProjectPath(buildRoot, ":app")
 
   private fun createExtraModule(name: String): Module = runWriteAction {
-    ModuleManager.getInstance(project).newModule(project.basePath + "/$name.iml", StdModuleTypes.JAVA.id)
+    ModuleManager.getInstance(project).newModule(project.basePath + "/$name.iml", JavaModuleType.getModuleType().id)
   }
 
   private fun attachGradleProjectPath(module: Module, path: GradleProjectPath) {
