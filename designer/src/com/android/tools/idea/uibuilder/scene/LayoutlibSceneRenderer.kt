@@ -73,9 +73,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.android.facet.AndroidFacet
 
-private class RenderRequest(val trigger: LayoutEditorRenderResult.Trigger?) {
-  val requestTime: Long = System.currentTimeMillis()
-}
+private class RenderRequest(val id: Long, val trigger: LayoutEditorRenderResult.Trigger?)
 
 /**
  * Class responsible for inflation and rendering of the given [NlModel]. It's configurable via its [sceneRenderConfiguration]. This class is
@@ -113,6 +111,9 @@ class LayoutlibSceneRenderer(
 
   /** Lock guarding the enqueueing of requests into [requestsChannel]. */
   private val requestsLock = Mutex()
+
+  /** Monotonically increasing identifier assigned under [requestsLock] to each enqueued [RenderRequest]. */
+  @GuardedBy("requestsLock") private var nextRequestId = 0L
 
   /** The configuration to use when inflating and rendering, and for creating new [RenderTask]s. */
   val sceneRenderConfiguration = LayoutlibSceneRenderConfiguration(model, surface, layoutScannerConfig)
@@ -218,10 +219,8 @@ class LayoutlibSceneRenderer(
    */
   private val requestsChannel = Channel<RenderRequest>(capacity = Channel.CONFLATED)
 
-  /**
-   * This flow contains the [RenderRequest.requestTime] of the latest request that has finished to be processed, regardless of the result.
-   */
-  private val lastProcessedRenderRequestTime = MutableStateFlow<Long>(-1)
+  /** This flow contains the [RenderRequest.id] of the latest request that has finished to be processed, regardless of the result. */
+  private val lastProcessedRenderRequestId = MutableStateFlow<Long>(-1)
 
   init {
     // Order here is relevant. We need to register first to ensure that the scope does not get
@@ -248,7 +247,7 @@ class LayoutlibSceneRenderer(
         } catch (t: Throwable) {
           log.warn(t)
         } finally {
-          lastProcessedRenderRequestTime.tryEmit(maxOf(lastProcessedRenderRequestTime.value, it.requestTime))
+          lastProcessedRenderRequestId.tryEmit(maxOf(lastProcessedRenderRequestId.value, it.id))
           renderIsRunning.set(false)
         }
       }
@@ -279,7 +278,7 @@ class LayoutlibSceneRenderer(
   suspend fun requestRenderAndWait(trigger: LayoutEditorRenderResult.Trigger?) {
     val request = enqueueRenderRequest(trigger) ?: return
     // Suspends until this or any newer request is processed
-    lastProcessedRenderRequestTime.first { it >= request.requestTime }
+    lastProcessedRenderRequestId.first { it >= request.id }
   }
 
   /**
@@ -293,10 +292,9 @@ class LayoutlibSceneRenderer(
       log.warn("requesting render after LayoutlibSceneRenderer has been disposed")
       return null
     }
-    // Mutex is needed to guarantee that requests are sent to the channel in order of their
-    // requestTime
+    // Mutex is needed to guarantee that requests are sent to the channel in order of their id
     return requestsLock.withLock {
-      RenderRequest(trigger)
+      RenderRequest(nextRequestId++, trigger)
         .takeIf { requestsChannel.trySend(it).isSuccess }
         .also { if (it == null) log.warn("Failed to send render request to channel") }
     }

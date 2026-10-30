@@ -502,6 +502,17 @@ class LayoutlibSceneRendererTest {
     assertEquals(rendersBefore + 3, taskRenderCount.get())
   }
 
+  // Regression test for b/579873488
+  @Test
+  fun testConsecutiveRequestRenderAndWait() = runTest {
+    withContext(Dispatchers.Default) {
+      repeat(50) { i ->
+        renderer.requestRenderAndWait(trigger = null)
+        assertEquals(i + 1, taskRenderCount.get())
+      }
+    }
+  }
+
   private fun blockInflationAndRequestRender() = runBlocking {
     inflateLatch = CountDownLatch(1)
     renderer.sceneRenderConfiguration.needsInflation.set(true)
