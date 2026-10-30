@@ -25,11 +25,10 @@ import com.android.tools.idea.util.PoliteAndroidVirtualFileListener
 import com.android.tools.idea.util.listenUntilNextSync
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.runInEdt
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.ProjectComponent
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.diagnostic.debug
-import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.DocumentEvent
 import com.intellij.openapi.editor.event.DocumentListener
@@ -46,9 +45,7 @@ import com.intellij.psi.PsiDocumentManager
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.concurrency.BoundedTaskExecutor
 import com.intellij.util.containers.TreeTraversal
-import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
@@ -66,7 +63,11 @@ class MergedManifestModificationListener(project: Project) :
   private val psiDocumentManager = PsiDocumentManager.getInstance(project)
   private val fileDocumentManager = FileDocumentManager.getInstance()
 
-  private val lastModificationTrackerUpdateTask = AtomicReference<Pair<AndroidFacet, Future<*>>?>()
+  /** Facets whose manifests changed and have not yet been processed by [flushCaches]. Guarded by itself. */
+  private val pendingFacets = mutableSetOf<AndroidFacet>()
+
+  /** Whether a [flushCaches] task is queued or running. Guarded by [pendingFacets]. */
+  private var flushScheduled = false
 
   private val trackerUpdaterExecutor =
     AppExecutorUtil.createBoundedApplicationPoolExecutor("Merged Manifest Modification Tracker Updater Pool", 1)
@@ -128,34 +129,65 @@ class MergedManifestModificationListener(project: Project) :
   }
 
   override fun fileChanged(path: PathString, facet: AndroidFacet) {
-    val newTask = trackerUpdaterExecutor.submit { flushCaches(facet) }
-    val (oldFacet, oldTask) = lastModificationTrackerUpdateTask.getAndSet(facet to newTask) ?: return
-    // This is to optimize the use case that the user is actively editing one file, and a backlog of same requests
-    // are created and pending there. Thus we can just leave one pending request and cancel the others. In order
-    // to make it simple, we only cache the last request, and cancel it, if the same new request comes and the old
-    // one is still in progress.
-    if (oldFacet == facet && oldTask.cancel(true)) {
-      thisLogger().debug { "Request for updating '${facet.module}' is cancelled." }
+    synchronized(pendingFacets) {
+      pendingFacets.add(facet)
+      // Coalesce rapid manifest updates (e.g. while typing in a manifest or switching Git branches across multiple modules): if a
+      // flush is already queued or running, it will pick up this facet, either in its current batch or by rescheduling itself.
+      if (!flushScheduled) {
+        flushScheduled = true
+        trackerUpdaterExecutor.execute { flushCaches() }
+      }
     }
   }
 
   @OptIn(KaPlatformInterface::class)
-  private fun flushCaches(facet: AndroidFacet) {
-    val ktModules =
-      facet.module
-        .getTransitiveResourceDependents()
-        .flatMap {
-          MergedManifestModificationTracker.getInstance(it).manifestChanged()
-          it.toKaModulesForModificationEvents()
+  private fun flushCaches() {
+    try {
+      val facets =
+        synchronized(pendingFacets) {
+          pendingFacets.toSet().also { pendingFacets.clear() }
         }
-        .toList()
+      if (facets.isEmpty()) return
 
-    runInEdt {
-      runWriteAction {
-        if (facet.isDisposed || facet.module.project.isDisposed) return@runWriteAction
-        // The manifest does not belong to any Gradle source set, so we need to manually flush Kotlin analysis caches
-        // so that changes to the XML file can cause re-resolution of references to the Manifest class.
-        ktModules.forEach { it.publishModuleOutOfBlockModificationEvent() }
+      // Modules are only disposed in write actions (e.g. when a project sync replaces modules), so the disposal checks and
+      // all uses of the modules below must happen under the same read action to avoid a time-of-check to time-of-use race.
+      // Note: this read action must not be taken while holding the pendingFacets lock, since fileChanged may acquire that
+      // lock from within a write action.
+      val affectedModules = runReadAction {
+        if (project.isDisposed) return@runReadAction emptyList()
+        facets
+          .asSequence()
+          .filter { !it.isDisposed && !it.module.isDisposed }
+          .map { it.module }
+          .toList()
+          .getTransitiveResourceDependents()
+          .filter { !it.isDisposed }
+          .toList()
+          .onEach { MergedManifestModificationTracker.getInstance(it).manifestChanged() }
+      }
+      if (affectedModules.isEmpty()) return
+
+      runInEdt {
+        runWriteAction {
+          if (project.isDisposed) return@runWriteAction
+          // The manifest does not belong to any Gradle source set, so we need to manually flush Kotlin analysis caches
+          // so that changes to the XML file can cause re-resolution of references to the Manifest class.
+          // Modules may have been disposed since the read action above, so re-check disposal under this write action.
+          affectedModules
+            .filter { !it.isDisposed }
+            .flatMap { it.toKaModulesForModificationEvents() }
+            .distinct()
+            .forEach { it.publishModuleOutOfBlockModificationEvent() }
+        }
+      }
+    } finally {
+      // Facets that changed while this flush was running are processed in one more batch.
+      synchronized(pendingFacets) {
+        if (pendingFacets.isEmpty()) {
+          flushScheduled = false
+        } else {
+          trackerUpdaterExecutor.execute { flushCaches() }
+        }
       }
     }
   }
@@ -199,7 +231,5 @@ class MergedManifestModificationListener(project: Project) :
   }
 }
 
-private fun Module.getTransitiveResourceDependents() = TRANSITIVE_RESOURCE_DEPENDENTS.`fun`(this)
-
-private val TRANSITIVE_RESOURCE_DEPENDENTS =
-  TreeTraversal.PLAIN_BFS.unique().traversal<Module> { it.getModuleSystem().getDirectResourceModuleDependents() }
+private fun Iterable<Module>.getTransitiveResourceDependents() =
+  TreeTraversal.PLAIN_BFS.unique().traversal<Module>(this) { it.getModuleSystem().getDirectResourceModuleDependents() }

@@ -82,12 +82,16 @@ public class MergedManifestModificationTrackerTest extends HeavyPlatformTestCase
     ModuleRootModificationUtil.addDependency(myModule, dependencyModule);
 
     AndroidModuleSystem moduleSystemMock = spy(AndroidModuleSystem.class);
+    AndroidModuleSystem myModuleSystemMock = spy(AndroidModuleSystem.class);
 
     doAnswer(AdditionalAnswers.answersWithDelay(1000, (Answer<List<Module>>)invocation -> Collections.singletonList(myModule)))
       .when(moduleSystemMock).getDirectResourceModuleDependents();
+    doAnswer((Answer<List<Module>>)invocation -> Collections.emptyList())
+      .when(myModuleSystemMock).getDirectResourceModuleDependents();
 
     AndroidProjectSystem projectSystemMock = mock(AndroidProjectSystem.class);
     when(projectSystemMock.getModuleSystem(dependencyModule)).thenReturn(moduleSystemMock);
+    when(projectSystemMock.getModuleSystem(myModule)).thenReturn(myModuleSystemMock);
 
     ProjectSystemService projectSystemService = mock(ProjectSystemService.class);
     when(projectSystemService.getProjectSystem()).thenReturn(projectSystemMock);
@@ -137,6 +141,64 @@ public class MergedManifestModificationTrackerTest extends HeavyPlatformTestCase
     assertThat(modificationListener.isPossiblyRelevant(directory)).isTrue();
     assertThat(modificationListener.isPossiblyRelevant(manifestFile)).isTrue();
     assertThat(modificationListener.isPossiblyRelevant(stringsXml)).isFalse();
+  }
+
+  public void testWhenMultipleManifestsChangedConcurrently() throws Exception {
+    // Introduce "lib1" and "lib2": "myModule" depends on both "lib1" and "lib2".
+    Path lib1Path = createFolderInProjectRoot(myProject, "lib1").toNioPath();
+    Path lib2Path = createFolderInProjectRoot(myProject, "lib2").toNioPath();
+    Module lib1Module = createModuleAt("lib1", myProject, JavaModuleType.getModuleType(), lib1Path);
+    Module lib2Module = createModuleAt("lib2", myProject, JavaModuleType.getModuleType(), lib2Path);
+    ModuleRootModificationUtil.addDependency(myModule, lib1Module);
+    ModuleRootModificationUtil.addDependency(myModule, lib2Module);
+
+    AndroidModuleSystem lib1ModuleSystemMock = spy(AndroidModuleSystem.class);
+    AndroidModuleSystem lib2ModuleSystemMock = spy(AndroidModuleSystem.class);
+    AndroidModuleSystem appModuleSystemMock = spy(AndroidModuleSystem.class);
+
+    doAnswer(AdditionalAnswers.answersWithDelay(200, (Answer<List<Module>>)invocation -> Collections.singletonList(myModule)))
+      .when(lib1ModuleSystemMock).getDirectResourceModuleDependents();
+    doAnswer((Answer<List<Module>>)invocation -> Collections.singletonList(myModule))
+      .when(lib2ModuleSystemMock).getDirectResourceModuleDependents();
+    doAnswer((Answer<List<Module>>)invocation -> Collections.emptyList())
+      .when(appModuleSystemMock).getDirectResourceModuleDependents();
+
+    AndroidProjectSystem projectSystemMock = mock(AndroidProjectSystem.class);
+    when(projectSystemMock.getModuleSystem(lib1Module)).thenReturn(lib1ModuleSystemMock);
+    when(projectSystemMock.getModuleSystem(lib2Module)).thenReturn(lib2ModuleSystemMock);
+    when(projectSystemMock.getModuleSystem(myModule)).thenReturn(appModuleSystemMock);
+
+    ProjectSystemService projectSystemService = mock(ProjectSystemService.class);
+    when(projectSystemService.getProjectSystem()).thenReturn(projectSystemMock);
+    ServiceContainerUtil.replaceService(myProject,
+                                        ProjectSystemService.class,
+                                        projectSystemService,
+                                        getTestRootDisposable()
+    );
+
+    AndroidFacetConfiguration androidFacetConfiguration = mock(AndroidFacetConfiguration.class);
+    MergedManifestModificationListener modificationListener = new MergedManifestModificationListener(myProject);
+    AndroidFacet lib1Facet = new AndroidFacet(lib1Module, "Lib1", androidFacetConfiguration);
+    AndroidFacet lib2Facet = new AndroidFacet(lib2Module, "Lib2", androidFacetConfiguration);
+    PathString stringPath = mock(PathString.class);
+
+    MergedManifestModificationTracker myModuleTracker = MergedManifestModificationTracker.getInstance(myModule);
+    MergedManifestModificationTracker lib1Tracker = MergedManifestModificationTracker.getInstance(lib1Module);
+    MergedManifestModificationTracker lib2Tracker = MergedManifestModificationTracker.getInstance(lib2Module);
+
+    long startingAppCount = myModuleTracker.getModificationCount();
+    long startingLib1Count = lib1Tracker.getModificationCount();
+    long startingLib2Count = lib2Tracker.getModificationCount();
+
+    // Simulate a burst of manifest updates across multiple modules (e.g. during a branch switch).
+    updateManifest(modificationListener, stringPath, lib1Facet);
+    updateManifest(modificationListener, stringPath, lib2Facet);
+    modificationListener.waitAllUpdatesCompletedWithTimeout(5, TimeUnit.SECONDS);
+    PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue();
+
+    assertThat(lib1Tracker.getModificationCount()).isEqualTo(startingLib1Count + 1);
+    assertThat(lib2Tracker.getModificationCount()).isEqualTo(startingLib2Count + 1);
+    assertThat(myModuleTracker.getModificationCount()).isEqualTo(startingAppCount + 1);
   }
 
   public void testCombinationCases() throws Exception {
