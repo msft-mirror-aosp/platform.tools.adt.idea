@@ -33,6 +33,7 @@ import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.android.tools.idea.testing.requestSyncAndWait
 import com.google.common.truth.Expect
 import com.intellij.psi.search.FilenameIndex
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.util.indexing.FileBasedIndex
@@ -406,7 +407,7 @@ class PsAndroidModuleDefaultConfigDescriptorsTest {
 
   private fun PsTestProject.doTestProGuardKnownValues() {
     FileBasedIndex.getInstance().requestRebuild(FilenameIndex.NAME)
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    IndexingTestUtil.waitUntilIndexesAreReady(resolvedProject)
     val appModule = project.findModuleByName("app") as PsAndroidModule
     assertThat(appModule, notNullValue())
 
@@ -414,7 +415,7 @@ class PsAndroidModuleDefaultConfigDescriptorsTest {
     assertThat(defaultConfig, notNullValue())
 
     val context = PsAndroidModuleDefaultConfigDescriptors.proGuardFiles.bindContext(defaultConfig)
-    val knownValues = context.getKnownValues().get()
+    val knownValues = PlatformTestUtil.waitForFuture(context.getKnownValues())
     assertThat(
       knownValues.literals.map { it.value.getText { toString() } }.toSet(),
       equalTo(setOf("other.pro", "proguard-rules.txt", "\$getDefaultProguardFile('proguard-android.txt')")),
