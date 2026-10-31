@@ -31,6 +31,7 @@ import com.android.tools.idea.uibuilder.model.NlDropEvent
 import com.android.tools.idea.uibuilder.surface.interaction.DragDropInteraction
 import com.android.tools.idea.uibuilder.surface.interaction.PanInteraction
 import com.intellij.ide.util.PsiNavigationSupport
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -340,8 +341,8 @@ fun navigateToComponent(component: NlComponent, needsFocusEditor: Boolean) {
 }
 
 /**
- * When [DesignToolsSplitEditor] is in Design-only mode, navigates [DesignToolsSplitEditor.textEditor]
- * directly so that the caret and scroll position are updated without switching to Split mode.
+ * When [DesignToolsSplitEditor] is in Design-only mode, navigates [DesignToolsSplitEditor.textEditor] directly so that the caret and scroll
+ * position are updated without switching to Split mode.
  *
  * Returns `true` if navigation was handled directly on the text editor, or `false` otherwise.
  */
@@ -351,13 +352,14 @@ private fun navigateToTextEditorInDesignMode(component: NlComponent, navigatable
     val descriptor =
       when (navigatable) {
         is OpenFileDescriptor -> navigatable
-        is PsiElement -> PsiNavigationSupport.getInstance().getDescriptor(navigatable)
+        is PsiElement -> runReadAction { PsiNavigationSupport.getInstance().getDescriptor(navigatable) }
         else -> null
       }
-    if (descriptor != null && selectedEditor.textEditor.canNavigateTo(descriptor)) {
+        as? OpenFileDescriptor
+    if (descriptor != null && descriptor.file == selectedEditor.file && selectedEditor.textEditor.canNavigateTo(descriptor)) {
       selectedEditor.textEditor.navigateTo(descriptor)
-      return true
     }
+    return true
   }
   return false
 }

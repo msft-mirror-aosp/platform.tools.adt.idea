@@ -60,6 +60,7 @@ import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.never
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -94,22 +95,22 @@ class DesignToolsSplitEditorTest {
         @UiThread
         override fun createEditorPanel(): DesignerEditorPanel =
           object :
-            DesignerEditorPanel(
-              this,
-              project,
-              file!!,
-              WorkBench(project, "TestWorkBench", null, projectRule.testRootDisposable),
-              { _ -> surface },
-              {},
-              { _, _, _, _, _ -> nlModel },
-              { _ -> listOf() },
-              { _, _ -> JLabel() },
-              DesignerEditorPanel.State.FULL,
-            ) {
-            override fun initNeleModel() {
-              // No-op in tests: prevent asynchronous model initialization on background thread
+              DesignerEditorPanel(
+                this,
+                project,
+                file!!,
+                WorkBench(project, "TestWorkBench", null, projectRule.testRootDisposable),
+                { _ -> surface },
+                {},
+                { _, _, _, _, _ -> nlModel },
+                { _ -> listOf() },
+                { _, _ -> JLabel() },
+                DesignerEditorPanel.State.FULL,
+              ) {
+              override fun initNeleModel() {
+                // No-op in tests: prevent asynchronous model initialization on background thread
+              }
             }
-          }
             .apply { Disposer.register(projectRule.testRootDisposable, this) }
       }
 
@@ -245,8 +246,7 @@ class DesignToolsSplitEditorTest {
     val editorContentComponent =
       object : JPanel() {
         override fun requestFocusInWindow(): Boolean {
-          focusRequestedWhileRecursivelyVisible =
-            generateSequence<Component>(this) { it.parent }.all { it.isVisible }
+          focusRequestedWhileRecursivelyVisible = generateSequence<Component>(this) { it.parent }.all { it.isVisible }
           return focusRequestedWhileRecursivelyVisible
         }
       }
@@ -297,6 +297,7 @@ class DesignToolsSplitEditorTest {
     doReturn(splitEditor).whenever(fileEditorManager).selectedEditor
     projectRule.replaceProjectService(FileEditorManager::class.java, fileEditorManager)
     whenever(textEditor.canNavigateTo(any())).thenReturn(true)
+    whenever(textEditor.file).thenReturn(nlModel.virtualFile)
 
     splitEditor.selectDesignMode(userExplicitlyTriggered = false)
     assertThat(splitEditor.isDesignMode()).isTrue()
@@ -309,6 +310,31 @@ class DesignToolsSplitEditorTest {
     verify(textEditor).navigateTo(descriptorCaptor.capture())
     assertThat(descriptorCaptor.firstValue.file).isEqualTo(nlModel.virtualFile)
     assertThat(descriptorCaptor.firstValue.offset).isEqualTo(rootComponent.tagDeprecated!!.textOffset)
+  }
+
+  @Test
+  fun testNavigateToComponentFromVariantFileInDesignModeDoesNotNavigateCurrentTextEditor() {
+    val fileEditorManager = spy(FileEditorManagerEx.getInstanceEx(projectRule.project))
+    doReturn(splitEditor).whenever(fileEditorManager).selectedEditor
+    projectRule.replaceProjectService(FileEditorManager::class.java, fileEditorManager)
+    whenever(textEditor.canNavigateTo(any())).thenReturn(true)
+    whenever(textEditor.file).thenReturn(nlModel.virtualFile)
+
+    val variantModel =
+      NlModelBuilderUtil.model(projectRule, "layout-land", "foo.xml", ComponentDescriptor("LinearLayout")).build().apply {
+        Disposer.register(projectRule.testRootDisposable, this)
+      }
+
+    splitEditor.selectDesignMode(userExplicitlyTriggered = false)
+    assertThat(splitEditor.isDesignMode()).isTrue()
+
+    val variantRootComponent = variantModel.treeReader.components.first()
+    val navigatable = spy(variantRootComponent.navigatable!!)
+    variantRootComponent.setNavigatable(navigatable)
+    navigateToComponent(variantRootComponent, false)
+
+    verify(textEditor, never()).navigateTo(any())
+    verify(navigatable, never()).navigate(anyBoolean())
   }
 
   private fun IdeKeyEventDispatcher.pressAndRelease(keyCode: Int, modifiers: Int) {
