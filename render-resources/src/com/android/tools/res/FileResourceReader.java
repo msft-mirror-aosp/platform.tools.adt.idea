@@ -23,8 +23,10 @@ import com.android.SdkConstants;
 import com.android.ide.common.util.PathString;
 import com.android.tools.apk.analyzer.BinaryXmlParser;
 import com.android.tools.apk.analyzer.ResourceIdResolver;
+import com.android.zipflinger.Entry;
 import com.android.zipflinger.ZipMap;
 import com.android.zipflinger.ZipRepo;
+import com.google.common.base.Ticker;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -39,11 +41,19 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.CRC32;
+import java.util.zip.ZipException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 import org.kxml2.io.KXmlParser;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -61,18 +71,84 @@ public class FileResourceReader {
   private static final int MAX_INTERRUPT_RETRIES = 3;
 
   /**
-   * Cache to store {@link ZipMap} objects created from zip files.
-   * Keys are the full path to the zip file from which the ZipMap is created.
+   * Minimum interval between filesystem attribute checks ({@link Files#readAttributes}) for a
+   * cached {@link ZipMap}. Rendering a Compose preview or XML layout can resolve hundreds or
+   * thousands of zip-backed resources within a few milliseconds; throttling attribute checks avoids
+   * per-read {@code stat} syscalls while still catching external archive updates between refreshes.
    */
-  private static final LoadingCache<String, ZipMap> sZipCache = CacheBuilder.newBuilder()
-    .maximumSize(10)
-    .expireAfterAccess(5, TimeUnit.MINUTES)
-    .build(new CacheLoader<String, ZipMap>() {
-      @Override
-      public ZipMap load(@NotNull String path) throws IOException {
-        return ZipMap.from(Paths.get(path));
-      }
-    });
+  @VisibleForTesting static final long STAT_CHECK_INTERVAL_NS = TimeUnit.MILLISECONDS.toNanos(250);
+
+  @FunctionalInterface
+  @VisibleForTesting
+  interface AttributeReader {
+    @NotNull
+    BasicFileAttributes readAttributes(@NotNull Path path) throws IOException;
+  }
+
+  private static final AttributeReader DEFAULT_ATTRIBUTE_READER =
+      path -> Files.readAttributes(path, BasicFileAttributes.class);
+
+  private static volatile AttributeReader sAttributeReader = DEFAULT_ATTRIBUTE_READER;
+  private static volatile Ticker sTicker = Ticker.systemTicker();
+
+  /**
+   * Cache to store {@link ZipMap} objects created from zip files, along with the file's
+   * last-modified timestamp, size, and file key so in-place rewrites are detected. Keys are the
+   * normalized absolute {@link Path} to the zip file from which the {@link ZipMap} is created.
+   */
+  private static final LoadingCache<Path, CachedZipMap> sZipCache =
+      CacheBuilder.newBuilder()
+          .maximumSize(10)
+          .expireAfterAccess(5, TimeUnit.MINUTES)
+          .build(
+              new CacheLoader<Path, CachedZipMap>() {
+                @Override
+                public CachedZipMap load(@NotNull Path zipFile) throws IOException {
+                  BasicFileAttributes attrs = sAttributeReader.readAttributes(zipFile);
+                  ZipMap zipMap = ZipMap.from(zipFile);
+                  return new CachedZipMap(
+                      zipMap,
+                      attrs.lastModifiedTime(),
+                      attrs.size(),
+                      attrs.fileKey(),
+                      sTicker.read());
+                }
+              });
+
+  /**
+   * Cached {@link ZipMap} paired with the file metadata observed before it was loaded and the
+   * monotonic timestamp of the last filesystem attribute check.
+   *
+   * <p>Inherits {@link Object#equals} (reference identity) so conditional removal via {@code
+   * sZipCache.asMap().remove(zipFile, stale)} only evicts the exact stale instance and never a
+   * newer entry populated concurrently.
+   */
+  private static final class CachedZipMap {
+    @NotNull final ZipMap zipMap;
+    @NotNull private final FileTime lastModifiedTime;
+    private final long size;
+    @Nullable private final Object fileKey;
+    volatile long lastVerifiedNanos;
+
+    CachedZipMap(
+        @NotNull ZipMap zipMap,
+        @NotNull FileTime lastModifiedTime,
+        long size,
+        @Nullable Object fileKey,
+        long verifiedNanos) {
+      this.zipMap = zipMap;
+      this.lastModifiedTime = lastModifiedTime;
+      this.size = size;
+      this.fileKey = fileKey;
+      this.lastVerifiedNanos = verifiedNanos;
+    }
+
+    boolean matches(@NotNull BasicFileAttributes attrs) {
+      return this.size == attrs.size()
+          && this.lastModifiedTime.equals(attrs.lastModifiedTime())
+          && Objects.equals(this.fileKey, attrs.fileKey());
+    }
+  }
 
   /**
    * Reads and returns the contents of a resource. The resource path can point either to a file on
@@ -197,10 +273,114 @@ public class FileResourceReader {
 
   @NotNull
   private static byte[] readZipEntryBytesOnce(String zipPath, String zipEntryPath) throws IOException {
-    // Cache ZipMap as its creation is time consuming.
-    ZipMap zipMap;
+    // Cache ZipMap as its creation is time consuming, throttling attribute checks so rendering
+    // bursts do not stat on every resource read. If the archive was modified within the throttle
+    // window (or concurrently during the read), missing entries, I/O errors, or uncompressed/CRC
+    // mismatches trigger a conditional cache reload and a single retry.
+    Path zipFile = Paths.get(zipPath).toAbsolutePath().normalize();
+    CachedZipMap cached = getValidatedZipMap(zipFile);
     try {
-      zipMap = sZipCache.get(zipPath);
+      return readEntryFromZipRepo(cached.zipMap, zipEntryPath);
+    } catch (ClosedByInterruptException e) {
+      throw e;
+    } catch (IllegalArgumentException | IOException e) {
+      CachedZipMap reloaded = reloadCachedZipMap(zipFile, cached);
+      return readEntryFromZipRepo(reloaded.zipMap, zipEntryPath);
+    }
+  }
+
+  @NotNull
+  private static CachedZipMap getValidatedZipMap(@NotNull Path zipFile) throws IOException {
+    CachedZipMap cached = getCachedZipMap(zipFile);
+    for (int i = 0; i < 2; i++) {
+      long lastVerified = cached.lastVerifiedNanos;
+      if (sTicker.read() - lastVerified < STAT_CHECK_INTERVAL_NS) {
+        return cached;
+      }
+
+      CachedZipMap replaced = null;
+      boolean matchesDisk = false;
+      synchronized (cached) {
+        long verifiedUnderLock = cached.lastVerifiedNanos;
+        if (sTicker.read() - verifiedUnderLock < STAT_CHECK_INTERVAL_NS) {
+          return cached;
+        }
+        CachedZipMap current = sZipCache.getIfPresent(zipFile);
+        if (current != cached) {
+          replaced = current;
+        } else {
+          final BasicFileAttributes attrs;
+          try {
+            attrs = sAttributeReader.readAttributes(zipFile);
+          } catch (ClosedByInterruptException e) {
+            throw e;
+          } catch (IOException e) {
+            sZipCache.asMap().remove(zipFile, cached);
+            throw e;
+          }
+          if (cached.matches(attrs)) {
+            cached.lastVerifiedNanos = sTicker.read();
+            matchesDisk = true;
+          }
+        }
+      }
+
+      if (matchesDisk) {
+        return cached;
+      }
+      if (replaced != null) {
+        cached = replaced;
+        continue;
+      }
+      return reloadCachedZipMap(zipFile, cached);
+    }
+    return cached;
+  }
+
+  @NotNull
+  private static CachedZipMap reloadCachedZipMap(@NotNull Path zipFile, @NotNull CachedZipMap stale)
+      throws IOException {
+    sZipCache.asMap().remove(zipFile, stale);
+    return getCachedZipMap(zipFile);
+  }
+
+  @NotNull
+  private static byte[] readEntryFromZipRepo(@NotNull ZipMap zipMap, @NotNull String zipEntryPath)
+      throws IOException {
+    Entry entry = zipMap.getEntries().get(zipEntryPath);
+    if (entry == null) {
+      throw new IllegalArgumentException(
+          String.format("No entry '%s' in file '%s'", zipEntryPath, zipMap.getPath()));
+    }
+    try (ZipRepo zipRepo = new ZipRepo(zipMap)) {
+      ByteBuffer entryContent = zipRepo.getContent(zipEntryPath);
+      byte[] bytes = new byte[entryContent.remaining()];
+      entryContent.get(bytes);
+      verifyEntryBytes(entry, bytes, zipMap.getPath());
+      return bytes;
+    }
+  }
+
+  private static void verifyEntryBytes(
+      @NotNull Entry entry, @NotNull byte[] bytes, @NotNull Path zipPath) throws ZipException {
+    if (bytes.length != entry.getUncompressedSize()) {
+      throw new ZipException(
+          String.format(
+              "Entry '%s' size mismatch in '%s': expected %d, got %d",
+              entry.getName(), zipPath, entry.getUncompressedSize(), bytes.length));
+    }
+    CRC32 crc32 = new CRC32();
+    crc32.update(bytes);
+    if ((int) crc32.getValue() != entry.getCrc()) {
+      throw new ZipException(
+          String.format("Entry '%s' CRC mismatch in '%s'", entry.getName(), zipPath));
+    }
+  }
+
+  @NotNull
+  private static CachedZipMap getCachedZipMap(@NotNull Path zipFile) throws IOException {
+    try {
+      return sZipCache.get(zipFile);
     }
     catch (ExecutionException e) {
       Throwable nested = e.getCause();
@@ -215,13 +395,23 @@ public class FileResourceReader {
       }
       throw new UncheckedExecutionException(nested);
     }
+  }
 
-    try (ZipRepo zipRepo = new ZipRepo(zipMap)) {
-      ByteBuffer entryContent = zipRepo.getContent(zipEntryPath);
-      byte[] bytes = new byte[entryContent.remaining()];
-      entryContent.get(bytes);
-      return bytes;
-    }
+  @VisibleForTesting
+  static void setAttributeReaderForTesting(@NotNull AttributeReader attributeReader) {
+    sAttributeReader = attributeReader;
+  }
+
+  @VisibleForTesting
+  static void setTickerForTesting(@NotNull Ticker ticker) {
+    sTicker = ticker;
+  }
+
+  @VisibleForTesting
+  static void resetForTesting() {
+    sAttributeReader = DEFAULT_ATTRIBUTE_READER;
+    sTicker = Ticker.systemTicker();
+    sZipCache.invalidateAll();
   }
 
   /**
