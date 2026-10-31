@@ -2834,6 +2834,12 @@ public final class StudioFlags {
                     "When enabled, fenced mermaid code blocks in the agent timeline, artifact editor and change review are rendered as " +
                     "diagrams (using the bundled Pele renderer) with a View Source toggle, instead of only linking to mermaid.live.");
 
+  public static final Flag<Boolean> STUDIOBOT_STICKY_USER_QUERY_ENABLED =
+    new BooleanFlag(STUDIOBOT, "sticky.user.query.enabled",
+                    "Pin the most recent user query at the top of the agent timeline",
+                    "When enabled, scrolling a user query off the top of the agent timeline pins a short summary of it to the top; " +
+                    "clicking the summary scrolls back to (and expands) the query.");
+
   // endregion STUDIO_BOT
 
   // region EXPERIMENTAL_UI
