@@ -64,8 +64,8 @@ data class GradleModuleModel(
     gradlePluginModel: GradlePluginModel?,
   ) : this(
     moduleName,
-    testTasks = gradleTaskModel.tasks.filterValues { it.isTest }.values.map { it.name },
-    allTasks = gradleTaskModel.tasks.values.map { it.name },
+    testTasks = gradleTaskModel.tasks.values.filter { it.isTest }.map { it.name }.sorted(),
+    allTasks = gradleTaskModel.tasks.values.map { it.name }.sorted(),
     gradleProject.path,
     gradleProject.projectIdentifier.buildIdentifier.rootDir.toImpl(),
     buildFilePath?.toImpl(),
