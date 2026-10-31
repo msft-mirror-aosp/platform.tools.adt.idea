@@ -30,6 +30,8 @@ import org.jetbrains.annotations.NotNull;
  * <ol>
  *   <li>Small Phone
  *   <li>Medium Phone
+ *   <li>Foldable (4:3 inner display)
+ *   <li>Foldable (1:1 inner display)
  *   <li>Small Tablet
  *   <li>Medium Tablet
  *   <li>The other devices (in reversed natural order)
@@ -52,6 +54,7 @@ public final class NameComparator implements Comparator<Device> {
   private enum SortKey {
     SMALL_PHONE,
     MEDIUM_PHONE,
+    FOLDABLE,
     SMALL_TABLET,
     MEDIUM_TABLET,
     // All other devices, sorted in reverse order
@@ -83,6 +86,9 @@ public final class NameComparator implements Comparator<Device> {
         case "Pixel XL", "Pixel" -> PIXEL_1;
         case "Pixel Fold" -> PIXEL_FOLD;
         default -> {
+          if (displayName.startsWith("Foldable")) {
+            yield FOLDABLE;
+          }
           var prefix = displayName.length() >= 7 ? displayName.substring(0, 7) : "";
           yield switch(prefix) {
             case "Pixel 1" ->  PIXEL_10_PLUS_FAMILY;

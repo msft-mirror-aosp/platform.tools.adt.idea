@@ -37,6 +37,8 @@ public final class NameComparatorTest {
     // Arrange
     var expectedDevices = List.of(mockDevice("Small Phone"),
                                   mockDevice("Medium Phone"),
+                                  mockDevice("Foldable (4:3 inner display)"),
+                                  mockDevice("Foldable (1:1 inner display)"),
                                   mockDevice("Resizable (Experimental)"),
                                   mockDevice("Pixel 9 Pro XL"),
                                   mockDevice("Pixel 9 Pro Fold"),
