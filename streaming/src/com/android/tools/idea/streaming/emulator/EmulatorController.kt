@@ -21,6 +21,8 @@ import com.android.annotations.concurrency.Slow
 import com.android.emulation.control.incubating.ActiveCalls
 import com.android.emulation.control.incubating.AnimationState
 import com.android.emulation.control.incubating.Call
+import com.android.emulation.control.incubating.CarEvent
+import com.android.emulation.control.incubating.CarServiceGrpc
 import com.android.emulation.control.incubating.CellInfo
 import com.android.emulation.control.incubating.ModemGrpc
 import com.android.emulation.control.incubating.PhoneEvent
@@ -176,6 +178,9 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
   val virtualSceneStub: VirtualSceneServiceGrpc.VirtualSceneServiceStub
     get() = connectionReference.get()?.virtualSceneStub ?: throwNotYetConnected()
 
+  private val carServiceStub: CarServiceGrpc.CarServiceStub
+    get() = connectionReference.get()?.carServiceStub ?: throwNotYetConnected()
+
   init {
     Disposer.register(parentDisposable, this)
   }
@@ -315,6 +320,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     val uiControllerStub: UiControllerGrpc.UiControllerStub
     val modemStub: ModemGrpc.ModemStub
     val virtualSceneStub: VirtualSceneServiceGrpc.VirtualSceneServiceStub
+    val carServiceStub: CarServiceGrpc.CarServiceStub
     val token = emulatorId.grpcToken
     if (token == null) {
       emulatorControllerStub = EmulatorControllerGrpc.newStub(channel)
@@ -322,6 +328,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
       uiControllerStub = UiControllerGrpc.newStub(channel)
       modemStub = ModemGrpc.newStub(channel)
       virtualSceneStub = VirtualSceneServiceGrpc.newStub(channel)
+      carServiceStub = CarServiceGrpc.newStub(channel)
     } else {
       val credentials = TokenCallCredentials(token)
       emulatorControllerStub = EmulatorControllerGrpc.newStub(channel).withCallCredentials(credentials)
@@ -329,6 +336,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
       uiControllerStub = UiControllerGrpc.newStub(channel).withCallCredentials(credentials)
       modemStub = ModemGrpc.newStub(channel).withCallCredentials(credentials)
       virtualSceneStub = VirtualSceneServiceGrpc.newStub(channel).withCallCredentials(credentials)
+      carServiceStub = CarServiceGrpc.newStub(channel).withCallCredentials(credentials)
     }
 
     val connection =
@@ -340,6 +348,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
         uiControllerStub,
         modemStub,
         virtualSceneStub,
+        carServiceStub,
       )
 
     val connectivityStateWatcher =
@@ -1432,6 +1441,60 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     return observer.getResult()
   }
 
+  /**
+   * Sends a car event containing a serialized `EmulatorMessage` to the Vehicle HAL.
+   *
+   * @param carEvent the car event to send
+   * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
+   */
+  private fun sendCarEvent(carEvent: CarEvent, streamObserver: StreamObserver<Empty>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("sendCarEvent(${shortDebugString(carEvent)})")
+    }
+    carServiceStub.sendCarEvent(
+      carEvent,
+      DelegatingStreamObserver(streamObserver, CarServiceGrpc.getSendCarEventMethod()),
+    )
+  }
+
+  /**
+   * Sends a car event containing a serialized `EmulatorMessage` to the Vehicle HAL.
+   *
+   * @param carEvent the car event to send
+   */
+  suspend fun sendCarEvent(carEvent: CarEvent) {
+    val observer = SuspendingStreamObserver<Empty>()
+    sendCarEvent(carEvent, observer)
+    observer.getResult()
+  }
+
+  /**
+   * Streams car events from the Vehicle HAL.
+   *
+   * @param streamObserver a stream observer to receive car events
+   */
+  private fun receiveCarEvents(streamObserver: StreamObserver<CarEvent>): Cancelable {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("receiveCarEvents()")
+    }
+    val method = CarServiceGrpc.getReceiveCarEventsMethod()
+    val call = carServiceStub.channel.newCall(method, carServiceStub.callOptions)
+    ClientCalls.asyncServerStreamingCall(call, EMPTY_PROTO, DelegatingStreamObserver(streamObserver, method))
+    return CancelableClientCall(call)
+  }
+
+  /** Streams car events from the Vehicle HAL. */
+  // TODO: Remove the onSubscribed parameter and try/finally in the body of the method once b/580106156 is fixed.
+  fun receiveCarEvents(onSubscribed: suspend () -> Unit = {}): Flow<CarEvent> = callbackFlow {
+    val cancelable = receiveCarEvents(FlowStreamObserver(this))
+    try {
+      onSubscribed()
+      awaitClose()
+    } finally {
+      cancelable.cancel()
+    }
+  }
+
   private fun sendKeepAlive() {
     if (emulatorState.get() == EmulatorState.SHUTDOWN_REQUESTED) {
       sendShutdown()
@@ -1494,6 +1557,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     val uiControllerStub: UiControllerGrpc.UiControllerStub,
     val modemStub: ModemGrpc.ModemStub,
     val virtualSceneStub: VirtualSceneServiceGrpc.VirtualSceneServiceStub,
+    val carServiceStub: CarServiceGrpc.CarServiceStub,
   )
 
   /** The state of the [EmulatorController]. */

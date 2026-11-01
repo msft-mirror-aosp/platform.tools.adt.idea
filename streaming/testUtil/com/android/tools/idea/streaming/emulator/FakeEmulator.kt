@@ -20,14 +20,22 @@ import com.android.annotations.concurrency.UiThread
 import com.android.emulation.control.incubating.ActiveCalls
 import com.android.emulation.control.incubating.AnimationState
 import com.android.emulation.control.incubating.Call
+import com.android.emulation.control.incubating.CarEvent
+import com.android.emulation.control.incubating.CarServiceGrpc
 import com.android.emulation.control.incubating.CellInfo
+import com.android.emulation.control.incubating.EmulatorMessage
 import com.android.emulation.control.incubating.ModemGrpc
+import com.android.emulation.control.incubating.MsgType
 import com.android.emulation.control.incubating.PhoneEvent
 import com.android.emulation.control.incubating.Poster
 import com.android.emulation.control.incubating.PosterList
 import com.android.emulation.control.incubating.ReloadEnvironmentRequest
 import com.android.emulation.control.incubating.ReloadEnvironmentResponse
 import com.android.emulation.control.incubating.SmsMessage as ModemSmsMessage
+import com.android.emulation.control.incubating.Status as VhalStatus
+import com.android.emulation.control.incubating.VehiclePropConfig
+import com.android.emulation.control.incubating.VehiclePropStatus
+import com.android.emulation.control.incubating.VehiclePropValue
 import com.android.emulation.control.incubating.VirtualSceneServiceGrpc
 import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraList
@@ -151,6 +159,7 @@ import java.nio.file.Path
 import java.nio.file.StandardOpenOption.CREATE
 import java.nio.file.StandardOpenOption.CREATE_NEW
 import java.util.concurrent.CancellationException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.Semaphore
@@ -200,6 +209,14 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile private var clipboardStreamObserver: StreamObserver<ClipData>? = null
   @Volatile private var notificationStreamObserver: StreamObserver<Notification>? = null
   @Volatile private var phoneEventStreamObserver: StreamObserver<PhoneEvent>? = null
+  @Volatile private var carEventStreamObserver: StreamObserver<CarEvent>? = null
+  @Volatile var carEventStreamEnabled: Boolean = true
+  private val vehicleProperties =
+    ConcurrentHashMap<Pair<Int, Int>, VehiclePropValue>().apply {
+      if (config.deviceType == DeviceType.AUTOMOTIVE) {
+        putAll(createDefaultVehicleProperties())
+      }
+    }
   @Volatile
   var displays =
     listOf(DisplayConfiguration.newBuilder().setWidth(config.displayWidth).setHeight(config.displayHeight).setDpi(config.density).build())
@@ -476,6 +493,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     clipboardStreamObserver = null
     notificationStreamObserver = null
     phoneEventStreamObserver = null
+    carEventStreamObserver = null
   }
 
   /** Adds, removes, updates secondary displays. */
@@ -542,6 +560,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       .addService(ServerInterceptors.intercept(UiControllerService(executor), LoggingInterceptor()))
       .addService(ServerInterceptors.intercept(ModemService(executor), LoggingInterceptor()))
       .addService(ServerInterceptors.intercept(VirtualSceneService(executor), LoggingInterceptor()))
+      .addService(ServerInterceptors.intercept(CarService(executor), LoggingInterceptor()))
       .build()
       .start()
   }
@@ -1469,6 +1488,116 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     override fun reloadEnvironment(request: ReloadEnvironmentRequest, responseObserver: StreamObserver<ReloadEnvironmentResponse>) {
       executor.execute {
         sendResponse(responseObserver, ReloadEnvironmentResponse.getDefaultInstance())
+      }
+    }
+  }
+
+  /** Returns the current stored [VehiclePropValue] for `(propId, areaId)`, or null if unavailable. */
+  fun getVehicleProperty(propId: Int, areaId: Int = 0): VehiclePropValue? = vehicleProperties[propId to areaId]
+
+  /** Simulates a VHAL property update originating on the guest device and notifies active stream listeners. */
+  fun setVehiclePropertyOnDevice(propValue: VehiclePropValue) {
+    executor
+      .submit {
+        val stored =
+          if (propValue.status == VehiclePropStatus.AVAILABLE) propValue
+          else propValue.toBuilder().setStatus(VehiclePropStatus.AVAILABLE).build()
+        vehicleProperties[stored.prop to stored.areaId] = stored
+        sendCarEventMessage(
+          EmulatorMessage.newBuilder().setMsgType(MsgType.SET_PROPERTY_ASYNC).setStatus(VhalStatus.RESULT_OK).addValue(stored).build()
+        )
+      }
+      .get()
+  }
+
+  private fun sendCarEventMessage(emulatorMessage: EmulatorMessage) {
+    if (carEventStreamEnabled) {
+      carEventStreamObserver?.sendStreamingResponse(CarEvent.newBuilder().setData(emulatorMessage.toByteString()).build())
+    }
+  }
+
+  private inner class CarService(private val executor: ExecutorService) : CarServiceGrpc.CarServiceImplBase() {
+
+    override fun receiveCarEvents(request: Empty, responseObserver: StreamObserver<CarEvent>) {
+      executor.execute {
+        carEventStreamObserver = responseObserver
+      }
+    }
+
+    override fun sendCarEvent(request: CarEvent, responseObserver: StreamObserver<Empty>) {
+      executor.execute {
+        val emulatorMsg = EmulatorMessage.parseFrom(request.data)
+        sendEmptyResponse(responseObserver)
+        handleEmulatorMessage(emulatorMsg)
+      }
+    }
+
+    private fun handleEmulatorMessage(emulatorMsg: EmulatorMessage) {
+      when (emulatorMsg.msgType) {
+        MsgType.GET_CONFIG_ALL_CMD -> {
+          val configs =
+            vehicleProperties.keys
+              .map { (propId, _) -> propId }
+              .distinct()
+              .map { propId ->
+                VehiclePropConfig.newBuilder()
+                  .setProp(propId)
+                  .setAccess(3) // READ_WRITE
+                  .setValueType(propId and 0x00ff0000)
+                  .build()
+              }
+          sendCarEventMessage(
+            EmulatorMessage.newBuilder()
+              .setMsgType(MsgType.GET_CONFIG_ALL_RESP)
+              .setStatus(VhalStatus.RESULT_OK)
+              .addAllConfig(configs)
+              .build()
+          )
+        }
+        MsgType.GET_PROPERTY_ALL_CMD -> {
+          sendCarEventMessage(
+            EmulatorMessage.newBuilder()
+              .setMsgType(MsgType.GET_PROPERTY_ALL_RESP)
+              .setStatus(VhalStatus.RESULT_OK)
+              .addAllValue(vehicleProperties.values)
+              .build()
+          )
+        }
+        MsgType.GET_PROPERTY_CMD -> {
+          val values =
+            emulatorMsg.propList.map { getReq ->
+              vehicleProperties[getReq.prop to getReq.areaId]
+                ?: VehiclePropValue.newBuilder()
+                  .setProp(getReq.prop)
+                  .setAreaId(getReq.areaId)
+                  .setStatus(VehiclePropStatus.UNAVAILABLE)
+                  .build()
+            }
+          sendCarEventMessage(
+            EmulatorMessage.newBuilder().setMsgType(MsgType.GET_PROPERTY_RESP).setStatus(VhalStatus.RESULT_OK).addAllValue(values).build()
+          )
+        }
+        MsgType.SET_PROPERTY_CMD -> {
+          val updatedValues = mutableListOf<VehiclePropValue>()
+          for (propValue in emulatorMsg.valueList) {
+            val stored =
+              if (propValue.status == VehiclePropStatus.AVAILABLE) propValue
+              else propValue.toBuilder().setStatus(VehiclePropStatus.AVAILABLE).build()
+            vehicleProperties[stored.prop to stored.areaId] = stored
+            updatedValues.add(stored)
+          }
+          sendCarEventMessage(EmulatorMessage.newBuilder().setMsgType(MsgType.SET_PROPERTY_RESP).setStatus(VhalStatus.RESULT_OK).build())
+          if (updatedValues.isNotEmpty()) {
+            sendCarEventMessage(
+              EmulatorMessage.newBuilder()
+                .setMsgType(MsgType.SET_PROPERTY_ASYNC)
+                .setStatus(VhalStatus.RESULT_OK)
+                .addAllValue(updatedValues)
+                .build()
+            )
+          }
+        }
+        else -> {}
       }
     }
   }
@@ -3151,6 +3280,72 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         "android.emulation.control.EmulatorController/getEnvironment",
       )
     val IGNORE_SCREENSHOT_CALL_FILTER = DEFAULT_CALL_FILTER.or("android.emulation.control.EmulatorController/streamScreenshot")
+
+    private fun createDefaultVehicleProperties(): Map<Pair<Int, Int>, VehiclePropValue> {
+      fun int32Prop(propId: Int, vararg values: Int, areaId: Int = 0): Pair<Pair<Int, Int>, VehiclePropValue> {
+        val prop =
+          VehiclePropValue.newBuilder()
+            .setProp(propId)
+            .setAreaId(areaId)
+            .setStatus(VehiclePropStatus.AVAILABLE)
+            .apply { values.forEach(::addInt32Values) }
+            .build()
+        return (propId to areaId) to prop
+      }
+
+      fun int64Prop(propId: Int, vararg values: Long, areaId: Int = 0): Pair<Pair<Int, Int>, VehiclePropValue> {
+        val prop =
+          VehiclePropValue.newBuilder()
+            .setProp(propId)
+            .setAreaId(areaId)
+            .setStatus(VehiclePropStatus.AVAILABLE)
+            .apply { values.forEach(::addInt64Values) }
+            .build()
+        return (propId to areaId) to prop
+      }
+
+      fun floatProp(propId: Int, vararg values: Float, areaId: Int = 0): Pair<Pair<Int, Int>, VehiclePropValue> {
+        val prop =
+          VehiclePropValue.newBuilder()
+            .setProp(propId)
+            .setAreaId(areaId)
+            .setStatus(VehiclePropStatus.AVAILABLE)
+            .apply { values.forEach(::addFloatValues) }
+            .build()
+        return (propId to areaId) to prop
+      }
+
+      fun stringProp(propId: Int, value: String, areaId: Int = 0): Pair<Pair<Int, Int>, VehiclePropValue> {
+        val prop =
+          VehiclePropValue.newBuilder()
+            .setProp(propId)
+            .setAreaId(areaId)
+            .setStatus(VehiclePropStatus.AVAILABLE)
+            .setStringValue(value)
+            .build()
+        return (propId to areaId) to prop
+      }
+
+      return mapOf(
+        floatProp(291504647, 0f), // PERF_VEHICLE_SPEED
+        floatProp(291504648, 0f), // PERF_VEHICLE_SPEED_DISPLAY
+        int32Prop(289408000, 4), // GEAR_SELECTION = GEAR_PARK
+        int32Prop(289408009, 1), // IGNITION_STATE = LOCK
+        int32Prop(287310850, 1), // PARKING_BRAKE_ON = true
+        int32Prop(287310855, 0), // NIGHT_MODE = false
+        int32Prop(287310853, 0), // FUEL_LEVEL_LOW = false
+        stringProp(286261505, "Android"), // INFO_MAKE
+        int32Prop(289407235, 2026), // INFO_MODEL_YEAR
+        int32Prop(289472773, 1, 10), // INFO_FUEL_TYPE = [UNLEADED, ELECTRIC]
+        int32Prop(289407747, 2), // ENGINE_OIL_LEVEL = NORMAL
+        floatProp(291505923, 21.5f), // ENV_OUTSIDE_TEMPERATURE
+        int64Prop(290459443, 1000L), // VHAL_HEARTBEAT
+        floatProp(358614275, 20.0f, areaId = 0x1), // HVAC_TEMPERATURE_SET (Row 1 L)
+        floatProp(358614275, 22.0f, areaId = 0x4), // HVAC_TEMPERATURE_SET (Row 1 R)
+        int32Prop(371198722, 1, areaId = 0x1), // DOOR_LOCK (Row 1 L) = true
+        int64Prop(290521862, 1L, 100L, 100L, 100L, 100L), // WHEEL_TICK
+      )
+    }
   }
 }
 

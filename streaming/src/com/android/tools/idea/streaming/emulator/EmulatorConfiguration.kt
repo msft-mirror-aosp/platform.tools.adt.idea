@@ -49,6 +49,7 @@ class EmulatorConfiguration
 private constructor(
   val avdFolder: Path,
   val avdName: String,
+  val systemImageDir: Path? = null, // TODO: Remove when no longer used.
   val deviceType: DeviceType = DeviceType.HANDHELD,
   val androidVersion: AndroidVersion = AndroidVersion(0, 0),
   val displaySize: Dimension = Dimension(),
@@ -261,6 +262,7 @@ private constructor(
       return EmulatorConfiguration(
         avdFolder = avdFolder,
         avdName = avdName,
+        systemImageDir = systemImageDir,
         deviceType = deviceType,
         androidVersion = androidVersion,
         displaySize = Dimension(displayWidth, displayHeight),
