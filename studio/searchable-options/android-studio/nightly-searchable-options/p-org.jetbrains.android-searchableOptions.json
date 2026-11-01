@@ -731,6 +731,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Car Data",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Car Rotary",
       "path": "ActionManager"
     },
@@ -1328,6 +1332,10 @@
     },
     {
       "hit": "Open camera settings",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open car data controls",
       "path": "ActionManager"
     },
     {

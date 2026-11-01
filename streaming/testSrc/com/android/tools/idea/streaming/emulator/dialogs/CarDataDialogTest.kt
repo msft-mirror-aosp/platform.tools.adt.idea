@@ -15,69 +15,74 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulation.control.incubating.CarEvent
-import com.android.emulation.control.incubating.EmulatorMessage
-import com.android.emulation.control.incubating.MsgType
-import com.android.emulation.control.incubating.Status
-import com.android.emulation.control.incubating.VehiclePropStatus
+import com.android.adblib.DeviceSelector
+import com.android.adblib.testing.FakeAdbDeviceServices
 import com.android.emulation.control.incubating.VehiclePropValue
 import com.android.testutils.waitForCondition
+import com.android.tools.adtui.swing.FakeUi
+import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.adtui.swing.PortableUiFontRule
+import com.android.tools.idea.adblib.AdbLibService
+import com.android.tools.idea.adblib.testing.FakeAdbSessionRule
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.FakeEmulator
 import com.android.tools.idea.streaming.emulator.FakeEmulatorRule
 import com.android.tools.idea.streaming.emulator.RunningEmulatorCatalog
-import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.FuelType
-import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleApPowerStateReport
-import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleApPowerStateReq
-import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleApPowerStateShutdownParam
-import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleAreaDoor
-import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleAreaSeat
+import com.android.tools.idea.streaming.emulator.dialogs.CarDataDialog.Companion.DUMP_VHAL_COMMAND
+import com.android.tools.idea.streaming.emulator.dialogs.CarSensorDataTab.GearOption
+import com.android.tools.idea.streaming.emulator.dialogs.CarSensorDataTab.IgnitionOption
+import com.android.tools.idea.streaming.emulator.dialogs.CarSensorDataTab.SpeedUnit
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleGear
-import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleHvacFanDirection
+import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleIgnitionState
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleProperty
-import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehiclePropertyGroup
-import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehiclePropertyType
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
-import java.nio.file.Files
+import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBTextField
+import com.intellij.ui.scale.JBUIScale
 import java.nio.file.Path
-import java.util.concurrent.CopyOnWriteArrayList
+import javax.swing.JButton
+import javax.swing.JLabel
+import javax.swing.JSlider
+import javax.swing.SwingUtilities
+import kotlin.math.abs
 import kotlin.time.Duration.Companion.seconds
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 
-/** Tests for [VhalPropertyDictionary] and emulator VHAL car events. */
+/** Tests for [CarDataDialog]. */
 @RunsInEdt
 class CarDataDialogTest {
 
   private val projectRule = ProjectRule()
   private val emulatorRule = FakeEmulatorRule()
-  private val tempFolder = TemporaryFolder()
+  private val adbSessionRule = FakeAdbSessionRule(projectRule)
   @get:Rule
   val ruleChain =
     RuleChain(
       projectRule,
       ClipboardSynchronizationDisablementRule(),
       emulatorRule,
-      tempFolder,
+      adbSessionRule,
       EdtRule(),
+      PortableUiFontRule(),
+      HeadlessDialogRule(),
     )
+
+  private val adb: FakeAdbDeviceServices
+    get() = AdbLibService.getSession(projectRule.project).deviceServices as FakeAdbDeviceServices
 
   private fun createAndStartAutomotiveEmulator(customizeAvd: (Path) -> Unit = {}): Pair<FakeEmulator, EmulatorController> {
     val testAvdFolder = FakeEmulator.createAutomotiveAvd(emulatorRule.avdRoot)
     customizeAvd(testAvdFolder)
     val fakeEmulator = emulatorRule.newEmulator(testAvdFolder)
+    adb.configureShellCommand(DeviceSelector.fromSerialNumber(fakeEmulator.serialNumber), DUMP_VHAL_COMMAND, "")
     fakeEmulator.start()
     val catalog = RunningEmulatorCatalog.getInstance()
     val emulators = runBlocking { catalog.updateNow().await() }
@@ -87,163 +92,164 @@ class CarDataDialogTest {
   }
 
   @Test
-  fun testVhalPropertyDictionaryFormattingAndMetadataLoading() {
-    val dict = VhalPropertyDictionary.DEFAULT
-    assertThat(dict.getPropertyLabel(VehicleProperty.INFO_MAKE)).isEqualTo("Manufacturer")
-    assertThat(dict.getPropertyLabel(VehiclePropertyGroup.VENDOR or 0x1234)).isEqualTo("Vendor(id: 0x20001234)")
-    assertThat(dict.getValueType(VehicleProperty.INFO_MAKE)).isEqualTo(VehiclePropertyType.STRING)
-    assertThat(dict.getValueTypeLabel(VehicleProperty.INFO_MAKE)).isEqualTo("String")
-    assertThat(dict.getValueTypeLabel(VehicleProperty.INFO_FUEL_TYPE)).isEqualTo("Int32[]")
-    assertThat(dict.getAreaString(VehicleProperty.INFO_MAKE, 0)).isEqualTo("Global")
-    assertThat(dict.getAreaString(VehicleProperty.HVAC_TEMPERATURE_SET, VehicleAreaSeat.ROW_1_LEFT or VehicleAreaSeat.ROW_1_RIGHT))
-      .isEqualTo("Seat: Row 1 L, Row 1 R")
-    assertThat(dict.getAreaString(VehicleProperty.DOOR_LOCK, VehicleAreaDoor.ROW_1_LEFT)).isEqualTo("Door: Row 1 L")
+  fun testCarSensorDataControlsAndLiveUpdates() {
+    val (fakeEmulator, emulatorController) = createAndStartAutomotiveEmulator()
+    val dialog = CarDataDialog(emulatorController).show(projectRule.project)
+    val rootPane = dialog.rootPane
+    val ui = FakeUi(rootPane)
 
-    assertThat(
-        dict.getValueString(
-          VehiclePropValue.newBuilder()
-            .setProp(VehicleProperty.GEAR_SELECTION)
-            .setStatus(VehiclePropStatus.AVAILABLE)
-            .addInt32Values(VehicleGear.GEAR_DRIVE)
-            .build()
-        )
-      )
-      .isEqualTo("D")
-    assertThat(
-        dict.getValueString(
-          VehiclePropValue.newBuilder()
-            .setProp(VehicleProperty.HVAC_FAN_DIRECTION)
-            .setStatus(VehiclePropStatus.AVAILABLE)
-            .addInt32Values(VehicleHvacFanDirection.FACE or VehicleHvacFanDirection.FLOOR)
-            .build()
-        )
-      )
-      .isEqualTo("Face, Floor")
-    assertThat(
-        dict.getValueString(
-          VehiclePropValue.newBuilder()
-            .setProp(VehicleProperty.HVAC_SEAT_TEMPERATURE)
-            .setStatus(VehiclePropStatus.AVAILABLE)
-            .addInt32Values(-2)
-            .build()
-        )
-      )
-      .isEqualTo("-2 (Cooling)")
-    assertThat(
-        dict.getValueString(
-          VehiclePropValue.newBuilder()
-            .setProp(VehicleProperty.AP_POWER_STATE_REQ)
-            .setStatus(VehiclePropStatus.AVAILABLE)
-            .addInt32Values(VehicleApPowerStateReq.SHUTDOWN_PREPARE)
-            .addInt32Values(VehicleApPowerStateShutdownParam.CAN_SLEEP)
-            .build()
-        )
-      )
-      .isEqualTo("Shutdown requested (Enter deep sleep after Garage Mode)")
-    assertThat(
-        dict.getValueString(
-          VehiclePropValue.newBuilder()
-            .setProp(VehicleProperty.AP_POWER_STATE_REPORT)
-            .setStatus(VehiclePropStatus.AVAILABLE)
-            .addInt32Values(VehicleApPowerStateReport.SHUTDOWN_POSTPONE)
-            .addInt32Values(5000)
-            .build()
-        )
-      )
-      .isEqualTo("Shutdown postponed (Time: 5000 ms)")
-    assertThat(dict.isEditable(VehicleProperty.INFO_MAKE)).isTrue()
-    assertThat(dict.isEditable(VehicleProperty.INFO_FUEL_TYPE)).isTrue()
-    assertThat(dict.isEditable(VehicleProperty.AP_POWER_STATE_REQ)).isFalse()
-    assertThat(dict.isEditable(VehicleProperty.WHEEL_TICK)).isFalse()
+    val speedSlider = ui.getComponent<JSlider> { it.name == "carSpeedSlider" }
+    val speedField = ui.getComponent<JBTextField> { it.name == "carSpeedField" }
+    @Suppress("UNCHECKED_CAST") val speedUnitCombo = ui.getComponent<ComboBox<SpeedUnit>> { it.name == "carSpeedUnitComboBox" }
+    @Suppress("UNCHECKED_CAST") val gearCombo = ui.getComponent<ComboBox<GearOption>> { it.name == "gearComboBox" }
+    @Suppress("UNCHECKED_CAST") val ignitionCombo = ui.getComponent<ComboBox<IgnitionOption>> { it.name == "ignitionComboBox" }
+    val parkingBrakeCheckBox = ui.getComponent<JBCheckBox> { it.name == "parkingBrakeCheckBox" }
+    val nightModeCheckBox = ui.getComponent<JBCheckBox> { it.name == "nightModeCheckBox" }
+    val fuelLevelLowCheckBox = ui.getComponent<JBCheckBox> { it.name == "fuelLevelLowCheckBox" }
 
-    val dir = tempFolder.newFolder().toPath()
-    val metaJson =
-      """
-      [
-        {
-          "name": "VehicleProperty",
-          "values": [
-            {
-              "name": "INFO_MAKE",
-              "value": 286261505,
-              "description": "Manufacturer name of the vehicle."
-            },
-            {
-              "name": "Vehicle Size Class",
-              "value": 289472782,
-              "data_enum": "VehicleSizeClass"
-            }
-          ]
-        },
-        {
-          "name": "VehicleSizeClass",
-          "values": [
-            { "name": "EU_A_SEGMENT", "value": 100 },
-            { "name": "JPN_KEI", "value": 400 }
-          ]
-        }
-      ]
-      """
-        .trimIndent()
-    Files.writeString(dir.resolve("android.hardware.automotive.vehicle-types-meta.json"), metaJson)
-    val loaded = VhalPropertyDictionary.loadFromDirectories(listOf(dir))
-    assertThat(loaded.getDetailedDescription(VehicleProperty.INFO_MAKE)).isEqualTo("Manufacturer name of the vehicle.")
-    assertThat(loaded.getPropertyLabel(289472782)).isEqualTo("Vehicle Size Class")
-    assertThat(loaded.getLookupTable(289472782)).containsExactly(100, "EU_A_SEGMENT", 400, "JPN_KEI")
-    assertThat(loaded.isEditable(289472782)).isTrue()
-    assertThat(
-        loaded.getValueString(
-          VehiclePropValue.newBuilder()
-            .setProp(VehicleProperty.INFO_FUEL_TYPE)
-            .setStatus(VehiclePropStatus.AVAILABLE)
-            .addInt32Values(FuelType.FUEL_TYPE_UNLEADED)
-            .addInt32Values(FuelType.FUEL_TYPE_ELECTRIC)
-            .build()
-        )
-      )
-      .isEqualTo("Unleaded; Electric")
+    // Initial state loaded from FakeEmulator defaults (Park, Lock, Parking brake = true).
+    waitForCondition(5.seconds) { parkingBrakeCheckBox.isSelected }
+    val speedLabel = ui.getComponent<JLabel> { it.text == "Car speed:" }
+    val speedLabelLeftInRoot = SwingUtilities.convertPoint(speedLabel.parent, speedLabel.x, 0, rootPane).x
+    val speedSliderVisualLeftInRoot = SwingUtilities.convertPoint(speedSlider.parent, speedSlider.x + JBUIScale.scale(11), 0, rootPane).x
+    assertThat(speedSliderVisualLeftInRoot).isEqualTo(speedLabelLeftInRoot)
+    assertThat(speedSlider.paintTicks).isTrue()
+    assertThat(speedSlider.paintLabels).isFalse()
+    assertThat(speedSlider.minimum).isEqualTo(-30)
+    assertThat(speedSlider.maximum).isEqualTo(160)
+    assertThat(speedSlider.majorTickSpacing).isEqualTo(30)
+    val longestUnitTextWidth = speedUnitCombo.getFontMetrics(speedUnitCombo.font).stringWidth(SpeedUnit.KMH.displayName)
+    assertThat(speedUnitCombo.width).isEqualTo(speedUnitCombo.preferredSize.width)
+    assertThat(speedUnitCombo.width).isIn((longestUnitTextWidth + JBUIScale.scale(16))..(longestUnitTextWidth + JBUIScale.scale(40)))
+    val sliderToFieldVisualGap = speedField.x - (speedSlider.x + speedSlider.width - JBUIScale.scale(11))
+    val fieldToUnitGap = speedUnitCombo.x - (speedField.x + speedField.width)
+    assertThat(fieldToUnitGap).isIn(0..JBUIScale.scale(12))
+    assertThat(sliderToFieldVisualGap).isGreaterThan(fieldToUnitGap)
+    val speedUnitRightInRoot = SwingUtilities.convertPoint(speedUnitCombo.parent, speedUnitCombo.x + speedUnitCombo.width, 0, rootPane).x
+    val gearRightInRoot = SwingUtilities.convertPoint(gearCombo.parent, gearCombo.x + gearCombo.width, 0, rootPane).x
+    val ignitionLeftInRoot = SwingUtilities.convertPoint(ignitionCombo.parent, ignitionCombo.x, 0, rootPane).x
+    assertThat(speedUnitRightInRoot).isLessThan(ignitionLeftInRoot)
+    assertThat(abs(speedUnitRightInRoot - gearRightInRoot)).isAtMost(JBUIScale.scale(4))
+    assertThat(nightModeCheckBox.x - (parkingBrakeCheckBox.x + parkingBrakeCheckBox.width)).isIn(0..JBUIScale.scale(24))
+    assertThat(fuelLevelLowCheckBox.x - (nightModeCheckBox.x + nightModeCheckBox.width)).isIn(0..JBUIScale.scale(24))
+    assertThat(fuelLevelLowCheckBox.parent.width).isAtLeast(gearCombo.width + ignitionCombo.width)
+    assertThat(speedSlider.value).isEqualTo(0)
+    assertThat(speedField.text).isEqualTo("0")
+    assertThat(speedUnitCombo.selectedItem).isEqualTo(SpeedUnit.MPH)
+    assertThat(gearCombo.selectedItem).isEqualTo(GearOption.PARK)
+    assertThat(ignitionCombo.selectedItem).isEqualTo(IgnitionOption.LOCK)
+    assertThat(nightModeCheckBox.isSelected).isFalse()
+    assertThat(fuelLevelLowCheckBox.isSelected).isFalse()
+
+    // Select Drive gear and ignition On.
+    gearCombo.selectedItem = GearOption.DRIVE
+    ignitionCombo.selectedItem = IgnitionOption.ON
+    waitForCondition(5.seconds) {
+      fakeEmulator.getVehicleProperty(VehicleProperty.GEAR_SELECTION)?.getInt32Values(0) == VehicleGear.GEAR_DRIVE &&
+        fakeEmulator.getVehicleProperty(VehicleProperty.IGNITION_STATE)?.getInt32Values(0) == VehicleIgnitionState.ON
+    }
+
+    // Adjust speed slider to 60 mph and verify conversion to m/s and unit toggle to km/h.
+    speedSlider.value = 60
+    assertThat(speedField.text).isEqualTo("60")
+    val expectedMps = 60 * 1609.34f / 3600f
+    waitForCondition(5.seconds) {
+      val actualSpeed = fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED)?.getFloatValues(0) ?: -1f
+      val actualDisplay = fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED_DISPLAY)?.getFloatValues(0) ?: -1f
+      abs(actualSpeed - expectedMps) < 0.01f && abs(actualDisplay - expectedMps) < 0.01f
+    }
+
+    speedUnitCombo.selectedItem = SpeedUnit.KMH
+    assertThat(speedSlider.minimum).isEqualTo(-50)
+    assertThat(speedSlider.maximum).isEqualTo(250)
+    assertThat(speedSlider.majorTickSpacing).isEqualTo(50)
+    assertThat(speedSlider.value).isEqualTo(97)
+    assertThat(speedField.text).isEqualTo("97")
+
+    // Out-of-range speed input restores previous display speed.
+    speedField.text = "999"
+    speedField.postActionEvent()
+    assertThat(speedField.text).isEqualTo("97")
+
+    // Valid speed field input updates slider and emulator.
+    speedField.text = "100"
+    speedField.postActionEvent()
+    assertThat(speedSlider.value).isEqualTo(100)
+    val expected100KmhMps = 100 * 1000f / 3600f
+    waitForCondition(5.seconds) {
+      val actualSpeed = fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED)?.getFloatValues(0) ?: -1f
+      abs(actualSpeed - expected100KmhMps) < 0.01f
+    }
+
+    // Selecting Park resets speed to 0.
+    gearCombo.selectedItem = GearOption.PARK
+    assertThat(speedSlider.value).isEqualTo(0)
+    assertThat(speedField.text).isEqualTo("0")
+    waitForCondition(5.seconds) {
+      fakeEmulator.getVehicleProperty(VehicleProperty.GEAR_SELECTION)?.getInt32Values(0) == VehicleGear.GEAR_PARK &&
+        fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED)?.getFloatValues(0) == 0f
+    }
+
+    // Toggle checkboxes.
+    ui.clickOn(nightModeCheckBox)
+    ui.clickOn(fuelLevelLowCheckBox)
+    ui.clickOn(parkingBrakeCheckBox)
+    waitForCondition(5.seconds) {
+      fakeEmulator.getVehicleProperty(VehicleProperty.NIGHT_MODE)?.getInt32Values(0) == 1 &&
+        fakeEmulator.getVehicleProperty(VehicleProperty.FUEL_LEVEL_LOW)?.getInt32Values(0) == 1 &&
+        fakeEmulator.getVehicleProperty(VehicleProperty.PARKING_BRAKE_ON)?.getInt32Values(0) == 0
+    }
+
+    // Verify live streaming updates originating on the guest device update UI controls.
+    fakeEmulator.setVehiclePropertyOnDevice(
+      VehiclePropValue.newBuilder().setProp(VehicleProperty.GEAR_SELECTION).addInt32Values(VehicleGear.GEAR_REVERSE).build()
+    )
+    fakeEmulator.setVehiclePropertyOnDevice(VehiclePropValue.newBuilder().setProp(VehicleProperty.NIGHT_MODE).addInt32Values(0).build())
+    waitForCondition(5.seconds) {
+      gearCombo.selectedItem == GearOption.REVERSE && !nightModeCheckBox.isSelected
+    }
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
   }
 
   @Test
-  fun testReceiveAndSendCarEvents() {
+  fun testAdbWorkaroundWhenReceiveCarEventsProducesNoEvents() {
     val (fakeEmulator, emulatorController) = createAndStartAutomotiveEmulator()
-    val receivedMessages = CopyOnWriteArrayList<EmulatorMessage>()
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    try {
-      scope.launch {
-        emulatorController
-          .receiveCarEvents(
-            onSubscribed = {
-              val getAllMsg = EmulatorMessage.newBuilder().setMsgType(MsgType.GET_PROPERTY_ALL_CMD).setStatus(Status.RESULT_OK).build()
-              emulatorController.sendCarEvent(CarEvent.newBuilder().setData(getAllMsg.toByteString()).build())
-            }
-          )
-          .collect { event ->
-            receivedMessages.add(EmulatorMessage.parseFrom(event.data))
-          }
-      }
+    fakeEmulator.carEventStreamEnabled = false
+    val deviceSelector = DeviceSelector.fromSerialNumber(fakeEmulator.serialNumber)
+    val adbDump =
+      """
+      **All properties, 4 properties
+      Property:INFO_MAKE(0x11100101), group:SYSTEM(0x10000000), areaType:GLOBAL(0x1000000), valueType:STRING(0x100000),
+          access:WRITE(0x2), changeMode:STATIC(0x0), configArray:[], minSampleRateHz:0.000000, maxSampleRateHz:0.000000
+              areaId:GLOBAL(0x0), access:WRITE(0x2), f min:0.000000, f max:0.000000, i min:0, i max:0, i64 min:0, i64 max:0
+      Property:PERF_VEHICLE_SPEED(0x11600207), group:SYSTEM(0x10000000), areaType:GLOBAL(0x1000000), valueType:FLOAT(0x600000),
+          access:READ_WRITE(0x3), changeMode:CONTINUOUS(0x2), configArray:[], minSampleRateHz:1.000000, maxSampleRateHz:100.000000
+              areaId:GLOBAL(0x0), access:READ_WRITE(0x3), f min:0.000000, f max:100.000000, i min:0, i max:0, i64 min:0, i64 max:0
+      Property:GEAR_SELECTION(0x11400400), group:SYSTEM(0x10000000), areaType:GLOBAL(0x1000000), valueType:INT32(0x400000),
+          access:READ_WRITE(0x3), changeMode:ON_CHANGE(0x1), configArray:[4, 2, 8], minSampleRateHz:0.000000, maxSampleRateHz:0.000000
+              areaId:GLOBAL(0x0), access:READ_WRITE(0x3), f min:0.000000, f max:0.000000, i min:0, i max:0, i64 min:0, i64 max:0
+      Property:PARKING_BRAKE_ON(0x11200402), group:SYSTEM(0x10000000), areaType:GLOBAL(0x1000000), valueType:BOOLEAN(0x200000),
+          access:READ_WRITE(0x3), changeMode:ON_CHANGE(0x1), configArray:[], minSampleRateHz:0.000000, maxSampleRateHz:0.000000
+              areaId:GLOBAL(0x0), access:READ_WRITE(0x3), f min:0.000000, f max:0.000000, i min:0, i max:0, i64 min:0, i64 max:0
+      **All property values, 4 values
+      HalPropValue{Property ID: INFO_MAKE(0x11100101), Area ID: GLOBAL(0x0), ElapsedRealtimeNanos: 123, Status: AVAILABLE(0x0), Value: AOSP Automotive}
+      HalPropValue{Property ID: PERF_VEHICLE_SPEED(0x11600207), Area ID: GLOBAL(0x0), ElapsedRealtimeNanos: 124, Status: AVAILABLE(0x0), Value: 0.0 METER_PER_SEC}
+      HalPropValue{Property ID: GEAR_SELECTION(0x11400400), Area ID: GLOBAL(0x0), ElapsedRealtimeNanos: 125, SystemStatus: AVAILABLE(0x0), VendorStatus: 0, Value: GEAR_DRIVE(0x8)}
+      HalPropValue{Property ID: PARKING_BRAKE_ON(0x11200402), Area ID: GLOBAL(0x0), ElapsedRealtimeNanos: 126, Status: AVAILABLE(0x0), Value: FALSE}
+      """
+        .trimIndent()
+    adb.configureShellCommand(deviceSelector, DUMP_VHAL_COMMAND, adbDump)
 
-      waitForCondition(5.seconds) {
-        receivedMessages.any { it.msgType == MsgType.GET_PROPERTY_ALL_RESP && it.valueCount > 0 }
-      }
+    val dialog = CarDataDialog(emulatorController).show(projectRule.project)
+    val ui = FakeUi(dialog.rootPane)
 
-      val newGear =
-        VehiclePropValue.newBuilder()
-          .setProp(VehicleProperty.GEAR_SELECTION)
-          .setStatus(VehiclePropStatus.AVAILABLE)
-          .addInt32Values(VehicleGear.GEAR_DRIVE)
-          .build()
-      runBlocking {
-        val setMsg = EmulatorMessage.newBuilder().setMsgType(MsgType.SET_PROPERTY_CMD).setStatus(Status.RESULT_OK).addValue(newGear).build()
-        emulatorController.sendCarEvent(CarEvent.newBuilder().setData(setMsg.toByteString()).build())
-      }
+    @Suppress("UNCHECKED_CAST") val gearCombo = ui.getComponent<ComboBox<GearOption>> { it.name == "gearComboBox" }
+    val parkingBrakeCheckBox = ui.getComponent<JBCheckBox> { it.name == "parkingBrakeCheckBox" }
+    waitForCondition(5.seconds) { gearCombo.selectedItem == GearOption.DRIVE && !parkingBrakeCheckBox.isSelected }
 
-      waitForCondition(5.seconds) {
-        fakeEmulator.getVehicleProperty(VehicleProperty.GEAR_SELECTION)?.getInt32Values(0) == VehicleGear.GEAR_DRIVE &&
-          receivedMessages.any { it.msgType == MsgType.SET_PROPERTY_RESP && it.status == Status.RESULT_OK }
-      }
-    } finally {
-      scope.cancel()
-    }
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
   }
 }
