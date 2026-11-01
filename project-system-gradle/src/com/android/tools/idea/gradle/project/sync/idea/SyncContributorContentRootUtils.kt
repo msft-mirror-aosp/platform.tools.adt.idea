@@ -38,7 +38,11 @@ internal fun findCommonAncestor(file1: File, file2: File): File {
 }
 
 internal fun SyncContributorAndroidProjectContext.addSourceSetToIndex(sourceSet: SourceSetData) {
-  contentRootIndex.addSourceRoots(sourceSet.second.convertToExternalSourceSetModel())
+  addSourceMapToIndex(sourceSet.second)
+}
+
+internal fun SyncContributorAndroidProjectContext.addSourceMapToIndex(sources: Map<out ExternalSystemSourceType?, Set<File>>) {
+  contentRootIndex.addSourceRoots(sources.convertToExternalSourceSetModel())
 }
 
 internal fun SyncContributorAndroidProjectContext.resolveContentRoots(sourceSet: Map<out ExternalSystemSourceType?, Set<File>>): Set<Path> =

@@ -41,3 +41,18 @@ interface IdeTestSuite {
   /** Targeted variants by name. */
   val targetedVariants: Collection<String>
 }
+
+/**
+ * The source set names of this test suite, one per source. Studio creates one IDE module per source set.
+ *
+ * AGP names the only source of a single-source test suite after the test suite, and the sources of a test suite with several sources
+ * `<suite>Test` (host jar), `<suite>AndroidTest` (test APK) and `<suite>Assets` (assets). AGP rejects builds in which these names collide,
+ * and adds an assets source to a test suite that declares none, so this list is never empty and has no duplicates.
+ */
+val IdeTestSuite.sourceSetNames: List<String>
+  get() = sources.map { it.name }
+
+/** Returns the test suite of this project that [component] applies to its variant, or null if this project does not define it. */
+fun IdeAndroidProject.findTestSuite(component: IdeTestSuiteComponentCore): IdeTestSuite? = testSuites.find {
+  it.name == component.suiteName
+}

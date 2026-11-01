@@ -17,8 +17,10 @@
 
 package com.android.tools.idea.gradle.project.sync.idea
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeModuleLibrary
+import com.android.tools.idea.gradle.model.allArtifacts
 import com.android.tools.idea.gradle.project.facet.ndk.NdkFacet
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelData
@@ -314,7 +316,13 @@ private fun AndroidModules.validateVariants(moduleId: GradleProjectPath, selecte
             it.mainArtifact.compileClasspath.libraries +
               it.hostTestArtifacts.map { v -> v.compileClasspath.libraries }.flatten() +
               it.deviceTestArtifacts.find { v -> v.name == IdeArtifactName.ANDROID_TEST }?.compileClasspath?.libraries.orEmpty() +
-              it.testFixturesArtifact?.compileClasspath?.libraries.orEmpty()
+              it.testFixturesArtifact?.compileClasspath?.libraries.orEmpty() +
+              // Test suites only have IDE modules when test suites are enabled in Studio.
+              it.testSuiteComponents
+                .takeIf { StudioFlags.AGP_TEST_SUITES_ENABLED.get() }
+                .orEmpty()
+                .flatMap { suite -> suite.allArtifacts }
+                .flatMap { v -> v.compileClasspath.libraries }
           }
           .filterIsInstance<IdeModuleLibrary>()
           .mapNotNull { library ->

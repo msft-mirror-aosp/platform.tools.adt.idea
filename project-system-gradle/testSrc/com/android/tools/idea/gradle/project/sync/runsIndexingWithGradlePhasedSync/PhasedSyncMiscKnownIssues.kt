@@ -37,12 +37,6 @@ internal object MiscConsistencyIssues {
           "LIBRARY (Gradle: buildConfigGeneratedClasses [=])"
         )
 
-      TestProject.TEST_SUITES ->
-        setOf(
-          // TODO(b/445376814): Understand why they are different
-          "MODULE (project.app.second)/CONTENT_ENTRY"
-        )
-
       else -> emptySet()
     }
 }
@@ -50,11 +44,6 @@ internal object MiscConsistencyIssues {
 internal object MiscResyncIssues {
   internal fun projectStructure(testProject: TestProject) =
     when (testProject) {
-      TestProject.TEST_SUITES ->
-        setOf(
-          // TODO(b/445376814): Understand why they are different
-          "MODULE (project.app.second)/CONTENT_ENTRY"
-        )
       // Phased sync creates these module level libraries as project level libraries whereas in data services we have them as
       // module level (or vice versa)
       TestProject.NEW_SYNC_KOTLIN_TEST,

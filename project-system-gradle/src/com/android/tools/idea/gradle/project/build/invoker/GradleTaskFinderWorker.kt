@@ -15,10 +15,12 @@
  */
 package com.android.tools.idea.gradle.project.build.invoker
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeAndroidArtifactCore
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
+import com.android.tools.idea.gradle.model.allArtifacts
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.project.ProjectStructure.isAndroidOrJavaHolderModule
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
@@ -26,6 +28,7 @@ import com.android.tools.idea.gradle.util.BuildMode
 import com.android.tools.idea.gradle.util.GradleBuilds
 import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
+import com.android.tools.idea.projectsystem.gradle.findTestSuiteArtifact
 import com.android.tools.idea.projectsystem.gradle.getGradleIdentityPath
 import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.isAndroidTestModule
@@ -346,6 +349,13 @@ private fun ModuleAndMode.getTasksBy(isClean: Boolean = false, by: (artifact: Id
                 .takeIf { module.isAndroidTestModule() || module.isHolderModule() }
             )
             addIfNotNull(variant.testFixturesArtifact.takeIf { module.isTestFixturesModule() || module.isHolderModule() })
+            if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
+              if (module.isHolderModule()) {
+                variant.testSuiteComponents.forEach { component -> addAll(component.allArtifacts) }
+              } else {
+                addIfNotNull(module.findTestSuiteArtifact(variant))
+              }
+            }
           }
         artifacts.flatMap { by.invoke(it) }.toSet()
       }

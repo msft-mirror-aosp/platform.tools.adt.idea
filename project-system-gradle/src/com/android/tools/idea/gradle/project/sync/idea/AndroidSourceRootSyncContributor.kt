@@ -28,9 +28,9 @@ import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toSourceSet
 import com.android.tools.idea.gradle.model.IdeBasicVariantName
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeBasicVariantNameImpl
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity
 import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntityId
@@ -494,12 +494,30 @@ private fun SyncContributorAndroidProjectContext.getAllSourceSetModuleEntities(s
   }
 
   val testSuitesEnabled = StudioFlags.AGP_TEST_SUITES_ENABLED.get() && versions[ModelFeature.HAS_TEST_SUITES]
-  val testSuiteSources =
+  val testSuiteSources: Map<String, ModuleEntityBuilder> =
     if (testSuitesEnabled) {
-      val testSuites = getTestSuitesTargetingVariant(basicAndroidProject, ideAndroidProject, variantName)
-      testSuites
-        .associateBy { it.name }
-        .mapValues { configureTestSuiteSourceSetModuleEntity(it.value, moduleEntitiesMap, projectModuleName, mainSourceSetName) }
+      val basicVariant = basicAndroidProject.variants.singleOrNull { it.name == variantName }
+      val testSuites = basicVariant?.testSuiteVariantTargets.orEmpty()
+      val projectTestSuitesByName = basicAndroidProject.testSuites.associateBy { it.name }
+      val testSuiteSourcesList = mutableListOf<Pair<String, Map<out ExternalSystemSourceType?, Set<File>>>>()
+      // One source set per test suite source, named by its source set name (see IdeTestSuite.sourceSetNames).
+      for ((testSuiteName, _) in testSuites) {
+        val projectTestSuite = projectTestSuitesByName[testSuiteName] ?: continue
+        projectTestSuite.testApks.forEach { testSuiteSourcesList.add(it.name to getTestApkSourceSetData(it)) }
+        projectTestSuite.hostJars.forEach { testSuiteSourcesList.add(it.name to getHostJarSourceSetData(it)) }
+        projectTestSuite.assets.forEach { testSuiteSourcesList.add(it.name to getAssetsSourceSetData(it)) }
+      }
+      testSuiteSourcesList.forEach { (_, sources) -> addSourceMapToIndex(sources) }
+      testSuiteSourcesList.associate { (sourceSetName, sources) ->
+        sourceSetName to
+          configureTestSuiteSourceSetModuleEntity(
+            sourceSetName = sourceSetName,
+            sources = sources,
+            moduleEntitiesMap = moduleEntitiesMap,
+            mainSourceSetName = mainSourceSetName,
+            storage = storage,
+          )
+      }
     } else {
       emptyMap()
     }
@@ -507,39 +525,25 @@ private fun SyncContributorAndroidProjectContext.getAllSourceSetModuleEntities(s
   return AllSourceSetModuleEntities(knownArtifactsSources, testSuiteSources)
 }
 
-private fun getTestSuitesTargetingVariant(
-  basicAndroidProject: BasicAndroidProject,
-  ideAndroidProject: IdeAndroidProjectImpl,
-  variantName: String,
-): List<IdeTestSuiteImpl> {
-  val variant = basicAndroidProject.variants.first { it.name == variantName }
-  return variant.testSuiteVariantTargets.keys.map { testSuiteName -> ideAndroidProject.testSuites.first { it.name == testSuiteName } }
-}
-
 private fun SyncContributorAndroidProjectContext.configureTestSuiteSourceSetModuleEntity(
-  testSuite: IdeTestSuiteImpl,
+  sourceSetName: String,
+  sources: Map<out ExternalSystemSourceType?, Set<File>>,
   moduleEntitiesMap: MutableMap<String, ModuleEntityBuilder>,
-  projectModuleName: String,
   mainSourceSetName: String,
+  storage: EntityStorage,
 ): ModuleEntityBuilder {
-  val allSourcesForTestSuite: Map<out ExternalSystemSourceType?, Set<File>> =
-    getTestSuiteSourceSetDataForBasicAndroidProject(testSuite.sources)
-
   // For each test suite in the project, create entity source and the actual entities.
-  val sourceSetName = testSuite.name
   val entitySource = AndroidGradleSourceSetEntitySource(context.projectPath, sourceSetName)
-  val moduleName = "$projectModuleName.$sourceSetName"
-  LOG.debug("Configuring source set for $moduleName: $allSourcesForTestSuite")
-  val newModuleEntity =
-    findOrCreateModuleEntity(
-      moduleName,
-      entitySource,
-      moduleEntitiesMap,
-      productionModuleName = "$projectModuleName.$mainSourceSetName".takeIf { it != moduleName }, // Only set for test modules
-    )
+  val moduleName = resolveSourceSetModuleName(storage, sourceSetName)
+  LOG.debug("Configuring source set for $moduleName: $sources")
+  val productionModuleName = resolveSourceSetModuleName(storage, mainSourceSetName).takeIf { it != moduleName } // Only set for test modules
+
+  val newModuleEntity = findOrCreateModuleEntity(moduleName, entitySource, moduleEntitiesMap, productionModuleName)
 
   // Create the content roots and associate it with the module
-  newModuleEntity.contentRoots += createContentRootEntities(moduleName, entitySource, allSourcesForTestSuite)
+  val contentRoots = createContentRootEntities(moduleName, entitySource, sources)
+  newModuleEntity.contentRoots += contentRoots
+  newModuleEntity.javaSettings = createJavaModuleSettingsEntity(entitySource, IdeTestSuiteArtifactName(sourceSetName))
 
   return newModuleEntity
 }

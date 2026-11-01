@@ -54,3 +54,29 @@ interface IdeTestSuiteComponent : IdeTestSuiteComponentCore {
 /** All the host and device artifacts of this test suite component. */
 val IdeTestSuiteComponentCore.allArtifacts: List<IdeBaseArtifactCore>
   get() = hostTestSuiteArtifacts + deviceTestSuiteArtifacts
+
+/** All the host and device artifacts, with their dependencies, of this test suite component. */
+val IdeTestSuiteComponent.allArtifacts: List<IdeBaseArtifact>
+  get() = hostTestSuiteArtifacts + deviceTestSuiteArtifacts
+
+/** Returns the source set identifier AGP reports for the artifact of this test suite component built from [sourceSetName], if any. */
+fun IdeTestSuiteComponentCore.sourceSetIdentifierOf(sourceSetName: String): String? =
+  hostTestSuiteArtifacts.find { it.name.name == sourceSetName }?.sourceSetIdentifier
+    ?: deviceTestSuiteArtifacts.find { it.name.name == sourceSetName }?.sourceSetIdentifier
+
+/**
+ * Returns the artifact of this variant built from the test suite source set [sourceSetName], or null if no artifact is built from it.
+ * Assets sources have no artifact because AGP does not compile them.
+ */
+fun IdeVariantCore.findTestSuiteArtifact(sourceSetName: String): IdeBaseArtifactCore? =
+  testSuiteComponents.firstNotNullOfOrNull { component ->
+    component.allArtifacts.find { it.name.name == sourceSetName }
+  }
+
+/**
+ * Returns the artifact, with its dependencies, of this variant built from the test suite source set [sourceSetName], or null if no artifact
+ * is built from it. Assets sources have no artifact because AGP does not compile them.
+ */
+fun IdeVariant.findTestSuiteArtifact(sourceSetName: String): IdeBaseArtifact? = testSuiteComponents.firstNotNullOfOrNull { component ->
+  component.allArtifacts.find { it.name.name == sourceSetName }
+}

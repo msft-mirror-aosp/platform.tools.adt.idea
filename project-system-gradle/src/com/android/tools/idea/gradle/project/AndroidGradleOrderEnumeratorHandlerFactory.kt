@@ -27,6 +27,7 @@ import com.android.tools.idea.gradle.model.IdeTestSuiteHostArtifact
 import com.android.tools.idea.gradle.model.IdeTestSuiteHostArtifactCore
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.io.FilePaths
+import com.android.tools.idea.projectsystem.gradle.findTestSuiteArtifact
 import com.android.tools.idea.projectsystem.gradle.isAndroidTestModule
 import com.android.tools.idea.projectsystem.gradle.isMainModule
 import com.android.tools.idea.projectsystem.gradle.isScreenshotTestModule
@@ -78,6 +79,7 @@ class AndroidGradleOrderEnumeratorHandlerFactory : GradleOrderEnumeratorHandler.
               .find { it.name == IdeArtifactName.SCREENSHOT_TEST }
               ?.takeIf { includeTests && module.isScreenshotTestModule() },
             androidModel.selectedVariant.testFixturesArtifact?.takeIf { includeTests && module.isTestFixturesModule() },
+            module.findTestSuiteArtifact(androidModel.selectedVariant)?.takeIf { includeTests },
           )
           .distinct()
       }

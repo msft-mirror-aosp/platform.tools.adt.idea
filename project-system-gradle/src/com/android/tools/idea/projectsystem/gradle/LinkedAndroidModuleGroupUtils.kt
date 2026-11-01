@@ -15,9 +15,17 @@
  */
 package com.android.tools.idea.projectsystem.gradle
 
+import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.model.IdeBaseArtifact
+import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
+import com.android.tools.idea.gradle.model.IdeVariant
+import com.android.tools.idea.gradle.model.IdeVariantCore
+import com.android.tools.idea.gradle.model.findTestSuite
+import com.android.tools.idea.gradle.model.findTestSuiteArtifact
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
+import com.android.tools.idea.gradle.model.sourceSetNames
 import com.android.tools.idea.gradle.project.entities.GradleProjectPathSymbolicId
 import com.android.tools.idea.gradle.project.entities.gradleAndroidModel
 import com.android.tools.idea.gradle.project.entities.gradleProjectPath
@@ -156,7 +164,14 @@ private fun GradleHolderProjectPath.resolveAndroidModuleGroup(
     androidTest = resolveSourceSetModule(storage, IdeModuleWellKnownSourceSet.ANDROID_TEST),
     testFixtures = resolveSourceSetModule(storage, IdeModuleWellKnownSourceSet.TEST_FIXTURES),
     screenshotTest = resolveSourceSetModule(storage, IdeModuleWellKnownSourceSet.SCREENSHOT_TEST),
-    testSuites = androidModel.selectedVariant.testSuiteComponents.mapNotNull { resolveSourceSetModule(storage, it.suiteName) },
+    testSuites =
+      if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
+        androidModel.selectedVariant.testSuiteComponents
+          .flatMapTo(linkedSetOf()) { androidModel.androidProject.findTestSuite(it)?.sourceSetNames.orEmpty() }
+          .mapNotNull { resolveSourceSetModule(storage, it) }
+      } else {
+        emptyList()
+      },
   )
 
 private fun Module.currentStorage(): EntityStorage = WorkspaceModel.getInstance(project).currentSnapshot
@@ -209,6 +224,24 @@ internal fun Module.getTestSuiteModules(storage: EntityStorage): List<Module> =
 fun Module.getTestSuiteModules(): List<Module> = getTestSuiteModules(currentStorage())
 
 fun Module.isTestSuiteModule(): Boolean = getTestSuiteModules().contains(this)
+
+/** The source set name of this test suite module, e.g. `mixedTest`, or null if this module is not a test suite module. */
+fun Module.getTestSuiteSourceSetName(): String? =
+  if (isTestSuiteModule()) (getGradleProjectPath() as? GradleSourceSetProjectPath)?.sourceSet?.sourceSetName else null
+
+/**
+ * Returns the artifact of [variant] built from the source set of this test suite module, or null if this module is not a test suite module
+ * or its source set has no artifact (an assets source).
+ */
+fun Module.findTestSuiteArtifact(variant: IdeVariantCore): IdeBaseArtifactCore? =
+  getTestSuiteSourceSetName()?.let { variant.findTestSuiteArtifact(it) }
+
+/**
+ * Returns the artifact, with its dependencies, of [variant] built from the source set of this test suite module, or null if this module is
+ * not a test suite module or its source set has no artifact (an assets source).
+ */
+fun Module.findTestSuiteArtifact(variant: IdeVariant): IdeBaseArtifact? =
+  getTestSuiteSourceSetName()?.let { variant.findTestSuiteArtifact(it) }
 
 /**
  * Utility method to find out if a module is derived from an Android Gradle project. This will return true if the given module is the module

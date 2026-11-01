@@ -21,6 +21,7 @@ import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toSourceSet
 import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSet
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
+import com.android.tools.idea.gradle.project.model.GradleAndroidModelData
 import com.android.tools.idea.gradle.project.sync.idea.data.model.KotlinMultiplatformAndroidSourceSetType
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys
 import com.android.tools.idea.projectsystem.gradle.LINKED_ANDROID_GRADLE_MODULE_GROUP
@@ -81,10 +82,17 @@ object ModuleUtil {
       } else {
         // Only the well-known artifacts are mapped here, to fill the matching fields of LinkedAndroidGradleModuleGroup (main, unitTest,
         // androidTest, testFixtures and screenshotTest). Test suite source set names are defined in the build file and cannot be listed
-        // here. Their modules are identified by the "TestSuite" property below and added to LinkedAndroidGradleModuleGroup.testSuites.
+        // here; their modules are identified from GradleAndroidModelData.getTestSuiteSourceSetNames below and added to
+        // LinkedAndroidGradleModuleGroup.testSuites.
         WellKnownIdeArtifactName.values().associate { getModuleName(it) to it }
       }
 
+    val testSuiteSourceSetNames =
+      if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
+        GradleAndroidModelData.findFromModuleDataNode(this)?.getTestSuiteSourceSetNames().orEmpty()
+      } else {
+        emptySet()
+      }
     val testSuiteModules = mutableListOf<Module>()
     val ideArtifactNameToModule = mutableMapOf<IdeArtifactName, Module>()
 
@@ -92,8 +100,7 @@ object ModuleUtil {
       val module = dataToModuleMap(it.data) ?: return@forEach
 
       if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
-        val isTestSuite = it.data.getProperty("TestSuite").toBoolean()
-        if (isTestSuite) {
+        if (it.data.moduleName in testSuiteSourceSetNames) {
           testSuiteModules.add(module)
           return@forEach
         }

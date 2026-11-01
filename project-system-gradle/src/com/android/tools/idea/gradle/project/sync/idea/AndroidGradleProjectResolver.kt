@@ -31,7 +31,9 @@ import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
 import com.android.tools.idea.gradle.model.IdeDebugInfo
 import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeSyncIssue
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
 import com.android.tools.idea.gradle.model.IdeVariantCore
+import com.android.tools.idea.gradle.model.allArtifacts
 import com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl
 import com.android.tools.idea.gradle.model.impl.IdeDeclaredDependenciesImpl.IdeCoordinatesImpl
 import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl.Companion.fromLibraryTables
@@ -398,8 +400,8 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
       }
 
       if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
-        variant.testSuiteComponents.forEach { testSuite ->
-          createAndSetupGradleSourceSetDataNode(moduleNode, gradleModule, testSuite.suiteName, prodModule, isTestSuite = true)
+        androidModel.getTestSuiteSourceSetNames(variant).forEach { sourceSetName ->
+          createAndSetupGradleSourceSetDataNode(moduleNode, gradleModule, IdeTestSuiteArtifactName(sourceSetName), prodModule)
         }
       }
 
@@ -430,6 +432,28 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     val taskNamePrefix = if (gradlePath == ":") gradlePath else "$gradlePath:"
     val testData = TestData(GradleConstants.SYSTEM_ID, testTaskName, taskNamePrefix + testTaskName, sourceFolders)
     moduleDataNode.createChild(ProjectKeys.TEST, testData)
+
+    if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
+      for (testSuite in gradleAndroidModel.selectedVariantCore.testSuiteComponents) {
+        val suiteSourceFolders: MutableSet<String> = HashSet()
+        for (sourceProvider in gradleAndroidModel.getTestSuiteSourceProviders(testSuite.suiteName)) {
+          for (sourceFolder in getAllSourceFolders(sourceProvider)) {
+            suiteSourceFolders.add(sourceFolder.path)
+          }
+        }
+        if (suiteSourceFolders.isNotEmpty()) {
+          // AGP defines testTaskName per IdeTestSuiteTarget rather than on the suite itself, while IntelliJ's TestData binds a single
+          // Gradle task name to test source folders. IntelliJ's Gradle test configuration producers read these TestData nodes when
+          // running or debugging individual classes, methods, or packages, running the task directly when there is one target or showing
+          // IntelliJ's task chooser popup when there are multiple targets.
+          for (target in testSuite.targets) {
+            val suiteTestData =
+              TestData(GradleConstants.SYSTEM_ID, target.testTaskName, taskNamePrefix + target.testTaskName, suiteSourceFolders)
+            moduleDataNode.createChild(ProjectKeys.TEST, suiteTestData)
+          }
+        }
+      }
+    }
   }
 
   private fun addGeneratedClassesToLibraryDependencies(variant: IdeVariantCore, moduleNode: DataNode<ModuleData>) {
@@ -453,6 +477,11 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     processGeneratedClasspath({ variant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST } }, isTest = true)
     processGeneratedClasspath({ variant.testFixturesArtifact }, isTest = true)
     processGeneratedClasspath({ variant.hostTestArtifacts.find { it.name == IdeArtifactName.SCREENSHOT_TEST } }, isTest = true)
+    if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
+      variant.testSuiteComponents.forEach { testSuite ->
+        testSuite.allArtifacts.forEach { artifact -> processGeneratedClasspath({ artifact }, isTest = true) }
+      }
+    }
   }
 
   private fun createAndSetupGradleSourceSetDataNode(
@@ -460,15 +489,8 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     gradleModule: IdeaModule,
     artifactName: IdeArtifactName,
     productionModule: GradleSourceSetData?,
-  ) = createAndSetupGradleSourceSetDataNode(parentDataNode, gradleModule, getModuleName(artifactName), productionModule)
-
-  private fun createAndSetupGradleSourceSetDataNode(
-    parentDataNode: DataNode<ModuleData>,
-    gradleModule: IdeaModule,
-    readableArtifactName: String,
-    productionModule: GradleSourceSetData?,
-    isTestSuite: Boolean = false,
   ): DataNode<GradleSourceSetData> {
+    val readableArtifactName = getModuleName(artifactName)
     val moduleId = computeModuleIdForArtifact(resolverCtx, gradleModule, readableArtifactName)
     val moduleExternalName = gradleModule.name + ":" + readableArtifactName
     val moduleInternalName = parentDataNode.data.internalName + "." + readableArtifactName
@@ -483,7 +505,6 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     if (productionModule != null) {
       sourceSetData.productionModuleId = productionModule.internalName
     }
-    sourceSetData.setProperty("TestSuite", isTestSuite.toString())
     return parentDataNode.createChild(GradleSourceSetData.KEY, sourceSetData)
   }
 

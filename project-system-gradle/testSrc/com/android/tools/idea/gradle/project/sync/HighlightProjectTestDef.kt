@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.project.sync.snapshots.PreparedTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.SyncedProjectTestDef
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.projectsystem.AndroidProjectRootUtil
+import com.android.tools.idea.projectsystem.TestArtifactSearchScopes
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
 import com.android.tools.idea.projectsystem.gradle.resolveIn
 import com.android.tools.idea.res.TransitiveAarRClass
@@ -31,6 +32,7 @@ import com.android.tools.idea.testing.insertText
 import com.android.tools.idea.testing.moveCaret
 import com.google.common.truth.Expect
 import com.google.common.truth.Truth.assertThat
+import com.intellij.execution.actions.ConfigurationContext
 import com.intellij.lang.annotation.HighlightSeverity
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VfsUtil
@@ -38,6 +40,7 @@ import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.util.PathUtil
 import java.io.File
 import org.jetbrains.android.augment.ResourceLightField
+import org.jetbrains.plugins.gradle.service.execution.GradleRunConfiguration
 
 data class HighlightProjectTestDef(
   override val testProject: TestProject,
@@ -139,7 +142,38 @@ data class HighlightProjectTestDef(
                 listOf("src/androidMain/kotlin/com/example/kmpfirstlib/VariantApiResUsage.kt")
             ),
         ),
+        HighlightProjectTestDef(
+          TestProject.TEST_SUITES,
+          checkHighlighting = ::validateTestSuites,
+          modulesAndFiles =
+            mapOf(GradleSourceSetProjectPath("/", ":app", wellKnownOrCreate("second")) to listOf("src/second/kotlin/SomeTest.kt")),
+        ),
       )
+
+    private fun validateTestSuites(fixture: JavaCodeInsightTestFixture) {
+      fixture.checkHighlighting()
+      val testScopes = TestArtifactSearchScopes.getInstance(fixture.module)!!
+      assertThat(testScopes.isTestSource(fixture.file.virtualFile)).isTrue()
+      assertThat(testScopes.isScreenshotTestSource(fixture.file.virtualFile)).isFalse()
+      val gutters = fixture.findAllGutters()
+      assertThat(gutters).hasSize(2)
+      fixture.moveCaret("class Some|Test")
+      val classElement = fixture.file.findElementAt(fixture.caretOffset)!!
+      val classConfigs = ConfigurationContext(classElement).configurationsFromContext
+      assertThat(classConfigs).isNotEmpty()
+      val classGradleConfig = classConfigs!!.map { it.configuration }.filterIsInstance<GradleRunConfiguration>().single()
+      assertThat(classGradleConfig.settings.taskNames)
+        .containsExactly(":app:testDebugSecondT1TestSuite", "--tests", "\"google.simpleapplication.SomeTest\"")
+        .inOrder()
+      fixture.moveCaret("fun test|App")
+      val methodElement = fixture.file.findElementAt(fixture.caretOffset)!!
+      val methodConfigs = ConfigurationContext(methodElement).configurationsFromContext
+      assertThat(methodConfigs).isNotEmpty()
+      val methodGradleConfig = methodConfigs!!.map { it.configuration }.filterIsInstance<GradleRunConfiguration>().single()
+      assertThat(methodGradleConfig.settings.taskNames)
+        .containsExactly(":app:testDebugSecondT1TestSuite", "--tests", "\"google.simpleapplication.SomeTest.testApp\"")
+        .inOrder()
+    }
 
     private fun validateNoUnresolvedReferences(fixture: JavaCodeInsightTestFixture) {
       val unresolvedReferenceWarnings =

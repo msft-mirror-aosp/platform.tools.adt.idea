@@ -179,12 +179,12 @@ class TestSuiteUtilsTest {
     assertEquals(setOf("engine1"), testSuite.junitEngineInfo.includedEngines)
     assertEquals(listOf("debug"), testSuite.targetedVariants)
     assertEquals(IdeTestSuiteSource.SourceType.ASSETS, testSuite.sources.first().type)
-    assertEquals("assets", testSuite.sources.first().name)
+    assertEquals("myTestSuite", testSuite.sources.first().name)
 
     val folder = rule.fixture.project.guessProjectDir()!!.resolveFromRootOrRelative("app/src/myTestSuite")!!.toIoFile()
     assertEquals(
       IdeSourceProvider(
-        name = "assets",
+        name = "myTestSuite",
         folder = folder,
         manifestFile = "AndroidManifest.xml",
         javaDirectories = emptyList(),

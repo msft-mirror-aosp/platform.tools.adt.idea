@@ -28,11 +28,10 @@ import com.android.tools.idea.gradle.model.IdeJavaArtifactCore
 import com.android.tools.idea.gradle.model.IdeJavaLibrary
 import com.android.tools.idea.gradle.model.IdeModuleLibrary
 import com.android.tools.idea.gradle.model.IdeVariantCore
-import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
+import com.android.tools.idea.gradle.model.allArtifacts
 import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTable
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
@@ -276,8 +275,9 @@ private fun SyncContributorAndroidProjectDependenciesContext.populateDependencie
     ) +
       ideVariant.hostTestArtifacts.map { it.asTestDependency() } +
       if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
-        // TODO(445381129): Pass the dependencies through once they have been added to the test suite artifact
-        ideVariant.testSuiteComponents.map { it.asEmptyTestDependency() }
+        ideVariant.testSuiteComponents
+          .flatMap { it.allArtifacts }
+          .map { Triple(it.name.name, it.compileClasspathCore, DependencyScope.TEST) }
       } else {
         emptyList()
       }
@@ -354,6 +354,3 @@ private fun IdeAndroidArtifactCore.asCompileDependency() =
 private fun IdeAndroidArtifactCore.asTestDependency() = Triple(name.toSourceSet().sourceSetName, compileClasspathCore, DependencyScope.TEST)
 
 private fun IdeJavaArtifactCore.asTestDependency() = Triple(name.toSourceSet().sourceSetName, compileClasspathCore, DependencyScope.TEST)
-
-private fun IdeTestSuiteComponentCoreImpl.asEmptyTestDependency() =
-  Triple(suiteName, IdeDependenciesCoreDirect(emptyList()), DependencyScope.TEST)

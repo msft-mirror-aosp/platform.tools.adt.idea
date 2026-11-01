@@ -1980,7 +1980,7 @@ private fun createAndroidModuleDataNode(
     null -> {}
   }
 
-  fun setupSourceSetDataNode(sourceSetModuleName: String, sourceSet: IdeModuleSourceSet, isTestSuite: Boolean = false) {
+  fun setupSourceSetDataNode(sourceSetModuleName: String, sourceSet: IdeModuleSourceSet) {
     val sourceSetModuleId = moduleDataNode.data.id + ":" + sourceSetModuleName
     val sourceSetData =
       GradleSourceSetData(
@@ -1990,7 +1990,6 @@ private fun createAndroidModuleDataNode(
         moduleDataNode.data.moduleFileDirectoryPath,
         moduleDataNode.data.linkedExternalProjectPath,
       )
-    sourceSetData.setProperty("TestSuite", isTestSuite.toString())
     val sourceSetDataDataNode = DataNode(GradleSourceSetData.KEY, sourceSetData, null)
     moduleDataNode.addChild(sourceSetDataDataNode)
     mappingRecorder.add(
@@ -2009,10 +2008,10 @@ private fun createAndroidModuleDataNode(
     artifact.name.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toSourceSet()) }
   }
   selectedVariant.testFixturesArtifact?.name?.let { setupSourceSetDataNode(ModuleUtil.getModuleName(it), it.toSourceSet()) }
-  selectedVariant.testSuiteComponents.forEach { testSuite ->
-    testSuite.suiteName.let {
-      val sourceSet = IdeModuleSourceSetImpl(it, canBeConsumed = false)
-      setupSourceSetDataNode(it, sourceSet, true)
+  if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
+    gradleAndroidModel.getTestSuiteSourceSetNames(selectedVariant).forEach { sourceSetName ->
+      val sourceSet = IdeModuleSourceSetImpl.wellKnownOrCreate(sourceSetName)
+      setupSourceSetDataNode(sourceSetName, sourceSet)
     }
   }
   return moduleDataNode

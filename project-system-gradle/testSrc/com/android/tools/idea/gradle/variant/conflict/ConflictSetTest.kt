@@ -15,9 +15,24 @@
  */
 package com.android.tools.idea.gradle.variant.conflict
 
+import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.model.IdePreResolvedModuleLibraryImpl
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
+import com.android.tools.idea.gradle.model.impl.IdeDependencyCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeJUnitEngineInfoImpl
+import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteComponentCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteHostArtifactCoreImpl
+import com.android.tools.idea.gradle.model.impl.IdeTestSuiteImpl
+import com.android.tools.idea.gradle.project.sync.LibraryIdentity
+import com.android.tools.idea.testartifacts.testsuite.TestSuiteTestUtils.createHostJarTestSuiteSource
+import com.android.tools.idea.testing.AndroidModuleModelBuilder
+import com.android.tools.idea.testing.AndroidProjectBuilder
 import com.android.tools.idea.testing.JavaModuleModelBuilder.Companion.rootModuleBuilder
+import com.android.tools.idea.testing.buildDependenciesStub
 import com.android.tools.idea.testing.findAppModule
 import com.android.tools.idea.testing.findModule
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.setupTestProjectFromAndroidModel
 import com.google.common.collect.Iterables
 import com.google.common.truth.Truth.assertThat
@@ -81,4 +96,84 @@ class ConflictSetTest : ConflictsTestCase() {
     assertThat(affectedModule.target).isSameAs(project.findAppModule())
     assertThat(affectedModule.expectedVariant).isEqualTo("release")
   }
+
+  fun testFindSelectionConflictsFromTestSuiteArtifact() {
+    StudioFlags.AGP_TEST_SUITES_ENABLED.overrideForTest(true, testRootDisposable)
+    setupTestProjectFromAndroidModel(project, File(myFixture.tempDirPath), rootModuleBuilder, appWithTestSuiteBuilder(), libModuleBuilder())
+
+    val conflicts = ConflictSet.findConflicts(project).selectionConflicts
+    assertThat(conflicts).hasSize(1)
+
+    val conflict = conflicts[0]
+    assertThat(conflict.source).isSameAs(project.findModule("lib"))
+    assertThat(conflict.selectedVariant).isEqualTo("debug")
+    val affectedModule = Iterables.getOnlyElement(conflict.affectedModules)
+    assertThat(affectedModule.target).isSameAs(project.findAppModule())
+    assertThat(affectedModule.expectedVariant).isEqualTo("release")
+  }
+
+  fun testTestSuiteArtifactsIgnoredWhenTestSuitesAreDisabled() {
+    StudioFlags.AGP_TEST_SUITES_ENABLED.overrideForTest(false, testRootDisposable)
+    setupTestProjectFromAndroidModel(project, File(myFixture.tempDirPath), rootModuleBuilder, appWithTestSuiteBuilder(), libModuleBuilder())
+
+    assertThat(ConflictSet.findConflicts(project).selectionConflicts).isEmpty()
+  }
+
+  /** An app whose single-source test suite `suite1` depends on the `release` variant of `:lib`, while the app depends on `debug`. */
+  private fun appWithTestSuiteBuilder() =
+    AndroidModuleModelBuilder(
+      ":app",
+      "debug",
+      AndroidProjectBuilder(
+        testSuites = {
+          listOf(
+            IdeTestSuiteImpl(
+              name = "suite1",
+              sources = listOf(createHostJarTestSuiteSource(name = "suite1", testSuitePath = moduleBasePath.resolve("src/suite1"))),
+              junitEngineInfo = IdeJUnitEngineInfoImpl(emptySet()),
+              targetedVariants = listOf("debug"),
+            )
+          )
+        },
+        testSuiteComponentsStub = { variant ->
+          val libRef =
+            IdePreResolvedModuleLibraryImpl(
+                projectPath = ":lib",
+                buildId = buildId,
+                variant = "release",
+                lintJar = null,
+                sourceSet = IdeModuleWellKnownSourceSet.MAIN,
+              )
+              .let { internedModels.internModuleLibrary(LibraryIdentity.fromIdeModel(it)) { it } }
+          val deps = buildDependenciesStub(listOf(IdeDependencyCoreImpl(libRef, dependencies = emptyList())))
+          listOf(
+            IdeTestSuiteComponentCoreImpl(
+              suiteName = "suite1",
+              targets = emptyList(),
+              hostTestSuiteArtifacts =
+                listOf(
+                  IdeTestSuiteHostArtifactCoreImpl(
+                    name = IdeTestSuiteArtifactName("suite1"),
+                    sourceSetIdentifier = "${variant}Suite1",
+                    compileTaskName = "compile${variant.replaceFirstChar { it.uppercase() }}Suite1Sources",
+                    assembleTaskName = "assemble${variant.replaceFirstChar { it.uppercase() }}Suite1",
+                    classesFolder = emptyList(),
+                    variantSourceProvider = null,
+                    multiFlavorSourceProvider = null,
+                    ideSetupTaskNames = emptyList(),
+                    generatedSourceFolders = emptyList(),
+                    isTestArtifact = true,
+                    compileClasspathCore = deps,
+                    runtimeClasspathCore = deps,
+                    unresolvedDependencies = emptyList(),
+                    generatedClassPaths = emptyMap(),
+                    bytecodeTransforms = null,
+                  )
+                ),
+              deviceTestSuiteArtifacts = emptyList(),
+            )
+          )
+        },
+      ),
+    )
 }

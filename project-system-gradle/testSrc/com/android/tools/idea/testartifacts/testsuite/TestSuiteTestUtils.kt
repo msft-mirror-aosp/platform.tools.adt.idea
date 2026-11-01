@@ -23,13 +23,17 @@ import com.android.tools.idea.gradle.project.sync.TEST_SUITE_ASSETS_CUSTOM_SOURC
 import java.io.File
 
 object TestSuiteTestUtils {
-  fun createAssetsTestSuiteSource(testSuitePath: File): IdeTestSuiteSourceImpl {
+  /**
+   * Creates an assets test suite source in [testSuitePath]. [name] defaults to the name of [testSuitePath], which matches the source set
+   * name AGP gives to the only source of a single-source test suite when the directory is named after the test suite.
+   */
+  fun createAssetsTestSuiteSource(testSuitePath: File, name: String = testSuitePath.name): IdeTestSuiteSourceImpl {
     return IdeTestSuiteSourceImpl(
-      name = "assets",
+      name = name,
       type = IdeTestSuiteSource.SourceType.ASSETS,
       sourceProvider =
         IdeSourceProvider(
-          name = "assets",
+          name = name,
           folder = testSuitePath,
           manifestFile = "AndroidManifest.xml",
           javaDirectories = emptyList(),
@@ -46,6 +50,33 @@ object TestSuiteTestUtils {
             listOf(
               IdeCustomSourceDirectoryImpl(sourceTypeName = TEST_SUITE_ASSETS_CUSTOM_SOURCE_DIRECTORY, myFolder = testSuitePath, path = ".")
             ),
+          baselineProfileDirectories = emptyList(),
+          keepRulesDirectoriesField = emptyList(),
+          aarKeepRulesDirectoriesField = emptyList(),
+        ),
+    )
+  }
+
+  fun createHostJarTestSuiteSource(name: String, testSuitePath: File): IdeTestSuiteSourceImpl {
+    return IdeTestSuiteSourceImpl(
+      name = name,
+      type = IdeTestSuiteSource.SourceType.HOST_JAR,
+      sourceProvider =
+        IdeSourceProvider(
+          name = name,
+          folder = testSuitePath,
+          manifestFile = "AndroidManifest.xml",
+          javaDirectories = listOf("java"),
+          kotlinDirectories = listOf("kotlin"),
+          resourcesDirectories = listOf("resources"),
+          aidlDirectories = emptyList(),
+          renderscriptDirectories = emptyList(),
+          resDirectories = emptyList(),
+          assetsDirectories = emptyList(),
+          jniLibsDirectories = emptyList(),
+          shadersDirectories = emptyList(),
+          mlModelsDirectories = emptyList(),
+          customSourceDirectories = emptyList(),
           baselineProfileDirectories = emptyList(),
           keepRulesDirectoriesField = emptyList(),
           aarKeepRulesDirectoriesField = emptyList(),

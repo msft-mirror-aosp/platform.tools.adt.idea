@@ -687,6 +687,8 @@ MODULE                        : project
                     tasks
                         testDebugFirstT1TestSuite     : testDebugFirstT1TestSuite (DefaultExternalTask)
                             qName                         : :app:testDebugFirstT1TestSuite
+                        testDebugMixedT1TestSuite     : testDebugMixedT1TestSuite (DefaultExternalTask)
+                            qName                         : :app:testDebugMixedT1TestSuite
                         testDebugSecondT1TestSuite    : testDebugSecondT1TestSuite (DefaultExternalTask)
                             qName                         : :app:testDebugSecondT1TestSuite
                         testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -698,6 +700,8 @@ MODULE                        : project
             tasks
                 testDebugFirstT1TestSuite     : testDebugFirstT1TestSuite (DefaultExternalTask)
                     qName                         : :app:testDebugFirstT1TestSuite
+                testDebugMixedT1TestSuite     : testDebugMixedT1TestSuite (DefaultExternalTask)
+                    qName                         : :app:testDebugMixedT1TestSuite
                 testDebugSecondT1TestSuite    : testDebugSecondT1TestSuite (DefaultExternalTask)
                     qName                         : :app:testDebugSecondT1TestSuite
                 testDebugUnitTest             : testDebugUnitTest (DefaultExternalTask)
@@ -715,6 +719,7 @@ MODULE                        : project.app
         hasSafeArgsJava               : false
         hasSafeArgsKotlin             : false
         - taskNames                   : testDebugFirstT1TestSuite
+        - taskNames                   : testDebugMixedT1TestSuite
         - taskNames                   : testDebugSecondT1TestSuite
         - taskNames                   : testDebugUnitTest
         - taskNames                   : testReleaseThirdT1TestSuite
@@ -802,6 +807,31 @@ MODULE                        : project.app
                         CustomSourceDirectories
                             SourceTypeName                : assets (test suite)
                             Directory                     : <ROOT>/app/src/first
+            JUnitEngineInfo
+                IncludedEngines
+            TargetedVariants
+            - targetedVariant:            : debug
+        TestSuite
+            Name                          : mixed
+            Sources
+                TestSuiteSource
+                    Name                          : mixedTest
+                    Type                          : HOST_JAR
+                    SourceProvider
+                        Name                          : mixedTest
+                        Manifest                      : <ROOT>/app/src/mixed/test/AndroidManifest.xml [-]
+                        JavaDirectories               : <ROOT>/app/src/mixed/test/java [-]
+                        KotlinDirectories             : <ROOT>/app/src/mixed/test/kotlin
+                        ResourcesDirectories          : <ROOT>/app/src/mixed/test/resources [-]
+                TestSuiteSource
+                    Name                          : mixedAndroidTest
+                    Type                          : TEST_APK
+                    SourceProvider
+                        Name                          : mixedAndroidTest
+                        Manifest                      : <ROOT>/app/src/mixed/androidTest/AndroidManifest.xml [-]
+                        JavaDirectories               : <ROOT>/app/src/mixed/androidTest/java [-]
+                        KotlinDirectories             : <ROOT>/app/src/mixed/androidTest/kotlin
+                        ResourcesDirectories          : <ROOT>/app/src/mixed/androidTest/resources [-]
             JUnitEngineInfo
                 IncludedEngines
             TargetedVariants
@@ -1854,6 +1884,395 @@ MODULE                        : project.app
                     TestSuiteTarget
                         TargetName                    : t1
                         TestTaskName                  : testDebugFirstT1TestSuite
+            mixedTestSuiteComponent
+                Targets
+                    TestSuiteTarget
+                        TargetName                    : t1
+                        TestTaskName                  : testDebugMixedT1TestSuite
+                HostTestSuiteArtifacts
+                    mixedTest
+                        SourceSetIdentifier           : debugMixedTest
+                        Name                          : IdeTestSuiteArtifactName(name=mixedTest)
+                        CompileTaskName               : compileDebugMixedTestSources
+                        AssembleTaskName              : assembleDebugMixedTest
+                        IsTestArtifact                : true
+                        IdeSetupTaskNames             : generateDebugMixedTestSources
+                        GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugMixedTest/out [-]
+                        ClassesFolder                 : <ROOT>/app/build/intermediates/built_in_kotlinc/debugMixedTest/compileDebugMixedTestKotlin/classes [-]
+                        ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
+                        ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugMixedTest/compileDebugMixedTestJavaWithJavac/classes [-]
+                        Dependencies
+                            compileClasspath
+                                androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    javaLibrary                   : com.android.support:collections:28.0.0@jar
+                                    androidLibrary                : com.android.support:cursoradapter:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-core-utils:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-fragment:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                                    androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
+                                androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    javaLibrary                   : com.android.support:collections:28.0.0@jar
+                                    androidLibrary                : android.arch.lifecycle:runtime:1.1.1@aar
+                                    androidLibrary                : com.android.support:versionedparcelable:28.0.0@aar
+                                androidLibrary                : android.arch.lifecycle:runtime:1.1.1@aar
+                                    javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                                    javaLibrary                   : android.arch.core:common:1.1.1@jar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:versionedparcelable:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    javaLibrary                   : com.android.support:collections:28.0.0@jar
+                                androidLibrary                : com.android.support:cursoradapter:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:support-core-utils:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:documentfile:28.0.0@aar
+                                    androidLibrary                : com.android.support:loader:28.0.0@aar
+                                    androidLibrary                : com.android.support:localbroadcastmanager:28.0.0@aar
+                                    androidLibrary                : com.android.support:print:28.0.0@aar
+                                androidLibrary                : com.android.support:documentfile:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:loader:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
+                                    androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                                androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
+                                    androidLibrary                : android.arch.core:runtime:1.1.1@aar
+                                    androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
+                                    javaLibrary                   : android.arch.core:common:1.1.1@jar
+                                androidLibrary                : android.arch.core:runtime:1.1.1@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    javaLibrary                   : android.arch.core:common:1.1.1@jar
+                                androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
+                                    javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                                    javaLibrary                   : android.arch.core:common:1.1.1@jar
+                                    androidLibrary                : android.arch.core:runtime:1.1.1@aar
+                                androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:localbroadcastmanager:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:print:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:support-fragment:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-core-utils:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:loader:28.0.0@aar
+                                    androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                                androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-core-utils:28.0.0@aar
+                                    androidLibrary                : com.android.support:customview:28.0.0@aar
+                                    androidLibrary                : com.android.support:viewpager:28.0.0@aar
+                                    androidLibrary                : com.android.support:coordinatorlayout:28.0.0@aar
+                                    androidLibrary                : com.android.support:drawerlayout:28.0.0@aar
+                                    androidLibrary                : com.android.support:slidingpanelayout:28.0.0@aar
+                                    androidLibrary                : com.android.support:interpolator:28.0.0@aar
+                                    androidLibrary                : com.android.support:swiperefreshlayout:28.0.0@aar
+                                    androidLibrary                : com.android.support:asynclayoutinflater:28.0.0@aar
+                                    androidLibrary                : com.android.support:cursoradapter:28.0.0@aar
+                                androidLibrary                : com.android.support:customview:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                androidLibrary                : com.android.support:viewpager:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:customview:28.0.0@aar
+                                androidLibrary                : com.android.support:coordinatorlayout:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:customview:28.0.0@aar
+                                androidLibrary                : com.android.support:drawerlayout:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:customview:28.0.0@aar
+                                androidLibrary                : com.android.support:slidingpanelayout:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:customview:28.0.0@aar
+                                androidLibrary                : com.android.support:interpolator:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:swiperefreshlayout:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:interpolator:28.0.0@aar
+                                androidLibrary                : com.android.support:asynclayoutinflater:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                                androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
+                                    javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                                javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                javaLibrary                   : com.android.support:collections:28.0.0@jar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                javaLibrary                   : android.arch.core:common:1.1.1@jar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                javaLibrary                   : com.google.guava:guava:19.0@jar
+                                javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                                javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                                    javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                                javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                                javaLibrary                   : junit:junit:4.12@jar
+                                    javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
+                                javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
+                                module                        : <ROOT>-:app-MAIN
+                                    androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
+                                    javaLibrary                   : com.google.guava:guava:19.0@jar
+                                    androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
+                                    javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            runtimeClasspath
+                        ProvidedDependencies
+                            - provided                    : android.arch.core:common:1.1.1
+                            - provided                    : android.arch.core:runtime:1.1.1@aar
+                            - provided                    : android.arch.lifecycle:common:1.1.1
+                            - provided                    : android.arch.lifecycle:livedata-core:1.1.1@aar
+                            - provided                    : android.arch.lifecycle:livedata:1.1.1@aar
+                            - provided                    : android.arch.lifecycle:runtime:1.1.1@aar
+                            - provided                    : android.arch.lifecycle:viewmodel:1.1.1@aar
+                            - provided                    : com.android.support.constraint:constraint-layout-solver:1.0.2
+                            - provided                    : com.android.support.constraint:constraint-layout:1.0.2@aar
+                            - provided                    : com.android.support:animated-vector-drawable:28.0.0@aar
+                            - provided                    : com.android.support:appcompat-v7:28.0.0@aar
+                            - provided                    : com.android.support:asynclayoutinflater:28.0.0@aar
+                            - provided                    : com.android.support:collections:28.0.0
+                            - provided                    : com.android.support:coordinatorlayout:28.0.0@aar
+                            - provided                    : com.android.support:cursoradapter:28.0.0@aar
+                            - provided                    : com.android.support:customview:28.0.0@aar
+                            - provided                    : com.android.support:documentfile:28.0.0@aar
+                            - provided                    : com.android.support:drawerlayout:28.0.0@aar
+                            - provided                    : com.android.support:interpolator:28.0.0@aar
+                            - provided                    : com.android.support:loader:28.0.0@aar
+                            - provided                    : com.android.support:localbroadcastmanager:28.0.0@aar
+                            - provided                    : com.android.support:print:28.0.0@aar
+                            - provided                    : com.android.support:slidingpanelayout:28.0.0@aar
+                            - provided                    : com.android.support:support-annotations:28.0.0
+                            - provided                    : com.android.support:support-compat:28.0.0@aar
+                            - provided                    : com.android.support:support-core-ui:28.0.0@aar
+                            - provided                    : com.android.support:support-core-utils:28.0.0@aar
+                            - provided                    : com.android.support:support-fragment:28.0.0@aar
+                            - provided                    : com.android.support:support-vector-drawable:28.0.0@aar
+                            - provided                    : com.android.support:swiperefreshlayout:28.0.0@aar
+                            - provided                    : com.android.support:versionedparcelable:28.0.0@aar
+                            - provided                    : com.android.support:viewpager:28.0.0@aar
+                            - provided                    : com.google.guava:guava:19.0
+                            - provided                    : junit:junit:4.12
+                            - provided                    : org.hamcrest:hamcrest-core:1.3
+                            - provided                    : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
+                            - provided                    : org.jetbrains:annotations:13.0
+                DeviceTestSuiteArtifacts
+                    mixedAndroidTest
+                        SourceSetIdentifier           : debugMixedAndroidTest
+                        Name                          : IdeTestSuiteArtifactName(name=mixedAndroidTest)
+                        CompileTaskName               : compileDebugMixedAndroidTestSources
+                        AssembleTaskName              : assembleDebugMixedAndroidTest
+                        IsTestArtifact                : true
+                        IdeSetupTaskNames             : generateDebugMixedAndroidTestSources
+                        GeneratedSourceFolders        : <ROOT>/app/build/generated/ap_generated_sources/debugMixedAndroidTest/out [-]
+                        ClassesFolder                 : <ROOT>/app/build/intermediates/built_in_kotlinc/debugMixedAndroidTest/compileDebugMixedAndroidTestKotlin/classes [-]
+                        ClassesFolder                 : <ROOT>/app/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar [-]
+                        ClassesFolder                 : <ROOT>/app/build/intermediates/javac/debugMixedAndroidTest/compileDebugMixedAndroidTestJavaWithJavac/classes [-]
+                        Dependencies
+                            compileClasspath
+                                androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    javaLibrary                   : com.android.support:collections:28.0.0@jar
+                                    androidLibrary                : com.android.support:cursoradapter:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-core-utils:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-fragment:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                                    androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
+                                androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    javaLibrary                   : com.android.support:collections:28.0.0@jar
+                                    androidLibrary                : android.arch.lifecycle:runtime:1.1.1@aar
+                                    androidLibrary                : com.android.support:versionedparcelable:28.0.0@aar
+                                androidLibrary                : android.arch.lifecycle:runtime:1.1.1@aar
+                                    javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                                    javaLibrary                   : android.arch.core:common:1.1.1@jar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:versionedparcelable:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    javaLibrary                   : com.android.support:collections:28.0.0@jar
+                                androidLibrary                : com.android.support:cursoradapter:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:support-core-utils:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:documentfile:28.0.0@aar
+                                    androidLibrary                : com.android.support:loader:28.0.0@aar
+                                    androidLibrary                : com.android.support:localbroadcastmanager:28.0.0@aar
+                                    androidLibrary                : com.android.support:print:28.0.0@aar
+                                androidLibrary                : com.android.support:documentfile:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:loader:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
+                                    androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                                androidLibrary                : android.arch.lifecycle:livedata:1.1.1@aar
+                                    androidLibrary                : android.arch.core:runtime:1.1.1@aar
+                                    androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
+                                    javaLibrary                   : android.arch.core:common:1.1.1@jar
+                                androidLibrary                : android.arch.core:runtime:1.1.1@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    javaLibrary                   : android.arch.core:common:1.1.1@jar
+                                androidLibrary                : android.arch.lifecycle:livedata-core:1.1.1@aar
+                                    javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                                    javaLibrary                   : android.arch.core:common:1.1.1@jar
+                                    androidLibrary                : android.arch.core:runtime:1.1.1@aar
+                                androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:localbroadcastmanager:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:print:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:support-fragment:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-core-utils:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:loader:28.0.0@aar
+                                    androidLibrary                : android.arch.lifecycle:viewmodel:1.1.1@aar
+                                androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-core-utils:28.0.0@aar
+                                    androidLibrary                : com.android.support:customview:28.0.0@aar
+                                    androidLibrary                : com.android.support:viewpager:28.0.0@aar
+                                    androidLibrary                : com.android.support:coordinatorlayout:28.0.0@aar
+                                    androidLibrary                : com.android.support:drawerlayout:28.0.0@aar
+                                    androidLibrary                : com.android.support:slidingpanelayout:28.0.0@aar
+                                    androidLibrary                : com.android.support:interpolator:28.0.0@aar
+                                    androidLibrary                : com.android.support:swiperefreshlayout:28.0.0@aar
+                                    androidLibrary                : com.android.support:asynclayoutinflater:28.0.0@aar
+                                    androidLibrary                : com.android.support:cursoradapter:28.0.0@aar
+                                androidLibrary                : com.android.support:customview:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                androidLibrary                : com.android.support:viewpager:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:customview:28.0.0@aar
+                                androidLibrary                : com.android.support:coordinatorlayout:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:customview:28.0.0@aar
+                                androidLibrary                : com.android.support:drawerlayout:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:customview:28.0.0@aar
+                                androidLibrary                : com.android.support:slidingpanelayout:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:customview:28.0.0@aar
+                                androidLibrary                : com.android.support:interpolator:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                androidLibrary                : com.android.support:swiperefreshlayout:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                    androidLibrary                : com.android.support:interpolator:28.0.0@aar
+                                androidLibrary                : com.android.support:asynclayoutinflater:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support:support-compat:28.0.0@aar
+                                androidLibrary                : com.android.support:animated-vector-drawable:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-vector-drawable:28.0.0@aar
+                                    androidLibrary                : com.android.support:support-core-ui:28.0.0@aar
+                                androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
+                                    javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                                androidLibrary                : com.android.support.test:runner:1.0.2@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                    androidLibrary                : com.android.support.test:monitor:1.0.2@aar
+                                    javaLibrary                   : junit:junit:4.12@jar
+                                    javaLibrary                   : net.sf.kxml:kxml2:2.3.0@jar
+                                androidLibrary                : com.android.support.test:monitor:1.0.2@aar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                javaLibrary                   : com.android.support:collections:28.0.0@jar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                javaLibrary                   : android.arch.lifecycle:common:1.1.1@jar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                javaLibrary                   : android.arch.core:common:1.1.1@jar
+                                    javaLibrary                   : com.android.support:support-annotations:28.0.0@jar
+                                javaLibrary                   : com.google.guava:guava:19.0@jar
+                                javaLibrary                   : com.android.support.constraint:constraint-layout-solver:1.0.2@jar
+                                javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                                    javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                                javaLibrary                   : org.jetbrains:annotations:13.0@jar
+                                javaLibrary                   : junit:junit:4.12@jar
+                                    javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
+                                javaLibrary                   : org.hamcrest:hamcrest-core:1.3@jar
+                                javaLibrary                   : net.sf.kxml:kxml2:2.3.0@jar
+                                module                        : <ROOT>-:app-MAIN
+                                    androidLibrary                : com.android.support:appcompat-v7:28.0.0@aar
+                                    javaLibrary                   : com.google.guava:guava:19.0@jar
+                                    androidLibrary                : com.android.support.constraint:constraint-layout:1.0.2@aar
+                                    javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
+                            runtimeClasspath
+                        ProvidedDependencies
+                            - provided                    : android.arch.core:common:1.1.1
+                            - provided                    : android.arch.core:runtime:1.1.1@aar
+                            - provided                    : android.arch.lifecycle:common:1.1.1
+                            - provided                    : android.arch.lifecycle:livedata-core:1.1.1@aar
+                            - provided                    : android.arch.lifecycle:livedata:1.1.1@aar
+                            - provided                    : android.arch.lifecycle:runtime:1.1.1@aar
+                            - provided                    : android.arch.lifecycle:viewmodel:1.1.1@aar
+                            - provided                    : com.android.support.constraint:constraint-layout-solver:1.0.2
+                            - provided                    : com.android.support.constraint:constraint-layout:1.0.2@aar
+                            - provided                    : com.android.support.test:monitor:1.0.2@aar
+                            - provided                    : com.android.support.test:runner:1.0.2@aar
+                            - provided                    : com.android.support:animated-vector-drawable:28.0.0@aar
+                            - provided                    : com.android.support:appcompat-v7:28.0.0@aar
+                            - provided                    : com.android.support:asynclayoutinflater:28.0.0@aar
+                            - provided                    : com.android.support:collections:28.0.0
+                            - provided                    : com.android.support:coordinatorlayout:28.0.0@aar
+                            - provided                    : com.android.support:cursoradapter:28.0.0@aar
+                            - provided                    : com.android.support:customview:28.0.0@aar
+                            - provided                    : com.android.support:documentfile:28.0.0@aar
+                            - provided                    : com.android.support:drawerlayout:28.0.0@aar
+                            - provided                    : com.android.support:interpolator:28.0.0@aar
+                            - provided                    : com.android.support:loader:28.0.0@aar
+                            - provided                    : com.android.support:localbroadcastmanager:28.0.0@aar
+                            - provided                    : com.android.support:print:28.0.0@aar
+                            - provided                    : com.android.support:slidingpanelayout:28.0.0@aar
+                            - provided                    : com.android.support:support-annotations:28.0.0
+                            - provided                    : com.android.support:support-compat:28.0.0@aar
+                            - provided                    : com.android.support:support-core-ui:28.0.0@aar
+                            - provided                    : com.android.support:support-core-utils:28.0.0@aar
+                            - provided                    : com.android.support:support-fragment:28.0.0@aar
+                            - provided                    : com.android.support:support-vector-drawable:28.0.0@aar
+                            - provided                    : com.android.support:swiperefreshlayout:28.0.0@aar
+                            - provided                    : com.android.support:versionedparcelable:28.0.0@aar
+                            - provided                    : com.android.support:viewpager:28.0.0@aar
+                            - provided                    : com.google.guava:guava:19.0
+                            - provided                    : junit:junit:4.12
+                            - provided                    : net.sf.kxml:kxml2:2.3.0
+                            - provided                    : org.hamcrest:hamcrest-core:1.3
+                            - provided                    : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>
+                            - provided                    : org.jetbrains:annotations:13.0
+                        ApplicationId                 : google.simpleapplication
+                        MinSdkVersion
+                            ApiLevel                      : 19
+                            ApiString                     : 19
+                        IsSigned                      : true
+                        SigningConfigName             : debug
+                        AssembleTaskOutputListingFile : <ROOT>/app/build/intermediates/apk_ide_redirect_file/debugMixedAndroidTest/createDebugMixedAndroidTestApkListingFileRedirect/redirect.txt [-]
             secondTestSuiteComponent
                 Targets
                     TestSuiteTarget
@@ -2046,6 +2465,8 @@ MODULE                        : project.app
         additionalVisibleSourceSets
             debug                         : <empty>
             debugAndroidTest              : <empty>
+            debugMixedAndroidTest         : <empty>
+            debugMixedTest                : <empty>
             debugSecond                   : <empty>
             debugUnitTest                 : <empty>
         compilerArgumentsBySourceSet
@@ -2078,6 +2499,40 @@ MODULE                        : project.app
                     noReflect                     : true
                     noStdlib                      : true
                     useInlineScopesNumbers        : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : default
+                    useFirLT                      : true
+            debugMixedAndroidTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/app/build/intermediates/built_in_kotlinc/debugMixedAndroidTest/compileDebugMixedAndroidTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
+                    autoAdvanceApiVersion         : true
+                    autoAdvanceLanguageVersion    : true
+                    explicitApi                   : disable
+                    explicitReturnTypes           : disable
+                    headerModeType                : any
+                    returnValueChecker            : default
+                    useFirLT                      : true
+            debugMixedTest
+                compilerArguments             : K2JVMCompilerArguments
+                    allowNoSourceFiles            : true
+                    assertionsMode                : legacy
+                    backendThreads                : 1
+                    destination                   : <ROOT>/app/build/intermediates/built_in_kotlinc/debugMixedTest/compileDebugMixedTestKotlin/classes
+                    jvmTarget                     : 11
+                    moduleName                    : app
+                    noReflect                     : true
+                    noStdlib                      : true
                     autoAdvanceApiVersion         : true
                     autoAdvanceLanguageVersion    : true
                     explicitApi                   : disable
@@ -2131,6 +2586,12 @@ MODULE                        : project.app
             debugAndroidTest              : KotlinTaskPropertiesImpl
                 incremental                   : true
                 pluginVersion                 : <CUT>
+            debugMixedAndroidTest         : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
+            debugMixedTest                : KotlinTaskPropertiesImpl
+                incremental                   : true
+                pluginVersion                 : <CUT>
             debugSecond                   : KotlinTaskPropertiesImpl
                 incremental                   : true
                 pluginVersion                 : <CUT>
@@ -2141,5 +2602,7 @@ MODULE                        : project.app
 MODULE                        : project.app.androidTest
 MODULE                        : project.app.first
 MODULE                        : project.app.main
+MODULE                        : project.app.mixedAndroidTest
+MODULE                        : project.app.mixedTest
 MODULE                        : project.app.second
 MODULE                        : project.app.unitTest

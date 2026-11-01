@@ -358,6 +358,38 @@ MODULE: project.app
                     file://./app/src/first
                 ManifestDirectories:
                     file://./app/src/first
+            mixedTestSuiteSources (IDEA)
+                ScopeType: TEST_SUITE
+                ManifestFileUrls:
+                    file://./app/src/mixed/test/AndroidManifest.xml
+                ManifestDirectoryUrls:
+                    file://./app/src/mixed/test
+                ManifestDirectories:
+                    file://./app/src/mixed/test
+                JavaDirectoryUrls:
+                    file://./app/src/mixed/test/java
+                KotlinDirectoryUrls:
+                    file://./app/src/mixed/test/kotlin
+                KotlinDirectories:
+                    file://./app/src/mixed/test/kotlin
+                ResourcesDirectoryUrls:
+                    file://./app/src/mixed/test/resources
+            mixedTestSuiteSources (IDEA)
+                ScopeType: TEST_SUITE
+                ManifestFileUrls:
+                    file://./app/src/mixed/androidTest/AndroidManifest.xml
+                ManifestDirectoryUrls:
+                    file://./app/src/mixed/androidTest
+                ManifestDirectories:
+                    file://./app/src/mixed/androidTest
+                JavaDirectoryUrls:
+                    file://./app/src/mixed/androidTest/java
+                KotlinDirectoryUrls:
+                    file://./app/src/mixed/androidTest/kotlin
+                KotlinDirectories:
+                    file://./app/src/mixed/androidTest/kotlin
+                ResourcesDirectoryUrls:
+                    file://./app/src/mixed/androidTest/resources
             secondTestSuiteSources (IDEA)
                 ScopeType: TEST_SUITE
                 ManifestFileUrls:
@@ -767,6 +799,38 @@ MODULE: project.app
                     file://./app/src/first
                 ManifestDirectories:
                     file://./app/src/first
+            mixedTest (IDEA)
+                ScopeType: TEST_SUITE
+                ManifestFileUrls:
+                    file://./app/src/mixed/test/AndroidManifest.xml
+                ManifestDirectoryUrls:
+                    file://./app/src/mixed/test
+                ManifestDirectories:
+                    file://./app/src/mixed/test
+                JavaDirectoryUrls:
+                    file://./app/src/mixed/test/java
+                KotlinDirectoryUrls:
+                    file://./app/src/mixed/test/kotlin
+                KotlinDirectories:
+                    file://./app/src/mixed/test/kotlin
+                ResourcesDirectoryUrls:
+                    file://./app/src/mixed/test/resources
+            mixedAndroidTest (IDEA)
+                ScopeType: TEST_SUITE
+                ManifestFileUrls:
+                    file://./app/src/mixed/androidTest/AndroidManifest.xml
+                ManifestDirectoryUrls:
+                    file://./app/src/mixed/androidTest
+                ManifestDirectories:
+                    file://./app/src/mixed/androidTest
+                JavaDirectoryUrls:
+                    file://./app/src/mixed/androidTest/java
+                KotlinDirectoryUrls:
+                    file://./app/src/mixed/androidTest/kotlin
+                KotlinDirectories:
+                    file://./app/src/mixed/androidTest/kotlin
+                ResourcesDirectoryUrls:
+                    file://./app/src/mixed/androidTest/resources
             second (IDEA)
                 ScopeType: TEST_SUITE
                 ManifestFileUrls:
@@ -786,8 +850,8 @@ MODULE: project.app
         CurrentTestFixturesSourceProviders:
 Build configuration files:
     file://./build.gradle : Project: project [0]
-    file://./app/build.gradle : Module :app [2000006]
-    file://./app/proguard-rules.pro : ProGuard Rules for ":app" [2500006]
+    file://./app/build.gradle : Module :app [2000008]
+    file://./app/proguard-rules.pro : ProGuard Rules for ":app" [2500008]
     file://./settings.gradle : Project Settings [3000000]
     file://./gradle.properties : Project Properties [3000000]
     file://./gradle/wrapper/gradle-wrapper.properties : Gradle Version [3000000]

@@ -52,6 +52,24 @@ android {
         targets.create('t1') {
         }
       }
+      "mixed" {
+        useJunitEngine {
+          inputs.add(com.android.build.api.dsl.AgpTestSuiteInputParameters.MERGED_MANIFEST)
+        }
+        hostJar {
+          dependencies {
+            implementation 'junit:junit:4.12'
+          }
+        }
+        testApk {
+          dependencies {
+            implementation 'com.android.support.test:runner:1.0.2'
+          }
+        }
+        targetVariants.add('debug')
+        targets.create('t1') {
+        }
+      }
     }
   }
 }

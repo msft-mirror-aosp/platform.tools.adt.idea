@@ -13,4 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-class SomeTest {}
+package google.simpleapplication
+
+import android.app.Activity
+import android.os.Bundle
+import org.junit.Test
+
+class SomeTest {
+  @Test
+  fun testApp() {
+    val activity: Activity = MyActivity()
+    val bundle = Bundle()
+  }
+}

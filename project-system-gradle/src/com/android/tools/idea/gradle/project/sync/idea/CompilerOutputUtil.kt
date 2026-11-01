@@ -15,8 +15,11 @@
  */
 package com.android.tools.idea.gradle.project.sync.idea
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeArtifactName
+import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
 import com.android.tools.idea.gradle.model.IdeVariantCore
+import com.android.tools.idea.gradle.model.findTestSuiteArtifact
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys
 import com.intellij.openapi.externalSystem.model.DataNode
@@ -31,33 +34,15 @@ import org.jetbrains.plugins.gradle.model.data.GradleSourceSetData
 fun DataNode<ModuleData>.setupCompilerOutputPaths(variant: IdeVariantCore? = null, isDelegatedBuildUsed: Boolean) {
   val androidModel = ExternalSystemApiUtil.find(this, AndroidProjectKeys.ANDROID_MODEL)?.data ?: return
   val selectedVariant = variant ?: androidModel.selectedVariantCore
+  val testSuiteSourceSetNames =
+    if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) androidModel.getTestSuiteSourceSetNames(selectedVariant) else emptySet()
 
   data.useExternalCompilerOutput(isDelegatedBuildUsed)
   data.isInheritProjectCompileOutputPath = false
   // MPSS: Set compilation data for Gradle sourceSets too.
   for (sourceSet in ExternalSystemApiUtil.findAll(this, GradleSourceSetData.KEY)) {
     val sourceSetData = sourceSet.data
-    val knownSourceSet = IdeModuleWellKnownSourceSet.fromName(sourceSetData.moduleName)
-    if (knownSourceSet == null) {
-      // Ignore any non-Android source sets e.g in a KMP project
-      continue
-    }
-    val artifact =
-      when (knownSourceSet) {
-        IdeModuleWellKnownSourceSet.MAIN -> selectedVariant.mainArtifact
-        IdeModuleWellKnownSourceSet.TEST_FIXTURES -> selectedVariant.testFixturesArtifact
-        IdeModuleWellKnownSourceSet.UNIT_TEST -> selectedVariant.hostTestArtifacts.find { it.name == IdeArtifactName.UNIT_TEST }
-        IdeModuleWellKnownSourceSet.ANDROID_TEST -> selectedVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }
-        IdeModuleWellKnownSourceSet.SCREENSHOT_TEST -> selectedVariant.hostTestArtifacts.find { it.name == IdeArtifactName.SCREENSHOT_TEST }
-      }
-    val isTestScope =
-      when (knownSourceSet) {
-        IdeModuleWellKnownSourceSet.MAIN -> false
-        IdeModuleWellKnownSourceSet.TEST_FIXTURES -> true
-        IdeModuleWellKnownSourceSet.UNIT_TEST -> true
-        IdeModuleWellKnownSourceSet.ANDROID_TEST -> true
-        IdeModuleWellKnownSourceSet.SCREENSHOT_TEST -> true
-      }
+    val (artifact, isTestScope) = getArtifactAndScope(sourceSetData, selectedVariant, testSuiteSourceSetNames) ?: continue
 
     // TODO(b/232780259): Look for the compilation output folder. We can have both java and kotlin compilation outputs in
     // classesFolder(IDEA-235250).
@@ -75,4 +60,38 @@ fun DataNode<ModuleData>.setupCompilerOutputPaths(variant: IdeVariantCore? = nul
     sourceSetData.setExternalCompilerOutputPath(ExternalSystemSourceType.SOURCE, sourceCompilerOutput)
     sourceSetData.setExternalCompilerOutputPath(ExternalSystemSourceType.TEST, testCompilerOutput)
   }
+}
+
+/**
+ * Returns the artifact of [selectedVariant] that [sourceSetData] was created for, which is null for an assets test suite source, and
+ * whether its compiler output is a test output. Returns null for source sets that are not Android source sets, e.g. in a KMP project.
+ */
+private fun getArtifactAndScope(
+  sourceSetData: GradleSourceSetData,
+  selectedVariant: IdeVariantCore,
+  testSuiteSourceSetNames: Set<String>,
+): Pair<IdeBaseArtifactCore?, Boolean>? {
+  // Test suite source sets are checked first, so that a test suite source set named like a well-known one (e.g. `screenshotTest`) gets
+  // the output of its own artifact. Assets sources have no artifact and therefore no compiler output.
+  if (sourceSetData.moduleName in testSuiteSourceSetNames) {
+    return selectedVariant.findTestSuiteArtifact(sourceSetData.moduleName) to true
+  }
+  val knownSourceSet = IdeModuleWellKnownSourceSet.fromName(sourceSetData.moduleName) ?: return null
+  val artifact =
+    when (knownSourceSet) {
+      IdeModuleWellKnownSourceSet.MAIN -> selectedVariant.mainArtifact
+      IdeModuleWellKnownSourceSet.TEST_FIXTURES -> selectedVariant.testFixturesArtifact
+      IdeModuleWellKnownSourceSet.UNIT_TEST -> selectedVariant.hostTestArtifacts.find { it.name == IdeArtifactName.UNIT_TEST }
+      IdeModuleWellKnownSourceSet.ANDROID_TEST -> selectedVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }
+      IdeModuleWellKnownSourceSet.SCREENSHOT_TEST -> selectedVariant.hostTestArtifacts.find { it.name == IdeArtifactName.SCREENSHOT_TEST }
+    }
+  val isTestScope =
+    when (knownSourceSet) {
+      IdeModuleWellKnownSourceSet.MAIN -> false
+      IdeModuleWellKnownSourceSet.TEST_FIXTURES -> true
+      IdeModuleWellKnownSourceSet.UNIT_TEST -> true
+      IdeModuleWellKnownSourceSet.ANDROID_TEST -> true
+      IdeModuleWellKnownSourceSet.SCREENSHOT_TEST -> true
+    }
+  return artifact to isTestScope
 }

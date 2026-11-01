@@ -21,6 +21,7 @@ import com.android.SdkConstants.DOT_JAR
 import com.android.SdkConstants.FD_RES
 import com.android.SdkConstants.FN_ANNOTATIONS_ZIP
 import com.android.tools.idea.IdeInfo
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencySpec
 import com.android.tools.idea.gradle.model.IdeAndroidLibrary
 import com.android.tools.idea.gradle.model.IdeArtifactLibrary
@@ -30,9 +31,9 @@ import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
 import com.android.tools.idea.gradle.model.IdeJavaLibrary
 import com.android.tools.idea.gradle.model.IdeLibrary
 import com.android.tools.idea.gradle.model.IdeModuleLibrary
-import com.android.tools.idea.gradle.model.IdeTestSuiteComponentCore
 import com.android.tools.idea.gradle.model.IdeUnknownLibrary
 import com.android.tools.idea.gradle.model.IdeVariant
+import com.android.tools.idea.gradle.model.allArtifacts
 import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
 import com.intellij.openapi.diagnostic.Logger
@@ -294,17 +295,21 @@ fun DataNode<ModuleData>.setupAndroidDependenciesForMpss(
   variant.deviceTestArtifacts
     .find { it.name == IdeArtifactName.ANDROID_TEST }
     ?.also { populateDependenciesFromArtifact(findSourceSetDataForArtifact(it), it, DependencyScope.TEST) }
+  if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
+    variant.testSuiteComponents.forEach { testSuite ->
+      testSuite.allArtifacts.forEach { artifact ->
+        populateDependenciesFromArtifact(findSourceSetDataForArtifact(artifact), artifact, DependencyScope.TEST)
+      }
+    }
+  }
 }
 
-fun DataNode<ModuleData>.findSourceSetDataForArtifact(ideBaseArtifact: IdeBaseArtifactCore): DataNode<GradleSourceSetData> {
-  return ExternalSystemApiUtil.findChild(this, GradleSourceSetData.KEY) {
-    it.data.externalName.substringAfterLast(":") == ModuleUtil.getModuleName(ideBaseArtifact.name)
-  } ?: throw ExternalSystemException("Missing GradleSourceSetData data for artifact!")
-}
+fun DataNode<ModuleData>.findSourceSetDataForArtifact(ideBaseArtifact: IdeBaseArtifactCore): DataNode<GradleSourceSetData> =
+  findSourceSetDataForArtifact(ideBaseArtifact.name)
 
-fun DataNode<ModuleData>.findSourceSetDataForArtifact(ideTestSuiteComponent: IdeTestSuiteComponentCore): DataNode<GradleSourceSetData> {
+fun DataNode<ModuleData>.findSourceSetDataForArtifact(artifactName: IdeArtifactName): DataNode<GradleSourceSetData> {
   return ExternalSystemApiUtil.findChild(this, GradleSourceSetData.KEY) {
-    it.data.getProperty("TestSuite").toBoolean() && it.data.externalName.substringAfterLast(":") == ideTestSuiteComponent.suiteName
+    it.data.externalName.substringAfterLast(":") == ModuleUtil.getModuleName(artifactName)
   } ?: throw ExternalSystemException("Missing GradleSourceSetData data for artifact!")
 }
 

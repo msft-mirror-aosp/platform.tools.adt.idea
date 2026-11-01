@@ -20,7 +20,8 @@ import com.android.tools.idea.gradle.model.IdeAndroidArtifactCore
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeBaseArtifactCore
 import com.android.tools.idea.gradle.model.IdeSourceProvider
-import com.android.tools.idea.gradle.model.IdeTestSuiteComponentCore
+import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
+import com.android.tools.idea.gradle.model.findTestSuiteArtifact
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelData
 import com.android.tools.idea.gradle.project.model.activeSourceProviders
 import com.android.tools.idea.gradle.project.model.testFixturesSourceProviders
@@ -75,12 +76,21 @@ fun DataNode<ModuleData>.setupAndroidContentEntriesPerSourceSet(androidModel: Gr
     return contentRoots.map { sourceSetDataNode.createChild(ProjectKeys.CONTENT_ROOT, it) }
   }
 
-  fun populateContentEntries(
-    artifact: IdeTestSuiteComponentCore?,
+  fun populateTestSuiteContentEntries(
+    artifactName: IdeTestSuiteArtifactName,
+    artifact: IdeBaseArtifactCore?,
     sourceProviders: List<IdeSourceProvider>,
   ): List<DataNode<ContentRootData>> {
-    val sourceSetDataNode = findSourceSetDataForArtifact(artifact ?: return emptyList())
-    val contentRoots = collectContentRootDataForTestSuite(sourceProviders)
+    val sourceSetDataNode = findSourceSetDataForArtifact(artifactName)
+    // Host jar and test APK source sets have a compiled artifact, so collectContentRootDataForArtifact collects both their declared and
+    // generated source folders. Assets source sets have no compiled artifact (artifact == null), so collectContentRootDataForTestSuite
+    // collects their declared source folders.
+    val contentRoots =
+      if (artifact != null) {
+        collectContentRootDataForArtifact(artifact, sourceProviders, androidModel)
+      } else {
+        collectContentRootDataForTestSuite(sourceProviders)
+      }
     return contentRoots.map { sourceSetDataNode.createChild(ProjectKeys.CONTENT_ROOT, it) }
   }
 
@@ -92,7 +102,16 @@ fun DataNode<ModuleData>.setupAndroidContentEntriesPerSourceSet(androidModel: Gr
         ?.let { add(populateContentEntries(it, androidModel.getTestSourceProviders(it.name))) }
       add(populateContentEntries(variant.testFixturesArtifact, androidModel.testFixturesSourceProviders))
       if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) {
-        variant.testSuiteComponents.forEach { add(populateContentEntries(it, androidModel.getTestSuiteSourceProviders(it.suiteName))) }
+        androidModel.getTestSuiteSourceSetNames(variant).forEach { sourceSetName ->
+          val artifactName = IdeTestSuiteArtifactName(sourceSetName)
+          add(
+            populateTestSuiteContentEntries(
+              artifactName,
+              variant.findTestSuiteArtifact(sourceSetName),
+              androidModel.getTestSourceProviders(artifactName),
+            )
+          )
+        }
       }
     }
 
@@ -147,6 +166,8 @@ private fun collectContentRootDataForArtifact(
   }
 
   generatedSourceFolderPaths.processAs(if (artifact.isTestArtifact) TEST_GENERATED else SOURCE_GENERATED)
+  // Note: IdeTestSuiteDeviceArtifactCore does not have generatedResourceFolders or generatedAssetFolders because AGP's
+  // TestSuiteSourceSet.TestApk only supports manifest, Java/Kotlin, and Java resources (not Android res or assets).
   if (artifact is IdeAndroidArtifactCore) {
     artifact.generatedResourceFolders.processAs(if (artifact.isTestArtifact) TEST_RESOURCE_GENERATED else RESOURCE_GENERATED)
     artifact.generatedAssetFolders.processAs(if (artifact.isTestArtifact) TEST_GENERATED else SOURCE_GENERATED)

@@ -18,6 +18,7 @@ package com.android.tools.idea.testartifacts.scopes;
 import static com.android.tools.idea.projectsystem.gradle.LinkedAndroidModuleGroupUtilsKt.getAndroidTestModule;
 import static com.android.tools.idea.projectsystem.gradle.LinkedAndroidModuleGroupUtilsKt.getMainModule;
 import static com.android.tools.idea.projectsystem.gradle.LinkedAndroidModuleGroupUtilsKt.getScreenshotTestModule;
+import static com.android.tools.idea.projectsystem.gradle.LinkedAndroidModuleGroupUtilsKt.getTestSuiteModules;
 import static com.android.tools.idea.projectsystem.gradle.LinkedAndroidModuleGroupUtilsKt.getUnitTestModule;
 import static com.android.tools.idea.projectsystem.ProjectSystemUtil.getModuleSystem;
 
@@ -56,7 +57,15 @@ public final class GradleTestArtifactSearchScopes implements TestArtifactSearchS
 
   @Override
   public boolean isTestSource(@NotNull VirtualFile file) {
-    return isAndroidTestSource(file) || isUnitTestSource(file) || isScreenshotTestSource(file);
+    if (isAndroidTestSource(file) || isUnitTestSource(file) || isScreenshotTestSource(file)) {
+      return true;
+    }
+    for (Module testSuiteModule : getTestSuiteModules(myModule)) {
+      if (testSuiteModule.getModuleContentScope().accept(file)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

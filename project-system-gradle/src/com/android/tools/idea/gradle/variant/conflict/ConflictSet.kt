@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.gradle.variant.conflict
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeModuleLibrary
+import com.android.tools.idea.gradle.model.allArtifacts
 import com.android.tools.idea.gradle.project.model.GradleAndroidDependencyModel
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.sync.idea.getGradleProjectPath
@@ -115,7 +117,14 @@ class ConflictSet private constructor(val project: Project, val selectionConflic
             ?.asSequence()
             .orEmpty() +
           variant.testFixturesArtifact?.compileClasspath?.libraries?.asSequence().orEmpty() +
-          variant.hostTestArtifacts.map { it.compileClasspath.libraries }.flatten().asSequence()
+          variant.hostTestArtifacts.map { it.compileClasspath.libraries }.flatten().asSequence() +
+          // Test suites only have IDE modules when test suites are enabled in Studio.
+          variant.testSuiteComponents
+            .takeIf { StudioFlags.AGP_TEST_SUITES_ENABLED.get() }
+            .orEmpty()
+            .asSequence()
+            .flatMap { it.allArtifacts }
+            .flatMap { it.compileClasspath.libraries }
       return allModuleLibraries.filterIsInstance<IdeModuleLibrary>().distinct()
     }
   }

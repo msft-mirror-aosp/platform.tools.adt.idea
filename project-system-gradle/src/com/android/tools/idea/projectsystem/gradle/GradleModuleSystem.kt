@@ -263,16 +263,21 @@ private constructor(
 
   private fun getCompileDependenciesFor(module: Module, scope: DependencyScopeType): IdeDependencies? {
     val gradleModel = GradleAndroidDependencyModel.get(module) ?: return null
+    val selectedVariant = gradleModel.selectedVariantWithDependencies
+    // A test suite module is built into exactly one artifact, so its own classpath is returned whatever the scope. A test suite module
+    // without an artifact (an assets source) has nothing to compile and falls through to the scope.
+    module.findTestSuiteArtifact(selectedVariant)?.let {
+      return it.compileClasspath
+    }
 
     return when (scope) {
-      DependencyScopeType.MAIN -> gradleModel.selectedVariantWithDependencies.mainArtifact.compileClasspath
+      DependencyScopeType.MAIN -> selectedVariant.mainArtifact.compileClasspath
       DependencyScopeType.ANDROID_TEST ->
-        gradleModel.selectedVariantWithDependencies.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.compileClasspath
-      DependencyScopeType.UNIT_TEST ->
-        gradleModel.selectedVariantWithDependencies.hostTestArtifacts.find { it.name == IdeArtifactName.UNIT_TEST }?.compileClasspath
-      DependencyScopeType.TEST_FIXTURES -> gradleModel.selectedVariantWithDependencies.testFixturesArtifact?.compileClasspath
+        selectedVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.compileClasspath
+      DependencyScopeType.UNIT_TEST -> selectedVariant.hostTestArtifacts.find { it.name == IdeArtifactName.UNIT_TEST }?.compileClasspath
+      DependencyScopeType.TEST_FIXTURES -> selectedVariant.testFixturesArtifact?.compileClasspath
       DependencyScopeType.SCREENSHOT_TEST ->
-        gradleModel.selectedVariantWithDependencies.hostTestArtifacts.find { it.name == IdeArtifactName.SCREENSHOT_TEST }?.compileClasspath
+        selectedVariant.hostTestArtifacts.find { it.name == IdeArtifactName.SCREENSHOT_TEST }?.compileClasspath
     }
   }
 
@@ -286,6 +291,16 @@ private constructor(
       }
 
       val selectedVariant = gradleModel.selectedVariantWithDependencies
+      // A test suite module is built into exactly one artifact, so its own runtime classpath is used whatever the scope, followed by the
+      // runtime classpath of the tested variant, like for the test scopes below. The tested variant is resolved from the holder module
+      // because the scope is ignored for test suite modules, so recursing into the test suite module itself would never terminate.
+      val testSuiteArtifact = module.findTestSuiteArtifact(selectedVariant)
+      if (testSuiteArtifact != null) {
+        yield(testSuiteArtifact.runtimeClasspath)
+        yieldAll(impl(module.getHolderModule(), DependencyScopeType.MAIN))
+        return@sequence
+      }
+
       val artifact =
         when (scope) {
           DependencyScopeType.MAIN -> selectedVariant.mainArtifact
@@ -488,7 +503,16 @@ private constructor(
       ScopeType.ANDROID_TEST -> androidTestModule?.getModuleWithDependenciesAndLibrariesScope(true)
       ScopeType.TEST_FIXTURES -> fixturesModule?.getModuleWithDependenciesAndLibrariesScope(true)
       ScopeType.SCREENSHOT_TEST -> screenshotTestModule?.getModuleWithDependenciesAndLibrariesScope(true)
-      ScopeType.TEST_SUITE -> throw RuntimeException("TestSuite scope not supported")
+      ScopeType.TEST_SUITE ->
+        if (module.isTestSuiteModule()) {
+          module.getModuleWithDependenciesAndLibrariesScope(true)
+        } else {
+          module
+            .getTestSuiteModules()
+            .map { it.getModuleWithDependenciesAndLibrariesScope(true) }
+            .takeIf { it.isNotEmpty() }
+            ?.let { GlobalSearchScope.union(it) }
+        }
     } ?: GlobalSearchScope.EMPTY_SCOPE
   }
 

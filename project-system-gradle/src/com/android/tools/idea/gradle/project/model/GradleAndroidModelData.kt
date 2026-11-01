@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.model.IdeSourceProvider
 import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
 import com.android.tools.idea.gradle.model.IdeVariantCore
 import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
+import com.android.tools.idea.gradle.model.findTestSuite
 import com.android.tools.idea.gradle.model.impl.FileImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
@@ -30,6 +31,7 @@ import com.android.tools.idea.gradle.model.impl.IdeLibraryModelResolverImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantImpl
 import com.android.tools.idea.gradle.model.impl.toImpl
+import com.android.tools.idea.gradle.model.sourceSetNames
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys
 import com.android.tools.idea.projectsystem.CommonTestType
 import com.intellij.openapi.application.ApplicationInfo
@@ -88,6 +90,10 @@ data class GradleAndroidModelData(
   val mainArtifactCore: IdeAndroidArtifactCoreImpl
     get() = selectedVariantCore.mainArtifact
 
+  /** Returns the source set names of the AGP test suites enabled on [variant]. */
+  fun getTestSuiteSourceSetNames(variant: IdeVariantCore = selectedVariantCore): Set<String> =
+    variant.testSuiteComponents.flatMapTo(linkedSetOf()) { androidProject.findTestSuite(it)?.sourceSetNames.orEmpty() }
+
   fun getJavaSourceLanguageLevel(): LanguageLevel? {
     val compileOptions = androidProject.javaCompileOptions ?: return null
     val sourceCompatibility = compileOptions.sourceCompatibility
@@ -107,9 +113,12 @@ data class GradleAndroidModelData(
       WellKnownIdeArtifactName.MAIN -> emptyList()
       WellKnownIdeArtifactName.TEST_FIXTURES -> emptyList()
       WellKnownIdeArtifactName.SCREENSHOT_TEST -> hostTestSourceProviders[CommonTestType.SCREENSHOT_TEST] ?: emptyList()
-      // TODO(b/570996505): Test suite artifacts are not yet part of IdeVariantCore. Once they are added, resolve their
-      //  source providers per source set via androidProject.testSuites.
-      is IdeTestSuiteArtifactName -> emptyList()
+      // Test suite sources are matched by their source set name, so assets sources, which have no artifact, also get their source provider.
+      is IdeTestSuiteArtifactName ->
+        selectedVariantCore.testSuiteComponents
+          .mapNotNull { component -> androidProject.findTestSuite(component) }
+          .flatMap { suite -> suite.sources.filter { it.name == artifactName.name } }
+          .map { it.sourceProvider }
     }
   }
 

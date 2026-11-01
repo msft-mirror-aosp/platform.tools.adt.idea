@@ -21,6 +21,10 @@ import com.android.builder.model.v2.ide.BasicArtifact
 import com.android.builder.model.v2.ide.JavaArtifact
 import com.android.builder.model.v2.ide.ProjectType
 import com.android.builder.model.v2.ide.SourceProvider
+import com.android.builder.model.v2.ide.Variant
+import com.android.builder.model.v2.models.AssetsTestSuiteSource
+import com.android.builder.model.v2.models.HostJarTestSuiteSource
+import com.android.builder.model.v2.models.TestApkTestSuiteSource
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_ANDROID_TEST
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_SCREENSHOT_TEST
 import com.android.tools.idea.gradle.model.ARTIFACT_NAME_UNIT_TEST
@@ -28,7 +32,6 @@ import com.android.tools.idea.gradle.model.IdeArtifactName
 import com.android.tools.idea.gradle.model.IdeArtifactName.Companion.toPrintableName
 import com.android.tools.idea.gradle.model.IdeTestSuiteArtifactName
 import com.android.tools.idea.gradle.model.WellKnownIdeArtifactName
-import com.android.tools.idea.gradle.model.impl.IdeTestSuiteSourceImpl
 import com.android.tools.idea.gradle.project.sync.ModelFeature
 import com.android.tools.idea.gradle.project.sync.ModelVersions
 import com.android.tools.idea.gradle.project.sync.Modules
@@ -122,14 +125,60 @@ internal fun SyncContributorAndroidProjectContext.getSourceSetDataForBasicAndroi
   return sourceSets
 }
 
-internal fun SyncContributorAndroidProjectContext.getTestSuiteSourceSetDataForBasicAndroidProject(
-  sources: List<IdeTestSuiteSourceImpl>
+/**
+ * Returns the directories of the test APK test suite source [testApk] by source type, including its generated sources.
+ *
+ * Unlike [createSourceSetDataForAndroidArtifact], this does not add generated resource or asset folders because AGP's
+ * `TestSuiteSourceSet.TestApk` only supports manifest, Java/Kotlin, and Java resources (not Android `res` or `assets`).
+ */
+internal fun SyncContributorAndroidProjectContext.getTestApkSourceSetData(
+  testApk: TestApkTestSuiteSource
 ): Map<out ExternalSystemSourceType?, Set<File>> {
-  return sources
-    .map(::createTestSuiteSourceSetData) // Create a map for each source
-    .flatMap { it.entries } // Flatten into a single list of all map entries
-    .groupBy({ it.key }, { it.value }) // Group entries by source type
-    .mapValues { (_, fileSets) -> fileSets.flatten().toSet() } // Merge the sets of files for each source type
+  val typeToDirs = mutableMapOf<ExternalSystemSourceType?, MutableSet<File>>()
+  typeToDirs.addSourceData(createSourceDirectoriesForSourceProvider(testApk.sourceProvider, isProduction = false, versions))
+  addGeneratedSourcesForTestSuiteSourceSet(testApk.name, typeToDirs)
+  return typeToDirs
+}
+
+/** Returns the directories of the host jar test suite source [hostJar] by source type, including its generated sources. */
+internal fun SyncContributorAndroidProjectContext.getHostJarSourceSetData(
+  hostJar: HostJarTestSuiteSource
+): Map<out ExternalSystemSourceType?, Set<File>> {
+  val typeToDirs = mutableMapOf<ExternalSystemSourceType?, MutableSet<File>>()
+  val sourceDirs = (hostJar.java + hostJar.kotlin).toNormalizedSet()
+  val resDirs = hostJar.resources.toNormalizedSet()
+  typeToDirs.getOrPut(ExternalSystemSourceType.TEST) { mutableSetOf() }.addAll(sourceDirs)
+  typeToDirs.getOrPut(ExternalSystemSourceType.TEST_RESOURCE) { mutableSetOf() }.addAll(resDirs)
+  hostJar.manifestFile
+    ?.normalize()
+    ?.takeUnless { it.parentFile?.path == projectModel.projectDirectory.normalize().path }
+    ?.let { typeToDirs.getOrPut(null) { mutableSetOf() }.add(it) }
+  addGeneratedSourcesForTestSuiteSourceSet(hostJar.name, typeToDirs)
+  return typeToDirs
+}
+
+private fun SyncContributorAndroidProjectContext.addGeneratedSourcesForTestSuiteSourceSet(
+  sourceSetName: String,
+  typeToDirs: MutableMap<ExternalSystemSourceType?, MutableSet<File>>,
+) {
+  val artifactName = IdeTestSuiteArtifactName(sourceSetName)
+  val artifact = getSelectedVariantArtifact(artifactName) ?: return
+  val generatedSources = generatedSourceFoldersToUseForArtifact(artifactName, artifact, basicAndroidProject.buildFolder).toNormalizedSet()
+  if (generatedSources.isNotEmpty()) {
+    typeToDirs[ExternalSystemSourceType.TEST]?.removeAll(generatedSources)
+    typeToDirs.getOrPut(ExternalSystemSourceType.TEST_GENERATED) { mutableSetOf() }.addAll(generatedSources)
+  }
+}
+
+/** Returns the directories of the assets test suite source [assetsSource], which are test resources. */
+internal fun getAssetsSourceSetData(assetsSource: AssetsTestSuiteSource): Map<out ExternalSystemSourceType?, Set<File>> {
+  return mapOf(ExternalSystemSourceType.TEST_RESOURCE to assetsSource.directories.toNormalizedSet())
+}
+
+private fun MutableMap<ExternalSystemSourceType?, MutableSet<File>>.addSourceData(data: Map<out ExternalSystemSourceType?, Set<File>>) {
+  for ((type, files) in data) {
+    getOrPut(type) { mutableSetOf() }.addAll(files)
+  }
 }
 
 @Suppress("DEPRECATION") // Need to be backwards compatible here
@@ -178,28 +227,25 @@ internal fun SyncContributorAndroidProjectContext.getSelectedVariantArtifact(sou
     WellKnownIdeArtifactName.SCREENSHOT_TEST ->
       if (testArtifactsAndSourceSetsInMaps) selectedVariant.hostTestArtifacts[ARTIFACT_NAME_SCREENSHOT_TEST]
       else error("ScreenshotTest are not available")
-    // TODO(b/570996505): Test suite artifacts are not part of AGP's hostTestArtifacts/deviceTestArtifacts maps. Once
-    //  test suite artifacts are added, look them up from the variant's test suite artifacts instead.
-    is IdeTestSuiteArtifactName -> null
+    is IdeTestSuiteArtifactName -> selectedVariant.findTestSuiteArtifact(sourceSetArtifactName.name, versions)
   }
 }
 
-private fun SyncContributorAndroidProjectContext.createTestSuiteSourceSetData(
-  testSuiteSource: IdeTestSuiteSourceImpl
-): Map<out ExternalSystemSourceType?, Set<File>> {
-  val sourceSetData = mutableMapOf<ExternalSystemSourceType?, MutableSet<File>>()
-  testSuiteSource.sourceProvider.processAll(forTest = true) { path, sourceType ->
-    sourceSetData.getOrPut(sourceType) { mutableSetOf() }.add(File(path).normalize())
-  }
-  return sourceSetData
+/**
+ * Returns the artifact AGP reports for the test suite source set [sourceSetName] of this variant, or null if no artifact is built from it
+ * (an assets source) or the AGP version does not report test suite artifacts.
+ */
+private fun Variant.findTestSuiteArtifact(sourceSetName: String, versions: ModelVersions): AbstractArtifact? {
+  if (!versions[ModelFeature.HAS_TEST_SUITES]) return null
+  return testSuiteHostArtifacts.values.find { it.sourceSetName == sourceSetName }
+    ?: testSuiteDeviceArtifacts.values.find { it.sourceSetName == sourceSetName }
 }
 
-private fun SyncContributorAndroidProjectContext.createSourceSetDataForSourceProvider(
-  name: IdeArtifactName,
+private fun SyncContributorAndroidProjectContext.createSourceDirectoriesForSourceProvider(
   provider: SourceProvider,
   isProduction: Boolean,
   versions: ModelVersions,
-): List<SourceSetData> {
+): Map<out ExternalSystemSourceType?, Set<File>> {
   val sourceDirectories =
     (provider.javaDirectories +
         provider.kotlinDirectories +
@@ -218,18 +264,24 @@ private fun SyncContributorAndroidProjectContext.createSourceSetDataForSourcePro
         (if (versions[ModelFeature.HAS_BASELINE_PROFILE_DIRECTORIES]) provider.baselineProfileDirectories.orEmpty() else emptySet()))
       .toNormalizedSet() - sourceDirectories // exclude source directories in case they are shared
 
-  return listOf(
-    name to
-      mapOf(
-        (if (isProduction) ExternalSystemSourceType.SOURCE else ExternalSystemSourceType.TEST) to sourceDirectories,
-        (if (isProduction) ExternalSystemSourceType.RESOURCE else ExternalSystemSourceType.TEST_RESOURCE) to resourceDirectories,
-      ) +
-        provider.manifestFile
-          ?.normalize()
-          ?.takeUnless { it.parentFile?.path == projectModel.projectDirectory.normalize().path }
-          ?.let { mapOf(null to setOf(it)) }
-          .orEmpty()
-  )
+  return mapOf(
+    (if (isProduction) ExternalSystemSourceType.SOURCE else ExternalSystemSourceType.TEST) to sourceDirectories,
+    (if (isProduction) ExternalSystemSourceType.RESOURCE else ExternalSystemSourceType.TEST_RESOURCE) to resourceDirectories,
+  ) +
+    provider.manifestFile
+      ?.normalize()
+      ?.takeUnless { it.parentFile?.path == projectModel.projectDirectory.normalize().path }
+      ?.let { mapOf(null to setOf(it)) }
+      .orEmpty()
+}
+
+private fun SyncContributorAndroidProjectContext.createSourceSetDataForSourceProvider(
+  name: IdeArtifactName,
+  provider: SourceProvider,
+  isProduction: Boolean,
+  versions: ModelVersions,
+): List<SourceSetData> {
+  return listOf(name to createSourceDirectoriesForSourceProvider(provider, isProduction, versions))
 }
 
 private fun SyncContributorAndroidProjectContext.createSourceSetDataForAndroidArtifact(
@@ -278,13 +330,13 @@ private fun SyncContributorAndroidProjectContext.generatedSourceFoldersToUseForA
 private fun SyncContributorAndroidProjectContext.findGeneratedSourcesForKapt(name: IdeArtifactName): Set<File> {
   if (kaptGradleModel == null || !kaptGradleModel.isEnabled) return emptySet()
 
-  val suffix =
-    if (name == IdeArtifactName.MAIN) {
-      ""
-    } else {
-      name.toPrintableName()
+  val kaptSourceSetName =
+    when (name) {
+      WellKnownIdeArtifactName.MAIN -> variantName
+      is WellKnownIdeArtifactName -> variantName + name.toPrintableName()
+      is IdeTestSuiteArtifactName -> return emptySet()
     }
-  val sourceSet = kaptGradleModel.sourceSets.find { it.sourceSetName == variantName + suffix } ?: return emptySet()
+  val sourceSet = kaptGradleModel.sourceSets.find { it.sourceSetName == kaptSourceSetName } ?: return emptySet()
   return setOfNotNull(sourceSet.generatedSourcesDirFile, sourceSet.generatedKotlinSourcesDirFile)
 }
 

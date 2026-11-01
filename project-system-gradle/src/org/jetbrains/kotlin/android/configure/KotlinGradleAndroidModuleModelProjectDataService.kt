@@ -16,7 +16,9 @@
 
 package org.jetbrains.kotlin.android.configure
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
+import com.android.tools.idea.gradle.model.sourceSetIdentifierOf
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelData
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys.ANDROID_MODEL
 import com.android.utils.usLocaleCapitalize
@@ -50,11 +52,20 @@ class KotlinGradleAndroidModuleModelProjectDataService : AbstractProjectDataServ
 
       // If module per source set is enabled then we will have source set data nodes
       if (sourceSetNodes.isNotEmpty()) {
+        val testSuiteSourceSetNames =
+          if (StudioFlags.AGP_TEST_SUITES_ENABLED.get()) moduleModelNode.data.getTestSuiteSourceSetNames() else emptySet()
         sourceSetNodes.forEach { sourceSetNode ->
           val ideModule = modelsProvider.findIdeModule(sourceSetNode.data) ?: return@forEach
+          val sourceSetName = sourceSetNode.data.moduleName
           val kotlinSourceSetName =
-            moduleModelNode.data.selectedVariantName +
-              (sourceSetNode.data.moduleName.takeUnless { it == "main" }?.usLocaleCapitalize() ?: "")
+            if (sourceSetName in testSuiteSourceSetNames) {
+              // AGP reports the Kotlin compilation name of a test suite source set as the source set identifier of its artifact.
+              moduleModelNode.data.selectedVariantCore.testSuiteComponents.firstNotNullOfOrNull {
+                it.sourceSetIdentifierOf(sourceSetName)
+              } ?: return@forEach
+            } else {
+              moduleModelNode.data.selectedVariantName + (sourceSetName.takeUnless { it == "main" }?.usLocaleCapitalize() ?: "")
+            }
           val kotlinFacet =
             configureFacetByGradleModule(ideModule, modelsProvider, moduleNode, sourceSetNode, kotlinSourceSetName) ?: return@forEach
           // Set up the additionalVisibleModuleNames for all the test sourceSets.
