@@ -34,6 +34,7 @@ import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.idea.protobuf.InvalidProtocolBufferException
 import com.android.tools.idea.streaming.StreamingBundle.message
 import com.android.tools.idea.streaming.emulator.EmulatorController
+import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertiesTab.VhalPropertyKey
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleProperty
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehiclePropertyType
 import com.android.utils.throwIfCancellation
@@ -56,13 +57,11 @@ import org.jetbrains.annotations.Nls
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
- * Extended controls dialog for Android Automotive OS emulators, providing controls for common car sensor data and Vehicle HAL (VHAL)
- * properties.
+ * Extended controls dialog for Android Automotive OS emulators, providing controls for common car sensor data and a searchable
+ * master-detail inspector/editor for Vehicle HAL (VHAL) properties.
  */
 internal class CarDataDialog(emulator: EmulatorController) :
   AbstractExtendedControlsDialog(emulator, message("car.data.dialog.title", emulator.emulatorId.avdName)) {
-
-  private data class VhalPropertyKey(val propId: Int, val areaId: Int)
 
   private val dialogJob = SupervisorJob(coroutineScope.coroutineContext[Job])
   private val dialogScope = CoroutineScope(coroutineScope.coroutineContext + dialogJob)
@@ -71,6 +70,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
     private set
 
   private val sensorDataTab = CarSensorDataTab(this)
+  private val vhalPropertiesTab = VhalPropertiesTab(this)
 
   private data class PendingUpdate(val propValue: VehiclePropValue, val isOptionalCompanion: Boolean)
 
@@ -152,6 +152,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
       val loaded = dictionaryDeferred.await()
       withContext(uiContext) {
         dictionary = loaded
+        vhalPropertiesTab.onDictionaryUpdated()
       }
     }
   }
@@ -162,6 +163,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
         name = "carDataTabbedPane"
         tabComponentInsets = JBUI.emptyInsets()
         addTab(message("car.data.dialog.tab.sensor.data"), sensorDataTab.createPanel())
+        addTab(message("car.data.dialog.tab.vhal.properties"), vhalPropertiesTab.createPanel())
       }
 
     startReceivingCarEvents()
@@ -248,6 +250,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
     if (!fromSensorTab) {
       sensorDataTab.applyPropertyValue(propValue)
     }
+    vhalPropertiesTab.applyPropertyValue(propValue)
     synchronized(pendingUpdates) {
       pendingUpdates[key] = PendingUpdate(propValue, isOptionalCompanion)
     }
@@ -276,16 +279,25 @@ internal class CarDataDialog(emulator: EmulatorController) :
 
   private fun processEmulatorMessage(emulatorMsg: EmulatorMessage) {
     when (emulatorMsg.msgType) {
+      MsgType.GET_CONFIG_ALL_RESP,
+      MsgType.GET_CONFIG_RESP -> {
+        if (emulatorMsg.configCount > 0) {
+          vhalPropertiesTab.setPropertyConfigs(emulatorMsg.configList)
+        }
+      }
       MsgType.GET_PROPERTY_ALL_RESP -> {
         applyFetchedProperties(emulatorMsg.valueList)
       }
       MsgType.GET_PROPERTY_RESP,
       MsgType.SET_PROPERTY_ASYNC -> {
+        val valuesToApply = mutableListOf<VehiclePropValue>()
+        val keysToRemove = mutableListOf<VhalPropertyKey>()
         for (propValue in emulatorMsg.valueList) {
           val key = VhalPropertyKey(propValue.prop, propValue.areaId)
-          if (!isSupportedPropertyValue(propValue)) {
+          if (!VhalPropertiesTab.isSupportedPropertyValue(propValue)) {
             if (!hasPendingOrInFlightUpdate(key) && key !in userModifiedKeys) {
               vhalConfirmedKeys.remove(key)
+              keysToRemove.add(key)
             }
             continue
           }
@@ -300,8 +312,10 @@ internal class CarDataDialog(emulator: EmulatorController) :
           if (!isStaleStreamUpdate(key, propValue)) {
             streamUpdatedKeys.add(key)
             sensorDataTab.applyPropertyValue(propValue)
+            valuesToApply.add(propValue)
           }
         }
+        vhalPropertiesTab.applyPropertyValues(valuesToApply, keysToRemove)
       }
       MsgType.SET_PROPERTY_RESP -> {
         val sentUpdate = synchronized(pendingUpdates) { sentUpdatesQueue.removeFirstOrNull() }
@@ -316,7 +330,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
   private fun applyFetchedProperties(values: List<VehiclePropValue>) {
     vhalConfirmedKeys.clear()
     for (propValue in values) {
-      if (isSupportedPropertyValue(propValue)) {
+      if (VhalPropertiesTab.isSupportedPropertyValue(propValue)) {
         vhalConfirmedKeys.add(VhalPropertyKey(propValue.prop, propValue.areaId))
       }
       if (
@@ -336,6 +350,10 @@ internal class CarDataDialog(emulator: EmulatorController) :
       val key = VhalPropertyKey(propValue.prop, propValue.areaId)
       key !in userModifiedKeys && key !in streamUpdatedKeys && !hasPendingOrInFlightUpdate(key)
     }
+    vhalPropertiesTab.setProperties(
+      nonStaleFetched,
+      retainExistingKey = { key -> key in userModifiedKeys || key in streamUpdatedKeys || hasPendingOrInFlightUpdate(key) },
+    )
     for (propValue in nonStaleFetched) {
       sensorDataTab.applyPropertyValue(propValue)
     }
@@ -362,8 +380,13 @@ internal class CarDataDialog(emulator: EmulatorController) :
       return
     }
     withContext(uiContext) {
-      if (!grpcEventsReceived && values.isNotEmpty()) {
-        applyFetchedProperties(values)
+      if (!grpcEventsReceived) {
+        if (configs.isNotEmpty()) {
+          vhalPropertiesTab.setPropertyConfigs(configs)
+        }
+        if (values.isNotEmpty()) {
+          applyFetchedProperties(values)
+        }
       }
     }
   }
@@ -379,6 +402,8 @@ internal class CarDataDialog(emulator: EmulatorController) :
       userModifiedKeys.remove(key)
       if (key in vhalConfirmedKeys) {
         requestPropertyValue(key.propId, key.areaId)
+      } else {
+        vhalPropertiesTab.removeProperty(key)
       }
     }
   }
@@ -425,17 +450,6 @@ internal class CarDataDialog(emulator: EmulatorController) :
       a.floatValuesList == b.floatValuesList &&
       a.stringValue == b.stringValue &&
       a.bytesValue == b.bytesValue
-
-  private fun isSupportedPropertyValue(propValue: VehiclePropValue): Boolean {
-    if (propValue.prop == 0) return false
-    if (propValue.status == VehiclePropStatus.AVAILABLE) return true
-    return propValue.timestamp != 0L ||
-      propValue.int32ValuesCount > 0 ||
-      propValue.floatValuesCount > 0 ||
-      propValue.int64ValuesCount > 0 ||
-      !propValue.bytesValue.isEmpty ||
-      propValue.stringValue.isNotEmpty()
-  }
 
   companion object {
     private const val MAX_SENT_UPDATES_QUEUE_SIZE = 64

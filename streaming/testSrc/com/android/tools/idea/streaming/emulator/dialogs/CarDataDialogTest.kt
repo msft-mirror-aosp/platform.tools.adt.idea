@@ -33,18 +33,33 @@ import com.android.tools.idea.streaming.emulator.dialogs.CarDataDialog.Companion
 import com.android.tools.idea.streaming.emulator.dialogs.CarSensorDataTab.GearOption
 import com.android.tools.idea.streaming.emulator.dialogs.CarSensorDataTab.IgnitionOption
 import com.android.tools.idea.streaming.emulator.dialogs.CarSensorDataTab.SpeedUnit
+import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertiesTab.EnumChoice
+import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertiesTab.VhalPropertyEntry
+import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.FuelType
+import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleApPowerStateReq
+import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleApPowerStateShutdownParam
+import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleAreaDoor
+import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleAreaSeat
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleGear
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleIgnitionState
+import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleOilLevel
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleProperty
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.ui.CheckBoxList
+import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.JBTabbedPane
+import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.scale.JBUIScale
+import com.intellij.ui.table.TableView
+import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JButton
 import javax.swing.JLabel
@@ -214,13 +229,256 @@ class CarDataDialogTest {
   }
 
   @Test
+  fun testVhalPropertiesTableFilteringAndEditing() {
+    val (fakeEmulator, emulatorController) =
+      createAndStartAutomotiveEmulator { avdFolder ->
+        // Write a *types-meta.json metadata file to verify description & custom vendor property loading.
+        val metaJson =
+          """
+          [
+            {
+              "name": "VehicleProperty",
+              "values": [
+                {
+                  "name": "INFO_MAKE",
+                  "value": 286261505,
+                  "description": "Manufacturer name of the vehicle."
+                },
+                {
+                  "name": "AP_POWER_STATE_REQ",
+                  "value": 289475072,
+                  "data_enums": ["VehicleApPowerStateReq", "VehicleApPowerStateShutdownParam"]
+                },
+                {
+                  "name": "Vehicle Size Class",
+                  "value": 289472782,
+                  "data_enum": "VehicleSizeClass"
+                }
+              ]
+            },
+            {
+              "name": "VehicleSizeClass",
+              "values": [
+                { "name": "EU_A_SEGMENT", "value": 100 },
+                { "name": "JPN_KEI", "value": 400 }
+              ]
+            }
+          ]
+          """
+            .trimIndent()
+        Files.writeString(avdFolder.resolve("android.hardware.automotive.vehicle-types-meta.json"), metaJson)
+      }
+
+    val dialog = CarDataDialog(emulatorController).show(projectRule.project)
+    val rootPane = dialog.rootPane
+    val ui = FakeUi(rootPane)
+
+    val tabbedPane = ui.getComponent<JBTabbedPane> { it.name == "carDataTabbedPane" }
+    tabbedPane.selectedIndex = 1
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    @Suppress("UNCHECKED_CAST") val table = ui.getComponent<TableView<VhalPropertyEntry>> { it.name == "vhalPropertiesTable" }
+    val searchField = ui.getComponent<SearchTextField> { it.name == "vhalSearchField" }
+    val refreshButton = ui.getComponent<JButton> { it.name == "vhalRefreshButton" }
+    val propNameField = ui.getComponent<JBTextField> { it.name == "vhalPropertyNameField" }
+    val propIdField = ui.getComponent<JBTextField> { it.name == "vhalPropertyIdField" }
+    val areaField = ui.getComponent<JBTextField> { it.name == "vhalAreaField" }
+    val typeField = ui.getComponent<JBTextField> { it.name == "vhalTypeField" }
+    val valueField = ui.getComponent<JBTextField> { it.name == "vhalValueField" }
+    @Suppress("UNCHECKED_CAST") val boolCombo = ui.getComponent<ComboBox<Boolean>> { it.name == "vhalBooleanComboBox" }
+    @Suppress("UNCHECKED_CAST") val enumCombo = ui.getComponent<ComboBox<EnumChoice>> { it.name == "vhalEnumComboBox" }
+    @Suppress("UNCHECKED_CAST") val checkList = ui.getComponent<CheckBoxList<EnumChoice>> { it.name == "vhalInt32VecCheckBoxList" }
+    val descriptionArea = ui.getComponent<JBTextArea> { it.name == "vhalDescriptionArea" }
+
+    // Wait for properties and JSON metadata to load.
+    waitForCondition(5.seconds) {
+      table.items.any { it.propId == VehicleProperty.INFO_MAKE } && table.items.any { it.propId == VehicleProperty.WHEEL_TICK }
+    }
+
+    // Filter by "Manufacturer" (STRING property) and edit it in place.
+    searchField.text = "Manufacturer"
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(table.rowCount).isEqualTo(1)
+    assertThat(propNameField.text).isEqualTo("Manufacturer")
+    assertThat(propIdField.text).isEqualTo(VehicleProperty.INFO_MAKE.toString())
+    assertThat(areaField.text).isEqualTo("Global")
+    assertThat(typeField.text).isEqualTo("String")
+    assertThat(valueField.isVisible).isTrue()
+    assertThat(valueField.isEditable).isTrue()
+    assertThat(valueField.text).isEqualTo("Android")
+    waitForCondition(5.seconds) { descriptionArea.text == "Manufacturer name of the vehicle." }
+
+    valueField.text = "Waymo"
+    valueField.postActionEvent()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(valueField.text).isEqualTo("Waymo")
+    waitForCondition(5.seconds) {
+      fakeEmulator.getVehicleProperty(VehicleProperty.INFO_MAKE)?.stringValue == "Waymo"
+    }
+
+    // Edit BOOLEAN property (Door locked, Row 1 L) in place.
+    searchField.text = "Door locked"
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(table.rowCount).isEqualTo(1)
+    assertThat(areaField.text).isEqualTo("Door: Row 1 L")
+    assertThat(boolCombo.isVisible).isTrue()
+    assertThat(boolCombo.selectedItem).isEqualTo(true)
+
+    boolCombo.selectedItem = false
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(valueField.text).isEqualTo("False")
+    waitForCondition(5.seconds) {
+      fakeEmulator.getVehicleProperty(VehicleProperty.DOOR_LOCK, VehicleAreaDoor.ROW_1_LEFT)?.getInt32Values(0) == 0
+    }
+
+    // Edit INT32 enum property (Engine oil level) in place.
+    searchField.text = "Engine oil level"
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(enumCombo.isVisible).isTrue()
+    assertThat((enumCombo.selectedItem as? EnumChoice)?.label).isEqualTo("Normal")
+
+    val lowChoice = (0 until enumCombo.itemCount).map { enumCombo.getItemAt(it) }.first { it.value == VehicleOilLevel.LOW }
+    enumCombo.selectedItem = lowChoice
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(valueField.text).isEqualTo("Low")
+    waitForCondition(5.seconds) {
+      fakeEmulator.getVehicleProperty(VehicleProperty.ENGINE_OIL_LEVEL)?.getInt32Values(0) == VehicleOilLevel.LOW
+    }
+
+    // Edit raw INT32 property (Model year) in place, including invalid input validation.
+    searchField.text = "Model year"
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(valueField.isVisible).isTrue()
+    assertThat(valueField.isEditable).isTrue()
+    assertThat(valueField.text).isEqualTo("2026")
+
+    valueField.text = "invalid"
+    assertThat(valueField.getClientProperty("JComponent.outline")).isEqualTo("error")
+    valueField.text = "2027"
+    assertThat(valueField.getClientProperty("JComponent.outline")).isNull()
+    valueField.postActionEvent()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(valueField.text).isEqualTo("2027")
+    waitForCondition(5.seconds) {
+      fakeEmulator.getVehicleProperty(VehicleProperty.INFO_MODEL_YEAR)?.getInt32Values(0) == 2027
+    }
+
+    // Edit FLOAT multi-area property (Target temperature set, Seat: Row 1 R) in place.
+    searchField.text = "Target temperature set"
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(table.rowCount).isEqualTo(2)
+    val row1RightIndex = table.items.indexOfFirst { it.areaId == VehicleAreaSeat.ROW_1_RIGHT }
+    table.selectionModel.setSelectionInterval(row1RightIndex, row1RightIndex)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(areaField.text).isEqualTo("Seat: Row 1 R")
+    assertThat(valueField.isVisible).isTrue()
+    assertThat(valueField.isEditable).isTrue()
+    assertThat(valueField.text).isEqualTo("22.0")
+
+    valueField.text = "19.5"
+    valueField.postActionEvent()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(valueField.text).isEqualTo("19.5")
+    waitForCondition(5.seconds) {
+      fakeEmulator.getVehicleProperty(VehicleProperty.HVAC_TEMPERATURE_SET, VehicleAreaSeat.ROW_1_RIGHT)?.getFloatValues(0) == 19.5f
+    }
+
+    // Edit INT64 property (VHAL_HEARTBEAT) in place.
+    searchField.text = "290459443"
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(table.rowCount).isEqualTo(1)
+    assertThat(valueField.isVisible).isTrue()
+    assertThat(valueField.isEditable).isTrue()
+    assertThat(valueField.text).isEqualTo("1000")
+
+    valueField.text = "9876543210"
+    valueField.postActionEvent()
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(valueField.text).isEqualTo("9876543210")
+    waitForCondition(5.seconds) {
+      fakeEmulator.getVehicleProperty(VehicleProperty.VHAL_HEARTBEAT)?.getInt64Values(0) == 9876543210L
+    }
+
+    // Edit INT32_VEC enum property (Usable fuels) in place.
+    searchField.text = "Usable fuels"
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(checkList.isVisible).isTrue()
+    val choices = (0 until checkList.itemsCount).mapNotNull { checkList.getItemAt(it) }
+    val unleadedChoice = choices.first { it.value == FuelType.FUEL_TYPE_UNLEADED }
+    val electricChoice = choices.first { it.value == FuelType.FUEL_TYPE_ELECTRIC }
+    val hydrogenChoice = choices.first { it.value == FuelType.FUEL_TYPE_HYDROGEN }
+    assertThat(checkList.isItemSelected(unleadedChoice)).isTrue()
+    assertThat(checkList.isItemSelected(electricChoice)).isTrue()
+    checkList.setItemSelected(unleadedChoice, false)
+    checkList.setItemSelected(hydrogenChoice, true)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(valueField.text).isEqualTo("Electric; Hydrogen")
+    waitForCondition(5.seconds) {
+      fakeEmulator.getVehicleProperty(VehicleProperty.INFO_FUEL_TYPE)?.int32ValuesList ==
+        listOf(FuelType.FUEL_TYPE_ELECTRIC, FuelType.FUEL_TYPE_HYDROGEN)
+    }
+
+    // Non-editable INT64_VEC property (Wheel ticks) displays a read-only text field.
+    searchField.text = "Wheel ticks"
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(table.rowCount).isEqualTo(1)
+    assertThat(typeField.text).isEqualTo("Int64[]")
+    assertThat(valueField.isVisible).isTrue()
+    assertThat(valueField.isEditable).isFalse()
+    assertThat(valueField.text).isEqualTo("1; 100; 100; 100; 100")
+
+    // Positional INT32_VEC tuple properties remain non-editable, while INT32_VEC enum properties from *types-meta.json are editable.
+    fakeEmulator.setVehiclePropertyOnDevice(
+      VehiclePropValue.newBuilder()
+        .setProp(VehicleProperty.AP_POWER_STATE_REQ)
+        .addInt32Values(VehicleApPowerStateReq.SHUTDOWN_PREPARE)
+        .addInt32Values(VehicleApPowerStateShutdownParam.CAN_SLEEP)
+        .build()
+    )
+    fakeEmulator.setVehiclePropertyOnDevice(
+      VehiclePropValue.newBuilder().setProp(VehicleProperty.HW_KEY_INPUT).addInt32Values(0).addInt32Values(24).addInt32Values(0).build()
+    )
+    fakeEmulator.setVehiclePropertyOnDevice(
+      VehiclePropValue.newBuilder().setProp(289472782).addInt32Values(100).addInt32Values(400).build()
+    )
+    searchField.text = "App processor power state control"
+    waitForCondition(5.seconds) { table.rowCount == 1 }
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(valueField.isVisible).isTrue()
+    assertThat(valueField.isEditable).isFalse()
+    assertThat(valueField.text).isEqualTo("Shutdown requested (Enter deep sleep after Garage Mode)")
+
+    searchField.text = "H/W input key"
+    waitForCondition(5.seconds) { table.rowCount == 1 }
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(valueField.isVisible).isTrue()
+    assertThat(valueField.isEditable).isFalse()
+    assertThat(valueField.text).isEqualTo("0; 24; 0")
+
+    searchField.text = "Vehicle Size Class"
+    waitForCondition(5.seconds) { table.rowCount == 1 }
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(checkList.isVisible).isTrue()
+    assertThat(valueField.text).isEqualTo("EU_A_SEGMENT; JPN_KEI")
+
+    // Refresh button reloads properties.
+    searchField.text = ""
+    ui.clickOn(refreshButton)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(table.rowCount).isGreaterThan(10)
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
   fun testAdbWorkaroundWhenReceiveCarEventsProducesNoEvents() {
     val (fakeEmulator, emulatorController) = createAndStartAutomotiveEmulator()
     fakeEmulator.carEventStreamEnabled = false
     val deviceSelector = DeviceSelector.fromSerialNumber(fakeEmulator.serialNumber)
     val adbDump =
       """
-      **All properties, 4 properties
+      **All properties, 5 properties
       Property:INFO_MAKE(0x11100101), group:SYSTEM(0x10000000), areaType:GLOBAL(0x1000000), valueType:STRING(0x100000),
           access:WRITE(0x2), changeMode:STATIC(0x0), configArray:[], minSampleRateHz:0.000000, maxSampleRateHz:0.000000
               areaId:GLOBAL(0x0), access:WRITE(0x2), f min:0.000000, f max:0.000000, i min:0, i max:0, i64 min:0, i64 max:0
@@ -233,11 +491,14 @@ class CarDataDialogTest {
       Property:PARKING_BRAKE_ON(0x11200402), group:SYSTEM(0x10000000), areaType:GLOBAL(0x1000000), valueType:BOOLEAN(0x200000),
           access:READ_WRITE(0x3), changeMode:ON_CHANGE(0x1), configArray:[], minSampleRateHz:0.000000, maxSampleRateHz:0.000000
               areaId:GLOBAL(0x0), access:READ_WRITE(0x3), f min:0.000000, f max:0.000000, i min:0, i max:0, i64 min:0, i64 max:0
-      **All property values, 4 values
+      Property:0x11410105, Property name:INFO_FUEL_TYPE, access:0x3, changeMode:0x0, config:[], fs min:0.000000, fs max:0.000000
+          areaId:0x0, f min:0.000000, f max:0.000000, i min:0, i max:0, i64 min:0, i64 max:0
+      **All property values, 5 values
       HalPropValue{Property ID: INFO_MAKE(0x11100101), Area ID: GLOBAL(0x0), ElapsedRealtimeNanos: 123, Status: AVAILABLE(0x0), Value: AOSP Automotive}
       HalPropValue{Property ID: PERF_VEHICLE_SPEED(0x11600207), Area ID: GLOBAL(0x0), ElapsedRealtimeNanos: 124, Status: AVAILABLE(0x0), Value: 0.0 METER_PER_SEC}
       HalPropValue{Property ID: GEAR_SELECTION(0x11400400), Area ID: GLOBAL(0x0), ElapsedRealtimeNanos: 125, SystemStatus: AVAILABLE(0x0), VendorStatus: 0, Value: GEAR_DRIVE(0x8)}
       HalPropValue{Property ID: PARKING_BRAKE_ON(0x11200402), Area ID: GLOBAL(0x0), ElapsedRealtimeNanos: 126, Status: AVAILABLE(0x0), Value: FALSE}
+      Property:0x11410105, status: 0, timestamp: 127, zone: 0x0, floatValues: [], int32Values: [1, 10], int64Values: [], bytes: [], string:
       """
         .trimIndent()
     adb.configureShellCommand(deviceSelector, DUMP_VHAL_COMMAND, adbDump)
@@ -248,6 +509,31 @@ class CarDataDialogTest {
     @Suppress("UNCHECKED_CAST") val gearCombo = ui.getComponent<ComboBox<GearOption>> { it.name == "gearComboBox" }
     val parkingBrakeCheckBox = ui.getComponent<JBCheckBox> { it.name == "parkingBrakeCheckBox" }
     waitForCondition(5.seconds) { gearCombo.selectedItem == GearOption.DRIVE && !parkingBrakeCheckBox.isSelected }
+
+    val tabbedPane = ui.getComponent<JBTabbedPane> { it.name == "carDataTabbedPane" }
+    tabbedPane.selectedIndex = 1
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    @Suppress("UNCHECKED_CAST") val table = ui.getComponent<TableView<VhalPropertyEntry>> { it.name == "vhalPropertiesTable" }
+    val searchField = ui.getComponent<SearchTextField> { it.name == "vhalSearchField" }
+    val valueField = ui.getComponent<JBTextField> { it.name == "vhalValueField" }
+    @Suppress("UNCHECKED_CAST") val checkList = ui.getComponent<CheckBoxList<EnumChoice>> { it.name == "vhalInt32VecCheckBoxList" }
+    assertThat(table.items).hasSize(5)
+
+    // Write-only property from ADB config has read-only Value field.
+    searchField.text = "Manufacturer"
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(table.rowCount).isEqualTo(1)
+    assertThat(valueField.isVisible).isTrue()
+    assertThat(valueField.isEditable).isFalse()
+    assertThat(valueField.text).isEqualTo("AOSP Automotive")
+
+    // Legacy format INT32_VEC property parsed and editable in place.
+    searchField.text = "Usable fuels"
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(table.rowCount).isEqualTo(1)
+    assertThat(checkList.isVisible).isTrue()
+    assertThat(valueField.text).isEqualTo("Unleaded; Electric")
 
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
