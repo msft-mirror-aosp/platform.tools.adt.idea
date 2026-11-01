@@ -2808,6 +2808,12 @@ public final class StudioFlags {
                     "Enable Task Progress UI in general chat",
                     "When enabled, the Task Progress UI tool will be added for the general chat. Requires studiobot.task.progressui.enabled.");
 
+  public static final Flag<Boolean> STUDIOBOT_TEXT_SHIMMER_ENABLED =
+    new BooleanFlag(STUDIOBOT, "text.shimmer.enabled",
+                    "Shimmer the text of active agent timeline lines",
+                    "When enabled, a subtle highlight periodically sweeps across the \"Thinking...\" row of a thought in " +
+                    "progress and the \"model is generating\" footer in the agent timeline.");
+
   public static final Flag<Boolean> STUDIOBOT_ASK_USER_IN_QUERY_BOX =
     new BooleanFlag(STUDIOBOT, "ask.user.in.query.box",
                     "Replace the query box with the pending ask user tool call.",

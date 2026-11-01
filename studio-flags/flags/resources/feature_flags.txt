@@ -262,6 +262,7 @@ studiobot.studiobot.apply.changes.action=INTERNAL
 studiobot.symbol.linkification=COMPLETE:2026
 studiobot.task.progressui.chat.enabled=COMPLETE:2026
 studiobot.task.progressui.enabled=COMPLETE:2026
+studiobot.text.shimmer.enabled=PREVIEW
 studiobot.thinking.level.picker.enabled=PREVIEW
 studiobot.tool.timeout.monitor.enabled=INTERNAL
 studiobot.use.bm25.find.files=COMPLETE:2026
