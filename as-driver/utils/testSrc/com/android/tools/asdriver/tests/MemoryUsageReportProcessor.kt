@@ -34,6 +34,14 @@ const val COLLECT_AND_LOG_EXTENDED_MEMORY_REPORTS: String = "studio.collect.exte
 const val DUMP_HPROF_SNAPSHOT: String = "studio.dump.hprof.snapshot"
 
 /**
+ * Memory usage statistics collection freezes Studio for tens of seconds, and its perfgate data is only uploaded from postsubmit and
+ * perfgate runs. CI enables it there with `--test_env=studio.collect.extended.memory.reports=true`; local runs can enable it with
+ * `-Dstudio.collect.extended.memory.reports=true`.
+ */
+internal fun shouldCollectMemoryUsageStatistics(systemProperty: String?, environmentVariable: String?): Boolean =
+  systemProperty.toBoolean() || environmentVariable.toBoolean()
+
+/**
  * Util class that requests memory usage report collection by calling internal action `IntegrationTestCollectMemoryUsageStatisticsAction`,
  * parses the output and sends the results to perfgate.
  */
@@ -59,6 +67,15 @@ class MemoryUsageReportProcessor {
      *   data will be written to a dashboard name as [memoryDashboardName].
      */
     fun collectMemoryUsageStatistics(studio: AndroidStudio, installation: AndroidStudioInstallation, memoryDashboardName: String?) {
+      if (
+        !shouldCollectMemoryUsageStatistics(
+          System.getProperty(COLLECT_AND_LOG_EXTENDED_MEMORY_REPORTS),
+          System.getenv(COLLECT_AND_LOG_EXTENDED_MEMORY_REPORTS),
+        )
+      ) {
+        println("Skipping memory statistics collection (not enabled via $COLLECT_AND_LOG_EXTENDED_MEMORY_REPORTS)")
+        return
+      }
       val testDisplayNameNoWhitespaces = memoryDashboardName!!.replace(' ', '_')
       val dateFormat = SimpleDateFormat("HH:mm:ss z")
       println("Collecting memory statistics. Started at ${dateFormat.format(Date())}. This could take 15-30 seconds")
