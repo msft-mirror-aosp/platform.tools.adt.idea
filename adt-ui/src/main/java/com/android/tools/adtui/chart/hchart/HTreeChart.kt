@@ -369,7 +369,13 @@ class HTreeChart<N : HNode<N>> private constructor(builder: Builder<N>) : Animat
 
           // Second, handle X Range.
           val deltaX = (e.point.x - lastPoint!!.x).toDouble()
-          var deltaXToShift = xRange.length / width * -deltaX
+          shiftXRange(-deltaX)
+          lastPoint = e.point
+        }
+
+        /** Shifts the X range by [deltaX] pixels, staying within the global X range. A positive value reveals the area to the right. */
+        private fun shiftXRange(deltaX: Double) {
+          var deltaXToShift = xRange.length / width * deltaX
           when {
             // User attempts to move the chart towards left to view the area to the right.
             deltaXToShift > 0 -> deltaXToShift = min(globalXRange.max - xRange.max, deltaXToShift)
@@ -377,7 +383,6 @@ class HTreeChart<N : HNode<N>> private constructor(builder: Builder<N>) : Animat
             deltaXToShift < 0 -> deltaXToShift = max(globalXRange.min - xRange.min, deltaXToShift)
           }
           xRange.shift(deltaXToShift)
-          lastPoint = e.point
         }
 
         private fun shiftYRange(deltaY: Double) {
@@ -400,11 +405,17 @@ class HTreeChart<N : HNode<N>> private constructor(builder: Builder<N>) : Animat
         }
 
         override fun mouseWheelMoved(e: MouseWheelEvent) {
+          // AWT reports horizontal wheel input, e.g. a horizontal trackpad swipe or Shift + mouse wheel, with Shift down.
+          val isHorizontal = e.isShiftDown
           if (isActionKeyDown(e)) {
+            // The horizontal part of a trackpad swipe shouldn't zoom the chart.
+            if (isHorizontal) return
             val cursorRange = positionToRange(e.x.toDouble())
             val leftDelta = (cursorRange - xRange.min) / ZOOM_FACTOR * e.wheelRotation
             val rightDelta = (xRange.max - cursorRange) / ZOOM_FACTOR * e.wheelRotation
             xRange.set(max(globalXRange.min, xRange.min - leftDelta), min(globalXRange.max, xRange.max + rightDelta))
+          } else if (isHorizontal) {
+            shiftXRange(e.preciseWheelRotation * MOUSE_WHEEL_SCROLL_FACTOR)
           } else {
             val deltaY = e.preciseWheelRotation * MOUSE_WHEEL_SCROLL_FACTOR
             shiftYRange(if (orientation == Orientation.TOP_DOWN) deltaY else -deltaY)

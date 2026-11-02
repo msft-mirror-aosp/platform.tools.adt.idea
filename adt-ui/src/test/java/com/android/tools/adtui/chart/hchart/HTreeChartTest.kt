@@ -26,6 +26,7 @@ import java.awt.Font
 import java.awt.FontMetrics
 import java.awt.event.KeyEvent.VK_CONTROL
 import java.awt.event.KeyEvent.VK_META
+import java.awt.event.KeyEvent.VK_SHIFT
 import java.awt.geom.Rectangle2D
 import kotlin.math.max
 import org.junit.Before
@@ -354,6 +355,35 @@ class HTreeChartTest {
 
     assertThat(myChart.yRange.min).isWithin(EPSILON).of(18.0)
     assertThat(myChart.yRange.max).isWithin(EPSILON).of(18.0)
+  }
+
+  @Test
+  fun testChartHorizontalMouseWheelPansWithoutScrolling() {
+    // Zoom in by 2X. Only zoomed-in chart supports horizontal panning.
+    myRange.set(10.0, 60.0)
+    myUi.keyboard.press(VK_SHIFT) // Shift+wheel == horizontal wheel
+
+    myUi.mouse.wheel(25, 25, 1)
+    assertThat(myRange.min).isWithin(EPSILON).of(14.0)
+    assertThat(myRange.max).isWithin(EPSILON).of(64.0)
+
+    myUi.mouse.wheel(25, 25, -2)
+    assertThat(myRange.min).isWithin(EPSILON).of(6.0)
+    assertThat(myRange.max).isWithin(EPSILON).of(56.0)
+
+    assertThat(myChart.yRange.min).isWithin(EPSILON).of(10.0)
+    assertThat(myChart.yRange.max).isWithin(EPSILON).of(10.0)
+  }
+
+  @Test
+  fun testChartHorizontalMouseWheelDoesNotZoom() {
+    myUi.keyboard.press(getFakeActionKey())
+    myUi.keyboard.press(VK_SHIFT) // Shift+wheel == horizontal wheel
+
+    myUi.mouse.wheel(40, 20, -1)
+
+    assertThat(myRange.min).isWithin(EPSILON).of(0.0)
+    assertThat(myRange.max).isWithin(EPSILON).of(100.0)
   }
 
   @Test
