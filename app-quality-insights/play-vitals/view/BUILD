@@ -48,6 +48,8 @@ iml_module(
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui.tests",
         "//tools/adt/idea/app-quality-insights/api:intellij.android.app-quality-insights.api.tests",
         "//tools/adt/idea/app-quality-insights/play-vitals/model:intellij.android.app-quality-insights.play-vitals.model.tests",
+        "//tools/adt/idea/android-common:intellij.android.common",
+        "//tools/base/flags:studio.android.sdktools.flags",
     ],
     test_srcs = ["testSrc"],
     visibility = ["//visibility:public"],

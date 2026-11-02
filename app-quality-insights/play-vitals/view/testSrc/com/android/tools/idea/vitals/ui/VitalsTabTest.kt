@@ -19,6 +19,7 @@ import com.android.testutils.delayUntilCondition
 import com.android.testutils.time.FakeClock
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.findDescendant
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.AppInsightsCrashControllerRule
 import com.android.tools.idea.insights.DEFAULT_AI_INSIGHT
 import com.android.tools.idea.insights.DEFAULT_FETCHED_DEVICES
@@ -44,6 +45,7 @@ import com.android.tools.idea.insights.ui.actions.AppInsightsDropDownAction
 import com.android.tools.idea.insights.ui.actions.TreeDropDownAction
 import com.android.tools.idea.insights.ui.dateFormatter
 import com.android.tools.idea.insights.ui.shortenEventId
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.vitals.TEST_CONNECTION_1
 import com.android.tools.idea.vitals.TEST_CONNECTION_2
 import com.android.tools.idea.vitals.TEST_CONNECTION_3
@@ -113,6 +115,8 @@ class VitalsTabTest {
   @Test
   fun `tab shows correct information on startup`() =
     runBlocking(Dispatchers.EDT) {
+      // This test verifies the tab-specific connection selector, which is only shown when the global selector is disabled.
+      StudioFlags.APP_INSIGHTS_GLOBAL_SELECTOR.overrideForTest(false, controllerRule.disposable)
       val tab = createTab()
 
       controllerRule.consumeInitialState(
@@ -278,6 +282,16 @@ class VitalsTabTest {
 
       delayUntilCondition(200) { fakeUi.findComponent<JLabel> { it.text == "No data available" } != null }
       fakeUi.findAllComponents<DistributionPanel>()[1].assertContent(ISSUE1_DETAILS.osStats, "Android version")
+    }
+
+  @Test
+  fun `tab-specific connection selector is hidden when global selector is enabled`() =
+    runBlocking(Dispatchers.EDT) {
+      StudioFlags.APP_INSIGHTS_GLOBAL_SELECTOR.overrideForTest(true, controllerRule.disposable)
+      val tab = createTab()
+      val fakeUi = FakeUi(tab)
+
+      assertThat(fakeUi.findToolbar().actions.filterIsInstance<VitalsConnectionSelectorAction>()).isEmpty()
     }
 
   @Test
