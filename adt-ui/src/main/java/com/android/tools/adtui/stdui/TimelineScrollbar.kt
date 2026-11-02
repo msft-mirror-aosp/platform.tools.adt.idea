@@ -23,10 +23,13 @@ import com.android.tools.adtui.model.StreamingTimeline
 import com.android.tools.adtui.model.Timeline
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ui.components.JBScrollBar
+import com.intellij.util.ui.MouseEventAdapter
 import java.awt.Graphics
 import java.awt.Rectangle
 import java.util.concurrent.TimeUnit
 import javax.swing.JComponent
+import javax.swing.JScrollPane
+import javax.swing.SwingUtilities
 import kotlin.math.max
 import kotlin.math.min
 
@@ -74,10 +77,19 @@ class TimelineScrollbar(val timeline: Timeline, zoomPanComponent: JComponent) : 
     zoomPanComponent.addMouseWheelListener {
       val count = it.preciseWheelRotation
       val isMenuKeyDown = isActionKeyDown(it)
+      // AWT reports horizontal wheel input, e.g. a horizontal trackpad swipe or Shift + mouse wheel, with Shift down.
+      val isHorizontal = it.isShiftDown
       if (isMenuKeyDown) {
+        // The horizontal part of a trackpad swipe shouldn't zoom the timeline.
+        if (isHorizontal) return@addMouseWheelListener
         val anchor = (it.x.toDouble() / it.component.width)
         timeline.handleMouseWheelZoom(count, anchor)
       } else {
+        if (!isHorizontal) {
+          // Only horizontal input pans. Like JBScrollPane, pass vertical input on to an outer scroll pane.
+          MouseEventAdapter.redispatch(it, SwingUtilities.getAncestorOfClass(JScrollPane::class.java, it.component))
+          return@addMouseWheelListener
+        }
         timeline.handleMouseWheelPan(count)
       }
       checkStream = count > 0

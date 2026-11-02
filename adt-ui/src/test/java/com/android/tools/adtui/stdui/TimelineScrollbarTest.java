@@ -28,9 +28,14 @@ import com.android.tools.adtui.swing.FakeKeyboard;
 import com.android.tools.adtui.swing.FakeUi;
 import java.awt.BorderLayout;
 import java.awt.Graphics;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -161,6 +166,7 @@ public class TimelineScrollbarTest {
   @Test
   public void testPan() {
     double delta = myTimeline.getPanWheelDelta();
+    myUi.keyboard.press(KeyEvent.VK_SHIFT); // Shift+wheel == pan
     myUi.mouse.wheel(50, 50, 1);
     // Advance the timer so that the StreamingTimeline update method is called, handling the stored scroll wheel events.
     myTimer.tick(TimeUnit.SECONDS.toNanos(5));
@@ -222,6 +228,7 @@ public class TimelineScrollbarTest {
     FakeUi fakeUi = new FakeUi(root);
     timeline.getViewRange().set(0, 500);
     timeline.getDataRange().set(0, 5000);
+    fakeUi.keyboard.press(KeyEvent.VK_SHIFT); // Shift+wheel == pan
 
     // Pan right 1 click
     fakeUi.mouse.wheel(50, 50, 1);
@@ -326,9 +333,41 @@ public class TimelineScrollbarTest {
     assertFalse(myScrollbar.isScrollable());
 
     // We should not be able to pan if we are not scrollable.
+    myUi.keyboard.press(KeyEvent.VK_SHIFT); // Shift+wheel == pan
     myUi.mouse.wheel(50, 50, 1);
     assertEquals(-100, myTimeline.getViewRange().getMin(), EPSILON);
     // View range should never be greater than data range.
     assertEquals(200, myTimeline.getViewRange().getMax(), EPSILON);
+  }
+
+  @Test
+  public void testVerticalWheelDoesNotPan() {
+    myUi.mouse.wheel(50, 50, 1);
+    myTimer.tick(TimeUnit.SECONDS.toNanos(5));
+    assertEquals(0, myTimeline.getViewRange().getMin(), EPSILON);
+    assertEquals(5000, myTimeline.getViewRange().getMax(), EPSILON);
+  }
+
+  @Test
+  public void testVerticalWheelGoesToOuterScrollPane() {
+    List<MouseWheelEvent> outerScrollPaneEvents = new ArrayList<>();
+    new JScrollPane(myPanel).addMouseWheelListener(outerScrollPaneEvents::add);
+
+    myPanel.dispatchEvent(
+      new MouseWheelEvent(myPanel, MouseWheelEvent.MOUSE_WHEEL, 0, 0, 50, 50, 0, false, MouseWheelEvent.WHEEL_UNIT_SCROLL, 1, 1));
+
+    assertEquals(1, outerScrollPaneEvents.size());
+    assertEquals(1, outerScrollPaneEvents.get(0).getWheelRotation());
+  }
+
+  @Test
+  public void testHorizontalWheelDoesNotZoom() {
+    myUi.keyboard.press(FakeKeyboard.MENU_KEY_CODE);
+    myUi.keyboard.press(KeyEvent.VK_SHIFT); // Shift+wheel == horizontal wheel
+
+    myUi.mouse.wheel(50, 50, -1);
+    myTimer.tick(TimeUnit.SECONDS.toNanos(5));
+    assertEquals(0, myTimeline.getViewRange().getMin(), EPSILON);
+    assertEquals(5000, myTimeline.getViewRange().getMax(), EPSILON);
   }
 }
