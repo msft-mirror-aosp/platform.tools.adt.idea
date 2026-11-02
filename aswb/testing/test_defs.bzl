@@ -218,6 +218,7 @@ DEFAULT_INTEGRATION_TEST_PLUGINS = [
     "//tools/adt/idea/aswb:com.google.idea.bazel.aswb",
     "//tools/vendor/google/aswb:com.google.idea.g3plugins",  # TODO: solodkyy - Consider switching to the non-repacked version of the plugin.
     "//tools/vendor/google/aswb/third_party/java/jetbrains/protobuf:idea.plugin.protoeditor",
+    "//tools/vendor/kkkev/jj-idea:in.kkkev.jj-idea",
     "//tools/vendor/google/asfg/g3plugins/plugin-core:com.google.idea.g3plugins.core",
     "//tools/adt/idea/studio:org.jetbrains.android",
     "//tools/adt/idea/studio:com.android.tools.apk",
