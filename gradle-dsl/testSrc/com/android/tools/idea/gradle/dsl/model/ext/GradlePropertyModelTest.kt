@@ -300,6 +300,61 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
   }
 
   @Test
+  fun testCastCollectionValuesForKTSArrayExpression() {
+    arrayExpressionSyntaxTestIsIrrelevantForGroovy()
+    writeToBuildFile(TestFile.CAST_COLLECTION_VALUES_FOR_KTS_ARRAY_EXPRESSION)
+    val ext = gradleBuildModel.ext()
+
+    verifyListProperty(ext.findProperty("castList"), listOf("a", "b"))
+    verifyMapProperty(ext.findProperty("castMap"), mapOf("key" to "val", "num" to 42))
+    verifyListProperty(ext.findProperty("castParenthesizedList"), listOf("c", "d"))
+
+    // A cast reference stays a reference, and resolves to the cast list it points at.
+    val castReference = ext.findProperty("castReferenceToCastList")
+    assertEquals(REFERENCE, castReference.valueType)
+    verifyListProperty(castReference.resolve(), listOf("a", "b"))
+
+    verifyPropertyModel(ext.findProperty("castString"), STRING_TYPE, "applicationId", STRING, REGULAR, 0)
+  }
+
+  @Test
+  fun testModifyCastValuesForKTSArrayExpression() {
+    arrayExpressionSyntaxTestIsIrrelevantForGroovy()
+    writeToBuildFile(TestFile.CAST_COLLECTION_VALUES_FOR_KTS_ARRAY_EXPRESSION)
+    val buildModel = gradleBuildModel
+    var ext = buildModel.ext()
+
+    ext.findProperty("castList").getValue(LIST_TYPE)!![0].setValue("z")
+    ext.findProperty("castList").addListValue()!!.setValue("e")
+    ext.findProperty("castMap").getValue(MAP_TYPE)!!["key"]!!.setValue("newVal")
+    ext.findProperty("castMap").getMapValue("added")!!.setValue("x")
+    ext.findProperty("castParenthesizedList").getValue(LIST_TYPE)!![1].setValue("y")
+    // Setting a cast literal to another literal of the same kind keeps the user's cast...
+    ext.findProperty("castString").setValue("com.example.app")
+    ext.findProperty("castInt").setValue(43)
+    ext.findProperty("castBoolean").setValue(false)
+    ext.findProperty("castDouble").setValue(BigDecimal("3.5"))
+    // ...but a different kind of value, or a reference (which brings its own cast), replaces the whole expression.
+    ext.findProperty("castToOtherType").setValue("notABoolean")
+    ext.findProperty("castToReference").setValue(ReferenceTo(ext.findProperty("castString")))
+
+    applyChangesAndReparse(buildModel)
+    verifyFileContents(myBuildFile, TestFile.MODIFY_CAST_VALUES_FOR_KTS_ARRAY_EXPRESSION_EXPECTED)
+
+    ext = buildModel.ext()
+    verifyListProperty(ext.findProperty("castList"), listOf("z", "b", "e"))
+    verifyMapProperty(ext.findProperty("castMap"), mapOf("key" to "newVal", "num" to 42, "added" to "x"))
+    verifyListProperty(ext.findProperty("castParenthesizedList"), listOf("c", "y"))
+    verifyListProperty(ext.findProperty("castReferenceToCastList").resolve(), listOf("z", "b", "e"))
+    verifyPropertyModel(ext.findProperty("castString"), STRING_TYPE, "com.example.app", STRING, REGULAR, 0)
+    verifyPropertyModel(ext.findProperty("castInt"), INTEGER_TYPE, 43, INTEGER, REGULAR, 0)
+    verifyPropertyModel(ext.findProperty("castBoolean"), BOOLEAN_TYPE, false, BOOLEAN, REGULAR, 0)
+    assertEquals(BigDecimal("3.5"), ext.findProperty("castDouble").toBigDecimal())
+    verifyPropertyModel(ext.findProperty("castToOtherType"), STRING_TYPE, "notABoolean", STRING, REGULAR, 0)
+    verifyPropertyModel(ext.findProperty("castToReference").resolve(), STRING_TYPE, "com.example.app", STRING, REGULAR, 1)
+  }
+
+  @Test
   fun testVariables() {
     writeToBuildFile(TestFile.VARIABLES)
 
@@ -3869,6 +3924,8 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
 
   enum class TestFile(val path: @SystemDependent String) : TestFileName {
     PROPERTIES("properties"),
+    CAST_COLLECTION_VALUES_FOR_KTS_ARRAY_EXPRESSION("castCollectionValuesForKTSArrayExpression"),
+    MODIFY_CAST_VALUES_FOR_KTS_ARRAY_EXPRESSION_EXPECTED("modifyCastValuesForKTSArrayExpressionExpected"),
     PROPERTIES_EXTERNAL("propertiesExternal"),
     PROPERTIES_FROM_SCRATCH("propertiesFromScratch"),
     PROPERTIES_FROM_SCRATCH_EXPECTED("propertiesFromScratchExpected"),

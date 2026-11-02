@@ -1,0 +1,10 @@
+extra["castList"] = listOf("z", "b", "e") as List<String>
+extra["castMap"] = mapOf("key" to "newVal", "num" to 42, "added" to "x") as Map<String, Any>
+extra["castParenthesizedList"] = (listOf("c", "y")) as List<String>
+extra["castReferenceToCastList"] = extra["castList"] as List<String>
+extra["castString"] = "com.example.app" as String
+extra["castInt"] = 43 as Int
+extra["castBoolean"] = false as Boolean
+extra["castDouble"] = 3.5 as Double
+extra["castToOtherType"] = "notABoolean"
+extra["castToReference"] = extra["castString"] as String

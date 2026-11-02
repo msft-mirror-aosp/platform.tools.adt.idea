@@ -752,7 +752,9 @@ class KotlinDslParser(val psiFile: KtFile, override val internalContext: BuildMo
         return getCallExpression(parent, expression, name, arguments, expressionName, false, isLiteral)
       }
       is KtDotQualifiedExpression -> return getDotQualifiedExpression(parent, psiElement, name, expression)
-      is KtParenthesizedExpression -> return createExpressionElement(parent, psiElement, name, expression.expression ?: expression)
+      is KtParenthesizedExpression ->
+        return createExpressionElement(parent, psiElement, name, expression.expression ?: expression, isLiteral)
+      is KtBinaryExpressionWithTypeRHS -> return createExpressionElement(parent, psiElement, name, expression.left, isLiteral)
       else -> return getExpressionElement(parent, psiElement, name, expression)
     }
   }

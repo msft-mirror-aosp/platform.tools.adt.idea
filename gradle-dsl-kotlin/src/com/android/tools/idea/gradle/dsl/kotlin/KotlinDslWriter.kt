@@ -46,6 +46,7 @@ import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyType.MUTA
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.KtNodeTypes
 import org.jetbrains.kotlin.lexer.KtTokens.BLOCK_COMMENT
 import org.jetbrains.kotlin.psi.KtArrayAccessExpression
 import org.jetbrains.kotlin.psi.KtBinaryExpression
@@ -366,17 +367,17 @@ class KotlinDslWriter(override val internalContext: BuildModelContext) : KotlinD
     val psiElement = literal.psiElement ?: return
     maybeUpdateName(literal, this)
 
-    val newLiteral = literal.unsavedValue ?: return
+    val newValue = literal.unsavedValue ?: return
     var psiExpression = literal.expression
 
-    // Earlier, at the parser stage, if the literal value is typed (ex: val as Type), we trim the type psiElement from the expression. Make
-    // sure to include it in the psiExpression in case of update.
-    if (psiExpression?.parent is KtBinaryExpressionWithTypeRHS) {
-      psiExpression = psiExpression.parent
+    val typedExpression = psiExpression?.parent as? KtBinaryExpressionWithTypeRHS
+    val oldKind = psiExpression.literalKind()
+    if (typedExpression != null && (oldKind == null || oldKind != newValue.literalKind())) {
+      psiExpression = typedExpression
     }
 
     if (psiExpression != null) {
-      val replace = psiExpression.replace(newLiteral)
+      val replace = psiExpression.replace(newValue)
       // Make sure we replaced with the right psi element for the GradleDslLiteral.
       when (replace) {
         is KtStringTemplateExpression,
@@ -389,7 +390,7 @@ class KotlinDslWriter(override val internalContext: BuildModelContext) : KotlinD
       }
     } else if (psiElement is KtCallExpression) {
       // This element has just been created and will be "propertyName()".
-      val valueArgument = KtPsiFactory(newLiteral.project).createArgument(newLiteral as? KtExpression)
+      val valueArgument = KtPsiFactory(newValue.project).createArgument(newValue as? KtExpression)
       val valueArgumentList = psiElement.valueArgumentList
       val added =
         valueArgumentList?.addArgumentAfter(valueArgument, valueArgumentList?.arguments?.lastOrNull())?.getArgumentExpression() ?: return
@@ -397,12 +398,12 @@ class KotlinDslWriter(override val internalContext: BuildModelContext) : KotlinD
     } else if (psiElement is KtProperty && psiElement.hasDelegate()) {
       // This is an extra property that has just been created.
       val delegateExpression = requireNotNull(psiElement.delegateExpression as KtCallExpression)
-      val valueArgument = KtPsiFactory(newLiteral.project).createArgument(newLiteral as? KtExpression)
+      val valueArgument = KtPsiFactory(newValue.project).createArgument(newValue as? KtExpression)
       val added = delegateExpression.valueArgumentList?.addArgument(valueArgument)?.getArgumentExpression() ?: return
       literal.setExpression(added)
     } else {
       // This element has just been created and will be like "propertyName = " or "val propertyName = ".
-      val added = psiElement.addAfter(newLiteral, psiElement.lastChild)
+      val added = psiElement.addAfter(newValue, psiElement.lastChild)
       literal.setExpression(added)
     }
 
@@ -665,3 +666,10 @@ class KotlinDslWriter(override val internalContext: BuildModelContext) : KotlinD
     maybeUpdateName(element, this)
   }
 }
+
+private fun PsiElement?.literalKind() =
+  when (this) {
+    is KtStringTemplateExpression -> KtNodeTypes.STRING_TEMPLATE
+    is KtConstantExpression -> node.elementType
+    else -> null
+  }
