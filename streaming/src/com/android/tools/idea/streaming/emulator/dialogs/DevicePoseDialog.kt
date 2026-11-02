@@ -25,7 +25,6 @@ import com.android.emulator.control.PhysicalModelValue
 import com.android.emulator.control.PhysicalModelValue.PhysicalType
 import com.android.emulator.control.SensorValue.SensorType
 import com.android.ide.common.util.Cancelable
-import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.adtui.ImageUtils
 import com.android.tools.idea.streaming.StagingIcons
 import com.android.tools.idea.streaming.StreamingBundle.message
@@ -83,18 +82,13 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
     REVERSE_LANDSCAPE,
   }
 
-  private val isAutomotive = emulator.emulatorConfig.deviceType == DeviceType.AUTOMOTIVE
-
-  override val dimensionServiceKey: String
-    get() = if (isAutomotive) "${super.dimensionServiceKey}.automotive" else super.dimensionServiceKey
-
   private val postures = emulator.emulatorConfig.postures
   private val hasPostures = postures.isNotEmpty()
   private val isRollable = postures.firstOrNull()?.valueType == ValueType.ROLL_PERCENTAGE
   private val minFoldValue = postures.minOfOrNull { it.minValue }?.toFloat() ?: 0f
   private val maxFoldValue = postures.maxOfOrNull { it.maxValue }?.toFloat() ?: 180f
 
-  private var operationMode: OperationMode = if (isAutomotive) OperationMode.MOVE else OperationMode.ROTATE
+  private var operationMode: OperationMode = OperationMode.ROTATE
 
   /** Current Euler angles `(x, y, z)` in degrees `[-180, 180]`. */
   private var rotationDegrees: Vec3 = Vec3.ZERO
@@ -132,9 +126,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
   private var device3DWidget: Device3DWidget? = null
 
   init {
-    if (!isAutomotive) {
-      requestScreenshotFeed()
-    }
+    requestScreenshotFeed()
     // Load initial state from the emulator and forward subsequent updates.
     val initialStateJob = coroutineScope.launch {
       try {
@@ -413,13 +405,11 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
     if (len <= 1e-6f) return
     val nx = accel.x / len
     val ny = accel.y / len
-    val nz = accel.z / len
-    val portraitAxis = if (isAutomotive) nz else ny
     deviceOrientation =
       when {
-        abs(portraitAxis - 1f) < ACCELEROMETER_COARSE_THRESHOLD -> DeviceOrientation.PORTRAIT
+        abs(ny - 1f) < ACCELEROMETER_COARSE_THRESHOLD -> DeviceOrientation.PORTRAIT
         abs(nx - 1f) < ACCELEROMETER_COARSE_THRESHOLD -> DeviceOrientation.LANDSCAPE
-        abs(portraitAxis + 1f) < ACCELEROMETER_COARSE_THRESHOLD -> DeviceOrientation.REVERSE_PORTRAIT
+        abs(ny + 1f) < ACCELEROMETER_COARSE_THRESHOLD -> DeviceOrientation.REVERSE_PORTRAIT
         abs(nx + 1f) < ACCELEROMETER_COARSE_THRESHOLD -> DeviceOrientation.REVERSE_LANDSCAPE
         else -> null
       }
@@ -429,39 +419,37 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
   override fun createPanel(): DialogPanel {
     controlsPanel =
       panel {
-        if (!isAutomotive) {
-          // Rotate sliders
-          createSliderRow(
-            labelText = message("device.pose.dialog.label.x.rot"),
-            sliderName = "xRotSlider",
-            fieldName = "xRotField",
-            minVal = MIN_ROTATION_DEG,
-            maxVal = MAX_ROTATION_DEG,
-            getter = { rotationDegrees.x },
-            setter = { setEulerRotationFromUi(rotationDegrees.copy(x = it)) },
-            formatter = ::formatDegrees,
-          )
-          createSliderRow(
-            labelText = message("device.pose.dialog.label.y.rot"),
-            sliderName = "yRotSlider",
-            fieldName = "yRotField",
-            minVal = MIN_ROTATION_DEG,
-            maxVal = MAX_ROTATION_DEG,
-            getter = { rotationDegrees.y },
-            setter = { setEulerRotationFromUi(rotationDegrees.copy(y = it)) },
-            formatter = ::formatDegrees,
-          )
-          createSliderRow(
-            labelText = message("device.pose.dialog.label.z.rot"),
-            sliderName = "zRotSlider",
-            fieldName = "zRotField",
-            minVal = MIN_ROTATION_DEG,
-            maxVal = MAX_ROTATION_DEG,
-            getter = { rotationDegrees.z },
-            setter = { setEulerRotationFromUi(rotationDegrees.copy(z = it)) },
-            formatter = ::formatDegrees,
-          )
-        }
+        // Rotate sliders
+        createSliderRow(
+          labelText = message("device.pose.dialog.label.x.rot"),
+          sliderName = "xRotSlider",
+          fieldName = "xRotField",
+          minVal = MIN_ROTATION_DEG,
+          maxVal = MAX_ROTATION_DEG,
+          getter = { rotationDegrees.x },
+          setter = { setEulerRotationFromUi(rotationDegrees.copy(x = it)) },
+          formatter = ::formatDegrees,
+        )
+        createSliderRow(
+          labelText = message("device.pose.dialog.label.y.rot"),
+          sliderName = "yRotSlider",
+          fieldName = "yRotField",
+          minVal = MIN_ROTATION_DEG,
+          maxVal = MAX_ROTATION_DEG,
+          getter = { rotationDegrees.y },
+          setter = { setEulerRotationFromUi(rotationDegrees.copy(y = it)) },
+          formatter = ::formatDegrees,
+        )
+        createSliderRow(
+          labelText = message("device.pose.dialog.label.z.rot"),
+          sliderName = "zRotSlider",
+          fieldName = "zRotField",
+          minVal = MIN_ROTATION_DEG,
+          maxVal = MAX_ROTATION_DEG,
+          getter = { rotationDegrees.z },
+          setter = { setEulerRotationFromUi(rotationDegrees.copy(z = it)) },
+          formatter = ::formatDegrees,
+        )
 
         if (hasPostures) {
           // Fold / Rollable controls
@@ -512,35 +500,33 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
           formatter = ::formatMeters,
         )
 
-        if (!isAutomotive) {
-          row {
-            createOrientationButton(
-              name = "portraitButton",
-              icon = StagingIcons.PORTRAIT,
-              tooltip = message("device.pose.dialog.button.portrait"),
-              orientation = DeviceOrientation.PORTRAIT,
-            )
-            createOrientationButton(
-              name = "landscapeButton",
-              icon = StagingIcons.LANDSCAPE,
-              tooltip = message("device.pose.dialog.button.landscape"),
-              orientation = DeviceOrientation.LANDSCAPE,
-            )
-            createOrientationButton(
-              name = "reversePortraitButton",
-              icon = StagingIcons.REVERSE_PORTRAIT,
-              tooltip = message("device.pose.dialog.button.reverse.portrait"),
-              orientation = DeviceOrientation.REVERSE_PORTRAIT,
-            )
-            createOrientationButton(
-              name = "reverseLandscapeButton",
-              icon = StagingIcons.REVERSE_LANDSCAPE,
-              tooltip = message("device.pose.dialog.button.reverse.landscape"),
-              orientation = DeviceOrientation.REVERSE_LANDSCAPE,
-            )
-            for (posture in postures) {
-              createPostureButton(posture)
-            }
+        row {
+          createOrientationButton(
+            name = "portraitButton",
+            icon = StagingIcons.PORTRAIT,
+            tooltip = message("device.pose.dialog.button.portrait"),
+            orientation = DeviceOrientation.PORTRAIT,
+          )
+          createOrientationButton(
+            name = "landscapeButton",
+            icon = StagingIcons.LANDSCAPE,
+            tooltip = message("device.pose.dialog.button.landscape"),
+            orientation = DeviceOrientation.LANDSCAPE,
+          )
+          createOrientationButton(
+            name = "reversePortraitButton",
+            icon = StagingIcons.REVERSE_PORTRAIT,
+            tooltip = message("device.pose.dialog.button.reverse.portrait"),
+            orientation = DeviceOrientation.REVERSE_PORTRAIT,
+          )
+          createOrientationButton(
+            name = "reverseLandscapeButton",
+            icon = StagingIcons.REVERSE_LANDSCAPE,
+            tooltip = message("device.pose.dialog.button.reverse.landscape"),
+            orientation = DeviceOrientation.REVERSE_LANDSCAPE,
+          )
+          for (posture in postures) {
+            createPostureButton(posture)
           }
         }
 
@@ -552,103 +538,93 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
       }
         .apply { name = "controlsPanel" }
 
-    val rightPanel =
-      if (!isAutomotive) {
-        val widget =
-          Device3DWidget(
-              emulator = emulator,
-              onRotationChanged = ::setEulerRotationFromUi,
-              onPositionChanged = ::setPositionFromUi,
-              onFoldValueChanged = ::setFoldValueFromUi,
-            )
-            .apply {
-              operationMode = this@DevicePoseDialog.operationMode
-              rotationDegrees = this@DevicePoseDialog.rotationDegrees
-              positionMeters = this@DevicePoseDialog.positionMeters
-              foldValue = this@DevicePoseDialog.foldValue
-              currentPosture = this@DevicePoseDialog.currentPosture?.posture
-              screenImage = this@DevicePoseDialog.screenImage
-            }
-        device3DWidget = widget
+    val widget =
+      Device3DWidget(
+          emulator = emulator,
+          onRotationChanged = ::setEulerRotationFromUi,
+          onPositionChanged = ::setPositionFromUi,
+          onFoldValueChanged = ::setFoldValueFromUi,
+        )
+        .apply {
+          operationMode = this@DevicePoseDialog.operationMode
+          rotationDegrees = this@DevicePoseDialog.rotationDegrees
+          positionMeters = this@DevicePoseDialog.positionMeters
+          foldValue = this@DevicePoseDialog.foldValue
+          currentPosture = this@DevicePoseDialog.currentPosture?.posture
+          screenImage = this@DevicePoseDialog.screenImage
+        }
+    device3DWidget = widget
+    val rightPanel = panel {
+      row {
+        cell(widget).align(AlignX.CENTER).align(AlignY.TOP)
+      }
+      row {
         panel {
-          row {
-            cell(widget).align(AlignX.CENTER).align(AlignY.TOP)
-          }
-          row {
-            panel {
-                buttonsGroup {
-                  row {
-                      radioButton(message("device.pose.dialog.mode.rotate")).applyToComponent {
-                        name = "rotateRadioButton"
-                        isSelected = operationMode == OperationMode.ROTATE
-                        addActionListener {
-                          if (!isUpdatingUi && isSelected) {
-                            setMode(OperationMode.ROTATE)
-                          }
-                        }
-                        registerUiUpdater {
-                          isSelected = operationMode == OperationMode.ROTATE
-                        }
-                      }
-                      if (hasPostures) {
-                        val foldLabel = if (isRollable) message("device.pose.dialog.mode.roll") else message("device.pose.dialog.mode.fold")
-                        radioButton(foldLabel).applyToComponent {
-                          name = "foldRadioButton"
-                          isSelected = operationMode == OperationMode.FOLD
-                          addActionListener {
-                            if (!isUpdatingUi && isSelected) {
-                              setMode(OperationMode.FOLD)
-                            }
-                          }
-                          registerUiUpdater {
-                            isSelected = operationMode == OperationMode.FOLD
-                          }
-                        }
-                      }
-                      radioButton(message("device.pose.dialog.mode.move")).applyToComponent {
-                        name = "moveRadioButton"
-                        isSelected = operationMode == OperationMode.MOVE
-                        addActionListener {
-                          if (!isUpdatingUi && isSelected) {
-                            setMode(OperationMode.MOVE)
-                          }
-                        }
-                        registerUiUpdater {
-                          isSelected = operationMode == OperationMode.MOVE
-                        }
+            buttonsGroup {
+              row {
+                  radioButton(message("device.pose.dialog.mode.rotate")).applyToComponent {
+                    name = "rotateRadioButton"
+                    isSelected = operationMode == OperationMode.ROTATE
+                    addActionListener {
+                      if (!isUpdatingUi && isSelected) {
+                        setMode(OperationMode.ROTATE)
                       }
                     }
-                    .layout(RowLayout.PARENT_GRID)
+                    registerUiUpdater {
+                      isSelected = operationMode == OperationMode.ROTATE
+                    }
+                  }
+                  if (hasPostures) {
+                    val foldLabel = if (isRollable) message("device.pose.dialog.mode.roll") else message("device.pose.dialog.mode.fold")
+                    radioButton(foldLabel).applyToComponent {
+                      name = "foldRadioButton"
+                      isSelected = operationMode == OperationMode.FOLD
+                      addActionListener {
+                        if (!isUpdatingUi && isSelected) {
+                          setMode(OperationMode.FOLD)
+                        }
+                      }
+                      registerUiUpdater {
+                        isSelected = operationMode == OperationMode.FOLD
+                      }
+                    }
+                  }
+                  radioButton(message("device.pose.dialog.mode.move")).applyToComponent {
+                    name = "moveRadioButton"
+                    isSelected = operationMode == OperationMode.MOVE
+                    addActionListener {
+                      if (!isUpdatingUi && isSelected) {
+                        setMode(OperationMode.MOVE)
+                      }
+                    }
+                    registerUiUpdater {
+                      isSelected = operationMode == OperationMode.MOVE
+                    }
+                  }
                 }
-              }
-              .align(AlignX.CENTER)
+                .layout(RowLayout.PARENT_GRID)
+            }
           }
-        }
-          .also {
-            widget.preferredWidth = (controlsPanel.preferredSize.height - it.preferredSize.height).coerceAtLeast(JBUIScale.scale(100))
-          }
-      } else {
-        null
+          .align(AlignX.CENTER)
+      }
+    }
+      .also {
+        widget.preferredWidth = (controlsPanel.preferredSize.height - it.preferredSize.height).coerceAtLeast(JBUIScale.scale(100))
       }
 
     return panel {
       row {
         cell(controlsPanel).align(AlignY.TOP).align(AlignX.FILL).resizableColumn()
-
-        if (rightPanel != null) {
-          cell(rightPanel).align(AlignY.TOP)
-        }
+        cell(rightPanel).align(AlignY.TOP)
       }
 
-      device3DWidget?.let { widget ->
-        registerUiUpdater {
-          widget.operationMode = operationMode
-          widget.rotationDegrees = rotationDegrees
-          widget.positionMeters = positionMeters
-          widget.foldValue = foldValue
-          widget.currentPosture = currentPosture?.posture
-          widget.screenImage = screenImage
-        }
+      registerUiUpdater {
+        widget.operationMode = operationMode
+        widget.rotationDegrees = rotationDegrees
+        widget.positionMeters = positionMeters
+        widget.foldValue = foldValue
+        widget.currentPosture = currentPosture?.posture
+        widget.screenImage = screenImage
       }
       controlsPanel.minimumSize = controlsPanel.preferredSize
     }

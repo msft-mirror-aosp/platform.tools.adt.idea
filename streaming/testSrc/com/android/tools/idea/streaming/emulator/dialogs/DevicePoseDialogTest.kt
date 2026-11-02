@@ -211,6 +211,11 @@ class DevicePoseDialogTest {
     assertThat(yMoveField.text).isEqualTo("-0.04 m")
     assertThat(zMoveField.text).isEqualTo("0.03 m")
 
+    xMoveSlider.value = 8
+    waitForCondition(5.seconds) {
+      abs(fakeEmulator.devicePosition[0] - 0.08f) < 0.001f
+    }
+
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
@@ -403,45 +408,6 @@ class DevicePoseDialogTest {
     assertThat(foldField.text).isEqualTo("80.0%")
     waitForCondition(5.seconds) {
       fakeEmulator.devicePosture == PostureValue.POSTURE_HALF_OPENED && abs(fakeEmulator.rollablePercentages[0] - 80f) < 0.1f
-    }
-
-    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
-    assertThat(dialog.isShowing).isFalse()
-  }
-
-  @Test
-  fun testAutomotiveDeviceMode() {
-    val (_, phoneController) = createAndStartEmulator { FakeEmulator.createPhoneAvd(it) }
-    val phoneDialog = DevicePoseDialog(phoneController).show()
-    val phoneSize = phoneDialog.size
-    phoneDialog.close(0)
-
-    val (fakeEmulator, emulatorController) = createAndStartEmulator { FakeEmulator.createAutomotiveAvd(it) }
-    val dialog = DevicePoseDialog(emulatorController).show()
-    assertThat(dialog.size.width).isLessThan(phoneSize.width)
-    val rootPane = dialog.rootPane
-    val ui = FakeUi(rootPane)
-
-    assertThat(ui.findComponent<JComponent> { it.name == "device3DWidget" }).isNull()
-    assertThat(ui.findComponent<JBRadioButton> { it.name == "rotateRadioButton" }).isNull()
-    assertThat(ui.findComponent<JButton> { it.name == "portraitButton" }).isNull()
-
-    val xMoveSlider = ui.getComponent<JSlider> { it.name == "xMoveSlider" }
-    val yMoveSlider = ui.getComponent<JSlider> { it.name == "yMoveSlider" }
-    val zMoveSlider = ui.getComponent<JSlider> { it.name == "zMoveSlider" }
-    assertThat(xMoveSlider.isShowing).isTrue()
-    assertThat(yMoveSlider.isShowing).isTrue()
-    assertThat(zMoveSlider.isShowing).isTrue()
-    val initialMoveSliderWidth = xMoveSlider.width
-    xMoveSlider.value = -10
-    ui.layoutAndDispatchEvents()
-    assertThat(xMoveSlider.width).isEqualTo(initialMoveSliderWidth)
-    xMoveSlider.value = 0
-    ui.layoutAndDispatchEvents()
-
-    xMoveSlider.value = 8
-    waitForCondition(5.seconds) {
-      abs(fakeEmulator.devicePosition[0] - 0.08f) < 0.001f
     }
 
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })

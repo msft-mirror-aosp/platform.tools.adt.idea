@@ -187,8 +187,8 @@ class EmulatorExtendedControlsActionGroupTest {
 
     val devicePoseAutomotive =
       updateAndGetActionPresentation(devicePoseActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
-    assertThat(devicePoseAutomotive.isVisible).isTrue()
-    assertThat(devicePoseAutomotive.isEnabled).isTrue()
+    assertThat(devicePoseAutomotive.isVisible).isFalse()
+    assertThat(devicePoseAutomotive.isEnabled).isFalse()
 
     val sensorsAutomotive = updateAndGetActionPresentation(sensorsActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(sensorsAutomotive.isVisible).isTrue()

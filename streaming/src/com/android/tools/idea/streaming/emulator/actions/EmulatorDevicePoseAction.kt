@@ -24,9 +24,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 
 /** Opens the device pose controls dialog. */
 internal class EmulatorDevicePoseAction :
-  AbstractEmulatorAction(
-    configFilter = { it.deviceType == DeviceType.HANDHELD || it.deviceType == DeviceType.WEAR || it.deviceType == DeviceType.AUTOMOTIVE }
-  ) {
+  AbstractEmulatorAction(configFilter = { it.deviceType == DeviceType.HANDHELD || it.deviceType == DeviceType.WEAR }) {
 
   override fun update(event: AnActionEvent) {
     if (!StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.get()) {
