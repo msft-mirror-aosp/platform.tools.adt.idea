@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.compose.preview.resize
 
-import com.android.SdkConstants
 import com.android.resources.UiMode
 import com.android.sdklib.devices.Device
 import com.android.sdklib.devices.State
@@ -24,7 +23,9 @@ import com.android.tools.adtui.stdui.OUTLINE_PROPERTY
 import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.configurations.ConversionUtil
+import com.android.tools.configurations.DeviceSize
 import com.android.tools.configurations.deviceSizeDp
+import com.android.tools.configurations.deviceSizePx
 import com.android.tools.configurations.dpi
 import com.android.tools.configurations.updateScreenSize
 import com.android.tools.idea.actions.CONFIGURATIONS
@@ -40,10 +41,12 @@ import com.android.tools.idea.preview.Colors
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.preview.MAX_DIMENSION_DP
 import com.android.tools.preview.MIN_DIMENSION_DP
+import com.android.tools.preview.config.DimUnit
 import com.android.tools.preview.getUiModeForDevice
 import com.android.tools.res.FrameworkOverlay
 import com.google.wireless.android.sdk.stats.ResizeComposePreviewEvent
 import com.intellij.icons.AllIcons
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -60,6 +63,7 @@ import com.intellij.openapi.actionSystem.impl.ActionButtonWithText
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.project.DumbAwareAction
+import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.JBLabel
@@ -74,6 +78,7 @@ import java.awt.FlowLayout
 import java.awt.event.ActionListener
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
+import java.awt.event.ItemEvent
 import javax.swing.Box
 import javax.swing.BoxLayout
 import javax.swing.JComponent
@@ -92,7 +97,9 @@ val RESIZE_PANEL_INSTANCE_KEY = DataKey.create<ResizePanel>("ResizePanel")
  * Panel that allows resizing the preview by selecting a device or entering custom dimensions. It is displayed in the toolbar of the Compose
  * Preview.
  *
- * The panel looks like: [ Device Picker ▼ ] [ WidthTF ] x [ HeightTF ] dp [↩]
+ * The panel looks like: [ Device Picker ▼ ] [ WidthTF ] x [ HeightTF ] [ dp ▼ ] [↩]
+ *
+ * The width and height can be edited in dp or px, like in the @Preview picker.
  */
 class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Disposable, UiDataProvider {
 
@@ -564,13 +571,37 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     }
   }
 
-  /** A [CustomComponentAction] that creates and manages the dimension input fields (width and height). */
+  /** A [CustomComponentAction] that creates and manages the dimension input fields (width and height) and the unit they are edited in. */
   private inner class DimensionInputsAction : DumbAwareAction(), CustomComponentAction {
     private val widthTextField = createDimensionTextField("Width")
     private val heightTextField = createDimensionTextField("Height")
 
+    /** The unit of the values in the width and height fields. Changed with [unitComboBox] and remembered across panels and sessions. */
+    private var unit: DimUnit = loadUnit()
+
+    private val unitComboBox =
+      ComboBox(arrayOf(DimUnit.dp, DimUnit.px)).apply {
+        item = unit
+        toolTipText = message("resize.panel.unit.tooltip")
+        accessibleContext.accessibleName = message("resize.panel.unit.tooltip")
+        addItemListener { e ->
+          if (e.stateChange == ItemEvent.SELECTED) {
+            changeUnit(e.item as DimUnit)
+          }
+        }
+      }
+
     init {
       setUpTextFieldListeners()
+    }
+
+    private fun changeUnit(newUnit: DimUnit) {
+      if (newUnit == unit) return
+      unit = newUnit
+      saveUnit(newUnit)
+      // Show the current size in the new unit. Values typed in the old unit were committed when the fields lost focus to the combo box;
+      // this only drops input that was invalid.
+      updateTextFieldsFromConfiguration()
     }
 
     fun resetErrors() {
@@ -585,7 +616,7 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
           add(widthTextField)
           add(JBLabel("X"))
           add(heightTextField)
-          add(JBLabel(SdkConstants.UNIT_DP))
+          add(unitComboBox)
         }
 
       // Initial update of the text fields
@@ -608,9 +639,16 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
       val isEnabled = presentation.isEnabled
       widthTextField.isEnabled = isEnabled
       heightTextField.isEnabled = isEnabled
-      if (!widthTextField.hasFocus() && !heightTextField.hasFocus()) {
-        if (!hasErrors()) {
-          updateTextFieldsFromConfiguration()
+      unitComboBox.isEnabled = isEnabled
+      if (!widthTextField.hasFocus() && !heightTextField.hasFocus() && !hasErrors()) {
+        updateTextFieldsFromConfiguration()
+      } else {
+        // Don't overwrite what the user is typing, but keep the accepted range in sync with the configuration (e.g. a new density).
+        val config = currentConfiguration ?: return
+        if (updateValueRange(config)) {
+          // Whether the typed values are errors depends on the range.
+          validate(widthTextField)
+          validate(heightTextField)
         }
       }
     }
@@ -618,14 +656,34 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
     fun updateTextFieldsFromConfiguration() {
       resetErrors()
       val config = currentConfiguration ?: return
-      val (wDp, hDp) = config.deviceSizeDp()
-      if (widthTextField.value != wDp || widthTextField.text != wDp.toString()) {
-        widthTextField.value = wDp
+      updateValueRange(config)
+      val (width, height) = config.deviceSizeIn(unit)
+      if (widthTextField.value != width || widthTextField.text != width.toString()) {
+        widthTextField.value = width
       }
 
-      if (heightTextField.value != hDp || heightTextField.text != hDp.toString()) {
-        heightTextField.value = hDp
+      if (heightTextField.value != height || heightTextField.text != height.toString()) {
+        heightTextField.value = height
       }
+    }
+
+    /**
+     * Sets the values accepted by the width and height fields to the size limits in the current [unit] for the density of [config].
+     *
+     * @return true if the range changed.
+     */
+    private fun updateValueRange(config: Configuration): Boolean {
+      val range = unit.valueRange(config.dpi())
+      var changed = false
+      for (field in listOf(widthTextField, heightTextField)) {
+        if (field.minValue == range.first && field.maxValue == range.last) continue
+        field.minValue = range.first
+        field.maxValue = range.last
+        // The preferred width depends on the number of digits of the maximum value.
+        field.revalidate()
+        changed = true
+      }
+      return changed
     }
 
     private fun createDimensionTextField(valueName: String): IntegerField {
@@ -719,11 +777,8 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
 
     private fun updateConfigurationFromTextFields() {
       val config = currentConfiguration ?: return
-      val newWidthDp = widthTextField.value
-      val newHeightDp = heightTextField.value
-
-      val (currentConfigWidthDp, currentConfigHeightDp) = config.deviceSizeDp()
-      if (newWidthDp == currentConfigWidthDp && newHeightDp == currentConfigHeightDp) {
+      val newSize = DeviceSize(widthTextField.value, heightTextField.value)
+      if (newSize == config.deviceSizeIn(unit)) {
         return
       }
       val dpi = config.dpi()
@@ -731,12 +786,18 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
         log.warn("Cannot update screen size, invalid DPI: $dpi")
         return
       }
-      config.updateScreenSize(ConversionUtil.dpToPx(newWidthDp, dpi), ConversionUtil.dpToPx(newHeightDp, dpi))
+      // Values typed in px are applied as they are, without a round trip through dp.
+      val (sizePx, sizeDp) =
+        when (unit) {
+          DimUnit.dp -> newSize.convert(dpi, ConversionUtil::dpToPx) to newSize
+          DimUnit.px -> newSize to newSize.convert(dpi, ConversionUtil::pxToDp)
+        }
+      config.updateScreenSize(sizePx.width, sizePx.height)
       ComposeResizeToolingUsageTracker.logResizeStopped(
         currentSceneManager?.scene?.designSurface,
         currentSceneManager?.resizeMode ?: ResizeComposePreviewEvent.ResizeMode.COMPOSABLE_RESIZE,
-        newWidthDp,
-        newHeightDp,
+        sizeDp.width,
+        sizeDp.height,
         dpi,
         ResizeComposePreviewEvent.ResizeSource.TEXT_FIELD,
       )
@@ -749,7 +810,38 @@ class ResizePanel(parentDisposable: Disposable) : JBPanel<ResizePanel>(), Dispos
   }
 }
 
-/** An [IntegerField] that is wide enough to show [MAX_DIMENSION_DP] completely. */
+/** The [PropertiesComponent] key of the last [DimUnit] selected in the Resize toolbar, shared by all projects. */
+@VisibleForTesting internal const val RESIZE_PANEL_UNIT_PROPERTY = "compose.preview.resize.panel.unit"
+
+/** The unit the width and height are edited in by default. */
+private val DEFAULT_UNIT = DimUnit.dp
+
+private fun loadUnit(): DimUnit {
+  val name = PropertiesComponent.getInstance().getValue(RESIZE_PANEL_UNIT_PROPERTY) ?: return DEFAULT_UNIT
+  return DimUnit.entries.firstOrNull { it.name == name } ?: DEFAULT_UNIT
+}
+
+private fun saveUnit(unit: DimUnit) {
+  PropertiesComponent.getInstance().setValue(RESIZE_PANEL_UNIT_PROPERTY, unit.name, DEFAULT_UNIT.name)
+}
+
+/** The values accepted in this unit: the same size limits as in dp, converted with the given [dpi]. */
+private fun DimUnit.valueRange(dpi: Int): IntRange =
+  if (this == DimUnit.dp || dpi <= 0) MIN_DIMENSION_DP..MAX_DIMENSION_DP
+  else maxOf(1, ConversionUtil.dpToPx(MIN_DIMENSION_DP, dpi))..ConversionUtil.dpToPx(MAX_DIMENSION_DP, dpi)
+
+/** Returns the current width and height of the device in the given [unit]. */
+private fun Configuration.deviceSizeIn(unit: DimUnit): DeviceSize =
+  when (unit) {
+    DimUnit.dp -> deviceSizeDp()
+    DimUnit.px -> deviceSizePx()
+  }
+
+/** Converts the width and height with [conversion], e.g. [ConversionUtil.dpToPx], for the given [dpi]. */
+private fun DeviceSize.convert(dpi: Int, conversion: (Int, Int) -> Int): DeviceSize =
+  DeviceSize(conversion(width, dpi), conversion(height, dpi))
+
+/** An [IntegerField] that is wide enough to show its maximum value completely. */
 private class DimensionTextField(valueName: String) : IntegerField(valueName, MIN_DIMENSION_DP, MAX_DIMENSION_DP) {
   override fun getPreferredSize(): Dimension {
     val size = super.getPreferredSize()
@@ -759,7 +851,7 @@ private class DimensionTextField(valueName: String) : IntegerField(valueName, MI
     // columns, e.g. with a monospaced font.
     val uiWidth = ui?.getPreferredSize(this)?.width ?: size.width
     val fontMetrics = getFontMetrics(font)
-    val maxValueWidth = MAX_DIMENSION_DP.toString().length * ('0'..'9').maxOf { fontMetrics.charWidth(it) } + 1
+    val maxValueWidth = maxValue.toString().length * ('0'..'9').maxOf { fontMetrics.charWidth(it) } + 1
     size.width = maxOf(size.width, uiWidth) + maxOf(0, maxValueWidth - columns * fontMetrics.charWidth('m'))
     return size
   }

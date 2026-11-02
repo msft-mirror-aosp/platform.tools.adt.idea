@@ -26,7 +26,12 @@ import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.adtui.swing.popup.PopupRule
 import com.android.tools.configurations.Configuration
 import com.android.tools.configurations.ConfigurationListener
+import com.android.tools.configurations.ConversionUtil
+import com.android.tools.configurations.DeviceSize
 import com.android.tools.configurations.deviceSizeDp
+import com.android.tools.configurations.deviceSizePx
+import com.android.tools.configurations.dpi
+import com.android.tools.configurations.updateScreenSize
 import com.android.tools.idea.actions.SetDeviceAction
 import com.android.tools.idea.common.fixtures.ComponentDescriptor
 import com.android.tools.idea.common.model.NlDataProvider
@@ -41,10 +46,12 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
 import com.android.tools.preview.MAX_DIMENSION_DP
 import com.android.tools.preview.SingleComposePreviewElementInstance
+import com.android.tools.preview.config.DimUnit
 import com.google.common.truth.Truth.assertThat
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.ide.ui.laf.darcula.ui.DarculaTextFieldUI
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.ActionToolbar
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DataSink
@@ -62,6 +69,7 @@ import java.awt.Dimension
 import java.awt.event.ActionEvent
 import java.awt.event.FocusEvent
 import javax.swing.JButton
+import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JTextField
@@ -97,6 +105,8 @@ class ResizePanelTest {
 
   @Before
   fun setUp() = runBlocking {
+    // The unit is remembered across panels, don't let it leak between tests.
+    PropertiesComponent.getInstance().unsetValue(RESIZE_PANEL_UNIT_PROPERTY)
     model =
       NlModelBuilderUtil.model(projectRule, "layout", "layout.xml", ComponentDescriptor(SdkConstants.CLASS_COMPOSE_VIEW_ADAPTER)).build()
     val previewElement = SingleComposePreviewElementInstance.forTesting<Unit>("PreviewMethod")
@@ -108,24 +118,32 @@ class ResizePanelTest {
 
     surface = NlSurfaceBuilder.builder(projectRule.project, projectRule.testRootDisposable).build()
     sceneManager = surface.addModelsWithoutRender(listOf(model)).single()
-    resizePanel = ResizePanel(projectRule.fixture.testRootDisposable)
+
+    runInEdtAndGet {
+      val (panel, ui) = createPanel()
+      resizePanel = panel
+      fakeUi = ui
+    }
 
     val provider = EdtNoGetDataProvider { sink -> DataSink.uiDataSnapshot(sink, resizePanel) }
     (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(provider, projectRule.testRootDisposable)
+  }
 
-    runInEdtAndGet {
-      val panel =
-        JPanel().apply {
-          size = Dimension(500, 100)
-          add(resizePanel)
-        }
-      fakeUi = FakeUi(panel, parentDisposable = projectRule.testRootDisposable)
-    }
+  /** Creates a [ResizePanel] shown in a [FakeUi]. Must be called on the UI thread. */
+  private fun createPanel(): Pair<ResizePanel, FakeUi> {
+    val resizePanel = ResizePanel(projectRule.fixture.testRootDisposable)
+    val panel =
+      JPanel().apply {
+        size = Dimension(500, 100)
+        add(resizePanel)
+      }
+    return resizePanel to FakeUi(panel, parentDisposable = projectRule.testRootDisposable)
   }
 
   @After
   fun tearDown() {
     Disposer.dispose(surface)
+    PropertiesComponent.getInstance().unsetValue(RESIZE_PANEL_UNIT_PROPERTY)
   }
 
   @Test fun `panel is initially visible`() = runInEdtAndGet { assertTrue(resizePanel.isVisible) }
@@ -198,6 +216,276 @@ class ResizePanelTest {
       // One more pixel for the caret after the last digit.
       assertTrue("End of '${field.text}' is cut off: $layout", textEnd + 1 <= field.width - insets.right - margin.right)
     }
+  }
+
+  @Test
+  fun `dimension fields are in dp by default`() = runInEdtAndGet {
+    setupAndShowPanel()
+    assertEquals(SdkConstants.UNIT_DP, unitComboBox.selectedItem.toString())
+    assertEquals(configuration.deviceSizeDp(), DeviceSize(widthTextField.value, heightTextField.value))
+  }
+
+  @Test
+  fun `switching the unit shows the size in that unit`() = runInEdtAndGet {
+    setupAndShowPanel()
+    // Make sure that dp and px differ.
+    assertNotEquals(160, configuration.dpi())
+
+    selectUnit(SdkConstants.UNIT_PX)
+    assertEquals(configuration.deviceSizePx(), DeviceSize(widthTextField.value, heightTextField.value))
+
+    selectUnit(SdkConstants.UNIT_DP)
+    assertEquals(configuration.deviceSizeDp(), DeviceSize(widthTextField.value, heightTextField.value))
+  }
+
+  @Test
+  fun `px values are applied exactly`() = runInEdtAndGet {
+    setupAndShowPanel()
+    selectUnit(SdkConstants.UNIT_PX)
+
+    // Odd px values cannot be reached by typing dp values at densities above mdpi.
+    changeWidthTextField(1001)
+    changeHeightTextField(2001)
+
+    assertEquals(DeviceSize(1001, 2001), configuration.deviceSizePx())
+    assertEquals(Configuration.CUSTOM_DEVICE_ID, configuration.cachedDevice?.id)
+    assertTrue(resizePanel.isCustomSized)
+    assertEquals("1001", widthTextField.text)
+    assertEquals("2001", heightTextField.text)
+  }
+
+  @Test
+  fun `px fields accept the dp size limits converted with the density`() = runInEdtAndGet {
+    setupAndShowPanel()
+    selectUnit(SdkConstants.UNIT_PX)
+    val dpi = configuration.dpi()
+    val maxPx = ConversionUtil.dpToPx(MAX_DIMENSION_DP, dpi)
+
+    // A value above the dp limit, but within the px limit, is valid.
+    changeWidthTextField(MAX_DIMENSION_DP + 1)
+    assertEquals(MAX_DIMENSION_DP + 1, configuration.deviceSizePx().width)
+
+    changeWidthTextField(maxPx)
+    assertEquals(maxPx, configuration.deviceSizePx().width)
+    assertEquals(MAX_DIMENSION_DP, configuration.deviceSizeDp().width)
+
+    // A value above the px limit is an error.
+    widthTextField.text = (maxPx + 1).toString()
+    pressEnter(widthTextField)
+    assertEquals("error", widthTextField.getClientProperty(OUTLINE_PROPERTY))
+    assertEquals(maxPx, configuration.deviceSizePx().width)
+
+    // The dp limits apply again in dp.
+    selectUnit(SdkConstants.UNIT_DP)
+    assertNull(widthTextField.getClientProperty(OUTLINE_PROPERTY))
+    assertEquals(MAX_DIMENSION_DP, widthTextField.value)
+    widthTextField.text = (MAX_DIMENSION_DP + 1).toString()
+    pressEnter(widthTextField)
+    assertEquals("error", widthTextField.getClientProperty(OUTLINE_PROPERTY))
+  }
+
+  @Test
+  fun `px fields follow the size of a selected device`() = runInEdtAndGet {
+    setupAndShowPanel()
+    selectUnit(SdkConstants.UNIT_PX)
+
+    setDifferentDevice()
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertEquals(configuration.deviceSizePx(), DeviceSize(widthTextField.value, heightTextField.value))
+  }
+
+  @Test
+  fun `px limits follow the density of a selected device`() = runInEdtAndGet {
+    setupAndShowPanel()
+    selectUnit(SdkConstants.UNIT_PX)
+    val otherDpiDevice = configuration.settings.devices.first { it.dpi() != null && it.dpi() != configuration.dpi() }
+    val otherDpi = otherDpiDevice.dpi()!!
+
+    configuration.setDevice(otherDpiDevice, true)
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertEquals(otherDpi, configuration.dpi())
+    for (field in listOf(widthTextField, heightTextField)) {
+      assertEquals(maxOf(1, ConversionUtil.dpToPx(1, otherDpi)), field.minValue)
+      assertEquals(ConversionUtil.dpToPx(MAX_DIMENSION_DP, otherDpi), field.maxValue)
+    }
+    assertEquals(configuration.deviceSizePx(), DeviceSize(widthTextField.value, heightTextField.value))
+  }
+
+  @Test
+  fun `switching the unit drops invalid input`() = runInEdtAndGet {
+    setupAndShowPanel()
+    heightTextField.text = "0"
+    pressEnter(heightTextField)
+    assertEquals("error", heightTextField.getClientProperty(OUTLINE_PROPERTY))
+
+    selectUnit(SdkConstants.UNIT_PX)
+
+    assertNull(heightTextField.getClientProperty(OUTLINE_PROPERTY))
+    assertEquals(configuration.deviceSizePx(), DeviceSize(widthTextField.value, heightTextField.value))
+    assertFalse(resizePanel.hasBeenResized)
+  }
+
+  @Test
+  fun `switching the unit does not resize the preview`() = runInEdtAndGet {
+    setupAndShowPanel()
+    val device = configuration.cachedDevice
+    val sizePx = configuration.deviceSizePx()
+
+    selectUnit(SdkConstants.UNIT_PX)
+    loseFocus(widthTextField)
+    loseFocus(heightTextField)
+    selectUnit(SdkConstants.UNIT_DP)
+    loseFocus(widthTextField)
+
+    assertEquals(device, configuration.cachedDevice)
+    assertEquals(sizePx, configuration.deviceSizePx())
+    assertFalse(resizePanel.hasBeenResized)
+  }
+
+  @Test
+  fun `values typed before switching the unit are applied`() = runInEdtAndGet {
+    setupAndShowPanel()
+    val dpi = configuration.dpi()
+
+    // Typed values are committed when the field loses focus to the unit combo box, before the unit changes.
+    widthTextField.text = "500"
+    loseFocus(widthTextField)
+    selectUnit(SdkConstants.UNIT_PX)
+
+    assertEquals(500, configuration.deviceSizeDp().width)
+    assertEquals(ConversionUtil.dpToPx(500, dpi), widthTextField.value)
+    assertTrue(resizePanel.hasBeenResized)
+  }
+
+  @Test
+  fun `the unit is remembered by new panels`() = runInEdtAndGet {
+    setupAndShowPanel()
+    selectUnit(SdkConstants.UNIT_PX)
+    assertEquals(DimUnit.px.name, PropertiesComponent.getInstance().getValue(RESIZE_PANEL_UNIT_PROPERTY))
+
+    val (newPanel, newFakeUi) = createPanel()
+    newPanel.setSceneManager(sceneManager)
+    newPanel.isVisible = true
+    @Suppress("DEPRECATION") newFakeUi.updateToolbars()
+    newFakeUi.layoutAndDispatchEvents()
+
+    assertEquals(SdkConstants.UNIT_PX, newFakeUi.getComponent<JComboBox<*>>().selectedItem.toString())
+    val newFields = newFakeUi.findAllComponents<IntegerField>()
+    assertEquals(configuration.deviceSizePx(), DeviceSize(newFields[0].value, newFields[1].value))
+
+    // Back to the default, which is not stored.
+    selectUnit(SdkConstants.UNIT_DP)
+    assertNull(PropertiesComponent.getInstance().getValue(RESIZE_PANEL_UNIT_PROPERTY))
+  }
+
+  @Test
+  fun `px limits follow the density while a field has an error`() = runInEdtAndGet {
+    setupAndShowPanel()
+    selectUnit(SdkConstants.UNIT_PX)
+    val dpi = configuration.dpi()
+    val higherDpiDevice = configuration.settings.devices.first { (it.dpi() ?: 0) > dpi }
+    val higherDpi = higherDpiDevice.dpi()!!
+    val maxPx = ConversionUtil.dpToPx(MAX_DIMENSION_DP, dpi)
+
+    // Above the px limit of the current device, but within the limit of the denser device.
+    widthTextField.text = (maxPx + 1).toString()
+    pressEnter(widthTextField)
+    assertEquals("error", widthTextField.getClientProperty(OUTLINE_PROPERTY))
+
+    // The fields are not overwritten while they have errors, but their limits follow the configuration.
+    configuration.setDevice(higherDpiDevice, true)
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertEquals(higherDpi, configuration.dpi())
+    for (field in listOf(widthTextField, heightTextField)) {
+      assertEquals(ConversionUtil.dpToPx(MAX_DIMENSION_DP, higherDpi), field.maxValue)
+    }
+    assertNull(widthTextField.getClientProperty(OUTLINE_PROPERTY))
+  }
+
+  @Test
+  fun `revert in px shows the original size in px`() = runInEdtAndGet {
+    setupAndShowPanel()
+    val originalPx = configuration.deviceSizePx()
+    selectUnit(SdkConstants.UNIT_PX)
+    changeWidthTextField(1001)
+    assertEquals(1001, configuration.deviceSizePx().width)
+
+    revert()
+    PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+
+    assertFalse(resizePanel.hasBeenResized)
+    assertEquals(originalPx, configuration.deviceSizePx())
+    assertEquals(originalPx, DeviceSize(widthTextField.value, heightTextField.value))
+    assertEquals(SdkConstants.UNIT_PX, unitComboBox.selectedItem.toString())
+  }
+
+  @Test
+  fun `px fields show sizes changed outside the panel`() = runInEdtAndGet {
+    setupAndShowPanel()
+    selectUnit(SdkConstants.UNIT_PX)
+
+    // E.g. dragging the resize handle of the preview.
+    configuration.updateScreenSize(777, 1333)
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    fakeUi.layoutAndDispatchEvents()
+
+    assertEquals(DeviceSize(777, 1333), DeviceSize(widthTextField.value, heightTextField.value))
+  }
+
+  @Test
+  fun `landscape px sizes keep width and height`() = runInEdtAndGet {
+    setupAndShowPanel()
+    selectUnit(SdkConstants.UNIT_PX)
+    val heightPx = configuration.deviceSizePx().height
+
+    changeWidthTextField(heightPx + 101)
+
+    assertEquals(DeviceSize(heightPx + 101, heightPx), configuration.deviceSizePx())
+    assertEquals(DeviceSize(heightPx + 101, heightPx), DeviceSize(widthTextField.value, heightTextField.value))
+  }
+
+  @Test
+  fun `commitPendingEdits applies typed px values`() = runInEdtAndGet {
+    setupAndShowPanel()
+    selectUnit(SdkConstants.UNIT_PX)
+
+    widthTextField.text = "999"
+    assertTrue(resizePanel.commitPendingEdits())
+    assertEquals(999, configuration.deviceSizePx().width)
+
+    widthTextField.text = ""
+    assertFalse(resizePanel.commitPendingEdits())
+    assertEquals(999, configuration.deviceSizePx().width)
+  }
+
+  @Test
+  fun `px fields of a high density device show the maximum value completely`() = runInEdtAndGet {
+    setupAndShowPanel()
+    // A density at which the px limit has five digits.
+    val highDensityDevice =
+      configuration.settings.devices.first {
+        ConversionUtil.dpToPx(MAX_DIMENSION_DP, it.dpi() ?: 0) >= 10000
+      }
+    configuration.setDevice(highDensityDevice, true)
+    @Suppress("DEPRECATION") fakeUi.updateToolbars()
+    selectUnit(SdkConstants.UNIT_PX)
+    fakeUi.layoutAndDispatchEvents()
+    val maxPx = ConversionUtil.dpToPx(MAX_DIMENSION_DP, configuration.dpi())
+    assertEquals(maxPx, widthTextField.maxValue)
+
+    val field = widthTextField
+    field.setUI(DarculaTextFieldUI())
+    field.text = maxPx.toString()
+    field.size = field.preferredSize
+    val textEnd = field.modelToView2D(field.document.length).x
+    val layout = "text end $textEnd, width ${field.width}, insets ${field.insets}, margin ${field.margin}"
+    assertTrue("End of '${field.text}' is cut off: $layout", textEnd + 1 <= field.width - field.insets.right - field.margin.right)
   }
 
   private fun findAndPerformDeviceMenuAction(predicate: (AnAction) -> Boolean) {
@@ -535,6 +823,8 @@ class ResizePanelTest {
     assertNull(heightTextField.getClientProperty(OUTLINE_PROPERTY))
   }
 
+  private fun Device.dpi(): Int? = defaultHardware.screen?.pixelDensity?.dpiValue
+
   private fun findDifferentDevice(device: Device?): Device {
     return configuration.settings.devices.first { it.id != device?.id }
   }
@@ -547,6 +837,14 @@ class ResizePanelTest {
 
   private val heightTextField: IntegerField
     get() = fakeUi.findAllComponents<IntegerField>()[1]
+
+  private val unitComboBox: JComboBox<*>
+    get() = fakeUi.getComponent<JComboBox<*>>()
+
+  private fun selectUnit(unit: String) {
+    val comboBox = unitComboBox
+    comboBox.selectedIndex = (0 until comboBox.itemCount).single { comboBox.getItemAt(it).toString() == unit }
+  }
 
   private fun assertDevicePickerText(expected: String) {
     val dataContext = DataManager.getInstance().getDataContext(resizePanel)
