@@ -40,6 +40,8 @@ class WhatsNewEditorProvider : AsyncFileEditorProvider {
     return file is WhatsNewVirtualFileImpl
   }
 
+  override fun acceptRequiresReadAction(): Boolean = false
+
   override fun createEditor(project: Project, file: VirtualFile): FileEditor {
     // This is a fallback for when the async provider is not used.
     // It returns an editor with empty documents, which is not ideal, but `createEditor`

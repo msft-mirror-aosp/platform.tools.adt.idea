@@ -18,14 +18,19 @@ package com.android.tools.idea.whatsnew.assistant.v2.ui
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.whatsnew.assistant.WhatsNewMetricsTracker
 import com.intellij.ide.BrowserUtil
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
+import com.intellij.openapi.fileEditor.impl.FileEditorOpenOptions
 import com.intellij.openapi.project.Project
 import com.intellij.platform.ide.customization.ExternalProductResourceUrls
 
 class WhatsNewEditorAction : AnAction("What's New in Android Studio") {
+  override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
   override fun update(e: AnActionEvent) {
     super.update(e)
     e.presentation.isEnabledAndVisible = StudioFlags.WHATS_NEW_V2.get()
@@ -41,11 +46,20 @@ class WhatsNewEditorAction : AnAction("What's New in Android Studio") {
     openWhatsNewEditor(e.project!!, false)
   }
 
+  @Suppress("UnstableApiUsage")
   fun openWhatsNewEditor(project: Project, isAutoOpened: Boolean) {
     FileEditorManager.getInstance(project)?.let { fileEditorManager ->
       WhatsNewMetricsTracker.getInstance().open(project, isAutoOpened)
       val file = fileEditorManager.openFiles.firstOrNull { it is WhatsNewVirtualFile } ?: WhatsNewVirtualFileImpl()
-      fileEditorManager.openFile(file, true)
+      if (fileEditorManager is FileEditorManagerEx) {
+        fileEditorManager.openFile(
+          file = file,
+          window = null,
+          options = FileEditorOpenOptions(requestFocus = true, waitForCompositeOpen = false),
+        )
+      } else {
+        fileEditorManager.openFile(file, true)
+      }
     }
   }
 
