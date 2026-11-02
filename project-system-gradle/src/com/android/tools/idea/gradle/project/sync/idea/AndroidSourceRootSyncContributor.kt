@@ -655,6 +655,7 @@ private fun SyncContributorAndroidProjectContext.createContentRootEntities(
   typeToDirsMap: Map<out ExternalSystemSourceType?, Set<File>>,
 ): List<ContentRootEntityBuilder> {
   val contentRootEntities = CanonicalPathPrefixTree.createMap<Path>()
+  val contentRootByDirectory = HashMap<File, Path>()
 
   return resolveContentRoots(typeToDirsMap)
     .onEach { contentRootEntities[it.toFile().toVirtualFileUrl().url] = it }
@@ -664,7 +665,12 @@ private fun SyncContributorAndroidProjectContext.createContentRootEntities(
         entitySource,
         contentRootUrl.toFile(),
         typeToDirsMap.mapValues { (_, files) ->
-          files.filter { contentRootUrl == contentRootEntities.getAncestorValues(it.toVirtualFileUrl().url).last() }.toSet()
+          files
+            .filter { file ->
+              contentRootUrl ==
+                contentRootByDirectory.getOrPut(file) { contentRootEntities.getAncestorValues(file.toVirtualFileUrl().url).last() }
+            }
+            .toSet()
         },
       )
     }
