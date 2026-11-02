@@ -421,7 +421,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
       panel {
         // Rotate sliders
         createSliderRow(
-          labelText = message("device.pose.dialog.label.x.rot"),
+          labelText = "<html>\u03B8<sub>x</sub>:</html>",
           sliderName = "xRotSlider",
           fieldName = "xRotField",
           minVal = MIN_ROTATION_DEG,
@@ -431,7 +431,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
           formatter = ::formatDegrees,
         )
         createSliderRow(
-          labelText = message("device.pose.dialog.label.y.rot"),
+          labelText = "<html>\u03B8<sub>y</sub>:</html>",
           sliderName = "yRotSlider",
           fieldName = "yRotField",
           minVal = MIN_ROTATION_DEG,
@@ -441,7 +441,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
           formatter = ::formatDegrees,
         )
         createSliderRow(
-          labelText = message("device.pose.dialog.label.z.rot"),
+          labelText = "<html>\u03B8<sub>z</sub>:</html>",
           sliderName = "zRotSlider",
           fieldName = "zRotField",
           minVal = MIN_ROTATION_DEG,
@@ -467,7 +467,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
 
         // Move sliders
         createSliderRow(
-          labelText = message("device.pose.dialog.label.x"),
+          labelText = "X:",
           sliderName = "xMoveSlider",
           fieldName = "xMoveField",
           minVal = MIN_POSITION_METERS,
@@ -478,7 +478,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
           formatter = ::formatMeters,
         )
         createSliderRow(
-          labelText = message("device.pose.dialog.label.y"),
+          labelText = "Y:",
           sliderName = "yMoveSlider",
           fieldName = "yMoveField",
           minVal = MIN_POSITION_METERS,
@@ -489,7 +489,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
           formatter = ::formatMeters,
         )
         createSliderRow(
-          labelText = message("device.pose.dialog.label.z"),
+          labelText = "Z:",
           sliderName = "zMoveSlider",
           fieldName = "zMoveField",
           minVal = MIN_POSITION_METERS,
