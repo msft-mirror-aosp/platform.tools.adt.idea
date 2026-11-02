@@ -33,6 +33,7 @@ import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.AlignY
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.plus
+import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.NamedColorUtil
 import com.intellij.util.ui.UIUtilities
 import java.awt.BorderLayout
@@ -113,6 +114,11 @@ constructor(
     get() = reason.chunks.mapNotNull { it as? TextChunk }.joinToString(" ") { it.text }
 }
 
+private const val RELATED_GROUP_SPACING_PX = 8
+private const val UNRELATED_GROUP_SPACING_PX = 20
+// InstructionsPanel already adds 12px bottom padding around its rendered rows.
+private const val EXTRA_ACTIONS_TOP_INSET_PX = 8
+
 private fun createInstructionsPanel(
   parent: JComponent,
   reason: LabelData,
@@ -126,18 +132,19 @@ private fun createInstructionsPanel(
     when (it) {
       is IconChunk -> instructions.add(IconInstruction(it.icon, 5, null))
       is TextChunk -> instructions.add(TextInstruction(textMetrics, it.text))
-      is NewLineChunk -> instructions.add(NewRowInstruction(12))
+      is NewLineChunk -> instructions.add(NewRowInstruction(JBUI.scale(RELATED_GROUP_SPACING_PX)))
     }
   }
 
   if (helpUrlData != null) {
-    instructions.add(NewRowInstruction(12))
+    instructions.add(NewRowInstruction(JBUI.scale(UNRELATED_GROUP_SPACING_PX)))
     instructions.add(IconInstruction(AllIcons.General.ContextHelp, 5, null))
     instructions.add(HyperlinkInstruction(textMetrics.font, helpUrlData.text, helpUrlData.url))
   }
 
-  actionData.filterNotNull().forEach {
-    instructions.add(NewRowInstruction(12))
+  actionData.filterNotNull().forEachIndexed { index, it ->
+    val spacing = if (index == 0) UNRELATED_GROUP_SPACING_PX else RELATED_GROUP_SPACING_PX
+    instructions.add(NewRowInstruction(JBUI.scale(spacing)))
     it.icon?.let { icon -> instructions.add(IconInstruction(icon, 5, null)) }
     instructions.add(HyperlinkInstruction(font = textMetrics.font, text = it.text, suffixIcon = it.suffixIcon, action = it.callback))
   }
@@ -158,6 +165,9 @@ private fun InstructionsPanel.addExtraActions(extraActions: List<AnAction>) {
   val toolbar = ActionManager.getInstance().createActionToolbar("empty panel actions", DefaultActionGroup(extraActions), false)
   toolbar.targetComponent = this
   toolbar.layoutStrategy = NOWRAP_STRATEGY
-  val extraActionsPanel = panel { row { cell(toolbar.component).align(AlignX.CENTER + AlignY.TOP) } }
+  val extraActionsPanel = panel {
+    row { cell(toolbar.component).align(AlignX.CENTER + AlignY.TOP) }
+  }
+    .apply { border = JBUI.Borders.emptyTop(EXTRA_ACTIONS_TOP_INSET_PX) }
   add(extraActionsPanel, TabularLayout.Constraint(2, 1))
 }

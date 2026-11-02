@@ -367,8 +367,8 @@ class ComposePreviewViewImplTest {
   fun `empty preview state respects action visibility and text`() {
     // Configure actions
     // We set a stub title here ("Stub Action"). The test passes only if ComposePreviewViewImpl
-    // correctly overwrites this with the actual localized title ("Generate Preview for
-    // Composable").
+    // correctly overwrites this with the actual localized title ("Select Composable and Generate
+    // Preview with AI").
     fakeStudioBotActionFactory.previewGeneratorAction.apply {
       templatePresentation.text = "Stub Action"
       isVisible = true
@@ -378,7 +378,7 @@ class ComposePreviewViewImplTest {
       isVisible = false
     }
 
-    checkEmptyPreviewState(listOf("Generate Preview for Composable"))
+    checkEmptyPreviewState(listOf("Select Composable and Generate Preview with AI"))
   }
 
   private fun checkEmptyPreviewState(expectedActions: List<String>) = runBlocking {
@@ -394,9 +394,8 @@ class ComposePreviewViewImplTest {
     retryUntilPassing(2.seconds) {
       val expectedText =
         listOfNotNull(
-            "No preview found.",
-            "Add preview by annotating Composables with @Preview.",
-            "Note: syntax errors could cause existing previews not to be found.",
+            "No preview found. (If unexpected, check for syntax errors)",
+            "Add manually by annotating Composables with @Preview",
             "[Using the Compose preview]",
           )
           .plus(expectedActions.map { "[$it]" })
@@ -460,17 +459,23 @@ class ComposePreviewViewImplTest {
 
   @Test
   fun `empty preview state respects action order`() {
-    // Configure actions
+    // Configure actions with stub titles to verify ComposePreviewViewImpl sets both empty-panel
+    // labels and preserves their order.
     fakeStudioBotActionFactory.previewGeneratorAction.apply {
-      templatePresentation.text = "Generate Preview for Composable"
+      templatePresentation.text = "Stub Preview Action"
       isVisible = true
     }
     fakeStudioBotActionFactory.screenshotToCodeAction.apply {
-      templatePresentation.text = "Generate Code From Screenshot"
+      templatePresentation.text = "Stub Screenshot Action"
       isVisible = true
     }
 
-    checkEmptyPreviewState(listOf("Generate Code From Screenshot", "Generate Preview for Composable"))
+    checkEmptyPreviewState(
+      listOf(
+        "Generate Composable and Preview from Screenshot",
+        "Select Composable and Generate Preview with AI",
+      )
+    )
   }
 
   private fun configureComposePreviewView(psiFile: PsiFile) {

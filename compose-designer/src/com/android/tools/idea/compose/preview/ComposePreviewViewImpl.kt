@@ -376,7 +376,7 @@ internal class ComposePreviewViewImpl(
             workbench.hideLoading()
             workbench.hideContent()
             workbench.loadingStopped(
-              message("panel.no.previews.defined") + message("panel.no.previews.syntax.error.note"),
+              message("panel.no.previews.defined"),
               null,
               UrlData(message("panel.no.previews.action"), COMPOSE_PREVIEW_DOC_URL),
               extraActions,
@@ -401,6 +401,7 @@ internal class ComposePreviewViewImpl(
   /** Creates an [AnAction] that generates code from a screenshot. */
   private fun createScreenshotToCodeActionData(): AnAction? {
     return getComposeStudioBotActionFactory()?.screenshotToCodeAction()?.also {
+      it.templatePresentation.text = message("action.screenshot.to.code.empty.panel")
       it.templatePresentation.icon = createPaddedAiIcon()
     }
   }
