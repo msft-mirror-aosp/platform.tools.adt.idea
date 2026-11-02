@@ -370,7 +370,6 @@ public final class AttributeDefinitionsImpl implements AttributeDefinitions {
     return myStyleables.get(styleable);
   }
 
-  @Deprecated
   @Override
   @Nullable
   public StyleableDefinition getStyleableByName(@NotNull String name) {
@@ -397,7 +396,6 @@ public final class AttributeDefinitionsImpl implements AttributeDefinitions {
     return attributeDefinition;
   }
 
-  @Deprecated
   @Override
   @Nullable
   public AttributeDefinition getAttrDefByName(@NotNull String name) {

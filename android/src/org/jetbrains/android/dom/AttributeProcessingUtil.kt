@@ -284,7 +284,6 @@ object AttributeProcessingUtil {
   }
 
   private fun getResourcePackage(psiClass: PsiClass): String? {
-    // TODO: Replace this with the namespace of the styleableName when that is available.
     val qualifiedName = psiClass.qualifiedName
     if (
       qualifiedName != null &&
@@ -622,8 +621,6 @@ object AttributeProcessingUtil {
     for (styleableName in styleableAnnotation.value) {
       val styleable = definitions.getStyleableByName(styleableName)
       if (styleable != null) {
-        // TODO(namespaces): if !isSystem and we're namespace-aware we should use the
-        // library-specific namespace
         registerStyleableAttributes(element, styleable, namespaceUri, callback, skippedAttributes)
       } else if (isSystem) {
         // DOM element is annotated with @Styleable annotation, but styleable definition with
@@ -700,7 +697,6 @@ object AttributeProcessingUtil {
           facet.module.dependsOn(GoogleMavenArtifactId.SUPPORT_APPCOMPAT_V7) ||
             facet.module.dependsOn(GoogleMavenArtifactId.ANDROIDX_APPCOMPAT)
         if (hasAppCompat) {
-          // TODO(namespaces): Replace AUTO_URI with the URI of the correct namespace.
           val xmlName = XmlName(name, AUTO_URI)
           if (skippedAttributes.add(xmlName)) {
             registerAttribute(attribute, xmlName, "MenuItem", element, callback)

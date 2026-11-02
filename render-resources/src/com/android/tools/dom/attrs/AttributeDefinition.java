@@ -126,9 +126,9 @@ public final class AttributeDefinition implements Cloneable {
   }
 
   /**
-   * @deprecated Use {@link #getDescription(ResourceReference)}.
+   * Returns the attribute description in the context of the given {@code parentStyleable} name,
+   * checking {@code RES_AUTO} before {@code ANDROID} and falling back to the global description.
    */
-  @Deprecated
   @Nullable
   public String getDescriptionByParentStyleableName(@Nullable String parentStyleable) {
     if (parentStyleable == null || myDescriptionsInStyleableContexts == null) {

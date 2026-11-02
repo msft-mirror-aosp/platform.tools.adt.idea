@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.uibuilder.property.support
 
-import com.android.SdkConstants
 import com.android.SdkConstants.ANDROIDX_PKG_PREFIX
 import com.android.SdkConstants.ANDROID_PKG_PREFIX
 import com.android.SdkConstants.ANDROID_VIEW_PKG
@@ -24,7 +23,6 @@ import com.android.SdkConstants.ATTR_LAYOUT_MARGIN
 import com.android.SdkConstants.ATTR_LAYOUT_RESOURCE_PREFIX
 import com.android.SdkConstants.CLASS_VIEWGROUP
 import com.android.SdkConstants.DOT_LAYOUT_PARAMS
-import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.tools.idea.uibuilder.property.NlPropertyItem
 import com.android.tools.property.panel.api.HelpSupport
 import com.google.common.annotations.VisibleForTesting
@@ -121,13 +119,7 @@ object HelpActions {
   }
 
   private fun findNamespacePrefix(property: NlPropertyItem): String {
-    val resolver = property.namespaceResolver
-    // TODO: This should not be required, but it is for as long as getNamespaceResolver returns
-    // TOOLS_ONLY:
-    if (resolver == ResourceNamespace.Resolver.TOOLS_ONLY && property.namespace == SdkConstants.ANDROID_URI) {
-      return SdkConstants.PREFIX_ANDROID
-    }
-    val prefix = resolver.uriToPrefix(property.namespace) ?: return ""
+    val prefix = property.namespaceResolver.uriToPrefix(property.namespace) ?: return ""
     return "$prefix:"
   }
 

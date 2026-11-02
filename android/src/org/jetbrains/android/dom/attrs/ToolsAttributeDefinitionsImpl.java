@@ -42,7 +42,6 @@ public class ToolsAttributeDefinitionsImpl implements AttributeDefinitions {
     throw new UnsupportedOperationException();
   }
 
-  @Deprecated
   @Override
   @Nullable
   public StyleableDefinition getStyleableByName(@NotNull String name) {
@@ -64,7 +63,6 @@ public class ToolsAttributeDefinitionsImpl implements AttributeDefinitions {
     return ToolsAttributeUtil.getAttrDefByName(attr.getName());
   }
 
-  @Deprecated
   @Override
   @Nullable
   public AttributeDefinition getAttrDefByName(@NotNull String name) {

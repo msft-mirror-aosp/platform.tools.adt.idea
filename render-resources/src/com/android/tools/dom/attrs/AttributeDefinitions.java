@@ -13,9 +13,9 @@ public interface AttributeDefinitions {
   StyleableDefinition getStyleableDefinition(@NotNull ResourceReference styleable);
 
   /**
-   * @deprecated Use {@link #getStyleableDefinition(ResourceReference)}. This method doesn't support namespaces.
+   * Returns the {@link StyleableDefinition} for the given styleable name, checking project/library
+   * ({@code RES_AUTO}) styleables before falling back to framework ({@code ANDROID}) styleables.
    */
-  @Deprecated
   @Nullable
   StyleableDefinition getStyleableByName(@NotNull String name);
 
@@ -26,9 +26,10 @@ public interface AttributeDefinitions {
   AttributeDefinition getAttrDefinition(@NotNull ResourceReference attr);
 
   /**
-   * @deprecated Use {@link #getAttrDefinition(ResourceReference)}. This method doesn't support namespaces.
+   * Returns the {@link AttributeDefinition} for the given attribute name (an {@code "android:"}
+   * prefix resolves to {@code ANDROID}; an unprefixed name resolves to {@code ANDROID} when this
+   * instance contains only framework attributes, or {@code RES_AUTO} otherwise).
    */
-  @Deprecated
   @Nullable
   AttributeDefinition getAttrDefByName(@NotNull String name);
 

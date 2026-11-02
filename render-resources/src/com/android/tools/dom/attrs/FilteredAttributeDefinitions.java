@@ -27,7 +27,6 @@ public abstract class FilteredAttributeDefinitions implements AttributeDefinitio
     return styleableDef != null ? new MyStyleableDefinition(styleableDef) : null;
   }
 
-  @Deprecated
   @Override
   @Nullable
   public StyleableDefinition getStyleableByName(@NotNull String name) {
@@ -55,7 +54,6 @@ public abstract class FilteredAttributeDefinitions implements AttributeDefinitio
     return attribute != null && isAttributeAcceptable(attr) ? attribute : null;
   }
 
-  @Deprecated
   @Override
   @Nullable
   public AttributeDefinition getAttrDefByName(@NotNull String name) {

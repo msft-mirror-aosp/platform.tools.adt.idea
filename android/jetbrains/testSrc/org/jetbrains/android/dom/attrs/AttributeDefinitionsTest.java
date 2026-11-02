@@ -106,8 +106,6 @@ public class AttributeDefinitionsTest extends AndroidTestCase {
     assertThat(textView.getAttributes()).contains(attrDef(ResourceReference.attr(ResourceNamespace.ANDROID, "bufferType")));
   }
 
-  // TODO: Remove this test when the AttributeDefinitions.getStyleableByName method is removed.
-  @Deprecated
   public void testStyleByName() {
     assertThat(getDefs().getStyleableByName("Theme").getResourceReference())
         .isEqualTo(ResourceReference.styleable(ResourceNamespace.RES_AUTO, "Theme"));
@@ -115,8 +113,6 @@ public class AttributeDefinitionsTest extends AndroidTestCase {
         .isEqualTo(ResourceReference.styleable(ResourceNamespace.ANDROID, "View"));
   }
 
-  // TODO: Remove this test when the AttributeDefinitions.getAttrDefByName method is removed.
-  @Deprecated
   public void testAttrDefByName() {
     assertThat(getDefs().getAttrDefByName("colorForeground").getResourceReference())
         .isEqualTo(ResourceReference.attr(ResourceNamespace.RES_AUTO, "colorForeground"));

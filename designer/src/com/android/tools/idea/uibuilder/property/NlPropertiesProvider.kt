@@ -267,7 +267,6 @@ class NlPropertiesProvider(private val facet: AndroidFacet) : PropertiesProvider
       return psiClass
     }
 
-    // TODO: Fix the namespace computation below...
     private fun findNamespaceFromPsiClass(psiClass: PsiClass): ResourceNamespace? {
       val className = psiClass.qualifiedName ?: return null
       val namespaceUri =

@@ -184,7 +184,7 @@ public class AndroidModularizePreviewPanel {
     }
 
     for (ResourceReference resourceReference : resourceGroups.keySet()) {
-      ResourceUrlTreeNode urlTreeNode = new ResourceUrlTreeNode(resourceReference.getResourceUrl()); // TODO: namespaces
+      ResourceUrlTreeNode urlTreeNode = new ResourceUrlTreeNode(resourceReference.getResourceUrl());
       childrenNodes.add(urlTreeNode);
 
       boolean checked = true;

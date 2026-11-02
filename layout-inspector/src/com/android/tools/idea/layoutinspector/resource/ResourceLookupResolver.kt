@@ -237,7 +237,6 @@ class ResourceLookupResolver(
     return styleableDefinition.attributes.firstOrNull { it.name == attributeName }
   }
 
-  // TODO: Fix the namespace computation below...
   private fun findNamespaceFromPsiClass(psiClass: PsiClass): ResourceNamespace? {
     val className = psiClass.qualifiedName ?: return null
     val namespaceUri =

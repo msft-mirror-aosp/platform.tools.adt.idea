@@ -195,10 +195,8 @@ internal constructor(
       return ResourceReference.attr(ns, name)
     }
 
-  // TODO: Use the namespace resolver in ResourceHelper when it no longer returns
-  // [ResourceNamespace.Resolver.TOOLS_ONLY].
-  // We need to find the prefix even when namespacing is turned off.
-  // This property can be accessed from a non UI thread.
+  // Resolves XML namespace prefixes from the tag, since IdeResourcesUtil.getNamespaceResolver
+  // returns TOOLS_ONLY. This property can be accessed from a non UI thread.
   val namespaceResolver: ResourceNamespace.Resolver
     get() {
       val element = firstTag ?: return ResourceNamespace.Resolver.EMPTY_RESOLVER

@@ -202,7 +202,6 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
       throw new UnsupportedOperationException();
     }
 
-    @Deprecated
     @Nullable
     @Override
     public StyleableDefinition getStyleableByName(@NotNull String name) {
@@ -221,7 +220,6 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
       return myDefinitions.get(attr);
     }
 
-    @Deprecated
     @Nullable
     @Override
     public AttributeDefinition getAttrDefByName(@NotNull String name) {

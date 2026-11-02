@@ -18,7 +18,6 @@ package com.android.tools.idea.rendering;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceValueImpl;
 import com.android.ide.common.resources.ResourceResolver;
-import com.android.ide.common.resources.ResourceValueMap;
 import com.android.resources.ResourceType;
 import com.android.testutils.ImageDiffUtil;
 import com.android.tools.idea.io.TestFileUtils;
@@ -36,7 +35,6 @@ import java.io.File;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
 
 import static com.android.SdkConstants.PREFIX_RESOURCE_REF;
 import static com.android.SdkConstants.PREFIX_THEME_REF;
@@ -142,11 +140,11 @@ public class GutterIconFactoryTest extends AndroidTestCase {
     final String[] colors = {red, "@color/directRef", "@color/indirectRef", "@color/indirectRefCycle"};
 
     final Node root = createVectorRoot(colors);
-    final ResourceResolver resolver = createResourceResolver();
-
-    addColor(resolver, "directRef", green);
-    addColor(resolver, "indirectRef", "@color/directRef");
-    addColor(resolver, "indirectRefCycle", "@color/indirectRefCycle");
+    final ResourceResolver resolver =
+        ResourceResolver.withValues(
+            new ResourceValueImpl(ResourceNamespace.RES_AUTO, ResourceType.COLOR, "directRef", green),
+            new ResourceValueImpl(ResourceNamespace.RES_AUTO, ResourceType.COLOR, "indirectRef", "@color/directRef"),
+            new ResourceValueImpl(ResourceNamespace.RES_AUTO, ResourceType.COLOR, "indirectRefCycle", "@color/indirectRefCycle"));
 
     // Sanity check
     for (int i = 0; i < colors.length; i++) {
@@ -184,18 +182,5 @@ public class GutterIconFactoryTest extends AndroidTestCase {
 
     xml.append("</vector>");
     return XmlUtils.parseDocumentSilently(xml.toString(), true).getDocumentElement();
-  }
-
-  private static ResourceResolver createResourceResolver() {
-    return ResourceResolver.create(Collections.singletonMap(ResourceNamespace.RES_AUTO,
-                                                            Collections.singletonMap(ResourceType.COLOR,
-                                                                                     ResourceValueMap.create())),
-                                   null);
-  }
-
-  private static void addColor(ResourceResolver resolver, String colorName, String colorValue) {
-    ResourceValueMap resourceValueMap = resolver.getProjectResources().get(ResourceType.COLOR);
-
-    resourceValueMap.put(colorName, new ResourceValueImpl(ResourceNamespace.RES_AUTO, ResourceType.COLOR, colorName, colorValue));
   }
 }
