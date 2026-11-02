@@ -862,6 +862,7 @@ constructor(
 
   init {
     Disposer.register(this, navigationHandler)
+    installComposePreviewDnDSource(surface.interactionPane, surface, this)
     launch {
       // Keep track of the last mode that was set to ensure it is correctly disposed
       var lastMode: PreviewMode? = null

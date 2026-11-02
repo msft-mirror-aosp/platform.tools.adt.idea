@@ -19,9 +19,12 @@ import com.android.flags.ifEnabled
 import com.android.tools.idea.common.editor.ActionManager
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.surface.DesignSurface
+import com.android.tools.idea.common.surface.SceneView
+import com.android.tools.idea.common.surface.sceneview.LabelPanel
 import com.android.tools.idea.compose.preview.ComposeStudioBotActionFactory
 import com.android.tools.idea.compose.preview.PredictiveBackNavigationControlsAction
 import com.android.tools.idea.compose.preview.actions.glasses.GlassesBlendDropdownAction
+import com.android.tools.idea.compose.preview.installComposePreviewDnDSource
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.compose.preview.subComponentProvider
 import com.android.tools.idea.flags.StudioFlags
@@ -43,12 +46,29 @@ import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
 import java.awt.event.MouseEvent
 import javax.swing.SwingUtilities
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.StateFlow
 
 /** [ActionManager] to be used by the Compose Preview. */
 internal class PreviewSurfaceActionManager(
   private val surface: DesignSurface<LayoutlibSceneManager>,
   private val navigationHandler: NavigationHandler,
 ) : CommonPreviewActionManager(surface, navigationHandler) {
+
+  override fun createSceneViewLabel(
+    sceneView: SceneView,
+    scope: CoroutineScope,
+    isPartOfOrganizationGroup: StateFlow<Boolean>,
+  ): LabelPanel =
+    super.createSceneViewLabel(sceneView, scope, isPartOfOrganizationGroup).also { labelPanel ->
+      installComposePreviewDnDSource(
+        component = labelPanel,
+        surface = surface,
+        parentDisposable = sceneView,
+        targetSceneView = sceneView,
+        scope = scope,
+      )
+    }
 
   override fun getPopupMenuActions(leafComponent: NlComponent?, mouseEvent: MouseEvent): DefaultActionGroup {
     // Copy Image

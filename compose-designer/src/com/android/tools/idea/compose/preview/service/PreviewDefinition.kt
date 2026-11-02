@@ -28,22 +28,26 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
  * @param displayName A user-friendly name for the preview, combining the function name and the preview annotation name if available.
  * @param functionPointer A smart pointer to the `@Composable` function.
  * @param annotationPointer A smart pointer to the specific "leaf" `@Preview` annotation.
+ * @param previewName The optional preview instance name (for example from `@Preview(name = ...)`), or `null` when unnamed.
  */
 data class PreviewDefinition(
   val displayName: String,
   val functionPointer: SmartPsiElementPointer<KtNamedFunction>,
   val annotationPointer: SmartPsiElementPointer<KtAnnotationEntry>,
+  val previewName: String? = null,
 ) {
   companion object {
     @RequiresReadLock
     fun create(function: KtNamedFunction, leafAnnotation: KtAnnotationEntry, leafName: String?): PreviewDefinition {
       val smartPointerManager = SmartPointerManager.getInstance(function.project)
+      val normalizedLeafName = leafName?.takeIf { it.isNotEmpty() }
       val functionName = function.name ?: "UnknownFunction"
-      val displayName = if (leafName.isNullOrEmpty()) functionName else "$functionName:$leafName"
+      val displayName = if (normalizedLeafName == null) functionName else "$functionName:$normalizedLeafName"
       return PreviewDefinition(
         displayName = displayName,
         functionPointer = smartPointerManager.createSmartPsiElementPointer(function),
         annotationPointer = smartPointerManager.createSmartPsiElementPointer(leafAnnotation),
+        previewName = normalizedLeafName,
       )
     }
   }
