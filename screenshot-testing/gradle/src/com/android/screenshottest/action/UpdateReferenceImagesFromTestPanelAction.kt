@@ -31,7 +31,6 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.actionSystem.ex.CustomComponentAction
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.util.concurrency.AppExecutorUtil
 import javax.swing.JButton
@@ -67,6 +66,8 @@ class UpdateReferenceImagesFromTestPanelAction : AnAction(UPDATE_ACTION_TEXT, UP
 
     AppExecutorUtil.getAppExecutorService().submit {
       for (testCase in allTestCases) {
+        // Stop processing if the user closed the dialog while results were still being loaded.
+        if (dialog.isDisposed) return@submit
         val artifacts = testCase.additionalTestArtifacts
         val methodName = artifacts["PreviewScreenshot.methodName"]
         val previewName = artifacts["PreviewScreenshot.previewName"]
@@ -74,28 +75,28 @@ class UpdateReferenceImagesFromTestPanelAction : AnAction(UPDATE_ACTION_TEXT, UP
           val testId = "${testCase.className}.$methodName.$previewName"
           val previewDetails =
             PreviewDetails(
-              testId = testId,
-              className = testCase.className,
-              methodName = methodName,
-              previewName = previewName,
-              testResult = testCase.result,
-              destImagePath =
-                ScreenshotTestUtils.resolvePath(
-                  project,
-                  artifacts["PreviewScreenshot.refImagePath"],
-                ),
-              srcImagePath =
-                ScreenshotTestUtils.resolvePath(
-                  project,
-                  artifacts["PreviewScreenshot.newImagePath"],
-                ),
-              diffImagePath =
-                ScreenshotTestUtils.resolvePath(
-                  project,
-                  artifacts["PreviewScreenshot.diffImagePath"],
-                ),
-              diffPercent = artifacts["PreviewScreenshot.diffPercent"],
-            )
+                testId = testId,
+                className = testCase.className,
+                methodName = methodName,
+                previewName = previewName,
+                testResult = testCase.result,
+                destImagePath =
+                  ScreenshotTestUtils.resolvePath(
+                    project,
+                    artifacts["PreviewScreenshot.refImagePath"],
+                  ),
+                srcImagePath =
+                  ScreenshotTestUtils.resolvePath(
+                    project,
+                    artifacts["PreviewScreenshot.newImagePath"],
+                  ),
+                diffImagePath =
+                  ScreenshotTestUtils.resolvePath(
+                    project,
+                    artifacts["PreviewScreenshot.diffImagePath"],
+                  ),
+                diffPercent = artifacts["PreviewScreenshot.diffPercent"],
+              )
               .withResolvedImageFiles()
 
           LOG.debug("PreviewDetails: $previewDetails")
@@ -105,11 +106,9 @@ class UpdateReferenceImagesFromTestPanelAction : AnAction(UPDATE_ACTION_TEXT, UP
           )
         }
       }
-      ApplicationManager.getApplication().invokeLater {
-        dialog.onTestSuiteFinished()
-        dialog.show()
-      }
+      dialog.onTestSuiteFinished()
     }
+    dialog.show()
   }
 
   override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
