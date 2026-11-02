@@ -18,7 +18,6 @@ package com.android.tools.asdriver.tests;
 import com.android.annotations.Nullable;
 import com.android.tools.asdriver.proto.ASDriver;
 import com.android.tools.asdriver.tests.base.Ide;
-import com.android.tools.asdriver.tests.metric.StepTimingRecorder;
 import com.android.tools.idea.io.grpc.StatusRuntimeException;
 import com.android.tools.perflogger.Benchmark;
 import com.android.tools.testlib.TestLogger;
@@ -191,13 +190,7 @@ public class AndroidStudio extends Ide {
         .setRunWhenSmart(whenSmart)
         .build();
     ASDriver.ExecuteActionResponse response;
-    if ("MakeGradleProject".equals(action)) {
-      StepTimingRecorder.startSpan("MakeGradleProject");
-    }
     response = ide.executeAction(rq);
-    if ("MakeGradleProject".equals(action)) {
-      StepTimingRecorder.endSpan("MakeGradleProject");
-    }
 
     switch (response.getResult()) {
       case OK -> {
@@ -215,10 +208,7 @@ public class AndroidStudio extends Ide {
     ASDriver.WaitForIndexRequest rq = ASDriver.WaitForIndexRequest.newBuilder().build();
     ASDriver.WaitForIndexResponse ignore = ide.waitForIndex(rq);
     install.getIdeaLog().reset(); //Log position can be moved past if used after waitForBuild
-    Matcher matcher = install.getIdeaLog().waitForMatchingLine(".*Unindexed files update took ([^;]*);.*", 300, TimeUnit.SECONDS);
-    String indexingDuration = matcher.group(1);
-    TestLogger.log("Indexing took %s", indexingDuration);
-    StepTimingRecorder.recordParsedDuration("Indexing", indexingDuration);
+    install.getIdeaLog().waitForMatchingLine(".*Unindexed files update took.*", 300, TimeUnit.SECONDS);
     benchmarkLog("after_waitForIndex");
   }
 
@@ -249,9 +239,7 @@ public class AndroidStudio extends Ide {
       .waitForMatchingLine(".*Gradle build finished in (.*)",
                            "(.*org\\.gradle\\.tooling\\.\\w+Exception.*)|" +
                            "(.*Gradle build failed in (.*))", timeout, unit);
-    String buildDuration = matcher.group(1);
-    TestLogger.log("Build took %s", buildDuration);
-    StepTimingRecorder.recordParsedDuration("GradleBuild", buildDuration);
+    TestLogger.log("Build took %s", matcher.group(1));
   }
 
   public void waitForSync() throws IOException, InterruptedException {
@@ -266,10 +254,8 @@ public class AndroidStudio extends Ide {
       .waitForMatchingLine(".*(?:Gradle sync finished in (.*)|Up-to-date models found in the cache\\. Not invoking Gradle sync.*)",
                            "(.*org\\.gradle\\.tooling\\.\\w+Exception.*)|" +
                            "(.*Gradle sync failed in (.*))", timeout, unit);
-    String syncDuration = matcher.group(1);
-    if (syncDuration != null) {
-      TestLogger.log("Sync took %s", syncDuration);
-      StepTimingRecorder.recordParsedDuration("GradleSync", syncDuration);
+    if (matcher.group(1) != null) {
+      TestLogger.log("Sync took %s", matcher.group(1));
     } else {
       TestLogger.log("Sync was skipped (Up-to-date models found in cache)");
     }
