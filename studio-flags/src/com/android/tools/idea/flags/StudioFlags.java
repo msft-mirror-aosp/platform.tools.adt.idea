@@ -1615,12 +1615,6 @@ public final class StudioFlags {
     "If enabled, the user can enable/disable the painting of debug bounds"
   );
 
-  public static final Flag<Boolean> COMPOSE_PREVIEW_RESIZING = new BooleanFlag(
-    COMPOSE, "preview.resizing",
-    "Enable resizing for Compose Preview",
-    "If enabled, the user can resize the Compose Preview"
-  );
-
   public static final Flag<Integer> COMPOSE_INTERACTIVE_FPS_LIMIT = new IntFlag(
     COMPOSE, "preview.interactive.fps.limit",
     "Interactive Preview FPS limit",

@@ -1588,10 +1588,7 @@ constructor(
         invalidateAndRefresh()
       }
       is PreviewMode.Focus -> {
-        val resizePanel =
-          withContext(Dispatchers.EDT) {
-            if (StudioFlags.COMPOSE_PREVIEW_RESIZING.get()) ResizePanel(composeWorkBench.mainSurface) else null
-          }
+        val resizePanel = withContext(Dispatchers.EDT) { ResizePanel(composeWorkBench.mainSurface) }
         activeResizePanelInFocusMode = resizePanel
         // Only refresh if exiting the previous mode invalidated the state of the preview. This is
         // expected for example when exiting interactive or animation inspection modes.
@@ -1615,10 +1612,8 @@ constructor(
     surface.layeredPane.remove(blankTransitionPanel)
   }
 
-  private fun showFocusMode(resizePanel: ResizePanel?) {
-    composeWorkBench.focusMode =
-      resizePanel?.let { panel -> FocusMode(composeWorkBench.mainSurface, panel).apply { addSelectionListener { panel.clear() } } }
-        ?: FocusMode(composeWorkBench.mainSurface)
+  private fun showFocusMode(resizePanel: ResizePanel) {
+    composeWorkBench.focusMode = FocusMode(composeWorkBench.mainSurface, resizePanel).apply { addSelectionListener { resizePanel.clear() } }
   }
 
   /** Performs cleanup for [mode] when leaving this mode to go to a mode of a different class. */

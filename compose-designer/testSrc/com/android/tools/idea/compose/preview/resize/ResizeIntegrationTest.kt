@@ -16,7 +16,6 @@
 package com.android.tools.idea.compose.preview.resize
 
 import com.android.annotations.concurrency.UiThread
-import com.android.flags.junit.FlagRule
 import com.android.testutils.delayUntilCondition
 import com.android.testutils.retryUntilPassing
 import com.android.tools.adtui.swing.FakeUi
@@ -33,7 +32,6 @@ import com.android.tools.idea.compose.preview.ComposePreviewViewImpl
 import com.android.tools.idea.compose.preview.ComposePreviewViewProvider
 import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.concurrency.asCollection
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.projectsystem.ProjectSystemBuildManager
 import com.android.tools.idea.rendering.tokens.FakeBuildSystemFilePreviewServices
@@ -84,7 +82,7 @@ class ResizeIntegrationTest {
     )
   private val popupRule = PopupRule()
 
-  @get:Rule val rule = RuleChain(projectRule, popupRule, FlagRule(StudioFlags.COMPOSE_PREVIEW_RESIZING, true))
+  @get:Rule val rule = RuleChain(projectRule, popupRule)
 
   private lateinit var previewRepresentation: ComposePreviewRepresentation
   private lateinit var surface: NlDesignSurface

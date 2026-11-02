@@ -83,14 +83,12 @@ class ComposeScreenViewProvider(private val previewManager: ComposePreviewManage
             )
             StudioFlags.NELE_CLASS_PRELOADING_DIAGNOSTICS.ifEnabled { add(ClassLoadingDebugLayer(surface.models.first().facet.module)) }
             StudioFlags.NELE_RENDER_DIAGNOSTICS.ifEnabled { add(DiagnosticsLayer(surface, surface.project)) }
-            StudioFlags.COMPOSE_PREVIEW_RESIZING.ifEnabled {
-              add(
-                CanvasResizeLayer(it, surface::repaint) {
-                  // Resizing is allowed only in Focus mode.
-                  previewManager.mode.value is PreviewMode.Focus
-                }
-              )
-            }
+            add(
+              CanvasResizeLayer(it, surface::repaint) {
+                // Resizing is allowed only in Focus mode.
+                previewManager.mode.value is PreviewMode.Focus
+              }
+            )
           }
           .build()
       }
@@ -106,7 +104,7 @@ class ComposeScreenViewProvider(private val previewManager: ComposePreviewManage
         }
       )
       .decorateContentSizePolicy { policy -> ImageContentSizePolicy(policy) }
-      .apply { if (StudioFlags.COMPOSE_PREVIEW_RESIZING.get()) this.resizeable() }
+      .resizeable()
       .build()
 
   override val surfaceType: LayoutEditorState.Surfaces = LayoutEditorState.Surfaces.SCREEN_SURFACE

@@ -30,7 +30,6 @@ compose.interactive.preview.predictive.back=COMPLETE:2026
 compose.preview.ai.glasses.preview=COMPLETE:2026
 compose.preview.code.to.preview.navigation=COMPLETE:2025
 compose.preview.reference.provider.enabled=PREVIEW
-compose.preview.resizing=COMPLETE:2025
 design.tools.assetstudio.dynamic.material.symbols=COMPLETE:2026
 design.tools.material.symbols.tool=PREVIEW
 design.tools.preview.in.memory.preview=PREVIEW

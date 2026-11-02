@@ -43,7 +43,6 @@ import com.android.tools.idea.concurrency.awaitStatus
 import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.editors.build.RenderingBuildStatus
 import com.android.tools.idea.editors.fast.FastPreviewManager
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.PreviewInvalidationManager
 import com.android.tools.idea.preview.actions.getPreviewManager
 import com.android.tools.idea.preview.analytics.PreviewRefreshTracker
@@ -65,7 +64,6 @@ import com.android.tools.idea.rendering.BuildTargetReference
 import com.android.tools.idea.rendering.tokens.FakeBuildSystemFilePreviewServices
 import com.android.tools.idea.run.configuration.execution.findElementByText
 import com.android.tools.idea.testing.addFileToProjectAndInvalidate
-import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.ui.createFakeToolWindow
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode.SourceCodeEditorProvider
@@ -196,7 +194,6 @@ class ComposePreviewRepresentationTest {
 
   @After
   fun tearDown() {
-    StudioFlags.COMPOSE_PREVIEW_RESIZING.clearOverride()
     composePreviewEssentialsModeEnabled = false
   }
 
@@ -889,8 +886,7 @@ class ComposePreviewRepresentationTest {
   }
 
   @Test
-  fun testResizePanelIsCreatedInFocusMode_flagTrue() = runComposePreviewRepresentationTest {
-    StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
+  fun testResizePanelIsCreatedInFocusMode() = runComposePreviewRepresentationTest {
     createPreviewAndCompile()
 
     val previewElements = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }
@@ -899,21 +895,6 @@ class ComposePreviewRepresentationTest {
     setModeAndWaitForRefresh(PreviewMode.Focus(focusElement)) { composeView.focusMode != null }
 
     assertThat(composeView.focusMode!!.component.components[1] as? ResizePanel).isNotNull()
-
-    setModeAndWaitForRefresh(PreviewMode.Default()) { composeView.focusMode == null }
-  }
-
-  @Test
-  fun testResizePanelIsNotCreatedInFocusMode_flagFalse() = runComposePreviewRepresentationTest {
-    StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(false, projectRule.fixture.testRootDisposable)
-    createPreviewAndCompile()
-
-    val previewElements = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }
-    val focusElement = previewElements[0]
-
-    setModeAndWaitForRefresh(PreviewMode.Focus(focusElement)) { composeView.focusMode != null }
-
-    assertThat(composeView.focusMode!!.component.components.size).isEqualTo(1)
 
     setModeAndWaitForRefresh(PreviewMode.Default()) { composeView.focusMode == null }
   }
@@ -938,7 +919,6 @@ class ComposePreviewRepresentationTest {
     }
 
     return runComposePreviewRepresentationTest(testFile) {
-      StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
       createPreviewAndCompile(expectedModelCount = 1)
 
       val previewElements = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }
@@ -983,7 +963,6 @@ class ComposePreviewRepresentationTest {
     }
 
     return runComposePreviewRepresentationTest(testFile) {
-      StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
       val previewRep = createPreviewAndCompile(expectedModelCount = 1)
 
       val previewElements = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }
@@ -1046,7 +1025,6 @@ class ComposePreviewRepresentationTest {
     }
 
     return runComposePreviewRepresentationTest(testFile) {
-      StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
       val previewRep = createPreviewAndCompile(expectedModelCount = 1)
 
       val singleElement = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }.single()
@@ -1108,7 +1086,6 @@ class ComposePreviewRepresentationTest {
     whenever(surfaceSpy.zoomController).thenReturn(zoomControllerSpy)
 
     return runComposePreviewRepresentationTest(testFile, mainSurface = surfaceSpy) {
-      StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(true, projectRule.fixture.testRootDisposable)
       val previewRep = createPreviewAndCompile(expectedModelCount = 1)
 
       val singleElement = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }.single()
@@ -1200,19 +1177,6 @@ class ComposePreviewRepresentationTest {
       // Animation -> Focus should refresh (i.e. wait should not time out)
       setModeAndWaitForRefresh(PreviewMode.Focus(singleElement), waitForRefresh = true) { composeView.focusMode != null }
     }
-  }
-
-  @Test
-  fun testResizePanelIsCreatedInFocusMode_flagFalse() = runComposePreviewRepresentationTest {
-    StudioFlags.COMPOSE_PREVIEW_RESIZING.overrideForTest(false, projectRule.fixture.testRootDisposable)
-    createPreviewAndCompile()
-
-    val previewElements = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }
-    val focusElement = previewElements[0]
-
-    setModeAndWaitForRefresh(PreviewMode.Focus(focusElement)) { composeView.focusMode != null }
-
-    assertThat(composeView.focusMode!!.component.components.size).isEqualTo(1)
   }
 
   @Test

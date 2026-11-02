@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.compose.preview.actions
 
-import com.android.flags.junit.FlagRule
 import com.android.ide.common.resources.configuration.FolderConfiguration
 import com.android.resources.Density
 import com.android.resources.Density.DEFAULT_DENSITY
@@ -42,7 +41,6 @@ import com.android.tools.idea.compose.preview.resize.RESIZE_PANEL_INSTANCE_KEY
 import com.android.tools.idea.compose.preview.resize.ResizePanel
 import com.android.tools.idea.concurrency.FlowableCollection
 import com.android.tools.idea.configurations.ConfigurationManager
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.flow.PreviewFlowManager
 import com.android.tools.idea.preview.modes.CommonPreviewModeManager
 import com.android.tools.idea.preview.modes.PreviewMode
@@ -86,7 +84,6 @@ class SavePreviewInNewSizeActionTest {
 
   @get:Rule val edtRule = EdtRule()
 
-  @get:Rule val studioFlagRule = FlagRule(StudioFlags.COMPOSE_PREVIEW_RESIZING, true)
   @get:Rule val usageTrackerRule = UsageTrackerRule()
 
   private val sceneManager: LayoutlibSceneManager = Mockito.mock()
@@ -148,21 +145,6 @@ class SavePreviewInNewSizeActionTest {
     val action = SavePreviewInNewSizeAction()
 
     action.update(event)
-
-    assertThat(event.presentation.isVisible).isFalse()
-    assertThat(event.presentation.isEnabled).isFalse()
-  }
-
-  @Test
-  fun `update isVisible and isEnabled when flag is disabled`() {
-    `when`(resizePanel.hasBeenResized).thenReturn(true)
-    val event = TestActionEvent.createTestEvent(getDataContext())
-
-    val action = SavePreviewInNewSizeAction()
-
-    StudioFlags.COMPOSE_PREVIEW_RESIZING.override(false)
-    action.update(event)
-    StudioFlags.COMPOSE_PREVIEW_RESIZING.clearOverride()
 
     assertThat(event.presentation.isVisible).isFalse()
     assertThat(event.presentation.isEnabled).isFalse()
