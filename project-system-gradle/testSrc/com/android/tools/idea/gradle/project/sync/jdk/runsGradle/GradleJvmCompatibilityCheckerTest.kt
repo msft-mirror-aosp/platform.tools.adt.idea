@@ -21,6 +21,8 @@ import com.android.tools.idea.gradle.project.AndroidStudioGradleInstallationMana
 import com.android.tools.idea.gradle.project.sync.jdk.GradleJvmCompatibilityResolver
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
+import com.android.tools.idea.projectsystem.ProjectSystemSyncManager.SyncResult.SUCCESS
+import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
@@ -65,7 +67,7 @@ class GradleJvmCompatibilityCheckerTest {
         agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST,
       )
 
-    preparedProject.open(updateOptions = { it.copy(overrideProjectGradleJdkPath = File(JdkConstants.JDK_11_PATH), verifyOpened = {}) }) {
+    preparedProject.open(updateOptions = { it.copy(overrideProjectGradleJdkPath = File(JdkConstants.JDK_11_PATH)) }) {
       it.assertDialogUpdatesGradleJvmVersion()
     }
   }
@@ -82,7 +84,7 @@ class GradleJvmCompatibilityCheckerTest {
     preparedProject.open {}
 
     // Reopen project
-    preparedProject.open(updateOptions = { it.copy(overrideProjectGradleJdkPath = File(JdkConstants.JDK_11_PATH), verifyOpened = {}) }) {
+    preparedProject.open(updateOptions = { it.copy(overrideProjectGradleJdkPath = File(JdkConstants.JDK_11_PATH)) }) {
       it.assertDialogUpdatesGradleJvmVersion()
     }
   }
@@ -95,6 +97,7 @@ class GradleJvmCompatibilityCheckerTest {
         "select a JVM version that is at least ${gradleJvmCompatibility.minimumSupportedJavaVersion} and at most " +
         "${gradleJvmCompatibility.maximumSupportedJavaVersion}."
     assertEquals(expectedDialogMessage, testDialog.displayedMessage)
+    assertEquals(SUCCESS, getProjectSystem().getSyncManager().getLastSyncResult())
 
     runBlocking {
       val gradleJdk =

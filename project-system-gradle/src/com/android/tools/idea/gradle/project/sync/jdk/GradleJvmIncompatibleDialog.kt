@@ -24,6 +24,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.util.lang.JavaVersion
+import java.util.concurrent.CompletableFuture
 import org.jetbrains.android.util.AndroidBundle
 
 object GradleJvmIncompatibleDialog {
@@ -34,8 +35,10 @@ object GradleJvmIncompatibleDialog {
     gradleJvmCompatibility: GradleJvmCompatibilityInfo,
     applyCompatibleJvmAction: DescribedBuildIssueQuickFix,
     openSettingsAction: DescribedBuildIssueQuickFix,
-  ) {
+  ): CompletableFuture<*>? {
+    var quickFixFuture: CompletableFuture<*>? = null
     ApplicationManager.getApplication().invokeAndWait {
+      if (project.isDisposed) return@invokeAndWait
       val result =
         Messages.showDialog(
           project,
@@ -65,8 +68,9 @@ object GradleJvmIncompatibleDialog {
           else -> AndroidStudioEvent.EventKind.GRADLE_JVM_INCOMPATIBLE_DIALOG_CANCEL to null
         }
       logDialogAction(project, eventAction)
-      quickFixAction?.runQuickFix(project, DataContext.EMPTY_CONTEXT)
+      quickFixFuture = quickFixAction?.runQuickFix(project, DataContext.EMPTY_CONTEXT)
     }
+    return quickFixFuture
   }
 
   private fun logDialogAction(project: Project, eventAction: AndroidStudioEvent.EventKind) {

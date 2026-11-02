@@ -25,9 +25,10 @@ import com.android.tools.idea.gradle.project.sync.quickFixes.UpdateGradleJdkConf
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.util.lang.JavaVersion
-import kotlinx.coroutines.CoroutineScope
+import java.util.concurrent.CompletableFuture
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.withContext
 import org.gradle.util.GradleVersion
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
 import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmHelper
@@ -38,7 +39,7 @@ import org.jetbrains.plugins.gradle.settings.GradleSettings
  * Checks if the Gradle JVM used by the project is compatible with the current Gradle version, and displays a warning dialog if an
  * incompatibility is detected.
  */
-class GradleJvmCompatibilityChecker(private val scope: CoroutineScope) {
+class GradleJvmCompatibilityChecker {
 
   companion object {
     suspend fun Project.isProjectUsingIncompatibleGradleJvm() =
@@ -55,9 +56,10 @@ class GradleJvmCompatibilityChecker(private val scope: CoroutineScope) {
     val gradleJvmCompatibility = GradleJvmCompatibilityResolver.resolve(project, gradleVersion)
     if (gradleJvmCompatibility.isCompatible(currentJavaVersion)) return false
 
-    scope.launch(Dispatchers.EDT) {
+    withContext(Dispatchers.EDT) {
+      if (project.isDisposed) return@withContext null
       displayIncompatibleGradleJvmDialog(project, currentJavaVersion, gradleJvmCompatibility, gradleProjectSettings)
-    }
+    }?.await()
     return true
   }
 
@@ -66,7 +68,7 @@ class GradleJvmCompatibilityChecker(private val scope: CoroutineScope) {
     currentJavaVersion: JavaVersion,
     gradleJvmCompatibility: GradleJvmCompatibilityInfo,
     gradleProjectSettings: GradleProjectSettings,
-  ) {
+  ): CompletableFuture<*>? {
     var applyCompatibleJvmAction: DescribedBuildIssueQuickFix =
       UpdateGradleJdkConfigurationCompatibleGradleVersionQuickFix(gradleProjectSettings.externalProjectPath) {
         gradleJvmCompatibility.recommendedJavaVersion
@@ -81,7 +83,7 @@ class GradleJvmCompatibilityChecker(private val scope: CoroutineScope) {
       openSettingsAction = OpenGradleDaemonJvmSettingsQuickFix
     }
 
-    GradleJvmIncompatibleDialog.showDialog(
+    return GradleJvmIncompatibleDialog.showDialog(
       project,
       currentJavaVersion,
       gradleJvmCompatibility,

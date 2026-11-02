@@ -22,11 +22,13 @@ import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.LightPlatformTestCase
 import com.intellij.util.lang.JavaVersion
+import java.util.concurrent.CompletableFuture
 import org.gradle.util.GradleVersion
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 class GradleJvmIncompatibleDialogTest : LightPlatformTestCase() {
 
@@ -66,17 +68,23 @@ class GradleJvmIncompatibleDialogTest : LightPlatformTestCase() {
   }
 
   fun `test show dialog select apply compatible jvm runs action`() {
+    val expectedFuture = CompletableFuture.completedFuture("done")
+    whenever(applyCompatibleJvmAction.runQuickFix(project, DataContext.EMPTY_CONTEXT)).thenReturn(expectedFuture)
     TestDialogManager.setTestDialog(TestMessagesDialog(0))
 
-    showGradleJvmIncompatibleDialog()
+    val resultFuture = showGradleJvmIncompatibleDialog()
+    assertSame(expectedFuture, resultFuture)
     verify(applyCompatibleJvmAction).runQuickFix(project, DataContext.EMPTY_CONTEXT)
     verify(openSettingsAction, never()).runQuickFix(any(), any())
   }
 
   fun `test show dialog select open settings runs action`() {
+    val expectedFuture = CompletableFuture.completedFuture("settings")
+    whenever(openSettingsAction.runQuickFix(project, DataContext.EMPTY_CONTEXT)).thenReturn(expectedFuture)
     TestDialogManager.setTestDialog(TestMessagesDialog(1))
 
-    showGradleJvmIncompatibleDialog()
+    val resultFuture = showGradleJvmIncompatibleDialog()
+    assertSame(expectedFuture, resultFuture)
     verify(openSettingsAction).runQuickFix(project, DataContext.EMPTY_CONTEXT)
     verify(applyCompatibleJvmAction, never()).runQuickFix(any(), any())
   }
@@ -84,13 +92,14 @@ class GradleJvmIncompatibleDialogTest : LightPlatformTestCase() {
   fun `test show dialog cancel runs no action`() {
     TestDialogManager.setTestDialog(TestMessagesDialog(-1))
 
-    showGradleJvmIncompatibleDialog()
+    val resultFuture = showGradleJvmIncompatibleDialog()
+    assertNull(resultFuture)
     verify(openSettingsAction, never()).runQuickFix(any(), any())
     verify(applyCompatibleJvmAction, never()).runQuickFix(any(), any())
   }
 
-  private fun showGradleJvmIncompatibleDialog() {
-    GradleJvmIncompatibleDialog.showDialog(
+  private fun showGradleJvmIncompatibleDialog(): CompletableFuture<*>? {
+    return GradleJvmIncompatibleDialog.showDialog(
       project,
       currentJavaVersion,
       gradleJvmCompatibility,

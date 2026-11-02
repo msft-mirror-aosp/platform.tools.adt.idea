@@ -164,6 +164,7 @@ private suspend fun performActivity(project: Project) {
     return IdeInfo.getInstance().isAndroidStudio && info.isBuildWithGradle
   }
 
+  subscribeToGradleSettingChanges(project)
   if (shouldSyncOrAttachModels()) {
     ensureProjectStoredExternally(project)
     removePointlessModules(project)
@@ -186,7 +187,6 @@ private suspend fun performActivity(project: Project) {
       }
     }
   }
-  subscribeToGradleSettingChanges(project)
 
   gradleProjectInfo.isSkipStartupActivity = false
 }
