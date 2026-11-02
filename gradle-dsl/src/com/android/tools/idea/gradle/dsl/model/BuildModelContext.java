@@ -241,18 +241,23 @@ public final class BuildModelContext {
                                         @NotNull VirtualFile file,
                                         @NotNull String moduleName,
                                         boolean isApplied) {
-    GradleBuildFile buildDslFile = new GradleBuildFile(file, project, moduleName, this);
-    ReadAction.nonBlocking(() -> {
-      if (!isApplied) {
-        GradleSettingsModel gradleSettingsModel = getSettingsModel(buildDslFile);
-        populateWithParentModuleSubProjectsProperties(buildDslFile, gradleSettingsModel);
-        populateDeclarativeSoftwareTypes(buildDslFile, gradleSettingsModel);
+    return ReadAction.nonBlocking(() -> {
+      GradleBuildFile buildDslFile = new GradleBuildFile(file, project, moduleName, this);
+      try {
+        if (!isApplied) {
+          GradleSettingsModel gradleSettingsModel = getSettingsModel(buildDslFile);
+          populateWithParentModuleSubProjectsProperties(buildDslFile, gradleSettingsModel);
+          populateDeclarativeSoftwareTypes(buildDslFile, gradleSettingsModel);
+        }
+        populateSiblingDslFileWithGradlePropertiesFile(buildDslFile);
+        buildDslFile.parse();
+        return buildDslFile;
       }
-      populateSiblingDslFileWithGradlePropertiesFile(buildDslFile);
-      buildDslFile.parse();
-      return null;
+      catch (Throwable t) {
+        cleanupFailedBuildFile(buildDslFile);
+        throw t;
+      }
     }).executeSynchronously();
-    return buildDslFile;
   }
 
   @NotNull
@@ -277,19 +282,26 @@ public final class BuildModelContext {
   @Nullable
   public GradleBuildFile initializeContext(@NotNull Project project, @Nullable VirtualFile file) {
     // First parse the main project build file.
-    GradleBuildFile result = file != null ? new GradleBuildFile(file, project, ":", this) : null;
-    if (result != null) {
-      setRootProjectFile(result);
-      ReadAction.nonBlocking(() -> {
-        GradleSettingsModel gradleSettingsModel = getSettingsModel(result);
-        populateWithParentModuleSubProjectsProperties(result, gradleSettingsModel);
-        populateSiblingDslFileWithGradlePropertiesFile(result);
-        populateVersionCatalogFiles(gradleSettingsModel);
-        populateDeclarativeSoftwareTypes(result, gradleSettingsModel);
-        result.parse();
-        return null;
+    if (file != null) {
+      GradleBuildFile result = ReadAction.nonBlocking(() -> {
+        GradleBuildFile buildDslFile = new GradleBuildFile(file, project, ":", this);
+        setRootProjectFile(buildDslFile);
+        try {
+          GradleSettingsModel gradleSettingsModel = getSettingsModel(buildDslFile);
+          populateWithParentModuleSubProjectsProperties(buildDslFile, gradleSettingsModel);
+          populateSiblingDslFileWithGradlePropertiesFile(buildDslFile);
+          populateVersionCatalogFiles(gradleSettingsModel);
+          populateDeclarativeSoftwareTypes(buildDslFile, gradleSettingsModel);
+          buildDslFile.parse();
+          return buildDslFile;
+        }
+        catch (Throwable t) {
+          cleanupFailedBuildFile(buildDslFile);
+          throw t;
+        }
       }).executeSynchronously();
       putBuildFile(file.getUrl(), result);
+      return result;
     }
     else {
       // in case root build file is not there, we still need to parse settings for catalogs
@@ -301,8 +313,19 @@ public final class BuildModelContext {
         }
         return null;
       }).executeSynchronously();
+      return null;
     }
-    return result;
+  }
+
+  private void cleanupFailedBuildFile(@NotNull GradleBuildFile buildDslFile) {
+    if (myRootProjectFile == buildDslFile) {
+      myRootProjectFile = null;
+    }
+    GradleBuildFile parentBuildFile = buildDslFile.getParentModuleBuildFile();
+    if (parentBuildFile != null) {
+      parentBuildFile.getChildModuleBuildFiles().remove(buildDslFile);
+    }
+    myNotifications.remove(buildDslFile);
   }
 
   private void putBuildFile(@NotNull String name, @NotNull GradleBuildFile buildFile) {
