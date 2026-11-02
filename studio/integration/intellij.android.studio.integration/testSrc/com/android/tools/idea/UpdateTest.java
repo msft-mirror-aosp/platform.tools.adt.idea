@@ -358,8 +358,11 @@ public class UpdateTest {
         studio.invokeComponent("Update\u2026");
 
         // This button is in a DialogWindowWrapper. The string corresponds to
-        // IdeBundle.message("updates.download.and.restart.button").
-        studio.invokeComponent("Update and Restart");
+        // IdeBundle.message("updates.download.patch.button") (or
+        // IdeBundle.message("updates.download.and.restart.button") prior to IJ 2026.3).
+        ComponentMatchersBuilder updateButtonBuilder = new ComponentMatchersBuilder();
+        updateButtonBuilder.addComponentTextRegexMatch("Update and Restart|Download Update");
+        studio.invokeComponent(updateButtonBuilder);
 
         // The "Restart" link is an HTML hyperlink inside a notification. Because of that:
         //

@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.whatsnew.assistant
 
+import com.android.repository.Revision
+import com.android.tools.idea.assistant.AssistantBundleCreator
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.flags.overrideForTest
@@ -80,6 +82,9 @@ class WhatsNewSidePanelActionTest {
   @Test
   fun updateProjectIsNotNull() {
     StudioFlags.WHATS_NEW_V2.overrideForTest(false, myRule.testRootDisposable)
+    val bundleCreator = AssistantBundleCreator.EP_NAME.findExtension(WhatsNewBundleCreator::class.java)!!
+    bundleCreator.setURLProvider(WhatsNewURLProvider())
+    bundleCreator.setStudioRevision(Revision.parseRevision("0.0.0rc0"))
 
     val action = WhatsNewSidePanelAction(myBrowseToWhatsNewUrl)
     whenever(myEvent.project).thenReturn(myRule.project)
