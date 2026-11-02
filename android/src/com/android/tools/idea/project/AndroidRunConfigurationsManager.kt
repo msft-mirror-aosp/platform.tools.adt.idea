@@ -22,17 +22,22 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.util.concurrency.ThreadingAssertions
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.annotations.TestOnly
 
 class AndroidRunConfigurationsManager(private val project: Project) {
 
   private val operationsStates = mutableListOf<Job>()
+  private val mutex = Mutex()
 
   fun createProjectRunConfigurations() =
     project.coroutineScope
       .launch {
-        withBackgroundProgress(project, "Setting up run configurations...") {
-          AndroidRunConfigurations.instance.createRunConfigurations(project)
+        mutex.withLock {
+          withBackgroundProgress(project, "Setting up run configurations...") {
+            AndroidRunConfigurations.instance.createRunConfigurations(project)
+          }
         }
       }
       .also {
