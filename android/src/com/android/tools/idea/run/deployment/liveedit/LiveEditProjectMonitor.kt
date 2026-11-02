@@ -627,7 +627,7 @@ open class LiveEditProjectMonitor(liveEditService: LiveEditService, private val 
   internal fun createAdbClient(device: IDevice): AdbClient {
     val session = AdbLibService.getSession(project)
     val connectedDevice = runBlockingMaybeCancellable { device.toConnectedDevice(project) }
-    val deviceHolder = DeviceHolder(device, connectedDevice, session)
+    val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
     return AdbClient(deviceHolder, logger, session)
   }
 

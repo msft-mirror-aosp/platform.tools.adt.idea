@@ -23,13 +23,11 @@ import com.android.ddmlib.IDevice
 import com.android.tools.deployer.model.App
 import com.android.tools.idea.execution.common.AndroidExecutionException
 import com.android.tools.idea.execution.common.stats.RunStats
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.run.ApkInfo
 import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.configuration.execution.createApp
 import com.android.tools.idea.run.configuration.execution.createConnectedDevice
 import com.android.tools.idea.testing.AndroidProjectRule
-import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.RunsInEdt
@@ -43,6 +41,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 @RunsInEdt
 class DefaultActivityLaunchTest {
@@ -61,13 +60,13 @@ class DefaultActivityLaunchTest {
   @Before
   fun setUp() {
     myFixture.testDataPath = AndroidTestBase.getTestDataPath()
-    StudioFlags.DEPLOYER_USE_CONNECTED_DEVICE.overrideForTest(true, projectRule.testRootDisposable)
     fakeSession = FakeAdbSession()
     connectedDevice = fakeSession.createConnectedDevice("1234", 31)
     // apkWithDefaultActivity.apk contains simple project with basic activity `com.example.myapplication.MainActivity`.
     apk = "${myFixture.testDataPath}/configurations/activity/apkWithDefaultActivity.apk"
     state = DefaultActivityLaunch.State()
     device = mock<IDevice>()
+    whenever(device.serialNumber).thenReturn("1234")
     app = createApp("com.example.myapplication", emptyList(), ArrayList(setOf("com.example.myapplication.MainActivity")))
     stats = RunStats(myFixture.project)
   }

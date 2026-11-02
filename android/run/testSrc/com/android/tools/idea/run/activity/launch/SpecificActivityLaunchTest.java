@@ -22,16 +22,15 @@ import static com.intellij.testFramework.UsefulTestCase.assertEmpty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 import com.android.adblib.ConnectedDevice;
 import com.android.adblib.DeviceSelector;
 import com.android.adblib.testing.FakeAdbSession;
 import com.android.ddmlib.IDevice;
-import com.android.flags.junit.FlagRule;
 import com.android.tools.deployer.model.App;
 import com.android.tools.idea.execution.common.stats.RunStats;
-import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.run.ValidationError;
 import com.android.tools.idea.run.activity.SpecificActivityLocator;
 import com.android.tools.idea.run.editor.NoApksProvider;
@@ -51,8 +50,6 @@ public class SpecificActivityLaunchTest {
   public EdtRule edt = new EdtRule();
   @Rule
   public AndroidProjectRule myProjectRule = AndroidProjectRule.inMemory();
-  @Rule
-  public FlagRule<Boolean> flagRule = new FlagRule<>(StudioFlags.DEPLOYER_USE_CONNECTED_DEVICE, true);
 
   private final FakeAdbSession fakeSession = new FakeAdbSession();
 
@@ -102,6 +99,7 @@ public class SpecificActivityLaunchTest {
     SpecificActivityLaunch.State state = new SpecificActivityLaunch.State();
     state.ACTIVITY_CLASS = "com.example.app.MyActivity";
     IDevice device = mock(IDevice.class);
+    when(device.getSerialNumber()).thenReturn(deviceSerial);
     App app =
         createApp("com.example.app", Collections.emptyList(), new ArrayList<>(Collections.singleton("com.example.app.MyActivity")));
 

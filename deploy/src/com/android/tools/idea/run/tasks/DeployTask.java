@@ -27,9 +27,7 @@ import com.android.tools.deployer.common.DeviceHolder;
 import com.android.tools.deployer.common.InstallOptions;
 import com.android.tools.deployer.install.InstallMode;
 import com.android.tools.deployer.model.App;
-import com.android.adblib.AdbSession;
 import com.android.adblib.ConnectedDevice;
-import com.android.tools.idea.adblib.AdbLibService;
 import com.android.tools.deployer.common.Canceller;
 import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.run.ApkInfo;
@@ -151,9 +149,8 @@ public class DeployTask extends AbstractDeployTask {
     }
 
     // Skip verification if possible.
-    AdbSession adbSession = AdbLibService.getSession(getProject());
     options.setSkipVerification(
-        new DeviceHolder(device, connectedDevice, adbSession),
+        new DeviceHolder(device.getSerialNumber(), connectedDevice),
         apkInfo.getApplicationId());
 
     LOG.info("Installing application: " + apkInfo.getApplicationId());

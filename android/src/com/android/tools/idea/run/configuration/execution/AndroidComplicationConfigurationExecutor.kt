@@ -26,7 +26,6 @@ import com.android.tools.deployer.model.component.Complication
 import com.android.tools.deployer.model.component.ComponentType
 import com.android.tools.deployer.model.component.WatchFace.ShellCommand.UNSET_WATCH_FACE
 import com.android.tools.deployer.modelv1.component.CommandResultReceiverV1
-import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.execution.common.AppRunSettings
 import com.android.tools.idea.execution.common.ApplicationDeployer
 import com.android.tools.idea.execution.common.WearSurfaceLaunchOptions
@@ -124,7 +123,7 @@ class AndroidComplicationConfigurationExecutor(
     val receiver = RecordOutputReceiver { indicator?.isCanceled == true }
 
     val watchFaceInfo = "${complicationLaunchOptions.watchFaceInfo.appId} ${complicationLaunchOptions.watchFaceInfo.watchFaceFQName}"
-    val deviceHolder = DeviceHolder(device, connectedDevice, AdbLibService.getSession(environment.project))
+    val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
     try {
       getActivator(app)
         .activate(

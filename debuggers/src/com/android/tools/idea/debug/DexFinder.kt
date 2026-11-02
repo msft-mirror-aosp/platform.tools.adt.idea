@@ -231,7 +231,7 @@ suspend fun newInstaller(device: IDevice, project: Project): Installer {
   val metrics = MetricsRecorder()
   val session = AdbLibService.getSession(project)
   val connectedDevice = device.toConnectedDevice(project)
-  val deviceHolder = DeviceHolder(device, connectedDevice, session)
+  val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
   val adb = AdbClient(deviceHolder, DexFinder.LOGGER, session)
   return AdbInstaller(LocalInstallerPathManager.getLocalInstaller(), adb, metrics.deployMetrics, DexFinder.LOGGER, AdbInstaller.Mode.DAEMON)
 }

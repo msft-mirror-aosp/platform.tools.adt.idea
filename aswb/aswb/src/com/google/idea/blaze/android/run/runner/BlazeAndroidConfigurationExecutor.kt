@@ -19,7 +19,6 @@ import com.android.adblib.ConnectedDevice
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.common.ApkVerifierTracker
 import com.android.tools.deployer.common.DeviceHolder
-import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.adblib.toConnectedDevice
 import com.android.tools.idea.editors.liveedit.LiveEditService
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
@@ -129,7 +128,7 @@ class BlazeAndroidConfigurationExecutor(
         if (connectedDevice == null) {
           LOG.warn("ConnectedDevice lookup for serial ${device.serialNumber} failed to find a device")
         }
-        val deviceHolder = DeviceHolder(device, connectedDevice, AdbLibService.getSession(project))
+        val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
         val skipVerification = ApkVerifierTracker.getSkipVerificationInstallationFlag(deviceHolder, packageName)
         val pmInstallOption = if (skipVerification != null) "$userIdFlags $skipVerification" else userIdFlags
         val deployOptions =

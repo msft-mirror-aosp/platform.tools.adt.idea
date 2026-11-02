@@ -32,7 +32,6 @@ import com.android.tools.deployer.model.component.WearWidget.ShellCommand.SHOW_W
 import com.android.tools.deployer.model.component.WearWidget.ShellCommand.UNSET_WEAR_WIDGET
 import com.android.tools.deployer.model.component.WearWidget.isProtolayoutVersionAtLeast
 import com.android.tools.deployer.modelv1.component.CommandResultReceiverV1
-import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.execution.common.AppRunSettings
 import com.android.tools.idea.execution.common.ApplicationDeployer
 import com.android.tools.idea.execution.common.WearSurfaceLaunchOptions
@@ -124,7 +123,7 @@ class AndroidWearWidgetConfigurationExecutor(
     val consoleReceiver = ConsoleOutputReceiver({ indicator?.isCanceled == true }, console)
     val indexReceiver = AddWidgetCommandResultReceiver { indicator?.isCanceled == true }
     val receiver = MultiReceiver(outputReceiver, consoleReceiver, indexReceiver)
-    val deviceHolder = DeviceHolder(device, connectedDevice, AdbLibService.getSession(environment.project))
+    val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
     try {
       getActivator(app)
         .activate(

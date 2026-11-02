@@ -28,7 +28,6 @@ import com.android.tools.deployer.model.component.ComponentType
 import com.android.tools.deployer.model.component.Tile
 import com.android.tools.deployer.model.component.Tile.ShellCommand.SHOW_TILE_COMMAND
 import com.android.tools.deployer.modelv1.component.CommandResultReceiverV1
-import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.execution.common.AppRunSettings
 import com.android.tools.idea.execution.common.ApplicationDeployer
 import com.android.tools.idea.execution.common.WearSurfaceLaunchOptions
@@ -104,7 +103,7 @@ class AndroidTileConfigurationExecutor(
     val indexReceiver = AddTileCommandResultReceiver { indicator?.isCanceled == true }
     val receiver = MultiReceiver(outputReceiver, consoleReceiver, indexReceiver)
     try {
-      val deviceHolder = DeviceHolder(device, connectedDevice, AdbLibService.getSession(environment.project))
+      val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
       getActivator(app)
         .activate(tileLaunchOptions.componentType, tileLaunchOptions.componentName!!, mode, receiver.asDeployerReceiver(), deviceHolder)
     } catch (ex: DeployerException) {

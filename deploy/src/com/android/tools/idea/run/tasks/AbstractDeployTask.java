@@ -135,7 +135,7 @@ public abstract class AbstractDeployTask {
     long wallClockStartMs = System.currentTimeMillis();
 
     AdbSession adbSession = AdbLibService.getSession(myProject);
-    DeviceHolder deviceHolder = new DeviceHolder(device, connectedDevice, adbSession);
+    DeviceHolder deviceHolder = new DeviceHolder(device.getSerialNumber(), connectedDevice);
     AdbClient adb = new AdbClient(deviceHolder, logger, adbSession);
 
     AdbHelper.setAbbExecAllowed(StudioFlags.DDMLIB_ABB_EXEC_INSTALL_ENABLE.get());
