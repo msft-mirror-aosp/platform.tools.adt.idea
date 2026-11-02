@@ -24,6 +24,7 @@ import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.util.androidFacet
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.impl.NonBlockingReadActionImpl
 import com.intellij.openapi.externalSystem.action.task.RunExternalSystemTaskAction
 import com.intellij.openapi.externalSystem.model.ProjectSystemId
 import com.intellij.openapi.externalSystem.model.task.TaskData
@@ -74,6 +75,7 @@ class AndroidTestConfigurationSelectorTest {
     val testTaskData =
       TaskData(mockProjectSystemId, "testAndroidTestConfig", project.projectFilePath.toString(), "Run configurtation selector test")
     TestRunExternalSystemTaskAction().performDelegator(project, mockProjectSystemId, testTaskData, mockActionEvent)
+    NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
 
     val runConfig = context.runManager.selectedConfiguration!!.configuration as AndroidTestRunConfiguration
     assertThat(runConfig.checkConfiguration(testFacet)).isEmpty()
