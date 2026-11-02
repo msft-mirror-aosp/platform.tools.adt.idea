@@ -124,10 +124,9 @@ internal constructor(private val myModuleValidatorFactory: AndroidModuleValidato
       val gradleAndroidModelData = nodeToImport.data
       val coreModel = modelFactory(gradleAndroidModelData)
       setGradleAndroidModelFromDataNode(storage, mainIdeModule, coreModel, resolver)
-
       mainModuleDataNode.linkAndroidModuleGroup(project, modelsProvider)
 
-      val modules = mainIdeModule.getAllLinkedModules()
+      val modules = mainIdeModule.getAllLinkedModules(storage)
       modules.forEach { module ->
         val facetModel = modelsProvider.getModifiableFacetModel(module)
 
@@ -269,7 +268,8 @@ internal constructor(private val myModuleValidatorFactory: AndroidModuleValidato
           .add(androidModel.androidProject.projectPath.projectPath)
       }
 
-      val modules = mainIdeModule.getAllLinkedModules()
+      val storage = (modelsProvider as IdeModifiableModelsProviderImpl).actualStorageBuilder
+      val modules = mainIdeModule.getAllLinkedModules(storage)
       modules.forEach { module -> module.setupSdkAndLanguageLevel(modelsProvider, androidModel.getJavaSourceLanguageLevel(), sdkToUse) }
     }
 

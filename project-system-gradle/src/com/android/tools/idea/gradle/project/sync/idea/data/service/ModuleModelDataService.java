@@ -23,11 +23,13 @@ import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.project.ModuleData;
 import com.intellij.openapi.externalSystem.model.project.ProjectData;
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProvider;
+import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProviderImpl;
 import com.intellij.openapi.externalSystem.service.project.manage.AbstractProjectDataService;
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
+import com.intellij.platform.workspace.storage.EntityStorage;
 import com.intellij.util.SmartList;
 import java.util.Collection;
 import java.util.Collections;
@@ -65,13 +67,14 @@ public abstract class ModuleModelDataService<T extends ModuleModel> extends Abst
     final Map<String, DataNode<T>> modelsByModuleName = indexByModuleName(toImport, modelsProvider);
     return () -> {
       List<Module> orphanIdeModules = new SmartList<>();
+      EntityStorage storage = ((IdeModifiableModelsProviderImpl)modelsProvider).getActualStorageBuilder();
 
       for (Module module : modelsProvider.getModules()) {
         if (!ExternalSystemApiUtil.isExternalSystemAwareModule(projectData.getOwner(), module)) continue;
 
         final String rootProjectPath = ExternalSystemApiUtil.getExternalRootProjectPath(module);
         if (projectData.getLinkedExternalProjectPath().equals(rootProjectPath)) {
-          if (modelsByModuleName.get(LinkedAndroidModuleGroupUtilsKt.getHolderModule(module).getName()) == null) {
+          if (modelsByModuleName.get(LinkedAndroidModuleGroupUtilsKt.getHolderModule(module, storage).getName()) == null) {
             orphanIdeModules.add(module);
           }
         }

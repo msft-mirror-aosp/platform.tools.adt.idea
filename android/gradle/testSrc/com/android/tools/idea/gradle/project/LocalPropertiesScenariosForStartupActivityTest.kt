@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.project
 import com.android.SdkConstants.FN_LOCAL_PROPERTIES
 import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity
 import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity
+import com.android.tools.idea.gradle.project.entities.GradleProjectPathEntity
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.gradleModuleModel
@@ -111,8 +112,8 @@ class LocalPropertiesScenariosForStartupActivityTest {
     val project = projectRule.project
     val appHolder = project.gradleModule(":app")!!
 
-    // Simulate a freshly reopened project before AndroidGradleProjectStartupActivity attaches transient module groups, facet external
-    // sources, and cached Android/Gradle workspace model entities.
+    // Simulate a freshly reopened project before AndroidGradleProjectStartupActivity attaches facet external sources and cached
+    // Android/Gradle workspace model entities.
     ModuleManager.getInstance(project).modules.forEach { module ->
       module.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, null)
       FacetManager.getInstance(module).let { facetManager ->
@@ -123,6 +124,7 @@ class LocalPropertiesScenariosForStartupActivityTest {
     }
     runWriteAction {
       project.workspaceModel.updateProjectModel("Clear cached entities for reopen test") { storage ->
+        storage.entities(GradleProjectPathEntity::class.java).toList().forEach(storage::removeEntity)
         storage.entities(GradleAndroidModelEntity::class.java).toList().forEach(storage::removeEntity)
         storage.entities(GradleModuleModelEntity::class.java).toList().forEach(storage::removeEntity)
       }

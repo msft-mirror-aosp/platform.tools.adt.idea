@@ -81,8 +81,8 @@ internal fun attachDependenciesToModuleEntity(
 internal val ModuleEntity.gradleAndroidModel: GradleAndroidModelEntity? by WorkspaceEntity.extension()
 
 fun EntityStorage.getGradleAndroidModel(module: Module): GradleAndroidModel? {
-  if (!module.isLinkedAndroidModule()) return null
-  return getGradleAndroidModelForHolder(module.getHolderModule())
+  if (!module.isLinkedAndroidModule(this)) return null
+  return getGradleAndroidModelForHolder(module.getHolderModule(this))
 }
 
 internal fun EntityStorage.getGradleAndroidModelForHolder(holderModule: Module): GradleAndroidModel? {

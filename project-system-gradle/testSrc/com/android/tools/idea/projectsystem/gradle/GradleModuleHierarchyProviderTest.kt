@@ -16,6 +16,10 @@
 package com.android.tools.idea.projectsystem.gradle
 
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl
+import com.android.tools.idea.gradle.project.entities.GradleProjectPathEntity
+import com.android.tools.idea.gradle.project.entities.GradleProjectPathEntitySource
+import com.android.tools.idea.gradle.project.entities.gradleProjectPath
 import com.android.tools.idea.gradle.project.sync.snapshots.SyncedProjectTestDef
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.projectsystem.PROJECT_SYSTEM_MODELS_UPDATED_TOPIC
@@ -24,8 +28,12 @@ import com.android.tools.idea.testing.findAppModule
 import com.android.tools.idea.testing.findModuleByFullName
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.TruthJUnit
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
+import com.intellij.platform.backend.workspace.WorkspaceModel
+import com.intellij.platform.workspace.jps.entities.ModuleId
+import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
 import java.io.File
 import org.gradle.util.GradleVersion
 import org.jetbrains.plugins.gradle.service.GradleInstallationManager
@@ -85,9 +93,20 @@ data class GradleModuleHierarchyProviderTest(
           // Initial state: unitTest is linked and thus NOT a submodule of app.
           assertThat(provider.createForModule(app).submodules).isEmpty()
 
-          // Break linkage for unitTest
+          // Break Android source set linkage for unitTest while keeping it under the :app Gradle path
           val originalData = unitTest.getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP)
+          val originalEntityPath = unitTest.getGradleProjectPathWithoutCache(useWorkspace = true)
+          val originalPath = unitTest.getGradleProjectPath()
+          assertThat(originalPath).isNotNull()
+          val unlinkedPath = originalPath!!.toHolder().toSourceSetPath(IdeModuleSourceSetImpl("unlinkedUnitTest", false))
           unitTest.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, null)
+          runWriteAction {
+            WorkspaceModel.getInstance(project).updateProjectModel("Unlink unitTest") { storage ->
+              storage.modifyModuleEntity(storage.resolve(ModuleId(unitTest.name))!!) {
+                this.gradleProjectPath = GradleProjectPathEntity(unlinkedPath, GradleProjectPathEntitySource)
+              }
+            }
+          }
 
           // Fire topic - this should trigger reset and rebuild.
           project.messageBus.syncPublisher(PROJECT_SYSTEM_MODELS_UPDATED_TOPIC).androidModelsUpdated()
@@ -97,6 +116,13 @@ data class GradleModuleHierarchyProviderTest(
 
           // Restore linkage
           unitTest.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, originalData)
+          runWriteAction {
+            WorkspaceModel.getInstance(project).updateProjectModel("Restore unitTest") { storage ->
+              storage.modifyModuleEntity(storage.resolve(ModuleId(unitTest.name))!!) {
+                this.gradleProjectPath = originalEntityPath?.let { GradleProjectPathEntity(it, GradleProjectPathEntitySource) }
+              }
+            }
+          }
 
           // Fire topic again
           project.messageBus.syncPublisher(PROJECT_SYSTEM_MODELS_UPDATED_TOPIC).androidModelsUpdated()

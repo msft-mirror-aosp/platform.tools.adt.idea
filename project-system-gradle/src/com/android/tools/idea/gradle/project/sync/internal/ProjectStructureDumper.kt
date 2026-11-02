@@ -21,9 +21,15 @@ import com.android.tools.idea.gradle.project.facet.gradle.GradleFacetConfigurati
 import com.android.tools.idea.gradle.project.facet.ndk.NdkFacetConfiguration
 import com.android.tools.idea.gradle.util.AGP_BUILT_IN_KOTLIN_VERSION
 import com.android.tools.idea.gradle.util.BuildMode
-import com.android.tools.idea.projectsystem.gradle.LINKED_ANDROID_GRADLE_MODULE_GROUP
-import com.android.tools.idea.projectsystem.gradle.LinkedAndroidGradleModuleGroup
+import com.android.tools.idea.projectsystem.gradle.getAndroidTestModule
 import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
+import com.android.tools.idea.projectsystem.gradle.getHolderModule
+import com.android.tools.idea.projectsystem.gradle.getMainModule
+import com.android.tools.idea.projectsystem.gradle.getScreenshotTestModule
+import com.android.tools.idea.projectsystem.gradle.getTestFixturesModule
+import com.android.tools.idea.projectsystem.gradle.getTestSuiteModules
+import com.android.tools.idea.projectsystem.gradle.getUnitTestModule
+import com.android.tools.idea.projectsystem.gradle.isLinkedAndroidModule
 import com.android.tools.idea.run.AndroidRunConfigurationBase
 import com.android.tools.idea.run.profiler.CpuProfilerConfig
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestRunConfiguration
@@ -131,7 +137,7 @@ fun ProjectDumper.dump(module: Module) {
     }
     val groups = ModuleManager.getInstance(module.project).getModuleGroupPath(module)
     groups?.forEach { group -> prop("- ModuleGroupPath") { group } }
-    module.getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP)?.let { dump(it) }
+    dumpLinkedAndroidModuleGroup(module)
     val externalPropertyManager = ExternalSystemModulePropertyManager.getInstance(module)
     prop("ExternalModuleGroup") { externalPropertyManager.getExternalModuleGroup() }
     prop("ExternalModuleType") { externalPropertyManager.getExternalModuleType() }
@@ -526,17 +532,19 @@ private fun ProjectDumper.dump(testModuleProperties: TestModuleProperties?) {
   nest { prop("productionModuleName") { testModuleProperties.productionModuleName } }
 }
 
-private fun ProjectDumper.dump(linkedAndroidGradleModuleGroup: LinkedAndroidGradleModuleGroup) {
+private fun ProjectDumper.dumpLinkedAndroidModuleGroup(module: Module) {
+  if (!module.isLinkedAndroidModule()) return
   head("LINKED_ANDROID_MODULE_GROUP") { null }
   nest {
-    prop("holder") { linkedAndroidGradleModuleGroup.holder.moduleName }
-    prop("main") { linkedAndroidGradleModuleGroup.main.moduleName }
-    prop("unitTest") { linkedAndroidGradleModuleGroup.unitTest?.moduleName }
-    prop("androidTest") { linkedAndroidGradleModuleGroup.androidTest?.moduleName }
-    prop("testFixtures") { linkedAndroidGradleModuleGroup.testFixtures?.moduleName }
-    prop("screenshotTest") { linkedAndroidGradleModuleGroup.screenshotTest?.moduleName }
-    if (linkedAndroidGradleModuleGroup.testSuites.isNotEmpty()) {
-      prop("testSuites") { linkedAndroidGradleModuleGroup.testSuites.map { it.moduleName }.sorted().joinToString(", ") }
+    prop("holder") { module.getHolderModule().name }
+    prop("main") { module.getMainModule().name }
+    prop("unitTest") { module.getUnitTestModule()?.name }
+    prop("androidTest") { module.getAndroidTestModule()?.name }
+    prop("testFixtures") { module.getTestFixturesModule()?.name }
+    prop("screenshotTest") { module.getScreenshotTestModule()?.name }
+    val testSuites = module.getTestSuiteModules()
+    if (testSuites.isNotEmpty()) {
+      prop("testSuites") { testSuites.map { it.name }.sorted().joinToString(", ") }
     }
   }
 }

@@ -680,9 +680,10 @@ private constructor(
   override fun isProductionAndroidModule() = super.isProductionAndroidModule() && module.isMainModule()
 
   override fun getProductionAndroidModule() =
-    when (val linkedModuleData = module.getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP)) {
-      null -> super.getProductionAndroidModule()
-      else -> linkedModuleData.main?.module
+    if (module.isLinkedAndroidModule()) {
+      module.getMainModule()
+    } else {
+      super.getProductionAndroidModule()
     }
 
   override fun getHolderModule(): Module = module.getHolderModule()

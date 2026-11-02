@@ -48,6 +48,7 @@ import com.android.tools.idea.gradle.project.upgrade.AssistantInvoker
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil.GRADLE_SYSTEM_ID
 import com.android.tools.idea.gradle.util.LocalProperties
 import com.android.tools.idea.projectsystem.gradle.isHolderModule
+import com.android.tools.idea.projectsystem.gradle.isLinkedAndroidModule
 import com.android.tools.idea.sdk.IdeSdks
 import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger
 import com.intellij.execution.RunConfigurationProducerService
@@ -314,7 +315,10 @@ private suspend fun attachCachedModelsOrTriggerSyncBody(project: Project, gradle
           requestSync("Sync failed in last import attempt. Path: ${externalProjectInfo.externalProjectPath}")
         }
         externalProjectInfo?.externalProjectStructure?.modules()?.forEach { moduleDataNode ->
-          if (ExternalSystemApiUtil.getChildren(moduleDataNode, ANDROID_MODEL).singleOrNull() != null) {
+          if (
+            ExternalSystemApiUtil.getChildren(moduleDataNode, ANDROID_MODEL).singleOrNull() != null &&
+              moduleDataNode.hasUnlinkedAndroidModules(modulesById)
+          ) {
             val isLinked = moduleDataNode.linkAndroidModuleGroup(project) { data -> modulesById[data.id] }
             if (!isLinked) {
               requestSync("Not enough information to link all modules from: ${moduleDataNode.data.id}")
@@ -515,6 +519,11 @@ private fun getFacetsFromModules(
   }
   return facets
 }
+
+private fun DataNode<ModuleData>.hasUnlinkedAndroidModules(modulesById: Map<String, Module>): Boolean =
+  (listOf(this) + ExternalSystemApiUtil.findAll(this, GradleSourceSetData.KEY)).any {
+    modulesById[it.data.id]?.isLinkedAndroidModule() != true
+  }
 
 private fun <T> getModelFromDataNode(moduleDataNode: DataNode<*>, dataKey: Key<T>) =
   ExternalSystemApiUtil.getChildren(moduleDataNode, dataKey)
