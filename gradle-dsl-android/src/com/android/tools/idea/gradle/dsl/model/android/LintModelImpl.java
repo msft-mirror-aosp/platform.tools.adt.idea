@@ -25,7 +25,6 @@ import com.android.tools.idea.gradle.dsl.model.ext.GradlePropertyModelBuilder;
 import com.android.tools.idea.gradle.dsl.model.ext.transforms.SdkOrPreviewTransform;
 import com.android.tools.idea.gradle.dsl.parser.android.LintDslElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyDescription;
-import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
@@ -256,9 +255,8 @@ public class LintModelImpl extends GradleDslBlockModel implements LintModel {
 
   @Override
   public @NotNull ResolvedPropertyModel targetSdkVersion() {
-    VersionConstraint agp410plus = VersionConstraint.agpFrom("4.1.0");
     return GradlePropertyModelBuilder.create(myDslElement, TARGET_SDK_VERSION)
-      .addTransform(new SdkOrPreviewTransform(TARGET_SDK_VERSION, "targetSdkVersion", "targetSdk", "targetSdkPreview", agp410plus))
+      .addTransform(new SdkOrPreviewTransform(TARGET_SDK_VERSION, "targetSdkVersion", "targetSdk", "targetSdkPreview"))
       .buildResolved();
   }
 }

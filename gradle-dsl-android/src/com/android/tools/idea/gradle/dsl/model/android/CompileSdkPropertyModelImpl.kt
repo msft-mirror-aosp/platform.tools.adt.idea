@@ -18,7 +18,6 @@ package com.android.tools.idea.gradle.dsl.model.android
 import com.android.tools.idea.gradle.dsl.api.android.CompileSdkBlockModel
 import com.android.tools.idea.gradle.dsl.api.android.CompileSdkPropertyModel
 import com.android.tools.idea.gradle.dsl.api.android.CompileSdkPropertyModel.Companion.COMPILE_SDK_BLOCK_VERSION
-import com.android.tools.idea.gradle.dsl.api.android.CompileSdkPropertyModel.Companion.COMPILE_SDK_INTRODUCED_VERSION
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel.ValueType
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo
@@ -105,7 +104,6 @@ class CompileSdkPropertyModelImpl(
             "compileSdkVersion",
             "compileSdk",
             "compileSdkPreview",
-            VersionConstraint.agpFrom(COMPILE_SDK_INTRODUCED_VERSION),
             createInPosition,
           )
         )

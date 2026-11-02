@@ -21,7 +21,6 @@ interface CompileSdkPropertyModel : ResolvedPropertyModel {
   companion object {
     // support added in the earliest 8.13
     const val COMPILE_SDK_BLOCK_VERSION = "8.13.0-alpha01"
-    const val COMPILE_SDK_INTRODUCED_VERSION = "4.1.0"
   }
 
   /** @return the compile SDK config model referenced to by this property. */

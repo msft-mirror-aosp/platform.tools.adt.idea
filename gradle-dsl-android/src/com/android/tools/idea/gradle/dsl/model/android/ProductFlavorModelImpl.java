@@ -38,7 +38,6 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelEffectDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
-import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
@@ -127,9 +126,8 @@ public final class ProductFlavorModelImpl extends FlavorTypeModelImpl implements
   @Override
   @NotNull
   public ResolvedPropertyModel minSdkVersion() {
-    VersionConstraint agp410plus = VersionConstraint.agpFrom("4.1.0");
     return GradlePropertyModelBuilder.create(myDslElement, MIN_SDK_VERSION)
-      .addTransform(new SdkOrPreviewTransform(MIN_SDK_VERSION, "minSdkVersion", "minSdk", "minSdkPreview", agp410plus))
+      .addTransform(new SdkOrPreviewTransform(MIN_SDK_VERSION, "minSdkVersion", "minSdk", "minSdkPreview"))
       .buildResolved();
   }
 
@@ -225,9 +223,8 @@ public final class ProductFlavorModelImpl extends FlavorTypeModelImpl implements
   @Override
   @NotNull
   public ResolvedPropertyModel targetSdkVersion() {
-    VersionConstraint agp410plus = VersionConstraint.agpFrom("4.1.0");
     return GradlePropertyModelBuilder.create(myDslElement, TARGET_SDK_VERSION)
-      .addTransform(new SdkOrPreviewTransform(TARGET_SDK_VERSION, "targetSdkVersion", "targetSdk", "targetSdkPreview", agp410plus))
+      .addTransform(new SdkOrPreviewTransform(TARGET_SDK_VERSION, "targetSdkVersion", "targetSdk", "targetSdkPreview"))
       .buildResolved();
   }
 

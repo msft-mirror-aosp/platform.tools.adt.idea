@@ -35,7 +35,6 @@ import com.android.tools.idea.gradle.dsl.parser.android.testOptions.testSuites.S
 import com.android.tools.idea.gradle.dsl.parser.android.testOptions.testSuites.TestSuiteDslElement;
 import com.android.tools.idea.gradle.dsl.parser.android.testOptions.UnitTestsDslElement;
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement;
-import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 import org.jetbrains.annotations.NonNls;
@@ -96,9 +95,8 @@ public class TestOptionsModelImpl extends GradleDslBlockModel implements TestOpt
 
   @Override
   public @NotNull ResolvedPropertyModel targetSdkVersion() {
-    VersionConstraint agp410plus = VersionConstraint.agpFrom("4.1.0");
     return GradlePropertyModelBuilder.create(myDslElement, TARGET_SDK_VERSION)
-      .addTransform(new SdkOrPreviewTransform(TARGET_SDK_VERSION, "targetSdkVersion", "targetSdk", "targetSdkPreview", agp410plus))
+      .addTransform(new SdkOrPreviewTransform(TARGET_SDK_VERSION, "targetSdkVersion", "targetSdk", "targetSdkPreview"))
       .buildResolved();
   }
 

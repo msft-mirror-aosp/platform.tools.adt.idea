@@ -29,7 +29,6 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElem
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelEffectDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelPropertyDescription;
 import com.android.tools.idea.gradle.dsl.parser.semantics.ModelSemanticsDescription;
-import com.android.tools.idea.gradle.dsl.parser.semantics.VersionConstraint;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import java.util.Objects;
@@ -38,8 +37,8 @@ import java.util.Objects;
  * In AGP 7.0.0, some properties which previously had been set using a single operator with
  * overloads for multiple types (Integer or String) had their setters split into two distinct
  * operators, one for the Integer and one for the String.  The new operators are preferred, but
- * are only available from a certain version, and if there is uncertainty over the type of the
- * value we should probably continue to use the older generic setter.
+ * if there is uncertainty over the type of the value we should probably continue to use the
+ * older generic setter.
  *
  * Note: despite its name, the MultiTypePropertyModel is not suitable for this, because that assumes
  * a single operator with multiple syntactic forms for the value.
@@ -49,11 +48,6 @@ public class SdkOrPreviewTransform extends PropertyTransform {
   @NotNull private final String genericSetter;
   @NotNull private final String sdkSetter;
   @NotNull private final String previewSetter;
-  /**
-   * The constraint on versions for which the sdk- and previewSetters are available, or null (meaning
-   * no constraint).
-   */
-  @Nullable private VersionConstraint versionConstraint;
   @Nullable private Integer position;
 
   public SdkOrPreviewTransform(
@@ -61,7 +55,6 @@ public class SdkOrPreviewTransform extends PropertyTransform {
     @NotNull String genericSetter,
     @NotNull String sdkSetter,
     @NotNull String previewSetter,
-    @Nullable VersionConstraint versionConstraint,
     @Nullable Integer position
   ) {
     super();
@@ -69,7 +62,6 @@ public class SdkOrPreviewTransform extends PropertyTransform {
     this.genericSetter = genericSetter;
     this.sdkSetter = sdkSetter;
     this.previewSetter = previewSetter;
-    this.versionConstraint = versionConstraint;
     this.position = position;
   }
 
@@ -77,10 +69,9 @@ public class SdkOrPreviewTransform extends PropertyTransform {
     @NotNull ModelPropertyDescription propertyDescription,
     @NotNull String genericSetter,
     @NotNull String sdkSetter,
-    @NotNull String previewSetter,
-    @Nullable VersionConstraint versionConstraint
+    @NotNull String previewSetter
   ) {
-    this(propertyDescription, genericSetter, sdkSetter, previewSetter, versionConstraint, null);
+    this(propertyDescription, genericSetter, sdkSetter, previewSetter, null);
   }
 
   @Override
@@ -108,48 +99,42 @@ public class SdkOrPreviewTransform extends PropertyTransform {
     String operatorName;
     ExternalNameInfo.ExternalNameSyntax syntax;
     GradleDslWriter writer = holder.getDslFile().getWriter();
-    if (versionConstraint == null || versionConstraint.isOkWith(holder.getDslFile().getContext().getAgpVersion())) {
-      if (value instanceof ReferenceTo) {
-        // TODO(xof): if and when the genericSetter is removed from AGP, we will need to have some magic at this point.
-        operatorName = genericSetter;
-        syntax = ExternalNameInfo.ExternalNameSyntax.METHOD;
-      }
-      else if (value instanceof Integer) {
-        operatorName = sdkSetter;
+    if (value instanceof ReferenceTo) {
+      // TODO(xof): if and when the genericSetter is removed from AGP, we will need to have some magic at this point.
+      operatorName = genericSetter;
+      syntax = ExternalNameInfo.ExternalNameSyntax.METHOD;
+    }
+    else if (value instanceof Integer) {
+      operatorName = sdkSetter;
+      syntax = writer.getSyntaxForSdkSetter();
+    }
+    else if (value instanceof String && ((String)value).startsWith("android-")) {
+      String valueAfterAndroid = ((String)value).substring("android-".length());
+      if (isPreviewHash((String) value)) {
+        operatorName = previewSetter;
         syntax = writer.getSyntaxForSdkSetter();
-      }
-      else if (value instanceof String && ((String)value).startsWith("android-")) {
-        String valueAfterAndroid = ((String)value).substring("android-".length());
-        if (isPreviewHash((String) value)) {
-          operatorName = previewSetter;
-          syntax = writer.getSyntaxForSdkSetter();
-          value = valueAfterAndroid;
-        } else {
-          try {
-            int sdkVersion = Integer.parseInt(valueAfterAndroid);
-            operatorName = sdkSetter;
-            syntax = writer.getSyntaxForSdkSetter();
-            value = sdkVersion;
-          } catch (NumberFormatException e) {
-            operatorName = genericSetter;
-            syntax = ExternalNameInfo.ExternalNameSyntax.METHOD;
-          }
-        }
-      } else { // RawText, literal Strings not beginning "android-"
-        // Handle RawText that refers to an integer
-        if (value.toString().endsWith(".toInt()")) {
+        value = valueAfterAndroid;
+      } else {
+        try {
+          int sdkVersion = Integer.parseInt(valueAfterAndroid);
           operatorName = sdkSetter;
           syntax = writer.getSyntaxForSdkSetter();
-        } else {
-          // TODO(xof): if and when the genericSetter is removed from AGP, we will need to have some magic at this point.
+          value = sdkVersion;
+        } catch (NumberFormatException e) {
           operatorName = genericSetter;
           syntax = ExternalNameInfo.ExternalNameSyntax.METHOD;
         }
       }
-    }
-    else {
-      operatorName = genericSetter;
-      syntax = ExternalNameInfo.ExternalNameSyntax.METHOD;
+    } else { // RawText, literal Strings not beginning "android-"
+      // Handle RawText that refers to an integer
+      if (value.toString().endsWith(".toInt()")) {
+        operatorName = sdkSetter;
+        syntax = writer.getSyntaxForSdkSetter();
+      } else {
+        // TODO(xof): if and when the genericSetter is removed from AGP, we will need to have some magic at this point.
+        operatorName = genericSetter;
+        syntax = ExternalNameInfo.ExternalNameSyntax.METHOD;
+      }
     }
     GradleDslSimpleExpression expression = createBasicExpression(holder, value, GradleNameElement.create(operatorName));
     expression.setModelEffect(new ModelEffectDescription(propertyDescription, ModelSemanticsDescription.CREATE_WITH_VALUE));
