@@ -26,7 +26,6 @@ import com.android.tools.idea.gradle.dsl.model.android.productFlavors.ExternalNa
 import com.android.tools.idea.gradle.dsl.model.android.productFlavors.NdkOptionsModelImpl
 import com.android.tools.idea.gradle.dsl.model.android.productFlavors.externalNativeBuild.CMakeOptionsModelImpl
 import com.android.tools.idea.gradle.dsl.model.android.productFlavors.externalNativeBuild.NdkBuildOptionsModelImpl
-import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.Lists
 import com.google.common.truth.Truth
@@ -1042,95 +1041,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
   }
 
   @Test
-  fun testEditAndApplyLiteralElements400() {
-    writeToBuildFile(TestFile.EDIT_AND_APPLY_LITERAL_ELEMENTS)
-
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    var android = buildModel.android()
-    assertNotNull(android)
-
-    var defaultConfig = android.defaultConfig()
-    assertEquals("applicationId", "com.example.myapplication", defaultConfig.applicationId())
-    assertEquals("dimension", "abcd", defaultConfig.dimension())
-    assertEquals("maxSdkVersion", Integer.valueOf(23), defaultConfig.maxSdkVersion())
-    assertEquals("minSdkVersion", "android-B", defaultConfig.minSdkVersion())
-    assertEquals("multiDexEnabled", true, defaultConfig.multiDexEnabled())
-    assertEquals("targetSdkVersion", "android-I", defaultConfig.targetSdkVersion())
-    assertEquals("testApplicationId", "com.example.myapplication.test", defaultConfig.testApplicationId())
-    assertEquals("testFunctionalTest", false, defaultConfig.testFunctionalTest())
-    assertEquals("testHandleProfiling", true, defaultConfig.testHandleProfiling())
-    assertEquals("testInstrumentationRunner", "abcd", defaultConfig.testInstrumentationRunner())
-    assertEquals("useJack", false, defaultConfig.useJack())
-    assertEquals("versionCode", 1, defaultConfig.versionCode())
-    assertEquals("versionName", "1.0", defaultConfig.versionName())
-
-    defaultConfig.applicationId().setValue("com.example.myapplication-1")
-    defaultConfig.dimension().setValue("efgh")
-    defaultConfig.maxSdkVersion().setValue(24)
-    defaultConfig.minSdkVersion().setValue("android-C")
-    defaultConfig.multiDexEnabled().setValue(false)
-    defaultConfig.targetSdkVersion().setValue("android-J")
-    defaultConfig.testApplicationId().setValue("com.example.myapplication-1.test")
-    defaultConfig.testFunctionalTest().setValue(true)
-    defaultConfig.testHandleProfiling().setValue(false)
-    defaultConfig.testInstrumentationRunner().setValue("efgh")
-    defaultConfig.useJack().setValue(true)
-    defaultConfig.versionCode().setValue(2)
-    defaultConfig.versionName().setValue("2.0")
-
-    assertEquals("applicationId", "com.example.myapplication-1", defaultConfig.applicationId())
-    assertEquals("dimension", "efgh", defaultConfig.dimension())
-    assertEquals("maxSdkVersion", Integer.valueOf(24), defaultConfig.maxSdkVersion())
-    assertEquals("minSdkVersion", "android-C", defaultConfig.minSdkVersion())
-    assertEquals("multiDexEnabled", false, defaultConfig.multiDexEnabled())
-    assertEquals("targetSdkVersion", "android-J", defaultConfig.targetSdkVersion())
-    assertEquals("testApplicationId", "com.example.myapplication-1.test", defaultConfig.testApplicationId())
-    assertEquals("testFunctionalTest", true, defaultConfig.testFunctionalTest())
-    assertEquals("testHandleProfiling", false, defaultConfig.testHandleProfiling())
-    assertEquals("testInstrumentationRunner", "efgh", defaultConfig.testInstrumentationRunner())
-    assertEquals("useJack", true, defaultConfig.useJack())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-    assertEquals("versionName", "2.0", defaultConfig.versionName())
-
-    applyChanges(buildModel)
-    verifyFileContents(myBuildFile, TestFile.EDIT_AND_APPLY_LITERAL_ELEMENTS_EXPECTED_400)
-
-    assertEquals("applicationId", "com.example.myapplication-1", defaultConfig.applicationId())
-    assertEquals("dimension", "efgh", defaultConfig.dimension())
-    assertEquals("maxSdkVersion", Integer.valueOf(24), defaultConfig.maxSdkVersion())
-    assertEquals("minSdkVersion", "android-C", defaultConfig.minSdkVersion())
-    assertEquals("multiDexEnabled", false, defaultConfig.multiDexEnabled())
-    assertEquals("targetSdkVersion", "android-J", defaultConfig.targetSdkVersion())
-    assertEquals("testApplicationId", "com.example.myapplication-1.test", defaultConfig.testApplicationId())
-    assertEquals("testFunctionalTest", true, defaultConfig.testFunctionalTest())
-    assertEquals("testHandleProfiling", false, defaultConfig.testHandleProfiling())
-    assertEquals("testInstrumentationRunner", "efgh", defaultConfig.testInstrumentationRunner())
-    assertEquals("useJack", true, defaultConfig.useJack())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-    assertEquals("versionName", "2.0", defaultConfig.versionName())
-
-    buildModel.reparse()
-    android = buildModel.android()
-    assertNotNull(android)
-
-    defaultConfig = android.defaultConfig()
-    assertEquals("applicationId", "com.example.myapplication-1", defaultConfig.applicationId())
-    assertEquals("dimension", "efgh", defaultConfig.dimension())
-    assertEquals("maxSdkVersion", Integer.valueOf(24), defaultConfig.maxSdkVersion())
-    assertEquals("minSdkVersion", "android-C", defaultConfig.minSdkVersion())
-    assertEquals("multiDexEnabled", false, defaultConfig.multiDexEnabled())
-    assertEquals("targetSdkVersion", "android-J", defaultConfig.targetSdkVersion())
-    assertEquals("testApplicationId", "com.example.myapplication-1.test", defaultConfig.testApplicationId())
-    assertEquals("testFunctionalTest", true, defaultConfig.testFunctionalTest())
-    assertEquals("testHandleProfiling", false, defaultConfig.testHandleProfiling())
-    assertEquals("testInstrumentationRunner", "efgh", defaultConfig.testInstrumentationRunner())
-    assertEquals("useJack", true, defaultConfig.useJack())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-    assertEquals("versionName", "2.0", defaultConfig.versionName())
-  }
-
-  @Test
   fun testEditAndApplyIntegerLiteralElements() {
     writeToBuildFile(TestFile.EDIT_AND_APPLY_INTEGER_LITERAL_ELEMENTS)
 
@@ -1166,134 +1076,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("minSdkVersion", 16, defaultConfig.minSdkVersion())
     assertEquals("targetSdkVersion", 23, defaultConfig.targetSdkVersion())
     assertEquals("versionCode", 2, defaultConfig.versionCode())
-  }
-
-  @Test
-  fun testEditAndApplyIntegerLiteralElements400() {
-    writeToBuildFile(TestFile.EDIT_AND_APPLY_INTEGER_LITERAL_ELEMENTS)
-
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    var android = buildModel.android()
-    assertNotNull(android)
-
-    var defaultConfig = android.defaultConfig()
-    assertEquals("minSdkVersion", "15", defaultConfig.minSdkVersion())
-    assertEquals("targetSdkVersion", "22", defaultConfig.targetSdkVersion())
-    assertEquals("versionCode", 1, defaultConfig.versionCode())
-
-    defaultConfig.minSdkVersion().setValue(16)
-    defaultConfig.targetSdkVersion().setValue(23)
-    defaultConfig.versionCode().setValue(2)
-
-    assertEquals("minSdkVersion", 16, defaultConfig.minSdkVersion())
-    assertEquals("targetSdkVersion", 23, defaultConfig.targetSdkVersion())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-
-    applyChanges(buildModel)
-    verifyFileContents(myBuildFile, TestFile.EDIT_AND_APPLY_INTEGER_LITERAL_ELEMENTS_EXPECTED_400)
-
-    assertEquals("minSdkVersion", 16, defaultConfig.minSdkVersion())
-    assertEquals("targetSdkVersion", 23, defaultConfig.targetSdkVersion())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-
-    buildModel.reparse()
-    android = buildModel.android()
-    assertNotNull(android)
-
-    defaultConfig = android.defaultConfig()
-    assertEquals("minSdkVersion", 16, defaultConfig.minSdkVersion())
-    assertEquals("targetSdkVersion", 23, defaultConfig.targetSdkVersion())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-  }
-
-  @Test
-  fun testAddAndApplyLiteralElements400() {
-    writeToBuildFile(TestFile.ADD_AND_APPLY_LITERAL_ELEMENTS)
-
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    var android = buildModel.android()
-    assertNotNull(android)
-
-    var defaultConfig = android.defaultConfig()
-    assertMissingProperty("applicationId", defaultConfig.applicationId())
-    assertMissingProperty("dimension", defaultConfig.dimension())
-    assertMissingProperty("maxSdkVersion", defaultConfig.maxSdkVersion())
-    assertMissingProperty("minSdkVersion", defaultConfig.minSdkVersion())
-    assertMissingProperty("multiDexEnabled", defaultConfig.multiDexEnabled())
-    assertMissingProperty("targetSdkVersion", defaultConfig.targetSdkVersion())
-    assertMissingProperty("testApplicationId", defaultConfig.testApplicationId())
-    assertMissingProperty("testFunctionalTest", defaultConfig.testFunctionalTest())
-    assertMissingProperty("testHandleProfiling", defaultConfig.testHandleProfiling())
-    assertMissingProperty("testInstrumentationRunner", defaultConfig.testInstrumentationRunner())
-    assertMissingProperty("useJack", defaultConfig.useJack())
-    assertMissingProperty("versionCode", defaultConfig.versionCode())
-    assertMissingProperty("versionName", defaultConfig.versionName())
-
-    defaultConfig.applicationId().setValue("com.example.myapplication-1")
-    defaultConfig.dimension().setValue("efgh")
-    defaultConfig.maxSdkVersion().setValue(24)
-    defaultConfig.minSdkVersion().setValue("android-C")
-    defaultConfig.multiDexEnabled().setValue(false)
-    defaultConfig.targetSdkVersion().setValue("android-J")
-    defaultConfig.testApplicationId().setValue("com.example.myapplication-1.test")
-    defaultConfig.testFunctionalTest().setValue(true)
-    defaultConfig.testHandleProfiling().setValue(false)
-    defaultConfig.testInstrumentationRunner().setValue("efgh")
-    defaultConfig.useJack().setValue(true)
-    defaultConfig.versionCode().setValue(2)
-    defaultConfig.versionName().setValue("2.0")
-
-    assertEquals("applicationId", "com.example.myapplication-1", defaultConfig.applicationId())
-    assertEquals("dimension", "efgh", defaultConfig.dimension())
-    assertEquals("maxSdkVersion", Integer.valueOf(24), defaultConfig.maxSdkVersion())
-    assertEquals("minSdkVersion", "android-C", defaultConfig.minSdkVersion())
-    assertEquals("multiDexEnabled", false, defaultConfig.multiDexEnabled())
-    assertEquals("targetSdkVersion", "android-J", defaultConfig.targetSdkVersion())
-    assertEquals("testApplicationId", "com.example.myapplication-1.test", defaultConfig.testApplicationId())
-    assertEquals("testFunctionalTest", true, defaultConfig.testFunctionalTest())
-    assertEquals("testHandleProfiling", false, defaultConfig.testHandleProfiling())
-    assertEquals("testInstrumentationRunner", "efgh", defaultConfig.testInstrumentationRunner())
-    assertEquals("useJack", true, defaultConfig.useJack())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-    assertEquals("versionName", "2.0", defaultConfig.versionName())
-
-    applyChanges(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_LITERAL_ELEMENTS_EXPECTED_400)
-
-    assertEquals("applicationId", "com.example.myapplication-1", defaultConfig.applicationId())
-    assertEquals("dimension", "efgh", defaultConfig.dimension())
-    assertEquals("maxSdkVersion", Integer.valueOf(24), defaultConfig.maxSdkVersion())
-    assertEquals("minSdkVersion", "android-C", defaultConfig.minSdkVersion())
-    assertEquals("multiDexEnabled", false, defaultConfig.multiDexEnabled())
-    assertEquals("targetSdkVersion", "android-J", defaultConfig.targetSdkVersion())
-    assertEquals("testApplicationId", "com.example.myapplication-1.test", defaultConfig.testApplicationId())
-    assertEquals("testFunctionalTest", true, defaultConfig.testFunctionalTest())
-    assertEquals("testHandleProfiling", false, defaultConfig.testHandleProfiling())
-    assertEquals("testInstrumentationRunner", "efgh", defaultConfig.testInstrumentationRunner())
-    assertEquals("useJack", true, defaultConfig.useJack())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-    assertEquals("versionName", "2.0", defaultConfig.versionName())
-
-    buildModel.reparse()
-    android = buildModel.android()
-    assertNotNull(android)
-
-    defaultConfig = android.defaultConfig()
-    assertEquals("applicationId", "com.example.myapplication-1", defaultConfig.applicationId())
-    assertEquals("dimension", "efgh", defaultConfig.dimension())
-    assertEquals("maxSdkVersion", Integer.valueOf(24), defaultConfig.maxSdkVersion())
-    assertEquals("minSdkVersion", "android-C", defaultConfig.minSdkVersion())
-    assertEquals("multiDexEnabled", false, defaultConfig.multiDexEnabled())
-    assertEquals("targetSdkVersion", "android-J", defaultConfig.targetSdkVersion())
-    assertEquals("testApplicationId", "com.example.myapplication-1.test", defaultConfig.testApplicationId())
-    assertEquals("testFunctionalTest", true, defaultConfig.testFunctionalTest())
-    assertEquals("testHandleProfiling", false, defaultConfig.testHandleProfiling())
-    assertEquals("testInstrumentationRunner", "efgh", defaultConfig.testInstrumentationRunner())
-    assertEquals("useJack", true, defaultConfig.useJack())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-    assertEquals("versionName", "2.0", defaultConfig.versionName())
   }
 
   @Test
@@ -1385,45 +1167,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
   }
 
   @Test
-  fun testAddAndApplyIntegerLiteralElements400() {
-    writeToBuildFile(TestFile.ADD_AND_APPLY_INTEGER_LITERAL_ELEMENTS)
-
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    var android = buildModel.android()
-    assertNotNull(android)
-
-    var defaultConfig = android.defaultConfig()
-    assertMissingProperty("minSdkVersion", defaultConfig.minSdkVersion())
-    assertMissingProperty("targetSdkVersion", defaultConfig.targetSdkVersion())
-    assertMissingProperty("versionCode", defaultConfig.versionCode())
-
-    defaultConfig.minSdkVersion().setValue(16)
-    defaultConfig.targetSdkVersion().setValue(23)
-    defaultConfig.versionCode().setValue(2)
-
-    assertEquals("minSdkVersion", 16, defaultConfig.minSdkVersion())
-    assertEquals("targetSdkVersion", 23, defaultConfig.targetSdkVersion())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-
-    applyChanges(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_INTEGER_LITERAL_ELEMENTS_EXPECTED_400)
-
-    assertEquals("minSdkVersion", 16, defaultConfig.minSdkVersion())
-    assertEquals("targetSdkVersion", 23, defaultConfig.targetSdkVersion())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-
-    buildModel.reparse()
-    android = buildModel.android()
-    assertNotNull(android)
-
-    defaultConfig = android.defaultConfig()
-    assertEquals("minSdkVersion", 16, defaultConfig.minSdkVersion())
-    assertEquals("targetSdkVersion", 23, defaultConfig.targetSdkVersion())
-    assertEquals("versionCode", 2, defaultConfig.versionCode())
-  }
-
-  @Test
   fun testAddAndApplyIntegerLiteralElements() {
     writeToBuildFile(TestFile.ADD_AND_APPLY_INTEGER_LITERAL_ELEMENTS)
 
@@ -1505,51 +1248,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
   }
 
   @Test
-  fun testAddAndApplyListElements400() {
-    writeToBuildFile(TestFile.ADD_AND_APPLY_LIST_ELEMENTS)
-
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    var android = buildModel.android()
-    assertNotNull(android)
-
-    var defaultConfig = android.defaultConfig()
-    assertMissingProperty("consumerProguardFiles", defaultConfig.consumerProguardFiles())
-    assertMissingProperty("proguardFiles", defaultConfig.proguardFiles())
-    assertMissingProperty("resConfigs", defaultConfig.resConfigs())
-    assertEmpty("resValues", defaultConfig.resValues())
-
-    defaultConfig.consumerProguardFiles().addListValue()!!.setValue("proguard-android.txt")
-    defaultConfig.proguardFiles().addListValue()!!.setValue("proguard-android.txt")
-    defaultConfig.proguardFiles().addListValue()!!.setValue("proguard-rules.pro")
-    defaultConfig.resConfigs().addListValue()!!.setValue("abcd")
-    defaultConfig.addResValue("mnop", "qrst", "uvwx")
-
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt"), defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
-    assertEquals("resConfigs", listOf("abcd"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
-
-    applyChanges(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_LIST_ELEMENTS_EXPECTED_400)
-
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt"), defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
-    assertEquals("resConfigs", listOf("abcd"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
-
-    buildModel.reparse()
-    android = buildModel.android()
-    assertNotNull(android)
-
-    defaultConfig = android.defaultConfig()
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt"), defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
-    assertEquals("resConfigs", listOf("abcd"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
-  }
-
-  @Test
   fun testAddAndApplyListElements() {
     writeToBuildFile(TestFile.ADD_AND_APPLY_LIST_ELEMENTS)
 
@@ -1591,75 +1289,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
     assertEquals("resConfigs", listOf("abcd"), defaultConfig.resConfigs())
     verifyFlavorType("resValues", listOf(listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
-  }
-
-  @Test
-  fun testAddToAndApplyListElements400() {
-    writeToBuildFile(TestFile.ADD_TO_AND_APPLY_LIST_ELEMENTS)
-
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    var android = buildModel.android()
-    assertNotNull(android)
-
-    var defaultConfig = android.defaultConfig()
-
-    assertEquals("consumerProguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.consumerProguardFiles())
-    assertEquals("proguardFiles", listOf("proguard-android.txt", "proguard-rules.pro"), defaultConfig.proguardFiles())
-    assertEquals("resConfigs", listOf("abcd", "efgh"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl")), defaultConfig.resValues())
-
-    defaultConfig.consumerProguardFiles().addListValue()!!.setValue("proguard-android-1.txt")
-    defaultConfig.proguardFiles().addListValue()!!.setValue("proguard-android-1.txt")
-    defaultConfig.resConfigs().addListValue()!!.setValue("xyz")
-    defaultConfig.addResValue("mnop", "qrst", "uvwx")
-
-    assertEquals(
-      "consumerProguardFiles",
-      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-      defaultConfig.consumerProguardFiles(),
-    )
-    assertEquals(
-      "proguardFiles",
-      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-      defaultConfig.proguardFiles(),
-    )
-    assertEquals("resConfigs", listOf("abcd", "efgh", "xyz"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
-
-    applyChanges(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_TO_AND_APPLY_LIST_ELEMENTS_EXPECTED_400)
-
-    assertEquals(
-      "consumerProguardFiles",
-      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-      defaultConfig.consumerProguardFiles(),
-    )
-    assertEquals(
-      "proguardFiles",
-      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-      defaultConfig.proguardFiles(),
-    )
-    assertEquals("resConfigs", listOf("abcd", "efgh", "xyz"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
-
-    buildModel.reparse()
-    android = buildModel.android()
-    assertNotNull(android)
-
-    defaultConfig = android.defaultConfig()
-    assertEquals(
-      "consumerProguardFiles",
-      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-      defaultConfig.consumerProguardFiles(),
-    )
-    assertEquals(
-      "proguardFiles",
-      listOf("proguard-android.txt", "proguard-rules.pro", "proguard-android-1.txt"),
-      defaultConfig.proguardFiles(),
-    )
-    assertEquals("resConfigs", listOf("abcd", "efgh", "xyz"), defaultConfig.resConfigs())
-    verifyFlavorType("resValues", listOf(listOf("abcd", "efgh", "ijkl"), listOf("mnop", "qrst", "uvwx")), defaultConfig.resValues())
   }
 
   @Test
@@ -1856,66 +1485,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     assertEquals(
       "testInstrumentationRunnerArguments",
       mapOf("size" to "small", "foo" to "bar", "key" to "value"),
-      defaultConfig.testInstrumentationRunnerArguments(),
-    )
-  }
-
-  @Test
-  fun testAddAndApplyMapElements400() {
-    writeToBuildFile(TestFile.ADD_AND_APPLY_MAP_ELEMENTS)
-
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    var android = buildModel.android()
-    assertNotNull(android)
-
-    var defaultConfig = android.defaultConfig()
-    verifyEmptyMapProperty("manifestPlaceholders", defaultConfig.manifestPlaceholders())
-    verifyEmptyMapProperty("testInstrumentationRunnerArguments", defaultConfig.testInstrumentationRunnerArguments())
-
-    defaultConfig.manifestPlaceholders().getMapValue("activityLabel1")!!.setValue("newName1")
-    defaultConfig.manifestPlaceholders().getMapValue("activityLabel2")!!.setValue("newName2")
-    defaultConfig.testInstrumentationRunnerArguments().getMapValue("size")!!.setValue("small")
-    defaultConfig.testInstrumentationRunnerArguments().getMapValue("key")!!.setValue("value")
-
-    assertEquals(
-      "manifestPlaceholders",
-      mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
-      defaultConfig.manifestPlaceholders(),
-    )
-    assertEquals(
-      "testInstrumentationRunnerArguments",
-      mapOf("size" to "small", "key" to "value"),
-      defaultConfig.testInstrumentationRunnerArguments(),
-    )
-
-    applyChanges(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ADD_AND_APPLY_MAP_ELEMENTS_EXPECTED_400)
-
-    assertEquals(
-      "manifestPlaceholders",
-      mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
-      defaultConfig.manifestPlaceholders(),
-    )
-    assertEquals(
-      "testInstrumentationRunnerArguments",
-      mapOf("size" to "small", "key" to "value"),
-      defaultConfig.testInstrumentationRunnerArguments(),
-    )
-
-    buildModel.reparse()
-    android = buildModel.android()
-    assertNotNull(android)
-
-    defaultConfig = android.defaultConfig()
-    assertEquals(
-      "manifestPlaceholders",
-      mapOf("activityLabel1" to "newName1", "activityLabel2" to "newName2"),
-      defaultConfig.manifestPlaceholders(),
-    )
-    assertEquals(
-      "testInstrumentationRunnerArguments",
-      mapOf("size" to "small", "key" to "value"),
       defaultConfig.testInstrumentationRunnerArguments(),
     )
   }
@@ -2444,23 +2013,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
   }
 
   @Test
-  fun testEnsureSdkVersionUsesApplicationSyntax400() {
-    assumeTrue("KotlinScript/Declarative prefers assignment even when setters are more general", isGroovy) // TODO(b/143196166)
-    val text = ""
-    writeToBuildFile(text)
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    val defaultConfig = buildModel.android().defaultConfig()
-
-    defaultConfig.minSdkVersion().setValue(18)
-    defaultConfig.maxSdkVersion().setValue(24)
-    defaultConfig.targetSdkVersion().setValue(24)
-
-    applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.ENSURE_SDK_VERSION_USES_APPLICATION_SYNTAX_EXPECTED_400)
-  }
-
-  @Test
   fun testEnsureSdkVersionUsesApplicationSyntax() {
     assumeTrue("KotlinScript/Declarative prefers assignment even when setters are more general", isGroovy) // TODO(b/143196166)
     val text = ""
@@ -2734,24 +2286,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
   }
 
   @Test
-  fun testResConfigsInListMethodCall400() {
-    writeToBuildFile(TestFile.RES_CONFIGS_IN_LIST_METHOD_CALL)
-
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    val resConfigs = buildModel.android().defaultConfig().resConfigs()
-    verifyListProperty(resConfigs, listOf("en", "fr"))
-
-    resConfigs.addListValue()!!.setValue("it")
-    verifyListProperty(resConfigs, listOf("en", "fr", "it"))
-
-    applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.RES_CONFIGS_IN_LIST_METHOD_CALL_EXPECTED_400)
-
-    verifyListProperty(resConfigs, listOf("en", "fr", "it"))
-  }
-
-  @Test
   fun testResConfigsInListMethodCall() {
     writeToBuildFile(TestFile.RES_CONFIGS_IN_LIST_METHOD_CALL)
 
@@ -2766,24 +2300,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     verifyFileContents(myBuildFile, TestFile.RES_CONFIGS_IN_LIST_METHOD_CALL_EXPECTED)
 
     verifyListProperty(resConfigs, listOf("en", "fr", "it"))
-  }
-
-  @Test
-  fun testRemoveResConfigInListMethodCall400() {
-    writeToBuildFile(TestFile.REMOVE_RES_CONFIG_IN_LIST_METHOD_CALL)
-
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    val resConfigs = buildModel.android().defaultConfig().resConfigs()
-    verifyListProperty(resConfigs, listOf("en", "fr"))
-
-    resConfigs.toList()!![0].delete()
-    verifyListProperty(resConfigs, listOf("fr"))
-
-    applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.REMOVE_RES_CONFIG_IN_LIST_METHOD_CALL_EXPECTED_400)
-
-    verifyListProperty(resConfigs, listOf("fr"))
   }
 
   @Test
@@ -2931,24 +2447,18 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     REMOVE_AND_APPLY_ELEMENTS("removeAndApplyElements"),
     EDIT_AND_APPLY_LITERAL_ELEMENTS("editAndApplyLiteralElements"),
     EDIT_AND_APPLY_LITERAL_ELEMENTS_EXPECTED("editAndApplyLiteralElementsExpected"),
-    EDIT_AND_APPLY_LITERAL_ELEMENTS_EXPECTED_400("editAndApplyLiteralElementsExpected400"),
     EDIT_AND_APPLY_INTEGER_LITERAL_ELEMENTS("editAndApplyIntegerLiteralElements"),
     EDIT_AND_APPLY_INTEGER_LITERAL_ELEMENTS_EXPECTED("editAndApplyIntegerLiteralElementsExpected"),
-    EDIT_AND_APPLY_INTEGER_LITERAL_ELEMENTS_EXPECTED_400("editAndApplyIntegerLiteralElementsExpected400"),
     ADD_AND_APPLY_LITERAL_ELEMENTS("addAndApplyLiteralElements"),
     ADD_AND_APPLY_LITERAL_ELEMENTS_EXPECTED("addAndApplyLiteralElementsExpected"),
-    ADD_AND_APPLY_LITERAL_ELEMENTS_EXPECTED_400("addAndApplyLiteralElementsExpected400"),
     ADD_AND_APPLY_INTEGER_LITERAL_ELEMENTS("addAndApplyIntegerLiteralElements"),
     ADD_AND_APPLY_INTEGER_LITERAL_ELEMENTS_EXPECTED("addAndApplyIntegerLiteralElementsExpected"),
-    ADD_AND_APPLY_INTEGER_LITERAL_ELEMENTS_EXPECTED_400("addAndApplyIntegerLiteralElementsExpected400"),
     REPLACE_AND_APPLY_LIST_ELEMENTS("replaceAndApplyListElements"),
     REPLACE_AND_APPLY_LIST_ELEMENTS_EXPECTED("replaceAndApplyListElementsExpected"),
     ADD_AND_APPLY_LIST_ELEMENTS("addAndApplyListElements"),
     ADD_AND_APPLY_LIST_ELEMENTS_EXPECTED("addAndApplyListElementsExpected"),
-    ADD_AND_APPLY_LIST_ELEMENTS_EXPECTED_400("addAndApplyListElementsExpected400"),
     ADD_TO_AND_APPLY_LIST_ELEMENTS("addToAndApplyListElements"),
     ADD_TO_AND_APPLY_LIST_ELEMENTS_EXPECTED("addToAndApplyListElementsExpected"),
-    ADD_TO_AND_APPLY_LIST_ELEMENTS_EXPECTED_400("addToAndApplyListElementsExpected400"),
     REMOVE_FROM_AND_APPLY_LIST_ELEMENTS("removeFromAndApplyListElements"),
     REMOVE_FROM_AND_APPLY_LIST_ELEMENTS_EXPECTED("removeFromAndApplyListElementsExpected"),
     REMOVE_FROM_AND_APPLY_LIST_ELEMENTS_WITH_SINGLE_ELEMENT("removeFromAndApplyListElementsWithSingleElement"),
@@ -2957,7 +2467,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     SET_AND_APPLY_MAP_ELEMENTS_EXPECTED("setAndApplyMapElementsExpected"),
     ADD_AND_APPLY_MAP_ELEMENTS("addAndApplyMapElements"),
     ADD_AND_APPLY_MAP_ELEMENTS_EXPECTED("addAndApplyMapElementsExpected"),
-    ADD_AND_APPLY_MAP_ELEMENTS_EXPECTED_400("addAndApplyMapElementsExpected400"),
     REMOVE_AND_APPLY_MAP_ELEMENTS("removeAndApplyMapElements"),
     REMOVE_AND_APPLY_MAP_ELEMENTS_EXPECTED("removeAndApplyMapElementsExpected"),
     REMOVE_AND_APPLY_DISCONTIGUOUS_MAP_ELEMENTS("removeAndApplyDiscontiguousMapElements"),
@@ -2969,7 +2478,6 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     REMOVE_EXTERNAL_NATIVE_BLOCK_ELEMENTS("removeExternalNativeBlockElements"),
     FUNCTION_CALL_WITH_PARENTHESES("functionCallWithParentheses"),
     ENSURE_SDK_VERSION_USES_APPLICATION_SYNTAX_EXPECTED("ensureSdkVersionUsesApplicationSyntaxExpected"),
-    ENSURE_SDK_VERSION_USES_APPLICATION_SYNTAX_EXPECTED_400("ensureSdkVersionUsesApplicationSyntaxExpected400"),
     OVERRIDE_WITH_INIT_WITH("overrideWithInitWith"),
     PARSE_MATCHING_FALLBACKS("parseMatchingFallbacks"),
     APPEND_MATCHING_FALLBACKS("appendMatchingFallbacks"),
@@ -2983,10 +2491,8 @@ class ProductFlavorModelTest : AndroidGradleFileModelTestCase() {
     ADD_MISSING_DIMENSION_STRATEGY_EXPECTED("addMissingDimensionStrategyExpected"),
     RES_CONFIGS_IN_LIST_METHOD_CALL("resConfigsInListMethodCall"),
     RES_CONFIGS_IN_LIST_METHOD_CALL_EXPECTED("resConfigsInListMethodCallExpected"),
-    RES_CONFIGS_IN_LIST_METHOD_CALL_EXPECTED_400("resConfigsInListMethodCallExpected400"),
     REMOVE_RES_CONFIG_IN_LIST_METHOD_CALL("removeResConfigInListMethodCall"),
     REMOVE_RES_CONFIG_IN_LIST_METHOD_CALL_EXPECTED("removeResConfigInListMethodCallExpected"),
-    REMOVE_RES_CONFIG_IN_LIST_METHOD_CALL_EXPECTED_400("removeResConfigInListMethodCallExpected400"),
     SET_PROGUARD_FILES("setProguardFiles"),
     SET_PROGUARD_FILES_EXPECTED("setProguardFilesExpected"),
     SET_PROGUARD_FILES_WITH_REFERENCE("setProguardFilesWithReference"),

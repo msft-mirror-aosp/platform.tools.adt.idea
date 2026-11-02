@@ -22,7 +22,6 @@ import com.android.tools.idea.gradle.dsl.model.AndroidGradleFileModelTestCase;
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.android.AndroidModel;
 import com.android.tools.idea.gradle.dsl.api.android.LintModel;
-import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion;
 import com.google.common.collect.ImmutableList;
 import java.io.File;
 import org.jetbrains.annotations.NotNull;
@@ -355,7 +354,6 @@ public class LintModelTest extends AndroidGradleFileModelTestCase {
     assertEquals("informational", ImmutableList.of("informational-id-1", "informational-id-2"), lint.informational());
     assertEquals("warning", ImmutableList.of("warning-id-1", "warning-id-2"), lint.warning());
 
-    buildModel.getContext().setAgpVersion(AndroidGradlePluginVersion.Companion.parse("4.0.0"));
 
     lint.checkOnly().getListValue("checkOnly-id-1").delete();
     lint.disable().getListValue("disable-id-2").delete();

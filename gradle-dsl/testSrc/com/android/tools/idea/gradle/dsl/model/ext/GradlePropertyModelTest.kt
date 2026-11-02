@@ -51,7 +51,6 @@ import com.android.tools.idea.gradle.dsl.model.android.android
 import com.android.tools.idea.gradle.dsl.model.notifications.CircularApplication
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslSimpleExpression
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement
-import com.android.tools.idea.gradle.dsl.parser.semantics.AndroidGradlePluginVersion
 import com.google.common.collect.ImmutableMap
 import com.intellij.testFramework.UsefulTestCase
 import java.io.File
@@ -3333,21 +3332,6 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
   }
 
   @Test
-  fun testWriteReferenceToMap400() {
-    writeToBuildFile(TestFile.WRITE_REFERENCE_TO_MAP)
-
-    val buildModel = gradleBuildModel
-    buildModel.context.agpVersion = AndroidGradlePluginVersion.parse("4.0.0")
-    val mapModel = buildModel.ext().findProperty("mP")
-    assertContainsElements(listOf("a", "c"), mapModel.toMap()!!.keys)
-    assertEquals("b", mapModel.toMap()!!["a"]!!.forceString())
-    assertEquals("d", mapModel.toMap()!!["c"]!!.forceString())
-    buildModel.android().defaultConfig().manifestPlaceholders().setValue(ReferenceTo(mapModel))
-    applyChangesAndReparse(buildModel)
-    verifyFileContents(myBuildFile, TestFile.WRITE_REFERENCE_TO_MAP_EXPECTED_400)
-  }
-
-  @Test
   fun testWriteReferenceToMap() {
     writeToBuildFile(TestFile.WRITE_REFERENCE_TO_MAP)
 
@@ -4064,7 +4048,6 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
     PARSE_MAP_WITH_SPACES_IN_KEYS("parseMapWithSpacesInKeys"),
     WRITE_REFERENCE_TO_MAP("writeReferenceToMap"),
     WRITE_REFERENCE_TO_MAP_EXPECTED("writeReferenceToMapExpected"),
-    WRITE_REFERENCE_TO_MAP_EXPECTED_400("writeReferenceToMapExpected400"),
     WRITE_REFERENCE_TO_BUILDSCRIPT_EXT("writeReferenceToBuildscriptExt"),
     WRITE_REFERENCE_TO_BUILDSCRIPT_EXT_APP("writeReferenceToBuildscriptExtApp"),
     WRITE_REFERENCE_TO_BUIDLSCRIPT_EXT_APP_EXPECTED("writeReferenceToBuildscriptExtAppExpected"),

@@ -1,6 +1,6 @@
 android {
   lintOptions {
-    check("check-id-2")
+    checkOnly("check-id-2")
     disable("disable-id-1")
     enable("enable-id-2")
     error("error-id-1")

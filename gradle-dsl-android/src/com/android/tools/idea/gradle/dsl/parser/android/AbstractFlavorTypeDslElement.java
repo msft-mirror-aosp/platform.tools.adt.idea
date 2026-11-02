@@ -50,7 +50,7 @@ public abstract class AbstractFlavorTypeDslElement extends GradleDslBlockElement
     {"consumerProguardFile", exactly(1), CONSUMER_PROGUARD_FILES, AUGMENT_LIST},
     {"setConsumerProguardFiles", exactly(1), CONSUMER_PROGUARD_FILES, CLEAR_AND_AUGMENT_LIST},
     {"manifestPlaceholders", property, MANIFEST_PLACEHOLDERS, VAR_BUT_DO_NOT_USE_FOR_WRITING_IN_KTS, VersionConstraint.agpBefore("4.1.0")},
-    {"manifestPlaceholders", property, MANIFEST_PLACEHOLDERS, VAL, VersionConstraint.agpFrom("4.1.0")},
+    {"manifestPlaceholders", property, MANIFEST_PLACEHOLDERS, VAL},
     {"setManifestPlaceholders", exactly(1), MANIFEST_PLACEHOLDERS, SET, VersionConstraint.agpBefore("8.0.0")},
     {"matchingFallbacks", property, MATCHING_FALLBACKS, VAL},
     {"setMatchingFallbacks", atLeast(1), MATCHING_FALLBACKS, CLEAR_AND_AUGMENT_LIST, VersionConstraint.agpBefore("8.0.0")},

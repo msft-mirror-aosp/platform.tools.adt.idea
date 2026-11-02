@@ -96,7 +96,7 @@ public class LintOptionsDslElement extends GradleDslBlockElement {
     {"xmlReport", property, XML_REPORT, VAR},
 
     // There are also exactly(1) variants of these with the same name, but they are redundant for our purposes
-    {"checkOnly", atLeast(0), CHECK, AUGMENT_LIST, VersionConstraint.agpFrom("4.1.0")},
+    {"checkOnly", atLeast(0), CHECK, AUGMENT_LIST},
     {"check", atLeast(0), CHECK, AUGMENT_LIST},
     {"disable", atLeast(0), DISABLE, AUGMENT_LIST},
     {"enable", atLeast(0), ENABLE, AUGMENT_LIST},
@@ -159,7 +159,7 @@ public class LintOptionsDslElement extends GradleDslBlockElement {
     {"xmlReport", exactly(1), XML_REPORT, SET, VersionConstraint.gradleBefore("10.0")},
 
     // There are also exactly(1) variants of these with the same name, but they are redundant for our purposes
-    {"checkOnly", atLeast(0), CHECK, AUGMENT_LIST, VersionConstraint.agpFrom("4.1.0")},
+    {"checkOnly", atLeast(0), CHECK, AUGMENT_LIST},
     {"check", atLeast(0), CHECK, AUGMENT_LIST},
     {"disable", atLeast(0), DISABLE, AUGMENT_LIST},
     {"enable", atLeast(0), ENABLE, AUGMENT_LIST},
