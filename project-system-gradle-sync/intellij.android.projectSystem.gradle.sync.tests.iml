@@ -28,4 +28,5 @@
     <orderEntry type="module" module-name="intellij.android.gradle-tooling.impl" scope="TEST" />
     <orderEntry type="library" scope="TEST" name="kotlin-test" level="project" />
   </component>
+  <component name="TestModuleProperties" production-module="intellij.android.projectSystem.gradle.sync" />
 </module>

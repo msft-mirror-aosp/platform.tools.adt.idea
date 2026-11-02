@@ -71,9 +71,11 @@ internal fun BuildController.findVariantDependenciesV2Model(
 ): VariantDependenciesCompat? {
   fun <T> findModel(clazz: Class<T>, parameterMutator: (com.android.builder.model.v2.models.ModelBuilderParameter) -> Unit) =
     findModel(project, clazz, com.android.builder.model.v2.models.ModelBuilderParameter::class.java) {
-      it.variantName = variantName
-      parameterMutator(it)
-    }
+        it.variantName = variantName
+        parameterMutator(it)
+      }
+      // Dependency models of different projects share objects and are read in parallel, see [synchronizedViews].
+      ?.synchronizedViews()
 
   return if (modelVersions[ModelFeature.HAS_ADJACENCY_LIST_DEPENDENCY_GRAPH]) {
     findModel(VariantDependenciesAdjacencyList::class.java, parameterMutator)?.let {

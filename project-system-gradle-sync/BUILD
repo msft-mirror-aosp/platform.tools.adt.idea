@@ -60,6 +60,7 @@ iml_module(
         "//tools/adt/idea/gradle-tooling/studio-gradle-tooling-impl:intellij.android.gradle-tooling.impl",
         "//tools/adt/idea/.idea/libraries:kotlin-test",
     ],
+    test_friends = ["//tools/adt/idea/project-system-gradle-sync:intellij.android.projectSystem.gradle.sync"],
     test_srcs = ["testSrc"],
     test_timeout = "long",
     visibility = ["//visibility:public"],
