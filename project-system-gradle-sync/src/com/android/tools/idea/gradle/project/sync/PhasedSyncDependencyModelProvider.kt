@@ -24,6 +24,7 @@ import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.ignoreExceptionsAndGet
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
 import java.io.File
+import java.util.Collections
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.forEach
@@ -44,7 +45,8 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
     buildModels: MutableCollection<out GradleBuild>,
     modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
   ) {
-    val exceptionsPerProject = mutableListOf<Pair<BasicGradleProject, Throwable>>()
+    // Synchronized because the nested actions below add to it in parallel.
+    val exceptionsPerProject: MutableList<Pair<BasicGradleProject, Throwable>> = Collections.synchronizedList(mutableListOf())
     val buildPathMap = buildBuildPathMap(controller, buildModels)
     val internedModels = InternedModels(buildModels.first().buildIdentifier.rootDir)
 

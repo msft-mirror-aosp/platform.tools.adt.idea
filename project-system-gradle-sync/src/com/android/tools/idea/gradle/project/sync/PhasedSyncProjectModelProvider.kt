@@ -39,6 +39,7 @@ import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.ignoreEx
 import com.android.utils.appendCapitalized
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
 import com.intellij.openapi.diagnostic.logger
+import java.util.Collections
 import kotlin.collections.all
 import kotlin.collections.component1
 import kotlin.collections.component2
@@ -68,7 +69,8 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
     buildModels: MutableCollection<out GradleBuild>,
     modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
   ) {
-    val exceptionsPerProject = mutableListOf<Pair<BasicGradleProject, Throwable>>()
+    // Synchronized because the nested actions below add to it in parallel.
+    val exceptionsPerProject: MutableList<Pair<BasicGradleProject, Throwable>> = Collections.synchronizedList(mutableListOf())
     // .first call seems a bit silly, but it's what we do on the other side too
     val rootBuildId = BuildId(buildModels.first().buildIdentifier.rootDir)
     // Build root directory is used for dependency models only, not used in a meaningful way here.
