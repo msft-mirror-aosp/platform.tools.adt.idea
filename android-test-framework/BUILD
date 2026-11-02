@@ -70,6 +70,7 @@ iml_test(
     name = "JavacUtilPathClassLoaderTest",
     jvm_flags = [
         "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader",
+        "-Didea.reset.classpath.from.manifest=true",
         "--add-opens=java.base/sun.nio.fs=ALL-UNNAMED",
     ],
     module = ":intellij.android.testFramework",

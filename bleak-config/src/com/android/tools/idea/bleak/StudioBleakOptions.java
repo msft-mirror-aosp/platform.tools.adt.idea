@@ -51,6 +51,7 @@ public class StudioBleakOptions {
     new IgnoredRef(-1, "com.intellij.util.containers.ConcurrentWeakValueHashMap", "myMap"),
     new IgnoredRef(-1, "com.intellij.util.containers.ConcurrentWeakKeyWeakValueHashMap", "myMap"),
     new IgnoredRef(-2, "com.intellij.util.containers.WeakHashMap", "myMap"),
+    new IgnoredRef(-2, "com.intellij.util.containers.WeakHashSet", "set"),
     new IgnoredRef(-1, "com.intellij.util.containers.ConcurrentSoftHashMap", "myMap"),
     new IgnoredRef(-1, "com.intellij.util.containers.ConcurrentSoftValueHashMap", "myMap"),
     new IgnoredRef(-1, "com.intellij.util.containers.ConcurrentSoftKeySoftValueHashMap", "myMap"),
