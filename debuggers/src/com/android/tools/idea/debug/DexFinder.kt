@@ -28,6 +28,7 @@ import com.android.tools.idea.adblib.toConnectedDevice
 import com.android.tools.idea.debug.DexFinder.DEX_FILES_KEY
 import com.android.tools.idea.debug.DexFinder.Result
 import com.android.tools.idea.log.LogWrapper
+import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.run.AndroidRunConfiguration
 import com.android.tools.idea.run.ApkFileUnit
 import com.android.tools.idea.run.ApkProvider
@@ -41,6 +42,7 @@ import com.intellij.debugger.engine.DebugProcessImpl
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.util.Key
@@ -50,7 +52,6 @@ import com.sun.jdi.Location
 import com.sun.jdi.ReferenceType
 import java.nio.file.Path
 import kexter.Dex
-import kotlin.collections.firstNotNullOfOrNull
 import kotlin.system.measureTimeMillis
 import org.jetbrains.kotlin.psi.KtElement
 
@@ -185,27 +186,23 @@ private suspend fun findDexViaInstaller(debugProcess: DebugProcessImpl, location
 
 private suspend fun findApksWithExpression(device: IDevice, apkProvider: ApkProvider, expression: KtElement): List<ApkFileUnit> {
   val module = findModule(expression) ?: return emptyList()
-  val result = mutableListOf<ApkFileUnit>()
-  for (apkInfos in apkProvider.getApks(device)) {
-    for (file in apkInfos.files) {
-      /**
-       * TODO: b/424108700 This heuristic is intended do find an APK that contains compiled code for a debugged module. However, it doesn't
-       *   work when an [ApkFileUnit] doesn't have module name assigned, which is sometimes the case. Also this heuristic only works when a
-       *   breakpoint is set in an application module, when debugging libraries it will not yield anything. At the same time, it is
-       *   intentionally left here because of the reasons below:
-       * 1. While not always being correct this heuristic still covers most of the user cases while debugging (which has been measured).
-       * 2. When it fails, the debugger will try to fetch the sought for DEX file via [com.android.tools.deployer.common.Installer]. If a
-       *    DEX file is still not found after that, smart step target filtering will simply not be performed, which is not critical for
-       *    "complex" debugging scenarios.
-       * 3. If this heuristic is removed and we try to reach a 100% accuracy when searching for a DEX file with an [ApkProvider], we would
-       *    have to scan through all of the APKs on a device (unless we find a better approach), which is a waste of resources.
-       */
-      if (module.name.startsWith(file.moduleName)) {
-        result.add(file)
-      }
-    }
+  val dependents = readAction {
+    (ModuleUtilCore.getAllDependentModules(module) + module).mapTo(mutableSetOf()) { it.getModuleSystem().getHolderModule().name }
   }
-  return result
+  /**
+   * TODO: b/424108700 This heuristic is intended do find an APK that contains compiled code for a debugged module. However, it doesn't work
+   *   when an [ApkFileUnit] doesn't have module name assigned, which is sometimes the case. At the same time, it is intentionally left here
+   *   because of the reasons below:
+   *     1. While not always being correct this heuristic still covers most of the user cases while debugging (which has been measured).
+   *     2. When it fails, the debugger will try to fetch the sought for DEX file via [com.android.tools.deployer.common.Installer]. If a
+   *        DEX file is still not found after that, smart step target filtering will simply not be performed, which is not critical for
+   *        "complex" debugging scenarios.
+   *     3. If this heuristic is removed and we try to reach a 100% accuracy when searching for a DEX file with an [ApkProvider], we would
+   *        have to scan through all of the APKs on a device (unless we find a better approach), which is a waste of resources.
+   */
+  return apkProvider.getApks(device).flatMap { apk ->
+    apk.files.filter { it.moduleName in dependents }
+  }
 }
 
 private fun findDexWithLocation(path: Path, location: Location): Dex? {
