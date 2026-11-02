@@ -27,8 +27,26 @@ import org.jetbrains.android.facet.AndroidFacet
 
 class SelectedVariantCollector(private val project: Project) {
 
+  /**
+   * Collects the currently selected variants for all Android modules in [project].
+   *
+   * If every module is on its own default variant (as declared by its [GradleAndroidModel]) and has no ABI selected, returns an empty
+   * [SelectedVariants] so that the sync request matches the initial (default-variant) sync request and Gradle can reuse its configuration
+   * cache entry.
+   */
   fun collectSelectedVariants(): SelectedVariants {
-    return SelectedVariants(project.getAndroidFacets().mapNotNull { it.findSelectedVariant() }.associateBy { it.moduleId })
+    val selectedVariants =
+      project.getAndroidFacets().mapNotNull { facet ->
+        val selectedVariant = facet.findSelectedVariant() ?: return@mapNotNull null
+        val defaultVariantName = GradleAndroidModel.get(facet)?.androidProject?.defaultVariantName
+        val isDefault = selectedVariant.abiName == null && selectedVariant.variantName == defaultVariantName
+        selectedVariant to isDefault
+      }
+    return if (selectedVariants.all { (_, isDefault) -> isDefault }) {
+      SelectedVariants(emptyMap())
+    } else {
+      SelectedVariants(selectedVariants.associate { (selectedVariant, _) -> selectedVariant.moduleId to selectedVariant })
+    }
   }
 }
 
