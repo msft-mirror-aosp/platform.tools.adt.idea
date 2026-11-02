@@ -153,17 +153,17 @@ class GradleAvoidDuplicateDependenciesInspectionTest {
 
     fixture.configureFromExistingVirtualFile(appBuildFile)
     val duplicateWarnings = duplicateDependencyWarnings()
-    // The inspection reports every member of a duplicate group (on-the-fly mode), keyed by the resolved coordinates:
+    // Since implementation extends api, the inspection reports inherited super-configuration warnings on implementation(...)
+    // keyed by the resolved coordinates:
     // - libs.guava and libs.guava.common are distinct catalog aliases for the same module (com.google.guava:guava:19.0 in
-    //   libs.versions.toml), so `api(libs.guava)` and `implementation(libs.guava.common)` each get a warning.
-    // - Bundles don't resolve to a single coordinate, so they are keyed by their accessor text and only the two
-    //   `libs.bundles.both` declarations are duplicates; `libs.bundles.other` is not, even though it also contains guava.
+    //   libs.versions.toml), so `implementation(libs.guava.common)` gets a warning against `api(libs.guava)`.
+    // - Bundles don't resolve to a single coordinate, so they are keyed by their accessor text and only
+    //   `implementation(libs.bundles.both)` gets a warning against `api(libs.bundles.both)`; `libs.bundles.other` is not,
+    //   even though it also contains guava.
     assertThat(duplicateWarnings)
       .containsExactly(
-        "Dependency 'com.google.guava:guava:19.0' is declared multiple times",
-        "Dependency 'com.google.guava:guava:19.0' is declared multiple times",
-        "Dependency 'libs.bundles.both' is declared multiple times",
-        "Dependency 'libs.bundles.both' is declared multiple times",
+        "Dependency 'com.google.guava:guava:19.0' is inherited from super configurations",
+        "Dependency 'libs.bundles.both' is inherited from super configurations",
       )
   }
 
