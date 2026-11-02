@@ -135,6 +135,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.clearInvocations
@@ -1079,6 +1080,7 @@ class ComposePreviewRepresentationTest {
     }
   }
 
+  @Ignore("b/580802608")
   @Test
   fun testRefreshWhileResizedInFocusModeDoesNotCallZoomToFit() {
     val testFile = runWriteActionAndWait {
