@@ -152,7 +152,8 @@ class InternedModels(private val buildRootDirectory: File?) {
   @GuardedBy("lock")
   internal val projectReferenceToArtifactClasspathMap: MutableMap<ClasspathIdentifier, Pair<IdeDependenciesCoreDirect, Int>> = HashMap()
 
-  fun lookup(reference: LibraryReference): IdeUnresolvedLibrary = libraries[reference.libraryIndex]
+  // Locked because sync actions running in parallel look up libraries while others add them.
+  fun lookup(reference: LibraryReference): IdeUnresolvedLibrary = lock.withLock { libraries[reference.libraryIndex] }
 
   fun intern(string: String) = lock.withLock { strings.getOrPut(string) { string } }
 
