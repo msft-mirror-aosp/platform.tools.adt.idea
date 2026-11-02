@@ -166,7 +166,7 @@ sealed class TestRClassesTest {
     assertThat(fileEditorManager.openFiles).hasLength(1)
     assertThat(fileEditorManager.currentFile?.name).isEqualTo("RClassAndroidTest.java")
 
-    CodeInsightTestUtil.gotoImplementation(fixture.editor, null)
+    CodeInsightTestUtil.gotoImplementation(fixture.editor, fixture.file)
 
     // Verify that the correct file opened up, and that the caret is moved to the correct definition in the file.
     assertThat(fileEditorManager.openFiles).hasLength(2)
@@ -201,7 +201,7 @@ sealed class TestRClassesTest {
     assertThat(fileEditorManager.openFiles).hasLength(1)
     assertThat(fileEditorManager.currentFile?.name).isEqualTo("RClassAndroidTest.kt")
 
-    CodeInsightTestUtil.gotoImplementation(fixture.editor, null)
+    CodeInsightTestUtil.gotoImplementation(fixture.editor, fixture.file)
 
     // Verify that the correct file opened up, and that the caret is moved to the correct definition in the file.
     assertThat(fileEditorManager.openFiles).hasLength(2)
@@ -236,7 +236,7 @@ sealed class TestRClassesTest {
     assertThat(fileEditorManager.openFiles).hasLength(1)
     assertThat(fileEditorManager.currentFile?.name).isEqualTo("RClassAndroidTest.java")
 
-    CodeInsightTestUtil.gotoImplementation(fixture.editor, null)
+    CodeInsightTestUtil.gotoImplementation(fixture.editor, fixture.file)
 
     // Verify that the correct file opened up, and that the caret is moved to the correct definition in the file.
     assertThat(fileEditorManager.openFiles).hasLength(2)
@@ -271,7 +271,7 @@ sealed class TestRClassesTest {
     assertThat(fileEditorManager.openFiles).hasLength(1)
     assertThat(fileEditorManager.currentFile?.name).isEqualTo("RClassAndroidTest.kt")
 
-    CodeInsightTestUtil.gotoImplementation(fixture.editor, null)
+    CodeInsightTestUtil.gotoImplementation(fixture.editor, fixture.file)
 
     // Verify that the correct file opened up, and that the caret is moved to the correct definition in the file.
     assertThat(fileEditorManager.openFiles).hasLength(2)

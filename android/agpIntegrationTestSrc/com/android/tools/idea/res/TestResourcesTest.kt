@@ -56,7 +56,7 @@ class TestResourcesTest {
     fixture.openFileInEditor(fixture.project.baseDir.findFileByRelativePath("app/src/androidTest/res/values/strings.xml")!!)
     fixture.moveCaret("@string/androidTest|AppString")
 
-    CodeInsightTestUtil.gotoImplementation(fixture.editor, null)
+    CodeInsightTestUtil.gotoImplementation(fixture.editor, fixture.file)
 
     // Validate that the cursor moved to the correct location.
     assertThat(fixture.editor.document.text.substring(fixture.editor.caretModel.offset))
