@@ -998,7 +998,7 @@ class ComposePreviewRepresentationTest {
       val initialDeviceId = mainSurface.models.single().configuration.cachedDevice?.id
       val newDevice = createTestDesktopDevice()
 
-      resizePanel.selectDeviceForTest(newDevice)
+      withContext(Dispatchers.EDT) { resizePanel.selectDeviceForTest(newDevice) }
 
       assertEquals(newDevice.id, mainSurface.models.single().configuration.cachedDevice?.id)
       assertTrue(resizePanel.hasBeenResized)
@@ -1055,7 +1055,7 @@ class ComposePreviewRepresentationTest {
       val resizePanel = composeView.focusMode!!.component.findDescendant<ResizePanel>()!!
       val newDevice = createTestDesktopDevice()
 
-      resizePanel.selectDeviceForTest(newDevice)
+      withContext(Dispatchers.EDT) { resizePanel.selectDeviceForTest(newDevice) }
       assertTrue(resizePanel.hasBeenResized)
 
       val currentModel = mainSurface.models.single()
@@ -1117,7 +1117,7 @@ class ComposePreviewRepresentationTest {
       val resizePanel = composeView.focusMode!!.component.findDescendant<ResizePanel>()!!
       val newDevice = createTestDesktopDevice()
 
-      resizePanel.selectDeviceForTest(newDevice)
+      withContext(Dispatchers.EDT) { resizePanel.selectDeviceForTest(newDevice) }
       assertTrue(resizePanel.hasBeenResized)
 
       clearInvocations(zoomControllerSpy)

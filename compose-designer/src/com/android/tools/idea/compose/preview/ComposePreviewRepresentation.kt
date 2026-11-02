@@ -1588,30 +1588,37 @@ constructor(
         invalidateAndRefresh()
       }
       is PreviewMode.Focus -> {
-        withContext(Dispatchers.EDT) {
-          if (StudioFlags.COMPOSE_PREVIEW_RESIZING.get()) {
-            activeResizePanelInFocusMode = ResizePanel(composeWorkBench.mainSurface)
+        val resizePanel =
+          withContext(Dispatchers.EDT) {
+            if (StudioFlags.COMPOSE_PREVIEW_RESIZING.get()) ResizePanel(composeWorkBench.mainSurface) else null
           }
-          composeWorkBench.focusMode =
-            activeResizePanelInFocusMode?.let { resizePanel ->
-              FocusMode(composeWorkBench.mainSurface, resizePanel).apply { addSelectionListener { resizePanel.clear() } }
-            } ?: FocusMode(composeWorkBench.mainSurface)
-        }
+        activeResizePanelInFocusMode = resizePanel
         // Only refresh if exiting the previous mode invalidated the state of the preview. This is
         // expected for example when exiting interactive or animation inspection modes.
-        if (invalidated.get()) requestRefresh()
-        else {
-          // If file had one Preview, on Entering Focus mode render will not be invoked,
-          // so [onAfterRender] and [updateResizePanel] will not be invoked either, we need to do it
-          // manually.
+        if (invalidated.get()) {
+          // The refresh binds the ResizePanel to the rendered preview in [onAfterRender].
+          withContext(Dispatchers.EDT) { showFocusMode(resizePanel) }
+          requestRefresh()
+        } else {
+          // The focused preview is already rendered (e.g. the file has a single Preview), so no render, and no [onAfterRender], will
+          // follow. Bind the ResizePanel before showing Focus mode, so that it never shows a ResizePanel that ignores device changes.
           surface.sceneManagers.singleOrNull()?.let { updateResizePanel() }
-          // as [onAfterRender] would not be invoked we also need to apply zoom-to-fit manually.
-          withContext(Dispatchers.EDT) { surface.zoomController.zoomToFit() }
+          withContext(Dispatchers.EDT) {
+            showFocusMode(resizePanel)
+            // as [onAfterRender] would not be invoked we also need to apply zoom-to-fit manually.
+            surface.zoomController.zoomToFit()
+          }
         }
       }
     }
     surface.background = mode.backgroundColor
     surface.layeredPane.remove(blankTransitionPanel)
+  }
+
+  private fun showFocusMode(resizePanel: ResizePanel?) {
+    composeWorkBench.focusMode =
+      resizePanel?.let { panel -> FocusMode(composeWorkBench.mainSurface, panel).apply { addSelectionListener { panel.clear() } } }
+        ?: FocusMode(composeWorkBench.mainSurface)
   }
 
   /** Performs cleanup for [mode] when leaving this mode to go to a mode of a different class. */
