@@ -65,18 +65,31 @@ internal val wearConfigurationProducers =
 class AndroidRunConfigurations {
 
   suspend fun createRunConfigurations(project: Project) {
-    createAndroidRunConfigurations(project)
-    createDeclarativeWatchFaceConfigurations(project)
+    val appFacets = project.getAndroidFacets().filter { it.configuration.isAppProject }
+    if (appFacets.isEmpty()) return
+
+    val watchFeatureRequiredByFacet = HashMap<AndroidFacet, Boolean>(appFacets.size)
+    fun isWatchFeatureRequired(facet: AndroidFacet): Boolean =
+      watchFeatureRequiredByFacet.getOrPut(facet) { LaunchUtils.isWatchFeatureRequired(facet) }
+
+    createAndroidRunConfigurations(appFacets, ::isWatchFeatureRequired)
+    createDeclarativeWatchFaceConfigurations(appFacets, ::isWatchFeatureRequired)
     // create the Android run and declarative watch face configurations first as
     // we limit the number of wear configurations based on the existing number of configurations.
-    createWearConfigurations(project)
+    createWearConfigurations(project, appFacets, ::isWatchFeatureRequired)
   }
 
-  private fun createAndroidRunConfigurations(project: Project) {
-    project.getAndroidFacets().filter { it.configuration.isAppProject }.forEach { createAndroidRunConfiguration(it) }
+  private fun createAndroidRunConfigurations(
+    appFacets: List<AndroidFacet>,
+    isWatchFeatureRequired: (AndroidFacet) -> Boolean,
+  ) {
+    appFacets.forEach { createAndroidRunConfiguration(it, isWatchFeatureRequired) }
   }
 
-  private fun createAndroidRunConfiguration(facet: AndroidFacet) {
+  private fun createAndroidRunConfiguration(
+    facet: AndroidFacet,
+    isWatchFeatureRequired: (AndroidFacet) -> Boolean,
+  ) {
     // Android run configuration should always be created with the holder module
     val module = facet.module
     val configurationFactory = AndroidRunConfigurationType.getInstance().factory
@@ -87,18 +100,21 @@ class AndroidRunConfigurations {
         return
       }
     }
-    if (LaunchUtils.isWatchFeatureRequired(facet) && !hasDefaultLauncherActivity(facet)) {
+    if (isWatchFeatureRequired(facet) && !hasDefaultLauncherActivity(facet)) {
       // Don't create Wear Apps Configurations, as the user can launch Wear Surfaces from the gutter
       return
     }
     addAndroidRunConfiguration(facet)
   }
 
-  private fun createDeclarativeWatchFaceConfigurations(project: Project) {
+  private fun createDeclarativeWatchFaceConfigurations(
+    appFacets: List<AndroidFacet>,
+    isWatchFeatureRequired: (AndroidFacet) -> Boolean,
+  ) {
     if (!StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_RUN_CONFIGURATION.get()) {
       return
     }
-    project.getAndroidFacets().filter { it.configuration.isAppProject }.forEach { facet -> createDeclarativeWatchFaceConfiguration(facet) }
+    appFacets.forEach { facet -> createDeclarativeWatchFaceConfiguration(facet, isWatchFeatureRequired) }
   }
 
   /**
@@ -108,8 +124,11 @@ class AndroidRunConfigurations {
    * The run configuration is only added if there are no existing run configurations based on the [facet]'s module. If an existing
    * declarative watch face run configuration already exists for the module, we don't want to create duplicates.
    */
-  private fun createDeclarativeWatchFaceConfiguration(facet: AndroidFacet) {
-    if (!LaunchUtils.isWatchFeatureRequired(facet)) {
+  private fun createDeclarativeWatchFaceConfiguration(
+    facet: AndroidFacet,
+    isWatchFeatureRequired: (AndroidFacet) -> Boolean,
+  ) {
+    if (!isWatchFeatureRequired(facet)) {
       return
     }
     val module = facet.module
@@ -192,7 +211,11 @@ class AndroidRunConfigurations {
   }
 
   /** Creates component-based [AndroidWearConfiguration]s. Components are Wear Tiles, Complications and WatchFace Services. */
-  private suspend fun createWearConfigurations(project: Project) {
+  private suspend fun createWearConfigurations(
+    project: Project,
+    appFacets: List<AndroidFacet>,
+    isWatchFeatureRequired: (AndroidFacet) -> Boolean,
+  ) {
     if (!StudioFlags.WEAR_RUN_CONFIGS_AUTOCREATE_ENABLED.get()) {
       return
     }
@@ -210,10 +233,8 @@ class AndroidRunConfigurations {
     }
 
     val wearRunConfigurationsToAdd = mutableListOf<RunnerAndConfigurationSettings>()
-    project
-      .getAndroidFacets()
-      .filter { it.configuration.isAppProject }
-      .filter { LaunchUtils.isWatchFeatureRequired(it) }
+    appFacets
+      .filter { isWatchFeatureRequired(it) }
       .forEach {
         if (!project.isDisposed) {
           wearRunConfigurationsToAdd += createWearConfigurations(it.module)

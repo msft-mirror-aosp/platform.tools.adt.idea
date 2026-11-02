@@ -31,6 +31,7 @@ import com.android.tools.idea.run.configuration.AndroidTileConfigurationType
 import com.android.tools.idea.run.configuration.AndroidWatchFaceConfigurationType
 import com.android.tools.idea.run.configuration.AndroidWearConfiguration
 import com.android.tools.idea.run.configuration.AndroidWearWidgetConfigurationType
+import com.android.tools.idea.run.util.LaunchUtils
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.findAppModule
 import com.android.tools.idea.testing.requestSyncAndWait
@@ -45,6 +46,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.testFramework.VfsTestUtil.createFile
 import com.intellij.testFramework.runInEdtAndWait
 import java.io.File
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.dom.manifest.UsesFeature
 import org.junit.After
@@ -457,6 +459,27 @@ class AndroidRunConfigurationsTest {
 
       declarativeWatchFaceConfigurations = runManager.getConfigurationsList(AndroidDeclarativeWatchFaceConfigurationType())
       assertThat(declarativeWatchFaceConfigurations).hasSize(1)
+    }
+  }
+
+  @Test
+  fun `createRunConfigurations caches watch feature check per facet`() {
+    StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_RUN_CONFIGURATION.override(true)
+    StudioFlags.WEAR_RUN_CONFIGS_AUTOCREATE_ENABLED.override(true)
+
+    val preparedProject = projectRule.prepareTestProject(testProject = AndroidCoreTestProject.WEAR_DECLARATIVE_WATCHFACE)
+    preparedProject.open { project ->
+      val runManager = RunManager.getInstance(project)
+      val appFacet = project.getAndroidFacets().single { it.configuration.isAppProject }
+
+      runManager.removeExistingRunConfigurations()
+      runBlocking {
+        Mockito.mockStatic(LaunchUtils::class.java, Mockito.CALLS_REAL_METHODS).use { mockedLaunchUtils ->
+          AndroidRunConfigurations.instance.createRunConfigurations(project)
+          mockedLaunchUtils.verify({ LaunchUtils.isWatchFeatureRequired(appFacet) }, Mockito.times(1))
+        }
+      }
+      assertThat(runManager.getConfigurationsList(AndroidDeclarativeWatchFaceConfigurationType())).hasSize(1)
     }
   }
 
