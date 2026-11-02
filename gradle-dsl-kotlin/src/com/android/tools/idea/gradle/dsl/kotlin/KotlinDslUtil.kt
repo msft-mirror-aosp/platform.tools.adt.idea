@@ -79,7 +79,6 @@ import org.jetbrains.kotlin.psi.KtBinaryExpressionWithTypeRHS
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtBlockStringTemplateEntry
 import org.jetbrains.kotlin.psi.KtCallExpression
-import org.jetbrains.kotlin.psi.KtConstantExpression
 import org.jetbrains.kotlin.psi.KtConstructorCalleeExpression
 import org.jetbrains.kotlin.psi.KtDotQualifiedExpression
 import org.jetbrains.kotlin.psi.KtElement
@@ -823,8 +822,8 @@ internal fun createMapElement(expression: GradleDslSettableExpression): PsiEleme
 
   val psiFactory = KtPsiFactory(parentPsiElement.project)
   val expressionRightValue =
-    if (expressionValue is KtConstantExpression || expressionValue is KtNameReferenceExpression) expressionValue.text
-    else StringUtil.unquoteString(expressionValue.text).addQuotes()
+    if (expressionValue is KtStringTemplateExpression) StringUtil.unquoteString(expressionValue.text).addQuotes()
+    else expressionValue.text
   val argumentStringExpression =
     when {
       parent.asNamedArgs -> "${expression.name}=$expressionRightValue"

@@ -3445,6 +3445,21 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
   }
 
   @Test
+  fun testSetMapReferenceToKTSArrayExpression() {
+    arrayExpressionSyntaxTestIsIrrelevantForGroovy()
+    writeToBuildFile(TestFile.SET_MAP_REFERENCE_TO_KTS_ARRAY_EXPRESSION)
+    val buildModel = gradleBuildModel
+    val ext = buildModel.ext()
+
+    // A reference added as a new map entry must be written unquoted.
+    val numEntry = ext.findProperty("varMap").getMapValue("num")!!
+    numEntry.setValue(ReferenceTo(ext.findProperty("varInt"), numEntry))
+
+    applyChanges(buildModel)
+    verifyFileContents(myBuildFile, TestFile.SET_MAP_REFERENCE_TO_KTS_ARRAY_EXPRESSION_EXPECTED)
+  }
+
+  @Test
   fun testRewriteProperties() {
     writeToBuildFile(TestFile.REWRITE_PROPERTIES)
 
@@ -4114,6 +4129,8 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
     REFERENCE_TO_MAP_ELEMENT_EXPECTED("referenceToMapElementExpected"),
     REWRITE_PROPERTIES("rewriteProperties"),
     REWRITE_PROPERTIES_EXPECTED("rewritePropertiesExpected"),
+    SET_MAP_REFERENCE_TO_KTS_ARRAY_EXPRESSION("setMapReferenceToKTSArrayExpression"),
+    SET_MAP_REFERENCE_TO_KTS_ARRAY_EXPRESSION_EXPECTED("setMapReferenceToKTSArrayExpressionExpected"),
     PROJECT_VARIABLE_CIRCULARITY("projectVariableCircularity"),
     PROJECT_VARIABLE_CIRCULARITY_MAP("projectVariableCircularityMap"),
     EMPTY_BUILDSCRIPT_EXT("emptyBuildScriptExt");
