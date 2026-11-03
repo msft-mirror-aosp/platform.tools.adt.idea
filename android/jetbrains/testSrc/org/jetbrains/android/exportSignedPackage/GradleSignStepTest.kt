@@ -337,6 +337,43 @@ class GradleSignStepTest {
   }
 
   @Test
+  fun testPublishingDescriptionWhenCreateAppDisabled() {
+    StudioFlags.PLAY_PUBLISHING_WIZARD_INTEGRATION.overrideForTest(true, projectRule.disposable)
+    StudioFlags.PLAY_PUBLISHING_CREATE_APP.overrideForTest(false, projectRule.disposable)
+    whenever(myWizard.targetType).thenReturn(ExportSignedPackageWizard.BUNDLE)
+
+    val gradleSignStep = GradleSignStep(myWizard)
+    val testAndroidModel: GradleAndroidModelImpl = mock()
+    whenever(testAndroidModel.moduleName).thenReturn(name)
+    whenever(testAndroidModel.filteredVariantNames).thenReturn(listOf("release"))
+    whenever(testAndroidModel.rootDirPath).thenReturn(File(homePath))
+
+    gradleSignStep._init(testAndroidModel)
+
+    val labelTexts = UIUtil.findComponentsOfType(gradleSignStep.component, JBLabel::class.java).map { it.text }
+    assertThat(labelTexts).contains("Upload the signed App Bundle to an existing Play app listing.")
+    assertThat(labelTexts).doesNotContain("Upload the signed App Bundle to a new or existing Play app listing.")
+  }
+
+  @Test
+  fun testPublishingDescriptionWhenCreateAppEnabled() {
+    StudioFlags.PLAY_PUBLISHING_WIZARD_INTEGRATION.overrideForTest(true, projectRule.disposable)
+    StudioFlags.PLAY_PUBLISHING_CREATE_APP.overrideForTest(true, projectRule.disposable)
+    whenever(myWizard.targetType).thenReturn(ExportSignedPackageWizard.BUNDLE)
+
+    val gradleSignStep = GradleSignStep(myWizard)
+    val testAndroidModel: GradleAndroidModelImpl = mock()
+    whenever(testAndroidModel.moduleName).thenReturn(name)
+    whenever(testAndroidModel.filteredVariantNames).thenReturn(listOf("release"))
+    whenever(testAndroidModel.rootDirPath).thenReturn(File(homePath))
+
+    gradleSignStep._init(testAndroidModel)
+
+    val labelTexts = UIUtil.findComponentsOfType(gradleSignStep.component, JBLabel::class.java).map { it.text }
+    assertThat(labelTexts).contains("Upload the signed App Bundle to a new or existing Play app listing.")
+  }
+
+  @Test
   fun testPublishingPanelNotShownForApk() {
     StudioFlags.PLAY_PUBLISHING_WIZARD_INTEGRATION.overrideForTest(true, projectRule.disposable)
     whenever(myWizard.targetType).thenReturn(ExportSignedPackageWizard.APK)

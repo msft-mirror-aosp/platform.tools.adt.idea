@@ -116,7 +116,7 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
   final JCheckBox myContinueToPlayCheckBox = new JCheckBox();
   final BorderLayoutPanel myPublishingPanel = new BorderLayoutPanel();
   private final JBLabel myPublishingCheckboxLabel = new JBLabel("Continue to the Publish for Testing Wizard");
-  private final JBLabel myPublishingDescriptionLabel = new JBLabel("Upload the signed App Bundle to a new or existing Play app listing.");
+  private final JBLabel myPublishingDescriptionLabel = new JBLabel(getPublishingDescriptionText());
 
   private final AdiClient myAdiClient;
 
@@ -581,7 +581,7 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
         showPublishing = true;
         enableCheckbox = true;
         myPublishingCheckboxLabel.setText("Continue to the Publish for Testing Wizard");
-        myPublishingDescriptionLabel.setText("Upload the signed App Bundle to a new or existing Play app listing.");
+        myPublishingDescriptionLabel.setText(getPublishingDescriptionText());
         myPublishingDescriptionLabel.setForeground(DISABLED_TEXT_COLOR);
       } else if (availability instanceof AppPublisherAvailability.Unsupported unsupported) {
         showPublishing = true;
@@ -597,6 +597,12 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
     if (!enableCheckbox) {
       myContinueToPlayCheckBox.setSelected(false);
     }
+  }
+
+  private static @NotNull String getPublishingDescriptionText() {
+    return StudioFlags.PLAY_PUBLISHING_CREATE_APP.get()
+           ? "Upload the signed App Bundle to a new or existing Play app listing."
+           : "Upload the signed App Bundle to an existing Play app listing.";
   }
 
   private @Nullable Boolean registrationStateToBoolean() {
