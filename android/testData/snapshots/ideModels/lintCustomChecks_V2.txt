@@ -194,7 +194,7 @@ MODULE                        : project
                                 file                          : <M2>/com/android/tools/annotations/<ANDROID_TOOLS_BASE_VERSION>/annotations-<ANDROID_TOOLS_BASE_VERSION>.jar
                                 source                        : <M2>/com/android/tools/annotations/<ANDROID_TOOLS_BASE_VERSION>/annotations-<ANDROID_TOOLS_BASE_VERSION>-sources.jar
                             - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/com/google/guava/guava/33.4.0-jre/guava-33.4.0-jre.jar
+                                file                          : <M2>/com/google/guava/guava/33.7.2-jre/guava-33.7.2-jre.jar
                             - dependencies                : DefaultExternalLibraryDependency
                                 file                          : <M2>/com/android/tools/repository/<ANDROID_TOOLS_BASE_VERSION>/repository-<ANDROID_TOOLS_BASE_VERSION>.jar
                                 source                        : <M2>/com/android/tools/repository/<ANDROID_TOOLS_BASE_VERSION>/repository-<ANDROID_TOOLS_BASE_VERSION>-sources.jar
@@ -203,17 +203,15 @@ MODULE                        : project
                             - dependencies                : DefaultExternalLibraryDependency
                                 file                          : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk7/<KOTLIN_VERSION>/kotlin-stdlib-jdk7-<KOTLIN_VERSION>.jar
                             - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/com/google/guava/failureaccess/1.0.2/failureaccess-1.0.2.jar
+                                file                          : <M2>/com/google/guava/failureaccess/1.0.3/failureaccess-1.0.3.jar
                             - dependencies                : DefaultExternalLibraryDependency
                                 file                          : <M2>/com/google/guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar
                             - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar
+                                file                          : <M2>/org/jspecify/jspecify/1.0.1/jspecify-1.0.1.jar
                             - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/org/checkerframework/checker-qual/3.43.0/checker-qual-3.43.0.jar
+                                file                          : <M2>/com/google/errorprone/error_prone_annotations/2.50.0/error_prone_annotations-2.50.0.jar
                             - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/com/google/errorprone/error_prone_annotations/2.36.0/error_prone_annotations-2.36.0.jar
-                            - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/com/google/j2objc/j2objc-annotations/3.0.0/j2objc-annotations-3.0.0.jar
+                                file                          : <M2>/com/google/j2objc/j2objc-annotations/3.1/j2objc-annotations-3.1.jar
                             - dependencies                : DefaultExternalLibraryDependency
                                 file                          : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                                 source                        : <M2>/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar
@@ -311,7 +309,6 @@ MODULE                        : project
                             - dependencies                : DefaultExternalLibraryDependency (*seen*)
                             - dependencies                : DefaultExternalLibraryDependency (*seen*)
                             - dependencies                : DefaultExternalLibraryDependency (*seen*)
-                            - dependencies                : DefaultExternalLibraryDependency (*seen*)
                             - dependencies                : DefaultFileCollectionDependency
                                 - files                       : <ROOT>/lintpublish/build/classes/java/main [-]
                                 - files                       : <ROOT>/lintpublish/build/resources/main [-]
@@ -377,7 +374,6 @@ MODULE                        : project
                             sourceCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                             targetCompatibility           : <PROJECT_JDK_FEATURE_LEVEL>
                             - artifacts                   : <ROOT>/lintpublish-remote/build/libs/lintpublish-remote.jar [-]
-                            - dependencies                : DefaultExternalLibraryDependency (*seen*)
                             - dependencies                : DefaultExternalLibraryDependency (*seen*)
                             - dependencies                : DefaultExternalLibraryDependency (*seen*)
                             - dependencies                : DefaultExternalLibraryDependency (*seen*)
