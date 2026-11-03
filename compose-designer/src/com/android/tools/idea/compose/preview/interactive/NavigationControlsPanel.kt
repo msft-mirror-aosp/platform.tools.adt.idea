@@ -37,7 +37,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -48,7 +47,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -66,7 +64,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
-import org.jetbrains.jewel.foundation.Stroke
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
@@ -76,7 +73,6 @@ import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Slider
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.Tooltip
-import org.jetbrains.jewel.ui.focusOutline
 
 private val DEFAULT_SPACING = 8.dp
 
@@ -297,42 +293,38 @@ private fun BackStack(
         // Display in reverse order so the newest/active item is on top of the stack.
         navigationHistory.asReversed().forEachIndexed { index, navigationInfoItem ->
           val isCurrentActiveNavigationItem = index == 0
-          // Key by the forward stack index and item so focus state stays bound to the specific
-          // entry across pushes and pops.
-          key(navigationHistory.lastIndex - index, navigationInfoItem) {
-            val navKeys by
-              produceState(
-                parsedNavigationItemsCache[navigationInfoItem] ?: emptyList(),
-                navigationInfoItem,
-                fpsUpdater,
-              ) {
-                fun requestParseIfNeeded() {
-                  val cachedKeys = parsedNavigationItemsCache[navigationInfoItem]
-                  if (cachedKeys != null) {
-                    value = cachedKeys
-                  } else {
-                    parseNavigationItem(navigationInfoItem) { parsedKeys ->
-                      if (parsedKeys.isNotEmpty()) {
-                        parsedNavigationItemsCache[navigationInfoItem] = parsedKeys
-                      }
-                      value = parsedKeys
+          val navKeys by
+            produceState(
+              parsedNavigationItemsCache[navigationInfoItem] ?: emptyList(),
+              navigationInfoItem,
+              fpsUpdater,
+            ) {
+              fun requestParseIfNeeded() {
+                val cachedKeys = parsedNavigationItemsCache[navigationInfoItem]
+                if (cachedKeys != null) {
+                  value = cachedKeys
+                } else {
+                  parseNavigationItem(navigationInfoItem) { parsedKeys ->
+                    if (parsedKeys.isNotEmpty()) {
+                      parsedNavigationItemsCache[navigationInfoItem] = parsedKeys
                     }
-                  }
-                }
-                requestParseIfNeeded()
-                fpsUpdater.collect {
-                  if (value.isEmpty()) {
-                    requestParseIfNeeded()
+                    value = parsedKeys
                   }
                 }
               }
-            BackStackItem(
-              navigationInfoItem = navigationInfoItem,
-              navKeys = navKeys,
-              isCurrentActiveNavigationItem = isCurrentActiveNavigationItem,
-              onItemClick = onBackToState,
-            )
-          }
+              requestParseIfNeeded()
+              fpsUpdater.collect {
+                if (value.isEmpty()) {
+                  requestParseIfNeeded()
+                }
+              }
+            }
+          BackStackItem(
+            navigationInfoItem = navigationInfoItem,
+            navKeys = navKeys,
+            isCurrentActiveNavigationItem = isCurrentActiveNavigationItem,
+            onItemClick = onBackToState,
+          )
         }
       }
     }
@@ -346,8 +338,6 @@ private fun BackStackItem(
   isCurrentActiveNavigationItem: Boolean,
   onItemClick: (Any) -> Unit,
 ) {
-  // Track focus state so clicking a back stack item shows the Jewel focus outline.
-  var isFocused by remember { mutableStateOf(false) }
   val activeAccent = JewelTheme.globalColors.outlines.focused
   val borderColors = if (isCurrentActiveNavigationItem) activeAccent else JewelTheme.globalColors.borders.normal
   val backGroundColor = if (isCurrentActiveNavigationItem) activeAccent.copy(alpha = 0.12f) else JewelTheme.globalColors.panelBackground
@@ -357,9 +347,7 @@ private fun BackStackItem(
   // If the item is not currently shown in the Preview, clicking anywhere on it navigates back to this state.
   Row(
     modifier =
-      Modifier.onFocusChanged { focusState -> isFocused = focusState.isFocused }
-        .focusOutline(showOutline = isFocused, outlineShape = itemShape, alignment = Stroke.Alignment.Inside)
-        .clip(itemShape)
+      Modifier.clip(itemShape)
         .border(width = 1.dp, color = borderColors, shape = itemShape)
         .background(color = backGroundColor, shape = itemShape)
         .clickable(role = Role.Button, enabled = !isCurrentActiveNavigationItem) { onItemClick(navigationInfoItem) }
