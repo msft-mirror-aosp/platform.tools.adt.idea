@@ -41,15 +41,12 @@
     <orderEntry type="module" module-name="intellij.android.adt.ui.compose" />
     <orderEntry type="module" module-name="analytics-tracker" />
     <orderEntry type="module" module-name="analytics-shared" />
-    <orderEntry type="module" module-name="intellij.android.wizard" />
-    <orderEntry type="module" module-name="intellij.android.wizard.model" />
     <orderEntry type="module" module-name="android.sdktools.flags" />
     <orderEntry type="module" module-name="intellij.android.artwork" />
     <orderEntry type="module" module-name="intellij.android.common" />
     <orderEntry type="module" module-name="intellij.android.projectSystem" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.model" />
     <orderEntry type="module" module-name="intellij.android.layout-ui" />
-    <orderEntry type="module" module-name="intellij.android.wizardTemplate.plugin" />
     <orderEntry type="module" module-name="intellij.android.wizardTemplate.impl" />
     <orderEntry type="library" name="layoutlib" level="project" />
     <orderEntry type="module" module-name="intellij.lint" />
