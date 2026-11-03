@@ -15,8 +15,6 @@
  */
 package com.android.tools.idea.gradle.project.build.events
 
-import com.intellij.openapi.vfs.VirtualFile
-
 /**
  * Represents a Gradle error context. The following details are stored in the context:
  *
@@ -24,14 +22,12 @@ import com.intellij.openapi.vfs.VirtualFile
  * @param errorMessage The error message.
  * @param fullErrorDetails The full error details/stack trace to include.
  * @param source Whether it is a Build / Sync error
- * @param sourceFiles Source file(s) of the error.
  */
 data class GradleErrorContext(
   val gradleTask: String?,
   val errorMessage: String?,
   val fullErrorDetails: String?,
   val source: Source?,
-  val sourceFiles: List<VirtualFile> = emptyList(),
 ) {
   enum class Source(private val source: String) {
     BUILD("build"),
