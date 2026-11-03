@@ -100,7 +100,7 @@ class NotificationHolderPanel(content: Component) : JBLayeredPane(), UiDataProvi
 
   /**
    * Adds a notification panel. If the [notificationPanel] has a close action, that action has to make sure that the notification is removed
-   * when the action is executed.
+   * when the action is executed. Notification panels are preserved when the Running Devices tool window is closed and then reopened again.
    */
   fun addNotification(notificationPanel: EditorNotificationPanel) {
     setLayer(notificationPanel, POPUP_LAYER)
