@@ -17,6 +17,10 @@ package com.google.idea.testing;
 
 import com.google.common.base.StandardSystemProperty;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.intellij.ide.impl.TrustedPaths;
+import com.intellij.ide.trustedProjects.TrustedProjectsLocator;
+import com.intellij.ide.trustedProjects.TrustedProjectsLocator.LocatedProject;
+import com.intellij.ide.trustedProjects.TrustedProjectsStateProvider;
 import com.intellij.mock.MockApplication;
 import com.intellij.mock.MockProject;
 import com.intellij.openapi.Disposable;
@@ -25,6 +29,7 @@ import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.fileTypes.FileTypeManager;
 import com.intellij.openapi.vfs.encoding.EncodingManager;
 import com.intellij.openapi.vfs.encoding.EncodingManagerImpl;
+import com.intellij.util.ThreeState;
 import com.intellij.util.pico.DefaultPicoContainer;
 import java.io.File;
 import java.util.concurrent.Callable;
@@ -144,6 +149,34 @@ public final class TestUtils {
     final MyMockApplication instance = new MyMockApplication(parentDisposable, forceInvokeLater);
     ApplicationManager.setApplication(instance, FileTypeManager::getInstance, parentDisposable);
     instance.registerService(EncodingManager.class, EncodingManagerImpl.class);
+    instance.registerService(TrustedPaths.class, TrustedPaths.class);
+    ServiceHelper.registerExtensionPoint(
+        TrustedProjectsLocator.Companion.getEP_NAME(),
+        TrustedProjectsLocator.class,
+        parentDisposable);
+    ServiceHelper.registerExtensionPoint(
+        TrustedProjectsStateProvider.EP_NAME,
+        TrustedProjectsStateProvider.class,
+        parentDisposable);
+    ServiceHelper.registerExtension(
+        TrustedProjectsStateProvider.EP_NAME,
+        new TrustedProjectsStateProvider() {
+          @Override
+          public boolean isApplicable(LocatedProject locatedProject) {
+            return true;
+          }
+
+          @Override
+          public ThreeState getProjectTrustedState(LocatedProject locatedProject) {
+            return TrustedPaths.getInstance().getProjectTrustedState(locatedProject);
+          }
+
+          @Override
+          public void setProjectTrusted(LocatedProject locatedProject, boolean isTrusted) {
+            TrustedPaths.getInstance().setProjectTrustedState(locatedProject, isTrusted);
+          }
+        },
+        parentDisposable);
     return instance;
   }
 

@@ -16,16 +16,20 @@
 package com.google.idea.blaze.base.actions.internal
 
 import com.google.common.truth.Truth.assertThat
+import com.google.idea.testing.IntellijRule
 import com.intellij.mock.MockVirtualFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.newvfs.events.VFileDeleteEvent
 import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 
 @RunWith(JUnit4::class)
 class AswbDumpVfsTest {
+
+  @get:Rule val intellij = IntellijRule()
 
   private val virtualFileSystem = MockVirtualFileSystem()
   private val loggedLines = mutableListOf<String>()

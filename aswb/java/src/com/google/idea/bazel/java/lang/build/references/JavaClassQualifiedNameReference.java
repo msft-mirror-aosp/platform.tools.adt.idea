@@ -29,6 +29,7 @@ import com.intellij.patterns.StandardPatterns;
 import com.intellij.psi.PsiReference;
 import com.intellij.psi.impl.PsiElementBase;
 import com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry;
+import com.intellij.util.ArrayUtil;
 import com.intellij.util.PairProcessor;
 import com.intellij.util.ProcessingContext;
 
@@ -63,6 +64,6 @@ public class JavaClassQualifiedNameReference
     if (!JAVA_CLASS_STRING_TYPES.contains(attributeName)) {
       return PsiReference.EMPTY_ARRAY;
     }
-    return ReferenceProvidersRegistry.getReferencesFromProviders(literal);
+    return ArrayUtil.reverseArray(ReferenceProvidersRegistry.getReferencesFromProviders(literal));
   }
 }
