@@ -24,6 +24,7 @@ import com.android.tools.idea.projectsystem.gradle.GradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.GradleSourceSetProjectPath
 import com.android.tools.idea.projectsystem.gradle.toSourceSetPath
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.externalSystem.util.Order
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
 import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.exModuleOptions
@@ -34,10 +35,12 @@ import com.intellij.util.PathUtil
 import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncExtension
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase
+import org.jetbrains.plugins.gradle.service.syncAction.impl.extensions.GradleBaseSyncExtension
 import org.jetbrains.plugins.gradle.util.GradleConstants
 
 private val LOG = logger<GradleProjectPathSyncExtension>()
 
+@Order(GradleBaseSyncExtension.ORDER + 1)
 class GradleProjectPathSyncExtension : GradleSyncExtension {
 
   override fun updateProjectModel(

@@ -15,13 +15,13 @@
  */
 package com.android.tools.idea.projectsystem.gradle.phased
 
+import com.android.tools.idea.gradle.project.entities.GradleProjectPathSymbolicId
+import com.android.tools.idea.gradle.project.entities.gradleProjectPath
 import com.android.tools.idea.gradle.project.sync.idea.AndroidGradleSourceSetEntitySource
-import com.android.tools.idea.projectsystem.gradle.LINKED_ANDROID_GRADLE_MODULE_GROUP
+import com.android.tools.idea.projectsystem.gradle.toHolder
 import com.intellij.openapi.externalSystem.util.Order
 import com.intellij.platform.workspace.jps.entities.ModuleEntity
-import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.storage.MutableEntityStorage
-import com.intellij.workspaceModel.ide.legacyBridge.findModule
 import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncExtension
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase
@@ -32,7 +32,7 @@ import org.jetbrains.plugins.gradle.service.syncAction.impl.extensions.GradleBas
  * dangling source set module. This undesirable and breaks certain project system APIs. Here if we detect such a case we also delete the
  * dangling modules.
  */
-@Order(GradleBaseSyncExtension.ORDER + 1)
+@Order(GradleBaseSyncExtension.ORDER + 2)
 class CleanupAndroidGroupSyncExtension : GradleSyncExtension {
 
   override fun updateProjectModel(
@@ -47,9 +47,9 @@ class CleanupAndroidGroupSyncExtension : GradleSyncExtension {
         .filterIsInstance<ModuleEntity>()
         .toList() // Materialized to avoid iterating over children entities of the removed modules
         .forEach { moduleEntity ->
-          val androidGroup = moduleEntity.findModule(projectStorage)?.getUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP) ?: return@forEach
+          val holderPath = moduleEntity.gradleProjectPath?.gradleProjectPath?.toHolder() ?: return@forEach
           // If the holder module can't be resolved, make sure to delete this module as well.
-          if (projectStorage.resolve(ModuleId(androidGroup.holder.moduleName)) == null) {
+          if (projectStorage.resolve(GradleProjectPathSymbolicId(holderPath)) == null) {
             projectStorage.removeEntity(moduleEntity)
           }
         }

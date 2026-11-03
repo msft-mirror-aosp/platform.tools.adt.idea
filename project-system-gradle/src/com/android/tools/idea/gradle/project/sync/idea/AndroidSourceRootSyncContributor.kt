@@ -48,8 +48,6 @@ import com.android.tools.idea.gradle.project.sync.convert
 import com.android.tools.idea.gradle.project.sync.getAllChildren
 import com.android.tools.idea.gradle.project.sync.idea.AndroidGradleProjectResolver.Companion.toIdeDeclaredDependencies
 import com.android.tools.idea.gradle.project.sync.patchForKapt
-import com.android.tools.idea.projectsystem.gradle.LINKED_ANDROID_GRADLE_MODULE_GROUP
-import com.android.tools.idea.projectsystem.gradle.LinkedAndroidGradleModuleGroup
 import com.android.tools.idea.sdk.AndroidSdks
 import com.google.common.collect.HashBasedTable
 import com.intellij.java.workspace.entities.JavaModuleSettingsEntity
@@ -65,7 +63,6 @@ import com.intellij.openapi.externalSystem.model.project.IExternalSystemSourceTy
 import com.intellij.openapi.externalSystem.service.project.manage.SourceFolderManager
 import com.intellij.openapi.externalSystem.util.Order
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.module.ModulePointerManager
 import com.intellij.openapi.progress.checkCanceled
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
@@ -444,7 +441,7 @@ internal class AndroidSourceRootSyncSourceSetPhaseContributor : GradleSyncContri
           setSdkForHolderModule(this)
           createAndroidGradleFacet(this)
           createAndroidFacet(this)
-          linkModuleGroup(this, knownArtifactsModuleEntitiesByArtifact, testSuiteSourceSetModules)
+          attachModelsToHolderModule(this)
           // There seems to be a bug in workspace model implementation that requires doing this to update list of changed props
           this.facets = facets
         }
@@ -547,19 +544,7 @@ private fun SyncContributorAndroidProjectContext.configureTestSuiteSourceSetModu
   return newModuleEntity
 }
 
-private fun SyncContributorAndroidProjectContext.linkModuleGroup(
-  holderModuleEntity: ModuleEntityBuilder,
-  sourceSetModules: Map<IdeArtifactName, ModuleEntityBuilder>,
-  testSuiteModules: Collection<ModuleEntityBuilder>,
-) {
-  val androidModuleGroup = getModuleGroup(sourceSetModules, testSuiteModules)
-  val linkedModules = sourceSetModules.values + testSuiteModules + holderModuleEntity
-  registerModuleActions(
-    linkedModules.associate {
-      it.name to { moduleInstance -> moduleInstance.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, androidModuleGroup) }
-    }
-  )
-
+private fun SyncContributorAndroidProjectContext.attachModelsToHolderModule(holderModuleEntity: ModuleEntityBuilder) {
   val entitySource = createProjectEntitySource(GradleSyncPhase.SOURCE_SET_MODEL_PHASE)
   val resolvedVariant: IdeVariantCoreImpl? = null
   val gradleAndroidModelData = gradleAndroidModelDataFactory(holderModuleEntity.name, resolvedVariant)
@@ -567,22 +552,6 @@ private fun SyncContributorAndroidProjectContext.linkModuleGroup(
     GradleAndroidModelEntity(entitySource = entitySource, gradleAndroidModel = GradleAndroidModelImpl(gradleAndroidModelData))
   holderModuleEntity.gradleModuleModel =
     GradleModuleModelEntity(entitySource = entitySource, gradleModuleModel = gradleModuleModelFactory(holderModuleEntity.name))
-}
-
-private fun SyncContributorAndroidProjectContext.getModuleGroup(
-  sourceSetModules: Map<IdeArtifactName, ModuleEntityBuilder>,
-  testSuiteModules: Collection<ModuleEntityBuilder>,
-): LinkedAndroidGradleModuleGroup {
-  val modulePointerManager = ModulePointerManager.getInstance(project)
-  return LinkedAndroidGradleModuleGroup(
-    modulePointerManager.create(holderModuleEntity.name),
-    modulePointerManager.create(checkNotNull(sourceSetModules[IdeArtifactName.MAIN]) { "Can't find main module!" }.name),
-    sourceSetModules[IdeArtifactName.UNIT_TEST]?.let { modulePointerManager.create(it.name) },
-    sourceSetModules[IdeArtifactName.ANDROID_TEST]?.let { modulePointerManager.create(it.name) },
-    sourceSetModules[IdeArtifactName.TEST_FIXTURES]?.let { modulePointerManager.create(it.name) },
-    sourceSetModules[IdeArtifactName.SCREENSHOT_TEST]?.let { modulePointerManager.create(it.name) },
-    testSuiteModules.map { modulePointerManager.create(it.name) },
-  )
 }
 
 /** Set up the javaSettings for the holder module. This does not set any compiler output paths as the holder modules don't have any. */
@@ -643,7 +612,6 @@ private fun SyncContributorAndroidProjectContext.findOrCreateModuleEntity(
       }
 
       registerModuleAction(moduleEntity.name) { moduleInstance ->
-        moduleInstance.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, null)
         SourceFolderManager.getInstance(project).removeSourceFolders(moduleInstance)
       }
     }
