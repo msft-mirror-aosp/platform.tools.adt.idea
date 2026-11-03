@@ -24,10 +24,12 @@ import com.android.tools.idea.compose.preview.isPreviewAnnotation
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.preview.find.toSmartPsiPointer
+import com.android.tools.idea.preview.util.device.supportedComposePreviewDeviceSpecParameters
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProviderDescriptor
 import com.intellij.codeInsight.daemon.NavigateAction
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.editor.markup.MarkupEditorFilter
@@ -35,13 +37,17 @@ import com.intellij.openapi.editor.markup.MarkupEditorFilterFactory
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
+import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import com.intellij.psi.PsiElement
 import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.impl.source.tree.LeafPsiElement
 import com.intellij.psi.util.parentOfType
 import com.intellij.ui.awt.RelativePoint
 import icons.StudioIcons
+import java.awt.Point
 import javax.swing.Icon
+import kotlin.coroutines.cancellation.CancellationException
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.idea.base.util.module
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
@@ -53,7 +59,16 @@ import org.jetbrains.uast.toUElement
  *
  * Returns a [LineMarkerInfo] that brings up a properties panel to edit the annotation.
  */
-class PreviewPickerLineMarkerProvider : LineMarkerProviderDescriptor() {
+class PreviewPickerLineMarkerProvider
+@VisibleForTesting
+internal constructor(private val showPicker: (Point, String, PreviewPickerPropertiesModel) -> Unit) : LineMarkerProviderDescriptor() {
+  constructor() :
+    this(
+      showPicker = { location, displayTitle, model ->
+        PsiPickerManager.show(location = location, displayTitle = displayTitle, model = model)
+      }
+    )
+
   private val log = Logger.getInstance(this.javaClass)
 
   override fun getName(): String = message("picker.preview.annotator.name")
@@ -106,13 +121,30 @@ class PreviewPickerLineMarkerProvider : LineMarkerProviderDescriptor() {
         textRange,
         icon,
         { message("picker.preview.annotator.tooltip") },
-        { mouseEvent, _ ->
-          val model = PreviewPickerPropertiesModel.fromPreviewElement(project, module, previewElementDefinitionPsi, PreviewPickerTracker())
-          PsiPickerManager.show(
-            location = RelativePoint(mouseEvent.component, mouseEvent.point).screenPoint,
-            displayTitle = message("picker.preview.title"),
-            model = model,
-          )
+        navigate@{ mouseEvent, _ ->
+          val location = RelativePoint(mouseEvent.component, mouseEvent.point).screenPoint
+          val supportedDeviceSpecParameters =
+            try {
+              runWithModalProgressBlocking(project, message("picker.preview.title")) {
+                module.supportedComposePreviewDeviceSpecParameters()
+              }
+            } catch (_: CancellationException) {
+              return@navigate
+            }
+          val model =
+            runReadAction {
+              if (project.isDisposed || module.isDisposed || previewElementDefinitionPsi?.element == null) {
+                return@runReadAction null
+              }
+              PreviewPickerPropertiesModel.fromPreviewElement(
+                project,
+                module,
+                previewElementDefinitionPsi,
+                PreviewPickerTracker(),
+                supportedDeviceSpecParameters,
+              )
+            } ?: return@navigate
+          showPicker(location, message("picker.preview.title"), model)
         },
         GutterIconRenderer.Alignment.LEFT,
         { message("picker.preview.annotator.tooltip") },

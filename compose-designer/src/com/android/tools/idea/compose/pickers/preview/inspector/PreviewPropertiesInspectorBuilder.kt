@@ -31,10 +31,14 @@ import com.android.tools.preview.config.PARAMETER_HARDWARE_CUTOUT
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DENSITY
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DEVICE
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DIM_UNIT
+import com.android.tools.preview.config.PARAMETER_HARDWARE_EXPAND
 import com.android.tools.preview.config.PARAMETER_HARDWARE_HEIGHT
 import com.android.tools.preview.config.PARAMETER_HARDWARE_IS_ROUND
+import com.android.tools.preview.config.PARAMETER_HARDWARE_MAX_HEIGHT
+import com.android.tools.preview.config.PARAMETER_HARDWARE_MAX_WIDTH
 import com.android.tools.preview.config.PARAMETER_HARDWARE_NAVIGATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_ORIENTATION
+import com.android.tools.preview.config.PARAMETER_HARDWARE_SCROLL_TO
 import com.android.tools.preview.config.PARAMETER_HARDWARE_WIDTH
 import com.android.tools.preview.config.PARAMETER_HEIGHT_DP
 import com.android.tools.preview.config.PARAMETER_LOCALE
@@ -51,6 +55,7 @@ import com.android.tools.preview.config.PARAMETER_SHOW_SYSTEM_UI
 import com.android.tools.preview.config.PARAMETER_UI_MODE
 import com.android.tools.preview.config.PARAMETER_WALLPAPER
 import com.android.tools.preview.config.PARAMETER_WIDTH_DP
+import com.android.tools.preview.config.Preview.DeviceSpec
 import com.android.tools.property.panel.api.ControlType
 import com.android.tools.property.panel.api.EditorProvider
 import com.android.tools.property.panel.api.InspectorPanel
@@ -61,7 +66,10 @@ import com.android.tools.property.panel.api.PropertiesTable
  *
  * Creates custom UI to organize the parameters and to organize the internal `Device` parameters.
  */
-internal class PreviewPropertiesInspectorBuilder(enumSupportValuesProvider: EnumSupportValuesProvider) : PsiPropertiesInspectorBuilder() {
+internal class PreviewPropertiesInspectorBuilder(
+  enumSupportValuesProvider: EnumSupportValuesProvider,
+  private val supportedDeviceSpecParameters: Set<String> = emptySet(),
+) : PsiPropertiesInspectorBuilder() {
   override val editorProvider: EditorProvider<PsiPropertyItem> =
     PsiEditorProvider(PsiEnumProvider(enumSupportValuesProvider), PreviewControlTypeProvider)
 
@@ -75,6 +83,13 @@ internal class PreviewPropertiesInspectorBuilder(enumSupportValuesProvider: Enum
 
     allProps.remove(PARAMETER_WIDTH_DP)
     allProps.remove(PARAMETER_HEIGHT_DP)
+
+    fun MutableMap<String, PsiPropertyItem>.putIfSupported(propertyName: String, deviceSpecParameter: String) {
+      val property = allProps.remove(propertyName) ?: return
+      if (supportedDeviceSpecParameters.any { it.equals(deviceSpecParameter, ignoreCase = true) }) {
+        put(propertyName, property)
+      }
+    }
 
     val deviceProperties =
       mutableMapOf<String, PsiPropertyItem>().apply {
@@ -94,6 +109,10 @@ internal class PreviewPropertiesInspectorBuilder(enumSupportValuesProvider: Enum
         allProps.remove(PARAMETER_MEDIA_QUERY_DISTANCE)?.let { put(PARAMETER_MEDIA_QUERY_DISTANCE, it) }
         allProps.remove(PARAMETER_MEDIA_QUERY_CAMERA)?.let { put(PARAMETER_MEDIA_QUERY_CAMERA, it) }
         allProps.remove(PARAMETER_MEDIA_QUERY_MIC)?.let { put(PARAMETER_MEDIA_QUERY_MIC, it) }
+        putIfSupported(PARAMETER_HARDWARE_EXPAND, DeviceSpec.PARAMETER_EXPAND)
+        putIfSupported(PARAMETER_HARDWARE_MAX_WIDTH, DeviceSpec.PARAMETER_MAX_WIDTH)
+        putIfSupported(PARAMETER_HARDWARE_MAX_HEIGHT, DeviceSpec.PARAMETER_MAX_HEIGHT)
+        putIfSupported(PARAMETER_HARDWARE_SCROLL_TO, DeviceSpec.PARAMETER_SCROLL_TO)
       }
     val remainingProperties = allProps.values
 
@@ -128,6 +147,8 @@ private object PreviewControlTypeProvider : PsiPropertyItemControlTypeProvider {
       PARAMETER_MEDIA_QUERY_POINTER,
       PARAMETER_MEDIA_QUERY_KEYBOARD,
       PARAMETER_MEDIA_QUERY_DISTANCE,
+      PARAMETER_HARDWARE_EXPAND,
+      PARAMETER_HARDWARE_SCROLL_TO,
       PARAMETER_DEVICE -> ControlType.DROPDOWN
       PARAMETER_BACKGROUND_COLOR -> ControlType.COLOR_EDITOR
       PARAMETER_HARDWARE_IS_ROUND,

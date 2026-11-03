@@ -22,10 +22,14 @@ import com.android.tools.preview.config.PARAMETER_HARDWARE_DENSITY
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DEVICE
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DIMENSIONS
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DIM_UNIT
+import com.android.tools.preview.config.PARAMETER_HARDWARE_EXPAND
 import com.android.tools.preview.config.PARAMETER_HARDWARE_HEIGHT
 import com.android.tools.preview.config.PARAMETER_HARDWARE_IS_ROUND
+import com.android.tools.preview.config.PARAMETER_HARDWARE_MAX_HEIGHT
+import com.android.tools.preview.config.PARAMETER_HARDWARE_MAX_WIDTH
 import com.android.tools.preview.config.PARAMETER_HARDWARE_NAVIGATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_ORIENTATION
+import com.android.tools.preview.config.PARAMETER_HARDWARE_SCROLL_TO
 import com.android.tools.preview.config.PARAMETER_HARDWARE_WIDTH
 import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_CAMERA
 import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_DISTANCE
@@ -73,6 +77,12 @@ internal fun addHardwareView(
     panelBuilder.addLine(propertyName, editorProvider.createEditor(property, editors))
   }
 
+  /** Adds a new line on the [HardwarePanelBuilder] for the given [propertyName] if present in [properties]. */
+  fun addOptionalPropertyLine(propertyName: String) {
+    val property = properties[propertyName] ?: return
+    panelBuilder.addLine(propertyName, editorProvider.createEditor(property, editors))
+  }
+
   addSinglePropertyLine(PARAMETER_HARDWARE_DEVICE)
 
   // The Dimensions parameter actually uses 3 other parameters: width, height, dimensionUnit.
@@ -96,6 +106,11 @@ internal fun addHardwareView(
   addSinglePropertyLine(PARAMETER_MEDIA_QUERY_DISTANCE)
   addSinglePropertyLine(PARAMETER_MEDIA_QUERY_CAMERA)
   addSinglePropertyLine(PARAMETER_MEDIA_QUERY_MIC)
+
+  addOptionalPropertyLine(PARAMETER_HARDWARE_EXPAND)
+  addOptionalPropertyLine(PARAMETER_HARDWARE_MAX_WIDTH)
+  addOptionalPropertyLine(PARAMETER_HARDWARE_MAX_HEIGHT)
+  addOptionalPropertyLine(PARAMETER_HARDWARE_SCROLL_TO)
 
   inspector.addComponent(panelBuilder.build()).addValueChangedListener {
     // Refresh the added editors on value changes

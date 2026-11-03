@@ -32,10 +32,12 @@ import com.android.tools.idea.compose.preview.AnnotationFilePreviewElementFinder
 import com.android.tools.idea.compose.preview.COMPOSABLE_ANNOTATION_FQN
 import com.android.tools.idea.compose.preview.PREVIEW_TOOLING_PACKAGE
 import com.android.tools.idea.configurations.ConfigurationManager
+import com.android.tools.idea.preview.util.device.supportedComposePreviewDeviceSpecParameters
 import com.android.tools.idea.testing.Sdks
 import com.android.tools.preview.config.ReferencePhoneConfig
 import com.android.tools.property.panel.api.PropertiesModel
 import com.android.tools.property.panel.api.PropertiesModelListener
+import com.android.tools.property.panel.impl.model.util.FakeInspectorPanel
 import com.google.wireless.android.sdk.stats.EditorPickerEvent.EditorPickerAction.PreviewPickerModification.PreviewPickerValue
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ReadAction
@@ -47,6 +49,8 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.dispatchAllEventsInIdeEventQueue
 import com.intellij.testFramework.runInEdtAndWait
 import java.util.concurrent.CompletableFuture
+import javax.swing.JLabel
+import javax.swing.JPanel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -307,6 +311,10 @@ class PreviewPickerTests {
     assertEquals("440", model.properties["", "Density"].defaultValue)
     assertEquals("false", model.properties["", "IsRound"].defaultValue)
     assertEquals("0", model.properties["", "ChinSize"].defaultValue)
+    assertEquals("none", model.properties["", "Expand"].defaultValue)
+    assertEquals(null, model.properties["", "MaxWidth"].defaultValue)
+    assertEquals(null, model.properties["", "MaxHeight"].defaultValue)
+    assertEquals("none", model.properties["", "ScrollTo"].defaultValue)
     assertEquals("None", model.properties["", "wallpaper"].defaultValue)
 
     // We hide the default value of some values when the value's behavior is undefined
@@ -753,6 +761,244 @@ class PreviewPickerTests {
       createCustomSizePreviewModel("@Preview(\"Name\", \"Group\", 33, widthDp = 200, heightDp = 300, \"fr\")")
     withContext(Dispatchers.EDT) { namedModel.setValueAndDispatch("Device", "id:pixel_5") }
     assertEquals("@Preview(\"Name\", \"Group\", 33, locale = \"fr\", device = \"id:pixel_5\")", namedPreview.annotationText())
+  }
+
+  @Test
+  fun `expand max size and scrollTo properties update device spec and convert id to parent`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(device = \"id:pixel_5\")")
+
+    withContext(Dispatchers.EDT) {
+      assertEquals("none", model.properties["", "Expand"].value)
+      assertNull(model.properties["", "MaxWidth"].value)
+      assertNull(model.properties["", "MaxHeight"].value)
+      assertEquals("none", model.properties["", "ScrollTo"].value)
+
+      model.setValueAndDispatch("Expand", "vertical")
+      assertEquals("vertical", model.properties["", "Expand"].value)
+    }
+    assertEquals("@Preview(device = \"spec:parent=pixel_5,expand=vertical\")", preview.annotationText())
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("MaxHeight", "1200")
+      assertEquals("1200", model.properties["", "MaxHeight"].value)
+    }
+    assertEquals("@Preview(device = \"spec:parent=pixel_5,expand=vertical,maxHeight=1200px\")", preview.annotationText())
+
+    // Switching Expand to horizontal automatically clears the inapplicable MaxHeight.
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("Expand", "horizontal")
+      assertEquals("horizontal", model.properties["", "Expand"].value)
+      assertNull(model.properties["", "MaxHeight"].value)
+    }
+    assertEquals("@Preview(device = \"spec:parent=pixel_5,expand=horizontal\")", preview.annotationText())
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("MaxWidth", "2000")
+      model.setValueAndDispatch("ScrollTo", "end")
+      assertEquals("2000", model.properties["", "MaxWidth"].value)
+      assertEquals("end", model.properties["", "ScrollTo"].value)
+
+      // Re-selecting the active axis (case-insensitively) or passing invalid values preserves MaxWidth.
+      model.setValueAndDispatch("Expand", "HORIZONTAL")
+      model.setValueAndDispatch("Expand", "invalid")
+      model.setValueAndDispatch("Expand", "")
+      assertEquals("horizontal", model.properties["", "Expand"].value)
+      assertEquals("2000", model.properties["", "MaxWidth"].value)
+    }
+    assertEquals(
+      "@Preview(device = \"spec:parent=pixel_5,expand=horizontal,maxWidth=2000px,scrollTo=end\")",
+      preview.annotationText(),
+    )
+
+    // MaxWidth and MaxHeight can also still be cleared individually via null or blank text.
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("MaxWidth", "")
+      assertNull(model.properties["", "MaxWidth"].value)
+      model.setValueAndDispatch("MaxWidth", "2000")
+      assertEquals("2000", model.properties["", "MaxWidth"].value)
+
+      // Switching back to vertical clears MaxWidth automatically.
+      model.setValueAndDispatch("Expand", "vertical")
+      assertNull(model.properties["", "MaxWidth"].value)
+      model.setValueAndDispatch("MaxHeight", "900")
+      assertEquals("900", model.properties["", "MaxHeight"].value)
+      model.setValueAndDispatch("MaxHeight", null)
+      assertNull(model.properties["", "MaxHeight"].value)
+      model.setValueAndDispatch("MaxHeight", "1200")
+    }
+    assertEquals(
+      "@Preview(device = \"spec:parent=pixel_5,expand=vertical,maxHeight=1200px,scrollTo=end\")",
+      preview.annotationText(),
+    )
+
+    // Setting Expand to none clears the remaining MaxHeight automatically; clearing ScrollTo restores id:.
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("Expand", "none")
+      model.setValueAndDispatch("ScrollTo", "none")
+      assertEquals("none", model.properties["", "Expand"].value)
+      assertNull(model.properties["", "MaxHeight"].value)
+      assertNull(model.properties["", "MaxWidth"].value)
+      assertEquals("none", model.properties["", "ScrollTo"].value)
+    }
+    assertEquals("@Preview(device = \"id:pixel_5\")", preview.annotationText())
+
+    // Selecting Expand = none (case-insensitively) also clears manual maxHeight/maxWidth parameters.
+    val (manualMaxModel, manualMaxPreview) =
+      createCustomSizePreviewModel("@Preview(device = \"spec:parent=pixel_5,maxHeight=1200px,maxWidth=800px\")")
+    withContext(Dispatchers.EDT) {
+      assertEquals("none", manualMaxModel.properties["", "Expand"].value)
+      assertEquals("1200", manualMaxModel.properties["", "MaxHeight"].value)
+      assertEquals("800", manualMaxModel.properties["", "MaxWidth"].value)
+      manualMaxModel.setValueAndDispatch("Expand", "NONE")
+      assertNull(manualMaxModel.properties["", "MaxHeight"].value)
+      assertNull(manualMaxModel.properties["", "MaxWidth"].value)
+    }
+    assertEquals("@Preview(device = \"id:pixel_5\")", manualMaxPreview.annotationText())
+  }
+
+  @Test
+  fun `maxHeight and maxWidth use displayed dp unit when custom preview dimensions are set`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (model, preview) = createCustomSizePreviewModel("@Preview(device = \"id:pixel_5\", widthDp = 200, heightDp = 300)")
+
+    withContext(Dispatchers.EDT) {
+      assertEquals("dp", model.properties["", "DimensionUnit"].value)
+      model.setValueAndDispatch("Expand", "vertical")
+      model.setValueAndDispatch("MaxHeight", "500")
+      // 500dp at 440 dpi is stored as 1375px in the parent spec, and read back as 500 in the picker's dp unit.
+      assertEquals("500", model.properties["", "MaxHeight"].value)
+    }
+    assertEquals(
+      "@Preview(device = \"spec:parent=pixel_5,expand=vertical,maxHeight=1375px\", widthDp = 200, heightDp = 300)",
+      preview.annotationText(),
+    )
+  }
+
+  @Test
+  fun `maxHeight and maxWidth reject values that round below 1px after unit conversion`() = runTest {
+    val (model, preview) =
+      createCustomSizePreviewModel("@Preview(device = \"spec:width=400px,height=800px,dpi=120\", widthDp = 200, heightDp = 300)")
+
+    withContext(Dispatchers.EDT) {
+      assertEquals("dp", model.properties["", "DimensionUnit"].value)
+      model.setValueAndDispatch("Expand", "vertical")
+      // 0.6dp at 120 dpi is 0.45px, which would round to 0px and produce an invalid device spec.
+      model.setValueAndDispatch("MaxHeight", "0.6")
+      assertNull(model.properties["", "MaxHeight"].value)
+    }
+    assertEquals(
+      "@Preview(device = \"spec:width=400px,height=800px,dpi=120,expand=vertical\", widthDp = 200, heightDp = 300)",
+      preview.annotationText(),
+    )
+
+    withContext(Dispatchers.EDT) {
+      // 1.0dp at 120 dpi is 0.75px, which rounds to 1px and is accepted.
+      model.setValueAndDispatch("MaxHeight", "1.0")
+    }
+    assertEquals(
+      "@Preview(device = \"spec:width=400px,height=800px,dpi=120,expand=vertical,maxHeight=1px\", widthDp = 200, heightDp = 300)",
+      preview.annotationText(),
+    )
+
+    withContext(Dispatchers.EDT) {
+      model.setValueAndDispatch("Expand", "horizontal")
+      model.setValueAndDispatch("MaxWidth", "0.6")
+      assertNull(model.properties["", "MaxWidth"].value)
+    }
+    assertEquals(
+      "@Preview(device = \"spec:width=400px,height=800px,dpi=120,expand=horizontal\", widthDp = 200, heightDp = 300)",
+      preview.annotationText(),
+    )
+
+    withContext(Dispatchers.EDT) { model.setValueAndDispatch("MaxWidth", "1.0") }
+    assertEquals(
+      "@Preview(device = \"spec:width=400px,height=800px,dpi=120,expand=horizontal,maxWidth=1px\", widthDp = 200, heightDp = 300)",
+      preview.annotationText(),
+    )
+  }
+
+  @Test
+  fun `expand max size and scrollTo are only shown in inspector when supported by PreviewDeviceSpec`() = runTest {
+    Sdks.addLatestAndroidSdk(fixture.projectDisposable, module)
+    val (modelWithoutPreviewDeviceSpec, _) = createCustomSizePreviewModel("@Preview(device = \"id:pixel_5\")")
+    withContext(Dispatchers.EDT) {
+      val inspectorWithoutPreviewDeviceSpec = FakeInspectorPanel()
+      (modelWithoutPreviewDeviceSpec as PreviewPickerPropertiesModel)
+        .inspectorBuilder
+        .attachToInspector(inspectorWithoutPreviewDeviceSpec, modelWithoutPreviewDeviceSpec.properties)
+      val hardwareLabelsWithoutPreviewDeviceSpec =
+        (inspectorWithoutPreviewDeviceSpec.lines[3].component as JPanel).components.filterIsInstance<JLabel>().map { it.text }
+      assertTrue(hardwareLabelsWithoutPreviewDeviceSpec.none { it in setOf("Expand", "MaxWidth", "MaxHeight", "ScrollTo") })
+    }
+
+    fixture.addFileToProject(
+      "src/androidx/compose/ui/tooling/PreviewDeviceSpec.kt",
+      // language=kotlin
+      """
+      package androidx.compose.ui.tooling
+
+      object PreviewDeviceSpec {
+        const val SUPPORTED_PARAMETERS = "expand,maxHeight,maxWidth,scrollTo"
+      }
+      """
+        .trimIndent(),
+    )
+
+    val (modelWithPreviewDeviceSpec, previewWithPreviewDeviceSpec) = createCustomSizePreviewModel("@Preview(device = \"id:pixel_5\")")
+    withContext(Dispatchers.EDT) {
+      val inspectorWithPreviewDeviceSpec = FakeInspectorPanel()
+      (modelWithPreviewDeviceSpec as PreviewPickerPropertiesModel)
+        .inspectorBuilder
+        .attachToInspector(inspectorWithPreviewDeviceSpec, modelWithPreviewDeviceSpec.properties)
+      val hardwareLabelsWithPreviewDeviceSpec =
+        (inspectorWithPreviewDeviceSpec.lines[3].component as JPanel).components.filterIsInstance<JLabel>().map { it.text }
+      assertTrue(hardwareLabelsWithPreviewDeviceSpec.containsAll(listOf("Expand", "MaxWidth", "MaxHeight", "ScrollTo")))
+    }
+
+    // Passing precomputed supportedDeviceSpecParameters uses the provided set directly without re-querying the module.
+    val modelWithPrecomputedSubset =
+      ReadAction.compute<PreviewPickerPropertiesModel, Throwable> {
+        PreviewPickerPropertiesModel.fromPreviewElement(
+          project,
+          module,
+          previewWithPreviewDeviceSpec.previewElementDefinition,
+          NoOpTracker,
+          supportedDeviceSpecParameters = setOf("expand", "maxHeight"),
+        )
+      }
+    withContext(Dispatchers.EDT) {
+      val inspectorWithPrecomputedSubset = FakeInspectorPanel()
+      modelWithPrecomputedSubset.inspectorBuilder.attachToInspector(
+        inspectorWithPrecomputedSubset,
+        modelWithPrecomputedSubset.properties,
+      )
+      val hardwareLabelsWithPrecomputedSubset =
+        (inspectorWithPrecomputedSubset.lines[3].component as JPanel).components.filterIsInstance<JLabel>().map { it.text }
+      assertTrue(hardwareLabelsWithPrecomputedSubset.containsAll(listOf("Expand", "MaxHeight")))
+      assertTrue(hardwareLabelsWithPrecomputedSubset.none { it in setOf("MaxWidth", "ScrollTo") })
+    }
+
+    // Omitting supportedDeviceSpecParameters defaults to emptySet() instead of querying the module inside a ReadAction.
+    val modelWithDefaultParameters =
+      ReadAction.compute<PreviewPickerPropertiesModel, Throwable> {
+        PreviewPickerPropertiesModel.fromPreviewElement(
+          project,
+          module,
+          previewWithPreviewDeviceSpec.previewElementDefinition,
+          NoOpTracker,
+        )
+      }
+    withContext(Dispatchers.EDT) {
+      val inspectorWithDefaultParameters = FakeInspectorPanel()
+      modelWithDefaultParameters.inspectorBuilder.attachToInspector(
+        inspectorWithDefaultParameters,
+        modelWithDefaultParameters.properties,
+      )
+      val hardwareLabelsWithDefaultParameters =
+        (inspectorWithDefaultParameters.lines[3].component as JPanel).components.filterIsInstance<JLabel>().map { it.text }
+      assertTrue(hardwareLabelsWithDefaultParameters.none { it in setOf("Expand", "MaxWidth", "MaxHeight", "ScrollTo") })
+    }
   }
 
   @Test
@@ -1335,8 +1581,15 @@ class PreviewPickerTests {
     val file = fixture.configureByText("Test.kt", fileContent)
     val preview = AnnotationFilePreviewElementFinder.findPreviewElements(fixture.project, file.virtualFile).first()
     ConfigurationManager.getOrCreateInstance(module)
+    val supportedDeviceSpecParameters = module.supportedComposePreviewDeviceSpecParameters()
     return ReadAction.compute<PsiPropertiesModel, Throwable> {
-      PreviewPickerPropertiesModel.fromPreviewElement(project, module, preview.previewElementDefinition, tracker)
+      PreviewPickerPropertiesModel.fromPreviewElement(
+        project,
+        module,
+        preview.previewElementDefinition,
+        tracker,
+        supportedDeviceSpecParameters,
+      )
     }
   }
 

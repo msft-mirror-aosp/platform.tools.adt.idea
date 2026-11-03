@@ -17,6 +17,7 @@ package com.android.tools.idea.compose.pickers.preview.property
 
 import com.android.annotations.concurrency.UiThread
 import com.android.ide.common.util.enumValueOfOrNull
+import com.android.resources.Density
 import com.android.tools.adtui.model.stdui.EDITOR_NO_ERROR
 import com.android.tools.adtui.model.stdui.EditingValidation
 import com.android.tools.environment.Logger
@@ -36,6 +37,7 @@ import com.android.tools.preview.UNDEFINED_DIMENSION
 import com.android.tools.preview.config.Cutout
 import com.android.tools.preview.config.DeviceConfig
 import com.android.tools.preview.config.DimUnit
+import com.android.tools.preview.config.ExpandAxis
 import com.android.tools.preview.config.KeyboardKind
 import com.android.tools.preview.config.MutableDeviceConfig
 import com.android.tools.preview.config.Navigation
@@ -45,10 +47,14 @@ import com.android.tools.preview.config.PARAMETER_HARDWARE_CUTOUT
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DENSITY
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DEVICE
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DIM_UNIT
+import com.android.tools.preview.config.PARAMETER_HARDWARE_EXPAND
 import com.android.tools.preview.config.PARAMETER_HARDWARE_HEIGHT
 import com.android.tools.preview.config.PARAMETER_HARDWARE_IS_ROUND
+import com.android.tools.preview.config.PARAMETER_HARDWARE_MAX_HEIGHT
+import com.android.tools.preview.config.PARAMETER_HARDWARE_MAX_WIDTH
 import com.android.tools.preview.config.PARAMETER_HARDWARE_NAVIGATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_ORIENTATION
+import com.android.tools.preview.config.PARAMETER_HARDWARE_SCROLL_TO
 import com.android.tools.preview.config.PARAMETER_HARDWARE_WIDTH
 import com.android.tools.preview.config.PARAMETER_HEIGHT
 import com.android.tools.preview.config.PARAMETER_HEIGHT_DP
@@ -65,12 +71,15 @@ import com.android.tools.preview.config.PARAMETER_WIDTH_DP
 import com.android.tools.preview.config.PointerPrecision
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_CUTOUT
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_DPI
+import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_EXPAND
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_HEIGHT_DP
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_NAVIGATION
+import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_SCROLL_TO
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_SHAPE
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_UNIT
 import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_WIDTH_DP
 import com.android.tools.preview.config.Preview.DeviceSpec.MAX_CHIN_SIZE
+import com.android.tools.preview.config.ScrollTarget
 import com.android.tools.preview.config.Shape
 import com.android.tools.preview.config.ViewingDistance
 import com.android.tools.preview.config.WindowPosture
@@ -309,6 +318,90 @@ internal class DeviceParameterPropertyItem(
           PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
         } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
       },
+      DevicePropertyItem(
+        name = PARAMETER_HARDWARE_EXPAND,
+        defaultValue = DEFAULT_EXPAND,
+        getter = { it.expand?.name ?: DEFAULT_EXPAND },
+      ) { config, newValue ->
+        if (newValue.equals(DEFAULT_EXPAND, ignoreCase = true)) {
+          config.expand = null
+          config.maxWidth = null
+          config.maxHeight = null
+          PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+        } else {
+          val newExpand = ExpandAxis.fromSpecValue(newValue)
+          newExpand?.let {
+            config.expand = newExpand
+            when (newExpand) {
+              ExpandAxis.vertical -> config.maxWidth = null
+              ExpandAxis.horizontal -> config.maxHeight = null
+            }
+            PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+          } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
+        }
+      },
+      DevicePropertyItem(
+        name = PARAMETER_HARDWARE_MAX_WIDTH,
+        defaultValue = defaultDeviceValues.maxWidthString,
+        inputValidation = DeviceSpecDimValidator(strictPositive = true),
+        canClear = true,
+        getter = { it.maxWidthString },
+      ) { config, newValue ->
+        if (newValue.isBlank()) {
+          config.maxWidth = null
+          PreviewPickerValue.CLEARED
+        } else {
+          val newMaxWidth =
+            newValue
+              .toFloatOrNull()
+              ?.takeIf { it.isFinite() }
+              ?.let { convertFromDisplayedUnit(it, config) }
+              ?.takeIf { it.isFinite() && it.roundToInt() >= 1 }
+          newMaxWidth?.let {
+            config.maxWidth = it
+            PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+          } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
+        }
+      },
+      DevicePropertyItem(
+        name = PARAMETER_HARDWARE_MAX_HEIGHT,
+        defaultValue = defaultDeviceValues.maxHeightString,
+        inputValidation = DeviceSpecDimValidator(strictPositive = true),
+        canClear = true,
+        getter = { it.maxHeightString },
+      ) { config, newValue ->
+        if (newValue.isBlank()) {
+          config.maxHeight = null
+          PreviewPickerValue.CLEARED
+        } else {
+          val newMaxHeight =
+            newValue
+              .toFloatOrNull()
+              ?.takeIf { it.isFinite() }
+              ?.let { convertFromDisplayedUnit(it, config) }
+              ?.takeIf { it.isFinite() && it.roundToInt() >= 1 }
+          newMaxHeight?.let {
+            config.maxHeight = it
+            PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+          } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
+        }
+      },
+      DevicePropertyItem(
+        name = PARAMETER_HARDWARE_SCROLL_TO,
+        defaultValue = DEFAULT_SCROLL_TO,
+        getter = { it.scrollTo?.specValue ?: DEFAULT_SCROLL_TO },
+      ) { config, newValue ->
+        if (newValue.equals(DEFAULT_SCROLL_TO, ignoreCase = true)) {
+          config.scrollTo = null
+          PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+        } else {
+          val newScrollTo = ScrollTarget.fromSpecValue(newValue)
+          newScrollTo?.let {
+            config.scrollTo = newScrollTo
+            PreviewPickerValue.UNSUPPORTED_OR_OPEN_ENDED
+          } ?: PreviewPickerValue.UNKNOWN_PREVIEW_PICKER_VALUE
+        }
+      },
     )
 
   private var lastValueToDevice: Pair<String, DeviceConfig>? = null
@@ -516,6 +609,17 @@ internal class DeviceParameterPropertyItem(
     }
   }
 
+  /** Converts [value] from the dimension unit shown in the picker to the unit of [targetConfig]. */
+  private fun convertFromDisplayedUnit(value: Float, targetConfig: DeviceConfig): Float {
+    val displayedUnit = getCurrentDeviceConfig().dimUnit
+    if (displayedUnit == targetConfig.dimUnit) return value
+    val baseDpi = Density.MEDIUM.dpiValue
+    return when (targetConfig.dimUnit) {
+      DimUnit.px -> value * targetConfig.dpi / baseDpi
+      DimUnit.dp -> value * baseDpi / targetConfig.dpi
+    }
+  }
+
   /**
    * PropertyItem for internal device parameters, so that they all read and write to one single source.
    *
@@ -526,21 +630,28 @@ internal class DeviceParameterPropertyItem(
     name: String,
     defaultValue: String?,
     inputValidation: EditingValidation = { EDITOR_NO_ERROR },
-    private val getter: (MutableDeviceConfig) -> String,
+    private val canClear: Boolean = false,
+    private val getter: (MutableDeviceConfig) -> String?,
     private val setter: (MutableDeviceConfig, String) -> PreviewPickerValue,
   ) : MemoryParameterPropertyItem(name, defaultValue, inputValidation) {
     override var value: String?
       get() = getter(getCurrentDeviceConfig())
       set(newValue) {
-        newValue ?: return
+        val valueToSet =
+          if (newValue == null) {
+            if (!canClear) return
+            ""
+          } else {
+            newValue
+          }
         if (name in PREVIEW_DIMENSION_PROPERTIES && customDimensionsSetPreviewSize()) {
-          editCustomDimensions(name, newValue)
+          editCustomDimensions(name, valueToSet)
           return
         }
         // Apply the edit to the device itself, not to the size shown in the picker, so that it keeps e.g. its parent.
         val deviceConfig = resolveDeviceConfig()
         val currentDeviceSpec = deviceConfig.deviceSpec()
-        val trackableValue = setter(deviceConfig, newValue)
+        val trackableValue = setter(deviceConfig, valueToSet)
         val newDeviceSpec = deviceConfig.deviceSpec()
         invokeLater {
           if (newDeviceSpec != currentDeviceSpec) {

@@ -17,24 +17,33 @@ package com.android.tools.idea.compose.annotator
 
 import com.android.tools.compose.COMPOSE_PREVIEW_ANNOTATION_NAME
 import com.android.tools.idea.compose.ComposeProjectRule
+import com.android.tools.idea.compose.pickers.preview.model.PreviewPickerPropertiesModel
 import com.android.tools.idea.compose.preview.COMPOSABLE_ANNOTATION_FQN
 import com.android.tools.idea.compose.preview.PREVIEW_TOOLING_PACKAGE
+import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.project.DefaultModuleSystem
 import com.android.tools.idea.projectsystem.getModuleSystem
 import com.android.tools.idea.testing.moveCaret
+import com.intellij.codeInsight.daemon.GutterIconNavigationHandler
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.impl.LineMarkersPass
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.runInEdtAndGet
+import java.awt.event.MouseEvent
+import javax.swing.JLabel
+import javax.swing.SwingUtilities
 import org.apache.commons.lang3.StringUtils
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -125,6 +134,35 @@ class PreviewPickerLineMarkerProviderTest {
     fixture.type(",height=1920dp") // Type the rest of a correct Device spec.
     fixture.doHighlighting()
     getAndAssertPreviewLineMarkers()
+  }
+
+  @Test
+  fun clickingGutterIconOpensPicker() {
+    var shownTitle: String? = null
+    var shownModel: PreviewPickerPropertiesModel? = null
+    val provider = PreviewPickerLineMarkerProvider { _, displayTitle, model ->
+      shownTitle = displayTitle
+      shownModel = model
+    }
+    val (marker, markerElement) =
+      runInEdtAndGet {
+        val psiFile = fixture.findPsiFile(filePath)
+        fixture.configureFromExistingVirtualFile(psiFile.virtualFile)
+        val previewLeaf = psiFile.findPreviewAnnotation(4).firstChild
+        val info = checkNotNull(provider.getLineMarkerInfo(previewLeaf))
+        info to checkNotNull(info.element)
+      }
+
+    val mouseEvent = MouseEvent(JLabel(), MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, 1, false)
+    @Suppress("UNCHECKED_CAST") val handler = checkNotNull(marker.navigationHandler) as GutterIconNavigationHandler<PsiElement>
+    SwingUtilities.invokeAndWait {
+      assertFalse(ApplicationManager.getApplication().isReadAccessAllowed)
+      handler.navigate(mouseEvent, markerElement)
+    }
+
+    assertEquals(message("picker.preview.title"), shownTitle)
+    assertNotNull(shownModel)
+    assertNotNull(shownModel!!.properties.getOrNull("", "group"))
   }
 
   private fun assertMissingLineMarker() {

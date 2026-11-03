@@ -44,6 +44,10 @@ const val PARAMETER_HARDWARE_CHIN_SIZE = "ChinSize"
 const val PARAMETER_HARDWARE_IS_ROUND = "IsRound"
 const val PARAMETER_HARDWARE_CUTOUT = "Cutout"
 const val PARAMETER_HARDWARE_NAVIGATION = "Navigation"
+const val PARAMETER_HARDWARE_EXPAND = "Expand"
+const val PARAMETER_HARDWARE_MAX_WIDTH = "MaxWidth"
+const val PARAMETER_HARDWARE_MAX_HEIGHT = "MaxHeight"
+const val PARAMETER_HARDWARE_SCROLL_TO = "ScrollTo"
 const val PARAMETER_WALLPAPER = "wallpaper"
 
 // region Media Query
@@ -112,6 +116,8 @@ object Preview {
     val DEFAULT_ORIENTATION = Orientation.portrait
     val DEFAULT_CUTOUT = Cutout.none
     val DEFAULT_NAVIGATION = Navigation.gesture
+    const val DEFAULT_EXPAND = "none"
+    const val DEFAULT_SCROLL_TO = "none"
 
     val DEFAULT_WIDTH_DP: Int = ReferencePhoneConfig.width.roundToInt()
     val DEFAULT_HEIGHT_DP: Int = ReferencePhoneConfig.height.roundToInt()

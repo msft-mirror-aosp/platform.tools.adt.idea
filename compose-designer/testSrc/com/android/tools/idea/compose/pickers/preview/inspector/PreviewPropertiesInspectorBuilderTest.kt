@@ -27,10 +27,14 @@ import com.android.tools.preview.config.PARAMETER_HARDWARE_CUTOUT
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DENSITY
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DEVICE
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DIM_UNIT
+import com.android.tools.preview.config.PARAMETER_HARDWARE_EXPAND
 import com.android.tools.preview.config.PARAMETER_HARDWARE_HEIGHT
 import com.android.tools.preview.config.PARAMETER_HARDWARE_IS_ROUND
+import com.android.tools.preview.config.PARAMETER_HARDWARE_MAX_HEIGHT
+import com.android.tools.preview.config.PARAMETER_HARDWARE_MAX_WIDTH
 import com.android.tools.preview.config.PARAMETER_HARDWARE_NAVIGATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_ORIENTATION
+import com.android.tools.preview.config.PARAMETER_HARDWARE_SCROLL_TO
 import com.android.tools.preview.config.PARAMETER_HARDWARE_WIDTH
 import com.android.tools.preview.config.PARAMETER_LOCALE
 import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_CAMERA
@@ -72,7 +76,11 @@ class PreviewPropertiesInspectorBuilderTest {
   fun setup() {
     val enumSupportValuesProvider = PreviewPickerValuesProvider.createPreviewValuesProvider(module, null)
     inspectorPanel = FakeInspectorPanel()
-    previewPropertiesInspectorBuilder = PreviewPropertiesInspectorBuilder(enumSupportValuesProvider)
+    previewPropertiesInspectorBuilder =
+      PreviewPropertiesInspectorBuilder(
+        enumSupportValuesProvider,
+        setOf("expand", "maxWidth", "maxHeight", "scrollTo"),
+      )
   }
 
   @Test
@@ -155,6 +163,10 @@ class PreviewPropertiesInspectorBuilderTest {
         put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_DISTANCE, "far"))
         put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_CAMERA, "false"))
         put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_MIC, "false"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_EXPAND, "vertical"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_MAX_WIDTH, "2000"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_MAX_HEIGHT, "1200"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_SCROLL_TO, "end"))
         // Display Region
         put(TestPsiPropertyItem(PARAMETER_API_LEVEL, "16"))
         put(TestPsiPropertyItem(PARAMETER_LOCALE, "Default (en-US)"))
@@ -214,10 +226,71 @@ class PreviewPropertiesInspectorBuilderTest {
     assertEquals("Car", displayInspectorPanelLines[10].editorModel?.property?.value)
   }
 
+  @Test
+  fun `test expand and scrollTo properties are hidden when unsupported by PreviewDeviceSpec`() {
+    val table = HashBasedTable.create<String, String, PsiPropertyItem>()
+    val propertiesTable =
+      PropertiesTable.create(table).apply {
+        put(TestPsiPropertyItem(PARAMETER_NAME, "test name"))
+        put(TestPsiPropertyItem(PARAMETER_GROUP, "test group"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_DEVICE, "Pixel Banana"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_WIDTH, "120"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_HEIGHT, "42"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_DIM_UNIT, "px"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_DENSITY, "234"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_ORIENTATION, "landscape"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_IS_ROUND, "true"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_CHIN_SIZE, "14dp"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_CUTOUT, "none"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_NAVIGATION, "gesture"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_WINDOW_POSTURE, "tabletop"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_POINTER, "fine"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_KEYBOARD, "physical"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_DISTANCE, "far"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_CAMERA, "false"))
+        put(TestPsiPropertyItem(PARAMETER_MEDIA_QUERY_MIC, "false"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_EXPAND, "vertical"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_MAX_WIDTH, "2000"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_MAX_HEIGHT, "1200"))
+        put(TestPsiPropertyItem(PARAMETER_HARDWARE_SCROLL_TO, "end"))
+        put(TestPsiPropertyItem(PARAMETER_API_LEVEL, "16"))
+      }
+
+    val enumSupportValuesProvider = PreviewPickerValuesProvider.createPreviewValuesProvider(module, null)
+    val builderWithoutPreviewDeviceSpec = PreviewPropertiesInspectorBuilder(enumSupportValuesProvider, emptySet())
+    builderWithoutPreviewDeviceSpec.attachToInspector(inspectorPanel, propertiesTable)
+
+    // Header (0, 1), Hardware label (2), Hardware panel (3), Display label (4), apiLevel (5) — unsupported hardware
+    // properties are omitted from the Hardware panel and do not leak into the Display section.
+    assertEquals(6, inspectorPanel.lines.size)
+    val hardwarePanelComponents = (inspectorPanel.lines[3].component as JPanel).components
+    assertEquals(28, hardwarePanelComponents.size)
+    val labels = hardwarePanelComponents.filterIsInstance<JLabel>().map { it.text }
+    assertEquals(
+      listOf(
+        "Device",
+        "Dimensions",
+        "Density",
+        "Orientation",
+        "IsRound",
+        "ChinSize",
+        "Cutout",
+        "Navigation",
+        "WindowPosture",
+        "PointerPrecision",
+        "KeyboardKind",
+        "ViewingDistance",
+        "HasCamera",
+        "HasMicrophone",
+      ),
+      labels,
+    )
+  }
+
   /** Covers [HardwarePanelHelper] test cases. */
   private fun testHardwarePanelComponents(hardwarePanelComponents: Array<out Component>) {
-    // Panel has exactly 28 components
-    assertEquals(28, hardwarePanelComponents.size)
+    // Panel has exactly 36 components
+    assertEquals(36, hardwarePanelComponents.size)
 
     // Check if all the items are correctly added in the Hardware region.
     assertEquals("Device", (hardwarePanelComponents[0] as JLabel).text)
@@ -284,6 +357,22 @@ class PreviewPropertiesInspectorBuilderTest {
     assertEquals("HasMicrophone", (hardwarePanelComponents[26] as JLabel).text)
     val hasMicrophoneCheckTextField = (hardwarePanelComponents[27] as PropertyCheckBox).components[1] as PropertyTextField
     assertEquals("false", hasMicrophoneCheckTextField.text)
+
+    // Check expand line.
+    assertEquals("Expand", (hardwarePanelComponents[28] as JLabel).text)
+    assertEquals("vertical", hardwarePanelComponents[29].getDisplayNameFromDropDown())
+
+    // Check max width line.
+    assertEquals("MaxWidth", (hardwarePanelComponents[30] as JLabel).text)
+    assertEquals("2000", (hardwarePanelComponents[31] as PropertyTextField).text)
+
+    // Check max height line.
+    assertEquals("MaxHeight", (hardwarePanelComponents[32] as JLabel).text)
+    assertEquals("1200", (hardwarePanelComponents[33] as PropertyTextField).text)
+
+    // Check scrollTo line.
+    assertEquals("ScrollTo", (hardwarePanelComponents[34] as JLabel).text)
+    assertEquals("end", hardwarePanelComponents[35].getDisplayNameFromDropDown())
   }
 
   /**

@@ -26,10 +26,12 @@ import com.android.tools.idea.compose.pickers.preview.enumsupport.Wallpaper
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.CutoutEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.DensityEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.DimensionUnitEnumSupport
+import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.ExpandEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.KeyboardKindEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.NavigationEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.OrientationEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.PointerPrecisionEnumSupport
+import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.ScrollToEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.ViewingDistanceEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.WindowPostureEnumSupport
 import com.android.tools.idea.compose.pickers.preview.enumsupport.devices.createDeviceEnumSupport
@@ -41,8 +43,10 @@ import com.android.tools.preview.config.PARAMETER_HARDWARE_CUTOUT
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DENSITY
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DEVICE
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DIM_UNIT
+import com.android.tools.preview.config.PARAMETER_HARDWARE_EXPAND
 import com.android.tools.preview.config.PARAMETER_HARDWARE_NAVIGATION
 import com.android.tools.preview.config.PARAMETER_HARDWARE_ORIENTATION
+import com.android.tools.preview.config.PARAMETER_HARDWARE_SCROLL_TO
 import com.android.tools.preview.config.PARAMETER_LOCALE
 import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_DISTANCE
 import com.android.tools.preview.config.PARAMETER_MEDIA_QUERY_KEYBOARD
@@ -118,6 +122,8 @@ class PsiEnumProvider(private val enumSupportValuesProvider: EnumSupportValuesPr
       PARAMETER_MEDIA_QUERY_POINTER -> PointerPrecisionEnumSupport
       PARAMETER_MEDIA_QUERY_KEYBOARD -> KeyboardKindEnumSupport
       PARAMETER_MEDIA_QUERY_DISTANCE -> ViewingDistanceEnumSupport
+      PARAMETER_HARDWARE_EXPAND -> ExpandEnumSupport
+      PARAMETER_HARDWARE_SCROLL_TO -> ScrollToEnumSupport
       PARAMETER_WALLPAPER ->
         EnumSupportWithConstantData(enumSupportValuesProvider, property.name) { stringValue ->
           // Safely attempt to parse stringValue as an integer, preventing NumberFormatException for non-numeric class references

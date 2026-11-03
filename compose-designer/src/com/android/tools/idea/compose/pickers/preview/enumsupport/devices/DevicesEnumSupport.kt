@@ -24,12 +24,16 @@ import com.android.tools.idea.compose.pickers.preview.enumsupport.Device
 import com.android.tools.preview.config.Cutout
 import com.android.tools.preview.config.Densities
 import com.android.tools.preview.config.DimUnit
+import com.android.tools.preview.config.ExpandAxis
 import com.android.tools.preview.config.KeyboardKind
 import com.android.tools.preview.config.Navigation
 import com.android.tools.preview.config.Orientation
 import com.android.tools.preview.config.PARAMETER_HARDWARE_DEVICE
 import com.android.tools.preview.config.PointerPrecision
 import com.android.tools.preview.config.Preview
+import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_EXPAND
+import com.android.tools.preview.config.Preview.DeviceSpec.DEFAULT_SCROLL_TO
+import com.android.tools.preview.config.ScrollTarget
 import com.android.tools.preview.config.ViewingDistance
 import com.android.tools.preview.config.WindowPosture
 import com.android.tools.property.panel.api.EnumSupport
@@ -155,5 +159,25 @@ internal object ViewingDistanceEnumSupport : EnumSupport {
   override fun createValue(stringValue: String): EnumValue {
     val distance = enumValueOfOrDefault(stringValue, ViewingDistance.near)
     return EnumValue.item(distance.name)
+  }
+}
+
+internal object ExpandEnumSupport : EnumSupport {
+  override val values: List<EnumValue> =
+    listOf(EnumValue.item(DEFAULT_EXPAND)) + ExpandAxis.entries.map { axis -> EnumValue.item(axis.name) }
+
+  override fun createValue(stringValue: String): EnumValue {
+    val axis = ExpandAxis.fromSpecValue(stringValue)
+    return EnumValue.item(axis?.name ?: DEFAULT_EXPAND)
+  }
+}
+
+internal object ScrollToEnumSupport : EnumSupport {
+  override val values: List<EnumValue> =
+    listOf(EnumValue.item(DEFAULT_SCROLL_TO)) + ScrollTarget.keywordTargets.map { target -> EnumValue.item(target.specValue) }
+
+  override fun createValue(stringValue: String): EnumValue {
+    val target = ScrollTarget.fromSpecValue(stringValue)
+    return EnumValue.item(target?.specValue ?: DEFAULT_SCROLL_TO)
   }
 }

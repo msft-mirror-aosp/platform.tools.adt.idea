@@ -93,6 +93,7 @@ private constructor(
   psiPropertiesProvider: PreviewPropertiesProvider,
   valuesProvider: EnumSupportValuesProvider,
   tracker: ComposePickerTracker,
+  supportedDeviceSpecParameters: Set<String> = emptySet(),
 ) :
   PsiCallPropertiesModel(
     project = project,
@@ -102,7 +103,8 @@ private constructor(
     tracker = tracker,
   ) {
 
-  override val inspectorBuilder: PsiPropertiesInspectorBuilder = PreviewPropertiesInspectorBuilder(valuesProvider)
+  override val inspectorBuilder: PsiPropertiesInspectorBuilder =
+    PreviewPropertiesInspectorBuilder(valuesProvider, supportedDeviceSpecParameters)
 
   private val availableDevices = getSdkDevices(module)
 
@@ -126,6 +128,7 @@ private constructor(
       module: Module,
       previewElementDefinitionPsi: SmartPsiElementPointer<PsiElement>?,
       tracker: ComposePickerTracker,
+      supportedDeviceSpecParameters: Set<String> = emptySet(),
     ): PreviewPickerPropertiesModel {
       val annotationEntry = previewElementDefinitionPsi?.element as? KtAnnotationEntry
       val libraryDefaultValues: Map<String, String?> =
@@ -172,6 +175,7 @@ private constructor(
         psiPropertiesProvider = PreviewPropertiesProvider(defaultValues, annotationEntry),
         tracker = tracker,
         valuesProvider = valuesProvider,
+        supportedDeviceSpecParameters = supportedDeviceSpecParameters,
       )
     }
 
