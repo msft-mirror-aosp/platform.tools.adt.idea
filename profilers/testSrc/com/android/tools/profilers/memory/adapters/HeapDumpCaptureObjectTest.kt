@@ -28,6 +28,7 @@ import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.FakeTraceProcessorService
 import com.android.tools.profilers.IdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
+import com.android.tools.profilers.ProfilerFormat
 import com.android.tools.profilers.ProfilersTestData
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.memory.FakeCaptureObjectLoader
@@ -579,6 +580,19 @@ class HeapDumpCaptureObjectTest {
     val dumpInfo = HeapDumpInfo.newBuilder().setStartTime(1000L).setEndTime(2000L).build()
     val capture = createCaptureObject(dumpInfo, file, ideServices = services, useTraceProcessor = true)
 
+    // A heap graph with no classes is treated as a failed capture, so seed a class overview to represent a real dump.
+    testService.javaHeapDumpResult =
+      TraceProcessor.HeapDumpResult.newBuilder()
+        .addClassOverview(
+          TraceProcessor.HeapDumpResult.ClassOverview.newBuilder()
+            .setClassId(10L)
+            .setClassName("android.graphics.Bitmap")
+            .setHeapName("app")
+            .setInstanceCount(2)
+            .build()
+        )
+        .build()
+
     // Verify TraceProcessor loading and ensure activityFragmentLeakFilter is initialized.
     capture.load(null, null)
 
@@ -587,6 +601,55 @@ class HeapDumpCaptureObjectTest {
     Truth.assertThat(capture.isTraceProcessor).isTrue()
     Truth.assertThat(capture.supportedIssueTypeFilters).isNotEmpty()
     Truth.assertThat(capture.activityFragmentLeakFilter).isNotNull()
+  }
+
+  /**
+   * Verifies that a live Perfetto heap graph, whose file arrives from the transport byte cache as a generic `.tmp`, keeps its format after
+   * loading, and that a graph with no classes is a loading error.
+   */
+  @Test
+  fun testEmptyLivePerfettoHeapGraphIsALoadingError() {
+    val testService = FakeTraceProcessorService()
+    testService.forceSucceedLoadTrace = true
+    // ART produced no data for the dump, so the trace parses but has no classes.
+    testService.javaHeapDumpResult = TraceProcessor.HeapDumpResult.getDefaultInstance()
+    val services = FakeIdeProfilerServices()
+    services.setHeapDumpTraceInEditorEnabled(true)
+    services.setUseTraceProcessorForHprofEnabled(true)
+    services.setTraceProcessorService(testService)
+    val file = TransportServiceUtils.createTempFile("temp_tp_heap", ".tmp", ByteString.copyFrom(byteArrayOf(1, 2, 3, 4)))
+    val capture =
+      HeapDumpCaptureObject(
+        ProfilerClient(myGrpcChannel.channel),
+        ProfilersTestData.SESSION_DATA,
+        HeapDumpInfo.newBuilder().setStartTime(1000L).setEndTime(2000L).build(),
+        null,
+        services.featureTracker,
+        services,
+        { file },
+        ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION,
+      )
+
+    capture.load(null, null)
+
+    Truth.assertThat(capture.isError).isTrue()
+    Truth.assertThat(capture.getExportableExtension()).isEqualTo(ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION)
+  }
+
+  /** A live ART heap dump also arrives as a generic `.tmp` file, and still exports as an HPROF after loading. */
+  @Test
+  fun testLiveArtHeapDumpExportsAsHprofAfterLoading() {
+    val testService = FakeTraceProcessorService()
+    testService.forceSucceedLoadTrace = true
+    val services = FakeIdeProfilerServices()
+    services.setTraceProcessorService(testService)
+    val file = TransportServiceUtils.createTempFile("temp_heap", ".tmp", ByteString.copyFrom(byteArrayOf(1, 2, 3, 4)))
+    val dumpInfo = HeapDumpInfo.newBuilder().setStartTime(1000L).setEndTime(2000L).build()
+    val capture = createCaptureObject(dumpInfo, file, ideServices = services)
+
+    capture.load(null, null)
+
+    Truth.assertThat(capture.getExportableExtension()).isEqualTo("hprof")
   }
 
   companion object {

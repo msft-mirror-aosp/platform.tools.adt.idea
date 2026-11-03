@@ -20,15 +20,19 @@ import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Memory.HeapDumpInfo
+import com.android.tools.profiler.proto.Trace
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
+import com.android.tools.profilers.ProfilersTestData
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.perfetto.config.PerfettoTraceConfigBuilders
 import com.android.tools.profilers.sessions.SessionArtifact
 import com.google.common.truth.Truth.assertThat
 import java.util.concurrent.TimeUnit
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import perfetto.protos.PerfettoConfig
 
 class HprofSessionArtifactTest {
 
@@ -84,8 +88,8 @@ class HprofSessionArtifactTest {
   }
 
   @Test
-  fun testExportExtensionOfLiveRecording() {
-    // A live recording is named after the process, so there is no format to recover and ART's own is assumed.
+  fun testExportExtensionOfLiveArtRecording() {
+    // A live ART heap dump is named after the process, so there is no format to recover and HPROF is assumed.
     assertThat(artifactOfSessionNamed("com.example.myapp").exportExtension).isEqualTo("hprof")
     assertThat(artifactOfSessionNamed("FakeProcess").exportExtension).isEqualTo("hprof")
     assertThat(
@@ -100,6 +104,18 @@ class HprofSessionArtifactTest {
       .isEqualTo("hprof")
   }
 
+  @Test
+  fun testSessionArtifactsListHeapGraphsAsHeapDumps() {
+    val session = ProfilersTestData.SESSION_DATA.toBuilder().setStartTimestamp(0).setEndTimestamp(Long.MAX_VALUE).build()
+    addEndedMemoryTrace(session, 10, 20, PerfettoTraceConfigBuilders.JAVA_HEAP_GRAPH_DATA_SOURCE_NAME)
+    addEndedMemoryTrace(session, 30, 40, "android.heapprofd")
+
+    // A heap graph is listed as a Heap Dump that exports in its own format. A Native Allocations recording is not a Heap Dump.
+    val artifacts = HprofSessionArtifact.getSessionArtifacts(myProfilers, session, Common.SessionMetaData.getDefaultInstance())
+    assertThat(artifacts.map { it as HprofSessionArtifact }.map { it.artifactProto to it.exportExtension })
+      .containsExactly(HeapDumpInfo.newBuilder().setStartTime(10).setEndTime(20).build() to "perfetto-java-heap-dump")
+  }
+
   private fun artifactOfSessionNamed(sessionName: String) =
     HprofSessionArtifact(
       myProfilers,
@@ -107,4 +123,31 @@ class HprofSessionArtifactTest {
       Common.SessionMetaData.newBuilder().setSessionName(sessionName).build(),
       HeapDumpInfo.newBuilder().setStartTime(1).setEndTime(2).build(),
     )
+
+  /** Adds the end event of a Perfetto recording, reported as a memory trace, whose config uses [dataSource]. */
+  private fun addEndedMemoryTrace(session: Common.Session, fromTimestamp: Long, toTimestamp: Long, dataSource: String) {
+    val config =
+      PerfettoConfig.TraceConfig.newBuilder()
+        .addDataSources(
+          PerfettoConfig.TraceConfig.DataSource.newBuilder().setConfig(PerfettoConfig.DataSourceConfig.newBuilder().setName(dataSource))
+        )
+        .build()
+    val info =
+      Trace.TraceInfo.newBuilder()
+        .setFromTimestamp(fromTimestamp)
+        .setToTimestamp(toTimestamp)
+        .setConfiguration(Trace.TraceConfiguration.newBuilder().setPerfettoOptions(config))
+        .build()
+    transportService.addEventToStream(
+      session.streamId,
+      Common.Event.newBuilder()
+        .setTimestamp(toTimestamp)
+        .setGroupId(fromTimestamp)
+        .setKind(Common.Event.Kind.MEMORY_TRACE)
+        .setPid(session.pid)
+        .setIsEnded(true)
+        .setTraceData(Trace.TraceData.newBuilder().setTraceEnded(Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)))
+        .build(),
+    )
+  }
 }

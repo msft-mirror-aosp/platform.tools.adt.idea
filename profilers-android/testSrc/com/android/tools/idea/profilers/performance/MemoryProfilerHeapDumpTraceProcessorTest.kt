@@ -100,7 +100,7 @@ class MemoryProfilerHeapDumpTraceProcessorTest {
     assertThat(profilers.sessionsManager.importSessionFromFile(file)).isTrue()
     val dumpInfo = MemoryProfiler.getHeapDumpsForSession(profilers.client, profilers.session, Range(Double.MIN_VALUE, Double.MAX_VALUE))[0]
     val capture =
-      HeapDumpCaptureObject(profilers.client, profilers.session, dumpInfo, null, ideServices.featureTracker, ideServices) { file }
+      HeapDumpCaptureObject(profilers.client, profilers.session, dumpInfo, null, ideServices.featureTracker, ideServices, { file })
     try {
       // Load: spawns the daemon, parses the hprof, fetches the class overview and preloads the leak / bitmap filter instances.
       // load() returns true whenever the file exists, so check isError to make sure we didn't benchmark a failed load.

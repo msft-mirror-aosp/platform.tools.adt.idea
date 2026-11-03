@@ -42,6 +42,7 @@ import com.android.tools.profilers.StudioProfiler
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.analytics.FeatureTracker
 import com.android.tools.profilers.memory.BaseStreamingMemoryProfilerStage.LiveAllocationSamplingMode.FULL
+import com.android.tools.profilers.perfetto.config.PerfettoTraceConfigBuilders.JAVA_HEAP_GRAPH_DATA_SOURCE_NAME
 import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.intellij.openapi.diagnostic.Logger
@@ -288,10 +289,36 @@ class MemoryProfiler(private val profilers: StudioProfilers) : StudioProfiler {
      */
     @JvmStatic fun generateCaptureFileName() = "memory-${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"))}"
 
+    /** Returns true if [info] describes a Perfetto heap graph rather than a Native Allocations (heapprofd) recording. */
+    private fun isJavaHeapGraphTrace(info: TraceInfo): Boolean =
+      info.configuration.perfettoOptions.dataSourcesList.any { it.config.name == JAVA_HEAP_GRAPH_DATA_SOURCE_NAME }
+
     @JvmStatic
     fun getNativeHeapSamplesForSession(client: ProfilerClient, session: Common.Session, rangeUs: Range) =
-      getForSession(client, session, rangeUs, Common.Event.Kind.MEMORY_TRACE) {
-        if (it.last().traceData.hasTraceStarted()) it.last().traceData.traceStarted.traceInfo else it.last().traceData.traceEnded.traceInfo
+      getMemoryTracesForSession(client, session, rangeUs).filterNot(::isJavaHeapGraphTrace)
+
+    @JvmStatic
+    fun getJavaHeapGraphsForSession(client: ProfilerClient, session: Common.Session, rangeUs: Range) =
+      getMemoryTracesForSession(client, session, rangeUs).filter(::isJavaHeapGraphTrace)
+
+    /**
+     * Adapts a Perfetto heap graph [TraceInfo] to the [HeapDumpInfo] the heap dump UI is built around. `fromTimestamp` doubles as the trace
+     * processor id and the transport byte-cache id, exactly as `startTime` does for an ART heap dump.
+     */
+    @JvmStatic
+    fun toHeapDumpInfo(info: TraceInfo): HeapDumpInfo =
+      HeapDumpInfo.newBuilder().setStartTime(info.fromTimestamp).setEndTime(info.toTimestamp).build()
+
+    private fun getMemoryTracesForSession(client: ProfilerClient, session: Common.Session, rangeUs: Range): List<TraceInfo> =
+      getForSession(client, session, rangeUs, Common.Event.Kind.MEMORY_TRACE) { group ->
+        val last = group.last()
+        when {
+          last.traceData.hasTraceStarted() -> last.traceData.traceStarted.traceInfo
+          last.traceData.hasTraceEnded() -> last.traceData.traceEnded.traceInfo
+          // A device disconnect ends the group with a generic event that has no trace data. Use the start event's info instead, which has
+          // the configuration that tells a heap graph from Native Allocations, and end the recording at the generic event.
+          else -> group.getEvents(0).traceData.traceStarted.traceInfo.toBuilder().setToTimestamp(last.timestamp).build()
+        }
       }
 
     @JvmStatic

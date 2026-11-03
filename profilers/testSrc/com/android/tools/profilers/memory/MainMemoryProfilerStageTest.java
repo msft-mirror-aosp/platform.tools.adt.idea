@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 import com.android.sdklib.AndroidVersion;
+import com.android.tools.adtui.model.AspectObserver;
 import com.android.tools.adtui.model.DataSeries;
 import com.android.tools.adtui.model.FakeTimer;
 import com.android.tools.adtui.model.Range;
@@ -59,6 +60,7 @@ import com.android.tools.profilers.memory.adapters.LegacyAllocationCaptureObject
 import com.android.tools.profilers.memory.adapters.classifiers.ClassSet;
 import com.android.tools.profilers.memory.adapters.classifiers.ClassifierSet;
 import com.android.tools.profilers.memory.adapters.classifiers.HeapSet;
+import com.android.tools.profilers.perfetto.config.PerfettoTraceConfigBuilders;
 import com.android.tools.profilers.sessions.SessionsManager;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.google.common.collect.ImmutableMap;
@@ -84,6 +86,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import perfetto.protos.PerfettoConfig;
 
 @RunWith(Parameterized.class)
 public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
@@ -976,6 +979,48 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     assertThat(myIdeProfilerServices.getOpenedFile()).isNull();
     assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(ProfilerTaskType.HEAP_DUMP);
     assertThat(myIdeProfilerServices.getNotification()).isEqualTo(MemoryProfilerNotifications.HEAP_DUMP_CAPTURE_FAILURE);
+  }
+
+  @Test
+  public void selectingFinishedHeapGraphOpensInEditor() throws Exception {
+    myIdeProfilerServices.setHeapDumpTraceInEditorEnabled(true);
+    myIdeProfilerServices.enableTaskBasedUx(true);
+    // A finished heap graph recording, as the daemon reports it, and its trace file in the byte cache.
+    Common.Session session = myProfilers.getSession();
+    long startTimeNs = myTimer.getCurrentTimeNs();
+    Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(startTimeNs + TimeUnit.MILLISECONDS.toNanos(500))
+      .setConfiguration(Trace.TraceConfiguration.newBuilder().setPerfettoOptions(
+        PerfettoConfig.TraceConfig.newBuilder().addDataSources(PerfettoConfig.TraceConfig.DataSource.newBuilder().setConfig(
+          PerfettoConfig.DataSourceConfig.newBuilder().setName(PerfettoTraceConfigBuilders.JAVA_HEAP_GRAPH_DATA_SOURCE_NAME)))))
+      .build();
+    myTransportService.addEventToStream(session.getStreamId(), Common.Event.newBuilder()
+      .setTimestamp(info.getToTimestamp())
+      .setGroupId(startTimeNs)
+      .setKind(Common.Event.Kind.MEMORY_TRACE)
+      .setPid(session.getPid())
+      .setIsEnded(true)
+      .setTraceData(Trace.TraceData.newBuilder().setTraceEnded(Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(info)))
+      .build());
+    File rawFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy heap graph content"));
+    myFilesToCleanUp.add(rawFile);
+    myTransportService.addFile(Long.toString(startTimeNs), rawFile.getAbsolutePath());
+    String captureFileName = "capture_" + startTimeNs + ".perfetto-java-heap-dump";
+    myFilesToCleanUp.add(ProfilerCaptureFileUtils.getCaptureFile(captureFileName));
+
+    AspectObserver observer = new AspectObserver();
+    boolean[] heapDumpFinished = {false};
+    myStage.getAspect().addDependency(observer).onChange(MemoryProfilerAspect.HEAP_DUMP_FINISHED, () -> heapDumpFinished[0] = true);
+
+    // Select it the way a finished recording is selected: from the stage's own capture series, once the timeline reaches it.
+    myStage.setPendingCaptureStartTime(startTimeNs);
+    myStage.enableSelectLatestCapture(true, MoreExecutors.directExecutor());
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+
+    assertThat(heapDumpFinished[0]).isTrue();
+    assertThat(myIdeProfilerServices.getOpenedFile().getName()).isEqualTo(captureFileName);
+    assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(ProfilerTaskType.HEAP_DUMP);
   }
 
   /** Enables the in-editor and task-based UX flags; callers set deobfuscation flags themselves. */

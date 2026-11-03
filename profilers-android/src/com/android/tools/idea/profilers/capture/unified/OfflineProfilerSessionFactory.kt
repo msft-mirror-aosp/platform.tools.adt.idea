@@ -203,7 +203,7 @@ object OfflineProfilerSessionFactory {
         "prof",
         "perfetto-java-heap-dump" -> {
           val info = HeapDumpInfo.newBuilder().setStartTime(traceId).setEndTime(Long.MAX_VALUE).build()
-          HeapDumpCaptureObject(profilers.client, profilers.session, info, null, ideServices.featureTracker, ideServices) { localFile }
+          HeapDumpCaptureObject(profilers.client, profilers.session, info, null, ideServices.featureTracker, ideServices, { localFile })
         }
         "heapprofd" -> {
           val info = TraceInfo.newBuilder().setFromTimestamp(traceId).setToTimestamp(Long.MAX_VALUE).build()

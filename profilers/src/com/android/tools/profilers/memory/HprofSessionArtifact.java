@@ -38,12 +38,26 @@ import org.jetbrains.annotations.Unmodifiable;
  */
 public final class HprofSessionArtifact extends MemorySessionArtifact<HeapDumpInfo> {
 
+  /** Extension the capture is exported with, which names its format. */
+  @NotNull private final String myExtension;
 
   public HprofSessionArtifact(@NotNull StudioProfilers profilers,
                               @NotNull Common.Session session,
                               @NotNull Common.SessionMetaData sessionMetaData,
                               @NotNull HeapDumpInfo info) {
+    // An imported recording is named after its file, the only surviving record of its format: an imported ART HPROF and Perfetto heap
+    // graph both arrive as MEMORY_HEAP_DUMP events. A live ART heap dump is named after the process, so it falls back to HPROF.
+    this(profilers, session, sessionMetaData, info,
+         ProfilerFormat.Hprof.extensionOrDefault(StringUtil.substringAfterLast(sessionMetaData.getSessionName(), ".")));
+  }
+
+  private HprofSessionArtifact(@NotNull StudioProfilers profilers,
+                               @NotNull Common.Session session,
+                               @NotNull Common.SessionMetaData sessionMetaData,
+                               @NotNull HeapDumpInfo info,
+                               @NotNull String extension) {
     super(profilers, session, sessionMetaData, info, "Heap Dump");
+    myExtension = extension;
   }
 
   @Override
@@ -72,9 +86,7 @@ public final class HprofSessionArtifact extends MemorySessionArtifact<HeapDumpIn
   @NotNull
   @Override
   public String getExportExtension() {
-    // An imported recording is named after the file it came from, which is the only surviving record of its format: an ART HPROF and a
-    // Perfetto heap graph both arrive as MEMORY_HEAP_DUMP events. A live recording is named after the process, so it falls back to HPROF.
-    return ProfilerFormat.Hprof.extensionOrDefault(StringUtil.substringAfterLast(getSessionMetaData().getSessionName(), "."));
+    return myExtension;
   }
 
   @Unmodifiable
@@ -88,8 +100,15 @@ public final class HprofSessionArtifact extends MemorySessionArtifact<HeapDumpIn
                                    session.getEndTimestamp() == Long.MAX_VALUE
                                    ? Long.MAX_VALUE
                                    : TimeUnit.NANOSECONDS.toMicros(session.getEndTimestamp()));
-    List<HeapDumpInfo> infos = MemoryProfiler.getHeapDumpsForSession(profilers.getClient(), session, queryRangeUs);
-    return ContainerUtil.map(infos, info -> new HprofSessionArtifact(profilers, session, sessionMetaData, info));
+    return ContainerUtil.concat(
+      // ART heap dumps.
+      ContainerUtil.map(MemoryProfiler.getHeapDumpsForSession(profilers.getClient(), session, queryRangeUs),
+                        info -> new HprofSessionArtifact(profilers, session, sessionMetaData, info)),
+      // Heap dumps of profileable processes, captured through Perfetto and therefore reported as trace events. Surfaced as the same
+      // artifact type so the task handler, export and selection apply unchanged.
+      ContainerUtil.map(MemoryProfiler.getJavaHeapGraphsForSession(profilers.getClient(), session, queryRangeUs),
+                        info -> new HprofSessionArtifact(profilers, session, sessionMetaData, MemoryProfiler.toHeapDumpInfo(info),
+                                                         ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION)));
   }
 
   private static boolean shouldSkipArtifact(@NotNull StudioProfilers profilers,

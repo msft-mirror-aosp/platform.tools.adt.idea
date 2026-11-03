@@ -78,6 +78,13 @@ object PerfettoTraceConfigBuilders {
   private const val HEAP_PROFD_ALL_HEAPS_ENABLED = true
   private const val HEAP_PROFD_BLOCK_CLIENT_ENABLED = true
 
+  /**
+   * Name of the Perfetto data source that produces a Perfetto heap graph. Defined by Perfetto and matched verbatim by `traced`, so it
+   * cannot be renamed: any other value produces no packets. Shares MEMORY_TRACE events with heapprofd, so the recorded trace configuration
+   * is what tells the two apart.
+   */
+  const val JAVA_HEAP_GRAPH_DATA_SOURCE_NAME = "android.java_hprof"
+
   // Common trace config values.
   private const val FLUSH_PERIOD_MS = 1000
   private const val FILE_WRITE_PERIOD_MS = 250

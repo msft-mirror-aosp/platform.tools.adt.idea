@@ -27,6 +27,7 @@ import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Memory.HeapDumpInfo
 import com.android.tools.profilers.IdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
+import com.android.tools.profilers.ProfilerFormat
 import com.android.tools.profilers.analytics.FeatureTracker
 import com.android.tools.profilers.analytics.trackLoading
 import com.android.tools.profilers.memory.BitmapDuplicationAnalyzer
@@ -71,7 +72,9 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.stream.Stream
 
-open class HeapDumpCaptureObject(
+open class HeapDumpCaptureObject
+@JvmOverloads
+constructor(
   private val client: ProfilerClient,
   private val _session: Common.Session,
   val heapDumpInfo: HeapDumpInfo,
@@ -79,6 +82,14 @@ open class HeapDumpCaptureObject(
   private val featureTracker: FeatureTracker,
   val ideProfilerServices: IdeProfilerServices,
   private val fileSupplier: (() -> File?)? = null,
+  /**
+   * Format of the underlying capture, when the file doesn't name one: before [load] has seen the file, and for a live capture, whose file
+   * arrives from the transport byte cache as a generic `.tmp`.
+   *
+   * [getExportableExtension] is consulted before loading to name the file handed to the editor, so a Perfetto heap graph must declare
+   * [ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION] here or it is reopened as an HPROF.
+   */
+  private val defaultFileExtension: String = ProfilerFormat.Hprof.DEFAULT_EXTENSION,
 ) : CaptureObject {
   var isTraceProcessor = true
     private set
@@ -144,6 +155,10 @@ open class HeapDumpCaptureObject(
   val isARTHeapDump: Boolean
     get() = fileExtension.equals("hprof", ignoreCase = true) || fileExtension.equals("prof", ignoreCase = true)
 
+  /** True when this capture is a Perfetto heap graph, not an ART HPROF. Uses [getExportableExtension], as [fileExtension] can be `.tmp`. */
+  private val isPerfettoHeapGraph: Boolean
+    get() = getExportableExtension().equals(ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION, ignoreCase = true)
+
   private lateinit var activityFragmentLeakFilter: ActivityFragmentLeakInstanceFilter
   private val bitmapDuplicationAnalyzer = BitmapDuplicationAnalyzer()
   private lateinit var bitmapDuplicationFilter: BitmapDuplicationInstanceFilter
@@ -198,7 +213,9 @@ open class HeapDumpCaptureObject(
 
   override fun isExportable() = true
 
-  override fun getExportableExtension() = fileExtension ?: "hprof"
+  // Trust [fileExtension] only when it names a heap dump format; a live capture arrives from the byte cache as `.tmp`.
+  override fun getExportableExtension() =
+    fileExtension?.takeIf { ext -> ProfilerFormat.Hprof.extensions.any { it.equals(ext, ignoreCase = true) } } ?: defaultFileExtension
 
   override fun saveToFile(outputStream: OutputStream) = saveHeapDumpToFile(client, _session, heapDumpInfo, outputStream, featureTracker)
 
@@ -332,6 +349,19 @@ open class HeapDumpCaptureObject(
 
   private fun loadFromTraceProcessor(traceId: Long) {
     val result = ideProfilerServices.traceProcessorService.loadHeapDumpData(traceId, ideProfilerServices)
+
+    // A Perfetto heap graph fails silently: if ART cannot dump the target - not actually profileable from shell, died before ART finished,
+    // or the pid is gone - it emits no packets rather than an error, and the trace still parses. Every live Java process has thousands of
+    // classes, so zero class overviews is unambiguous and never a legitimately small heap.
+    if (isPerfettoHeapGraph && result.classOverviewList.isEmpty()) {
+      logger.warn(
+        "Perfetto heap graph contains no objects; the process produced no data for trace $traceId. " +
+          "The device logcat (tags perfetto_hprof and perfetto) shows whether ART started the dump."
+      )
+      isLoadingError = true
+      return
+    }
+
     hasNativeAllocations = result.classOverviewList.any { it.nativeSize > 0L }
     hasRetainedNativeAllocations = result.classOverviewList.any { it.retainedNativeSize > 0L }
 

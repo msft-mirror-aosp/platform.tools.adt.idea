@@ -28,7 +28,10 @@ sealed interface ProfilerFormat {
     /** Extension of an ART heap dump, and the format assumed when a capture's own format is unknown. */
     const val DEFAULT_EXTENSION = "hprof"
 
-    override val extensions = listOf(DEFAULT_EXTENSION, "prof", "perfetto-java-heap-dump")
+    /** Extension of a Perfetto heap graph. */
+    const val PERFETTO_HEAP_GRAPH_EXTENSION = "perfetto-java-heap-dump"
+
+    override val extensions = listOf(DEFAULT_EXTENSION, "prof", PERFETTO_HEAP_GRAPH_EXTENSION)
     override val taskType = ProfilerTaskType.HEAP_DUMP
 
     override fun matches(extension: String?, traceTypeProvider: Lazy<TraceType?>) = extension?.lowercase() in extensions

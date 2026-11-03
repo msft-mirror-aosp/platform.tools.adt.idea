@@ -38,6 +38,7 @@ import com.android.tools.profilers.ProfilersTestData
 import com.android.tools.profilers.ProfilersTestData.DEFAULT_AGENT_ATTACHED_RESPONSE
 import com.android.tools.profilers.ProfilersTestData.DEFAULT_AGENT_UNATTACHABLE_RESPONSE
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.perfetto.config.PerfettoTraceConfigBuilders
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.taskhandlers.singleartifact.LiveTaskHandler
 import com.android.tools.profilers.tasks.taskhandlers.singleartifact.memory.JavaKotlinAllocationsTaskHandler
@@ -50,6 +51,7 @@ import org.junit.Test
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.whenever
+import perfetto.protos.PerfettoConfig
 
 class MemoryProfilerTest {
 
@@ -336,6 +338,53 @@ class MemoryProfilerTest {
         Range(Long.MIN_VALUE.toDouble(), Long.MAX_VALUE.toDouble()),
       )
     assertThat(samples).containsExactly(nativeHeapInfo.traceEnded.traceInfo)
+  }
+
+  @Test
+  fun testGetJavaHeapGraphsForSessionAfterDisconnect() {
+    val session = ProfilersTestData.SESSION_DATA
+    // The daemon's start event for a heap graph. The listing recognizes it by its data source, and a to timestamp of Long.MAX_VALUE marks
+    // an ongoing memory trace.
+    val heapGraphConfig =
+      PerfettoConfig.TraceConfig.newBuilder()
+        .addDataSources(
+          PerfettoConfig.TraceConfig.DataSource.newBuilder()
+            .setConfig(PerfettoConfig.DataSourceConfig.newBuilder().setName(PerfettoTraceConfigBuilders.JAVA_HEAP_GRAPH_DATA_SOURCE_NAME))
+        )
+        .build()
+    val startInfo =
+      Trace.TraceInfo.newBuilder()
+        .setFromTimestamp(30)
+        .setToTimestamp(Long.MAX_VALUE)
+        .setConfiguration(Trace.TraceConfiguration.newBuilder().setPerfettoOptions(heapGraphConfig))
+        .build()
+    myTransportService.addEventToStream(
+      session.streamId,
+      Common.Event.newBuilder()
+        .setTimestamp(30)
+        .setGroupId(30)
+        .setKind(Common.Event.Kind.MEMORY_TRACE)
+        .setPid(session.pid)
+        .setTraceData(Trace.TraceData.newBuilder().setTraceStarted(Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(startInfo)))
+        .build(),
+    )
+    // The device disconnects before the end event arrives, so the transport ends the group with a generic event that has no trace data.
+    myTransportService.addEventToStream(
+      session.streamId,
+      Common.Event.newBuilder()
+        .setTimestamp(40)
+        .setGroupId(30)
+        .setKind(Common.Event.Kind.MEMORY_TRACE)
+        .setPid(session.pid)
+        .setIsEnded(true)
+        .build(),
+    )
+
+    // Still a heap graph rather than Native Allocations, and no longer ongoing.
+    val range = Range(Long.MIN_VALUE.toDouble(), Long.MAX_VALUE.toDouble())
+    assertThat(MemoryProfiler.getJavaHeapGraphsForSession(myStudioProfiler.client, session, range))
+      .containsExactly(startInfo.toBuilder().setToTimestamp(40).build())
+    assertThat(MemoryProfiler.getNativeHeapSamplesForSession(myStudioProfiler.client, session, range)).isEmpty()
   }
 
   @Test

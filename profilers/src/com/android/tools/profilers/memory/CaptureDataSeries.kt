@@ -19,11 +19,14 @@ import com.android.tools.adtui.model.DataSeries
 import com.android.tools.adtui.model.Range
 import com.android.tools.adtui.model.SeriesData
 import com.android.tools.profiler.proto.Common
+import com.android.tools.profiler.proto.Memory.HeapDumpInfo
 import com.android.tools.profiler.proto.Transport
 import com.android.tools.profilers.ProfilerClient
+import com.android.tools.profilers.ProfilerFormat
 import com.android.tools.profilers.analytics.FeatureTracker
 import com.android.tools.profilers.memory.MemoryProfiler.Companion.getAllocationInfosForSession
 import com.android.tools.profilers.memory.MemoryProfiler.Companion.getHeapDumpsForSession
+import com.android.tools.profilers.memory.MemoryProfiler.Companion.getJavaHeapGraphsForSession
 import com.android.tools.profilers.memory.MemoryProfiler.Companion.getNativeHeapSamplesForSession
 import com.android.tools.profilers.memory.adapters.CaptureObject
 import com.android.tools.profilers.memory.adapters.HeapDumpCaptureObject
@@ -76,9 +79,17 @@ object CaptureDataSeries {
       { it.startTime },
       { it.endTime },
       {
-        HeapDumpCaptureObject(client, session, it, null, tracker, stage.studioProfilers.ideServices) {
-          getTraceFile(client, session.streamId, it.startTime.toString(), retry = false)
-        }
+        HeapDumpCaptureObject(
+          client,
+          session,
+          it,
+          null,
+          tracker,
+          stage.studioProfilers.ideServices,
+          {
+            getTraceFile(client, session.streamId, it.startTime.toString(), retry = false)
+          },
+        )
       },
       { durUs, _, entry -> CaptureDurationData(durUs, false, false, entry, HeapDumpCaptureObject::class.java) },
     )
@@ -101,6 +112,35 @@ object CaptureDataSeries {
         }
       },
       { durUs, _, entry -> CaptureDurationData(durUs, false, false, entry, NativeAllocationSampleCaptureObject::class.java) },
+    )
+
+  /**
+   * Heap dumps captured as Perfetto heap graphs, which is how profileable processes are dumped.
+   *
+   * These are reported by the daemon as MEMORY_TRACE events rather than MEMORY_HEAP_DUMP events, but they are surfaced as a
+   * [HeapDumpCaptureObject] so the existing heap dump UI applies unchanged. A synthetic [HeapDumpInfo] carries the trace timestamps, see
+   * [MemoryProfiler.toHeapDumpInfo].
+   */
+  @JvmStatic
+  fun ofJavaHeapGraphSamples(client: ProfilerClient, session: Common.Session, tracker: FeatureTracker, stage: BaseMemoryProfilerStage) =
+    of(
+      { getJavaHeapGraphsForSession(client, session, it) },
+      { it.fromTimestamp },
+      { it.toTimestamp },
+      {
+        HeapDumpCaptureObject(
+          client,
+          session,
+          MemoryProfiler.toHeapDumpInfo(it),
+          null,
+          tracker,
+          stage.studioProfilers.ideServices,
+          // Polls like Native Allocations, which uses the same daemon path; see the TODO in getTraceFile.
+          { getTraceFile(client, session.streamId, it.fromTimestamp.toString(), retry = true) },
+          ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION,
+        )
+      },
+      { durUs, _, entry -> CaptureDurationData(durUs, false, false, entry, HeapDumpCaptureObject::class.java) },
     )
 
   private fun <C : CaptureObject, T> of(

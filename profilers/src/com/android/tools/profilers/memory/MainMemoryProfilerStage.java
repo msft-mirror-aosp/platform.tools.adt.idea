@@ -95,6 +95,13 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
   private final DurationDataModel<CaptureDurationData<? extends CaptureObject>> myHeapDumpDurations;
   private final DurationDataModel<CaptureDurationData<? extends CaptureObject>> myAllocationDurations;
   private final DurationDataModel<CaptureDurationData<? extends CaptureObject>> myNativeAllocationDurations;
+  /**
+   * Heap dumps of profileable processes, captured as Perfetto heap graphs because {@code am dumpheap} is not permitted there. They are
+   * only recorded in the Task-Based UX, which shows this stage as a recording screen, so {@code MemoryTimelineComponent} doesn't draw
+   * them.
+   */
+  private final DurationDataModel<CaptureDurationData<? extends CaptureObject>> myJavaHeapGraphDurations;
+
   private long myPendingLegacyAllocationStartTimeNs = BaseMemoryProfilerStage.INVALID_START_TIME;
 
   @VisibleForTesting boolean myNativeAllocationTracking = false;
@@ -210,6 +217,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
                             ? makeModel(CaptureDataSeries::ofAllocationInfos)
                             : makeModel(CaptureDataSeries::ofLegacyAllocationInfos);
     myNativeAllocationDurations = makeModel(CaptureDataSeries::ofNativeAllocationSamples);
+    myJavaHeapGraphDurations = makeModel(CaptureDataSeries::ofJavaHeapGraphSamples);
 
     myHeapDumpDurations.setRenderSeriesPredicate((data, series) ->
                                                    // Do not show the object series during a heap dump.
@@ -219,6 +227,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     getRangeSelectionModel().addConstraint(myAllocationDurations);
     getRangeSelectionModel().addConstraint(myNativeAllocationDurations);
     getRangeSelectionModel().addConstraint(myHeapDumpDurations);
+    getRangeSelectionModel().addConstraint(myJavaHeapGraphDurations);
 
     getStudioProfilers().getSessionsManager().addDependency(this)
       .onChange(SessionAspect.SELECTED_SESSION, this::stopRecordingOnSessionStop);
@@ -290,7 +299,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
   @NotNull
   @Override
   public List<DurationDataModel<CaptureDurationData<? extends CaptureObject>>> getCaptureSeries() {
-    return Arrays.asList(myAllocationDurations, myHeapDumpDurations, myNativeAllocationDurations);
+    return Arrays.asList(myAllocationDurations, myHeapDumpDurations, myNativeAllocationDurations, myJavaHeapGraphDurations);
   }
 
   @Override
@@ -311,8 +320,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
 
   @Override
   protected void onCaptureToSelect(SeriesData<CaptureDurationData<? extends CaptureObject>> captureToSelect, @NotNull Executor loadJoiner) {
-    long x = captureToSelect.x;
-    if (getHeapDumpSampleDurations().getSeries().getSeriesForRange(getTimeline().getDataRange()).stream().anyMatch(s -> s.x == x)) {
+    if (HeapDumpCaptureObject.class.isAssignableFrom(captureToSelect.value.getCaptureObjectType())) {
       getAspect().changed(MemoryProfilerAspect.HEAP_DUMP_FINISHED);
       LogUtils.log(getClass(), "Heap dump capture has finished");
     }
@@ -774,6 +782,10 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
               profilers.getIdeServices().openTraceFile(traceFile);
             }
             else {
+              // Shared by every recording opened in the editor, so name the file rather than the task.
+              getLogger().warn(traceFile == null || !traceFile.exists()
+                               ? "No file arrived from the device for " + traceFileName
+                               : "The file from the device is empty: " + traceFile);
               profilers.getIdeServices().showNotification(MemoryProfilerNotifications.getCaptureFailure(capture));
               cleanupFailedCapture();
             }
