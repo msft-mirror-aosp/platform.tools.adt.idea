@@ -66,6 +66,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import javax.swing.SwingUtilities;
 import kotlin.Lazy;
 import kotlin.LazyKt;
@@ -362,57 +363,74 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         PerfettoTraceConfigBuilders.INSTANCE.getMemoryTraceConfig(process.getName(), ide.getNativeAllocationsMemorySamplingRate()))
       .build();
 
-    Commands.Command dumpCommand = Commands.Command.newBuilder()
+    // Note: This will use the config for the one that is loaded (in the drop-down) vs the one used to launch
+    // the app.
+    startMemoryTrace(configuration, false, this::nativeAllocationTrackingStart, () -> {});
+  }
+
+  private void stopNativeAllocationTracking() {
+    stopMemoryTrace(getStudioProfilers().getProcess().getName(),
+                    TransportFileManager.getShortAbiName(getStudioProfilers().getDevice().getCpuAbi()),
+                    this::nativeAllocationTrackingStop,
+                    this::cleanupFailedCapture);
+  }
+
+  /**
+   * Starts a Perfetto-backed MEMORY trace with the given {@code configuration}. Shared by Native Allocations and heap dumps of profileable
+   * processes.
+   *
+   * @param surviveExit     whether the start status listener outlives this stage for a while, see
+   *                        {@link TransportListenerTracker#trackListener}
+   * @param onStartStatus   receives the daemon's start status on the main thread
+   * @param onInvalidStatus runs on the main thread if the status event carries no start status, after the failure is tracked and before
+   *                        it is logged
+   */
+  private void startMemoryTrace(@NotNull Trace.TraceConfiguration configuration,
+                                boolean surviveExit,
+                                @NotNull Consumer<Trace.TraceStartStatus> onStartStatus,
+                                @NotNull Runnable onInvalidStatus) {
+    Commands.Command startCommand = Commands.Command.newBuilder()
       .setStreamId(getSessionData().getStreamId())
       .setPid(getSessionData().getPid())
       .setType(Commands.Command.CommandType.START_TRACE)
       .setStartTrace(Trace.StartTrace.newBuilder()
                        .setProfilerType(Trace.ProfilerType.MEMORY)
-                       // Note: This will use the config for the one that is loaded (in the drop-down) vs the one used to launch
-                       // the app.
                        .setConfiguration(configuration))
       .build();
 
-    getStudioProfilers().getClient().executeAsync(dumpCommand, ide.getPoolExecutor())
-      .thenAcceptAsync(response -> {
-        TransportEventListener statusListener =
-          new TransportEventListener(Common.Event.Kind.TRACE_STATUS,
-                                     getStudioProfilers().getIdeServices().getMainExecutor(),
-                                     event -> event.getCommandId() == response.getCommandId(),
-                                     () -> getSessionData().getStreamId(),
-                                     () -> getSessionData().getPid(),
-                                     event -> {
-                                       if (event.getTraceStatus().hasTraceStartStatus()) {
-                                         // trace status event is a start tracing event
-                                         nativeAllocationTrackingStart(event.getTraceStatus()
-                                                                         .getTraceStartStatus());
-                                       }
-                                       else {
-                                         // unknown/undefined trace status event found
-                                         myTaskTracker.trackStartTaskFailed(
-                                           new TaskStartFailedMetadata(
-                                             Trace.TraceStartStatus.getDefaultInstance(), null,
-                                             null));
-                                         getLogger().error("Invalid trace status event received.");
-                                       }
-                                       // unregisters the listener.
-                                       return true;
-                                     });
-        getStudioProfilers().getTransportPoller().registerListener(statusListener);
-        myListenerTracker.trackListener(statusListener, false);
-      }, ide.getPoolExecutor());
+    executeTraceCommand(startCommand, surviveExit, traceStatus -> {
+      if (traceStatus.hasTraceStartStatus()) {
+        // trace status event is a start tracing event
+        onStartStatus.accept(traceStatus.getTraceStartStatus());
+      }
+      else {
+        // unknown/undefined trace status event found
+        myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(Trace.TraceStartStatus.getDefaultInstance(), null, null));
+        onInvalidStatus.run();
+        getLogger().error("Invalid trace status event received.");
+      }
+    });
   }
 
-  private void stopNativeAllocationTracking() {
+  /**
+   * Stops the MEMORY trace running in {@code appName}. The daemon finds the capture by app name, so it must match the one used to start
+   * it. Under the Task-Based UX this also ends the session.
+   *
+   * @param onStopStatus    receives the daemon's stop status on the main thread
+   * @param onInvalidStatus runs on the main thread if the status event carries no stop status, before the failure is tracked and logged
+   */
+  private void stopMemoryTrace(@NotNull String appName,
+                               @NotNull String abiCpuArch,
+                               @NotNull Consumer<Trace.TraceStopStatus> onStopStatus,
+                               @NotNull Runnable onInvalidStatus) {
     Trace.TraceConfiguration configuration = Trace.TraceConfiguration.newBuilder()
-      .setAppName(getStudioProfilers().getProcess().getName())
-      .setAbiCpuArch(
-        TransportFileManager.getShortAbiName(getStudioProfilers().getDevice().getCpuAbi()))
+      .setAppName(appName)
+      .setAbiCpuArch(abiCpuArch)
       .setInitiationType(Trace.TraceInitiationType.INITIATED_BY_UI)
       .setPerfettoOptions(PerfettoConfig.TraceConfig.getDefaultInstance())
       .build();
 
-    Commands.Command.Builder dumpCommandBuilder = Commands.Command.newBuilder()
+    Commands.Command.Builder stopCommandBuilder = Commands.Command.newBuilder()
       .setStreamId(getSessionData().getStreamId())
       .setPid(getSessionData().getPid())
       .setSessionId(getSessionData().getSessionId())
@@ -422,40 +440,50 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
                       .setConfiguration(configuration));
 
     if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      dumpCommandBuilder.setShouldEndSession(true);
+      stopCommandBuilder.setShouldEndSession(true);
     }
 
-    Commands.Command dumpCommand = dumpCommandBuilder.build();
+    executeTraceCommand(stopCommandBuilder.build(), true, traceStatus -> {
+      if (traceStatus.hasTraceStopStatus()) {
+        // trace status event is a stop tracing event
+        onStopStatus.accept(traceStatus.getTraceStopStatus());
+      }
+      else {
+        onInvalidStatus.run();
+        // unknown/undefined trace status event found
+        if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
+          myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(Trace.TraceStopStatus.getDefaultInstance(), null, null));
+        }
+        getLogger().error("Invalid trace status event received.");
+      }
+    });
+  }
 
-    getStudioProfilers().getClient().executeAsync(dumpCommand, getStudioProfilers().getIdeServices().getPoolExecutor())
+  /**
+   * Executes a START_TRACE or STOP_TRACE command and hands the matching TRACE_STATUS event to {@code onTraceStatus} on the main thread.
+   *
+   * @param surviveExit whether the status listener outlives this stage for a while, see {@link TransportListenerTracker#trackListener}
+   */
+  private void executeTraceCommand(@NotNull Commands.Command command,
+                                   boolean surviveExit,
+                                   @NotNull Consumer<Trace.TraceStatusData> onTraceStatus) {
+    IdeProfilerServices ide = getStudioProfilers().getIdeServices();
+    getStudioProfilers().getClient().executeAsync(command, ide.getPoolExecutor())
       .thenAcceptAsync(response -> {
         TransportEventListener statusListener =
           new TransportEventListener(Common.Event.Kind.TRACE_STATUS,
-                                     getStudioProfilers().getIdeServices().getMainExecutor(),
+                                     ide.getMainExecutor(),
                                      event -> event.getCommandId() == response.getCommandId(),
                                      () -> getSessionData().getStreamId(),
                                      () -> getSessionData().getPid(),
                                      event -> {
-                                       if (event.getTraceStatus().hasTraceStopStatus()) {
-                                         // trace status event is a stop tracing event
-                                         nativeAllocationTrackingStop(
-                                           event.getTraceStatus().getTraceStopStatus());
-                                       }
-                                       else {
-                                         cleanupFailedCapture();
-                                         // unknown/undefined trace status event found
-                                         if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-                                           myTaskTracker.trackStopTaskFailed(
-                                             new TaskStopFailedMetadata(Trace.TraceStopStatus.getDefaultInstance(), null, null));
-                                         }
-                                         getLogger().error("Invalid trace status event received.");
-                                       }
+                                       onTraceStatus.accept(event.getTraceStatus());
                                        // unregisters the listener.
                                        return true;
                                      });
         getStudioProfilers().getTransportPoller().registerListener(statusListener);
-        myListenerTracker.trackListener(statusListener, true);
-      }, getStudioProfilers().getIdeServices().getPoolExecutor());
+        myListenerTracker.trackListener(statusListener, surviveExit);
+      }, ide.getPoolExecutor());
   }
 
   @VisibleForTesting
