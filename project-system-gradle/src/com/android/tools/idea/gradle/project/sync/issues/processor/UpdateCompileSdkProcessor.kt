@@ -16,6 +16,9 @@
 package com.android.tools.idea.gradle.project.sync.issues.processor
 
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
+import com.android.tools.idea.gradle.dsl.api.android.CompileSdkPropertyModel
+import com.android.tools.idea.gradle.dsl.api.android.CompileSdkReleaseModel
+import com.android.tools.idea.gradle.dsl.api.ext.GradlePropertyModel
 import com.android.tools.idea.gradle.dsl.model.android.android
 import com.android.tools.idea.projectsystem.getSyncManager
 import com.android.tools.idea.projectsystem.toReason
@@ -56,7 +59,7 @@ class UpdateCompileSdkProcessor(val project: Project, private val buildFilesWith
       }
       val android = projectBuildModel.getModuleBuildModel(file).android()
       val existingCompileSdkVersion = android.compileSdkVersion()
-      if (newCompileSdk.toString() == existingCompileSdkVersion.toString()) {
+      if (existingCompileSdkVersion.matchesApiLevel(newCompileSdk)) {
         continue
       }
       val element = existingCompileSdkVersion.fullExpressionPsiElement
@@ -91,4 +94,17 @@ class UpdateCompileSdkProcessor(val project: Project, private val buildFilesWith
   }
 
   override fun getCommandName(): String = "Update Compile Sdk Version"
+}
+
+private val COMPILE_SDK_API_PATTERN = Regex("""(?:android-)?(\d+)(?:\.\d+)?(?:-ext\d+)?""")
+
+private fun CompileSdkPropertyModel.matchesApiLevel(apiLevel: Int): Boolean {
+  if (getValue(GradlePropertyModel.INTEGER_TYPE) == apiLevel) return true
+  val releaseModel = toCompileSdkConfig()?.getVersion() as? CompileSdkReleaseModel
+  if (releaseModel != null) {
+    return releaseModel.getVersion().getValue(GradlePropertyModel.INTEGER_TYPE) == apiLevel
+  }
+  val stringValue = getValue(GradlePropertyModel.STRING_TYPE) ?: return false
+  val majorVersion = COMPILE_SDK_API_PATTERN.matchEntire(stringValue)?.groupValues?.get(1)?.toIntOrNull()
+  return majorVersion == apiLevel
 }
