@@ -216,8 +216,6 @@ class NavigationControlsPanelUiTest {
         override fun trackNavigationPanelEdgeDropdownPress() {
           edgeDropdownPressTracked = true
         }
-
-        override fun trackNavigateButtonClick() {}
       }
 
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(onBackPressCancelledCallback = { cancelledCalled = true })
@@ -523,8 +521,6 @@ class NavigationControlsPanelUiTest {
         override fun trackNavigationPanelVisibilityChange(isShown: Boolean) {}
 
         override fun trackNavigationPanelEdgeDropdownPress() {}
-
-        override fun trackNavigateButtonClick() {}
       }
 
     // Set up a fake adapter with two items in history
