@@ -777,6 +777,7 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/core/altlang.dap.core.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/core/altlang.dap.core.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/languages/aswb-plugin/altlang-languages-aswb.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/languages/aswb-plugin/altlang-languages-aswb.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/google3/altlang.google3.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/google3/altlang.google3.tests.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/google3/altlang.google3.testutils.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/google3/altlang.google3.testutils.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/test/emulator/altlang.test.emulator.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/test/emulator/altlang.test.emulator.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/languages/optional-file-type/altlang.languages.optional-file-type.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/languages/optional-file-type/altlang.languages.optional-file-type.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/lsp/parserless-commenter/altlang.lsp.parserless-commenter.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/lsp/parserless-commenter/altlang.lsp.parserless-commenter.iml" />
