@@ -35,6 +35,8 @@ private const val START_REPLACEABLE_GROUP = "startReplaceableGroup(I)V"
 private const val START_REUSABLE_GROUP = "startReusableGroup(ILjava/lang/Object;)V"
 private const val START_REPLACE_GROUP = "startReplaceGroup(I)V"
 
+private const val SYNTHETIC_LAMBDA_KEY = 200
+
 class ComposeAnalysisTest {
   private var projectRule = AndroidProjectRule.inMemory().withKotlin()
   private val fakeAdbRule = FakeAdbServerAdbLibRule()
@@ -268,6 +270,129 @@ class ComposeAnalysisTest {
 
     // This test doesn't care about the contents of the group table; only that we successfully construct it without errors
     computeGroupTableForTest(output)
+  }
+
+  @Test
+  fun `singleton eager initialization in clinit`() {
+    val output =
+      compileSingletonForTest(
+        """
+        @JvmField
+        var lambda1: ComposableLambda =
+          composableLambdaInstance($SYNTHETIC_LAMBDA_KEY, false, Lambda1)
+
+        fun getLambda1(): ComposableLambda = lambda1
+        """
+      )
+
+    val groupTable = computeGroupTableForTest(output)
+    groupTable.assertSyntheticSingletonParent()
+  }
+
+  @Test
+  fun `singleton lazy initialization in getter`() {
+    val output =
+      compileSingletonForTest(
+        """
+        @JvmField var lambda1: ComposableLambda? = null
+
+        fun getLambda1(): ComposableLambda {
+          if (lambda1 == null) {
+            lambda1 = composableLambdaInstance($SYNTHETIC_LAMBDA_KEY, false, Lambda1)
+          }
+          return lambda1!!
+        }
+        """
+      )
+
+    val groupTable = computeGroupTableForTest(output)
+    groupTable.assertSyntheticSingletonParent()
+  }
+
+  @Test
+  fun `singleton conditional control flow with stack merge`() {
+    val output =
+      compileSingletonForTest(
+        """
+        @JvmField var lambda1: ComposableLambda? = null
+        @JvmField var flag: Boolean = false
+
+        init {
+          if (flag) {
+            lambda1 = composableLambdaInstance($SYNTHETIC_LAMBDA_KEY, false, Lambda1)
+          } else {
+            lambda1 = composableLambdaInstance($SYNTHETIC_LAMBDA_KEY, false, Lambda1)
+          }
+        }
+
+        fun getLambda1(): ComposableLambda {
+          return lambda1
+            ?: composableLambdaInstance($SYNTHETIC_LAMBDA_KEY, false, Lambda1).also { lambda1 = it }
+        }
+        """
+      )
+
+    val groupTable = computeGroupTableForTest(output)
+    groupTable.assertSyntheticSingletonParent()
+  }
+
+  @Test
+  fun `singleton initialization with loop in clinit and getter`() {
+    val output =
+      compileSingletonForTest(
+        """
+        @JvmField var lambda1: ComposableLambda? = null
+
+        init {
+          for (i in 0 until 3) {
+            lambda1 = composableLambdaInstance($SYNTHETIC_LAMBDA_KEY, false, Lambda1)
+          }
+        }
+
+        fun getLambda1(): ComposableLambda {
+          for (i in 0 until 3) {
+            if (lambda1 == null) {
+              lambda1 = composableLambdaInstance($SYNTHETIC_LAMBDA_KEY, false, Lambda1)
+            }
+          }
+          return lambda1!!
+        }
+        """
+      )
+
+    val groupTable = computeGroupTableForTest(output)
+    groupTable.assertSyntheticSingletonParent()
+  }
+
+  private fun compileSingletonForTest(singletonBody: String): Output {
+    return compileForTest(
+      """
+      import androidx.compose.runtime.Composable
+      import androidx.compose.runtime.internal.ComposableLambda
+      import androidx.compose.runtime.internal.composableLambdaInstance
+
+      object Lambda1 {
+        @Composable fun invoke() {}
+      }
+
+      class ComposableSingletons {
+        object TestKt {
+          $singletonBody
+        }
+      }
+
+      @Composable
+      fun caller() {
+        ComposableSingletons.TestKt.getLambda1()
+      }
+      """
+    )
+  }
+
+  private fun GroupTable.assertSyntheticSingletonParent() {
+    val caller = groups.keys.single { it.name == "caller" }
+    val lambda = groups.keys.single { it.name == "invoke" }
+    assertEquals(caller, lambdaParents[lambda.clazz])
   }
 
   /** Asserts that the table contains a @Composable method with the provided key and returns that method. */

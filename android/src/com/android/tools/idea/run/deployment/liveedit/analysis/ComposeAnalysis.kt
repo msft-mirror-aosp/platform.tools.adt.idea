@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.run.deployment.liveedit.analysis
 
-import com.android.SdkConstants
 import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrAccessFlag
 import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrClass
 import com.android.tools.idea.run.deployment.liveedit.analysis.leir.IrMethod
@@ -93,11 +92,13 @@ fun computeGroupTable(classes: List<IrClass>): GroupTable {
   val analyzer = ComposeAnalyzer()
 
   val singletonMethods = singletons?.methods ?: emptyList()
-
-  val singletonInit = singletonMethods.singleOrNull { it.name == SdkConstants.CLASS_CONSTRUCTOR }
-  if (singletonInit != null) {
-    analyzeMethod(analyzer, singletonInit, classesByName, groupTable)
-    for (method in singletonMethods.filter { it != singletonInit }) {
+  if (singletonMethods.isNotEmpty()) {
+    do {
+      for (method in singletonMethods) {
+        analyzer.analyze(method.clazz.name, method.node)
+      }
+    } while (analyzer.takeHasNewSingletons())
+    for (method in singletonMethods) {
       analyzeMethod(analyzer, method, classesByName, groupTable)
     }
   }
@@ -225,6 +226,8 @@ private fun Frame<BasicValue?>.getStackValue(idx: Int): BasicValue? {
 private class ComposeAnalyzer private constructor(private val interpreter: ComposeInterpreter) : Analyzer<BasicValue?>(interpreter) {
   constructor() : this(ComposeInterpreter())
 
+  fun takeHasNewSingletons(): Boolean = interpreter.takeHasNewSingletons()
+
   override fun analyze(owner: String?, method: MethodNode?): Array<Frame<BasicValue?>> {
     interpreter.setCurrentMethod(owner, method)
     return super.analyze(owner, method)
@@ -236,6 +239,9 @@ private class ComposeInterpreter : BasicInterpreter(ASM9) {
   private var method: MethodNode? = null
   private val singletonFields = mutableMapOf<String, ComposableLambdaValue>()
   private val singletonGetters = mutableMapOf<String, ComposableLambdaValue>()
+  private var hasNewSingletons = false
+
+  fun takeHasNewSingletons(): Boolean = hasNewSingletons.also { hasNewSingletons = false }
 
   fun setCurrentMethod(owner: String?, method: MethodNode?) {
     this.owner = owner
@@ -293,11 +299,12 @@ private class ComposeInterpreter : BasicInterpreter(ASM9) {
           return newValue
         }
 
-        if (instr.name in singletonFields) {
+        val existing = singletonFields.put(instr.name, value)
+        if (existing == null) {
+          hasNewSingletons = true
+        } else if (existing != value) {
           throw RuntimeException("Repeated assignment of singleton field ${instr.name}")
         }
-
-        singletonFields[instr.name] = value
       }
 
       CHECKCAST -> return value // Ignore type casting, so we can keep track of function interface implementations
@@ -363,11 +370,18 @@ private class ComposeInterpreter : BasicInterpreter(ASM9) {
       return
     }
 
-    if (method!!.name in singletonGetters) {
+    val existing = singletonGetters.put(method!!.name, value)
+    if (existing == null) {
+      hasNewSingletons = true
+    } else if (existing != value) {
       throw RuntimeException("Multiple return branches in singleton getter: $method")
     }
+  }
 
-    singletonGetters[method!!.name] = value
+  override fun merge(value1: BasicValue?, value2: BasicValue?): BasicValue? {
+    if (value1 is ComposableLambdaValue && value2 !is ComposableLambdaValue) return value1
+    if (value2 is ComposableLambdaValue && value1 !is ComposableLambdaValue) return value2
+    return super.merge(value1, value2)
   }
 }
 
