@@ -18,22 +18,24 @@ package com.google.idea.blaze.base.util;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.idea.testing.IntellijRule;
+import com.intellij.openapi.application.ApplicationInfo;
+import com.intellij.openapi.extensions.PluginId;
+import com.intellij.openapi.util.BuildNumber;
+import com.intellij.openapi.util.NlsSafe;
+import java.nio.file.Files;
 import java.time.ZonedDateTime;
 import java.util.Calendar;
+import org.jetbrains.annotations.NotNull;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.junit.Rule;
-import com.intellij.openapi.application.ApplicationInfo;
-import org.jetbrains.annotations.NotNull;
-import com.intellij.openapi.util.NlsSafe;
-import com.intellij.openapi.util.BuildNumber;
-import com.intellij.openapi.extensions.PluginId;
-import org.jetbrains.annotations.Nullable;
 
 @RunWith(JUnit4.class)
 public class VersionCheckerTest {
   @Rule public IntellijRule intellij = new IntellijRule();
+  @Rule public TemporaryFolder tmp = new TemporaryFolder();
 
   @Test
   public void testCheckIfNeedToNotify_versionMatched() {
@@ -48,6 +50,30 @@ public class VersionCheckerTest {
     TestApplicationInfo testApplicationInfo = new TestApplicationInfo(BuildNumber.fromString("AI-1.2.3.4.12345"));
     intellij.registerApplicationService(ApplicationInfo.class, testApplicationInfo);
     assertThat(VersionChecker.versionMismatch()).isTrue();
+  }
+
+  @Test
+  public void readBuildNumberFromProductInfo() throws Exception {
+    // Arrange
+    var root = tmp.getRoot().toPath();
+    var oldDir = Files.createDirectory(root.resolve("android-studio-with-blaze-qa-2026.2.3.3-BUILDID"));
+    var newDir = Files.createDirectory(root.resolve("android-studio-with-blaze-qa-2026.2.4.1-BUILDID"));
+
+    Files.writeString(newDir.resolve("product-info.json"), """
+      {
+        "buildNumber" : "262.10968.63.2624.SNAPSHOT",
+        "productCode" : "AI"
+      }
+      """);
+
+    Files.createSymbolicLink(root.resolve("android-studio-with-blaze-qa"), newDir);
+    var location = AswbPaths.stripVersion(oldDir);
+
+    // Act
+    var number = VersionChecker.readBuildNumberFromProductInfo(location);
+
+    // Assert
+    assertThat(number).isEqualTo("AI-262.10968.63.2624.SNAPSHOT");
   }
 
   private static class TestApplicationInfo extends ApplicationInfo {

@@ -15,6 +15,9 @@
  */
 package com.google.idea.blaze.base.util;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.diagnostic.Logger;
@@ -23,9 +26,6 @@ import com.intellij.openapi.util.SystemInfo;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 
 /**
  * Help class provides function to check if IDE version meet requirements.
@@ -48,8 +48,17 @@ public class VersionChecker {
     return !buildNumberFromProductInfo.equals(buildNumberFromApplicationInfo);
   }
 
+  @VisibleForTesting
   static String readBuildNumberFromProductInfo() {
-    Path location = Paths.get(PathManager.getHomePath());
+    return readBuildNumberFromProductInfo(AswbPaths.stripVersion(PathManager.getHomeDir()));
+  }
+
+  /// @param location with the old packaging location is a path to a directory like /opt/android-studio-with-blaze-qa. With the new
+  ///                 packaging it is a path to a symlink like /opt/android-studio-with-blaze-qa pointing to a directory like
+  ///                 /opt/android-studio-with-blaze-qa-2026.2.3.2-BUILDID. When VersionMismatchNotifier indirectly calls this the
+  ///                 assumption is that the symlink points to the last application version installed by gLinux package management.
+  @VisibleForTesting
+  static String readBuildNumberFromProductInfo(Path location) {
     // Version mismatch is unexpected on macOS (due to different installation process), but this
     // check is included as a precaution.
     if (SystemInfo.isMac) {
