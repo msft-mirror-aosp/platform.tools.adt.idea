@@ -31,8 +31,8 @@ _tests = [
     "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithContextUndispatched1",  # b/579461799
     "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithTimeout",  # b/579461799
     "K2IdeK2CodeCoroutineDumpTestGenerated.testTwoDumps",  # b/579461799
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$Uncategorized.testInlineStackTraceWithTryFinally",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testFrameObject",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$Uncategorized.testInlineStackTraceWithTryFinally",  # b/579461799 Android stack trace is actually the right one
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testFrameObject",  # b/581450939
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testIdea352803",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testLambdaOnSecondLine",  # b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testOneLineFunctionalExpression",  # b/578038532
@@ -40,7 +40,7 @@ _tests = [
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testTwoLambdasOnOneLineFirst",  # b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testCheckCastOtherClassloader",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testColor",
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testInlineWithAnonymousObject",
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testInlineWithAnonymousObject",  # b/581450939
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testLambdaToString",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testOnObjectHeader",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testSmartStepIntoLambdaWithParameterDestructuring",  # b/578038532
