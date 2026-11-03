@@ -313,6 +313,9 @@
                 icon="com.android.tools.idea.streaming.StagingIcons.CAR_DATA" text="Car Data" description="Open car data controls"/>
         <action id="android.emulator.car.rotary" class="com.android.tools.idea.streaming.emulator.actions.EmulatorCarRotaryAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.CAR_ROTARY" text="Car Rotary" description="Open car rotary controls"/>
+        <action id="android.emulator.google.assistant" class="com.android.tools.idea.streaming.emulator.actions.EmulatorGoogleAssistantAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.GOOGLE_ASSISTANT" text="Google Assistant"
+                description="Open Google Assistant controls"/>
       </group>
     </group>
 

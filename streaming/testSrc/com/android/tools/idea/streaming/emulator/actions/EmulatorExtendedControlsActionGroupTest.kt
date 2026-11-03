@@ -69,6 +69,7 @@ class EmulatorExtendedControlsActionGroupTest {
     val microphoneActionId = "android.emulator.microphone"
     val carDataActionId = "android.emulator.car.data"
     val carRotaryActionId = "android.emulator.car.rotary"
+    val googleAssistantActionId = "android.emulator.google.assistant"
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
     val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -123,6 +124,11 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(carRotaryDisabled.isVisible).isFalse()
     assertThat(carRotaryDisabled.isEnabled).isFalse()
 
+    val googleAssistantDisabled =
+      updateAndGetActionPresentation(googleAssistantActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(googleAssistantDisabled.isVisible).isFalse()
+    assertThat(googleAssistantDisabled.isEnabled).isFalse()
+
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
     val presentationEnabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(presentationEnabled.isVisible).isTrue()
@@ -176,6 +182,10 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(carRotaryPhone.isVisible).isFalse()
     assertThat(carRotaryPhone.isEnabled).isFalse()
 
+    val googleAssistantPhone = updateAndGetActionPresentation(googleAssistantActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(googleAssistantPhone.isVisible).isFalse()
+    assertThat(googleAssistantPhone.isEnabled).isFalse()
+
     val automotiveView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createAutomotiveAvd(path) })
     val batteryAutomotive = updateAndGetActionPresentation(batteryActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(batteryAutomotive.isVisible).isFalse()
@@ -203,6 +213,11 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(carRotaryAutomotive.isVisible).isTrue()
     assertThat(carRotaryAutomotive.isEnabled).isTrue()
 
+    val googleAssistantAutomotive =
+      updateAndGetActionPresentation(googleAssistantActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(googleAssistantAutomotive.isVisible).isFalse()
+    assertThat(googleAssistantAutomotive.isEnabled).isFalse()
+
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
     val carRotaryAutomotiveFlagDisabled =
       updateAndGetActionPresentation(carRotaryActionId, automotiveView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -228,6 +243,11 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(sensorsWatch.isVisible).isTrue()
     assertThat(sensorsWatch.isEnabled).isTrue()
 
+    val googleAssistantWatch =
+      updateAndGetActionPresentation(googleAssistantActionId, watchView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(googleAssistantWatch.isVisible).isFalse()
+    assertThat(googleAssistantWatch.isEnabled).isFalse()
+
     val tvView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createTvAvd(path) })
     val devicePoseTv = updateAndGetActionPresentation(devicePoseActionId, tvView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(devicePoseTv.isVisible).isFalse()
@@ -236,6 +256,17 @@ class EmulatorExtendedControlsActionGroupTest {
     val sensorsTv = updateAndGetActionPresentation(sensorsActionId, tvView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(sensorsTv.isVisible).isFalse()
     assertThat(sensorsTv.isEnabled).isFalse()
+
+    val googleAssistantTv = updateAndGetActionPresentation(googleAssistantActionId, tvView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(googleAssistantTv.isVisible).isTrue()
+    assertThat(googleAssistantTv.isEnabled).isTrue()
+
+    StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
+    val googleAssistantTvFlagDisabled =
+      updateAndGetActionPresentation(googleAssistantActionId, tvView, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(googleAssistantTvFlagDisabled.isVisible).isFalse()
+    assertThat(googleAssistantTvFlagDisabled.isEnabled).isFalse()
+    StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
 
     val api22View =
       emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createPhoneAvd(path, androidVersion = AndroidVersion(22, 0)) })
@@ -255,7 +286,7 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(12)
+    assertThat(children).hasLength(13)
     val locationAction = children[0]
     assertThat(locationAction.templatePresentation.text).isEqualTo("Location")
     assertThat(locationAction.templatePresentation.icon).isEqualTo(StagingIcons.LOCATION)
@@ -303,6 +334,10 @@ class EmulatorExtendedControlsActionGroupTest {
     val carRotaryAction = children[11]
     assertThat(carRotaryAction.templatePresentation.text).isEqualTo("Car Rotary")
     assertThat(carRotaryAction.templatePresentation.icon).isEqualTo(StagingIcons.CAR_ROTARY)
+
+    val googleAssistantAction = children[12]
+    assertThat(googleAssistantAction.templatePresentation.text).isEqualTo("Google Assistant")
+    assertThat(googleAssistantAction.templatePresentation.icon).isEqualTo(StagingIcons.GOOGLE_ASSISTANT)
 
     executeAction(locationAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
     val locationDlg = findModelessDialog<DialogWrapper>()!!
@@ -385,8 +420,15 @@ class EmulatorExtendedControlsActionGroupTest {
     val carRotaryDlg2 = findModelessDialog<DialogWrapper> { it.title == "Car Rotary ($avdName2)" }!!
     assertThat(modelessDialogs).containsExactly(microphoneDlg, carRotaryDlg2)
 
+    val tvView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createTvAvd(path) })
+    val tvAvdName = tvView.emulator.emulatorId.avdName
+    executeAction(googleAssistantAction, tvView, emulatorViewRule.project, ActionPlaces.POPUP)
+    val googleAssistantDlg = findModelessDialog<DialogWrapper> { it.title == "Google Assistant ($tvAvdName)" }!!
+    assertThat(modelessDialogs).containsExactly(microphoneDlg, carRotaryDlg2, googleAssistantDlg)
+
     microphoneDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
     carRotaryDlg2.close(DialogWrapper.CLOSE_EXIT_CODE)
+    googleAssistantDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
     assertThat(modelessDialogs).isEmpty()
   }
 }

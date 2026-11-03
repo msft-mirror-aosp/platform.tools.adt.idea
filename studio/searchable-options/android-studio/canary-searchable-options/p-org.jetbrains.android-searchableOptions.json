@@ -1047,6 +1047,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Google Assistant",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Google Login V2",
       "path": "ActionManager"
     },
@@ -1308,6 +1312,10 @@
     },
     {
       "hit": "Open Build Analyzer (requires successful build to show report).",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open Google Assistant controls",
       "path": "ActionManager"
     },
     {

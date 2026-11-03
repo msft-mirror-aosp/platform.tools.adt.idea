@@ -44,6 +44,7 @@ private const val FINGERPRINT_ACTION_ID = "android.emulator.fingerprint"
 private const val MICROPHONE_ACTION_ID = "android.emulator.microphone"
 private const val CAR_DATA_ACTION_ID = "android.emulator.car.data"
 private const val CAR_ROTARY_ACTION_ID = "android.emulator.car.rotary"
+private const val GOOGLE_ASSISTANT_ACTION_ID = "android.emulator.google.assistant"
 
 /** Adds the Settings -> Keymap > Running Devices section. */
 internal class StreamingKeymapExtension : KeymapExtension {
@@ -71,7 +72,8 @@ internal class StreamingKeymapExtension : KeymapExtension {
           id == FINGERPRINT_ACTION_ID ||
           id == MICROPHONE_ACTION_ID ||
           id == CAR_DATA_ACTION_ID ||
-          id == CAR_ROTARY_ACTION_ID
+          id == CAR_ROTARY_ACTION_ID ||
+          id == GOOGLE_ASSISTANT_ACTION_ID
       ) {
         continue
       }
