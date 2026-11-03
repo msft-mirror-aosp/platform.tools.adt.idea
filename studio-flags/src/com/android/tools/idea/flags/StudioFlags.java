@@ -2937,6 +2937,13 @@ public final class StudioFlags {
       "Enable Play Publishing Build Menu Action",
       "When enabled, the Publish submenu is shown in the Build menu."
     );
+  public static final Flag<Boolean> PLAY_PUBLISHING_CREATE_APP =
+    new BooleanFlag(
+      PLAY_PUBLISHING,
+      "create.app",
+      "Enable Play Publishing Create App",
+      "When enabled, users can create a new app in Play Console from the Play Publishing wizard."
+    );
   // endregion Play Publishing
 
   // region Android CLI

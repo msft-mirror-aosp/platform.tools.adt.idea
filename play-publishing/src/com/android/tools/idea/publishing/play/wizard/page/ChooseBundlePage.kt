@@ -17,6 +17,7 @@ package com.android.tools.idea.publishing.play.wizard.page
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,33 +27,44 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.focusTarget
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.tools.adtui.compose.LocalProject
 import com.android.tools.adtui.compose.WizardAction
 import com.android.tools.adtui.compose.WizardPageScope
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.publishing.AdiClient
 import com.android.tools.idea.publishing.RegistrationState
 import com.android.tools.idea.publishing.play.AppMetadata
@@ -64,6 +76,7 @@ import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardHeader
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardState
 import com.google.gct.login2.GoogleLoginService
 import com.google.gct.login2.ui.GoogleLoginUserRow
+import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
@@ -86,12 +99,16 @@ import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.ExternalLink
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.InlineErrorBanner
+import org.jetbrains.jewel.ui.component.InlineInformationBanner
 import org.jetbrains.jewel.ui.component.InlineSuccessBanner
+import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.linkStyle
 
 private const val UPLOAD_BUNDLE_DAC_URL = "https://developer.android.com/r/studio-ui/publish/upload-app-bundle"
+private const val PLAY_CONSOLE_URL = "https://play.google.com/console/"
 
 @Suppress("UnstableApiUsage")
 @OptIn(ExperimentalJewelApi::class)
@@ -109,16 +126,18 @@ fun WizardPageScope.ChooseBundlePage(
   val pageState = getOrCreateState { ChooseBundlePageState(isPathLocked = !state.bundlePath.isNullOrEmpty()) }
   val initialBundlePath = remember { state.bundlePath ?: project?.guessBuildPath() ?: "" }
   val bundlePathState = rememberTextFieldState(initialBundlePath)
-  val listAppsResult: ListAppsResult by
-    produceState<ListAppsResult>(initialValue = ListAppsResult.Loading) {
-      value =
-        try {
-          val apps = PlayPublishingClient.getInstance().listApps()
-          ListAppsResult.Success(apps)
-        } catch (e: Exception) {
-          ListAppsResult.Error("Failed to check package availability: ${e.message}")
-        }
-    }
+  val isCreateAppEnabled = StudioFlags.PLAY_PUBLISHING_CREATE_APP.get()
+  var refreshCount by remember { mutableIntStateOf(0) }
+  var listAppsResult: ListAppsResult by remember(refreshCount) { mutableStateOf(ListAppsResult.Loading) }
+  LaunchedEffect(refreshCount) {
+    listAppsResult =
+      try {
+        val apps = PlayPublishingClient.getInstance().listApps()
+        ListAppsResult.Success(apps)
+      } catch (e: Exception) {
+        ListAppsResult.Error("Failed to check package availability: ${e.message}")
+      }
+  }
   val isAppInConsole =
     remember(state.packageName, listAppsResult) {
       (listAppsResult as? ListAppsResult.Success)?.apps?.any { it.packageName == state.packageName } ?: false
@@ -139,7 +158,7 @@ fun WizardPageScope.ChooseBundlePage(
   val versionCode = metadata?.versionCode
 
   var registrationResult: RegistrationResult by
-    remember(state.packageName) {
+    remember(state.packageName, refreshCount) {
       mutableStateOf(
         if (pageState.isPathLocked && state.isRegistered != null) {
           RegistrationResult.Success(state.isRegistered)
@@ -149,7 +168,7 @@ fun WizardPageScope.ChooseBundlePage(
       )
     }
 
-  LaunchedEffect(state.packageName, adiClient) {
+  LaunchedEffect(state.packageName, adiClient, refreshCount) {
     if (pageState.isPathLocked && state.isRegistered != null) {
       registrationResult = RegistrationResult.Success(state.isRegistered)
       return@LaunchedEffect
@@ -181,9 +200,33 @@ fun WizardPageScope.ChooseBundlePage(
     }
   }
 
+  val isPackageNameValidating =
+    remember(metadataResult, listAppsResult, state.packageName, registrationResult) {
+      !state.packageName.isNullOrEmpty() &&
+        metadataResult is MetadataResult.Success &&
+        (listAppsResult is ListAppsResult.Loading || registrationResult is RegistrationResult.Loading)
+    }
+
+  // Set when the user clicks "Refresh" in the AppNotInConsoleBanner. Keyed on the package name so that it is reset when a
+  // different bundle is selected (the package name is cleared while a bundle loads). It may stay true after the refresh
+  // completes, which is harmless: only another refresh can restart validation for the same package.
+  var isRefreshRequested by remember(state.packageName) { mutableStateOf(false) }
+  val isRefreshingAppNotInConsole = isRefreshRequested && isPackageNameValidating
+
   val bundleState =
-    remember(metadataResult, listAppsResult, state.packageName, registrationResult, isAppInConsole) {
+    remember(
+      metadataResult,
+      listAppsResult,
+      state.packageName,
+      registrationResult,
+      isAppInConsole,
+      isCreateAppEnabled,
+      isRefreshingAppNotInConsole,
+    ) {
       val registrationResult = registrationResult
+      // Keep showing the AppNotInConsole UI while the refresh is in progress, instead of briefly hiding it.
+      // AppNotInConsole must keep Next disabled, since the checks have not completed yet.
+      if (isRefreshingAppNotInConsole) return@remember BundleState.AppNotInConsole
       when (metadataResult) {
         is MetadataResult.Idle,
         is MetadataResult.Loading -> BundleState.Loading
@@ -203,6 +246,7 @@ fun WizardPageScope.ChooseBundlePage(
                     isRegistered == true && !isAppInConsole -> BundleState.PackageNotAvailable
                     metadata?.isSigned == false -> BundleState.Unsigned
                     metadata?.isDebug == true -> BundleState.Debug
+                    !isAppInConsole && !isCreateAppEnabled -> BundleState.AppNotInConsole
                     else -> BundleState.Valid
                   }
                 }
@@ -217,22 +261,15 @@ fun WizardPageScope.ChooseBundlePage(
     remember(metadataResult, listAppsResult, state.packageName, registrationResult, isAppInConsole) {
       val isRegistered = (registrationResult as? RegistrationResult.Success)?.isRegistered
       when {
-        listAppsResult !is ListAppsResult.Success || metadataResult !is MetadataResult.Success -> null
-        isRegistered == false && !state.packageName.isNullOrEmpty() -> {
-          PackageNameCheck(ElementType.SUCCESS, "Package name available")
-        }
-        isRegistered == true && isAppInConsole -> {
+        listAppsResult !is ListAppsResult.Success || metadataResult !is MetadataResult.Success || state.packageName.isNullOrEmpty() -> null
+        isAppInConsole -> {
           PackageNameCheck(ElementType.SUCCESS, "Matches existing app")
+        }
+        isRegistered == false -> {
+          PackageNameCheck(ElementType.SUCCESS, "Package name available")
         }
         else -> null
       }
-    }
-
-  val isPackageNameValidating =
-    remember(metadataResult, listAppsResult, state.packageName, registrationResult) {
-      !state.packageName.isNullOrEmpty() &&
-        metadataResult is MetadataResult.Success &&
-        (listAppsResult is ListAppsResult.Loading || registrationResult is RegistrationResult.Loading)
     }
 
   LaunchedEffect(bundlePathState.text) {
@@ -305,7 +342,8 @@ fun WizardPageScope.ChooseBundlePage(
             )
           },
         )
-      BundleState.Valid ->
+      BundleState.Valid,
+      BundleState.AppNotInConsole ->
         if (pageState.isPathLocked) BannerData(ElementType.SUCCESS, "Field pre-filled from the 'Generate Signed App Bundle or APK' wizard.")
         else null
       BundleState.Loading,
@@ -396,7 +434,7 @@ fun WizardPageScope.ChooseBundlePage(
           }
         }
 
-        if (bannerData?.type != ElementType.ERROR && !state.packageName.isNullOrEmpty()) {
+        if (bundleState != BundleState.AppNotInConsole && bannerData?.type != ElementType.ERROR && !state.packageName.isNullOrEmpty()) {
           Spacer(modifier = Modifier.height(4.dp))
           Column(modifier = Modifier.padding(start = 100.dp)) {
             Text(
@@ -428,6 +466,20 @@ fun WizardPageScope.ChooseBundlePage(
       }
     }
 
+    if (bundleState == BundleState.AppNotInConsole) {
+      AppNotInConsoleBanner(
+        userEmail = user?.email,
+        isRefreshing = isRefreshingAppNotInConsole,
+        onRefresh = {
+          adiClient.reset()
+          state.isRegistered = null
+          isRefreshRequested = true
+          refreshCount++
+        },
+        modifier = Modifier.padding(24.dp).fillMaxWidth(),
+      )
+    }
+
     (listAppsResult as? ListAppsResult.Error)?.let {
       InlineErrorBanner(it.message, Modifier.align(Alignment.End).padding(24.dp).fillMaxWidth())
     }
@@ -448,9 +500,68 @@ fun WizardPageScope.ChooseBundlePage(
         if (isAppInConsole) {
           pushPage { CreateReleasePage() }
         } else {
+          check(isCreateAppEnabled) { "Cannot create a new app when PLAY_PUBLISHING_CREATE_APP is disabled" }
           pushPage { CreateAppRecordPage() }
         }
       }
+}
+
+@OptIn(ExperimentalJewelApi::class)
+@Composable
+private fun AppNotInConsoleBanner(
+  userEmail: String?,
+  isRefreshing: Boolean,
+  onRefresh: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val linkStyle =
+    TextLinkStyles(
+      SpanStyle(color = JewelTheme.linkStyle.colors.content),
+      hoveredStyle = SpanStyle(color = JewelTheme.linkStyle.colors.content, textDecoration = TextDecoration.Underline),
+    )
+  val linkId = "external_link_icon"
+  val inlineContent =
+    mapOf(
+      linkId to
+        InlineTextContent(Placeholder(16.sp, 16.sp, PlaceholderVerticalAlign.Center)) {
+          Icon(AllIconsKeys.Ide.External_link_arrow, contentDescription = null)
+        }
+    )
+  val playConsoleUrl = userEmail?.let { playConsoleViaAccountChooserUrl(it, PLAY_CONSOLE_URL) } ?: PLAY_CONSOLE_URL
+
+  InlineInformationBanner(modifier = modifier) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(16.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text =
+          buildAnnotatedString {
+            append("You can only publish releases for existing apps in Play Console. Go to ")
+            withLink(LinkAnnotation.Clickable("play_console", linkStyle) { BrowserUtil.browse(playConsoleUrl) }) {
+              append("Play Console")
+              appendInlineContent(linkId, " ")
+            }
+            append(" to create this app and then return here to publish a release for it.")
+          },
+        inlineContent = inlineContent,
+        modifier = Modifier.weight(1f),
+      )
+      // Keep the Refresh link in the layout (but invisible) while refreshing, so the banner text doesn't reflow.
+      Box(contentAlignment = Alignment.Center) {
+        Link(
+          text = "Refresh",
+          onClick = onRefresh,
+          enabled = !isRefreshing,
+          modifier = if (isRefreshing) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier.pointerHoverIcon(PointerIcon.Hand),
+        )
+        if (isRefreshing) {
+          CircularProgressIndicator(modifier = Modifier.size(14.dp).testTag("AppNotInConsoleRefreshing"))
+        }
+      }
+    }
+  }
 }
 
 internal suspend fun shouldExtractMetadata(path: Path) =
@@ -486,6 +597,7 @@ private enum class BundleState(val isNextEnabled: Boolean = false) {
   InvalidPath,
   ParseError,
   PackageNotAvailable,
+  AppNotInConsole,
   Unsigned,
   Debug,
   Loading,
