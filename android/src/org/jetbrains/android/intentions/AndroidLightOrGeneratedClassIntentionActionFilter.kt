@@ -18,6 +18,7 @@ package org.jetbrains.android.intentions
 import com.android.SdkConstants
 import com.intellij.codeInsight.daemon.impl.IntentionActionFilter
 import com.intellij.codeInsight.intention.IntentionAction
+import com.intellij.lang.java.actions.CreateMemberModCommandAction
 import com.intellij.openapi.roots.JavaProjectRootsUtil.isInGeneratedCode
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiFile
@@ -32,7 +33,7 @@ import org.jetbrains.android.augment.AndroidLightClassBase
 class AndroidLightOrGeneratedClassIntentionActionFilter : IntentionActionFilter {
 
   override fun accept(intentionAction: IntentionAction, file: PsiFile?): Boolean {
-    val targetPsiClass = file?.let(intentionAction::getElementToMakeWritable) as? PsiClass ?: return true
+    val targetPsiClass = getTargetClass(intentionAction, file) ?: return true
 
     return when {
       targetPsiClass is AndroidLightClassBase -> false
@@ -42,5 +43,16 @@ class AndroidLightOrGeneratedClassIntentionActionFilter : IntentionActionFilter 
       }
       else -> true
     }
+  }
+
+  private fun getTargetClass(intentionAction: IntentionAction, file: PsiFile?): PsiClass? {
+    // ModCommand-based actions (e.g. CreateFieldAction) return null from getElementToMakeWritable.
+    // Instead, for CreateMemberModCommandActions (e.g. CreateFieldAction), we can get the targetClass.
+    @Suppress("UnstableApiUsage")
+    (intentionAction.asModCommandAction() as? CreateMemberModCommandAction)?.let {
+      return it.targetClass
+    }
+    // Fall back to the old code path, which may still work for non-ModCommand intentions.
+    return file?.let(intentionAction::getElementToMakeWritable) as? PsiClass
   }
 }
