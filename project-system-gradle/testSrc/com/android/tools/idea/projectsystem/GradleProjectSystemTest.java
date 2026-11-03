@@ -19,6 +19,7 @@ import static com.android.tools.idea.projectsystem.ProjectSystemSyncUtil.PROJECT
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,8 +27,11 @@ import com.android.tools.idea.gradle.dependencies.GradleDependencyManager;
 import com.android.tools.idea.gradle.project.Info;
 import com.android.tools.idea.gradle.project.build.invoker.GradleBuildInvoker;
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem;
+import com.android.tools.idea.run.ValidationError;
 import com.android.tools.idea.testing.IdeComponents;
+import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.testFramework.HeavyPlatformTestCase;
+import java.util.List;
 
 public class GradleProjectSystemTest extends HeavyPlatformTestCase {
 
@@ -63,5 +67,18 @@ public class GradleProjectSystemTest extends HeavyPlatformTestCase {
     BuildConfigurationSourceProvider provider2 = projectSystem.getBuildConfigurationSourceProvider();
 
     assertNotSame(provider1, provider2);
+  }
+
+  public void testValidateRunConfigurationWithoutGradleContextReturnsUnsupportedError() {
+    // A run configuration with no Android facet (e.g. before sync) has no Gradle context. This used to recurse forever, because the
+    // one-argument default delegated back to this override.
+    GradleProjectSystem projectSystem = (GradleProjectSystem)ProjectSystemUtil.getProjectSystem(myProject);
+    RunConfiguration runConfiguration = mock(RunConfiguration.class);
+    when(runConfiguration.getName()).thenReturn("unsynced");
+
+    List<ValidationError> errors = projectSystem.validateRunConfiguration(runConfiguration, null);
+
+    assertThat(errors).hasSize(1);
+    assertThat(errors.get(0).getSeverity()).isEqualTo(ValidationError.Severity.FATAL);
   }
 }

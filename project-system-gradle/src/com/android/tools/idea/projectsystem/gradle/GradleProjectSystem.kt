@@ -157,7 +157,7 @@ open class GradleProjectSystem(override val project: Project) : AndroidProjectSy
   }
 
   override fun validateRunConfiguration(runConfiguration: RunConfiguration, quickFixCallback: Runnable?): List<ValidationError> {
-    val context = runConfiguration.getGradleContext() ?: return super.validateRunConfiguration(runConfiguration)
+    val context = runConfiguration.getGradleContext() ?: return super.validateRunConfiguration(runConfiguration, quickFixCallback)
     return GradleApkProvider.doValidate(
       context.androidFacet,
       context.isTestConfiguration,
