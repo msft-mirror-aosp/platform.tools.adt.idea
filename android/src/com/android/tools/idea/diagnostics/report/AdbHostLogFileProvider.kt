@@ -32,7 +32,7 @@ import java.nio.file.StandardOpenOption
 import kotlin.io.path.Path
 
 private const val SERVER_STATUS_FILE: String = "server-status.log"
-private const val DEFAULT_MAX_LOG_SIZE: Long = 10L * 1024 * 1024 // 10 MB
+private const val DEFAULT_MAX_LOG_SIZE: Long = 100L * 1024 * 1024 // 100 MB
 
 /** A [DiagnosticsSummaryFileProvider] for adb host log. */
 class AdbHostLogFileProvider(
