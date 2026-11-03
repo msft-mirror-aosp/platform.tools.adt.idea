@@ -43,6 +43,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileTypes.LanguageFileType;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.CheckedDisposable;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
@@ -64,6 +65,7 @@ import org.jetbrains.annotations.Nullable;
  * Renders XML drawables to raster images.
  */
 public class DrawableRenderer implements Disposable {
+  @NotNull private final CheckedDisposable myDisposable = Disposer.newCheckedDisposable();
   @NotNull private final CompletableFuture<RenderTask> myRenderTaskFuture;
   @NotNull private final Object myRenderLock = new Object();
   @NotNull private final MyLayoutPullParserFactory myParserFactory;
@@ -92,6 +94,10 @@ public class DrawableRenderer implements Disposable {
     RenderLogger logger = new RenderLogger(module.getProject(), null, StudioFlags.NELE_LOG_ANDROID_FRAMEWORK.get(), ShowFixFactory.INSTANCE,
                                            () -> HtmlLinkManager.NOOP_LINK_MANAGER);
     myParserFactory = new MyLayoutPullParserFactory();
+    boolean registered = Disposer.tryRegister(facet, myDisposable);
+    if (!registered) {
+      Disposer.dispose(myDisposable);
+    }
     // The ThemeEditorUtils.getConfigurationForModule and RenderService.createTask calls are pretty expensive.
     // Executing them off the UI thread.
     RenderService service = StudioRenderService.getInstance(module.getProject());
@@ -99,13 +105,18 @@ public class DrawableRenderer implements Disposable {
       service, AndroidBuildTargetReference.gradleOnly(facet),
       configuration, logger)
       .withParserFactory(myParserFactory)
-      .build()
+      .build(myDisposable)
       .whenComplete((task, ex) -> {
         if (logger.hasProblems()) {
           getLog().error(RenderProblem.format(logger.getMessages()));
         }
       });
-    Disposer.register(facet, this);
+    if (registered) {
+      Disposer.register(myDisposable, this::disposeInternal);
+    }
+    else {
+      disposeInternal();
+    }
   }
 
   /**
@@ -140,6 +151,10 @@ public class DrawableRenderer implements Disposable {
 
   @Override
   public void dispose() {
+    Disposer.dispose(myDisposable);
+  }
+
+  private void disposeInternal() {
     myRenderTaskFuture.whenComplete((renderTask, throwable) -> {
       if (renderTask != null) {
         renderTask.disposeAsync();

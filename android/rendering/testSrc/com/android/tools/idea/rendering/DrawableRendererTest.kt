@@ -18,8 +18,10 @@ package com.android.tools.idea.rendering
 import com.android.testutils.ImageDiffUtil.assertImageSimilar
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.util.androidFacet
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.testFramework.LeakHunter
 import com.intellij.testFramework.LightVirtualFile
 import java.awt.Color
 import java.awt.Dimension
@@ -56,5 +58,15 @@ class DrawableRendererTest {
         g.fillRect(0, 0, it.width, it.height)
       }
     assertImageSimilar("drawable", goldenImage, image, .0, 0)
+  }
+
+  @Test
+  fun testDirectDisposeUnregistersFromDisposerTree() {
+    val file: VirtualFile = LightVirtualFile("test_resource.xml", "<vector/>")
+    val drawableRenderer = DrawableRenderer(projectRule.module.androidFacet!!, file)
+    drawableRenderer.dispose()
+    ApplicationManager.getApplication().invokeAndWait {
+      LeakHunter.checkLeak(Disposer.getTree(), DrawableRenderer::class.java)
+    }
   }
 }

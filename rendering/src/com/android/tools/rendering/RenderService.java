@@ -578,7 +578,7 @@ final public class RenderService implements Disposable {
 
           LayoutLibrary layoutLib;
           try {
-            if (disposable.isDisposed()) {
+            if (disposable.isDisposed() || module.isDisposed()) {
               return null;
             }
             layoutLib = LayoutlibFactory.getLayoutLibrary(target, module.getAndroidPlatform(), module.getEnvironment().getLayoutlibContext());
@@ -600,7 +600,7 @@ final public class RenderService implements Disposable {
                 ERROR, message, myLogger.getLinkManager(), e, module.getEnvironment().getActionFixFactory()));
             return null;
           }
-          if (disposable.isDisposed()) {
+          if (disposable.isDisposed() || module.isDisposed()) {
             return null;
           }
           try {
@@ -636,7 +636,7 @@ final public class RenderService implements Disposable {
             if (myCustomContentHierarchyParser != null) {
               task.setCustomContentHierarchyParser(myCustomContentHierarchyParser);
             }
-            if (disposable.isDisposed()) {
+            if (disposable.isDisposed() || module.isDisposed()) {
               return null;
             }
 
@@ -648,7 +648,7 @@ final public class RenderService implements Disposable {
           }
           catch (IllegalStateException | IncorrectOperationException | AssertionError e) {
             // Ignore the exception if it was generated when the facet is being disposed (project is being closed)
-            if (!module.isDisposed()) {
+            if (!module.isDisposed() && !disposable.isDisposed()) {
               throw e;
             }
           }

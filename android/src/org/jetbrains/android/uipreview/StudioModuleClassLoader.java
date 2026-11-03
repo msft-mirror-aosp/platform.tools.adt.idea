@@ -45,6 +45,7 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.util.CheckedDisposable;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.serviceContainer.AlreadyDisposedException;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -267,10 +268,21 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     myImpl = loader;
     myBuildTargetReference = renderContext.getBuildTargetReference();
     Module module = renderContext.getBuildTargetReference().getModuleIfNotDisposed();
-    Disposer.register(myDisposable, this::disposeImpl);
     myDiagnostics = diagnostics;
-    if (module == null || !Disposer.tryRegister(ModuleDisposableService.getInstance(module), myDisposable)) {
+    boolean registered = false;
+    if (module != null && !module.isDisposed()) {
+      try {
+        registered = Disposer.tryRegister(ModuleDisposableService.getInstance(module), myDisposable);
+      }
+      catch (AlreadyDisposedException ignore) {
+      }
+    }
+    if (registered) {
+      Disposer.register(myDisposable, this::disposeImpl);
+    }
+    else {
       Disposer.dispose(myDisposable);
+      disposeImpl();
     }
   }
 
