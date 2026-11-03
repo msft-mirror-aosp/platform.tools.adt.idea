@@ -198,6 +198,12 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     myDeobfuscationForNativeAllocationsEnabled = enabled;
   }
 
+  private boolean myRecordPerfettoHeapDumpEnabled = false;
+
+  public void setRecordPerfettoHeapDumpEnabled(boolean enabled) {
+    myRecordPerfettoHeapDumpEnabled = enabled;
+  }
+
   private String myLastLeakRawTrace;
   private Leak myLastLeak;
 
@@ -380,6 +386,11 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       @Override
       public boolean isProfilerHomeTabV2Enabled() {
         return myProfilerHomeTabV2Enabled;
+      }
+
+      @Override
+      public boolean isRecordPerfettoHeapDumpEnabled() {
+        return myRecordPerfettoHeapDumpEnabled;
       }
 
       @Override

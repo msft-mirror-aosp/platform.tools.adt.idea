@@ -15,6 +15,7 @@
  */
 package com.android.tools.profilers.perfetto.config
 
+import com.android.sdklib.AndroidVersion
 import perfetto.protos.PerfettoConfig
 import perfetto.protos.PerfettoConfig.TraceConfig
 
@@ -84,6 +85,45 @@ object PerfettoTraceConfigBuilders {
    * is what tells the two apart.
    */
   const val JAVA_HEAP_GRAPH_DATA_SOURCE_NAME = "android.java_hprof"
+
+  // Perfetto heap graph config values.
+  //
+  // If the buffer overflows, the graph is silently truncated rather than failing, so we match the buffer size used by Perfetto's own
+  // tools/java_heap_dump (256MB).
+  private const val JAVA_HEAP_GRAPH_BUFFER_SIZE_KB = 1024 * 256
+
+  // The dump is produced when the data source *starts*, not when it stops, so the session only has to stay open until ART has started
+  // writing it. That takes a moment: traced first starts heapprofd on demand (about 0.1s), which serves this data source and signals the
+  // app, then the forked copy of the app that writes the graph has to register with traced. If the session ends before it registers,
+  // traced doesn't wait for it and the graph comes back empty. Perfetto's own tools/java_heap_dump allows 1s, but on a slow, busy
+  // device heapprofd alone took about 0.9s to start and the copy registered after about 1.4s. Allow 2s, which leaves room for slower
+  // devices and busy test machines.
+  private const val JAVA_HEAP_GRAPH_DURATION_MS = 2000
+
+  // `data_source_stop_timeout_ms` is a ceiling, not a wait: traced holds the session open until ART acknowledges the stop, so tracing ends
+  // as soon as the dump completes. It is generous (60s) to avoid truncating a large heap while still bounding a wedged process.
+  private const val JAVA_HEAP_GRAPH_STOP_TIMEOUT_MS = 60000
+
+  // Android 11 has no such acknowledgement, and the graph is cut off when the session ends. There the session itself lasts up to 60s
+  // instead, and the daemon stops it once the trace file stops growing.
+  private const val JAVA_HEAP_GRAPH_ANDROID_11_DURATION_MS = 60000
+
+  // Extra time on top of [JAVA_HEAP_GRAPH_DURATION_MS] before Studio sends the stop, see [JAVA_HEAP_GRAPH_STOP_DELAY_MS].
+  private const val JAVA_HEAP_GRAPH_STOP_MARGIN_MS = 250L
+
+  /**
+   * How long the host waits after a successful START_TRACE before issuing the matching STOP_TRACE.
+   *
+   * From Android 12 this only has to outlast [JAVA_HEAP_GRAPH_DURATION_MS], which gives ART's forked copy time to register: STOP_TRACE
+   * SIGINTs the `perfetto` binary, and signalling it before the data source has started yields an empty graph. It deliberately does *not*
+   * cover the dump itself - the daemon's STOP_TRACE handler blocks in `waitpid` until `perfetto` exits, so the stop call is itself the
+   * "wait until finished" mechanism. On Android 11 the session lasts longer, so the stop arrives while it is still running, and the daemon
+   * waits for the trace file to stop growing before it signals `perfetto`.
+   *
+   * Only ever send ONE stop: the daemon handles one stop at a time, so a second STOP_TRACE finds no capture and fails with
+   * NO_ONGOING_PROFILING.
+   */
+  const val JAVA_HEAP_GRAPH_STOP_DELAY_MS = JAVA_HEAP_GRAPH_DURATION_MS + JAVA_HEAP_GRAPH_STOP_MARGIN_MS
 
   // Common trace config values.
   private const val FLUSH_PERIOD_MS = 1000
@@ -270,6 +310,49 @@ object PerfettoTraceConfigBuilders {
     heapProfdDataConfig.heapprofdConfig = heapProfdConfig.build()
 
     return heapProfdDataConfig.build()
+  }
+
+  /**
+   * Constructs a Perfetto TraceConfig that captures a single Perfetto heap graph.
+   *
+   * Unlike an ART HPROF dump (`am dumpheap`), this works on **profileable** processes: the data source is gated by the same
+   * `profileable_from_shell || debuggable` check that heapprofd uses. The trade-off is that the resulting graph only contains the object
+   * reference graph - primitive field values, String contents and array payloads are not recorded.
+   *
+   * @param pid the PID of the process to dump. Used from Android 12.
+   * @param processName the name of the process to dump. Used on Android 11.
+   * @param featureLevel the API level of the device. Android 11 or higher.
+   */
+  fun getJavaHeapGraphTraceConfig(pid: Int, processName: String, featureLevel: Int): TraceConfig {
+    require(featureLevel >= AndroidVersion.VersionCodes.R) { "Perfetto heap graphs need Android 11 or higher, got API $featureLevel" }
+    val configBuilder = buildCommonTraceConfig().toBuilder()
+    val isAndroid11 = featureLevel < AndroidVersion.VersionCodes.S
+
+    configBuilder.addBuffers(TraceConfig.BufferConfig.newBuilder().setSizeKb(JAVA_HEAP_GRAPH_BUFFER_SIZE_KB))
+    configBuilder.addDataSources(TraceConfig.DataSource.newBuilder().setConfig(getJavaHeapGraphDataConfig(pid, processName, isAndroid11)))
+
+    configBuilder.durationMs = if (isAndroid11) JAVA_HEAP_GRAPH_ANDROID_11_DURATION_MS else JAVA_HEAP_GRAPH_DURATION_MS
+    configBuilder.dataSourceStopTimeoutMs = JAVA_HEAP_GRAPH_STOP_TIMEOUT_MS
+
+    return configBuilder.build()
+  }
+
+  private fun getJavaHeapGraphDataConfig(pid: Int, processName: String, isAndroid11: Boolean): PerfettoConfig.DataSourceConfig {
+    val javaHprofDataConfig = PerfettoConfig.DataSourceConfig.newBuilder().setName(JAVA_HEAP_GRAPH_DATA_SOURCE_NAME).setTargetBuffer(0)
+    val javaHprofConfig = javaHprofDataConfig.javaHprofConfig.toBuilder()
+
+    if (isAndroid11) {
+      // Android 11 ART checks the PID against the forked copy of the process that writes the graph, so a PID never matches. Target the
+      // exact process name instead, like Native Allocations does.
+      javaHprofConfig.addProcessCmdline(processName)
+    } else {
+      // Target by PID, so only the selected process is dumped, even if the same app also runs under another user.
+      javaHprofConfig.addPid(pid.toLong())
+    }
+
+    javaHprofDataConfig.javaHprofConfig = javaHprofConfig.build()
+
+    return javaHprofDataConfig.build()
   }
 
   private fun buildCommonTraceConfig(): TraceConfig {

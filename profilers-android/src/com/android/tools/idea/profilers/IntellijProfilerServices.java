@@ -966,6 +966,11 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
     }
 
     @Override
+    public boolean isRecordPerfettoHeapDumpEnabled() {
+      return StudioFlags.PROFILER_PERFETTO_HEAP_DUMP.get();
+    }
+
+    @Override
     public boolean isDeobfuscationForNativeAllocationsEnabled() {
       return StudioFlags.PROFILER_DEOBFUSCATION_FOR_NATIVE_ALLOCATIONS.get();
     }

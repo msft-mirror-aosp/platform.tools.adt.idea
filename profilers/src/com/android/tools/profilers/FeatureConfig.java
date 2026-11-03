@@ -41,6 +41,7 @@ public interface FeatureConfig {
   boolean isJavaKotlinAllocationsInEditorEnabled();
   boolean isLeakCanaryInEditorEnabled();
   boolean isProfilerHomeTabV2Enabled();
+  boolean isRecordPerfettoHeapDumpEnabled();
   boolean isDeobfuscationForNativeAllocationsEnabled();
 
   PowerProfilerDisplayMode getSystemTracePowerProfilerDisplayMode();

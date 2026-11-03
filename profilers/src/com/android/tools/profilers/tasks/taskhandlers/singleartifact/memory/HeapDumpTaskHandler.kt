@@ -19,15 +19,17 @@ import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.SupportLevel
 import com.android.tools.profilers.memory.HprofSessionArtifact
 import com.android.tools.profilers.memory.MainMemoryProfilerStage
+import com.android.tools.profilers.memory.MemoryProfiler
 import com.android.tools.profilers.sessions.SessionArtifact
 import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.taskbased.home.StartTaskSelectionError
 import com.android.tools.profilers.taskbased.home.StartTaskSelectionError.StartTaskSelectionErrorCode
+import com.android.tools.profilers.taskbased.home.TaskSelectionVerificationUtils.getMinApiStartTaskErrorMessage
 import com.android.tools.profilers.tasks.args.TaskArgs
 import com.android.tools.profilers.tasks.args.singleartifact.memory.HeapDumpTaskArgs
 
 /** This class defines the task handler to perform a heap dump task. */
-class HeapDumpTaskHandler(sessionsManager: SessionsManager) : MemoryTaskHandler(sessionsManager) {
+class HeapDumpTaskHandler(private val sessionsManager: SessionsManager) : MemoryTaskHandler(sessionsManager) {
   override fun startCapture(stage: MainMemoryProfilerStage) {
     stage.startHeapDumpCapture()
   }
@@ -56,13 +58,24 @@ class HeapDumpTaskHandler(sessionsManager: SessionsManager) : MemoryTaskHandler(
   override fun createLoadingTaskArgs(artifact: SessionArtifact<*>) = HeapDumpTaskArgs(false, artifact as HprofSessionArtifact)
 
   override fun checkSupportForDeviceAndProcess(device: Common.Device, process: Common.Process): StartTaskSelectionError? {
-    val isFeatureSupported = SupportLevel.of(process.exposureLevel).isFeatureSupported(SupportLevel.Feature.MEMORY_HEAP_DUMP)
-
-    if (isFeatureSupported) {
+    val supportLevel = SupportLevel.of(process.exposureLevel)
+    if (supportLevel.isFeatureSupported(SupportLevel.Feature.MEMORY_HEAP_DUMP)) {
       return null
     }
 
-    return StartTaskSelectionError(StartTaskSelectionErrorCode.TASK_REQUIRES_DEBUGGABLE_PROCESS)
+    if (!MemoryProfiler.recordsHeapDumpAsJavaHeapGraph(supportLevel, sessionsManager.studioProfilers.ideServices.featureConfig)) {
+      return StartTaskSelectionError(StartTaskSelectionErrorCode.TASK_REQUIRES_DEBUGGABLE_PROCESS)
+    }
+
+    // Profileable processes cannot be dumped with `am dumpheap`; they are captured as a Perfetto heap graph, which needs a newer device.
+    if (device.featureLevel < MemoryProfiler.JAVA_HEAP_GRAPH_MIN_API) {
+      return StartTaskSelectionError(
+        StartTaskSelectionErrorCode.TASK_FROM_NOW_USING_API_BELOW_MIN,
+        getMinApiStartTaskErrorMessage(MemoryProfiler.JAVA_HEAP_GRAPH_MIN_API),
+      )
+    }
+
+    return null
   }
 
   override fun supportsArtifact(artifact: SessionArtifact<*>?) = artifact is HprofSessionArtifact

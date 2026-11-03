@@ -439,6 +439,10 @@ public final class StudioFlags {
   public static final Flag<Boolean> PROFILER_DEOBFUSCATION_FOR_NATIVE_ALLOCATIONS = new BooleanFlag(
     PROFILER, "deobfuscation.for.native.allocations", "Symbolization/Deobfuscation for Native Allocations",
     "Enable symbolization and deobfuscation for native allocations captures");
+
+  public static final Flag<Boolean> PROFILER_PERFETTO_HEAP_DUMP = new BooleanFlag(
+    PROFILER, "perfetto.heap.dump", "Perfetto heap dumps",
+    "Records the Heap Dump task of a profileable app with Perfetto, on Android 11 and higher");
   //endregion
 
   //region Design Tools

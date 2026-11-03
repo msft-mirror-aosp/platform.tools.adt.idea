@@ -22,6 +22,7 @@ import com.android.tools.adtui.model.DataSeries;
 import com.android.tools.adtui.model.DurationDataModel;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.SeriesData;
+import com.android.tools.adtui.model.updater.Updatable;
 import com.android.tools.adtui.model.updater.Updater;
 import com.android.tools.idea.io.grpc.StatusRuntimeException;
 import com.android.tools.idea.transport.TransportFileManager;
@@ -63,8 +64,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import javax.swing.SwingUtilities;
@@ -268,7 +271,21 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         myRecordingOptionsModel.setOptionNotReady(option, feature.getTitle() + " is not supported for profileable processes");
       }
     };
-    adder.accept(SupportLevel.Feature.MEMORY_HEAP_DUMP, lazyHeapDumpRecordingOption.getValue());
+    RecordingOption heapDumpOption = lazyHeapDumpRecordingOption.getValue();
+    if (MemoryProfiler.recordsHeapDumpAsJavaHeapGraph(getStudioProfilers().getSelectedSessionSupportLevel(),
+                                                      getStudioProfilers().getIdeServices().getFeatureConfig())) {
+      // Profileable processes can't use `am dumpheap`; they are captured as a Perfetto heap graph, which needs Android 11 or higher.
+      myRecordingOptionsModel.addBuiltInOptions(heapDumpOption);
+      if (!useJavaHeapGraphForHeapDump()) {
+        myRecordingOptionsModel.setOptionNotReady(
+          heapDumpOption,
+          SupportLevel.Feature.MEMORY_HEAP_DUMP.getTitle() + " requires API " + MemoryProfiler.JAVA_HEAP_GRAPH_MIN_API +
+          " or higher for profileable processes");
+      }
+    }
+    else {
+      adder.accept(SupportLevel.Feature.MEMORY_HEAP_DUMP, heapDumpOption);
+    }
     if (isNativeAllocationSamplingEnabled()) {
       adder.accept(SupportLevel.Feature.MEMORY_NATIVE_RECORDING, lazyNativeRecordingOption.getValue());
     }
@@ -574,6 +591,12 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
 
   public void requestHeapDump() {
     assert getStudioProfilers().getProcess() != null;
+
+    if (useJavaHeapGraphForHeapDump()) {
+      requestJavaHeapGraphDump();
+      return;
+    }
+
     Commands.Command.Builder dumpCommandBuilder = Commands.Command.newBuilder()
       .setStreamId(getSessionData().getStreamId())
       .setPid(getSessionData().getPid())
@@ -605,6 +628,120 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     }, getStudioProfilers().getIdeServices().getPoolExecutor());
     getTimeline().setStreaming(true);
     getStudioProfilers().getIdeServices().getTemporaryProfilerPreferences().setBoolean(HAS_USED_MEMORY_CAPTURE, true);
+  }
+
+  /**
+   * Whether a heap dump should be captured as a Perfetto heap graph instead of an ART HPROF, see
+   * {@link MemoryProfiler#recordsHeapDumpAsJavaHeapGraph} and {@link MemoryProfiler#JAVA_HEAP_GRAPH_MIN_API}.
+   */
+  private boolean useJavaHeapGraphForHeapDump() {
+    Common.Device device = getDeviceForSelectedSession();
+    return MemoryProfiler.recordsHeapDumpAsJavaHeapGraph(getStudioProfilers().getSelectedSessionSupportLevel(),
+                                                         getStudioProfilers().getIdeServices().getFeatureConfig()) &&
+           device != null &&
+           device.getFeatureLevel() >= MemoryProfiler.JAVA_HEAP_GRAPH_MIN_API;
+  }
+
+  /**
+   * Captures a heap dump as a Perfetto heap graph.
+   *
+   * <p>This goes through the generic trace pipeline (START_TRACE / STOP_TRACE with {@link Trace.ProfilerType#MEMORY}) because the daemon's
+   * HEAP_DUMP command is hardcoded to {@code am dumpheap}. The resulting file surfaces as a MEMORY_TRACE event and is picked up by
+   * {@link CaptureDataSeries#ofJavaHeapGraphSamples}.
+   */
+  private void requestJavaHeapGraphDump() {
+    IdeProfilerServices ide = getStudioProfilers().getIdeServices();
+    Common.Process process = getStudioProfilers().getProcess();
+    // The session's own device, which useJavaHeapGraphForHeapDump() has checked; the device selected in the UI can differ.
+    Common.Device device = Objects.requireNonNull(getDeviceForSelectedSession());
+    String traceFilePath = String.format(Locale.getDefault(), "%s/%s.trace", DAEMON_DEVICE_DIR_PATH, process.getName());
+
+    Trace.TraceConfiguration configuration = Trace.TraceConfiguration.newBuilder()
+      .setAbiCpuArch(TransportFileManager.getShortAbiName(device.getCpuAbi()))
+      .setTempPath(traceFilePath)
+      .setAppName(process.getName())
+      .setInitiationType(Trace.TraceInitiationType.INITIATED_BY_UI)
+      .setPerfettoOptions(PerfettoTraceConfigBuilders.INSTANCE.getJavaHeapGraphTraceConfig(
+        getSessionData().getPid(), process.getName(), device.getFeatureLevel()))
+      .build();
+
+    // surviveExit: this listener is what schedules the stop, and losing it would leave the capture running and block later recordings.
+    startMemoryTrace(configuration, true, status -> handleJavaHeapGraphStart(status, configuration),
+                     this::cleanupFailedJavaHeapGraphCapture);
+
+    getTimeline().setStreaming(true);
+    ide.getTemporaryProfilerPreferences().setBoolean(HAS_USED_MEMORY_CAPTURE, true);
+  }
+
+  private void handleJavaHeapGraphStart(@NotNull Trace.TraceStartStatus status, @NotNull Trace.TraceConfiguration startConfiguration) {
+    switch (status.getStatus()) {
+      case SUCCESS:
+        setPendingCaptureStartTime(status.getStartTimeNs());
+        getAspect().changed(MemoryProfilerAspect.HEAP_DUMP_STARTED);
+        Common.Device device = getDeviceForSelectedSession();
+        LogUtils.log(getClass(), String.format(Locale.US, "Perfetto heap graph capture start succeeded (API %d, session %d ms)",
+                                               device != null ? device.getFeatureLevel() : 0,
+                                               startConfiguration.getPerfettoOptions().getDurationMs()));
+        scheduleJavaHeapGraphStop(startConfiguration);
+        break;
+      default:
+        // Includes UNSPECIFIED: no heap graph is coming.
+        myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(status, null, null));
+        cleanupFailedJavaHeapGraphCapture();
+        getLogger().warn("Perfetto heap graph capture failed to start: " + status.getStatus() + ", error code " + status.getErrorCode() +
+                         (status.getErrorMessage().isEmpty() ? "" : ", " + status.getErrorMessage()));
+        break;
+    }
+  }
+
+  /**
+   * Sends the stop {@link PerfettoTraceConfigBuilders#JAVA_HEAP_GRAPH_STOP_DELAY_MS} after a successful start. Uses a one-shot
+   * {@link Updatable} on the profilers {@link Updater}, which outlives this stage, so the stop is still sent if the stage exits first.
+   */
+  private void scheduleJavaHeapGraphStop(@NotNull Trace.TraceConfiguration startConfiguration) {
+    Updater updater = getStudioProfilers().getUpdater();
+    long delayNs = TimeUnit.MILLISECONDS.toNanos(PerfettoTraceConfigBuilders.JAVA_HEAP_GRAPH_STOP_DELAY_MS);
+    updater.register(new Updatable() {
+      private long myElapsedNs;
+
+      @Override
+      public void update(long elapsedNs) {
+        myElapsedNs += elapsedNs;
+        if (myElapsedNs >= delayNs) {
+          // Unregister so the stop is sent exactly once.
+          updater.unregister(this);
+          stopJavaHeapGraphDump(startConfiguration);
+        }
+      }
+    });
+  }
+
+  /**
+   * Stops the heap graph capture started with {@code startConfiguration}. Takes the app name from it rather than the current process,
+   * which may be gone by the time this delayed stop runs.
+   */
+  private void stopJavaHeapGraphDump(@NotNull Trace.TraceConfiguration startConfiguration) {
+    stopMemoryTrace(startConfiguration.getAppName(), startConfiguration.getAbiCpuArch(), this::handleJavaHeapGraphStop,
+                    this::cleanupFailedJavaHeapGraphCapture);
+  }
+
+  private void handleJavaHeapGraphStop(@NotNull Trace.TraceStopStatus status) {
+    myRecordingOptionsModel.setFinished();
+    switch (status.getStatus()) {
+      case SUCCESS:
+        // The daemon's stop waits for perfetto to exit, and on Android 11 first for the trace file to stop growing, so this is how long the
+        // dump took to finish after the stop.
+        LogUtils.log(getClass(), "Perfetto heap graph capture stop succeeded after " +
+                                 TimeUnit.NANOSECONDS.toMillis(status.getStoppingDurationNs()) + " ms");
+        break;
+      default:
+        // Includes NO_ONGOING_PROFILING and UNSPECIFIED: no heap graph is coming.
+        cleanupFailedJavaHeapGraphCapture();
+        myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(status, null, null));
+        // The daemon sets only the error code for a Perfetto stop, not the message.
+        getLogger().warn("Perfetto heap graph capture failed to stop: " + status.getStatus() + ", error code " + status.getErrorCode());
+        break;
+    }
   }
 
   private void handleHeapDumpStart(@NotNull Memory.HeapDumpStatus status) {
@@ -880,10 +1017,19 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       return;
     }
     Trace.TraceStartStatus lastStartStatus = events.get(events.size() - 1).getTraceStatus().getTraceStartStatus();
-    // If there is an ongoing recording.
-    if (lastStartStatus.getStatus() == Trace.TraceStartStatus.Status.SUCCESS) {
+    // If there is an ongoing recording. Skip a heap graph: it also starts with START_TRACE, and stops on its own, so it can still be
+    // running after its stage has exited.
+    if (lastStartStatus.getStatus() == Trace.TraceStartStatus.Status.SUCCESS &&
+        !isJavaHeapGraphTrace(lastStartStatus.getStartTimeNs())) {
       nativeAllocationTrackingStart(lastStartStatus);
     }
+  }
+
+  /** Whether the memory trace that started at {@code startTimeNs} is a heap graph. */
+  private boolean isJavaHeapGraphTrace(long startTimeNs) {
+    return MemoryProfiler.getJavaHeapGraphsForSession(getStudioProfilers().getClient(), getSessionData(),
+                                                      new Range(Long.MIN_VALUE, Long.MAX_VALUE))
+      .stream().anyMatch(info -> info.getFromTimestamp() == startTimeNs);
   }
 
   private static RecordingOption makeToggleOption(String title, String desc, Runnable toggle) {
@@ -903,6 +1049,18 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     myNativeAllocationTracking = false;
     setTrackingAllocations(false);
     getTimeline().setStreaming(false);
+  }
+
+  /**
+   * Like {@link #cleanupFailedCapture}, for a heap graph. A heap dump has no Stop button, so any failure must clean up, or the recording
+   * screen stays stuck. Its listeners outlive this stage, so if another session has been selected since, leave that session alone.
+   */
+  private void cleanupFailedJavaHeapGraphCapture() {
+    // The daemon still reports the end of a trace whose stop failed. It has no file, so don't select it when it arrives.
+    setPendingCaptureStartTime(INVALID_START_TIME);
+    if (getSessionData().getSessionId() == getStudioProfilers().getSession().getSessionId()) {
+      cleanupFailedCapture();
+    }
   }
 
   public static boolean canSafelyLoadHprof(long fileSize) {

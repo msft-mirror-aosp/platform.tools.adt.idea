@@ -15,6 +15,7 @@
  */
 package com.android.tools.profilers.memory
 
+import com.android.sdklib.AndroidVersion
 import com.android.tools.adtui.model.AspectObserver
 import com.android.tools.adtui.model.Range
 import com.android.tools.idea.io.grpc.StatusRuntimeException
@@ -31,6 +32,7 @@ import com.android.tools.profiler.proto.Trace.TraceInfo
 import com.android.tools.profiler.proto.Transport
 import com.android.tools.profiler.proto.Transport.GetEventGroupsRequest
 import com.android.tools.profiler.proto.Transport.TimeRequest
+import com.android.tools.profilers.FeatureConfig
 import com.android.tools.profilers.ImportedSessionUtils
 import com.android.tools.profilers.ImportedSessionUtils.importEventBasedArtifact
 import com.android.tools.profilers.ImportedSessionUtils.importFileWithArtifactEvent
@@ -40,6 +42,7 @@ import com.android.tools.profilers.ProfilerAspect
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfiler
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.SupportLevel
 import com.android.tools.profilers.analytics.FeatureTracker
 import com.android.tools.profilers.memory.BaseStreamingMemoryProfilerStage.LiveAllocationSamplingMode.FULL
 import com.android.tools.profilers.perfetto.config.PerfettoTraceConfigBuilders.JAVA_HEAP_GRAPH_DATA_SOURCE_NAME
@@ -288,6 +291,23 @@ class MemoryProfiler(private val profilers: StudioProfilers) : StudioProfiler {
      * type.
      */
     @JvmStatic fun generateCaptureFileName() = "memory-${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"))}"
+
+    /**
+     * Minimum API level for a Heap Dump of a profileable process, which is captured as a Perfetto heap graph.
+     *
+     * The data source exists from Android 11. There it ends with the session instead of waiting for ART to finish the graph, so the daemon
+     * only stops the session once the trace file stops growing.
+     */
+    const val JAVA_HEAP_GRAPH_MIN_API = AndroidVersion.VersionCodes.R
+
+    /**
+     * Whether a Heap Dump of a process at [supportLevel] is recorded as a Perfetto heap graph, if the device has at least
+     * [JAVA_HEAP_GRAPH_MIN_API]. Profileable processes can only be dumped this way, as `am dumpheap` needs a debuggable process. Task-Based
+     * UX only, and behind a flag.
+     */
+    @JvmStatic
+    fun recordsHeapDumpAsJavaHeapGraph(supportLevel: SupportLevel, featureConfig: FeatureConfig) =
+      supportLevel == SupportLevel.PROFILEABLE && featureConfig.isTaskBasedUxEnabled && featureConfig.isRecordPerfettoHeapDumpEnabled
 
     /** Returns true if [info] describes a Perfetto heap graph rather than a Native Allocations (heapprofd) recording. */
     private fun isJavaHeapGraphTrace(info: TraceInfo): Boolean =

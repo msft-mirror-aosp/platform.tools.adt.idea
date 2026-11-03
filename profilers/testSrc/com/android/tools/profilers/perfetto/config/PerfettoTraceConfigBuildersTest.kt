@@ -15,6 +15,7 @@
  */
 package com.android.tools.profilers.perfetto.config
 
+import com.android.sdklib.AndroidVersion
 import com.google.common.truth.Truth
 import org.junit.Test
 import perfetto.protos.PerfettoConfig
@@ -127,5 +128,32 @@ class PerfettoTraceConfigBuildersTest {
     Truth.assertThat(actualDataSources[0].config.heapprofdConfig.allHeaps).isEqualTo(true)
     Truth.assertThat(actualDataSources[0].config.heapprofdConfig.blockClient).isEqualTo(true)
     Truth.assertThat(actualDataSources[0].config.heapprofdConfig.continuousDumpConfig.dumpIntervalMs).isEqualTo(0)
+  }
+
+  @Test
+  fun javaHeapGraphTraceConfigConstructedCorrectly() {
+    // From Android 12, the process is targeted by PID, and the session only has to last until the dump starts.
+    val config = PerfettoTraceConfigBuilders.getJavaHeapGraphTraceConfig(1234, "foo", AndroidVersion.VersionCodes.S)
+
+    Truth.assertThat(config.buffersCount).isEqualTo(1)
+    Truth.assertThat(config.getBuffers(0).sizeKb).isEqualTo(1024 * 256)
+    Truth.assertThat(config.durationMs).isEqualTo(2000)
+    Truth.assertThat(config.dataSourceStopTimeoutMs).isEqualTo(60000)
+    Truth.assertThat(config.dataSourcesCount).isEqualTo(1)
+    val dataSourceConfig = config.getDataSources(0).config
+    Truth.assertThat(dataSourceConfig.name).isEqualTo("android.java_hprof")
+    Truth.assertThat(dataSourceConfig.javaHprofConfig.pidList).containsExactly(1234L)
+    Truth.assertThat(dataSourceConfig.javaHprofConfig.processCmdlineList).isEmpty()
+
+    // Android 11 ART never matches a PID, so the process is targeted by name. The session stays open until the daemon sees the trace
+    // file stop growing, which relies on traced writing into the file every 250ms.
+    val android11Config = PerfettoTraceConfigBuilders.getJavaHeapGraphTraceConfig(1234, "foo", AndroidVersion.VersionCodes.R)
+
+    Truth.assertThat(android11Config.durationMs).isEqualTo(60000)
+    Truth.assertThat(android11Config.writeIntoFile).isTrue()
+    Truth.assertThat(android11Config.fileWritePeriodMs).isEqualTo(250)
+    val android11DataSourceConfig = android11Config.getDataSources(0).config
+    Truth.assertThat(android11DataSourceConfig.javaHprofConfig.processCmdlineList).containsExactly("foo")
+    Truth.assertThat(android11DataSourceConfig.javaHprofConfig.pidList).isEmpty()
   }
 }

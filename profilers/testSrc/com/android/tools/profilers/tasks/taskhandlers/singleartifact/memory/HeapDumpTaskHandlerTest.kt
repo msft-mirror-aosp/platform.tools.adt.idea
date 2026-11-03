@@ -15,6 +15,7 @@
  */
 package com.android.tools.profilers.tasks.taskhandlers.singleartifact.memory
 
+import com.android.sdklib.AndroidVersion
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
@@ -234,6 +235,28 @@ class HeapDumpTaskHandlerTest {
 
     val debuggableProcess = TaskHandlerTestUtils.createProcess(isProfileable = false)
     assertNull(myHeapDumpTaskHandler.checkSupportForDeviceAndProcess(device, debuggableProcess))
+  }
+
+  @Test
+  fun testCheckSupportForDeviceAndProcessWithPerfettoHeapDump() {
+    ideProfilerServices.setRecordPerfettoHeapDumpEnabled(true)
+    val profileableProcess = TaskHandlerTestUtils.createProcess(isProfileable = true)
+    val debuggableProcess = TaskHandlerTestUtils.createProcess(isProfileable = false)
+
+    // Profileable processes are dumped through Perfetto, whose heap graph data source first shipped in Android 11.
+    val preRDevice = TaskHandlerTestUtils.createDevice(AndroidVersion.VersionCodes.Q)
+    assertNotNull(myHeapDumpTaskHandler.checkSupportForDeviceAndProcess(preRDevice, profileableProcess))
+    assertEquals(
+      myHeapDumpTaskHandler.checkSupportForDeviceAndProcess(preRDevice, profileableProcess)!!.startTaskSelectionErrorCode,
+      StartTaskSelectionErrorCode.TASK_FROM_NOW_USING_API_BELOW_MIN,
+    )
+
+    val rDevice = TaskHandlerTestUtils.createDevice(AndroidVersion.VersionCodes.R)
+    assertNull(myHeapDumpTaskHandler.checkSupportForDeviceAndProcess(rDevice, profileableProcess))
+
+    // Debuggable processes use the ART heap dump path, which has no device requirement.
+    assertNull(myHeapDumpTaskHandler.checkSupportForDeviceAndProcess(preRDevice, debuggableProcess))
+    assertNull(myHeapDumpTaskHandler.checkSupportForDeviceAndProcess(rDevice, debuggableProcess))
   }
 
   @Test
