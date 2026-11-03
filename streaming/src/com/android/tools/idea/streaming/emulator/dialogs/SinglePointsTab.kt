@@ -231,7 +231,7 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
   }
 
   private fun createSavedPointsTablePanel(): JPanel {
-    return BorderLayoutPanelWithPreferredSize().apply {
+    return BorderLayoutPanelWithPreferredSize(360, 320).apply {
       add(
         ToolbarDecorator.createDecorator(pointsTable)
           .setAddAction { saveCurrentPointViaDialog() }

@@ -15,21 +15,27 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
+import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.Dimension
 
 internal class BorderLayoutPanelWithPreferredSize(
-  private val preferredWidth: Int = DEFAULT_PREFERRED_WIDTH,
-  private val preferredHeight: Int = DEFAULT_PREFERRED_HEIGHT,
+  private val preferredWidth: Int,
+  private val preferredHeight: Int,
+  private val minimumWidth: Int = 0,
 ) : BorderLayoutPanel() {
 
   override fun getPreferredSize(): Dimension {
     return if (isPreferredSizeSet) super.getPreferredSize() else JBUI.size(preferredWidth, preferredHeight)
   }
 
-  companion object {
-    private const val DEFAULT_PREFERRED_WIDTH = 360
-    private const val DEFAULT_PREFERRED_HEIGHT = 320
+  override fun getMinimumSize(): Dimension {
+    val size = super.getMinimumSize()
+    return if (isMinimumSizeSet || minimumWidth <= 0) {
+      size
+    } else {
+      Dimension(size.width.coerceAtLeast(JBUIScale.scale(minimumWidth)), size.height)
+    }
   }
 }

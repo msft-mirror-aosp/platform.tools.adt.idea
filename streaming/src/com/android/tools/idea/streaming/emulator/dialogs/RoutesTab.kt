@@ -306,7 +306,7 @@ internal class RoutesTab(private val dialog: LocationDialog) {
   }
 
   private fun createSavedRoutesTablePanel(): JPanel {
-    return BorderLayoutPanelWithPreferredSize().apply {
+    return BorderLayoutPanelWithPreferredSize(360, 320).apply {
       add(
         ToolbarDecorator.createDecorator(routesTable)
           .setAddAction { saveCurrentRouteViaDialog() }
