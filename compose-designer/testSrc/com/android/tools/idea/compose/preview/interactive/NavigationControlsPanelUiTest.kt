@@ -19,6 +19,10 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
 import androidx.compose.runtime.saveable.SaveableStateRegistry
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -28,6 +32,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.text.TextLayoutResult
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.idea.compose.preview.BackNavigationEdge
 import com.android.tools.idea.compose.preview.InteractivePreviewNavigationController
@@ -37,9 +42,13 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.intellij.testFramework.ProjectRule
+import kotlin.math.max
+import kotlin.math.min
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -618,5 +627,76 @@ class NavigationControlsPanelUiTest {
 
     // Verify slider position remains preserved (not reset to 0.0f)
     composeTestRule.onNodeWithText(message("action.navigate.back.predictive.back.progress", 0.0f)).assertDoesNotExist()
+  }
+
+  @Test
+  fun testVisualStackCurrentItemTextUsesAccessibleContrastColor() {
+    // Enable the visual back stack feature flag and capture the active Jewel theme colors
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
+    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val historyList = listOf("Screen1", "Screen2")
+    var expectedNormalTextColor = Color.Unspecified
+    var focusedOutlineAccentColor = Color.Unspecified
+    var panelBackgroundColor = Color.Unspecified
+
+    composeTestRule.setContent {
+      expectedNormalTextColor = JewelTheme.globalColors.text.normal
+      focusedOutlineAccentColor = JewelTheme.globalColors.outlines.focused
+      panelBackgroundColor = JewelTheme.globalColors.panelBackground
+      NavigationControlsPanel(
+        isEdgeNavigationImplemented = { true },
+        getNavigationHistory = { historyList },
+        canBackPress = { true },
+        onBackPress = {},
+        onBackPressStart = {},
+        onBackPressProgress = { _, _ -> },
+        onBackPressTrackProgress = {},
+        onEdgeDropdownPress = {},
+        fpsUpdater = fpsUpdater,
+      )
+    }
+
+    // Verify the active card route text, the "Current" badge text, and the inactive card route text all use text.normal
+    val currentRouteTextColor = retrieveNodeTextColor("Screen2")
+    val currentBadgeTextColor = retrieveNodeTextColor(message("action.navigate.back.stack.current"))
+    val previousRouteTextColor = retrieveNodeTextColor("Screen1")
+
+    assertEquals(expectedNormalTextColor, currentRouteTextColor)
+    assertEquals(expectedNormalTextColor, currentBadgeTextColor)
+    assertEquals(expectedNormalTextColor, previousRouteTextColor)
+    assertNotEquals(focusedOutlineAccentColor, currentRouteTextColor)
+    assertNotEquals(focusedOutlineAccentColor, currentBadgeTextColor)
+
+    // Verify WCAG 1.4.3 / GAR 2026 minimum 4.5:1 contrast ratio against both the 12% tinted card and 20% tinted badge backgrounds
+    val activeCardBackgroundColor = focusedOutlineAccentColor.copy(alpha = 0.12f).compositeOver(panelBackgroundColor)
+    val currentBadgeBackgroundColor = focusedOutlineAccentColor.copy(alpha = 0.2f).compositeOver(activeCardBackgroundColor)
+    val routeTextContrastRatio = calculateContrastRatio(currentRouteTextColor, activeCardBackgroundColor)
+    val currentBadgeContrastRatio = calculateContrastRatio(currentBadgeTextColor, currentBadgeBackgroundColor)
+
+    assertTrue(
+      "Expected active route text contrast >= 4.5:1 against card background, but was $routeTextContrastRatio",
+      routeTextContrastRatio >= 4.5f,
+    )
+    assertTrue(
+      "Expected 'Current' badge text contrast >= 4.5:1 against badge background, but was $currentBadgeContrastRatio",
+      currentBadgeContrastRatio >= 4.5f,
+    )
+  }
+
+  private fun retrieveNodeTextColor(nodeText: String): Color {
+    // Query the unmerged semantics tree so each Text node inside the clickable Row exposes its own TextLayoutResult
+    val textLayoutResults = mutableListOf<TextLayoutResult>()
+    val semanticsNode = composeTestRule.onNodeWithText(nodeText, useUnmergedTree = true).assertIsDisplayed().fetchSemanticsNode()
+    semanticsNode.config[SemanticsActions.GetTextLayoutResult].action?.invoke(textLayoutResults)
+    return textLayoutResults.single().layoutInput.style.color
+  }
+
+  private fun calculateContrastRatio(foregroundColor: Color, backgroundColor: Color): Float {
+    // Compute WCAG 2.x relative luminance contrast ratio between two opaque colors
+    val foregroundLuminance = foregroundColor.luminance()
+    val backgroundLuminance = backgroundColor.luminance()
+    val lighterLuminance = max(foregroundLuminance, backgroundLuminance)
+    val darkerLuminance = min(foregroundLuminance, backgroundLuminance)
+    return (lighterLuminance + 0.05f) / (darkerLuminance + 0.05f)
   }
 }

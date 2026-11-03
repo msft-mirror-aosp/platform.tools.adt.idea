@@ -341,7 +341,7 @@ private fun BackStackItem(
   val activeAccent = JewelTheme.globalColors.outlines.focused
   val borderColors = if (isCurrentActiveNavigationItem) activeAccent else JewelTheme.globalColors.borders.normal
   val backGroundColor = if (isCurrentActiveNavigationItem) activeAccent.copy(alpha = 0.12f) else JewelTheme.globalColors.panelBackground
-  val textColor = if (isCurrentActiveNavigationItem) activeAccent else JewelTheme.globalColors.text.normal
+  val textColor = JewelTheme.globalColors.text.normal
   val itemShape = RoundedCornerShape(8.dp)
 
   // If the item is not currently shown in the Preview, clicking anywhere on it navigates back to this state.
@@ -373,7 +373,7 @@ private fun BackStackItem(
         Text(
           text = message("action.navigate.back.stack.current"),
           fontWeight = FontWeight.Bold,
-          color = activeAccent,
+          color = textColor,
         )
       }
     }
