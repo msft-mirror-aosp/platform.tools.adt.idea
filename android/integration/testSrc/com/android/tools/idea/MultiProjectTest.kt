@@ -45,6 +45,10 @@ class MultiProjectTest {
       project2.setSdkDir(system.sdk.sourceDir)
       studio.openProject(project2.targetProject.toString(), true)
 
+      system.installation.ideaLog.reset()
+      studio.waitForSync()
+      studio.waitForSync()
+
       val path = project.targetProject.resolve("src/main/java/com/example/minapp/MainActivity.kt")
       // Make first edit
       studio.editFile(project.targetProject.fileName.toString(), path.toString(), "Hello Minimal", "Hey Minimal")
@@ -52,11 +56,11 @@ class MultiProjectTest {
       Thread.sleep(5000)
       studio.editFile(project.targetProject.fileName.toString(), path.toString(), "MainActivity", "DebugActivity")
       // Open file in second project
-      studio.openFile(project2.targetProject.fileName.toString(), path.toString())
+      studio.openFile("LiveEditTest", path.toString())
       Thread.sleep(3000)
       // Verify edits
-      studio.editFile(project2.targetProject.fileName.toString(), path.toString(), "Hey Minimal", "Hey Minimal")
-      studio.editFile(project2.targetProject.fileName.toString(), path.toString(), "DebugActivity", "DebugActivity")
+      studio.editFile("LiveEditTest", path.toString(), "Hey Minimal", "Hey Minimal")
+      studio.editFile("LiveEditTest", path.toString(), "DebugActivity", "DebugActivity")
     }
   }
 }

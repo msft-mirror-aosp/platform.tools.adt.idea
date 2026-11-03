@@ -897,12 +897,6 @@ public class AndroidStudioService extends AndroidStudioGrpc.AndroidStudioImplBas
       Thread.sleep(2000);
       if (request.getNewWindow()) {
         studioInteractionService.findAndInvokeComponent(createExactTextComponentMatcher("New Window"));
-
-        // Workaround for b/361777156: click "New Window" twice if dialog is still open.
-        try {
-          studioInteractionService.findAndInvokeComponent(createExactTextComponentMatcher("New Window"));
-        } catch (Throwable ignored) {
-        }
       }
       else {
         studioInteractionService.findAndInvokeComponent(createExactTextComponentMatcher("This Window"));
