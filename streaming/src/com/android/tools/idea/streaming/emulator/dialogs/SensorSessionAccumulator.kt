@@ -42,8 +42,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
 
-private const val IO_BUFFER_SIZE = 64 * 1024
-
 /**
  * Accumulates [SessionMetadata], timeline event buckets, and [SensorRecord]s while streaming a sensor session file, spilling sorted chunks
  * to temporary run files and merging them via external k-way merge sort into a [DiskBackedRecordStore] when [maxInMemoryBytes] is exceeded.
