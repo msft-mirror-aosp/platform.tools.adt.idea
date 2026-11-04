@@ -68,11 +68,14 @@ import com.intellij.ui.components.fields.IntegerField
 import java.awt.Dimension
 import java.awt.event.ActionEvent
 import java.awt.event.FocusEvent
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.atomic.AtomicReference
 import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JTextField
+import kotlin.concurrent.thread
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -1087,6 +1090,70 @@ class ResizePanelTest {
     assertEquals(com.android.resources.UiMode.NORMAL, configuration.uiMode)
     assertEquals(com.android.resources.UiMode.NORMAL, configuration.fullConfig.uiModeQualifier?.value)
     assertFalse(resizePanel.hasBeenResized)
+  }
+
+  @Test
+  fun `concurrent setSceneManager calls attach the listeners once`() {
+    // E.g. Focus mode binds the panel while a refresh that just finished binds it too, both on background threads.
+    runInEdtAndWait { resizePanel.setSceneManager(sceneManager) }
+    val expectedListeners = configuration.listeners()
+    assertEquals(1, expectedListeners.count { it is ConfigurationResizeListener })
+
+    val replacedListeners = mutableListOf<ConfigurationResizeListener>()
+    repeat(50) { round ->
+      if (round % 2 == 0) {
+        // Exercises the !isSameElement branch.
+        runInEdtAndWait { resizePanel.clear() }
+      } else {
+        // Exercises the isSameElement == true (detachListeners) branch and tracks the listener being replaced.
+        replacedListeners += configuration.listeners().filterIsInstance<ConfigurationResizeListener>().single()
+      }
+      val start = CountDownLatch(1)
+      val error = AtomicReference<Throwable>()
+      val threads =
+        List(2) {
+          thread {
+            try {
+              start.await()
+              resizePanel.setSceneManager(sceneManager)
+            } catch (t: Throwable) {
+              error.compareAndSet(null, t)
+            }
+          }
+        }
+      start.countDown()
+      threads.forEach { it.join() }
+      error.get()?.let { throw it }
+
+      val listeners = configuration.listeners()
+      val activeResizeListener = listeners.filterIsInstance<ConfigurationResizeListener>().single()
+      assertFalse("Active listener in round $round should not be disposed", activeResizeListener.isDisposed())
+      assertEquals("Resize listeners in round $round", 1, listeners.count { it is ConfigurationResizeListener })
+      assertEquals("All listeners in round $round", expectedListeners.size, listeners.size)
+    }
+
+    assertTrue("Replaced listeners should all be disposed", replacedListeners.all { it.isDisposed() })
+
+    // Verify clear() and dispose() leave the panel disabled and detached even after draining queued EDT updates.
+    runInEdtAndWait {
+      resizePanel.clear()
+      PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+    }
+    assertFalse(resizePanel.isEnabled)
+    assertEquals(0, configuration.listeners().count { it is ConfigurationResizeListener })
+
+    runInEdtAndWait { Disposer.dispose(resizePanel) }
+    resizePanel.setSceneManager(sceneManager)
+    runInEdtAndWait { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+    assertFalse(resizePanel.isEnabled)
+    assertEquals(0, configuration.listeners().count { it is ConfigurationResizeListener })
+  }
+
+  /** The listeners attached to this [Configuration]. */
+  private fun Configuration.listeners(): List<ConfigurationListener> {
+    val listeners = Configuration::class.java.getDeclaredField("myListeners").apply { isAccessible = true }.get(this)
+    val list = listeners.javaClass.getDeclaredField("listeners").apply { isAccessible = true }.get(listeners) as List<*>
+    return list.filterIsInstance<ConfigurationListener>()
   }
 
   @Test
