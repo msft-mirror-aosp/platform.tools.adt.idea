@@ -118,73 +118,77 @@ internal class CellularDialog(emulator: EmulatorController) :
 
     /** Converts [CellularState] to Modem service's [CellInfo] proto message. */
     private fun CellularState.toCellInfo(): CellInfo {
-      val signal = CellSignalStrength.newBuilder().setLevel(CellSignalStrength.CellSignalLevel.forNumber(signalStrength.ordinal)).build()
+      val signal = CellSignalStrength.newBuilder().setLevel(signalStrength.protoValue).build()
       return CellInfo.newBuilder()
-        .setCellStandard(CellInfo.CellStandard.forNumber(networkType.ordinal + 1))
-        .setCellStatusVoice(CellInfo.CellStatus.forNumber(voiceStatus.ordinal + 1))
-        .setCellStatusData(CellInfo.CellStatus.forNumber(dataStatus.ordinal + 1))
+        .setCellStandard(networkType.protoValue)
+        .setCellStatusVoice(voiceStatus.protoValue)
+        .setCellStatusData(dataStatus.protoValue)
         .setCellSignalStrength(signal)
-        .setCellMeterStatus(CellInfo.CellMeterStatus.forNumber(meterStatus.ordinal + 1))
+        .setCellMeterStatus(meterStatus.protoValue)
         .build()
     }
 
     /** Converts Modem service's [CellInfo] proto message to [CellularState]. */
     private fun CellInfo.toCellularState(): CellularState {
-      val network = CellularStandard.entries.getOrNull(cellStandard.number - 1) ?: CellularStandard.FULL
-      val voice = CellularStatus.entries.getOrNull(cellStatusVoice.number - 1) ?: CellularStatus.HOME
-      val data = CellularStatus.entries.getOrNull(cellStatusData.number - 1) ?: CellularStatus.HOME
+      val network = CellularStandard.entries.find { it.protoValue == cellStandard } ?: CellularStandard.FULL
+      val voice = CellularStatus.entries.find { it.protoValue == cellStatusVoice } ?: CellularStatus.HOME
+      val data = CellularStatus.entries.find { it.protoValue == cellStatusData } ?: CellularStatus.HOME
       val signal =
         if (hasCellSignalStrength()) {
-          CellularSignal.entries.getOrNull(cellSignalStrength.level.number) ?: CellularSignal.MODERATE
+          CellularSignal.entries.find { it.protoValue == cellSignalStrength.level } ?: CellularSignal.MODERATE
         } else {
           CellularSignal.MODERATE
         }
-      val meter = CellularMeterStatus.entries.getOrNull(cellMeterStatus.number - 1) ?: CellularMeterStatus.METERED
+      val meter = CellularMeterStatus.entries.find { it.protoValue == cellMeterStatus } ?: CellularMeterStatus.METERED
       return CellularState(networkType = network, signalStrength = signal, voiceStatus = voice, dataStatus = data, meterStatus = meter)
     }
   }
 
   /** Cellular network types supported by the emulator. */
-  private enum class CellularStandard(private val displayValue: String) {
-    GSM("GSM"),
-    HSCSD("HSCSD"),
-    GPRS("GPRS"),
-    EDGE("EDGE"),
-    UMTS("UMTS"),
-    HSDPA("HSDPA"),
-    LTE("LTE"),
-    FULL("Full"),
-    FIVE_G("5G");
+  private enum class CellularStandard(val protoValue: CellInfo.CellStandard, private val displayValue: String) {
+    GSM(CellInfo.CellStandard.CELL_STANDARD_GSM, "GSM"),
+    HSCSD(CellInfo.CellStandard.CELL_STANDARD_HSCSD, "HSCSD"),
+    GPRS(CellInfo.CellStandard.CELL_STANDARD_GPRS, "GPRS"),
+    EDGE(CellInfo.CellStandard.CELL_STANDARD_EDGE, "EDGE"),
+    UMTS(CellInfo.CellStandard.CELL_STANDARD_UMTS, "UMTS"),
+    HSDPA(CellInfo.CellStandard.CELL_STANDARD_HSDPA, "HSDPA"),
+    LTE(CellInfo.CellStandard.CELL_STANDARD_LTE, "LTE"),
+    FULL(CellInfo.CellStandard.CELL_STANDARD_FULL, "Full"),
+    FIVE_G(CellInfo.CellStandard.CELL_STANDARD_5G, "5G");
 
     override fun toString(): String = displayValue
   }
 
   /** Cellular signal strengths supported by the emulator. */
-  private enum class CellularSignal(private val displayValue: String) {
-    NONE("None"),
-    POOR("Poor"),
-    MODERATE("Moderate"),
-    GOOD("Good"),
-    GREAT("Great");
+  private enum class CellularSignal(val protoValue: CellSignalStrength.CellSignalLevel, private val displayValue: String) {
+    NONE(CellSignalStrength.CellSignalLevel.SIGNAL_STRENGTH_NONE_OR_UNKNOWN, "None"),
+    POOR(CellSignalStrength.CellSignalLevel.SIGNAL_STRENGTH_POOR, "Poor"),
+    MODERATE(CellSignalStrength.CellSignalLevel.SIGNAL_STRENGTH_MODERATE, "Moderate"),
+    GOOD(CellSignalStrength.CellSignalLevel.SIGNAL_STRENGTH_GOOD, "Good"),
+    GREAT(CellSignalStrength.CellSignalLevel.SIGNAL_STRENGTH_GREAT, "Great");
 
     override fun toString(): String = displayValue
   }
 
   /** Cellular voice/data connection status. */
-  private enum class CellularStatus(private val voiceDisplayValue: String, val dataDisplayValue: String = voiceDisplayValue) {
-    HOME("Home"),
-    ROAMING("Roaming"),
-    SEARCHING("Searching"),
-    DENIED("Denied (emergency calls only)", "Denied"),
-    UNREGISTERED("Unregistered (off)");
+  private enum class CellularStatus(
+    val protoValue: CellInfo.CellStatus,
+    private val voiceDisplayValue: String,
+    val dataDisplayValue: String = voiceDisplayValue,
+  ) {
+    HOME(CellInfo.CellStatus.CELL_STATUS_HOME, "Home"),
+    ROAMING(CellInfo.CellStatus.CELL_STATUS_ROAMING, "Roaming"),
+    SEARCHING(CellInfo.CellStatus.CELL_STATUS_SEARCHING, "Searching"),
+    DENIED(CellInfo.CellStatus.CELL_STATUS_DENIED, "Denied (emergency calls only)", "Denied"),
+    UNREGISTERED(CellInfo.CellStatus.CELL_STATUS_UNREGISTERED, "Unregistered (off)");
 
     override fun toString(): String = voiceDisplayValue
   }
 
   /** Cellular metering status. */
-  private enum class CellularMeterStatus(private val displayValue: String) {
-    METERED("Metered"),
-    TEMPORARILY_NOT_METERED("Temporarily not metered");
+  private enum class CellularMeterStatus(val protoValue: CellInfo.CellMeterStatus, private val displayValue: String) {
+    METERED(CellInfo.CellMeterStatus.CELL_METER_STATUS_METERED, "Metered"),
+    TEMPORARILY_NOT_METERED(CellInfo.CellMeterStatus.CELL_METER_STATUS_TEMPORARILY_NOT_METERED, "Temporarily not metered");
 
     override fun toString(): String = displayValue
   }
