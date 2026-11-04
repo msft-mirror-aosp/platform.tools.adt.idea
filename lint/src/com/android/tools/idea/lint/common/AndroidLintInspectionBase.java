@@ -140,6 +140,14 @@ public abstract class AndroidLintInspectionBase extends GlobalInspectionTool {
   }
 
   @NotNull
+  public String getMessage(@NotNull PsiElement startElement,
+                           @NotNull PsiElement endElement,
+                           @NotNull Incident incident,
+                           @NotNull String defaultMessage) {
+    return defaultMessage;
+  }
+
+  @NotNull
   public IntentionAction[] getIntentions(@NotNull PsiElement startElement, @NotNull PsiElement endElement) {
     return IntentionAction.EMPTY_ARRAY;
   }
@@ -282,13 +290,6 @@ public abstract class AndroidLintInspectionBase extends GlobalInspectionTool {
 
     for (LintProblemData problemData : problems) {
       final String originalMessage = problemData.getMessage();
-
-      // We need to have explicit <html> and </html> tags around the text; inspection infrastructure
-      // such as the {@link com.intellij.codeInspection.ex.DescriptorComposer} will call
-      // {@link com.intellij.xml.util.XmlStringUtil.isWrappedInHtml}. See issue 177283 for uses.
-      // Note that we also need to use HTML with unicode characters here, since the HTML display
-      // in the inspections view does not appear to support numeric code character entities.
-      String formattedMessage = HTML_START + RAW.convertTo(originalMessage, HTML_WITH_UNICODE) + HTML_END;
       LintFix quickfixData = problemData.getQuickfixData();
 
       // The inspections UI does not correctly handle
@@ -298,14 +299,21 @@ public abstract class AndroidLintInspectionBase extends GlobalInspectionTool {
       Incident incident = problemData.getIncident();
 
       if (range.getStartOffset() == range.getEndOffset()) {
+        String message = getMessage(psiFile, psiFile, incident, originalMessage);
+        // We need to have explicit <html> and </html> tags around the text; inspection infrastructure
+        // such as the {@link com.intellij.codeInspection.ex.DescriptorComposer} will call
+        // {@link com.intellij.xml.util.XmlStringUtil.isWrappedInHtml}. See issue 177283 for uses.
+        // Note that we also need to use HTML with unicode characters here, since the HTML display
+        // in the inspections view does not appear to support numeric code character entities.
+        String formattedMessage = HTML_START + RAW.convertTo(message, HTML_WITH_UNICODE) + HTML_END;
 
         if (psiFile instanceof PsiBinaryFile || psiFile instanceof PsiDirectory) {
-          final LocalQuickFix[] fixes = getLocalQuickFixes(psiFile, psiFile, incident, originalMessage, quickfixData, fixProviders, issue);
+          final LocalQuickFix[] fixes = getLocalQuickFixes(psiFile, psiFile, incident, message, quickfixData, fixProviders, issue);
           result.add(new NonTextFileProblemDescriptor((PsiFileSystemItem)psiFile, formattedMessage, fixes));
         }
         else if (!isSuppressedFor(psiFile)) {
           result.add(manager.createProblemDescriptor(psiFile, formattedMessage, false,
-                                                     getLocalQuickFixes(psiFile, psiFile, incident, originalMessage, quickfixData, fixProviders,
+                                                     getLocalQuickFixes(psiFile, psiFile, incident, message, quickfixData, fixProviders,
                                                                         issue), ProblemHighlightType.GENERIC_ERROR_OR_WARNING));
         }
       }
@@ -314,9 +322,11 @@ public abstract class AndroidLintInspectionBase extends GlobalInspectionTool {
         final PsiElement endElement = psiFile.findElementAt(range.getEndOffset() - 1);
 
         if (startElement != null && endElement != null && !isSuppressedFor(startElement)) {
+          String message = getMessage(startElement, endElement, incident, originalMessage);
+          String formattedMessage = HTML_START + RAW.convertTo(message, HTML_WITH_UNICODE) + HTML_END;
           result.add(manager.createProblemDescriptor(startElement, endElement, formattedMessage,
                                                      ProblemHighlightType.GENERIC_ERROR_OR_WARNING, false,
-                                                     getLocalQuickFixes(startElement, endElement, incident, originalMessage, quickfixData,
+                                                     getLocalQuickFixes(startElement, endElement, incident, message, quickfixData,
                                                                         fixProviders, issue)));
         }
       }

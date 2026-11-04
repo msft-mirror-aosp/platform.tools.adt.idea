@@ -248,7 +248,6 @@ class LintExternalAnnotator : ExternalAnnotator<LintEditorResult, LintEditorResu
     for (problemData in lintResult.problems) {
       val incident = problemData.incident
       val issue = problemData.issue
-      val rawMessage = problemData.message
       val range = problemData.textRange
       val quickfixData = problemData.quickfixData
       if (range.startOffset == range.endOffset) {
@@ -262,6 +261,7 @@ class LintExternalAnnotator : ExternalAnnotator<LintEditorResult, LintEditorResu
       if (startElement == null || endElement == null || inspection.isSuppressedFor(startElement)) {
         continue
       }
+      val rawMessage = inspection.getMessage(startElement, endElement, incident, problemData.message)
 
       val configuredSeverity = problemData.configuredSeverity
       if (configuredSeverity != null) {

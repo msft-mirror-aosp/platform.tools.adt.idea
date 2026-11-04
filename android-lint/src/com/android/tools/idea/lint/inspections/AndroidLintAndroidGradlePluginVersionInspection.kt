@@ -40,6 +40,24 @@ class AndroidLintAndroidGradlePluginVersionInspection :
     GradleDetector.AGP_DEPENDENCY,
   ) {
 
+  override fun getMessage(
+    startElement: PsiElement,
+    endElement: PsiElement,
+    incident: Incident,
+    defaultMessage: String,
+  ): String {
+    if (incident.file.path.endsWith(DOT_PROPERTIES)) return defaultMessage
+    val revision =
+      incident.clientProperties?.getString(GradleDetector.KEY_REVISION, null)?.let {
+        AgpVersion.tryParse(it)
+      } ?: return defaultMessage
+    val agpUpgradeInfo =
+      LintIdeSupport.get().computeAgpUpgradeInfo(startElement.project) ?: return defaultMessage
+    val targetVersion = agpUpgradeInfo.agpVersion ?: return defaultMessage
+    if (targetVersion >= revision) return defaultMessage
+    return "${defaultMessage}. Using the AGP Upgrade Assistant to upgrade first to $targetVersion is recommended."
+  }
+
   override fun getQuickFixes(startElement: PsiElement, endElement: PsiElement, incident: Incident): Array<LintIdeQuickFix> {
     val fixes = super.getQuickFixes(startElement, endElement, incident)
     val agpUpgradeInfo = LintIdeSupport.get().computeAgpUpgradeInfo(startElement.project)

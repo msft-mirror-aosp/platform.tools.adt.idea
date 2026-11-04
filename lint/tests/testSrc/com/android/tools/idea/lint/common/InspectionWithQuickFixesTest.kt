@@ -19,13 +19,21 @@ import com.android.tools.lint.checks.BuiltinIssueRegistry
 import com.android.tools.lint.client.api.IssueRegistry
 import com.android.tools.lint.detector.api.Detector
 import com.android.tools.lint.detector.api.Implementation
+import com.android.tools.lint.detector.api.Incident
 import com.android.tools.lint.detector.api.Issue
 import com.android.tools.lint.detector.api.JavaContext
 import com.android.tools.lint.detector.api.LintFix.Companion.create
 import com.android.tools.lint.detector.api.Scope
 import com.android.tools.lint.detector.api.SourceCodeScanner
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.analysis.AnalysisScope
+import com.intellij.codeInspection.ProblemDescriptor
+import com.intellij.codeInspection.ex.GlobalInspectionToolWrapper
+import com.intellij.codeInspection.ex.InspectionToolWrapper
+import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiMethod
+import com.intellij.testFramework.InspectionTestUtil
+import com.intellij.testFramework.createGlobalContextForTool
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase
 import com.intellij.testFramework.replaceService
 import java.util.EnumSet
@@ -86,6 +94,55 @@ class InspectionWithQuickFixesTest : JavaCodeInsightFixtureTestCase() {
       """
         .trimIndent()
     )
+  }
+
+  @Suppress("UnstableApiUsage")
+  fun testCustomMessage() {
+    val source =
+      myFixture.addFileToProject(
+        "src/Test.java", /*language=Java */
+        """
+        class Test {
+          private static void fix() { }
+
+          public static void main(String[] args) {
+            fix();
+          }
+        }
+        """
+          .trimIndent(),
+      )
+    myFixture.configureFromExistingVirtualFile(source.virtualFile)
+    ApplicationManager.getApplication().replaceService(LintIdeSupport::class.java, TestInspectionLintIdeSupport(), testRootDisposable)
+    val customInspection =
+      object : AndroidLintInspectionBase("Test Inspection", TestDetector.ISSUE) {
+        override fun getMessage(
+          startElement: PsiElement,
+          endElement: PsiElement,
+          incident: Incident,
+          defaultMessage: String,
+        ): String {
+          return "$defaultMessage (custom message for ${startElement.text})"
+        }
+      }
+    myFixture.enableInspections(customInspection)
+
+    val highlights = myFixture.doHighlighting()
+    assertTrue(highlights.any { it.description == "N/A (custom message for class)" })
+
+    val wrapper = GlobalInspectionToolWrapper(customInspection)
+    val scope = AnalysisScope(myFixture.module)
+    scope.invalidate()
+    val globalContext = createGlobalContextForTool(scope, project, listOf<InspectionToolWrapper<*, *>>(wrapper))
+    try {
+      InspectionTestUtil.runTool(wrapper, scope, globalContext)
+      val descriptors = globalContext.getPresentation(wrapper).problemDescriptors
+      assertEquals(1, descriptors.size)
+      val descriptor = descriptors.single() as ProblemDescriptor
+      assertEquals("<html>N/A (custom message for class)</html>", descriptor.descriptionTemplate)
+    } finally {
+      globalContext.cleanup()
+    }
   }
 }
 
