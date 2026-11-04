@@ -19,8 +19,10 @@ import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
 import org.gradle.tooling.BuildAction
 import org.gradle.tooling.BuildController
+import org.gradle.tooling.model.build.BuildEnvironment
 import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.gradle.tooling.model.gradle.GradleBuild
+import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.idea.gradleTooling.KotlinGradleModel
 import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider
@@ -54,10 +56,15 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
       }
     }
 
+    val gradleVersion = controller.findModel(buildModels.first(), BuildEnvironment::class.java)?.gradle?.gradleVersion
+    val isParallelModelFetchSupported = gradleVersion != null && GradleVersion.version(gradleVersion) >= GradleVersion.version("7.4.2")
     val hasAndroidModules = buildModels.any { it.projects.any { p -> cachedModels.versions[p] != null } }
     modelConsumer.consumeBuildModel(
       buildModels.first(),
-      IdeSyncExecutionReport(parallelFetchForV2ModelsEnabled = syncOptions.flags.studioFlagParallelSyncEnabled && hasAndroidModules),
+      IdeSyncExecutionReport(
+        parallelFetchForV2ModelsEnabled =
+          syncOptions.flags.studioFlagParallelSyncEnabled && isParallelModelFetchSupported && hasAndroidModules
+      ),
       IdeSyncExecutionReport::class.java,
     )
 
