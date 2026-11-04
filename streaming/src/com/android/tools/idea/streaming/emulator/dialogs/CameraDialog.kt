@@ -57,6 +57,7 @@ import java.io.ByteArrayInputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicReference
 import javax.imageio.ImageIO
 import javax.swing.JComponent
 import javax.swing.JSlider
@@ -181,7 +182,8 @@ internal class CameraDialog(emulator: EmulatorController) :
       private set
 
     private var modified: Boolean = false
-    private val posterChannel: SendChannel<Poster> = createPosterChannel()
+    private val pendingPoster = AtomicReference<Poster?>()
+    private val posterUpdateSignal: SendChannel<Unit> = createPosterUpdateChannel()
 
     private lateinit var imagePreviewLabel: JBLabel
     private lateinit var fileNameField: ExtendableTextField
@@ -210,11 +212,12 @@ internal class CameraDialog(emulator: EmulatorController) :
     val sizeInMeters: Float
       get() = (scale * maxWidth).coerceIn(minWidth, maxWidth)
 
-    private fun createPosterChannel(): SendChannel<Poster> {
-      val channel = Channel<Poster>(Channel.CONFLATED)
+    private fun createPosterUpdateChannel(): SendChannel<Unit> {
+      val channel = Channel<Unit>(Channel.CONFLATED)
       onDispose { channel.close() }
       coroutineScope.launch {
-        for (poster in channel) {
+        while (channel.receiveCatching().isSuccess) {
+          val poster = pendingPoster.getAndSet(null) ?: continue
           try {
             emulator.setPoster(poster)
           } catch (t: Throwable) {
@@ -437,11 +440,18 @@ internal class CameraDialog(emulator: EmulatorController) :
     }
 
     private fun sendPosterUpdate(includeFileName: Boolean) {
-      val builder = Poster.newBuilder().setName(posterName).setScale(scale)
-      if (includeFileName) {
-        builder.fileName = StringValue.of(filePath ?: "")
+      val currentScale = scale
+      val currentFilePath = filePath
+      pendingPoster.updateAndGet { previous ->
+        val builder = Poster.newBuilder().setName(posterName).setScale(currentScale)
+        if (includeFileName) {
+          builder.fileName = StringValue.of(currentFilePath ?: "")
+        } else if (previous != null && previous.hasFileName()) {
+          builder.fileName = previous.fileName
+        }
+        builder.build()
       }
-      posterChannel.trySend(builder.build())
+      posterUpdateSignal.trySend(Unit)
     }
 
     private fun installDropTarget(component: JComponent) {
