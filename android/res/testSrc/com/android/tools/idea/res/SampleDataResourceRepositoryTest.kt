@@ -126,6 +126,25 @@ class SampleDataResourceRepositoryTest {
   }
 
   @Test
+  fun testNoResourcesInOtherNamespaces() {
+    projectRule.fixture.addFileToProject(
+      "sampledata/strings",
+      """
+      string1
+      string2
+      """
+        .trimIndent(),
+    )
+    val repo = SampleDataResourceRepository(facet, projectRule.testRootDisposable)
+    waitForUpdates(repo)
+
+    assertThat(repo.getResources(ResourceNamespace.RES_AUTO, ResourceType.SAMPLE_DATA).keySet()).containsExactly("strings")
+    assertThat(repo.hasResources(ResourceNamespace.RES_AUTO, ResourceType.SAMPLE_DATA)).isTrue()
+    assertThat(repo.getResources(ResourceNamespace.ANDROID, ResourceType.SAMPLE_DATA).isEmpty).isTrue()
+    assertThat(repo.hasResources(ResourceNamespace.ANDROID, ResourceType.SAMPLE_DATA)).isFalse()
+  }
+
+  @Test
   fun testResolver() {
     projectRule.fixture.addFileToProject(
       "sampledata/strings",
