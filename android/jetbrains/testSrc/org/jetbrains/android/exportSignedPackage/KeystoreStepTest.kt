@@ -25,6 +25,8 @@ import com.google.common.truth.Truth
 import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.PasswordSafeSettings
 import com.intellij.credentialStore.ProviderType
+import com.intellij.facet.FacetManager
+import com.intellij.facet.FacetManagerFactory
 import com.intellij.ide.passwordSafe.PasswordSafe
 import com.intellij.ide.passwordSafe.impl.TestPasswordSafeImpl
 import com.intellij.ide.wizard.CommitStepException
@@ -156,6 +158,7 @@ class KeystoreStepTest : LightPlatformTestCase() {
     whenever(wizard.targetType).thenReturn(ExportSignedPackageWizard.APK)
     val unsortedModulesOrder = listOf("appB", "app1", "appD", "xappC", "appA")
     val moduleBridge = module as ModuleBridge
+    val fakeModules = mutableListOf<Module>()
     unsortedModulesOrder.forEach { name ->
       val nModule =
         object : ModuleBridge by moduleBridge {
@@ -165,7 +168,19 @@ class KeystoreStepTest : LightPlatformTestCase() {
         }
       Disposer.register(testRootDisposable, nModule)
       facets.add(FakeAndroidFacet(nModule))
+      fakeModules.add(nModule)
     }
+    // The fake modules above are not registered in the workspace model (the platform resolves module entities by module instance),
+    // so the real FacetManagerFactory can't create a FacetManager for them. Return an empty mock FacetManager for them instead.
+    val originalFacetManagerFactory = project.getService(FacetManagerFactory::class.java)
+    val emptyFacetManager = mock(FacetManager::class.java)
+    ideComponents.replaceProjectService(
+      FacetManagerFactory::class.java,
+      object : FacetManagerFactory {
+        override fun getFacetManager(module: Module): FacetManager =
+          if (module in fakeModules) emptyFacetManager else originalFacetManagerFactory.getFacetManager(module)
+      },
+    )
     val keystoreStep = KeystoreStep(wizard, facets, SameThreadExecutor.INSTANCE)
     keystoreStep._init()
 
