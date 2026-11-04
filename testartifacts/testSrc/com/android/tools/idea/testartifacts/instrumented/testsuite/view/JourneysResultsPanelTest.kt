@@ -33,10 +33,10 @@ import javax.imageio.ImageIO
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
-import org.mockito.ArgumentCaptor
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.verify
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.verifyNoInteractions
 
 @RunsInEdt
@@ -49,7 +49,7 @@ class JourneysResultsPanelTest {
 
   @Test
   fun openImageInEditorRefreshesVfsIfFileNotFound() {
-    val mockFileEditorManager = mock(FileEditorManager::class.java)
+    val mockFileEditorManager = mock<FileEditorManager>()
     projectRule.project.replaceService(FileEditorManager::class.java, mockFileEditorManager, disposableRule.disposable)
 
     // Create a new directory and file via standard Java IO.
@@ -71,9 +71,9 @@ class JourneysResultsPanelTest {
       panel.openImageInEditor(imageFile)
 
       // Verify the editor was opened with the correct file.
-      val descriptorCaptor = ArgumentCaptor.forClass(OpenFileDescriptor::class.java)
+      val descriptorCaptor = argumentCaptor<OpenFileDescriptor>()
       verify(mockFileEditorManager).openEditor(descriptorCaptor.capture(), eq(true))
-      assertThat(descriptorCaptor.value.file.path).isEqualTo(imageFile.absolutePath.replace(File.separatorChar, '/'))
+      assertThat(descriptorCaptor.firstValue.file.path).isEqualTo(imageFile.absolutePath.replace(File.separatorChar, '/'))
     } finally {
       imageFile.delete()
       newDir.delete()
@@ -82,7 +82,7 @@ class JourneysResultsPanelTest {
 
   @Test
   fun openImageInEditor_rejectsOutOfProjectFile() {
-    val mockFileEditorManager = mock(FileEditorManager::class.java)
+    val mockFileEditorManager = mock<FileEditorManager>()
     projectRule.project.replaceService(FileEditorManager::class.java, mockFileEditorManager, disposableRule.disposable)
 
     val tempFile = createTempScreenshotFile()
