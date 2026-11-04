@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.lint.inspections
 
-import com.android.SdkConstants.DOT_PROPERTIES
 import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.lint.AndroidLintBundle
 import com.android.tools.idea.lint.AndroidLintIdeSupport.AndroidAgpUpgradeInfo
@@ -46,7 +45,6 @@ class AndroidLintAndroidGradlePluginVersionInspection :
     incident: Incident,
     defaultMessage: String,
   ): String {
-    if (incident.file.path.endsWith(DOT_PROPERTIES)) return defaultMessage
     val revision =
       incident.clientProperties?.getString(GradleDetector.KEY_REVISION, null)?.let {
         AgpVersion.tryParse(it)
@@ -62,8 +60,6 @@ class AndroidLintAndroidGradlePluginVersionInspection :
     val fixes = super.getQuickFixes(startElement, endElement, incident)
     val agpUpgradeInfo = LintIdeSupport.get().computeAgpUpgradeInfo(startElement.project)
     return when {
-      // gradle wrapper update: don't link to the AGP upgrade assistant
-      incident.file.path.endsWith(DOT_PROPERTIES) -> fixes
       agpUpgradeInfo == null -> fixes
       else -> arrayOf(InvokeAGPUpgradeAssistantQuickFix(agpUpgradeInfo), *fixes)
     }

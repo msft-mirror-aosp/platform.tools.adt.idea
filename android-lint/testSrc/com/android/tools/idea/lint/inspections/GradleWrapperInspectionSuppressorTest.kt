@@ -91,7 +91,7 @@ class GradleWrapperInspectionSuppressorTest {
       inspectionProfile.getUnwrappedTool("LatestMinorVersion", wrapperFile)
     }
     checkNotNull(latestMinorVersionInspection) { "LatestMinorVersion inspection should be available" }
-    fixture.enableInspections(latestMinorVersionInspection, AndroidLintAndroidGradlePluginVersionInspection())
+    fixture.enableInspections(latestMinorVersionInspection, AndroidLintGradleVersionInspection())
 
     // In an Android project, LatestMinorVersion is suppressed so the redundant
     // "A newer minor version of Gradle is available" warning is not reported.

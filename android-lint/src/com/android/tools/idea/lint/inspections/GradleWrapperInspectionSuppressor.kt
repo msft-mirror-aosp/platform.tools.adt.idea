@@ -23,7 +23,7 @@ import org.jetbrains.android.facet.AndroidFacet
 
 /**
  * Suppresses IntelliJ's GradleLatestMinorVersionInspection ("LatestMinorVersion") in Android projects, where Gradle wrapper version
- * checking is handled by Android Lint's AGP_DEPENDENCY check. Lint ensures the suggested Gradle version is compatible with the project's
+ * checking is handled by Android Lint's GRADLE_VERSION check. Lint ensures the suggested Gradle version is compatible with the project's
  * Android Gradle Plugin (AGP) version.
  */
 class GradleWrapperInspectionSuppressor : InspectionSuppressor {

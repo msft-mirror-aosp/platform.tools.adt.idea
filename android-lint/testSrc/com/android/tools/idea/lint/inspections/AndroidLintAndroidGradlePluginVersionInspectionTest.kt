@@ -101,16 +101,5 @@ class AndroidLintAndroidGradlePluginVersionInspectionTest {
     assertThat(inspection.getMessage(element, element, buildGradleIncident, defaultMessage))
       .isEqualTo(defaultMessage)
 
-    // 5. gradle-wrapper.properties incidents are left unchanged even when targetVersion differs:
-    stubTargetVersion = AgpVersion.parse("8.13.2")
-    val wrapperIncident =
-      Incident(
-          GradleDetector.AGP_DEPENDENCY,
-          defaultMessage,
-          Location.create(File("gradle/wrapper/gradle-wrapper.properties")),
-        )
-        .apply { clientProperties = LintMap().apply { put(GradleDetector.KEY_REVISION, "9.3.3") } }
-    assertThat(inspection.getMessage(element, element, wrapperIncident, defaultMessage))
-      .isEqualTo(defaultMessage)
   }
 }
