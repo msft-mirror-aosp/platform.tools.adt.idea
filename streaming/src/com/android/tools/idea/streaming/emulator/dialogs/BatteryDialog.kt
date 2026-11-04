@@ -171,9 +171,10 @@ internal class BatteryDialog(emulator: EmulatorController) :
     /** Converts the [BatteryState] proto message to [BatteryInfo]. */
     private fun BatteryState.toBatteryInfo(): BatteryInfo {
       val level = chargeLevel.coerceIn(0, 100)
-      val chargerConnection = ChargerConnection.entries.getOrNull(chargerValue) ?: ChargerConnection.NONE
-      val batteryHealth = BatteryHealth.entries.getOrNull(healthValue) ?: BatteryHealth.GOOD
-      val batteryStatus = BatteryStatus.entries.getOrNull(statusValue) ?: BatteryStatus.CHARGING
+      val chargerConnection =
+        ChargerConnection.entries.getOrNull(chargerValue) ?: if (chargerValue > 0) ChargerConnection.AC else ChargerConnection.NONE
+      val batteryHealth = BatteryHealth.entries.getOrNull(healthValue) ?: BatteryHealth.UNKNOWN
+      val batteryStatus = BatteryStatus.entries.getOrNull(statusValue) ?: BatteryStatus.UNKNOWN
       return BatteryInfo(chargeLevel = level, charger = chargerConnection, health = batteryHealth, status = batteryStatus)
     }
   }
