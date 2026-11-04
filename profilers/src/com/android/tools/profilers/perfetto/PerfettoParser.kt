@@ -52,8 +52,8 @@ class PerfettoParser(private val mainProcessSelector: MainProcessSelector, priva
     val TPD_LOCK = Any()
 
     /**
-     * Descriptor set of perfetto_trace.proto, the default output of @perfetto_repo//:perfetto_trace_proto. The proto is amalgamated, so the
-     * set holds a single file without imports.
+     * Descriptor set of perfetto_trace.proto, the output of //tools/base/profiler:perfetto_trace_descriptor_set. The proto is amalgamated,
+     * so the set holds a single file without imports.
      */
     private const val TRACE_DESCRIPTOR_RESOURCE = "/perfetto_trace_proto-descriptor-set.proto.bin"
 
