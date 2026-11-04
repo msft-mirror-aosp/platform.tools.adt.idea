@@ -57,5 +57,7 @@ object StagingIcons {
 
   @JvmField val REVERSE_PORTRAIT: Icon = load("icons/reverse-portrait.svg", -1640749502, 2)
 
+  @JvmField val SENSOR_REPLAY: Icon = load("icons/sensor-replay.svg", 2084088727, 2)
+
   @JvmField val SENSORS: Icon = load("icons/sensors.svg", -1353430992, 2)
 }

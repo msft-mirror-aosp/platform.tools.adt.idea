@@ -1379,6 +1379,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Open sensor replay controls",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Open the Device Pairing dialog which allows connecting devices over Wi-Fi",
       "path": "ActionManager"
     },
@@ -1680,6 +1684,10 @@
     },
     {
       "hit": "Select mode of interaction with running apps",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Sensor Replay",
       "path": "ActionManager"
     },
     {
