@@ -731,6 +731,7 @@ object AndroidAttributeFact {
       "contentInsetRight" -> return NlPropertyType.DIMENSION
       "contentInsetStart" -> return NlPropertyType.DIMENSION
       "contentInsetStartWithNavigation" -> return NlPropertyType.DIMENSION
+      "contentSensitivity" -> return NlPropertyType.ENUM
       "contextClickable" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "contextDescription" -> return NlPropertyType.ID
       "contextUri" -> return NlPropertyType.ID
@@ -1226,6 +1227,7 @@ object AndroidAttributeFact {
       "shadowRadius" -> return NlPropertyType.FLOAT
       "shareInterpolator" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "sharedUserLabel" -> return NlPropertyType.ID
+      "shiftDrawingOffsetForStartOverhang" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "shouldDisableView" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "showAsAction" -> return NlPropertyType.INTEGER
       "showDefault" -> return NlPropertyType.THREE_STATE_BOOLEAN
@@ -1273,6 +1275,7 @@ object AndroidAttributeFact {
       "summary" -> return NlPropertyType.STRING
       "summaryOff" -> return NlPropertyType.STRING
       "summaryOn" -> return NlPropertyType.STRING
+      "supplementalDescription" -> return NlPropertyType.STRING
       "supportsAmbientMode" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "supportsAssist" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "supportsLaunchVoiceAssistFromKeyguard" -> return NlPropertyType.THREE_STATE_BOOLEAN
@@ -1367,8 +1370,10 @@ object AndroidAttributeFact {
       "uncertainGestureColor" -> return NlPropertyType.COLOR
       "unfocusedMonthDateColor" -> return NlPropertyType.COLOR
       "unselectedAlpha" -> return NlPropertyType.FLOAT
+      "useBoundsForWidth" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "useDefaultMargins" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "useDisabledAlpha" -> return NlPropertyType.THREE_STATE_BOOLEAN
+      "useLocalePreferredLineHeightForMinimum" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "userVisible" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "usesCleartextTraffic" -> return NlPropertyType.THREE_STATE_BOOLEAN
       "value" -> return NlPropertyType.FLOAT
