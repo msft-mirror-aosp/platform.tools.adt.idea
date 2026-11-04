@@ -2122,10 +2122,8 @@ public final class StudioFlags {
                     "Don't reset the results cache before running filters on startup");
   public static final Flag<Boolean> TSDKVUA_FILTERS_WIP =
     new BooleanFlag(TSDKVUA, "filters.wip", "Enable WIP relevance filters", "Enable WIP relevance filters");
-  public static final Flag<Integer> TSDKVUA_API_NEXT =
-    new IntFlag(TSDKVUA, "api.next", "The version of the next API", "The version of the next API", 37);
-  public static final Flag<Boolean> TSDKVUA_API_NEXT_ENABLE =
-    new BooleanFlag(TSDKVUA, "api.next.enable", "Enable support for the next API", "Enable support for the next API");
+  public static final Flag<Integer> TSDKVUA_API_PUBLIC =
+    new IntFlag(TSDKVUA, "api.public", "The version of the latest public API", "The version of the latest public API", 37);
   public static final Flag<Boolean> TSDKVUA_OMG_76167 = new BooleanFlag(
     TSDKVUA, "omg76167", "Do NOT mitigate omg/76167",
     "Mitigating omg/76167 requires hiding part of API 35's 'secured background activity launches' step");
