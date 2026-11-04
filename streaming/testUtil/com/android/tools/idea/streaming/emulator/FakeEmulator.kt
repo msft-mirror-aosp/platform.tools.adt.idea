@@ -224,7 +224,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     private set
 
   @Volatile
-  var batteryStatus: BatteryState = BatteryState.newBuilder().setChargeLevel(100).setStatus(BatteryState.BatteryStatus.CHARGING).build()
+  var batteryStatus: BatteryState = BatteryState.newBuilder().setChargeLevel(100).setStatus(BatteryState.BatteryStatus.NOT_CHARGING).build()
   @Volatile var gpsLocation: GpsState = GpsState.newBuilder().setLatitude(0.0).setLongitude(0.0).setAltitude(0.0).build()
   @Volatile var cellInfo: CellInfo = CellInfo.getDefaultInstance()
   @Volatile var activeCalls: List<Call> = emptyList()

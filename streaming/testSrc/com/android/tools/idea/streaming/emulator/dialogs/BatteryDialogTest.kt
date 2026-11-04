@@ -33,7 +33,9 @@ import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import java.awt.event.FocusEvent
 import javax.swing.JButton
+import javax.swing.JLabel
 import javax.swing.JSlider
 import javax.swing.JTextField
 import kotlin.time.Duration.Companion.seconds
@@ -86,13 +88,15 @@ class BatteryDialogTest {
     val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
 
     assertThat(chargeLevelSlider.value).isEqualTo(100)
-    assertThat(chargeLevelField.text).isEqualTo("100%")
+    assertThat(chargeLevelField.text).isEqualTo("100")
+    assertThat(ui.findComponent<JLabel> { it.text == "%" }).isNotNull()
     assertThat(chargerBox.selectedItem?.toString()).isEqualTo("None")
     assertThat(healthBox.selectedItem?.toString()).isEqualTo("Good")
-    assertThat(statusBox.selectedItem?.toString()).isEqualTo("Charging")
+    assertThat(statusBox.selectedItem?.toString()).isEqualTo("Not charging")
 
     assertThat(healthBox.width).isEqualTo(chargerBox.width)
     assertThat(statusBox.width).isEqualTo(chargerBox.width)
+    assertThat(healthBox.y).isEqualTo(statusBox.y)
 
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
@@ -122,7 +126,7 @@ class BatteryDialogTest {
 
     waitForCondition(5.seconds) {
       chargeLevelSlider.value == 42 &&
-        chargeLevelField.text == "42%" &&
+        chargeLevelField.text == "42" &&
         chargerBox.selectedItem?.toString() == "AC charger" &&
         healthBox.selectedItem?.toString() == "Overheated" &&
         statusBox.selectedItem?.toString() == "Discharging"
@@ -145,16 +149,16 @@ class BatteryDialogTest {
     val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
 
     assertThat(chargeLevelSlider.value).isEqualTo(100)
-    assertThat(chargeLevelField.text).isEqualTo("100%")
+    assertThat(chargeLevelField.text).isEqualTo("100")
     assertThat(chargerBox.selectedItem?.toString()).isEqualTo("None")
     assertThat(healthBox.selectedItem?.toString()).isEqualTo("Good")
-    assertThat(statusBox.selectedItem?.toString()).isEqualTo("Charging")
+    assertThat(statusBox.selectedItem?.toString()).isEqualTo("Not charging")
 
     chargeLevelSlider.value = 75
-    assertThat(chargeLevelField.text).isEqualTo("75%")
+    assertThat(chargeLevelField.text).isEqualTo("75")
     chargerBox.selectItem("AC charger")
     healthBox.selectItem("Overvoltage")
-    statusBox.selectItem("Not charging")
+    statusBox.selectItem("Charging")
 
     waitForCondition(5.seconds) {
       fakeEmulator.batteryStatus.hasBattery &&
@@ -162,7 +166,7 @@ class BatteryDialogTest {
         fakeEmulator.batteryStatus.chargeLevel == 75 &&
         fakeEmulator.batteryStatus.charger == BatteryCharger.AC &&
         fakeEmulator.batteryStatus.health == BatteryHealth.OVERVOLTAGE &&
-        fakeEmulator.batteryStatus.status == BatteryStatus.NOT_CHARGING
+        fakeEmulator.batteryStatus.status == BatteryStatus.CHARGING
     }
 
     chargeLevelSlider.value = 15
@@ -176,6 +180,36 @@ class BatteryDialogTest {
         fakeEmulator.batteryStatus.healthValue == 5 &&
         fakeEmulator.batteryStatus.status == BatteryStatus.DISCHARGING
     }
+
+    // In-range text updates slider and emulator immediately and normalizes on commit.
+    chargeLevelField.text = "05"
+    assertThat(chargeLevelField.text).isEqualTo("05")
+    assertThat(chargeLevelSlider.value).isEqualTo(5)
+    waitForCondition(5.seconds) { fakeEmulator.batteryStatus.chargeLevel == 5 }
+    chargeLevelField.postActionEvent()
+    assertThat(chargeLevelField.text).isEqualTo("5")
+
+    // Out-of-range values clamp on commit.
+    chargeLevelField.text = "150"
+    chargeLevelField.postActionEvent()
+    assertThat(chargeLevelField.text).isEqualTo("100")
+    assertThat(chargeLevelSlider.value).isEqualTo(100)
+    waitForCondition(5.seconds) { fakeEmulator.batteryStatus.chargeLevel == 100 }
+
+    chargeLevelField.text = "-10"
+    for (listener in chargeLevelField.focusListeners) {
+      listener.focusLost(FocusEvent(chargeLevelField, FocusEvent.FOCUS_LOST))
+    }
+    assertThat(chargeLevelField.text).isEqualTo("0")
+    assertThat(chargeLevelSlider.value).isEqualTo(0)
+    waitForCondition(5.seconds) { fakeEmulator.batteryStatus.chargeLevel == 0 }
+
+    // Invalid non-numeric text reverts to the current value on focus lost.
+    chargeLevelField.text = "abc"
+    for (listener in chargeLevelField.focusListeners) {
+      listener.focusLost(FocusEvent(chargeLevelField, FocusEvent.FOCUS_LOST))
+    }
+    assertThat(chargeLevelField.text).isEqualTo("0")
 
     val closeButton = ui.getComponent<JButton> { it.text == "Close" }
     assertThat(rootPane.defaultButton).isNull()
