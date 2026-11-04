@@ -25,6 +25,8 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
 import com.android.tools.profilers.cpu.systemtrace.CounterModel
 import com.android.tools.profilers.cpu.systemtrace.CpuCoreModel
+import com.android.tools.profilers.cpu.systemtrace.JankType
+import com.android.tools.profilers.cpu.systemtrace.PresentType
 import com.android.tools.profilers.cpu.systemtrace.ProcessModel
 import com.android.tools.profilers.cpu.systemtrace.SchedulingEventModel
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceModelAdapter
@@ -39,8 +41,6 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.min
 import org.jetbrains.annotations.VisibleForTesting
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 class TraceProcessorModel(builder: Builder) : SystemTraceModelAdapter, Serializable {
 

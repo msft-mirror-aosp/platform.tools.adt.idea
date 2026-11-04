@@ -23,8 +23,6 @@ import com.android.tools.adtui.model.StateChartModel
 import com.android.tools.profilers.cpu.LazyDataSeries
 import com.android.tools.profilers.cpu.analysis.CpuAnalyzable
 import kotlin.math.max
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 class AndroidFrameTimelineModel
 constructor(

@@ -22,6 +22,8 @@ import com.android.tools.profilers.cpu.analysis.CpuAnalyzable
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineModel
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineTooltip
+import com.android.tools.profilers.cpu.systemtrace.JankType
+import com.android.tools.profilers.cpu.systemtrace.PresentType
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceCpuCapture
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.EdtRule
@@ -31,8 +33,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 @RunsInEdt
 class AndroidFrameTimelineTooltipViewTest {

@@ -23,12 +23,12 @@ import com.android.tools.profilers.cpu.ThreadState
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
 import com.android.tools.profilers.cpu.systemtrace.CounterModel
 import com.android.tools.profilers.cpu.systemtrace.CpuCoreModel
+import com.android.tools.profilers.cpu.systemtrace.JankType
+import com.android.tools.profilers.cpu.systemtrace.PresentType
 import com.android.tools.profilers.cpu.systemtrace.SchedulingEventModel
 import com.android.tools.profilers.cpu.systemtrace.TraceEventModel
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 class TraceProcessorModelTest {
 

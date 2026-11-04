@@ -23,6 +23,8 @@ import com.android.tools.profilers.StudioProfilersView
 import com.android.tools.profilers.cpu.CaptureNode
 import com.android.tools.profilers.cpu.CpuThreadInfo
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
+import com.android.tools.profilers.cpu.systemtrace.JankType
+import com.android.tools.profilers.cpu.systemtrace.PresentType
 import com.android.tools.profilers.cpu.systemtrace.RenderSequence
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceCpuCapture
 import com.google.common.truth.Truth.assertThat
@@ -36,8 +38,6 @@ import org.junit.Test
 import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 @RunsInEdt
 class JankSummaryDetailsViewTest {

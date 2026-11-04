@@ -23,8 +23,6 @@ import com.android.tools.profilers.cpu.ThreadState
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 class SystemTraceCpuCaptureBuilderTest {
 

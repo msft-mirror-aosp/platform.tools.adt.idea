@@ -35,11 +35,11 @@ import com.android.tools.profilers.cpu.analysis.CpuAnalyzable
 import com.android.tools.profilers.cpu.analysis.JankAnalysisModel
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineModel
+import com.android.tools.profilers.cpu.systemtrace.JankType
 import com.intellij.util.ui.JBUI
 import java.awt.geom.Rectangle2D
 import java.util.function.BooleanSupplier
 import kotlin.math.min
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
 
 class JankyFrameTrackRenderer(private val profilersView: StudioProfilersView, private val vsyncEnabler: BooleanSupplier) :
   TrackRenderer<AndroidFrameTimelineModel> {

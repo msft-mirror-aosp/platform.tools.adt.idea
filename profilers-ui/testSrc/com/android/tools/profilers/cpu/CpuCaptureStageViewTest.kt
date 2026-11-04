@@ -44,6 +44,8 @@ import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
 import com.android.tools.profilers.cpu.systemtrace.BufferQueueTooltip
 import com.android.tools.profilers.cpu.systemtrace.CpuFrameTooltip
 import com.android.tools.profilers.cpu.systemtrace.CpuKernelTooltip
+import com.android.tools.profilers.cpu.systemtrace.JankType
+import com.android.tools.profilers.cpu.systemtrace.PresentType
 import com.android.tools.profilers.cpu.systemtrace.RenderSequence
 import com.android.tools.profilers.cpu.systemtrace.SurfaceflingerTooltip
 import com.android.tools.profilers.cpu.systemtrace.SystemTraceCpuCapture
@@ -71,8 +73,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.JankType
-import perfetto.protos.FrameTimelineEventOuterClass.FrameTimelineEvent.PresentType
 
 @RunsInEdt
 class CpuCaptureStageViewTest {
