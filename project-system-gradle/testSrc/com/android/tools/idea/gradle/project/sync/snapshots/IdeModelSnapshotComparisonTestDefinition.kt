@@ -113,25 +113,15 @@ data class IdeModelSnapshotComparisonTestDefinition(
         ),
         IdeModelSnapshotComparisonTestDefinition(
           TestProject.KOTLIN_MULTIPLATFORM,
-          phasedSyncKnownIssues =
-            setOf(PhasedSyncKnownIssue.MISSING_KMP_MODULE_DEPENDENCIES, PhasedSyncKnownIssue.KMP_DEVICE_TEST_COMPILE_CLASSPATH_ORDER),
+          phasedSyncKnownIssues = setOf(PhasedSyncKnownIssue.KMP_DEVICE_TEST_COMPILE_CLASSPATH_ORDER),
         ),
         IdeModelSnapshotComparisonTestDefinition(
           TestProject.KOTLIN_MULTIPLATFORM_WITHJS,
           skipV1toV2Comparison = true,
-          phasedSyncKnownIssues =
-            setOf(PhasedSyncKnownIssue.MISSING_KMP_MODULE_DEPENDENCIES, PhasedSyncKnownIssue.KMP_DEVICE_TEST_COMPILE_CLASSPATH_ORDER),
+          phasedSyncKnownIssues = setOf(PhasedSyncKnownIssue.KMP_DEVICE_TEST_COMPILE_CLASSPATH_ORDER),
         ),
-        IdeModelSnapshotComparisonTestDefinition(
-          TestProject.KOTLIN_MULTIPLATFORM_IOS,
-          skipV1toV2Comparison = true,
-          phasedSyncKnownIssues = setOf(PhasedSyncKnownIssue.MISSING_KMP_MODULE_DEPENDENCIES),
-        ),
-        IdeModelSnapshotComparisonTestDefinition(
-          TestProject.KOTLIN_MULTIPLATFORM_JVM,
-          skipV1toV2Comparison = true,
-          phasedSyncKnownIssues = setOf(PhasedSyncKnownIssue.MISSING_KMP_MODULE_DEPENDENCIES),
-        ),
+        IdeModelSnapshotComparisonTestDefinition(TestProject.KOTLIN_MULTIPLATFORM_IOS, skipV1toV2Comparison = true),
+        IdeModelSnapshotComparisonTestDefinition(TestProject.KOTLIN_MULTIPLATFORM_JVM, skipV1toV2Comparison = true),
         IdeModelSnapshotComparisonTestDefinition(TestProject.KOTLIN_MULTIPLATFORM_JVM_KMPAPP, skipV1toV2Comparison = true),
         IdeModelSnapshotComparisonTestDefinition(TestProject.KOTLIN_MULTIPLATFORM_JVM_KMPAPP_WITHINTERMEDIATE, skipV1toV2Comparison = true),
         IdeModelSnapshotComparisonTestDefinition(
@@ -205,20 +195,6 @@ private fun Sequence<String>.nameProperties() = nameProperties(this)
  * [IdeModelSnapshotComparisonTestDefinition.phasedSyncKnownIssues].
  */
 enum class PhasedSyncKnownIssue(val updateExpectedSnapshot: (String) -> String) {
-  /**
-   * TODO(b/571963628): Dependencies on the Kotlin Multiplatform module `:module2` are missing from the Android modules depending on it.
-   *
-   * Phased Sync builds its library table without the Kotlin Multiplatform models, so it resolves dependencies on `:module2` to no
-   * libraries. The full sync that follows resolves them, but the `GradleAndroidModelEntity` set up by Phased Sync is kept because
-   * `IdeVariantImpl` equality only compares the unresolved models, which are the same in both, so the dependencies stay missing.
-   */
-  MISSING_KMP_MODULE_DEPENDENCIES({ expected ->
-    expected
-      .splitToSequence('\n')
-      .filterNot { it.trim().startsWith("module") && (it.contains("<ROOT>-:module2") || it.contains("<PROJECT>-:module2")) }
-      .joinToString("\n")
-  }),
-
   /**
    * TODO(b/384022658): The order of the device test compile classpath of the Kotlin Multiplatform module `:module2` is different.
    *

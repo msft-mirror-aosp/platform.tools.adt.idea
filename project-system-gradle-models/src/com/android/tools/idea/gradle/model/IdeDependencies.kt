@@ -43,6 +43,20 @@ class IdeDependencies(
    * dependencies, these are indices back into this list of dependencies.
    */
   val unresolvedDependencies: List<IdeDependencyCoreImpl> = classpath.dependencies
+
+  /**
+   * Returns whether [other] has the same unresolved [classpath] and each of its library references resolves to the same libraries.
+   *
+   * Only the library table entries referenced by this classpath are compared, so changes to unrelated entries of the build-wide library
+   * table (e.g. a dependency of another module) do not make otherwise identical classpaths unequal. Nothing is resolved when both sides
+   * share the same [resolver].
+   */
+  internal fun hasSameResolvedLibraries(other: IdeDependencies): Boolean {
+    if (this === other) return true
+    if (classpath != other.classpath) return false
+    if (resolver === other.resolver) return true
+    return unresolvedDependencies.all { resolver.resolveOrEmpty(it) == other.resolver.resolveOrEmpty(it) }
+  }
 }
 
 /** Method to resolve transitive dependencies from [IdeDependencyCore.dependencies] back to their [IdeDependencyCore] */

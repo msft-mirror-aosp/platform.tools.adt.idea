@@ -45,6 +45,15 @@ constructor(
     }
   }
 
+  /**
+   * Returns the libraries the target of [unresolved] resolves to, or an empty list if the corresponding library table is not available or
+   * does not contain it. Unlike [resolve] this never throws and does not allocate, so it is safe to use from equality checks.
+   */
+  internal fun resolveOrEmpty(unresolved: IdeDependencyCore): List<IdeLibrary> {
+    val table = if (unresolved.target.resolverType == ResolverType.KMP_ANDROID) kmpLibraryTable else globalLibraryTable
+    return table?.libraries?.getOrNull(unresolved.target.libraryIndex).orEmpty()
+  }
+
   companion object {
     @JvmStatic
     fun fromLibraryTables(globalLibraryTable: IdeResolvedLibraryTableImpl?, kmpLibraryTable: KotlinMultiplatformIdeLibraryTable?) =

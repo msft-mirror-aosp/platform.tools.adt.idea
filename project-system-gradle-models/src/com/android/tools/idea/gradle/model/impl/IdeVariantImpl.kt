@@ -504,8 +504,22 @@ class IdeVariantImpl(val core: IdeVariantCoreImpl, resolver: IdeLibraryModelReso
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
-    return core == (other as IdeVariantImpl).core
+    other as IdeVariantImpl
+    // Equal cores imply that both variants have the same artifacts with equal cores, so only the resolved dependencies of each artifact
+    // are left to compare.
+    return core == other.core &&
+      mainArtifact.hasSameResolvedDependencies(other.mainArtifact) &&
+      deviceTestArtifacts.allPairs(other.deviceTestArtifacts) { a, b -> a.hasSameResolvedDependencies(b) } &&
+      hostTestArtifacts.allPairs(other.hostTestArtifacts) { a, b -> a.hasSameResolvedDependencies(b) } &&
+      testFixturesArtifact.let { a ->
+        val b = other.testFixturesArtifact
+        if (a == null || b == null) a === b else a.hasSameResolvedDependencies(b)
+      }
   }
 
+  // Intentionally only uses [core]: equal variants have equal cores, and this avoids resolving and hashing libraries.
   override fun hashCode(): Int = core.hashCode()
 }
+
+private inline fun <T> List<T>.allPairs(other: List<T>, predicate: (T, T) -> Boolean): Boolean =
+  size == other.size && indices.all { predicate(this[it], other[it]) }

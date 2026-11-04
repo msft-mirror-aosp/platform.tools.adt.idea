@@ -96,11 +96,22 @@ class IdeJavaArtifactImpl(private val core: IdeJavaArtifactCoreImpl, resolver: I
   override val compileClasspath: IdeDependencies = IdeDependencies(core.compileClasspathCore, resolver)
   override val runtimeClasspath: IdeDependencies = IdeDependencies(core.runtimeClasspathCore, resolver)
 
+  /**
+   * Returns whether the libraries referenced by [core] resolve to the same libraries in [other], assuming the cores are equal.
+   *
+   * [core] only holds indices into the build-wide library tables, so two artifacts with equal cores can still have different dependencies
+   * (e.g. when Phased Sync could not resolve a dependency which a later full sync resolves).
+   */
+  internal fun hasSameResolvedDependencies(other: IdeJavaArtifactImpl): Boolean =
+    compileClasspath.hasSameResolvedLibraries(other.compileClasspath) && runtimeClasspath.hasSameResolvedLibraries(other.runtimeClasspath)
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
-    return core == (other as IdeJavaArtifactImpl).core
+    other as IdeJavaArtifactImpl
+    return core == other.core && hasSameResolvedDependencies(other)
   }
 
+  // Intentionally only uses [core]: equal artifacts have equal cores, and this avoids resolving and hashing libraries.
   override fun hashCode(): Int = core.hashCode()
 }
