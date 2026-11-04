@@ -26,6 +26,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.testFramework.LoggedErrorProcessor;
 import com.intellij.testFramework.ServiceContainerUtil;
 import java.io.File;
 import java.io.IOException;
@@ -34,9 +35,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.android.facet.ResourceFolderManager;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Tests for {@link ResourceFolderRepositoryFileCacheImpl}.
@@ -217,6 +220,32 @@ public class ResourceFolderRepositoryFileCacheTest extends AndroidTestCase {
     assertNotNull(rootDir);
     ManageLruProjectFilesTask.writeListOfProjectCaches(rootDir, projectDirList);
     return projectDirList;
+  }
+
+  public void testGetProjectDirReturnsNullWhenRootDirCannotBeCreated() throws Exception {
+    // Place a regular file where a parent of the cache root directory needs to be, so that the root directory can't be created.
+    Path rootDirParent = Paths.get(myFixture.getTempDirPath()).resolve("notADirectory");
+    Files.createFile(rootDirParent);
+    ResourceFolderRepositoryFileCacheImpl cache = new ResourceFolderRepositoryFileCacheImpl(rootDirParent);
+
+    List<String> loggedErrors = new ArrayList<>();
+    LoggedErrorProcessor.executeWith(new LoggedErrorProcessor() {
+      @Override
+      public @NotNull Set<Action> processError(@NotNull String category,
+                                               @NotNull String message,
+                                               String @NotNull [] details,
+                                               @Nullable Throwable t) {
+        loggedErrors.add(message);
+        return Action.NONE;
+      }
+    }, () -> {
+      assertNull(cache.getRootDir());
+      assertNull(cache.getProjectDir(getProject()));
+    });
+    assertSize(2, loggedErrors);
+    for (String error : loggedErrors) {
+      assertTrue(error, error.startsWith("Failed to create cache root directory"));
+    }
   }
 
   public void testPruneResourceCachesInProject() throws IOException {
