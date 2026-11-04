@@ -47,6 +47,11 @@ data class IdeModelSnapshotComparisonTestDefinition(
   val v1toV2PropertiesToSkip: Set<String> = emptySet(),
   val isCompatibleWith: (AgpVersionSoftwareEnvironmentDescriptor) -> Boolean = { it >= AGP_70 },
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AGP_CURRENT,
+  /**
+   * Known differences between the snapshot, which is recorded with Phased Sync disabled, and the models set up when Phased Sync is enabled.
+   * They are applied to the expected snapshot before comparing it when Phased Sync is enabled.
+   */
+  val phasedSyncKnownIssues: Set<PhasedSyncKnownIssue> = emptySet(),
 ) : SyncedProjectTestDef {
 
   companion object {
@@ -106,10 +111,27 @@ data class IdeModelSnapshotComparisonTestDefinition(
               "moduleDependencies/target/sourceSet",
             ),
         ),
-        IdeModelSnapshotComparisonTestDefinition(TestProject.KOTLIN_MULTIPLATFORM),
-        IdeModelSnapshotComparisonTestDefinition(TestProject.KOTLIN_MULTIPLATFORM_WITHJS, skipV1toV2Comparison = true),
-        IdeModelSnapshotComparisonTestDefinition(TestProject.KOTLIN_MULTIPLATFORM_IOS, skipV1toV2Comparison = true),
-        IdeModelSnapshotComparisonTestDefinition(TestProject.KOTLIN_MULTIPLATFORM_JVM, skipV1toV2Comparison = true),
+        IdeModelSnapshotComparisonTestDefinition(
+          TestProject.KOTLIN_MULTIPLATFORM,
+          phasedSyncKnownIssues =
+            setOf(PhasedSyncKnownIssue.MISSING_KMP_MODULE_DEPENDENCIES, PhasedSyncKnownIssue.KMP_DEVICE_TEST_COMPILE_CLASSPATH_ORDER),
+        ),
+        IdeModelSnapshotComparisonTestDefinition(
+          TestProject.KOTLIN_MULTIPLATFORM_WITHJS,
+          skipV1toV2Comparison = true,
+          phasedSyncKnownIssues =
+            setOf(PhasedSyncKnownIssue.MISSING_KMP_MODULE_DEPENDENCIES, PhasedSyncKnownIssue.KMP_DEVICE_TEST_COMPILE_CLASSPATH_ORDER),
+        ),
+        IdeModelSnapshotComparisonTestDefinition(
+          TestProject.KOTLIN_MULTIPLATFORM_IOS,
+          skipV1toV2Comparison = true,
+          phasedSyncKnownIssues = setOf(PhasedSyncKnownIssue.MISSING_KMP_MODULE_DEPENDENCIES),
+        ),
+        IdeModelSnapshotComparisonTestDefinition(
+          TestProject.KOTLIN_MULTIPLATFORM_JVM,
+          skipV1toV2Comparison = true,
+          phasedSyncKnownIssues = setOf(PhasedSyncKnownIssue.MISSING_KMP_MODULE_DEPENDENCIES),
+        ),
         IdeModelSnapshotComparisonTestDefinition(TestProject.KOTLIN_MULTIPLATFORM_JVM_KMPAPP, skipV1toV2Comparison = true),
         IdeModelSnapshotComparisonTestDefinition(TestProject.KOTLIN_MULTIPLATFORM_JVM_KMPAPP_WITHINTERMEDIATE, skipV1toV2Comparison = true),
         IdeModelSnapshotComparisonTestDefinition(
@@ -158,33 +180,12 @@ data class IdeModelSnapshotComparisonTestDefinition(
           },
         )
       }
-    if (StudioFlags.PHASED_SYNC_ENABLED.get()) {
+    if (StudioFlags.PHASED_SYNC_ENABLED.get() && phasedSyncKnownIssues.isNotEmpty()) {
       v2snapshots.assertIsEqualToUpdatedSnapshot(
         dump,
         snapshotOnSaveUpdater = { it },
         snapshotOnCompareUpdater = { expected ->
-          expected
-            .splitToSequence('\n')
-            .filterNot { it.trim().startsWith("module") && (it.contains("<ROOT>-:module2") || it.contains("<PROJECT>-:module2")) }
-            .joinToString("\n")
-            .replace(
-              "                        androidLibrary                : com.android.support.test:runner:1.0.2@aar\n" +
-                "                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>\n" +
-                "                        androidLibrary                : com.android.support.test:monitor:1.0.2@aar\n" +
-                "                        javaLibrary                   : com.android.support:support-annotations:27.1.1\n" +
-                "                        javaLibrary                   : junit:junit:4.12\n" +
-                "                        javaLibrary                   : net.sf.kxml:kxml2:2.3.0\n" +
-                "                        javaLibrary                   : org.jetbrains:annotations:13.0\n" +
-                "                        javaLibrary                   : org.hamcrest:hamcrest-core:1.3",
-              "                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>\n" +
-                "                        androidLibrary                : com.android.support.test:runner:1.0.2@aar\n" +
-                "                        javaLibrary                   : org.jetbrains:annotations:13.0\n" +
-                "                        androidLibrary                : com.android.support.test:monitor:1.0.2@aar\n" +
-                "                        javaLibrary                   : com.android.support:support-annotations:27.1.1\n" +
-                "                        javaLibrary                   : junit:junit:4.12\n" +
-                "                        javaLibrary                   : net.sf.kxml:kxml2:2.3.0\n" +
-                "                        javaLibrary                   : org.hamcrest:hamcrest-core:1.3",
-            )
+          phasedSyncKnownIssues.fold(expected) { snapshot, issue -> issue.updateExpectedSnapshot(snapshot) }
         },
       )
     } else {
@@ -198,6 +199,54 @@ data class IdeModelSnapshotComparisonTestDefinition(
 }
 
 private fun Sequence<String>.nameProperties() = nameProperties(this)
+
+/**
+ * Differences between the snapshots, which are recorded with Phased Sync disabled, and the models set up when Phased Sync is enabled, see
+ * [IdeModelSnapshotComparisonTestDefinition.phasedSyncKnownIssues].
+ */
+enum class PhasedSyncKnownIssue(val updateExpectedSnapshot: (String) -> String) {
+  /**
+   * TODO(b/571963628): Dependencies on the Kotlin Multiplatform module `:module2` are missing from the Android modules depending on it.
+   *
+   * Phased Sync builds its library table without the Kotlin Multiplatform models, so it resolves dependencies on `:module2` to no
+   * libraries. The full sync that follows resolves them, but the `GradleAndroidModelEntity` set up by Phased Sync is kept because
+   * `IdeVariantImpl` equality only compares the unresolved models, which are the same in both, so the dependencies stay missing.
+   */
+  MISSING_KMP_MODULE_DEPENDENCIES({ expected ->
+    expected
+      .splitToSequence('\n')
+      .filterNot { it.trim().startsWith("module") && (it.contains("<ROOT>-:module2") || it.contains("<PROJECT>-:module2")) }
+      .joinToString("\n")
+  }),
+
+  /**
+   * TODO(b/384022658): The order of the device test compile classpath of the Kotlin Multiplatform module `:module2` is different.
+   *
+   * The classpath of Kotlin Multiplatform Android modules is created by `KotlinModelConverter` from the dependencies reported for the
+   * device test source set by the Kotlin Multiplatform import, keeping their order. With Phased Sync enabled, `kotlin-stdlib` and its
+   * dependency `annotations` come before the test libraries in that classpath. The libraries are the same, only their order differs.
+   */
+  KMP_DEVICE_TEST_COMPILE_CLASSPATH_ORDER({ expected ->
+    expected.replace(
+      "                        androidLibrary                : com.android.support.test:runner:1.0.2@aar\n" +
+        "                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>\n" +
+        "                        androidLibrary                : com.android.support.test:monitor:1.0.2@aar\n" +
+        "                        javaLibrary                   : com.android.support:support-annotations:27.1.1\n" +
+        "                        javaLibrary                   : junit:junit:4.12\n" +
+        "                        javaLibrary                   : net.sf.kxml:kxml2:2.3.0\n" +
+        "                        javaLibrary                   : org.jetbrains:annotations:13.0\n" +
+        "                        javaLibrary                   : org.hamcrest:hamcrest-core:1.3",
+      "                        javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>\n" +
+        "                        androidLibrary                : com.android.support.test:runner:1.0.2@aar\n" +
+        "                        javaLibrary                   : org.jetbrains:annotations:13.0\n" +
+        "                        androidLibrary                : com.android.support.test:monitor:1.0.2@aar\n" +
+        "                        javaLibrary                   : com.android.support:support-annotations:27.1.1\n" +
+        "                        javaLibrary                   : junit:junit:4.12\n" +
+        "                        javaLibrary                   : net.sf.kxml:kxml2:2.3.0\n" +
+        "                        javaLibrary                   : org.hamcrest:hamcrest-core:1.3",
+    )
+  }),
+}
 
 /**
  * we skip: [com.android.tools.idea.gradle.model.IdeAndroidLibrary.lintJar] because in V2 we do check that the jar exists before populating
