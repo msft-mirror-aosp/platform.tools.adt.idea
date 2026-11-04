@@ -80,7 +80,7 @@ class AdbServiceWrapperAdbLibImpl(private val project: Project) : AdbServiceWrap
   }
 
   override suspend fun waitForOnlineDevice(pairingResult: PairingResult): AdbOnlineDevice {
-    val ipAddress = pairingResult.ipAddress.hostAddress
+    val ipOrHost = pairingResult.ipOrHost
     val mdnsId = pairingResult.mdnsServiceId
 
     return withTimeoutOrNull(ADB_DEVICE_CONNECT_MILLIS.milliseconds) {
@@ -91,8 +91,8 @@ class AdbServiceWrapperAdbLibImpl(private val project: Project) : AdbServiceWrap
           deviceList.firstOrNull { device ->
             device.deviceState == DeviceState.ONLINE &&
               ((mdnsId.isNotEmpty() && device.serialNumber.startsWith(mdnsId)) ||
-                (device.serialNumber.startsWith(ipAddress) &&
-                  (device.serialNumber.length == ipAddress.length || device.serialNumber[ipAddress.length] == ':')))
+                (device.serialNumber.startsWith(ipOrHost) &&
+                  (device.serialNumber.length == ipOrHost.length || device.serialNumber[ipOrHost.length] == ':')))
           }
         }
         .first()

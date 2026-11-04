@@ -440,6 +440,7 @@ class WifiPairableDeviceProvisionerPluginTest {
     givenName: String? = null,
     serial: String? = null,
     mdnsServiceVersion: String? = "2.0",
+    hostname: String? = null,
   ): MdnsServices {
     val serviceInfo =
       MdnsTrackServiceInfo(
@@ -452,6 +453,7 @@ class WifiPairableDeviceProvisionerPluginTest {
         givenName = givenName,
         serial = serial,
         mdnsServiceVersion = mdnsServiceVersion,
+        hostname = hostname,
       )
     val services = listOf(MdnsTlsService(serviceInfo, knownDevice))
     return MdnsServices(emptyList(), services, emptyList())

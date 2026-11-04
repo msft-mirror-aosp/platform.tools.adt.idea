@@ -25,7 +25,6 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.InvalidDataException
 import com.intellij.util.LineSeparator
 import java.awt.Color
-import java.net.InetAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -103,7 +102,7 @@ class WiFiPairingServiceImpl(private val randomProvider: RandomProvider, private
   override suspend fun pairMdnsService(pairingMdnsService: PairingMdnsService, password: String): PairingResult {
     LOG.info("Start mDNS pairing: ${pairingMdnsService}")
 
-    val deviceAddress = "${pairingMdnsService.ipAddress.hostAddress}:${pairingMdnsService.port}"
+    val deviceAddress = "${pairingMdnsService.ipOrHost}:${pairingMdnsService.port}"
     // TODO: Update this when password can be passed as an argument
     val passwordInput = password + LineSeparator.getSystemLineSeparator().separatorString
     // TODO: Investigate updating (then using) ddmlib instead of spawning an adb client command, so
@@ -132,10 +131,10 @@ class WiFiPairingServiceImpl(private val randomProvider: RandomProvider, private
     val matchResult = lineRegex.find(result.stdout[0])
     return matchResult?.let {
       try {
-        val ipAddress = withContext(Dispatchers.IO) { InetAddress.getByName(it.groupValues[1]) }
+        val ipOrHost = it.groupValues[1]
         val port = it.groupValues[2].toInt()
         val serviceGuid = it.groupValues[3]
-        PairingResult(ipAddress, port, serviceGuid)
+        PairingResult(ipOrHost, port, serviceGuid)
       } catch (e: Exception) {
         throw InvalidDataException("Pairing result is invalid", e)
       }

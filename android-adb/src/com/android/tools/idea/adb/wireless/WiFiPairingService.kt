@@ -23,7 +23,6 @@ import com.android.sdklib.deviceprovisioner.DeviceProperties.Companion.sanitizeF
 import com.google.common.util.concurrent.ListenableFuture
 import java.awt.Color
 import java.awt.image.BufferedImage
-import java.net.InetAddress
 import kotlinx.coroutines.flow.Flow
 
 /** Service to expose and pair wireless devices. All entry points run asynchronously and return [ListenableFuture] for completion. */
@@ -63,8 +62,8 @@ interface WiFiPairingService {
 
 /** Result of pairing a device through "adb pair" */
 data class PairingResult(
-  /** The IP address of the device that was paired */
-  val ipAddress: InetAddress,
+  /** The IP address or hostname of the device that was paired */
+  val ipOrHost: String,
   /** The TCP port that was used for pairing */
   val port: Int,
   /** The ID of the mDNS service representing the device that was paired (e.g. "adb-939AX05XBZ-vWgJpq") */
@@ -73,22 +72,27 @@ data class PairingResult(
   /** A user friendly string representation of the device */
   val displayString: String
     get() {
-      return ipAddress.hostAddress + ":" + port
+      return ipOrHost + ":" + port
     }
 }
 
 /** An adb-tls-pairing._tcp. service as exposed by the "adb mdns services" command */
-data class PairingMdnsService(
+data class PairingMdnsService
+@JvmOverloads
+constructor(
   val serviceName: String,
   val serviceType: ServiceType,
-  val ipAddress: InetAddress,
+  val ipAddress: String,
   val port: Int,
-  val serial: String?,
+  val hostname: String? = null,
 ) {
+  internal val ipOrHost: String
+    get() = ipAddress.ifEmpty { hostname.orEmpty() }
+
   /** A user friendly string representation of the device */
   val displayString: String
     get() {
-      return ipAddress.hostAddress + ":" + port
+      return ipOrHost + ":" + port
     }
 }
 

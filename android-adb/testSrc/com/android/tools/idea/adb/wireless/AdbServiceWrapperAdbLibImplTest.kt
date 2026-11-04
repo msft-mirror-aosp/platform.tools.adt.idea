@@ -21,7 +21,6 @@ import com.android.sdklib.AndroidApiLevel
 import com.android.tools.adblib.testutils.FakeAdbServerAdbLibRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ProjectRule
-import java.net.InetAddress
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -40,23 +39,64 @@ class AdbServiceWrapperAdbLibImplTest {
     get() = projectRule.project
 
   @Test
-  fun waitForOnlineDeviceShouldWork() = runBlockingWithTimeout {
+  fun waitForOnlineDeviceShouldMatchByMdnsServiceId() = runBlockingWithTimeout {
     // Prepare
     val adbService = AdbServiceWrapperAdbLibImpl(project)
-    val deviceId = "test-device-id"
-    val pairingResult = PairingResult(InetAddress.getByName("127.0.0.1"), 1234, deviceId)
+    val mdnsServiceId = "adb-939AX05XBZ-vWgJpq"
+    val connectedSerial = "$mdnsServiceId._adb-tls-connect._tcp"
+    val pairingResult = PairingResult("192.168.1.10", 41915, mdnsServiceId)
 
     // Act: Start waiting in a background coroutine
     val deferred = async { adbService.waitForOnlineDevice(pairingResult) }
-
-    // Give it a bit of time to start tracking
     delay(100.milliseconds)
 
-    // Simulate device coming online
-    adbRule.connectDevice(deviceId, "Google", "Pixel 10", "testRelease", AndroidApiLevel(36), DeviceState.HostConnectionType.USB)
+    // In FakeAdbServer, the first argument to connectDevice sets device.serialNumber.
+    // When ADB auto-connects over mDNS TLS, device.serialNumber is "<guid>._adb-tls-connect._tcp",
+    // which matches pairingResult.mdnsServiceId even if ipOrHost differs.
+    adbRule.connectDevice("other-device", "Google", "Other", "testRelease", AndroidApiLevel(36), DeviceState.HostConnectionType.NETWORK)
+    adbRule.connectDevice(connectedSerial, "Google", "Pixel 10", "testRelease", AndroidApiLevel(36), DeviceState.HostConnectionType.NETWORK)
 
     // Assert
     val onlineDevice = deferred.await()
-    assertThat(onlineDevice.id).isEqualTo(deviceId)
+    assertThat(onlineDevice.id).isEqualTo(connectedSerial)
+  }
+
+  @Test
+  fun waitForOnlineDeviceShouldMatchByIpAddress() = runBlockingWithTimeout {
+    // Prepare
+    val adbService = AdbServiceWrapperAdbLibImpl(project)
+    val ipAddress = "192.168.1.10"
+    val pairingResult = PairingResult(ipAddress, 41915, "")
+
+    // Act: Start waiting in a background coroutine
+    val deferred = async { adbService.waitForOnlineDevice(pairingResult) }
+    delay(100.milliseconds)
+
+    // Note: FakeAdbServer splits "host:transport:<serial>" on ':', so we connect using bare ipAddress without ":port".
+    adbRule.connectDevice("192.168.1.100", "Google", "Other", "testRelease", AndroidApiLevel(36), DeviceState.HostConnectionType.NETWORK)
+    adbRule.connectDevice(ipAddress, "Google", "Pixel 10", "testRelease", AndroidApiLevel(36), DeviceState.HostConnectionType.NETWORK)
+
+    // Assert
+    val onlineDevice = deferred.await()
+    assertThat(onlineDevice.id).isEqualTo(ipAddress)
+  }
+
+  @Test
+  fun waitForOnlineDeviceShouldMatchByHostname() = runBlockingWithTimeout {
+    // Prepare
+    val adbService = AdbServiceWrapperAdbLibImpl(project)
+    val hostname = "android-device.local"
+    val pairingResult = PairingResult(hostname, 41915, "")
+
+    // Act: Start waiting in a background coroutine
+    val deferred = async { adbService.waitForOnlineDevice(pairingResult) }
+    delay(100.milliseconds)
+
+    adbRule.connectDevice("${hostname}2", "Google", "Other", "testRelease", AndroidApiLevel(36), DeviceState.HostConnectionType.NETWORK)
+    adbRule.connectDevice(hostname, "Google", "Pixel 10", "testRelease", AndroidApiLevel(36), DeviceState.HostConnectionType.NETWORK)
+
+    // Assert
+    val onlineDevice = deferred.await()
+    assertThat(onlineDevice.id).isEqualTo(hostname)
   }
 }

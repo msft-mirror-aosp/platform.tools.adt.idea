@@ -25,7 +25,6 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.Disposer
-import java.net.InetAddress
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -118,9 +117,9 @@ class QrCodeScanningController(
             PairingMdnsService(
               it.mdnsService.serviceInstanceName.instance,
               it.toPairingType(),
-              InetAddress.getByName(it.mdnsService.ipv4),
+              it.mdnsService.ipv4,
               it.mdnsService.port,
-              it.mdnsService.serial,
+              it.mdnsService.hostname,
             )
           }
 

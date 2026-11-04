@@ -105,6 +105,7 @@ class WifiAvailableDevicesDialogTest {
     givenName: String? = null,
     serial: String? = null,
     mdnsServiceVersion: String? = null,
+    hostname: String? = null,
   ): MdnsTlsService {
     return MdnsTlsService(
       MdnsTrackServiceInfo(
@@ -117,6 +118,7 @@ class WifiAvailableDevicesDialogTest {
         givenName,
         serial,
         mdnsServiceVersion,
+        hostname,
       ),
       knownDevice,
     )

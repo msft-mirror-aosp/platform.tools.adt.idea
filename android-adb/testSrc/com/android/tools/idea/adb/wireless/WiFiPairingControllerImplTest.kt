@@ -350,12 +350,12 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
       Truth.assertThat(mdnsService).isNotNull()
       Truth.assertThat(mdnsService.serviceType).isEqualTo(ServiceType.QrCode)
       Truth.assertThat(mdnsService.serviceName).isEqualTo(generatedServiceName)
-      Truth.assertThat(mdnsService.ipAddress.hostAddress).isEqualTo(phoneIpAddress)
+      Truth.assertThat(mdnsService.ipAddress).isEqualTo(phoneIpAddress)
       Truth.assertThat(mdnsService.port).isEqualTo(phonePairingPort)
 
       val pairingResult = pumpAndWait(view.showQrCodePairingWaitForDeviceTracker.consume())
       Truth.assertThat(pairingResult).isNotNull()
-      Truth.assertThat(pairingResult.ipAddress.hostAddress).isEqualTo(phoneIpAddress)
+      Truth.assertThat(pairingResult.ipOrHost).isEqualTo(phoneIpAddress)
       Truth.assertThat(pairingResult.port).isEqualTo(phoneConnectPort)
       Truth.assertThat(pairingResult.mdnsServiceId).isEqualTo(phoneServiceName)
 
@@ -498,14 +498,14 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
 
       val pairingResult = pumpAndWait(pairingView.showWaitingForDeviceProgressTracker.consume())
       Truth.assertThat(pairingResult.mdnsServiceId).isEqualTo(phoneServiceName)
-      Truth.assertThat(pairingResult.ipAddress.hostAddress).isEqualTo(phoneIpAddress)
+      Truth.assertThat(pairingResult.ipOrHost).isEqualTo(phoneIpAddress)
       Truth.assertThat(pairingResult.port).isEqualTo(phoneConnectPort)
 
       val (mdnsService, device) = pumpAndWait(pairingView.showPairingSuccessTracker.consume())
       Truth.assertThat(mdnsService).isNotNull()
       Truth.assertThat(mdnsService.serviceType).isEqualTo(ServiceType.PairingCode)
       Truth.assertThat(mdnsService.serviceName).isEqualTo(phoneServiceName)
-      Truth.assertThat(mdnsService.ipAddress.hostAddress).isEqualTo(phoneIpAddress)
+      Truth.assertThat(mdnsService.ipAddress).isEqualTo(phoneIpAddress)
       Truth.assertThat(mdnsService.port).isEqualTo(phonePairingPort)
 
       Truth.assertThat(device).isEqualTo(phoneDeviceInfo)
@@ -536,7 +536,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
       Truth.assertThat(pairingCodeServices).isNotNull()
       Truth.assertThat(pairingCodeServices).hasSize(1)
       Truth.assertThat(pairingCodeServices[0].serviceName).isEqualTo(phoneServiceName)
-      Truth.assertThat(pairingCodeServices[0].ipAddress.hostAddress).isEqualTo(phoneIpAddress)
+      Truth.assertThat(pairingCodeServices[0].ipAddress).isEqualTo(phoneIpAddress)
       Truth.assertThat(pairingCodeServices[0].port).isEqualTo(phonePairingPort)
       Truth.assertThat(pairingCodeServices[0].serviceType).isEqualTo(ServiceType.PairingCode)
 
@@ -637,7 +637,91 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     }
   }
 
-  private fun createMdnsPairingService(instance: String, ipv4: String, port: Int): MdnsServices {
+  @Test
+  fun controllerShouldPreferIpv4OverHostnameWhenBothArePresent() = runBlocking {
+    randomProvider.seed = 10
+    val generatedPassword = "R7)i3aUHnMnX"
+    val phoneIpAddress = "192.168.1.86"
+    val phoneHostname = "android-device.local"
+    val phonePairingPort = 37313
+    val phoneServiceName = "adb-939AX05XBZ-vWgJpq"
+    val phoneConnectPort = 12345
+    val phoneDeviceInfo = AdbOnlineDevice("myid", emptyMap())
+
+    adbService.useMock = true
+    whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
+      .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersion))
+    whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
+    whenever(adbService.instance.trackMdnsServices())
+      .thenReturn(flowOf(createMdnsPairingService(generatedServiceName, phoneIpAddress, phonePairingPort, phoneHostname)))
+    whenever(adbService.instance.executeCommand(listOf("pair", "${phoneIpAddress}:${phonePairingPort}"), generatedPassword + newLine()))
+      .thenReturn(
+        AdbCommandResult(0, listOf("Successfully paired to ${phoneIpAddress}:${phoneConnectPort} [guid=${phoneServiceName}]"), listOf())
+      )
+    whenever(adbService.instance.waitForOnlineDevice(any())).thenReturn(phoneDeviceInfo)
+
+    createModalDialogAndInteractWithIt({ controller.showDialog() }) {
+      pumpAndWait(view.showDialogTracker.consume())
+      pumpAndWait(view.startMdnsCheckTracker.consume())
+      pumpAndWait(view.showMdnsCheckSuccessTracker.consume())
+      pumpAndWait(view.showQrCodePairingStartedTracker.consume())
+      pumpAndWait(model.qrCodeImageTracker.consume())
+
+      val mdnsService = pumpAndWait(view.showQrCodePairingInProgressTracker.consume())
+      Truth.assertThat(mdnsService.ipAddress).isEqualTo(phoneIpAddress)
+      Truth.assertThat(mdnsService.hostname).isEqualTo(phoneHostname)
+      Truth.assertThat(mdnsService.displayString).isEqualTo("${phoneIpAddress}:${phonePairingPort}")
+
+      val pairingResult = pumpAndWait(view.showQrCodePairingWaitForDeviceTracker.consume())
+      Truth.assertThat(pairingResult.ipOrHost).isEqualTo(phoneIpAddress)
+      pumpAndWait(view.showQrCodePairingSuccessTracker.consume())
+    }
+  }
+
+  @Test
+  fun controllerShouldFallbackToHostnameWhenIpv4IsEmpty() = runBlocking {
+    randomProvider.seed = 10
+    val generatedPassword = "R7)i3aUHnMnX"
+    val phoneHostname = "android-device.local"
+    val phonePairingPort = 37313
+    val phoneServiceName = "adb-939AX05XBZ-vWgJpq"
+    val phoneConnectPort = 12345
+    val phoneDeviceInfo = AdbOnlineDevice("myid", emptyMap())
+
+    adbService.useMock = true
+    whenever(adbService.instance.executeCommand(listOf("mdns", "check"), ""))
+      .thenReturn(AdbCommandResult(0, listOf("mdns daemon version [10970003]"), listOf()))
+    whenever(adbService.instance.getServerStatus()).thenReturn(ServerStatus(version = adbVersion))
+    whenever(adbService.instance.getHostFeatures()).thenReturn(listOf(TRACK_MDNS_SERVICE))
+    whenever(adbService.instance.trackMdnsServices())
+      .thenReturn(flowOf(createMdnsPairingService(generatedServiceName, "", phonePairingPort, phoneHostname)))
+    whenever(adbService.instance.executeCommand(listOf("pair", "${phoneHostname}:${phonePairingPort}"), generatedPassword + newLine()))
+      .thenReturn(
+        AdbCommandResult(0, listOf("Successfully paired to ${phoneHostname}:${phoneConnectPort} [guid=${phoneServiceName}]"), listOf())
+      )
+    whenever(adbService.instance.waitForOnlineDevice(any())).thenReturn(phoneDeviceInfo)
+
+    createModalDialogAndInteractWithIt({ controller.showDialog() }) {
+      pumpAndWait(view.showDialogTracker.consume())
+      pumpAndWait(view.startMdnsCheckTracker.consume())
+      pumpAndWait(view.showMdnsCheckSuccessTracker.consume())
+      pumpAndWait(view.showQrCodePairingStartedTracker.consume())
+      pumpAndWait(model.qrCodeImageTracker.consume())
+
+      val mdnsService = pumpAndWait(view.showQrCodePairingInProgressTracker.consume())
+      Truth.assertThat(mdnsService.ipAddress).isEmpty()
+      Truth.assertThat(mdnsService.hostname).isEqualTo(phoneHostname)
+      Truth.assertThat(mdnsService.displayString).isEqualTo("${phoneHostname}:${phonePairingPort}")
+
+      val pairingResult = pumpAndWait(view.showQrCodePairingWaitForDeviceTracker.consume())
+      Truth.assertThat(pairingResult.ipOrHost).isEqualTo(phoneHostname)
+      Truth.assertThat(pairingResult.displayString).isEqualTo("${phoneHostname}:${phoneConnectPort}")
+      pumpAndWait(view.showQrCodePairingSuccessTracker.consume())
+    }
+  }
+
+  private fun createMdnsPairingService(instance: String, ipv4: String, port: Int, hostname: String? = null): MdnsServices {
     val pairingService =
       MdnsPairingService(
         MdnsTrackServiceInfo(
@@ -650,6 +734,7 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
           null,
           null,
           null,
+          hostname,
         )
       )
     return MdnsServices(emptyList(), emptyList(), listOf(pairingService))
