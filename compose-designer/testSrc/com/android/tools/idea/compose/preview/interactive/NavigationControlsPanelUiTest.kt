@@ -23,14 +23,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performMouseInput
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.text.TextLayoutResult
@@ -685,5 +688,49 @@ class NavigationControlsPanelUiTest {
     val lighterLuminance = max(foregroundLuminance, backgroundLuminance)
     val darkerLuminance = min(foregroundLuminance, backgroundLuminance)
     return (lighterLuminance + 0.05f) / (darkerLuminance + 0.05f)
+  }
+
+  @Test
+  fun testProgressSliderAccessibilitySemantics() {
+    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val backPressCompletedFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    composeTestRule.setContent {
+      NavigationControlsPanel(
+        isEdgeNavigationImplemented = { true },
+        canBackPress = { true },
+        onBackPress = {},
+        onBackPressStart = {},
+        onBackPressProgress = { _, _ -> },
+        onBackPressTrackProgress = {},
+        onEdgeDropdownPress = {},
+        fpsUpdater = fpsUpdater,
+        backPressCompletedFlow = backPressCompletedFlow,
+      )
+    }
+
+    // Locate the slider by its accessible contentDescription and verify initial 0% stateDescription
+    val expectedDescription = message("action.navigate.back.predictive.back.progress.description")
+    val progressSliderNode = composeTestRule.onNodeWithContentDescription(expectedDescription).assertIsDisplayed()
+    assertEquals(
+      listOf(expectedDescription),
+      progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.ContentDescription],
+    )
+    assertEquals("0%", progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+
+    // Update the slider progress via the accessibility SetProgress action and verify the rounded percentage stateDescription
+    progressSliderNode.performSemanticsAction(SemanticsActions.SetProgress) { setProgressAction -> setProgressAction(0.333f) }
+    composeTestRule.waitForIdle()
+    assertEquals("33%", progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+
+    // Update the slider progress to 100% via the accessibility SetProgress action and verify stateDescription reaches 100%
+    progressSliderNode.performSemanticsAction(SemanticsActions.SetProgress) { setProgressAction -> setProgressAction(1.0f) }
+    composeTestRule.waitForIdle()
+    assertEquals("100%", progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+
+    // Emit a back press completion event and verify stateDescription resets back to 0%
+    backPressCompletedFlow.tryEmit(Unit)
+    composeTestRule.waitForIdle()
+    assertEquals("0%", progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
   }
 }
