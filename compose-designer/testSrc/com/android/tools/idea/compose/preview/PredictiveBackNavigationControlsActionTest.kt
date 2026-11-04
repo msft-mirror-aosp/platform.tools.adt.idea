@@ -19,6 +19,7 @@ import com.android.tools.adtui.ZoomController
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.idea.actions.DESIGN_SURFACE
 import com.android.tools.idea.common.surface.DesignSurface
+import com.android.tools.idea.preview.analytics.InteractiveNopTracker
 import com.android.tools.idea.preview.modes.PreviewMode
 import com.android.tools.idea.preview.modes.PreviewModeManager
 import com.android.tools.preview.ComposePreviewElementInstance
@@ -28,6 +29,8 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.TestActionEvent
+import com.intellij.testFramework.runInEdtAndWait
+import kotlinx.coroutines.flow.MutableSharedFlow
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -141,6 +144,37 @@ class PredictiveBackNavigationControlsActionTest {
 
     // Ensure we are still in zoom-to-fit mode.
     assertThat(fakeZoomController.canZoomToFit()).isTrue()
+  }
+
+  @Test
+  fun `action remains visible and switches text to Show Navigation Options after hiding panel`() {
+    // Set up a real controller with NavDisplay present and predictive back available
+    val realController =
+      InteractivePreviewNavigationController(
+        usageTrackerProvider = { InteractiveNopTracker() },
+        fpsUpdater = MutableSharedFlow(),
+      )
+    val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(onBackPressProgressCallback = { _, _ -> })
+    realController.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = true)
+
+    // Show the navigation controls initially as when entering Interactive Mode
+    runInEdtAndWait { realController.showNavigationControls(selectedPreview) }
+
+    // Verify the action is visible and displays "Hide Navigation Options" while the panel is shown
+    val beforeHideEvent = createEvent(designSurface, realController, previewModeManager)
+    action.update(beforeHideEvent)
+    assertThat(beforeHideEvent.presentation.isVisible).isTrue()
+    assertThat(beforeHideEvent.presentation.text).isEqualTo(message("action.navigate.hide.options"))
+
+    // Trigger the action to hide the navigation panel
+    runInEdtAndWait { action.actionPerformed(beforeHideEvent) }
+    assertThat(realController.isNavigationControlsShown()).isFalse()
+
+    // Verify the action remains visible in the overflow menu and switches its text to "Show Navigation Options"
+    val afterHideEvent = createEvent(designSurface, realController, previewModeManager)
+    action.update(afterHideEvent)
+    assertThat(afterHideEvent.presentation.isVisible).isTrue()
+    assertThat(afterHideEvent.presentation.text).isEqualTo(message("action.navigate.show.options"))
   }
 
   private fun createEvent(

@@ -318,7 +318,8 @@ class InteractivePreviewNavigationControllerTest {
   }
 
   @Test
-  fun testHideNavigationControlsClearsDispatcherOwnerAndMethods() {
+  fun testHideNavigationControlsPreservesDispatcherOwnerAndMethods() {
+    // Set up the controller with an active dispatcher owner and NavDisplay in the view tree
     val controller = createController()
     val composeViewAdapterObjFake =
       TestComposeViewAdapterViewObj(
@@ -333,8 +334,37 @@ class InteractivePreviewNavigationControllerTest {
     assertThat(controller.canShowNavigationPanel()).isTrue()
     assertThat(controller.getNavigationHistory()).isNotEmpty()
 
+    // Hide the navigation controls during an active interactive session
     runInEdtAndWait { controller.hideNavigationControls() }
 
+    // Verify the navigation state and canShowNavigationPanel() remain intact so the user can re-enable the panel
+    assertThat(controller.canBackPress()).isTrue()
+    assertThat(controller.canPerformBackNavigation()).isTrue()
+    assertThat(controller.canShowNavigationPanel()).isTrue()
+    assertThat(controller.getNavigationHistory()).containsExactly("Screen1", "Screen2").inOrder()
+  }
+
+  @Test
+  fun testClearClearsDispatcherOwnerAndMethods() {
+    // Set up the controller with an active dispatcher owner and NavDisplay in the view tree
+    val controller = createController()
+    val composeViewAdapterObjFake =
+      TestComposeViewAdapterViewObj(
+        canBackPress = true,
+        onBackPressProgressCallback = { _, _ -> },
+        onBackPressCompletedCallback = {},
+        history = listOf("Screen1", "Screen2"),
+      )
+    controller.updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = true)
+    assertThat(controller.canBackPress()).isTrue()
+    assertThat(controller.canPerformBackNavigation()).isTrue()
+    assertThat(controller.canShowNavigationPanel()).isTrue()
+    assertThat(controller.getNavigationHistory()).isNotEmpty()
+
+    // Clear the controller when exiting Interactive Mode
+    controller.clear()
+
+    // Verify all dispatcher references, cached reflection methods, and navigation flags are cleared
     assertThat(controller.canBackPress()).isFalse()
     assertThat(controller.canPerformBackNavigation()).isFalse()
     assertThat(controller.canShowNavigationPanel()).isFalse()

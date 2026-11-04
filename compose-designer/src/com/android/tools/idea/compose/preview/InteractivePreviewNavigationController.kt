@@ -308,14 +308,15 @@ class InteractivePreviewNavigationController(
   /**
    * Hides the navigation controls.
    *
-   * If the controller is currently enabled, it clears the active navigation panel and triggers [onAfterPanelUpdate].
+   * If the controller is currently enabled, it clears the active navigation panel and triggers [onAfterPanelUpdate] while keeping the
+   * dispatcher owner and navigation state intact so the panel can be shown again during the active interactive session.
    */
   @UiThread
   fun hideNavigationControls() {
+    // Cancel any ongoing predictive back gesture before collapsing the bottom panel
     if (isBackGestureInProgress) {
       backPressCancelled()
     }
-    clear()
     if (activeBackNavigationPanelInInteractiveMode != null) {
       activeBackNavigationPanelInInteractiveMode = null
       onAfterPanelUpdate()
