@@ -32,13 +32,13 @@ _tests = [
     "K2IdeK2CodeCoroutineAsyncStackTraceTestGenerated$Uncategorized.testWithTimeout",  # b/579461799
     "K2IdeK2CodeCoroutineDumpTestGenerated.testTwoDumps",  # b/579461799
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$Uncategorized.testInlineStackTraceWithTryFinally",  # b/579461799 Android stack trace is actually the right one
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testFrameObject",  # b/581450939
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testFrameObject",  # b/581450939, b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testIdea352803",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testLambdaOnSecondLine",  # b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testOneLineFunctionalExpression",  # b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testOneLineLambda",  # b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Lambdas.testTwoLambdasOnOneLineFirst",  # b/578038532
-    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testInlineWithAnonymousObject",  # b/581450939
+    "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testInlineWithAnonymousObject",  # b/581450939, b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testOnObjectHeader",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testSmartStepIntoLambdaWithParameterDestructuring",  # b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testSmartStepIntoSamWithParameterDestructuring",  # b/578038532
@@ -55,7 +55,7 @@ _tests = [
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFunctionCallStoredToVariable",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testIdea334404",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testIdea362864",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testInitBlocks",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testInitBlocks",  # b/495501447
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testInsideCallChain",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testLambdaWithImplicitReturn",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testLineBreakpointWithMethodReference",
@@ -72,7 +72,7 @@ _tests = [
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLambdaWithparametersDestructuring",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLambdasOnManyLines",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoLambdasOnOneLine",  # b/578038532
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoMethodWithJvmNameAnnotation",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoMethodWithJvmNameAnnotation",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoMultiplyInlinedLambdas",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoOnLambdaBreakpoint",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoSamLambdaFromJavaFunInterface",  # b/578038532
@@ -80,23 +80,23 @@ _tests = [
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoStoredLambda",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoSuspendLambda",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoTargetsOrder",  # b/578038532
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoToLambdaParameter",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoToLambdaParameter",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepIntoToLambdaParameterAfterSam",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSmartStepWithInlineClass",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testStepOverInvokeMethodInLambda",  # b/578038532
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testStepThroughDefaultArgsConstructor",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testStepThroughDefaultArgsConstructor",  # b/495501447
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSyntheticProvider",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Filters.testStepIntoSpecificKotlinClasses",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$Filters.testStepIntoSpecificKotlinClasses",  # b/495501447
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepInto.testClassObjectFunFromTopLevel",
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepInto.testObjectFun",
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testInterfacesJvmDefaultDisable",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testLocalDelegatedPropertyAndClinit",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testLocalDelegatedPropertyAndClinit",  # b/495501447
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testSyntheticMethods",  # b/578038532
-    "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testSyntheticMethodsSkip",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$StepOut.testStepOutConstructorWithValueClassParam",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$StepIntoOnly.testSyntheticMethodsSkip",  # b/578038532
+    "K2IdeK2CodeKotlinSteppingTestGenerated$StepOut.testStepOutConstructorWithValueClassParam",  # b/495501447
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Coroutines.testSequenceNested2",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testKt15652",
-    "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testStepOverConstructorWithValueClassParam",
+    "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testStepOverConstructorWithValueClassParam",  # b/495501447
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testStopInNamelessFunInInlineCall",
     "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesInSuspendContexts",
     "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesInSuspendInline",
