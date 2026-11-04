@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.project.build.invoker.GradleTaskFinder
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacetConfiguration
 import com.android.tools.idea.gradle.project.facet.ndk.NdkFacetConfiguration
 import com.android.tools.idea.gradle.util.AGP_BUILT_IN_KOTLIN_VERSION
+import com.android.tools.idea.gradle.util.AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION
 import com.android.tools.idea.gradle.util.BuildMode
 import com.android.tools.idea.projectsystem.gradle.getAndroidTestModule
 import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
@@ -500,9 +501,14 @@ private fun getKotlinMajorMinorVersion(): String = Version.parseVersion(KOTLIN_V
 /** Returns built-in Kotlin major.minor version of AGP @ HEAD (e.g., given "2.3.10", return "2.3"). */
 private fun getBuiltInKotlinMajorMinorVersion(): String = Version.parseVersion(AGP_BUILT_IN_KOTLIN_VERSION)!!.run { "$major.$minor" }
 
+/** Returns minimum built-in Kotlin major.minor version of AGP @ HEAD (e.g., given "2.2.10", return "2.2"). */
+private fun getMinimumBuiltInKotlinMajorMinorVersion(): String =
+  Version.parseVersion(AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION)!!.run { "$major.$minor" }
+
 private fun String.replaceKotlinMajorMinorVersion() =
   replace(getKotlinMajorMinorVersion(), "<KOTLIN-MAJOR-MINOR-VERSION>")
     .replace(getBuiltInKotlinMajorMinorVersion(), "<KOTLIN-MAJOR-MINOR-VERSION>")
+    .replace(getMinimumBuiltInKotlinMajorMinorVersion(), "<MINIMUM-KOTLIN-MAJOR-MINOR-VERSION>")
 
 private fun String.nullizePrefixedWith(vararg prefixes: String): String? = if (prefixes.any { this.startsWith(it) }) null else this
 

@@ -64,12 +64,15 @@ object KotlinGradleProjectSystemUtil {
 fun AgpVersion.getKotlinVersion(): String? {
   return when {
     major < 9 -> null
-    major == 9 && minor <= 1 -> "2.2.10"
+    major == 9 && minor <= 5 -> "2.2.10"
     else -> AGP_BUILT_IN_KOTLIN_VERSION
   }
 }
 
-/** The Kotlin Gradle plugin version that AGP @ HEAD depends on. */
+/** The minimum Kotlin Gradle plugin version that AGP @ HEAD supports. */
+const val AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION = "2.2.10"
+
+/** The default Kotlin Gradle plugin version that AGP @ HEAD recommends using. */
 const val AGP_BUILT_IN_KOTLIN_VERSION = "2.2.10"
 
 /**

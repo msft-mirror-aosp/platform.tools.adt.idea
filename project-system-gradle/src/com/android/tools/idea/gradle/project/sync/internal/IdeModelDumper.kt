@@ -64,6 +64,7 @@ import com.android.tools.idea.gradle.project.model.gradleModuleModel
 import com.android.tools.idea.gradle.project.sync.idea.data.DataNodeCaches
 import com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys
 import com.android.tools.idea.gradle.util.AGP_BUILT_IN_KOTLIN_VERSION
+import com.android.tools.idea.gradle.util.AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION
 import com.android.tools.idea.model.StudioAndroidModuleInfo
 import com.android.tools.idea.projectsystem.gradle.GradleHolderProjectPath
 import com.android.tools.idea.projectsystem.gradle.getHolderModule
@@ -269,7 +270,9 @@ const val KOTLIN_VERSION_FOR_TESTS = "2.5.0-Beta2"
 
 fun String.replaceKotlinVersionForTests(): String = replace(KOTLIN_VERSION_FOR_TESTS, "<KOTLIN_VERSION_FOR_TESTS>")
 
-fun String.replaceBuiltInKotlinVersion(): String = replace(AGP_BUILT_IN_KOTLIN_VERSION, "<AGP_BUILT_IN_KOTLIN_VERSION>")
+fun String.replaceBuiltInKotlinVersion(): String =
+  replace(AGP_BUILT_IN_KOTLIN_VERSION, "<AGP_BUILT_IN_KOTLIN_VERSION>")
+    .replace(AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION, "<AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>")
 
 private fun ideModelDumper(projectDumper: ProjectDumper) =
   with(projectDumper) {

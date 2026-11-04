@@ -28,7 +28,14 @@ class KotlinGradleProjectSystemUtilTest {
   fun testAgpVersionGetKotlinVersion() {
     assertNull(AgpVersion.parse("8.0.0").getKotlinVersion())
     assertEquals("2.2.10", AgpVersion.parse("9.0.0").getKotlinVersion())
+    assertEquals("2.2.10", AgpVersion.parse("9.1.0").getKotlinVersion())
+    assertEquals("2.2.10", AgpVersion.parse("9.2.0").getKotlinVersion())
+    assertEquals("2.2.10", AgpVersion.parse("9.3.0").getKotlinVersion())
+    assertEquals("2.2.10", AgpVersion.parse("9.4.0").getKotlinVersion())
+    assertEquals("2.2.10", AgpVersion.parse("9.5.0").getKotlinVersion())
+    assertEquals(AGP_BUILT_IN_KOTLIN_VERSION, AgpVersion.parse("9.6.0-alpha01").getKotlinVersion())
     assertEquals(AGP_BUILT_IN_KOTLIN_VERSION, AgpVersion.parse("100.0.0").getKotlinVersion())
+    assertEquals("2.2.10", AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION)
   }
 
   @Test
