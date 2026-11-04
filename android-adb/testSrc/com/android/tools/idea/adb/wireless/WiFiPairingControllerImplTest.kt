@@ -33,9 +33,7 @@ import com.android.tools.idea.adb.AdbOptionsService
 import com.android.tools.idea.adb.AdbServerMdnsBackend
 import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.testing.ThreadingCheckRule
-import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.WIFI_PAIRING_EVENT
 import com.google.wireless.android.sdk.stats.ApiVersion
@@ -140,7 +138,6 @@ class WiFiPairingControllerImplTest : LightPlatform4TestCase() {
     super.setUp()
     testTimeout = TimeoutRemainder(30, testTimeUnit)
     enableHeadlessDialogs(testRootDisposable)
-    StudioFlags.ADB_WIFI_V2_DIALOG.overrideForTest(true, testRootDisposable)
   }
 
   @Suppress("SameParameterValue")

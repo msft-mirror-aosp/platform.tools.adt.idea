@@ -15,28 +15,15 @@
  */
 package com.android.tools.idea.adb.wireless
 
-import com.android.tools.adtui.swing.PortableUiFontRule
-import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
-import com.android.tools.adtui.swing.enableHeadlessDialogs
-import com.android.tools.idea.flags.StudioFlags
-import com.android.tools.idea.testing.flags.overrideForTest
-import com.android.tools.idea.ui.SimpleDialog
 import com.google.common.truth.Truth
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.testFramework.LightPlatform4TestCase
 import com.intellij.testFramework.TestActionEvent
-import org.junit.Rule
 import org.junit.Test
 
 class PairDevicesUsingWiFiActionTest : LightPlatform4TestCase() {
-  @get:Rule val portableUiFontRule = PortableUiFontRule()
-
-  override fun setUp() {
-    super.setUp()
-    enableHeadlessDialogs(testRootDisposable)
-  }
-
   @Test
-  fun actionShouldBeEnabledIfFlagIsSet() {
+  fun actionShouldBeEnabledWhenProjectIsSet() {
     // Prepare
     val action = PairDevicesUsingWiFiAction()
     val event = TestActionEvent.createTestEvent(action)
@@ -50,24 +37,16 @@ class PairDevicesUsingWiFiActionTest : LightPlatform4TestCase() {
   }
 
   @Test
-  fun dialogShouldShowWhenInvokingAction() {
+  fun actionShouldBeDisabledWhenProjectIsNull() {
     // Prepare
-    // Disable the flag because can't use swing utilities to verify the new compose dialog.
-    StudioFlags.ADB_WIFI_V2_DIALOG.overrideForTest(false, testRootDisposable)
-
     val action = PairDevicesUsingWiFiAction()
-    val event = TestActionEvent.createTestEvent(action)
+    val event = TestActionEvent.createTestEvent(action, DataContext.EMPTY_CONTEXT)
 
     // Act
-    createModalDialogAndInteractWithIt({
-      action.update(event)
-      action.actionPerformed(event)
-    }) {
-      // Assert
-      val dialog = SimpleDialog.fromDialogWrapper(it) ?: throw AssertionError("Dialog Wrapper is not set")
-      Truth.assertThat(dialog.title).isEqualTo("Pair devices over Wi-Fi")
-      Truth.assertThat(dialog.cancelButtonText).isEqualTo("Close")
-      Truth.assertThat(dialog.rootPane).isNotNull()
-    }
+    action.update(event)
+
+    // Assert
+    Truth.assertThat(event.presentation.isEnabled).isFalse()
+    Truth.assertThat(event.presentation.isVisible).isFalse()
   }
 }

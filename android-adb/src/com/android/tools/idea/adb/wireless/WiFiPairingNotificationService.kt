@@ -16,21 +16,14 @@
 package com.android.tools.idea.adb.wireless
 
 import com.android.annotations.concurrency.UiThread
-import com.android.tools.idea.adb.wireless.v2.ui.WifiAvailableDevicesDialog
-import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationType
-import com.intellij.openapi.actionSystem.AnAction
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.Strings.escapeXmlEntities
 import icons.StudioIcons
 import javax.swing.Icon
 
 /** Service responsible for showing notification popups related to ADB device pairing (see [WiFiPairingController]) */
 interface WiFiPairingNotificationService {
-
-  val project: Project
-
-  @UiThread fun showBalloon(title: String, content: String, type: NotificationType, icon: Icon?, actions: List<AnAction> = emptyList())
+  @UiThread fun showBalloon(title: String, content: String, type: NotificationType, icon: Icon?)
 }
 
 fun WiFiPairingNotificationService.showPairingSuccessBalloon(device: AdbOnlineDevice) {
@@ -39,20 +32,5 @@ fun WiFiPairingNotificationService.showPairingSuccessBalloon(device: AdbOnlineDe
     "The device is now available to use.",
     NotificationType.INFORMATION,
     StudioIcons.Common.SUCCESS,
-  )
-}
-
-fun WiFiPairingNotificationService.showDeviceHiddenBalloon(deviceName: String?) {
-  showBalloon(
-    escapeXmlEntities("${deviceName ?: "Device"} is now hidden"),
-    "You can view and pair all devices by using the Wi-Fi pairing dialog.",
-    NotificationType.INFORMATION,
-    StudioIcons.Common.SUCCESS,
-    listOf(
-      NotificationAction.createExpiring("Open wifi-pairing dialog") { _, _ ->
-        val wifiPairingService = WiFiPairingServiceImpl(RandomProvider(), AdbServiceWrapperAdbLibImpl(project))
-        WifiAvailableDevicesDialog(project, wifiPairingService).showDialog()
-      }
-    ),
   )
 }

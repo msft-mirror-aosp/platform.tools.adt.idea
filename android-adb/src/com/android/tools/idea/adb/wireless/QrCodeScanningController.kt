@@ -18,7 +18,6 @@ package com.android.tools.idea.adb.wireless
 import com.android.adblib.MdnsPairingService
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.flags.StudioFlags
 import com.google.wireless.android.sdk.stats.WifiPairingEvent.PairingMethod.QR_CODE
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
@@ -27,7 +26,6 @@ import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.util.Disposer
 import java.net.InetAddress
-import java.time.Duration
 import java.util.concurrent.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,8 +33,6 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.time.delay
-import kotlinx.coroutines.withContext
 
 /** Handles the QR Code pairing aspect of the "Pair device over Wi-FI" dialog */
 @UiThread
@@ -67,15 +63,12 @@ class QrCodeScanningController(
   suspend fun startPairingProcess() {
     view.showQrCodePairingStarted()
     generateQrCode(view.model)
-    if (StudioFlags.ADB_WIFI_V2_DIALOG.get() && service.isTrackMdnsServiceAvailable()) {
-      if (state.value == State.Init) {
-        startMdnsTrackingService()
-      }
-      state.value = State.Polling
-    } else {
-      state.value = State.Polling
-      pollMdnsServices()
+    if (state.value == State.Init) {
+      // The mDNS tracking service (`host:track-mdns-services`) is always available here because
+      // the pairing dialog is never shown if the ADB version is below 37.0.0.
+      startMdnsTrackingService()
     }
+    state.value = State.Polling
   }
 
   private suspend fun generateQrCode(model: WiFiPairingModel) {
@@ -115,27 +108,6 @@ class QrCodeScanningController(
 
   private fun isCancelled(error: Throwable): Boolean {
     return error is CancellationException
-  }
-
-  private fun pollMdnsServices() {
-    scope.launch {
-      // Don't start a new polling request if we are not in "polling" mode
-      while (state.value == State.Polling) {
-        try {
-          val services = service.scanMdnsServices()
-          withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
-            view.model.pairingCodeServices = services.filter { it.serviceType == ServiceType.PairingCode }
-            view.model.qrCodeServices = services.filter { it.serviceType == ServiceType.QrCode }
-          }
-        } catch (e: Throwable) {
-          // TODO: Should we show an error to the user?
-          LOG.warn("Error scanning mDNS services", e)
-        }
-
-        // Run again in 1 second, unless we are disposed
-        delay(Duration.ofSeconds(1))
-      }
-    }
   }
 
   private fun startMdnsTrackingService() {

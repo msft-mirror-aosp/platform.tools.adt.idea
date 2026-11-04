@@ -17,7 +17,6 @@ package com.android.tools.idea.adb.wireless
 
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.idea.adb.wireless.v2.ui.WifiAvailableDevicesDialog
-import com.android.tools.idea.flags.StudioFlags
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
@@ -34,10 +33,6 @@ class PairDevicesUsingWiFiAction : DumbAwareAction(StudioIcons.Avd.PAIR_OVER_WIF
   @UiThread
   override fun actionPerformed(event: AnActionEvent) {
     val project = event.project ?: return
-    if (!StudioFlags.ADB_WIFI_V2_DIALOG.get()) {
-      PairDevicesUsingWiFiService.getInstance(project).createPairingDialogController().showDialog()
-      return
-    }
     val wifiPairingService = WiFiPairingServiceImpl(RandomProvider(), AdbServiceWrapperAdbLibImpl(project))
     WifiAvailableDevicesDialog(project, wifiPairingService).showDialog()
   }

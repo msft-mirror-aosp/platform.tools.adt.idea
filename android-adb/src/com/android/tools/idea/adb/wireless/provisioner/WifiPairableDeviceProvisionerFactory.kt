@@ -16,22 +16,15 @@
 package com.android.tools.idea.adb.wireless.provisioner
 
 import com.android.tools.idea.adb.wireless.AdbServiceWrapperAdbLibImpl
-import com.android.tools.idea.adb.wireless.WiFiPairingNotificationServiceImpl
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerFactory
-import com.android.tools.idea.flags.StudioFlags
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.CoroutineScope
 
 /** Builds a WifiPairableDeviceProvisionerPlugin with its dependencies provided by Studio. */
 class WifiPairableDeviceProvisionerFactory : DeviceProvisionerFactory {
   override val isEnabled: Boolean
-    get() = StudioFlags.ADB_WIFI_V2_DEVICE_MANAGER.get()
+    get() = true
 
   override fun create(coroutineScope: CoroutineScope, project: Project) =
-    WifiPairableDeviceProvisionerPlugin(
-      coroutineScope,
-      AdbServiceWrapperAdbLibImpl(project),
-      project,
-      WiFiPairingNotificationServiceImpl(project),
-    )
+    WifiPairableDeviceProvisionerPlugin(coroutineScope, AdbServiceWrapperAdbLibImpl(project), project)
 }

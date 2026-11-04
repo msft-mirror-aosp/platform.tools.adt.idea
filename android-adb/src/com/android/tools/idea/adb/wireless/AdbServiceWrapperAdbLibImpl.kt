@@ -26,7 +26,6 @@ import com.android.adblib.ServerStatus
 import com.android.adblib.deviceProperties
 import com.android.adblib.trackDevices
 import com.android.tools.idea.adblib.AdbLibService
-import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.util.LineSeparator
 import kotlin.time.Duration.Companion.milliseconds
@@ -42,14 +41,10 @@ private const val ADB_FAILED_COMMAND_ERROR_CODE = 5
 
 class AdbServiceWrapperAdbLibImpl(private val project: Project) : AdbServiceWrapper {
 
-  private val log = logger<AdbServiceWrapperAdbLibImpl>()
-
   override suspend fun executeCommand(args: List<String>, stdin: String): AdbCommandResult {
     return withContext(Dispatchers.IO) {
       if (args == listOf("mdns", "check")) {
         mdnsCheck()
-      } else if (args == listOf("mdns", "services")) {
-        mdnsServices()
       } else if (args[0] == "pair") {
         mdnsPair(args[1], stdin)
       } else {
@@ -67,26 +62,6 @@ class AdbServiceWrapperAdbLibImpl(private val project: Project) : AdbServiceWrap
     return try {
       val result = hostServices.mdnsCheck()
       AdbCommandResult(0, listOf(result.rawText), listOf())
-    } catch (e: AdbFailResponseException) {
-      AdbCommandResult(ADB_FAILED_COMMAND_ERROR_CODE, listOf(), listOf(e.failMessage))
-    }
-  }
-
-  private suspend fun mdnsServices(): AdbCommandResult {
-    val hostServices = AdbLibService.getSession(project).hostServices
-    return try {
-      val result = hostServices.mdnsServices()
-      result.errors.forEach { errorLine ->
-        log.error("'${errorLine.message}' error while parsing 'mdns services' output line: '${errorLine.rawLineText}'")
-      }
-
-      // Recreate stdout from parsed result
-      // See format of output at
-      // https://cs.android.com/android/platform/superproject/+/fbe41e9a47a57f0d20887ace0fc4d0022afd2f5f:packages/modules/adb/client/commandline.cpp;l=1948
-      // and
-      // https://cs.android.com/android/platform/superproject/+/3a52886262ae22477a7d8ffb12adba64daf6aafa:packages/modules/adb/client/transport_mdns.cpp;l=302;drc=3a52886262ae22477a7d8ffb12adba64daf6aafa
-      val stdout = listOf("List of discovered mdns services") + result.map { "${it.instanceName}\t${it.serviceName}\t${it.deviceAddress}" }
-      AdbCommandResult(0, stdout, listOf())
     } catch (e: AdbFailResponseException) {
       AdbCommandResult(ADB_FAILED_COMMAND_ERROR_CODE, listOf(), listOf(e.failMessage))
     }

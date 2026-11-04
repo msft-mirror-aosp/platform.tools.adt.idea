@@ -54,7 +54,6 @@ class OverflowButton : IconButton(StudioIcons.Common.OVERFLOW) {
       OpenDeviceExplorerAction(),
       ViewDetailsAction(),
       ShowOnDiskAction(),
-      HideDeviceAction(),
     )
 
   init {

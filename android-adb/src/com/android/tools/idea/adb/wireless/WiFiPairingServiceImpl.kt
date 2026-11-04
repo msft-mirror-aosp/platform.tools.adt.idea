@@ -96,46 +96,6 @@ class WiFiPairingServiceImpl(private val randomProvider: RandomProvider, private
     return Futures.immediateFuture(emptyList())
   }
 
-  @Throws(AdbCommandException::class)
-  override suspend fun scanMdnsServices(): List<PairingMdnsService> {
-    // TODO: Investigate updating (then using) ddmlib instead of spawning an adb client command, so
-    // that
-    //       we don't have to rely on parsing command line output
-    val result = adbService.executeCommand(listOf("mdns", "services"))
-    // Output example:
-    //  List of discovered mdns services
-    //  adb-939AX05XBZ-vWgJpq	_adb-tls-connect._tcp.	192.168.1.86:39149
-    //  adb-939AX05XBZ-vWgJpq	_adb-tls-pairing._tcp.	192.168.1.86:37313
-    // Regular expression
-    //
-    // adb-<everything-until-space><spaces>__adb-tls-pairing._tcp.<spaces><everything-until-colon>:<port>
-    val lineRegex = Regex("([^\\t]+)\\t*_adb-tls-pairing._tcp.\\t*([^:]+):([0-9]+)")
-
-    if (result.errorCode != 0) {
-      throw AdbCommandException("Error discovering services", result.errorCode, result.stderr)
-    }
-
-    if (result.stdout.isEmpty()) {
-      throw AdbCommandException("Empty output from \"adb mdns services\" command", -1, result.stderr)
-    }
-
-    return result.stdout.drop(1).mapNotNull { line ->
-      val matchResult = lineRegex.find(line)
-      matchResult?.let {
-        try {
-          val serviceName = it.groupValues[1]
-          val ipAddress = withContext(Dispatchers.IO) { InetAddress.getByName(it.groupValues[2]) }
-          val port = it.groupValues[3].toInt()
-          val serviceType = if (serviceName.startsWith(studioServiceNamePrefix)) ServiceType.QrCode else ServiceType.PairingCode
-          PairingMdnsService(serviceName, serviceType, ipAddress, port, null)
-        } catch (ignored: Exception) {
-          LOG.warn("mDNS service entry ignored due do invalid characters: ${line}")
-          null
-        }
-      }
-    }
-  }
-
   override fun trackMdnsServices(): Flow<MdnsServices> {
     return adbService.trackMdnsServices()
   }

@@ -42,9 +42,6 @@ interface WiFiPairingService {
   /** Returns a snapshot of the list of [AdbDevice] currently known */
   fun devices(): ListenableFuture<List<AdbDevice>>
 
-  /** Look up the list of mDNS services currently seen by the underlying adb implementation */
-  suspend fun scanMdnsServices(): List<PairingMdnsService>
-
   /**
    * Returns a [Flow] that emits a new [MdnsServices] everytime a mdns service change is detected by the ADB Host
    * ("host:track-mdns-services" query). The flow is active until an exception is thrown or cancellation is requested by the flow consumer.
