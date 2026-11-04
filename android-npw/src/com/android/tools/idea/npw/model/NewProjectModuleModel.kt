@@ -63,7 +63,7 @@ class NewProjectModuleModel(private val projectModel: NewProjectModel) : WizardM
 
   fun androidSdkInfo(): OptionalProperty<AndroidVersionsInfo.VersionItem> = newModuleModel.androidSdkInfo
 
-  override fun handleFinished() {
+  public override fun handleFinished() {
     initMainModule()
     val packageName = projectModel.packageName.get()
     val newRenderTemplateModel = createMainRenderModel().apply { addRenderDefaultTemplateValues(this, packageName) }

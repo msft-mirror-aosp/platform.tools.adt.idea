@@ -319,7 +319,7 @@ class NewProjectModel : WizardModel(), ProjectModelData {
     }
   }
 
-  override fun handleFinished() {
+  public override fun handleFinished() {
     val projectLocation = projectLocation.get().trimEnd(File.separatorChar)
 
     val couldEnsureLocationExists =
