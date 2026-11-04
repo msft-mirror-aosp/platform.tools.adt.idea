@@ -513,6 +513,46 @@ class TraceProcessorModelTest {
   }
 
   @Test
+  fun addAndroidFrameTimelineEventsPrefersAppJankType() {
+    val jankTypes =
+      listOf(
+        "None",
+        "Unspecified",
+        "SurfaceFlinger Stuffing",
+        "Display not ON, PowerModeChange in progress",
+        "App Resynced Jitter, Buffer Stuffing",
+        "SurfaceFlinger CPU Deadline Missed, App Deadline Missed, Unknown Jank",
+        "Some Future Jank",
+      )
+    val frameTimelineResult = TraceProcessor.AndroidFrameTimelineResult.newBuilder()
+    jankTypes.forEachIndexed { i, jankType ->
+      frameTimelineResult
+        .addExpectedSlice(
+          TraceProcessor.AndroidFrameTimelineResult.ExpectedSlice.newBuilder()
+            .setSurfaceFrameToken(i.toLong())
+            .setTimestampNanoseconds(i * 1000L)
+        )
+        .addActualSlice(
+          TraceProcessor.AndroidFrameTimelineResult.ActualSlice.newBuilder().setSurfaceFrameToken(i.toLong()).setJankType(jankType)
+        )
+    }
+    val model = TraceProcessorModel.Builder().apply { addAndroidFrameTimelineEvents(frameTimelineResult.build()) }.build()
+    val events = model.getAndroidFrameTimelineEvents()
+    assertThat(events.map { it.appJankType })
+      .containsExactly(
+        JankType.JANK_NONE,
+        JankType.JANK_UNSPECIFIED,
+        JankType.JANK_SF_STUFFING,
+        JankType.JANK_DISPLAY_NOT_ON,
+        JankType.JANK_APP_RESYNCED_JITTER,
+        JankType.JANK_APP_DEADLINE_MISSED,
+        JankType.JANK_UNSPECIFIED,
+      )
+      .inOrder()
+    assertThat(events.map { it.isJank }).containsExactly(false, true, true, false, true, true, true).inOrder()
+  }
+
+  @Test
   fun addPowerCounters() {
     val powerCounters =
       TraceProcessor.PowerCounterTracksResult.newBuilder()

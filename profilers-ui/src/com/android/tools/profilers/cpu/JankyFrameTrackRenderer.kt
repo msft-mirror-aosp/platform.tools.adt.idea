@@ -35,7 +35,6 @@ import com.android.tools.profilers.cpu.analysis.CpuAnalyzable
 import com.android.tools.profilers.cpu.analysis.JankAnalysisModel
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineEvent
 import com.android.tools.profilers.cpu.systemtrace.AndroidFrameTimelineModel
-import com.android.tools.profilers.cpu.systemtrace.JankType
 import com.intellij.util.ui.JBUI
 import java.awt.geom.Rectangle2D
 import java.util.function.BooleanSupplier
@@ -110,15 +109,15 @@ class JankyFrameTrackRenderer(private val profilersView: StudioProfilersView, pr
 }
 
 fun AndroidFrameTimelineEvent.getActiveColor() =
-  when (appJankType) {
-    JankType.JANK_APP_DEADLINE_MISSED -> missedDeadlineJank
-    JankType.JANK_NONE -> goodFrame
-    else -> otherJank
+  when {
+    isActionableJank -> missedDeadlineJank
+    isJank -> otherJank
+    else -> goodFrame
   }
 
 fun AndroidFrameTimelineEvent.getPassiveColor() =
-  when (appJankType) {
-    JankType.JANK_APP_DEADLINE_MISSED -> fadedMissedDeadlineJank
-    JankType.JANK_NONE -> fadedGoodFrame
-    else -> fadedOtherJank
+  when {
+    isActionableJank -> fadedMissedDeadlineJank
+    isJank -> fadedOtherJank
+    else -> fadedGoodFrame
   }

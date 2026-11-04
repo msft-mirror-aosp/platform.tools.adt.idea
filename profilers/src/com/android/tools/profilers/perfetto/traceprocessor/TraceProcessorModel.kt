@@ -144,6 +144,28 @@ class TraceProcessorModel(builder: Builder) : SystemTraceModelAdapter, Serializa
     internal var surfaceflingerDisplayTokenToEndNs = mapOf<Long, Long>()
 
     companion object {
+      /** Names of the jank types in trace processor's `jank_type` column, see frame_timeline_event_parser.cc in Perfetto. */
+      private val JANK_TYPES_BY_NAME =
+        mapOf(
+          "Unspecified" to JankType.JANK_UNSPECIFIED,
+          "None" to JankType.JANK_NONE,
+          "SurfaceFlinger Scheduling" to JankType.JANK_SF_SCHEDULING,
+          "Prediction Error" to JankType.JANK_PREDICTION_ERROR,
+          "Display HAL" to JankType.JANK_DISPLAY_HAL,
+          "SurfaceFlinger CPU Deadline Missed" to JankType.JANK_SF_CPU_DEADLINE_MISSED,
+          "SurfaceFlinger GPU Deadline Missed" to JankType.JANK_SF_GPU_DEADLINE_MISSED,
+          "App Deadline Missed" to JankType.JANK_APP_DEADLINE_MISSED,
+          "App Resynced Jitter" to JankType.JANK_APP_RESYNCED_JITTER,
+          "Buffer Stuffing" to JankType.JANK_BUFFER_STUFFING,
+          "Unknown Jank" to JankType.JANK_UNKNOWN,
+          "SurfaceFlinger Stuffing" to JankType.JANK_SF_STUFFING,
+          "Dropped Frame" to JankType.JANK_DROPPED,
+          "Non Animating" to JankType.JANK_NON_ANIMATING,
+          "Display not ON" to JankType.JANK_DISPLAY_NOT_ON,
+          "ModeChange in progress" to JankType.JANK_DISPLAY_MODE_CHANGE_IN_PROGRESS,
+          "PowerModeChange in progress" to JankType.JANK_DISPLAY_POWER_MODE_CHANGE_IN_PROGRESS,
+        )
+
       /**
        * Returns the sum of the durations of running scheduling events that are within the range between `rangeStartUs` and `rangeEndUs`.
        * Assumes the given `schedulingEvents` is already sorted by `startTimestampUs`.
@@ -483,17 +505,10 @@ class TraceProcessorModel(builder: Builder) : SystemTraceModelAdapter, Serializa
       }
 
     private fun parseAppJankType(jankTypeStr: String): JankType {
-      // jankTypeStr is a comma-separated string of both an app jank type and a surfaceflinger jank type (if exists).
-      // In SystemTrace we only care about the app jank type, so once a match is found we can return early.
-      jankTypeStr.split(", ").forEach {
-        when (it) {
-          "None" -> return JankType.JANK_NONE
-          "App Deadline Missed" -> return JankType.JANK_APP_DEADLINE_MISSED
-          "Buffer Stuffing" -> return JankType.JANK_BUFFER_STUFFING
-          "Unknown Jank" -> return JankType.JANK_UNKNOWN
-        }
-      }
-      return JankType.JANK_UNSPECIFIED
+      // jankTypeStr is a comma-separated string of the frame's jank types, which may include both app and SurfaceFlinger ones.
+      // Report the app jank type if there is one, otherwise the first other jank type.
+      val jankTypes = jankTypeStr.split(", ").mapNotNull { JANK_TYPES_BY_NAME[it] }
+      return jankTypes.firstOrNull { it.isAppJank } ?: jankTypes.firstOrNull() ?: JankType.JANK_UNSPECIFIED
     }
   }
 }

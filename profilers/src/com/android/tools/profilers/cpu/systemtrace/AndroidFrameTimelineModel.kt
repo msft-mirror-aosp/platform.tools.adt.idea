@@ -53,11 +53,23 @@ constructor(
 
 fun JankType.getTitle() =
   when (this) {
+    JankType.JANK_UNSPECIFIED -> "Unspecified"
+    JankType.JANK_NONE -> "No jank"
+    JankType.JANK_SF_SCHEDULING -> "SurfaceFlinger scheduling"
+    JankType.JANK_PREDICTION_ERROR -> "Prediction error"
+    JankType.JANK_DISPLAY_HAL -> "Display HAL"
+    JankType.JANK_SF_CPU_DEADLINE_MISSED -> "SurfaceFlinger CPU deadline missed"
+    JankType.JANK_SF_GPU_DEADLINE_MISSED -> "SurfaceFlinger GPU deadline missed"
     JankType.JANK_APP_DEADLINE_MISSED -> "Deadline missed"
     JankType.JANK_BUFFER_STUFFING -> "Buffer stuffing"
     JankType.JANK_UNKNOWN -> "Unknown"
-    JankType.JANK_NONE -> "No jank"
-    else -> "Unspecified"
+    JankType.JANK_SF_STUFFING -> "SurfaceFlinger stuffing"
+    JankType.JANK_DROPPED -> "Dropped frame"
+    JankType.JANK_NON_ANIMATING -> "Non-animating"
+    JankType.JANK_APP_RESYNCED_JITTER -> "Resynced jitter"
+    JankType.JANK_DISPLAY_NOT_ON -> "Display not on"
+    JankType.JANK_DISPLAY_MODE_CHANGE_IN_PROGRESS -> "Display mode change in progress"
+    JankType.JANK_DISPLAY_POWER_MODE_CHANGE_IN_PROGRESS -> "Display power mode change in progress"
   }
 
 fun PresentType.getTitle() =

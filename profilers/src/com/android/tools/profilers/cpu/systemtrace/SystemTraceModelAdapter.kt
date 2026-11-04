@@ -321,8 +321,8 @@ data class CpuCoreModel(val id: Int, val schedulingEvents: List<SchedulingEventM
 }
 
 /**
- * @param appJankType Raw data may contain multiple jank types but we only extract the app jank type, namely "App Deadline Missed", "Buffer
- *   Stuffing" and "Unknown Jank". If no jank is present, the value is "None". If no app jank is present, the value is "Unspecified".
+ * @param appJankType Raw data may contain multiple jank types. This is the first app jank type (see [JankType.isAppJank]) if any, otherwise
+ *   the first other one, e.g. a SurfaceFlinger or display jank type. If no jank is present, the value is [JankType.JANK_NONE].
  */
 data class AndroidFrameTimelineEvent(
   val displayFrameToken: Long,
@@ -350,7 +350,7 @@ data class AndroidFrameTimelineEvent(
     get() = actualEndUs - expectedStartUs
 
   val isJank
-    get() = appJankType != JankType.JANK_NONE
+    get() = appJankType.isJank
 
   val isActionableJank
     get() = appJankType == JankType.JANK_APP_DEADLINE_MISSED
@@ -372,17 +372,33 @@ enum class PresentType {
 }
 
 /**
- * The app jank type of a frame, see [AndroidFrameTimelineEvent.appJankType]. Mirrors the values of `FrameTimelineEvent.JankType` in
- * Perfetto's frameworks_native_trace_packet.proto that Studio surfaces.
+ * The jank type of a frame, see [AndroidFrameTimelineEvent.appJankType]. Mirrors `FrameTimelineEvent.JankType` in Perfetto's
+ * frameworks_native_trace_packet.proto, in the same order.
  *
  * Serialized TPD models in profilers/testData store these values by name, so renaming or removing one requires regenerating them.
+ *
+ * @param isAppJank whether the jank is attributed to the app rather than to SurfaceFlinger or the display.
+ * @param isJank whether a frame with this jank type counts as jank. Like trace processor, frames that aren't animating or that the display
+ *   doesn't show don't.
  */
-enum class JankType {
+enum class JankType(val isAppJank: Boolean = false, val isJank: Boolean = true) {
   JANK_UNSPECIFIED,
-  JANK_NONE,
-  JANK_APP_DEADLINE_MISSED,
-  JANK_BUFFER_STUFFING,
-  JANK_UNKNOWN,
+  JANK_NONE(isJank = false),
+  JANK_SF_SCHEDULING,
+  JANK_PREDICTION_ERROR,
+  JANK_DISPLAY_HAL,
+  JANK_SF_CPU_DEADLINE_MISSED,
+  JANK_SF_GPU_DEADLINE_MISSED,
+  JANK_APP_DEADLINE_MISSED(isAppJank = true),
+  JANK_BUFFER_STUFFING(isAppJank = true),
+  JANK_UNKNOWN(isAppJank = true),
+  JANK_SF_STUFFING,
+  JANK_DROPPED,
+  JANK_NON_ANIMATING(isJank = false),
+  JANK_APP_RESYNCED_JITTER(isAppJank = true),
+  JANK_DISPLAY_NOT_ON(isJank = false),
+  JANK_DISPLAY_MODE_CHANGE_IN_PROGRESS,
+  JANK_DISPLAY_POWER_MODE_CHANGE_IN_PROGRESS(isJank = false),
 }
 
 /**
