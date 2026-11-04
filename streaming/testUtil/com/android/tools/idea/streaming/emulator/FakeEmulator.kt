@@ -217,6 +217,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         putAll(createDefaultVehicleProperties())
       }
     }
+  private val overriddenSensors = ConcurrentHashMap<SensorType, List<Float>>()
   @Volatile
   var displays =
     listOf(DisplayConfiguration.newBuilder().setWidth(config.displayWidth).setHeight(config.displayHeight).setDpi(config.density).build())
@@ -915,23 +916,31 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       }
     }
 
+    override fun setSensor(request: SensorValue, responseObserver: StreamObserver<Empty>) {
+      executor.execute {
+        overriddenSensors[request.target] = request.value.dataList
+        sendEmptyResponse(responseObserver)
+      }
+    }
+
     override fun getSensor(request: SensorValue, responseObserver: StreamObserver<SensorValue>) {
       executor.execute {
         val rot = deviceRotation
         val values =
-          when (request.target) {
-            SensorType.ACCELERATION -> rotateByConjugate(rot, 0f, 9.81f, 0f)
-            SensorType.GYROSCOPE -> listOf(0f, 0f, 0f)
-            SensorType.MAGNETIC_FIELD ->
-              rotateByConjugate(
-                rot,
-                magneticField.getOrElse(0) { 0f },
-                magneticField.getOrElse(1) { 5.9f },
-                magneticField.getOrElse(2) { -48.4f },
-              )
-            SensorType.ORIENTATION -> listOf(rot.getOrElse(0) { 0f }, rot.getOrElse(1) { 0f }, rot.getOrElse(2) { 0f })
-            else -> emptyList()
-          }
+          overriddenSensors[request.target]
+            ?: when (request.target) {
+              SensorType.ACCELERATION -> rotateByConjugate(rot, 0f, 9.81f, 0f)
+              SensorType.GYROSCOPE -> listOf(0f, 0f, 0f)
+              SensorType.MAGNETIC_FIELD ->
+                rotateByConjugate(
+                  rot,
+                  magneticField.getOrElse(0) { 0f },
+                  magneticField.getOrElse(1) { 5.9f },
+                  magneticField.getOrElse(2) { -48.4f },
+                )
+              SensorType.ORIENTATION -> listOf(rot.getOrElse(0) { 0f }, rot.getOrElse(1) { 0f }, rot.getOrElse(2) { 0f })
+              else -> emptyList()
+            }
         val result = SensorValue.newBuilder().setTarget(request.target).setValue(ParameterValue.newBuilder().addAllData(values)).build()
         sendResponse(responseObserver, result)
       }
@@ -1492,6 +1501,9 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     }
   }
 
+  /** Returns the current overridden sensor data for [sensorType], or null if not overridden via `setSensor`. */
+  fun getSensorOverride(sensorType: SensorType): List<Float>? = overriddenSensors[sensorType]
+
   /** Returns the current stored [VehiclePropValue] for `(propId, areaId)`, or null if unavailable. */
   fun getVehicleProperty(propId: Int, areaId: Int = 0): VehiclePropValue? = vehicleProperties[propId to areaId]
 
@@ -1499,9 +1511,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   fun setVehiclePropertyOnDevice(propValue: VehiclePropValue) {
     executor
       .submit {
-        val stored =
-          if (propValue.status == VehiclePropStatus.AVAILABLE) propValue
-          else propValue.toBuilder().setStatus(VehiclePropStatus.AVAILABLE).build()
+        val stored = if (propValue.hasStatus()) propValue else propValue.toBuilder().setStatus(VehiclePropStatus.AVAILABLE).build()
         vehicleProperties[stored.prop to stored.areaId] = stored
         sendCarEventMessage(
           EmulatorMessage.newBuilder().setMsgType(MsgType.SET_PROPERTY_ASYNC).setStatus(VhalStatus.RESULT_OK).addValue(stored).build()
@@ -1580,9 +1590,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         MsgType.SET_PROPERTY_CMD -> {
           val updatedValues = mutableListOf<VehiclePropValue>()
           for (propValue in emulatorMsg.valueList) {
-            val stored =
-              if (propValue.status == VehiclePropStatus.AVAILABLE) propValue
-              else propValue.toBuilder().setStatus(VehiclePropStatus.AVAILABLE).build()
+            val stored = if (propValue.hasStatus()) propValue else propValue.toBuilder().setStatus(VehiclePropStatus.AVAILABLE).build()
             vehicleProperties[stored.prop to stored.areaId] = stored
             updatedValues.add(stored)
           }

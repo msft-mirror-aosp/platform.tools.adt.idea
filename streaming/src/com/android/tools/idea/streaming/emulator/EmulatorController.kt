@@ -695,6 +695,24 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     return observer.getResult()
   }
 
+  /** Overrides a sensor value. */
+  private fun setSensor(sensorValue: SensorValue, streamObserver: StreamObserver<Empty>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("setSensor(${shortDebugString(sensorValue)})")
+    }
+    emulatorControllerStub.setSensor(
+      sensorValue,
+      DelegatingStreamObserver(streamObserver, EmulatorControllerGrpc.getSetSensorMethod()),
+    )
+  }
+
+  /** Overrides a sensor value. */
+  suspend fun setSensor(sensorValue: SensorValue) {
+    val observer = SuspendingStreamObserver<Empty>()
+    setSensor(sensorValue, observer)
+    observer.getResult()
+  }
+
   /** Retrieves a screenshot of an Emulator display. */
   fun getScreenshot(imageFormat: ImageFormat, streamObserver: StreamObserver<Image>) {
     if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
