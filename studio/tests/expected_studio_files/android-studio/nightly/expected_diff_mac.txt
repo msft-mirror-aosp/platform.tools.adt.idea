@@ -2281,7 +2281,7 @@
 +++Android Studio Nightly.app/Contents/plugins/android/lib/ffmpeg-7.1.1-1.5.12-macosx-x86_64.jar
 +++Android Studio Nightly.app/Contents/plugins/android/lib/ffmpeg-7.1.1-1.5.12.jar
 +++Android Studio Nightly.app/Contents/plugins/android/lib/ffmpeg-platform-7.1.1-1.5.12.jar
-+++Android Studio Nightly.app/Contents/plugins/android/lib/flatbuffers-java-1.12.0.jar
++++Android Studio Nightly.app/Contents/plugins/android/lib/flatbuffers-java-25.2.10.jar
 +++Android Studio Nightly.app/Contents/plugins/android/lib/game-tools-protos.jar
 +++Android Studio Nightly.app/Contents/plugins/android/lib/game-tools.jar
 +++Android Studio Nightly.app/Contents/plugins/android/lib/generator.jar
@@ -6024,7 +6024,7 @@
 ---Android Studio Preview.app/Contents/plugins/android/lib/ffmpeg-7.1.1-1.5.12-macosx-x86_64.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/ffmpeg-7.1.1-1.5.12.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/ffmpeg-platform-7.1.1-1.5.12.jar
----Android Studio Preview.app/Contents/plugins/android/lib/flatbuffers-java-1.12.0.jar
+---Android Studio Preview.app/Contents/plugins/android/lib/flatbuffers-java-25.2.10.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/game-tools-protos.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/game-tools.jar
 ---Android Studio Preview.app/Contents/plugins/android/lib/generator.jar

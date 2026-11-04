@@ -2273,7 +2273,7 @@ android-studio/plugins/android/lib/explainer.jar
 android-studio/plugins/android/lib/ffmpeg-7.1.1-1.5.12-linux-x86_64.jar
 android-studio/plugins/android/lib/ffmpeg-7.1.1-1.5.12.jar
 android-studio/plugins/android/lib/ffmpeg-platform-7.1.1-1.5.12.jar
-android-studio/plugins/android/lib/flatbuffers-java-1.12.0.jar
+android-studio/plugins/android/lib/flatbuffers-java-25.2.10.jar
 android-studio/plugins/android/lib/game-tools-protos.jar
 android-studio/plugins/android/lib/game-tools.jar
 android-studio/plugins/android/lib/generator.jar
