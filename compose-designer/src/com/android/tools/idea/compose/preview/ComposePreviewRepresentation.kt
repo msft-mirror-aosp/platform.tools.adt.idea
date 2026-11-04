@@ -1600,12 +1600,16 @@ constructor(
         } else {
           // The focused preview is already rendered (e.g. the file has a single Preview), so no render, and no [onAfterRender], will
           // follow. Bind the ResizePanel before showing Focus mode, so that it never shows a ResizePanel that ignores device changes.
-          surface.sceneManagers.singleOrNull()?.let { updateResizePanel() }
+          val focusedSceneManager = surface.sceneManagers.singleOrNull()
+          focusedSceneManager?.let { updateResizePanel() }
           withContext(Dispatchers.EDT) {
             showFocusMode(resizePanel)
             // as [onAfterRender] would not be invoked we also need to apply zoom-to-fit manually.
             surface.zoomController.zoomToFit()
           }
+          // The zoom-to-fit above handled the mode change. Consume it here, as [onAfterRender] would do, or the next refresh would apply it
+          // again, e.g. after the user resized and zoomed the preview. With several previews, the refresh that filters them consumes it.
+          if (focusedSceneManager != null) isPreviewModeChanging.set(false)
         }
       }
     }
