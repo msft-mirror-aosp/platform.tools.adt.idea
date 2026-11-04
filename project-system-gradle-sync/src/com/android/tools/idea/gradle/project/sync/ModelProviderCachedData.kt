@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.project.sync
 
 import com.android.builder.model.v2.models.Versions
 import com.android.tools.idea.gradle.model.IdeAndroidProject
+import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import java.io.Serializable
 import java.util.concurrent.ConcurrentHashMap
@@ -35,6 +36,14 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
 
   fun markAllProjectsSupportedByPhasedSync() {
     allProjectsSupportedByPhasedSync = true
+  }
+
+  fun setKaptGradleModel(gradleProject: BasicGradleProject, kaptModel: KaptGradleModel) {
+    kaptGradleModel[gradleProject] = kaptModel
+    data.computeIfPresent(gradleProject) { _, cachedData ->
+      cachedData.copy(ideAndroidProject = (cachedData.ideAndroidProject as IdeAndroidProjectImpl).patchForKapt(kaptModel))
+    }
+    selectedVariant.computeIfPresent(gradleProject) { _, variant -> variant.patchForKapt(kaptModel) }
   }
 
   /**

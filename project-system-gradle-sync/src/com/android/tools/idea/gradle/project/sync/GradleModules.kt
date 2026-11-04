@@ -253,7 +253,11 @@ constructor(
   }
 }
 
-fun IdeAndroidProjectImpl.patchForKapt(kaptModel: KaptGradleModel?) = copy(isKaptEnabled = kaptModel?.isEnabled ?: false)
+fun IdeAndroidProjectImpl.patchForKapt(kaptModel: KaptGradleModel?) =
+  copy(
+    isKaptEnabled = kaptModel?.isEnabled ?: false,
+    coreVariants = coreVariants.map { it as IdeVariantCoreImpl }.patchForKapt(kaptModel),
+  )
 
 fun List<IdeVariantCoreImpl>.patchForKapt(kaptModel: KaptGradleModel?): List<IdeVariantCoreImpl> =
   if (kaptModel == null) {

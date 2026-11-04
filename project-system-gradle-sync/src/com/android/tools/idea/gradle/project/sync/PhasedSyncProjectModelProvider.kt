@@ -230,14 +230,14 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
               // If this is not a project that we support , then we should not fetch the KAPT model in this case.
               cachedModels.versions[gradleProject] ?: return@BuildAction null
               val kaptModel = controller.fetchModel<KaptGradleModel>(gradleProject, cachedModels.data[gradleProject]?.selectedVariantName)
-              gradleProject to kaptModel!!
+              kaptModel?.let { gradleProject to it }
             }
           }
         }
       )
       .filterNotNull()
       .forEach { (gradleProject, kaptModel) ->
-        cachedModels.kaptGradleModel[gradleProject] = kaptModel
+        cachedModels.setKaptGradleModel(gradleProject, kaptModel)
         modelConsumer.consumeProjectModel(gradleProject, kaptModel, KaptGradleModel::class.java)
       }
 
