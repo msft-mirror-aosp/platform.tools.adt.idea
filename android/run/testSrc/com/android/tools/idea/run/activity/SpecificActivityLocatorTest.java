@@ -16,21 +16,42 @@
 package com.android.tools.idea.run.activity;
 
 import com.android.SdkConstants;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiManager;
-import org.jetbrains.android.AndroidTestCase;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.jetbrains.android.AndroidTestBase;
+import org.jetbrains.android.facet.AndroidFacet;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.android.tools.idea.testing.TestProjectPaths.RUN_CONFIG_ALIAS;
 import static com.android.tools.idea.testing.TestProjectPaths.RUN_CONFIG_UNDECLARED;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
-public class SpecificActivityLocatorTest extends AndroidTestCase {
+@RunsInEdt
+public class SpecificActivityLocatorTest {
 
-  @Override
-  protected boolean providesCustomManifest() {
-    return true;
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private CodeInsightTestFixture myFixture;
+  private AndroidFacet myFacet;
+
+  @Before
+  public void setUp() {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+    myFacet = AndroidFacet.getInstance(projectRule.getModule());
   }
 
+  @Test
   public void testValidLauncherActivity() throws ActivityLocator.ActivityLocatorException {
     VirtualFile manifestFile = myFixture.copyFileToProject("projects/runConfig/activity/src/debug/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     assertThat(PsiManager.getInstance(myFixture.getProject()).findFile(manifestFile)).isNotNull();
@@ -43,6 +64,7 @@ public class SpecificActivityLocatorTest extends AndroidTestCase {
     locator.validate();
   }
 
+  @Test
   public void testActivityNotDeclared() {
     VirtualFile manifestFile = myFixture.copyFileToProject(RUN_CONFIG_UNDECLARED + "/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     assertThat(PsiManager.getInstance(myFixture.getProject()).findFile(manifestFile)).isNotNull();
@@ -60,6 +82,7 @@ public class SpecificActivityLocatorTest extends AndroidTestCase {
     }
   }
 
+  @Test
   public void testNonActivity() {
     VirtualFile manifestFile = myFixture.copyFileToProject(RUN_CONFIG_UNDECLARED + "/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     assertThat(PsiManager.getInstance(myFixture.getProject()).findFile(manifestFile)).isNotNull();
@@ -73,6 +96,7 @@ public class SpecificActivityLocatorTest extends AndroidTestCase {
     }
   }
 
+  @Test
   public void testValidLauncherAlias() throws ActivityLocator.ActivityLocatorException {
     VirtualFile manifestFile = myFixture.copyFileToProject(RUN_CONFIG_ALIAS + "/src/debug/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     assertThat(PsiManager.getInstance(myFixture.getProject()).findFile(manifestFile)).isNotNull();
@@ -85,6 +109,7 @@ public class SpecificActivityLocatorTest extends AndroidTestCase {
     locator.validate();
   }
 
+  @Test
   public void testAliasNotDeclared() {
     VirtualFile manifestFile = myFixture.copyFileToProject(RUN_CONFIG_UNDECLARED + "/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     assertThat(PsiManager.getInstance(myFixture.getProject()).findFile(manifestFile)).isNotNull();
@@ -102,6 +127,7 @@ public class SpecificActivityLocatorTest extends AndroidTestCase {
     }
   }
 
+  @Test
   public void testActivityWithoutLauncherIntent() {
     VirtualFile manifestFile = myFixture.copyFileToProject(RUN_CONFIG_UNDECLARED + "/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     assertThat(PsiManager.getInstance(myFixture.getProject()).findFile(manifestFile)).isNotNull();
@@ -119,6 +145,7 @@ public class SpecificActivityLocatorTest extends AndroidTestCase {
     }
   }
 
+  @Test
   public void testActivityWithSomeLauncherIntent() throws ActivityLocator.ActivityLocatorException {
     VirtualFile manifestFile = myFixture.copyFileToProject(RUN_CONFIG_UNDECLARED + "/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     assertThat(PsiManager.getInstance(myFixture.getProject()).findFile(manifestFile)).isNotNull();
@@ -130,6 +157,7 @@ public class SpecificActivityLocatorTest extends AndroidTestCase {
     locator.validate();
   }
 
+  @Test
   public void testExportedActivity() throws ActivityLocator.ActivityLocatorException {
     VirtualFile manifestFile = myFixture.copyFileToProject(RUN_CONFIG_UNDECLARED + "/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     assertThat(PsiManager.getInstance(myFixture.getProject()).findFile(manifestFile)).isNotNull();

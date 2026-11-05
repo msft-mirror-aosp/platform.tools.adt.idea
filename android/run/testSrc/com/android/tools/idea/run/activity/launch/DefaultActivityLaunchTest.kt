@@ -28,16 +28,28 @@ import com.android.tools.idea.run.ApkInfo
 import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.configuration.execution.createApp
 import com.android.tools.idea.run.configuration.execution.createConnectedDevice
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.flags.overrideForTest
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.RunsInEdt
 import java.io.File
 import kotlin.test.assertContentEquals
 import kotlin.test.assertFailsWith
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.android.AndroidTestCase
+import org.jetbrains.android.AndroidTestBase
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.kotlin.mock
 
-class DefaultActivityLaunchTest : AndroidTestCase() {
+@RunsInEdt
+class DefaultActivityLaunchTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture }
+
   lateinit var apk: String
   lateinit var state: DefaultActivityLaunch.State
   lateinit var device: IDevice
@@ -46,9 +58,10 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
   lateinit var fakeSession: FakeAdbSession
   lateinit var connectedDevice: ConnectedDevice
 
-  override fun setUp() {
-    super.setUp()
-    StudioFlags.DEPLOYER_USE_CONNECTED_DEVICE.overrideForTest(true, testRootDisposable)
+  @Before
+  fun setUp() {
+    myFixture.testDataPath = AndroidTestBase.getTestDataPath()
+    StudioFlags.DEPLOYER_USE_CONNECTED_DEVICE.overrideForTest(true, projectRule.testRootDisposable)
     fakeSession = FakeAdbSession()
     connectedDevice = fakeSession.createConnectedDevice("1234", 31)
     // apkWithDefaultActivity.apk contains simple project with basic activity `com.example.myapplication.MainActivity`.
@@ -59,14 +72,12 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
     stats = RunStats(myFixture.project)
   }
 
-  override fun tearDown() {
-    try {
-      runBlocking { fakeSession.closeAndJoin() }
-    } finally {
-      super.tearDown()
-    }
+  @After
+  fun tearDown() {
+    runBlocking { fakeSession.closeAndJoin() }
   }
 
+  @Test
   fun testLaunch() {
     // Prepare
     val command =
@@ -80,6 +91,7 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
     assertContentEquals(listOf(command), fakeSession.deviceServices.shellRequests.map { it.command })
   }
 
+  @Test
   fun testLaunchWithMultipleApks() {
     // Prepare
     val command =
@@ -101,6 +113,7 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
     assertContentEquals(listOf(command), fakeSession.deviceServices.shellRequests.map { it.command })
   }
 
+  @Test
   fun testLaunchWithNoMatchingApks() {
     // Prepare
     val multiApkProvider =
@@ -121,6 +134,7 @@ class DefaultActivityLaunchTest : AndroidTestCase() {
     assertThat(exception.message).isEqualTo("No matching APK for application: com.example.myapplication\n")
   }
 
+  @Test
   fun testLaunchWithMultipleMatchingApks() {
     // Prepare
     val multiApkProvider =
@@ -150,6 +164,7 @@ Projects:
       )
   }
 
+  @Test
   fun testLaunchWithNoApks() {
     // Prepare
     val emptyApkProvider = TestApksProvider(emptyList())

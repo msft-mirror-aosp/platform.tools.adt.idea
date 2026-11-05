@@ -17,12 +17,18 @@ package com.android.tools.idea.run.activity;
 
 import static com.android.tools.idea.model.AndroidManifestIndexQueryUtils.queryActivitiesFromManifestIndex;
 import static com.android.tools.idea.run.activity.DefaultActivityLocator.getActivitiesFromMergedManifest;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.android.tools.idea.testing.TestProjectPaths.RUN_CONFIG_ACTIVITY;
 import static com.android.tools.idea.testing.TestProjectPaths.RUN_CONFIG_ALIAS;
 import static com.android.tools.idea.testing.TestProjectPaths.RUN_CONFIG_DEFAULT;
 import static com.android.tools.idea.testing.TestProjectPaths.RUN_CONFIG_ENABLED;
 import static com.android.tools.idea.testing.TestProjectPaths.RUN_CONFIG_MANIFESTS;
 import static com.android.tools.idea.testing.TestProjectPaths.RUN_CONFIG_TV;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -31,28 +37,44 @@ import com.android.ddmlib.IDevice;
 import com.android.tools.idea.concurrency.FutureTestUtils;
 import com.android.tools.idea.model.ActivitiesAndAliases;
 import com.android.tools.idea.model.MergedManifestModificationListener;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.google.common.util.concurrent.Futures;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiManager;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import java.util.List;
 import java.util.concurrent.Callable;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.AndroidTestBase;
 import org.jetbrains.android.dom.manifest.Manifest;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
 /**
  * Tests for {@link DefaultActivityLocator}.
  */
-public class DefaultActivityLocatorTest extends AndroidTestCase {
+@RunsInEdt
+public class DefaultActivityLocatorTest {
 
-  @Override
-  protected boolean providesCustomManifest() {
-    return true;
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private JavaCodeInsightTestFixture myFixture;
+  private AndroidFacet myFacet;
+
+  @Before
+  public void setUp() {
+    myFixture = (JavaCodeInsightTestFixture)projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+    myFacet = AndroidFacet.getInstance(projectRule.getModule());
   }
 
   private void renameClass(@NotNull String oldName, @NotNull String newName) {
@@ -73,6 +95,7 @@ public class DefaultActivityLocatorTest extends AndroidTestCase {
     return FutureTestUtils.pumpEventsAndWaitForFuture(Futures.submit(callable, AppExecutorUtil.getAppExecutorService()));
   }
 
+  @Test
   public void testActivity() {
     myFixture.copyFileToProject(RUN_CONFIG_ACTIVITY + "/src/debug/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     myFixture.copyFileToProject(RUN_CONFIG_ACTIVITY + "/src/debug/java/com/example/unittest/Launcher.java",
@@ -80,6 +103,7 @@ public class DefaultActivityLocatorTest extends AndroidTestCase {
     assertEquals("com.example.unittest.Launcher", computeInBackgroundThread(() -> computeDefaultActivity(myFacet, null)));
   }
 
+  @Test
   public void testActivityAlias() {
     myFixture.copyFileToProject(RUN_CONFIG_ALIAS + "/src/debug/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     myFixture.copyFileToProject(RUN_CONFIG_ALIAS + "/src/debug/java/com/example/unittest/Launcher.java",
@@ -89,6 +113,7 @@ public class DefaultActivityLocatorTest extends AndroidTestCase {
 
   // tests that when there are multiple activities that with action MAIN and category LAUNCHER, then give
   // preference to the one that also has category DEFAULT
+  @Test
   public void testPreferDefaultCategoryActivity() {
     myFixture.copyFileToProject(RUN_CONFIG_DEFAULT + "/src/debug/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     myFixture.copyFileToProject(RUN_CONFIG_ALIAS + "/src/debug/java/com/example/unittest/Launcher.java",
@@ -97,6 +122,7 @@ public class DefaultActivityLocatorTest extends AndroidTestCase {
   }
 
   // tests that when there are multiple launcher activities, then we pick the leanback launcher for a TV device
+  @Test
   public void testLeanbackLauncher() throws Exception {
     myFixture.copyFileToProject(RUN_CONFIG_TV + "/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     myFixture.copyFileToProject(RUN_CONFIG_TV + "/Launcher.java",
@@ -115,14 +141,16 @@ public class DefaultActivityLocatorTest extends AndroidTestCase {
     assertEquals("com.example.unittest.DefaultLauncher", computeInBackgroundThread(() -> computeDefaultActivity(myFacet, device)));
   }
 
+  @Test
   public void testLauncherActivityIntent() throws Exception {
     myFixture.copyFileToProject(RUN_CONFIG_MANIFESTS + "/InvalidCategory.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     assertNull("No launchable activity registration is present in the manifest, but one was detected",
                computeInBackgroundThread(() -> computeDefaultActivity(myFacet, null)));
   }
 
+  @Test
   public void testIndexStrategy_onBackgroundThread() throws Exception {
-    MergedManifestModificationListener.ensureSubscribed(getProject());
+    MergedManifestModificationListener.ensureSubscribed(projectRule.getProject());
 
     myFixture.copyFileToProject(RUN_CONFIG_ACTIVITY + "/src/debug/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     VirtualFile launcher = myFixture.copyFileToProject(RUN_CONFIG_ACTIVITY + "/src/debug/java/com/example/unittest/Launcher.java",
@@ -135,8 +163,9 @@ public class DefaultActivityLocatorTest extends AndroidTestCase {
     assertEquals("com.example.unittest.NewLauncher", computeInBackgroundThread(() -> computeDefaultActivity(myFacet, null)));
   }
 
+  @Test
   public void testIndexStrategy_onEdt() {
-    MergedManifestModificationListener.ensureSubscribed(getProject());
+    MergedManifestModificationListener.ensureSubscribed(projectRule.getProject());
     ApplicationManager.getApplication().assertIsDispatchThread();
 
     myFixture.copyFileToProject(RUN_CONFIG_ACTIVITY + "/src/debug/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
@@ -150,8 +179,9 @@ public class DefaultActivityLocatorTest extends AndroidTestCase {
     assertEquals("com.example.unittest.NewLauncher", computeInBackgroundThread(() -> computeDefaultActivity(myFacet, null)));
   }
 
+  @Test
   public void testIndexStrategy_cacheHit() {
-    MergedManifestModificationListener.ensureSubscribed(getProject());
+    MergedManifestModificationListener.ensureSubscribed(projectRule.getProject());
 
     myFixture.copyFileToProject(RUN_CONFIG_ACTIVITY + "/src/debug/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     myFixture.copyFileToProject(RUN_CONFIG_ACTIVITY + "/src/debug/java/com/example/unittest/Launcher.java",
@@ -161,8 +191,9 @@ public class DefaultActivityLocatorTest extends AndroidTestCase {
     assertSame(activities, queryActivitiesFromManifestIndex(myFacet));
   }
 
+  @Test
   public void testIndexStrategy_valid() {
-    MergedManifestModificationListener.ensureSubscribed(getProject());
+    MergedManifestModificationListener.ensureSubscribed(projectRule.getProject());
 
     myFixture.copyFileToProject(RUN_CONFIG_ACTIVITY + "/src/debug/AndroidManifest.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     myFixture.copyFileToProject(RUN_CONFIG_ACTIVITY + "/src/debug/java/com/example/unittest/Launcher.java",
@@ -176,6 +207,7 @@ public class DefaultActivityLocatorTest extends AndroidTestCase {
     }
   }
 
+  @Test
   public void testIndexStrategy_invalid() {
     myFixture.copyFileToProject(RUN_CONFIG_MANIFESTS + "/InvalidCategory.xml", SdkConstants.FN_ANDROID_MANIFEST_XML);
     DefaultActivityLocator defaultActivityLocator = new DefaultActivityLocator(myFacet);

@@ -15,16 +15,45 @@
  */
 package com.android.tools.idea.run;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import com.android.SdkConstants;
 import com.android.ddmlib.IDevice;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import java.util.Collection;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.AndroidTestBase;
+import org.jetbrains.android.facet.AndroidFacet;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.mockito.Mockito;
 
 /**
  * Tests for {@link NonGradleApkProvider}.
  */
-public class NonGradleApkProviderTest extends AndroidTestCase {
+@RunsInEdt
+public class NonGradleApkProviderTest {
 
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private AndroidFacet myFacet;
+
+  @Before
+  public void setUp() {
+    CodeInsightTestFixture fixture = projectRule.getFixture();
+    fixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+    fixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML);
+    myFacet = AndroidFacet.getInstance(projectRule.getModule());
+  }
+
+  @Test
   public void testGetApks() throws Exception {
     IDevice device = Mockito.mock(IDevice.class);
 
