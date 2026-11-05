@@ -12,7 +12,6 @@ iml_module(
     deps = [
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
-        "//tools/base/annotations:studio.android.sdktools.android-annotations",
         "//tools/adt/idea/observable:intellij.android.observable",
     ],
 )

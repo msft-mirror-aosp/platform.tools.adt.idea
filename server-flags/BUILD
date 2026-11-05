@@ -16,10 +16,7 @@ iml_module(
     resources = ["resources"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
-    deps = [
-        "@intellij//:intellij-sdk",
-        "//tools/base/annotations:studio.android.sdktools.android-annotations",
-    ],
+    deps = ["@intellij//:intellij-sdk"],
 )
 
 # managed by go/iml_to_build
