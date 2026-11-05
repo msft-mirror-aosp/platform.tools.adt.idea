@@ -24,26 +24,32 @@ import com.android.tools.idea.debug.childrenrenderer.AndroidKotlinRendererProvid
 import com.android.tools.idea.flags.StudioFlags
 import com.intellij.core.CoreApplicationEnvironment
 import com.intellij.debugger.engine.FieldVisibilityProvider
+import com.intellij.debugger.engine.RemoteDebugProcessHandler
 import com.intellij.debugger.engine.RemoteStateState
 import com.intellij.debugger.impl.DebuggerSession
 import com.intellij.debugger.impl.JdiHelperClassLoader
 import com.intellij.debugger.impl.RemoteConnectionBuilder
 import com.intellij.debugger.settings.DebuggerSettings
 import com.intellij.debugger.ui.tree.render.CompoundRendererProvider
+import com.intellij.execution.DefaultExecutionResult
+import com.intellij.execution.Executor
 import com.intellij.execution.configurations.JavaParameters
-import com.intellij.execution.configurations.RemoteConnection
+import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.execution.runners.ProgramRunner
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.ComponentManager
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.extensions.LoadingOrder
 import com.intellij.openapi.observable.util.whenDisposed
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.toNioPathOrNull
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.ui.classFilter.ClassFilter
 import com.intellij.util.io.Compressor
+import com.intellij.util.io.awaitExit
 import com.intellij.util.io.delete
 import java.io.BufferedReader
 import java.lang.ProcessBuilder.Redirect.PIPE
@@ -61,6 +67,7 @@ import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.notExists
 import kotlin.io.path.pathString
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -95,8 +102,10 @@ private val D8_COMPILER by lazy(NONE) { loadD8Compiler() }
 private val FIELD_VISIBILITY_PROVIDER_EP =
   ExtensionPointName.create<FieldVisibilityProvider>("com.intellij.debugger.fieldVisibilityProvider")
 
+@Suppress("UnresolvedPluginConfigReference")
 private val JDI_HELPER_CLASS_LOADER_EP = ExtensionPointName.create<JdiHelperClassLoader>("com.intellij.debugger.jdiHelperClassLoader")
 
+@Suppress("UnresolvedPluginConfigReference")
 private val DEX_BYTECODE_INSPECTOR_EP: ExtensionPointName<DexBytecodeInspector> =
   ExtensionPointName.create("com.intellij.debugger.dexBytecodeInspector")
 
@@ -145,12 +154,11 @@ internal class ArtAttacher : VmAttacher {
       LoadingOrder.before("KotlinClassRendererProvider"),
     )
 
-    val remoteConnection = getRemoteConnection(testCase, javaParameters)
-    val remoteState = RemoteStateState(project, remoteConnection)
-    return testCase.attachVirtualMachine(remoteState, environment, remoteConnection, false)
+    val remoteState = startArtProcess(testCase, javaParameters)
+    return testCase.attachVirtualMachine(remoteState, environment, remoteState.remoteConnection, false)
   }
 
-  private fun getRemoteConnection(testCase: KotlinDescriptorTestCase, javaParameters: JavaParameters): RemoteConnection {
+  private fun startArtProcess(testCase: KotlinDescriptorTestCase, javaParameters: JavaParameters): RemoteStateState {
     println("Running ART test: ${testCase.javaClass.name}.${testCase.name}")
     val timeout = getTestTimeoutMillis()
     if (timeout != null) {
@@ -164,7 +172,14 @@ internal class ArtAttacher : VmAttacher {
       @Suppress("UnstableApiUsage") testCase.testRootDisposable.whenDisposed { dexFiles.forEach { it.delete() } }
     }
     val command = buildCommandLine(dexFiles, mainClass)
-    val art = ProcessBuilder().command(command).redirectOutput(PIPE).start()
+    val art =
+      ProcessBuilder()
+        .command(command)
+        // Silence ART logs so they don't emit to ProcessHandler.
+        // TODO: Consider printing them to test stdout and filtering them from ProcessHandler
+        .apply { environment()["ANDROID_LOG_TAGS"] = "*:s" }
+        .redirectOutput(PIPE)
+        .start()
     val stdout = art.inputStream.bufferedReader()
     val stderr = art.errorStream.bufferedReader()
 
@@ -180,16 +195,16 @@ internal class ArtAttacher : VmAttacher {
       throw IllegalStateException("Failed to read listening port from ART")
     }
 
-    logArtOutput(stdout, stderr)
-    Disposer.register(disposable) {
-      val exitCode = art.waitFor()
-      println("ART process completed with exit code $exitCode")
-    }
+    val processHandler =
+      ArtProcessHandler(testCase.project, art, stdout, stderr).also {
+        Disposer.register(disposable) { it.close() }
+      }
 
-    return RemoteConnectionBuilder(false, DebuggerSettings.SOCKET_TRANSPORT, port)
-      .checkValidity(true)
-      .asyncAgent(true)
-      .create(javaParameters)
+    val remoteConnection =
+      RemoteConnectionBuilder(false, DebuggerSettings.SOCKET_TRANSPORT, port).checkValidity(true).asyncAgent(true).create(javaParameters)
+    return object : RemoteStateState(testCase.project, remoteConnection) {
+      override fun execute(executor: Executor, runner: ProgramRunner<*>) = DefaultExecutionResult(processHandler)
+    }
   }
 
   /** Builds a DEX file from a list of dependencies */
@@ -227,6 +242,7 @@ internal class ArtAttacher : VmAttacher {
           cached.exists() -> {
             return@synchronized cached
           }
+
           else -> cached
         }
       try {
@@ -304,14 +320,51 @@ private inline fun <reified T : Any> ComponentManager.registerExtension(
   extensionArea.getExtensionPoint(ep).registerExtension(extension, order, disposable)
 }
 
-fun logArtOutput(stdout: BufferedReader, stderr: BufferedReader) {
-  CoroutineScope(Dispatchers.Default).launch {
-    val outputJob = launch(Dispatchers.IO) { stdout.forEachLine(::logStdout) }
+private class ArtProcessHandler(
+  project: Project,
+  private val art: Process,
+  private val stdout: BufferedReader,
+  private val stderr: BufferedReader,
+) : RemoteDebugProcessHandler(project), AutoCloseable {
+  private val outputJob =
+    CoroutineScope(Dispatchers.IO).launch(start = CoroutineStart.LAZY) {
+      val stdoutJob = launch {
+        stdout.useLines { lines ->
+          lines.forEach { line ->
+            logStdout(line)
+            notifyTextAvailable("$line\n", ProcessOutputTypes.STDOUT)
+          }
+        }
+      }
+      val stderrJob = launch {
+        stderr.useLines { lines ->
+          lines.forEach { line ->
+            logStderr(line)
+            notifyTextAvailable("$line\n", ProcessOutputTypes.STDERR)
+          }
+        }
+      }
+      joinAll(stdoutJob, stderrJob)
+    }
 
-    val errorJob = launch(Dispatchers.IO) { stderr.forEachLine(::logStderr) }
-    joinAll(outputJob, errorJob)
-    stdout.close()
-    stderr.close()
+  override fun startNotify() {
+    super.startNotify()
+    outputJob.start()
+  }
+
+  override fun notifyProcessDetached() {
+    CoroutineScope(Dispatchers.IO).launch {
+      outputJob.join()
+      val exitCode = art.awaitExit()
+      println("ART process completed with exit code $exitCode")
+      notifyProcessTerminated(exitCode)
+    }
+  }
+
+  override fun close() {
+    if (art.isAlive) {
+      art.destroyForcibly()
+    }
   }
 }
 
