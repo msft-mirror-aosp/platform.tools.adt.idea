@@ -32,6 +32,8 @@ import com.intellij.ui.scale.JBUIScale
 import java.awt.Dimension
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
+import java.awt.event.KeyAdapter
+import java.awt.event.KeyEvent
 import javax.swing.SwingConstants
 import javax.swing.event.DocumentEvent
 
@@ -174,6 +176,27 @@ internal class BatteryDialog(emulator: EmulatorController) :
                     object : FocusAdapter() {
                       override fun focusLost(event: FocusEvent) {
                         commitText()
+                      }
+                    }
+                  )
+                  addKeyListener(
+                    object : KeyAdapter() {
+                      override fun keyPressed(event: KeyEvent) {
+                        if (!stateInitialized || event.modifiersEx != 0) return
+                        val step =
+                          when (event.keyCode) {
+                            KeyEvent.VK_UP,
+                            KeyEvent.VK_KP_UP -> 1
+                            KeyEvent.VK_DOWN,
+                            KeyEvent.VK_KP_DOWN -> -1
+                            else -> return
+                          }
+                        val current = text.trim().toIntOrNull()?.coerceIn(0, 100) ?: chargeLevel
+                        val newText = (current + step).coerceIn(0, 100).toString()
+                        if (text != newText) {
+                          text = newText
+                        }
+                        event.consume()
                       }
                     }
                   )

@@ -38,6 +38,10 @@ import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.dsl.builder.panel
 import java.awt.event.FocusEvent
+import java.awt.event.KeyEvent.VK_DOWN
+import java.awt.event.KeyEvent.VK_KP_DOWN
+import java.awt.event.KeyEvent.VK_KP_UP
+import java.awt.event.KeyEvent.VK_UP
 import javax.swing.JButton
 import javax.swing.JLabel
 import javax.swing.JSlider
@@ -235,6 +239,54 @@ class BatteryDialogTest {
       listener.focusLost(FocusEvent(chargeLevelField, FocusEvent.FOCUS_LOST))
     }
     assertThat(chargeLevelField.text).isEqualTo("0")
+
+    // Up/Down keys increment/decrement within 0..100 and sync slider and emulator state.
+    ui.keyboard.setFocus(chargeLevelField)
+    ui.keyboard.pressAndRelease(VK_DOWN)
+    assertThat(chargeLevelField.text).isEqualTo("0")
+    assertThat(chargeLevelSlider.value).isEqualTo(0)
+
+    ui.keyboard.pressAndRelease(VK_UP)
+    ui.keyboard.pressAndRelease(VK_KP_UP)
+    assertThat(chargeLevelField.text).isEqualTo("2")
+    assertThat(chargeLevelSlider.value).isEqualTo(2)
+    waitForCondition(5.seconds) { fakeEmulator.batteryStatus.chargeLevel == 2 }
+
+    ui.keyboard.pressAndRelease(VK_KP_DOWN)
+    assertThat(chargeLevelField.text).isEqualTo("1")
+    assertThat(chargeLevelSlider.value).isEqualTo(1)
+    waitForCondition(5.seconds) { fakeEmulator.batteryStatus.chargeLevel == 1 }
+
+    chargeLevelField.text = "100"
+    ui.keyboard.pressAndRelease(VK_UP)
+    assertThat(chargeLevelField.text).isEqualTo("100")
+    assertThat(chargeLevelSlider.value).isEqualTo(100)
+    waitForCondition(5.seconds) { fakeEmulator.batteryStatus.chargeLevel == 100 }
+
+    // Out-of-range and extreme Int values clamp to 0..100 before stepping (no overflow/underflow).
+    chargeLevelField.text = "150"
+    ui.keyboard.pressAndRelease(VK_DOWN)
+    assertThat(chargeLevelField.text).isEqualTo("99")
+    assertThat(chargeLevelSlider.value).isEqualTo(99)
+    waitForCondition(5.seconds) { fakeEmulator.batteryStatus.chargeLevel == 99 }
+
+    chargeLevelField.text = "-10"
+    ui.keyboard.pressAndRelease(VK_UP)
+    assertThat(chargeLevelField.text).isEqualTo("1")
+    assertThat(chargeLevelSlider.value).isEqualTo(1)
+    waitForCondition(5.seconds) { fakeEmulator.batteryStatus.chargeLevel == 1 }
+
+    chargeLevelField.text = Int.MAX_VALUE.toString()
+    ui.keyboard.pressAndRelease(VK_UP)
+    assertThat(chargeLevelField.text).isEqualTo("100")
+    assertThat(chargeLevelSlider.value).isEqualTo(100)
+    waitForCondition(5.seconds) { fakeEmulator.batteryStatus.chargeLevel == 100 }
+
+    chargeLevelField.text = Int.MIN_VALUE.toString()
+    ui.keyboard.pressAndRelease(VK_DOWN)
+    assertThat(chargeLevelField.text).isEqualTo("0")
+    assertThat(chargeLevelSlider.value).isEqualTo(0)
+    waitForCondition(5.seconds) { fakeEmulator.batteryStatus.chargeLevel == 0 }
 
     val closeButton = ui.getComponent<JButton> { it.text == "Close" }
     assertThat(rootPane.defaultButton).isNull()
