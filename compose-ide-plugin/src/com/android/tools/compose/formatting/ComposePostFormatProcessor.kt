@@ -23,11 +23,15 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.SmartPointerManager
+import com.intellij.psi.SmartPsiElementPointer
 import com.intellij.psi.codeStyle.CodeStyleSettings
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings
 import com.intellij.psi.impl.source.codeStyle.CodeFormatterFacade
 import com.intellij.psi.impl.source.codeStyle.PostFormatProcessor
 import com.intellij.psi.impl.source.codeStyle.PostFormatProcessorHelper
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.analysis.api.permissions.KaAllowAnalysisFromWriteAction
 import org.jetbrains.kotlin.analysis.api.permissions.allowAnalysisFromWriteAction
 import org.jetbrains.kotlin.idea.formatter.kotlinCommonSettings
@@ -60,36 +64,66 @@ class ComposePostFormatProcessor : PostFormatProcessor {
   }
 }
 
-class ComposeModifierProcessor(private val settings: CodeStyleSettings) : KtTreeVisitorVoid() {
+class ComposeModifierProcessor(private val settings: CodeStyleSettings) {
   private val myPostProcessor = PostFormatProcessorHelper(settings.kotlinCommonSettings)
 
   private fun updateResultRange(oldTextLength: Int, newTextLength: Int) {
     myPostProcessor.updateResultRange(oldTextLength, newTextLength)
   }
 
-  override fun visitKtElement(element: KtElement) {
-    super.visitElement(element)
-    if (element.isPhysical && isModifierChainThatNeedToBeWrapped(element)) {
+  /**
+   * Returns the Modifier chains under [root] that need to be wrapped, in the order they should be wrapped (nested chains before the chains
+   * containing them).
+   *
+   * All analysis happens here, before any PSI is modified. Modifying PSI between resolves invalidates the analysis of the containing
+   * declaration body, which then has to be re-analyzed for every subsequent resolve (b/454261463).
+   *
+   * Elements that are not at least partly within the range being reformatted (if any) are skipped, along with their subtrees.
+   */
+  @VisibleForTesting
+  internal fun collectCandidates(root: PsiElement): List<SmartPsiElementPointer<KtDotQualifiedExpression>> {
+    val pointerManager = SmartPointerManager.getInstance(root.project)
+    val candidates = mutableListOf<SmartPsiElementPointer<KtDotQualifiedExpression>>()
+    root.accept(
+      object : KtTreeVisitorVoid() {
+        override fun visitKtElement(element: KtElement) {
+          if (!myPostProcessor.isElementPartlyInRange(element)) return
+          super.visitElement(element)
+          if (element.isPhysical && isModifierChainThatNeedToBeWrapped(element)) {
+            candidates.add(pointerManager.createSmartPsiElementPointer(element as KtDotQualifiedExpression))
+          }
+        }
+      }
+    )
+    return candidates
+  }
+
+  private fun wrapCandidates(candidates: List<SmartPsiElementPointer<KtDotQualifiedExpression>>) {
+    for (pointer in candidates) {
+      val element = pointer.element ?: continue
       val oldTextLength: Int = element.textLength
-      wrapModifierChain(element as KtDotQualifiedExpression, settings)
+      wrapModifierChain(element, settings)
       updateResultRange(oldTextLength, element.textLength)
     }
   }
 
   fun process(formatted: PsiElement): PsiElement {
-    formatted.accept(this)
+    wrapCandidates(collectCandidates(formatted))
     return formatted
   }
 
   fun processText(source: PsiFile, rangeToReformat: TextRange): TextRange {
     myPostProcessor.resultTextRange = rangeToReformat
-    source.accept(this)
+    wrapCandidates(collectCandidates(source))
     return myPostProcessor.resultTextRange
   }
 }
 
 /**
  * Returns true if it's Modifier(androidx.compose.ui.Modifier) chain that is two modifiers or longer.
+ *
+ * Cheap syntactic checks ([looksLikeCallChain], [isAlreadyWrapped]) are done first, so that analysis only happens for chains that could
+ * actually need wrapping.
  *
  * Note that this function calls [isModifierChainLongerThanTwo] that potentially uses the analysis API for K2. Since reformat can be used by
  * template on write action, we need to wrap it with [allowAnalysisFromWriteAction].
@@ -104,7 +138,39 @@ private fun isModifierChainThatNeedToBeWrapped(element: KtElement): Boolean {
   // expression, not only `Modifier.adjust1()`.
   return element is KtDotQualifiedExpression &&
     element.parent !is KtDotQualifiedExpression &&
+    element.looksLikeCallChain() &&
+    !element.isAlreadyWrapped() &&
     allowAnalysisFromWriteAction { isModifierChainLongerThanTwo(element) }
+}
+
+/**
+ * Returns true if this expression is a chain of at least two dot-qualified segments containing at least one call, e.g.
+ * `Modifier.adjust1().adjust2()` or `Modifier.adjust().self`, as opposed to pure property accesses like
+ * `MaterialTheme.colorScheme.primary`. This is a cheap syntactic precondition for a Modifier chain that needs wrapping: it mirrors the
+ * syntactic part of [isModifierChainLongerThanTwo] (the receiver is itself a dot-qualified expression) and only additionally excludes
+ * chains without calls.
+ */
+@VisibleForTesting
+internal fun KtDotQualifiedExpression.looksLikeCallChain(): Boolean {
+  if (receiverExpression !is KtDotQualifiedExpression) return false
+  var current: KtDotQualifiedExpression? = this
+  while (current != null) {
+    if (current.selectorExpression is KtCallExpression) return true
+    current = current.receiverExpression as? KtDotQualifiedExpression
+  }
+  return false
+}
+
+/** Returns true if every `.` in this chain is already preceded by a line break, i.e. there's nothing left to wrap. */
+@VisibleForTesting
+internal fun KtDotQualifiedExpression.isAlreadyWrapped(): Boolean {
+  var current: KtDotQualifiedExpression? = this
+  while (current != null) {
+    val beforeDot = current.operationTokenNode.psi.prevSibling
+    if (beforeDot !is PsiWhiteSpace || !beforeDot.textContains('\n')) return false
+    current = current.receiverExpression as? KtDotQualifiedExpression
+  }
+  return true
 }
 
 /** Splits KtDotQualifiedExpression it one call per line. */
