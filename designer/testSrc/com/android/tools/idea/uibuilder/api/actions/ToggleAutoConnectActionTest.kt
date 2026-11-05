@@ -18,21 +18,32 @@ package com.android.tools.idea.uibuilder.api.actions
 import com.android.tools.adtui.workbench.PropertiesComponentMock
 import com.android.tools.idea.common.model.NlComponent
 import com.android.tools.idea.common.scene.Scene
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.uibuilder.api.ViewEditor
 import com.android.tools.idea.uibuilder.api.ViewHandler
 import com.intellij.ide.util.PropertiesComponent
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 
-class ToggleAutoConnectActionTest : AndroidTestCase() {
+@RunsInEdt
+class ToggleAutoConnectActionTest {
 
-  override fun setUp() {
-    super.setUp()
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
-    registerApplicationService(PropertiesComponent::class.java, PropertiesComponentMock())
+  @Before
+  fun setUp() {
+    projectRule.projectRule.replaceService(PropertiesComponent::class.java, PropertiesComponentMock())
   }
 
+  @Test
   fun testToggle() {
     val action = ToggleAutoConnectAction()
 

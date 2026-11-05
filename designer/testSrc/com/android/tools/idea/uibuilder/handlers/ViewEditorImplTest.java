@@ -15,14 +15,35 @@
  */
 package com.android.tools.idea.uibuilder.handlers;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import org.intellij.lang.annotations.Language;
-import org.jetbrains.android.AndroidTestCase;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
 /**
  * Tests for {@link ViewEditorImpl}.
  */
-public class ViewEditorImplTest extends AndroidTestCase {
+@RunsInEdt
+public class ViewEditorImplTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
 
+  private JavaCodeInsightTestFixture myFixture;
+
+  @Before
+  public void setUp() {
+    myFixture = (JavaCodeInsightTestFixture)projectRule.getFixture();
+  }
+
+  @Test
   public void testIsDisplayable() {
     @Language("JAVA")
     String restrictText =

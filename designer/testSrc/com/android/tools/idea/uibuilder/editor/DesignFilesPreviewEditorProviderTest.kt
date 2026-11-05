@@ -18,60 +18,82 @@ package com.android.tools.idea.uibuilder.editor
 import com.android.SdkConstants
 import com.android.tools.idea.common.fixtures.ComponentDescriptor
 import com.android.tools.idea.common.type.DesignerTypeRegistrar
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
+import com.intellij.testFramework.RunsInEdt
 import org.intellij.lang.annotations.Language
-import org.jetbrains.android.AndroidTestCase
+import org.junit.After
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class DesignFilesPreviewEditorProviderTest : AndroidTestCase() {
+@RunsInEdt
+class DesignFilesPreviewEditorProviderTest {
+
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture }
+  private val project by lazy { projectRule.project }
 
   private lateinit var provider: DesignFilesPreviewEditorProvider
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     provider = DesignFilesPreviewEditorProvider()
   }
 
+  @Test
   fun testDoNotAcceptNonResourceFile() {
     val file = myFixture.addFileToProject("src/SomeFile.kt", "")
     assertFalse(provider.accept(project, file.virtualFile))
   }
 
+  @Test
   fun testDoNotAcceptNavigationFile() {
     val file = myFixture.addFileToProject("res/navigation/my_nav.xml", generateContent(SdkConstants.TAG_NAVIGATION))
     assertFalse(provider.accept(project, file.virtualFile))
   }
 
+  @Test
   fun testDoNotAcceptLayoutFile() {
     val file = myFixture.addFileToProject("res/layout/my_layout.xml", generateContent(SdkConstants.LINEAR_LAYOUT))
     assertFalse(provider.accept(project, file.virtualFile))
   }
 
+  @Test
   fun testAcceptAdaptiveIcon() {
     val file = myFixture.addFileToProject("res/mipmap/my_icon.xml", generateContent(SdkConstants.TAG_ADAPTIVE_ICON))
     assertTrue(provider.accept(project, file.virtualFile))
   }
 
+  @Test
   fun testAcceptSelector() {
     val file = myFixture.addFileToProject("res/drawable/my_selector.xml", generateContent(SdkConstants.TAG_SELECTOR))
     assertTrue(provider.accept(project, file.virtualFile))
   }
 
+  @Test
   fun testAcceptVector() {
     val file = myFixture.addFileToProject("res/drawable/my_vector.xml", generateContent(SdkConstants.TAG_ANIMATED_VECTOR))
     assertTrue(provider.accept(project, file.virtualFile))
   }
 
+  @Test
   fun testAcceptFont() {
     val file = myFixture.addFileToProject("res/font/my_font.xml", generateContent(SdkConstants.TAG_FONT_FAMILY))
     assertTrue(provider.accept(project, file.virtualFile))
   }
 
+  @Test
   fun testAcceptDrawable() {
     val file = myFixture.addFileToProject("res/drawable/my_gradient.xml", generateContent(SdkConstants.TAG_GRADIENT))
     assertTrue(provider.accept(project, file.virtualFile))
   }
 
-  override fun tearDown() {
-    super.tearDown()
+  @After
+  fun tearDown() {
     DesignerTypeRegistrar.clearRegisteredTypes()
   }
 

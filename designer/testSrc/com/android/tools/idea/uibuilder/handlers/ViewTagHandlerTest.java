@@ -18,22 +18,29 @@ package com.android.tools.idea.uibuilder.handlers;
 
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.api.InsertType;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.android.tools.idea.uibuilder.api.ViewEditor;
 import com.android.tools.idea.uibuilder.util.MockNlComponent;
 import com.google.common.collect.ImmutableSet;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.psi.xml.XmlTag;
+import com.intellij.testFramework.RunsInEdt;
 import icons.StudioIcons;
 import org.intellij.lang.annotations.Language;
-import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.util.Set;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import static com.android.SdkConstants.CLASS_VIEW;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -42,7 +49,11 @@ import static org.mockito.Mockito.*;
 /**
  * Tests for {@link ViewTagHandler}.
  */
-public class ViewTagHandlerTest extends AndroidTestCase {
+@RunsInEdt
+public class ViewTagHandlerTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
   @Language("XML")
   private static final String TEST_LAYOUT_SOURCE =
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
@@ -74,24 +85,19 @@ public class ViewTagHandlerTest extends AndroidTestCase {
 
   private XmlTag[] myViewTags;
 
-  @Override
+  @Before
   public void setUp() throws Exception {
-    super.setUp();
-    XmlFile xmlFile = (XmlFile)myFixture.addFileToProject("res/layout/layout.xml", TEST_LAYOUT_SOURCE);
+    XmlFile xmlFile = (XmlFile)projectRule.getFixture().addFileToProject("res/layout/layout.xml", TEST_LAYOUT_SOURCE);
     myViewTags = xmlFile.getRootTag().getSubTags();
   }
 
-  @Override
+  @After
   public void tearDown() throws Exception {
-    try {
-      myViewTags = null;
-    }
-    finally {
-      super.tearDown();
-    }
+    myViewTags = null;
   }
 
 
+  @Test
   public void testIcon() {
     ViewTagHandler handler = new ViewTagHandler();
     for (XmlTag tag : myViewTags) {
@@ -100,6 +106,7 @@ public class ViewTagHandlerTest extends AndroidTestCase {
     }
   }
 
+  @Test
   public void testOnCreate() {
     Set<String> classes = ImmutableSet.of(CLASS_VIEW);
     ViewTagHandler handler = new ViewTagHandler();

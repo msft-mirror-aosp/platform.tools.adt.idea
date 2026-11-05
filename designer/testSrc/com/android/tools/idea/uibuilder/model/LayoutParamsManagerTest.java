@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.uibuilder.model;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -24,15 +26,31 @@ import android.widget.LinearLayout;
 import com.android.ide.common.rendering.api.AttributeFormat;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.resources.Density;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.android.tools.configurations.Configuration;
 import com.google.common.collect.ImmutableMap;
+import com.intellij.openapi.module.Module;
+import com.intellij.testFramework.RunsInEdt;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.NoSuchElementException;
-import org.jetbrains.android.AndroidTestCase;
 import com.android.tools.dom.attrs.AttributeDefinition;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
-public class LayoutParamsManagerTest extends AndroidTestCase {
+@RunsInEdt
+public class LayoutParamsManagerTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private Module myModule;
+
+  @Before
+  public void setUp() {
+    myModule = projectRule.getModule();
+  }
 
   @SuppressWarnings("unused")
   private static class DefaultValues extends ViewGroup.LayoutParams {
@@ -63,6 +81,7 @@ public class LayoutParamsManagerTest extends AndroidTestCase {
     }
   }
 
+  @Test
   public void testGetDefaultValues() {
     Map<String, Object> defaults = LayoutParamsManager.getDefaultValuesFromClass(DefaultValues.class);
 
@@ -85,6 +104,7 @@ public class LayoutParamsManagerTest extends AndroidTestCase {
     }
   }
 
+  @Test
   public void testMapField() {
     // Check default mappings
     LinearLayoutParams layoutParams = new LinearLayoutParams();
@@ -113,6 +133,7 @@ public class LayoutParamsManagerTest extends AndroidTestCase {
     assertThat(LayoutParamsManager.mapField(layoutParams, "notExistingMapping").type).isEmpty();
   }
 
+  @Test
   public void testSetAttribute() {
     DefaultValues layoutParams = new DefaultValues(0, 0);
     Configuration configurationMock = mock(Configuration.class);
@@ -167,6 +188,7 @@ public class LayoutParamsManagerTest extends AndroidTestCase {
    * Regression test for b/130048025
    * This checks that even if an attribute does not define {@link AttributeFormat}, we do not crash.
    */
+  @Test
   public void testEmptyAttributeFormat() {
     DefaultValues layoutParams = new DefaultValues(0, 0);
     Configuration configurationMock = mock(Configuration.class);

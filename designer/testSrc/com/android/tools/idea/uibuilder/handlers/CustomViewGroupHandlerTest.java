@@ -13,21 +13,32 @@
 // limitations under the License.
 package com.android.tools.idea.uibuilder.handlers;
 
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.android.tools.idea.uibuilder.api.ViewGroupHandler;
 import com.android.tools.idea.uibuilder.api.ViewHandler;
 import com.android.tools.idea.uibuilder.api.XmlType;
 import com.intellij.psi.PsiClass;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
 import java.util.concurrent.TimeUnit;
 import org.intellij.lang.annotations.Language;
-import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.android.dom.converters.PackageClassConverter;
 import org.jetbrains.annotations.NotNull;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
 import static com.android.testutils.AsyncTestUtils.waitForCondition;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.google.common.truth.Truth.assertThat;
 import static java.util.Collections.emptyList;
 
-public class CustomViewGroupHandlerTest extends AndroidTestCase {
+@RunsInEdt
+public class CustomViewGroupHandlerTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
   private static final String MY_ABSOLUTE_LAYOUT = "p1.p2.MyAbsoluteLayout";
   private static final String MY_LINEAR_LAYOUT = "p1.p2.MyAbsoluteLayout.MyLinearLayout";
   private String myTagName;
@@ -53,12 +64,19 @@ public class CustomViewGroupHandlerTest extends AndroidTestCase {
     "    }\n" +
     "}";
 
+  private JavaCodeInsightTestFixture myFixture;
+
+  @Before
+  public void setUp() {
+    myFixture = (JavaCodeInsightTestFixture)projectRule.getFixture();
+  }
+
   private void setUpMyClasses(@NotNull String tagName) throws Exception {
     myFixture.addClass(innerClass);
     PsiClass psiClass = myFixture.findClass(tagName);
     myTagName = tagName;
     myClassName = PackageClassConverter.getQualifiedName(psiClass);
-    ViewHandlerManager manager = ViewHandlerManager.get(getProject());
+    ViewHandlerManager manager = ViewHandlerManager.get(projectRule.getProject());
     boolean[] wasUpdated = new boolean[1];
     Runnable updated = () -> { wasUpdated[0] = true; };
     ViewHandler handler = manager.getHandlerOrDefault(myTagName, updated);
@@ -69,6 +87,7 @@ public class CustomViewGroupHandlerTest extends AndroidTestCase {
     myDefaultHandler = (ViewGroupHandler)handler;
   }
 
+  @Test
   public void testGetXml() throws Exception {
     setUpMyClasses(MY_ABSOLUTE_LAYOUT);
     ViewHandler handler = new CustomViewGroupHandler(myDefaultHandler, null, myTagName, myClassName,
@@ -83,6 +102,7 @@ public class CustomViewGroupHandlerTest extends AndroidTestCase {
     assertThat(handler.getXml(myTagName, XmlType.COMPONENT_CREATION)).isEqualTo(expected);
   }
 
+  @Test
   public void testGetSpecifiedXml() throws Exception {
     setUpMyClasses(MY_LINEAR_LAYOUT);
     ViewHandler handler = new CustomViewGroupHandler(myDefaultHandler, null, myTagName, myClassName,
@@ -90,6 +110,7 @@ public class CustomViewGroupHandlerTest extends AndroidTestCase {
     assertThat(handler.getXml(myTagName, XmlType.COMPONENT_CREATION)).isEqualTo("<myxml/>");
   }
 
+  @Test
   public void testGetXmlOfInnerClass() throws Exception {
     setUpMyClasses(MY_LINEAR_LAYOUT);
     ViewHandler handler = new CustomViewGroupHandler(myDefaultHandler, null, myTagName, myClassName,

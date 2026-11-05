@@ -18,32 +18,47 @@ package com.android.tools.idea.uibuilder.model;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.model.NlComponentUtil;
 import com.android.tools.idea.common.model.NlModel;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
 import com.intellij.psi.SmartPsiElementPointer;
 import com.intellij.psi.XmlElementFactory;
 import com.intellij.psi.xml.XmlTag;
-import org.jetbrains.android.AndroidTestCase;
+import com.intellij.testFramework.RunsInEdt;
 import org.jetbrains.annotations.NotNull;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static com.intellij.testFramework.UsefulTestCase.assertEmpty;
+import static com.intellij.testFramework.UsefulTestCase.assertSameElements;
+import static com.intellij.testFramework.UsefulTestCase.assertSize;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class NlComponentUtilTest extends AndroidTestCase {
+@RunsInEdt
+public class NlComponentUtilTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
   private NlModel myModel;
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
-
+  @Before
+  public void setUp() throws Exception {
     myModel = mock(NlModel.class);
-    when(myModel.getProject()).thenReturn(myModule.getProject());
+    when(myModel.getProject()).thenReturn(projectRule.getModule().getProject());
   }
 
   @NotNull
   private XmlTag createTag(@NotNull String tagName) {
     String text = String.format("<%s id=\"@+id/%s\" layout_width=\"wrap_content\" layout_height=\"wrap_content\"/>", tagName, tagName);
-    return XmlElementFactory.getInstance(getProject()).createTagFromText(text);
+    return XmlElementFactory.getInstance(projectRule.getProject()).createTagFromText(text);
   }
 
   @NotNull
@@ -61,6 +76,7 @@ public class NlComponentUtilTest extends AndroidTestCase {
     return tagPointer;
   }
 
+  @Test
   public void testGroupSiblings() {
     NlComponent linearLayout = createComponent(createTag("LinearLayout"));
     NlComponent textView = createComponent(createTag("TextView"));
@@ -94,6 +110,7 @@ public class NlComponentUtilTest extends AndroidTestCase {
   }
 
 
+  @Test
   public void testIsDescendant() {
     NlComponent linearLayout = createComponent(createTag("LinearLayout"));
     NlComponent textView = createComponent(createTag("TextView"));
@@ -114,6 +131,7 @@ public class NlComponentUtilTest extends AndroidTestCase {
     assertFalse(NlComponentUtil.isDescendant(textView, ImmutableList.of()));
   }
 
+  @Test
   public void testIsDescendantInModelWithLoop() {
     NlComponent root = createComponent(createTag("LinearLayout"));
     NlComponent child1 = createComponent(createTag("TextView"));

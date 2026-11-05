@@ -19,6 +19,8 @@ import com.android.AndroidXConstants;
 import com.android.ide.common.repository.GoogleMavenArtifactId;
 import com.android.tools.idea.common.model.NlComponent;
 import com.android.tools.idea.common.LayoutTestUtilities;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.android.tools.idea.uibuilder.api.ViewGroupHandler;
 import com.android.tools.idea.uibuilder.api.ViewHandler;
 import com.android.tools.idea.uibuilder.api.XmlType;
@@ -27,11 +29,13 @@ import com.android.tools.idea.uibuilder.handlers.ViewHandlerManager;
 import com.android.tools.idea.uibuilder.palette.Palette.Group;
 import com.google.common.base.Splitter;
 import com.intellij.openapi.util.text.StringUtil;
+import com.intellij.testFramework.RunsInEdt;
 import icons.StudioIcons;
 import org.intellij.lang.annotations.Language;
-import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Rule;
+import org.junit.Test;
 
 import javax.swing.*;
 import java.io.StringReader;
@@ -40,16 +44,25 @@ import java.util.List;
 
 import static com.android.SdkConstants.*;
 import static com.android.SdkConstants.LINEAR_LAYOUT;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.android.tools.idea.uibuilder.api.PaletteComponentHandler.NO_PREVIEW;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
-public class PaletteTest extends AndroidTestCase {
+@RunsInEdt
+public class PaletteTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
   private static final ViewHandler STANDARD_VIEW = new ViewHandler();
   private static final ViewHandler STANDARD_TEXT = new TextViewHandler();
   private static final ViewHandler STANDARD_LAYOUT = new ViewGroupHandler();
   private static final Splitter SPLITTER = Splitter.on("\n").trimResults();
 
+  @Test
   public void testPaletteStructure() throws Exception {
     Palette palette = loadPalette();
     Iterator<Palette.BaseItem> iterator = palette.getItems().iterator();
@@ -73,10 +86,12 @@ public class PaletteTest extends AndroidTestCase {
     assertFalse(iterator.hasNext());
   }
 
+  @Test
   public void testParent() throws Exception {
     checkParents(null, loadPalette().getItems());
   }
 
+  @Test
   public void testGetById() throws Exception {
     Palette palette = loadPalette();
     assertTextViewItem(palette.getItemById("TextView"));
@@ -185,7 +200,7 @@ public class PaletteTest extends AndroidTestCase {
   }
 
   private void checkComponent(@NotNull NlComponent component, @NotNull String expectedTitle, @NotNull Icon expectedIcon) {
-    ViewHandlerManager handlerManager = ViewHandlerManager.get(getProject());
+    ViewHandlerManager handlerManager = ViewHandlerManager.get(projectRule.getProject());
     ViewHandler handler = handlerManager.getHandlerOrDefault(component, () -> {});
     String title = handler.getTitle(component);
     String attrs = handler.getTitleAttributes(component);
@@ -263,7 +278,7 @@ public class PaletteTest extends AndroidTestCase {
     "</palette>\n";
 
   private Palette loadPalette() throws Exception {
-    ViewHandlerManager manager = new ViewHandlerManager(getProject());
+    ViewHandlerManager manager = new ViewHandlerManager(projectRule.getProject());
     return Palette.parse(new StringReader(PALETTE), manager);
   }
 }

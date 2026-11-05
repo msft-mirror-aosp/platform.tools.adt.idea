@@ -16,33 +16,43 @@
 package com.android.tools.idea.uibuilder.actions
 
 import com.android.AndroidXConstants
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.psi.xml.XmlFile
 import com.intellij.psi.xml.XmlTag
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Assert.assertEquals
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 
-class LayoutEditorHelpAssistantActionTest : AndroidTestCase() {
+@RunsInEdt
+class LayoutEditorHelpAssistantActionTest {
+
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
   private val event: AnActionEvent = Mockito.mock(AnActionEvent::class.java)
   private val psi: XmlFile = Mockito.mock(XmlFile::class.java)
   private val tag: XmlTag = Mockito.mock(XmlTag::class.java)
   private val presentation = Presentation()
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     whenever(event.getData(PlatformDataKeys.PSI_FILE)).thenReturn(psi)
     whenever(event.dataContext).thenReturn(DataContext.EMPTY_CONTEXT)
-    whenever(event.project).thenReturn(myModule.project)
+    whenever(event.project).thenReturn(projectRule.module.project)
     whenever(event.presentation).thenReturn(presentation)
     whenever(psi.rootTag).thenReturn(tag)
     whenever(tag.name).thenReturn("")
   }
 
+  @Test
   fun testUpdateConstraintlayout() {
     setupTagName(AndroidXConstants.CONSTRAINT_LAYOUT.defaultName())
     val action = LayoutEditorHelpAssistantAction()
@@ -50,6 +60,7 @@ class LayoutEditorHelpAssistantActionTest : AndroidTestCase() {
     assertEquals(LayoutEditorHelpAssistantAction.Type.FULL, action.type)
   }
 
+  @Test
   fun testUpdateMotionlayout() {
     setupTagName(AndroidXConstants.MOTION_LAYOUT.defaultName())
     val action = LayoutEditorHelpAssistantAction()
