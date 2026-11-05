@@ -16,7 +16,6 @@
 package com.android.tools.idea.avd.glassespairing
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -69,6 +67,7 @@ import com.android.tools.idea.avd.showAddDeviceDialog
 import com.android.tools.idea.avdmanager.AvdScannerService
 import com.android.tools.idea.deviceprovisioner.GlassesInteractivePairableDeviceHandle
 import com.android.tools.idea.run.DeviceHeadsUpListener
+import com.android.utils.throwIfCancellation
 import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.GlassesPairingEvent
 import com.intellij.openapi.application.EDT
@@ -91,7 +90,6 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -261,7 +259,7 @@ internal constructor(
               if (phoneHandle != null) {
                 PreselectedPairingPage(glassesHandle = glassesHandle, phoneHandle = phoneHandle)
               } else {
-                SelectDevicePage(initialGlassesHandle = glassesHandle)
+                SelectDevicePage()
               }
             } else {
               SelectGlassesPage()
@@ -272,10 +270,7 @@ internal constructor(
       lockService.setWizardOpen(true)
       try {
         if (controller.show() || wizard.pairingFlow.value is PairingState.Complete) {
-          val glasses = wizard.glassesHandle ?: return null
-          val phone = wizard.phoneHandle ?: return null
-          val mac = wizard.glassesMacAddress ?: return null
-          return GlassesPairingResult(glasses = glasses, phone = phone, glassesMacAddress = mac)
+          return wizard.completedPairing
         }
         return null
       } finally {
@@ -288,7 +283,9 @@ internal constructor(
   }
 
   private var selectedDevice: DeviceRow? by mutableStateOf(null)
-  @Volatile internal var glassesMacAddress: String? = null
+
+  /** The result of the latest attempt that completed. Attempts keep running after Previous, so the selection may have changed since. */
+  @Volatile private var completedPairing: GlassesPairingResult? = null
 
   internal val phoneHandle: DeviceHandle?
     get() = initialPhoneHandle ?: selectedDevice?.handle
@@ -336,22 +333,38 @@ internal constructor(
       }
       .stateIn(coroutineScope, SharingStarted.Eagerly, persistentListOf())
 
-  private data class PairingArgs(val glasses: DeviceHandle, val phone: DeviceHandle)
+  private data class PairingArgs(val glasses: DeviceHandle, val phone: DeviceHandle, val unpairFirst: Boolean)
 
   private val pairingTrigger = MutableSharedFlow<PairingArgs>()
 
   private val pairingFlow: StateFlow<PairingState> =
     pairingTrigger
-      .flatMapLatest {
+      .flatMapLatest { args ->
         flow {
+            if (args.unpairFirst && !unpair(args.glasses as GlassesInteractivePairableDeviceHandle)) return@flow
+            // Per attempt, for its result: a later attempt can pair other glasses.
+            var glassesMacAddress: String? = null
             try {
               // We use a large timeout (15 minutes) to account for potential slow cold boots of both devices,
               // which can take significant time on some machines/configurations (e.g no GPU, cold boot, etc),
               // in addition to time for the user to navigate the pairing flow.
               withTimeout(15.minutes) {
                 pairer
-                  .pair(glasses = it.glasses, phone = it.phone, project = project, onMacRetrieved = { mac -> glassesMacAddress = mac })
-                  .collect { emit(it) }
+                  .pair(glasses = args.glasses, phone = args.phone, project = project, onMacRetrieved = { mac -> glassesMacAddress = mac })
+                  .distinctUntilChanged()
+                  .collect { state ->
+                    // Both states wait for the user to accept a prompt on the phone. Bring up this attempt's phone: after Previous,
+                    // the selection may be another phone.
+                    if (state is PairingState.AwaitingAuthorization || state is PairingState.GlassesCoreConnecting) {
+                      project?.userInvolvementRequired(args.phone)
+                    }
+                    if (state is PairingState.Complete) {
+                      completedPairing = glassesMacAddress?.let { mac ->
+                        GlassesPairingResult(glasses = args.glasses, phone = args.phone, glassesMacAddress = mac)
+                      }
+                    }
+                    emit(state)
+                  }
               }
             } catch (cause: TimeoutCancellationException) {
               GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_TIMEOUT)
@@ -366,20 +379,52 @@ internal constructor(
       .distinctUntilChanged()
       .onEach {
         when (it) {
-          is PairingState.AwaitingAuthorization -> phoneHandle?.let { project?.userInvolvementRequired(it) }
           is PairingState.Error -> GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.SHOW_FAILED_PAIRING)
           is PairingState.Complete -> {
             GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.SHOW_SUCCESSFUL_PAIRING)
-            val glassesDev = glassesHandle
-            val phoneDev = phoneHandle
-            if (glassesDev != null && phoneDev != null) {
-              project?.userInvolvementRequired(glassesDev, phoneDev)
-            }
+            completedPairing?.let { result -> project?.userInvolvementRequired(result.glasses, result.phone) }
           }
           else -> {}
         }
       }
       .stateIn(coroutineScope, started = SharingStarted.Eagerly, initialValue = PairingState.NotStarted)
+
+  /**
+   * Starts pairing [glasses] with [phone], replacing any attempt in progress. With [unpairFirst], the glasses are unpaired from their
+   * current phone and wiped first; this is how the wizard re-pairs glasses, so they must be a [GlassesInteractivePairableDeviceHandle].
+   */
+  private fun startPairing(glasses: DeviceHandle, phone: DeviceHandle, unpairFirst: Boolean) {
+    val args = PairingArgs(glasses = glasses, phone = phone, unpairFirst = unpairFirst)
+    GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_INITIATED)
+    coroutineScope.launch { pairingTrigger.emit(args) }
+  }
+
+  /**
+   * Unpairs and wipes [glasses] while showing [PairingState.Unpairing]. Returns false after emitting an error if unpairing throws or is
+   * still running after 2 minutes. That bound is soft, and so is closing the wizard during the step: cancellation cannot interrupt the
+   * blocking wipe, the host-record write or the provisioner's modal error dialogs, so one of those that has already started still finishes.
+   * The provisioner reports its own failures in a dialog and returns normally, so pairing proceeds and stops at the "already paired" check
+   * only if the glasses still hold their bond.
+   */
+  private suspend fun FlowCollector<PairingState>.unpair(glasses: GlassesInteractivePairableDeviceHandle): Boolean {
+    val glassesName = glasses.state.properties.title
+    emit(PairingState.Unpairing)
+    try {
+      // Previous is disabled while unpairing, so bound the step; stopping the glasses alone can take up to 90 seconds.
+      if (withTimeoutOrNull(2.minutes) { glasses.unpairGlasses(parent = null) } != null) return true
+      logger.warn("Timed out unpairing $glassesName")
+    } catch (e: Exception) {
+      e.throwIfCancellation()
+      logger.warn("Failed to unpair $glassesName", e)
+    }
+    emit(
+      PairingState.Error(
+        heading = AvdBundle.message("glasses.pairing.unpairing.failed.title", glassesName),
+        detailText = AvdBundle.message("glasses.pairing.unpairing.failed.message", glassesName),
+      )
+    )
+    return false
+  }
 
   /** Unified device creation helper for both Handheld Phone and AI Glasses form factors. */
   fun WizardPageScope.launchCreateCompatibleDevice(
@@ -455,88 +500,58 @@ internal constructor(
   }
 
   @Composable
-  internal fun WizardPageScope.SelectDevicePage(initialGlassesHandle: DeviceHandle? = null) {
-    val pairedPhoneId = initialGlassesHandle?.state?.properties?.pairedPhoneId
-    var isUnpairing by remember { mutableStateOf(pairedPhoneId != null) }
+  internal fun WizardPageScope.SelectDevicePage() {
+    prevButtonEnabled = false
+    val devices: ImmutableList<DeviceRow> by deviceRowFlow.collectAsState()
+    val sortedDevices = remember(devices) { devices.sortedWith(compareBy(Collator.getInstance()) { it.name }).toImmutableList() }
+
     val component = LocalComponent.current
-
-    if (isUnpairing) {
-      prevButtonEnabled = false
-      cancelButtonEnabled = false
-      nextAction = WizardAction.Disabled
-
-      LaunchedEffect(Unit) {
-        try {
-          withContext(Dispatchers.IO) { (initialGlassesHandle as GlassesInteractivePairableDeviceHandle).unpairGlasses(component) }
-        } catch (e: CancellationException) {
-          throw e
-        } catch (e: Exception) {
-          logger.warn("Failed to unpair glasses", e)
-        } finally {
-          isUnpairing = false
-          cancelButtonEnabled = true
-        }
-      }
-
-      Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-          CircularProgressIndicator()
-          Spacer(Modifier.height(10.dp))
-          Text(AvdBundle.message("glasses.pairing.unpairing.progress"))
-        }
-      }
-    } else {
-      prevButtonEnabled = false
-      val devices: ImmutableList<DeviceRow> by deviceRowFlow.collectAsState()
-      val sortedDevices = remember(devices) { devices.sortedWith(compareBy(Collator.getInstance()) { it.name }).toImmutableList() }
-
-      val state = getOrCreateState { SingleSelectionLazyListState(LazyListState()) }
-      SyncDefaultDeviceSelection(sortedDevices, state)
-      Column(Modifier.padding(20.dp)) {
-        if (sortedDevices.isEmpty()) {
-          LargeText(text = "No compatible AVDs found.")
-          Text(
-            "Glasses pairing requires a Phone AVD with a system image that includes Intelligent Eyewear support.",
-            Modifier.padding(top = 20.dp),
-          )
-          ExternalLink(
-            "Create a compatible device",
-            onClick = { launchCreateCompatibleDevice(component, state, DeviceType.HANDHELD) },
-            Modifier.padding(top = 10.dp),
-          )
-        } else {
-          LargeText("Select a device to pair", Modifier.padding(bottom = 8.dp))
-          DeviceList(
-            sortedDevices,
-            onSelectedDeviceChange = {
-              if (selectedDevice?.handle?.id != it.handle.id) {
-                GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_DEVICE_SELECTED)
-              }
-              selectedDevice = it
-            },
-            state,
-            Modifier.weight(1f),
-          )
-          ExternalLink(
-            "Create a new compatible device",
-            onClick = { launchCreateCompatibleDevice(component, state, DeviceType.HANDHELD) },
-            Modifier.padding(top = 10.dp),
-          )
-        }
-      }
-
-      nextAction =
-        when (val phoneRow = selectedDevice) {
-          null -> WizardAction.Disabled
-          else ->
-            WizardAction {
-              GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_INITIATED)
-              val glassesDev = glassesHandle ?: error("No glasses device available for pairing")
-              coroutineScope.launch { pairingTrigger.emit(PairingArgs(glasses = glassesDev, phone = phoneRow.handle)) }
-              pushPage { PairPage(phoneRow) }
+    val state = getOrCreateState { SingleSelectionLazyListState(LazyListState()) }
+    SyncDefaultDeviceSelection(sortedDevices, state)
+    Column(Modifier.padding(20.dp)) {
+      if (sortedDevices.isEmpty()) {
+        LargeText(text = "No compatible AVDs found.")
+        Text(
+          "Glasses pairing requires a Phone AVD with a system image that includes Intelligent Eyewear support.",
+          Modifier.padding(top = 20.dp),
+        )
+        ExternalLink(
+          "Create a compatible device",
+          onClick = { launchCreateCompatibleDevice(component, state, DeviceType.HANDHELD) },
+          Modifier.padding(top = 10.dp),
+        )
+      } else {
+        LargeText("Select a device to pair", Modifier.padding(bottom = 8.dp))
+        DeviceList(
+          sortedDevices,
+          onSelectedDeviceChange = {
+            if (selectedDevice?.handle?.id != it.handle.id) {
+              GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_DEVICE_SELECTED)
             }
-        }
+            selectedDevice = it
+          },
+          state,
+          Modifier.weight(1f),
+        )
+        ExternalLink(
+          "Create a new compatible device",
+          onClick = { launchCreateCompatibleDevice(component, state, DeviceType.HANDHELD) },
+          Modifier.padding(top = 10.dp),
+        )
+      }
     }
+
+    nextAction =
+      when (val phoneRow = selectedDevice) {
+        null -> WizardAction.Disabled
+        else ->
+          WizardAction {
+            val glassesDev = glassesHandle ?: error("No glasses device available for pairing")
+            // showCore already asked before re-pairing glasses that are still paired to a phone.
+            startPairing(glasses = glassesDev, phone = phoneRow.handle, unpairFirst = glassesDev.state.properties.pairedPhoneId != null)
+            pushPage { PairPage(phoneRow) }
+          }
+      }
   }
 
   @Composable
@@ -547,6 +562,14 @@ internal constructor(
 
     if (pairingState is PairingState.Complete) {
       enterTerminalState()
+    } else {
+      // This page can first show the previous attempt's Complete; take back the Finish and the disabled Cancel of enterTerminalState().
+      nextActionName = "Next"
+      nextAction = WizardAction.Disabled
+      cancelButtonEnabled = true
+      // Unpairing stops and wipes the glasses AVD. Previous would leave that running behind the device list, so it is off until the
+      // step ends. Cancel stays on: closing the wizard cancels the step.
+      prevButtonEnabled = pairingState !is PairingState.Unpairing
     }
   }
 
@@ -564,8 +587,8 @@ internal constructor(
       LaunchedEffect(phoneRow) {
         if (selectedDevice == null) {
           selectedDevice = phoneRow
-          GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_INITIATED)
-          pairingTrigger.emit(PairingArgs(glasses = glassesHandle, phone = phoneRow.handle))
+          // showCore already asked before re-pairing glasses that are still paired to a phone.
+          startPairing(glasses = glassesHandle, phone = phoneRow.handle, unpairFirst = glassesHandle.state.properties.pairedPhoneId != null)
         }
       }
       PairPage(phoneRow)
@@ -581,8 +604,6 @@ internal constructor(
     val component = LocalComponent.current
     val state = getOrCreateState { SingleSelectionLazyListState(LazyListState()) }
     SyncDefaultDeviceSelection(sortedDevices, state)
-
-    var unpairingInProgress by remember { mutableStateOf(false) }
 
     Column(Modifier.padding(20.dp)) {
       if (sortedDevices.isEmpty()) {
@@ -614,42 +635,23 @@ internal constructor(
       }
     }
 
-    if (unpairingInProgress) {
-      UnpairingProgressOverlay()
-    }
-
     nextAction =
       when (val glassesRow = selectedDevice) {
         null -> WizardAction.Disabled
         else ->
           WizardAction {
             val glassesDev = glassesRow.handle
-            val pairedPhoneId = glassesDev.state.properties.pairedPhoneId
+            val phoneDev = initialPhoneHandle ?: error("initialPhoneHandle must not be null in Phone-First flow")
 
-            if (pairedPhoneId != null) {
+            if (glassesDev.state.properties.pairedPhoneId != null) {
               coroutineScope.launch(Dispatchers.EDT) {
-                val proceed = showRepairWarningDialog(component)
-                if (proceed) {
-                  unpairingInProgress = true
-                  try {
-                    withContext(Dispatchers.IO) { (glassesDev as GlassesInteractivePairableDeviceHandle).unpairGlasses(component) }
-                    val phoneDev = initialPhoneHandle ?: error("initialPhoneHandle must not be null in Phone-First flow")
-                    GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_INITIATED)
-                    coroutineScope.launch { pairingTrigger.emit(PairingArgs(glasses = glassesDev, phone = phoneDev)) }
-                    pushPage { PairPage(DeviceRow(phoneDev, phoneDev.state)) }
-                  } catch (e: CancellationException) {
-                    throw e
-                  } catch (e: Exception) {
-                    logger.warn("Failed to unpair glasses during selection repair flow", e)
-                  } finally {
-                    unpairingInProgress = false
-                  }
+                if (showRepairWarningDialog(component)) {
+                  startPairing(glasses = glassesDev, phone = phoneDev, unpairFirst = true)
+                  pushPage { PairPage(DeviceRow(phoneDev, phoneDev.state)) }
                 }
               }
             } else {
-              val phoneDev = initialPhoneHandle ?: error("initialPhoneHandle must not be null in Phone-First flow")
-              GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_INITIATED)
-              coroutineScope.launch { pairingTrigger.emit(PairingArgs(glasses = glassesDev, phone = phoneDev)) }
+              startPairing(glasses = glassesDev, phone = phoneDev, unpairFirst = false)
               pushPage { PairPage(DeviceRow(phoneDev, phoneDev.state)) }
             }
           }
@@ -666,17 +668,6 @@ internal constructor(
         .yesText(AvdBundle.message("glasses.pairing.selection.dialog.ok"))
         .noText(AvdBundle.message("glasses.pairing.selection.dialog.cancel"))
         .ask(parent)
-    }
-  }
-
-  @Composable
-  private fun UnpairingProgressOverlay() {
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)), contentAlignment = Alignment.Center) {
-      Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        CircularProgressIndicator()
-        Spacer(Modifier.height(10.dp))
-        Text(AvdBundle.message("glasses.pairing.unpairing.progress"), color = Color.White)
-      }
     }
   }
 }
@@ -798,6 +789,12 @@ internal sealed class PairingState {
 
   data object NotStarted : PairingState() {
     override val heading: String = "Preparing"
+  }
+
+  /** The glasses are being unpaired from their previous phone and wiped before pairing starts. */
+  data object Unpairing : PairingState() {
+    override val heading: String
+      get() = AvdBundle.message("glasses.pairing.unpairing.progress")
   }
 
   data class Launching(
@@ -978,6 +975,7 @@ internal fun pairGlassesToPhone(
     .onEach {
       when (it) {
         PairingState.NotStarted,
+        PairingState.Unpairing,
         is PairingState.Pairing -> {}
         is PairingState.AwaitingForeground -> {
           logger.debug("Awaiting foreground of Companion app on $phoneName")
