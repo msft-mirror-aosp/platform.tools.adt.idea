@@ -18,12 +18,15 @@ package com.android.tools.idea.lang.proguardR8
 import com.android.tools.idea.project.DefaultModuleSystem
 import com.android.tools.idea.projectsystem.CodeShrinker
 import com.android.tools.idea.projectsystem.getModuleSystem
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.caret
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.codeInsight.completion.JavaPsiClassReferenceElement
 import com.intellij.codeInsight.lookup.Lookup
 import com.intellij.openapi.fileTypes.LanguageFileType
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -698,14 +701,21 @@ class ProguardR8CompletionContributorTest(private val fileType: LanguageFileType
   }
 }
 
+@RunsInEdt
 @RunWith(Parameterized::class)
-class ProguardR8FlagsCodeCompletion(private val fileType: LanguageFileType) : AndroidTestCase() {
+class ProguardR8FlagsCodeCompletion(private val fileType: LanguageFileType) {
   companion object {
     @Suppress("unused")
     @JvmStatic
     @get:Parameterized.Parameters(name = "{0}")
     val fileType = listOf(ProguardR8FileType.INSTANCE, KeepRulesR8FileType.INSTANCE)
   }
+
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture }
+  private val myModule
+    get() = projectRule.module
 
   @Test
   fun testFlagSuggestionRegardingShrinkerType() {

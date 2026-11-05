@@ -15,15 +15,32 @@
  */
 package com.android.tools.idea.lang.multiDexKeep
 
+import com.android.SdkConstants
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.caret
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.psi.PsiClass
 import com.intellij.testFramework.PsiTestUtil
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
+import org.jetbrains.android.AndroidTestBase
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class MultiDexKeepReferenceTest : AndroidTestCase() {
-  override fun setUp() {
-    super.setUp()
+@RunsInEdt
+class MultiDexKeepReferenceTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture as JavaCodeInsightTestFixture }
+  private val myModule
+    get() = projectRule.module
+
+  @Before
+  fun setUp() {
+    myFixture.testDataPath = AndroidTestBase.getTestDataPath()
+    myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML)
     PsiTestUtil.addLibrary(myModule, "mylib", "", myFixture.testDataPath + "/maven/myjar/myjar-1.0.jar")
 
     myFixture.addClass(
@@ -50,6 +67,7 @@ class MultiDexKeepReferenceTest : AndroidTestCase() {
     )
   }
 
+  @Test
   fun testResolve() {
     myFixture.configureByText(
       MultiDexKeepFileType.INSTANCE,
@@ -64,6 +82,7 @@ class MultiDexKeepReferenceTest : AndroidTestCase() {
     assertThat(psiClass.qualifiedName).isEqualTo("com.example.myapplication.MainActivity")
   }
 
+  @Test
   fun testResolve_innerClass() {
     myFixture.configureByText(
       MultiDexKeepFileType.INSTANCE,
@@ -78,6 +97,7 @@ class MultiDexKeepReferenceTest : AndroidTestCase() {
     assertThat(psiClass.qualifiedName).isEqualTo("com.example.myapplication.MainActivity.Inner")
   }
 
+  @Test
   fun testCodeCompletionOnEmptyFile() {
     myFixture.configureByText(MultiDexKeepFileType.INSTANCE, "")
 
@@ -93,6 +113,7 @@ class MultiDexKeepReferenceTest : AndroidTestCase() {
       )
   }
 
+  @Test
   fun testCodeCompletion() {
     myFixture.configureByText(
       MultiDexKeepFileType.INSTANCE,

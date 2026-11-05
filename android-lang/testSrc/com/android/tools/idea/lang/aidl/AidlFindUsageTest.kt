@@ -18,19 +18,31 @@ package com.android.tools.idea.lang.aidl
 import com.android.tools.idea.lang.aidl.psi.AidlDeclaration
 import com.android.tools.idea.lang.aidl.psi.AidlNamedElement
 import com.android.tools.idea.lang.aidl.psi.AidlQualifiedName
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiField
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiReference
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
 import org.jetbrains.kotlin.idea.base.psi.getLineNumber
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class AidlFindUsageTest : AndroidTestCase() {
-  override fun setUp() {
-    super.setUp()
+@RunsInEdt
+class AidlFindUsageTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture }
+
+  @Before
+  fun setUp() {
     @Suppress("UnnecessaryModifier")
     myFixture.addFileToProject(
       "src/Interface.java",
@@ -68,6 +80,7 @@ class AidlFindUsageTest : AndroidTestCase() {
     )
   }
 
+  @Test
   fun testFindMethodUsage() {
     myFixture.configureByText(
       "file.aidl",
@@ -90,6 +103,7 @@ class AidlFindUsageTest : AndroidTestCase() {
     )
   }
 
+  @Test
   fun testFindInterfaceUsage() {
     myFixture.configureByText(
       "file.aidl",
@@ -120,6 +134,7 @@ class AidlFindUsageTest : AndroidTestCase() {
     )
   }
 
+  @Test
   fun testParcelableUsage() {
     myFixture.addFileToProject(
       "src/Rect.java",
@@ -144,6 +159,7 @@ class AidlFindUsageTest : AndroidTestCase() {
     )
   }
 
+  @Test
   fun testEnumUsage() {
     @Suppress("UnnecessaryModifier")
     myFixture.addFileToProject(
@@ -181,6 +197,7 @@ class AidlFindUsageTest : AndroidTestCase() {
     )
   }
 
+  @Test
   fun testEnumConstantUsage() {
     @Suppress("UnnecessaryModifier")
     myFixture.addFileToProject(
@@ -218,6 +235,7 @@ class AidlFindUsageTest : AndroidTestCase() {
     )
   }
 
+  @Test
   fun testUnions() {
     // Based on AIDL unit test case Union.aidl/Union.java
 

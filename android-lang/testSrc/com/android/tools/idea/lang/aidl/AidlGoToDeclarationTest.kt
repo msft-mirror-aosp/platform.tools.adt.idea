@@ -15,12 +15,23 @@
  */
 package com.android.tools.idea.lang.aidl
 
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.moveCaret
+import com.android.tools.idea.testing.onEdt
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.psi.PsiClass
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
 
-class AidlGoToDeclarationTest : AndroidTestCase() {
+@RunsInEdt
+class AidlGoToDeclarationTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture }
+
+  @Test
   fun testGoToDeclaration() {
     myFixture.configureByText(
       AidlFileType.INSTANCE,

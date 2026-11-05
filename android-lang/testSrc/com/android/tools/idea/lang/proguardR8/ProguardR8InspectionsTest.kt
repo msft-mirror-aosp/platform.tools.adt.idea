@@ -18,11 +18,15 @@ package com.android.tools.idea.lang.proguardR8
 import com.android.tools.idea.project.DefaultModuleSystem
 import com.android.tools.idea.projectsystem.CodeShrinker
 import com.android.tools.idea.projectsystem.getModuleSystem
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.highlightedAs
+import com.android.tools.idea.testing.onEdt
 import com.intellij.lang.annotation.HighlightSeverity.ERROR
 import com.intellij.lang.annotation.HighlightSeverity.WARNING
 import com.intellij.openapi.fileTypes.LanguageFileType
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
@@ -222,8 +226,9 @@ class ProguardR8InspectionsTest(private val fileType: LanguageFileType) : Progua
   }
 }
 
+@RunsInEdt
 @RunWith(Parameterized::class)
-class ProguardR8IgnoredFlagInspectionTest(private val fileType: LanguageFileType) : AndroidTestCase() {
+class ProguardR8IgnoredFlagInspectionTest(private val fileType: LanguageFileType) {
   companion object {
     @Suppress("unused")
     @JvmStatic
@@ -231,8 +236,14 @@ class ProguardR8IgnoredFlagInspectionTest(private val fileType: LanguageFileType
     val fileType = listOf(ProguardR8FileType.INSTANCE, KeepRulesR8FileType.INSTANCE)
   }
 
-  override fun setUp() {
-    super.setUp()
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture }
+  private val myModule
+    get() = projectRule.module
+
+  @Before
+  fun setUp() {
     myFixture.enableInspections(ProguardR8IgnoredFlagInspection::class.java)
   }
 
