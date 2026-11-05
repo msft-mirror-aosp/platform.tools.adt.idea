@@ -15,16 +15,40 @@
  */
 package com.android.tools.idea.editors;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.ide.ui.UISettings;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.vfs.VirtualFile;
-import org.jetbrains.android.AndroidTestCase;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.jetbrains.android.AndroidTestBase;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
-public class AndroidEditorTitleProviderTest extends AndroidTestCase {
+@RunsInEdt
+public class AndroidEditorTitleProviderTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private CodeInsightTestFixture myFixture;
+
+  @Before
+  public void setUp() {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+  }
+
+  @Test
   public void testTitle() throws Exception {
 
     checkTitle("AndroidManifest.xml", null);
@@ -54,7 +78,7 @@ public class AndroidEditorTitleProviderTest extends AndroidTestCase {
     AndroidEditorTitleProvider provider = new AndroidEditorTitleProvider();
     VirtualFile file = myFixture.getTempDirFixture().createFile(path);
     WriteAction.run(() -> file.setBinaryContent("content does not matter".getBytes()));
-    Project project = getProject();
+    Project project = projectRule.getProject();
     String title = provider.getEditorTabTitle(project, file);
     if (expected == null) {
       assertNull(title);

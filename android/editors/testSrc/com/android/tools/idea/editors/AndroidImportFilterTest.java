@@ -15,10 +15,37 @@
  */
 package com.android.tools.idea.editors;
 
-import com.intellij.psi.PsiFile;
-import org.jetbrains.android.AndroidTestCase;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
-public class AndroidImportFilterTest extends AndroidTestCase {
+import com.android.SdkConstants;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
+import com.intellij.psi.PsiFile;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture;
+import org.jetbrains.android.AndroidTestBase;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+
+@RunsInEdt
+public class AndroidImportFilterTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private JavaCodeInsightTestFixture myFixture;
+
+  @Before
+  public void setUp() {
+    myFixture = (JavaCodeInsightTestFixture)projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+    myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML);
+  }
+
+  @Test
   public void testShouldUseFullName() {
     PsiFile javaFile =
       myFixture.addFileToProject("src/com/example/Foo.java", "package com.example; class Foo {}");

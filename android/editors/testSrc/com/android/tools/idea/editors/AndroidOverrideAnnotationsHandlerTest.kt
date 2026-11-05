@@ -15,19 +15,39 @@
  */
 package com.android.tools.idea.editors
 
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.JavaRecursiveElementVisitor
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiParameter
+import com.intellij.testFramework.RunsInEdt
 import org.intellij.lang.annotations.Language
-import org.jetbrains.android.AndroidTestCase
+import org.jetbrains.android.AndroidTestBase
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
 /**
  * Test[AndroidOverrideAnnotationsHandler]. Each test overrides a method from a class called "MySuper" in a subclass called "MyOverride". In
  * each test we vary, via the setup() function, what is available in the classpath, and then we check that the override is modified as
  * expected.
  */
-class AndroidOverrideAnnotationsHandlerTest : AndroidTestCase() {
+@RunsInEdt
+class AndroidOverrideAnnotationsHandlerTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture }
+
+  @Before
+  fun setUp() {
+    myFixture.testDataPath = AndroidTestBase.getTestDataPath()
+  }
+
+  @Test
   fun testNoAnnotations() {
     // Here we just wipe out the @RecentlyNullable annotation: there's no nullness annotation
     // in the classpath
@@ -46,6 +66,7 @@ class AndroidOverrideAnnotationsHandlerTest : AndroidTestCase() {
     check({}, expected)
   }
 
+  @Test
   fun testHaveAndroidX() {
     val expected =
       """
@@ -62,6 +83,7 @@ class AndroidOverrideAnnotationsHandlerTest : AndroidTestCase() {
     check({ addNullnessAnnotation("androidx.annotation", "Nullable") }, expected)
   }
 
+  @Test
   fun testHaveSupportAnnotations() {
     // In a project that depends on android.support.annotation instead of androidx.annotation,
     // we map to those annotations instead
@@ -80,6 +102,7 @@ class AndroidOverrideAnnotationsHandlerTest : AndroidTestCase() {
     check({ addNullnessAnnotation("android.support.annotation", "Nullable") }, expected)
   }
 
+  @Test
   fun testGetAnnotations() {
     val javaFile = myFixture.addFileToProject("src/com/example/Foo.java", "package com.example; class Foo {}")
     val handler = AndroidOverrideAnnotationsHandler()

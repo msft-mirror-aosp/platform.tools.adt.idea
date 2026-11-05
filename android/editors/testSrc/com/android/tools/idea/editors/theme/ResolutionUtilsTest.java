@@ -15,6 +15,9 @@
  */
 package com.android.tools.idea.editors.theme;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertEquals;
+
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.ide.common.rendering.api.StyleResourceValue;
@@ -23,10 +26,25 @@ import com.android.ide.common.resources.ResourceResolver;
 import com.android.resources.ResourceType;
 import com.android.tools.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.openapi.vfs.VirtualFile;
-import org.jetbrains.android.AndroidTestCase;
+import com.intellij.testFramework.RunsInEdt;
+import org.jetbrains.android.AndroidTestBase;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
-public class ResolutionUtilsTest extends AndroidTestCase {
+@RunsInEdt
+public class ResolutionUtilsTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  @Before
+  public void setUp() {
+    projectRule.getFixture().setTestDataPath(AndroidTestBase.getTestDataPath());
+  }
+
   /*
    * The test SDK only includes some resources. It only includes a few incomplete styles.
    */
@@ -34,6 +52,7 @@ public class ResolutionUtilsTest extends AndroidTestCase {
   /**
    * Tests {@link ResolutionUtils#getQualifiedNameFromResourceUrl(String)}
    */
+  @Test
   public void testGetQualifiedNameFromResourceUrl() {
     assertEquals("android:Theme", ResolutionUtils.getQualifiedNameFromResourceUrl("@android:style/Theme"));
     assertEquals("namespace:Theme", ResolutionUtils.getQualifiedNameFromResourceUrl("@namespace:style/Theme"));
@@ -42,20 +61,21 @@ public class ResolutionUtilsTest extends AndroidTestCase {
     // for theme attributes, the "attr/" is optional: http://developer.android.com/guide/topics/resources/accessing-resources.html
   }
 
+  @Test
   public void testGetOriginalApiLevel() {
-    assertEquals(-1, ResolutionUtils.getOriginalApiLevel(null, getProject()));
+    assertEquals(-1, ResolutionUtils.getOriginalApiLevel(null, projectRule.getProject()));
 
     // Testing Api of an attribute name
-    assertEquals(21, ResolutionUtils.getOriginalApiLevel("android:colorAccent", getProject()));
-    assertEquals(-1, ResolutionUtils.getOriginalApiLevel("colorAccent", getProject()));
+    assertEquals(21, ResolutionUtils.getOriginalApiLevel("android:colorAccent", projectRule.getProject()));
+    assertEquals(-1, ResolutionUtils.getOriginalApiLevel("colorAccent", projectRule.getProject()));
 
     // Testing Api of an attribute value
-    assertEquals(14, ResolutionUtils.getOriginalApiLevel("@android:color/holo_green_dark", getProject()));
-    assertEquals(21, ResolutionUtils.getOriginalApiLevel("?android:attr/colorAccent", getProject()));
-    assertEquals(3, ResolutionUtils.getOriginalApiLevel("@android:integer/config_longAnimTime", getProject()));
-    assertEquals(4, ResolutionUtils.getOriginalApiLevel("@android:drawable/stat_sys_vp_phone_call", getProject()));
-    assertEquals(1, ResolutionUtils.getOriginalApiLevel("@android:color/black", getProject()));
-    assertEquals(-1, ResolutionUtils.getOriginalApiLevel("?attr/colorAccent", getProject()));
-    assertEquals(-1, ResolutionUtils.getOriginalApiLevel("@color/holo_green_dark", getProject()));
+    assertEquals(14, ResolutionUtils.getOriginalApiLevel("@android:color/holo_green_dark", projectRule.getProject()));
+    assertEquals(21, ResolutionUtils.getOriginalApiLevel("?android:attr/colorAccent", projectRule.getProject()));
+    assertEquals(3, ResolutionUtils.getOriginalApiLevel("@android:integer/config_longAnimTime", projectRule.getProject()));
+    assertEquals(4, ResolutionUtils.getOriginalApiLevel("@android:drawable/stat_sys_vp_phone_call", projectRule.getProject()));
+    assertEquals(1, ResolutionUtils.getOriginalApiLevel("@android:color/black", projectRule.getProject()));
+    assertEquals(-1, ResolutionUtils.getOriginalApiLevel("?attr/colorAccent", projectRule.getProject()));
+    assertEquals(-1, ResolutionUtils.getOriginalApiLevel("@color/holo_green_dark", projectRule.getProject()));
   }
 }

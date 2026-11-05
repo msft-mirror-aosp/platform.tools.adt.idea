@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.editors.theme;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.google.common.truth.Truth.assertThat;
 
+import com.android.SdkConstants;
 import com.android.ide.common.rendering.api.ResourceNamespace;
 import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.ide.common.repository.GoogleMavenArtifactId;
@@ -27,14 +29,38 @@ import com.android.tools.idea.editors.theme.datamodels.ConfiguredThemeEditorStyl
 import com.android.tools.idea.projectsystem.TestProjectSystem;
 import com.android.tools.idea.projectsystem.TestRepositories;
 import com.android.tools.idea.projectsystem.TestVersion;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.stream.Collectors;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.AndroidTestBase;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
-public class ThemeResolverTest extends AndroidTestCase {
+@RunsInEdt
+public class ThemeResolverTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private CodeInsightTestFixture myFixture;
+  private Module myModule;
+
+  @Before
+  public void setUp() {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+    myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML);
+    myFixture.copyDirectoryToProject("res", "res");
+    myModule = projectRule.getModule();
+  }
+
   /*
    * The test SDK only includes some resources. It only includes a few incomplete styles.
    */
@@ -42,6 +68,7 @@ public class ThemeResolverTest extends AndroidTestCase {
   /**
    * Regression test for b/111857682. Checks that we can handle LocalResourceRepository.EmptyRepository as the module resources.
    */
+  @Test
   public void testEmptyModuleResources() throws IOException {
     WriteAction.run(() -> myFixture.getTempDirFixture().getFile("res").delete(this));
     Configuration configuration = Configuration.create(ConfigurationManager.getOrCreateInstance(myModule),
@@ -49,6 +76,7 @@ public class ThemeResolverTest extends AndroidTestCase {
     new ThemeResolver(configuration);
   }
 
+  @Test
   public void testRequiredBaseThemesWithNoDesignLibraryPresent() {
     VirtualFile layoutFile = myFixture.copyFileToProject("xmlpull/layout.xml", "res/layout/layout1.xml");
     Configuration configuration = ConfigurationManager.getOrCreateInstance(myModule).getConfiguration(layoutFile);
@@ -56,8 +84,9 @@ public class ThemeResolverTest extends AndroidTestCase {
     assertThat(themeResolver.requiredBaseThemes()).isEmpty();
   }
 
+  @Test
   public void testRequiredBaseThemesWithDesignLibraryPresent() {
-    TestProjectSystem projectSystem = new TestProjectSystem(getProject(), TestRepositories.PLATFORM_SUPPORT_LIBS);
+    TestProjectSystem projectSystem = new TestProjectSystem(projectRule.getProject(), TestRepositories.PLATFORM_SUPPORT_LIBS);
     projectSystem.useInTests();
     projectSystem.addDependency(GoogleMavenArtifactId.SUPPORT_APPCOMPAT_V7, myModule, TestVersion.create(1, 3));
     projectSystem.addDependency(GoogleMavenArtifactId.SUPPORT_DESIGN, myModule, TestVersion.create(1, 4));
@@ -74,6 +103,7 @@ public class ThemeResolverTest extends AndroidTestCase {
       .containsExactly("Platform.AppCompat", "Platform.AppCompat.Light");
   }
 
+  @Test
   public void testRecommendedThemesNoDependencies() {
     VirtualFile layoutFile = myFixture.copyFileToProject("themeEditor/layout.xml", "res/layout/layout.xml");
     ConfigurationManager configurationManager = ConfigurationManager.getOrCreateInstance(myModule);
@@ -84,8 +114,9 @@ public class ThemeResolverTest extends AndroidTestCase {
         ResourceReference.style(ResourceNamespace.ANDROID, "Theme.Material.NoActionBar"));
   }
 
+  @Test
   public void testRecommendedThemesAppcompat() {
-    TestProjectSystem projectSystem = new TestProjectSystem(getProject(), TestRepositories.PLATFORM_SUPPORT_LIBS);
+    TestProjectSystem projectSystem = new TestProjectSystem(projectRule.getProject(), TestRepositories.PLATFORM_SUPPORT_LIBS);
     projectSystem.useInTests();
     projectSystem.addDependency(GoogleMavenArtifactId.ANDROIDX_APPCOMPAT, myModule, TestVersion.create(1, 3));
 
