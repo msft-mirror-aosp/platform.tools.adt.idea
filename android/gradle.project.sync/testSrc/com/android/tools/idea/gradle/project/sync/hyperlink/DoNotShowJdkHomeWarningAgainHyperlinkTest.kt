@@ -19,19 +19,38 @@ import com.android.tools.idea.gradle.project.sync.GradleSyncState.Companion.JDK_
 import com.intellij.notification.NotificationsConfiguration
 import com.intellij.notification.impl.NotificationSettings
 import com.intellij.notification.impl.NotificationsConfigurationImpl
-import com.intellij.testFramework.HeavyPlatformTestCase
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
+import org.junit.After
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 
 /** Tests for [DoNotShowJdkHomeWarningAgainHyperlink]. */
-class DoNotShowJdkHomeWarningAgainHyperlinkTest : HeavyPlatformTestCase() {
+@RunsInEdt
+class DoNotShowJdkHomeWarningAgainHyperlinkTest {
+  private val projectRule = ProjectRule()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule())
+
+  private val project
+    get() = projectRule.project
+
   private lateinit var myOriginalSettings: NotificationSettings
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     // Save settings to restore after testing
     myOriginalSettings = NotificationsConfigurationImpl.getSettings(JDK_LOCATION_WARNING_NOTIFICATION_GROUP.displayId)
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     // Restore settings
     NotificationsConfiguration.getNotificationsConfiguration()
       .changeSettings(
@@ -40,10 +59,10 @@ class DoNotShowJdkHomeWarningAgainHyperlinkTest : HeavyPlatformTestCase() {
         myOriginalSettings.isShouldLog,
         myOriginalSettings.isShouldReadAloud,
       )
-    super.tearDown()
   }
 
   /** Verify that executing the hyperlink disables logging of warning. */
+  @Test
   fun testExecute() {
     // Make sure logging is enabled
     NotificationsConfiguration.getNotificationsConfiguration()

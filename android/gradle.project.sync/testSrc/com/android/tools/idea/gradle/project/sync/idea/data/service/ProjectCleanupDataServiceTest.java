@@ -20,20 +20,32 @@ import com.android.tools.idea.gradle.project.sync.idea.data.model.ProjectCleanup
 import com.android.tools.idea.gradle.project.sync.setup.post.ProjectCleanup;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProvider;
-import com.intellij.testFramework.HeavyPlatformTestCase;
+import com.intellij.openapi.project.Project;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.ProjectRule;
+import com.intellij.testFramework.RunsInEdt;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.RuleChain;
 import org.mockito.Mock;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static com.android.tools.idea.gradle.project.sync.idea.data.service.AndroidProjectKeys.PROJECT_CLEANUP_MODEL;
+import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.*;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 /**
  * Tests for {@link ProjectCleanupDataService}.
  */
-public class ProjectCleanupDataServiceTest extends HeavyPlatformTestCase {
+@RunsInEdt
+public class ProjectCleanupDataServiceTest {
+  private final ProjectRule projectRule = new ProjectRule();
+  @Rule public final RuleChain ruleChain = RuleChain.outerRule(projectRule).around(new EdtRule());
+
   @Mock private IdeInfo myIdeInfo;
   @Mock private ProjectCleanup myProjectCleanup;
   @Mock private IdeModifiableModelsProvider myModelsProvider;
@@ -41,9 +53,8 @@ public class ProjectCleanupDataServiceTest extends HeavyPlatformTestCase {
   private ProjectCleanupDataService myDataService;
   private List<DataNode<ProjectCleanupModel>> myDataNodes;
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
+  @Before
+  public void setUp() throws Exception {
     initMocks(this);
 
     myDataNodes = new ArrayList<>();
@@ -52,10 +63,12 @@ public class ProjectCleanupDataServiceTest extends HeavyPlatformTestCase {
     myDataService = new ProjectCleanupDataService(myProjectCleanup);
   }
 
+  @Test
   public void testGetTargetDataKey() {
     assertSame(PROJECT_CLEANUP_MODEL, myDataService.getTargetDataKey());
   }
 
+  @Test
   public void testImportDataWithAndroidStudio() {
     when(myIdeInfo.isAndroidStudio()).thenReturn(true);
 
@@ -64,11 +77,16 @@ public class ProjectCleanupDataServiceTest extends HeavyPlatformTestCase {
     verify(myProjectCleanup, times(1)).cleanUpProject(getProject(), myModelsProvider, null);
   }
 
+  @Test
   public void testImportDataWithIdeNotAndroidStudio() {
     when(myIdeInfo.isAndroidStudio()).thenReturn(false);
 
     myDataService.importData(myDataNodes, null, getProject(), myModelsProvider);
 
     verify(myProjectCleanup, times(1)).cleanUpProject(getProject(), myModelsProvider, null);
+  }
+
+  private Project getProject() {
+    return projectRule.getProject();
   }
 }

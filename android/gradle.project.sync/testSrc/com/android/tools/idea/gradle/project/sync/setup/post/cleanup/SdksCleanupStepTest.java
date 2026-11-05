@@ -26,6 +26,8 @@ import static com.intellij.openapi.roots.OrderRootType.CLASSES;
 import static com.intellij.openapi.roots.OrderRootType.SOURCES;
 import static com.intellij.openapi.util.io.FileUtil.createDirectory;
 import static com.intellij.openapi.util.io.FileUtil.join;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -34,30 +36,48 @@ import com.android.sdklib.AndroidVersion;
 import com.android.sdklib.IAndroidTarget;
 import com.android.tools.idea.sdk.AndroidSdks;
 import com.android.tools.idea.sdk.IdeSdks;
+import com.android.tools.idea.testing.AndroidProjectRule;
 import com.android.tools.idea.testing.Sdks;
+import com.intellij.ide.highlighter.ModuleFileType;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.WriteAction;
+import com.intellij.openapi.module.EmptyModuleType;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleManager;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.projectRoots.ProjectJdkTable;
 import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.roots.JavadocOrderRootType;
 import com.intellij.openapi.roots.ModifiableRootModel;
 import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.testFramework.HeavyPlatformTestCase;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.IndexingTestUtil;
+import com.intellij.testFramework.RunsInEdt;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.RuleChain;
 
 /**
  * Tests for {@link SdksCleanupStep}.
  */
-public class SdksCleanupStepTest extends HeavyPlatformTestCase {
+@RunsInEdt
+public class SdksCleanupStepTest {
+  private final AndroidProjectRule projectRule = AndroidProjectRule.onDisk().initAndroid(false);
+  @Rule public final RuleChain ruleChain = RuleChain.outerRule(projectRule).around(new EdtRule());
+
   @Nullable private Sdk mySdk;
 
+  @Test
   public void testUpdateSdkWithMissingDocumentation() {
     createSdk();
     try {
@@ -74,6 +94,7 @@ public class SdksCleanupStepTest extends HeavyPlatformTestCase {
     }
   }
 
+  @Test
   public void testUpdateSdkWithSourcesInstalled() {
     // TODO(b/291755082): Update to 34 once 34 sources are published
     AndroidVersion version = new AndroidVersion(33);
@@ -101,6 +122,7 @@ public class SdksCleanupStepTest extends HeavyPlatformTestCase {
     }
   }
 
+  @Test
   public void testCleanUpSdkWithSdkWithoutAndroidLibrary() {
     createSdk();
     try {
@@ -125,6 +147,7 @@ public class SdksCleanupStepTest extends HeavyPlatformTestCase {
     }
   }
 
+  @Test
   public void testCleanUpSdkWithAnAlreadyFixedSdk() {
     AndroidSdks sdks = mock(AndroidSdks.class);
     SdksCleanupStep cleanupStep = new SdksCleanupStep(sdks);
@@ -144,6 +167,7 @@ public class SdksCleanupStepTest extends HeavyPlatformTestCase {
     assertThat(invalidSdks).isEmpty();
   }
 
+  @Test
   public void testCleanUpSdkWithAnInvalidSdk() {
     AndroidSdks sdks = mock(AndroidSdks.class);
     SdksCleanupStep cleanupStep = new SdksCleanupStep(sdks);
@@ -164,6 +188,7 @@ public class SdksCleanupStepTest extends HeavyPlatformTestCase {
   }
 
   // See https://code.google.com/p/android/issues/detail?id=233392
+  @Test
   public void testCleanUpProjectWithSdkWithUpdatedSources() {
     createSdk(new AndroidVersion(33));
     try {
@@ -210,5 +235,26 @@ public class SdksCleanupStepTest extends HeavyPlatformTestCase {
     ModifiableRootModel modifiableModel = ModuleRootManager.getInstance(module).getModifiableModel();
     modifiableModel.setSdk(sdk);
     ApplicationManager.getApplication().runWriteAction(modifiableModel::commit);
+  }
+
+  private Project getProject() {
+    return projectRule.getProject();
+  }
+
+  private Module getModule() {
+    return projectRule.getModule();
+  }
+
+  private Disposable getTestRootDisposable() {
+    return projectRule.getTestRootDisposable();
+  }
+
+  private Module createModule(@NotNull String moduleName) {
+    Project project = getProject();
+    Path moduleFile = Path.of(project.getBasePath()).resolve(moduleName + ModuleFileType.DOT_DEFAULT_EXTENSION);
+    Module module =
+      WriteAction.computeAndWait(() -> ModuleManager.getInstance(project).newModule(moduleFile, EmptyModuleType.getInstance().getId()));
+    IndexingTestUtil.waitUntilIndexesAreReady(project);
+    return module;
   }
 }

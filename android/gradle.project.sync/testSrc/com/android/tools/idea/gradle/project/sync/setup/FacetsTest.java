@@ -16,21 +16,42 @@
 package com.android.tools.idea.gradle.project.sync.setup;
 
 import com.android.tools.idea.gradle.project.facet.gradle.GradleFacet;
+import com.android.tools.idea.testing.AndroidProjectRule;
 import com.intellij.facet.FacetManager;
 import com.intellij.facet.ModifiableFacetModel;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProvider;
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager;
-import com.intellij.testFramework.HeavyPlatformTestCase;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.project.Project;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.RunsInEdt;
 import org.jetbrains.android.facet.AndroidFacet;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.RuleChain;
 
 import static com.android.tools.idea.testing.Facets.createAndAddAndroidFacet;
 import static com.android.tools.idea.testing.Facets.createAndAddGradleFacet;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Tests for {@link Facets}.
  */
-public class FacetsTest extends HeavyPlatformTestCase {
+@RunsInEdt
+public class FacetsTest {
+  private final AndroidProjectRule projectRule = AndroidProjectRule.onDisk().initAndroid(false);
+  @Rule public final RuleChain ruleChain = RuleChain.outerRule(projectRule).around(new EdtRule());
+
+  private Module myModule;
+
+  @Before
+  public void setUp() {
+    myModule = projectRule.getModule();
+  }
+
+  @Test
   public void testRemoveAllFacetsWithAndroidFacets() throws Exception {
     createAndAddAndroidFacet(myModule);
     FacetManager facetManager = FacetManager.getInstance(myModule);
@@ -45,6 +66,7 @@ public class FacetsTest extends HeavyPlatformTestCase {
     assertEquals(0, facetManager.getFacetsByType(AndroidFacet.ID).size());
   }
 
+  @Test
   public void testRemoveAllFacetsWithAndroidGradleFacets() throws Exception {
     createAndAddGradleFacet(myModule);
     FacetManager facetManager = FacetManager.getInstance(myModule);
@@ -57,5 +79,9 @@ public class FacetsTest extends HeavyPlatformTestCase {
     ApplicationManager.getApplication().runWriteAction(modelsProvider::commit);
 
     assertEquals(0, facetManager.getFacetsByType(GradleFacet.getFacetTypeId()).size());
+  }
+
+  private Project getProject() {
+    return projectRule.getProject();
   }
 }

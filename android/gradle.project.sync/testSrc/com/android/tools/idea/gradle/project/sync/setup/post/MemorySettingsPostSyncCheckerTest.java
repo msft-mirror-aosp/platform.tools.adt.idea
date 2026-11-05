@@ -22,30 +22,45 @@ import com.android.tools.idea.memorysettings.MemorySettingsRecommendation;
 import com.intellij.diagnostic.VMOptions;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationsManager;
-import com.intellij.testFramework.HeavyPlatformTestCase;
+import com.intellij.openapi.project.Project;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.ProjectRule;
+import com.intellij.testFramework.RunsInEdt;
 import java.io.IOException;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.RuleChain;
 import org.mockito.Mock;
 
+import static com.intellij.testFramework.UsefulTestCase.assertSize;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
-public class MemorySettingsPostSyncCheckerTest extends HeavyPlatformTestCase {
+@RunsInEdt
+public class MemorySettingsPostSyncCheckerTest {
+  private final ProjectRule projectRule = new ProjectRule();
+  @Rule public final RuleChain ruleChain = RuleChain.outerRule(projectRule).around(new EdtRule());
+
+  private Project myProject;
+
   @Mock
   private TimeBasedReminder myReminder;
 
-  @Override
+  @Before
   public void setUp() throws Exception {
-    super.setUp();
+    myProject = projectRule.getProject();
     initMocks(this);
     cleanNotification();
   }
 
-  @Override
+  @After
   public void tearDown() throws Exception {
     cleanNotification();
-    super.tearDown();
   }
 
+  @Test
   public void testNoNotificationIfSmallRam() {
     stubHostData(4);
     MemorySettingsPostSyncChecker.checkSettings(myProject, myReminder);
@@ -53,6 +68,7 @@ public class MemorySettingsPostSyncCheckerTest extends HeavyPlatformTestCase {
     assertSize(0, notifications);
   }
 
+  @Test
   public void testNoNotificationIfShouldNotCheck() {
     when(myReminder.shouldAsk()).thenReturn(false);
     MemorySettingsPostSyncChecker.checkSettings(myProject, myReminder);
@@ -60,6 +76,7 @@ public class MemorySettingsPostSyncCheckerTest extends HeavyPlatformTestCase {
     assertSize(0, notifications);
   }
 
+  @Test
   public void testNotificationIfRecommended() throws IOException {
     when(myReminder.shouldAsk()).thenReturn(true);
     // set the heap size to be small so there is a recommendation made

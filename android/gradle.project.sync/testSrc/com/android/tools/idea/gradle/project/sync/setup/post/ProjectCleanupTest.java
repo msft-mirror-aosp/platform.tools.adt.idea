@@ -21,7 +21,13 @@ import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsPr
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.project.Project;
-import com.intellij.testFramework.HeavyPlatformTestCase;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.ProjectRule;
+import com.intellij.testFramework.RunsInEdt;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.RuleChain;
 import org.mockito.Mock;
 
 import static org.mockito.Mockito.*;
@@ -30,7 +36,11 @@ import static org.mockito.MockitoAnnotations.initMocks;
 /**
  * Tests for {@link ProjectCleanup}.
  */
-public class ProjectCleanupTest extends HeavyPlatformTestCase {
+@RunsInEdt
+public class ProjectCleanupTest {
+  private final ProjectRule projectRule = new ProjectRule();
+  @Rule public final RuleChain ruleChain = RuleChain.outerRule(projectRule).around(new EdtRule());
+
   @Mock private GradleSyncState mySyncState;
   @Mock private IdeModifiableModelsProvider myModelsProvider;
   @Mock private ProjectCleanupStep myStep1;
@@ -39,9 +49,8 @@ public class ProjectCleanupTest extends HeavyPlatformTestCase {
   private ProgressIndicator myIndicator;
   private ProjectCleanup myProjectCleanup;
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
+  @Before
+  public void setUp() throws Exception {
     initMocks(this);
 
     Project project = getProject();
@@ -51,6 +60,7 @@ public class ProjectCleanupTest extends HeavyPlatformTestCase {
     myProjectCleanup = new ProjectCleanup(myStep1, myStep2);
   }
 
+  @Test
   public void testCleanUpProjectWithFailedSync() {
     // last sync failed.
     when(mySyncState.lastSyncFailed()).thenReturn(true);
@@ -63,6 +73,7 @@ public class ProjectCleanupTest extends HeavyPlatformTestCase {
     verify(myStep2, never()).cleanUpProject(project, myModelsProvider, myIndicator);
   }
 
+  @Test
   public void testCleanUpProject() {
     // sync successful.
     when(mySyncState.lastSyncFailed()).thenReturn(false);
@@ -73,5 +84,9 @@ public class ProjectCleanupTest extends HeavyPlatformTestCase {
     // All steps should have called.
     verify(myStep1, times(1)).cleanUpProject(project, myModelsProvider, myIndicator);
     verify(myStep2, times(1)).cleanUpProject(project, myModelsProvider, myIndicator);
+  }
+
+  private Project getProject() {
+    return projectRule.getProject();
   }
 }
