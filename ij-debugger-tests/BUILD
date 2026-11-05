@@ -52,6 +52,10 @@ debugger_test(
         "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2PositionManagerTestGenerated\\$.*",
         "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2SelectExpressionForDebuggerTestGenerated\\$.*",
         "exclude-classname=org.jetbrains.kotlin.idea.k2.debugger.test.cases.K2SmartStepIntoTestGenerated",
+        # The following tests do not apply to ART
+        "exclude-methodname=.*\\#testCheckCastOtherClassloader",  # Classloader hierarchy doesn't apply to ART
+        "exclude-methodname=.*\\#testColor",  # Swing code
+        "exclude-methodname=.*\\#testLambdaToString",  # Incompatible due to desugaring
     ],
     run_on_art = True,
     shard_count = 50,
