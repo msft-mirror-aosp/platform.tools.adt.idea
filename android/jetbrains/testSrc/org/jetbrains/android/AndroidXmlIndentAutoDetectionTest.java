@@ -15,6 +15,8 @@
  */
 package org.jetbrains.android;
 
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.google.common.collect.ImmutableList;
 import com.intellij.formatting.Block;
 import com.intellij.formatting.FormattingContext;
@@ -30,24 +32,44 @@ import com.intellij.psi.codeStyle.CodeStyleSettingsManager;
 import com.intellij.psi.codeStyle.autodetect.FormatterBasedLineIndentInfoBuilder;
 import com.intellij.psi.codeStyle.autodetect.LineIndentInfo;
 import com.intellij.testFramework.DumbModeTestUtils;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import com.intellij.util.containers.ContainerUtil;
 import org.jetbrains.android.formatter.AndroidXmlFormattingModelBuilder;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertNotNull;
 
 /**
  * Test indent detection for android XML files.
  */
-public class AndroidXmlIndentAutoDetectionTest extends AndroidTestCase {
+@RunsInEdt
+public class AndroidXmlIndentAutoDetectionTest {
 
   private static final String BASE_PATH = "indent/";
 
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private CodeInsightTestFixture myFixture;
+
+  @Before
+  public void setUp() {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+  }
+
   // Realistically, we only run the indent detection once, but it's good to know if the answer in dumb mode is the same
   // as in smart mode, to avoid heavy work on the AWT thread on startup if we can. See: http://b.android.com/229316
+  @Test
   public void testValuesInAndOutOfDumbMode() {
     VirtualFile resFile1 = myFixture.copyFileToProject(BASE_PATH + "values.xml", "res/values/a.xml");
     VirtualFile resFile2 = myFixture.copyFileToProject(BASE_PATH + "values.xml", "res/values/b.xml");
@@ -64,11 +86,12 @@ public class AndroidXmlIndentAutoDetectionTest extends AndroidTestCase {
         -1,
         -1, -1, -1, // bunch of tabbed elements
         0);
-    List<LineIndentInfo> indentInfosDumb = DumbModeTestUtils.computeInDumbModeSynchronously(getProject(), () -> getIndentInfos(resFile1));
+    List<LineIndentInfo> indentInfosDumb = DumbModeTestUtils.computeInDumbModeSynchronously(projectRule.getProject(), () -> getIndentInfos(resFile1));
     List<LineIndentInfo> indentInfosSmart = getIndentInfos(resFile2);
     assertSameIndents(indentInfosDumb, indentInfosSmart, expectedIndentSpacing);
   }
 
+  @Test
   public void testLayoutsInAndOutOfDumbMode() {
     VirtualFile resFile1 = myFixture.copyFileToProject(BASE_PATH + "layout.xml", "res/layout/a.xml");
     VirtualFile resFile2 = myFixture.copyFileToProject(BASE_PATH + "layout.xml", "res/layout/b.xml");
@@ -80,13 +103,13 @@ public class AndroidXmlIndentAutoDetectionTest extends AndroidTestCase {
         2, -1, -1, // TextView
         2, -1, // TextView
         0);
-    List<LineIndentInfo> indentInfosDumb = DumbModeTestUtils.computeInDumbModeSynchronously(getProject(), () -> getIndentInfos(resFile1));
+    List<LineIndentInfo> indentInfosDumb = DumbModeTestUtils.computeInDumbModeSynchronously(projectRule.getProject(), () -> getIndentInfos(resFile1));
     List<LineIndentInfo> indentInfosSmart = getIndentInfos(resFile2);
     assertSameIndents(indentInfosDumb, indentInfosSmart, expectedIndentSpacing);
   }
 
+  @Test
   public void testManifestInAndOutOfDumbMode() throws IOException {
-    deleteManifest();
     VirtualFile manifestFile = myFixture.copyFileToProject(BASE_PATH + "manifest.xml", "AndroidManifest.xml");
     List<Integer> expectedIndentSpacing =
       ImmutableList.of(
@@ -95,7 +118,7 @@ public class AndroidXmlIndentAutoDetectionTest extends AndroidTestCase {
         2,
         2, -1, -1, -1, 4, 6, 8, 8, 6, 4, 2,
         0);
-    List<LineIndentInfo> indentInfosDumb = DumbModeTestUtils.computeInDumbModeSynchronously(getProject(), () -> getIndentInfos(manifestFile));
+    List<LineIndentInfo> indentInfosDumb = DumbModeTestUtils.computeInDumbModeSynchronously(projectRule.getProject(), () -> getIndentInfos(manifestFile));
     List<LineIndentInfo> indentInfosSmart = getIndentInfos(manifestFile);
     assertSameIndents(indentInfosDumb, indentInfosSmart, expectedIndentSpacing);
   }
@@ -119,9 +142,9 @@ public class AndroidXmlIndentAutoDetectionTest extends AndroidTestCase {
   }
 
   private List<LineIndentInfo> getIndentInfos(VirtualFile resourceFile) {
-    PsiFile file = PsiManager.getInstance(getProject()).findFile(resourceFile);
+    PsiFile file = PsiManager.getInstance(projectRule.getProject()).findFile(resourceFile);
     assertNotNull(file);
-    Document document = PsiDocumentManager.getInstance(getProject()).getDocument(file);
+    Document document = PsiDocumentManager.getInstance(projectRule.getProject()).getDocument(file);
     FormattingModelBuilder builder = LanguageFormatting.INSTANCE.forContext(file);
 
     assertThat(document).isNotNull();
@@ -130,7 +153,7 @@ public class AndroidXmlIndentAutoDetectionTest extends AndroidTestCase {
     assertThat(builder).isInstanceOf(AndroidXmlFormattingModelBuilder.class);
 
     FormattingModel model =
-      builder.createModel(FormattingContext.create(file, CodeStyleSettingsManager.getSettings(getProject())));
+      builder.createModel(FormattingContext.create(file, CodeStyleSettingsManager.getSettings(projectRule.getProject())));
     Block block = model.getRootBlock();
     return new FormatterBasedLineIndentInfoBuilder(document, block, null).build();
   }

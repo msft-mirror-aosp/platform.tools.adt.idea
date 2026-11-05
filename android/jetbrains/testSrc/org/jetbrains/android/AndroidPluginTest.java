@@ -15,13 +15,27 @@
  */
 package org.jetbrains.android;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import com.android.tools.idea.IdeInfo;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.application.impl.ApplicationInfoImpl;
 import com.intellij.openapi.extensions.PluginId;
+import com.intellij.testFramework.RunsInEdt;
+import org.junit.Rule;
+import org.junit.Test;
 
-public class AndroidPluginTest extends AndroidTestCase {
+@RunsInEdt
+public class AndroidPluginTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  @Test
   public void testPluginIsEssential() {
     IdeaPluginDescriptor plugin = PluginManagerCore.getPlugin(PluginId.getId("org.jetbrains.android"));
     assertNotNull(plugin);

@@ -15,15 +15,25 @@
  */
 package org.jetbrains.android
 
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.moveCaret
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.parentOfType
 import com.intellij.psi.xml.XmlTag
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
+import org.junit.Test
 
-class XmlAttributeNameGotoDeclarationHandlerTest : AndroidTestCase() {
+@RunsInEdt
+class XmlAttributeNameGotoDeclarationHandlerTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
+  private val myFixture by lazy { projectRule.fixture }
+
+  @Test
   fun testAppNamespaceXmlAttribute() {
     myFixture.addFileToProject(
       "res/values/attrs.xml",
@@ -75,6 +85,7 @@ class XmlAttributeNameGotoDeclarationHandlerTest : AndroidTestCase() {
       )
   }
 
+  @Test
   fun testFrameworkNamespaceXmlAttribute() {
     val psiFile =
       myFixture.addFileToProject(

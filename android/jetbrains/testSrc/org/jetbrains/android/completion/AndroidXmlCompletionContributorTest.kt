@@ -15,11 +15,21 @@
  */
 package org.jetbrains.android.completion
 
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.caret
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
+import org.junit.Test
 
-class AndroidXmlCompletionContributorTest : AndroidTestCase() {
+@RunsInEdt
+class AndroidXmlCompletionContributorTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture }
+
+  @Test
   fun testNamespaceCodeCompletion() {
     myFixture.configureFromExistingVirtualFile(
       myFixture
@@ -44,6 +54,7 @@ class AndroidXmlCompletionContributorTest : AndroidTestCase() {
       )
   }
 
+  @Test
   fun testNamespaceCodeCompletionXMLNStyped() {
     myFixture.configureFromExistingVirtualFile(
       myFixture

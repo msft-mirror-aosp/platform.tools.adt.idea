@@ -18,25 +18,38 @@ package org.jetbrains.android
 import com.android.SdkConstants.FN_LOCAL_PROPERTIES
 import com.android.tools.idea.gradle.util.LocalProperties
 import com.android.tools.idea.projectsystem.AndroidProjectSettingsService
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.codeInsight.daemon.RelatedItemLineMarkerInfo
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.roots.ui.configuration.ProjectSettingsService
 import com.intellij.psi.PsiFile
 import com.intellij.psi.util.descendants
+import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.UsefulTestCase.assertEmpty
 import java.awt.event.MouseEvent
 import javax.swing.JLabel
 import org.jetbrains.android.util.AndroidBundle
 import org.jetbrains.plugins.gradle.util.GradleConstants.GRADLE_PROPERTIES_FILE_NAME
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.mock
 
-class AndroidPropertiesLineMarkerProviderTest : AndroidTestCase() {
+@RunsInEdt
+class AndroidPropertiesLineMarkerProviderTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
+  private val myFixture by lazy { projectRule.fixture }
+
+  @Test
   fun testEmptyLocalProperties() {
     createPropertiesFileMarkersInfo(fileName = FN_LOCAL_PROPERTIES, properties = "") { assertEmpty(this) }
   }
 
+  @Test
   fun testUnexpectedLocalProperties() {
     createPropertiesFileMarkersInfo(
       fileName = FN_LOCAL_PROPERTIES,
@@ -51,6 +64,7 @@ class AndroidPropertiesLineMarkerProviderTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testDifferentDeclarationWaysLocalProperties() {
     createPropertiesFileMarkersInfo(
       fileName = FN_LOCAL_PROPERTIES,
@@ -67,9 +81,10 @@ class AndroidPropertiesLineMarkerProviderTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testNavigationHandlerSdkDirLocalProperties() {
     val mockService = mock<AndroidProjectSettingsService>()
-    replaceProjectService(ProjectSettingsService::class.java, mockService)
+    projectRule.projectRule.replaceProjectService(ProjectSettingsService::class.java, mockService)
 
     createPropertiesFileMarkersInfo(fileName = FN_LOCAL_PROPERTIES, properties = "sdk.dir=/test/sdk/path") {
       assertEquals(1, size)
@@ -78,9 +93,10 @@ class AndroidPropertiesLineMarkerProviderTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testNavigationHandlerNdkDirLocalProperties() {
     val mockService = mock<AndroidProjectSettingsService>()
-    replaceProjectService(ProjectSettingsService::class.java, mockService)
+    projectRule.projectRule.replaceProjectService(ProjectSettingsService::class.java, mockService)
 
     createPropertiesFileMarkersInfo(fileName = FN_LOCAL_PROPERTIES, properties = "ndk.dir=/test/ndk/path") {
       assertEquals(1, size)
@@ -89,6 +105,7 @@ class AndroidPropertiesLineMarkerProviderTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testExpectedLocalProperties() {
     createPropertiesFileMarkersInfo(
       fileName = FN_LOCAL_PROPERTIES,
@@ -104,6 +121,7 @@ class AndroidPropertiesLineMarkerProviderTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testExpectedPropertiesInNonLocalProperties() {
     createPropertiesFileMarkersInfo(
       fileName = GRADLE_PROPERTIES_FILE_NAME,

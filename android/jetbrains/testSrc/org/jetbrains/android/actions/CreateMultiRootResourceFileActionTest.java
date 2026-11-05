@@ -15,39 +15,55 @@
  */
 package org.jetbrains.android.actions;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertEquals;
+
 import com.android.AndroidXConstants;
 import com.android.SdkConstants;
 import com.android.ide.common.repository.GoogleMavenArtifactId;
 import com.android.resources.ResourceFolderType;
 import com.android.tools.idea.projectsystem.TestProjectSystem;
 import com.android.tools.idea.projectsystem.TestVersion;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
+import com.intellij.testFramework.RunsInEdt;
 import java.util.Arrays;
 import java.util.Collections;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.facet.AndroidFacet;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.mockito.Mockito;
 
-public final class CreateMultiRootResourceFileActionTest extends AndroidTestCase {
+@RunsInEdt
+public final class CreateMultiRootResourceFileActionTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
   private CreateMultiRootResourceFileAction myAction;
   private TestProjectSystem myTestProjectSystem;
+  private AndroidFacet myFacet;
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
+  @Before
+  public void setUp() throws Exception {
+    myFacet = AndroidFacet.getInstance(projectRule.getModule());
     myAction = Mockito.spy(new CreateMultiRootResourceFileAction("Layout", ResourceFolderType.LAYOUT));
-    myTestProjectSystem = new TestProjectSystem(getProject(), Collections.emptyList());
+    myTestProjectSystem = new TestProjectSystem(projectRule.getProject(), Collections.emptyList());
     myTestProjectSystem.useInTests();
   }
 
-  @Override
-  protected void tearDown() throws Exception {
-    super.tearDown();
+  @After
+  public void tearDown() throws Exception {
     myAction = null;
   }
 
+  @Test
   public void testGetDefaultRootTag_ModuleDoesntDependOnConstraintLayout() {
     assertEquals(SdkConstants.LINEAR_LAYOUT, myAction.getDefaultRootTag(myFacet.getModule()));
   }
 
+  @Test
   public void testGetDefaultRootTag_ModuleDependsOnConstraintLayout() {
     myTestProjectSystem.addDependency(GoogleMavenArtifactId.CONSTRAINT_LAYOUT, myFacet.getModule(), TestVersion.create(1, 1));
     Mockito.when(myAction.getPossibleRoots(myFacet))
@@ -56,6 +72,7 @@ public final class CreateMultiRootResourceFileActionTest extends AndroidTestCase
     assertEquals(AndroidXConstants.CONSTRAINT_LAYOUT.oldName(), myAction.getDefaultRootTag(myFacet.getModule()));
   }
 
+  @Test
   public void testGetDefaultRootTag_ModuleDependsOnAndroidXConstraintLayout() {
     myTestProjectSystem.addDependency(GoogleMavenArtifactId.ANDROIDX_CONSTRAINTLAYOUT, myFacet.getModule(), TestVersion.create(1, 1));
     Mockito.when(myAction.getPossibleRoots(myFacet))

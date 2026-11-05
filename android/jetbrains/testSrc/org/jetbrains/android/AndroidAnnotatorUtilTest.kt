@@ -16,13 +16,25 @@
 package org.jetbrains.android
 
 import com.android.resources.ResourceType
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiElementFactory
 import com.intellij.psi.XmlElementFactory
+import com.intellij.testFramework.RunsInEdt
 import org.jetbrains.kotlin.psi.KtPsiFactory
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
 
-class AndroidAnnotatorUtilTest : AndroidTestCase() {
+@RunsInEdt
+class AndroidAnnotatorUtilTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
+  private val project
+    get() = projectRule.project
+
+  @Test
   fun testPickupColorResourceInJavaFile() {
     val element = createJavaElement("R.color.color1")
 
@@ -31,6 +43,7 @@ class AndroidAnnotatorUtilTest : AndroidTestCase() {
     task.testJavaConsumer("@color/color2" to "R.color.color2", "@android:color/color3" to "android.R.color.color3")
   }
 
+  @Test
   fun testSetColorInKotlinFile() {
     val element = createKotlinElement("R.color.color1")
 
@@ -42,6 +55,7 @@ class AndroidAnnotatorUtilTest : AndroidTestCase() {
     assertEquals("color3", task.element.text)
   }
 
+  @Test
   fun testSetColorToXmlTag() {
     val xmlTag = XmlElementFactory.getInstance(project).createTagFromText("<color name=\"xxx\">#000000</color>")
     val task = AndroidAnnotatorUtil.SetAttributeConsumer(xmlTag, ResourceType.COLOR)
@@ -55,6 +69,7 @@ class AndroidAnnotatorUtilTest : AndroidTestCase() {
     assertEquals("<color name=\"xxx\">@android:color/color2</color>", xmlTag.text)
   }
 
+  @Test
   fun testSetColorToXmlAttribute() {
     val xmlAttribute = XmlElementFactory.getInstance(project).createXmlAttribute("android:background", "#000000")
 
@@ -79,6 +94,7 @@ class AndroidAnnotatorUtilTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testPickupDrawableResourceInJavaFile() {
     val element = createJavaElement("R.drawable.drawable1")
 
@@ -87,6 +103,7 @@ class AndroidAnnotatorUtilTest : AndroidTestCase() {
     task.testJavaConsumer("@drawable/drawable2" to "R.drawable.drawable2", "@android:drawable/drawable3" to "android.R.drawable.drawable3")
   }
 
+  @Test
   fun testSetDrawableInKotlinFile() {
     val element = createKotlinElement("R.drawable.drawable1")
 

@@ -15,32 +15,43 @@
  */
 package org.jetbrains.android.facet;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static org.jetbrains.android.facet.AndroidFacet.ID;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.facet.Facet;
 import com.intellij.facet.FacetManager;
 import com.intellij.facet.ModifiableFacetModel;
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProvider;
 import com.intellij.openapi.module.Module;
-import org.jetbrains.android.AndroidTestCase;
+import com.intellij.testFramework.RunsInEdt;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
-public class AndroidFacetTest extends AndroidTestCase {
+@RunsInEdt
+public class AndroidFacetTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
 
   private Module myDisposedModule;
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
+  @Before
+  public void setUp() throws Exception {
     myDisposedModule = mock(Module.class);
     when(myDisposedModule.isDisposed()).thenReturn(true);
   }
 
+  @Test
   public void testDisposedModule() {
     assertNull(AndroidFacet.getInstance(myDisposedModule));
   }
 
+  @Test
   public void testWithEmptyModelsProvider() {
     IdeModifiableModelsProvider modelsProvider = mock(IdeModifiableModelsProvider.class);
     ModifiableFacetModel facetModel = mock(ModifiableFacetModel.class);
