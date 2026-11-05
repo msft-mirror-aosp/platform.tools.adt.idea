@@ -15,30 +15,38 @@
  */
 package com.android.tools.idea.common.analytics;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 import com.android.tools.analytics.AnalyticsSettings;
 import com.android.tools.analytics.AnalyticsSettingsData;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
-import org.jetbrains.android.AndroidTestCase;
+import com.intellij.testFramework.RunsInEdt;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
-public class DesignerUsageTrackerManagerTest extends AndroidTestCase {
+@RunsInEdt
+public class DesignerUsageTrackerManagerTest {
+  @Rule public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.inMemory());
+
   private static class DisposableObject implements Disposable {
     @Override
     public void dispose() {
     }
   }
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
-
+  @Before
+  public void setUp() throws Exception {
     AnalyticsSettingsData settings = new AnalyticsSettingsData();
     AnalyticsSettings.setInstanceForTest(settings);
   }
 
-
+  @Test
   public void testGetInstance() {
     Object nopTracker = new Object();
     DesignerUsageTrackerManager<Object, DisposableObject> manager = new DesignerUsageTrackerManager<>((a, b, c) -> new Object(), nopTracker);
@@ -47,8 +55,8 @@ public class DesignerUsageTrackerManagerTest extends AndroidTestCase {
 
     DisposableObject key1 = new DisposableObject();
     DisposableObject key2 = new DisposableObject();
-    Disposer.register(getTestRootDisposable(), key1);
-    Disposer.register(getTestRootDisposable(), key2);
+    Disposer.register(projectRule.getTestRootDisposable(), key1);
+    Disposer.register(projectRule.getTestRootDisposable(), key2);
     Object realTracker = manager.getInstanceInner(key1, true);
     assertEquals(realTracker, manager.getInstanceInner(key1, true));
     assertNotEquals(realTracker, manager.getInstanceInner(key2, true));

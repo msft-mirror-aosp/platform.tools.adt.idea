@@ -15,17 +15,26 @@
  */
 package com.android.tools.idea.uibuilder.visual
 
-import org.jetbrains.android.AndroidTestCase
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
+import com.intellij.testFramework.RunsInEdt
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class VisualizationToolSettingsTest : AndroidTestCase() {
+@RunsInEdt
+class VisualizationToolSettingsTest {
+  @get:Rule val projectRule = AndroidProjectRule.inMemory().onEdt()
 
   private var defaultVisible: Boolean = false
   private var defaultShowDecoration: Boolean = false
   private lateinit var defaultConfigurationSet: ConfigurationSet
   private lateinit var customConfigurationSets: Map<String, CustomConfigurationSet>
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     val settings = VisualizationToolSettings.getInstance()
     defaultVisible = settings.globalState.isVisible
     defaultShowDecoration = settings.globalState.showDecoration
@@ -33,20 +42,16 @@ class VisualizationToolSettingsTest : AndroidTestCase() {
     customConfigurationSets = settings.globalState.customConfigurationSets
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     val settings = VisualizationToolSettings.getInstance()
-    try {
-      settings.globalState.isVisible = defaultVisible
-      settings.globalState.showDecoration = defaultShowDecoration
-      settings.globalState.lastSelectedConfigurationSet = defaultConfigurationSet
-      settings.globalState.customConfigurationSets = customConfigurationSets
-    } catch (t: Throwable) {
-      addSuppressedException(t)
-    } finally {
-      super.tearDown()
-    }
+    settings.globalState.isVisible = defaultVisible
+    settings.globalState.showDecoration = defaultShowDecoration
+    settings.globalState.lastSelectedConfigurationSet = defaultConfigurationSet
+    settings.globalState.customConfigurationSets = customConfigurationSets
   }
 
+  @Test
   fun testShareGlobalState() {
     val settings1 = VisualizationToolSettings.getInstance()
     val settings2 = VisualizationToolSettings.getInstance()
@@ -54,6 +59,7 @@ class VisualizationToolSettingsTest : AndroidTestCase() {
     assertEquals(settings1.globalState, settings2.globalState)
   }
 
+  @Test
   fun testSaveLoadSettings() {
     val settings = VisualizationToolSettings.getInstance()
 

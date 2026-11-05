@@ -22,19 +22,39 @@ import com.android.tools.configurations.Configuration
 import com.android.tools.idea.configurations.ConfigurationManager
 import com.android.tools.idea.configurations.ThemeStyleFilter
 import com.android.tools.idea.editors.theme.ThemeResolver
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.UsefulTestCase.assertSize
+import org.jetbrains.android.AndroidTestBase
 import org.jetbrains.android.facet.AndroidFacet
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertSame
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class ThemeUtilsTest : AndroidTestCase() {
+@RunsInEdt
+class ThemeUtilsTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
+  private val fixture by lazy { projectRule.fixture }
+
+  @Before
+  fun setUp() {
+    fixture.testDataPath = AndroidTestBase.getTestDataPath()
+  }
+
+  @Test
   fun testChangeTheme() {
-    val project = myModule.project
-    val facet = AndroidFacet.getInstance(myModule)
+    val project = projectRule.module.project
+    val facet = AndroidFacet.getInstance(projectRule.module)
     assertNotNull(facet)
-    val manager = ConfigurationManager.getOrCreateInstance(myModule)
+    val manager = ConfigurationManager.getOrCreateInstance(projectRule.module)
     assertNotNull(manager)
-    assertSame(manager, ConfigurationManager.getOrCreateInstance(myModule))
+    assertSame(manager, ConfigurationManager.getOrCreateInstance(projectRule.module))
 
     val configuration = Configuration.create(manager, FolderConfiguration())
     assertNotNull(configuration)
@@ -86,9 +106,10 @@ class ThemeUtilsTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testGetFrameworkThemesWithFilter() {
-    val layoutFile = myFixture.copyFileToProject("xmlpull/layout.xml", "res/layout/layout1.xml")
-    val configuration = ConfigurationManager.getOrCreateInstance(myModule).getConfiguration(layoutFile)
+    val layoutFile = fixture.copyFileToProject("xmlpull/layout.xml", "res/layout/layout1.xml")
+    val configuration = ConfigurationManager.getOrCreateInstance(projectRule.module).getConfiguration(layoutFile)
     val themeResolver = ThemeResolver(configuration)
     val reference = ResourceReference.style(ResourceNamespace.ANDROID, "Theme.Black")
     val style = configuration.resourceResolver.getStyle(reference)!!

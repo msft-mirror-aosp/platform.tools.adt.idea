@@ -22,23 +22,34 @@ import com.android.tools.adtui.actions.prettyPrintActions
 import com.android.tools.idea.actions.TargetMenuAction.SetTargetAction
 import com.android.tools.idea.configurations.ConfigurationForFile
 import com.android.tools.idea.configurations.ConfigurationManager
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.android.tools.module.AndroidModuleInfo
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.Toggleable
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
-import org.jetbrains.android.AndroidTestCase
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.Mockito.doReturn
 import org.mockito.Mockito.spy
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
-class TargetMenuActionTest : AndroidTestCase() {
+@RunsInEdt
+class TargetMenuActionTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
+  private val fixture by lazy { projectRule.fixture }
+
+  @Test
   fun testUpdateTargets() {
-    val file = runInEdtAndGet { myFixture.addFileToProject("res/layout/layout.xml", "") }
+    val file = runInEdtAndGet { fixture.addFileToProject("res/layout/layout.xml", "") }
     val manager = createSpiedConfigurationManager()
 
     val config = ConfigurationForFile(file.virtualFile, manager, FolderConfiguration())
@@ -62,8 +73,9 @@ class TargetMenuActionTest : AndroidTestCase() {
     assertThat(actual).isEqualTo(expected)
   }
 
+  @Test
   fun testNoDuplicateActionForDifferentRevision() {
-    val file = runInEdtAndGet { myFixture.addFileToProject("res/layout/layout.xml", "") }
+    val file = runInEdtAndGet { fixture.addFileToProject("res/layout/layout.xml", "") }
     val manager = createSpiedConfigurationManager()
 
     val config = ConfigurationForFile(file.virtualFile, manager, FolderConfiguration())
@@ -85,12 +97,13 @@ class TargetMenuActionTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testNotSelectAutomaticallyPickupActionWhenSelectOtherTarget() {
     // When switching the selected action from "Automatically Pick Best" to specified target, the
     // "Automatically Pick Best" action should
     // not be marked as selected.
 
-    val file = runInEdtAndGet { myFixture.addFileToProject("res/layout/layout.xml", "") }
+    val file = runInEdtAndGet { fixture.addFileToProject("res/layout/layout.xml", "") }
     val manager = createSpiedConfigurationManager()
 
     val config = ConfigurationForFile(file.virtualFile, manager, FolderConfiguration())
@@ -149,8 +162,9 @@ class TargetMenuActionTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testUpdateApiLevels() {
-    val file = runInEdtAndGet { myFixture.addFileToProject("res/layout/layout.xml", "<LinearLayout/>") }
+    val file = runInEdtAndGet { fixture.addFileToProject("res/layout/layout.xml", "<LinearLayout/>") }
     val manager = createSpiedConfigurationManager()
     val config = spy(ConfigurationForFile(file.virtualFile, manager, FolderConfiguration()))
     val dataContext = SimpleDataContext.getSimpleContext(CONFIGURATIONS, listOf(config))
@@ -178,7 +192,7 @@ class TargetMenuActionTest : AndroidTestCase() {
   }
 
   private fun createSpiedConfigurationManager(): ConfigurationManager {
-    val manager = ConfigurationManager.getOrCreateInstance(myModule)
+    val manager = ConfigurationManager.getOrCreateInstance(projectRule.module)
     val spied = spy(manager)
 
     val highestApi = createApiTarget(30, 0, 0)

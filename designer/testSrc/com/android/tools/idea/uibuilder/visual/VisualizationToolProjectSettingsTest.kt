@@ -15,29 +15,37 @@
  */
 package com.android.tools.idea.uibuilder.visual
 
-import org.jetbrains.android.AndroidTestCase
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
+import com.intellij.testFramework.RunsInEdt
+import kotlin.test.assertEquals
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class VisualizationToolProjectSettingsTest : AndroidTestCase() {
+@RunsInEdt
+class VisualizationToolProjectSettingsTest {
+  @get:Rule val projectRule = AndroidProjectRule.inMemory().onEdt()
+
+  private val project
+    get() = projectRule.project
 
   private var defaultScale: Double = 0.0
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     val settings = VisualizationToolProjectSettings.getInstance(project)
     defaultScale = settings.projectState.scale
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     val settings = VisualizationToolProjectSettings.getInstance(project)
-    try {
-      settings.projectState.scale = defaultScale
-    } catch (t: Throwable) {
-      addSuppressedException(t)
-    } finally {
-      super.tearDown()
-    }
+    settings.projectState.scale = defaultScale
   }
 
+  @Test
   fun testShareGlobalState() {
     val settings1 = VisualizationToolProjectSettings.getInstance(project)
     val settings2 = VisualizationToolProjectSettings.getInstance(project)
@@ -45,6 +53,7 @@ class VisualizationToolProjectSettingsTest : AndroidTestCase() {
     assertEquals(settings1.projectState, settings2.projectState)
   }
 
+  @Test
   fun testSaveLoadSettings() {
     val settings = VisualizationToolProjectSettings.getInstance(project)
     val scale = 0.1

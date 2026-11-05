@@ -18,32 +18,42 @@ package com.android.tools.idea.common.surface
 import com.android.tools.adtui.ZoomController
 import com.android.tools.adtui.actions.ZoomType
 import com.android.tools.idea.common.BackedTestFile
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.openapi.application.runWriteAction
-import junit.framework.TestCase
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
 @Suppress("UnstableApiUsage")
-class DesignSurfaceSettingsTest : AndroidTestCase() {
+@RunsInEdt
+class DesignSurfaceSettingsTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val project
+    get() = projectRule.project
+
+  private val fixture by lazy { projectRule.fixture }
 
   private lateinit var defaultFilePathToZoomLevelMap: MutableMap<String, Double>
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     val settings = SurfaceState()
     defaultFilePathToZoomLevelMap = settings.filePathToZoomLevelMap
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     val settings = SurfaceState()
-    try {
-      settings.filePathToZoomLevelMap = defaultFilePathToZoomLevelMap
-    } catch (t: Throwable) {
-      addSuppressedException(t)
-    } finally {
-      super.tearDown()
-    }
+    settings.filePathToZoomLevelMap = defaultFilePathToZoomLevelMap
   }
 
+  @Test
   fun testShareGlobalState() {
     val state1 = DesignSurfaceSettings.getInstance(project).surfaceState
     val state2 = DesignSurfaceSettings.getInstance(project).surfaceState
@@ -52,6 +62,7 @@ class DesignSurfaceSettingsTest : AndroidTestCase() {
     assertEquals(state1, state2)
   }
 
+  @Test
   fun testSaveLoadSettings() {
     val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
 
@@ -66,6 +77,7 @@ class DesignSurfaceSettingsTest : AndroidTestCase() {
     assertEquals(filePathToZoomLevelMap, anotherSurfaceState.filePathToZoomLevelMap)
   }
 
+  @Test
   fun testSaveLoadSettingsSameFileSameSurfaces() {
     val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
 
@@ -80,13 +92,14 @@ class DesignSurfaceSettingsTest : AndroidTestCase() {
 
     // Check the stored value is still on the same surface
     assertEquals(2, anotherSurfaceState.filePathToZoomLevelMap.size)
-    TestCase.assertEquals(0.4, anotherSurfaceState.filePathToZoomLevelMap["path1:23"])
-    TestCase.assertEquals(0.6, anotherSurfaceState.filePathToZoomLevelMap["path1:32"])
+    assertEquals(0.4, anotherSurfaceState.filePathToZoomLevelMap["path1:23"])
+    assertEquals(0.6, anotherSurfaceState.filePathToZoomLevelMap["path1:32"])
 
     // Check the values are same after getting another instance.
     assertEquals(filePathToZoomLevelMap, anotherSurfaceState.filePathToZoomLevelMap)
   }
 
+  @Test
   fun testSaveLoadSettingsWhenSameFileAndDifferentSurfaces() {
     val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
 
@@ -102,73 +115,77 @@ class DesignSurfaceSettingsTest : AndroidTestCase() {
 
     // Check the stored value is still on the same surface
     assertEquals(1, anotherSurfaceState.filePathToZoomLevelMap.size)
-    TestCase.assertEquals(0.2, anotherSurfaceState.filePathToZoomLevelMap.values.last())
+    assertEquals(0.2, anotherSurfaceState.filePathToZoomLevelMap.values.last(), 0.0)
 
     // Check the values are same after getting another instance.
     assertEquals(filePathToZoomLevelMap, anotherSurfaceState.filePathToZoomLevelMap)
   }
 
+  @Test
   fun testSavingPathForBackedFile() {
     val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
 
-    val originalFile = myFixture.addFileToProject("path/to/origin/file", "").virtualFile
+    val originalFile = fixture.addFileToProject("path/to/origin/file", "").virtualFile
     val backedFile1 = BackedTestFile("path/to/backed/file1", originalFile)
     val backedFile2 = BackedTestFile("path/to/backed/file2", originalFile)
 
     val zoomController = createZoomController()
     zoomController.setScale(0.1)
-    surfaceState.saveFileScale(myFixture.project, originalFile, zoomController)
-    assertEquals(0.1, surfaceState.loadFileScale(myFixture.project, backedFile1, zoomController))
-    assertEquals(0.1, surfaceState.loadFileScale(myFixture.project, backedFile2, zoomController))
+    surfaceState.saveFileScale(fixture.project, originalFile, zoomController)
+    assertEquals(0.1, surfaceState.loadFileScale(fixture.project, backedFile1, zoomController))
+    assertEquals(0.1, surfaceState.loadFileScale(fixture.project, backedFile2, zoomController))
 
     zoomController.setScale(3.0)
-    surfaceState.saveFileScale(myFixture.project, backedFile1, zoomController)
-    assertEquals(3.0, surfaceState.loadFileScale(myFixture.project, originalFile, zoomController))
-    assertEquals(3.0, surfaceState.loadFileScale(myFixture.project, backedFile2, zoomController))
+    surfaceState.saveFileScale(fixture.project, backedFile1, zoomController)
+    assertEquals(3.0, surfaceState.loadFileScale(fixture.project, originalFile, zoomController))
+    assertEquals(3.0, surfaceState.loadFileScale(fixture.project, backedFile2, zoomController))
 
     zoomController.setScale(0.5)
-    surfaceState.saveFileScale(myFixture.project, backedFile2, zoomController)
-    assertEquals(0.5, surfaceState.loadFileScale(myFixture.project, originalFile, zoomController))
-    assertEquals(0.5, surfaceState.loadFileScale(myFixture.project, backedFile1, zoomController))
+    surfaceState.saveFileScale(fixture.project, backedFile2, zoomController)
+    assertEquals(0.5, surfaceState.loadFileScale(fixture.project, originalFile, zoomController))
+    assertEquals(0.5, surfaceState.loadFileScale(fixture.project, backedFile1, zoomController))
   }
 
+  @Test
   fun testSavingPathForBackedFileWithZoomKeys() {
     val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
 
-    val originalFile = myFixture.addFileToProject("path/to/origin/file", "").virtualFile
+    val originalFile = fixture.addFileToProject("path/to/origin/file", "").virtualFile
     val backedFile1 = BackedTestFile("path/to/backed/file1", originalFile)
     val backedFile2 = BackedTestFile("path/to/backed/file2", originalFile)
 
     val zoomController = createZoomController()
 
     zoomController.setScale(0.1)
-    surfaceState.saveFileScale(myFixture.project, originalFile, zoomController)
-    assertEquals(0.1, surfaceState.loadFileScale(myFixture.project, backedFile1, zoomController))
-    assertEquals(0.1, surfaceState.loadFileScale(myFixture.project, backedFile2, zoomController))
+    surfaceState.saveFileScale(fixture.project, originalFile, zoomController)
+    assertEquals(0.1, surfaceState.loadFileScale(fixture.project, backedFile1, zoomController))
+    assertEquals(0.1, surfaceState.loadFileScale(fixture.project, backedFile2, zoomController))
 
     zoomController.setScale(3.0)
-    surfaceState.saveFileScale(myFixture.project, backedFile1, zoomController)
-    assertEquals(3.0, surfaceState.loadFileScale(myFixture.project, originalFile, zoomController))
-    assertEquals(3.0, surfaceState.loadFileScale(myFixture.project, backedFile2, zoomController))
+    surfaceState.saveFileScale(fixture.project, backedFile1, zoomController)
+    assertEquals(3.0, surfaceState.loadFileScale(fixture.project, originalFile, zoomController))
+    assertEquals(3.0, surfaceState.loadFileScale(fixture.project, backedFile2, zoomController))
 
     zoomController.storeId = "STORE_ID"
     zoomController.setScale(0.5)
-    surfaceState.saveFileScale(myFixture.project, backedFile2, zoomController)
-    assertEquals(0.5, surfaceState.loadFileScale(myFixture.project, originalFile, zoomController))
-    assertEquals(0.5, surfaceState.loadFileScale(myFixture.project, backedFile1, zoomController))
+    surfaceState.saveFileScale(fixture.project, backedFile2, zoomController)
+    assertEquals(0.5, surfaceState.loadFileScale(fixture.project, originalFile, zoomController))
+    assertEquals(0.5, surfaceState.loadFileScale(fixture.project, backedFile1, zoomController))
   }
 
+  @Test
   fun testSaveOrganizationState() {
     val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
-    val file = myFixture.addFileToProject("path/to/file", "").virtualFile
+    val file = fixture.addFileToProject("path/to/file", "").virtualFile
     surfaceState.saveOrganizationGroupState(file.url, "method", true)
     val savedState = surfaceState.getOrganizationGroupState(file.url)
     assertEquals(mapOf("method" to true), savedState)
   }
 
+  @Test
   fun testUpdateOrganizationState() {
     val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
-    val file = myFixture.addFileToProject("path/to/file", "").virtualFile
+    val file = fixture.addFileToProject("path/to/file", "").virtualFile
     surfaceState.saveOrganizationGroupState(file.url, "method", true)
     val savedState = surfaceState.getOrganizationGroupState(file.url)
     assertEquals(mapOf("method" to true), savedState)
@@ -177,16 +194,18 @@ class DesignSurfaceSettingsTest : AndroidTestCase() {
     assertEquals(mapOf("method" to false), updatedState)
   }
 
+  @Test
   fun testOrganizationStateForNewFile() {
     val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
-    val file = myFixture.addFileToProject("path/to/file", "").virtualFile
+    val file = fixture.addFileToProject("path/to/file", "").virtualFile
     val savedState = surfaceState.getOrganizationGroupState(file.url)
     assertEquals(emptyMap<String, Boolean>(), savedState)
   }
 
+  @Test
   fun testRevalidateOrganizationGroups() {
     val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
-    val file = myFixture.addFileToProject("path/to/file", "").virtualFile
+    val file = fixture.addFileToProject("path/to/file", "").virtualFile
     surfaceState.saveOrganizationGroupState(file.url, "method1", true)
     surfaceState.saveOrganizationGroupState(file.url, "method2", true)
     surfaceState.saveOrganizationGroupState(file.url, "method3", false)
@@ -201,9 +220,10 @@ class DesignSurfaceSettingsTest : AndroidTestCase() {
     assertEquals(mapOf("method4" to false, "method5" to false), surfaceState.getOrganizationGroupState(file.url))
   }
 
+  @Test
   fun testRemoveFileFromProject() {
     val surfaceState = DesignSurfaceSettings.getInstance(project).surfaceState
-    val file = myFixture.addFileToProject("path/to/file", "").virtualFile
+    val file = fixture.addFileToProject("path/to/file", "").virtualFile
     surfaceState.saveOrganizationGroupState(file.url, "method", true)
     assertTrue(surfaceState.organizationGroups.isNotEmpty())
     runWriteAction { file.delete(this) }

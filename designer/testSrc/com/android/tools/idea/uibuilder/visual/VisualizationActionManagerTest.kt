@@ -20,30 +20,43 @@ import com.android.tools.adtui.actions.ZoomOutAction
 import com.android.tools.adtui.actions.ZoomToFitAction
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.rendering.AndroidBuildTargetReference
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.psi.PsiFile
+import com.intellij.testFramework.RunsInEdt
 import java.awt.event.MouseEvent
-import org.jetbrains.android.AndroidTestCase
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
 internal object EmptyModelsProvider : VisualizationModelsProvider {
   override fun createNlModels(parentDisposable: Disposable, file: PsiFile, buildTarget: AndroidBuildTargetReference): List<NlModel> =
     emptyList()
 }
 
-class VisualizationActionManagerTest : AndroidTestCase() {
+@RunsInEdt
+class VisualizationActionManagerTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val project
+    get() = projectRule.project
 
   private lateinit var actionManager: VisualizationActionManager
   private lateinit var surface: NlDesignSurface
 
-  override fun setUp() {
-    super.setUp()
-    surface = NlSurfaceBuilder.build(project, testRootDisposable)
+  @Before
+  fun setUp() {
+    surface = NlSurfaceBuilder.build(project, projectRule.testRootDisposable)
     actionManager = VisualizationActionManager(surface) { EmptyModelsProvider }
   }
 
+  @Test
   fun testPopupMenuActions() {
     val popupMenuGroup = actionManager.getPopupMenuActions(null, MouseEvent(surface, MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, 1, true))
     val actions = popupMenuGroup.getChildren(ActionManager.getInstance())
@@ -52,6 +65,7 @@ class VisualizationActionManagerTest : AndroidTestCase() {
     assertTrue(actions[2] is ZoomToFitAction)
   }
 
+  @Test
   fun testToolbarActions() {
     assertEquals(0, actionManager.getToolbarActions(emptyList()).childrenCount)
   }

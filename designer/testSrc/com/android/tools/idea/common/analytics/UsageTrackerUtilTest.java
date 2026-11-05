@@ -39,6 +39,7 @@ package com.android.tools.idea.common.analytics;
  import static com.android.tools.idea.common.analytics.UsageTrackerUtil.convertNamespace;
  import static com.android.tools.idea.common.analytics.UsageTrackerUtil.convertTagName;
  import static com.android.tools.idea.common.analytics.UsageTrackerUtil.lookupAttributeResource;
+ import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
  import static com.google.common.truth.Truth.assertThat;
  import static com.google.wireless.android.sdk.stats.AndroidAttribute.AttributeNamespace.ANDROID;
  import static com.google.wireless.android.sdk.stats.AndroidAttribute.AttributeNamespace.APPLICATION;
@@ -48,22 +49,29 @@ package com.android.tools.idea.common.analytics;
 
  import com.android.ide.common.rendering.api.ResourceNamespace;
  import com.android.ide.common.rendering.api.ResourceReference;
+ import com.android.tools.idea.testing.AndroidProjectRule;
+ import com.android.tools.idea.testing.EdtAndroidProjectRule;
  import com.intellij.openapi.util.text.StringUtil;
+ import com.intellij.testFramework.RunsInEdt;
  import com.intellij.testFramework.ServiceContainerUtil;
  import java.util.HashMap;
  import java.util.Map;
  import java.util.Set;
- import org.jetbrains.android.AndroidTestCase;
  import com.android.tools.dom.attrs.AttributeDefinition;
  import com.android.tools.dom.attrs.AttributeDefinitions;
  import com.android.tools.dom.attrs.StyleableDefinition;
  import org.jetbrains.android.resourceManagers.FrameworkResourceManager;
  import org.jetbrains.android.resourceManagers.LocalResourceManager;
+ import org.jetbrains.android.facet.AndroidFacet;
  import org.jetbrains.android.resourceManagers.ModuleResourceManagers;
  import org.jetbrains.annotations.NotNull;
  import org.jetbrains.annotations.Nullable;
+ import org.junit.Before;
+ import org.junit.Rule;
+ import org.junit.Test;
 
-public class UsageTrackerUtilTest extends AndroidTestCase {
+@RunsInEdt
+public class UsageTrackerUtilTest {
   private static final String SDK_VERSION = ":" + HIGHEST_KNOWN_API + ".0.1";
   private static final String DESIGN_COORDINATE = DESIGN_LIB_ARTIFACT + SDK_VERSION;
   private static final String GRID_LAYOUT_COORDINATE = GRID_LAYOUT_LIB_ARTIFACT + SDK_VERSION;
@@ -73,6 +81,16 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
   private static final String ACME_LIB_COORDINATE = "com.acme:my-layout:1.0.0";
   private static final String ATTR_ACME_LAYOUT_MARGIN = "layout_my_custom_right_margin";
 
+  @Rule public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private AndroidFacet myFacet;
+
+  @Before
+  public void setUp() {
+    myFacet = AndroidFacet.getInstance(projectRule.getModule());
+  }
+
+  @Test
   public void testConvertAttributeByName() {
     setUpApplicationAttributes();
 
@@ -86,6 +104,7 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
     assertThat(convertAttribute(ATTR_ACME_LAYOUT_MARGIN, myFacet).getAttributeNamespace()).isEqualTo(APPLICATION);
   }
 
+  @Test
   public void testConvertToolsAttributeByName() {
     setUpApplicationAttributes();
 
@@ -100,6 +119,7 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
     assertThat(convertAttribute(TOOLS_NS_NAME_PREFIX + ATTR_ACME_LAYOUT_MARGIN, myFacet).getAttributeNamespace()).isEqualTo(TOOLS);
   }
 
+  @Test
   public void testConvertNamespace() {
     assertThat(convertNamespace(null)).isEqualTo(ANDROID);
     assertThat(convertNamespace("")).isEqualTo(ANDROID);
@@ -109,6 +129,7 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
     assertThat(convertNamespace("unknown")).isEqualTo(APPLICATION);
   }
 
+  @Test
   public void testConvertAttributeName() {
     setUpApplicationAttributes();
 
@@ -124,6 +145,7 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
     assertThat(convertAttributeName(ATTR_ACME_LAYOUT_MARGIN, TOOLS, null, myFacet)).isEqualTo(CUSTOM_NAME);
   }
 
+  @Test
   public void testConvertTagName() {
     assertThat(convertTagName(TEXT_VIEW).getTagName()).isEqualTo(TEXT_VIEW);
     assertThat(convertTagName(COORDINATOR_LAYOUT.defaultName()).getTagName()).isEqualTo(StringUtil.getShortName(COORDINATOR_LAYOUT.defaultName()));
@@ -132,6 +154,7 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
     assertThat(convertTagName("com.acme.MyClass").getTagName()).isEqualTo(CUSTOM_NAME);
   }
 
+  @Test
   public void testAcceptedGoogleLibraryNamespace() {
     assertThat(acceptedGoogleLibraryNamespace(DESIGN_COORDINATE)).isTrue();
     assertThat(acceptedGoogleLibraryNamespace(CONSTRAINT_LAYOUT_COORDINATE)).isTrue();
@@ -147,6 +170,7 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
     assertThat(acceptedGoogleLibraryNamespace("acme-layout")).isFalse();
   }
 
+  @Test
   public void testAcceptedGoogleTagNamespace() {
     assertThat(acceptedGoogleTagNamespace(TEXT_VIEW)).isTrue();
     assertThat(acceptedGoogleTagNamespace(COORDINATOR_LAYOUT.defaultName())).isTrue();
@@ -155,6 +179,7 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
     assertThat(acceptedGoogleTagNamespace("com.acme.MyClass")).isFalse();
   }
 
+  @Test
   public void testLookupAttributeResource() {
     setUpApplicationAttributes();
 
@@ -186,7 +211,7 @@ public class UsageTrackerUtilTest extends AndroidTestCase {
     when(resourceManagers.getFrameworkResourceManager()).thenReturn(frameworkResourceManager);
     when(resourceManagers.getLocalResourceManager()).thenReturn(localResourceManager);
 
-    ServiceContainerUtil.replaceService(myModule, ModuleResourceManagers.class, resourceManagers, getTestRootDisposable());
+    ServiceContainerUtil.replaceService(projectRule.getModule(), ModuleResourceManagers.class, resourceManagers, projectRule.getTestRootDisposable());
   }
 
   private static class Attributes implements AttributeDefinitions {

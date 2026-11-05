@@ -18,22 +18,44 @@ package com.android.tools.idea.actions
 import com.android.resources.NightMode
 import com.android.tools.configurations.Wallpaper
 import com.android.tools.idea.configurations.ConfigurationManager
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.runInEdtAndWait
 import javax.swing.JMenuItem
 import javax.swing.MenuElement
 import javax.swing.MenuSelectionManager
-import junit.framework.Assert
-import org.jetbrains.android.AndroidTestCase
+import org.jetbrains.android.AndroidTestBase
+import org.junit.Assert
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class SystemUiModeActionTest : AndroidTestCase() {
+@RunsInEdt
+class SystemUiModeActionTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val project
+    get() = projectRule.project
+
+  private val fixture by lazy { projectRule.fixture }
+
+  @Before
+  fun setUp() {
+    fixture.testDataPath = AndroidTestBase.getTestDataPath()
+  }
 
   /** Tests the basic actions of [SystemUiModeAction] for setting night mode and wallpaper. */
+  @Test
   fun testActions() {
-    val file = myFixture.copyFileToProject("configurations/layout1.xml", "res/layout/layout1.xml")
-    val manager = ConfigurationManager.getOrCreateInstance(myModule)
+    val file = fixture.copyFileToProject("configurations/layout1.xml", "res/layout/layout1.xml")
+    val manager = ConfigurationManager.getOrCreateInstance(projectRule.module)
     val configuration = manager.getConfiguration(file)
     val dataContext = SimpleDataContext.getSimpleContext(CONFIGURATIONS, listOf(configuration))
     val systemUiModeAction = SystemUiModeAction()
@@ -64,9 +86,10 @@ class SystemUiModeActionTest : AndroidTestCase() {
    * This unit test directly calls [handleNavigation] to ensure that selecting adjacent wallpaper items via keyboard correctly updates the
    * [MenuSelectionManager] state.
    */
+  @Test
   fun testHandleNavigation() {
-    val file = myFixture.copyFileToProject("configurations/layout1.xml", "res/layout/layout1.xml")
-    val manager = ConfigurationManager.getOrCreateInstance(myModule)
+    val file = fixture.copyFileToProject("configurations/layout1.xml", "res/layout/layout1.xml")
+    val manager = ConfigurationManager.getOrCreateInstance(projectRule.module)
     val configuration = manager.getConfiguration(file)
     val dataContext = SimpleDataContext.builder().add(CONFIGURATIONS, listOf(configuration)).add(CommonDataKeys.PROJECT, project).build()
     val systemUiModeAction = SystemUiModeAction()
@@ -109,9 +132,10 @@ class SystemUiModeActionTest : AndroidTestCase() {
   }
 
   /** Verifies that each dynamic color (wallpaper) item has a descriptive tooltip. */
+  @Test
   fun testWallpaperTooltips() {
-    val file = myFixture.copyFileToProject("configurations/layout1.xml", "res/layout/layout1.xml")
-    val manager = ConfigurationManager.getOrCreateInstance(myModule)
+    val file = fixture.copyFileToProject("configurations/layout1.xml", "res/layout/layout1.xml")
+    val manager = ConfigurationManager.getOrCreateInstance(projectRule.module)
     val configuration = manager.getConfiguration(file)
     val dataContext = SimpleDataContext.builder().add(CONFIGURATIONS, listOf(configuration)).add(CommonDataKeys.PROJECT, project).build()
     val systemUiModeAction = SystemUiModeAction()

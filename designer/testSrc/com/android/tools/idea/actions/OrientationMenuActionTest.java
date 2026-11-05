@@ -16,10 +16,13 @@
 package com.android.tools.idea.actions;
 
 import static com.android.tools.idea.actions.DesignerDataKeys.CONFIGURATIONS;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.android.tools.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -28,31 +31,39 @@ import com.intellij.openapi.actionSystem.Separator;
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import java.util.List;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.AndroidTestBase;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
-public class OrientationMenuActionTest extends AndroidTestCase {
+@RunsInEdt
+public class OrientationMenuActionTest {
   private static final String FILE_ARROW = " \u2192 ";
+
+  @Rule public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private CodeInsightTestFixture myFixture;
   private DataContext myDataContext;
 
-  @Override
+  @Before
   public void setUp() throws Exception {
-    super.setUp();
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
     myDataContext = createDataContext();
   }
 
-  @Override
+  @After
   public void tearDown() throws Exception {
-    try {
-      myDataContext = null;
-    }
-    finally {
-      super.tearDown();
-    }
+    myDataContext = null;
   }
 
+  @Test
   public void testAction() {
     OrientationMenuAction action = new OrientationMenuAction(true);
     action.updateActions(myDataContext);
@@ -65,6 +76,7 @@ public class OrientationMenuActionTest extends AndroidTestCase {
     assertThat(actions).hasLength(index);
   }
 
+  @Test
   public void testActionWithoutUIMode() {
     OrientationMenuAction action = new OrientationMenuAction(false);
     action.updateActions(myDataContext);
@@ -75,9 +87,10 @@ public class OrientationMenuActionTest extends AndroidTestCase {
     assertThat(actions).hasLength(index);
   }
 
+  @Test
   public void testActionWithExistingLandscapeVariation() throws Exception {
     myFixture.copyFileToProject("configurations/layout1.xml", "res/layout-land/layout1.xml");
-    waitForResourceRepositoryUpdates();
+    projectRule.getProjectRule().waitForResourceRepositoryUpdates();
     OrientationMenuAction action = new OrientationMenuAction(true);
     action.updateActions(myDataContext);
     AnAction[] actions = action.getChildren(ActionManager.getInstance());
@@ -90,10 +103,11 @@ public class OrientationMenuActionTest extends AndroidTestCase {
     assertThat(actions).hasLength(index);
   }
 
+  @Test
   public void testActionWithExistingLandscapeAndTabletVariation() throws Exception {
     myFixture.copyFileToProject("configurations/layout1.xml", "res/layout-land/layout1.xml");
     myFixture.copyFileToProject("configurations/layout1.xml", "res/layout-sw600dp/layout1.xml");
-    waitForResourceRepositoryUpdates();
+    projectRule.getProjectRule().waitForResourceRepositoryUpdates();
     OrientationMenuAction action = new OrientationMenuAction(true);
     action.updateActions(myDataContext);
     AnAction[] actions = action.getChildren(ActionManager.getInstance());
@@ -113,7 +127,7 @@ public class OrientationMenuActionTest extends AndroidTestCase {
 
   private @NotNull DataContext createDataContext() {
     VirtualFile file = myFixture.copyFileToProject("configurations/layout1.xml", "res/layout/layout1.xml");
-    ConfigurationManager manager = ConfigurationManager.getOrCreateInstance(myModule);
+    ConfigurationManager manager = ConfigurationManager.getOrCreateInstance(projectRule.getModule());
     Configuration configuration = manager.getConfiguration(file);
     return SimpleDataContext.getSimpleContext(CONFIGURATIONS, List.of(configuration));
   }

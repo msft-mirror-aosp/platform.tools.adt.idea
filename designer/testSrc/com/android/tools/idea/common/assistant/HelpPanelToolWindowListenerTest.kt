@@ -15,18 +15,31 @@
  */
 package com.android.tools.idea.common.assistant
 
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.openapi.wm.ToolWindow
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.Mockito
 
-class HelpPanelToolWindowListenerTest : AndroidTestCase() {
+@RunsInEdt
+class HelpPanelToolWindowListenerTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
+  private val project
+    get() = projectRule.project
+
+  @Test
   fun testEnsureListener() {
     assertTrue(HelpPanelToolWindowListener.projectToListener.isEmpty())
     HelpPanelToolWindowListener.registerListener(project)
     assertEquals(1, HelpPanelToolWindowListener.projectToListener.size)
   }
 
+  @Test
   fun testProjectClosed() {
     HelpPanelToolWindowListener.registerListener(project)
     val listener = HelpPanelToolWindowListener.projectToListener[project]!!
@@ -35,6 +48,7 @@ class HelpPanelToolWindowListenerTest : AndroidTestCase() {
     assertTrue(HelpPanelToolWindowListener.projectToListener.isEmpty())
   }
 
+  @Test
   fun testToolWindowUnregistered() {
     HelpPanelToolWindowListener.registerListener(project)
     val listener = HelpPanelToolWindowListener.projectToListener[project]!!
@@ -43,6 +57,7 @@ class HelpPanelToolWindowListenerTest : AndroidTestCase() {
     assertTrue(HelpPanelToolWindowListener.projectToListener.isEmpty())
   }
 
+  @Test
   fun testRemovedTwice() {
     HelpPanelToolWindowListener.registerListener(project)
     val listener = HelpPanelToolWindowListener.projectToListener[project]!!

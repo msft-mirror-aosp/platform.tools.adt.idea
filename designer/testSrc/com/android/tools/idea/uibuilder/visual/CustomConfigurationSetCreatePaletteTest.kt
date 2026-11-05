@@ -15,13 +15,22 @@
  */
 package com.android.tools.idea.uibuilder.visual
 
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.ComponentUtil
 import com.intellij.ui.components.JBTextField
 import javax.swing.JButton
-import org.jetbrains.android.AndroidTestCase
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
 
-class CustomConfigurationSetCreatePaletteTest : AndroidTestCase() {
+@RunsInEdt
+class CustomConfigurationSetCreatePaletteTest {
+  @get:Rule val projectRule = AndroidProjectRule.inMemory().onEdt()
 
+  @Test
   fun testSetNameCannotBeBlank() {
     val palette = CustomConfigurationSetCreatePalette {}
 
@@ -39,6 +48,7 @@ class CustomConfigurationSetCreatePaletteTest : AndroidTestCase() {
     assertFalse(addButton.isEnabled)
   }
 
+  @Test
   fun testSetNameCannotBeDuplicated() {
     val existingCustomSetName = "My Existing Custom Config"
     // Simulate the creation of a config named [existingCustomSetName]

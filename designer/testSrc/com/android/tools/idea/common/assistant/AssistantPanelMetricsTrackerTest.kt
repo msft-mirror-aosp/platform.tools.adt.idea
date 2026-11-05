@@ -15,14 +15,24 @@
  */
 package com.android.tools.idea.common.assistant
 
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.wireless.android.sdk.stats.DesignEditorHelpPanelEvent
 import com.google.wireless.android.sdk.stats.DesignEditorHelpPanelEvent.HelpPanelAction
 import com.google.wireless.android.sdk.stats.DesignEditorHelpPanelEvent.HelpPanelType
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
 
-class AssistantPanelMetricsTrackerTest : AndroidTestCase() {
+@RunsInEdt
+class AssistantPanelMetricsTrackerTest {
+  @get:Rule val projectRule = AndroidProjectRule.inMemory().onEdt()
 
+  @Test
   fun testLogOpen() {
     var eventBuilder: DesignEditorHelpPanelEvent.Builder? = null
     val type = HelpPanelType.FULL_ALL
@@ -39,6 +49,7 @@ class AssistantPanelMetricsTrackerTest : AndroidTestCase() {
     assertEquals(HelpPanelAction.OPEN, eventBuilder!!.action)
   }
 
+  @Test
   fun testLogCLose() {
     var eventBuilder: DesignEditorHelpPanelEvent.Builder? = null
     val type = HelpPanelType.FULL_ALL

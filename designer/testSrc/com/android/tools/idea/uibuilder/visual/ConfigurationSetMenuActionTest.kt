@@ -18,25 +18,38 @@ package com.android.tools.idea.uibuilder.visual
 import com.android.tools.adtui.actions.SEPARATOR_TEXT
 import com.android.tools.adtui.actions.createTestActionEvent
 import com.android.tools.adtui.actions.prettyPrintActions
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.util.Disposer
+import com.intellij.testFramework.RunsInEdt
 import java.lang.StringBuilder
-import org.jetbrains.android.AndroidTestCase
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class ConfigurationSetMenuActionTest : AndroidTestCase() {
+@RunsInEdt
+class ConfigurationSetMenuActionTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val project
+    get() = projectRule.project
 
   private lateinit var form: VisualizationForm
 
-  override fun setUp() {
-    super.setUp()
-    form = VisualizationForm(project, testRootDisposable, TestVisualizationFormInitializer)
+  @Before
+  fun setUp() {
+    form = VisualizationForm(project, projectRule.testRootDisposable, TestVisualizationFormInitializer)
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     Disposer.dispose(form)
-    super.tearDown()
   }
 
+  @Test
   fun testActions() {
     val menuGroups = ConfigurationSetProvider.getGroupedConfigurationSets()
     val firstOption = menuGroups.firstOrNull()?.firstOrNull() ?: return
