@@ -19,15 +19,20 @@ import com.android.testutils.GoldenImageRule
 import com.android.tools.adtui.actions.executeAction
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.IconLoaderRule
+import com.android.tools.adtui.swing.findAllDescendants
+import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ActivityTracker
+import com.intellij.ide.HelpTooltip
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.impl.ActionButton
+import com.intellij.openapi.util.registry.Registry
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
@@ -38,7 +43,9 @@ import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.BorderLayout
 import java.awt.Color
 import javax.swing.Icon
+import javax.swing.JLabel
 import javax.swing.border.EmptyBorder
+import kotlin.time.Duration.Companion.seconds
 import org.junit.Before
 import org.junit.ClassRule
 import org.junit.Rule
@@ -54,8 +61,9 @@ class FloatingToolbarContainerTest {
 
   private val disposableRule = DisposableRule()
   private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/FloatingToolbarContainerTest/golden")
+  private val popupRule = JBPopupRule()
 
-  @get:Rule val rule = RuleChain(ApplicationRule(), disposableRule, goldenImageRule, EdtRule())
+  @get:Rule val rule = RuleChain(ApplicationRule(), disposableRule, goldenImageRule, popupRule, EdtRule())
   private val panel by lazy { createHostPanel() }
   private val fakeUi by lazy { FakeUi(panel, parentDisposable = disposableRule.disposable) }
 
@@ -139,6 +147,63 @@ class FloatingToolbarContainerTest {
         assertThat(image.getRGB(x, y)).isEqualTo(panel.background.rgb)
       }
     }
+  }
+
+  @Test
+  fun testCollapserButtonTooltip() {
+    Registry.get("ide.tooltip.initialReshowDelay").setValue(0, disposableRule.disposable)
+    val collapserWithoutOrientation = FloatingToolbarContainer.CollapserAction(horizontal = false)
+    val collapserWithOrientation = FloatingToolbarContainer.CollapserAction(horizontal = false) {}
+    val toolbar =
+      FloatingToolbarContainer(horizontal = false, inactiveAlpha = 0.8, initiallyActive = true).apply {
+        addToolbar(
+          "FloatingToolbar",
+          DefaultActionGroup(
+            TestAction("Fit Content", AllIcons.General.FitContent),
+            collapserWithoutOrientation,
+            collapserWithOrientation,
+          ),
+        )
+      }
+    panel.add(toolbar, BorderLayout.EAST)
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+
+    val buttonWithoutOrientation = fakeUi.getComponent<ActionButton> { it.action === collapserWithoutOrientation }
+    assertThat(buttonWithoutOrientation.accessibleContext.accessibleName).isEqualTo("Collapse Toolbar")
+    val tooltip1 = HelpTooltip.getTooltipFor(buttonWithoutOrientation)!!
+    assertThat(tooltip1).isEqualTo(HelpTooltip().setTitle(HtmlChunk.text("Click to collapse the toolbar.")))
+    assertThat(tooltip1.createTipPanel().findAllDescendants<JLabel>().map { it.text }.toList())
+      .containsExactly("<html><div>Click to collapse the toolbar.</div></html>")
+    val pos1 = fakeUi.getPosition(buttonWithoutOrientation)
+    fakeUi.mouse.moveTo(pos1.x + buttonWithoutOrientation.width / 2, pos1.y + buttonWithoutOrientation.height / 2)
+    assertThat(popupRule.fakePopupFactory.getNextPopup(2.seconds)).isNotNull()
+
+    val buttonWithOrientation = fakeUi.getComponent<ActionButton> { it.action === collapserWithOrientation }
+    assertThat(buttonWithOrientation.accessibleContext.accessibleName).isEqualTo("Collapse Toolbar")
+    val tooltip2 = HelpTooltip.getTooltipFor(buttonWithOrientation)!!
+    assertThat(tooltip2)
+      .isEqualTo(
+        HelpTooltip()
+          .setTitle(
+            HtmlChunk.fragment(
+              HtmlChunk.text("Click to collapse the toolbar."),
+              HtmlChunk.br(),
+              HtmlChunk.text("Right-click to change the toolbar orientation."),
+            )
+          )
+      )
+    assertThat(tooltip2.createTipPanel().findAllDescendants<JLabel>().map { it.text }.toList())
+      .containsExactly("<html><div>Click to collapse the toolbar.<br/>Right-click to change the toolbar orientation.</div></html>")
+    val pos2 = fakeUi.getPosition(buttonWithOrientation)
+    fakeUi.mouse.moveTo(pos2.x + buttonWithOrientation.width / 2, pos2.y + buttonWithOrientation.height / 2)
+    assertThat(popupRule.fakePopupFactory.getNextPopup(2.seconds)).isNotNull()
+
+    // Verify tooltips remain intact across subsequent toolbar updates.
+    ActivityTracker.getInstance().inc()
+    fakeUi.updateToolbarsIfNecessary()
+    assertThat(HelpTooltip.getTooltipFor(buttonWithoutOrientation)).isSameAs(tooltip1)
+    assertThat(HelpTooltip.getTooltipFor(buttonWithOrientation)).isSameAs(tooltip2)
   }
 
   private fun createHostPanel(): BorderLayoutPanel {

@@ -18,6 +18,7 @@ package com.android.tools.idea.streaming.core
 import com.android.tools.adtui.util.makeNavigable
 import com.android.tools.adtui.util.scaled
 import com.intellij.icons.AllIcons
+import com.intellij.ide.HelpTooltip
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
@@ -37,6 +38,7 @@ import com.intellij.openapi.actionSystem.toolbarLayout.ToolbarLayoutStrategy
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.wm.IdeGlassPaneUtil
 import com.intellij.openapi.wm.impl.IdeGlassPaneEx
 import com.intellij.ui.JBColor
@@ -567,7 +569,13 @@ internal class FloatingToolbarContainer(
   class CollapserAction(
     private val horizontal: Boolean,
     private val onOrientationChange: ((Boolean) -> Unit)? = null,
-  ) : DumbAwareAction(if (horizontal) AllIcons.Actions.ArrowExpand else AllIcons.Actions.FindAndShowNextMatches), CustomComponentAction {
+  ) :
+    DumbAwareAction(
+      "Collapse Toolbar",
+      null,
+      if (horizontal) AllIcons.Actions.ArrowExpand else AllIcons.Actions.FindAndShowNextMatches,
+    ),
+    CustomComponentAction {
 
     override fun actionPerformed(event: AnActionEvent) {
       triggerDeactivation(event)
@@ -576,6 +584,7 @@ internal class FloatingToolbarContainer(
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
 
     override fun createCustomComponent(presentation: Presentation, place: String): JComponent {
+      presentation.putClientProperty(ActionButton.CUSTOM_HELP_TOOLTIP, createTooltip())
       val minimumSize =
         if (horizontal) {
           JBDimension(0, DEFAULT_MINIMUM_BUTTON_SIZE.height, true)
@@ -589,9 +598,26 @@ internal class FloatingToolbarContainer(
       }
     }
 
+    private fun createTooltip(): HelpTooltip {
+      val tooltipText =
+        if (onOrientationChange == null) {
+          HtmlChunk.text("Click to collapse the toolbar.")
+        } else {
+          HtmlChunk.fragment(
+            HtmlChunk.text("Click to collapse the toolbar."),
+            HtmlChunk.br(),
+            HtmlChunk.text("Right-click to change the toolbar orientation."),
+          )
+        }
+      return HelpTooltip().setTitle(tooltipText)
+    }
+
     private fun createPopupHandler(place: String): PopupHandler =
       object : PopupHandler() {
         override fun invokePopup(comp: Component?, x: Int, y: Int) {
+          if (comp != null) {
+            HelpTooltip.hide(comp)
+          }
           val group =
             DefaultActionGroup(
               OrientationAction("Vertical", orientationHorizontal = false),
