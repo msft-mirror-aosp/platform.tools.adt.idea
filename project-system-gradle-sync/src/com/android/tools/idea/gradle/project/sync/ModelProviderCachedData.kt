@@ -32,6 +32,10 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
 
   internal val kaptGradleModel = ConcurrentHashMap<BasicGradleProject, KaptGradleModel>()
 
+  internal val exceptionsAndSyncIssues = ConcurrentHashMap<BasicGradleProject, IdeAndroidSyncIssuesAndExceptions>()
+
+  internal var hasSyncError: Boolean = false
+
   private var allProjectsSupportedByPhasedSync: Boolean = false
 
   fun markAllProjectsSupportedByPhasedSync() {
@@ -56,7 +60,7 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
    * Dependency model provider is controlled by a completely separate flag and is not affected by this.
    */
   val shouldRunLegacyModelProviders: Boolean
-    get() = !disableLegacyModelProvidersForSupportedProjects || !allProjectsSupportedByPhasedSync
+    get() = !hasSyncError && (!disableLegacyModelProvidersForSupportedProjects || !allProjectsSupportedByPhasedSync)
 
   /**
    * This class exists to share data between model providers, and the last one to execute should call this method to drop all shared state.
@@ -70,6 +74,7 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
     data.clear()
     selectedVariant.clear()
     kaptGradleModel.clear()
+    exceptionsAndSyncIssues.clear()
   }
 }
 

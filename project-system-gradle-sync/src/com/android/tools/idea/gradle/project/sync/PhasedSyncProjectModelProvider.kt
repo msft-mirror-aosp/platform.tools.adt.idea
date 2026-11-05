@@ -106,6 +106,30 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
     if (allSubProjectsSupported) {
       cachedModels.markAllProjectsSupportedByPhasedSync()
     }
+
+    try {
+      cachedModels.versions.values.forEach {
+        it.convert().checkAgpVersionCompatibility(syncOptions.flags)
+      }
+      verifyIncompatibleAgpVersionsAreNotUsedOrFailSync(cachedModels)
+    } catch (e: AndroidSyncException) {
+      modelConsumer.consumeBuildModel(
+        buildModels.first(),
+        IdeAndroidSyncError(
+          type = e.type,
+          message = e.message.orEmpty(),
+          stackTrace = e.stackTrace.map { it.toString() },
+          buildPath = e.buildPath,
+          modulePath = e.modulePath,
+          syncIssues = e.syncIssues,
+        ),
+        IdeAndroidSyncError::class.java,
+      )
+      cachedModels.clear() // Clear versions so later phased sync providers don't process modules
+      cachedModels.hasSyncError = true
+      return
+    }
+
     val results =
       controller
         .run(
@@ -243,21 +267,33 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
 
     populateGradleProjectModel(controller, buildModels, modelConsumer, exceptionsPerProject)
 
+    val legacyProblems = updatedResults.associate { (gradleProject, data) ->
+      gradleProject to data.legacyAndroidGradlePluginProperties.getProblemsAsSyncIssues()
+    }
+    // Cache the exceptions and sync issues caught till this stage.
     val exceptionsPerProjectMap =
       exceptionsPerProject.groupBy({ it.first }) { it.second }.filter { (_, exceptions) -> exceptions.isNotEmpty() }
 
     buildModels.flatMap { buildModel ->
       buildModel.projects.mapNotNull { gradleProject ->
-        // TODO: Explicitly fetch sync issues as well
-        val issuesAndExceptions =
+        cachedModels.exceptionsAndSyncIssues[gradleProject] =
           IdeAndroidSyncIssuesAndExceptions(
-            syncIssues = variantsResolutionIssues[gradleProject]?.let { listOf(it.toIdeSyncIssue()) } ?: emptyList(),
+            syncIssues =
+              variantsResolutionIssues[gradleProject]?.let { listOf(it.toIdeSyncIssue()) }.orEmpty() +
+                legacyProblems[gradleProject].orEmpty(),
             exceptions = exceptionsPerProjectMap[gradleProject] ?: emptyList(),
           )
-        modelConsumer.consumeProjectModel(gradleProject, issuesAndExceptions, IdeAndroidSyncIssuesAndExceptions::class.java)
       }
     }
   }
+}
+
+private fun verifyIncompatibleAgpVersionsAreNotUsedOrFailSync(cachedModels: ModelProviderCachedData) {
+  // Map to : as Phased Sync only considers projects with no included builds. Technically we should have one version of AGP across the build
+  val agpVersionsAndGradleBuilds = cachedModels.versions.values.map { it.agp to ":" }
+  // Fail Sync if we do not use the same AGP version across all the android projects.
+  if (agpVersionsAndGradleBuilds.isNotEmpty() && agpVersionsAndGradleBuilds.map { it.first }.distinct().singleOrNull() == null)
+    throw AgpVersionsMismatch(agpVersionsAndGradleBuilds)
 }
 
 private fun Throwable.toIdeSyncIssue(): IdeSyncIssue {

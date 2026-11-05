@@ -18,7 +18,11 @@ package com.android.tools.idea.gradle.project.sync
 import com.android.ide.gradle.model.composites.BuildMap
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
+import com.android.tools.idea.gradle.model.IdeArtifactName
+import com.android.tools.idea.gradle.model.IdeSyncIssue
+import com.android.tools.idea.gradle.model.IdeUnresolvedDependency
 import com.android.tools.idea.gradle.model.IdeVariantCore
+import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.ignoreExceptionsAndGet
@@ -45,8 +49,12 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
     buildModels: MutableCollection<out GradleBuild>,
     modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
   ) {
+    if (cachedData.hasSyncError) {
+      return
+    }
     // Synchronized because the nested actions below add to it in parallel.
     val exceptionsPerProject: MutableList<Pair<BasicGradleProject, Throwable>> = Collections.synchronizedList(mutableListOf())
+    val unresolvedDependenciesPerProject = mutableMapOf<BasicGradleProject, List<IdeUnresolvedDependency>>()
     val buildPathMap = buildBuildPathMap(controller, buildModels)
     val internedModels = InternedModels(buildModels.first().buildIdentifier.rootDir)
 
@@ -130,18 +138,42 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
       // Store the selected variant to later create IdeAndroidModels with it in the additional model provider. IdeAndroidModels is still
       // required by a few different code paths.
       cachedData.selectedVariant[gradleProject] = ideVariant
+      // Fetch unresolved dependencies for this variant.
+      unresolvedDependenciesPerProject[gradleProject] =
+        mutableListOf<IdeUnresolvedDependency>()
+          .apply {
+            addAll(ideVariant.mainArtifact.unresolvedDependencies)
+            ideVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.let { addAll(it.unresolvedDependencies) }
+            ideVariant.testFixturesArtifact?.let { addAll(it.unresolvedDependencies) }
+            ideVariant.hostTestArtifacts.forEach { addAll(it.unresolvedDependencies) }
+          }
+          .toList()
     }
 
-    exceptionsPerProject
-      .groupBy({ it.first }) { it.second }
-      .filter { (_, exceptions) -> exceptions.isNotEmpty() }
-      .forEach { (gradleProject, exceptions) ->
-        // TODO: This is a bit silly because the model provider for source set can also deliver the same model (probably overriding each
-        // other)
-        // We need to reconcile the exceptions and the sync issue model together and only deliver this once for this to work properly.
-        val issuesAndExceptions = IdeAndroidSyncIssuesAndExceptions(syncIssues = emptyList(), exceptions = exceptions)
-        modelConsumer.consumeProjectModel(gradleProject, issuesAndExceptions, IdeAndroidSyncIssuesAndExceptions::class.java)
-      }
+    val exceptionsPerProjectMap = exceptionsPerProject.groupBy({ it.first }) { it.second }
+    buildModels.forEach { buildModel ->
+      buildModel.projects
+        .filter { gradleProject -> cachedData.versions[gradleProject] != null }
+        .forEach { gradleProject ->
+          val unresolvedDependenciesIssues =
+            unresolvedDependenciesPerProject[gradleProject]?.map {
+              IdeSyncIssueImpl(
+                message = "Unresolved dependencies",
+                data = it.name.ifBlank { null },
+                multiLineMessage = it.cause?.lines(),
+                severity = IdeSyncIssue.SEVERITY_ERROR,
+                type = if (it.name.isBlank()) IdeSyncIssue.TYPE_EXCEPTION else IdeSyncIssue.TYPE_UNRESOLVED_DEPENDENCY,
+              )
+            }
+
+          cachedData.exceptionsAndSyncIssues[gradleProject] =
+            IdeAndroidSyncIssuesAndExceptions(
+              syncIssues = cachedData.exceptionsAndSyncIssues[gradleProject]?.syncIssues.orEmpty() + unresolvedDependenciesIssues.orEmpty(),
+              exceptions =
+                cachedData.exceptionsAndSyncIssues[gradleProject]?.exceptions.orEmpty() + exceptionsPerProjectMap[gradleProject].orEmpty(),
+            )
+        }
+    }
   }
 }
 

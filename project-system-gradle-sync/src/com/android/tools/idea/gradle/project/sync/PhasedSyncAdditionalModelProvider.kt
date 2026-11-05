@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.project.sync
 
+import com.android.builder.model.v2.models.ProjectSyncIssues
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
 import org.gradle.tooling.BuildAction
@@ -36,7 +37,7 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
     buildModels: Collection<GradleBuild>,
     modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
   ) {
-    if (cachedModels.shouldRunLegacyModelProviders) {
+    if (cachedModels.hasSyncError || cachedModels.shouldRunLegacyModelProviders) {
       return
     }
     val actions = buildModels.flatMap { buildModel ->
@@ -68,17 +69,19 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
       IdeSyncExecutionReport::class.java,
     )
 
-    // Now, for Java modules, as a fallback we request the Kotlin and KAPT models.
+    // Now, for Java modules, as a fallback we request the Kotlin, KAPT models.
     controller
       .run(
         buildModels.flatMap { buildModel ->
           buildModel.projects.mapNotNull { gradleProject ->
             if (cachedModels.versions[gradleProject] == null) {
               BuildAction { controller ->
+                val kotlinModel = controller.findModel(gradleProject, KotlinGradleModel::class.java)
+                val kaptModel = controller.findModel(gradleProject, KaptGradleModel::class.java)
                 gradleProject to
-                  Pair(
-                    controller.findModel(gradleProject, KotlinGradleModel::class.java),
-                    controller.findModel(gradleProject, KaptGradleModel::class.java),
+                  listOf(
+                    kotlinModel to KotlinGradleModel::class.java,
+                    kaptModel to KaptGradleModel::class.java,
                   )
               }
             } else null
@@ -87,8 +90,37 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
       )
       .filterNotNull()
       .forEach { (gradleProject, models) ->
-        models.first?.let { modelConsumer.consumeProjectModel(gradleProject, it, KotlinGradleModel::class.java) }
-        models.second?.let { modelConsumer.consumeProjectModel(gradleProject, it, KaptGradleModel::class.java) }
+        models.forEach { (model, modelClass) ->
+          @Suppress("UNCHECKED_CAST") model?.let { modelConsumer.consumeProjectModel(gradleProject, it, modelClass as Class<Any>) }
+        }
+      }
+
+    // Finally, fetch Ide Sync Issues
+    controller
+      .run(
+        buildModels.flatMap { buildModel ->
+          buildModel.projects
+            .filter { gradleProject -> cachedModels.versions[gradleProject] != null }
+            .mapNotNull { gradleProject ->
+              BuildAction {
+                val syncIssues =
+                  controller.findModel(gradleProject, ProjectSyncIssues::class.java)?.syncIssues?.toV2SyncIssueData() ?: listOf()
+
+                val result =
+                  IdeAndroidSyncIssuesAndExceptions(
+                    syncIssues = syncIssues + cachedModels.exceptionsAndSyncIssues[gradleProject]?.syncIssues.orEmpty(),
+                    exceptions = cachedModels.exceptionsAndSyncIssues[gradleProject]?.exceptions.orEmpty(),
+                  )
+                gradleProject to result
+              }
+            }
+        }
+      )
+      .filterNotNull()
+      .forEach { (gradleProject, syncIssues) ->
+        if (syncIssues.syncIssues.isNotEmpty() || syncIssues.exceptions.isNotEmpty()) {
+          modelConsumer.consumeProjectModel(gradleProject, syncIssues, IdeAndroidSyncIssuesAndExceptions::class.java)
+        }
       }
 
     buildModels.forEach { model ->
