@@ -32,12 +32,29 @@ import com.android.tools.idea.sqlite.utils.toSqliteValues
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import com.intellij.util.concurrency.EdtExecutorService
 import org.jetbrains.ide.PooledThreadExecutor
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
+@RunsInEdt
+class JdbcDatabaseConnectionTest {
+  private val projectRule = ProjectRule()
+  private val disposableRule = DisposableRule()
+
+  @get:Rule val rule = RuleChain(projectRule, EdtRule(), disposableRule)
+
+  private val testRootDisposable
+    get() = disposableRule.disposable
+
   private lateinit var sqliteUtil: SqliteTestUtil
   private lateinit var sqliteFile: VirtualFile
   private var customSqliteFile: VirtualFile? = null
@@ -45,8 +62,8 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
   private var customConnection: DatabaseConnection? = null
   private var previouslyEnabled: Boolean = false
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     sqliteUtil = SqliteTestUtil(IdeaTestFixtureFactory.getFixtureFactory().createTempDirTestFixture())
     sqliteUtil.setUp()
 
@@ -57,19 +74,17 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
       )
   }
 
-  override fun tearDown() {
-    try {
-      pumpEventsAndWaitForFuture(databaseConnection.close())
-      if (customConnection != null) {
-        pumpEventsAndWaitForFuture(customConnection!!.close())
-      }
-
-      sqliteUtil.tearDown()
-    } finally {
-      super.tearDown()
+  @After
+  fun tearDown() {
+    pumpEventsAndWaitForFuture(databaseConnection.close())
+    if (customConnection != null) {
+      pumpEventsAndWaitForFuture(customConnection!!.close())
     }
+
+    sqliteUtil.tearDown()
   }
 
+  @Test
   fun testReadSchemaFailsIfDatabaseNotOpened() {
     // Prepare
     pumpEventsAndWaitForFuture(databaseConnection.close())
@@ -81,6 +96,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(error).isNotNull()
   }
 
+  @Test
   fun testReadSchemaReturnsTablesAndColumns() {
     // Prepare
 
@@ -102,6 +118,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(bookTable.hasColumn("author_id", SqliteAffinity.INTEGER)).isTrue()
   }
 
+  @Test
   fun testCloseUnlocksFile() {
     // Prepare
 
@@ -113,6 +130,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(sqliteFile.exists()).isFalse()
   }
 
+  @Test
   fun testExecuteQuerySelectAllReturnsResultSet() {
     // Prepare
 
@@ -139,6 +157,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(rows.count()).isEqualTo(1)
   }
 
+  @Test
   fun testExecuteQuerySelectColumnReturnsResultSet() {
     // Prepare
 
@@ -165,6 +184,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(rows.count()).isEqualTo(1)
   }
 
+  @Test
   fun testExecuteUpdateDropTable() {
     // Prepare
 
@@ -173,6 +193,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     pumpEventsAndWaitForFutureException(databaseConnection.execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM Book")))
   }
 
+  @Test
   fun testExecuteQueryFailsWhenIncorrectTableName() {
     // Prepare
 
@@ -180,6 +201,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     pumpEventsAndWaitForFutureException(databaseConnection.execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM wrongName")))
   }
 
+  @Test
   fun test_rowid_IsAssignedCorrectly() {
     // Prepare
     customSqliteFile = sqliteUtil.createTestSqliteDatabase("rowidDb", "testTable", listOf("col1", "col2"))
@@ -195,6 +217,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(schema.tables.first().rowIdName!!.stringName).isEqualTo("_rowid_")
   }
 
+  @Test
   fun testRowidIsAssignedCorrectly() {
     // Prepare
     customSqliteFile = sqliteUtil.createTestSqliteDatabase("rowidDb", "testTable", listOf("col1", "col2", "_rowid_"))
@@ -211,6 +234,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.rowIdName!!.stringName).isEqualTo("rowid")
   }
 
+  @Test
   fun testOidIsAssignedCorrectly() {
     // Prepare
     customSqliteFile = sqliteUtil.createTestSqliteDatabase("rowidDb", "testTable", listOf("col1", "col2", "_rowid_", "rowid"))
@@ -226,6 +250,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(schema.findTable("testTable").rowIdName!!.stringName).isEqualTo("oid")
   }
 
+  @Test
   fun testRowIdIsNull() {
     // Prepare
     customSqliteFile = sqliteUtil.createTestSqliteDatabase("rowidDb", "testTable", listOf("col1", "col2", "rowid", "oid", "_rowid_"))
@@ -241,6 +266,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(schema.findTable("testTable").rowIdName).isNull()
   }
 
+  @Test
   fun testPrimaryKeyInWithoutRowIdTable() {
     // Prepare
     customSqliteFile = sqliteUtil.createTestSqliteDatabase("rowidDb", "testTable", listOf("col1"), listOf("pk"), true)
@@ -259,6 +285,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(pk!!.inPrimaryKey).isTrue()
   }
 
+  @Test
   fun testMultiplePrimaryKeys() {
     // Prepare
     customSqliteFile = sqliteUtil.createTestSqliteDatabase("rowidDb", "testTable", listOf("col1"), listOf("pk1", "pk2"), false)
@@ -278,6 +305,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(pk2!!.inPrimaryKey).isTrue()
   }
 
+  @Test
   fun testAffinity() {
     // Prepare
     customSqliteFile =
@@ -300,6 +328,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(columns.first { it.name == "column4" }.affinity).isEqualTo(SqliteAffinity.NUMERIC)
   }
 
+  @Test
   fun testNotNull() {
     // Prepare
     customSqliteFile = sqliteUtil.createTestSqliteDatabase("rowidDb", "testTable", listOf("col1"), listOf("pk"), true)
@@ -319,6 +348,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(col1!!.isNullable).isTrue()
   }
 
+  @Test
   fun testReadSchemaTabNameRequiresEscaping() {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "table''Name", listOf("c1"))
@@ -337,6 +367,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.first().name).isEqualTo("c1")
   }
 
+  @Test
   fun testReadSchemaTabNameRequiresEscaping1() {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "table'Name", listOf("c1"))
@@ -354,6 +385,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("c1")
   }
 
+  @Test
   fun testReadSchemaTabNameRequiresEscaping2() {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "table`Name", listOf("c1"))
@@ -371,6 +403,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("c1")
   }
 
+  @Test
   fun testReadSchemaTabNameRequiresEscaping3() {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "table\'Name", listOf("c1"))
@@ -388,6 +421,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("c1")
   }
 
+  @Test
   fun testReadSchemaTabNameRequiresEscaping4() {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "table\"Name", listOf("c1"))
@@ -405,6 +439,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("c1")
   }
 
+  @Test
   fun testReadSchemaTabNameRequiresEscaping5() {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "table Name", listOf("c1"))
@@ -422,6 +457,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("c1")
   }
 
+  @Test
   fun testReadSchemaColNameRequiresEscaping() {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "tableName", listOf("col''Name"))
@@ -439,6 +475,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("col''Name")
   }
 
+  @Test
   fun testReadSchemaColNameRequiresEscaping1() {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "tableName", listOf("col'Name"))
@@ -456,6 +493,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("col'Name")
   }
 
+  @Test
   fun testReadSchemaColNameRequiresEscaping2() {
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "tableName", listOf("col`Name"))
     customConnection =
@@ -472,6 +510,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("col`Name")
   }
 
+  @Test
   fun testReadSchemaColNameRequiresEscaping3() {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "tableName", listOf("col\'Name"))
@@ -489,6 +528,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("col'Name")
   }
 
+  @Test
   fun testReadSchemaColNameRequiresEscaping4() {
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "tableName", listOf("col\"Name"))
     customConnection =
@@ -505,6 +545,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("col\"Name")
   }
 
+  @Test
   fun testReadSchemaColNameRequiresEscaping5() {
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "tableName", listOf("col Name"))
     customConnection =
@@ -521,6 +562,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(table.columns.map { it.name }).containsExactly("col Name")
   }
 
+  @Test
   fun testInsertNullValueWorks() {
     // Prepare
     val customSqliteFile = sqliteUtil.createTestSqliteDatabase("customDb", "tableName", listOf("c1"))
@@ -553,6 +595,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(rows.first().values[1].value).isEqualTo(SqliteValue.StringValue("null"))
   }
 
+  @Test
   fun testUpdateStatement() {
     // Prepare
     customSqliteFile = sqliteUtil.createAdHocSqliteDatabase("db", "create table t1 (c1 int)", "insert into t1 values (42)")
@@ -572,6 +615,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(rows.first().values.first().value).isEqualTo(SqliteValue.fromAny(0))
   }
 
+  @Test
   fun testInsertStatement() {
     // Prepare
     customSqliteFile = sqliteUtil.createAdHocSqliteDatabase("db", "create table t1 (c1 int)", "insert into t1 values (42)")
@@ -589,6 +633,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(rows.last().values.first().value).isEqualTo(SqliteValue.fromAny(0))
   }
 
+  @Test
   fun testCreateTable() {
     // Prepare
     customSqliteFile = sqliteUtil.createAdHocSqliteDatabase("db", "create table t1 (c1 int)", "insert into t1 values (42)")
@@ -606,6 +651,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(rows).isEmpty()
   }
 
+  @Test
   fun testExplainStatement() {
     // Prepare
     customSqliteFile = sqliteUtil.createAdHocSqliteDatabase("db", "create table t1 (c1 int)", "insert into t1 values (42)")
@@ -623,6 +669,7 @@ class JdbcDatabaseConnectionTest : LightPlatformTestCase() {
     assertThat(rows).isNotEmpty()
   }
 
+  @Test
   fun testPragmaStatement() {
     // Prepare
     customSqliteFile = sqliteUtil.createAdHocSqliteDatabase("db", "create table t1 (c1 int)", "insert into t1 values (42)")

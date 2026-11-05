@@ -25,32 +25,47 @@ import com.android.tools.idea.sqlite.utils.SqliteTestUtil
 import com.android.tools.idea.sqlite.utils.getJdbcDatabaseConnection
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.IdeaTestFixtureFactory
 import org.jetbrains.ide.PooledThreadExecutor
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class JdbcSqliteResultSetTest : LightPlatformTestCase() {
+@RunsInEdt
+class JdbcSqliteResultSetTest {
+  private val projectRule = ProjectRule()
+  private val disposableRule = DisposableRule()
+
+  @get:Rule val rule = RuleChain(projectRule, EdtRule(), disposableRule)
+
+  private val testRootDisposable
+    get() = disposableRule.disposable
+
   private lateinit var sqliteUtil: SqliteTestUtil
   private var customConnection: DatabaseConnection? = null
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     sqliteUtil = SqliteTestUtil(IdeaTestFixtureFactory.getFixtureFactory().createTempDirTestFixture())
     sqliteUtil.setUp()
   }
 
-  override fun tearDown() {
-    try {
-      if (customConnection != null) {
-        pumpEventsAndWaitForFuture(customConnection!!.close())
-      }
-
-      sqliteUtil.tearDown()
-    } finally {
-      super.tearDown()
+  @After
+  fun tearDown() {
+    if (customConnection != null) {
+      pumpEventsAndWaitForFuture(customConnection!!.close())
     }
+
+    sqliteUtil.tearDown()
   }
 
+  @Test
   fun `test CreateResultSet ThenAddColumnToTable ResultSetReturnsCorrectListOfColumns`() {
     // Prepare
     val customSqliteFile =
@@ -75,6 +90,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
     assertThat(columnsAfterAlterTable.map { it.name }).containsExactly("c1", "c2").inOrder()
   }
 
+  @Test
   fun `test CreateResultSet ThenAddRowToTable ResultSetReturnsCorrectNumberOfRows`() {
     // Prepare
     val customSqliteFile =
@@ -96,6 +112,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
     assertThat(rowCountAfterInsert).isEqualTo(2)
   }
 
+  @Test
   fun `test CreateResultSetFromExplain ThenAddColumn ResultSetReturnsOneMoreRow`() {
     // Prepare
     val customSqliteFile =
@@ -120,6 +137,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
     assertThat(rowCountAfter).isEqualTo(10)
   }
 
+  @Test
   fun testDisposeCancelsGetColumns() {
     // Prepare
     val customSqliteFile =
@@ -138,6 +156,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
     pumpEventsAndWaitForFutureCancellation(resultSet.columns)
   }
 
+  @Test
   fun testDisposeCancelsGetRowCount() {
     // Prepare
     val customSqliteFile =
@@ -156,6 +175,7 @@ class JdbcSqliteResultSetTest : LightPlatformTestCase() {
     pumpEventsAndWaitForFutureCancellation(resultSet.totalRowCount)
   }
 
+  @Test
   fun testDisposeCancelsGetRowBatch() {
     // Prepare
     val customSqliteFile =

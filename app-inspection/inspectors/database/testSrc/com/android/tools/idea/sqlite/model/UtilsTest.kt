@@ -16,9 +16,10 @@
 package com.android.tools.idea.sqlite.model
 
 import com.google.common.truth.Truth.assertThat
-import junit.framework.TestCase
+import org.junit.Test
 
-class UtilsTest : TestCase() {
+class UtilsTest {
+  @Test
   fun testGetRowIdIsNullIfIntPrimaryKeyExists() {
     // Prepare
     val columns =
@@ -35,6 +36,7 @@ class UtilsTest : TestCase() {
     assertThat(rowIdName).isNull()
   }
 
+  @Test
   fun testGetRowIdIs_rowid_() {
     // Prepare
     val columns =
@@ -51,6 +53,7 @@ class UtilsTest : TestCase() {
     assertThat(rowIdName).isEqualTo(RowIdName._ROWID_)
   }
 
+  @Test
   fun testGetRowIdIsRowid() {
     // Prepare
     val columns =
@@ -67,6 +70,7 @@ class UtilsTest : TestCase() {
     assertThat(rowIdName).isEqualTo(RowIdName.ROWID)
   }
 
+  @Test
   fun testGetRowIdIsOid() {
     // Prepare
     val columns =
@@ -84,6 +88,7 @@ class UtilsTest : TestCase() {
     assertThat(rowIdName).isEqualTo(RowIdName.OID)
   }
 
+  @Test
   fun testGetRowIdIsNull() {
     // Prepare
     val columns =

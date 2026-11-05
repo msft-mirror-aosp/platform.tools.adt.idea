@@ -35,7 +35,11 @@ import com.android.tools.idea.sqlite.model.SqliteValue
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.AppInspectionEvent
 import com.intellij.openapi.util.Disposer
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.registerServiceInstance
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -44,6 +48,10 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jetbrains.ide.PooledThreadExecutor
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
@@ -51,27 +59,35 @@ import org.mockito.Mockito.verifyNoMoreInteractions
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 
-class LiveDatabaseConnectionTest : LightPlatformTestCase() {
+@RunsInEdt
+class LiveDatabaseConnectionTest {
+  private val projectRule = ProjectRule()
+  private val disposableRule = DisposableRule()
+
+  @get:Rule val rule = RuleChain(projectRule, EdtRule(), disposableRule)
+
+  private val project
+    get() = projectRule.project
+
+  private val testRootDisposable
+    get() = disposableRule.disposable
+
   private val taskExecutor: FutureCallbackExecutor = FutureCallbackExecutor.wrap(PooledThreadExecutor.INSTANCE)
   private lateinit var liveDatabaseConnection: LiveDatabaseConnection
   private lateinit var scope: CoroutineScope
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     scope = CoroutineScope(taskExecutor.asCoroutineDispatcher() + SupervisorJob())
   }
 
-  override fun tearDown() {
-    try {
-      Disposer.dispose(liveDatabaseConnection)
-      scope.cancel()
-    } catch (t: Throwable) {
-      addSuppressedException(t)
-    } finally {
-      super.tearDown()
-    }
+  @After
+  fun tearDown() {
+    Disposer.dispose(liveDatabaseConnection)
+    scope.cancel()
   }
 
+  @Test
   fun testReadSchema() =
     runBlocking<Unit> {
       // Prepare
@@ -112,6 +128,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       assertThat(sqliteSchema.tables.first().columns[3].affinity).isEqualTo(SqliteAffinity.BLOB)
     }
 
+  @Test
   fun testExecuteQuery() =
     runBlocking<Unit> {
       val largeFloat = Float.MAX_VALUE * 2.0
@@ -176,6 +193,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       assertThat(sqliteRows[0].values[4].value).isEqualTo(SqliteValue.NullValue)
     }
 
+  @Test
   fun testExecuteExplain() =
     runBlocking<Unit> {
       // Prepare
@@ -237,6 +255,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       assertThat(sqliteRows[0].values[4].value).isEqualTo(SqliteValue.NullValue)
     }
 
+  @Test
   fun testExecutePragma() =
     runBlocking<Unit> {
       // Prepare
@@ -295,6 +314,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       assertThat(sqliteRows[0].values[4].value).isEqualTo(SqliteValue.NullValue)
     }
 
+  @Test
   fun testExecuteStatementWithParameters() =
     runBlocking<Unit> {
       // Prepare
@@ -326,6 +346,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       onWorkerThread { verify(mockMessenger).sendRawCommand(queryCommand.toByteArray()) }
     }
 
+  @Test
   fun testReturnsEmptyResultSetForEmptyResponse() =
     runBlocking<Unit> {
       // Prepare
@@ -347,6 +368,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       assertThat(sqliteColumns).isEmpty()
     }
 
+  @Test
   fun testThrowsRecoverableErrorOnErrorOccurredResponse() =
     runBlocking<Unit> {
       // Prepare
@@ -379,6 +401,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       assertThat((error1.cause as LiveInspectorException).onDeviceStackTrace).isEqualTo("stackTrace")
     }
 
+  @Test
   fun testThrowsNonRecoverableErrorOnErrorOccurredResponse() =
     runBlocking<Unit> {
       // Prepare
@@ -411,6 +434,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       assertThat((error1.cause as LiveInspectorException).onDeviceStackTrace).isEqualTo("stackTrace")
     }
 
+  @Test
   fun testThrowsUnknownRecoverableErrorOnErrorOccurredResponse() =
     runBlocking<Unit> {
       // Prepare
@@ -443,6 +467,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       assertThat((error1.cause as LiveInspectorException).onDeviceStackTrace).isEqualTo("stackTrace")
     }
 
+  @Test
   fun testRecoverableErrorAnalytics() =
     runBlocking<Unit> {
       // Prepare
@@ -474,6 +499,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       verify(mockTrackerService, times(2)).trackErrorOccurred(AppInspectionEvent.DatabaseInspectorEvent.ErrorKind.IS_RECOVERABLE_TRUE)
     }
 
+  @Test
   fun testNonRecoverableErrorAnalytics() =
     runBlocking<Unit> {
       // Prepare
@@ -505,6 +531,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       verify(mockTrackerService, times(2)).trackErrorOccurred(AppInspectionEvent.DatabaseInspectorEvent.ErrorKind.IS_RECOVERABLE_FALSE)
     }
 
+  @Test
   fun testUnknownRecoverableErrorAnalytics() =
     runBlocking<Unit> {
       // Prepare
@@ -536,6 +563,7 @@ class LiveDatabaseConnectionTest : LightPlatformTestCase() {
       verify(mockTrackerService, times(2)).trackErrorOccurred(AppInspectionEvent.DatabaseInspectorEvent.ErrorKind.IS_RECOVERABLE_UNKNOWN)
     }
 
+  @Test
   fun testErrorNoExistingDbIsNotReportedInAnalytics() =
     runBlocking<Unit> {
       // Prepare

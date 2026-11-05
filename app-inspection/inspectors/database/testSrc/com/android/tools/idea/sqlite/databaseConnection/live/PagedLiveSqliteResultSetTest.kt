@@ -29,7 +29,12 @@ import com.android.tools.idea.sqlite.model.SqliteStatementType
 import com.android.tools.idea.sqlite.model.SqliteValue
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.Disposer
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.UsefulTestCase.assertThrows
 import com.intellij.util.concurrency.EdtExecutorService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -38,8 +43,22 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.ide.PooledThreadExecutor
+import org.junit.Rule
+import org.junit.Test
 
-class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
+@RunsInEdt
+class PagedLiveSqliteResultSetTest {
+  private val projectRule = ProjectRule()
+  private val disposableRule = DisposableRule()
+
+  @get:Rule val rule = RuleChain(projectRule, EdtRule(), disposableRule)
+
+  private val project
+    get() = projectRule.project
+
+  private val testRootDisposable
+    get() = disposableRule.disposable
+
   private val taskExecutor = PooledThreadExecutor.INSTANCE
   private val edtExecutor = EdtExecutorService.getInstance()
   private val scope = CoroutineScope(edtExecutor.asCoroutineDispatcher() + SupervisorJob())
@@ -57,6 +76,7 @@ class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
       get() = throw NotImplementedError()
   }
 
+  @Test
   fun testColumnsReturnCorrectListOfColumns() =
     runBlocking<Unit> {
       // Prepare
@@ -78,6 +98,7 @@ class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
       assertThat(columnsFromResultSet).containsExactly(ResultSetSqliteColumn("col1"), ResultSetSqliteColumn("col2"))
     }
 
+  @Test
   fun testRowCountReturnsCorrectNumberOfRows() =
     runBlocking<Unit> {
       // Prepare
@@ -103,6 +124,7 @@ class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
       assertThat(rowCount).isEqualTo(12345)
     }
 
+  @Test
   fun testRowCountFailsIfDisposed() {
     // Prepare
     val statement = SqliteStatement(SqliteStatementType.SELECT, "SELECT COUNT(*) FROM (query)")
@@ -115,6 +137,7 @@ class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
     pumpEventsAndWaitForFutureCancellation(resultSet.totalRowCount)
   }
 
+  @Test
   fun testGetRowBatchReturnsCorrectListOfRows() {
     // Prepare
     val cellValueString = SqliteInspectorProtocol.CellValue.newBuilder().setStringValue("a string").build()
@@ -150,6 +173,7 @@ class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
       )
   }
 
+  @Test
   fun testGetRowBatchFailsIfDisposed() {
     // Prepare
 
@@ -164,6 +188,7 @@ class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
     pumpEventsAndWaitForFutureCancellation(resultSet.getRowBatch(0, Integer.MAX_VALUE))
   }
 
+  @Test
   fun testGetRowBatchThrowsIfMinOffsetSmallerThanZero() {
     // Prepare
     val row = SqliteInspectorProtocol.Row.newBuilder().build()
@@ -179,6 +204,7 @@ class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
     assertThrows(IllegalArgumentException::class.java) { resultSet.getRowBatch(-1, Integer.MAX_VALUE) }
   }
 
+  @Test
   fun testGetRowBatchThrowsIfMaxOffsetSmallerEqualZero() {
     // Prepare
     val row = SqliteInspectorProtocol.Row.newBuilder().build()
@@ -194,6 +220,7 @@ class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
     assertThrows(IllegalArgumentException::class.java) { resultSet.getRowBatch(0, 0) }
   }
 
+  @Test
   fun testThrowsRecoverableErrorOnErrorOccurredResponse() {
     // Prepare
     val errorOccurredEvent =
@@ -225,6 +252,7 @@ class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
     assertThat((error1.cause as LiveInspectorException).onDeviceStackTrace).isEqualTo("stackTrace")
   }
 
+  @Test
   fun testThrowsNonRecoverableErrorOnErrorOccurredResponse() {
     // Prepare
     val errorOccurredEvent =
@@ -256,6 +284,7 @@ class PagedLiveSqliteResultSetTest : LightPlatformTestCase() {
     assertThat((error1.cause as LiveInspectorException).onDeviceStackTrace).isEqualTo("stackTrace")
   }
 
+  @Test
   fun testThrowsUnknownRecoverableErrorOnErrorOccurredResponse() {
     // Prepare
     val errorOccurredEvent =

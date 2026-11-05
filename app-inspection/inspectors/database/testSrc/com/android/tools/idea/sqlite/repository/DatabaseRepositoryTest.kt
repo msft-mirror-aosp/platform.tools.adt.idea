@@ -36,16 +36,34 @@ import com.android.tools.idea.testing.runDispatching
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.Futures
 import com.intellij.openapi.util.Disposer
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.RunsInEdt
 import java.util.concurrent.Executor
 import org.jetbrains.ide.PooledThreadExecutor
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
-class DatabaseRepositoryTest : LightPlatformTestCase() {
+@RunsInEdt
+class DatabaseRepositoryTest {
+  private val projectRule = ProjectRule()
+  private val disposableRule = DisposableRule()
+
+  @get:Rule val rule = RuleChain(projectRule, EdtRule(), disposableRule)
+
+  private val project
+    get() = projectRule.project
+
+  private val testRootDisposable
+    get() = disposableRule.disposable
 
   private lateinit var databaseRepository: DatabaseRepositoryImpl
   private lateinit var workerThread: Executor
@@ -57,9 +75,8 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
   private val databaseId1 = SqliteDatabaseId.fromLiveDatabase("db1", 1)
   private val databaseId2 = SqliteDatabaseId.fromLiveDatabase("db2", 2)
 
-  override fun setUp() {
-    super.setUp()
-
+  @Before
+  fun setUp() {
     workerThread = PooledThreadExecutor.INSTANCE
     databaseRepository = DatabaseRepositoryImpl(project, workerThread)
 
@@ -83,6 +100,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
       .thenReturn(Futures.immediateFuture(SqliteSchema(listOf(SqliteTable("t3", emptyList(), null, false)))))
   }
 
+  @Test
   fun testQueryDatabase() {
     // Act
     runDispatching {
@@ -109,6 +127,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     verify(databaseConnection3).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
   }
 
+  @Test
   fun testClosedDatabasesAreNotQueried() {
     // Act
     runDispatching {
@@ -133,6 +152,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     verify(databaseConnection1, times(0)).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
   }
 
+  @Test
   fun testClosedDatabasesAreDisposed() {
     // Act
     Disposer.register(testRootDisposable, databaseConnection1)
@@ -150,6 +170,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     assertThat(Disposer.isDisposed(databaseConnection2)).isTrue()
   }
 
+  @Test
   fun testFetchSchema() {
     // Act
     runDispatching {
@@ -169,6 +190,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     assertThat(schema3).isEqualTo(SqliteSchema(listOf(SqliteTable("t3", emptyList(), null, false))))
   }
 
+  @Test
   fun testExecuteStatement() {
     // Act
     runDispatching {
@@ -194,6 +216,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     verify(databaseConnection3).execute(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t3"))
   }
 
+  @Test
   fun testUpdateTablePrimaryKey() {
     // Prepare
     val targetTable =
@@ -226,6 +249,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
       )
   }
 
+  @Test
   fun testUpdateTableRowId() {
     // Prepare
     val targetTable =
@@ -264,6 +288,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
       )
   }
 
+  @Test
   fun testRemoveRows_oneRow() {
     // Prepare
     val targetTable =
@@ -300,6 +325,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
       )
   }
 
+  @Test
   fun testRemoveRows_multipleRows() {
     // Prepare
     val targetTable =
@@ -352,6 +378,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
       )
   }
 
+  @Test
   fun testSelectOrderedAsc() {
     // Prepare
     runDispatching { databaseRepository.addDatabaseConnection(databaseId1, databaseConnection1) }
@@ -365,6 +392,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     verify(databaseConnection1).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM (SELECT * FROM t1) ORDER BY c1 ASC"))
   }
 
+  @Test
   fun testSelectOrderedDesc() {
     // Prepare
     runDispatching { databaseRepository.addDatabaseConnection(databaseId1, databaseConnection1) }
@@ -378,6 +406,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     verify(databaseConnection1).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM (SELECT * FROM t1) ORDER BY c1 DESC"))
   }
 
+  @Test
   fun testSelectOrderedNotOrder() {
     // Prepare
     runDispatching { databaseRepository.addDatabaseConnection(databaseId1, databaseConnection1) }
@@ -391,6 +420,7 @@ class DatabaseRepositoryTest : LightPlatformTestCase() {
     verify(databaseConnection1).query(SqliteStatement(SqliteStatementType.SELECT, "SELECT * FROM t1"))
   }
 
+  @Test
   fun testClear() {
     // Prepare
     Disposer.register(testRootDisposable, databaseConnection1)

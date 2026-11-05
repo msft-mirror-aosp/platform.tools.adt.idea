@@ -18,9 +18,10 @@ package com.android.tools.idea.sqlite.model
 import com.google.common.truth.Truth.assertThat
 import com.intellij.mock.MockVirtualFile
 import java.sql.JDBCType
-import junit.framework.TestCase
+import org.junit.Test
 
-class ModelTest : TestCase() {
+class ModelTest {
+  @Test
   fun testSqliteAffinityFromString() {
     assertThat(SqliteAffinity.fromTypename("int")).isEqualTo(SqliteAffinity.INTEGER)
     assertThat(SqliteAffinity.fromTypename("integer")).isEqualTo(SqliteAffinity.INTEGER)
@@ -61,6 +62,7 @@ class ModelTest : TestCase() {
     assertThat(SqliteAffinity.fromTypename("whatever")).isEqualTo(SqliteAffinity.NUMERIC)
   }
 
+  @Test
   fun testSqliteAffinityFromJDBCType() {
     assertThat(SqliteAffinity.fromJDBCType(JDBCType.TINYINT)).isEqualTo(SqliteAffinity.INTEGER)
     assertThat(SqliteAffinity.fromJDBCType(JDBCType.SMALLINT)).isEqualTo(SqliteAffinity.INTEGER)
@@ -106,6 +108,7 @@ class ModelTest : TestCase() {
     assertThat(SqliteAffinity.fromJDBCType(JDBCType.TIMESTAMP_WITH_TIMEZONE)).isEqualTo(SqliteAffinity.NUMERIC)
   }
 
+  @Test
   fun testFileDatabaseNameAndPath() {
     val databaseId =
       SqliteDatabaseId.fromFileDatabase(DatabaseFileData(MockVirtualFile("someDir/data/data/com.example.package/databases/db-file")))
@@ -114,6 +117,7 @@ class ModelTest : TestCase() {
     assertThat(databaseId.path).isEqualTo("/data/data/com.example.package/databases/db-file")
   }
 
+  @Test
   fun testLiveDatabasePathIsConverted() {
     val databaseId = SqliteDatabaseId.fromLiveDatabase("/data/user/0/com.example.package/databases/db-file", 0)
 
