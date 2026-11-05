@@ -31,18 +31,17 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 internal class EnvironmentTracker(private val emulator: EmulatorController) {
 
-  private val _environmentFlow = MutableStateFlow<Environment?>(null)
-  val environmentFlow: StateFlow<Environment?> = _environmentFlow.asStateFlow()
+  val environmentFlow: StateFlow<Environment?>
+    field = MutableStateFlow<Environment?>(null)
 
   init {
     emulator.createCoroutineScope().launch {
-      _environmentFlow.subscriptionCount.collect { count ->
-        if (count > 0 && _environmentFlow.value == null) {
+      environmentFlow.subscriptionCount.collect { count ->
+        if (count > 0 && environmentFlow.value == null) {
           launch(Dispatchers.IO) { fetchEnvironmentSync() }
         }
       }
@@ -51,10 +50,10 @@ internal class EnvironmentTracker(private val emulator: EmulatorController) {
 
   var environment: Environment?
     get() {
-      if (_environmentFlow.value == null) {
+      if (environmentFlow.value == null) {
         fetchEnvironmentSync()
       }
-      return _environmentFlow.value
+      return environmentFlow.value
     }
     set(value) {
       updateEnvironment(value)
@@ -87,7 +86,7 @@ internal class EnvironmentTracker(private val emulator: EmulatorController) {
   }
 
   private fun updateEnvironment(value: Environment?) {
-    _environmentFlow.value = value
+    environmentFlow.value = value
     ActivityTracker.getInstance().inc()
   }
 

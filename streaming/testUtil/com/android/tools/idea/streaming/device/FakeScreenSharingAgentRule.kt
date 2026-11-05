@@ -63,7 +63,6 @@ class FakeScreenSharingAgentRule : TestRule {
   private var deviceCounter = 0
   private val devices = mutableListOf<FakeDevice>()
   private val projectRule = ProjectRule()
-  private val fakeAdbServerAdbLibRule = FakeAdbServerAdbLibRule(::configureFakeAdbServer)
   private val testEnvironment =
     object : ExternalResource() {
 
@@ -90,7 +89,7 @@ class FakeScreenSharingAgentRule : TestRule {
     get() = projectRule.project
 
   val fakeDeviceCreator: FakeDeviceCreator
-    get() = fakeAdbServerAdbLibRule
+    field = FakeAdbServerAdbLibRule(::configureFakeAdbServer)
 
   init {
     // Preload FFmpeg codec native libraries upfront to avoid a race condition when unpacking them.
@@ -98,7 +97,7 @@ class FakeScreenSharingAgentRule : TestRule {
   }
 
   override fun apply(base: Statement, description: Description): Statement {
-    return projectRule.apply(fakeAdbServerAdbLibRule.apply(testEnvironment.apply(base, description), description), description)
+    return projectRule.apply(fakeDeviceCreator.apply(testEnvironment.apply(base, description), description), description)
   }
 
   private fun configureFakeAdbServer(fakeAdbServer: FakeAdbServer.Builder) {
@@ -160,7 +159,7 @@ class FakeScreenSharingAgentRule : TestRule {
     val serialNumber = (++deviceCounter).toString()
     val release = "Sweet dessert"
     val deviceState =
-      fakeAdbServerAdbLibRule
+      fakeDeviceCreator
         .connectDevice(
           serialNumber,
           manufacturer,
@@ -188,7 +187,7 @@ class FakeScreenSharingAgentRule : TestRule {
   }
 
   fun disconnectDevice(device: FakeDevice) {
-    fakeAdbServerAdbLibRule.disconnectDevice(device.serialNumber)
+    fakeDeviceCreator.disconnectDevice(device.serialNumber)
     Disposer.dispose(device.agent)
     devices.remove(device)
   }

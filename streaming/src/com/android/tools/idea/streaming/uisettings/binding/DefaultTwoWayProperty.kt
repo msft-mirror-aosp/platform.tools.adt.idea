@@ -20,7 +20,6 @@ import com.android.tools.idea.util.ListenerCollection
 /** Standard implementation of a [TwoWayProperty]. */
 internal open class DefaultTwoWayProperty<T>(initialValue: T) : TwoWayProperty<T> {
   private val listeners = ListenerCollection.createWithDirectExecutor<ChangeListener<T>>()
-  private var actualValue = initialValue
   private val emptyChangeListener = ChangeListener<T> {}
   override var uiChangeListener = emptyChangeListener
     set(value) {
@@ -31,8 +30,8 @@ internal open class DefaultTwoWayProperty<T>(initialValue: T) : TwoWayProperty<T
     uiChangeListener = emptyChangeListener
   }
 
-  override val value: T
-    get() = actualValue
+  final override var value: T = initialValue
+    private set
 
   override fun addControllerListener(listener: ChangeListener<T>) {
     listeners.add(listener)
@@ -40,14 +39,14 @@ internal open class DefaultTwoWayProperty<T>(initialValue: T) : TwoWayProperty<T
   }
 
   override fun setFromUi(newValue: T) {
-    if (newValue != actualValue) {
-      actualValue = newValue
+    if (newValue != value) {
+      value = newValue
       uiChangeListener.valueChanged(newValue)
     }
   }
 
   override fun setFromController(newValue: T) {
-    actualValue = newValue
+    value = newValue
     listeners.forEach { it.valueChanged(newValue) }
   }
 
@@ -59,16 +58,16 @@ internal open class DefaultTwoWayProperty<T>(initialValue: T) : TwoWayProperty<T
   }
 
   override fun and(other: ReadOnlyProperty<Boolean>): ReadOnlyProperty<Boolean> {
-    if (actualValue !is Boolean) error("Boolean property required")
-    val result = DefaultTwoWayProperty((actualValue as Boolean) and other.value)
+    if (value !is Boolean) error("Boolean property required")
+    val result = DefaultTwoWayProperty((value as Boolean) and other.value)
     addControllerListener { result.setFromController((it as Boolean) and other.value) }
-    other.addControllerListener { result.setFromController((actualValue as Boolean) and it) }
+    other.addControllerListener { result.setFromController((value as Boolean) and it) }
     return result
   }
 
   override fun not(): ReadOnlyProperty<Boolean> {
-    if (actualValue !is Boolean) error("Boolean property required")
-    val result = DefaultTwoWayProperty(!(actualValue as Boolean))
+    if (value !is Boolean) error("Boolean property required")
+    val result = DefaultTwoWayProperty(!(value as Boolean))
     addControllerListener { result.setFromController(!(it as Boolean)) }
     return result
   }

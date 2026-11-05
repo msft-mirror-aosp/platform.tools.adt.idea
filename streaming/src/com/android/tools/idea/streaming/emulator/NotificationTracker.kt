@@ -35,7 +35,6 @@ import java.awt.Color
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -43,26 +42,26 @@ import kotlinx.coroutines.launch
 /** Receives notifications from the emulator and updates relevant properties. */
 internal class NotificationTracker private constructor(private val emulator: EmulatorController) : Disposable, ConnectionStateListener {
 
-  private val _currentPosture = MutableStateFlow<EmulatorConfiguration.PostureDescriptor?>(null)
-  val currentPosture: StateFlow<EmulatorConfiguration.PostureDescriptor?> = _currentPosture.asStateFlow()
+  val currentPosture: StateFlow<EmulatorConfiguration.PostureDescriptor?>
+    field = MutableStateFlow<EmulatorConfiguration.PostureDescriptor?>(null)
 
-  private val _virtualSceneCameraActive = MutableStateFlow(false)
-  val virtualSceneCameraActive: StateFlow<Boolean> = _virtualSceneCameraActive.asStateFlow()
+  val virtualSceneCameraActive: StateFlow<Boolean>
+    field = MutableStateFlow(false)
 
-  private val _microphoneInput = MutableStateFlow<Boolean?>(null)
-  val microphoneInput: StateFlow<Boolean?> = _microphoneInput.asStateFlow()
+  val microphoneInput: StateFlow<Boolean?>
+    field = MutableStateFlow<Boolean?>(null)
 
-  private val _xrOptions = MutableStateFlow<XrOptions?>(null)
-  val xrOptions: StateFlow<XrOptions?> = _xrOptions.asStateFlow()
+  val xrOptions: StateFlow<XrOptions?>
+    field = MutableStateFlow<XrOptions?>(null)
 
-  private val _displayConfigurations = MutableStateFlow<List<DisplayConfiguration>?>(null)
-  val displayConfigurations: StateFlow<List<DisplayConfiguration>?> = _displayConfigurations.asStateFlow()
+  val displayConfigurations: StateFlow<List<DisplayConfiguration>?>
+    field = MutableStateFlow<List<DisplayConfiguration>?>(null)
 
-  private val _ledStates = MutableStateFlow<Map<LedIndicator.Facing, Color?>>(emptyMap())
-  val ledStates: StateFlow<Map<LedIndicator.Facing, Color?>> = _ledStates.asStateFlow()
+  val ledStates: StateFlow<Map<LedIndicator.Facing, Color?>>
+    field = MutableStateFlow<Map<LedIndicator.Facing, Color?>>(emptyMap())
 
-  private val _displayPowerModes = MutableStateFlow<Map<Int, DisplayPowerModeNotification.PowerMode>>(emptyMap())
-  val displayPowerModes: StateFlow<Map<Int, DisplayPowerModeNotification.PowerMode>> = _displayPowerModes.asStateFlow()
+  val displayPowerModes: StateFlow<Map<Int, DisplayPowerModeNotification.PowerMode>>
+    field = MutableStateFlow<Map<Int, DisplayPowerModeNotification.PowerMode>>(emptyMap())
 
   private val log = Logger.getInstance(NotificationTracker::class.java)
   private val emulatorConfig
@@ -83,12 +82,12 @@ internal class NotificationTracker private constructor(private val emulator: Emu
     }
 
     when {
-      message.hasCameraNotification() -> _virtualSceneCameraActive.value = message.cameraNotification.active
+      message.hasCameraNotification() -> virtualSceneCameraActive.value = message.cameraNotification.active
       message.hasDisplayConfigurationsChangedNotification() ->
-        _displayConfigurations.value = message.displayConfigurationsChangedNotification.displayConfigurations.displaysList
+        displayConfigurations.value = message.displayConfigurationsChangedNotification.displayConfigurations.displaysList
       message.hasPosture() -> updateCurrentPosture(message.posture.value)
-      message.hasXrOptions() -> _xrOptions.value = message.xrOptions
-      message.hasMicrophoneState() -> _microphoneInput.value = message.microphoneState.realAudioEnabled
+      message.hasXrOptions() -> xrOptions.value = message.xrOptions
+      message.hasMicrophoneState() -> microphoneInput.value = message.microphoneState.realAudioEnabled
       message.hasLedIndicator() -> updateLedIndicators(message.ledIndicator)
       message.hasDisplayPowerMode() -> updateDisplayPowerMode(message.displayPowerMode)
       else -> {}
@@ -96,7 +95,7 @@ internal class NotificationTracker private constructor(private val emulator: Emu
   }
 
   private fun updateDisplayPowerMode(notification: DisplayPowerModeNotification) {
-    _displayPowerModes.update { map ->
+    displayPowerModes.update { map ->
       if (map[notification.display] == notification.powerMode) map else map + (notification.display to notification.powerMode)
     }
   }
@@ -104,7 +103,7 @@ internal class NotificationTracker private constructor(private val emulator: Emu
   private fun updateCurrentPosture(posture: PostureValue) {
     val descriptor = emulatorConfig.postures.find { it.posture == posture }
     if (descriptor != null) {
-      _currentPosture.value = descriptor
+      currentPosture.value = descriptor
     } else {
       log.error("Unexpected posture: $posture")
     }
@@ -117,7 +116,7 @@ internal class NotificationTracker private constructor(private val emulator: Emu
         LedIndicator.State.ON -> Color(indicator.color)
         else -> null
       }
-    _ledStates.update { map ->
+    ledStates.update { map ->
       if (map[indicator.facing] == color) map else map + (indicator.facing to color)
     }
   }
