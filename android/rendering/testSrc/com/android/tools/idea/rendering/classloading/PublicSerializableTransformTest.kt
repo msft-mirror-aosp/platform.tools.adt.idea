@@ -18,6 +18,7 @@ package com.android.tools.idea.rendering.classloading
 import com.android.tools.rendering.classloading.ClassWriterWithPseudoClassLocator
 import com.android.tools.rendering.classloading.PseudoClass
 import com.android.tools.rendering.classloading.PseudoClassLocator
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.objectweb.asm.ClassReader
@@ -302,5 +303,68 @@ class PublicSerializableTransformTest {
 
     // Since NavKey was absent/objectPseudoClass, it should NOT have been matched or transformed, so visibility remains private
     assertTrue("Class should NOT be public when NavKey is absent from classpath", (resultClassNode.access and Opcodes.ACC_PUBLIC) == 0)
+  }
+
+  @Test
+  fun testHierarchyTraversalDoesNotLocateJavaLangObject() {
+    val testClassBytes = loadClassBytes(SerializableChildNavKey::class.java)
+    val classReader = ClassReader(testClassBytes)
+
+    val parentInternalName = Type.getInternalName(SerializableParentNavKey::class.java)
+    val childInternalName = Type.getInternalName(SerializableChildNavKey::class.java)
+    val queriedClassNames = mutableSetOf<String>()
+
+    val recordingLocator =
+      object : PseudoClassLocator {
+        override fun locatePseudoClass(classFqn: String): PseudoClass {
+          queriedClassNames.add(classFqn)
+          return when (classFqn) {
+            NAV_KEY_INTERNAL_NAME.replace('/', '.') -> PseudoClass.forTest(classFqn, JAVA_OBJECT_FQN, true, emptyList(), this)
+            parentInternalName.replace('/', '.') ->
+              PseudoClass.forTest(
+                classFqn,
+                JAVA_OBJECT_FQN,
+                false,
+                listOf(NAV_KEY_INTERNAL_NAME.replace('/', '.')),
+                this,
+              )
+            childInternalName.replace('/', '.') ->
+              PseudoClass.forTest(
+                classFqn,
+                parentInternalName.replace('/', '.'),
+                false,
+                emptyList(),
+                this,
+              )
+            else -> PseudoClass.objectPseudoClass()
+          }
+        }
+      }
+
+    val classWriter = ClassWriterWithPseudoClassLocator(0, recordingLocator)
+    val remapper =
+      SimpleRemapper(
+        mapOf(
+          Type.getInternalName(MockSerializable::class.java) to SERIALIZABLE_INTERNAL_NAME,
+          Type.getInternalName(MockNavKey::class.java) to NAV_KEY_INTERNAL_NAME,
+        )
+      )
+
+    val publicSerializableTransform = PublicSerializableTransform(classWriter)
+    val classRemapperAdapter = ClassRemapper(publicSerializableTransform, remapper)
+
+    classReader.accept(classRemapperAdapter, 0)
+
+    val transformedClassNode = ClassNode()
+    ClassReader(classWriter.toByteArray()).accept(transformedClassNode, 0)
+
+    assertTrue(
+      "Class should be public via hierarchy",
+      (transformedClassNode.access and Opcodes.ACC_PUBLIC) != 0,
+    )
+    assertFalse(
+      "Hierarchy traversal should not redundantly locate java.lang.Object",
+      queriedClassNames.contains(JAVA_OBJECT_FQN),
+    )
   }
 }

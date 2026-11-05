@@ -170,14 +170,15 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     ThreadControllingTransform::new,
     CooperativeInterruptTransform::new,
     RenderActionAllocationLimiterTransform::new,
-    SdkIntReplacer::new
+    SdkIntReplacer::new,
+    // Applied unconditionally because static @Preview renders also reflectively access non-public
+    // @Serializable NavKey objects from repackaged kotlinx.serialization.
+    PublicSerializableTransform::new
   ).plus(
     UtilKt.toClassTransform(
       ImmutableList.of(visitor -> StudioFlags.RENDER_SANDBOX.get() ? RenderSandbox.getClassTransform(visitor) : visitor),
       classData -> StudioFlags.RENDER_SANDBOX.get() && RenderSandbox.getClassTransform().shouldRewrite(classData)
     )
-  ).plus(
-    (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get()) ? ImmutableList.of(PublicSerializableTransform::new) : ImmutableList.of()
   ).plus(
     // Leave this transformation as last so the rest of the transformations operate on the regular names.
     ImmutableList.of(visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE))
@@ -197,6 +198,9 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
     LocalNavigationEventTransform::new,
     NavigationEventHandlerTransform::new,
     SdkIntReplacer::new,
+    // Applied unconditionally because static @Preview renders also reflectively access non-public
+    // @Serializable NavKey objects from repackaged kotlinx.serialization.
+    PublicSerializableTransform::new,
     // Because of the use of RepackageTransform, we also need to ensure that certain internal constants are correctly renamed
     // so they point to the new repackaged classes.
     visitor -> new StringReplaceTransform(visitor, STRING_REPLACEMENTS)
@@ -205,8 +209,6 @@ public final class StudioModuleClassLoader extends ModuleClassLoader {
       ImmutableList.of(visitor -> StudioFlags.RENDER_SANDBOX.get() ? RenderSandbox.getClassTransform(visitor) : visitor),
       classData -> StudioFlags.RENDER_SANDBOX.get() && RenderSandbox.getClassTransform().shouldRewrite(classData)
     )
-  ).plus(
-    (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get()) ? ImmutableList.of(PublicSerializableTransform::new) : ImmutableList.of()
   ).plus(
     // Leave this transformation as last so the rest of the transformations operate on the regular names.
     ImmutableList.of(visitor -> new RepackageTransform(visitor, PACKAGES_TO_RENAME, INTERNAL_PACKAGE))

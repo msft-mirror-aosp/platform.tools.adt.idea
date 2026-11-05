@@ -43,6 +43,7 @@ private const val REPACKAGED_SERIALIZABLE_ANNOTATION_NAME = "L_layoutlib_/_inter
 private const val NAV_KEY_INTERFACE_NAME = "androidx/navigation3/runtime/NavKey"
 
 private const val JAVA_LANG_OBJECT = "java/lang/Object"
+private const val JAVA_LANG_OBJECT_FQN = "java.lang.Object"
 
 class PublicSerializableTransform(private val delegate: ClassVisitor) : ClassVisitor(Opcodes.ASM9), ClassVisitorUniqueIdProvider {
 
@@ -167,11 +168,13 @@ private fun isSubclassOrImplements(className: String, targetFqn: String, locator
         val targetPseudoClass = runCatching { locator.locatePseudoClass(targetFqn) }.getOrNull()
         return targetPseudoClass != null && targetPseudoClass.name == targetFqn
       }
-      if (current != JAVA_LANG_OBJECT) {
+      // Hierarchy traversal queues dotted class names (and PseudoClass.superName is also dotted),
+      // so compare against JAVA_LANG_OBJECT_FQN to avoid a redundant locatePseudoClass lookup.
+      if (current != JAVA_LANG_OBJECT_FQN) {
         runCatching { locator.locatePseudoClass(current) }
           .getOrNull()
           ?.let { pseudoClass ->
-            if (pseudoClass.superName != JAVA_LANG_OBJECT) {
+            if (pseudoClass.superName != JAVA_LANG_OBJECT_FQN) {
               queue.add(pseudoClass.superName)
             }
             queue.addAll(pseudoClass.interfaces)
