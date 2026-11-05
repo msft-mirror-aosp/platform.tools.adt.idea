@@ -16,6 +16,8 @@
 package com.android.tools.idea.rendering.webp
 
 import com.android.testutils.waitForCondition
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.notification.Notification
 import com.intellij.notification.Notifications
@@ -28,6 +30,7 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.PlatformTestUtil
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBRadioButton
@@ -38,14 +41,31 @@ import java.util.concurrent.TimeUnit
 import javax.imageio.ImageIO
 import javax.swing.JComponent
 import javax.swing.JSlider
-import org.jetbrains.android.AndroidTestCase
+import org.jetbrains.android.AndroidTestBase
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class ConvertToWebpActionTest : AndroidTestCase() {
+@RunsInEdt
+class ConvertToWebpActionTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture }
+  private val project by lazy { projectRule.project }
+  private val testRootDisposable by lazy { projectRule.testRootDisposable }
+
   val notifications = mutableListOf<Notification>()
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
+    myFixture.testDataPath = AndroidTestBase.getTestDataPath()
+    // AndroidTestCase used to copy testData/res into the project; testVisibility needs the res folder.
+    myFixture.copyDirectoryToProject("res", "res")
     project.messageBus
       .connect(testRootDisposable)
       .subscribe(
@@ -58,6 +78,7 @@ class ConvertToWebpActionTest : AndroidTestCase() {
       )
   }
 
+  @Test
   fun testConvert() {
     // Regression test for issue 226893
     // Ensure that images that are too large to encode are encoded anyway if the user asked for it
@@ -84,6 +105,7 @@ class ConvertToWebpActionTest : AndroidTestCase() {
     assertThat(mdpiFolder.findChild("ic_action_name.webp")).isNull()
   }
 
+  @Test
   fun testIncludeLargerImages() {
     // Regression test for issue 226893
     // Ensure that images that are too large to encode are encoded anyway if the user asked for it
@@ -113,6 +135,7 @@ class ConvertToWebpActionTest : AndroidTestCase() {
     assertThat(mdpiFolder.findChild("ic_arrow_back.webp")).isNotNull()
   }
 
+  @Test
   fun testVisibility() {
     val action = ConvertToWebpAction()
     val resFolder = myFixture.findFileInTempDir("res")
@@ -148,6 +171,7 @@ class ConvertToWebpActionTest : AndroidTestCase() {
     assertFalse(presentation.isVisible)
   }
 
+  @Test
   fun testWebpConversionDialogSettings() {
     runInEdtAndWait {
       // Test minSdkVersion < 18 behavior (skipTransparentImages is forced to true when minSdkVersion < 18)
@@ -230,6 +254,7 @@ class ConvertToWebpActionTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testWebpPreviewDialog() {
     assumeTrue(ImageIO.getImageWritersByFormatName("webp").hasNext())
 

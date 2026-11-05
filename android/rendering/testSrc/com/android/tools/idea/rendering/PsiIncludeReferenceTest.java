@@ -15,24 +15,56 @@
  */
 package com.android.tools.idea.rendering;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import com.android.ide.common.resources.ResourceRepository;
 import com.android.ide.common.resources.ResourceResolver;
 import com.android.tools.configurations.Configuration;
 import com.android.tools.idea.configurations.ConfigurationManager;
 import com.android.tools.res.LocalResourceRepository;
 import com.android.tools.idea.rendering.parsers.PsiXmlFile;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.xml.XmlFile;
 import com.intellij.testFramework.PlatformTestUtil;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import com.intellij.util.concurrency.SameThreadExecutor;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.AndroidTestBase;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
 @SuppressWarnings("SpellCheckingInspection")
-public class PsiIncludeReferenceTest extends AndroidTestCase {
+@RunsInEdt
+public class PsiIncludeReferenceTest {
+  @Rule
+  public final EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private CodeInsightTestFixture myFixture;
+  private Module myModule;
+
+  private Project getProject() {
+    return projectRule.getProject();
+  }
+
+  @Before
+  public void setUp() {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+    myModule = projectRule.getModule();
+  }
+
+  @Test
   public void testBasic() {
     VirtualFile file1 = myFixture.copyFileToProject("xmlpull/designtime.xml", "res/layout/designtime.xml");
     assertNotNull(file1);
@@ -54,6 +86,7 @@ public class PsiIncludeReferenceTest extends AndroidTestCase {
     assertEquals("@layout/designtime", reference.getFromResourceUrl());
   }
 
+  @Test
   public void testGetSet() throws InterruptedException {
     VirtualFile included = myFixture.copyFileToProject("designer/included.xml", "res/layout/included.xml");
     assertNotNull(included);

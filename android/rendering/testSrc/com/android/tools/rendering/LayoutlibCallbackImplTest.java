@@ -19,6 +19,12 @@ import static com.android.SdkConstants.ANDROID_URI;
 import static com.android.SdkConstants.ATTR_LAYOUT;
 import static com.android.ide.common.fonts.FontDetailKt.DEFAULT_EXACT;
 import static com.android.ide.common.fonts.FontDetailKt.ITALICS;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.jetbrains.android.AndroidTestBase.getTestDataPath;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -47,6 +53,8 @@ import com.android.tools.idea.rendering.AndroidFacetRenderModelModule;
 import com.android.tools.idea.rendering.RenderTestUtil;
 import com.android.tools.idea.rendering.StudioModuleRenderContext;
 import com.android.tools.idea.rendering.StudioRenderServiceKt;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.android.tools.rendering.api.RenderModelModule;
 import com.android.tools.rendering.classloading.ModuleClassLoaderManagerKt;
 import com.android.tools.rendering.parsers.ILayoutPullParserFactory;
@@ -60,7 +68,9 @@ import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.testFramework.PsiTestUtil;
+import com.intellij.testFramework.RunsInEdt;
 import com.intellij.testFramework.ServiceContainerUtil;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -70,20 +80,33 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import kotlin.Unit;
 import org.intellij.lang.annotations.Language;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.sdk.StudioEmbeddedRenderTarget;
 import org.jetbrains.android.uipreview.StudioModuleClassLoaderManager;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.mockito.ArgumentMatchers;
 
-public class LayoutlibCallbackImplTest extends AndroidTestCase {
+@RunsInEdt
+public class LayoutlibCallbackImplTest {
+  @Rule
+  public final EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private CodeInsightTestFixture myFixture;
+  private Module myModule;
+  private AndroidFacet myFacet;
   private AndroidBuildTargetReference myBuildTarget;
   private DownloadableFontCacheService myFontCacheServiceMock;
   private ProjectFonts myProjectFonts;
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
+  @Before
+  public void setUp() throws Exception {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(getTestDataPath());
+    myModule = projectRule.getModule();
+    myFacet = AndroidFacet.getInstance(myModule);
     myBuildTarget = AndroidBuildTargetReference.gradleOnly(myFacet);
     myFontCacheServiceMock = mock(DownloadableFontCacheServiceImpl.class);
     when(myFontCacheServiceMock.toXml(any())).thenCallRealMethod();
@@ -100,7 +123,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
       return CompletableFuture.completedFuture(true);
     });
     ServiceContainerUtil.replaceService(
-      ApplicationManager.getApplication(), DownloadableFontCacheService.class, myFontCacheServiceMock, getTestRootDisposable());
+      ApplicationManager.getApplication(), DownloadableFontCacheService.class, myFontCacheServiceMock, projectRule.getTestRootDisposable());
     myProjectFonts = mock(ProjectFonts.class);
     FontFamily fontFamily = new FontFamily(FontProvider.GOOGLE_PROVIDER, FontSource.DOWNLOADABLE, "Roboto", "", "", ImmutableList.of(
       new MutableFontDetail("Roboto", FontType.SINGLE, 700, 100f, ITALICS, DEFAULT_EXACT, "https://fonts.google.com/roboto700i", "", false)));
@@ -113,6 +136,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
    * After the fix, when asking for the <code>app:navGraph</code> attribute on the &lt;fragment&gt; entry, the parser will return the start
    * destination <code>@layout/frament_blank</code>
    */
+  @Test
   public void testBug136632498() {
     @Language("XML") final String navGraph = "<navigation xmlns:app=\"http://schemas.android.com/apk/res-auto\"\n" +
                                              "    xmlns:tools=\"http://schemas.android.com/tools\"\n" +
@@ -172,6 +196,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
   }
 
   // b/248473636
+  @Test
   public void testFontFromAarIsAccessible() throws IOException {
     @Language("XML") final String main = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
                                          "<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
@@ -202,6 +227,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
 
   }
 
+  @Test
   public void testDownloadableFont() {
     @Language("XML") final String main = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
                                          "<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
@@ -232,6 +258,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
 
   }
 
+  @Test
   public void testCreateXmlParserForFile() {
     @Language("XML") final String main = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
                                          "<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
@@ -285,6 +312,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
     });
   }
 
+  @Test
   public void testNonLayoutXmlDoesNotTriggerCycleCheck() {
     ILayoutPullParser mockParser = mock(ILayoutPullParser.class);
     ILayoutPullParserFactory parserFactory = (project, renderLogger, file, callback) -> mockParser;
@@ -307,6 +335,7 @@ public class LayoutlibCallbackImplTest extends AndroidTestCase {
     });
   }
 
+  @Test
   public void testLayoutXmlTriggersCycleCheckWhenRepeated() {
     ILayoutPullParser mockParser = mock(ILayoutPullParser.class);
     ILayoutPullParserFactory parserFactory = (project, renderLogger, file, callback) -> mockParser;

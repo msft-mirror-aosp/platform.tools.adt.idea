@@ -19,7 +19,14 @@ import static com.android.ide.common.fonts.FontDetailKt.DEFAULT_EXACT;
 import static com.android.ide.common.fonts.FontDetailKt.ITALICS;
 import static com.android.ide.common.rendering.api.ResourceNamespace.ANDROID;
 import static com.android.ide.common.rendering.api.ResourceNamespace.RES_AUTO;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.android.tools.idea.util.FileExtensions.toVirtualFile;
+import static org.jetbrains.android.AndroidTestBase.getTestDataPath;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import com.android.ide.common.fonts.FontFamily;
 import com.android.ide.common.fonts.FontProvider;
@@ -33,42 +40,61 @@ import com.android.resources.ResourceType;
 import com.android.tools.rendering.RenderTask;
 import com.android.tools.idea.rendering.RenderTestUtil;
 import com.android.tools.idea.res.StudioResourceRepositoryManager;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.android.tools.rendering.parsers.DomPullParser;
 import com.android.tools.rendering.parsers.LayoutPullParsers;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.xml.XmlFile;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import java.util.List;
 import java.util.function.Consumer;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.w3c.dom.Element;
 
 @SuppressWarnings("SpellCheckingInspection")
-public class LayoutPullParsersTest extends AndroidTestCase {
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
+@RunsInEdt
+public class LayoutPullParsersTest {
+  @Rule
+  public final EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private CodeInsightTestFixture myFixture;
+  private AndroidFacet myFacet;
+
+  private Project getProject() {
+    return projectRule.getProject();
+  }
+
+  @Before
+  public void setUp() throws Exception {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(getTestDataPath());
+    myFacet = AndroidFacet.getInstance(projectRule.getModule());
     RenderTestUtil.beforeRenderTestCase();
   }
 
-  @Override
-  protected void tearDown() throws Exception {
-    try {
-      RenderTestUtil.afterRenderTestCase();
-    } finally {
-      super.tearDown();
-    }
+  @After
+  public void tearDown() throws Exception {
+    RenderTestUtil.afterRenderTestCase();
   }
 
   private void withRenderTask(VirtualFile file, Consumer<RenderTask> c) {
     RenderTestUtil.withRenderTask(myFacet, file, RenderTestUtil.HOLO_THEME, c);
   }
 
+  @Test
   public void testIsSupported() {
     VirtualFile layoutFile = myFixture.copyFileToProject("xmlpull/layout.xml", "res/layout-land-v14/foo.xml");
     VirtualFile menuFile = myFixture.copyFileToProject("menus/menu1.xml", "res/menu/menu1.xml");
@@ -81,6 +107,7 @@ public class LayoutPullParsersTest extends AndroidTestCase {
     assertTrue(LayoutPullParsers.isSupported(new PsiXmlFile((XmlFile)psiManager.findFile(drawableFile))));
   }
 
+  @Test
   public void testRenderDrawable() {
     VirtualFile file = myFixture.copyFileToProject("drawables/progress_horizontal.xml", "res/drawable/progress_horizontal.xml");
     assertNotNull(file);
@@ -109,6 +136,7 @@ public class LayoutPullParsersTest extends AndroidTestCase {
   /**
    * Check that when two drawables with the same name exist in multiple densities, we select the intended one.
    */
+  @Test
   public void testRenderConflictingDrawables() {
     final String redBoxContent = "<shape xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
                                  "    android:shape=\"rectangle\">\n" +
@@ -168,6 +196,7 @@ public class LayoutPullParsersTest extends AndroidTestCase {
     return myFixture.addFileToProject("res/xml/" + name + ".xml", content).getVirtualFile();
   }
 
+  @Test
   public void testPreferenceScreenTagParsing() {
     VirtualFile preferencesFile = createPreferencesFile("framework", "PreferenceScreen");
     VirtualFile supportPreferencesFiles = createPreferencesFile("support", "android.support.v7.preference.PreferenceScreen");
@@ -189,6 +218,7 @@ public class LayoutPullParsersTest extends AndroidTestCase {
     });
   }
 
+  @Test
   public void testRenderMenuWithShowInNavigationViewAttribute() {
     withRenderTask(myFixture.copyFileToProject("menus/activity_main_drawer.xml",
                                                                    "res/menu/activity_main_drawer.xml"), task -> {
@@ -209,6 +239,7 @@ public class LayoutPullParsersTest extends AndroidTestCase {
     });
   }
 
+  @Test
   public void testRenderAdaptiveIcon() {
     VirtualFile file = myFixture.copyFileToProject("drawables/adaptive.xml", "res/mipmap/adaptive.xml");
     myFixture.copyFileToProject("drawables/foreground.xml", "res/drawable/foreground.xml");
@@ -237,6 +268,7 @@ public class LayoutPullParsersTest extends AndroidTestCase {
   }
 
 
+  @Test
   public void testFontFamily() throws Exception {
     myFixture.copyFileToProject("fonts/customfont.ttf", "res/font/fonta.ttf");
     myFixture.copyFileToProject("fonts/Roboto-Black.ttf", "res/font/fontb.ttf");
@@ -287,6 +319,7 @@ public class LayoutPullParsersTest extends AndroidTestCase {
       new MutableFontDetail("Roboto", FontType.SINGLE, 700, 100f, ITALICS, DEFAULT_EXACT, "https://fonts.google.com/roboto700i", "", false)));
   }
 
+  @Test
   public void testDownloadedFontFamily() {
     FontFamily compoundFontFamily = createRobotoFontFamily();
 
@@ -321,6 +354,7 @@ public class LayoutPullParsersTest extends AndroidTestCase {
     assertEquals(expectedLayout, actualLayout);
   }
 
+  @Test
   public void testNamespace() throws Exception {
     // Project XML:
     VirtualFile layoutFile = myFixture.copyFileToProject("xmlpull/layout.xml", "res/layout-land-v14/foo.xml");

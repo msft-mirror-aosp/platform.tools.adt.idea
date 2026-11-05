@@ -16,10 +16,16 @@
 package com.android.tools.idea.rendering.webp;
 
 import static com.android.testutils.ImageDiffUtil.assertImageSimilar;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.google.common.truth.Truth.assertThat;
 
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -33,9 +39,37 @@ import javax.imageio.ImageWriter;
 import javax.imageio.metadata.IIOMetadata;
 import javax.imageio.metadata.IIOMetadataNode;
 import javax.imageio.stream.ImageOutputStream;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.AndroidTestBase;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
 
-public class WebpConvertedFileTest extends AndroidTestCase {
+@RunsInEdt
+public class WebpConvertedFileTest {
+  @Rule
+  public final EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  @Rule
+  public final TestName testName = new TestName();
+
+  private CodeInsightTestFixture myFixture;
+
+  @Before
+  public void setUp() {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+  }
+
+  private Project getProject() {
+    return projectRule.getProject();
+  }
+
+  private String getName() {
+    return testName.getMethodName();
+  }
+
+  @Test
   public void testLossless() throws Exception {
     WebpConversionSettings settings = new WebpConversionSettings();
     settings.skipTransparentImages = false;
@@ -57,6 +91,7 @@ public class WebpConvertedFileTest extends AndroidTestCase {
     assertImageSimilar(getName(), convertedFile.getSourceImage(), convertedFile.getEncodedImage(), 3);
   }
 
+  @Test
   public void testSkipTransparent() throws Exception {
     WebpConversionSettings settings = new WebpConversionSettings();
     settings.skipTransparentImages = true;
@@ -67,6 +102,7 @@ public class WebpConvertedFileTest extends AndroidTestCase {
     assertThat(convertedFile).isNull();
   }
 
+  @Test
   public void testSkipLauncherIcons() throws Exception {
     WebpConversionSettings settings = new WebpConversionSettings();
     settings.skipTransparentImages = true;
@@ -77,6 +113,7 @@ public class WebpConvertedFileTest extends AndroidTestCase {
     assertThat(convertedFile).isNull();
   }
 
+  @Test
   public void testSkipNinePatches() throws Exception {
     WebpConversionSettings settings = new WebpConversionSettings();
     settings.skipNinePatches = true;
@@ -87,6 +124,7 @@ public class WebpConvertedFileTest extends AndroidTestCase {
     assertThat(convertedFile).isNull();
   }
 
+  @Test
   public void testLossy() throws Exception {
     WebpConversionSettings settings = new WebpConversionSettings();
     settings.skipTransparentImages = false;
@@ -118,6 +156,7 @@ public class WebpConvertedFileTest extends AndroidTestCase {
     assertThat(convertedFile.saved).isGreaterThan(prevSaved);
   }
 
+  @Test
   public void testAnimatedGifConversion() throws Exception {
     BufferedImage frame1 = new BufferedImage(64, 64, BufferedImage.TYPE_INT_RGB);
     Graphics2D g1 = frame1.createGraphics();
@@ -170,6 +209,7 @@ public class WebpConvertedFileTest extends AndroidTestCase {
     assertImageSimilar(getName(), convertedFile.getSourceImage(), encodedImage, 3);
   }
 
+  @Test
   public void testAnimatedGifLossyConversion() throws Exception {
     BufferedImage frame1 = new BufferedImage(64, 64, BufferedImage.TYPE_INT_RGB);
     Graphics2D g1 = frame1.createGraphics();
@@ -224,6 +264,7 @@ public class WebpConvertedFileTest extends AndroidTestCase {
     assertImageSimilar(getName(), convertedFile.getSourceImage(), encodedImage, 5);
   }
 
+  @Test
   public void testSingleFrameGifConversion() throws Exception {
     BufferedImage frame = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
     Graphics2D g = frame.createGraphics();
@@ -268,6 +309,7 @@ public class WebpConvertedFileTest extends AndroidTestCase {
     assertImageSimilar(getName(), convertedFile.getSourceImage(), encodedImage, 3);
   }
 
+  @Test
   public void testAnimatedGifPreviewAndFullConversion() throws Exception {
     BufferedImage frame1 = new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB);
     Graphics2D g1 = frame1.createGraphics();

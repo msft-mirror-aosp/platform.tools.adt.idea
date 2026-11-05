@@ -21,11 +21,19 @@ import com.android.ide.common.resources.ResourceResolver;
 import com.android.resources.ResourceType;
 import com.android.testutils.ImageDiffUtil;
 import com.android.tools.idea.io.TestFileUtils;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.android.utils.XmlUtils;
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.testFramework.RunsInEdt;
 import com.intellij.util.ui.JBUI;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.facet.AndroidFacet;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
 import org.w3c.dom.Node;
 
 import javax.imageio.ImageIO;
@@ -38,9 +46,20 @@ import java.nio.file.Paths;
 
 import static com.android.SdkConstants.PREFIX_RESOURCE_REF;
 import static com.android.SdkConstants.PREFIX_THEME_REF;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.google.common.truth.Truth.assertThat;
+import static org.jetbrains.android.AndroidTestBase.getTestDataPath;
 
-public class GutterIconFactoryTest extends AndroidTestCase {
+@RunsInEdt
+public class GutterIconFactoryTest {
+  @Rule
+  public final EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  @Rule
+  public final TestName testName = new TestName();
+
+  private Module myModule;
+  private AndroidFacet myFacet;
 
   private Path mySampleXmlPath;
 
@@ -54,14 +73,17 @@ public class GutterIconFactoryTest extends AndroidTestCase {
                                                     + " xmlns:android=\"http://schemas.android.com/apk/res/android\"> "
                                                     + "</vector>";
 
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
+  @Before
+  public void setUp() throws Exception {
+    projectRule.getFixture().setTestDataPath(getTestDataPath());
+    myModule = projectRule.getModule();
+    myFacet = AndroidFacet.getInstance(myModule);
 
     mySampleXmlPath = FileSystems.getDefault().getPath(myModule.getProject().getBasePath(),
                                                        "app", "src", "main", "res", "drawable", "GutterIconTest_sample.xml");
   }
 
+  @Test
   public void testCreateIcon_XmlScalingMeetsSizeConstraints() throws Exception {
     for (int i = -1; i <= 1; i++) {
       for (int j = -1; j <= 1; j++) {
@@ -80,6 +102,7 @@ public class GutterIconFactoryTest extends AndroidTestCase {
     }
   }
 
+  @Test
   public void testCreateIcon_BitmapBigEnough() throws Exception {
     String path = Paths.get(getTestDataPath(), "render/imageutils/actual.png").toString();
     BufferedImage input = ImageIO.read(new File(path));
@@ -94,6 +117,7 @@ public class GutterIconFactoryTest extends AndroidTestCase {
     assertThat(icon.getIconHeight()).isAtMost(MAX_HEIGHT);
   }
 
+  @Test
   public void testCreateIcon_BitmapSmallAlready() throws Exception {
     String path = Paths.get(getTestDataPath(), "annotator/ic_tick_thumbnail.png").toString();
     BufferedImage input = ImageIO.read(new File(path));
@@ -110,6 +134,7 @@ public class GutterIconFactoryTest extends AndroidTestCase {
     ImageDiffUtil.assertImageSimilar(getName(), input, output, 0);
   }
 
+  @Test
   public void testCreateIcon_HiPDIProperlyScaled() throws Exception {
     String path = Paths.get(getTestDataPath(), "render/imageutils/long_hirozontal_red_line.png").toString();
     BufferedImage input = ImageIO.read(new File(path));
@@ -124,6 +149,7 @@ public class GutterIconFactoryTest extends AndroidTestCase {
     assertThat(icon.getIconHeight()).isAtMost(MAX_HEIGHT);
   }
 
+  @Test
   public void testIsReference() {
     final String themeReference = PREFIX_THEME_REF + "android:attr/textColorSecondary";
     final String resourceReference = PREFIX_RESOURCE_REF + "android:color/opaque_red";
@@ -134,6 +160,7 @@ public class GutterIconFactoryTest extends AndroidTestCase {
     assertThat(GutterIconFactory.isReference(notAReference)).isFalse();
   }
 
+  @Test
   public void testReplaceResourceReferences() {
     final String red = "#ff0000";
     final String green = "#00ff00";
@@ -160,6 +187,10 @@ public class GutterIconFactoryTest extends AndroidTestCase {
     assertThat(getColorFromRoot(root, 2)).isEqualTo(green);
     // Cyclic references should not be replaced
     assertThat(getColorFromRoot(root, 3)).isEqualTo(colors[3]);
+  }
+
+  private String getName() {
+    return testName.getMethodName();
   }
 
   // Helper methods for testing replaceResourceReferences

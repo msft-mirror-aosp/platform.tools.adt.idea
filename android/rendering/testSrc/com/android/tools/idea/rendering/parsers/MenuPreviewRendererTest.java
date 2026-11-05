@@ -15,33 +15,56 @@
  */
 package com.android.tools.idea.rendering.parsers;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.jetbrains.android.AndroidTestBase.getTestDataPath;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import com.android.ide.common.rendering.api.ILayoutPullParser;
 import com.android.ide.common.xml.XmlPrettyPrinter;
 import com.android.tools.configurations.Configuration;
 import com.android.tools.idea.rendering.RenderTestUtil;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.android.tools.rendering.parsers.DomPullParser;
 import com.android.tools.rendering.parsers.LayoutPullParsers;
 import com.android.utils.StringHelper;
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.vfs.VirtualFile;
-import org.jetbrains.android.AndroidTestCase;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.jetbrains.android.facet.AndroidFacet;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 import org.w3c.dom.Element;
 
-public class MenuPreviewRendererTest extends AndroidTestCase {
-  @Override
-  protected void setUp() throws Exception {
-    super.setUp();
+@RunsInEdt
+public class MenuPreviewRendererTest {
+  @Rule
+  public final EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private CodeInsightTestFixture myFixture;
+  private Module myModule;
+  private AndroidFacet myFacet;
+
+  @Before
+  public void setUp() throws Exception {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(getTestDataPath());
+    myModule = projectRule.getModule();
+    myFacet = AndroidFacet.getInstance(myModule);
     RenderTestUtil.beforeRenderTestCase();
   }
 
-  @Override
-  protected void tearDown() throws Exception {
-    try {
-      RenderTestUtil.afterRenderTestCase();
-    } finally {
-      super.tearDown();
-    }
+  @After
+  public void tearDown() throws Exception {
+    RenderTestUtil.afterRenderTestCase();
   }
 
+  @Test
   public void testDefaultTheme() throws Exception {
     myFixture.copyFileToProject("menus/strings.xml", "res/menu/strings.xml");
     VirtualFile file = myFixture.copyFileToProject("menus/menu1.xml", "res/menu/menu1.xml");
@@ -66,6 +89,7 @@ public class MenuPreviewRendererTest extends AndroidTestCase {
     });
   }
 
+  @Test
   public void testLightTheme() {
     myFixture.copyFileToProject("menus/strings.xml", "res/menu/strings.xml");
     VirtualFile file = myFixture.copyFileToProject("menus/menu1.xml", "res/menu/menu1.xml");
