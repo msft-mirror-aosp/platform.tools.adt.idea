@@ -72,6 +72,7 @@ import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.runInEdtAndWait
+import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.assertFailsWith
 import kotlin.time.Duration
@@ -470,11 +471,275 @@ class GlassesPairingWizardTest {
         )
       composeTestRule.waitForIdle()
       composeTestRule.onNodeWithText("Failed to create a Bluetooth bond between Pixel 9 and Audio glasses.").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Unpair and Retry").assertDoesNotExist()
+      composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
+
+      // Already paired, but the glasses handle is a plain DeviceHandle, so no Unpair and Retry shortcut is offered
+      pairingFlow.value =
+        PairingState.Error(
+          heading = "Audio glasses is already paired",
+          detailText = "Wipe data on Audio glasses to pair a new phone device.",
+          offerUnpairAndRetry = true,
+        )
+      composeTestRule.waitForIdle()
+      composeTestRule.onNodeWithText("Audio glasses is already paired").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Unpair and Retry").assertDoesNotExist()
+      composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
 
       composeTestRule.onNodeWithText("Cancel").performClick()
       wizard.awaitClose()
     } finally {
       coroutineScope.cancel()
+      UsageTracker.cleanAfterTesting()
+    }
+  }
+
+  @OptIn(ExperimentalTestApi::class)
+  @Test
+  fun testPairPage_alreadyPairedError_unpairsGlassesAndRetries() {
+    val coroutineScope = CoroutineScope(UnconfinedTestDispatcher())
+    val tracker = TestTracker()
+    UsageTracker.setWriterForTest(tracker)
+
+    try {
+      val phone =
+        FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+          "p1",
+          coroutineScope,
+          DeviceState.Disconnected(
+            DeviceProperties.buildForTest {
+              icon = EmptyIcon.DEFAULT
+              manufacturer = "Google"
+              model = "Pixel 9"
+              deviceType = DeviceType.HANDHELD
+              androidVersion = AndroidVersion(36, 1)
+            }
+          ),
+        )
+      val events = CopyOnWriteArrayList<String>()
+      val unpairGate = CompletableDeferred<Unit>()
+      val glasses =
+        FakeGlassesInteractivePairableDeviceHandle(
+          FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+            "g1",
+            coroutineScope,
+            DeviceState.Disconnected(
+              DeviceProperties.buildForTest {
+                icon = EmptyIcon.DEFAULT
+                manufacturer = "Google"
+                model = "Audio glasses"
+                deviceType = DeviceType.AI_GLASSES
+                androidVersion = AndroidVersion(36, 1)
+              }
+            ),
+          )
+        ) {
+          events.add("unpair started")
+          unpairGate.await()
+          events.add("unpaired")
+        }
+      val devicesFlow = MutableStateFlow<List<DeviceHandle>>(listOf(phone, glasses))
+
+      // A fresh flow per pair() call so the retry is observable through distinctUntilChanged, as in production.
+      val pairingFlows = CopyOnWriteArrayList<MutableStateFlow<PairingState>>()
+      val pairer =
+        object : GlassesPairer {
+          override fun pair(g: DeviceHandle, p: DeviceHandle, project: Project?, onMacRetrieved: (String) -> Unit): Flow<PairingState> {
+            assertThat(g).isSameAs(glasses)
+            assertThat(p).isSameAs(phone)
+            events.add("pair")
+            return MutableStateFlow<PairingState>(PairingState.NotStarted).also { pairingFlows.add(it) }
+          }
+        }
+
+      val glassesWizard = GlassesPairingWizard(null, coroutineScope, devicesFlow, glasses, pairer, { true })
+      val wizard = TestComposeWizard { with(glassesWizard) { SelectDevicePage() } }
+
+      composeTestRule.setContent { wizard.Content() }
+
+      composeTestRule.onNodeWithText("Google Pixel 9").performClick()
+      composeTestRule.onNodeWithText("Next").performClick()
+      composeTestRule.waitUntil(10_000) { pairingFlows.size == 1 }
+
+      // Other errors never offer the shortcut, even though these glasses support unpairing.
+      pairingFlows[0].value = PairingState.Error("Pixel 9 does not have support for Intelligent Eyewear.")
+      composeTestRule.waitForIdle()
+      composeTestRule.onNodeWithText("Pixel 9 does not have support for Intelligent Eyewear.").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Unpair and Retry").assertDoesNotExist()
+
+      pairingFlows[0].value =
+        PairingState.Error(
+          heading = "Audio glasses is already paired",
+          detailText = "Wipe data on Audio glasses to pair a new phone device.",
+          offerUnpairAndRetry = true,
+        )
+      composeTestRule.waitForIdle()
+      composeTestRule.onNodeWithText("Audio glasses is already paired").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Wipe data on Audio glasses to pair a new phone device.").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
+      composeTestRule.onNodeWithText("Previous").assertIsEnabled()
+      composeTestRule.onNodeWithText("Unpair and Retry").assertIsDisplayed().performClick()
+
+      composeTestRule.waitUntilAtLeastOneExists(hasText("Unpairing..."), 10_000)
+      composeTestRule.onNodeWithText("Unpair and Retry").assertDoesNotExist()
+      composeTestRule.onNodeWithText("Previous").assertIsNotEnabled()
+      composeTestRule.onNodeWithText("Cancel").assertIsEnabled()
+      composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
+      assertThat(pairingFlows).hasSize(1)
+
+      unpairGate.complete(Unit)
+      // Wait for the second attempt's first state on the page before asserting counters.
+      composeTestRule.waitUntilAtLeastOneExists(hasText("Preparing", substring = true), 10_000)
+      assertThat(pairingFlows).hasSize(2)
+      assertThat(events).containsExactly("pair", "unpair started", "unpaired", "pair").inOrder()
+      assertThat(tracker.events.count { it == GlassesPairingEvent.EventKind.PAIRING_INITIATED }).isEqualTo(2)
+      composeTestRule.onNodeWithText("Unpairing...").assertDoesNotExist()
+      composeTestRule.onNodeWithText("Unpair and Retry").assertDoesNotExist()
+      composeTestRule.onNodeWithText("Previous").assertIsEnabled()
+      composeTestRule.onNodeWithText("Cancel").assertIsEnabled()
+
+      pairingFlows[1].value = PairingState.Complete("Pixel 9", "Audio glasses")
+      composeTestRule.waitForIdle()
+      composeTestRule.onNodeWithText("Successfully paired Pixel 9 with Audio glasses").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Finish").assertIsEnabled().performClick()
+      wizard.awaitClose()
+    } finally {
+      coroutineScope.cancel()
+      UsageTracker.cleanAfterTesting()
+    }
+  }
+
+  @OptIn(ExperimentalTestApi::class)
+  @Test
+  fun testPairPage_alreadyPairedError_unpairFailureKeepsErrorPage() {
+    val coroutineScope = CoroutineScope(UnconfinedTestDispatcher())
+    val tracker = TestTracker()
+    UsageTracker.setWriterForTest(tracker)
+
+    try {
+      val phone =
+        FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+          "p1",
+          coroutineScope,
+          DeviceState.Disconnected(
+            DeviceProperties.buildForTest {
+              icon = EmptyIcon.DEFAULT
+              manufacturer = "Google"
+              model = "Pixel 9"
+              deviceType = DeviceType.HANDHELD
+              androidVersion = AndroidVersion(36, 1)
+            }
+          ),
+        )
+      val events = CopyOnWriteArrayList<String>()
+      val glasses =
+        FakeGlassesInteractivePairableDeviceHandle(
+          FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+            "g1",
+            coroutineScope,
+            DeviceState.Disconnected(
+              DeviceProperties.buildForTest {
+                icon = EmptyIcon.DEFAULT
+                manufacturer = "Google"
+                model = "Audio glasses"
+                deviceType = DeviceType.AI_GLASSES
+                androidVersion = AndroidVersion(36, 1)
+              }
+            ),
+          )
+        ) {
+          events.add("unpair")
+          throw IOException("adb connection lost")
+        }
+      val devicesFlow = MutableStateFlow<List<DeviceHandle>>(listOf(phone, glasses))
+
+      val pairingFlow = MutableStateFlow<PairingState>(PairingState.NotStarted)
+      val pairer =
+        object : GlassesPairer {
+          override fun pair(g: DeviceHandle, p: DeviceHandle, project: Project?, onMacRetrieved: (String) -> Unit): Flow<PairingState> {
+            events.add("pair")
+            return pairingFlow
+          }
+        }
+
+      val glassesWizard = GlassesPairingWizard(null, coroutineScope, devicesFlow, glasses, pairer, { true })
+      val wizard = TestComposeWizard { with(glassesWizard) { SelectDevicePage() } }
+
+      composeTestRule.setContent { wizard.Content() }
+
+      composeTestRule.onNodeWithText("Google Pixel 9").performClick()
+      composeTestRule.onNodeWithText("Next").performClick()
+      composeTestRule.waitUntil(10_000) { "pair" in events }
+
+      pairingFlow.value =
+        PairingState.Error(
+          heading = "Audio glasses is already paired",
+          detailText = "Wipe data on Audio glasses to pair a new phone device.",
+          offerUnpairAndRetry = true,
+        )
+      composeTestRule.waitForIdle()
+      composeTestRule.onNodeWithText("Unpair and Retry").assertIsDisplayed().performClick()
+
+      // The failure is logged and shown as an error that offers the retry again; pairing is not started again.
+      composeTestRule.waitUntilAtLeastOneExists(hasText("Failed to unpair Google Audio glasses"), 10_000)
+      composeTestRule.onNodeWithText("Google Audio glasses may already be wiped. See idea.log for details.").assertIsDisplayed()
+      composeTestRule.onNodeWithText("Unpair and Retry").assertIsDisplayed()
+      assertThat(events).containsExactly("pair", "unpair").inOrder()
+      assertThat(tracker.events.count { it == GlassesPairingEvent.EventKind.PAIRING_INITIATED }).isEqualTo(2)
+      composeTestRule.onNodeWithText("Unpairing...").assertDoesNotExist()
+      composeTestRule.onNodeWithText("Previous").assertIsEnabled()
+
+      composeTestRule.onNodeWithText("Cancel").performClick()
+      wizard.awaitClose()
+    } finally {
+      coroutineScope.cancel()
+      UsageTracker.cleanAfterTesting()
+    }
+  }
+
+  @Test
+  fun testPairGlassesToPhone_alreadyPaired_offersUnpairAndRetry() = runBlockingWithTimeout {
+    val tracker = TestTracker()
+    UsageTracker.setWriterForTest(tracker)
+    val adbSession = FakeAdbSession()
+    try {
+      val (glasses, phone) = connectPairingDevices(adbSession, glassesBluetoothAddress = "$GLASSES_MAC\n")
+      val glassesSelector = DeviceSelector.fromSerialNumber(GLASSES_SERIAL)
+      adbSession.deviceServices.configureShellCommand(
+        glassesSelector,
+        "dumpsys bluetooth_manager | grep 'Bonded devices:'",
+        "Bonded devices: 1\n",
+      )
+
+      var retrievedMac: String? = null
+      val states = pairGlassesToPhone(glasses, phone, launchFlow = { emptyFlow() }, onMacRetrieved = { retrievedMac = it }).toList()
+
+      assertThat(retrievedMac).isNull()
+      assertThat(states)
+        .containsExactly(
+          PairingState.Error(
+            heading = "Google Audio glasses is already paired",
+            detailText = "Wipe data on Google Audio glasses to pair a new phone device.",
+            offerUnpairAndRetry = true,
+          )
+        )
+      assertThat(tracker.events)
+        .containsExactly(
+          GlassesPairingEvent.EventKind.PAIRING_LAUNCH_STARTED,
+          GlassesPairingEvent.EventKind.PAIRING_ERROR_ALREADY_PAIRED,
+        )
+        .inOrder()
+      assertThat(adbSession.shellCommandsSentTo(GLASSES_SERIAL))
+        .containsExactly(
+          "cmd location set-location-enabled true",
+          "cmd bluetooth_manager enable",
+          "cmd bluetooth_manager wait-for-state:STATE_ON",
+          "dumpsys bluetooth_manager | grep 'Bonded devices:'",
+        )
+        .inOrder()
+      assertThat(adbSession.shellCommandsSentTo(PHONE_SERIAL)).isEmpty()
+    } finally {
+      adbSession.closeAndJoin()
       UsageTracker.cleanAfterTesting()
     }
   }

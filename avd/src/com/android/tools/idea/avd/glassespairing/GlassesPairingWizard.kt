@@ -124,6 +124,7 @@ import org.jetbrains.jewel.foundation.theme.LocalTextStyle
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.ExternalLink
 import org.jetbrains.jewel.ui.component.IndeterminateHorizontalProgressBar
+import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.painter.rememberResourcePainterProvider
 
@@ -337,6 +338,9 @@ internal constructor(
 
   private val pairingTrigger = MutableSharedFlow<PairingArgs>()
 
+  /** The latest attempt, so that Unpair and Retry repeats it instead of reading the current selection again. */
+  private var lastPairingArgs: PairingArgs? by mutableStateOf(null)
+
   private val pairingFlow: StateFlow<PairingState> =
     pairingTrigger
       .flatMapLatest { args ->
@@ -395,8 +399,19 @@ internal constructor(
    */
   private fun startPairing(glasses: DeviceHandle, phone: DeviceHandle, unpairFirst: Boolean) {
     val args = PairingArgs(glasses = glasses, phone = phone, unpairFirst = unpairFirst)
+    lastPairingArgs = args
     GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_INITIATED)
     coroutineScope.launch { pairingTrigger.emit(args) }
+  }
+
+  /** Whether [retryWithUnpair] can unpair the glasses of the latest attempt. */
+  private val canRetryWithUnpair: Boolean
+    get() = lastPairingArgs?.glasses is GlassesInteractivePairableDeviceHandle
+
+  /** Starts the latest attempt again, unpairing and wiping its glasses first. */
+  private fun retryWithUnpair() {
+    val args = checkNotNull(lastPairingArgs) { "Nothing to retry" }
+    startPairing(glasses = args.glasses, phone = args.phone, unpairFirst = true)
   }
 
   /**
@@ -421,6 +436,7 @@ internal constructor(
       PairingState.Error(
         heading = AvdBundle.message("glasses.pairing.unpairing.failed.title", glassesName),
         detailText = AvdBundle.message("glasses.pairing.unpairing.failed.message", glassesName),
+        offerUnpairAndRetry = true,
       )
     )
     return false
@@ -558,7 +574,8 @@ internal constructor(
   internal fun WizardPageScope.PairPage(phone: DeviceRow) {
     val pairingState: PairingState by pairingFlow.collectAsState()
 
-    PairingState(pairingState, phone)
+    val showUnpairAndRetry = (pairingState as? PairingState.Error)?.offerUnpairAndRetry == true && canRetryWithUnpair
+    PairingState(pairingState, phone, onUnpairAndRetry = if (showUnpairAndRetry) ::retryWithUnpair else null)
 
     if (pairingState is PairingState.Complete) {
       enterTerminalState()
@@ -673,7 +690,7 @@ internal constructor(
 }
 
 @Composable
-private fun PairingState(pairingState: PairingState, phone: DeviceRow) {
+private fun PairingState(pairingState: PairingState, phone: DeviceRow, onUnpairAndRetry: (() -> Unit)?) {
   Column(Modifier.padding(vertical = 20.dp, horizontal = 20.dp)) {
     when (pairingState) {
       is PairingState.AwaitingAuthorization -> {
@@ -728,13 +745,19 @@ private fun PairingState(pairingState: PairingState, phone: DeviceRow) {
           LargeText(pairingState.heading, Modifier.align(Alignment.CenterHorizontally))
         }
       }
-      is PairingState.Error ->
+      is PairingState.Error -> {
         PairingStateHorizontalProgress(
           header = pairingState.heading,
           detail = pairingState.detailText,
           illustrationPath = GLASSES_PAIRING_ERROR_IMAGE_PATH,
           showProgressBar = false,
         )
+        if (onUnpairAndRetry != null) {
+          OutlinedButton(onClick = onUnpairAndRetry, modifier = Modifier.padding(top = 10.dp)) {
+            Text(AvdBundle.message("glasses.pairing.unpair.retry.button"))
+          }
+        }
+      }
       else ->
         PairingStateHorizontalProgress(
           header = pairingState.heading,
@@ -845,7 +868,13 @@ internal sealed class PairingState {
     override val heading: String = "Waiting for Companion app to move to the foreground on $phoneName"
   }
 
-  data class Error(override val heading: String, override val detailText: String, val logDetail: String? = null) : PairingState() {
+  data class Error(
+    override val heading: String,
+    override val detailText: String,
+    val logDetail: String? = null,
+    /** The pair page offers Unpair and Retry: the glasses are still bonded to another phone, or unpairing them did not finish. */
+    val offerUnpairAndRetry: Boolean = false,
+  ) : PairingState() {
     constructor(detailText: String) : this("Pairing failed.", detailText)
 
     fun toLogMessage() = "$heading: $detailText${logDetail?.let { " [$it]" } ?: "" }"
@@ -1022,7 +1051,13 @@ private suspend fun FlowCollector<PairingState>.runPairingSequence(
 
     if (glassesPairedCount > 0 && !isAlreadyPairedToThisPhone) {
       GlassesPairingUsageTracker.log(GlassesPairingEvent.EventKind.PAIRING_ERROR_ALREADY_PAIRED)
-      emit(PairingState.Error("$glassesName is already paired", "Wipe data on $glassesName to pair a new phone device."))
+      emit(
+        PairingState.Error(
+          heading = "$glassesName is already paired",
+          detailText = "Wipe data on $glassesName to pair a new phone device.",
+          offerUnpairAndRetry = true,
+        )
+      )
       return
     }
 
