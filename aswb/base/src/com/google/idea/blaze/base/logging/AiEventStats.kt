@@ -26,6 +26,7 @@ data class AiEventStats(
   val devAiEventContext: DevAiContext,
   val feature: Feature,
   val modelId: String,
+  val skillsEvent: SkillsEventMetadata? = null,
   val modelProviderId: String? = null,
   val agentInfo: AgentInfo? = null,
 ) : LoggedEvent {
@@ -36,10 +37,90 @@ data class AiEventStats(
     QUICK_EDIT,
     CODE_COMPLETION,
     TRANSFORM_CODE,
+    SKILLS,
     CHANGE_REVIEW,
     ONBOARDING,
     NEXT_EDIT_PREDICTION,
   }
+}
+
+data class SkillsEventMetadata(
+  val activation: Activation? = null,
+  val discovery: Discovery? = null,
+) {
+  enum class SkillType {
+    UNKNOWN_SKILL_TYPE,
+    PRE_BUILT,
+    USER_DEFINED,
+  }
+
+  enum class Scope {
+    UNKNOWN_SCOPE,
+    PROJECT,
+    GLOBAL,
+    BUILT_IN,
+  }
+
+  enum class SkillName {
+    UNKNOWN_SKILL_NAME,
+    CAMERA1_TO_CAMERAX,
+    APPFUNCTIONS,
+    ANDROID_CLI,
+    FIREBASE_AUTH_BASICS,
+    FIREBASE_BASICS,
+    VERIFIED_EMAIL,
+    ADAPTIVE,
+    MIGRATE_XML_VIEWS_TO_JETPACK_COMPOSE,
+    STYLES,
+    NAVIGATION3,
+    R8_ANALYZER,
+    ENGAGE_SDK_INTEGRATION,
+    PLAY_BILLING_LIBRARY_VERSION_UPGRADE,
+    PERFETTO_SQL,
+    PERFETTO_TRACE_ANALYSIS,
+    EDGE_TO_EDGE,
+    TESTING_SETUP,
+    DISPLAY_GLASSES_WITH_JETPACK_COMPOSE_GLIMMER,
+    AGP9_UPGRADE,
+    CAMERAX,
+    ML_KIT_GENAI_PROMPT_API,
+    RESTORE_CREDENTIALS,
+    MEDIA3_CAST_INTEGRATION,
+    NAVIGATION_EVENT,
+    PLAY_POLICY_INSIGHTS,
+    ANDROID_PROFILER,
+    ANDROID_INTENT_SECURITY,
+    ANDROID_PERMISSIONS_SECURITY,
+    LEANBACK_TO_COMPOSE_TV_MIGRATION,
+    WEAR_COMPOSE_M3,
+    EXTENSION_TO_FUNCTIONS_CODEBASE,
+    FIREBASE_AI_LOGIC_BASICS,
+    FIREBASE_APP_HOSTING_BASICS,
+    FIREBASE_CRASHLYTICS,
+    FIREBASE_DATA_CONNECT,
+    FIREBASE_FIRESTORE,
+    FIREBASE_HOSTING_BASICS,
+    FIREBASE_REMOTE_CONFIG_BASICS,
+    FIREBASE_SECURITY_RULES_AUDITOR,
+    FIRESTORE_RULES_CREATION,
+    XCODE_PROJECT_SETUP,
+    ANDROID_JOURNEYS,
+  }
+
+  data class Activation(
+    val type: SkillType = SkillType.UNKNOWN_SKILL_TYPE,
+    val status: ChatBotEventMetadata.ToolCallResponseStatus = ChatBotEventMetadata.ToolCallResponseStatus.UNKNOWN_RESPONSE_STATUS,
+    val skillName: SkillName = SkillName.UNKNOWN_SKILL_NAME,
+    val customSkillName: String? = null,
+    val scope: Scope = Scope.UNKNOWN_SCOPE,
+  )
+
+  data class Discovery(
+    val latencyMillis: Long = 0L,
+    val parsedSuccessfulCount: Int = 0,
+    val parsedFailedCount: Int = 0,
+    val tokenCount: Long = 0L,
+  )
 }
 
 data class AgentInfo(
@@ -294,6 +375,7 @@ data class ChatBotEventMetadata(
     val activeExecutionDurationMillis: Long? = null,
     val startTimestampMillis: Long? = null,
     val executionStatus: ExecutionStatus? = null,
+    val readFileToolCallData: ReadFileToolCallData? = null,
   ) {
     enum class ExecutionStatus {
       UNKNOWN_STATUS,
@@ -301,6 +383,16 @@ data class ChatBotEventMetadata(
       INTERRUPTED,
       INTERNAL_ERROR,
     }
+
+    data class ReadFileToolCallData(
+      val isSkillFile: Boolean = false,
+      val skillName: SkillsEventMetadata.SkillName = SkillsEventMetadata.SkillName.UNKNOWN_SKILL_NAME,
+      val requestedLineCount: Int = 0,
+      val returnedLineCount: Int = 0,
+      val customSkillName: String? = null,
+      val skillType: SkillsEventMetadata.SkillType = SkillsEventMetadata.SkillType.UNKNOWN_SKILL_TYPE,
+      val skillScope: SkillsEventMetadata.Scope = SkillsEventMetadata.Scope.UNKNOWN_SCOPE,
+    )
   }
 }
 
