@@ -154,7 +154,8 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
                       controller.findModel(gradleProject, GradleTaskModel::class.java)!!,
                       ideAndroidProject,
                       selectedVariantName,
-                      shouldSkipRuntimeClasspathForLibraries(androidProject.flags, gradlePropertiesModel),
+                      syncOptions.flags.studioFlagSkipRuntimeClasspathForLibraries &&
+                        shouldSkipRuntimeClasspathForLibraries(androidProject.flags, gradlePropertiesModel),
                       legacyAndroidGradlePluginProperties,
                     )
                 }
