@@ -226,4 +226,24 @@ class GlassesPairingDelegateTest {
 
     assertThat(delegate.isDelegateForDevice(handle, pairedDevice)).isFalse()
   }
+
+  @Test
+  fun getRemovePresentation_formatsWipeConfirmationForBothHandleOrders() {
+    val phone = createMockPhoneHandle()
+    val glasses = createMockGlassesHandle(pairedPhoneId = phone.id)
+    whenever(glasses.isUnpairGlassesEnabled()).thenReturn(true)
+
+    val fromGlasses = delegate.getRemovePresentation(glasses, phone)
+    assertThat(fromGlasses.isEnabled).isTrue()
+    assertThat(fromGlasses.confirmationTitle).isEqualTo("Unpair glasses")
+    assertThat(fromGlasses.confirmationMessage)
+      .isEqualTo("Are you sure you want to unpair glasses from phone? This will also wipe the data on glasses.")
+
+    whenever(glasses.isUnpairGlassesEnabled()).thenReturn(false)
+    val fromPhone = delegate.getRemovePresentation(phone, glasses)
+    assertThat(fromPhone.isEnabled).isFalse()
+    assertThat(fromPhone.confirmationTitle).isEqualTo("Unpair glasses")
+    assertThat(fromPhone.confirmationMessage)
+      .isEqualTo("Are you sure you want to unpair glasses from phone? This will also wipe the data on glasses.")
+  }
 }

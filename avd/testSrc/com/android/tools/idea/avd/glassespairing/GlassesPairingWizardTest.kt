@@ -62,6 +62,9 @@ import com.google.wireless.android.sdk.stats.GlassesPairingEvent
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.TestDialog
+import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.runInEdtAndWait
@@ -945,6 +948,87 @@ class GlassesPairingWizardTest {
     } finally {
       coroutineScope.cancel()
       UsageTracker.cleanAfterTesting()
+    }
+  }
+
+  @Test
+  fun testSelectGlassesPage_pairedGlasses_repairWarningMentionsDataWipe() = runTest {
+    val coroutineScope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+    val shownMessages = CopyOnWriteArrayList<String>()
+    val previousDialog =
+      TestDialogManager.setTestDialog(
+        TestDialog { msg ->
+          shownMessages.add(msg)
+          Messages.NO
+        }
+      )
+    var wizard: TestComposeWizard? = null
+    try {
+      val phone =
+        FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+          "p1",
+          coroutineScope,
+          DeviceState.Connected(
+            properties =
+              DeviceProperties.buildForTest {
+                icon = EmptyIcon.DEFAULT
+                manufacturer = "Google"
+                model = "Pixel 9"
+                deviceType = DeviceType.HANDHELD
+                androidVersion = AndroidVersion(36, 1)
+              },
+            connectedDevice = mock<ConnectedDevice>(),
+            isTransitioning = false,
+            isReady = true,
+            status = "Online",
+          ),
+        )
+      val pairedGlasses =
+        FakeGlassesInteractivePairableDeviceHandle(
+          FakeDeviceProvisionerPlugin.FakeDeviceHandle(
+            "g2",
+            coroutineScope,
+            DeviceState.Connected(
+              properties =
+                DeviceProperties.buildForTest {
+                  icon = EmptyIcon.DEFAULT
+                  manufacturer = "Google"
+                  model = "Other Paired Glasses"
+                  deviceType = DeviceType.AI_GLASSES
+                  androidVersion = AndroidVersion(36, 1)
+                  pairedPhoneId = DeviceId("Test", false, "other_phone")
+                },
+              connectedDevice = mock<ConnectedDevice>(),
+              isTransitioning = false,
+              isReady = true,
+              status = "Online",
+            ),
+          )
+        )
+      val devicesFlow = MutableStateFlow<List<DeviceHandle>>(listOf(phone, pairedGlasses))
+      val glassesWizard =
+        GlassesPairingWizard(
+          project = null,
+          coroutineScope = coroutineScope,
+          devicesFlow = devicesFlow,
+          initialGlassesHandle = null,
+          initialPhoneHandle = phone,
+          pairer = mock<GlassesPairer>(),
+          isCompatible = { true },
+        )
+      wizard = TestComposeWizard { with(glassesWizard) { SelectGlassesPage() } }
+      composeTestRule.setContent { wizard.Content() }
+      composeTestRule.waitForIdle()
+      composeTestRule.onNodeWithText("Next").assertIsEnabled().performClick()
+      composeTestRule.waitUntil(10_000) { shownMessages.isNotEmpty() }
+      assertThat(shownMessages)
+        .containsExactly(
+          "Pairing these glasses with a different phone will unpair them from the original phone and wipe their data. Do you want to proceed?"
+        )
+    } finally {
+      wizard?.close()
+      TestDialogManager.setTestDialog(previousDialog)
+      coroutineScope.cancel()
     }
   }
 
