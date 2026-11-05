@@ -32,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal class EnvironmentTracker(private val emulator: EmulatorController) {
 
@@ -42,7 +43,7 @@ internal class EnvironmentTracker(private val emulator: EmulatorController) {
     emulator.createCoroutineScope().launch {
       environmentFlow.subscriptionCount.collect { count ->
         if (count > 0 && environmentFlow.value == null) {
-          launch(Dispatchers.IO) { fetchEnvironmentSync() }
+          withContext(Dispatchers.IO) { fetchEnvironmentSync() }
         }
       }
     }
