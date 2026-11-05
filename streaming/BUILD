@@ -293,6 +293,5 @@ android_java_proto_library(
         "@aemu//protos/services/webrtc:rtc_service_v2.proto",
     ],
     grpc_support = True,
-    java_deps = ["@maven//:io.grpc.grpc-all"],
     visibility = ["//visibility:public"],
 )
