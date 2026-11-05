@@ -24,6 +24,7 @@ import com.android.tools.idea.util.LazyFileListenerSubscriber
 import com.android.tools.idea.util.PoliteAndroidVirtualFileListener
 import com.android.tools.idea.util.listenUntilNextSync
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.impl.TestOnlyThreading
 import com.intellij.openapi.application.runInEdt
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteAction
@@ -74,7 +75,11 @@ class MergedManifestModificationListener(project: Project) :
 
   @TestOnly
   fun waitAllUpdatesCompletedWithTimeout(timeout: Long, unit: TimeUnit) {
-    (trackerUpdaterExecutor as BoundedTaskExecutor).waitAllTasksExecuted(timeout, unit)
+    // Tests typically call this on the EDT while holding the write-intent lock. Release it while waiting: otherwise a pending
+    // background write action (e.g. from indexing) can't proceed, and it in turn stalls the read action in flushCaches.
+    TestOnlyThreading.releaseTheAcquiredWriteIntentLockThenExecuteActionAndTakeWriteIntentLockBack {
+      (trackerUpdaterExecutor as BoundedTaskExecutor).waitAllTasksExecuted(timeout, unit)
+    }
   }
 
   // If a directory was deleted, we won't get a separate event for each descendant, so we
