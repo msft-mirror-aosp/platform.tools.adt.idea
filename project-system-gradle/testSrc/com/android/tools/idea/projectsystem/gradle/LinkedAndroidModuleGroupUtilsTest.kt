@@ -24,6 +24,8 @@ import com.android.tools.idea.gradle.project.entities.GradleProjectPathEntitySou
 import com.android.tools.idea.gradle.project.entities.gradleAndroidModel
 import com.android.tools.idea.gradle.project.entities.gradleProjectPath
 import com.android.tools.idea.gradle.project.model.GradleAndroidModelImpl
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.module.JavaModuleType
@@ -33,11 +35,19 @@ import com.intellij.openapi.module.ModulePointerManager
 import com.intellij.platform.backend.workspace.WorkspaceModel
 import com.intellij.platform.workspace.jps.entities.ModuleId
 import com.intellij.platform.workspace.jps.entities.modifyModuleEntity
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 
-class LinkedAndroidModuleGroupUtilsTest : AndroidTestCase() {
+@RunsInEdt
+class LinkedAndroidModuleGroupUtilsTest {
+
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val project
+    get() = projectRule.project
 
   private val buildRoot = "/project"
   private val holderPath = GradleHolderProjectPath(buildRoot, ":app")
@@ -77,6 +87,7 @@ class LinkedAndroidModuleGroupUtilsTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testResolvedAndroidModuleGroup() {
     val mainModule = createExtraModule("app.main")
     val unitTestModule = createExtraModule("app.unitTest")
@@ -84,20 +95,20 @@ class LinkedAndroidModuleGroupUtilsTest : AndroidTestCase() {
     val testFixturesModule = createExtraModule("app.testFixtures")
     val screenshotTestModule = createExtraModule("app.screenshotTest")
 
-    attachGradleProjectPath(myModule, holderPath)
+    attachGradleProjectPath(projectRule.module, holderPath)
     attachGradleProjectPath(mainModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.MAIN))
     attachGradleProjectPath(unitTestModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.UNIT_TEST))
     attachGradleProjectPath(androidTestModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.ANDROID_TEST))
     attachGradleProjectPath(testFixturesModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.TEST_FIXTURES))
     attachGradleProjectPath(screenshotTestModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.SCREENSHOT_TEST))
-    attachMockAndroidModel(myModule)
+    attachMockAndroidModel(projectRule.module)
 
-    val allModules = listOf(myModule, mainModule, unitTestModule, androidTestModule, testFixturesModule, screenshotTestModule)
+    val allModules = listOf(projectRule.module, mainModule, unitTestModule, androidTestModule, testFixturesModule, screenshotTestModule)
 
     allModules.forEach { module ->
       assertThat(module.isLinkedAndroidModule()).isTrue()
       assertThat(module.getAllLinkedModules()).containsExactlyElementsIn(allModules).inOrder()
-      assertThat(module.getHolderModule()).isSameAs(myModule)
+      assertThat(module.getHolderModule()).isSameAs(projectRule.module)
       assertThat(module.getMainModule()).isSameAs(mainModule)
       assertThat(module.getUnitTestModule()).isSameAs(unitTestModule)
       assertThat(module.getAndroidTestModule()).isSameAs(androidTestModule)
@@ -105,11 +116,11 @@ class LinkedAndroidModuleGroupUtilsTest : AndroidTestCase() {
       assertThat(module.getScreenshotTestModule()).isSameAs(screenshotTestModule)
     }
 
-    assertThat(myModule.isHolderModule()).isTrue()
+    assertThat(projectRule.module.isHolderModule()).isTrue()
     assertThat(mainModule.isHolderModule()).isFalse()
     assertThat(unitTestModule.isHolderModule()).isFalse()
 
-    assertThat(myModule.isMainModule()).isFalse()
+    assertThat(projectRule.module.isMainModule()).isFalse()
     assertThat(mainModule.isMainModule()).isTrue()
     assertThat(unitTestModule.isMainModule()).isFalse()
 
@@ -126,16 +137,17 @@ class LinkedAndroidModuleGroupUtilsTest : AndroidTestCase() {
     assertThat(mainModule.isScreenshotTestModule()).isFalse()
   }
 
+  @Test
   fun testNonAndroidAndUnlinkedModules() {
     val mainModule = createExtraModule("app.main")
     val commonMainModule = createExtraModule("app.commonMain")
     val javaHolder = createExtraModule("javalib")
     val javaMain = createExtraModule("javalib.main")
 
-    attachGradleProjectPath(myModule, holderPath)
+    attachGradleProjectPath(projectRule.module, holderPath)
     attachGradleProjectPath(mainModule, holderPath.toSourceSetPath(IdeModuleWellKnownSourceSet.MAIN))
     attachGradleProjectPath(commonMainModule, holderPath.toSourceSetPath(IdeModuleSourceSetImpl.wellKnownOrCreate("commonMain")))
-    attachMockAndroidModel(myModule)
+    attachMockAndroidModel(projectRule.module)
 
     val javaHolderPath = GradleHolderProjectPath(buildRoot, ":javalib")
     attachGradleProjectPath(javaHolder, javaHolderPath)
@@ -155,6 +167,7 @@ class LinkedAndroidModuleGroupUtilsTest : AndroidTestCase() {
     assertThat(javaMain.getHolderModule()).isSameAs(javaMain)
   }
 
+  @Test
   fun testMissingHolderOrMainModuleFallback() {
     val orphanMain = createExtraModule("orphan.main")
     val missingHolderPath = GradleHolderProjectPath(buildRoot, ":missing")
@@ -165,13 +178,14 @@ class LinkedAndroidModuleGroupUtilsTest : AndroidTestCase() {
     assertThat(orphanMain.isHolderModule()).isTrue()
 
     // Holder with GradleAndroidModelEntity but no main source set module
-    attachGradleProjectPath(myModule, holderPath)
-    attachMockAndroidModel(myModule)
-    assertThat(myModule.isLinkedAndroidModule()).isFalse()
-    assertThat(myModule.getMainModule()).isSameAs(myModule)
-    assertThat(myModule.isMainModule()).isTrue()
+    attachGradleProjectPath(projectRule.module, holderPath)
+    attachMockAndroidModel(projectRule.module)
+    assertThat(projectRule.module.isLinkedAndroidModule()).isFalse()
+    assertThat(projectRule.module.getMainModule()).isSameAs(projectRule.module)
+    assertThat(projectRule.module.isMainModule()).isTrue()
   }
 
+  @Test
   fun testDisposedModule() {
     val tempHolder = createExtraModule("temp.holder")
     val tempMain = createExtraModule("temp.main")
@@ -194,6 +208,7 @@ class LinkedAndroidModuleGroupUtilsTest : AndroidTestCase() {
     assertThat(tempMain.isMainModule()).isTrue()
   }
 
+  @Test
   fun testKmpAndroidModuleGroupFromUserData() {
     val kmpHolder = createExtraModule("shared")
     val kmpMain = createExtraModule("shared.androidMain")

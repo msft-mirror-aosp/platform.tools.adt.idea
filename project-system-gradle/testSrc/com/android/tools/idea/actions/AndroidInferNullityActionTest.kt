@@ -17,7 +17,9 @@ package com.android.tools.idea.actions
 
 import com.android.tools.idea.projectsystem.ProjectSystemService
 import com.android.tools.idea.projectsystem.gradle.GradleProjectSystem
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.getTextForFile
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth
 import com.intellij.analysis.AnalysisScope
 import com.intellij.codeInsight.NullableNotNullManager
@@ -25,7 +27,11 @@ import com.intellij.openapi.ui.Messages.NO
 import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialog.DEFAULT
 import com.intellij.openapi.ui.TestDialogManager
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.Mockito.doNothing
 import org.mockito.Mockito.mock
@@ -36,14 +42,21 @@ import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 
-class AndroidInferNullityActionTest : AndroidTestCase() {
+@RunsInEdt
+class AndroidInferNullityActionTest {
+
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val project
+    get() = projectRule.project
+
+  private val fixture by lazy { projectRule.fixture as JavaCodeInsightTestFixture }
 
   private lateinit var myNullityManager: NullableNotNullManager
 
-  @Throws(Exception::class)
-  public override fun setUp() {
-    super.setUp()
-    myFixture.addClass(
+  @Before
+  fun setUp() {
+    fixture.addClass(
       """
       import android.graphics.Color;
 
@@ -64,8 +77,9 @@ class AndroidInferNullityActionTest : AndroidTestCase() {
     myNullityManager = NullableNotNullManager.getInstance(project)
   }
 
+  @Test
   fun testFoundCatalogDependency() {
-    myFixture.addFileToProject(
+    fixture.addFileToProject(
       "build.gradle",
       """
       dependencies{
@@ -74,7 +88,7 @@ class AndroidInferNullityActionTest : AndroidTestCase() {
       """
         .trimIndent(),
     )
-    myFixture.addFileToProject(
+    fixture.addFileToProject(
       "gradle/libs.versions.toml",
       """
       [libraries]
@@ -103,8 +117,9 @@ class AndroidInferNullityActionTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testAddDependencyWithCatalog() {
-    myFixture.addFileToProject(
+    fixture.addFileToProject(
       "build.gradle",
       """
       dependencies{
@@ -112,7 +127,7 @@ class AndroidInferNullityActionTest : AndroidTestCase() {
       """
         .trimIndent(),
     )
-    myFixture.addFileToProject(
+    fixture.addFileToProject(
       "gradle/libs.versions.toml",
       """
       [libraries]
@@ -143,8 +158,9 @@ class AndroidInferNullityActionTest : AndroidTestCase() {
     }
   }
 
+  @Test
   fun testAddAndroidAnnotationWithCatalogFull() {
-    myFixture.addFileToProject(
+    fixture.addFileToProject(
       "build.gradle",
       """
       dependencies{
@@ -153,7 +169,7 @@ class AndroidInferNullityActionTest : AndroidTestCase() {
       """
         .trimIndent(),
     )
-    myFixture.addFileToProject(
+    fixture.addFileToProject(
       "gradle/libs.versions.toml",
       """
       [libraries]
@@ -172,9 +188,10 @@ class AndroidInferNullityActionTest : AndroidTestCase() {
     assertAddedAnnotations("android")
   }
 
+  @Test
   fun testAddAndroidAnnotationNoCatalogFull() {
     TestDialogManager.setTestDialog(TestDialog.YES)
-    myFixture.addFileToProject(
+    fixture.addFileToProject(
       "build.gradle",
       """
       dependencies{
@@ -196,10 +213,11 @@ class AndroidInferNullityActionTest : AndroidTestCase() {
     assertAddedAnnotations("android")
   }
 
+  @Test
   fun testAddAndroidXAnnotationNoCatalogFull() {
     TestDialogManager.setTestDialog(TestDialog.YES)
     ProjectSystemService.getInstance(project).replaceProjectSystemForTests(GradleProjectSystem(project))
-    myFixture.addClass(
+    fixture.addClass(
       """
       package androidx.annotation;
       public @interface Nullable {}

@@ -15,16 +15,26 @@
  */
 package org.jetbrains.android.spellchecker
 
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.grazie.spellcheck.GrazieSpellCheckingInspection
 import com.intellij.spellchecker.SpellCheckerSeveritiesProvider
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
+import org.junit.Test
 
-class AndroidGradleSpellcheckingStrategyTest : AndroidTestCase() {
+@RunsInEdt
+class AndroidGradleSpellcheckingStrategyTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val fixture by lazy { projectRule.fixture }
+
+  @Test
   fun testNoTypoInDependencyApplicationStatement() {
-    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    fixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
     val virtualFile =
-      myFixture
+      fixture
         .addFileToProject(
           "build.gradle",
           // language=Groovy
@@ -36,15 +46,16 @@ class AndroidGradleSpellcheckingStrategyTest : AndroidTestCase() {
             .trimIndent(),
         )
         .virtualFile
-    myFixture.configureFromExistingVirtualFile(virtualFile)
-    val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
+    fixture.configureFromExistingVirtualFile(virtualFile)
+    val typos = fixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     assertThat(typos).isEmpty()
   }
 
+  @Test
   fun testNoTypoInDependencyCallExpression() {
-    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    fixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
     val virtualFile =
-      myFixture
+      fixture
         .addFileToProject(
           "build.gradle",
           // language=Groovy
@@ -56,15 +67,16 @@ class AndroidGradleSpellcheckingStrategyTest : AndroidTestCase() {
             .trimIndent(),
         )
         .virtualFile
-    myFixture.configureFromExistingVirtualFile(virtualFile)
-    val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
+    fixture.configureFromExistingVirtualFile(virtualFile)
+    val typos = fixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     assertThat(typos).isEmpty()
   }
 
+  @Test
   fun testTypoInPrintApplicationStatement() {
-    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    fixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
     val virtualFile =
-      myFixture
+      fixture
         .addFileToProject(
           "build.gradle",
           // language=Groovy
@@ -76,16 +88,17 @@ class AndroidGradleSpellcheckingStrategyTest : AndroidTestCase() {
             .trimIndent(),
         )
         .virtualFile
-    myFixture.configureFromExistingVirtualFile(virtualFile)
-    val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
+    fixture.configureFromExistingVirtualFile(virtualFile)
+    val typos = fixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     assertThat(typos).hasSize(1)
     assertThat(typos[0].description).isEqualTo("Typo: In word 'xyzy'")
   }
 
+  @Test
   fun testTypoInPrintCallExpression() {
-    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    fixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
     val virtualFile =
-      myFixture
+      fixture
         .addFileToProject(
           "build.gradle",
           // language=Groovy
@@ -97,8 +110,8 @@ class AndroidGradleSpellcheckingStrategyTest : AndroidTestCase() {
             .trimIndent(),
         )
         .virtualFile
-    myFixture.configureFromExistingVirtualFile(virtualFile)
-    val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
+    fixture.configureFromExistingVirtualFile(virtualFile)
+    val typos = fixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     assertThat(typos).hasSize(1)
     assertThat(typos[0].description).isEqualTo("Typo: In word 'xyzy'")
   }

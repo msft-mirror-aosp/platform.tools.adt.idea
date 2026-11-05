@@ -18,32 +18,44 @@ package com.android.tools.idea.projectsystem.gradle
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.project.sync.GradleFiles
 import com.android.tools.idea.gradle.project.sync.GradleSyncState
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.intellij.openapi.application.ApplicationManager
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mock
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.whenever
 
-class ProjectBuildModelHandlerTest : AndroidTestCase() {
+@RunsInEdt
+class ProjectBuildModelHandlerTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val project
+    get() = projectRule.project
+
   @Mock lateinit var projectBuildModel: ProjectBuildModel
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     projectBuildModel = mock(ProjectBuildModel::class.java)
   }
 
   private fun setupGradleSyncState(timeStamp: Long) {
     val gradleSyncState = mock(GradleSyncState::class.java)
     whenever(gradleSyncState.lastSyncFinishedTimeStamp).thenReturn(timeStamp)
-    replaceProjectService(GradleSyncState::class.java, gradleSyncState)
+    projectRule.projectRule.replaceProjectService(GradleSyncState::class.java, gradleSyncState)
   }
 
   private fun setupGradleFiles(modified: Boolean) {
     val gradleFiles = mock(GradleFiles::class.java)
     whenever(gradleFiles.areGradleFilesModified()).thenReturn(modified)
-    replaceProjectService(GradleFiles::class.java, gradleFiles)
+    projectRule.projectRule.replaceProjectService(GradleFiles::class.java, gradleFiles)
   }
 
   @Test

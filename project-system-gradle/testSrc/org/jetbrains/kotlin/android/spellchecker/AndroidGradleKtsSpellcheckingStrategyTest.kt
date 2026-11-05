@@ -15,28 +15,40 @@
  */
 package org.jetbrains.kotlin.android.spellchecker
 
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth
 import com.intellij.codeInsight.daemon.ProblemHighlightFilter
 import com.intellij.codeInsight.daemon.impl.analysis.DefaultHighlightingSettingProvider
 import com.intellij.grazie.spellcheck.GrazieSpellCheckingInspection
 import com.intellij.spellchecker.SpellCheckerSeveritiesProvider
 import com.intellij.testFramework.ExtensionTestUtil.maskExtensions
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl
-import org.jetbrains.android.AndroidTestCase
+import org.jetbrains.android.AndroidTestBase.unmaskKotlinHighlightVisitor
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class AndroidGradleKtsSpellcheckingStrategyTest : AndroidTestCase() {
-  override fun setUp() {
-    super.setUp()
-    (myFixture as CodeInsightTestFixtureImpl).canChangeDocumentDuringHighlighting(true)
-    maskExtensions(DefaultHighlightingSettingProvider.EP_NAME, listOf(), myFixture.projectDisposable)
-    maskExtensions(ProblemHighlightFilter.EP_NAME, listOf(), myFixture.projectDisposable)
-    unmaskKotlinHighlightVisitor()
+@RunsInEdt
+class AndroidGradleKtsSpellcheckingStrategyTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val fixture by lazy { projectRule.fixture }
+
+  @Before
+  fun setUp() {
+    (fixture as CodeInsightTestFixtureImpl).canChangeDocumentDuringHighlighting(true)
+    maskExtensions(DefaultHighlightingSettingProvider.EP_NAME, listOf(), fixture.projectDisposable)
+    maskExtensions(ProblemHighlightFilter.EP_NAME, listOf(), fixture.projectDisposable)
+    unmaskKotlinHighlightVisitor(fixture)
   }
 
+  @Test
   fun testNoTypoInDependencyCallExpression() {
-    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    fixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
     val virtualFile =
-      myFixture
+      fixture
         .addFileToProject(
           "build.gradle.kts",
           // language=kotlin
@@ -48,15 +60,16 @@ class AndroidGradleKtsSpellcheckingStrategyTest : AndroidTestCase() {
             .trimIndent(),
         )
         .virtualFile
-    myFixture.configureFromExistingVirtualFile(virtualFile)
-    val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
+    fixture.configureFromExistingVirtualFile(virtualFile)
+    val typos = fixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     Truth.assertThat(typos).isEmpty()
   }
 
+  @Test
   fun testTypoInPrintCallExpression() {
-    myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
+    fixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
     val virtualFile =
-      myFixture
+      fixture
         .addFileToProject(
           "build.gradle.kts",
           // language=kotlin
@@ -68,8 +81,8 @@ class AndroidGradleKtsSpellcheckingStrategyTest : AndroidTestCase() {
             .trimIndent(),
         )
         .virtualFile
-    myFixture.configureFromExistingVirtualFile(virtualFile)
-    val typos = myFixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
+    fixture.configureFromExistingVirtualFile(virtualFile)
+    val typos = fixture.doHighlighting(SpellCheckerSeveritiesProvider.TYPO)
     Truth.assertThat(typos).hasSize(1)
     Truth.assertThat(typos[0].description).isEqualTo("Typo: In word 'xyzy'")
   }

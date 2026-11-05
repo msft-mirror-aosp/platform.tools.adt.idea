@@ -18,6 +18,8 @@ package com.android.tools.idea.projectsystem.gradle
 import com.android.testutils.VirtualTimeScheduler
 import com.android.tools.analytics.TestUsageTracker
 import com.android.tools.analytics.UsageTracker.setWriterForTest
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.android.tools.lint.checks.GooglePlaySdkIndex
 import com.android.tools.lint.detector.api.LintFix
 import com.google.common.truth.Truth.assertThat
@@ -26,9 +28,15 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.SDK_IN
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.SDK_INDEX_LIBRARY_IS_OUTDATED
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.SDK_INDEX_LIBRARY_UPDATED
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.EventKind.SDK_INDEX_LINK_FOLLOWED
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
+import org.junit.Test
 
-internal class IdeGooglePlaySdkIndexTest : AndroidTestCase() {
+@RunsInEdt
+internal class IdeGooglePlaySdkIndexTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  @Test
   fun testGenerateSdkLinkHasOnUrlOpenCallBack() {
     val ideIndex = IdeGooglePlaySdkIndex
     ideIndex.initialize()
@@ -39,6 +47,7 @@ internal class IdeGooglePlaySdkIndexTest : AndroidTestCase() {
       .isNotNull()
   }
 
+  @Test
   fun testIssueIsBlockingReported() {
     val scheduler = VirtualTimeScheduler()
     val testUsageTracker = TestUsageTracker(scheduler)
@@ -54,6 +63,7 @@ internal class IdeGooglePlaySdkIndexTest : AndroidTestCase() {
     assertThat(libraryDetails.hasIsBlocking()).isTrue()
   }
 
+  @Test
   fun testIdeFlagsMatchDefaultFlags() {
     val ideIndex = IdeGooglePlaySdkIndex
     ideIndex.initializeAndSetFlags()
@@ -77,6 +87,7 @@ internal class IdeGooglePlaySdkIndexTest : AndroidTestCase() {
       .isEqualTo(GooglePlaySdkIndex.DEFAULT_SHOW_DEPRECATION_ISSUES)
   }
 
+  @Test
   fun testLogUpdateLibraryGeneratesEvent() {
     val groupId = "com.google.firebase"
     val artifactId = "firebase-auth"
@@ -100,6 +111,7 @@ internal class IdeGooglePlaySdkIndexTest : AndroidTestCase() {
     assertThat(libraryDetails.updatedVersionString).isEqualTo(newVersion)
   }
 
+  @Test
   fun testLogDeprecatedLibraryEvent() {
     val groupId = "com.google.android.play"
     val artifactId = "core"

@@ -15,16 +15,26 @@
  */
 package com.android.tools.idea.projectsystem
 
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.TruthJUnit.assume
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.vfs.VirtualFileManager
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Rule
+import org.junit.Test
 
-class IdeaSourceProviderImplTest : AndroidTestCase() {
+@RunsInEdt
+class IdeaSourceProviderImplTest {
 
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val fixture by lazy { projectRule.fixture }
+
+  @Test
   fun testManifestDirectory() {
-    val manifestFile = myFixture.addFileToProject("src/main/AndroidManifest.xml", "manifest").virtualFile
+    val manifestFile = fixture.addFileToProject("src/main/AndroidManifest.xml", "manifest").virtualFile
     val manifestDirectory = manifestFile.parent
     val manifestFileUrl = manifestFile.url
     assume().that(VirtualFileManager.getInstance().findFileByUrl(manifestFileUrl)).isNotNull()
@@ -33,8 +43,9 @@ class IdeaSourceProviderImplTest : AndroidTestCase() {
     assertThat(ideaSourceProvider.manifestDirectories).isEqualTo(listOf(manifestDirectory))
   }
 
+  @Test
   fun testManifestDirectory_manifestDoesNotExist() {
-    val manifestFile = myFixture.addFileToProject("src/main/AndroidManifest.xml", "manifest").virtualFile
+    val manifestFile = fixture.addFileToProject("src/main/AndroidManifest.xml", "manifest").virtualFile
     val manifestDirectory = manifestFile.parent
     val manifestFileUrl = manifestFile.url
     assume().that(VirtualFileManager.getInstance().findFileByUrl(manifestFileUrl)).isNotNull()
@@ -46,8 +57,9 @@ class IdeaSourceProviderImplTest : AndroidTestCase() {
     assertThat(ideaSourceProvider.manifestDirectories).isEqualTo(listOf(manifestDirectory))
   }
 
+  @Test
   fun testContainsFile_manifestDirectory() {
-    val manifestFile = myFixture.addFileToProject("src/main/AndroidManifest.xml", "manifest").virtualFile
+    val manifestFile = fixture.addFileToProject("src/main/AndroidManifest.xml", "manifest").virtualFile
     val manifestDirectory = manifestFile.parent
     val manifestFileUrl = manifestFile.url
     assume().that(VirtualFileManager.getInstance().findFileByUrl(manifestFileUrl)).isNotNull()

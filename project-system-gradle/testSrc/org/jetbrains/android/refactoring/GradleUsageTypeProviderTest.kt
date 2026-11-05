@@ -16,53 +16,66 @@
 package org.jetbrains.android.refactoring
 
 import com.android.tools.idea.concurrency.executeOnPooledThread
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.caret
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.psi.PsiElement
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.usages.UsageTargetUtil
 import com.intellij.usages.impl.rules.UsageType
 import com.intellij.usages.impl.rules.UsageTypeProvider
 import com.intellij.usages.impl.rules.UsageTypeProviderEx
-import org.jetbrains.android.AndroidTestCase
+import org.junit.Rule
+import org.junit.Test
 
-class GradleUsageTypeProviderTest : AndroidTestCase() {
+@RunsInEdt
+class GradleUsageTypeProviderTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val fixture by lazy { projectRule.fixture }
+
   /** Tests for [GradleUsageTypeProvider] */
+  @Test
   fun testGroovyElement() {
-    val file = myFixture.addFileToProject("Foo.gradle", "class F${caret}oo {}")
-    myFixture.configureFromExistingVirtualFile(file.virtualFile)
-    val elementAtCaret = file.findElementAt(myFixture.caretOffset)
+    val file = fixture.addFileToProject("Foo.gradle", "class F${caret}oo {}")
+    fixture.configureFromExistingVirtualFile(file.virtualFile)
+    val elementAtCaret = file.findElementAt(fixture.caretOffset)
     val usageType = getUsageType(elementAtCaret!!)
     Truth.assertThat(usageType).isNotNull()
     Truth.assertThat(usageType.toString()).isEqualTo("In Gradle build script")
   }
 
+  @Test
   fun testKotlinScriptElement() {
-    val file = myFixture.addFileToProject("Foo.gradle.kts", "class F${caret}oo {}")
-    myFixture.configureFromExistingVirtualFile(file.virtualFile)
-    val elementAtCaret = file.findElementAt(myFixture.caretOffset)
+    val file = fixture.addFileToProject("Foo.gradle.kts", "class F${caret}oo {}")
+    fixture.configureFromExistingVirtualFile(file.virtualFile)
+    val elementAtCaret = file.findElementAt(fixture.caretOffset)
     val usageType = getUsageType(elementAtCaret!!)
     Truth.assertThat(usageType).isNotNull()
     Truth.assertThat(usageType.toString()).isEqualTo("In Gradle build script")
   }
 
   // whatever is returned on a normal Kotlin file, it should not be related to Gradle (a null result is OK)
+  @Test
   fun testKotlinClassNameElement() {
-    val file = myFixture.addFileToProject("Foo.kt", "class F${caret}oo {}")
-    myFixture.configureFromExistingVirtualFile(file.virtualFile)
-    val elementAtCaret = file.findElementAt(myFixture.caretOffset)
+    val file = fixture.addFileToProject("Foo.kt", "class F${caret}oo {}")
+    fixture.configureFromExistingVirtualFile(file.virtualFile)
+    val elementAtCaret = file.findElementAt(fixture.caretOffset)
     val usageType = getUsageType(elementAtCaret!!)
     if (usageType != null) {
       Truth.assertThat(usageType.toString()).doesNotContainMatch("Gradle")
     }
   }
 
+  @Test
   fun testKotlinClassReferenceElement() {
-    val file = myFixture.addFileToProject("Foo.kt", "class Foo {}\n\nclass Bar : F${caret}oo {}")
-    myFixture.configureFromExistingVirtualFile(file.virtualFile)
-    val elementAtCaret = file.findElementAt(myFixture.caretOffset)
+    val file = fixture.addFileToProject("Foo.kt", "class Foo {}\n\nclass Bar : F${caret}oo {}")
+    fixture.configureFromExistingVirtualFile(file.virtualFile)
+    val elementAtCaret = file.findElementAt(fixture.caretOffset)
     val usageType = getUsageType(elementAtCaret!!)
     if (usageType != null) {
       Truth.assertThat(usageType.toString()).doesNotContainMatch("Gradle")
@@ -72,7 +85,7 @@ class GradleUsageTypeProviderTest : AndroidTestCase() {
   private fun getUsageType(element: PsiElement): UsageType? {
     return executeOnPooledThread {
       runReadAction {
-        val dataContext = (myFixture.editor as EditorEx).dataContext
+        val dataContext = (fixture.editor as EditorEx).dataContext
         val editor = CommonDataKeys.EDITOR.getData(dataContext)
         val psiFile = CommonDataKeys.PSI_FILE.getData(dataContext)
         val psiElement = CommonDataKeys.PSI_ELEMENT.getData(dataContext)

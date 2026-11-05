@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.projectsystem
 
+import com.android.SdkConstants
 import com.android.ide.common.repository.GoogleMavenArtifactId
 import com.android.tools.idea.gradle.dependencies.GradleDependencyManager
 import com.android.tools.idea.gradle.model.IdeAndroidProject
@@ -22,9 +23,16 @@ import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.project.DefaultModuleSystem
 import com.android.tools.idea.projectsystem.gradle.GradleModuleSystem
 import com.android.tools.idea.projectsystem.gradle.ProjectBuildModelHandler
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IdeComponents
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.jetbrains.android.AndroidTestBase
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.Mockito.times
 
@@ -32,7 +40,13 @@ import org.mockito.Mockito.times
  * These unit tests use a local test maven repo "project-system-gradle/testData/repoIndex". To see what dependencies are available to test
  * with, go to that folder and look at the group-indices.
  */
-class GradleModuleSystemTest : AndroidTestCase() {
+@RunsInEdt
+class GradleModuleSystemTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val project
+    get() = projectRule.project
+
   private var _gradleDependencyManager: GradleDependencyManager? = null
   private var _gradleModuleSystem: GradleModuleSystem? = null
   private var androidProject: IdeAndroidProject? = null
@@ -44,100 +58,111 @@ class GradleModuleSystemTest : AndroidTestCase() {
 
   private val moduleHierarchyProviderStub = object : ModuleHierarchyProvider {}
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
+    val fixture = projectRule.fixture
+    fixture.testDataPath = AndroidTestBase.getTestDataPath()
+    fixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML)
     _gradleDependencyManager = IdeComponents(project).mockProjectService(GradleDependencyManager::class.java)
-    _gradleModuleSystem = GradleModuleSystem(myModule, ProjectBuildModelHandler(project), moduleHierarchyProviderStub)
+    _gradleModuleSystem = GradleModuleSystem(projectRule.module, ProjectBuildModelHandler(project), moduleHierarchyProviderStub)
     assertThat(gradleModuleSystem.getAndroidLibraryDependencies(DependencyScopeType.MAIN)).isEmpty()
   }
 
-  override fun tearDown() {
-    try {
-      _gradleDependencyManager = null
-      _gradleModuleSystem = null
-      androidProject = null
-    } finally {
-      super.tearDown()
-    }
+  @After
+  fun tearDown() {
+    _gradleDependencyManager = null
+    _gradleModuleSystem = null
+    androidProject = null
   }
 
+  @Test
   fun testRegisterDependencyDependency() {
     val dependency = GoogleMavenArtifactId.CONSTRAINT_LAYOUT.getDependency("+")
     gradleModuleSystem.registerDependency(dependency, DependencyType.IMPLEMENTATION)
     Mockito.verify<GradleDependencyManager>(gradleDependencyManager, times(1))
-      .addDependencies(myModule, listOf(dependency), "implementation")
+      .addDependencies(projectRule.module, listOf(dependency), "implementation")
   }
 
+  @Test
   fun testRegisterDebugDependencyDependency() {
     val dependency = GoogleMavenArtifactId.COMPOSE_TOOLING.getDependency("+")
     gradleModuleSystem.registerDependency(dependency, DependencyType.DEBUG_IMPLEMENTATION)
     Mockito.verify<GradleDependencyManager>(gradleDependencyManager, times(1))
-      .addDependencies(myModule, listOf(dependency), "debugImplementation")
+      .addDependencies(projectRule.module, listOf(dependency), "debugImplementation")
   }
 
+  @Test
   fun testRegisterAnnotationProcessorDependencyDependency() {
     val dependency = GoogleMavenArtifactId.ROOM_COMPILER.getDependency("+")
     gradleModuleSystem.registerDependency(dependency, DependencyType.ANNOTATION_PROCESSOR)
     Mockito.verify<GradleDependencyManager>(gradleDependencyManager, times(1))
-      .addDependencies(myModule, listOf(dependency), "annotationProcessor")
+      .addDependencies(projectRule.module, listOf(dependency), "annotationProcessor")
   }
 
+  @Test
   fun testRegisterDependencyId() {
     val id = gradleModuleSystem.getRegisteredDependencyId(GoogleMavenArtifactId.CONSTRAINT_LAYOUT)
     val dependency = GoogleMavenArtifactId.CONSTRAINT_LAYOUT.getDependency("+")
     gradleModuleSystem.registerDependency(id, DependencyType.IMPLEMENTATION)
     Mockito.verify<GradleDependencyManager>(gradleDependencyManager, times(1))
-      .addDependencies(myModule, listOf(dependency), "implementation")
+      .addDependencies(projectRule.module, listOf(dependency), "implementation")
   }
 
+  @Test
   fun testRegisterDebugDependencyId() {
     val id = gradleModuleSystem.getRegisteredDependencyId(GoogleMavenArtifactId.COMPOSE_TOOLING)
     val dependency = GoogleMavenArtifactId.COMPOSE_TOOLING.getDependency("+")
     gradleModuleSystem.registerDependency(id, DependencyType.DEBUG_IMPLEMENTATION)
     Mockito.verify<GradleDependencyManager>(gradleDependencyManager, times(1))
-      .addDependencies(myModule, listOf(dependency), "debugImplementation")
+      .addDependencies(projectRule.module, listOf(dependency), "debugImplementation")
   }
 
+  @Test
   fun testRegisterAnnotationProcessorDependencyId() {
     val id = gradleModuleSystem.getRegisteredDependencyId(GoogleMavenArtifactId.ROOM_COMPILER)
     val dependency = GoogleMavenArtifactId.ROOM_COMPILER.getDependency("+")
     gradleModuleSystem.registerDependency(id, DependencyType.ANNOTATION_PROCESSOR)
     Mockito.verify<GradleDependencyManager>(gradleDependencyManager, times(1))
-      .addDependencies(myModule, listOf(dependency), "annotationProcessor")
+      .addDependencies(projectRule.module, listOf(dependency), "annotationProcessor")
   }
 
+  @Test
   fun testRegisterDependencyVersionedId() {
     val dependency = GoogleMavenArtifactId.CONSTRAINT_LAYOUT.getDependency("1.2.3")
     val id = gradleModuleSystem.getRegisteredDependencyId(dependency)
     gradleModuleSystem.registerDependency(id, DependencyType.IMPLEMENTATION)
     Mockito.verify<GradleDependencyManager>(gradleDependencyManager, times(1))
-      .addDependencies(myModule, listOf(dependency), "implementation")
+      .addDependencies(projectRule.module, listOf(dependency), "implementation")
   }
 
+  @Test
   fun testRegisterDebugDependencyVersionedId() {
     val dependency = GoogleMavenArtifactId.COMPOSE_TOOLING.getDependency("4.5.6")
     val id = gradleModuleSystem.getRegisteredDependencyId(dependency)
     gradleModuleSystem.registerDependency(id, DependencyType.DEBUG_IMPLEMENTATION)
     Mockito.verify<GradleDependencyManager>(gradleDependencyManager, times(1))
-      .addDependencies(myModule, listOf(dependency), "debugImplementation")
+      .addDependencies(projectRule.module, listOf(dependency), "debugImplementation")
   }
 
+  @Test
   fun testRegisterAnnotationProcessorDependencyVersionedId() {
     val dependency = GoogleMavenArtifactId.ROOM_COMPILER.getDependency("7.8.9")
     val id = gradleModuleSystem.getRegisteredDependencyId(dependency)
     gradleModuleSystem.registerDependency(id, DependencyType.ANNOTATION_PROCESSOR)
     Mockito.verify<GradleDependencyManager>(gradleDependencyManager, times(1))
-      .addDependencies(myModule, listOf(dependency), "annotationProcessor")
+      .addDependencies(projectRule.module, listOf(dependency), "annotationProcessor")
   }
 
+  @Test
   fun testNoGradleAndroidModel() {
     // The GradleAndroidModel shouldn't be created when running from an IdeaTestCase.
-    assertThat(GradleAndroidModel.get(myModule)).isNull()
+    assertThat(GradleAndroidModel.get(projectRule.module)).isNull()
     assertThat(gradleModuleSystem.hasResolvedDependency(GoogleMavenArtifactId.SUPPORT_APPCOMPAT_V7)).isFalse()
   }
 
+  @Test
   fun testGetPackageName_noOverrides() {
-    val packageName = (myModule.getModuleSystem() as DefaultModuleSystem).getPackageName()
+    val packageName = (projectRule.module.getModuleSystem() as DefaultModuleSystem).getPackageName()
     assertThat(packageName).isEqualTo("p1.p2")
   }
 }
