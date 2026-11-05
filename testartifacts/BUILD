@@ -110,6 +110,7 @@ iml_module(
         "@intellij//:kotlin.gradle.gradle-java",
         "@intellij//:intellij.platform.buildView",
     ],
+    test_friends = ["//tools/adt/idea/testartifacts:intellij.android.testartifacts"],
     test_jvm_flags = [
         "-Djdk.attach.allowAttachSelf=true",
     ],

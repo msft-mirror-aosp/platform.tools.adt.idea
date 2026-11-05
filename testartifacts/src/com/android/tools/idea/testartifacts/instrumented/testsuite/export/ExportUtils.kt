@@ -48,6 +48,7 @@ import java.io.StringWriter
 import java.time.Duration
 import javax.swing.event.HyperlinkEvent
 import javax.swing.event.HyperlinkListener
+import javax.xml.XMLConstants
 import javax.xml.transform.OutputKeys
 import javax.xml.transform.sax.SAXTransformerFactory
 import javax.xml.transform.sax.TransformerHandler
@@ -83,6 +84,20 @@ fun exportAndroidTestMatrixResultXmlFile(
         ) {
         override fun run(indicator: ProgressIndicator) {
           indicator.isIndeterminate = true
+          if (isDisallowedNetworkPath(exportFile.path, project.basePath)) {
+            LOG.warn("Rejected network output path for exported test results: ${exportFile.path}")
+            showBalloon(
+              project,
+              toolWindowId,
+              MessageType.ERROR,
+              AndroidTestBundle.message(
+                "export.test.results.failed",
+                AndroidTestBundle.message("export.test.results.network.path.not.supported", exportFile.path),
+              ),
+              null,
+            )
+            return
+          }
           val outputText =
             try {
               createOutputText(exportConfig, executionDuration, rootResultsNode, runConfiguration, devices, toolWindowId) ?: return
@@ -177,7 +192,16 @@ private fun createTransformerHandler(
   runConfiguration: RunConfiguration,
   toolWindowId: String?,
 ): TransformerHandler? {
-  val transformerFactory = SAXTransformerFactory.newDefaultInstance() as SAXTransformerFactory
+  val transformerFactory =
+    (SAXTransformerFactory.newDefaultInstance() as SAXTransformerFactory).apply {
+      setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)
+      // Explicitly disable extension functions via API so JVM system properties (-Djdk.xml.enableExtensionFunctions=true)
+      // cannot re-enable them for untrusted user templates.
+      setFeature(ENABLE_EXTENSION_FUNCTIONS_FEATURE, false)
+      setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
+      // Blocks external <xsl:include>/<xsl:import> targets as well as XSLT document() URI lookups.
+      setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "")
+    }
   return when (exportConfig.exportFormat) {
     ExportTestResultsConfiguration.ExportFormat.Xml -> {
       transformerFactory.newTransformerHandler().apply {
@@ -202,7 +226,32 @@ private fun createTransformerHandler(
       }
     }
     else -> {
-      val xslFile = File(exportConfig.userTemplatePath)
+      val userTemplatePath = exportConfig.userTemplatePath
+      if (userTemplatePath.isNullOrBlank()) {
+        showBalloon(
+          runConfiguration.project,
+          toolWindowId,
+          MessageType.ERROR,
+          AndroidTestBundle.message("export.test.results.custom.template.path.empty"),
+          null,
+        )
+        return null
+      }
+      if (isDisallowedNetworkPath(userTemplatePath, runConfiguration.project.basePath)) {
+        LOG.warn("Rejected network custom XSL template path: $userTemplatePath")
+        showBalloon(
+          runConfiguration.project,
+          toolWindowId,
+          MessageType.ERROR,
+          AndroidTestBundle.message(
+            "export.test.results.failed",
+            AndroidTestBundle.message("export.test.results.network.path.not.supported", userTemplatePath),
+          ),
+          null,
+        )
+        return null
+      }
+      val xslFile = File(userTemplatePath)
       if (!xslFile.isFile) {
         showBalloon(
           runConfiguration.project,
@@ -223,6 +272,50 @@ private fun createTransformerHandler(
       }
     }
   }
+}
+
+/**
+ * Returns true if [path] starts with a disallowed Windows network or special namespace prefix.
+ *
+ * Intentionally rejects UNC shares (`\\host\share`, `//host/share`, `\\?\UNC\host\share`) as well as Windows extended-length, Win32 device,
+ * and NT object manager prefixes (`\\?\`, `\\.\`, `\??\`), with two narrow exceptions when no `.` or `..` traversal segments are present:
+ * - Local WSL shares (`\\wsl$\` and `\\wsl.localhost\`).
+ * - Standard UNC paths strictly inside [allowedProjectBasePath], so projects already opened from a UNC share can use project-internal paths
+ *   without contacting any new remote host.
+ *
+ * Mapped network drive letters (e.g. `Z:\`) cannot be detected syntactically.
+ */
+internal fun isDisallowedNetworkPath(path: String?, allowedProjectBasePath: String? = null): Boolean {
+  if (path.isNullOrBlank()) return false
+  val normalized = path.trim().replace('/', '\\')
+  if (normalized.startsWith("\\\\wsl$\\", ignoreCase = true) || normalized.startsWith("\\\\wsl.localhost\\", ignoreCase = true)) {
+    return normalized.split('\\').any { it == ".." || it == "." }
+  }
+  if (!normalized.startsWith("\\\\") && !normalized.startsWith("\\??\\")) {
+    return false
+  }
+  if (!allowedProjectBasePath.isNullOrBlank() && isUncPathInsideProject(normalized, allowedProjectBasePath)) {
+    return false
+  }
+  return true
+}
+
+private fun isUncPathInsideProject(normalizedPath: String, projectBasePath: String): Boolean {
+  if (!normalizedPath.startsWith("\\\\")) return false
+  val normalizedBase = projectBasePath.trim().replace('/', '\\').trimEnd('\\')
+  if (!normalizedBase.startsWith("\\\\") || normalizedBase.startsWith("\\\\?\\") || normalizedBase.startsWith("\\\\.\\")) {
+    return false
+  }
+  fun hasValidSegments(segments: List<String>): Boolean = segments.all { it.isNotEmpty() && it != "." && it != ".." }
+
+  val baseSegments = normalizedBase.removePrefix("\\\\").split('\\')
+  val pathSegments = normalizedPath.trimEnd('\\').removePrefix("\\\\").split('\\')
+  // Require at least host + share (`\\host\share`); a bare host (`\\host`) is not a valid UNC share root.
+  return baseSegments.size >= 2 &&
+    pathSegments.size >= baseSegments.size &&
+    hasValidSegments(baseSegments) &&
+    hasValidSegments(pathSegments) &&
+    pathSegments.subList(0, baseSegments.size).zip(baseSegments).all { (a, b) -> a.equals(b, ignoreCase = true) }
 }
 
 /** Logs [error] and notifies the user that the test results could not be exported. */
