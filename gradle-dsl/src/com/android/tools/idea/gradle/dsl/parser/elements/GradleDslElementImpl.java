@@ -1101,6 +1101,9 @@ public abstract class GradleDslElementImpl implements GradleDslElement, Modifica
       }
       if (searchStartElement != null) {
         resolvedElement = resolveReferenceInSameModule(searchStartElement, referenceTextSegments, parser, resolveWithOrder);
+        if (resolveWithOrder && resolvedElement != null) {
+          resolvedElement = findExtPropertyDefinitionBefore(this, resolvedElement);
+        }
       }
     }
 
@@ -1111,6 +1114,38 @@ public abstract class GradleDslElementImpl implements GradleDslElement, Modifica
     }
 
     return resolvedElement;
+  }
+
+  /**
+   * Corrects the ordered resolution of a reference to an extra property from a statement in the same {@link ExtDslElement}.
+   *
+   * <p>The referring element's own name is qualified (e.g. {@code ext.foo = ...}, or {@code extra["foo"] = ...} in KotlinScript), so
+   * {@link #resolveReferenceOnElement} skips its parents without recording them, loses track of its position and returns the
+   * <em>last</em> definition in the file: possibly the referring statement itself, e.g. after setting {@code foo} to a reference to
+   * {@code foo}, or a later definition. Return the latest definition before the referring statement instead, or {@code null} if there is
+   * none.
+   */
+  @Nullable
+  private static GradleDslElement findExtPropertyDefinitionBefore(@NotNull GradleDslElement origin, @NotNull GradleDslElement resolved) {
+    // Indexed references into an extra property's value, e.g. `(extra["m"] as Map<*, *>)["k"]`, are not corrected: they may currently
+    // resolve to a sibling entry of the referring statement's own value (see b/149286032).
+    if (!(resolved.getParent() instanceof ExtDslElement ext)) return resolved;
+
+    // Find the statement in the same extra block that contains the reference.
+    GradleDslElement statement = origin;
+    while (statement != null && statement.getParent() != ext) {
+      statement = statement.getParent();
+    }
+    if (statement == null) return resolved;
+
+    // Only correct results that are definitely wrong: the referring statement itself, or a definition after it.
+    if (resolved != statement) {
+      List<GradleDslElement> elements = ext.getAllElements();
+      int resolvedIndex = elements.indexOf(resolved);
+      int statementIndex = elements.indexOf(statement);
+      if (resolvedIndex < 0 || statementIndex < 0 || resolvedIndex < statementIndex) return resolved;
+    }
+    return ((GradlePropertiesDslElement)ext).getElementBefore(statement, resolved.getName(), false);
   }
 
   @Nullable

@@ -475,6 +475,36 @@ class PropertyOrderTest : GradleFileModelTestCase() {
   }
 
   @Test
+  fun testSetExtraPropertyToReferenceToEarlierDefinition() {
+    isIrrelevantForGroovy("tests KotlinScript extra properties")
+    writeToBuildFile(TestFile.EXTRA_PROPERTY_REFERENCE_BEFORE_REDEFINITION)
+
+    val buildModel = gradleBuildModel
+    val fooModel = buildModel.ext().findProperty("foo")
+    verifyPropertyModel(fooModel, INTEGER_TYPE, 2, INTEGER, REGULAR, 0)
+    fooModel.setValue(ReferenceTo(fooModel))
+
+    // The reference is to the first definition of foo, not to the one it is in.
+    verifyPropertyModel(fooModel.resolve(), INTEGER_TYPE, 1, INTEGER, REGULAR, 1)
+
+    applyChangesAndReparse(buildModel)
+    verifyPropertyModel(buildModel.ext().findProperty("foo").resolve(), INTEGER_TYPE, 1, INTEGER, REGULAR, 1)
+  }
+
+  @Test
+  fun testDeleteExtraPropertyDefinitionBeforeReference() {
+    isIrrelevantForGroovy("tests KotlinScript extra properties")
+    writeToBuildFile(TestFile.EXTRA_PROPERTY_REFERENCE_BEFORE_REDEFINITION)
+
+    val barModel = gradleBuildModel.ext().findProperty("bar")
+    verifyPropertyModel(barModel.resolve(), INTEGER_TYPE, 1, INTEGER, REGULAR, 1)
+    barModel.dependencies[0].delete()
+
+    // foo is now only defined after bar, so the reference from bar is unresolved.
+    assertSize(0, barModel.dependencies)
+  }
+
+  @Test
   fun testAddPropertyWithExistingDependency() {
     writeToBuildFile(TestFile.ADD_PROPERTY_WITH_EXISTING_DEPENDENCY)
 
@@ -874,7 +904,8 @@ class PropertyOrderTest : GradleFileModelTestCase() {
     ADD_BUILDSCRIPT_BLOCK_BEFORE_PLUGINS_EXPECTED("addBuildscriptBlockBeforePluginsExpected"),
     ADD_EXT_BLOCK_AFTER_BUILDSCRIPT_AND_PLUGINS("addExtBlockAfterBuildscriptAndPlugins"),
     ADD_EXT_BLOCK_AFTER_BUILDSCRIPT_AND_PLUGINS_EXPECTED("addExtBlockAfterBuildscriptAndPluginsExpected"),
-    ROOT_PROJECT_SETTINGS("rootProjectSettings");
+    ROOT_PROJECT_SETTINGS("rootProjectSettings"),
+    EXTRA_PROPERTY_REFERENCE_BEFORE_REDEFINITION("extraPropertyReferenceBeforeRedefinition");
 
     override fun toFile(basePath: @SystemDependent String, extension: String): File {
       return super.toFile("$basePath/propertyOrder/$path", extension)
