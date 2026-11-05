@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.project.sync.runsIndexingWithGradlePhasedS
 
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.sync.runsIndexingWithGradlePhasedSync.AndroidConsistencyIssues.maybeFilterToPhasedSyncModules
+import com.android.tools.idea.gradle.project.sync.runsIndexingWithGradlePhasedSync.PhasedSyncSnapshotConsistencyTestDef.Companion.testsNotSupportingPhasedSyncIntermediateChecks
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -24,71 +25,57 @@ import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.android.tools.idea.testing.aggregateAndThrowIfAny
 import com.android.tools.idea.testing.requestSyncAndWait
 import com.android.tools.idea.testing.runCatchingAndRecord
+import com.android.tools.idea.util.toVirtualFile
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.VfsUtilCore
+import java.io.File
 import org.junit.Rule
 import org.junit.Test
 
-/** Regression test for b/427095317 ensuring extra srcDirs in composite builds resolve to consistent, non-duplicated content roots. */
+/** Regression test for b/427095317 ensuring extra srcDirs resolve to consistent, non-duplicated content roots. */
 class PhasedSyncExtraSrcDirsTest : PhasedSyncSnapshotTestBase(checkObjectIdentity = true) {
   @get:Rule val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
+  private fun configureExtraSrcDirs(projectRoot: File, moduleDirName: String) {
+    projectRoot.resolve("generated-src/main/res").mkdirs()
+    projectRoot.resolve("generated-src/main/java").mkdirs()
+    projectRoot.resolve("$moduleDirName/src/main/extra-res").mkdirs()
+    projectRoot
+      .resolve("$moduleDirName/build.gradle")
+      .appendText(
+        """
+
+        android {
+            sourceSets {
+                main {
+                    res.srcDirs += ['../generated-src/main/res']
+                }
+                debug {
+                    java.srcDirs += ['../generated-src/main/java']
+                    res.srcDirs += ['src/main/extra-res']
+                }
+            }
+        }
+        """
+          .trimIndent()
+      )
+    projectRoot.toVirtualFile(refresh = true)?.let { rootVirtualFile ->
+      VfsUtil.markDirtyAndRefresh(false, true, true, rootVirtualFile)
+      VfsUtilCore.processFilesRecursively(rootVirtualFile) { true }
+    }
+  }
+
   @Test
-  fun testExtraSrcDirsInCompositeBuild() {
+  fun testExtraSrcDirsInSimpleApplication() {
     if (!StudioFlags.PHASED_SYNC_ENABLED.get()) return
     setupPhasedSyncIntermediateStateCollector(projectRule.testRootDisposable)
 
-    val testProject = TestProject.COMPOSITE_BUILD
+    val testProject = TestProject.SIMPLE_APPLICATION
     val preparedProject = projectRule.prepareTestProject(testProject)
-
-    // Create extra source/resource directories both outside the module root (referenced via relative ../ segments across main and debug
-    // source sets) and inside src/main (referenced from debug source set, sharing the src/main content root).
-    preparedProject.root.resolve("generated-src/main/res").mkdirs()
-    preparedProject.root.resolve("generated-src/main/java").mkdirs()
-    preparedProject.root.resolve("app/src/main/extra-res").mkdirs()
-    preparedProject.root
-      .resolve("app/build.gradle")
-      .appendText(
-        """
-
-        android {
-            sourceSets {
-                main {
-                    res.srcDirs += ['../generated-src/main/res']
-                }
-                debug {
-                    java.srcDirs += ['../generated-src/main/java']
-                    res.srcDirs += ['src/main/extra-res']
-                }
-            }
-        }
-        """
-          .trimIndent()
-      )
-
-    preparedProject.root.resolve("TestCompositeLib1/generated-src/main/res").mkdirs()
-    preparedProject.root.resolve("TestCompositeLib1/generated-src/main/java").mkdirs()
-    preparedProject.root.resolve("TestCompositeLib1/lib/src/main/extra-res").mkdirs()
-    preparedProject.root
-      .resolve("TestCompositeLib1/lib/build.gradle")
-      .appendText(
-        """
-
-        android {
-            sourceSets {
-                main {
-                    res.srcDirs += ['../generated-src/main/res']
-                }
-                debug {
-                    java.srcDirs += ['../generated-src/main/java']
-                    res.srcDirs += ['src/main/extra-res']
-                }
-            }
-        }
-        """
-          .trimIndent()
-      )
+    configureExtraSrcDirs(preparedProject.root, "app")
 
     preparedProject.open({ it.copy(expectedSyncIssues = testProject.expectedSyncIssues) }) { project: Project ->
       val firstIntermediateSync = intermediateDump.copy()
@@ -101,8 +88,6 @@ class PhasedSyncExtraSrcDirsTest : PhasedSyncSnapshotTestBase(checkObjectIdentit
       val intermediateStructure = secondIntermediateSync.filterOutKnownResyncIssues(testProject).projectStructure()
       assertThat(intermediateStructure).contains("generated-src</>main")
       assertThat(intermediateStructure).contains("app</>src</>main</>extra-res")
-      assertThat(intermediateStructure).contains("TestCompositeLib1</>generated-src</>main")
-      assertThat(intermediateStructure).contains("TestCompositeLib1</>lib</>src</>main</>extra-res")
 
       aggregateAndThrowIfAny {
         runCatchingAndRecord {
@@ -119,6 +104,66 @@ class PhasedSyncExtraSrcDirsTest : PhasedSyncSnapshotTestBase(checkObjectIdentit
           assertWithMessage("Comparing resync intermediate sync project structure to full state")
             .that(intermediateStructure)
             .isEqualTo(secondFullSync.filterOutKnownResyncIssues(testProject).projectStructure())
+        }
+        runCatchingAndRecord {
+          assertWithMessage("Comparing full project structures across resync")
+            .that(secondFullSync.projectStructure())
+            .isEqualTo(firstFullSync.projectStructure())
+        }
+      }
+    }
+  }
+
+  @Test
+  fun testExtraSrcDirsInCompositeBuild() {
+    if (!StudioFlags.PHASED_SYNC_ENABLED.get()) return
+    setupPhasedSyncIntermediateStateCollector(projectRule.testRootDisposable)
+
+    val testProject = TestProject.COMPOSITE_BUILD
+    val preparedProject = projectRule.prepareTestProject(testProject)
+
+    // Create extra source/resource directories both outside the module root (referenced via relative ../ segments across main and debug
+    // source sets) and inside src/main (referenced from debug source set, sharing the src/main content root).
+    configureExtraSrcDirs(preparedProject.root, "app")
+    configureExtraSrcDirs(preparedProject.root.resolve("TestCompositeLib1"), "lib")
+
+    preparedProject.open({ it.copy(expectedSyncIssues = testProject.expectedSyncIssues) }) { project: Project ->
+      val firstIntermediateSync = intermediateDump.copy()
+      val firstFullSync = project.dumpModules(knownAndroidPaths, checkObjectIdentity = true)
+
+      project.requestSyncAndWait(ignoreSyncIssues = testProject.expectedSyncIssues, waitForIndexes = false)
+      val secondIntermediateSync = intermediateDump.copy()
+      val secondFullSync = project.dumpModules(knownAndroidPaths, checkObjectIdentity = true)
+
+      val fullStructure = secondFullSync.filterOutKnownResyncIssues(testProject).projectStructure()
+      assertThat(fullStructure).contains("generated-src</>main")
+      assertThat(fullStructure).contains("app</>src</>main</>extra-res")
+      assertThat(fullStructure).contains("TestCompositeLib1</>generated-src</>main")
+      assertThat(fullStructure).contains("TestCompositeLib1</>lib</>src</>main</>extra-res")
+
+      aggregateAndThrowIfAny {
+        if (!testsNotSupportingPhasedSyncIntermediateChecks.contains(testProject)) {
+          val intermediateStructure = secondIntermediateSync.filterOutKnownResyncIssues(testProject).projectStructure()
+          assertThat(intermediateStructure).contains("generated-src</>main")
+          assertThat(intermediateStructure).contains("app</>src</>main</>extra-res")
+          assertThat(intermediateStructure).contains("TestCompositeLib1</>generated-src</>main")
+          assertThat(intermediateStructure).contains("TestCompositeLib1</>lib</>src</>main</>extra-res")
+
+          runCatchingAndRecord {
+            assertWithMessage("Comparing initial intermediate sync project structure to full state")
+              .that(
+                firstIntermediateSync
+                  .filterOutKnownConsistencyIssues(testProject)
+                  .maybeFilterToPhasedSyncModules(testProject)
+                  .projectStructure()
+              )
+              .isEqualTo(firstFullSync.filterOutKnownConsistencyIssues(testProject).filterToPhasedSyncModules().projectStructure())
+          }
+          runCatchingAndRecord {
+            assertWithMessage("Comparing resync intermediate sync project structure to full state")
+              .that(intermediateStructure)
+              .isEqualTo(fullStructure)
+          }
         }
         runCatchingAndRecord {
           assertWithMessage("Comparing full project structures across resync")

@@ -81,7 +81,7 @@ class PhasedSyncKaptPatchTest {
         whenever(sourceSets).thenReturn(listOf(kaptDebugSourceSet, kaptUnitTestSourceSet))
       }
 
-    val cachedModels = ModelProviderCachedData(disableLegacyModelProvidersForSupportedProjects = true)
+    val cachedModels = ModelProviderCachedData()
     cachedModels.markAllProjectsSupportedByPhasedSync()
     val versions =
       Mockito.mock(Versions::class.java).apply {
@@ -154,7 +154,7 @@ class PhasedSyncKaptPatchTest {
         whenever(sourceSets).thenReturn(listOf(kaptDebugSourceSet, kaptReleaseSourceSet))
       }
 
-    val cachedModels = ModelProviderCachedData(disableLegacyModelProvidersForSupportedProjects = true)
+    val cachedModels = ModelProviderCachedData()
     cachedModels.markAllProjectsSupportedByPhasedSync()
     val versions =
       Mockito.mock(Versions::class.java).apply {

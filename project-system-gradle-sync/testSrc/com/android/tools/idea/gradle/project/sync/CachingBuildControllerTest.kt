@@ -51,7 +51,7 @@ import org.mockito.Mockito.`when` as whenever
 
 class CachingBuildControllerTest {
   @get:Rule val tempFolder = TemporaryFolder()
-  private val cachedModels = ModelProviderCachedData(disableLegacyModelProvidersForSupportedProjects = false)
+  private val cachedModels = ModelProviderCachedData()
   private val gradle = FakeGradle()
   private val app = gradleProject(buildRootDir = File("/root"), projectPath = ":app")
 
@@ -289,7 +289,7 @@ class CachingBuildControllerTest {
   }
 
   @Test
-  fun `PhasedSyncAdditionalModelProvider populates cache for legacy providers without recording ANDROID_FINISHED`() {
+  fun `PhasedSyncAdditionalModelProvider does not record ANDROID_FINISHED when legacy providers need to run`() {
     val statsDir = tempFolder.newFolder("stats")
     val javaLib = gradleProject(buildRootDir = File("/root"), projectPath = ":javaLib")
     val unsupportedAndroidApp = gradleProject(buildRootDir = File("/root"), projectPath = ":unsupportedAndroidApp")
@@ -321,19 +321,53 @@ class CachingBuildControllerTest {
     assertThat(cachedModels.modelCache.keys.map { it.projectPath to it.modelType })
       .doesNotContain(":unsupportedAndroidApp" to KaptGradleModel::class.java)
 
-    val requestsAfterPhasedSync = gradle.requests.size
+    // Assert that additional providers didn't run because shouldRunLegacyModelProviders is true, making request size empty.
+    assertThat(gradle.requests).isEmpty()
     val cachingController = gradle.controller().toCachingController(cachedModels)
     assertThat(cachingController.fetchModel<KotlinGradleModel>(app, options, "debug")).isNotNull()
     assertThat(cachingController.findModel(javaLib, KotlinGradleModel::class.java)).isNotNull()
     assertThat(cachingController.findModel(javaLib, KaptGradleModel::class.java)).isNotNull()
-    assertThat(gradle.requests).hasSize(requestsAfterPhasedSync)
+    assertThat(gradle.requests).hasSize(3)
+  }
+
+  @Test
+  fun `PhasedSyncAdditionalModelProvider only requests unparameterized Kotlin and Kapt models for non-Android modules`() {
+    val statsDir = tempFolder.newFolder("stats_phased_java_and_android")
+    val options = syncOptions(statsDir = statsDir.absolutePath)
+    val javaLib = gradleProject(buildRootDir = File("/root"), projectPath = ":javaLib")
+    val consumedModels = mutableListOf<Pair<String, Class<*>>>()
+    val consumer =
+      object : GradleModelConsumer {
+        override fun consumeBuildModel(buildModel: BuildModel, `object`: Any, clazz: Class<*>) = Unit
+
+        override fun consumeProjectModel(projectModel: BasicGradleProject, `object`: Any, clazz: Class<*>) {
+          consumedModels += projectModel.projectIdentifier.projectPath to clazz
+        }
+      }
+    val phasedOnlyCache =
+      ModelProviderCachedData().apply {
+        markAllProjectsSupportedByPhasedSync()
+        versions[app] = Mockito.mock(Versions::class.java)
+      }
+    gradle.nullProjectModels += (javaLib to Versions::class.java)
+    val gradleBuild = gradleBuild(buildRootDir = File("/root"), projects = listOf(app, javaLib))
+
+    PhasedSyncAdditionalModelProvider(options, phasedOnlyCache).populateModels(gradle.controller(), listOf(gradleBuild), consumer)
+
+    // Non-Android :javaLib gets unparameterized KotlinGradleModel and KaptGradleModel in the fallback block, whereas Android :app
+    // (which has versions[app] != null) is never queried by the Java fallback block.
+    assertThat(consumedModels)
+      .containsExactly(
+        ":javaLib" to KotlinGradleModel::class.java,
+        ":javaLib" to KaptGradleModel::class.java,
+      )
   }
 
   @Test
   fun `PhasedSyncAdditionalModelProvider records ANDROID_FINISHED and clears cache when legacy providers are disabled`() {
     val statsDir = tempFolder.newFolder("stats_phased_only")
     val phasedOnlyCache =
-      ModelProviderCachedData(disableLegacyModelProvidersForSupportedProjects = true).apply {
+      ModelProviderCachedData().apply {
         markAllProjectsSupportedByPhasedSync()
         versions[app] = Mockito.mock(Versions::class.java)
       }
@@ -345,6 +379,23 @@ class CachingBuildControllerTest {
     assertThat(phasedOnlyCache.shouldRunLegacyModelProviders).isFalse()
     assertThat(statsDir.listFiles().orEmpty().filter { it.name.endsWith(MeasurementCheckpoint.ANDROID_FINISHED.name) }).hasSize(1)
     assertThat(phasedOnlyCache.modelCache).isEmpty()
+  }
+
+  @Test
+  fun `composite single-variant sync is skipped by phased sync model providers`() {
+    val options = syncOptions(statsDir = "")
+    val builds =
+      mutableListOf(
+        gradleBuild(buildRootDir = File("/root"), projects = listOf(app)),
+        gradleBuild(buildRootDir = File("/included"), projects = listOf(gradleProject(File("/included"), ":lib"))),
+      )
+
+    PhasedSyncProjectModelProvider(options, cachedModels).populateModels(gradle.controller(), builds, NoOpConsumer)
+    PhasedSyncDependencyModelProvider(options, cachedModels).populateModels(gradle.controller(), builds, NoOpConsumer)
+    PhasedSyncAdditionalModelProvider(options, cachedModels).populateModels(gradle.controller(), builds, NoOpConsumer)
+
+    assertThat(cachedModels.shouldRunLegacyModelProviders).isTrue()
+    assertThat(gradle.requests).isEmpty()
   }
 
   interface UnknownParameter {

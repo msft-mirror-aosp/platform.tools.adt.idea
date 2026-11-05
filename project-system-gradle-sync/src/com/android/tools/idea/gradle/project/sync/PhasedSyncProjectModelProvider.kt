@@ -25,9 +25,9 @@ import com.android.builder.model.v2.models.ProjectSyncIssues
 import com.android.builder.model.v2.models.Versions
 import com.android.builder.model.v2.models.ndk.NativeModelBuilderParameter
 import com.android.builder.model.v2.models.ndk.NativeModule
-import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.GradlePropertiesModel
+import com.android.ide.gradle.model.LegacyV1AgpVersionModel
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
@@ -71,6 +71,13 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
     modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
   ) {
     recordCheckpointData(MeasurementCheckpoint.ANDROID_STARTED, syncOptions)
+    // No need to worry about BuildSrc here for Gradle < 8.0 as JetBrains itself disabled PhasedSync for BuildSrc projects.
+    val containsMultipleBuilds = buildModels.size > 1 || buildModels.any { build -> build.includedBuilds.isNotEmpty() }
+    if (containsMultipleBuilds && syncOptions is SingleVariantSyncActionOptions) {
+      // TODO(b/384022658): Variant resolution for Phased sync doesn't work across composite builds yet, so skip phased sync on
+      //  single-variant composite builds rather than populating SOURCE_SET_MODEL_PHASE with an unresolved variant.
+      return
+    }
     // Cache the requested models so that the model providers running after this one don't need to request them again.
     @Suppress("NAME_SHADOWING") val controller = controller.toCachingController(cachedModels)
     // Synchronized because the nested actions below add to it in parallel.
@@ -87,19 +94,19 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
         buildModels.flatMap { buildModel ->
           buildModel.projects.mapNotNull { gradleProject ->
             BuildAction {
-              val versions =
-                controller
-                  .findModel(gradleProject, Versions::class.java)
-                  // TODO(b/384022658): Reconsider this check if we implement a cache between model providers to avoid fetching the models
-                  // twice
-                  ?.takeIf { it.isAtLeastAgp8() }
-
+              val versions = controller.findModel(gradleProject, Versions::class.java)
               val supported =
-                // sub-projects without any android models are considered supported by the platform
-                (versions?.hasV2Modules() ?: return@BuildAction true) &&
-                  !gradleProject.hasKotlinMultiplatformPlugin(controller) &&
-                  !gradleProject.hasNativeModels(controller)
-              if (supported) {
+                if (versions == null) {
+                  // Non-Android subprojects are imported by the platform (incl. rootProject), whereas V1 and KMP require legacy providers.
+                  controller.findModel(gradleProject, LegacyV1AgpVersionModel::class.java) == null &&
+                    !gradleProject.hasKotlinMultiplatformPlugin(controller)
+                } else {
+                  versions.hasV2Modules() &&
+                    !gradleProject.hasKotlinMultiplatformPlugin(controller) &&
+                    !gradleProject.hasNativeModels(controller)
+                }
+              if (supported && versions != null) {
+                // We only set the versions for projects that we actually support with Phased sync and we can fetch.
                 cachedModels.versions[gradleProject] = versions
               }
               supported
@@ -107,15 +114,23 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
           }
         }
       )
+
     if (allSubProjectsSupported) {
+      // Marking projects as fully supported by phased Sync means we don't need to run the legacy providers and when Phased Sync model
+      // providers would have finished fetching, we would have all the information needed to finish importing the project.
       cachedModels.markAllProjectsSupportedByPhasedSync()
+    } else {
+      // No need to run Phased Sync for any project here and we should run legacy Providers only. Keep the cached models but clear Versions
+      // models.
+      cachedModels.versions.clear()
+      return
     }
 
     try {
       cachedModels.versions.values.forEach {
         it.convert().checkAgpVersionCompatibility(syncOptions.flags)
       }
-      verifyIncompatibleAgpVersionsAreNotUsedOrFailSync(cachedModels)
+      verifyIncompatibleAgpVersionsAreNotUsedOrFailSync(cachedModels, controller, buildModels)
     } catch (e: AndroidSyncException) {
       reportSyncExceptionAndClearCachedModels(e, buildModels, modelConsumer)
       return
@@ -239,7 +254,7 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
 
     // Store the list of issues from the variant resolution if any.
     val variantsResolutionIssues = mutableMapOf<BasicGradleProject, Throwable>()
-    if (syncOptions is SingleVariantSyncActionOptions && syncOptions.flags.studioFlagUsedPhasedSyncVariantResolution) {
+    if (syncOptions is SingleVariantSyncActionOptions) {
       setupProjectsVariantsAndConsume(updatedResults, syncOptions, modelConsumer, cachedModels, variantsResolutionIssues)
     } else {
       updatedResults.forEach { (gradleProject, data) ->
@@ -316,16 +331,29 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
       IdeAndroidSyncError::class.java,
     )
     cachedModels.clear() // Clear versions so later phased sync providers don't process modules
-    cachedModels.hasSyncError = true
+    cachedModels.markBuildWithSyncErrors()
   }
 }
 
-private fun verifyIncompatibleAgpVersionsAreNotUsedOrFailSync(cachedModels: ModelProviderCachedData) {
-  // Map to : as Phased Sync only considers projects with no included builds. Technically we should have one version of AGP across the build
-  val agpVersionsAndGradleBuilds = cachedModels.versions.values.map { it.agp to ":" }
+private fun verifyIncompatibleAgpVersionsAreNotUsedOrFailSync(
+  cachedModels: ModelProviderCachedData,
+  controller: BuildController,
+  buildModels: Collection<GradleBuild>,
+) {
   // Fail Sync if we do not use the same AGP version across all the android projects.
-  if (agpVersionsAndGradleBuilds.isNotEmpty() && agpVersionsAndGradleBuilds.map { it.first }.distinct().singleOrNull() == null)
+  if (cachedModels.versions.values.map { it.agp }.distinct().size > 1) {
+    val buildIdMap =
+      buildBuildPathMap(controller, buildModels).entries.associate { (buildPath, buildId) ->
+        BuildId(buildId.asFile.canonicalFile) to buildPath
+      }
+    val agpVersionsAndGradleBuilds =
+      cachedModels.versions.map { (gradleProject, versions) ->
+        val buildId = BuildId(gradleProject.projectIdentifier.buildIdentifier.rootDir.canonicalFile)
+        val buildPath = buildIdMap[buildId] ?: error("Build not found: $buildId \n available builds $buildIdMap")
+        versions.agp to buildPath
+      }
     throw AgpVersionsMismatch(agpVersionsAndGradleBuilds)
+  }
 }
 
 private fun Throwable.toIdeSyncIssue(): IdeSyncIssue {
@@ -386,8 +414,6 @@ private fun computeVariantNameToBeSynced(
     // default variant as specified by the build script (computation could still end up being null)
     ?: defaultVariantName.also { LOG.debug("Picked the default variant $it for $moduleId") }
 }
-
-private fun Versions.isAtLeastAgp8() = AgpVersion.parse(agp).isAtLeast(8, 0, 0)
 
 /** Cache the current variant's buildTypes + fallbacks, and flavors + fallbacks. */
 fun BasicGradleProject.moduleId() = Modules.createUniqueModuleId(projectIdentifier.buildIdentifier.rootDir, path)

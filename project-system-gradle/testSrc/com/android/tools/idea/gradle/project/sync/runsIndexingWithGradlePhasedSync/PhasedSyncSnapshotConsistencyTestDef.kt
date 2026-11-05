@@ -110,10 +110,25 @@ data class PhasedSyncSnapshotConsistencyTestDef(
   }
 
   companion object {
+    val testsNotSupportingPhasedSyncIntermediateChecks =
+      setOf(
+        TestProject.APP_WITH_BUILDSRC,
+        TestProject.APP_WITH_BUILDSRC_AND_SETTINGS_PLUGIN,
+        TestProject.COMPOSITE_BUILD,
+        TestProject.BUILDSRC_WITH_COMPOSITE,
+        TestProject.KOTLIN_MULTIPLATFORM,
+        TestProject.KOTLIN_MULTIPLATFORM_WITHJS,
+        TestProject.KOTLIN_MULTIPLATFORM_IOS,
+        TestProject.KOTLIN_MULTIPLATFORM_JVM,
+        TestProject.NON_STANDARD_SOURCE_SET_DEPENDENCIES,
+        TestProject.NON_STANDARD_SOURCE_SET_DEPENDENCIES_MANUAL_TEST_FIXTURES_WORKAROUND,
+        TestProject.ANDROID_KOTLIN_MULTIPLATFORM,
+      )
+
     // projects excluded from Gradle Project Path tests
     val tests =
       phasedSyncTestProjects
-        .filterNot { KmpConsistencyIssues.filteredProjects.contains(it) }
+        .filterNot { KmpConsistencyIssues.filteredProjects.contains(it) || testsNotSupportingPhasedSyncIntermediateChecks.contains(it) }
         .map { PhasedSyncSnapshotConsistencyTestDef(it) }
   }
 }

@@ -29,8 +29,6 @@ import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.ignoreEx
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
 import java.io.File
 import java.util.Collections
-import kotlin.collections.component1
-import kotlin.collections.component2
 import kotlin.collections.forEach
 import kotlin.collections.orEmpty
 import kotlin.to
@@ -49,7 +47,8 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
     buildModels: MutableCollection<out GradleBuild>,
     modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
   ) {
-    if (cachedData.hasSyncError) {
+    // This model handles Android dependencies, so for JVM projects (data.isEmpty)  we don't need to run it.
+    if (cachedData.shouldRunLegacyModelProviders || cachedData.hasSyncError() || cachedData.data.isEmpty()) {
       return
     }
     // Cache the requested models so that the model providers running after this one don't need to request them again.
@@ -131,6 +130,10 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
           }
         }
       )
+
+    if (syncOptions.syncTestMode == SyncTestMode.TEST_EXCEPTION_WITH_UNRESOLVED_MODULE) {
+      error("**internal error for tests**")
+    }
 
     val libraryTable = internedModels.apply { prepare() }.createLibraryTable()
     cachedData.libraryTable = libraryTable
@@ -248,7 +251,7 @@ private fun buildAndroidProjectPathResolver(
 }
 
 /** Map from the Gradle path (composite aware, supports nested builds) to the Gradle build root directory. */
-private fun buildBuildPathMap(controller: BuildController, allBuilds: Collection<GradleBuild>): Map<String, BuildId> =
+internal fun buildBuildPathMap(controller: BuildController, allBuilds: Collection<GradleBuild>): Map<String, BuildId> =
   allBuilds
     .mapNotNull { buildModel -> controller.findModel(buildModel.rootProject, BuildMap::class.java) }
     .flatMap { it.buildIdMap.entries }

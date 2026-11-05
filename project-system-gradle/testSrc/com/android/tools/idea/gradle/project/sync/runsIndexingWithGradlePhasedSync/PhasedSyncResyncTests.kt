@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.project.sync.runsIndexingWithGradlePhasedSync
 
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.gradle.project.sync.runsIndexingWithGradlePhasedSync.PhasedSyncSnapshotConsistencyTestDef.Companion.testsNotSupportingPhasedSyncIntermediateChecks
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -79,15 +80,17 @@ class PhasedSyncResyncTests(val testProject: TestProject) : PhasedSyncSnapshotTe
             .that(secondFullSync.filterOutFullResyncIssues(testProject).ideModels())
             .isEqualTo(firstFullSync.filterOutFullResyncIssues(testProject).ideModels())
         }
-        runCatchingAndRecord {
-          Truth.assertWithMessage("Comparing resync intermediate sync project structure to full state")
-            .that(secondIntermediateSync.filterOutKnownResyncIssues(testProject).projectStructure())
-            .isEqualTo(secondFullSync.filterOutKnownResyncIssues(testProject).projectStructure())
-        }
-        runCatchingAndRecord {
-          Truth.assertWithMessage("Comparing resync intermediate sync ide models to full state")
-            .that(secondIntermediateSync.filterOutKnownResyncIssues(testProject).ideModels())
-            .isEqualTo(secondFullSync.filterOutKnownResyncIssues(testProject).ideModels())
+        if (!testsNotSupportingPhasedSyncIntermediateChecks.contains(testProject)) {
+          runCatchingAndRecord {
+            Truth.assertWithMessage("Comparing resync intermediate sync project structure to full state")
+              .that(secondIntermediateSync.filterOutKnownResyncIssues(testProject).projectStructure())
+              .isEqualTo(secondFullSync.filterOutKnownResyncIssues(testProject).projectStructure())
+          }
+          runCatchingAndRecord {
+            Truth.assertWithMessage("Comparing resync intermediate sync ide models to full state")
+              .that(secondIntermediateSync.filterOutKnownResyncIssues(testProject).ideModels())
+              .isEqualTo(secondFullSync.filterOutKnownResyncIssues(testProject).ideModels())
+          }
         }
         runCatchingAndRecord {
           Truth.assertWithMessage("Comparing GradleProjectPaths between resync failed")

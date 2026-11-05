@@ -26,7 +26,7 @@ import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 
 /** Class for storing per Gradle-project data between multiple model providers. */
-class ModelProviderCachedData(private val disableLegacyModelProvidersForSupportedProjects: Boolean) : Serializable {
+class ModelProviderCachedData : Serializable {
   internal val versions = ConcurrentHashMap<BasicGradleProject, Versions>()
   internal val data = ConcurrentHashMap<BasicGradleProject, CachedAndroidProjectData>()
   internal val fetchedVariants = ConcurrentHashMap<BasicGradleProject, List<IdeVariantCoreImpl>>()
@@ -39,12 +39,20 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
   /** Models requested through [toCachingController], shared by all model providers of a sync. See [CachingBuildController]. */
   internal val modelCache = ConcurrentHashMap<ModelCacheKey, Any>()
 
-  internal var hasSyncError: Boolean = false
+  private var hasSyncError: Boolean = false
 
   private var allProjectsSupportedByPhasedSync: Boolean = false
 
   fun markAllProjectsSupportedByPhasedSync() {
     allProjectsSupportedByPhasedSync = true
+  }
+
+  fun markBuildWithSyncErrors() {
+    hasSyncError = true
+  }
+
+  fun hasSyncError(): Boolean {
+    return hasSyncError
   }
 
   fun setKaptGradleModel(gradleProject: BasicGradleProject, kaptModel: KaptGradleModel) {
@@ -56,13 +64,13 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
   }
 
   /**
-   * If the flag is on to do so, only run legacy providers when there are Gradle subprojects that are not supported.
+   * Only run legacy providers when there are Gradle subprojects that are not supported.
    *
    * Phased sync model providers always run (when enabled) and populate [modelCache], while legacy model providers run last and only when
    * this property is true.
    */
   val shouldRunLegacyModelProviders: Boolean
-    get() = !hasSyncError && (!disableLegacyModelProvidersForSupportedProjects || !allProjectsSupportedByPhasedSync)
+    get() = !allProjectsSupportedByPhasedSync
 
   /**
    * This class exists to share data between model providers, and the last one to execute should call this method to drop all shared state.

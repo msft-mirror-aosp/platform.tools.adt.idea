@@ -1428,7 +1428,7 @@ class PhasedSyncVariantNameResolutionTest {
       projectParamsMock.basicGradleProject to androidProjectData
     }
 
-    val cachedModels = ModelProviderCachedData(disableLegacyModelProvidersForSupportedProjects = false)
+    val cachedModels = ModelProviderCachedData()
 
     val variantsResolutionIssues = mutableMapOf<BasicGradleProject, Throwable>()
     setupProjectsVariantsAndConsume(projectDataList, syncOptions, modelConsumer, cachedModels, variantsResolutionIssues)

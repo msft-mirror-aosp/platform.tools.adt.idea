@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.sync
 
 import com.android.builder.model.v2.models.ProjectSyncIssues
-import com.android.builder.model.v2.models.Versions
 import com.android.ide.gradle.model.artifacts.AdditionalClassifierArtifactsModel
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
@@ -39,7 +38,7 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
     buildModels: Collection<GradleBuild>,
     modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
   ) {
-    if (cachedModels.hasSyncError) {
+    if (cachedModels.shouldRunLegacyModelProviders || cachedModels.hasSyncError()) {
       return
     }
     // Cache the requested models so that the model providers running after this one don't need to request them again.
@@ -94,7 +93,7 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
       .run(
         buildModels.flatMap { buildModel ->
           buildModel.projects.mapNotNull { gradleProject ->
-            if (cachedModels.versions[gradleProject] == null && controller.findModel(gradleProject, Versions::class.java) == null) {
+            if (cachedModels.versions[gradleProject] == null) {
               BuildAction { controller ->
                 val kotlinModel = controller.findModel(gradleProject, KotlinGradleModel::class.java)
                 val kaptModel = controller.findModel(gradleProject, KaptGradleModel::class.java)
@@ -143,15 +142,13 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
         }
       }
 
-    if (!cachedModels.shouldRunLegacyModelProviders) {
-      recordCheckpointData(MeasurementCheckpoint.ANDROID_FINISHED, syncOptions)
-      buildModels.forEach { model ->
-        if (syncOptions.flags.studioDebugMode) {
-          populateDebugInfo(model, modelConsumer, this.javaClass)
-        }
+    recordCheckpointData(MeasurementCheckpoint.ANDROID_FINISHED, syncOptions)
+    buildModels.forEach { model ->
+      if (syncOptions.flags.studioDebugMode) {
+        populateDebugInfo(model, modelConsumer, this.javaClass)
       }
-      cachedModels.clear()
     }
+    cachedModels.clear()
   }
 }
 

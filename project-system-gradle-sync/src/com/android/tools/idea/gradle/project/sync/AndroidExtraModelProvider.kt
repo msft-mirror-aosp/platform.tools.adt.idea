@@ -52,7 +52,7 @@ class AndroidExtraModelProvider(private val syncOptions: SyncActionOptions, priv
     get() = _impl ?: AndroidExtraModelProviderImpl(syncOptions).also { _impl = it }
 
   override fun populateModels(controller: BuildController, buildModels: Collection<GradleBuild>, modelConsumer: GradleModelConsumer) {
-    if (!cachedModels.shouldRunLegacyModelProviders) {
+    if (!cachedModels.shouldRunLegacyModelProviders || cachedModels.hasSyncError()) {
       return
     }
     // Serve the models already fetched by the phased sync model providers from the cache instead of requesting them again.

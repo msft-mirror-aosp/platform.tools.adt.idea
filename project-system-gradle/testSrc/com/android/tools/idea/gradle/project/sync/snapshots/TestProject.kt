@@ -85,7 +85,14 @@ enum class TestProject(
   ANDROID_KOTLIN_MULTIPLATFORM(
     TestProjectToSnapshotPaths.ANDROID_KOTLIN_MULTIPLATFORM,
     isCompatibleWith = { it == AGP_CURRENT },
-    patch = { projectRoot -> patchAndroidKotlinMultiplatformJdk(projectRoot) },
+    patch = { projectRoot ->
+      patchAndroidKotlinMultiplatformJdk(projectRoot)
+      // Work around an IntelliJ VFS bug (PersistentFSImpl.executeCreateChild) where creating the
+      // Gradle wrapper in included builds marks the parent directory as CHILDREN_CACHED without
+      // settings.gradle; loading children forces the subsequent VfsUtil.markDirtyAndRefresh to
+      // run a full directory refresh (same workaround as COMPOSITE_BUILD, b/493857612).
+      projectRoot.toVirtualFile()?.let { VfsUtilCore.processFilesRecursively(it) { true } }
+    },
   ),
   ANDROID_KOTLIN_MULTIPLATFORM_VARIANT_API_RES(
     TestProjectToSnapshotPaths.ANDROID_KOTLIN_MULTIPLATFORM,
@@ -510,7 +517,16 @@ enum class TestProject(
   ),
   MIGRATE_TO_NON_TRANSITIVE_R_CLASSES(TestProjectToSnapshotPaths.MIGRATE_TO_NON_TRANSITIVE_R_CLASSES),
   PURE_JAVA_PROJECT(TestProjectToSnapshotPaths.PURE_JAVA_PROJECT),
-  BUILDSRC_WITH_COMPOSITE(TestProjectToSnapshotPaths.BUILDSRC_WITH_COMPOSITE),
+  BUILDSRC_WITH_COMPOSITE(
+    TestProjectToSnapshotPaths.BUILDSRC_WITH_COMPOSITE,
+    patch = { projectRoot ->
+      // Work around an IntelliJ VFS bug (PersistentFSImpl.executeCreateChild) where creating the
+      // Gradle wrapper in included builds marks the parent directory as CHILDREN_CACHED without
+      // settings.gradle; loading children forces the subsequent VfsUtil.markDirtyAndRefresh to
+      // run a full directory refresh (same workaround as COMPOSITE_BUILD, b/493857612).
+      projectRoot.toVirtualFile()?.let { VfsUtilCore.processFilesRecursively(it) { true } }
+    },
+  ),
   APP_WITH_BUILD_FEATURES_ENABLED(
     TestProjectToSnapshotPaths.APP_WITH_BUILD_FEATURES_ENABLED,
     isCompatibleWith = { it >= AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT },

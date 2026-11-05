@@ -61,7 +61,7 @@ class PhasedSyncExecutionReportTest {
     val buildEnv = Mockito.mock(BuildEnvironment::class.java).apply { whenever(this.gradle).thenReturn(gradleEnv) }
     val versions = Mockito.mock(Versions::class.java)
 
-    val cachedModels = ModelProviderCachedData(disableLegacyModelProvidersForSupportedProjects = true)
+    val cachedModels = ModelProviderCachedData()
     cachedModels.markAllProjectsSupportedByPhasedSync()
     cachedModels.versions[appProject] = versions
 
