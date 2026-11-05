@@ -16,7 +16,6 @@
 package com.android.tools.idea.adb.wireless;
 
 import com.android.annotations.concurrency.UiThread;
-import com.intellij.openapi.Disposable;
 import com.intellij.ui.components.JBTabbedPane;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -25,7 +24,6 @@ import java.awt.Insets;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Form that displays a {@link com.intellij.ui.components.JBTabbedPane} with one
@@ -37,10 +35,8 @@ public class WiFiPairingContentPanel {
   @NotNull private WiFiPairingContentTabbedPaneContainer myQrCodePanel;
   @NotNull private WiFiPairingContentTabbedPaneContainer myPairingCodePanel;
 
-  public WiFiPairingContentPanel(@NotNull Disposable parentDisposable) {
+  public WiFiPairingContentPanel() {
     setupUI();
-    myPairingCodePanel.setParentDisposable(parentDisposable);
-    myQrCodePanel.setParentDisposable(parentDisposable);
   }
 
   @NotNull
@@ -52,11 +48,8 @@ public class WiFiPairingContentPanel {
     myQrCodePanel.setContent(component);
   }
 
-  public void setPairingCodeComponent(@NotNull JComponent component, @Nullable TrackingMdnsService mdnsServiceUnderPairing) {
+  public void setPairingCodeComponent(@NotNull JComponent component) {
     myPairingCodePanel.setContent(component);
-    if (mdnsServiceUnderPairing == null) {
-      myPairingCodePanel.setAsyncProcessText("Available Wi-Fi devices");
-    }
   }
 
   private void setupUI() {

@@ -38,7 +38,7 @@ class PairDevicesUsingWiFiService(private val project: Project) : Disposable {
     // Nothing to do
   }
 
-  fun createPairingDialogController(mdnsServiceUnderPairing: TrackingMdnsService? = null): WiFiPairingController {
+  fun createPairingDialogController(mdnsServiceUnderPairing: TrackingMdnsService): WiFiPairingController {
     val model = WiFiPairingModel()
     val view = WiFiPairingViewImpl(project, notificationService, model, WiFiPairingHyperlinkListener, mdnsServiceUnderPairing)
     return WiFiPairingControllerImpl(

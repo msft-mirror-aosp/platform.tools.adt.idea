@@ -16,6 +16,7 @@
 package com.android.tools.idea.adb.wireless;
 
 import com.android.annotations.concurrency.UiThread;
+import com.intellij.openapi.Disposable;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -33,7 +34,6 @@ import javax.swing.JPanel;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.text.StyleContext;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Form that wraps a {@link PairingCodeContentPanel} with instructions text at the bottom.
@@ -47,10 +47,11 @@ public class PairingCodeTabPanel {
   @NotNull private JBLabel mySecondLineLabel;
   @NotNull private JPanel myRootComponent;
   @NotNull private JPanel myContentPanelContainer;
-  @Nullable private final TrackingMdnsService mdnsServiceUnderPairing;
+  @NotNull private final TrackingMdnsService mdnsServiceUnderPairing;
 
   public PairingCodeTabPanel(@NotNull Consumer<PairingMdnsService> pairingCodePairInvoked,
-                             @Nullable TrackingMdnsService mdnsServiceUnderPairing) {
+                             @NotNull Disposable parentDisposable,
+                             @NotNull TrackingMdnsService mdnsServiceUnderPairing) {
     this.mdnsServiceUnderPairing = mdnsServiceUnderPairing;
     setupUI();
     myPairingCodePairInvoked = pairingCodePairInvoked;
@@ -59,7 +60,7 @@ public class PairingCodeTabPanel {
     myFirstLineLabel.setForeground(UIColors.PAIRING_HINT_LABEL);
     mySecondLineLabel.setForeground(UIColors.PAIRING_HINT_LABEL);
 
-    myContentPanel = new PairingCodeContentPanel(mdnsServiceUnderPairing);
+    myContentPanel = new PairingCodeContentPanel(parentDisposable, mdnsServiceUnderPairing);
     myContentPanelContainer.add(myContentPanel.getComponent(), BorderLayout.CENTER);
 
     showAvailableServices(new ArrayList<>());
@@ -80,11 +81,7 @@ public class PairingCodeTabPanel {
     myFirstLineLabel = new JBLabel();
     Font myFirstLineLabelFont = getFont(null, Font.BOLD, -1, myFirstLineLabel.getFont());
     if (myFirstLineLabelFont != null) myFirstLineLabel.setFont(myFirstLineLabelFont);
-    String deviceName = "Android 11+ device";
-    if (mdnsServiceUnderPairing != null) {
-      deviceName = mdnsServiceUnderPairing.getDisplayString();
-    }
-    myFirstLineLabel.setText(String.format("Set your %s to pairing mode", deviceName));
+    myFirstLineLabel.setText(String.format("Set your %s to pairing mode", mdnsServiceUnderPairing.getDisplayString()));
     myRootComponent.add(myFirstLineLabel, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
                                                               GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null,
                                                               null, null, 0, false));

@@ -16,54 +16,24 @@
 package com.android.tools.idea.adb.wireless;
 
 import com.android.annotations.concurrency.UiThread;
-import com.intellij.openapi.Disposable;
-import com.intellij.openapi.util.Disposer;
-import com.intellij.ui.components.JBLabel;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
-import com.intellij.util.ui.AsyncProcessIcon;
 import java.awt.BorderLayout;
-import java.awt.Font;
 import java.awt.Insets;
-import java.util.Locale;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
-import javax.swing.plaf.FontUIResource;
-import javax.swing.text.StyleContext;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Top level component in each pairing tab. Contains a top and bottom row of fixed size,
- * and a center panel for a custom component.
+ * Top level component in each pairing tab. Contains a center panel for a custom component.
  */
 @UiThread
 public class WiFiPairingContentTabbedPaneContainer {
   @NotNull private JPanel myRootComponent;
-  @NotNull private JPanel myTopRow;
   @NotNull private JPanel myCenterRow;
-  @NotNull private JPanel myBottomRow;
-  @NotNull private AsyncProcessIcon myAsyncProcessIcon;
-  @NotNull private JBLabel myAsyncProcessText;
 
   public WiFiPairingContentTabbedPaneContainer() {
     setupUI();
-    myAsyncProcessIcon.suspend();
-    myAsyncProcessIcon.setVisible(false);
-  }
-
-  private void createUIComponents() {
-    myAsyncProcessIcon = new AsyncProcessIcon("available devices progress");
-  }
-
-  public void setParentDisposable(@NotNull Disposable parentDisposable) {
-    // Ensure async icon is disposed deterministically
-    Disposer.register(parentDisposable, myAsyncProcessIcon);
-  }
-
-  public void setAsyncProcessText(@NotNull String text) {
-    myAsyncProcessText.setText(text);
-    myAsyncProcessIcon.setVisible(true);
-    myAsyncProcessIcon.resume();
   }
 
   public void setContent(@NotNull JComponent component) {
@@ -72,53 +42,14 @@ public class WiFiPairingContentTabbedPaneContainer {
   }
 
   private void setupUI() {
-    createUIComponents();
     myRootComponent = new JPanel();
-    myRootComponent.setLayout(new GridLayoutManager(3, 1, new Insets(0, 0, 0, 0), -1, -1));
-    myTopRow = new JPanel();
-    myTopRow.setLayout(new BorderLayout(0, 0));
-    myRootComponent.add(myTopRow, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                                                      GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
-                                                      GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-    myTopRow.add(myAsyncProcessIcon, BorderLayout.EAST);
-    myAsyncProcessText = new JBLabel();
-    Font myAsyncProcessTextFont = getFont(null, Font.BOLD, -1, myAsyncProcessText.getFont());
-    if (myAsyncProcessTextFont != null) myAsyncProcessText.setFont(myAsyncProcessTextFont);
-    myTopRow.add(myAsyncProcessText, BorderLayout.CENTER);
+    myRootComponent.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
     myCenterRow = new JPanel();
     myCenterRow.setLayout(new BorderLayout(0, 0));
-    myRootComponent.add(myCenterRow, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+    myRootComponent.add(myCenterRow, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                                                          GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                                          GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW, null,
                                                          null, null, 0, false));
-    myBottomRow = new JPanel();
-    myBottomRow.setLayout(new BorderLayout(0, 0));
-    myRootComponent.add(myBottomRow, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                                                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
-                                                         GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-  }
-
-  private Font getFont(String fontName, int style, int size, Font currentFont) {
-    if (currentFont == null) return null;
-    String resultName;
-    if (fontName == null) {
-      resultName = currentFont.getName();
-    }
-    else {
-      Font testFont = new Font(fontName, Font.PLAIN, 10);
-      if (testFont.canDisplay('a') && testFont.canDisplay('1')) {
-        resultName = fontName;
-      }
-      else {
-        resultName = currentFont.getName();
-      }
-    }
-    Font font = new Font(resultName, style >= 0 ? style : currentFont.getStyle(), size >= 0 ? size : currentFont.getSize());
-    boolean isMac = System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH).startsWith("mac");
-    Font fontWithFallback = isMac
-                            ? new Font(font.getFamily(), font.getStyle(), font.getSize())
-                            : new StyleContext().getFont(font.getFamily(), font.getStyle(), font.getSize());
-    return fontWithFallback instanceof FontUIResource ? fontWithFallback : new FontUIResource(fontWithFallback);
   }
 
   public JComponent getRootComponent() { return myRootComponent; }

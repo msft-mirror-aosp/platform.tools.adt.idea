@@ -36,7 +36,7 @@ class WiFiPairingControllerImpl(
   private val pairingCodePairingControllerFactory: (PairingMdnsService) -> PairingCodePairingController = {
     createPairingCodePairingController(project, pairingService, notificationService, it)
   },
-  mdnsServiceUnderPairing: TrackingMdnsService?,
+  mdnsServiceUnderPairing: TrackingMdnsService,
 ) : WiFiPairingController {
   companion object {
     fun createPairingCodePairingController(

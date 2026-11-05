@@ -17,8 +17,10 @@ package com.android.tools.idea.adb.wireless;
 
 import com.android.annotations.concurrency.UiThread;
 import com.android.utils.TraceUtils;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.ui.VerticalFlowLayout;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.components.JBScrollPane;
 import com.intellij.uiDesigner.core.GridConstraints;
@@ -35,7 +37,6 @@ import java.util.function.Consumer;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Form that displays the list of devices available to pair via pairing code.
@@ -49,14 +50,12 @@ public class PairingCodeContentPanel {
   @NotNull private JPanel myDeviceList;
   @NotNull private JBScrollPane myDeviceListScrollPane;
   private JBLabel myDeviceLineupLabel;
+  @NotNull private AsyncProcessIcon myAsyncProcessIcon;
   @NotNull List<PairingCodeDevicePanel> myPanels = new ArrayList<>();
-  private final TrackingMdnsService mdnsServiceUnderPairing;
+  @NotNull private final TrackingMdnsService mdnsServiceUnderPairing;
 
-  public PairingCodeContentPanel() {
-    this(null);
-  }
-
-  public PairingCodeContentPanel(@Nullable TrackingMdnsService mdnsServiceUnderPairing) {
+  public PairingCodeContentPanel(@NotNull Disposable parentDisposable,
+                                 @NotNull TrackingMdnsService mdnsServiceUnderPairing) {
     this.mdnsServiceUnderPairing = mdnsServiceUnderPairing;
     setupUI();
     myDeviceList.setLayout(new VerticalFlowLayout());
@@ -64,6 +63,8 @@ public class PairingCodeContentPanel {
     myEmptyPanel.setBackground(UIColors.PAIRING_CONTENT_BACKGROUND);
     myDeviceListScrollPane.setBorder(JBUI.Borders.empty());
     myDeviceList.setBackground(UIColors.PAIRING_CONTENT_BACKGROUND);
+
+    Disposer.register(parentDisposable, myAsyncProcessIcon);
   }
 
   @NotNull
@@ -199,22 +200,16 @@ public class PairingCodeContentPanel {
     myDeviceLineupLabel = new JBLabel();
     myDeviceLineupLabel.setHorizontalTextPosition(0);
     myDeviceLineupLabel.setIconTextGap(0);
-    if (mdnsServiceUnderPairing == null) {
-      myDeviceLineupLabel.setText("Searching for devices...");
-    } else {
-      myDeviceLineupLabel.setText(String.format("Waiting for %s to enter pairing mode...", mdnsServiceUnderPairing.getDisplayString()));
-    }
+    myDeviceLineupLabel.setText(String.format("Waiting for %s to enter pairing mode...", mdnsServiceUnderPairing.getDisplayString()));
     myDeviceLineupLabel.setVerticalTextPosition(3);
     GridBagConstraints gbc = new GridBagConstraints();
     gbc.gridx = 0;
     gbc.gridy = 0;
     myEmptyPanel.add(myDeviceLineupLabel, gbc);
-    if (mdnsServiceUnderPairing != null) {
-      final AsyncProcessIcon asyncProcessIcon = new AsyncProcessIcon("Pairing server");
-      gbc.gridy = 1;
-      gbc.insets = new Insets(JBUI.scale(4), 0, 0, 0);
-      myEmptyPanel.add(asyncProcessIcon, gbc);
-    }
+    myAsyncProcessIcon = new AsyncProcessIcon("Pairing server");
+    gbc.gridy = 1;
+    gbc.insets = new Insets(JBUI.scale(4), 0, 0, 0);
+    myEmptyPanel.add(myAsyncProcessIcon, gbc);
   }
 
   private static boolean isPanelDeleted(@NotNull List<PairingMdnsService> services, @NotNull PairingCodeDevicePanel panel) {

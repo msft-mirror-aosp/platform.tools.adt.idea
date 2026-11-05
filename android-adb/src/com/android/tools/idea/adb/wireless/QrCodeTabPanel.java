@@ -38,13 +38,11 @@ import javax.swing.border.TitledBorder;
 import javax.swing.plaf.FontUIResource;
 import javax.swing.text.StyleContext;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 @UiThread
 public class QrCodeTabPanel {
   @NotNull private final Logger LOG = Logger.getInstance(QrCodeTabPanel.class);
-  @NotNull private JBLabel myTopLabel1;
-  @NotNull private JBLabel myTopLabel2;
+  @NotNull private JBLabel myTopLabel;
   @NotNull private JBLabel myFirstLineLabel;
   @NotNull private JBLabel mySecondLineLabel;
   @NotNull private ScalingImagePanel myQrCodePanel;
@@ -56,12 +54,12 @@ public class QrCodeTabPanel {
   @NotNull private JBLabel myPairingStatusLabel;
   @NotNull private JPanel myScanNewDevicePanel;
   @NotNull private LinkLabel<Void> myScanNewDeviceLink;
-  @Nullable private final TrackingMdnsService mdnsServiceUnderPairing;
+  @NotNull private final TrackingMdnsService mdnsServiceUnderPairing;
 
 
   public QrCodeTabPanel(@NotNull Runnable scanAnotherDeviceRunnable,
                         @NotNull Disposable parentDisposable,
-                        @Nullable TrackingMdnsService mdnsServiceUnderPairing) {
+                        @NotNull TrackingMdnsService mdnsServiceUnderPairing) {
     this.mdnsServiceUnderPairing = mdnsServiceUnderPairing;
     setupUI();
     myRootComponent.setBackground(UIColors.PAIRING_CONTENT_BACKGROUND);
@@ -106,8 +104,7 @@ public class QrCodeTabPanel {
    */
   public void showQrCodePairingStarted() {
     myQrCodePanel.setActive(true);
-    myTopLabel1.setVisible(true);
-    myTopLabel2.setVisible(true);
+    myTopLabel.setVisible(true);
 
     // Note: Add a "space" so the label size does not become empty and causes a re-layout
     setBold(myPairingStatusLabel, false);
@@ -149,17 +146,14 @@ public class QrCodeTabPanel {
     myQrCodePanel.setScaledImageProvider(SVGScaledImageProvider.create(StudioIcons.Common.SUCCESS));
     myQrCodePanel.setActive(true);
 
-    myTopLabel1.setVisible(false);
-    myTopLabel2.setVisible(false);
+    myTopLabel.setVisible(false);
     myPairingStatusIconLabel.setVisible(false);
     myPairingStatusProcessIcon.setVisible(false);
     setBold(myPairingStatusLabel, true);
     myPairingStatusLabel.setText(device.getDisplayString() + " connected");
 
-    if (mdnsServiceUnderPairing == null) {
-      // dialog is to pair a single device, don't allow to re-generate another QR code.
-      myScanNewDeviceLink.setVisible(true);
-    }
+    // Dialog is to pair a single device, don't allow to re-generate another QR code.
+    myScanNewDeviceLink.setVisible(false);
   }
 
   /**
@@ -169,8 +163,7 @@ public class QrCodeTabPanel {
   public void showQrCodePairingError() {
     myQrCodePanel.setActive(false);
 
-    myTopLabel1.setVisible(false);
-    myTopLabel2.setVisible(false);
+    myTopLabel.setVisible(false);
     myPairingStatusIconLabel.setVisible(true);
     myPairingStatusIconLabel.setIcon(StudioIcons.Common.ERROR);
     myPairingStatusProcessIcon.setVisible(false);
@@ -193,50 +186,36 @@ public class QrCodeTabPanel {
   private void setupUI() {
     createUIComponents();
     myRootComponent = new JPanel();
-    myRootComponent.setLayout(new GridLayoutManager(14, 3, new Insets(0, 0, 0, 0), -1, -1));
+    myRootComponent.setLayout(new GridLayoutManager(12, 3, new Insets(0, 0, 0, 0), -1, -1));
     final Spacer spacer1 = new Spacer();
     myRootComponent.add(spacer1, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
-                                                     GridConstraints.SIZEPOLICY_FIXED, new Dimension(5, 15), null, null, 0, false));
-    myTopLabel1 = new JBLabel();
-    if (mdnsServiceUnderPairing == null) {
-      myTopLabel1.setText("<html>To pair an <b>Android 11+</b> device<html>");
-    }
-    myRootComponent.add(myTopLabel1, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
-                                                         GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null,
-                                                         null, 0, false));
-    final Spacer spacer2 = new Spacer();
-    myRootComponent.add(spacer2, new GridConstraints(2, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
-                                                     GridConstraints.SIZEPOLICY_FIXED, new Dimension(5, 4), null, null, 0, false));
-    myTopLabel2 = new JBLabel();
-    String topLabel2Text = "scan the QR code from your device";
-    if (mdnsServiceUnderPairing != null) {
-      topLabel2Text = "Scan the QR code from your " + mdnsServiceUnderPairing.getDisplayString();
-    }
-    myTopLabel2.setText(topLabel2Text);
-    myRootComponent.add(myTopLabel2, new GridConstraints(3, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
-                                                         GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null,
-                                                         null, 0, false));
+                                                     GridConstraints.SIZEPOLICY_FIXED, new Dimension(5, 19), null, null, 0, false));
+    myTopLabel = new JBLabel();
+    myTopLabel.setText("Scan the QR code from your " + mdnsServiceUnderPairing.getDisplayString());
+    myRootComponent.add(myTopLabel, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
+                                                        GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null,
+                                                        null, 0, false));
     final Spacer spacer3 = new Spacer();
-    myRootComponent.add(spacer3, new GridConstraints(4, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
+    myRootComponent.add(spacer3, new GridConstraints(2, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
                                                      GridConstraints.SIZEPOLICY_CAN_GROW, new Dimension(5, 20), null, null, 0, false));
     final Spacer spacer4 = new Spacer();
-    myRootComponent.add(spacer4, new GridConstraints(5, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+    myRootComponent.add(spacer4, new GridConstraints(3, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
                                                      GridConstraints.SIZEPOLICY_CAN_GROW, 1, new Dimension(5, 5), null, null, 0, false));
     myQrCodePanel = new ScalingImagePanel();
-    myRootComponent.add(myQrCodePanel, new GridConstraints(5, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+    myRootComponent.add(myQrCodePanel, new GridConstraints(3, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
                                                            GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
                                                            new Dimension(100, 100), null, null, 0, false));
     final Spacer spacer5 = new Spacer();
-    myRootComponent.add(spacer5, new GridConstraints(5, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+    myRootComponent.add(spacer5, new GridConstraints(3, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
                                                      GridConstraints.SIZEPOLICY_CAN_GROW, 1, new Dimension(5, 5), null, null, 0, false));
     final Spacer spacer6 = new Spacer();
-    myRootComponent.add(spacer6, new GridConstraints(6, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
+    myRootComponent.add(spacer6, new GridConstraints(4, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
                                                      GridConstraints.SIZEPOLICY_CAN_GROW, new Dimension(5, 20), null, null, 0, false));
     myPairingStatusPanel = new JPanel();
     myPairingStatusPanel.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), 0, 0));
     myRootComponent.add(myPairingStatusPanel,
-                        new GridConstraints(7, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                        new GridConstraints(5, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
                                             GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                                             GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     myPairingStatusIconPanel = new JPanel();
@@ -266,42 +245,38 @@ public class QrCodeTabPanel {
                                                                        null, null, null, 0, false));
     myScanNewDevicePanel = new JPanel();
     myScanNewDevicePanel.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), 0, 0));
-    myRootComponent.add(myScanNewDevicePanel, new GridConstraints(8, 0, 1, 3, GridConstraints.ANCHOR_NORTH, GridConstraints.FILL_HORIZONTAL,
+    myRootComponent.add(myScanNewDevicePanel, new GridConstraints(6, 0, 1, 3, GridConstraints.ANCHOR_NORTH, GridConstraints.FILL_HORIZONTAL,
                                                                   GridConstraints.SIZEPOLICY_CAN_SHRINK |
                                                                   GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_CAN_GROW,
                                                                   null, null, null, 0, false));
     myScanNewDevicePanel.setBorder(
       BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0), null, TitledBorder.DEFAULT_JUSTIFICATION,
                                        TitledBorder.DEFAULT_POSITION, null, null));
-    myScanNewDeviceLink = new LinkLabel();
-    if (mdnsServiceUnderPairing == null) {
-      myScanNewDeviceLink.setText("Scan new device");
-    } else {
-      myScanNewDeviceLink.setText("Try again");
-    }
+    myScanNewDeviceLink = new LinkLabel<>();
+    myScanNewDeviceLink.setText("Try again");
     myScanNewDevicePanel.add(myScanNewDeviceLink,
                              new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE, 1,
                                                  GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     final Spacer spacer8 = new Spacer();
-    myRootComponent.add(spacer8, new GridConstraints(9, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
+    myRootComponent.add(spacer8, new GridConstraints(7, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
                                                      GridConstraints.SIZEPOLICY_FIXED, new Dimension(0, 30), null, null, 0, false));
     myFirstLineLabel = new JBLabel();
     Font myFirstLineLabelFont = getFont(null, Font.BOLD, -1, myFirstLineLabel.getFont());
     if (myFirstLineLabelFont != null) myFirstLineLabel.setFont(myFirstLineLabelFont);
     myFirstLineLabel.setText("QR scanner available at:");
-    myRootComponent.add(myFirstLineLabel, new GridConstraints(10, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
+    myRootComponent.add(myFirstLineLabel, new GridConstraints(8, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
                                                               GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null,
                                                               null, null, 0, false));
     final Spacer spacer9 = new Spacer();
-    myRootComponent.add(spacer9, new GridConstraints(11, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
+    myRootComponent.add(spacer9, new GridConstraints(9, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
                                                      GridConstraints.SIZEPOLICY_FIXED, new Dimension(0, 4), null, null, 0, false));
     mySecondLineLabel = new JBLabel();
     mySecondLineLabel.setText("Developer options > Wireless debugging > Pair using QR code");
-    myRootComponent.add(mySecondLineLabel, new GridConstraints(12, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
+    myRootComponent.add(mySecondLineLabel, new GridConstraints(10, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
                                                                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null,
                                                                null, null, 0, false));
     final Spacer spacer10 = new Spacer();
-    myRootComponent.add(spacer10, new GridConstraints(13, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
+    myRootComponent.add(spacer10, new GridConstraints(11, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
                                                       GridConstraints.SIZEPOLICY_FIXED, new Dimension(5, 20), null, null, 0, false));
   }
 

@@ -18,6 +18,7 @@ package com.android.tools.idea.adb.wireless
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.findDescendant
 import com.google.common.truth.Truth.assertThat
+import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import java.awt.Container
@@ -31,10 +32,12 @@ import org.junit.Test
 class PairingCodeContentPanelTest {
 
   @get:Rule val edtRule = EdtRule()
+  @get:Rule val disposableRule = DisposableRule()
 
   @Test
   fun test() {
-    val panel = PairingCodeContentPanel()
+    val mdnsService = TrackingMdnsService("service1", "192.168.1.2", "5555", "Pixel", "2.0")
+    val panel = PairingCodeContentPanel(disposableRule.disposable, mdnsService)
     panel.component.setSize(100, 100)
     val ui = FakeUi(panel.component)
     val scrollPane = ui.getComponent<JScrollPane>()

@@ -22,7 +22,7 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.DumbAwareAction
 import icons.StudioIcons
 
-/** The action to show the [WiFiPairingDialog] window. */
+/** The action to show the [WifiAvailableDevicesDialog] window. */
 class PairDevicesUsingWiFiAction : DumbAwareAction(StudioIcons.Avd.PAIR_OVER_WIFI) {
   override fun update(e: AnActionEvent) {
     e.presentation.isEnabledAndVisible = e.project != null

@@ -35,7 +35,7 @@ class WiFiPairingDialog(
   canBeParent: Boolean,
   ideModalityType: DialogWrapper.IdeModalityType,
   hyperlinkListener: HyperlinkListener,
-  val mdnsServiceUnderPairing: TrackingMdnsService?,
+  val mdnsServiceUnderPairing: TrackingMdnsService,
 ) {
   private val dialog: SimpleDialog
   private val pairingPanel: WiFiPairingPanel
@@ -46,7 +46,7 @@ class WiFiPairingDialog(
         project,
         canBeParent,
         ideModalityType,
-        title = "Pair ${mdnsServiceUnderPairing?.displayString ?: "devices"} over Wi-Fi",
+        title = "Pair ${mdnsServiceUnderPairing.displayString} over Wi-Fi",
         isModal = true,
         hasOkButton = false,
         cancelButtonText = "Close",

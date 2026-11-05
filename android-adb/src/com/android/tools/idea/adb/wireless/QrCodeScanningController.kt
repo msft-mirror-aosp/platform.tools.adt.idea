@@ -39,7 +39,7 @@ class QrCodeScanningController(
   private val service: WiFiPairingService,
   private val view: WiFiPairingView,
   parentDisposable: Disposable,
-  private val mdnsServiceUnderPairing: TrackingMdnsService?,
+  private val mdnsServiceUnderPairing: TrackingMdnsService,
 ) : Disposable {
   private val LOG = logger<QrCodeScanningController>()
   private val modelListener = MyModelListener()
@@ -154,8 +154,7 @@ class QrCodeScanningController(
 
   private fun updatePairingCodeServices(newServices: List<PairingMdnsService>) {
     view.model.pairingCodeServices = newServices.filter {
-      it.serviceType == ServiceType.PairingCode &&
-        (mdnsServiceUnderPairing == null || mdnsServiceUnderPairing.serviceName == it.serviceName)
+      it.serviceType == ServiceType.PairingCode && mdnsServiceUnderPairing.serviceName == it.serviceName
     }
   }
 

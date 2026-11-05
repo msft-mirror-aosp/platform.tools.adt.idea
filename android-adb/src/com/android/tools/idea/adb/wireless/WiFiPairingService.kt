@@ -76,7 +76,7 @@ data class PairingResult(
     }
 }
 
-/** An adb-tls-pairing._tcp. service as exposed by the "adb mdns services" command */
+/** An adb-tls-pairing._tcp. service as exposed by the "host:track-mdns-services" query */
 data class PairingMdnsService
 @JvmOverloads
 constructor(

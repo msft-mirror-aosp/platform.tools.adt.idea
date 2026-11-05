@@ -29,7 +29,7 @@ class WiFiPairingViewImpl(
   private val notificationService: WiFiPairingNotificationService,
   override val model: WiFiPairingModel,
   hyperlinkListener: HyperlinkListener,
-  mdnsServiceUnderPairing: TrackingMdnsService?,
+  mdnsServiceUnderPairing: TrackingMdnsService,
 ) : WiFiPairingView {
   private val dlg: WiFiPairingDialog
   private val listeners = ArrayList<WiFiPairingView.Listener>()
