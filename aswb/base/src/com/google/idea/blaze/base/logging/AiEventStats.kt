@@ -26,6 +26,8 @@ data class AiEventStats(
   val devAiEventContext: DevAiContext,
   val feature: Feature,
   val modelId: String,
+  val modelProviderId: String? = null,
+  val agentInfo: AgentInfo? = null,
 ) : LoggedEvent {
   enum class Feature {
     FEATURE_UNSPECIFIED,
@@ -34,6 +36,27 @@ data class AiEventStats(
     QUICK_EDIT,
     CODE_COMPLETION,
     TRANSFORM_CODE,
+    CHANGE_REVIEW,
+    ONBOARDING,
+    NEXT_EDIT_PREDICTION,
+  }
+}
+
+data class AgentInfo(
+  val agentType: AgentType = AgentType.AGENT_TYPE_UNSPECIFIED,
+  val agentVersion: String? = null,
+  val acpProtocolVersion: Int? = null,
+) {
+  enum class AgentType {
+    AGENT_TYPE_UNSPECIFIED,
+    BUILT_IN,
+    CLAUDE_CODE,
+    CODEX,
+    ANTIGRAVITY,
+    OPENCODE,
+    COPILOT,
+    OTHER,
+    JETSKI,
   }
 }
 
@@ -111,6 +134,12 @@ data class ChatBotEventMetadata(
     SYNC,
     BUILD,
     OTHER,
+    SLASH_COMMAND,
+    CRASHLYTICS,
+    PLAY_VITALS,
+    OTHER_EDITOR,
+    LOGCAT,
+    QUICK_EDIT_ENTRY_POINT,
   }
 
   enum class ChatMode {
@@ -118,6 +147,8 @@ data class ChatBotEventMetadata(
     CHAT,
     AGENT_MODE,
     QUICK_EDIT,
+    PLANNING,
+    VERSION_UPGRADE_AGENT,
   }
 
   enum class ToolCallResponseStatus {
@@ -137,6 +168,31 @@ data class ChatBotEventMetadata(
     BUILD_FAILED,
     BUILD_INTERRUPTED,
     MALFORMATTED_TOOL_CALL,
+    GRADLE_ERR_NO_MODULES,
+    GRADLE_ERR_NOT_ANDROID,
+    GRADLE_ERR_MODULE_NOT_FOUND,
+    GRADLE_ERR_ARTIFACT_NOT_FOUND,
+    GRADLE_ERR_VARIANT_NOT_FOUND,
+    GRADLE_ERR_WRONG_ARTIFACT,
+    GRADLE_ERR_MISSING_DATA,
+    BUILD_TASK_NOT_FOUND,
+    SUB_AGENT_RESULT,
+    SUB_AGENT_ENDED_WITHOUT_RESPONSE,
+    ERR_INVALID_ARGUMENTS,
+    ERR_INVALID_URL,
+    ERR_FILE_BLOCKED_BY_GIT_IGNORE,
+    ERR_FILE_CRITIC_TIMED_OUT,
+    ERR_FILE_IS_DIRECTORY,
+    ERR_INVALID_LINE_RANGE,
+    ERR_FILE_MODIFIED_BY_SOMEONE_ELSE,
+    TOOL_EXECUTION_INTERRUPTED,
+    GRADLE_ERR_DAEMON_CONNECTION_FAILED,
+    GRADLE_ERR_BUILD_CANCELLED,
+    GRADLE_ERR_UNSUPPORTED_VERSION,
+    GRADLE_ERR_PROJECT_DIR_NOT_FOUND,
+    GRADLE_ERR_INVALID_ARGUMENTS,
+    GRADLE_ERR_COMPILATION_FAILED,
+    GRADLE_ERR_TEST_FAILED,
   }
 
   enum class BotResponseErrorStatus {
@@ -158,9 +214,59 @@ data class ChatBotEventMetadata(
     ALREADY_EXISTS,
     NOT_FOUND,
     CANCELLED,
+    STATUS_OK,
+    UNKNOWN_ERROR,
   }
 
-  data class BotResponse(val chunkLatenciesMillis: List<Long>, val timeToFirstTokenMillis: Long, val errorStatus: BotResponseErrorStatus)
+  data class BotResponse(
+    val chunkLatenciesMillis: List<Long>,
+    val timeToFirstTokenMillis: Long,
+    val errorStatus: BotResponseErrorStatus,
+    val latencyMilliseconds: Long? = null,
+    val inputTokenCount: Int? = null,
+    val outputTokenCount: Int? = null,
+    val cacheReadTokenCount: Int? = null,
+    val thinkingOutputTokenCount: Int? = null,
+    val finishReason: FinishReason? = null,
+    val historyMessageCount: Int? = null,
+    val systemInstructionLengthChars: Int? = null,
+    val requestSizeBytes: Long? = null,
+    val responseSizeBytes: Long? = null,
+    val responseChunks: List<ResponseChunk> = emptyList(),
+    val requestId: String? = null,
+    val serverTraceId: String? = null,
+    val httpStatusCode: Int? = null,
+  ) {
+    enum class FinishReason {
+      FINISH_REASON_UNSPECIFIED,
+      STOP,
+      MAX_TOKENS,
+      SAFETY,
+      RECITATION,
+      MISSING_THOUGHT_SIGNATURE,
+      LANGUAGE,
+      OTHER,
+      BLOCKLIST,
+      PROHIBITED_CONTENT,
+      SPII,
+      MALFORMED_FUNCTION_CALL,
+      IMAGE_SAFETY,
+      IMAGE_PROHIBITED_CONTENT,
+      IMAGE_OTHER,
+      NO_IMAGE,
+      IMAGE_RECITATION,
+      UNEXPECTED_TOOL_CALL,
+      TOO_MANY_TOOL_CALLS,
+      MALFORMED_RESPONSE,
+    }
+
+    data class ResponseChunk(
+      val timestampMillis: Long = 0L,
+      val textLengthChars: Int = 0,
+      val thoughtLengthChars: Int = 0,
+      val hasSignature: Boolean = false,
+    )
+  }
 
   data class UserFeedback(val sentiment: Sentiment, val userInput: UserInput? = null) {
     enum class Sentiment {
@@ -180,13 +286,53 @@ data class ChatBotEventMetadata(
     }
   }
 
-  data class ToolCallResponse(val toolCallId: String, val toolName: String, val status: ToolCallResponseStatus)
+  data class ToolCallResponse(
+    val toolCallId: String,
+    val toolName: String,
+    val status: ToolCallResponseStatus,
+    val executionDurationMillis: Long? = null,
+    val activeExecutionDurationMillis: Long? = null,
+    val startTimestampMillis: Long? = null,
+    val executionStatus: ExecutionStatus? = null,
+  ) {
+    enum class ExecutionStatus {
+      UNKNOWN_STATUS,
+      SUCCESS,
+      INTERRUPTED,
+      INTERNAL_ERROR,
+    }
+  }
 }
 
 data class DevAiContext(val conversation: Conversation? = null, val edit: Edit? = null) {
 
-  data class Conversation(val conversationId: String, val turn: Turn) {
-    data class Turn(val turnIndex: Int, val edit: List<Edit>, val lastFeedbackProvided: FeedbackProvided, val turnId: String)
+  data class Conversation(
+    val conversationId: String,
+    val turn: Turn,
+    val trajectoryId: String? = null,
+    val parentTrajectoryId: String? = null,
+    val isChatThread: Boolean? = null,
+  ) {
+    data class Turn(
+      val turnIndex: Int,
+      val edit: List<Edit>,
+      val lastFeedbackProvided: FeedbackProvided,
+      val turnId: String,
+      val latencyMilliseconds: Long? = null,
+      val fromSlashCommand: Boolean? = null,
+      val userQueryType: UserQueryType? = null,
+      val exceptionClassName: String? = null,
+      val commentCount: Int? = null,
+    ) {
+      enum class UserQueryType {
+        USER_QUERY_TYPE_UNSPECIFIED,
+        DEFAULT,
+        STEER,
+        QUEUED,
+        SUB_AGENT,
+        AUTO_RETRY,
+      }
+    }
   }
 
   data class Edit(
