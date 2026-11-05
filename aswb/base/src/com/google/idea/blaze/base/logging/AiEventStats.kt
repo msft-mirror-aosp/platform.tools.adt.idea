@@ -47,6 +47,7 @@ data class AiEventStats(
 data class SkillsEventMetadata(
   val activation: Activation? = null,
   val discovery: Discovery? = null,
+  val userAction: UserAction? = null,
 ) {
   enum class SkillType {
     UNKNOWN_SKILL_TYPE,
@@ -59,6 +60,24 @@ data class SkillsEventMetadata(
     PROJECT,
     GLOBAL,
     BUILT_IN,
+  }
+
+  enum class ActionType {
+    UNKNOWN_ACTION,
+    OPEN_UI,
+    TOGGLE_ENABLE,
+    CHANGE_SCOPE,
+    UNINSTALL,
+    INSTALL,
+    UPLOAD,
+  }
+
+  enum class EntryPoint {
+    UNKNOWN_ENTRY_POINT,
+    AGENT_MENU,
+    COMPLETION_POPUP,
+    SETTINGS_CONFIGURABLE,
+    SEARCH_EVERYWHERE,
   }
 
   enum class SkillName {
@@ -120,6 +139,18 @@ data class SkillsEventMetadata(
     val parsedSuccessfulCount: Int = 0,
     val parsedFailedCount: Int = 0,
     val tokenCount: Long = 0L,
+  )
+
+  data class UserAction(
+    val actionType: ActionType = ActionType.UNKNOWN_ACTION,
+    val skillName: SkillName = SkillName.UNKNOWN_SKILL_NAME,
+    val skillType: SkillType = SkillType.UNKNOWN_SKILL_TYPE,
+    val sourceScope: Scope = Scope.UNKNOWN_SCOPE,
+    val targetScope: Scope = Scope.UNKNOWN_SCOPE,
+    val enabled: Boolean = false,
+    val entryPoint: EntryPoint = EntryPoint.UNKNOWN_ENTRY_POINT,
+    val isConflictResolution: Boolean = false,
+    val customSkillName: String? = null,
   )
 }
 
