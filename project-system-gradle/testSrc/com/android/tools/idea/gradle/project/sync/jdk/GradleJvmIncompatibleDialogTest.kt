@@ -20,25 +20,43 @@ import com.android.tools.idea.testing.TestMessagesDialog
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.ui.TestDialog
 import com.intellij.openapi.ui.TestDialogManager
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.util.lang.JavaVersion
 import java.util.concurrent.CompletableFuture
 import org.gradle.util.GradleVersion
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
-class GradleJvmIncompatibleDialogTest : LightPlatformTestCase() {
+@RunsInEdt
+class GradleJvmIncompatibleDialogTest {
+
+  private val projectRule = ProjectRule()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule())
+
+  private val project
+    get() = projectRule.project
 
   private lateinit var gradleJvmCompatibility: GradleJvmCompatibilityInfo
   private lateinit var applyCompatibleJvmAction: DescribedBuildIssueQuickFix
   private lateinit var openSettingsAction: DescribedBuildIssueQuickFix
   private lateinit var currentJavaVersion: JavaVersion
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     gradleJvmCompatibility =
       GradleJvmCompatibilityInfo(
         GradleVersion.version("8.0"),
@@ -50,11 +68,12 @@ class GradleJvmIncompatibleDialogTest : LightPlatformTestCase() {
     openSettingsAction = mock(DescribedBuildIssueQuickFix::class.java)
   }
 
-  override fun tearDown() {
-    super.tearDown()
+  @After
+  fun tearDown() {
     TestDialogManager.setTestDialog(TestDialog.DEFAULT)
   }
 
+  @Test
   fun `test show dialog displays correct message`() {
     val testDialog = TestMessagesDialog(0)
     TestDialogManager.setTestDialog(testDialog)
@@ -67,6 +86,7 @@ class GradleJvmIncompatibleDialogTest : LightPlatformTestCase() {
     assertEquals(expectedMessage, testDialog.displayedMessage)
   }
 
+  @Test
   fun `test show dialog select apply compatible jvm runs action`() {
     val expectedFuture = CompletableFuture.completedFuture("done")
     whenever(applyCompatibleJvmAction.runQuickFix(project, DataContext.EMPTY_CONTEXT)).thenReturn(expectedFuture)
@@ -78,6 +98,7 @@ class GradleJvmIncompatibleDialogTest : LightPlatformTestCase() {
     verify(openSettingsAction, never()).runQuickFix(any(), any())
   }
 
+  @Test
   fun `test show dialog select open settings runs action`() {
     val expectedFuture = CompletableFuture.completedFuture("settings")
     whenever(openSettingsAction.runQuickFix(project, DataContext.EMPTY_CONTEXT)).thenReturn(expectedFuture)
@@ -89,6 +110,7 @@ class GradleJvmIncompatibleDialogTest : LightPlatformTestCase() {
     verify(applyCompatibleJvmAction, never()).runQuickFix(any(), any())
   }
 
+  @Test
   fun `test show dialog cancel runs no action`() {
     TestDialogManager.setTestDialog(TestMessagesDialog(-1))
 

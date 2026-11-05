@@ -15,19 +15,34 @@
  */
 package com.android.tools.idea.gradle.jdk
 
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 
-class GradleDefaultJdkPathStoreTest : LightPlatformTestCase() {
+@RunsInEdt
+class GradleDefaultJdkPathStoreTest {
 
-  override fun tearDown() {
+  private val projectRule = ProjectRule()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule())
+
+  @After
+  fun tearDown() {
     GradleDefaultJdkPathStore.jdkPath = null
-    super.tearDown()
   }
 
+  @Test
   fun `test Given undefined default JDK When obtain path Then returns null`() {
     assertNull(GradleDefaultJdkPathStore.jdkPath)
   }
 
+  @Test
   fun `test Given stored default JDK When obtain path Then returns expected path`() {
     val storeJdkPath = "/jdk/path"
     GradleDefaultJdkPathStore.jdkPath = storeJdkPath

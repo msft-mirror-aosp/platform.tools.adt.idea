@@ -19,20 +19,35 @@ import com.android.tools.idea.sdk.IdeSdks
 import com.android.tools.idea.testing.JdkConstants
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.projectRoots.ProjectJdkTable
+import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.IdeaTestUtil
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
 import org.jetbrains.kotlin.tools.projectWizard.core.asPath
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 
-class ProjectJdkTableUtilsTest : LightPlatformTestCase() {
+@RunsInEdt
+class ProjectJdkTableUtilsTest {
 
-  override fun tearDown() {
+  private val projectRule = ProjectRule()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule())
+
+  @After
+  fun tearDown() {
     runWriteActionAndWait {
       val jdkTable = ProjectJdkTable.getInstance()
       jdkTable.allJdks.forEach { jdkTable.removeJdk(it) }
     }
-    super.tearDown()
   }
 
+  @Test
   fun `test Given ProjectTableJdk containing multiple entries When finding an existing and valid one Then JDK21 entry is returned`() {
     val jdk21 = IdeSdks.getInstance().getOrCreateJdk(JdkConstants.JDK_21_PATH.asPath())!!
     runWriteActionAndWait {
@@ -48,6 +63,7 @@ class ProjectJdkTableUtilsTest : LightPlatformTestCase() {
     }
   }
 
+  @Test
   fun `test Given ProjectTableJdk containing multiple entries When finding an existing and valid one Then JDK25 entry is returned`() {
     val jdk25 = IdeSdks.getInstance().getOrCreateJdk(JdkConstants.JDK_25_PATH.asPath())!!
     runWriteActionAndWait {
@@ -63,6 +79,7 @@ class ProjectJdkTableUtilsTest : LightPlatformTestCase() {
     }
   }
 
+  @Test
   fun `test Given ProjectTableJdk containing multiple entries When finding a not existing one Then null is returned`() {
     runWriteActionAndWait {
       ProjectJdkTable.getInstance().addJdk(IdeaTestUtil.getMockJdk9())
@@ -72,6 +89,7 @@ class ProjectJdkTableUtilsTest : LightPlatformTestCase() {
     ProjectJdkTableUtils.findProjectTableJdkWithVersion(11).also { assertNull(it) }
   }
 
+  @Test
   fun `test Given ProjectTableJdk containing invalid entry When fetching it Then null is returned since is invalid JDK`() {
     runWriteActionAndWait { ProjectJdkTable.getInstance().addJdk(IdeaTestUtil.getMockJdk9()) }
 

@@ -15,33 +15,50 @@
  */
 package com.android.tools.idea.gradle.jdk
 
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
 import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmCriteria
 import org.jetbrains.plugins.gradle.util.toJvmVendor
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 
-class GradleDefaultJvmCriteriaStoreTest : LightPlatformTestCase() {
+@RunsInEdt
+class GradleDefaultJvmCriteriaStoreTest {
 
-  override fun tearDown() {
+  private val projectRule = ProjectRule()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule())
+
+  @After
+  fun tearDown() {
     GradleDefaultJvmCriteriaStore.daemonJvmCriteria = null
-    super.tearDown()
   }
 
+  @Test
   fun `test Given undefined default JVM criteria When obtain criteria Then returns null`() {
     assertNull(GradleDefaultJvmCriteriaStore.daemonJvmCriteria)
   }
 
+  @Test
   fun `test Given stored default JVM criteria with known vendor When obtain criteria Then returns expected criteria`() {
     val storeJvmCriteria = GradleDaemonJvmCriteria("19", "IBM".toJvmVendor())
     GradleDefaultJvmCriteriaStore.daemonJvmCriteria = storeJvmCriteria
     assertEquals(storeJvmCriteria, GradleDefaultJvmCriteriaStore.daemonJvmCriteria)
   }
 
+  @Test
   fun `test Given stored default JVM criteria with unknown vendor When obtain criteria Then returns expected criteria`() {
     val storeJvmCriteria = GradleDaemonJvmCriteria("21", "unknown vendor".toJvmVendor())
     GradleDefaultJvmCriteriaStore.daemonJvmCriteria = storeJvmCriteria
     assertEquals(storeJvmCriteria, GradleDefaultJvmCriteriaStore.daemonJvmCriteria)
   }
 
+  @Test
   fun `test Given stored default JVM criteria with any vendor When obtain criteria Then returns expected criteria`() {
     val storeJvmCriteria = GradleDaemonJvmCriteria("24", null)
     GradleDefaultJvmCriteriaStore.daemonJvmCriteria = storeJvmCriteria

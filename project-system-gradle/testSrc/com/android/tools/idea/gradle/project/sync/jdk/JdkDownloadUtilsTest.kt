@@ -26,12 +26,21 @@ import com.intellij.openapi.projectRoots.impl.jdkDownloader.JdkProduct
 import com.intellij.openapi.roots.ui.configuration.projectRoot.SdkDownloadTracker
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.ui.TestDialogManager
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.common.timeoutRunBlocking
 import com.intellij.testFramework.replaceService
 import com.intellij.util.application
 import java.util.function.Consumer
 import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 import org.mockito.Mockito.doAnswer
 import org.mockito.Mockito.mock
 import org.mockito.kotlin.any
@@ -39,14 +48,23 @@ import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.whenever
 
-class JdkDownloadUtilsTest : LightPlatformTestCase() {
+class JdkDownloadUtilsTest {
+
+  private val projectRule = ProjectRule()
+  private val disposableRule = DisposableRule()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(disposableRule)
+
+  private val project
+    get() = projectRule.project
+
+  private val testRootDisposable
+    get() = disposableRule.disposable
 
   private var capturedErrorDialogMessage: String? = null
 
-  override fun runInDispatchThread() = false
-
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     configJdkListDownloaderWithPredefinedItems(
       simpleJdkItem("Oracle", "OpenJDK", 21),
       simpleJdkItem("JetBrains", "Runtime", 17),
@@ -57,11 +75,12 @@ class JdkDownloadUtilsTest : LightPlatformTestCase() {
     captureErrorDialogMessages()
   }
 
-  override fun tearDown() = runBlocking {
+  @After
+  fun tearDown() = runBlocking {
     runWriteActionAndWait { cleanJdkTable() }
-    super.tearDown()
   }
 
+  @Test
   fun `test Given JDK version unknown for downloaderModel When downloading JDK Then expected exception dialog is displayed`() =
     timeoutRunBlocking {
       val downloadedJdk = JdkDownloadUtils.downloadJdkWithVersion(project, 0)
@@ -74,6 +93,7 @@ class JdkDownloadUtilsTest : LightPlatformTestCase() {
       )
     }
 
+  @Test
   fun `test Given JDK version existing in downloaderModel When download fails Then expected exception dialog is displayed`() =
     timeoutRunBlocking {
       val actualJdkItemAndPath = JdkDownloadUtils.downloadJdkWithVersion(project, 17)
@@ -86,6 +106,7 @@ class JdkDownloadUtilsTest : LightPlatformTestCase() {
       )
     }
 
+  @Test
   fun `test Given JDK version existing in downloaderModel When download succeeds Then expected Sdk instance is returned`() =
     timeoutRunBlocking {
       val sdkDownloadTracker =

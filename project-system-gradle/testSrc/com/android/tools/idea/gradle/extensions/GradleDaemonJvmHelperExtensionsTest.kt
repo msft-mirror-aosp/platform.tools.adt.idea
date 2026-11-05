@@ -17,12 +17,24 @@ package com.android.tools.idea.gradle.extensions
 
 import com.android.tools.idea.gradle.fixtures.createDaemonJvmPropertiesFile
 import com.android.tools.idea.gradle.fixtures.createWrapperPropertiesFile
-import com.intellij.testFramework.LightPlatformTestCase
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
+import com.intellij.testFramework.RunsInEdt
 import org.gradle.util.GradleVersion
 import org.jetbrains.plugins.gradle.service.execution.GradleDaemonJvmHelper
+import org.junit.Assert.assertFalse
+import org.junit.Rule
+import org.junit.Test
 
-class GradleDaemonJvmHelperExtensionsTest : LightPlatformTestCase() {
+@RunsInEdt
+class GradleDaemonJvmHelperExtensionsTest {
 
+  @get:Rule val projectRule = AndroidProjectRule.inMemory().onEdt()
+
+  private val project
+    get() = projectRule.project
+
+  @Test
   fun testProjectNotUsingDaemonJvmCriteriaWithSupportedGradleVersion() {
     val gradleVersion = GradleVersion.version("8.10")
 
@@ -33,6 +45,7 @@ class GradleDaemonJvmHelperExtensionsTest : LightPlatformTestCase() {
     assertFalse(GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(project.basePath!!, gradleVersion))
   }
 
+  @Test
   fun testProjectUsingDaemonJvmCriteriaWithUnsupportedGradleVersion() {
     val gradleVersion = GradleVersion.version("8.7")
 
@@ -43,6 +56,7 @@ class GradleDaemonJvmHelperExtensionsTest : LightPlatformTestCase() {
     assertFalse(GradleDaemonJvmHelper.isProjectUsingDaemonJvmCriteria(project.basePath!!, gradleVersion))
   }
 
+  @Test
   fun testProjectUsingDaemonJvmCriteriaWithSupportedGradleVersion() {
     val gradleVersion = GradleVersion.version("8.10")
 

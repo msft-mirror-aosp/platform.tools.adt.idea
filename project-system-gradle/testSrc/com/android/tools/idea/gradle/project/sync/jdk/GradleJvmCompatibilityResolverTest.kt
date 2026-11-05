@@ -15,12 +15,27 @@
  */
 package com.android.tools.idea.gradle.project.sync.jdk
 
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.util.lang.JavaVersion
 import org.gradle.util.GradleVersion
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 
-class GradleJvmCompatibilityResolverTest : LightPlatformTestCase() {
+@RunsInEdt
+class GradleJvmCompatibilityResolverTest {
 
+  private val projectRule = ProjectRule()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule())
+
+  private val project
+    get() = projectRule.project
+
+  @Test
   fun `test resolve jvm compatibility for old Gradle with expected versions`() {
     val expectedGradleVersion = GradleVersion.version("8.0")
     GradleJvmCompatibilityResolver.resolve(project, expectedGradleVersion).run {
@@ -31,6 +46,7 @@ class GradleJvmCompatibilityResolverTest : LightPlatformTestCase() {
     }
   }
 
+  @Test
   fun `test resolve jvm compatibility for gradle with expected versions`() {
     val expectedGradleVersion = GradleVersion.version("9.1.0")
     GradleJvmCompatibilityResolver.resolve(project, expectedGradleVersion).run {

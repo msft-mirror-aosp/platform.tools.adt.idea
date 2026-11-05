@@ -19,7 +19,10 @@ import com.android.tools.adtui.swing.findAllDescendants
 import com.android.tools.idea.gradle.jdk.GradleDefaultJvmCriteriaStore
 import com.intellij.openapi.externalSystem.util.PaintAwarePanel
 import com.intellij.openapi.options.ConfigurationException
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.impl.CollapsibleTitledSeparatorImpl
 import com.intellij.util.lang.JavaVersion
@@ -30,15 +33,38 @@ import org.jetbrains.plugins.gradle.service.settings.GradleDaemonJvmCriteriaView
 import org.jetbrains.plugins.gradle.service.settings.GradleDaemonJvmCriteriaView.VendorItem
 import org.jetbrains.plugins.gradle.service.settings.GradleDaemonJvmCriteriaView.VersionItem
 import org.jetbrains.plugins.gradle.settings.GradleSettings
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 
-class AndroidDefaultGradleJvmCriteriaControlBuilderTest : LightPlatformTestCase() {
+@RunsInEdt
+class AndroidDefaultGradleJvmCriteriaControlBuilderTest {
+
+  private val projectRule = ProjectRule()
+  private val disposableRule = DisposableRule()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(disposableRule).around(EdtRule())
+
+  private val project
+    get() = projectRule.project
+
+  private val testRootDisposable
+    get() = disposableRule.disposable
 
   private lateinit var controlBuilder: AndroidDefaultGradleJvmCriteriaControlBuilder
   private lateinit var gradleSettings: GradleSettings
   private lateinit var container: PaintAwarePanel
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     container = PaintAwarePanel()
     gradleSettings = GradleSettings(project)
     controlBuilder = AndroidDefaultGradleJvmCriteriaControlBuilder(gradleSettings, testRootDisposable)
@@ -46,12 +72,13 @@ class AndroidDefaultGradleJvmCriteriaControlBuilderTest : LightPlatformTestCase(
     controlBuilder.fillUi(container, 0)
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     GradleDefaultJvmCriteriaStore.daemonJvmCriteria = null
     controlBuilder.disposeUIResources()
-    super.tearDown()
   }
 
+  @Test
   fun testComponentDefaults() {
     assertFalse(controlBuilder.isModified)
     assertTrue(controlBuilder.validate(gradleSettings))
@@ -67,30 +94,35 @@ class AndroidDefaultGradleJvmCriteriaControlBuilderTest : LightPlatformTestCase(
     criteriaView.assertAdvancedSettingsIsVisible(true)
   }
 
+  @Test
   fun testValidationOfValidInput() {
     controlBuilder.defaultGradleDaemonJvmCriteriaView.selectedVersion = VersionItem.Default(11)
 
     assertTrue(controlBuilder.validate(gradleSettings))
   }
 
+  @Test
   fun testValidationOfInvalidInput() {
     controlBuilder.defaultGradleDaemonJvmCriteriaView.selectedVersion = VersionItem.Custom("invalid")
 
     assertThrows(ConfigurationException::class.java) { controlBuilder.validate(gradleSettings) }
   }
 
+  @Test
   fun testApplyInvalidInput() {
     controlBuilder.defaultGradleDaemonJvmCriteriaView.selectedVersion = VersionItem.Custom("invalid")
 
     assertThrows(ConfigurationException::class.java) { controlBuilder.apply(gradleSettings) }
   }
 
+  @Test
   fun testApplyWithoutModification() {
     controlBuilder.apply(gradleSettings)
 
     assertNull(GradleDefaultJvmCriteriaStore.daemonJvmCriteria)
   }
 
+  @Test
   fun testApplyValidInputIsStoredOnPropertyComponents() {
     controlBuilder.defaultGradleDaemonJvmCriteriaView.selectedVersion = VersionItem.Default(17)
     controlBuilder.defaultGradleDaemonJvmCriteriaView.selectedVendor = VendorItem.Default(JvmVendor.KnownJvmVendor.AZUL)

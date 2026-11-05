@@ -20,12 +20,32 @@ import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.projectRoots.impl.UnknownSdkEditorNotification
 import com.intellij.openapi.projectRoots.impl.UnknownSdkTracker
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.IdeaTestUtil
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.UsefulTestCase.assertEmpty
 import com.intellij.util.ui.UIUtil
+import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.RuleChain
 
-class UnknownSdkTrackerTest : LightPlatformTestCase() {
+@RunsInEdt
+class UnknownSdkTrackerTest {
+
+  private val projectRule = ProjectRule()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule())
+
+  private val project
+    get() = projectRule.project
+
+  @Before
+  fun setUp() {
+    // ProjectRule opens the project lazily; open it here and not inside the write action of the test.
+    projectRule.project
+  }
 
   @Test
   fun `test Given disabled UnknownSdkTracker When project JDK is invalid Then no notification was triggered`() {

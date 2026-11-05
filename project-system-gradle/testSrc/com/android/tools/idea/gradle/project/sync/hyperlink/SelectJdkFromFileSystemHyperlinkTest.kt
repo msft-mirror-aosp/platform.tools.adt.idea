@@ -17,15 +17,34 @@ package com.android.tools.idea.gradle.project.sync.hyperlink
 
 import com.android.tools.idea.projectsystem.AndroidProjectSettingsService
 import com.intellij.openapi.roots.ui.configuration.ProjectSettingsService
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
 import javax.swing.event.HyperlinkEvent
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
-class SelectJdkFromFileSystemHyperlinkTest : LightPlatformTestCase() {
+@RunsInEdt
+class SelectJdkFromFileSystemHyperlinkTest {
 
+  private val projectRule = ProjectRule()
+  private val disposableRule = DisposableRule()
+
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(disposableRule).around(EdtRule())
+
+  private val project
+    get() = projectRule.project
+
+  private val testRootDisposable
+    get() = disposableRule.disposable
+
+  @Test
   fun `test Given JdkHyperlink without rootProjectPath When execute Then chooseJdkLocation was invoked with null path`() {
     val mockService = mock<AndroidProjectSettingsService>()
     project.replaceService(ProjectSettingsService::class.java, mockService, testRootDisposable)
@@ -36,6 +55,7 @@ class SelectJdkFromFileSystemHyperlinkTest : LightPlatformTestCase() {
     verify(mockService).chooseJdkLocation(null)
   }
 
+  @Test
   fun `test Given JdkHyperlink with rootProjectPath When execute Then chooseJdkLocation was invoked with provided path`() {
     val mockService = mock<AndroidProjectSettingsService>()
     project.replaceService(ProjectSettingsService::class.java, mockService, testRootDisposable)
