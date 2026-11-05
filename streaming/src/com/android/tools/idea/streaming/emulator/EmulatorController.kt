@@ -163,23 +163,27 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
   val isShuttingDown: Boolean
     get() = emulatorState.get() != EmulatorState.RUNNING
 
-  val emulatorControllerStub: EmulatorControllerGrpc.EmulatorControllerStub
+  private val emulatorControllerStub: EmulatorControllerGrpc.EmulatorControllerStub
     get() = connectionReference.get()?.emulatorControllerStub ?: throwNotYetConnected()
 
-  val snapshotServiceStub: SnapshotServiceGrpc.SnapshotServiceStub
+  private val snapshotServiceStub: SnapshotServiceGrpc.SnapshotServiceStub
     get() = connectionReference.get()?.snapshotServiceStub ?: throwNotYetConnected()
 
-  val uiControllerStub: UiControllerGrpc.UiControllerStub
+  private val uiControllerStub: UiControllerGrpc.UiControllerStub
     get() = connectionReference.get()?.uiControllerStub ?: throwNotYetConnected()
 
-  val modemStub: ModemGrpc.ModemStub
+  private val modemStub: ModemGrpc.ModemStub
     get() = connectionReference.get()?.modemStub ?: throwNotYetConnected()
 
-  val virtualSceneStub: VirtualSceneServiceGrpc.VirtualSceneServiceStub
+  private val virtualSceneStub: VirtualSceneServiceGrpc.VirtualSceneServiceStub
     get() = connectionReference.get()?.virtualSceneStub ?: throwNotYetConnected()
 
   private val carServiceStub: CarServiceGrpc.CarServiceStub
     get() = connectionReference.get()?.carServiceStub ?: throwNotYetConnected()
+
+  @get:TestOnly
+  internal val maxInboundMessageSize: Int
+    get() = connectionReference.get()?.maxInboundMessageSize ?: 0
 
   init {
     Disposer.register(parentDisposable, this)
@@ -1613,6 +1617,19 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     override fun onError(t: Throwable) {
       if (
         channel?.isShutdown == false &&
+          emulatorState.get() == EmulatorState.RUNNING &&
+          t is StatusRuntimeException &&
+          t.status.code == Status.Code.RESOURCE_EXHAUSTED &&
+          connection != null &&
+          connection.maxInboundMessageSize < Int.MAX_VALUE
+      ) {
+        val maxInboundMessageSize = (connection.maxInboundMessageSize.toLong() * 2).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        connectGrpcOrIncreaseMaxInboundMessageSize(maxInboundMessageSize)
+      }
+
+      if (
+        connection == connectionReference.get() &&
+          channel?.isShutdown == false &&
           (t !is StatusRuntimeException ||
             (t.status.code != Status.Code.CANCELLED &&
               (t.status.code != Status.Code.UNAVAILABLE || emulatorState.get() == EmulatorState.RUNNING)))

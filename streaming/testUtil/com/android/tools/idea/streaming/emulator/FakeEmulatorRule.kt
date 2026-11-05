@@ -20,8 +20,21 @@ import com.android.sdklib.internal.avd.BootMode
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.testutils.ProcessHandleProviderRule
 import com.android.tools.idea.avdmanager.AvdManagerConnection
+import com.android.tools.idea.io.grpc.CallOptions
+import com.android.tools.idea.io.grpc.Channel
+import com.android.tools.idea.io.grpc.ClientCall
+import com.android.tools.idea.io.grpc.ClientInterceptor
+import com.android.tools.idea.io.grpc.ForwardingChannelBuilder2
+import com.android.tools.idea.io.grpc.ForwardingClientCall.SimpleForwardingClientCall
+import com.android.tools.idea.io.grpc.ForwardingClientCallListener.SimpleForwardingClientCallListener
+import com.android.tools.idea.io.grpc.ManagedChannel
 import com.android.tools.idea.io.grpc.ManagedChannelBuilder
+import com.android.tools.idea.io.grpc.Metadata
+import com.android.tools.idea.io.grpc.MethodDescriptor
+import com.android.tools.idea.io.grpc.Status
 import com.android.tools.idea.io.grpc.inprocess.InProcessChannelBuilder
+import com.android.tools.idea.io.grpc.internal.GrpcUtil
+import com.android.tools.idea.protobuf.MessageLite
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.AndroidSdksImpl
 import com.android.tools.idea.sdk.IdeAvdManagers
@@ -36,6 +49,7 @@ import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.registerOrReplaceServiceInstance
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import org.junit.rules.ExternalResource
@@ -63,7 +77,7 @@ class FakeEmulatorRule : TestRule {
         val grpcFactory =
           object : GrpcChannelBuilderFactory {
             override fun newGrpcChannelBuilder(host: String, port: Int): ManagedChannelBuilder<*> =
-              InProcessChannelBuilder.forName(FakeEmulator.grpcServerName(port))
+              TestGrpcChannelBuilder(FakeEmulator.grpcServerName(port))
           }
         ApplicationManager.getApplication().registerOrReplaceServiceInstance(GrpcChannelBuilderFactory::class.java, grpcFactory, disposable)
         val emulatorCatalog = RunningEmulatorCatalog.getInstance()
@@ -146,6 +160,68 @@ class FakeEmulatorRule : TestRule {
       emulator.start(standalone = !forceLaunchInToolWindow)
     }
   }
-}
 
-var instanceCounter: Int = 0
+  /** Wraps [InProcessChannelBuilder] to enforce [maxInboundMessageSize], which `InProcessTransport` ignores by default. */
+  private class TestGrpcChannelBuilder(name: String) : ForwardingChannelBuilder2<TestGrpcChannelBuilder>() {
+    private val delegate = InProcessChannelBuilder.forName(name)
+    private var maxInboundMessageSize = GrpcUtil.DEFAULT_MAX_MESSAGE_SIZE
+
+    override fun delegate(): ManagedChannelBuilder<*> = delegate
+
+    override fun maxInboundMessageSize(bytes: Int): TestGrpcChannelBuilder {
+      maxInboundMessageSize = bytes
+      delegate.maxInboundMessageSize(bytes)
+      return this
+    }
+
+    override fun build(): ManagedChannel {
+      val channelMaxInboundMessageSize = maxInboundMessageSize
+      delegate.intercept(
+        object : ClientInterceptor {
+          override fun <ReqT, RespT> interceptCall(
+            method: MethodDescriptor<ReqT, RespT>,
+            callOptions: CallOptions,
+            next: Channel,
+          ): ClientCall<ReqT, RespT> {
+            val maxSize = callOptions.maxInboundMessageSize ?: channelMaxInboundMessageSize
+            val call = next.newCall(method, callOptions)
+            return object : SimpleForwardingClientCall<ReqT, RespT>(call) {
+              override fun start(responseListener: Listener<RespT>, headers: Metadata) {
+                super.start(
+                  object : SimpleForwardingClientCallListener<RespT>(responseListener) {
+                    private val closed = AtomicBoolean(false)
+
+                    override fun onMessage(message: RespT) {
+                      val size = (message as? MessageLite)?.serializedSize ?: 0
+                      if (size > maxSize) {
+                        if (closed.compareAndSet(false, true)) {
+                          val status = Status.RESOURCE_EXHAUSTED.withDescription("gRPC message exceeds maximum size $maxSize: $size")
+                          call.cancel(status.description, null)
+                          delegate().onClose(status, Metadata())
+                        }
+                      } else if (!closed.get()) {
+                        super.onMessage(message)
+                      }
+                    }
+
+                    override fun onClose(status: Status, trailers: Metadata) {
+                      if (closed.compareAndSet(false, true)) {
+                        super.onClose(status, trailers)
+                      }
+                    }
+                  },
+                  headers,
+                )
+              }
+            }
+          }
+        }
+      )
+      return delegate.build()
+    }
+  }
+
+  companion object {
+    private var instanceCounter: Int = 0
+  }
+}

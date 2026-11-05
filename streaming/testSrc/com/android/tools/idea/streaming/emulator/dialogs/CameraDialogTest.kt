@@ -17,9 +17,11 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.emulation.control.incubating.AnimationState
 import com.android.emulation.control.incubating.Poster
+import com.android.emulation.control.incubating.VirtualSceneServiceGrpc
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.idea.io.grpc.Status
 import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.idea.protobuf.BytesValue
 import com.android.tools.idea.protobuf.StringValue
@@ -33,6 +35,7 @@ import com.android.tools.idea.testing.file.registerFakeFileChooserFactory
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
@@ -45,6 +48,7 @@ import java.awt.datatransfer.DataFlavor
 import java.awt.image.BufferedImage
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
 import javax.imageio.ImageIO
 import javax.swing.JButton
 import javax.swing.JSlider
@@ -91,6 +95,12 @@ class CameraDialogTest {
 
   @Test
   fun testInitialStateFromDefaults() {
+    val wallImagePath = createTestImageFile("wall_poster.png", Color.BLUE)
+    val virtualFile = mock<VirtualFile>()
+    whenever(virtualFile.path).thenReturn(wallImagePath.toString())
+    projectRule.disposable.registerFakeFileChooserFactory(virtualFile)
+
+    fakeEmulator.pauseGrpc()
     val dialog = CameraDialog(emulatorController).show()
     val rootPane = dialog.rootPane
     val ui = FakeUi(rootPane)
@@ -98,20 +108,56 @@ class CameraDialogTest {
     val wallPreview = ui.getComponent<JBLabel> { it.name == "wallImagePreview" }
     val wallFileNameField = ui.getComponent<ExtendableTextField> { it.name == "wallFileNameField" }
     val wallSizeSlider = ui.getComponent<JSlider> { it.name == "wallSizeSlider" }
+    val wallSizeField = ui.getComponent<JTextField> { it.name == "wallSizeField" }
     val tablePreview = ui.getComponent<JBLabel> { it.name == "tableImagePreview" }
     val tableFileNameField = ui.getComponent<ExtendableTextField> { it.name == "tableFileNameField" }
     val tableSizeSlider = ui.getComponent<JSlider> { it.name == "tableSizeSlider" }
+    val tableSizeField = ui.getComponent<JTextField> { it.name == "tableSizeField" }
     val enableAnimationsCheckBox = ui.getComponent<JBCheckBox> { it.name == "enableAnimationsCheckBox" }
 
+    // Poster editing controls are disabled before receiving initial poster state from the emulator.
+    assertThat(wallPreview.isEnabled).isFalse()
+    assertThat(wallPreview.text).isNull()
+    assertThat(wallPreview.icon).isNull()
+    assertThat(wallFileNameField.isEnabled).isFalse()
+    assertThat(wallFileNameField.text).isEmpty()
+    assertThat(wallSizeSlider.isEnabled).isFalse()
+    assertThat(wallSizeField.isEnabled).isFalse()
+    assertThat(wallSizeSlider.isShowing).isFalse()
+    assertThat(tablePreview.isEnabled).isFalse()
+    assertThat(tablePreview.text).isNull()
+    assertThat(tablePreview.icon).isNull()
+    assertThat(tableFileNameField.isEnabled).isFalse()
+    assertThat(tableFileNameField.text).isEmpty()
+    assertThat(tableSizeSlider.isEnabled).isFalse()
+    assertThat(tableSizeField.isEnabled).isFalse()
+    assertThat(tableSizeSlider.isShowing).isFalse()
+    assertThat(enableAnimationsCheckBox.isEnabled).isTrue()
+    assertThat(enableAnimationsCheckBox.isSelected).isTrue()
+
+    // Editing actions are ignored while poster state is still unknown.
+    wallFileNameField.extensions.first { it.tooltip == "Select an image file" }.actionOnClick.run()
+    assertThat(wallFileNameField.text).isEmpty()
+    assertThat(wallPreview.icon).isNull()
+
+    fakeEmulator.resumeGrpc()
+    waitForCondition(5.seconds) { wallFileNameField.isEnabled && tableFileNameField.isEnabled }
+
+    assertThat(wallPreview.isEnabled).isTrue()
     assertThat(wallPreview.text).isEqualTo("No image applied")
     assertThat(wallPreview.icon).isNull()
     assertThat(wallFileNameField.text).isEmpty()
     assertThat(wallFileNameField.extensions).hasSize(1)
+    assertThat(wallSizeSlider.isEnabled).isTrue()
+    assertThat(wallSizeField.isEnabled).isTrue()
     assertThat(wallSizeSlider.isShowing).isFalse()
+    assertThat(tablePreview.isEnabled).isTrue()
     assertThat(tablePreview.text).isEqualTo("No image applied")
     assertThat(tablePreview.icon).isNull()
     assertThat(tableFileNameField.text).isEmpty()
     assertThat(tableFileNameField.extensions).hasSize(1)
+    assertThat(tableSizeSlider.isEnabled).isTrue()
+    assertThat(tableSizeField.isEnabled).isTrue()
     assertThat(tableSizeSlider.isShowing).isFalse()
     assertThat(enableAnimationsCheckBox.isSelected).isTrue()
 
@@ -163,6 +209,61 @@ class CameraDialogTest {
   }
 
   @Test
+  fun testEmbeddedImageWithoutFileName() {
+    val tableImageBytes = Files.readAllBytes(createTestImageFile("table_poster.png", Color.GREEN))
+    fakeEmulator.posters =
+      mapOf(
+        "wall" to Poster.newBuilder().setName("wall").setMinWidth(0.2f).setMaxWidth(2.0f).setScale(1.0f).build(),
+        "table" to
+          Poster.newBuilder()
+            .setName("table")
+            .setMinWidth(0.2f)
+            .setMaxWidth(1.0f)
+            .setScale(0.557f)
+            .setImage(BytesValue.of(ByteString.copyFrom(tableImageBytes)))
+            .build(),
+      )
+    fakeEmulator.clearGrpcCallLog()
+
+    val cameraDialog = CameraDialog(emulatorController)
+    fakeEmulator.getNextGrpcCall(5.seconds) { it.methodName.endsWith("/listPosters") }
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val dialog = cameraDialog.show()
+    val rootPane = dialog.rootPane
+    val ui = FakeUi(rootPane)
+
+    val tablePreview = ui.getComponent<JBLabel> { it.name == "tableImagePreview" }
+    val tableFileNameField = ui.getComponent<ExtendableTextField> { it.name == "tableFileNameField" }
+    val tableSizeSlider = ui.getComponent<JSlider> { it.name == "tableSizeSlider" }
+    val tableSizeField = ui.getComponent<JTextField> { it.name == "tableSizeField" }
+
+    waitForCondition(5.seconds) {
+      tablePreview.icon != null &&
+        tableFileNameField.text.isEmpty() &&
+        tableFileNameField.extensions.size == 2 &&
+        tableSizeSlider.isShowing &&
+        tableSizeSlider.value == 56 &&
+        tableSizeField.text == "0.56 m"
+    }
+    assertThat(fakeEmulator.posters["table"]?.scale).isEqualTo(0.557f)
+    assertThat(fakeEmulator.grpcCallLog.none { it.methodName.endsWith("/setPoster") }).isTrue()
+
+    tableFileNameField.extensions.first { it.tooltip == "Remove" }.actionOnClick.run()
+    assertThat(tablePreview.icon).isNull()
+    assertThat(tablePreview.text).isEqualTo("No image applied")
+    assertThat(tableFileNameField.extensions).hasSize(1)
+    assertThat(tableSizeSlider.isShowing).isFalse()
+
+    waitForCondition(5.seconds) {
+      fakeEmulator.posters["table"]?.hasImage() == false
+    }
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
   fun testDialogUiInteraction() {
     val wallImagePath = createTestImageFile("wall_poster.png", Color.RED)
     val virtualFile = mock<VirtualFile>()
@@ -179,10 +280,13 @@ class CameraDialogTest {
     val wallSizeField = ui.getComponent<JTextField> { it.name == "wallSizeField" }
     val enableAnimationsCheckBox = ui.getComponent<JBCheckBox> { it.name == "enableAnimationsCheckBox" }
 
+    waitForCondition(5.seconds) { wallFileNameField.isEnabled }
+
     // Add wall poster image via browse extension.
     wallFileNameField.extensions.first { it.tooltip == "Select an image file" }.actionOnClick.run()
 
-    assertThat(wallPreview.icon).isNotNull()
+    waitForCondition(5.seconds) { wallPreview.icon != null }
+    val initialIcon = wallPreview.icon
     assertThat(wallFileNameField.text).isEqualTo(wallImagePath.fileName.toString())
     assertThat(wallFileNameField.extensions).hasSize(2)
     assertThat(wallSizeSlider.isShowing).isTrue()
@@ -195,6 +299,7 @@ class CameraDialogTest {
     // Adjust wall poster size slider.
     wallSizeSlider.value = 150
     assertThat(wallSizeField.text).isEqualTo("1.50 m")
+    assertThat(wallPreview.icon).isSameAs(initialIcon)
 
     waitForCondition(5.seconds) {
       fakeEmulator.posters["wall"]?.scale == 0.75f
@@ -248,7 +353,10 @@ class CameraDialogTest {
     val tablePreview = ui.getComponent<JBLabel> { it.name == "tableImagePreview" }
     val tableFileNameField = ui.getComponent<ExtendableTextField> { it.name == "tableFileNameField" }
 
+    waitForCondition(5.seconds) { tableFileNameField.isEnabled }
+
     tableFileNameField.extensions.first { it.tooltip == "Select an image file" }.actionOnClick.run()
+    waitForCondition(5.seconds) { hasValidationError(ui, invalidPath.fileName.toString()) }
     assertThat(tablePreview.icon).isNull()
     assertThat(tablePreview.text).isEqualTo("No image applied")
 
@@ -259,6 +367,170 @@ class CameraDialogTest {
     val unsupportedTxt = tempDirRule.newPath("notes.txt").also { Files.writeString(it, "hello") }
     val unsupportedEvent = createDragEvent(listOf(unsupportedTxt.toFile()))
     assertThat(CameraDialog.getDroppedImageFile(unsupportedEvent)).isNull()
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
+  fun testListPostersFailureRecovery() {
+    val wallImagePath = createTestImageFile("wall_poster.png", Color.BLUE)
+    val virtualFile = mock<VirtualFile>()
+    whenever(virtualFile.path).thenReturn(wallImagePath.toString())
+    projectRule.disposable.registerFakeFileChooserFactory(virtualFile)
+
+    fakeEmulator.failGrpcCall(VirtualSceneServiceGrpc.getListPostersMethod(), Status.INTERNAL)
+    fakeEmulator.pauseGrpc()
+    val dialog = CameraDialog(emulatorController).show()
+    val ui = FakeUi(dialog.rootPane)
+
+    val wallPreview = ui.getComponent<JBLabel> { it.name == "wallImagePreview" }
+    val wallFileNameField = ui.getComponent<ExtendableTextField> { it.name == "wallFileNameField" }
+    val tablePreview = ui.getComponent<JBLabel> { it.name == "tableImagePreview" }
+    val tableFileNameField = ui.getComponent<ExtendableTextField> { it.name == "tableFileNameField" }
+    val enableAnimationsCheckBox = ui.getComponent<JBCheckBox> { it.name == "enableAnimationsCheckBox" }
+
+    assertThat(wallPreview.isEnabled).isFalse()
+    assertThat(wallPreview.text).isNull()
+
+    fakeEmulator.resumeGrpc()
+    waitForCondition(5.seconds) {
+      wallFileNameField.isEnabled && tableFileNameField.isEnabled && hasValidationError(ui, "Unable to load current poster settings")
+    }
+
+    assertThat(wallPreview.isEnabled).isTrue()
+    assertThat(wallPreview.text).isEqualTo("No image applied")
+    assertThat(tablePreview.isEnabled).isTrue()
+    assertThat(tablePreview.text).isEqualTo("No image applied")
+    assertThat(enableAnimationsCheckBox.isEnabled).isTrue()
+
+    // Selecting a valid image clears the error and applies the new poster.
+    wallFileNameField.extensions.first { it.tooltip == "Select an image file" }.actionOnClick.run()
+    waitForCondition(5.seconds) {
+      wallPreview.icon != null &&
+        fakeEmulator.posters["wall"]?.fileName?.value == wallImagePath.toString() &&
+        !hasValidationError(ui, "Unable to load current poster settings")
+    }
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
+  fun testListPostersFailureBeforeShow() {
+    fakeEmulator.failGrpcCall(VirtualSceneServiceGrpc.getListPostersMethod(), Status.INTERNAL)
+    fakeEmulator.clearGrpcCallLog()
+
+    val cameraDialog = CameraDialog(emulatorController)
+    fakeEmulator.getNextGrpcCall(5.seconds) { it.methodName == VirtualSceneServiceGrpc.getListPostersMethod().fullMethodName }
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    val dialog = cameraDialog.show()
+    val ui = FakeUi(dialog.rootPane)
+
+    val wallPreview = ui.getComponent<JBLabel> { it.name == "wallImagePreview" }
+    val wallFileNameField = ui.getComponent<ExtendableTextField> { it.name == "wallFileNameField" }
+    val tablePreview = ui.getComponent<JBLabel> { it.name == "tableImagePreview" }
+    val tableFileNameField = ui.getComponent<ExtendableTextField> { it.name == "tableFileNameField" }
+    val enableAnimationsCheckBox = ui.getComponent<JBCheckBox> { it.name == "enableAnimationsCheckBox" }
+
+    waitForCondition(5.seconds) {
+      wallFileNameField.isEnabled && tableFileNameField.isEnabled && hasValidationError(ui, "Unable to load current poster settings")
+    }
+
+    assertThat(wallPreview.isEnabled).isTrue()
+    assertThat(wallPreview.text).isEqualTo("No image applied")
+    assertThat(tablePreview.isEnabled).isTrue()
+    assertThat(tablePreview.text).isEqualTo("No image applied")
+    assertThat(enableAnimationsCheckBox.isEnabled).isTrue()
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
+  fun testLargePosterImageExceedingScreenshotChannelLimit() {
+    val initialMaxInboundMessageSize = emulatorController.maxInboundMessageSize
+    fakeEmulator.clearGrpcCallLog()
+    val smallPngBytes = Files.readAllBytes(createTestImageFile("large_wall.png", Color.MAGENTA))
+    // Exceeds twice the default phone channel maxInboundMessageSize (1440 * 2960 * 3 + 100 = 12,787,300 bytes),
+    // requiring two maxInboundMessageSize doublings before listPosters succeeds.
+    val largeImageBytes = ByteArray(30 * 1024 * 1024)
+    smallPngBytes.copyInto(largeImageBytes)
+    fakeEmulator.posters =
+      mapOf(
+        "wall" to
+          Poster.newBuilder()
+            .setName("wall")
+            .setMinWidth(0.2f)
+            .setMaxWidth(2.0f)
+            .setScale(0.8f)
+            .setImage(BytesValue.of(ByteString.copyFrom(largeImageBytes)))
+            .build(),
+        "table" to Poster.newBuilder().setName("table").setMinWidth(0.2f).setMaxWidth(1.0f).setScale(1.0f).build(),
+      )
+
+    val dialog = CameraDialog(emulatorController).show()
+    val ui = FakeUi(dialog.rootPane)
+
+    val wallPreview = ui.getComponent<JBLabel> { it.name == "wallImagePreview" }
+    val tablePreview = ui.getComponent<JBLabel> { it.name == "tableImagePreview" }
+
+    waitForCondition(5.seconds) {
+      wallPreview.icon != null && tablePreview.text == "No image applied"
+    }
+    assertThat(fakeEmulator.grpcCallLog.count { it.methodName == VirtualSceneServiceGrpc.getListPostersMethod().fullMethodName })
+      .isEqualTo(3)
+    assertThat(emulatorController.maxInboundMessageSize).isEqualTo(initialMaxInboundMessageSize * 4)
+    assertThat(hasValidationError(ui, "Unable to load current poster settings")).isFalse()
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
+  fun testListPostersPersistentResourceExhaustedTerminates() {
+    fakeEmulator.failGrpcCall(VirtualSceneServiceGrpc.getListPostersMethod(), Status.RESOURCE_EXHAUSTED)
+
+    val dialog = CameraDialog(emulatorController).show()
+    val ui = FakeUi(dialog.rootPane)
+
+    val wallFileNameField = ui.getComponent<ExtendableTextField> { it.name == "wallFileNameField" }
+    val tableFileNameField = ui.getComponent<ExtendableTextField> { it.name == "tableFileNameField" }
+
+    waitForCondition(5.seconds) {
+      wallFileNameField.isEnabled && tableFileNameField.isEnabled && hasValidationError(ui, "Unable to load current poster settings")
+    }
+    assertThat(emulatorController.maxInboundMessageSize).isEqualTo(Int.MAX_VALUE)
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
+  fun testListPostersRetryOnChannelRecreation() {
+    val calls = AtomicInteger()
+    fakeEmulator.setGrpcCallHandler(VirtualSceneServiceGrpc.getListPostersMethod()) {
+      if (calls.incrementAndGet() == 1) {
+        emulatorController.connectGrpcOrIncreaseMaxInboundMessageSize(20 * 1024 * 1024)
+        Status.CANCELLED
+      } else {
+        Status.OK
+      }
+    }
+
+    val dialog = CameraDialog(emulatorController).show()
+    val ui = FakeUi(dialog.rootPane)
+
+    val wallPreview = ui.getComponent<JBLabel> { it.name == "wallImagePreview" }
+    val wallFileNameField = ui.getComponent<ExtendableTextField> { it.name == "wallFileNameField" }
+    val tableFileNameField = ui.getComponent<ExtendableTextField> { it.name == "tableFileNameField" }
+
+    waitForCondition(5.seconds) { wallFileNameField.isEnabled && tableFileNameField.isEnabled }
+
+    assertThat(calls.get()).isEqualTo(2)
+    assertThat(wallPreview.text).isEqualTo("No image applied")
+    assertThat(hasValidationError(ui, "Unable to load current poster settings")).isFalse()
 
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()

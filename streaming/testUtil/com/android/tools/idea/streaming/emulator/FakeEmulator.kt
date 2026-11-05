@@ -114,6 +114,7 @@ import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.io.grpc.ForwardingServerCall.SimpleForwardingServerCall
 import com.android.tools.idea.io.grpc.ForwardingServerCallListener.SimpleForwardingServerCallListener
 import com.android.tools.idea.io.grpc.Metadata
+import com.android.tools.idea.io.grpc.MethodDescriptor
 import com.android.tools.idea.io.grpc.Server
 import com.android.tools.idea.io.grpc.ServerCall
 import com.android.tools.idea.io.grpc.ServerCallHandler
@@ -397,6 +398,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
 
   val grpcCallLog = LinkedBlockingDeque<GrpcCallRecord>()
   private val grpcSemaphore = Semaphore(Int.MAX_VALUE)
+  private val grpcCallHandlers = ConcurrentHashMap<String, (Any?) -> Status>()
 
   /** Starts the Emulator. The Emulator is fully initialized when the method returns. */
   fun start(standalone: Boolean = false) {
@@ -551,6 +553,33 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     if (delta > 0) {
       grpcSemaphore.release(delta)
     }
+  }
+
+  /**
+   * Registers a handler invoked before executing the specified gRPC [method]. If [handler] returns a non-OK [Status], the call fails with
+   * that status without invoking the service implementation. Passing null removes the handler.
+   */
+  fun <ReqT> setGrpcCallHandler(method: MethodDescriptor<ReqT, *>, handler: ((ReqT) -> Status)?) {
+    if (handler == null) {
+      grpcCallHandlers.remove(method.fullMethodName)
+    } else {
+      @Suppress("UNCHECKED_CAST")
+      grpcCallHandlers[method.fullMethodName] = handler as (Any?) -> Status
+    }
+  }
+
+  /** Simulates failure of the specified gRPC [method] with [status], or clears the failure if [status] is [Status.OK] or null. */
+  fun failGrpcCall(method: MethodDescriptor<*, *>, status: Status?) {
+    if (status == null || status.isOk) {
+      grpcCallHandlers.remove(method.fullMethodName)
+    } else {
+      grpcCallHandlers[method.fullMethodName] = { status }
+    }
+  }
+
+  /** Removes all handlers registered via [setGrpcCallHandler] or [failGrpcCall]. */
+  fun clearGrpcCallHandlers() {
+    grpcCallHandlers.clear()
   }
 
   private fun createAndStartGrpcServer(): Server {
@@ -1617,7 +1646,8 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       headers: Metadata,
       handler: ServerCallHandler<ReqT, RespT>,
     ): ServerCall.Listener<ReqT> {
-      val callRecord = GrpcCallRecord(call.methodDescriptor.fullMethodName)
+      val methodName = call.methodDescriptor.fullMethodName
+      val callRecord = GrpcCallRecord(methodName)
       grpcCallLog.add(callRecord)
 
       val forwardingCall =
@@ -1630,20 +1660,42 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
           }
         }
       return object : SimpleForwardingServerCallListener<ReqT>(handler.startCall(forwardingCall, headers)) {
+        private var closedByHandler = false
+
         override fun onMessage(request: ReqT) {
           grpcSemaphore.withPermit {
+            if (closedByHandler) {
+              return
+            }
+            val status = grpcCallHandlers[methodName]?.invoke(request)
+            if (status != null && !status.isOk) {
+              closedByHandler = true
+              callRecord.requestMessages.put(request as MessageOrBuilder)
+              call.close(status, Metadata())
+              return
+            }
             super.onMessage(request)
             callRecord.requestMessages.put(request as MessageOrBuilder)
           }
         }
 
+        override fun onHalfClose() {
+          if (!closedByHandler) {
+            super.onHalfClose()
+          }
+        }
+
         override fun onComplete() {
-          super.onComplete()
+          if (!closedByHandler) {
+            super.onComplete()
+          }
           callRecord.completion.set(Unit)
         }
 
         override fun onCancel() {
-          super.onCancel()
+          if (!closedByHandler) {
+            super.onCancel()
+          }
           callRecord.completion.cancel(false)
         }
       }

@@ -17,9 +17,9 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.emulation.control.incubating.AnimationState
 import com.android.emulation.control.incubating.Poster
-import com.android.emulation.control.incubating.PosterList
 import com.android.io.readImage
 import com.android.tools.adtui.ImageUtils.scale
+import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.idea.protobuf.StringValue
 import com.android.tools.idea.streaming.StreamingBundle.message
 import com.android.tools.idea.streaming.emulator.EmulatorController
@@ -53,7 +53,6 @@ import com.intellij.util.ui.JBImageIcon
 import com.intellij.util.ui.JBUI
 import java.awt.Dimension
 import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
@@ -66,6 +65,8 @@ import javax.swing.SwingConstants
 import javax.swing.border.LineBorder
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.launch
@@ -79,17 +80,15 @@ internal class CameraDialog(emulator: EmulatorController) :
   private val wallPosterControl = PosterControl(WALL_POSTER, DEFAULT_WALL_MIN_WIDTH, DEFAULT_WALL_MAX_WIDTH)
   private val tablePosterControl = PosterControl(TABLE_POSTER, DEFAULT_TABLE_MIN_WIDTH, DEFAULT_TABLE_MAX_WIDTH)
 
+  private var postersInitialized: Boolean = false
   private var animationsEnabled: Boolean = true
-  private var animationsModified: Boolean = false
 
   private val animationStateChannel =
     createStateChannel(
       getState = EmulatorController::getAnimationState,
       onStateLoaded = { state ->
-        if (!animationsModified) {
-          animationsEnabled = state.tvOn
-          updateUi()
-        }
+        animationsEnabled = state.tvOn
+        updateUi()
       },
       setState = EmulatorController::setAnimationState,
     )
@@ -97,13 +96,28 @@ internal class CameraDialog(emulator: EmulatorController) :
   init {
     val initialStateJob = coroutineScope.launch {
       try {
-        val posterList = emulator.listPosters()
+        val posterList = emulator.callWithRetry(EmulatorController::listPosters)
+        val decodedPosters =
+          withContext(Dispatchers.IO) {
+            posterList.postersList.mapNotNull { poster ->
+              when (poster.name) {
+                WALL_POSTER -> poster to if (wallPosterControl.modified) null else decodePosterPreview(poster)
+                TABLE_POSTER -> poster to if (tablePosterControl.modified) null else decodePosterPreview(poster)
+                else -> null
+              }
+            }
+          }
         withContext(uiContext) {
-          updateFromPosterList(posterList)
+          updateFromDecodedPosters(decodedPosters)
         }
       } catch (t: Throwable) {
         t.throwIfCancellation()
         // Error is already logged by EmulatorController.
+        withContext(uiContext) {
+          postersInitialized = true
+          updateUi()
+          showError(message("camera.dialog.error.load.posters"))
+        }
       }
     }
     onDispose { initialStateJob.cancel() }
@@ -141,12 +155,12 @@ internal class CameraDialog(emulator: EmulatorController) :
         }
       }
     }
+      .also { updateUi() }
   }
 
   private fun setAnimationsEnabledFromUi(enabled: Boolean) {
     if (animationsEnabled != enabled) {
       animationsEnabled = enabled
-      animationsModified = true
       stateModified = true
       clearError()
       updateUi()
@@ -154,13 +168,14 @@ internal class CameraDialog(emulator: EmulatorController) :
     }
   }
 
-  private fun updateFromPosterList(posterList: PosterList) {
-    for (poster in posterList.postersList) {
+  private fun updateFromDecodedPosters(decodedPosters: List<Pair<Poster, JBImageIcon?>>) {
+    for ((poster, previewIcon) in decodedPosters) {
       when (poster.name) {
-        WALL_POSTER -> wallPosterControl.updateFromProto(poster)
-        TABLE_POSTER -> tablePosterControl.updateFromProto(poster)
+        WALL_POSTER -> wallPosterControl.updateFromProto(poster, previewIcon)
+        TABLE_POSTER -> tablePosterControl.updateFromProto(poster, previewIcon)
       }
     }
+    postersInitialized = true
     updateUi()
   }
 
@@ -178,14 +193,23 @@ internal class CameraDialog(emulator: EmulatorController) :
     var filePath: String? = null
       private set
 
-    var previewImage: BufferedImage? = null
+    var previewIcon: JBImageIcon? = null
       private set
 
-    private var modified: Boolean = false
+    @Volatile
+    var modified: Boolean = false
+      private set
+
+    private var imageLoadJob: Job? = null
     private val pendingPoster = AtomicReference<Poster?>()
     private val posterUpdateSignal: SendChannel<Unit> = createPosterUpdateChannel()
 
+    init {
+      onDispose { imageLoadJob?.cancel() }
+    }
+
     private lateinit var imagePreviewLabel: JBLabel
+    private lateinit var fileNameRow: Row
     private lateinit var fileNameField: ExtendableTextField
     private lateinit var sizeRow: Row
     private lateinit var sizeSlider: JSlider
@@ -219,7 +243,7 @@ internal class CameraDialog(emulator: EmulatorController) :
         while (channel.receiveCatching().isSuccess) {
           val poster = pendingPoster.getAndSet(null) ?: continue
           try {
-            emulator.setPoster(poster)
+            emulator.callWithRetry { setPoster(poster) }
           } catch (t: Throwable) {
             t.throwIfCancellation()
             // Error is already logged by EmulatorController.
@@ -229,36 +253,25 @@ internal class CameraDialog(emulator: EmulatorController) :
       return channel
     }
 
-    fun updateFromProto(poster: Poster) {
-      if (modified) {
-        return
-      }
+    fun updateFromProto(poster: Poster, loadedIcon: JBImageIcon?) {
       if (poster.minWidth > 0f && poster.maxWidth > poster.minWidth) {
         minWidth = poster.minWidth
         maxWidth = poster.maxWidth
+      }
+      if (modified) {
+        return
       }
       val minScale = if (maxWidth > 0f) minWidth / maxWidth else 0f
       scale = if (poster.scale > 0f) poster.scale.coerceIn(minScale, 1.0f) else 1.0f
 
       val path = if (poster.hasFileName()) poster.fileName.value.takeIf { it.isNotEmpty() } else null
-      val loadedImage =
-        when {
-          poster.hasImage() && !poster.image.value.isEmpty -> readBufferedImage(poster.image.value.toByteArray())
-          path != null -> readBufferedImage(Path.of(path))
-          else -> null
-        }
-      if (path != null && loadedImage != null) {
-        filePath = path
-        previewImage = loadedImage
-      } else {
-        filePath = null
-        previewImage = null
-      }
+      filePath = if (loadedIcon != null) path else null
+      previewIcon = loadedIcon
     }
 
     fun createUi(row: Row) {
       imagePreviewLabel =
-        JBLabel(message("camera.dialog.no.image.applied"), SwingConstants.CENTER).apply {
+        JBLabel("", SwingConstants.CENTER).apply {
           name = "${posterName}ImagePreview"
           isOpaque = true
           background = PREVIEW_BACKGROUND
@@ -270,31 +283,29 @@ internal class CameraDialog(emulator: EmulatorController) :
         }
 
       val controlsContainer = panel {
-        row {
-            val label = message("camera.dialog.label.file.name")
-            cell(ExtendableTextField())
-              .label(label, LabelPosition.TOP)
-              .accessibleName(label.removeSuffix(":"))
-              .align(AlignX.FILL)
-              .resizableColumn()
-              .applyToComponent {
-                name = "${posterName}FileNameField"
-                isEditable = false
-                columns = 14
-                fileNameField = this
-              }
-          }
-          .layout(RowLayout.PARENT_GRID)
+        fileNameRow =
+          row {
+              val label = message("camera.dialog.label.file.name")
+              cell(ExtendableTextField())
+                .label(label, LabelPosition.TOP)
+                .accessibleName(label.removeSuffix(":"))
+                .align(AlignX.FILL)
+                .resizableColumn()
+                .applyToComponent {
+                  name = "${posterName}FileNameField"
+                  isEditable = false
+                  columns = 14
+                  fileNameField = this
+                }
+            }
+            .layout(RowLayout.PARENT_GRID)
 
         sizeRow =
           row {
               val label = message("camera.dialog.label.size")
-              slider(
-                  (minWidth * SLIDER_STEPS_PER_METER).roundToInt(),
-                  (maxWidth * SLIDER_STEPS_PER_METER).roundToInt(),
-                  0,
-                  0,
-                )
+              val minSteps = (minWidth * SLIDER_STEPS_PER_METER).roundToInt()
+              val maxSteps = (maxWidth * SLIDER_STEPS_PER_METER).roundToInt()
+              slider(minSteps, maxSteps, 0, 0)
                 .label(label, LabelPosition.TOP)
                 .accessibleName(label.removeSuffix(":"))
                 .align(AlignX.FILL)
@@ -303,6 +314,7 @@ internal class CameraDialog(emulator: EmulatorController) :
                   name = "${posterName}SizeSlider"
                   paintLabels = false
                   paintTicks = false
+                  value = (sizeInMeters * SLIDER_STEPS_PER_METER).roundToInt().coerceIn(minSteps, maxSteps)
                   preferredSize = Dimension(JBUIScale.scale(SLIDER_WIDTH), preferredSize.height)
                   putClientProperty(DslComponentProperty.VISUAL_PADDINGS, UnscaledGaps(left = 11, right = 11))
                   addChangeListener {
@@ -337,29 +349,51 @@ internal class CameraDialog(emulator: EmulatorController) :
       row.cell(controlsContainer).align(AlignX.FILL).align(AlignY.TOP).resizableColumn()
 
       registerUiUpdater { refreshComponents() }
-      refreshComponents()
     }
 
     private fun refreshComponents() {
       if (!::imagePreviewLabel.isInitialized) {
         return
       }
-      val img = previewImage
+      imagePreviewLabel.isEnabled = postersInitialized
+      fileNameRow.enabled(postersInitialized)
+      sizeRow.enabled(postersInitialized)
+
+      val icon = previewIcon
       val path = filePath
-      if (img != null && path != null) {
-        val scaledImage = scaleToFit(img, JBUIScale.scale(PREVIEW_WIDTH) - 2, JBUIScale.scale(PREVIEW_HEIGHT) - 2)
-        imagePreviewLabel.icon = JBImageIcon(scaledImage)
-        imagePreviewLabel.text = null
-        fileNameField.text = Path.of(path).fileName?.toString() ?: path
-        fileNameField.setToolTipText(HtmlChunk.text(path))
-        fileNameField.setExtensions(browseExtension, removeExtension)
+      if (icon != null) {
+        if (imagePreviewLabel.icon !== icon) {
+          imagePreviewLabel.icon = icon
+        }
+        if (imagePreviewLabel.text != null) {
+          imagePreviewLabel.text = null
+        }
+        val fileName = path?.let { Path.of(it).fileName?.toString() ?: it }.orEmpty()
+        if (fileNameField.text != fileName) {
+          fileNameField.text = fileName
+        }
+        fileNameField.setToolTipText(if (path != null) HtmlChunk.text(path) else HtmlChunk.empty())
+        val extensions = listOf(browseExtension, removeExtension)
+        if (fileNameField.extensions != extensions) {
+          fileNameField.setExtensions(extensions)
+        }
         sizeRow.visible(true)
       } else {
-        imagePreviewLabel.icon = null
-        imagePreviewLabel.text = message("camera.dialog.no.image.applied")
-        fileNameField.text = ""
-        fileNameField.toolTipText = null
-        fileNameField.setExtensions(browseExtension)
+        if (imagePreviewLabel.icon != null) {
+          imagePreviewLabel.icon = null
+        }
+        val noImageText = if (postersInitialized) message("camera.dialog.no.image.applied") else null
+        if (imagePreviewLabel.text != noImageText) {
+          imagePreviewLabel.text = noImageText
+        }
+        if (fileNameField.text.isNotEmpty()) {
+          fileNameField.text = ""
+        }
+        fileNameField.setToolTipText(HtmlChunk.empty())
+        val extensions = listOf(browseExtension)
+        if (fileNameField.extensions != extensions) {
+          fileNameField.setExtensions(extensions)
+        }
         sizeRow.visible(false)
       }
 
@@ -382,6 +416,9 @@ internal class CameraDialog(emulator: EmulatorController) :
     }
 
     private fun openFileChooser() {
+      if (!postersInitialized) {
+        return
+      }
       clearError()
       val descriptor =
         FileChooserDescriptorFactory.createSingleFileNoJarsDescriptor()
@@ -399,41 +436,49 @@ internal class CameraDialog(emulator: EmulatorController) :
 
     private fun applyImageFile(path: Path) {
       clearError()
-      val image = readBufferedImage(path)
-      if (image == null) {
-        showError(message("camera.dialog.error.invalid.image", path.fileName ?: path))
-        return
+      imageLoadJob?.cancel()
+      imageLoadJob = coroutineScope.launch {
+        val icon = withContext(Dispatchers.IO) { readPreviewIcon(path) }
+        withContext(uiContext) {
+          if (icon == null) {
+            showError(message("camera.dialog.error.invalid.image", path.fileName ?: path))
+            return@withContext
+          }
+          filePath = path.toString()
+          previewIcon = icon
+          modified = true
+          updateUi()
+          sendPosterUpdate(includeFileName = true)
+        }
       }
-      val pathString = path.toString()
-      filePath = pathString
-      previewImage = image
-      modified = true
-      stateModified = true
-      updateUi()
-      sendPosterUpdate(includeFileName = true)
     }
 
     private fun removePosterImage() {
+      if (!postersInitialized) {
+        return
+      }
       clearError()
-      if (filePath == null && previewImage == null) {
+      imageLoadJob?.cancel()
+      if (previewIcon == null) {
         return
       }
       filePath = null
-      previewImage = null
+      previewIcon = null
       modified = true
-      stateModified = true
       updateUi()
       sendPosterUpdate(includeFileName = true)
     }
 
     private fun onSliderChanged(sliderValue: Int) {
+      if (!postersInitialized) {
+        return
+      }
       clearError()
       val newMeters = (sliderValue.toFloat() / SLIDER_STEPS_PER_METER).coerceIn(minWidth, maxWidth)
       val newScale = if (maxWidth > 0f) (newMeters / maxWidth).coerceIn(minWidth / maxWidth, 1.0f) else 1.0f
       if (scale != newScale) {
         scale = newScale
         modified = true
-        stateModified = true
         updateUi()
         sendPosterUpdate(includeFileName = false)
       }
@@ -460,12 +505,15 @@ internal class CameraDialog(emulator: EmulatorController) :
       DnDSupport.createBuilder(component)
         .enableAsNativeTarget()
         .setTargetChecker { event ->
-          val possible = getDroppedImageFile(event) != null
+          val possible = postersInitialized && getDroppedImageFile(event) != null
           event.isDropPossible = possible
           !possible
         }
         .setDisposableParent(disposable)
         .setDropHandler { event ->
+          if (!postersInitialized) {
+            return@setDropHandler
+          }
           val file = getDroppedImageFile(event) ?: return@setDropHandler
           file.parent?.toString()?.let { PropertiesComponent.getInstance().setValue(LAST_POSTER_DIRECTORY_PROPERTY, it) }
           applyImageFile(file)
@@ -495,20 +543,45 @@ internal class CameraDialog(emulator: EmulatorController) :
 
     private fun formatMeters(meters: Float): String = String.format(Locale.US, "%.2f m", meters)
 
-    private fun readBufferedImage(path: Path): BufferedImage? {
+    private fun decodePosterPreview(poster: Poster): JBImageIcon? {
+      val path = if (poster.hasFileName()) poster.fileName.value.takeIf { it.isNotEmpty() } else null
+      return when {
+        poster.hasImage() && !poster.image.value.isEmpty -> readPreviewIcon(poster.image.value)
+        path != null -> readPreviewIcon(path)
+        else -> null
+      }
+    }
+
+    private fun readPreviewIcon(path: String): JBImageIcon? {
       return try {
-        path.readImage()
-      } catch (_: Exception) {
+        readPreviewIcon(Path.of(path))
+      } catch (e: Exception) {
+        e.throwIfCancellation()
         null
       }
     }
 
-    private fun readBufferedImage(bytes: ByteArray): BufferedImage? {
+    private fun readPreviewIcon(path: Path): JBImageIcon? {
       return try {
-        ImageIO.read(ByteArrayInputStream(bytes))
-      } catch (_: Exception) {
+        createPreviewIcon(path.readImage())
+      } catch (e: Exception) {
+        e.throwIfCancellation()
         null
       }
+    }
+
+    private fun readPreviewIcon(bytes: ByteString): JBImageIcon? {
+      return try {
+        ImageIO.read(bytes.newInput())?.let(::createPreviewIcon)
+      } catch (e: Exception) {
+        e.throwIfCancellation()
+        null
+      }
+    }
+
+    private fun createPreviewIcon(image: BufferedImage): JBImageIcon {
+      val scaledImage = scaleToFit(image, JBUIScale.scale(PREVIEW_WIDTH) - 2, JBUIScale.scale(PREVIEW_HEIGHT) - 2)
+      return JBImageIcon(scaledImage)
     }
 
     private fun scaleToFit(image: BufferedImage, maxWidth: Int, maxHeight: Int): BufferedImage {

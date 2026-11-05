@@ -49,6 +49,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.Nls
@@ -72,6 +74,7 @@ internal abstract class AbstractExtendedControlsDialog(
 
   /** An invisible text field used to trigger clearing of the error messages. See the [clearError] function. */
   private val validationText = JTextField()
+  private var pendingErrorMessage: @Nls String? = null
   var dialogWrapper: DialogWrapper? = null
     private set
 
@@ -118,7 +121,7 @@ internal abstract class AbstractExtendedControlsDialog(
     val channel = Channel<S>(Channel.CONFLATED)
     val initialStateJob = coroutineScope.launch {
       try {
-        val state = getState(emulator)
+        val state = emulator.callWithRetry(getState)
         withContext(uiContext) {
           if (!stateModified) {
             onStateLoaded(state)
@@ -137,7 +140,7 @@ internal abstract class AbstractExtendedControlsDialog(
       initialStateJob.join()
       for (state in channel) {
         try {
-          setState(emulator, state)
+          emulator.callWithRetry { setState(this, state) }
         } catch (t: Throwable) {
           t.throwIfCancellation()
           // Error is already logged by EmulatorController.
@@ -151,13 +154,10 @@ internal abstract class AbstractExtendedControlsDialog(
    * Launches a coroutine that executes [action] and invokes [onSuccess] on the EDT with the result. If [action] throws a non-cancellation
    * exception, its message is displayed using [showError].
    */
-  protected fun <T> launchGrpcCall(
-    action: suspend (EmulatorController) -> T,
-    onSuccess: (T) -> Unit = {},
-  ) {
+  protected fun <T> launchGrpcCall(action: suspend (EmulatorController) -> T, onSuccess: (T) -> Unit = {}) {
     coroutineScope.launch {
       try {
-        val result = action(emulator)
+        val result = emulator.callWithRetry(action)
         withContext(uiContext) {
           onSuccess(result)
         }
@@ -205,14 +205,21 @@ internal abstract class AbstractExtendedControlsDialog(
 
   /** Shows a red error message at the bottom of the dialog. */
   protected fun showError(@Nls message: String) {
-    (dialogWrapper as? DialogManager)?.performAction {
-      validationText.text = message
-      listOf(ValidationInfo(message), ValidationInfo(message, validationText))
+    val manager = dialogWrapper as? DialogManager
+    if (manager != null) {
+      pendingErrorMessage = null
+      manager.performAction {
+        validationText.text = message
+        listOf(ValidationInfo(message), ValidationInfo(message, validationText))
+      }
+    } else {
+      pendingErrorMessage = message
     }
   }
 
   /** Clears the error message at the bottom of the dialog. */
   protected fun clearError() {
+    pendingErrorMessage = null
     validationText.text = ""
   }
 
@@ -236,6 +243,7 @@ internal abstract class AbstractExtendedControlsDialog(
         isModal = false
         dialogWrapper = this
         openDialogs[emulator] = this@AbstractExtendedControlsDialog
+        pendingErrorMessage?.let { showError(it) }
 
         setInitialLocationCallback {
           val dimensionService = DimensionService.getInstance()
@@ -249,6 +257,7 @@ internal abstract class AbstractExtendedControlsDialog(
         Disposer.register(disposable) {
           openDialogs.remove(emulator, this@AbstractExtendedControlsDialog)
           dialogWrapper = null
+          pendingErrorMessage = null
           for (callback in disposeCallbacks.asReversed()) {
             callback()
           }
@@ -294,6 +303,17 @@ internal abstract class AbstractExtendedControlsDialog(
       }
       existingDialog?.close()
       return dialogCreator(emulator).show(project, parent)
+    }
+
+    /** Executes [action], automatically retrying if the gRPC channel was recreated while the call was in flight. */
+    suspend fun <T> EmulatorController.callWithRetry(action: suspend EmulatorController.() -> T): T {
+      while (true) {
+        try {
+          return action()
+        } catch (_: EmulatorController.RetryException) {
+          currentCoroutineContext().ensureActive()
+        }
+      }
     }
   }
 }
