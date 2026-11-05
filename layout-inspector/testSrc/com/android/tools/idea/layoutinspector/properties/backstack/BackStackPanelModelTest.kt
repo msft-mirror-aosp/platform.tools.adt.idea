@@ -308,4 +308,316 @@ class BackStackPanelModelTest {
     panelModel.setFilter("")
     assertThat(panelModel.filter).isEmpty()
   }
+
+  @Test
+  fun testBackStackPanelModelWithEntriesOverload() {
+    // Set up the inspector model and properties model for a selected NavDisplay node
+    val inspectorModel = model(disposableRule.disposable) { view(ROOT) { view(VIEW1) } }
+    val layoutInspector: LayoutInspector = mock()
+    whenever(layoutInspector.inspectorModel).thenReturn(inspectorModel)
+
+    val propertiesModel =
+      InspectorPropertiesModel(disposableRule.disposable).apply {
+        this.layoutInspector = layoutInspector
+      }
+
+    // Create a simple NavEntry holding RouteA in its key property
+    val routeAKeyParameter =
+      ParameterItem(
+        name = "key",
+        type = PropertyType.STRING,
+        value = "RouteA",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+      )
+    val firstNavEntryGroup =
+      ParameterGroupItem(
+        name = "0",
+        type = PropertyType.OBJECT,
+        value = "NavEntry",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = mutableListOf(routeAKeyParameter),
+      )
+
+    // Create a NavEntry whose key is a composite route data class RouteA1(id=1)
+    val routeA1IdParameter =
+      ParameterItem(
+        name = "id",
+        type = PropertyType.INT32,
+        value = "1",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+      )
+    val routeA1KeyGroup =
+      ParameterGroupItem(
+        name = "key",
+        type = PropertyType.OBJECT,
+        value = "RouteA1",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = mutableListOf(routeA1IdParameter),
+      )
+    val secondNavEntryGroup =
+      ParameterGroupItem(
+        name = "1",
+        type = PropertyType.OBJECT,
+        value = "NavEntry",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 1,
+        reference = null,
+        children = mutableListOf(routeA1KeyGroup),
+      )
+
+    // Populate the entries parameter table for the NavDisplay(entries = ...) overload
+    val entriesGroup =
+      ParameterGroupItem(
+        name = "entries",
+        type = PropertyType.ITERABLE,
+        value = "List[2]",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = mutableListOf(firstNavEntryGroup, secondNavEntryGroup),
+      )
+
+    val propertyTable = HashBasedTable.create<String, String, InspectorPropertyItem>()
+    propertyTable.put("parameter", "entries", entriesGroup)
+    inspectorModel.setSelection(inspectorModel[VIEW1], SelectionOrigin.INTERNAL)
+    propertiesModel.properties = PropertiesTable.create(propertyTable)
+
+    // Verify findBackStackProperty resolves the entries parameter and the model refreshes the stack
+    assertThat(BackStackPanelModel.findBackStackProperty(propertiesModel.properties)).isSameAs(entriesGroup)
+    val panelModel = BackStackPanelModel(propertiesModel)
+    panelModel.updateBackStackForTesting()
+    assertThat(panelModel.backStackList).containsExactly("RouteA", "RouteA1(id=1)").inOrder()
+  }
+
+  @Test
+  fun testBackStackPanelModelWithSceneStateOverload() {
+    // Set up the inspector model and properties model for a NavDisplay(sceneState = ...) node
+    val inspectorModel = model(disposableRule.disposable) { view(ROOT) { view(VIEW1) } }
+    val layoutInspector: LayoutInspector = mock()
+    whenever(layoutInspector.inspectorModel).thenReturn(inspectorModel)
+
+    val propertiesModel =
+      InspectorPropertiesModel(disposableRule.disposable).apply {
+        this.layoutInspector = layoutInspector
+      }
+
+    // Build NavEntry items nested under sceneState.entries
+    val routeBKeyParameter =
+      ParameterItem(
+        name = "key",
+        type = PropertyType.STRING,
+        value = "RouteB",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+      )
+    val routeB1KeyParameter =
+      ParameterItem(
+        name = "key",
+        type = PropertyType.STRING,
+        value = "RouteB1",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+      )
+    val firstNavEntryGroup =
+      ParameterGroupItem(
+        name = "0",
+        type = PropertyType.OBJECT,
+        value = "NavEntry",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = mutableListOf(routeBKeyParameter),
+      )
+    val secondNavEntryGroup =
+      ParameterGroupItem(
+        name = "1",
+        type = PropertyType.OBJECT,
+        value = "NavEntry",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 1,
+        reference = null,
+        children = mutableListOf(routeB1KeyParameter),
+      )
+
+    val nestedEntriesGroup =
+      ParameterGroupItem(
+        name = "entries",
+        type = PropertyType.ITERABLE,
+        value = "List[2]",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = mutableListOf(firstNavEntryGroup, secondNavEntryGroup),
+      )
+    val sceneStateGroup =
+      ParameterGroupItem(
+        name = "sceneState",
+        type = PropertyType.OBJECT,
+        value = "SceneState",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = mutableListOf(nestedEntriesGroup),
+      )
+
+    val propertyTable = HashBasedTable.create<String, String, InspectorPropertyItem>()
+    propertyTable.put("parameter", "sceneState", sceneStateGroup)
+    inspectorModel.setSelection(inspectorModel[VIEW1], SelectionOrigin.INTERNAL)
+    propertiesModel.properties = PropertiesTable.create(propertyTable)
+
+    // Verify findBackStackProperty resolves sceneState and the model unwraps sceneState.entries
+    assertThat(BackStackPanelModel.findBackStackProperty(propertiesModel.properties)).isSameAs(sceneStateGroup)
+    val panelModel = BackStackPanelModel(propertiesModel)
+    panelModel.updateBackStackForTesting()
+    assertThat(panelModel.backStackList).containsExactly("RouteB", "RouteB1").inOrder()
+  }
+
+  @Test
+  fun testBackStackPanelModelNavEntryFallsBackToContentKey() {
+    // Create a NavEntry where key is absent and contentKey holds the destination identifier
+    val inspectorModel = model(disposableRule.disposable) { view(ROOT) { view(VIEW1) } }
+    val contentKeyParameter =
+      ParameterItem(
+        name = "contentKey",
+        type = PropertyType.STRING,
+        value = "ProfileRoute",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+      )
+    val navEntryGroup =
+      ParameterGroupItem(
+        name = "0",
+        type = PropertyType.OBJECT,
+        value = "NavEntry",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = mutableListOf(contentKeyParameter),
+      )
+
+    // Verify formatBackStackEntry falls back to contentKey when key is not present
+    assertThat(BackStackPanelModel.formatBackStackEntry(navEntryGroup)).isEqualTo("ProfileRoute")
+  }
+
+  @Test
+  fun testBackStackPanelModelPreservesUserRouteWithKeyField() {
+    // Create a user route data class SearchRoute(key=shoes, filter=2) that declares a field named "key"
+    val inspectorModel = model(disposableRule.disposable) { view(ROOT) { view(VIEW1) } }
+    val routeKeyField =
+      ParameterItem(
+        name = "key",
+        type = PropertyType.STRING,
+        value = "shoes",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+      )
+    val routeFilterField =
+      ParameterItem(
+        name = "filter",
+        type = PropertyType.INT32,
+        value = "2",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 1,
+      )
+    val directSearchRouteGroup =
+      ParameterGroupItem(
+        name = "0",
+        type = PropertyType.OBJECT,
+        value = "SearchRoute",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = mutableListOf(routeKeyField, routeFilterField),
+      )
+
+    // Verify a direct user route with a "key" field is formatted with its class name and all parameters
+    assertThat(BackStackPanelModel.formatBackStackEntry(directSearchRouteGroup)).isEqualTo("SearchRoute(key=shoes, filter=2)")
+
+    // Wrap the same user route inside a NavEntry's "key" field and verify only the outer NavEntry is unwrapped
+    val wrappedSearchRouteKeyGroup =
+      ParameterGroupItem(
+        name = "key",
+        type = PropertyType.OBJECT,
+        value = "SearchRoute",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = mutableListOf(routeKeyField, routeFilterField),
+      )
+    val navEntryWrappingSearchRoute =
+      ParameterGroupItem(
+        name = "0",
+        type = PropertyType.OBJECT,
+        value = "NavEntry",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = mutableListOf(wrappedSearchRouteKeyGroup),
+      )
+
+    assertThat(BackStackPanelModel.formatBackStackEntry(navEntryWrappingSearchRoute)).isEqualTo("SearchRoute(key=shoes, filter=2)")
+  }
 }

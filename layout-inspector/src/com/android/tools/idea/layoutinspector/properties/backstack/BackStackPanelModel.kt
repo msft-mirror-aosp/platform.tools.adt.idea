@@ -31,6 +31,13 @@ import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 
 private const val NAV_DISPLAY = "NavDisplay"
+private const val PARAMETER_NAMESPACE = "parameter"
+private const val BACK_STACK_PARAMETER = "backStack"
+private const val ENTRIES_PARAMETER = "entries"
+private const val SCENE_STATE_PARAMETER = "sceneState"
+private const val NAV_ENTRY_CLASS_NAME = "NavEntry"
+private const val KEY_PARAMETER = "key"
+private const val CONTENT_KEY_PARAMETER = "contentKey"
 
 /**
  * Model responsible for managing the navigation back stack state, detecting NavDisplay composables, asynchronously loading back stack
@@ -131,22 +138,59 @@ class BackStackPanelModel(
 
   /** Refreshes the back stack entries from the current properties model and notifies listeners if changed. */
   private fun updateBackStackFromModel() {
-    // Locate the backStack parameter item (e.g. on NavDisplay) from the currently selected component's properties.
+    // Locate the navigation stack parameter item (backStack, entries, or sceneState) from the selected component
     val property = findBackStackProperty(propertiesModel?.properties)
     if (property !is ParameterGroupItem) {
-      // If there is no composite backStack property found, refresh immediately (e.g. to show the empty state).
+      // If there is no composite back stack property found, refresh immediately to show the empty state
       refreshFromProperty(property)
       return
     }
 
-    // In Compose inspection, iterable properties are lazily fetched and paginated from the device agent.
-    // 1. Fetch all elements of the back stack list from the inspector agent if they are not fully loaded.
-    loadAllBackStackElements(property) {
-      // 2. Expand child entries (e.g. destination objects) so that nested route arguments (e.g. "id=1") are resolved.
-      expandChildEntries(property) {
-        // 3. Extract the formatted route strings from the resolved entries and notify listeners.
+    // Resolve the target iterable list group (unwrapping SceneState.entries when using the sceneState overload)
+    resolveBackStackListGroupAsync(property) { resolvedListGroup ->
+      if (resolvedListGroup == null) {
         refreshFromProperty(property)
+        return@resolveBackStackListGroupAsync
       }
+
+      // Fetch all elements of the back stack list from the inspector agent if they are not fully loaded
+      loadAllBackStackElements(resolvedListGroup) {
+        // Expand child entries and nested route keys so destination arguments are resolved
+        expandChildEntries(resolvedListGroup) {
+          // Extract the formatted route strings from the resolved entries and notify listeners
+          refreshFromProperty(property)
+        }
+      }
+    }
+  }
+
+  /**
+   * Resolves the iterable back stack list group from a matched `NavDisplay` property, expanding a `SceneState` wrapper first if its
+   * children have not been fetched yet.
+   */
+  private fun resolveBackStackListGroupAsync(
+    property: ParameterGroupItem,
+    onResolved: (ParameterGroupItem?) -> Unit,
+  ) {
+    if (!isSceneStateGroup(property)) {
+      onResolved(property)
+      return
+    }
+
+    // Check if the SceneState group needs to be expanded to access its child entries list
+    val requiresExpansion =
+      synchronized(property) {
+        property.children.isEmpty() && property.reference != null
+      }
+
+    if (!requiresExpansion) {
+      onResolved(findChildGroupByName(property, ENTRIES_PARAMETER))
+      return
+    }
+
+    // Expand the SceneState container first and then locate its child entries list
+    property.expandWhenPossible {
+      onResolved(findChildGroupByName(property, ENTRIES_PARAMETER))
     }
   }
 
@@ -184,25 +228,55 @@ class BackStackPanelModel(
     }
   }
 
-  /** Expands any child parameter groups (such as destinations with parameters) that have unexpanded references. */
+  /** Expands any child parameter groups (such as `NavEntry` wrappers and destination objects) that have unexpanded references. */
   private fun expandChildEntries(property: ParameterGroupItem, onComplete: () -> Unit) {
-    // Find all child items representing composite objects (e.g. data classes or navigation destinations)
-    // whose property fields/arguments have not yet been fetched from the device agent.
-    val unexpanded =
+    // Find all direct child items representing composite objects whose fields have not yet been fetched
+    val unexpandedDirectChildren =
       synchronized(property) {
-        property.children.filterIsInstance<ParameterGroupItem>().filter { it.children.isEmpty() && it.reference != null }
+        property.children.filterIsInstance<ParameterGroupItem>().filter { childGroup ->
+          childGroup.children.isEmpty() && childGroup.reference != null
+        }
       }
 
-    if (unexpanded.isEmpty()) {
+    expandGroupItems(unexpandedDirectChildren) {
+      // After direct children (such as NavEntry wrappers) are expanded, expand any nested composite route key groups
+      val unexpandedNestedKeyGroups = collectUnexpandedNavEntryKeyGroups(property)
+      expandGroupItems(unexpandedNestedKeyGroups, onComplete)
+    }
+  }
+
+  /** Collects unexpanded `key` or `contentKey` parameter groups nested inside `NavEntry` elements. */
+  private fun collectUnexpandedNavEntryKeyGroups(listProperty: ParameterGroupItem): List<ParameterGroupItem> {
+    val navEntryGroups =
+      synchronized(listProperty) {
+        listProperty.children.filterIsInstance<ParameterGroupItem>().filter { childGroup ->
+          isNavEntryGroup(childGroup)
+        }
+      }
+    return navEntryGroups.flatMap { navEntryGroup ->
+      synchronized(navEntryGroup) {
+        navEntryGroup.children.filterIsInstance<ParameterGroupItem>().filter { nestedGroup ->
+          (nestedGroup.name.equals(KEY_PARAMETER, ignoreCase = true) ||
+            nestedGroup.name.equals(CONTENT_KEY_PARAMETER, ignoreCase = true)) &&
+            nestedGroup.children.isEmpty() &&
+            nestedGroup.reference != null
+        }
+      }
+    }
+  }
+
+  /** Expands a list of parameter group items concurrently and invokes [onComplete] when all finish. */
+  private fun expandGroupItems(groupItems: List<ParameterGroupItem>, onComplete: () -> Unit) {
+    if (groupItems.isEmpty()) {
       onComplete()
       return
     }
 
-    // Expand all child groups concurrently and invoke onComplete once all async resolutions finish.
-    val remaining = AtomicInteger(unexpanded.size)
-    for (child in unexpanded) {
-      child.expandWhenPossible {
-        if (remaining.decrementAndGet() == 0) {
+    // Expand all groups concurrently and invoke onComplete once all async resolutions finish
+    val remainingExpansions = AtomicInteger(groupItems.size)
+    for (groupItem in groupItems) {
+      groupItem.expandWhenPossible {
+        if (remainingExpansions.decrementAndGet() == 0) {
           onComplete()
         }
       }
@@ -243,35 +317,52 @@ class BackStackPanelModel(
       return view?.unqualifiedName == NAV_DISPLAY
     }
 
-    /** Finds the back stack parameter item in a properties table, supporting various naming conventions. */
+    /**
+     * Finds the back stack parameter item in a properties table across all `NavDisplay` overloads (`backStack`, `entries`, and
+     * `sceneState`).
+     */
     fun findBackStackProperty(properties: PropertiesTable<InspectorPropertyItem>?): InspectorPropertyItem? {
       if (properties == null) return null
-      return properties.getOrNull("parameter", "backStack")
-        ?: properties.getOrNull("parameter", "backstack")
-        ?: properties.values.find {
-          it.name.startsWith("backStack", ignoreCase = true)
+      // Match the direct backStack parameter first, then fall back to entries and sceneState overloads
+      return properties.getOrNull(PARAMETER_NAMESPACE, BACK_STACK_PARAMETER)
+        ?: properties.values.find { propertyItem ->
+          propertyItem.name.startsWith(BACK_STACK_PARAMETER, ignoreCase = true)
+        }
+        ?: properties.getOrNull(PARAMETER_NAMESPACE, ENTRIES_PARAMETER)
+        ?: properties.values.find { propertyItem ->
+          propertyItem.name.equals(ENTRIES_PARAMETER, ignoreCase = true)
+        }
+        ?: properties.getOrNull(PARAMETER_NAMESPACE, SCENE_STATE_PARAMETER)
+        ?: properties.values.find { propertyItem ->
+          propertyItem.name.equals(SCENE_STATE_PARAMETER, ignoreCase = true)
         }
     }
 
     /**
      * Extracts serialized string representations for back stack entries from a property item.
      *
-     * @param prop The property item representing the back stack parameter group.
+     * @param prop The property item representing the back stack, entries, or sceneState parameter group.
      * @return The list of extracted back stack route strings in chronological order.
      */
     @VisibleForTesting
     fun extractBackStackItems(prop: InspectorPropertyItem?): List<String> {
-      if (prop == null) return emptyList()
-      if (prop is ParameterGroupItem) {
-        val childrenSnapshot = synchronized(prop) { prop.children.toList() }
-        if (childrenSnapshot.isNotEmpty()) {
-          return childrenSnapshot
-            .asSequence()
-            .filter { it !is ShowMoreElementsItem }
-            .map { formatBackStackEntry(it) }
-            .filter { it.isNotBlank() }
-            .toList()
+      if (prop !is ParameterGroupItem) return emptyList()
+      // Unwrap the child entries list when extracting from a SceneState parameter group
+      val backStackListGroup =
+        if (isSceneStateGroup(prop)) {
+          findChildGroupByName(prop, ENTRIES_PARAMETER) ?: return emptyList()
+        } else {
+          prop
         }
+
+      val childrenSnapshot = synchronized(backStackListGroup) { backStackListGroup.children.toList() }
+      if (childrenSnapshot.isNotEmpty()) {
+        return childrenSnapshot
+          .asSequence()
+          .filter { childItem -> childItem !is ShowMoreElementsItem }
+          .map { childItem -> formatBackStackEntry(childItem) }
+          .filter { formattedEntry -> formattedEntry.isNotBlank() }
+          .toList()
       }
       return emptyList()
     }
@@ -291,21 +382,27 @@ class BackStackPanelModel(
       if (item is ParameterGroupItem) {
         val children = synchronized(item) { item.children.toList() }
         if (children.isNotEmpty()) {
-          // In navigation frameworks, a wrapper entry (like NavBackStackEntry) often holds the route inside a "key" field.
-          // If a "key" parameter is present, unwrap and format it directly.
-          val keyParam = children.find { it.name.equals("key", ignoreCase = true) }
-          if (keyParam != null) {
-            // Recursively format the key property, which may be a simple string (e.g. "Home") or another composite
-            // data class (e.g. "Product(id=1)"), unwrapping the actual route from its parent entry container.
-            val formattedKey = formatBackStackEntry(keyParam)
-            if (formattedKey.isNotBlank()) return formattedKey
+          // Only unwrap the route "key" (or "contentKey" fallback) when the group is a NavEntry wrapper,
+          // so user route classes that declare their own "key" property preserve their type and sibling fields
+          if (isNavEntryGroup(item)) {
+            val keyParameter = children.find { childItem -> childItem.name.equals(KEY_PARAMETER, ignoreCase = true) }
+            if (keyParameter != null) {
+              val formattedKey = formatNavEntryKey(keyParameter)
+              if (formattedKey.isNotBlank()) return formattedKey
+            }
+            val contentKeyParameter = children.find { childItem -> childItem.name.equals(CONTENT_KEY_PARAMETER, ignoreCase = true) }
+            if (contentKeyParameter != null) {
+              val formattedContentKey = formatNavEntryKey(contentKeyParameter)
+              if (formattedContentKey.isNotBlank()) return formattedContentKey
+            }
+            return ""
           }
 
           // Filter out inspector UI pagination placeholders ("...") to keep only the real property parameters.
           val parameters = children.filter { it !is ShowMoreElementsItem }
           if (parameters.isNotEmpty()) {
             // Extract the class/type name (e.g. "Product" or "User"), ignoring numeric list indices like "0", "1".
-            val className = item.snapshotValue ?: item.value ?: item.name.takeIf { name -> !name.all { char -> char.isDigit() } } ?: ""
+            val className = extractGroupClassName(item)
 
             // Format each parameter as "name=value" (e.g. "id=1") or just "value" if the parameter name is numeric/unnamed.
             val formattedParameters = parameters.mapNotNull { param ->
@@ -336,6 +433,47 @@ class BackStackPanelModel(
       // Fallback for primitive or singleton entries (e.g. "Home"): return the value or name, ignoring numeric list indices.
       val isNumericIndex = item.name.all { char -> char.isDigit() }
       return item.snapshotValue ?: item.value ?: item.name.takeIf { !isNumericIndex } ?: ""
+    }
+
+    /** Formats the route key item extracted from a `NavEntry` wrapper without falling back to the property name. */
+    private fun formatNavEntryKey(keyItem: InspectorPropertyItem): String {
+      if (keyItem is ParameterGroupItem) {
+        val hasChildren = synchronized(keyItem) { keyItem.children.isNotEmpty() }
+        if (hasChildren) {
+          return formatBackStackEntry(keyItem)
+        }
+      }
+      return keyItem.snapshotValue ?: keyItem.value ?: ""
+    }
+
+    /** Extracts the class or type name of a parameter group, ignoring numeric list indices. */
+    private fun extractGroupClassName(groupItem: ParameterGroupItem): String {
+      val nonIndexName = groupItem.name.takeIf { candidateName -> !candidateName.all { character -> character.isDigit() } }
+      return groupItem.snapshotValue ?: groupItem.value ?: nonIndexName ?: ""
+    }
+
+    /** Checks whether a parameter group represents a Navigation 3 `NavEntry` wrapper. */
+    private fun isNavEntryGroup(groupItem: ParameterGroupItem): Boolean {
+      val groupClassName = extractGroupClassName(groupItem)
+      return groupClassName.equals(NAV_ENTRY_CLASS_NAME, ignoreCase = true) ||
+        groupClassName.substringAfterLast('.').equals(NAV_ENTRY_CLASS_NAME, ignoreCase = true)
+    }
+
+    /** Checks whether a parameter group represents a Navigation 3 `SceneState` container. */
+    private fun isSceneStateGroup(groupItem: ParameterGroupItem): Boolean {
+      val groupClassName = extractGroupClassName(groupItem)
+      return groupItem.name.equals(SCENE_STATE_PARAMETER, ignoreCase = true) ||
+        groupClassName.equals(SCENE_STATE_PARAMETER, ignoreCase = true) ||
+        groupClassName.substringAfterLast('.').equals(SCENE_STATE_PARAMETER, ignoreCase = true)
+    }
+
+    /** Finds a child [ParameterGroupItem] matching [childName] case-insensitively. */
+    private fun findChildGroupByName(parentGroup: ParameterGroupItem, childName: String): ParameterGroupItem? {
+      return synchronized(parentGroup) {
+        parentGroup.children.filterIsInstance<ParameterGroupItem>().find { childGroup ->
+          childGroup.name.equals(childName, ignoreCase = true)
+        }
+      }
     }
   }
 }
