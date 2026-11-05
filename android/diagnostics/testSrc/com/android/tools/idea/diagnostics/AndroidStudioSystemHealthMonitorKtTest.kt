@@ -18,10 +18,20 @@ package com.android.tools.idea.diagnostics
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.Presentation
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 
 /** Kotlin tests for [SystemHealthMonitor]. */
-class AndroidStudioSystemHealthMonitorKtTest : LightPlatformTestCase() {
+@RunsInEdt
+class AndroidStudioSystemHealthMonitorKtTest {
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(ProjectRule()).around(EdtRule())
+
+  @Test
   fun testGetActionName() {
     val isJava8 = System.getProperty("java.specification.version") == "1.8"
     val expected1 =

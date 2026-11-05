@@ -29,12 +29,21 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.awaitLogQueueProcessed
 import com.intellij.openapi.util.Disposer
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.replaceService
 import java.util.Calendar
 import java.util.GregorianCalendar
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.RuleChain
 
-internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
+@RunsInEdt
+internal class ExceptionDataCollectionTest {
+  @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(ProjectRule()).around(EdtRule())
 
   class ExceptionDataConfigurationMock : ExceptionDataConfiguration {
     override fun getConfigurations(): Map<String, ExceptionConfiguration> {
@@ -83,20 +92,21 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
 
   lateinit var service: ExceptionDataCollection
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     ApplicationManager.getApplication()
       .replaceService(ExceptionDataConfiguration::class.java, ExceptionDataConfigurationMock(), fixtureDisposable)
     ApplicationManager.getApplication().replaceService(ExceptionDataCollection::class.java, ExceptionDataCollection(), fixtureDisposable)
     service = ExceptionDataCollection.getInstance()
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     Disposer.dispose(fixtureDisposable)
     service.unregisterLogAppenders()
-    super.tearDown()
   }
 
+  @Test
   fun testGetExceptionUploadFields() {
     val uploadFieldsEx1 = service.getExceptionUploadFields(ex1, forceExceptionMessage = false, includeLogs = false)
     assertThat(uploadFieldsEx1.description.replace("\r\n", "\n")).isEqualTo(ex1DescriptionWithoutMessage)
@@ -106,6 +116,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(uploadFieldsEx2.logs.size).isEqualTo(0)
   }
 
+  @Test
   fun testGetExceptionUploadFields_trackedExceptionMessagePreservedWhenWrapped() {
     val icce = IncompatibleClassChangeError("class A has interface B as super class")
     val wrapped = RuntimeException("wrapper exception", icce)
@@ -114,6 +125,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(uploadFields.description).doesNotContain("<elided>")
   }
 
+  @Test
   fun testGetExceptionUploadFields_trackedExceptionMessagePreservedUnwrapped() {
     val icce = IncompatibleClassChangeError("class A has interface B as super class")
     val uploadFields = service.getExceptionUploadFields(icce, forceExceptionMessage = false, includeLogs = false)
@@ -121,6 +133,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(uploadFields.description).doesNotContain("<elided>")
   }
 
+  @Test
   fun testGetExceptionUploadFields_untrackedExceptionMessageElidedWhenWrapped() {
     val root = IllegalArgumentException("sensitive argument info")
     val wrapped = RuntimeException("wrapper exception", root)
@@ -129,6 +142,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(uploadFields.description).doesNotContain("sensitive argument info")
   }
 
+  @Test
   fun testGetExceptionUploadFields_untrackedExceptionMessageElidedWhenWrappedInTrackedException() {
     val root = IllegalArgumentException("sensitive argument info")
     val wrapped = java.lang.reflect.InvocationTargetException(root, "reflection error")
@@ -137,12 +151,14 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(uploadFields.description).doesNotContain("sensitive argument info")
   }
 
+  @Test
   fun testRegisteringAppenders() {
     val registeredAppenders = service.registeredAppenders
     assertThat(registeredAppenders).hasSize(1)
     assertThat(registeredAppenders[0].logger.name).isEqualTo("#com.android.tools.idea.diagnostics.crash.ExceptionDataCollectionTest")
   }
 
+  @Test
   fun testLogCollection() {
     // val log4jLogger = LogManager.getLogger(exceptionDataCollectionTestLoggerName)
     val logger = java.util.logging.LogManager.getLogManager().getLogger(exceptionDataCollectionTestLoggerName)
@@ -173,6 +189,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
       )
   }
 
+  @Test
   fun testCalculateSignature() {
     val sig1 = ExceptionDataCollection.calculateSignature(ex1)
     assertThat(sig1).isEqualTo(ex1Sig)
@@ -190,6 +207,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(sig5).isEqualTo(ex5Sig)
   }
 
+  @Test
   fun testCalculateDynamicSignature() {
     val sig1 = ExceptionDataCollection.calculateDynamicSignature(ex1)
     assertThat(sig1).isEqualTo(ex1Sig)
@@ -222,6 +240,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(sig17FramesNoStudioOwned).isEqualTo(ex17FramesNoStudioOwnedSig)
   }
 
+  @Test
   fun testCalculateSignatueMissingStack() {
     val sig3 = ExceptionDataCollection.calculateSignature(exNoStack)
     assertThat(sig3).isEqualTo(exNoStackSig)
@@ -229,6 +248,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(dynamicSig).isEqualTo(exNoStackSig)
   }
 
+  @Test
   fun testGetDescription() {
     val messageRemoved = service.getDescription(ex1, stripMessage = true, includeFullStack = true)
     assertThat(messageRemoved.replace("\r\n", "\n")).isEqualTo(ex1DescriptionWithoutMessage)
@@ -236,6 +256,7 @@ internal class ExceptionDataCollectionTest : LightPlatformTestCase() {
     assertThat(withMessage.replace("\r\n", "\n")).isEqualTo(ex1Description)
   }
 
+  @Test
   fun testRequiresConfirmation() {
     assertThat(service.requiresConfirmation(ex1)).isFalse()
     assertThat(service.requiresConfirmation(ex2)).isTrue()

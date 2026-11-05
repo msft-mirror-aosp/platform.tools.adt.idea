@@ -20,23 +20,26 @@ import com.google.common.truth.Truth
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.io.createParentDirectories
 import java.nio.file.Path
-import junit.framework.TestCase
 import kotlin.io.path.createDirectory
 import kotlin.io.path.createFile
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
 
-class DirectoryBasedFileProviderTest : TestCase() {
+class DirectoryBasedFileProviderTest {
   lateinit var testDirectoryPath: Path
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     testDirectoryPath = FileUtil.createTempDirectory("DirectoryBasedFileProviderTest", null).toPath()
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     FileUtils.deleteRecursivelyIfExists(testDirectoryPath.toFile())
-    super.tearDown()
   }
 
+  @Test
   fun `test DirectoryBasedFileProvider resolves the correct files`() {
     val logDir = testDirectoryPath.resolve("logPath")
     logDir.createDirectory()

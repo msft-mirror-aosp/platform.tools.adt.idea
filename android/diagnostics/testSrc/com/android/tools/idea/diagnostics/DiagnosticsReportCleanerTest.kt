@@ -21,24 +21,27 @@ import com.intellij.util.io.createParentDirectories
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.FileTime
-import junit.framework.TestCase
 import kotlin.io.path.createDirectory
 import kotlin.io.path.createFile
 import kotlin.io.path.exists
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
 
-class DiagnosticsReportCleanerTest : TestCase() {
+class DiagnosticsReportCleanerTest {
   lateinit var testDirectoryPath: Path
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     testDirectoryPath = FileUtil.createTempDirectory("DiagnosticsReportCleanerTest", null).toPath()
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     testDirectoryPath.toFile().deleteRecursively()
-    super.tearDown()
   }
 
+  @Test
   fun `test DiagnosticsReportCleanerTest cleanupFiles only deletes old files`() {
     val reportDir = testDirectoryPath.resolve("reportDir")
     reportDir.createDirectory()
@@ -55,6 +58,7 @@ class DiagnosticsReportCleanerTest : TestCase() {
     Truth.assertThat(newReportFile.exists()).isTrue()
   }
 
+  @Test
   fun `test DiagnosticsReportCleanerTest cleanupDirectories only deletes old directories`() {
     // setModifiedFileTime doesn't appear to work on directories
     // check that new and other directories are not deleted
@@ -70,12 +74,14 @@ class DiagnosticsReportCleanerTest : TestCase() {
     Truth.assertThat(otherDir.exists()).isTrue()
   }
 
+  @Test
   fun `test DiagnosticsReportCleanerTest handles missing directories`() {
     val missingDir = testDirectoryPath.resolve("missingDir")
     DiagnosticsReportCleaner.cleanupFiles(missingDir)
     DiagnosticsReportCleaner.cleanupDirectories(missingDir, arrayOf(Regex("^reportDir.*")))
   }
 
+  @Test
   fun `test DiagnosticsReportCleanerTest handles files instead of directories`() {
     val reportFile = testDirectoryPath.resolve("report.txt")
     reportFile.createParentDirectories().createFile()

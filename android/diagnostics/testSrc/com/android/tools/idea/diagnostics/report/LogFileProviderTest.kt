@@ -21,23 +21,26 @@ import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.io.createParentDirectories
 import java.nio.file.Path
-import junit.framework.TestCase
 import kotlin.io.path.createDirectory
 import kotlin.io.path.createFile
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
 
-class LogFileProviderTest : TestCase() {
+class LogFileProviderTest {
   lateinit var testDirectoryPath: Path
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     testDirectoryPath = FileUtil.createTempDirectory("LogFileProviderTest", null).toPath()
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     FileUtils.deleteRecursivelyIfExists(testDirectoryPath.toFile())
-    super.tearDown()
   }
 
+  @Test
   fun testLogFileProvider() {
     val logDir = testDirectoryPath.resolve("logPath")
     logDir.createDirectory()

@@ -24,8 +24,10 @@ import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.intellij.openapi.util.io.FileUtil
 import java.nio.file.Path
 import java.nio.file.Paths
-import junit.framework.TestCase
 import kotlin.io.path.readText
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
 
 private const val DIRECTORY_NAME = "diagnostics"
 private const val FILE_NAME = "MetricsInfo.log"
@@ -44,22 +46,23 @@ kind: EMULATOR_PING
 kind: EMULATOR_PING
 """
 
-class MetricsLogFileProviderTest : TestCase() {
+class MetricsLogFileProviderTest {
   lateinit var testDirectoryPath: Path
   lateinit var dateProvider: DateProvider
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     dateProvider = AnalyticsSettings.dateProvider
     testDirectoryPath = FileUtil.createTempDirectory("MetricsLogFileProviderTest", null).toPath()
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     FileUtils.deleteRecursivelyIfExists(testDirectoryPath.toFile())
     AnalyticsSettings.dateProvider = dateProvider
-    super.tearDown()
   }
 
+  @Test
   fun testMetricsLogFileProvider() {
     val pathProvider = PathProvider(testDirectoryPath.toString(), null, null, null)
     val metricsLogFileProvider = MetricsLogFileProvider(pathProvider, 4)

@@ -20,18 +20,23 @@ import com.android.testutils.VirtualTimeScheduler
 import com.android.tools.idea.diagnostics.ExceptionTestUtils.createExceptionFromDesc
 import java.io.IOException
 import java.util.concurrent.TimeUnit
-import junit.framework.TestCase
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Before
+import org.junit.Test
 
-class ExceptionRegistryTest : TestCase() {
+class ExceptionRegistryTest {
 
-  override fun setUp() {
+  @Before
+  fun setUp() {
     ExceptionRegistry.clear()
-    super.setUp()
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     ExceptionRegistry.clear()
-    super.tearDown()
   }
 
   /**
@@ -63,6 +68,7 @@ class ExceptionRegistryTest : TestCase() {
     return sb.toString()
   }
 
+  @Test
   fun testStacktraceTimestamps() {
     val previousProvider = ExceptionRegistry.dateProvider
     try {
@@ -93,6 +99,7 @@ class ExceptionRegistryTest : TestCase() {
     }
   }
 
+  @Test
   fun testInsertLeafIntoExistingChain() {
     val exception1 =
       createExceptionFromDesc(
@@ -122,6 +129,7 @@ class ExceptionRegistryTest : TestCase() {
     )
   }
 
+  @Test
   fun test() {
 
     // Make sure we can handle the empty scenario

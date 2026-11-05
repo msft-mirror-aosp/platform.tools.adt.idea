@@ -22,23 +22,26 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.util.io.createParentDirectories
 import java.nio.file.Path
 import java.nio.file.Paths
-import junit.framework.TestCase
 import kotlin.io.path.createDirectory
 import kotlin.io.path.createFile
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
 
-class BuildFileListTest : TestCase() {
+class BuildFileListTest {
   lateinit var testDirectoryPath: Path
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     testDirectoryPath = FileUtil.createTempDirectory("BuildFileListTest", null).toPath()
   }
 
-  override fun tearDown() {
+  @After
+  fun tearDown() {
     FileUtils.deleteRecursivelyIfExists(testDirectoryPath.toFile())
-    super.tearDown()
   }
 
+  @Test
   fun `test DiagnosticSummaryFileProvider buildFileList generates the correct set of files`() {
     val dir1 = testDirectoryPath.resolve("dir1")
     dir1.createDirectory()

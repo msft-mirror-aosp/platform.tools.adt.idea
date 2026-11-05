@@ -16,6 +16,7 @@
 package com.android.tools.idea.diagnostics;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 
 import com.android.testutils.VirtualTimeScheduler;
 import com.android.tools.analytics.TestUsageTracker;
@@ -32,13 +33,22 @@ import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.actionSystem.ex.ActionUtil;
 import com.intellij.openapi.diagnostic.ErrorReportSubmitter;
 import com.intellij.openapi.extensions.PluginId;
-import com.intellij.testFramework.LightPlatformTestCase;
+import com.intellij.testFramework.EdtRule;
+import com.intellij.testFramework.ProjectRule;
+import com.intellij.testFramework.RunsInEdt;
 import com.intellij.testFramework.TestActionEvent;
 import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.RuleChain;
 
-public class AndroidStudioSystemHealthMonitorUtilitiesTest extends LightPlatformTestCase {
+@RunsInEdt
+public final class AndroidStudioSystemHealthMonitorUtilitiesTest {
+  @Rule
+  public final RuleChain ruleChain = RuleChain.outerRule(new ProjectRule()).around(new EdtRule());
 
+  @Test
   public void testGetActionName() {
     // normal class in our packages should yield simple name
     assertEquals("AndroidStudioSystemHealthMonitorTest", AndroidStudioSystemHealthMonitor.getActionName(AndroidStudioSystemHealthMonitorTest.class, new Presentation("Foo")));
@@ -57,6 +67,7 @@ public class AndroidStudioSystemHealthMonitorUtilitiesTest extends LightPlatform
 
   // Regression test for b/130834409.
   @SuppressWarnings("UnstableApiUsage")
+  @Test
   public void testAndroidErrorSubmitter() {
     // Our error submitter should be registered.
     assertThat(ErrorReportSubmitter.EP_NAME.findExtension(AndroidStudioErrorReportSubmitter.class)).isNotNull();
@@ -69,6 +80,7 @@ public class AndroidStudioSystemHealthMonitorUtilitiesTest extends LightPlatform
   }
 
   // Tests that AnAction invocations are logged as Studio usage events.
+  @Test
   public void testActionInvocationMetricsLogged() throws Exception {
     try (TestUsageTracker usageTracker = new com.android.tools.analytics.TestUsageTracker(new VirtualTimeScheduler())) {
       UsageTracker.setWriterForTest(usageTracker);
@@ -88,6 +100,7 @@ public class AndroidStudioSystemHealthMonitorUtilitiesTest extends LightPlatform
   }
 
   // Regression test for b/575848746
+  @Test
   public void testActionInvocationMetricsLoggedWithNestedActionWrappers() throws Exception {
     try (TestUsageTracker usageTracker = new TestUsageTracker(new VirtualTimeScheduler())) {
       UsageTracker.setWriterForTest(usageTracker);
