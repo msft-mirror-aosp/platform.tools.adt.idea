@@ -15,14 +15,30 @@
  */
 package org.jetbrains.android.spellchecker
 
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.collect.ImmutableList
 import com.google.common.truth.Truth.assertThat
 import com.intellij.grazie.spellcheck.GrazieSpellCheckingInspection
 import com.intellij.spellchecker.SpellCheckerSeveritiesProvider
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.jetbrains.android.AndroidTestBase
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
-class AndroidJsonSpellcheckingStrategyTest : AndroidTestCase() {
+@RunsInEdt
+class AndroidJsonSpellcheckingStrategyTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
+  private val myFixture by lazy { projectRule.fixture }
+
+  @Before
+  fun setUp() {
+    myFixture.testDataPath = AndroidTestBase.getTestDataPath()
+  }
+
+  @Test
   fun testGoogleServicesSpelling() {
     myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
     val virtualFile =
@@ -79,6 +95,7 @@ class AndroidJsonSpellcheckingStrategyTest : AndroidTestCase() {
     myFixture.checkHighlighting(true, false, false)
   }
 
+  @Test
   fun testGoogleServicesSpellingWithErrors() {
     myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
     val virtualFile =

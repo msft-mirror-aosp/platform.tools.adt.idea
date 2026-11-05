@@ -15,35 +15,54 @@
  */
 package org.jetbrains.android.intentions;
 
+import com.android.SdkConstants;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.codeInsight.template.impl.TemplateManagerImpl;
 import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.android.AndroidTestCase;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.UsefulTestCase;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.jetbrains.android.AndroidTestBase;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
 
 import java.io.IOException;
 
 import static com.android.resources.ResourceType.DIMEN;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("SpellCheckingInspection")
-public class AndroidExtractDimensionActionTest extends AndroidTestCase {
+@RunsInEdt
+public class AndroidExtractDimensionActionTest {
   private static final String BASE_PATH = "extractDimen/";
 
-  @Override
-  protected boolean providesCustomManifest() {
-    return true;
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  @Rule
+  public TestName testName = new TestName();
+
+  private CodeInsightTestFixture myFixture;
+
+  @Before
+  public void setUp() {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+    TemplateManagerImpl.setTemplateTesting(projectRule.getTestRootDisposable());
   }
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    TemplateManagerImpl.setTemplateTesting(getTestRootDisposable());
-  }
-
+  @Test
   public void testFromLayout() throws IOException {
     createManifest();
     final VirtualFile file = myFixture.copyFileToProject(BASE_PATH + getTestName(true) + ".xml", "res/layout/layout.xml");
@@ -51,6 +70,7 @@ public class AndroidExtractDimensionActionTest extends AndroidTestCase {
     myFixture.checkResultByFile(BASE_PATH + getTestName(true) + "_after.xml");
   }
 
+  @Test
   public void testFromLayout1() throws IOException {
     createManifest();
     final VirtualFile file = myFixture.copyFileToProject(BASE_PATH + getTestName(true) + ".xml", "res/layout/layout.xml");
@@ -58,6 +78,7 @@ public class AndroidExtractDimensionActionTest extends AndroidTestCase {
     assertFalse(new AndroidExtractDimensionAction().isAvailable(myFixture.getProject(), myFixture.getEditor(), myFixture.getFile()));
   }
 
+  @Test
   public void testFromJava() {
     VirtualFile javaFile = myFixture.copyFileToProject(BASE_PATH + "fromJava.java", "src/p1/p2/Class.java");
     myFixture.configureFromExistingVirtualFile(javaFile);
@@ -74,7 +95,7 @@ public class AndroidExtractDimensionActionTest extends AndroidTestCase {
     myFixture.configureFromExistingVirtualFile(editedFile);
     final PsiFile editedPsiFile = myFixture.getFile();
     assertTrue(new AndroidExtractDimensionAction().isAvailable(myFixture.getProject(), myFixture.getEditor(), editedPsiFile));
-    CommandProcessor.getInstance().executeCommand(getProject(), new Runnable() {
+    CommandProcessor.getInstance().executeCommand(projectRule.getProject(), new Runnable() {
       @Override
       public void run() {
         ApplicationManager.getApplication().runWriteAction(new Runnable() {
@@ -92,5 +113,13 @@ public class AndroidExtractDimensionActionTest extends AndroidTestCase {
       }
     }, "", "");
     myFixture.checkResultByFile("res/values/dimens.xml", BASE_PATH + dimensAfter, false);
+  }
+
+  private String getTestName(boolean lowercaseFirstLetter) {
+    return UsefulTestCase.getTestName(testName.getMethodName(), lowercaseFirstLetter);
+  }
+
+  private void createManifest() {
+    myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML);
   }
 }

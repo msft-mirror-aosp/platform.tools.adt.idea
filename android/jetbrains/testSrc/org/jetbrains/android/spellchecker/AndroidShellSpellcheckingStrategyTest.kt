@@ -15,22 +15,35 @@
  */
 package org.jetbrains.android.spellchecker
 
+import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.grazie.spellcheck.GrazieSpellCheckingInspection
 import com.intellij.spellchecker.SpellCheckerSeveritiesProvider
-import org.jetbrains.android.AndroidTestCase
+import com.intellij.testFramework.RunsInEdt
+import org.jetbrains.android.AndroidTestBase
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
 /**
  * Tests verifying the behaviour of [AndroidShellSpellcheckingStrategy]
  *
  * Verifies that gradlew files are the only shell files ignore by spellcheck.
  */
-class AndroidShellSpellcheckingStrategyTest : AndroidTestCase() {
-  override fun setUp() {
-    super.setUp()
+@RunsInEdt
+class AndroidShellSpellcheckingStrategyTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
+
+  private val myFixture by lazy { projectRule.fixture }
+
+  @Before
+  fun setUp() {
+    myFixture.testDataPath = AndroidTestBase.getTestDataPath()
     myFixture.enableInspections(setOf(GrazieSpellCheckingInspection::class.java))
   }
 
+  @Test
   fun testIgnoredGradlewScript() {
     val gradlewScript = myFixture.copyFileToProject("spellchecker/gradlew", "gradlew")
     assertThat(gradlewScript.fileType.name).isEqualTo("Shell Script")
@@ -38,6 +51,7 @@ class AndroidShellSpellcheckingStrategyTest : AndroidTestCase() {
     myFixture.checkHighlighting(true, false, false)
   }
 
+  @Test
   fun testNotIgnoredShellScript() {
     val typosScript = myFixture.copyFileToProject("spellchecker/gradlew", "typos")
     assertThat(typosScript.fileType.name).isEqualTo("Shell Script")

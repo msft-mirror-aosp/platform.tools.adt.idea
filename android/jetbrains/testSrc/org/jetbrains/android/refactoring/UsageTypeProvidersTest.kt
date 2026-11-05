@@ -16,12 +16,15 @@
 package org.jetbrains.android.refactoring
 
 import com.android.SdkConstants
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.caret
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.usageView.UsageInfo
 import com.intellij.usages.PsiElementUsageTarget
 import com.intellij.usages.UsageTargetUtil
@@ -29,17 +32,21 @@ import com.intellij.usages.impl.rules.UsageType
 import com.intellij.usages.impl.rules.UsageTypeProvider
 import com.intellij.usages.impl.rules.UsageTypeProviderEx
 import org.jetbrains.android.AndroidResourcesFindUsagesTest
-import org.jetbrains.android.AndroidTestCase
+import org.jetbrains.android.AndroidTestBase
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
 /** Tests for custom [UsageTypeProvider]s from UsageTypeProviders.kt */
-class UsageTypeProvidersTest : AndroidTestCase() {
+@RunsInEdt
+class UsageTypeProvidersTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
-  override fun providesCustomManifest(): Boolean {
-    return true
-  }
+  private val myFixture by lazy { projectRule.fixture }
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
+    myFixture.testDataPath = AndroidTestBase.getTestDataPath()
     myFixture.addFileToProject(
       SdkConstants.FN_ANDROID_MANIFEST_XML,
       // language=xml
@@ -56,6 +63,7 @@ class UsageTypeProvidersTest : AndroidTestCase() {
   }
 
   /** Test for [AndroidPropertiesUsageType] */
+  @Test
   fun testGradlePropertiesFile() {
     val psiFile = myFixture.addFileToProject("gradle.properties", "")
     myFixture.configureFromExistingVirtualFile(psiFile.virtualFile)
@@ -63,6 +71,7 @@ class UsageTypeProvidersTest : AndroidTestCase() {
   }
 
   /** Tests for [AndroidResourceReferenceInCodeUsageTypeProvider] */
+  @Test
   fun testAndroidLightFieldResource() {
     myFixture.addFileToProject(
       "res/values/colors.xml",
@@ -86,6 +95,7 @@ class UsageTypeProvidersTest : AndroidTestCase() {
     checkUsageTypeText(file.virtualFile, "Resource declaration in Android resources XML", "Resource reference in code")
   }
 
+  @Test
   fun testClsFieldImplManifest() {
     val file =
       myFixture.addFileToProject(
@@ -105,6 +115,7 @@ class UsageTypeProvidersTest : AndroidTestCase() {
     checkUsageTypeText(file.virtualFile, "Permission reference in code")
   }
 
+  @Test
   fun testClsFieldImplResource() {
     val file =
       myFixture.addFileToProject(
@@ -124,6 +135,7 @@ class UsageTypeProvidersTest : AndroidTestCase() {
   }
 
   /** Tests for [AndroidOldXmlUsageProvider] */
+  @Test
   fun testResourceDomElement() {
     myFixture.addFileToProject(
       "res/layout/layout.xml",
@@ -148,12 +160,14 @@ class UsageTypeProvidersTest : AndroidTestCase() {
     checkUsageTypeText(colorsFile.virtualFile, "Resource declaration in Android resources XML", "Resource reference Android resources XML")
   }
 
+  @Test
   fun testManifestDomElement() {
     val manifestFile = myFixture.findFileInTempDir(SdkConstants.FN_ANDROID_MANIFEST_XML)
     checkUsageTypeText(manifestFile, "In Android manifest")
   }
 
   /** Test for no custom [UsageTypeProvider] */
+  @Test
   fun testDefaultMethod() {
     val file =
       myFixture.addFileToProject(

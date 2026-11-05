@@ -15,29 +15,53 @@
  */
 package org.jetbrains.android.refactoring;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertFalse;
 
+import com.android.SdkConstants;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.testFramework.RunsInEdt;
 import com.intellij.testFramework.VfsTestUtil;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
 import java.io.File;
 import java.util.Arrays;
-import org.jetbrains.android.AndroidTestCase;
+import org.jetbrains.android.AndroidTestBase;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
 
 /**
  * This tests unused resource removal for a JPS project. The gradle scenario is
  * tested in {@link UnusedResourcesGradleTest}.
  */
-public class UnusedResourcesTest extends AndroidTestCase {
+@RunsInEdt
+public class UnusedResourcesTest {
   private static final String BASE_PATH = "refactoring/unusedResources/";
 
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  private CodeInsightTestFixture myFixture;
+
+  @Before
+  public void setUp() {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+    myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML);
+  }
+
+  @Test
   public void testUnusedResources() {
     myFixture.copyFileToProject(BASE_PATH + "strings.xml", "res/values/strings.xml");
     myFixture.copyFileToProject(BASE_PATH + "layout.xml", "res/layout/layout.xml");
     VirtualFile layout2 = myFixture.copyFileToProject(BASE_PATH + "layout.xml", "res/layout/layout2.xml");
     myFixture.copyFileToProject(BASE_PATH + "TestCode.java", "src/p1/p2/TestCode.java");
 
-    UnusedResourcesProcessor processor = new UnusedResourcesProcessor(getProject(), null, true);
+    UnusedResourcesProcessor processor = new UnusedResourcesProcessor(projectRule.getProject(), null, true);
     processor.run();
 
     myFixture.checkResultByFile("res/values/strings.xml", BASE_PATH + "strings_after.xml", true);
@@ -45,13 +69,14 @@ public class UnusedResourcesTest extends AndroidTestCase {
     assertFalse(layout2.exists());
   }
 
+  @Test
   public void testUsagesPresentation() {
     myFixture.copyFileToProject("images/actions/res/drawable-hdpi/ic_action_custom.png",
                                 "res/drawable-hdpi/ic_action_custom.png");
 
     VfsTestUtil.createFile(ProjectUtil.guessProjectDir(myFixture.getProject()), "res/raw/foo.bin", new byte[]{0,1,2});
 
-    UnusedResourcesProcessor processor = new UnusedResourcesProcessor(getProject(), null, false);
+    UnusedResourcesProcessor processor = new UnusedResourcesProcessor(projectRule.getProject(), null, false);
 
     assertThat(myFixture.getUsageViewTreeTextRepresentation(Arrays.asList(processor.findUsages())))
       .isEqualTo("<root> (2)\n" +

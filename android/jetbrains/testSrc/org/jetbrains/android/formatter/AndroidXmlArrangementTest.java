@@ -15,7 +15,12 @@
  */
 package org.jetbrains.android.formatter;
 
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertEquals;
+
 import com.android.tools.idea.io.TestFileUtils;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
@@ -23,17 +28,24 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.psi.codeStyle.arrangement.engine.ArrangementEngine;
+import com.intellij.testFramework.RunsInEdt;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import org.intellij.lang.annotations.Language;
-import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.annotations.NotNull;
+import org.junit.Rule;
+import org.junit.Test;
 
-public final class AndroidXmlArrangementTest extends AndroidTestCase {
+@RunsInEdt
+public final class AndroidXmlArrangementTest {
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  @Test
   public void testArrangement() throws IOException {
-    Path path = Paths.get(myModule.getProject().getBasePath(), "app", "src", "main", "res", "layout", "relative_layout.xml");
+    Path path = Paths.get(projectRule.getProject().getBasePath(), "app", "src", "main", "res", "layout", "relative_layout.xml");
 
     @Language("XML")
     String shuffledContents = "<RelativeLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
@@ -80,9 +92,10 @@ public final class AndroidXmlArrangementTest extends AndroidTestCase {
     assertEquals(arrangedContents, FileDocumentManager.getInstance().getDocument(virtualFile).getText());
   }
 
+  @Test
   public void testArrangeDoesntRearrangeElements() throws IOException {
     // Arrange
-    Path path = Paths.get(myModule.getProject().getBasePath(), "app", "src", "main", "res", "layout", "frame_layout.xml");
+    Path path = Paths.get(projectRule.getProject().getBasePath(), "app", "src", "main", "res", "layout", "frame_layout.xml");
 
     @Language("XML")
     String contents = "<FrameLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n" +
@@ -132,7 +145,7 @@ public final class AndroidXmlArrangementTest extends AndroidTestCase {
   }
 
   private void arrange(@NotNull VirtualFile virtualFile) {
-    Project project = myModule.getProject();
+    Project project = projectRule.getProject();
 
     WriteCommandAction.runWriteCommandAction(project, () -> {
       PsiFile psiFile = PsiManager.getInstance(project).findFile(virtualFile);

@@ -15,34 +15,53 @@
  */
 package org.jetbrains.android.intentions;
 
+import com.android.SdkConstants;
+import com.android.tools.idea.testing.AndroidProjectRule;
+import com.android.tools.idea.testing.EdtAndroidProjectRule;
 import com.intellij.codeInsight.template.impl.TemplateManagerImpl;
 import com.intellij.openapi.actionSystem.IdeActions;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.CommandProcessor;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiFile;
-import org.jetbrains.android.AndroidTestCase;
+import com.intellij.testFramework.RunsInEdt;
+import com.intellij.testFramework.UsefulTestCase;
+import com.intellij.testFramework.fixtures.CodeInsightTestFixture;
+import org.jetbrains.android.AndroidTestBase;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestName;
 
 import java.io.IOException;
 
 import static com.android.resources.ResourceType.COLOR;
+import static com.android.tools.idea.testing.AndroidProjectRuleKt.onEdt;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-public class AndroidExtractColorActionTest extends AndroidTestCase {
+@RunsInEdt
+public class AndroidExtractColorActionTest {
   private static final String BASE_PATH = "extractColor/";
 
-  @Override
-  protected boolean providesCustomManifest() {
-    return true;
+  @Rule
+  public EdtAndroidProjectRule projectRule = onEdt(AndroidProjectRule.withSdk());
+
+  @Rule
+  public TestName testName = new TestName();
+
+  private CodeInsightTestFixture myFixture;
+
+  @Before
+  public void setUp() {
+    myFixture = projectRule.getFixture();
+    myFixture.setTestDataPath(AndroidTestBase.getTestDataPath());
+    TemplateManagerImpl.setTemplateTesting(projectRule.getTestRootDisposable());
   }
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
-    TemplateManagerImpl.setTemplateTesting(getTestRootDisposable());
-  }
-
+  @Test
   public void testFromLayout() throws IOException {
     createManifest();
     final VirtualFile file = myFixture.copyFileToProject(BASE_PATH + getTestName(true) + ".xml", "res/layout/layout.xml");
@@ -50,6 +69,7 @@ public class AndroidExtractColorActionTest extends AndroidTestCase {
     myFixture.checkResultByFile(BASE_PATH + getTestName(true) + "_after.xml");
   }
 
+  @Test
   public void testFromLayout1() throws IOException {
     createManifest();
     final VirtualFile file = myFixture.copyFileToProject(BASE_PATH + getTestName(true) + ".xml", "res/layout/layout.xml");
@@ -57,6 +77,7 @@ public class AndroidExtractColorActionTest extends AndroidTestCase {
     assertFalse(new AndroidExtractColorAction().isAvailable(myFixture.getProject(), myFixture.getEditor(), myFixture.getFile()));
   }
 
+  @Test
   public void testFromJava() {
     VirtualFile javaFile = myFixture.copyFileToProject(BASE_PATH + "fromJava.java", "src/p1/p2/Class.java");
     myFixture.configureFromExistingVirtualFile(javaFile);
@@ -73,7 +94,7 @@ public class AndroidExtractColorActionTest extends AndroidTestCase {
     myFixture.configureFromExistingVirtualFile(editedFile);
     final PsiFile editedPsiFile = myFixture.getFile();
     assertTrue(new AndroidExtractColorAction().isAvailable(myFixture.getProject(), myFixture.getEditor(), editedPsiFile));
-    CommandProcessor.getInstance().executeCommand(getProject(), () -> {
+    CommandProcessor.getInstance().executeCommand(projectRule.getProject(), () -> {
       ApplicationManager.getApplication().runWriteAction(() -> {
         AndroidAddStringResourceAction.doInvoke(myFixture.getProject(), myFixture.getEditor(), editedPsiFile, "hello", COLOR);
         if (invokeAfterTemplate != null) {
@@ -85,5 +106,13 @@ public class AndroidExtractColorActionTest extends AndroidTestCase {
       }
     }, "", "");
     myFixture.checkResultByFile("res/values/colors.xml", BASE_PATH + colorsAfter, false);
+  }
+
+  private String getTestName(boolean lowercaseFirstLetter) {
+    return UsefulTestCase.getTestName(testName.getMethodName(), lowercaseFirstLetter);
+  }
+
+  private void createManifest() {
+    myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML);
   }
 }

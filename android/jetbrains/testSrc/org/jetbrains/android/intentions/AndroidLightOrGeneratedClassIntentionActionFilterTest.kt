@@ -15,32 +15,53 @@
  */
 package org.jetbrains.android.intentions
 
+import com.android.SdkConstants
 import com.android.tools.idea.res.isRJavaClass
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.findClass
 import com.android.tools.idea.testing.moveCaret
+import com.android.tools.idea.testing.onEdt
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.JavaProjectRootsUtil
 import com.intellij.openapi.util.registry.Registry
 import com.intellij.testFramework.PsiTestUtil
+import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.fixtures.JavaCodeInsightTestFixture
 import com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl.ensureIndexesUpToDate
-import org.jetbrains.android.AndroidTestCase
+import org.jetbrains.android.AndroidTestBase
 import org.jetbrains.android.dom.manifest.Manifest
+import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.jps.model.java.JavaSourceRootType
 import org.jetbrains.jps.model.java.JpsJavaExtensionService
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
 
 private const val CREATE_FIELD = "Create field"
 
-class AndroidLightOrGeneratedClassIntentionActionFilterTest : AndroidTestCase() {
+@RunsInEdt
+class AndroidLightOrGeneratedClassIntentionActionFilterTest {
+  @get:Rule val projectRule = AndroidProjectRule.withSdk().onEdt()
 
-  override fun setUp() {
-    super.setUp()
+  private val myFixture by lazy { projectRule.fixture as JavaCodeInsightTestFixture }
+  private val project by lazy { projectRule.project }
+  private val myModule by lazy { projectRule.module }
+  private val myFacet by lazy { AndroidFacet.getInstance(projectRule.module)!! }
+
+  @Before
+  fun setUp() {
+    myFixture.testDataPath = AndroidTestBase.getTestDataPath()
+    myFixture.copyFileToProject(SdkConstants.FN_ANDROID_MANIFEST_XML, SdkConstants.FN_ANDROID_MANIFEST_XML)
 
     // b/402201770: Ensure any idempotence checks fail consistently.
-    Registry.get("platform.random.idempotence.check.rate").setValue(1, testRootDisposable)
+    Registry.get("platform.random.idempotence.check.rate").setValue(1, projectRule.testRootDisposable)
   }
 
+  @Test
   fun testLightClasses() {
     myFixture.addFileToProject("res/values/strings.xml", "<resources><string name='existing_res'></string></resources>")
     ensureIndexesUpToDate(project)
@@ -93,6 +114,7 @@ class AndroidLightOrGeneratedClassIntentionActionFilterTest : AndroidTestCase() 
     assertThat(myFixture.availableIntentions.filter { it.text.contains(CREATE_FIELD) }).isEmpty()
   }
 
+  @Test
   fun testBuildConfig() {
     myFixture.addFileToProject(
       "genSrc/p1/p2/BuildConfig.java",
