@@ -91,6 +91,11 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
         models.second?.let { modelConsumer.consumeProjectModel(gradleProject, it, KaptGradleModel::class.java) }
       }
 
+    buildModels.forEach { model ->
+      if (syncOptions.flags.studioDebugMode) {
+        populateDebugInfo(model, modelConsumer, this.javaClass)
+      }
+    }
     cachedModels.clear()
   }
 }

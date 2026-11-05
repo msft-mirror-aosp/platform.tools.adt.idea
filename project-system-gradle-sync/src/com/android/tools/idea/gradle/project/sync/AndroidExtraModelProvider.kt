@@ -110,7 +110,7 @@ private class AndroidExtraModelProviderImpl(private val syncOptions: SyncActionO
         .populateBuildModels()
       recordCheckpointData(MeasurementCheckpoint.ANDROID_FINISHED)
       if (syncOptions.flags.studioDebugMode) {
-        populateDebugInfo(buildModel, consumer)
+        populateDebugInfo(buildModel, consumer, this.javaClass)
       }
     }
   }
@@ -153,14 +153,14 @@ private class AndroidExtraModelProviderImpl(private val syncOptions: SyncActionO
       .flatten()
       .forEach { (projectModel, fetchedModel, fetchedClass) -> modelConsumer.consumeProjectModel(projectModel, fetchedModel, fetchedClass) }
   }
+}
 
-  private fun populateDebugInfo(buildModel: GradleBuild, consumer: GradleModelConsumer) {
-    val classLoader = javaClass.classLoader
-    if (classLoader is URLClassLoader) {
-      val classpath = classLoader.urLs.joinToString { url -> url.toURI()?.let { File(it).absolutePath }.orEmpty() }
-      val debugInfo = IdeDebugInfoImpl(mapOf(AndroidExtraModelProvider::class.java.simpleName to classpath))
-      consumer.consumeBuildModel(buildModel, debugInfo, IdeDebugInfo::class.java)
-    }
+fun populateDebugInfo(buildModel: GradleBuild, consumer: GradleModelConsumer, javaClass: Class<*>) {
+  val classLoader = javaClass.classLoader
+  if (classLoader is URLClassLoader) {
+    val classpath = classLoader.urLs.joinToString { url -> url.toURI()?.let { File(it).absolutePath }.orEmpty() }
+    val debugInfo = IdeDebugInfoImpl(mapOf(javaClass.simpleName to classpath))
+    consumer.consumeBuildModel(buildModel, debugInfo, IdeDebugInfo::class.java)
   }
 }
 
