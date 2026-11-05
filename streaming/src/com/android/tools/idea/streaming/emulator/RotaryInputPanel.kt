@@ -138,8 +138,10 @@ internal class RotaryInputPanel(private val emulator: EmulatorController) : JPan
       g2.fill(DIAL_TRACK_SHAPE)
 
       g2.rotate(Math.toRadians(dialAngle.toDouble()))
-      g2.color = DIAL_CONTROL_COLOR
-      g2.fill(DIAL_DOT_AND_GEAR_SHAPE)
+      g2.color = WATCH_CROWN_COLOR
+      g2.fill(WATCH_CROWN_SHAPE)
+      g2.color = DIAL_DOT_COLOR
+      g2.fill(DIAL_DOT_SHAPE)
     } finally {
       g2.dispose()
     }
@@ -216,21 +218,24 @@ internal class RotaryInputPanel(private val emulator: EmulatorController) : JPan
     private const val DIAL_INTERACTION_RADIUS = DIAL_RADIUS * 2
     private const val DIAL_SVG_SIZE = 64.0
     private const val DIAL_SVG_SCALE = (DIAL_RADIUS * 2.0) / DIAL_SVG_SIZE
+    private const val WATCH_CROWN_SCALE = DIAL_SVG_SCALE * 1.35
 
     private const val DEGREES_PER_WHEEL_CLICK = 15.0
     private const val ROTARY_DY_SCALING_FACTOR = 8
 
-    private val WATCH_STRAP_COLOR = JBColor(0x1F1F20, 0x1F1F20)
-    private val WATCH_BODY_COLOR = JBColor(0x2D2D2D, 0x2D2D2D)
-    private val WATCH_BEVEL_COLOR = JBColor(0x444444, 0x444444)
+    private val WATCH_STRAP_COLOR = JBColor(0x1F1F20, 0x505050)
+    private val WATCH_BODY_COLOR = JBColor(0x2D2D2D, 0x404040)
+    private val WATCH_BEVEL_COLOR = JBColor(0x444444, 0x585858)
+    private val WATCH_CROWN_COLOR = JBColor(0xC0C0C0, 0xA0A0A0)
     private val DIAL_TRACK_COLOR = JBColor(Color(0, 0, 0, 31), Color(255, 255, 255, 31))
-    private val DIAL_CONTROL_COLOR = JBColor(0x4083C9, 0x355880)
+    private val DIAL_DOT_COLOR = JBColor(0x4083C9, 0x355880)
 
     private val WATCH_STRAP_SHAPE: Shape = createWatchStrap()
     private val WATCH_BODY_SHAPE: Shape = createWatchBody()
     private val WATCH_BEVEL_AND_BACK_SHAPE: Shape = createWatchBevelAndBack()
+    private val WATCH_CROWN_SHAPE: Shape = createWatchCrown()
     private val DIAL_TRACK_SHAPE: Shape = createDialTrack()
-    private val DIAL_DOT_AND_GEAR_SHAPE: Shape = createDialDotAndGear()
+    private val DIAL_DOT_SHAPE: Shape = createDialDot()
 
     /**
      * Returns the angle difference between two dial angles in `[-180, 180)`, inverted to match the rotation direction of the watch rotary
@@ -294,21 +299,8 @@ internal class RotaryInputPanel(private val emulator: EmulatorController) : JPan
       return AffineTransform.getTranslateInstance(WATCH_OFFSET_X, 0.0).createTransformedShape(path)
     }
 
-    private fun createDialTrack(): Shape {
-      val outerRadius = 28.328 * DIAL_SVG_SCALE
-      val innerRadius = 26.867 * DIAL_SVG_SCALE
-      return Path2D.Double(Path2D.WIND_EVEN_ODD).apply {
-        append(createCircle(0.0, 0.0, outerRadius), false)
-        append(createCircle(0.0, 0.0, innerRadius), false)
-      }
-    }
-
-    private fun createDialDotAndGear(): Shape {
-      val path = Path2D.Double()
-      // Highlighted dot on the left of the track ring (at cx=5, cy=32.208, r=5 in 64x64 SVG coordinates).
-      path.append(createCircle(-27.0, 0.208, 5.0), false)
-
-      // 12-tooth gear at the center of the dial.
+    /** 12-tooth gear representing the rotating watch crown at the center of the dial. */
+    private fun createWatchCrown(): Shape {
       val toothCap =
         Path2D.Double().apply {
           moveTo(6.1, -1.157)
@@ -321,9 +313,20 @@ internal class RotaryInputPanel(private val emulator: EmulatorController) : JPan
         gear.append(rotatedTooth, i > 0)
       }
       gear.closePath()
-      path.append(gear, false)
-
-      return AffineTransform.getScaleInstance(DIAL_SVG_SCALE, DIAL_SVG_SCALE).createTransformedShape(path)
+      return AffineTransform.getScaleInstance(WATCH_CROWN_SCALE, WATCH_CROWN_SCALE).createTransformedShape(gear)
     }
+
+    private fun createDialTrack(): Shape {
+      val outerRadius = 28.328 * DIAL_SVG_SCALE
+      val innerRadius = 26.867 * DIAL_SVG_SCALE
+      return Path2D.Double(Path2D.WIND_EVEN_ODD).apply {
+        append(createCircle(0.0, 0.0, outerRadius), false)
+        append(createCircle(0.0, 0.0, innerRadius), false)
+      }
+    }
+
+    /** Highlighted dot on the left of the track ring (at cx=5, cy=32.208, r=5 in 64x64 SVG coordinates). */
+    private fun createDialDot(): Shape =
+      AffineTransform.getScaleInstance(DIAL_SVG_SCALE, DIAL_SVG_SCALE).createTransformedShape(createCircle(-27.0, 0.208, 5.0))
   }
 }
