@@ -185,11 +185,11 @@ MODULE                        : project
                             - dependencies                : DefaultExternalLibraryDependency
                                 file                          : <M2>/org/jetbrains/kotlin/kotlin-stdlib-jdk8/<KOTLIN_VERSION>/kotlin-stdlib-jdk8-<KOTLIN_VERSION>.jar
                             - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/org/ow2/asm/asm/9.9/asm-9.9.jar
+                                file                          : <M2>/org/ow2/asm/asm/9.11.1/asm-9.11.1.jar
                             - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/org/ow2/asm/asm-commons/9.9/asm-commons-9.9.jar
+                                file                          : <M2>/org/ow2/asm/asm-commons/9.11.1/asm-commons-9.11.1.jar
                             - dependencies                : DefaultExternalLibraryDependency
-                                file                          : <M2>/org/ow2/asm/asm-tree/9.9/asm-tree-9.9.jar
+                                file                          : <M2>/org/ow2/asm/asm-tree/9.11.1/asm-tree-9.11.1.jar
                             - dependencies                : DefaultExternalLibraryDependency
                                 file                          : <M2>/com/android/tools/annotations/<ANDROID_TOOLS_BASE_VERSION>/annotations-<ANDROID_TOOLS_BASE_VERSION>.jar
                                 source                        : <M2>/com/android/tools/annotations/<ANDROID_TOOLS_BASE_VERSION>/annotations-<ANDROID_TOOLS_BASE_VERSION>-sources.jar

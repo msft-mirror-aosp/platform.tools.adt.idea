@@ -243,6 +243,7 @@ maven_repository(
         "@maven//:org.ow2.asm.asm-bom_9.6",
         "@maven//:org.ow2.asm.asm-bom_9.7",
         "@maven//:org.ow2.asm.asm-bom_9.8",
+        "@maven//:org.ow2.asm.asm-bom_9.9",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
     ],
 )
