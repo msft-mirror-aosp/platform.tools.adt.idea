@@ -63,8 +63,8 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
   }
     .apply {
       name = "singlePointMap"
-      deviceLocation = dialog.currentDeviceLocation
-      selectedPoint = this@SinglePointsTab.selectedPoint
+      deviceLocation = if (dialog.gpsInitialized) dialog.currentDeviceLocation else null
+      selectedPoint = if (dialog.gpsInitialized) this@SinglePointsTab.selectedPoint else null
       panTo(dialog.currentDeviceLocation)
     }
 
@@ -81,13 +81,13 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
 
     pointsTable.apply {
       selectionModel.addListSelectionListener { event ->
-        if (!event.valueIsAdjusting && !dialog.isUpdatingUiState && !dialog.isPlayingRoute) {
+        if (dialog.gpsInitialized && !event.valueIsAdjusting && !dialog.isUpdatingUiState && !dialog.isPlayingRoute) {
           onSavedPointSelectionChanged()
         }
       }
       object : DoubleClickListener() {
           override fun onDoubleClick(event: MouseEvent): Boolean {
-            if (dialog.isPlayingRoute) return false
+            if (!dialog.gpsInitialized || dialog.isPlayingRoute) return false
             val point = event.point
             val row = rowAtPoint(point)
             if (row < 0 || columnAtPoint(point) < 0) return false
@@ -239,9 +239,9 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
           .setRemoveAction { removeSelectedPoints() }
           .setMoveDownAction(null)
           .setMoveUpAction(null)
-          .setAddActionUpdater { !dialog.isPlayingRoute && isCoordinateInputValid() }
-          .setEditActionUpdater { !dialog.isPlayingRoute && pointsTable.selectedRowCount == 1 }
-          .setRemoveActionUpdater { !dialog.isPlayingRoute && pointsTable.selectedObjects.isNotEmpty() }
+          .setAddActionUpdater { dialog.gpsInitialized && !dialog.isPlayingRoute && isCoordinateInputValid() }
+          .setEditActionUpdater { dialog.gpsInitialized && !dialog.isPlayingRoute && pointsTable.selectedRowCount == 1 }
+          .setRemoveActionUpdater { dialog.gpsInitialized && !dialog.isPlayingRoute && pointsTable.selectedObjects.isNotEmpty() }
           .setToolbarPosition(ActionToolbarPosition.BOTTOM)
           .createPanel()
       )
@@ -265,37 +265,60 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
   internal fun updateCoordinateFieldsFromSelectedPoint() {
     if (!::latitudeField.isInitialized) return
     dialog.runUpdateUi {
-      latitudeField.text = String.format(Locale.ROOT, "%.4f", selectedPoint.latitude)
-      longitudeField.text = String.format(Locale.ROOT, "%.4f", selectedPoint.longitude)
-      elevationField.text = String.format(Locale.ROOT, "%.1f", selectedPoint.elevation)
+      if (dialog.gpsInitialized) {
+        latitudeField.text = String.format(Locale.ROOT, "%.4f", selectedPoint.latitude)
+        longitudeField.text = String.format(Locale.ROOT, "%.4f", selectedPoint.longitude)
+        elevationField.text = String.format(Locale.ROOT, "%.1f", selectedPoint.elevation)
+      } else {
+        latitudeField.text = ""
+        longitudeField.text = ""
+        elevationField.text = ""
+      }
     }
   }
 
   internal fun updateButtonsState(isPlaying: Boolean) {
-    val validPoint = isCoordinateInputValid()
+    val ready = dialog.gpsInitialized && !isPlaying
+    val validPoint = ready && isCoordinateInputValid()
+    if (::searchField.isInitialized) {
+      searchField.isEnabled = ready
+    }
+    singlePointMap.isEnabled = ready
+    if (::latitudeField.isInitialized) {
+      latitudeField.isEnabled = ready
+    }
+    if (::longitudeField.isInitialized) {
+      longitudeField.isEnabled = ready
+    }
+    if (::elevationField.isInitialized) {
+      elevationField.isEnabled = ready
+    }
     if (::setLocationButton.isInitialized) {
-      setLocationButton.isEnabled = !isPlaying && validPoint
+      setLocationButton.isEnabled = validPoint
     }
     if (::savePointButton.isInitialized) {
-      savePointButton.isEnabled = !isPlaying && validPoint
+      savePointButton.isEnabled = validPoint
     }
     if (::importPointsGpxKmlButton.isInitialized) {
       importPointsGpxKmlButton.isEnabled = !isPlaying
     }
-    pointsTable.isEnabled = !isPlaying
+    pointsTable.isEnabled = ready
   }
 
   private fun ValidationInfoBuilder.validateLatitudeField(field: JBTextField): ValidationInfo? {
+    if (!field.isEnabled) return null
     val v = field.text.trim().toDoubleOrNull() ?: return error(message("location.dialog.error.latitude"))
     return if (v !in GeoPoint.MIN_LATITUDE..GeoPoint.MAX_LATITUDE) error(message("location.dialog.error.latitude")) else null
   }
 
   private fun ValidationInfoBuilder.validateLongitudeField(field: JBTextField): ValidationInfo? {
+    if (!field.isEnabled) return null
     val v = field.text.trim().toDoubleOrNull() ?: return error(message("location.dialog.error.longitude"))
     return if (v !in GeoPoint.MIN_LONGITUDE..GeoPoint.MAX_LONGITUDE) error(message("location.dialog.error.longitude")) else null
   }
 
   private fun ValidationInfoBuilder.validateElevationField(field: JBTextField): ValidationInfo? {
+    if (!field.isEnabled) return null
     val v = field.text.trim().toDoubleOrNull()
     return if (v == null || !v.isFinite()) error(message("location.dialog.error.elevation")) else null
   }
@@ -330,6 +353,7 @@ internal class SinglePointsTab(private val dialog: LocationDialog) {
   }
 
   private fun onSinglePointMapClicked(point: GeoPoint) {
+    if (!dialog.gpsInitialized || dialog.isPlayingRoute) return
     dialog.clearErrorMessage()
     val pointWithElevation = point.copy(elevation = selectedPoint.elevation)
     selectedPoint = pointWithElevation

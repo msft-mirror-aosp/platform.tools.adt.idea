@@ -57,6 +57,7 @@ internal class PhoneDialog(emulator: EmulatorController) :
   AbstractExtendedControlsDialog(emulator, message("phone.dialog.title", emulator.emulatorId.avdName)) {
 
   private var activeCall: Call = Call.getDefaultInstance()
+  private var callsInitialized: Boolean = false
   private val numberComboBoxModel = DefaultComboBoxModel(getInitialPhoneNumbers())
 
   private lateinit var numberComboBox: Cell<ComboBox<String>>
@@ -74,16 +75,20 @@ internal class PhoneDialog(emulator: EmulatorController) :
   init {
     val phoneEventsJob = coroutineScope.launch {
       try {
-        val activeCalls = emulator.listCalls()
+        val activeCalls = emulator.callWithRetry(EmulatorController::listCalls)
         withContext(uiContext) {
+          callsInitialized = true
           if (activeCall.state == CallState.CALL_STATE_UNSPECIFIED && activeCalls.callsCount > 0) {
             activeCall = activeCalls.getCalls(0)
-            updateUiFromState()
           }
+          updateUiFromState()
         }
-      } catch (t: Throwable) {
-        t.throwIfCancellation()
-        // Error is already logged by EmulatorController.
+      } catch (e: Exception) {
+        e.throwIfCancellation()
+        withContext(uiContext) {
+          showError(e)
+        }
+        return@launch
       }
 
       try {
@@ -110,8 +115,10 @@ internal class PhoneDialog(emulator: EmulatorController) :
     val inputChangeListener =
       object : DocumentAdapter() {
         override fun textChanged(e: DocumentEvent) {
-          clearError()
-          updateUiFromState()
+          if (callsInitialized) {
+            clearError()
+            updateUiFromState()
+          }
         }
       }
 
@@ -130,8 +137,10 @@ internal class PhoneDialog(emulator: EmulatorController) :
                 selectedItem = numberComboBoxModel.getElementAt(0)
                 setMinimumAndPreferredWidth(JBUIScale.scale(FIELD_WIDTH))
                 addActionListener {
-                  clearError()
-                  updateUiFromState()
+                  if (callsInitialized) {
+                    clearError()
+                    updateUiFromState()
+                  }
                 }
                 (editor.editorComponent as? JTextField)?.document?.addDocumentListener(inputChangeListener)
               }
@@ -168,8 +177,9 @@ internal class PhoneDialog(emulator: EmulatorController) :
                 text = DEFAULT_SMS_MESSAGE
                 lineWrap = true
                 wrapStyleWord = true
-                isEditable = !isAutomotive
-                isEnabled = !isAutomotive
+                val smsAllowed = callsInitialized && !isAutomotive
+                isEditable = smsAllowed
+                isEnabled = smsAllowed
                 background = JBTextField().background
                 border = TextAreaBorder()
                 document.addDocumentListener(inputChangeListener)
@@ -184,7 +194,7 @@ internal class PhoneDialog(emulator: EmulatorController) :
           sendSmsButton =
             cell(EqualWidthButton(message("phone.dialog.button.send.message"))).align(AlignX.FILL).resizableColumn().applyToComponent {
               name = "sendSmsButton"
-              isEnabled = !isAutomotive
+              isEnabled = callsInitialized && !isAutomotive
               addActionListener { sendSms() }
             }
         }
@@ -194,6 +204,7 @@ internal class PhoneDialog(emulator: EmulatorController) :
   }
 
   private fun ValidationInfoBuilder.validatePhoneNumber(comboBox: ComboBox<String>): ValidationInfo? {
+    if (!comboBox.isEnabled) return null
     val rawNumber = getComboBoxText(comboBox).trim()
     return if (!isValidPhoneNumber(rawNumber)) error(message("phone.dialog.error.invalid.number")) else null
   }
@@ -298,13 +309,13 @@ internal class PhoneDialog(emulator: EmulatorController) :
     val isNumberValid = isValidPhoneNumber(currentPhoneNumberText.trim())
     if (::numberComboBox.isInitialized) {
       val numberComponent = numberComboBox.component
-      numberComponent.isEnabled = state == CallState.CALL_STATE_UNSPECIFIED
+      numberComponent.isEnabled = callsInitialized && state == CallState.CALL_STATE_UNSPECIFIED
       if (state != CallState.CALL_STATE_UNSPECIFIED && activeCall.number.isNotEmpty() && currentPhoneNumberText.isEmpty()) {
         numberComponent.selectedItem = activeCall.number
       }
     }
     if (::holdCallButton.isInitialized) {
-      holdCallButton.component.isEnabled = state == CallState.CALL_STATE_ACTIVE || state == CallState.CALL_STATE_HELD
+      holdCallButton.component.isEnabled = callsInitialized && (state == CallState.CALL_STATE_ACTIVE || state == CallState.CALL_STATE_HELD)
       holdCallButton.component.text =
         if (state == CallState.CALL_STATE_HELD) {
           message("phone.dialog.button.resume.call")
@@ -313,7 +324,7 @@ internal class PhoneDialog(emulator: EmulatorController) :
         }
     }
     if (::callButton.isInitialized) {
-      callButton.component.isEnabled = state != CallState.CALL_STATE_UNSPECIFIED || isNumberValid
+      callButton.component.isEnabled = callsInitialized && (state != CallState.CALL_STATE_UNSPECIFIED || isNumberValid)
       callButton.component.text =
         if (state == CallState.CALL_STATE_UNSPECIFIED) {
           message("phone.dialog.button.call.device")
@@ -322,10 +333,12 @@ internal class PhoneDialog(emulator: EmulatorController) :
         }
     }
     if (::sendSmsButton.isInitialized && ::smsMessageArea.isInitialized) {
-      val isAutomotive = emulator.emulatorConfig.deviceType == DeviceType.AUTOMOTIVE
+      val smsAllowed = callsInitialized && emulator.emulatorConfig.deviceType != DeviceType.AUTOMOTIVE
+      smsMessageArea.component.isEditable = smsAllowed
+      smsMessageArea.component.isEnabled = smsAllowed
       val messageText = smsMessageArea.component.text
       val isMessageValid = messageText.isNotEmpty() && messageText.toByteArray(Charsets.UTF_8).size <= MAX_SMS_MSG_SIZE
-      sendSmsButton.component.isEnabled = !isAutomotive && isNumberValid && isMessageValid
+      sendSmsButton.component.isEnabled = smsAllowed && isNumberValid && isMessageValid
     }
   }
 

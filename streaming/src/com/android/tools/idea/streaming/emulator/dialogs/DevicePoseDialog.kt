@@ -52,12 +52,14 @@ import com.intellij.ui.dsl.gridLayout.UnscaledGaps
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.JBUI
 import java.awt.Dimension
+import java.awt.Rectangle
 import java.awt.image.BufferedImage
 import java.awt.image.DataBufferInt
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
 import javax.swing.Icon
 import javax.swing.JButton
+import javax.swing.SwingUtilities
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.roundToInt
@@ -108,6 +110,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
   private var deviceOrientation: DeviceOrientation? = null
   private var screenImage: BufferedImage? = null
 
+  private var poseInitialized: Boolean = false
   private var rotationModified: Boolean = false
   private var positionModified: Boolean = false
   private var foldModified: Boolean = false
@@ -130,22 +133,24 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
     // Load initial state from the emulator and forward subsequent updates.
     val initialStateJob = coroutineScope.launch {
       try {
-        val rotProto = emulator.getPhysicalModel(PhysicalType.ROTATION)
-        val posProto = emulator.getPhysicalModel(PhysicalType.POSITION)
+        val rotProto = emulator.callWithRetry { getPhysicalModel(PhysicalType.ROTATION) }
+        val posProto = emulator.callWithRetry { getPhysicalModel(PhysicalType.POSITION) }
         val foldProto =
           if (hasPostures) {
-            emulator.getPhysicalModel(if (isRollable) PhysicalType.ROLLABLE0 else PhysicalType.HINGE_ANGLE0)
+            emulator.callWithRetry { getPhysicalModel(if (isRollable) PhysicalType.ROLLABLE0 else PhysicalType.HINGE_ANGLE0) }
           } else {
             null
           }
-        val postureProto = if (hasPostures) emulator.getPhysicalModel(PhysicalType.POSTURE) else null
+        val postureProto = if (hasPostures) emulator.callWithRetry { getPhysicalModel(PhysicalType.POSTURE) } else null
         withContext(uiContext) {
           applyInitialState(rotProto, posProto, foldProto, postureProto)
         }
         sensorRefreshChannel.trySend(Unit)
-      } catch (t: Throwable) {
-        t.throwIfCancellation()
-        // Error is already logged by EmulatorController.
+      } catch (e: Exception) {
+        e.throwIfCancellation()
+        withContext(uiContext) {
+          showError(e)
+        }
       }
     }
     val sensorRefreshJob = coroutineScope.launch {
@@ -171,10 +176,13 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
               .setTarget(PhysicalType.ROTATION)
               .setValue(ParameterValue.newBuilder().addData(x).addData(y).addData(z))
               .build()
-          emulator.setPhysicalModel(modelValue)
+          emulator.callWithRetry { setPhysicalModel(modelValue) }
           sensorRefreshChannel.trySend(Unit)
-        } catch (t: Throwable) {
-          t.throwIfCancellation()
+        } catch (e: Exception) {
+          e.throwIfCancellation()
+          withContext(uiContext) {
+            showError(e)
+          }
         }
       }
     }
@@ -187,9 +195,12 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
               .setTarget(PhysicalType.POSITION)
               .setValue(ParameterValue.newBuilder().addData(x).addData(y).addData(z))
               .build()
-          emulator.setPhysicalModel(modelValue)
-        } catch (t: Throwable) {
-          t.throwIfCancellation()
+          emulator.callWithRetry { setPhysicalModel(modelValue) }
+        } catch (e: Exception) {
+          e.throwIfCancellation()
+          withContext(uiContext) {
+            showError(e)
+          }
         }
       }
     }
@@ -199,9 +210,9 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
         try {
           val type = if (isRollable) PhysicalType.ROLLABLE0 else PhysicalType.HINGE_ANGLE0
           val modelValue = PhysicalModelValue.newBuilder().setTarget(type).setValue(ParameterValue.newBuilder().addData(fold)).build()
-          emulator.setPhysicalModel(modelValue)
+          emulator.callWithRetry { setPhysicalModel(modelValue) }
           if (dialogWrapper != null) {
-            val postureProto = emulator.getPhysicalModel(PhysicalType.POSTURE)
+            val postureProto = emulator.callWithRetry { getPhysicalModel(PhysicalType.POSTURE) }
             val posture = postureFromProto(postureProto)
             withContext(uiContext) {
               if (version == foldVersion) {
@@ -212,8 +223,11 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
               }
             }
           }
-        } catch (t: Throwable) {
-          t.throwIfCancellation()
+        } catch (e: Exception) {
+          e.throwIfCancellation()
+          withContext(uiContext) {
+            showError(e)
+          }
         }
       }
     }
@@ -223,7 +237,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
         NotificationTracker.forEmulator(emulator).currentPosture.collect { posture ->
           if (posture != null) {
             withContext(uiContext) {
-              if (appliedFoldVersion == foldVersion) {
+              if (poseInitialized && appliedFoldVersion == foldVersion) {
                 applyEmulatorPosture(posture)
               }
             }
@@ -276,6 +290,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
         currentPosture = resolvedPosture
       }
     }
+    poseInitialized = true
     updateUi()
   }
 
@@ -546,6 +561,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
           onFoldValueChanged = ::setFoldValueFromUi,
         )
         .apply {
+          isEnabled = poseInitialized
           operationMode = this@DevicePoseDialog.operationMode
           rotationDegrees = this@DevicePoseDialog.rotationDegrees
           positionMeters = this@DevicePoseDialog.positionMeters
@@ -619,6 +635,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
       }
 
       registerUiUpdater {
+        widget.isEnabled = poseInitialized
         widget.operationMode = operationMode
         widget.rotationDegrees = rotationDegrees
         widget.positionMeters = positionMeters
@@ -636,23 +653,29 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
     tooltip: String,
     orientation: DeviceOrientation,
   ) {
-    cell(SquareButton(icon, tooltip) { setRotationQuadrants(orientation.ordinal) }).accessibleName(tooltip).applyToComponent {
-      this.name = name
-      isSelected = deviceOrientation == orientation
-      registerUiUpdater {
-        isSelected = deviceOrientation == orientation
+    cell(SquareButton(icon, tooltip) { if (poseInitialized) setRotationQuadrants(orientation.ordinal) })
+      .accessibleName(tooltip)
+      .applyToComponent {
+        this.name = name
+        isEnabled = poseInitialized
+        isSelected = poseInitialized && deviceOrientation == orientation
+        registerUiUpdater {
+          isEnabled = poseInitialized
+          isSelected = poseInitialized && deviceOrientation == orientation
+        }
       }
-    }
   }
 
   private fun Row.createPostureButton(posture: PostureDescriptor) {
-    cell(SquareButton(posture.icon, posture.displayName) { setPostureFromUi(posture) })
+    cell(SquareButton(posture.icon, posture.displayName) { if (poseInitialized) setPostureFromUi(posture) })
       .accessibleName(posture.displayName)
       .applyToComponent {
         name = "postureButton_${posture.posture.name}"
-        isSelected = currentPosture == posture
+        isEnabled = poseInitialized
+        isSelected = poseInitialized && currentPosture == posture
         registerUiUpdater {
-          isSelected = currentPosture == posture
+          isEnabled = poseInitialized
+          isSelected = poseInitialized && currentPosture == posture
         }
       }
   }
@@ -705,24 +728,28 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
             paintLabels = false
             paintTicks = false
             value = (getter() * stepsPerUnit).roundToInt().coerceIn(minSteps, maxSteps)
+            isEnabled = poseInitialized
             preferredSize = Dimension(JBUIScale.scale(SLIDER_WIDTH), preferredSize.height)
             putClientProperty(DslComponentProperty.VISUAL_PADDINGS, UnscaledGaps(right = 3))
             addChangeListener {
-              if (!isUpdatingUi) {
+              if (!isUpdatingUi && poseInitialized) {
                 val newVal = (value.toFloat() / stepsPerUnit).coerceIn(minVal, maxVal)
                 setter(newVal)
               }
             }
             registerUiUpdater {
+              isEnabled = poseInitialized
               val targetStep = (getter() * stepsPerUnit).roundToInt().coerceIn(minSteps, maxSteps)
               if (value != targetStep) {
                 value = targetStep
               }
             }
           }
-        cell(SliderValueField(fieldName, formatter(getter()))).applyToComponent {
+        cell(SliderValueField(fieldName, if (poseInitialized) formatter(getter()) else "")).applyToComponent {
+          isEnabled = poseInitialized
           registerUiUpdater {
-            val formatted = formatter(getter())
+            isEnabled = poseInitialized
+            val formatted = if (poseInitialized) formatter(getter()) else ""
             if (text != formatted) {
               text = formatted
             }
@@ -752,6 +779,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
         deg.z.coerceIn(MIN_ROTATION_DEG, MAX_ROTATION_DEG),
       )
     if (rotationDegrees != clamped) {
+      clearError()
       rotationDegrees = clamped
       rotationModified = true
       stateModified = true
@@ -768,6 +796,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
         posMeters.z.coerceIn(MIN_POSITION_METERS, MAX_POSITION_METERS),
       )
     if (positionMeters != clamped) {
+      clearError()
       positionMeters = clamped
       positionModified = true
       stateModified = true
@@ -777,6 +806,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
   }
 
   private fun setPostureFromUi(posture: PostureDescriptor) {
+    clearError()
     val defaultVal = defaultPostureValue(posture).toFloat().coerceIn(minFoldValue, maxFoldValue)
     currentPosture = posture
     foldValue = defaultVal
@@ -789,6 +819,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
   private fun setFoldValueFromUi(value: Float) {
     val clamped = value.coerceIn(minFoldValue, maxFoldValue)
     if (foldValue != clamped) {
+      clearError()
       foldValue = clamped
       foldModified = true
       stateModified = true
@@ -841,7 +872,34 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
       val fm = getFontMetrics(font)
       val insets = insets
       val minWidth = maxOf(fm.stringWidth("-180.0\u00B0"), fm.stringWidth("-0.00 m")) + insets.left + insets.right
-      return Dimension(maxOf(size.width, minWidth), size.height)
+      val minHeight = fm.height + insets.top + insets.bottom
+      return Dimension(maxOf(size.width, minWidth), maxOf(size.height, minHeight))
+    }
+
+    override fun getBaseline(width: Int, height: Int): Int {
+      val baseline = super.getBaseline(width, height)
+      if (baseline >= 0) {
+        return baseline
+      }
+      val insets = insets
+      val fm = getFontMetrics(font ?: return -1)
+      val viewR = Rectangle(insets.left, insets.top, width - insets.left - insets.right, height - insets.top - insets.bottom)
+      val textR = Rectangle()
+      SwingUtilities.layoutCompoundLabel(
+        this,
+        fm,
+        "0",
+        null,
+        verticalAlignment,
+        horizontalAlignment,
+        verticalTextPosition,
+        horizontalTextPosition,
+        viewR,
+        Rectangle(),
+        textR,
+        iconTextGap,
+      )
+      return textR.y + fm.ascent
     }
 
     override fun getMinimumSize(): Dimension = preferredSize

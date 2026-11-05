@@ -45,7 +45,9 @@ internal class MicrophoneDialog(emulator: EmulatorController) :
   private val headsetState: HeadsetState =
     emulator.getUserData(HEADSET_STATE_KEY) ?: HeadsetState().also { emulator.putUserData(HEADSET_STATE_KEY, it) }
 
-  private var hostAudioInput: Boolean = NotificationTracker.forEmulator(emulator).microphoneInput.value ?: false
+  private val initialMicrophoneInput: Boolean? = NotificationTracker.forEmulator(emulator).microphoneInput.value
+  private var hostAudioInput: Boolean = initialMicrophoneInput ?: false
+  private var hostAudioInputInitialized: Boolean = initialMicrophoneInput != null
   private var voiceAssistPressed: Boolean = false
   private var microphoneStateVersion: Long = 0
   private var appliedMicrophoneStateVersion: Long = 0
@@ -70,19 +72,19 @@ internal class MicrophoneDialog(emulator: EmulatorController) :
 
     val updateJob = coroutineScope.launch {
       for ((enabled, version) in microphoneStateChannel) {
-        var failed = false
+        var exception: Exception? = null
         try {
           val state = MicrophoneState.newBuilder().setRealAudioEnabled(enabled).build()
-          emulator.setMicrophoneState(state)
-        } catch (t: Throwable) {
-          t.throwIfCancellation()
-          // Error is already logged by EmulatorController.
-          failed = true
+          emulator.callWithRetry { setMicrophoneState(state) }
+        } catch (e: Exception) {
+          e.throwIfCancellation()
+          exception = e
         }
         withContext(uiContext) {
           if (version == microphoneStateVersion) {
             appliedMicrophoneStateVersion = version
-            if (failed) {
+            if (exception != null) {
+              showError(exception)
               NotificationTracker.forEmulator(emulator).microphoneInput.value?.let {
                 applyHostAudioInput(it)
               }
@@ -132,6 +134,7 @@ internal class MicrophoneDialog(emulator: EmulatorController) :
             .applyToComponent {
               name = "hostAudioInputCheckBox"
               isSelected = hostAudioInput
+              isEnabled = hostAudioInputInitialized
               addActionListener {
                 onHostAudioInputToggled(isSelected)
               }
@@ -156,8 +159,10 @@ internal class MicrophoneDialog(emulator: EmulatorController) :
 
   private fun applyHostAudioInput(enabled: Boolean) {
     hostAudioInput = enabled
+    hostAudioInputInitialized = true
     if (::hostAudioInputCheckBox.isInitialized) {
       hostAudioInputCheckBox.isSelected = enabled
+      hostAudioInputCheckBox.isEnabled = true
     }
   }
 
@@ -185,6 +190,7 @@ internal class MicrophoneDialog(emulator: EmulatorController) :
 
   private fun onHostAudioInputToggled(enabled: Boolean) {
     if (hostAudioInput != enabled) {
+      clearError()
       hostAudioInput = enabled
       val version = ++microphoneStateVersion
       microphoneStateChannel.trySend(enabled to version)

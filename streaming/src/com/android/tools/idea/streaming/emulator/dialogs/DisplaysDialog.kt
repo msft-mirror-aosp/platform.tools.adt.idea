@@ -159,6 +159,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
 
   /** Sends the current secondary display configurations to the emulator. */
   private fun applyChanges() {
+    clearError()
     val updated =
       DisplayConfigurations.newBuilder()
         .apply {

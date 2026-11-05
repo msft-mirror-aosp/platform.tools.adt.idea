@@ -29,12 +29,14 @@ internal class CellularDialog(emulator: EmulatorController) :
   AbstractExtendedControlsDialog(emulator, message("cellular.dialog.title", emulator.emulatorId.avdName)) {
 
   private var cellularState: CellularState = CellularState()
+  private var stateInitialized: Boolean = false
 
   private val cellInfoChannel =
     createStateChannel(
       getState = EmulatorController::getCellInfo,
       onStateLoaded = { cellInfo ->
         cellularState = cellInfo.toCellularState()
+        stateInitialized = true
         updateUi()
       },
       setState = EmulatorController::setCellInfo,
@@ -90,16 +92,20 @@ internal class CellularDialog(emulator: EmulatorController) :
     return panel {
       row {
         panel {
-            row { enumComboBox(message("cellular.dialog.label.network.type"), ::networkType, COMBO_BOX_WIDTH) }
-            row { enumComboBox(message("cellular.dialog.label.voice.status"), ::voiceStatus, COMBO_BOX_WIDTH) }
-            row { enumComboBox(message("cellular.dialog.label.meter.status"), ::meterStatus, COMBO_BOX_WIDTH) }
+            row { enumComboBox(message("cellular.dialog.label.network.type"), ::networkType, COMBO_BOX_WIDTH, { stateInitialized }) }
+            row { enumComboBox(message("cellular.dialog.label.voice.status"), ::voiceStatus, COMBO_BOX_WIDTH, { stateInitialized }) }
+            row { enumComboBox(message("cellular.dialog.label.meter.status"), ::meterStatus, COMBO_BOX_WIDTH, { stateInitialized }) }
           }
           .align(AlignY.TOP)
           .align(AlignX.FILL)
 
         panel {
-            row { enumComboBox(message("cellular.dialog.label.signal.strength"), ::signalStrength, COMBO_BOX_WIDTH) }
-            row { enumComboBox(message("cellular.dialog.label.data.status"), ::dataStatus, COMBO_BOX_WIDTH) { it.dataDisplayValue } }
+            row { enumComboBox(message("cellular.dialog.label.signal.strength"), ::signalStrength, COMBO_BOX_WIDTH, { stateInitialized }) }
+            row {
+              enumComboBox(message("cellular.dialog.label.data.status"), ::dataStatus, COMBO_BOX_WIDTH, { stateInitialized }) {
+                it.dataDisplayValue
+              }
+            }
           }
           .align(AlignY.TOP)
           .align(AlignX.FILL)
@@ -108,6 +114,7 @@ internal class CellularDialog(emulator: EmulatorController) :
   }
 
   private fun onStateChanged() {
+    clearError()
     stateModified = true
     updateUi()
     cellInfoChannel.trySend(cellularState.toCellInfo())

@@ -119,6 +119,14 @@ class SensorsDialogTest {
     assertThat(humidityField.isEnabled).isFalse()
     assertThat(humidityField.text).isEmpty()
 
+    // Programmatic changes and focus-lost events while uninitialized are ignored and do not override initial emulator state.
+    proximitySlider.value = 50
+    temperatureField.dispatchEvent(FocusEvent(temperatureField, FocusEvent.FOCUS_LOST))
+    assertThat(temperatureField.text).isEmpty()
+    magNorthField.dispatchEvent(FocusEvent(magNorthField, FocusEvent.FOCUS_LOST))
+    assertThat(magNorthField.text).isEmpty()
+    magEastField.text = "99.0"
+
     fakeEmulator.resumeGrpc()
     waitForCondition(5.seconds) {
       temperatureSlider.isEnabled &&

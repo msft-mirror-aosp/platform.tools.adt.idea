@@ -132,7 +132,7 @@ class CameraDialogTest {
     assertThat(tableSizeSlider.isEnabled).isFalse()
     assertThat(tableSizeField.isEnabled).isFalse()
     assertThat(tableSizeSlider.isShowing).isFalse()
-    assertThat(enableAnimationsCheckBox.isEnabled).isTrue()
+    assertThat(enableAnimationsCheckBox.isEnabled).isFalse()
     assertThat(enableAnimationsCheckBox.isSelected).isTrue()
 
     // Editing actions are ignored while poster state is still unknown.
@@ -141,7 +141,9 @@ class CameraDialogTest {
     assertThat(wallPreview.icon).isNull()
 
     fakeEmulator.resumeGrpc()
-    waitForCondition(5.seconds) { wallFileNameField.isEnabled && tableFileNameField.isEnabled }
+    waitForCondition(5.seconds) {
+      wallFileNameField.isEnabled && tableFileNameField.isEnabled && enableAnimationsCheckBox.isEnabled
+    }
 
     assertThat(wallPreview.isEnabled).isTrue()
     assertThat(wallPreview.text).isEqualTo("No image applied")
@@ -159,6 +161,7 @@ class CameraDialogTest {
     assertThat(tableSizeSlider.isEnabled).isTrue()
     assertThat(tableSizeField.isEnabled).isTrue()
     assertThat(tableSizeSlider.isShowing).isFalse()
+    assertThat(enableAnimationsCheckBox.isEnabled).isTrue()
     assertThat(enableAnimationsCheckBox.isSelected).isTrue()
 
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
@@ -280,7 +283,7 @@ class CameraDialogTest {
     val wallSizeField = ui.getComponent<JTextField> { it.name == "wallSizeField" }
     val enableAnimationsCheckBox = ui.getComponent<JBCheckBox> { it.name == "enableAnimationsCheckBox" }
 
-    waitForCondition(5.seconds) { wallFileNameField.isEnabled }
+    waitForCondition(5.seconds) { wallFileNameField.isEnabled && enableAnimationsCheckBox.isEnabled }
 
     // Add wall poster image via browse extension.
     wallFileNameField.extensions.first { it.tooltip == "Select an image file" }.actionOnClick.run()
@@ -392,10 +395,14 @@ class CameraDialogTest {
 
     assertThat(wallPreview.isEnabled).isFalse()
     assertThat(wallPreview.text).isNull()
+    assertThat(enableAnimationsCheckBox.isEnabled).isFalse()
 
     fakeEmulator.resumeGrpc()
     waitForCondition(5.seconds) {
-      wallFileNameField.isEnabled && tableFileNameField.isEnabled && hasValidationError(ui, "Unable to load current poster settings")
+      wallFileNameField.isEnabled &&
+        tableFileNameField.isEnabled &&
+        enableAnimationsCheckBox.isEnabled &&
+        hasValidationError(ui, "Unable to load current poster settings")
     }
 
     assertThat(wallPreview.isEnabled).isTrue()
@@ -435,7 +442,10 @@ class CameraDialogTest {
     val enableAnimationsCheckBox = ui.getComponent<JBCheckBox> { it.name == "enableAnimationsCheckBox" }
 
     waitForCondition(5.seconds) {
-      wallFileNameField.isEnabled && tableFileNameField.isEnabled && hasValidationError(ui, "Unable to load current poster settings")
+      wallFileNameField.isEnabled &&
+        tableFileNameField.isEnabled &&
+        enableAnimationsCheckBox.isEnabled &&
+        hasValidationError(ui, "Unable to load current poster settings")
     }
 
     assertThat(wallPreview.isEnabled).isTrue()
@@ -497,9 +507,13 @@ class CameraDialogTest {
 
     val wallFileNameField = ui.getComponent<ExtendableTextField> { it.name == "wallFileNameField" }
     val tableFileNameField = ui.getComponent<ExtendableTextField> { it.name == "tableFileNameField" }
+    val enableAnimationsCheckBox = ui.getComponent<JBCheckBox> { it.name == "enableAnimationsCheckBox" }
 
     waitForCondition(5.seconds) {
-      wallFileNameField.isEnabled && tableFileNameField.isEnabled && hasValidationError(ui, "Unable to load current poster settings")
+      wallFileNameField.isEnabled &&
+        tableFileNameField.isEnabled &&
+        enableAnimationsCheckBox.isEnabled &&
+        hasValidationError(ui, "Unable to load current poster settings")
     }
     assertThat(emulatorController.maxInboundMessageSize).isEqualTo(Int.MAX_VALUE)
 

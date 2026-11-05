@@ -278,7 +278,9 @@ internal class SensorsDialog(emulator: EmulatorController) :
           "positiveUnitIncrement",
           object : AbstractAction() {
             override fun actionPerformed(e: ActionEvent?) {
-              value = (value + unitStep).coerceIn(minSteps, maxSteps)
+              if (sensor.initialized) {
+                value = (value + unitStep).coerceIn(minSteps, maxSteps)
+              }
             }
           },
         )
@@ -286,12 +288,14 @@ internal class SensorsDialog(emulator: EmulatorController) :
           "negativeUnitIncrement",
           object : AbstractAction() {
             override fun actionPerformed(e: ActionEvent?) {
-              value = (value - unitStep).coerceIn(minSteps, maxSteps)
+              if (sensor.initialized) {
+                value = (value - unitStep).coerceIn(minSteps, maxSteps)
+              }
             }
           },
         )
         addChangeListener {
-          if (!isUpdatingUi) {
+          if (!isUpdatingUi && sensor.initialized) {
             val newVal = (value.toFloat() / stepsPerUnit).coerceIn(sensor.minValue, sensor.maxValue)
             sensor.setFromUi(newVal)
           }
@@ -359,7 +363,7 @@ internal class SensorsDialog(emulator: EmulatorController) :
     document.addDocumentListener(
       object : DocumentAdapter() {
         override fun textChanged(e: DocumentEvent) {
-          if (!isUpdatingUi && !updatingFromThisField) {
+          if (!isUpdatingUi && !updatingFromThisField && isInitialized()) {
             val parsed = text.trim().toFloatOrNull()
             if (parsed != null && parsed in minVal..maxVal) {
               updatingFromThisField = true
@@ -375,7 +379,7 @@ internal class SensorsDialog(emulator: EmulatorController) :
     )
 
     fun commitText() {
-      if (!isUpdatingUi && !updatingFromThisField) {
+      if (!isUpdatingUi && !updatingFromThisField && isInitialized()) {
         updatingFromThisField = true
         try {
           val parsed = text.trim().toFloatOrNull()
@@ -438,7 +442,7 @@ internal class SensorsDialog(emulator: EmulatorController) :
     val channel = Channel<ParameterValue>(Channel.CONFLATED)
     val initialStateJob = coroutineScope.launch {
       try {
-        val modelValue = emulator.getPhysicalModel(type)
+        val modelValue = emulator.callWithRetry { getPhysicalModel(type) }
         withContext(uiContext) {
           onStateLoaded(modelValue.value)
           updateUi()
@@ -446,7 +450,7 @@ internal class SensorsDialog(emulator: EmulatorController) :
       } catch (e: Exception) {
         e.throwIfCancellation()
         withContext(uiContext) {
-          showError(e.message ?: e.javaClass.simpleName)
+          showError(e)
         }
       }
     }
@@ -459,10 +463,12 @@ internal class SensorsDialog(emulator: EmulatorController) :
       for (value in channel) {
         try {
           val modelValue = PhysicalModelValue.newBuilder().setTarget(type).setValue(value).build()
-          emulator.setPhysicalModel(modelValue)
+          emulator.callWithRetry { setPhysicalModel(modelValue) }
         } catch (e: Exception) {
           e.throwIfCancellation()
-          // Error is already logged by EmulatorController.
+          withContext(uiContext) {
+            showError(e)
+          }
         }
       }
     }

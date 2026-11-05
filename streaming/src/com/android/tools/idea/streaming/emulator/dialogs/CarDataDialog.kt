@@ -262,17 +262,20 @@ internal class CarDataDialog(emulator: EmulatorController) :
     if (!isInitialLoad) {
       userModifiedKeys.clear()
       streamUpdatedKeys.clear()
+      clearError()
     }
     refreshJob = dialogScope.launch {
+      var grpcException: Exception? = null
       try {
         sendEmulatorMessage(EmulatorMessage.newBuilder().setMsgType(MsgType.GET_CONFIG_ALL_CMD).setStatus(Status.RESULT_OK).build())
         sendEmulatorMessage(EmulatorMessage.newBuilder().setMsgType(MsgType.GET_PROPERTY_ALL_CMD).setStatus(Status.RESULT_OK).build())
-      } catch (t: Throwable) {
-        t.throwIfCancellation()
+      } catch (e: Exception) {
+        e.throwIfCancellation()
+        grpcException = e
       }
       // TODO: Remove ADB workaround once CarService.receiveCarEvents works in the emulator (b/580106156).
       if (!grpcEventsReceived) {
-        fetchVhalPropertiesViaAdb()
+        fetchVhalPropertiesViaAdb(grpcException)
       }
     }
   }
@@ -359,7 +362,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
     }
   }
 
-  private suspend fun fetchVhalPropertiesViaAdb() {
+  private suspend fun fetchVhalPropertiesViaAdb(grpcException: Exception? = null) {
     val lines = ArrayList<String>()
     try {
       adbDeviceServices.shellAsLines(deviceSelector, DUMP_VHAL_COMMAND).collect { element ->
@@ -367,16 +370,38 @@ internal class CarDataDialog(emulator: EmulatorController) :
           lines.add(element.contents)
         }
       }
-    } catch (t: Throwable) {
-      t.throwIfCancellation()
-      thisLogger().warn("Failed to query VHAL properties via ADB", t)
+    } catch (e: Exception) {
+      e.throwIfCancellation()
+      thisLogger().warn("Failed to query VHAL properties via ADB", e)
+      withContext(uiContext) {
+        if (!grpcEventsReceived) {
+          showError(grpcException ?: e)
+        }
+      }
       return
     }
-    if (grpcEventsReceived || lines.isEmpty()) {
+    if (grpcEventsReceived) {
+      return
+    }
+    if (lines.isEmpty()) {
+      if (grpcException != null) {
+        withContext(uiContext) {
+          if (!grpcEventsReceived) {
+            showError(grpcException)
+          }
+        }
+      }
       return
     }
     val (configs, values) = parseAdbVhalDump(lines)
     if (configs.isEmpty() && values.isEmpty()) {
+      if (grpcException != null) {
+        withContext(uiContext) {
+          if (!grpcEventsReceived) {
+            showError(grpcException)
+          }
+        }
+      }
       return
     }
     withContext(uiContext) {
@@ -422,7 +447,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
   }
 
   private suspend fun sendEmulatorMessage(emulatorMessage: EmulatorMessage) {
-    emulator.sendCarEvent(CarEvent.newBuilder().setData(emulatorMessage.toByteString()).build())
+    emulator.callWithRetry { sendCarEvent(CarEvent.newBuilder().setData(emulatorMessage.toByteString()).build()) }
   }
 
   private fun hasPendingOrInFlightUpdate(key: VhalPropertyKey): Boolean =

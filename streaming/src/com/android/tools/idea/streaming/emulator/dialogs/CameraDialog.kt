@@ -81,6 +81,7 @@ internal class CameraDialog(emulator: EmulatorController) :
   private val tablePosterControl = PosterControl(TABLE_POSTER, DEFAULT_TABLE_MIN_WIDTH, DEFAULT_TABLE_MAX_WIDTH)
 
   private var postersInitialized: Boolean = false
+  private var animationsInitialized: Boolean = false
   private var animationsEnabled: Boolean = true
 
   private val animationStateChannel =
@@ -88,6 +89,7 @@ internal class CameraDialog(emulator: EmulatorController) :
       getState = EmulatorController::getAnimationState,
       onStateLoaded = { state ->
         animationsEnabled = state.tvOn
+        animationsInitialized = true
         updateUi()
       },
       setState = EmulatorController::setAnimationState,
@@ -142,12 +144,14 @@ internal class CameraDialog(emulator: EmulatorController) :
         checkBox(message("camera.dialog.checkbox.enable.animations")).applyToComponent {
           name = "enableAnimationsCheckBox"
           isSelected = animationsEnabled
+          isEnabled = animationsInitialized
           addActionListener {
             if (!isUpdatingUi) {
               setAnimationsEnabledFromUi(isSelected)
             }
           }
           registerUiUpdater {
+            isEnabled = animationsInitialized
             if (isSelected != animationsEnabled) {
               isSelected = animationsEnabled
             }
@@ -244,9 +248,11 @@ internal class CameraDialog(emulator: EmulatorController) :
           val poster = pendingPoster.getAndSet(null) ?: continue
           try {
             emulator.callWithRetry { setPoster(poster) }
-          } catch (t: Throwable) {
-            t.throwIfCancellation()
-            // Error is already logged by EmulatorController.
+          } catch (e: Exception) {
+            e.throwIfCancellation()
+            withContext(uiContext) {
+              showError(e)
+            }
           }
         }
       }

@@ -122,6 +122,7 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
     val mouseHandler =
       object : MouseAdapter() {
         override fun mousePressed(e: MouseEvent) {
+          if (!isEnabled) return
           if (e.button == MouseEvent.BUTTON1) {
             requestFocusInWindow()
             dragStartPoint = e.point
@@ -131,6 +132,7 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
         }
 
         override fun mouseDragged(e: MouseEvent) {
+          if (!isEnabled) return
           val last = dragLastPoint ?: return
           val start = dragStartPoint ?: return
           if (!wasDragged && start.distance(e.point) > JBUIScale.scale(DRAG_THRESHOLD_PX)) {
@@ -145,6 +147,7 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
         }
 
         override fun mouseReleased(e: MouseEvent) {
+          if (!isEnabled) return
           if (e.button == MouseEvent.BUTTON1 && !wasDragged && dragStartPoint != null) {
             val clickedGeo = pixelToGeoPoint(e.x.toDouble(), e.y.toDouble())
             onMapClicked(clickedGeo)
@@ -155,6 +158,7 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
         }
 
         override fun mouseWheelMoved(e: MouseWheelEvent) {
+          if (!isEnabled) return
           val rotation = e.wheelRotation
           if (rotation < 0) {
             setZoomLevel(zoom + 1.0)
@@ -239,9 +243,15 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
     }
   }
 
+  override fun setEnabled(enabled: Boolean) {
+    super.setEnabled(enabled)
+    cursor = Cursor.getPredefinedCursor(if (enabled) Cursor.HAND_CURSOR else Cursor.DEFAULT_CURSOR)
+    updateZoomButtons()
+  }
+
   private fun updateZoomButtons() {
-    zoomInButton.isEnabled = zoom < GeoMath.MAX_ZOOM - 1e-6
-    zoomOutButton.isEnabled = zoom > minZoomLevel() + 1e-6
+    zoomInButton.isEnabled = isEnabled && zoom < GeoMath.MAX_ZOOM - 1e-6
+    zoomOutButton.isEnabled = isEnabled && zoom > minZoomLevel() + 1e-6
   }
 
   fun panTo(point: GeoPoint) {

@@ -105,23 +105,75 @@ class LocationDialogTest {
 
   @Test
   fun testInitialStateAndSetLocation() {
+    PropertiesComponent.getInstance()
+      .setValue(
+        LocationDialog.SAVED_POINTS_STORAGE_KEY,
+        """[{"name":"Saved HQ","latitude":37.422,"longitude":-122.084,"elevation":5.0,"description":"HQ"}]""",
+      )
     runBlocking {
       emulatorController.setGps(GpsState.newBuilder().setLatitude(37.7749).setLongitude(-122.4194).setAltitude(15.0).build())
     }
 
+    fakeEmulator.pauseGrpc()
     val dialog = LocationDialog(emulatorController).show()
     val rootPane = dialog.rootPane
     val ui = FakeUi(rootPane)
+    ui.layoutAndDispatchEvents()
 
+    val searchField = ui.getComponent<SearchTextField> { it.name == "locationSearchField" }
+    val mapPanel = ui.getComponent<MapPanel> { it.name == "singlePointMap" }
     val latField = ui.getComponent<JBTextField> { it.name == "latitudeField" }
     val lonField = ui.getComponent<JBTextField> { it.name == "longitudeField" }
     val eleField = ui.getComponent<JBTextField> { it.name == "elevationField" }
+    val savePointButton = ui.getComponent<JButton> { it.name == "savePointButton" }
     val setLocationButton = ui.getComponent<JButton> { it.name == "setLocationButton" }
+    val pointsTable = ui.getComponent<TableView<*>> { it.name == "savedPointsTable" }
 
-    waitForCondition(5.seconds) { latField.text == "37.7749" }
+    assertThat(searchField.isEnabled).isFalse()
+    assertThat(mapPanel.isEnabled).isFalse()
+    assertThat(latField.isEnabled).isFalse()
+    assertThat(latField.text).isEmpty()
+    assertThat(lonField.isEnabled).isFalse()
+    assertThat(lonField.text).isEmpty()
+    assertThat(eleField.isEnabled).isFalse()
+    assertThat(eleField.text).isEmpty()
+    assertThat(savePointButton.isEnabled).isFalse()
+    assertThat(setLocationButton.isEnabled).isFalse()
+    assertThat(pointsTable.isEnabled).isFalse()
+    assertThat(pointsTable.rowCount).isEqualTo(1)
+
+    // Double-clicking or selecting in pointsTable while disabled before initial GPS arrives must be ignored.
+    val tablePos = ui.getPosition(pointsTable)
+    val cellRect = pointsTable.getCellRect(0, 0, true)
+    val rowCenterX = tablePos.x + cellRect.centerX.toInt()
+    val rowCenterY = tablePos.y + cellRect.centerY.toInt()
+    ui.mouse.doubleClick(rowCenterX, rowCenterY)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(pointsTable.selectedRow).isEqualTo(-1)
+    assertThat(mapPanel.selectedPoint).isNull()
+    assertThat(latField.text).isEmpty()
+
+    pointsTable.selectionModel.setSelectionInterval(0, 0)
+    assertThat(mapPanel.selectedPoint).isNull()
+    assertThat(latField.text).isEmpty()
+    pointsTable.selectionModel.clearSelection()
+
+    fakeEmulator.resumeGrpc()
+    waitForCondition(5.seconds) { latField.isEnabled && latField.text == "37.7749" }
+    assertThat(searchField.isEnabled).isTrue()
+    assertThat(mapPanel.isEnabled).isTrue()
+    assertThat(lonField.isEnabled).isTrue()
     assertThat(lonField.text).isEqualTo("-122.4194")
+    assertThat(eleField.isEnabled).isTrue()
     assertThat(eleField.text).isEqualTo("15.0")
+    assertThat(savePointButton.isEnabled).isTrue()
     assertThat(setLocationButton.isEnabled).isTrue()
+    assertThat(pointsTable.isEnabled).isTrue()
+
+    // Once initialized, selecting the saved point updates the map and coordinate fields.
+    pointsTable.selectionModel.setSelectionInterval(0, 0)
+    assertThat(mapPanel.selectedPoint).isNotNull()
+    assertThat(latField.text).isEqualTo("37.4220")
 
     // Verify offline map renders cleanly.
     assertThat(ui.render().width).isGreaterThan(0)
@@ -280,7 +332,7 @@ class LocationDialogTest {
     ui.keyboard.setFocus(originField)
     ui.keyboard.pressAndRelease(KeyEvent.VK_ENTER)
     assertThat(dialogWrapper.isShowing).isTrue()
-    assertThat(playRouteButton.isEnabled).isTrue()
+    waitForCondition(5.seconds) { playRouteButton.isEnabled }
 
     ui.keyboard.setFocus(destinationField)
     ui.keyboard.pressAndRelease(KeyEvent.VK_ENTER)
@@ -388,6 +440,50 @@ class LocationDialogTest {
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialogWrapper.isShowing).isFalse()
     waitForCondition(5.seconds) { fakeEmulator.gpsLocation.speed == 0.0 }
+  }
+
+  @Test
+  fun testRoutesTabWhileInitialGpsPending() {
+    fakeEmulator.pauseGrpc()
+    val locationDialog = LocationDialog(emulatorController)
+    val dialogWrapper = locationDialog.show()
+    val ui = FakeUi(dialogWrapper.rootPane)
+
+    val tabbedPane = ui.getComponent<JBTabbedPane> { it.name == "locationTabbedPane" }
+    tabbedPane.selectedIndex = 1
+    ui.layoutAndDispatchEvents()
+
+    val originField = ui.getComponent<JBTextField> { it.name == "originField" }
+    val destinationField = ui.getComponent<JBTextField> { it.name == "destinationField" }
+    val findRouteButton = ui.getComponent<JButton> { it.name == "findRouteButton" }
+    val saveRouteButton = ui.getComponent<JButton> { it.name == "saveRouteButton" }
+    val playRouteButton = ui.getComponent<JButton> { it.name == "playRouteButton" }
+
+    // Route authoring works while getGps is pending, but Play Route stays disabled until initial GPS state arrives.
+    originField.text = "48.8566, 2.3522"
+    destinationField.text = "48.8606, 2.3376"
+    ui.clickOn(findRouteButton)
+    assertThat(saveRouteButton.isEnabled).isTrue()
+    assertThat(playRouteButton.isEnabled).isFalse()
+    val routeCenterBeforeGps = locationDialog.routesMap.center
+
+    fakeEmulator.resumeGrpc()
+    waitForCondition(5.seconds) { playRouteButton.isEnabled }
+
+    // Initial getGps completion must not pan routesMap away from the already-configured route.
+    assertThat(locationDialog.routesMap.center).isEqualTo(routeCenterBeforeGps)
+
+    // Single Points tab is also initialized and enabled.
+    tabbedPane.selectedIndex = 0
+    ui.layoutAndDispatchEvents()
+    val latitudeField = ui.getComponent<JBTextField> { it.name == "latitudeField" }
+    val setLocationButton = ui.getComponent<JButton> { it.name == "setLocationButton" }
+    assertThat(latitudeField.isEnabled).isTrue()
+    assertThat(latitudeField.text).isNotEmpty()
+    assertThat(setLocationButton.isEnabled).isTrue()
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialogWrapper.isShowing).isFalse()
   }
 
   @Test

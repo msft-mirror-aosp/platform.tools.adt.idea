@@ -234,6 +234,7 @@ internal class Device3DWidget(
     addMouseListener(
       object : MouseAdapter() {
         override fun mousePressed(e: MouseEvent) {
+          if (!isEnabled) return
           prevMouseX = e.x
           prevMouseY = e.y
           prevDragOrigin = screenToWorldCoordinate(e.x, e.y)
@@ -244,6 +245,7 @@ internal class Device3DWidget(
     addMouseMotionListener(
       object : MouseMotionAdapter() {
         override fun mouseDragged(e: MouseEvent) {
+          if (!isEnabled) return
           when (operationMode) {
             OperationMode.ROTATE -> {
               val deltaX = e.x - prevMouseX
@@ -291,6 +293,7 @@ internal class Device3DWidget(
     )
 
     addMouseWheelListener { e ->
+      if (!isEnabled) return@addMouseWheelListener
       val deltaZ = (-e.preciseWheelRotation * 15.0 * METERS_PER_WHEEL_DEGREE).toFloat()
       if (deltaZ != 0f) {
         onPositionChanged(positionMeters.copy(z = positionMeters.z + deltaZ))

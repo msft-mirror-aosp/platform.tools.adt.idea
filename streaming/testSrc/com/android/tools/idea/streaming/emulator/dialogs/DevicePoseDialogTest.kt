@@ -15,10 +15,12 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
+import com.android.emulator.control.EmulatorControllerGrpc
 import com.android.emulator.control.Posture.PostureValue
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.idea.io.grpc.Status
 import com.android.tools.idea.streaming.StagingIcons
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorController
@@ -76,7 +78,8 @@ class DevicePoseDialogTest {
 
   @Test
   fun testInitialStateFromDefaults() {
-    val (_, emulatorController) = createAndStartEmulator()
+    val (fakeEmulator, emulatorController) = createAndStartEmulator()
+    fakeEmulator.pauseGrpc()
     val dialog = DevicePoseDialog(emulatorController).show()
     val rootPane = dialog.rootPane
     val ui = FakeUi(rootPane)
@@ -97,11 +100,35 @@ class DevicePoseDialogTest {
     val xMoveSlider = ui.getComponent<JSlider> { it.name == "xMoveSlider" }
     val yMoveSlider = ui.getComponent<JSlider> { it.name == "yMoveSlider" }
     val zMoveSlider = ui.getComponent<JSlider> { it.name == "zMoveSlider" }
+    val portraitButton = ui.getComponent<JButton> { it.name == "portraitButton" }
 
     fun getSensorValues(prefix: String): List<String> =
       listOf("X", "Y", "Z").map { axis -> ui.getComponent<JLabel> { it.name == "${prefix}${axis}Label" }.text }
 
     assertThat(device3DWidget.isShowing).isTrue()
+    assertThat(device3DWidget.isEnabled).isFalse()
+    assertThat(xRotSlider.isEnabled).isFalse()
+    assertThat(yRotSlider.isEnabled).isFalse()
+    assertThat(zRotSlider.isEnabled).isFalse()
+    assertThat(xRotField.text).isEmpty()
+    assertThat(yRotField.text).isEmpty()
+    assertThat(zRotField.text).isEmpty()
+    assertThat(xMoveSlider.isEnabled).isFalse()
+    assertThat(yMoveSlider.isEnabled).isFalse()
+    assertThat(zMoveSlider.isEnabled).isFalse()
+    assertThat(portraitButton.isEnabled).isFalse()
+
+    // Programmatic slider adjustments before initial state arrives must not mark pose modified or discard emulator pose.
+    xRotSlider.value = 450
+    xMoveSlider.value = 5
+
+    fakeEmulator.resumeGrpc()
+    waitForCondition(5.seconds) { xRotSlider.isEnabled }
+    assertThat(device3DWidget.isEnabled).isTrue()
+    assertThat(xMoveSlider.isEnabled).isTrue()
+    assertThat(xMoveSlider.value).isEqualTo(0)
+    assertThat(portraitButton.isEnabled).isTrue()
+
     assertThat(device3DWidget.height).isLessThan(controlsPanel.height)
     assertThat(device3DWidget.width).isEqualTo(device3DWidget.height)
     assertThat(rotateRadio.isSelected).isTrue()
@@ -336,7 +363,11 @@ class DevicePoseDialogTest {
     assertThat(closedButton.x).isGreaterThan(reverseLandscapeButton.x)
     assertThat(halfOpenButton.x).isGreaterThan(closedButton.x)
     assertThat(openButton.x).isGreaterThan(halfOpenButton.x)
-    assertThat(openButton.isSelected).isTrue()
+
+    val foldSlider = ui.getComponent<JSlider> { it.name == "foldSlider" }
+    val foldField = ui.getComponent<JLabel> { it.name == "foldField" }
+
+    waitForCondition(5.seconds) { foldSlider.isEnabled && openButton.isSelected }
     assertThat(halfOpenButton.isSelected).isFalse()
     assertThat(closedButton.isSelected).isFalse()
 
@@ -348,9 +379,6 @@ class DevicePoseDialogTest {
     ui.layoutAndDispatchEvents()
     assertThat(SwingUtilities.convertPoint(closedButton.parent, closedButton.location, rootPane).y).isEqualTo(initialClosedButtonY)
     assertThat(SwingUtilities.convertPoint(accelXLabel.parent, accelXLabel.location, rootPane).y).isEqualTo(initialSensorLabelY)
-
-    val foldSlider = ui.getComponent<JSlider> { it.name == "foldSlider" }
-    val foldField = ui.getComponent<JLabel> { it.name == "foldField" }
 
     assertThat(foldSlider.isShowing).isTrue()
     assertThat(foldSlider.value).isEqualTo(1800)
@@ -400,6 +428,7 @@ class DevicePoseDialogTest {
     val foldSlider = ui.getComponent<JSlider> { it.name == "foldSlider" }
     val foldField = ui.getComponent<JLabel> { it.name == "foldField" }
 
+    waitForCondition(5.seconds) { foldSlider.isEnabled }
     assertThat(foldSlider.isShowing).isTrue()
     assertThat(foldSlider.value).isEqualTo(1000)
     assertThat(foldField.text).isEqualTo("100.0%")
@@ -432,5 +461,25 @@ class DevicePoseDialogTest {
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
     streamScreenshotCall.waitForCancellation(2.seconds)
+  }
+
+  @Test
+  fun testInitialStateLoadFailure() {
+    val (fakeEmulator, emulatorController) = createAndStartEmulator()
+    fakeEmulator.failGrpcCall(EmulatorControllerGrpc.getGetPhysicalModelMethod(), Status.INTERNAL.withDescription("Physical model error"))
+    val dialog = DevicePoseDialog(emulatorController).show()
+    val ui = FakeUi(dialog.rootPane)
+
+    val device3DWidget = ui.getComponent<JComponent> { it.name == "device3DWidget" }
+    val xRotSlider = ui.getComponent<JSlider> { it.name == "xRotSlider" }
+    val xRotField = ui.getComponent<JLabel> { it.name == "xRotField" }
+
+    waitForCondition(5.seconds) { hasValidationError(ui, "Physical model error") }
+    assertThat(device3DWidget.isEnabled).isFalse()
+    assertThat(xRotSlider.isEnabled).isFalse()
+    assertThat(xRotField.text).isEmpty()
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
   }
 }

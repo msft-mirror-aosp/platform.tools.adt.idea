@@ -111,7 +111,7 @@ internal abstract class AbstractExtendedControlsDialog(
   /**
    * Starts a coroutine that loads the initial state from the emulator using [getState] and applies it on the EDT via [onStateLoaded]
    * (unless [stateModified] is already true), then forwards subsequent state updates sent to the returned [SendChannel] to the emulator
-   * using [setState].
+   * using [setState]. Non-cancellation exceptions from [getState] or [setState] are reported using [showError].
    */
   protected fun <S> createStateChannel(
     getState: suspend (EmulatorController) -> S,
@@ -127,9 +127,11 @@ internal abstract class AbstractExtendedControlsDialog(
             onStateLoaded(state)
           }
         }
-      } catch (t: Throwable) {
-        t.throwIfCancellation()
-        // Error is already logged by EmulatorController.
+      } catch (e: Exception) {
+        e.throwIfCancellation()
+        withContext(uiContext) {
+          showError(e)
+        }
       }
     }
     onDispose {
@@ -141,9 +143,11 @@ internal abstract class AbstractExtendedControlsDialog(
       for (state in channel) {
         try {
           emulator.callWithRetry { setState(this, state) }
-        } catch (t: Throwable) {
-          t.throwIfCancellation()
-          // Error is already logged by EmulatorController.
+        } catch (e: Exception) {
+          e.throwIfCancellation()
+          withContext(uiContext) {
+            showError(e)
+          }
         }
       }
     }
@@ -164,7 +168,7 @@ internal abstract class AbstractExtendedControlsDialog(
       } catch (e: Exception) {
         e.throwIfCancellation()
         withContext(uiContext) {
-          e.message?.let { showError(it) }
+          showError(e)
         }
       }
     }
@@ -175,6 +179,7 @@ internal abstract class AbstractExtendedControlsDialog(
     label: @NlsContexts.Label String,
     property: KMutableProperty0<T>,
     width: Int,
+    crossinline enabled: () -> Boolean = { true },
     crossinline displayText: (T) -> String = { it.toString() },
   ): Cell<ComboBox<T>> {
     return comboBox(EnumComboBoxModel(T::class.java), renderer = textListCellRenderer { it?.let(displayText) ?: "" })
@@ -183,13 +188,15 @@ internal abstract class AbstractExtendedControlsDialog(
       .applyToComponent {
         name = "${property.name}ComboBox"
         selectedItem = property.get()
+        isEnabled = enabled()
         setMinimumAndPreferredWidth(JBUIScale.scale(width))
         addItemListener {
-          if (!isUpdatingUi && it.stateChange == ItemEvent.SELECTED) {
+          if (!isUpdatingUi && enabled() && it.stateChange == ItemEvent.SELECTED) {
             (it.item as? T)?.let { value -> property.set(value) }
           }
         }
         registerUiUpdater {
+          isEnabled = enabled()
           val value = property.get()
           if (selectedItem != value) {
             selectedItem = value
@@ -201,6 +208,11 @@ internal abstract class AbstractExtendedControlsDialog(
   @PublishedApi
   internal fun registerUiUpdater(updater: () -> Unit) {
     uiUpdaters.add(updater)
+  }
+
+  /** Shows a red error message at the bottom of the dialog for [throwable]. */
+  protected fun showError(throwable: Throwable) {
+    showError(throwable.message?.takeIf { it.isNotBlank() } ?: throwable.javaClass.simpleName.ifEmpty { throwable.javaClass.name })
   }
 
   /** Shows a red error message at the bottom of the dialog. */

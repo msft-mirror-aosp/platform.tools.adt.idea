@@ -48,6 +48,9 @@ internal class LocationDialog(emulator: EmulatorController) :
   internal var currentDeviceLocation: GeoPoint = GeoPoint.DEFAULT
     private set
 
+  internal var gpsInitialized: Boolean = false
+    private set
+
   private val singlePointsTab = SinglePointsTab(this)
   private val routesTab = RoutesTab(this)
 
@@ -102,9 +105,10 @@ internal class LocationDialog(emulator: EmulatorController) :
       } else {
         GeoPoint(state.latitude, state.longitude, state.altitude)
       }
+    gpsInitialized = true
     currentDeviceLocation = point
     singlePointsTab.updateDeviceLocation(point, panAndSelect = true)
-    routesTab.updateDeviceLocation(point, pan = true)
+    routesTab.updateDeviceLocation(point, pan = !routesTab.hasWaypointsOrRoute)
     updateButtonsState()
   }
 
@@ -131,9 +135,11 @@ internal class LocationDialog(emulator: EmulatorController) :
   }
 
   internal fun sendGpsLocation(point: GeoPoint, speed: Double = 0.0, heading: Double = 0.0) {
+    val wasUninitialized = !gpsInitialized
     stateModified = true
+    gpsInitialized = true
     currentDeviceLocation = point
-    singlePointsTab.updateDeviceLocation(point, panAndSelect = false)
+    singlePointsTab.updateDeviceLocation(point, panAndSelect = wasUninitialized)
     routesTab.updateDeviceLocation(point, pan = false)
     val gpsState =
       GpsState.newBuilder()
@@ -213,6 +219,8 @@ internal class LocationDialog(emulator: EmulatorController) :
                 val fix = fixes[0]
                 val name = fix.name.ifBlank { file.fileName.toString().substringBeforeLast('.') }
                 val point = GeoPoint(fix.latitude, fix.longitude, fix.elevation)
+                stateModified = true
+                gpsInitialized = true
                 singlePointsTab.selectAndPanToPoint(point)
                 if (::tabbedPane.isInitialized) {
                   tabbedPane.selectedIndex = 0
@@ -226,6 +234,7 @@ internal class LocationDialog(emulator: EmulatorController) :
                     description = fix.description,
                   )
                 )
+                updateButtonsState()
               }
               else -> {
                 val routePoints = GpxKmlParser.fixesToRoutePoints(fixes)

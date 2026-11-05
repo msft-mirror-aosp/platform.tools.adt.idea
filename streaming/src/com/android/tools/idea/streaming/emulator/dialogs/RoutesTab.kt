@@ -79,7 +79,7 @@ internal class RoutesTab(private val dialog: LocationDialog) {
   }
     .apply {
       name = "routesMap"
-      deviceLocation = dialog.currentDeviceLocation
+      deviceLocation = if (dialog.gpsInitialized) dialog.currentDeviceLocation else null
       panTo(dialog.currentDeviceLocation)
     }
 
@@ -94,6 +94,9 @@ internal class RoutesTab(private val dialog: LocationDialog) {
 
   internal val isPlaying: Boolean
     get() = playbackJob != null
+
+  internal val hasWaypointsOrRoute: Boolean
+    get() = activeRoute != null || routeOriginPoint != null || routeDestinationPoint != null
 
   private lateinit var travelModeComboBox: ComboBox<TravelMode>
   private lateinit var originField: JBTextField
@@ -356,7 +359,7 @@ internal class RoutesTab(private val dialog: LocationDialog) {
     routesTable.isEnabled = !isPlaying
     if (::playRouteButton.isInitialized) {
       playRouteButton.text = if (isPlaying) message("location.dialog.button.stop.route") else message("location.dialog.button.play.route")
-      playRouteButton.isEnabled = isPlaying || hasActiveRoutePoints
+      playRouteButton.isEnabled = isPlaying || (dialog.gpsInitialized && hasActiveRoutePoints)
     }
   }
 
@@ -584,6 +587,7 @@ internal class RoutesTab(private val dialog: LocationDialog) {
    * `location-page.cpp`.
    */
   internal fun startRoutePlayback(updateInterval: Duration = PLAYBACK_UPDATE_INTERVAL) {
+    if (!dialog.gpsInitialized) return
     val route = activeRoute ?: return
     val points = route.points
     if (points.isEmpty()) return

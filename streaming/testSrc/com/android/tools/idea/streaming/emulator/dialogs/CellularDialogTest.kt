@@ -17,9 +17,11 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.emulation.control.incubating.CellInfo
 import com.android.emulation.control.incubating.CellSignalStrength
+import com.android.emulation.control.incubating.ModemGrpc
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.idea.io.grpc.Status
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.FakeEmulator
@@ -71,6 +73,7 @@ class CellularDialogTest {
 
   @Test
   fun testInitialStateFromDefaults() {
+    fakeEmulator.pauseGrpc()
     val dialog = CellularDialog(emulatorController).show()
     val rootPane = dialog.rootPane
     val ui = FakeUi(rootPane)
@@ -81,6 +84,19 @@ class CellularDialogTest {
     val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
     val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
 
+    assertThat(networkTypeBox.isEnabled).isFalse()
+    assertThat(signalStrengthBox.isEnabled).isFalse()
+    assertThat(voiceStatusBox.isEnabled).isFalse()
+    assertThat(dataStatusBox.isEnabled).isFalse()
+    assertThat(meterStatusBox.isEnabled).isFalse()
+
+    fakeEmulator.resumeGrpc()
+    waitForCondition(5.seconds) { networkTypeBox.isEnabled }
+
+    assertThat(signalStrengthBox.isEnabled).isTrue()
+    assertThat(voiceStatusBox.isEnabled).isTrue()
+    assertThat(dataStatusBox.isEnabled).isTrue()
+    assertThat(meterStatusBox.isEnabled).isTrue()
     assertThat(networkTypeBox.selectedItem?.toString()).isEqualTo("Full")
     assertThat(signalStrengthBox.selectedItem?.toString()).isEqualTo("Moderate")
     assertThat(voiceStatusBox.selectedItem?.toString()).isEqualTo("Home")
@@ -113,7 +129,8 @@ class CellularDialogTest {
     val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
 
     waitForCondition(5.seconds) {
-      networkTypeBox.selectedItem?.toString() == "LTE" &&
+      networkTypeBox.isEnabled &&
+        networkTypeBox.selectedItem?.toString() == "LTE" &&
         signalStrengthBox.selectedItem?.toString() == "Good" &&
         voiceStatusBox.selectedItem?.toString() == "Roaming" &&
         dataStatusBox.selectedItem?.toString() == "Searching" &&
@@ -136,6 +153,7 @@ class CellularDialogTest {
     val dataStatusBox = ui.getComponent<ComboBox<*>> { it.name == "dataStatusComboBox" }
     val meterStatusBox = ui.getComponent<ComboBox<*>> { it.name == "meterStatusComboBox" }
 
+    waitForCondition(5.seconds) { networkTypeBox.isEnabled }
     assertThat(networkTypeBox.selectedItem?.toString()).isEqualTo("Full")
     assertThat(signalStrengthBox.selectedItem?.toString()).isEqualTo("Moderate")
     assertThat(voiceStatusBox.selectedItem?.toString()).isEqualTo("Home")
@@ -173,6 +191,23 @@ class CellularDialogTest {
     val closeButton = ui.getComponent<JButton> { it.text == "Close" }
     assertThat(rootPane.defaultButton).isNull()
     ui.clickOn(closeButton)
+    assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
+  fun testInitialStateLoadFailure() {
+    fakeEmulator.failGrpcCall(ModemGrpc.getGetCellInfoMethod(), Status.UNIMPLEMENTED.withDescription("getCellInfo unimplemented"))
+    val dialog = CellularDialog(emulatorController).show()
+    val ui = FakeUi(dialog.rootPane)
+
+    val networkTypeBox = ui.getComponent<ComboBox<*>> { it.name == "networkTypeComboBox" }
+    val signalStrengthBox = ui.getComponent<ComboBox<*>> { it.name == "signalStrengthComboBox" }
+
+    waitForCondition(5.seconds) { hasValidationError(ui, "getCellInfo unimplemented") }
+    assertThat(networkTypeBox.isEnabled).isFalse()
+    assertThat(signalStrengthBox.isEnabled).isFalse()
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
   }
 

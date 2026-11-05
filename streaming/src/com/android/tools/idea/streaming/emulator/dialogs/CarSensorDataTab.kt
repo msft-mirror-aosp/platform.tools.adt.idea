@@ -116,6 +116,13 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
   private var nightModeOn: Boolean = false
   private var fuelLevelLow: Boolean = false
 
+  private var speedInitialized: Boolean = false
+  private var gearInitialized: Boolean = false
+  private var ignitionInitialized: Boolean = false
+  private var parkingBrakeInitialized: Boolean = false
+  private var nightModeInitialized: Boolean = false
+  private var fuelLevelLowInitialized: Boolean = false
+
   private var isSyncingControls: Boolean = false
 
   private lateinit var speedSlider: JSlider
@@ -141,6 +148,7 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
                       speedSlider = this
                       name = "carSpeedSlider"
                       value = initialSpeed.coerceIn(speedUnit.minSpeed, speedUnit.maxSpeed)
+                      isEnabled = speedInitialized
                       paintLabels = false
                       paintTicks = true
                       accessibleContext.accessibleName = message("car.data.dialog.accessible.car.speed")
@@ -152,20 +160,21 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
                         UnscaledGaps(left = SLIDER_VISUAL_PADDING, right = SLIDER_VISUAL_PADDING),
                       )
                       addChangeListener {
-                        if (!isSyncingControls) {
+                        if (!isSyncingControls && speedInitialized) {
                           setDisplaySpeedFromUi(value)
                         }
                       }
                     }
 
-                  cell(JBTextField(initialSpeed.toString())).gap(RightGap.SMALL).applyToComponent {
+                  cell(JBTextField(if (speedInitialized) initialSpeed.toString() else "")).gap(RightGap.SMALL).applyToComponent {
                     speedField = this
                     name = "carSpeedField"
                     columns = 3
                     horizontalAlignment = SwingConstants.RIGHT
+                    isEnabled = speedInitialized
                     accessibleContext.accessibleName = message("car.data.dialog.accessible.car.speed")
                     val commitSpeed = {
-                      if (!isSyncingControls) {
+                      if (!isSyncingControls && speedInitialized) {
                         val parsed = text.trim().toIntOrNull()
                         val current = currentDisplaySpeed()
                         if (parsed == current) {
@@ -199,9 +208,10 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
                       speedUnitComboBox = this
                       name = "carSpeedUnitComboBox"
                       selectedItem = speedUnit
+                      isEnabled = speedInitialized
                       accessibleContext.accessibleName = message("car.data.dialog.accessible.speed.unit")
                       addItemListener { event ->
-                        if (!isSyncingControls && event.stateChange == ItemEvent.SELECTED) {
+                        if (!isSyncingControls && speedInitialized && event.stateChange == ItemEvent.SELECTED) {
                           (event.item as? SpeedUnit)?.let { newUnit ->
                             speedUnit = newUnit
                             owner.clearErrorMessage()
@@ -229,9 +239,10 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
               gearComboBox = this
               name = "gearComboBox"
               selectedItem = selectedGear
+              isEnabled = gearInitialized
               setMinimumAndPreferredWidth(JBUIScale.scale(DROPDOWN_WIDTH))
               addItemListener { event ->
-                if (!isSyncingControls && event.stateChange == ItemEvent.SELECTED) {
+                if (!isSyncingControls && gearInitialized && event.stateChange == ItemEvent.SELECTED) {
                   (event.item as? GearOption)?.let { onGearSelectedFromUi(it) }
                 }
               }
@@ -245,9 +256,10 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
               ignitionComboBox = this
               name = "ignitionComboBox"
               selectedItem = selectedIgnition
+              isEnabled = ignitionInitialized
               setMinimumAndPreferredWidth(JBUIScale.scale(DROPDOWN_WIDTH))
               addItemListener { event ->
-                if (!isSyncingControls && event.stateChange == ItemEvent.SELECTED) {
+                if (!isSyncingControls && ignitionInitialized && event.stateChange == ItemEvent.SELECTED) {
                   (event.item as? IgnitionOption)?.let { onIgnitionSelectedFromUi(it) }
                 }
               }
@@ -260,8 +272,9 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
             parkingBrakeCheckBox = this
             name = "parkingBrakeCheckBox"
             isSelected = parkingBrakeOn
+            isEnabled = parkingBrakeInitialized
             addActionListener {
-              if (!isSyncingControls) {
+              if (!isSyncingControls && parkingBrakeInitialized) {
                 parkingBrakeOn = isSelected
                 owner.clearErrorMessage()
                 owner.sendBooleanProperty(VehicleProperty.PARKING_BRAKE_ON, parkingBrakeOn)
@@ -273,8 +286,9 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
             nightModeCheckBox = this
             name = "nightModeCheckBox"
             isSelected = nightModeOn
+            isEnabled = nightModeInitialized
             addActionListener {
-              if (!isSyncingControls) {
+              if (!isSyncingControls && nightModeInitialized) {
                 nightModeOn = isSelected
                 owner.clearErrorMessage()
                 owner.sendBooleanProperty(VehicleProperty.NIGHT_MODE, nightModeOn)
@@ -286,8 +300,9 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
             fuelLevelLowCheckBox = this
             name = "fuelLevelLowCheckBox"
             isSelected = fuelLevelLow
+            isEnabled = fuelLevelLowInitialized
             addActionListener {
-              if (!isSyncingControls) {
+              if (!isSyncingControls && fuelLevelLowInitialized) {
                 fuelLevelLow = isSelected
                 owner.clearErrorMessage()
                 owner.sendBooleanProperty(VehicleProperty.FUEL_LEVEL_LOW, fuelLevelLow)
@@ -333,7 +348,7 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
   private fun onGearSelectedFromUi(gear: GearOption) {
     selectedGear = gear
     owner.clearErrorMessage()
-    if (gear == GearOption.PARK) {
+    if (gear == GearOption.PARK && speedInitialized) {
       speedMetersPerSecond = 0f
       syncSpeedControls(0)
       sendSpeedProperties(0f)
@@ -348,9 +363,12 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
   }
 
   private fun syncSpeedControls(displaySpeed: Int = currentDisplaySpeed()) {
-    if (!::speedSlider.isInitialized || !::speedField.isInitialized) return
+    if (!::speedSlider.isInitialized || !::speedField.isInitialized || !::speedUnitComboBox.isInitialized) return
     isSyncingControls = true
     try {
+      speedSlider.isEnabled = speedInitialized
+      speedField.isEnabled = speedInitialized
+      speedUnitComboBox.isEnabled = speedInitialized
       val clampedSliderValue = displaySpeed.coerceIn(speedUnit.minSpeed, speedUnit.maxSpeed)
       if (
         speedSlider.minimum != speedUnit.minSpeed || speedSlider.maximum != speedUnit.maxSpeed || speedSlider.value != clampedSliderValue
@@ -360,7 +378,7 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
       if (speedSlider.majorTickSpacing != speedUnit.majorTickSpacing) {
         speedSlider.majorTickSpacing = speedUnit.majorTickSpacing
       }
-      val formatted = displaySpeed.toString()
+      val formatted = if (speedInitialized) displaySpeed.toString() else ""
       if (speedField.text != formatted) {
         speedField.text = formatted
       }
@@ -378,6 +396,7 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
         VehicleProperty.PERF_VEHICLE_SPEED -> {
           if (propValue.floatValuesCount > 0) {
             speedMetersPerSecond = propValue.getFloatValues(0)
+            speedInitialized = true
             syncSpeedControls()
           }
         }
@@ -386,6 +405,10 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
         }
         VehicleProperty.GEAR_SELECTION -> {
           if (propValue.int32ValuesCount > 0) {
+            gearInitialized = true
+            if (::gearComboBox.isInitialized) {
+              gearComboBox.isEnabled = true
+            }
             GearOption.fromVhalValue(propValue.getInt32Values(0))?.let { gear ->
               selectedGear = gear
               if (::gearComboBox.isInitialized && gearComboBox.selectedItem != gear) {
@@ -396,6 +419,10 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
         }
         VehicleProperty.IGNITION_STATE -> {
           if (propValue.int32ValuesCount > 0) {
+            ignitionInitialized = true
+            if (::ignitionComboBox.isInitialized) {
+              ignitionComboBox.isEnabled = true
+            }
             IgnitionOption.fromVhalValue(propValue.getInt32Values(0))?.let { ignition ->
               selectedIgnition = ignition
               if (::ignitionComboBox.isInitialized && ignitionComboBox.selectedItem != ignition) {
@@ -407,24 +434,36 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
         VehicleProperty.PARKING_BRAKE_ON -> {
           if (propValue.int32ValuesCount > 0) {
             parkingBrakeOn = propValue.getInt32Values(0) != 0
-            if (::parkingBrakeCheckBox.isInitialized && parkingBrakeCheckBox.isSelected != parkingBrakeOn) {
-              parkingBrakeCheckBox.isSelected = parkingBrakeOn
+            parkingBrakeInitialized = true
+            if (::parkingBrakeCheckBox.isInitialized) {
+              parkingBrakeCheckBox.isEnabled = true
+              if (parkingBrakeCheckBox.isSelected != parkingBrakeOn) {
+                parkingBrakeCheckBox.isSelected = parkingBrakeOn
+              }
             }
           }
         }
         VehicleProperty.NIGHT_MODE -> {
           if (propValue.int32ValuesCount > 0) {
             nightModeOn = propValue.getInt32Values(0) != 0
-            if (::nightModeCheckBox.isInitialized && nightModeCheckBox.isSelected != nightModeOn) {
-              nightModeCheckBox.isSelected = nightModeOn
+            nightModeInitialized = true
+            if (::nightModeCheckBox.isInitialized) {
+              nightModeCheckBox.isEnabled = true
+              if (nightModeCheckBox.isSelected != nightModeOn) {
+                nightModeCheckBox.isSelected = nightModeOn
+              }
             }
           }
         }
         VehicleProperty.FUEL_LEVEL_LOW -> {
           if (propValue.int32ValuesCount > 0) {
             fuelLevelLow = propValue.getInt32Values(0) != 0
-            if (::fuelLevelLowCheckBox.isInitialized && fuelLevelLowCheckBox.isSelected != fuelLevelLow) {
-              fuelLevelLowCheckBox.isSelected = fuelLevelLow
+            fuelLevelLowInitialized = true
+            if (::fuelLevelLowCheckBox.isInitialized) {
+              fuelLevelLowCheckBox.isEnabled = true
+              if (fuelLevelLowCheckBox.isSelected != fuelLevelLow) {
+                fuelLevelLowCheckBox.isSelected = fuelLevelLow
+              }
             }
           }
         }

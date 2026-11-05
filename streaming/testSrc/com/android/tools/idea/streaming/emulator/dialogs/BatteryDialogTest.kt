@@ -19,9 +19,11 @@ import com.android.emulator.control.BatteryState
 import com.android.emulator.control.BatteryState.BatteryCharger
 import com.android.emulator.control.BatteryState.BatteryHealth
 import com.android.emulator.control.BatteryState.BatteryStatus
+import com.android.emulator.control.EmulatorControllerGrpc
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.idea.io.grpc.Status
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.FakeEmulator
@@ -29,10 +31,12 @@ import com.android.tools.idea.streaming.emulator.FakeEmulatorRule
 import com.android.tools.idea.streaming.emulator.RunningEmulatorCatalog
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.DialogPanel
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.ui.dsl.builder.panel
 import java.awt.event.FocusEvent
 import javax.swing.JButton
 import javax.swing.JLabel
@@ -77,6 +81,7 @@ class BatteryDialogTest {
 
   @Test
   fun testInitialStateFromDefaults() {
+    fakeEmulator.pauseGrpc()
     val dialog = BatteryDialog(emulatorController).show()
     val rootPane = dialog.rootPane
     val ui = FakeUi(rootPane)
@@ -87,6 +92,24 @@ class BatteryDialogTest {
     val healthBox = ui.getComponent<ComboBox<*>> { it.name == "healthComboBox" }
     val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
 
+    assertThat(chargeLevelSlider.isEnabled).isFalse()
+    assertThat(chargeLevelField.isEnabled).isFalse()
+    assertThat(chargeLevelField.text).isEmpty()
+    assertThat(chargerBox.isEnabled).isFalse()
+    assertThat(healthBox.isEnabled).isFalse()
+    assertThat(statusBox.isEnabled).isFalse()
+
+    // Programmatic text or slider changes before initial state arrives must not mark state modified or block initialization.
+    chargeLevelField.text = "50"
+    chargeLevelSlider.value = 50
+
+    fakeEmulator.resumeGrpc()
+    waitForCondition(5.seconds) { chargeLevelSlider.isEnabled }
+
+    assertThat(chargeLevelField.isEnabled).isTrue()
+    assertThat(chargerBox.isEnabled).isTrue()
+    assertThat(healthBox.isEnabled).isTrue()
+    assertThat(statusBox.isEnabled).isTrue()
     assertThat(chargeLevelSlider.value).isEqualTo(100)
     assertThat(chargeLevelField.text).isEqualTo("100")
     assertThat(ui.findComponent<JLabel> { it.text == "%" }).isNotNull()
@@ -125,7 +148,8 @@ class BatteryDialogTest {
     val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
 
     waitForCondition(5.seconds) {
-      chargeLevelSlider.value == 42 &&
+      chargeLevelSlider.isEnabled &&
+        chargeLevelSlider.value == 42 &&
         chargeLevelField.text == "42" &&
         chargerBox.selectedItem?.toString() == "AC charger" &&
         healthBox.selectedItem?.toString() == "Overheated" &&
@@ -148,6 +172,7 @@ class BatteryDialogTest {
     val healthBox = ui.getComponent<ComboBox<*>> { it.name == "healthComboBox" }
     val statusBox = ui.getComponent<ComboBox<*>> { it.name == "statusComboBox" }
 
+    waitForCondition(5.seconds) { chargeLevelSlider.isEnabled }
     assertThat(chargeLevelSlider.value).isEqualTo(100)
     assertThat(chargeLevelField.text).isEqualTo("100")
     assertThat(chargerBox.selectedItem?.toString()).isEqualTo("None")
@@ -215,6 +240,47 @@ class BatteryDialogTest {
     assertThat(rootPane.defaultButton).isNull()
     ui.clickOn(closeButton)
     assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
+  fun testInitialStateLoadFailure() {
+    fakeEmulator.failGrpcCall(EmulatorControllerGrpc.getGetBatteryMethod(), Status.INTERNAL.withDescription("Battery unavailable"))
+    val dialog = BatteryDialog(emulatorController).show()
+    val ui = FakeUi(dialog.rootPane)
+
+    val chargeLevelSlider = ui.getComponent<JSlider> { it.name == "chargeLevelSlider" }
+    val chargeLevelField = ui.getComponent<JTextField> { it.name == "chargeLevelField" }
+    val chargerBox = ui.getComponent<ComboBox<*>> { it.name == "chargerComboBox" }
+
+    waitForCondition(5.seconds) { hasValidationError(ui, "Battery unavailable") }
+    assertThat(chargeLevelSlider.isEnabled).isFalse()
+    assertThat(chargeLevelField.isEnabled).isFalse()
+    assertThat(chargeLevelField.text).isEmpty()
+    assertThat(chargerBox.isEnabled).isFalse()
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
+  fun testShowErrorWithBlankThrowableMessage() {
+    val testDialog =
+      object : AbstractExtendedControlsDialog(emulatorController, "Test") {
+        override fun createPanel(): DialogPanel = panel { row { label("Content") } }
+
+        fun report(throwable: Throwable) = showError(throwable)
+      }
+    val wrapper = testDialog.show()
+    val ui = FakeUi(wrapper.rootPane)
+
+    testDialog.report(IllegalStateException(""))
+    assertThat(hasValidationError(ui, "IllegalStateException")).isTrue()
+
+    testDialog.report(object : RuntimeException("   ") {})
+    assertThat(hasValidationError(ui, "BatteryDialogTest")).isTrue()
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(wrapper.isShowing).isFalse()
   }
 
   private fun ComboBox<*>.selectItem(text: String) {

@@ -40,12 +40,14 @@ internal class BatteryDialog(emulator: EmulatorController) :
   AbstractExtendedControlsDialog(emulator, message("battery.dialog.title", emulator.emulatorId.avdName)) {
 
   private var batteryInfo: BatteryInfo = BatteryInfo()
+  private var stateInitialized: Boolean = false
 
   private val batteryStateChannel =
     createStateChannel(
       getState = EmulatorController::getBattery,
       onStateLoaded = { state ->
         batteryInfo = state.toBatteryInfo()
+        stateInitialized = true
         updateUi()
       },
       setState = EmulatorController::setBattery,
@@ -106,16 +108,18 @@ internal class BatteryDialog(emulator: EmulatorController) :
                     paintLabels = false
                     paintTicks = false
                     value = chargeLevel
+                    isEnabled = stateInitialized
                     preferredSize = Dimension(JBUIScale.scale(SLIDER_WIDTH), preferredSize.height)
                     // JSlider is rendered with some internal margins that make it appear misaligned compared to other widgets.
                     // Setting this property fixes that.
                     putClientProperty(DslComponentProperty.VISUAL_PADDINGS, UnscaledGaps(left = 11, right = 11))
                     addChangeListener {
-                      if (!isUpdatingUi) {
+                      if (!isUpdatingUi && stateInitialized) {
                         chargeLevel = value
                       }
                     }
                     registerUiUpdater {
+                      isEnabled = stateInitialized
                       if (value != chargeLevel) {
                         value = chargeLevel
                       }
@@ -125,13 +129,14 @@ internal class BatteryDialog(emulator: EmulatorController) :
                   name = "chargeLevelField"
                   horizontalAlignment = SwingConstants.RIGHT
                   columns = 3
-                  text = chargeLevel.toString()
+                  text = if (stateInitialized) chargeLevel.toString() else ""
+                  isEnabled = stateInitialized
                   var updatingFromThisField = false
 
                   document.addDocumentListener(
                     object : DocumentAdapter() {
                       override fun textChanged(event: DocumentEvent) {
-                        if (!isUpdatingUi && !updatingFromThisField) {
+                        if (!isUpdatingUi && !updatingFromThisField && stateInitialized) {
                           val parsed = text.trim().toIntOrNull()
                           if (parsed != null && parsed in 0..100) {
                             updatingFromThisField = true
@@ -147,7 +152,7 @@ internal class BatteryDialog(emulator: EmulatorController) :
                   )
 
                   fun commitText() {
-                    if (!isUpdatingUi && !updatingFromThisField) {
+                    if (!isUpdatingUi && !updatingFromThisField && stateInitialized) {
                       updatingFromThisField = true
                       try {
                         val parsed = text.trim().toIntOrNull()
@@ -174,8 +179,9 @@ internal class BatteryDialog(emulator: EmulatorController) :
                   )
 
                   registerUiUpdater {
+                    isEnabled = stateInitialized
                     if (!updatingFromThisField) {
-                      val newText = chargeLevel.toString()
+                      val newText = if (stateInitialized) chargeLevel.toString() else ""
                       if (text != newText) {
                         text = newText
                       }
@@ -190,7 +196,7 @@ internal class BatteryDialog(emulator: EmulatorController) :
             .resizableColumn()
 
           panel {
-              row { enumComboBox(message("battery.dialog.label.charger.connection"), ::charger, COMBO_BOX_WIDTH) }
+              row { enumComboBox(message("battery.dialog.label.charger.connection"), ::charger, COMBO_BOX_WIDTH, { stateInitialized }) }
             }
             .align(AlignY.TOP)
             .align(AlignX.FILL)
@@ -199,14 +205,15 @@ internal class BatteryDialog(emulator: EmulatorController) :
         .layout(RowLayout.PARENT_GRID)
 
       row {
-          enumComboBox(message("battery.dialog.label.battery.health"), ::health, COMBO_BOX_WIDTH).resizableColumn()
-          enumComboBox(message("battery.dialog.label.battery.status"), ::status, COMBO_BOX_WIDTH).resizableColumn()
+          enumComboBox(message("battery.dialog.label.battery.health"), ::health, COMBO_BOX_WIDTH, { stateInitialized }).resizableColumn()
+          enumComboBox(message("battery.dialog.label.battery.status"), ::status, COMBO_BOX_WIDTH, { stateInitialized }).resizableColumn()
         }
         .layout(RowLayout.PARENT_GRID)
     }
   }
 
   private fun onStateChanged() {
+    clearError()
     stateModified = true
     updateUi()
     batteryStateChannel.trySend(batteryInfo.toBatteryState())

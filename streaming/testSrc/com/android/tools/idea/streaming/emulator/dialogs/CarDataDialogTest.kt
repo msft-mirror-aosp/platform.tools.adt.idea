@@ -109,6 +109,7 @@ class CarDataDialogTest {
   @Test
   fun testCarSensorDataControlsAndLiveUpdates() {
     val (fakeEmulator, emulatorController) = createAndStartAutomotiveEmulator()
+    fakeEmulator.pauseGrpc()
     val dialog = CarDataDialog(emulatorController).show(projectRule.project)
     val rootPane = dialog.rootPane
     val ui = FakeUi(rootPane)
@@ -122,8 +123,34 @@ class CarDataDialogTest {
     val nightModeCheckBox = ui.getComponent<JBCheckBox> { it.name == "nightModeCheckBox" }
     val fuelLevelLowCheckBox = ui.getComponent<JBCheckBox> { it.name == "fuelLevelLowCheckBox" }
 
+    assertThat(speedSlider.isEnabled).isFalse()
+    assertThat(speedField.isEnabled).isFalse()
+    assertThat(speedField.text).isEmpty()
+    assertThat(speedUnitCombo.isEnabled).isFalse()
+    assertThat(gearCombo.isEnabled).isFalse()
+    assertThat(ignitionCombo.isEnabled).isFalse()
+    assertThat(parkingBrakeCheckBox.isEnabled).isFalse()
+    assertThat(nightModeCheckBox.isEnabled).isFalse()
+    assertThat(fuelLevelLowCheckBox.isEnabled).isFalse()
+
+    // Programmatic changes while controls are uninitialized must not send premature VHAL writes or block initial values.
+    speedSlider.value = 50
+    gearCombo.selectedItem = GearOption.DRIVE
+    ignitionCombo.selectedItem = IgnitionOption.ON
+
+    fakeEmulator.resumeGrpc()
     // Initial state loaded from FakeEmulator defaults (Park, Lock, Parking brake = true).
-    waitForCondition(5.seconds) { parkingBrakeCheckBox.isSelected }
+    waitForCondition(5.seconds) {
+      speedSlider.isEnabled &&
+        gearCombo.isEnabled &&
+        ignitionCombo.isEnabled &&
+        parkingBrakeCheckBox.isEnabled &&
+        nightModeCheckBox.isEnabled &&
+        fuelLevelLowCheckBox.isEnabled &&
+        parkingBrakeCheckBox.isSelected
+    }
+    assertThat(speedField.isEnabled).isTrue()
+    assertThat(speedUnitCombo.isEnabled).isTrue()
     val speedLabel = ui.getComponent<JLabel> { it.text == "Car speed:" }
     val speedLabelLeftInRoot = SwingUtilities.convertPoint(speedLabel.parent, speedLabel.x, 0, rootPane).x
     val speedSliderVisualLeftInRoot = SwingUtilities.convertPoint(speedSlider.parent, speedSlider.x + JBUIScale.scale(11), 0, rootPane).x
@@ -506,9 +533,18 @@ class CarDataDialogTest {
     val dialog = CarDataDialog(emulatorController).show(projectRule.project)
     val ui = FakeUi(dialog.rootPane)
 
+    val speedSlider = ui.getComponent<JSlider> { it.name == "carSpeedSlider" }
     @Suppress("UNCHECKED_CAST") val gearCombo = ui.getComponent<ComboBox<GearOption>> { it.name == "gearComboBox" }
+    @Suppress("UNCHECKED_CAST") val ignitionCombo = ui.getComponent<ComboBox<IgnitionOption>> { it.name == "ignitionComboBox" }
     val parkingBrakeCheckBox = ui.getComponent<JBCheckBox> { it.name == "parkingBrakeCheckBox" }
-    waitForCondition(5.seconds) { gearCombo.selectedItem == GearOption.DRIVE && !parkingBrakeCheckBox.isSelected }
+    val nightModeCheckBox = ui.getComponent<JBCheckBox> { it.name == "nightModeCheckBox" }
+    val fuelLevelLowCheckBox = ui.getComponent<JBCheckBox> { it.name == "fuelLevelLowCheckBox" }
+    waitForCondition(5.seconds) { gearCombo.isEnabled && gearCombo.selectedItem == GearOption.DRIVE && !parkingBrakeCheckBox.isSelected }
+    assertThat(speedSlider.isEnabled).isTrue()
+    assertThat(parkingBrakeCheckBox.isEnabled).isTrue()
+    assertThat(ignitionCombo.isEnabled).isFalse()
+    assertThat(nightModeCheckBox.isEnabled).isFalse()
+    assertThat(fuelLevelLowCheckBox.isEnabled).isFalse()
 
     val tabbedPane = ui.getComponent<JBTabbedPane> { it.name == "carDataTabbedPane" }
     tabbedPane.selectedIndex = 1

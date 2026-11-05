@@ -16,10 +16,12 @@
 package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.emulation.control.incubating.Call
+import com.android.emulation.control.incubating.ModemGrpc
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
 import com.android.tools.adtui.swing.PortableUiFontRule
+import com.android.tools.idea.io.grpc.Status
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.FakeEmulator
@@ -69,6 +71,7 @@ class PhoneDialogTest {
 
   @Test
   fun testInitialState() {
+    fakeEmulator.pauseGrpc()
     val dialog = PhoneDialog(emulatorController).show()
     val rootPane = dialog.rootPane
     val ui = FakeUi(rootPane)
@@ -79,15 +82,24 @@ class PhoneDialogTest {
     val smsMessageArea = ui.getComponent<JBTextArea> { it.name == "smsMessageArea" }
     val sendSmsButton = ui.getComponent<JButton> { it.name == "sendSmsButton" }
 
-    assertThat(numberBox.isEnabled).isTrue()
+    assertThat(numberBox.isEnabled).isFalse()
+    assertThat(holdCallButton.isEnabled).isFalse()
+    assertThat(callButton.isEnabled).isFalse()
+    assertThat(smsMessageArea.isEditable).isFalse()
+    assertThat(smsMessageArea.isEnabled).isFalse()
+    assertThat(sendSmsButton.isEnabled).isFalse()
+
+    fakeEmulator.resumeGrpc()
+    waitForCondition(5.seconds) { numberBox.isEnabled && callButton.isEnabled && sendSmsButton.isEnabled }
+
     assertThat(numberBox.isEditable).isTrue()
     assertThat(numberBox.selectedItem).isEqualTo("(650) 555-1212")
     assertThat(holdCallButton.isEnabled).isFalse()
     assertThat(holdCallButton.text).isEqualTo("Hold Call")
-    assertThat(callButton.isEnabled).isTrue()
     assertThat(callButton.text).isEqualTo("Call Device")
     assertThat(smsMessageArea.text).isEqualTo("Android is always a sweet treat!")
     assertThat(smsMessageArea.isEditable).isTrue()
+    assertThat(smsMessageArea.isEnabled).isTrue()
     assertThat(sendSmsButton.isEnabled).isTrue()
     assertThat(sendSmsButton.text).isEqualTo("Send Message")
     assertThat(callButton.width).isGreaterThan(0)
@@ -137,6 +149,7 @@ class PhoneDialogTest {
     val holdCallButton = ui.getComponent<JButton> { it.name == "holdCallButton" }
     val callButton = ui.getComponent<JButton> { it.name == "callButton" }
 
+    waitForCondition(5.seconds) { callButton.isEnabled }
     numberBox.editor.item = "+1 (650) 555-6789"
     ui.clickOn(callButton)
 
@@ -188,6 +201,7 @@ class PhoneDialogTest {
     val holdCallButton = ui.getComponent<JButton> { it.name == "holdCallButton" }
     val callButton = ui.getComponent<JButton> { it.name == "callButton" }
 
+    waitForCondition(5.seconds) { callButton.isEnabled }
     ui.clickOn(callButton)
 
     waitForCondition(5.seconds) {
@@ -214,6 +228,7 @@ class PhoneDialogTest {
     val smsMessageArea = ui.getComponent<JBTextArea> { it.name == "smsMessageArea" }
     val sendSmsButton = ui.getComponent<JButton> { it.name == "sendSmsButton" }
 
+    waitForCondition(5.seconds) { sendSmsButton.isEnabled }
     numberBox.editor.item = "(650) 555-1212"
     smsMessageArea.text = "Hello from Android Studio!"
     ui.clickOn(sendSmsButton)
@@ -246,7 +261,7 @@ class PhoneDialogTest {
     val smsMessageArea = ui.getComponent<JBTextArea> { it.name == "smsMessageArea" }
     val sendSmsButton = ui.getComponent<JButton> { it.name == "sendSmsButton" }
 
-    assertThat(callButton.isEnabled).isTrue()
+    waitForCondition(5.seconds) { callButton.isEnabled }
     assertThat(sendSmsButton.isEnabled).isTrue()
 
     // Invalid phone number disables both Call Device and Send Message buttons.
@@ -283,9 +298,11 @@ class PhoneDialogTest {
     val rootPane = dialog.rootPane
     val ui = FakeUi(rootPane)
 
+    val callButton = ui.getComponent<JButton> { it.name == "callButton" }
     val smsMessageArea = ui.getComponent<JBTextArea> { it.name == "smsMessageArea" }
     val sendSmsButton = ui.getComponent<JButton> { it.name == "sendSmsButton" }
 
+    waitForCondition(5.seconds) { callButton.isEnabled }
     assertThat(smsMessageArea.isEditable).isFalse()
     assertThat(smsMessageArea.isEnabled).isFalse()
     assertThat(sendSmsButton.isEnabled).isFalse()
@@ -321,6 +338,7 @@ class PhoneDialogTest {
 
     fun items(): List<String> = List(numberBox1.itemCount) { numberBox1.getItemAt(it) }
 
+    waitForCondition(5.seconds) { sendSmsButton1.isEnabled }
     assertThat(items()).containsExactly("(650) 555-1212", "+1 650 555-6789").inOrder()
 
     // Selecting the second number and sending a message moves it to the top.
@@ -392,6 +410,30 @@ class PhoneDialogTest {
 
     ui2.clickOn(ui2.getComponent<JButton> { it.text == "Close" })
     assertThat(dlg2.isShowing).isFalse()
+  }
+
+  @Test
+  fun testListCallsFailure() {
+    fakeEmulator.failGrpcCall(ModemGrpc.getListCallsMethod(), Status.UNIMPLEMENTED.withDescription("listCalls unimplemented"))
+    val dialog = PhoneDialog(emulatorController).show()
+    val ui = FakeUi(dialog.rootPane)
+
+    val numberBox = ui.getComponent<ComboBox<*>> { it.name == "numberComboBox" }
+    val holdCallButton = ui.getComponent<JButton> { it.name == "holdCallButton" }
+    val callButton = ui.getComponent<JButton> { it.name == "callButton" }
+    val smsMessageArea = ui.getComponent<JBTextArea> { it.name == "smsMessageArea" }
+    val sendSmsButton = ui.getComponent<JButton> { it.name == "sendSmsButton" }
+
+    waitForCondition(5.seconds) { hasValidationError(ui, "listCalls unimplemented") }
+    assertThat(numberBox.isEnabled).isFalse()
+    assertThat(holdCallButton.isEnabled).isFalse()
+    assertThat(callButton.isEnabled).isFalse()
+    assertThat(smsMessageArea.isEditable).isFalse()
+    assertThat(smsMessageArea.isEnabled).isFalse()
+    assertThat(sendSmsButton.isEnabled).isFalse()
+
+    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
+    assertThat(dialog.isShowing).isFalse()
   }
 
   private fun createAndStartEmulator(avdCreator: (Path) -> Path) {

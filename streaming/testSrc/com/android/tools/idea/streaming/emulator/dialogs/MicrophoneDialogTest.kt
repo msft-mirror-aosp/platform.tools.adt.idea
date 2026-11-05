@@ -72,7 +72,8 @@ class MicrophoneDialogTest {
 
   @Test
   fun testInitialStateFromDefaults() {
-    val (_, emulatorController) = createAndStartEmulator()
+    val (fakeEmulator, emulatorController) = createAndStartEmulator()
+    fakeEmulator.pauseGrpc()
     val dialog = MicrophoneDialog(emulatorController).show()
     val rootPane = dialog.rootPane
     val ui = FakeUi(rootPane)
@@ -91,12 +92,15 @@ class MicrophoneDialogTest {
     assertThat(micAttachedCheckBox.isEnabled).isFalse()
 
     assertThat(hostAudioCheckBox.text).isEqualTo("Virtual microphone uses host audio input")
-    assertThat(hostAudioCheckBox.isSelected).isFalse()
-    assertThat(hostAudioCheckBox.isEnabled).isTrue()
+    assertThat(hostAudioCheckBox.isEnabled).isFalse()
 
     assertThat(voiceAssistButton.text).isEqualTo("Voice Assist")
     assertThat(voiceAssistButton.toolTipText).isEqualTo("Launch the voice assistant on the device")
     assertThat(voiceAssistButton.isEnabled).isTrue()
+
+    fakeEmulator.resumeGrpc()
+    waitForCondition(5.seconds) { hostAudioCheckBox.isEnabled }
+    assertThat(hostAudioCheckBox.isSelected).isFalse()
 
     val closeButton = ui.getComponent<JButton> { it.text == "Close" }
     assertThat(rootPane.defaultButton).isNull()
