@@ -535,10 +535,10 @@ LIBRARY_TABLE
         artifact                      : <M2>/com/android/support/support-annotations/<VERSION>/support-annotations-<VERSION>.jar
         artifactAddress               : com.android.support:support-annotations:28.0.0@jar
         component                     : com.android.support:support-annotations:28.0.0
-    - library                     : org.jacoco:org.jacoco.agent:0.8.14 (IdeJavaLibraryImpl)
-        artifact                      : <M2>/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar
-        artifactAddress               : org.jacoco:org.jacoco.agent:0.8.14@jar
-        component                     : org.jacoco:org.jacoco.agent:0.8.14
+    - library                     : org.jacoco:org.jacoco.agent:0.8.16 (IdeJavaLibraryImpl)
+        artifact                      : <M2>/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar
+        artifactAddress               : org.jacoco:org.jacoco.agent:0.8.16@jar
+        component                     : org.jacoco:org.jacoco.agent:0.8.16
     - library                     : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION> (IdeJavaLibraryImpl)
         artifact                      : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
         artifactAddress               : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
@@ -1116,10 +1116,10 @@ MODULE                        : project
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.14@jar
+                        javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.16@jar
                 BytecodeTransforms            : JACOCO_INSTRUMENTATION
                 RuntimeOnlyClasses
-                    - class                       : <M2>/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar
+                    - class                       : <M2>/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar
                 ApplicationId                 : com.android.tests.basic.debug
                 SigningConfigName             : myConfig
                 IsSigned                      : true
@@ -1567,14 +1567,14 @@ MODULE                        : project
                         javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             javaLibrary                   : org.jetbrains:annotations:13.0@jar
                         javaLibrary                   : org.jetbrains:annotations:13.0@jar
-                        javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.14@jar
+                        javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.16@jar
                         module                        : <ROOT>-:-MAIN
                             androidLibrary                : com.android.support:support-v4:28.0.0@aar
                             javaLibrary                   : org.jetbrains.kotlin:kotlin-stdlib:<KOTLIN_VERSION>@jar
                             androidLibrary                : com.android.support:support-v13:28.0.0@aar
-                            javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.14@jar
+                            javaLibrary                   : org.jacoco:org.jacoco.agent:0.8.16@jar
                 RuntimeOnlyClasses
-                    - class                       : <M2>/org/jacoco/org.jacoco.agent/0.8.14/org.jacoco.agent-0.8.14-runtime.jar
+                    - class                       : <M2>/org/jacoco/org.jacoco.agent/0.8.16/org.jacoco.agent-0.8.16-runtime.jar
                 MockablePlatformJar           : <GRADLE>/caches/<GRADLE_VERSION>/transforms/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx/transformed/android.jar
     kotlinGradleModel             : KotlinGradleModelImpl
         additionalVisibleSourceSets
