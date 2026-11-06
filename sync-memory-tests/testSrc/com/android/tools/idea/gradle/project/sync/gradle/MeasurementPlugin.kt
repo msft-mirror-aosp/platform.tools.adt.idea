@@ -15,15 +15,21 @@
  */
 package com.android.tools.idea.gradle.project.sync.gradle
 
+import com.sun.management.GarbageCollectionNotificationInfo
 import com.sun.management.HotSpotDiagnosticMXBean
 import java.io.Closeable
 import java.io.File
 import java.lang.management.GarbageCollectorMXBean
 import java.lang.management.ManagementFactory
+import java.lang.management.MemoryType
 import java.time.Instant
 import javax.inject.Inject
 import javax.management.MBeanServer
+import javax.management.NotificationEmitter
+import javax.management.NotificationListener
 import javax.management.ObjectName
+import javax.management.openmbean.CompositeData
+import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 import org.gradle.api.Action
 import org.gradle.api.Plugin
@@ -40,6 +46,7 @@ import org.gradle.tooling.events.OperationCompletionListener
 enum class CaptureType {
   HEAP_HISTOGRAM,
   HEAP_DUMP,
+  HEAP_PEAK,
   TIMESTAMP,
 }
 
@@ -83,10 +90,19 @@ object MeasurementPluginConfig {
 // configuration cache is reused, configuration callbacks do not run, so CONFIGURATION_FINISHED is not recorded for such builds.
 class MeasurementPlugin @Inject constructor(private val registry: BuildEventsListenerRegistry) : Plugin<Settings> {
   override fun apply(settings: Settings) {
+    if (settings.gradle.parent == null && CaptureType.HEAP_PEAK in MeasurementPluginConfig.captureTypes) {
+      HeapPeakTracker.startBuild()
+    }
     if (MeasurementPluginConfig.captureJfr) {
       EventRecorder.startJavaFlightRecording()
     }
-    settings.gradle.projectsEvaluated { EventRecorder.recordEvent(MeasurementCheckpoint.CONFIGURATION_FINISHED) }
+    settings.gradle.projectsEvaluated {
+      if (it.parent == null && CaptureType.HEAP_PEAK in MeasurementPluginConfig.captureTypes) {
+        // Capture peak heap before CONFIGURATION_FINISHED triggers a Full GC via gcClassHistogram / dumpHeap.
+        EventRecorder.captureHeapPeak(EventRecorder.CONFIGURATION_PEAK_HEAP_SUFFIX)
+      }
+      EventRecorder.recordEvent(MeasurementCheckpoint.CONFIGURATION_FINISHED)
+    }
 
     val serviceProvider =
       settings.gradle.sharedServices.registerIfAbsent(
@@ -112,6 +128,13 @@ interface MeasurementServiceParams : BuildServiceParameters {
 }
 
 abstract class MeasurementService : OperationCompletionListener, Closeable, BuildService<MeasurementServiceParams> {
+  init {
+    if (CaptureType.HEAP_PEAK in MeasurementPluginConfig.captureTypes) {
+      // Ensure peak heap tracking starts even on warm Configuration Cache hits where beforeSettings does not run.
+      HeapPeakTracker.ensureStarted()
+    }
+  }
+
   // Ignored event, we only care about the one right before closing
   override fun onFinish(event: FinishEvent?) {}
 
@@ -124,14 +147,116 @@ abstract class MeasurementService : OperationCompletionListener, Closeable, Buil
     if (MeasurementPluginConfig.captureJfr) {
       EventRecorder.stopJavaFlightRecording()
     }
+    if (CaptureType.HEAP_PEAK in MeasurementPluginConfig.captureTypes) {
+      // Capture peak heap before SYNC_FINISHED triggers a Full GC via gcClassHistogram / dumpHeap.
+      EventRecorder.captureHeapPeak(EventRecorder.SYNC_PEAK_HEAP_SUFFIX)
+    }
+    HeapPeakTracker.stopBuild()
     EventRecorder.recordEvent(MeasurementCheckpoint.SYNC_FINISHED)
     EventRecorder.captureGcCollectionTime()
   }
 }
 
+/**
+ * Tracks the Gradle daemon's post-GC live + promoted heap high-water mark (`Old + Survivor` occupancy) across a build.
+ *
+ * Summing `MemoryPoolMXBean.peakUsage.used` across G1 heap pools over-reports peak heap (exceeding `-Xmx`) because G1 dynamically reassigns
+ * physical regions between Eden, Survivor, and Old Gen at different times. Pre-GC total heap (`memoryUsageBeforeGc`) includes uncollected
+ * G1 Eden TLAB garbage whose size fluctuates adaptively with G1 pause targets. Listening to evacuating GC notifications and tracking the
+ * post-pause non-Eden heap (`memoryUsageAfterGc`) captures the true simultaneous `Old + Survivor` high-water mark with low run-to-run
+ * variance, floored by current non-Eden heap usage to capture humongous allocations even if no GC pause occurs afterward.
+ */
+object HeapPeakTracker {
+  private val registeredListeners = mutableListOf<Pair<NotificationEmitter, NotificationListener>>()
+  private var peakHeapBytes: Long = 0L
+  private var buildActive: Boolean = false
+
+  @JvmStatic
+  @Synchronized
+  fun startBuild() {
+    unregisterListeners()
+    buildActive = true
+    val heapPoolNames = heapPools().map { it.name }.toSet()
+    peakHeapBytes = currentNonEdenHeapBytes()
+    for (gcBean in ManagementFactory.getGarbageCollectorMXBeans()) {
+      val emitter = gcBean as? NotificationEmitter ?: continue
+      val listener = NotificationListener { notification, _ ->
+        if (notification.type == GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION) {
+          val info = GarbageCollectionNotificationInfo.from(notification.userData as CompositeData)
+          val afterUsage = info.gcInfo.memoryUsageAfterGc.mapValues { (_, usage) -> usage.used }
+          onGcAfterUsage(info.gcName, heapPoolNames, afterUsage)
+        }
+      }
+      emitter.addNotificationListener(listener, null, null)
+      registeredListeners.add(emitter to listener)
+    }
+  }
+
+  /**
+   * Starts tracking peak heap for the current build if not already started by [startBuild] (for example, on a warm Configuration Cache hit
+   * where configuration callbacks do not run and [MeasurementService] is restored directly by Gradle).
+   */
+  @JvmStatic
+  @Synchronized
+  fun ensureStarted() {
+    if (!buildActive) {
+      startBuild()
+    }
+  }
+
+  @JvmStatic
+  @Synchronized
+  fun stopBuild() {
+    buildActive = false
+    unregisterListeners()
+  }
+
+  @JvmStatic @Synchronized fun isBuildActive(): Boolean = buildActive
+
+  @JvmStatic
+  @JvmOverloads
+  @Synchronized
+  fun currentPeakHeapBytes(currentNonEdenBytes: Long = currentNonEdenHeapBytes()): Long =
+    max(peakHeapBytes, currentNonEdenBytes).also { peakHeapBytes = it }
+
+  @JvmStatic
+  @Synchronized
+  fun resetForTest(initialBytes: Long = 0L) {
+    buildActive = false
+    unregisterListeners()
+    peakHeapBytes = initialBytes
+  }
+
+  @JvmStatic
+  @Synchronized
+  fun onGcAfterUsage(gcName: String, heapPoolNames: Set<String>, afterUsageByPool: Map<String, Long>) {
+    // Concurrent collector notifications (e.g. "G1 Concurrent GC") fire at remark/cleanup pause boundaries without evacuating Eden.
+    if (gcName.contains("Concurrent", ignoreCase = true)) return
+    val nonEdenAfterBytes =
+      afterUsageByPool.entries
+        .filter { (poolName, _) -> poolName in heapPoolNames && !poolName.contains("Eden", ignoreCase = true) }
+        .sumOf { (_, used) -> used.coerceAtLeast(0L) }
+    peakHeapBytes = max(peakHeapBytes, nonEdenAfterBytes)
+  }
+
+  private fun unregisterListeners() {
+    for ((emitter, listener) in registeredListeners) {
+      runCatching { emitter.removeNotificationListener(listener) }
+    }
+    registeredListeners.clear()
+  }
+
+  private fun heapPools() = ManagementFactory.getMemoryPoolMXBeans().filter { it.type == MemoryType.HEAP }
+
+  private fun currentNonEdenHeapBytes(): Long =
+    heapPools().filter { !it.name.contains("Eden", ignoreCase = true) }.sumOf { it.usage.used.coerceAtLeast(0L) }
+}
+
 // Functions can't be top level and has to be static to keep Gradle happy.
 object EventRecorder {
   const val GC_COLLECTION_TIME_FILE_NAME_SUFFIX = "gcCollectionTime"
+  const val CONFIGURATION_PEAK_HEAP_SUFFIX = "CONFIGURATION_PEAK_HEAP"
+  const val SYNC_PEAK_HEAP_SUFFIX = "SYNC_PEAK_HEAP"
 
   @JvmStatic
   fun recordEvent(checkpoint: MeasurementCheckpoint) {
@@ -145,6 +270,14 @@ object EventRecorder {
     if (CaptureType.TIMESTAMP in MeasurementPluginConfig.captureTypes) {
       captureEventTimestamp(checkpoint)
     }
+  }
+
+  @JvmStatic
+  fun captureHeapPeak(metricSuffix: String) {
+    val peakBytes = HeapPeakTracker.currentPeakHeapBytes()
+    val filePeak = File(MeasurementPluginConfig.outputPath).resolve("${Instant.now().toEpochMilli()}_$metricSuffix.peak")
+    println("Capturing heap peak ($metricSuffix = $peakBytes bytes) at ${filePeak.path}")
+    filePeak.writeText(peakBytes.toString())
   }
 
   @JvmStatic

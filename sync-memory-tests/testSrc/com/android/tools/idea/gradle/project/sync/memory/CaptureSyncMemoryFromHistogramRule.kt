@@ -28,6 +28,7 @@ import com.android.tools.perflogger.UTestAnalyzer
 import com.google.common.truth.Truth
 import java.io.File
 import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.rules.ExternalResource
 
 // If `capture_heap` system property is set to `true` the test will also capture the heap alongside
@@ -42,7 +43,8 @@ class CaptureSyncMemoryFromHistogramRule(
 
     mutateGradleProperties { setJvmArgs("$jvmArgs -XX:SoftRefLRUPolicyMSPerMB=0") }
     val captureTypes =
-      setOf(CaptureType.HEAP_HISTOGRAM) + if (System.getProperty("capture_heap").toBoolean()) setOf(CaptureType.HEAP_DUMP) else emptySet()
+      setOf(CaptureType.HEAP_HISTOGRAM, CaptureType.HEAP_PEAK) +
+        if (System.getProperty("capture_heap").toBoolean()) setOf(CaptureType.HEAP_DUMP) else emptySet()
     MeasurementPluginConfig.configureAndApply(OUTPUT_DIRECTORY, captureTypes)
   }
 
@@ -53,37 +55,59 @@ class CaptureSyncMemoryFromHistogramRule(
     File(OUTPUT_DIRECTORY).delete()
   }
 
-  private fun recordHistogramValues(projectName: String) {
+  internal fun recordHistogramValues(
+    projectName: String,
+    outputDirectory: File = File(OUTPUT_DIRECTORY),
+    testOutputDir: Path = TestUtils.getTestOutputDir(),
+  ) {
     val capturedMetricNames = mutableListOf<String>()
-    for (metricFilePath in File(OUTPUT_DIRECTORY).walk().filter { !it.isDirectory && it.extension == "histogram" }.asIterable()) {
+    for (metricFilePath in outputDirectory.walk().filter { !it.isDirectory && it.extension == "histogram" }.asIterable()) {
       val lines = metricFilePath.readLines()
       // Files less than three lines are likely not heap snapshots
       if (lines.size < 3) continue
       val totalBytes = lines.last().trim().split("\\s+".toRegex())[2].toLong()
-      val totalMegabytes = totalBytes shr 20
-      val metricName = metricFilePath.toMetricName()
-      val timestamp = metricFilePath.toTimestamp()
-      println("Recording ${projectName}_$metricName -> $totalBytes bytes ($totalMegabytes MBs)")
-      val metricToCompareAgainst = projectToCompareAgainst?.let { "${it}_$metricName" }
-
-      recordMemoryMeasurement(
-        capturedMetricNames,
-        "${projectName}_$metricName",
-        TimestampedMeasurement(timestamp, totalBytes),
-        metricToCompareAgainst,
-      )
-      Files.move(metricFilePath.toPath(), TestUtils.getTestOutputDir().resolve(metricFilePath.name))
+      recordMetricFromFile(capturedMetricNames, projectName, metricFilePath, totalBytes, testOutputDir)
     }
-    for (metricFilePath in File(OUTPUT_DIRECTORY).walk().filter { !it.isDirectory && it.extension == "hprof" }.asIterable()) {
-      Files.move(metricFilePath.toPath(), TestUtils.getTestOutputDir().resolve(metricFilePath.name))
+    for (metricFilePath in outputDirectory.walk().filter { !it.isDirectory && it.extension == "peak" }.asIterable()) {
+      val totalBytes = metricFilePath.readText().trim().toLongOrNull() ?: continue
+      recordMetricFromFile(capturedMetricNames, projectName, metricFilePath, totalBytes, testOutputDir, enableAnalyzers = false)
+    }
+    for (metricFilePath in outputDirectory.walk().filter { !it.isDirectory && it.extension == "hprof" }.asIterable()) {
+      Files.move(metricFilePath.toPath(), testOutputDir.resolve(metricFilePath.name))
     }
     Truth.assertThat(capturedMetricNames)
       .containsExactly(
         "${projectName}_Configuration_Finished",
+        "${projectName}_Configuration_Peak_Heap",
         "${projectName}_Android_Started",
         "${projectName}_Android_Finished",
         "${projectName}_Sync_Finished",
+        "${projectName}_Sync_Peak_Heap",
       )
+  }
+
+  private fun recordMetricFromFile(
+    capturedMetricNames: MutableList<String>,
+    projectName: String,
+    metricFilePath: File,
+    totalBytes: Long,
+    testOutputDir: Path,
+    enableAnalyzers: Boolean = true,
+  ) {
+    val totalMegabytes = totalBytes shr 20
+    val metricName = metricFilePath.toMetricName()
+    val timestamp = metricFilePath.toTimestamp()
+    println("Recording ${projectName}_$metricName -> $totalBytes bytes ($totalMegabytes MBs)")
+    val metricToCompareAgainst = projectToCompareAgainst?.let { "${it}_$metricName" }
+
+    recordMemoryMeasurement(
+      capturedMetricNames,
+      "${projectName}_$metricName",
+      TimestampedMeasurement(timestamp, totalBytes),
+      metricToCompareAgainst,
+      enableAnalyzers,
+    )
+    Files.move(metricFilePath.toPath(), testOutputDir.resolve(metricFilePath.name))
   }
 
   private fun recordMemoryMeasurement(
@@ -91,10 +115,11 @@ class CaptureSyncMemoryFromHistogramRule(
     metricName: String,
     measurement: TimestampedMeasurement,
     metricToCompareAgainst: String?,
+    enableAnalyzers: Boolean = true,
   ) {
     Metric(metricName).apply {
       addSamples(MEMORY_BENCHMARK, Metric.MetricSample(measurement.first.toEpochMilliseconds(), measurement.second))
-      if (!disableAnalyzers) {
+      if (!disableAnalyzers && enableAnalyzers) {
         val toleratedChange = 0.05 // 5%
         val analyzer =
           when {

@@ -205,6 +205,10 @@ iml_module(
             ],
         },
         # Presubmit tests
+        "MeasurementPluginHeapPeakTest": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.memory.MeasurementPluginHeapPeakTest",
+            "timeout": "short",
+        },
         "SyncBenchmarkVersionTest": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.SyncBenchmarkVersionTest",
             "timeout": "long",
