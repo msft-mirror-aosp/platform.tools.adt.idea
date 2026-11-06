@@ -56,6 +56,11 @@ public class StudioBleakOptions {
     new IgnoredRef(-1, "com.intellij.util.containers.ConcurrentSoftValueHashMap", "myMap"),
     new IgnoredRef(-1, "com.intellij.util.containers.ConcurrentSoftKeySoftValueHashMap", "myMap"),
     new IgnoredRef(-2, "com.intellij.concurrency.ConcurrentIntKeySoftValueHashMap", "myMap"),
+    new IgnoredRef(-2, "com.intellij.concurrency.ConcurrentWeakHashMap", "myMap"),
+    new IgnoredRef(-2, "com.intellij.concurrency.ConcurrentWeakKeySoftValueHashMap", "myMap"),
+    new IgnoredRef(-2, "com.intellij.concurrency.ConcurrentWeakKeyWeakValueHashMap", "myMap"),
+    new IgnoredRef(-2, "com.intellij.concurrency.ConcurrentSoftHashMap", "myMap"),
+    new IgnoredRef(-2, "com.intellij.concurrency.ConcurrentSoftKeySoftValueHashMap", "myMap"),
     new IgnoredRef(-2, "com.intellij.util.containers.SLRUMap", "protectedQueue"), // SLRUMap is a bounded cache
     new IgnoredRef(-2, "com.intellij.util.containers.SLRUMap", "probationalQueue"),
     new IgnoredRef(-2, "com.intellij.util.IntSLRUCache", "protectedQueue"),
