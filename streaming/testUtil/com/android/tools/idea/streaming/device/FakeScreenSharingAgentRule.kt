@@ -155,6 +155,7 @@ class FakeScreenSharingAgentRule : TestRule {
     additionalDeviceProperties: Map<String, String> = emptyMap(),
     manufacturer: String = "Google",
     hostConnectionType: DeviceState.HostConnectionType = DeviceState.HostConnectionType.USB,
+    isRemote: Boolean = false,
   ): FakeDevice {
     val serialNumber = (++deviceCounter).toString()
     val release = "Sweet dessert"
@@ -181,6 +182,7 @@ class FakeScreenSharingAgentRule : TestRule {
         foldedSize = foldedSize,
         screenDensity = screenDensity,
         deviceType = deviceType,
+        isRemote = isRemote,
       )
     devices.add(device)
     return device
@@ -209,6 +211,7 @@ class FakeScreenSharingAgentRule : TestRule {
     val roundDisplay: Boolean = false,
     foldedSize: Dimension? = null,
     private val screenDensity: Int? = null,
+    val isRemote: Boolean = false,
   ) {
     val agent: FakeScreenSharingAgent =
       FakeScreenSharingAgent(displaySize, deviceState, roundDisplay = roundDisplay, foldedSize = foldedSize, deviceType = deviceType)
@@ -220,6 +223,7 @@ class FakeScreenSharingAgentRule : TestRule {
       return DeviceProperties.build {
         readCommonProperties(deviceState.properties)
         deviceType = this@FakeDevice.deviceType
+        isRemote = this@FakeDevice.isRemote
         populateDeviceInfoProto("FakeDevicePlugin", serialNumber, deviceState.properties, "fakeConnectionId")
         readAdbSerialNumber(serialNumber)
         icon =
@@ -236,7 +240,7 @@ class FakeScreenSharingAgentRule : TestRule {
   }
 
   private class FakeDeviceHandle(private val device: FakeDevice) : DeviceHandle {
-    override val id = DeviceId("Fake", false, device.serialNumber)
+    override val id = DeviceId("Fake", device.isRemote, device.serialNumber)
 
     override val scope = device.agent.createCoroutineScope()
 

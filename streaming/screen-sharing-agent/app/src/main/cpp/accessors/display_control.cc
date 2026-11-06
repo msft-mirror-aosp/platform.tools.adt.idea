@@ -16,6 +16,7 @@
 
 #include "display_control.h"
 
+#include <cstdlib>
 #include <mutex>
 
 #include "agent.h"
@@ -26,11 +27,13 @@ namespace screensharing {
 using namespace std;
 
 static mutex static_initialization_mutex; // Protects initialization of static fields.
+static bool statics_initialized = false;
 
 void DisplayControl::InitializeStatics(Jni jni) {
   unique_lock lock(static_initialization_mutex);
 
-  if (class_.IsNull()) {
+  if (!statics_initialized) {
+    statics_initialized = true;
     // Before API 34 QPR1 getPhysicalDisplayIds and getPhysicalDisplayToken used to be part of SurfaceControl.
     class_ = jni.GetClass("android/view/SurfaceControl");
     get_physical_display_token_method_ = class_.FindStaticMethod("getPhysicalDisplayToken", "(J)Landroid/os/IBinder;");
@@ -39,7 +42,12 @@ void DisplayControl::InitializeStatics(Jni jni) {
       Log::I("The SurfaceControl.getPhysicalDisplayIds and SurfaceControl.getPhysicalDisplayToken methods don't exist."
              " Attempting to use DisplayControl");
       // SurfaceControl doesn't have the necessary method. Load libandroid_servers.so and use DisplayControl instead.
-      class_.Release();
+      class_ = JClass();
+      const char* class_path = getenv("SYSTEMSERVERCLASSPATH");
+      if (class_path == nullptr || class_path[0] == '\0') {
+        Log::W("SYSTEMSERVERCLASSPATH is not defined");
+        return;
+      }
       JClass class_loader_class = jni.GetClass("java/lang/ClassLoader");
       jmethodID get_system_class_loader_method =
           class_loader_class.GetStaticMethod(jni, "getSystemClassLoader", "()Ljava/lang/ClassLoader;");
@@ -50,17 +58,27 @@ void DisplayControl::InitializeStatics(Jni jni) {
           jni, "createClassLoader",
           "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/ClassLoader;IZLjava/lang/String;)Ljava/lang/ClassLoader;");
       JObject class_loader = class_loader_factory_class.CallStaticObjectMethod(
-          jni, create_class_loader_method, JString(jni, "/system/framework/services.jar").ref(), nullptr, nullptr,
+          jni, create_class_loader_method, JString(jni, class_path).ref(), nullptr, nullptr,
           system_class_loader.ref(), 0, JNI_TRUE, nullptr);
+      JThrowable exception = jni.GetAndClearException();
+      if (exception.IsNotNull()) {
+        Log::W(std::move(exception), "Unable to create class loader for %s", class_path);
+        return;
+      }
       JClass display_control_class =
           JClass(class_loader.CallObjectMethod(jni, load_class_method, JString(jni, "com.android.server.display.DisplayControl").ref()));
+      exception = jni.GetAndClearException();
+      if (exception.IsNotNull()) {
+        Log::W(std::move(exception), "Unable to load DisplayControl class");
+        return;
+      }
 
       JClass runtime_class = jni.GetClass("java/lang/Runtime");
       jmethodID get_runtime_method = runtime_class.GetStaticMethod(jni, "getRuntime", "()Ljava/lang/Runtime;");
       JObject runtime = runtime_class.CallStaticObjectMethod(jni, get_runtime_method);
       jmethodID load_library0_method = runtime_class.GetMethod(jni, "loadLibrary0", "(Ljava/lang/Class;Ljava/lang/String;)V");
       runtime.CallVoidMethod(jni, load_library0_method, display_control_class.ref(), JString(jni, "android_servers").ref());
-      JThrowable exception = jni.GetAndClearException();
+      exception = jni.GetAndClearException();
       if (exception.IsNotNull()) {
         Log::W(std::move(exception), "Unable to load libandroid_servers.so");
         return;

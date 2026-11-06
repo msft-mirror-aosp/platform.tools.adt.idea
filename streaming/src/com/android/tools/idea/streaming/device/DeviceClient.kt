@@ -443,25 +443,30 @@ class DeviceClient(
     val logLevelArg = if (logLevel.isNotBlank()) " --log=$logLevel" else ""
     val codecName = StudioFlags.DEVICE_MIRRORING_VIDEO_CODEC.get()
     val codecArg = if (codecName.isNotBlank()) " --codec=$codecName" else ""
-    val preloadClause =
-      when {
-        DeviceMirroringSettings.getInstance().turnOffDisplayWhileMirroring && deviceConfig.featureLevel == 34 ->
-          // Turning off display on API 34 requires loading of libandroid_servers.so.
-          // Other preloaded libraries are its dependencies.
-          "LD_PRELOAD=\"/apex/com.android.adbd/lib64/libadb_pairing_server.so " +
-            "/apex/com.android.adbd/lib64/libadb_pairing_connection.so " +
-            "/apex/com.android.os.statsd/lib64/libstatspull.so " +
-            "/apex/com.android.os.statsd/lib64/libstatssocket.so " +
-            "/apex/com.android.runtime/lib64/bionic/libdl_android.so " +
-            "/apex/com.android.i18n/lib64/libandroidicu.so " +
-            "/system/lib64/libandroid_servers.so\" "
-        else -> ""
-      }
     val command =
-      "${preloadClause}CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME app_process $DEVICE_PATH_BASE" +
+      "${getPreloadClause()}CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME app_process $DEVICE_PATH_BASE" +
         " com.android.tools.screensharing.Main --socket=$socketName" +
         "$maxSizeArg$orientationArg$flagsArg$maxBitRateArg$logLevelArg$codecArg"
     AgentHandler().startAgent(command, connection, deviceSelector, adbSession)
+  }
+
+  private fun getPreloadClause(): String {
+    return if (shouldTurnOffDisplay() && deviceConfig.featureLevel == 34) {
+      // Turning off the display on API >= 34 (QPR1+) requires loading libandroid_servers.so for DisplayControl.
+      // On API 34, libnativeloader loads it in the isolated PathClassLoader namespace, which blocks non-public
+      // system/APEX libraries unless preloaded into the default namespace before the classloader is created.
+      // On API >= 35, libnativeloader loads same-partition system libraries directly in the default namespace,
+      // which already has access to libandroid_servers.so and its APEX dependencies.
+      "LD_PRELOAD=\"/apex/com.android.adbd/lib64/libadb_pairing_server.so " +
+        "/apex/com.android.adbd/lib64/libadb_pairing_connection.so " +
+        "/apex/com.android.os.statsd/lib64/libstatspull.so " +
+        "/apex/com.android.os.statsd/lib64/libstatssocket.so " +
+        "/apex/com.android.runtime/lib64/bionic/libdl_android.so " +
+        "/apex/com.android.i18n/lib64/libandroidicu.so " +
+        "/system/lib64/libandroid_servers.so\" "
+    } else {
+      ""
+    }
   }
 
   private fun updateAudioStreaming() {
@@ -481,11 +486,7 @@ class DeviceClient(
   private fun isAudioStreamingEnabled(): Boolean =
     isAudioStreamingSupported() && (DeviceMirroringSettings.getInstance().redirectAudio || isRemoteDevice())
 
-  private fun shouldTurnOffDisplay(): Boolean {
-    return !isRemoteDevice() &&
-      DeviceMirroringSettings.getInstance().turnOffDisplayWhileMirroring &&
-      (deviceConfig.featureLevel < 35 || StudioFlags.DEVICE_MIRRORING_B386236480_TESTING.get())
-  }
+  private fun shouldTurnOffDisplay(): Boolean = !isRemoteDevice() && DeviceMirroringSettings.getInstance().turnOffDisplayWhileMirroring
 
   private fun isRemoteDevice(): Boolean = deviceConfig.deviceProperties.isRemote == true
 

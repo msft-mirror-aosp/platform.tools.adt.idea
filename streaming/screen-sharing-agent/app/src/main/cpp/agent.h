@@ -71,6 +71,11 @@ public:
   // Calls DisplayStreamer::GetDisplayInfo.
   [[nodiscard]] static DisplayInfo GetDisplayInfo(int32_t display_id);
 
+  // Modifies system settings for the screen sharing session and turns off the display if
+  // the TURN_OFF_DISPLAY_WHILE_MIRRORING flag is set. May be called on any thread.
+  // Safe to be called multiple times.
+  static void InitializeSessionEnvironment() { (void) GetSessionEnvironment(); }
+
   // Returns an object that stores original values of changed system settings that are restored to
   // the original values when the agent terminates. Creates SessionEnvironment if necessary.
   // May be called on any thread. Safe to be called multiple times.

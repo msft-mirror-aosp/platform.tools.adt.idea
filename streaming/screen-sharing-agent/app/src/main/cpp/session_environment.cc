@@ -57,7 +57,7 @@ SessionEnvironment::SessionEnvironment(bool turn_off_display)
   if (turn_off_display) {
     // Turn off display.
     Jni jni = Jvm::GetJni();
-    if (Controller::ControlDisplayPower(jni, DisplayInfo::STATE_OFF)) {
+    if (Controller::ControlDisplayPower(jni, DisplayPowerMode::POWER_MODE_OFF)) {
       restore_normal_display_power_mode_ = true;
     }
   }
@@ -68,7 +68,7 @@ SessionEnvironment::SessionEnvironment(bool turn_off_display)
 SessionEnvironment::~SessionEnvironment() {
   if (restore_normal_display_power_mode_) {
     Jni jni = Jvm::GetJni();
-    Controller::ControlDisplayPower(jni, DisplayInfo::STATE_UNKNOWN);
+    Controller::ControlDisplayPower(jni, DisplayPowerMode::POWER_MODE_NORMAL);
   }
   stay_on_.Restore();
   accelerometer_rotation_.Restore();

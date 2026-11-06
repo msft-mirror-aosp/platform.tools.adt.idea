@@ -113,7 +113,8 @@ bool CheckVideoSize(Size video_resolution) {
   return false;
 }
 
-vector<JObject> tokens_of_displays_turned_off;
+mutex display_power_mutex;
+vector<JObject> tokens_of_displays_turned_off;  // GUARDED_BY(display_power_mutex)
 
 bool SetDisplayPowerMode(Jni jni, JObject&& display_token, DisplayPowerMode power_mode) {
   SurfaceControl::SetDisplayPowerMode(jni, display_token, power_mode);
@@ -123,7 +124,16 @@ bool SetDisplayPowerMode(Jni jni, JObject&& display_token, DisplayPowerMode powe
     return false;
   }
   if (power_mode == DisplayPowerMode::POWER_MODE_OFF) {
-    tokens_of_displays_turned_off.push_back(std::move(display_token).ToGlobal());
+    bool already_present = false;
+    for (const JObject& token : tokens_of_displays_turned_off) {
+      if (jni->IsSameObject(token.ref(), display_token.ref())) {
+        already_present = true;
+        break;
+      }
+    }
+    if (!already_present) {
+      tokens_of_displays_turned_off.push_back(std::move(display_token).ToGlobal());
+    }
   }
   Log::I("Turned display %s", power_mode == DisplayPowerMode::POWER_MODE_OFF ? "off" : "on");
   return true;
@@ -166,6 +176,9 @@ void Controller::StopReceivingCommands() {
 }
 
 void Controller::Shutdown() {
+  if (jni_ != nullptr) {
+    ControlDisplayPower(jni_, DisplayPowerMode::POWER_MODE_NORMAL);
+  }
   if (device_supports_multiple_states_) {
     DeviceStateManager::RemoveDeviceStateListener(this);
   }
@@ -219,6 +232,8 @@ void Controller::Initialize() {
       SendControlMessage(XrInputUnavailableNotification(status));
     }
   }
+
+  Agent::InitializeSessionEnvironment();
 }
 
 void Controller::InitializeVirtualKeyboard() {
@@ -788,43 +803,37 @@ void Controller::WakeUpDevice() {
   ProcessKeyboardEvent(Jvm::GetJni(), KeyEventMessage(KeyEventMessage::ACTION_DOWN_AND_UP, AKEYCODE_WAKEUP, 0, UNSPECIFIED_DISPLAY_ID));
 }
 
-bool Controller::ControlDisplayPower(Jni jni, int state) {
-  if (DisplayManager::DisplayPowerControlSupported(jni)) {
-    return DisplayManager::RequestDisplayPower(jni, PRIMARY_DISPLAY_ID, state);
-    // TODO: Turn off secondary physical displays.
-  } else {
-    DisplayPowerMode power_mode = state == DisplayInfo::STATE_OFF ? DisplayPowerMode::POWER_MODE_OFF : DisplayPowerMode::POWER_MODE_NORMAL;
-    if (power_mode == DisplayPowerMode::POWER_MODE_NORMAL) {
-      while (!tokens_of_displays_turned_off.empty()) {
-        JObject display_token = std::move(tokens_of_displays_turned_off.back());
-        tokens_of_displays_turned_off.pop_back();
-        if (!SetDisplayPowerMode(jni, std::move(display_token), power_mode)) {
-          return false;
-        }
+bool Controller::ControlDisplayPower(Jni jni, DisplayPowerMode power_mode) {
+  scoped_lock lock(display_power_mutex);
+  if (power_mode == DisplayPowerMode::POWER_MODE_NORMAL) {
+    while (!tokens_of_displays_turned_off.empty()) {
+      JObject display_token = std::move(tokens_of_displays_turned_off.back());
+      tokens_of_displays_turned_off.pop_back();
+      if (!SetDisplayPowerMode(jni, std::move(display_token), power_mode)) {
+        return false;
       }
     }
-    else {
-      vector<int64_t> display_ids;
-      if (Agent::feature_level() >= 29) {
-        display_ids = DisplayControl::GetPhysicalDisplayIds(jni);
+  } else {
+    vector<int64_t> display_ids;
+    if (Agent::feature_level() >= 29) {
+      display_ids = DisplayControl::GetPhysicalDisplayIds(jni);
+    }
+    if (display_ids.empty()) {
+      JObject display_token = SurfaceControl::GetInternalDisplayToken(jni);
+      if (display_token.IsNull()) {
+        Log::W(jni.GetAndClearException(), "Unable to find the primary display to turn it off");
+        return false;
       }
-      if (display_ids.empty()) {
-        JObject display_token = SurfaceControl::GetInternalDisplayToken(jni);
+      return SetDisplayPowerMode(jni, std::move(display_token), power_mode);
+    } else {
+      for (int64_t display_id : display_ids) {
+        JObject display_token = DisplayControl::GetPhysicalDisplayToken(jni, display_id);
         if (display_token.IsNull()) {
-          Log::W(jni.GetAndClearException(), "Unable to find the primary display to turn it off");
-          return false;
+          Log::W(jni.GetAndClearException(), "Unable to get token for display %" PRIx64, display_id);
+          continue;
         }
-        return SetDisplayPowerMode(jni, std::move(display_token), power_mode);
-      } else {
-        for (int64_t display_id: display_ids) {
-          JObject display_token = DisplayControl::GetPhysicalDisplayToken(jni, display_id);
-          if (display_token.IsNull()) {
-            Log::W(jni.GetAndClearException(), "Unable to get token for display %" PRIx64, display_id);
-            continue;
-          }
-          if (!SetDisplayPowerMode(jni, std::move(display_token), power_mode)) {
-            return false;
-          }
+        if (!SetDisplayPowerMode(jni, std::move(display_token), power_mode)) {
+          return false;
         }
       }
     }
@@ -1091,7 +1100,7 @@ void Controller::SendPendingDisplayEvents() {
         if ((Agent::flags() & TURN_OFF_DISPLAY_WHILE_MIRRORING) != 0 && display_info.IsOn()) {
           // Turn the display off if it was turned on for whatever reason.
           Log::D("Display %d turned on. Turning it off again.", display_id);
-          ControlDisplayPower(jni_, DisplayInfo::STATE_OFF);
+          ControlDisplayPower(jni_, DisplayPowerMode::POWER_MODE_OFF);
         }
         auto it = current_displays_.find(display_id);
         bool significant_change = it == current_displays_.end() || it->second.logical_size != display_info.logical_size ||

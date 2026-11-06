@@ -49,12 +49,6 @@ public:
   // Requires API 34+.
   static VirtualDisplay CreateVirtualDisplay(
       Jni jni, const char* name, int32_t width, int32_t height, int32_t display_id, ANativeWindow* surface);
-  // Checks if the display power control is supported by the Display Manager. Always returns false for API < 35.
-  static bool DisplayPowerControlSupported(Jni jni);
-  // Requests to power a display OFF or reset it to a power state it supposed to have. Requires API 35+.
-  // The state parameter is one of DisplayInfo::STATE_OFF (to turn display off), DisplayInfo::STATE_UNKNOWN
-  // (to reset the display to its default state). Returns true if successful, false otherwise.
-  static bool RequestDisplayPower(Jni jni, int32_t display_id, int state);
 
   DisplayManager() = delete;
 
@@ -66,7 +60,6 @@ private:
   static JObject display_manager_global_;
   static jmethodID get_display_info_method_;
   static jmethodID get_display_ids_method_;
-  static jmethodID request_display_power_method_;
   // DisplayInfo class.
   static jfieldID logical_width_field_;
   static jfieldID logical_height_field_;

@@ -57,9 +57,6 @@ void DisplayManager::InitializeStatics(Jni jni) {
 
     get_display_info_method_ = display_manager_global_class_.GetMethod("getDisplayInfo", "(I)Landroid/view/DisplayInfo;");
     get_display_ids_method_ = display_manager_global_class_.GetMethod("getDisplayIds", "()[I");
-    if (Agent::feature_level() >= 35) {
-      request_display_power_method_ = display_manager_global_class_.FindMethod("requestDisplayPower", "(II)Z");
-    }
 
     JClass display_info_class = jni.GetClass("android/view/DisplayInfo");
     logical_width_field_ = display_info_class.GetFieldId("logicalWidth", "I");
@@ -214,31 +211,10 @@ VirtualDisplay DisplayManager::CreateVirtualDisplay(
       jni, create_virtual_display_method_, JString(jni, name).ref(), width, height, display_id, SurfaceToJava(jni, surface).ref()));
 }
 
-bool DisplayManager::RequestDisplayPower(Jni jni, int32_t display_id, int state) {
-  InitializeStatics(jni);
-  if (request_display_power_method_ == nullptr) {
-    return false;
-  }
-  Log::D("%s display %d", state == DisplayInfo::STATE_OFF ? "Turning off" : "Restoring power of", display_id);
-  if (!display_manager_global_.CallBooleanMethod(jni, request_display_power_method_, display_id, state)) {
-    Log::W(jni.GetAndClearException(),
-           state == DisplayInfo::STATE_OFF ? "Unable to turn display %d off" : "Unable to restore power of display %d", display_id);
-    return false;
-  }
-  Log::I(state == DisplayInfo::STATE_OFF ? "Turned display %d off" : "Restored power of display %d", display_id);
-  return true;
-}
-
-bool DisplayManager::DisplayPowerControlSupported(Jni jni) {
-  InitializeStatics(jni);
-  return request_display_power_method_ != nullptr;
-}
-
 JClass DisplayManager::display_manager_global_class_;
 JObject DisplayManager::display_manager_global_;
 jmethodID DisplayManager::get_display_info_method_ = nullptr;
 jmethodID DisplayManager::get_display_ids_method_ = nullptr;
-jmethodID DisplayManager::request_display_power_method_ = nullptr;
 jfieldID DisplayManager::logical_width_field_ = nullptr;
 jfieldID DisplayManager::logical_height_field_ = nullptr;
 jfieldID DisplayManager::logical_density_dpi_field_ = nullptr;

@@ -1305,6 +1305,48 @@ internal class DeviceViewTest {
   }
 
   @Test
+  fun testTurnOffDisplayWhileMirroring() {
+    DeviceMirroringSettings.getInstance()::turnOffDisplayWhileMirroring.override(true, testRootDisposable)
+
+    // API 32: TURN_OFF_DISPLAY_WHILE_MIRRORING set, no LD_PRELOAD.
+    createDeviceView(200, 300)
+    assertThat(agent.commandLine).startsWith("CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME ")
+    assertThat(extractAgentFlags(agent.commandLine!!) and TURN_OFF_DISPLAY_WHILE_MIRRORING).isEqualTo(TURN_OFF_DISPLAY_WHILE_MIRRORING)
+
+    // API 34: TURN_OFF_DISPLAY_WHILE_MIRRORING set, LD_PRELOAD set for libandroid_servers.so and its dependencies.
+    device = agentRule.connectDevice("Pixel 8", 34, Dimension(1080, 2400))
+    createDeviceView(200, 300)
+    assertThat(agent.commandLine)
+      .startsWith(
+        "LD_PRELOAD=\"/apex/com.android.adbd/lib64/libadb_pairing_server.so " +
+          "/apex/com.android.adbd/lib64/libadb_pairing_connection.so " +
+          "/apex/com.android.os.statsd/lib64/libstatspull.so " +
+          "/apex/com.android.os.statsd/lib64/libstatssocket.so " +
+          "/apex/com.android.runtime/lib64/bionic/libdl_android.so " +
+          "/apex/com.android.i18n/lib64/libandroidicu.so " +
+          "/system/lib64/libandroid_servers.so\" " +
+          "CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME "
+      )
+    assertThat(extractAgentFlags(agent.commandLine!!) and TURN_OFF_DISPLAY_WHILE_MIRRORING).isEqualTo(TURN_OFF_DISPLAY_WHILE_MIRRORING)
+
+    // API 35+: TURN_OFF_DISPLAY_WHILE_MIRRORING set, no LD_PRELOAD.
+    for (apiLevel in listOf(35, 37)) {
+      device = agentRule.connectDevice("Pixel 9", apiLevel, Dimension(1080, 2424))
+      createDeviceView(200, 300)
+      assertThat(agent.commandLine).startsWith("CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME ")
+      assertThat(extractAgentFlags(agent.commandLine!!) and TURN_OFF_DISPLAY_WHILE_MIRRORING).isEqualTo(TURN_OFF_DISPLAY_WHILE_MIRRORING)
+    }
+
+    // Remote device (even on API 34): neither TURN_OFF_DISPLAY_WHILE_MIRRORING nor LD_PRELOAD should be set.
+    device = agentRule.connectDevice("Remote Pixel 8", 34, Dimension(1080, 2400), isRemote = true)
+    createDeviceView(200, 300)
+    assertThat(agent.commandLine).startsWith("CLASSPATH=$DEVICE_PATH_BASE/$SCREEN_SHARING_AGENT_JAR_NAME ")
+    assertThat(extractAgentFlags(agent.commandLine!!) and TURN_OFF_DISPLAY_WHILE_MIRRORING).isEqualTo(0)
+  }
+
+  private fun extractAgentFlags(commandLine: String): Int = Regex("--flags=(\\d+)").find(commandLine)?.groupValues?.get(1)?.toInt() ?: 0
+
+  @Test
   fun testErrorNotification() {
     createDeviceView(200, 300, retinaMode = true)
     waitForFrame()

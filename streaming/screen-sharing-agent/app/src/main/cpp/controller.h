@@ -30,6 +30,7 @@
 #include "accessors/key_event.h"
 #include "accessors/motion_event.h"
 #include "accessors/pointer_helper.h"
+#include "accessors/surface_control.h"
 #include "accessors/xr_simulated_input_manager.h"
 #include "base128_input_stream.h"
 #include "common.h"
@@ -54,10 +55,10 @@ public:
   void StopReceivingCommands();
   // Shuts down the controller. Must be called on the main thread after termination of the controller loop.
   void Shutdown();
-  // Requests to power the display OFF or reset it to a power state it supposed to have. Requires API 35+.
-  // The state parameter is one of DisplayInfo::STATE_OFF (to turn display off), DisplayInfo::STATE_UNKNOWN
-  // (to reset the display to its default state). Returns true if successful, false otherwise.
-  static bool ControlDisplayPower(Jni jni, int state);
+  // Changes power mode of physical displays. The power_mode parameter is one of
+  // DisplayPowerMode::POWER_MODE_OFF or DisplayPowerMode::POWER_MODE_NORMAL.
+  // Returns true if successful, false otherwise.
+  static bool ControlDisplayPower(Jni jni, DisplayPowerMode power_mode);
 
 private:
   struct DisplayEvent {
