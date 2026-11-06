@@ -47,6 +47,9 @@ const val SUBSET_2000_AGP_8_13_PHASED_SYNC_OFF_NAME = "2000Modules_AGP_8.13_Phas
 const val SUBSET_2000_WITH_DEPENDENCY_RESOLUTION_PHASE_NAME = "2000Modules_WithDependencyResolutionPhase"
 const val SUBSET_2000_AGP_8_13_WITH_DEPENDENCY_RESOLUTION_PHASE_NAME = "2000Modules_AGP_8.13_WithDependencyResolutionPhase"
 
+// Benchmarks with Gradle Project Isolation enabled
+const val SUBSET_2000_ISOLATED_PROJECTS_NAME = "2000Modules_IsolatedProjects"
+
 // Feature benchmark names
 const val FEATURE_RUNTIME_CLASSPATH_1000 = "FRuntimeClasspath1000"
 

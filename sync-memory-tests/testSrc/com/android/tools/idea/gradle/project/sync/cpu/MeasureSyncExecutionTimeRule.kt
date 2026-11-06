@@ -89,7 +89,9 @@ class MeasureSyncExecutionTimeRule(
       }
 
       override fun syncSucceeded(project: Project, rootProjectPath: @SystemIndependent String) {
-        val configurationFinishedTimestamp = getTimestampForCheckpoint(MeasurementCheckpoint.CONFIGURATION_FINISHED.name)!!
+        // Not recorded when Gradle reuses the configuration cache, in which case no time is spent configuring.
+        val configurationFinishedTimestamp =
+          getTimestampForCheckpoint(MeasurementCheckpoint.CONFIGURATION_FINISHED.name) ?: syncStartTimestamp
         val androidStartedTimestamp =
           getTimestampForCheckpoint(AndroidMeasurementCheckpoint.ANDROID_STARTED.name) ?: configurationFinishedTimestamp
         val gradleSyncFinishedTimestamp = getTimestampForCheckpoint(MeasurementCheckpoint.SYNC_FINISHED.name)!!

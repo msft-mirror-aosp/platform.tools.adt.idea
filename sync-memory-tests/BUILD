@@ -19,7 +19,8 @@ iml_module(
                 "ci:perfgate-win",
             ],
         },
-        "Benchmark2000KotlinMultiplatformCpu": {
+        # Named to match the --runs_per_test regex for Benchmark2000Cpu in perfgate_linux.sh / perfgate_win.cmd.
+        "Benchmark2000CpuKotlinMultiplatform": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000KotlinMultiplatformCpuTest",
             "exec_properties": LARGE_MACHINE,
             "additional_jvm_args": ["-Xmx6g"],
@@ -41,6 +42,18 @@ iml_module(
                 "ci:perfgate-linux",
                 "ci:perfgate-win",
                 "perfgate-release",
+            ],
+        },
+        # Named to match the --runs_per_test regex for Benchmark2000Cpu in perfgate_linux.sh / perfgate_win.cmd.
+        "Benchmark2000CpuIsolatedProjects": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000IsolatedProjectsCpuTest",
+            "exec_properties": LARGE_MACHINE,
+            "additional_jvm_args": ["-Xmx6g"],
+            "tags": [
+                "noci:studio-win",
+                "noci:studio-linux",
+                "ci:perfgate-linux",
+                "ci:perfgate-win",
             ],
         },
         # Comparison tests
@@ -287,7 +300,7 @@ iml_module(
             ],
         },
     },
-    test_data = [
+    test_data = glob(["testData/**"]) + [
         "testSrc/com/android/tools/idea/gradle/project/sync/gradle/MeasurementPlugin.kt",
         "//prebuilts/studio/buildbenchmarks:ExtraLarge2022_project",
         "//prebuilts/studio/buildbenchmarks:ExtraLarge_KMP_project",
@@ -349,7 +362,7 @@ iml_module(
             "additional_jvm_args": ["-Xmx6g"],
         },
     },
-    test_data = [
+    test_data = glob(["testData/**"]) + [
         "testSrc/com/android/tools/idea/gradle/project/sync/gradle/MeasurementPlugin.kt",
         "//prebuilts/studio/buildbenchmarks:ExtraLarge2022_project",
         "//prebuilts/studio/buildbenchmarks:ExtraLarge_KMP_project",

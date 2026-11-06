@@ -25,9 +25,7 @@ import javax.inject.Inject
 import javax.management.MBeanServer
 import javax.management.ObjectName
 import kotlin.time.Duration.Companion.milliseconds
-import org.gradle.BuildAdapter
 import org.gradle.api.Plugin
-import org.gradle.api.initialization.Settings
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
@@ -59,6 +57,9 @@ object MeasurementPluginConfig {
     val src = File("tools/adt/idea/sync-memory-tests/testSrc/com/android/tools/idea/gradle/project/sync/gradle/MeasurementPlugin.kt")
     val initScript = File(System.getProperty("gradle.user.home")).resolve("init.gradle.kts")
     src.copyTo(initScript, overwrite = true)
+    // The plugin is instantiated directly instead of using `apply<MeasurementPlugin>()`, as applying a plugin to the Gradle instance
+    // makes Gradle report a Project Isolation violation and discard the configuration cache entry.
+    // TODO: Don't use the internal GradleInternal API to get the BuildEventsListenerRegistry.
     initScript.appendText(
       """
       ${this::class.simpleName}.${this::outputPath.name} = "$outputPath"
@@ -66,30 +67,27 @@ object MeasurementPluginConfig {
       ${this::class.simpleName}.${this::captureTypes.name} = setOf(${
       captureTypes.joinToString(",") { "${CaptureType::class.simpleName}.$it" }
     })
-      apply<${MeasurementPlugin::class.simpleName}>()
+      ${MeasurementPlugin::class.simpleName}(
+        (gradle as org.gradle.api.internal.GradleInternal).services.get(BuildEventsListenerRegistry::class.java)
+      ).apply(gradle)
     """
         .trimIndent()
     )
   }
 }
 
-class MeasurementPlugin @Inject constructor(private val registry: BuildEventsListenerRegistry) : Plugin<Gradle>, BuildAdapter() {
+// Uses lifecycle callbacks instead of build listeners so that it is compatible with the configuration cache. Note that when the
+// configuration cache is reused, configuration callbacks do not run, so CONFIGURATION_FINISHED is not recorded for such builds.
+class MeasurementPlugin @Inject constructor(private val registry: BuildEventsListenerRegistry) : Plugin<Gradle> {
   override fun apply(gradle: Gradle) {
-    gradle.addBuildListener(this)
+    if (MeasurementPluginConfig.captureJfr) {
+      EventRecorder.startJavaFlightRecording()
+    }
+    gradle.projectsEvaluated { EventRecorder.recordEvent(MeasurementCheckpoint.CONFIGURATION_FINISHED) }
 
     val serviceProvider = gradle.sharedServices.registerIfAbsent("measurement-service", MeasurementService::class.java) {}
     registry.onTaskCompletion(serviceProvider)
     serviceProvider.get()
-  }
-
-  override fun beforeSettings(settings: Settings) {
-    if (MeasurementPluginConfig.captureJfr) {
-      EventRecorder.startJavaFlightRecording()
-    }
-  }
-
-  override fun projectsEvaluated(gradle: Gradle) {
-    EventRecorder.recordEvent(MeasurementCheckpoint.CONFIGURATION_FINISHED)
   }
 }
 

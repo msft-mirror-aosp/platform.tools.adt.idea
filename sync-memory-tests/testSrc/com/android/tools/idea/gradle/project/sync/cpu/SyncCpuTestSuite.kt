@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_1000
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_200
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_2000
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_2000_8_13
+import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_2000_ISOLATED_PROJECTS
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_4200
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_500
 import com.android.tools.idea.gradle.project.sync.BenchmarkTestRule
@@ -34,6 +35,7 @@ import com.android.tools.idea.gradle.project.sync.SUBSET_2000_AGP_8_13_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_AGP_8_13_PHASED_SYNC_OFF_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_AGP_8_13_WITH_DEPENDENCY_RESOLUTION_PHASE_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_GRADLE_LATEST_NAME
+import com.android.tools.idea.gradle.project.sync.SUBSET_2000_ISOLATED_PROJECTS_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_KOTLIN_LATEST_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_PHASED_SYNC_OFF_NAME
@@ -83,6 +85,16 @@ class Benchmark2000KotlinMultiplatformCpuTest {
 
 class Benchmark2000CpuTest {
   @get:Rule val benchmarkProjectSetupRule = createCpuBenchmarkTestRule(SUBSET_2000_NAME, STANDARD_2000)
+  @get:Rule val measureSyncExecutionTimeRule = MeasureSyncExecutionTimeRule(syncCount = 5)
+  @get:Rule val daemonIdleTimeoutRule = DaemonIdleTimeoutRule(7.minutes)
+
+  @Test fun testCpu() = runTest(benchmarkProjectSetupRule, measureSyncExecutionTimeRule)
+}
+
+// Same project as Benchmark2000CpuTest, but with Gradle Project Isolation enabled, which allows Gradle to reuse the tooling models of
+// previous syncs from the configuration cache.
+class Benchmark2000IsolatedProjectsCpuTest {
+  @get:Rule val benchmarkProjectSetupRule = createCpuBenchmarkTestRule(SUBSET_2000_ISOLATED_PROJECTS_NAME, STANDARD_2000_ISOLATED_PROJECTS)
   @get:Rule val measureSyncExecutionTimeRule = MeasureSyncExecutionTimeRule(syncCount = 5)
   @get:Rule val daemonIdleTimeoutRule = DaemonIdleTimeoutRule(7.minutes)
 

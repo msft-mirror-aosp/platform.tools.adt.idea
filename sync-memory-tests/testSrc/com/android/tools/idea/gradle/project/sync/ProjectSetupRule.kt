@@ -36,6 +36,7 @@ private val rootDirectory = if (TestUtils.runningFromBazel()) Paths.get("") else
 
 private const val STANDARD_PATH = "prebuilts/studio/buildbenchmarks/extra-large.2022.9"
 private const val KMP_PATH = "prebuilts/studio/buildbenchmarks/extra-large-kmp.2022.9"
+private const val DIFFS_PATH = "tools/adt/idea/sync-memory-tests/testData/diffs"
 
 /**
  * Represents a specific project used for to collect metrics from.
@@ -81,6 +82,8 @@ enum class BenchmarkProject(
   // x1.40 - 15300 mb -> ~13,600ms  -> GOOD
   // x1.55 - 17000 mb -> ~13,000 ms -> GOOD
   STANDARD_2000(STANDARD_PATH, maxHeapMB = 15300, extraDiffs = listOf("diff-2200")),
+  // Same as STANDARD_2000, with Gradle Project Isolation enabled.
+  STANDARD_2000_ISOLATED_PROJECTS(STANDARD_PATH, maxHeapMB = 15300, extraDiffs = listOf("diff-2200", "diff-isolated-projects")),
   STANDARD_4200(STANDARD_PATH, maxHeapMB = 30000),
   KMP_2000(KMP_PATH, maxHeapMB = 20000, diffs = emptyList(), extraDiffs = listOf("diff-2200"), automigrateNamespace = false),
   MULTI_APP_100(STANDARD_PATH, maxHeapMB = 6000, extraDiffs = listOf("diff-100-apps-1300-modules")),
@@ -207,7 +210,10 @@ class ProjectSetupRuleImpl(
       }
     }
 
-    private fun String.toSpec(project: BenchmarkProject) = DiffSpec("${project.projectPath}/$this", 0)
+    private fun String.toSpec(project: BenchmarkProject): DiffSpec {
+      val localDiff = "$DIFFS_PATH/$this"
+      return DiffSpec(if (File(localDiff).exists()) localDiff else "${project.projectPath}/$this", 0)
+    }
   }
 }
 
