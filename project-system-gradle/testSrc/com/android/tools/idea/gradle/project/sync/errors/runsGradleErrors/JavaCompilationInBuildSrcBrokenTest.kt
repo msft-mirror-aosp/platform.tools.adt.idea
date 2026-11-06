@@ -82,7 +82,7 @@ class JavaCompilationInBuildSrcBrokenTest : AbstractSyncFailureIntegrationTest()
                 exception: org.gradle.internal.exceptions.LocationAwareException
                   at: [0]org.gradle.initialization.exception.DefaultExceptionAnalyser#transform
                 exception: org.gradle.api.tasks.TaskExecutionException
-                  at: [0]org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter#lambda${'$'}executeIfValid${'$'}1
+                  at: [0]org.gradle.api.internal.tasks.execution.DefaultTaskNodeExecutor#lambda${'$'}doExecute${'$'}1
                 exception: org.gradle.api.internal.tasks.compile.CompilationFailedException
                   at: [0]org.gradle.api.internal.tasks.compile.JdkJavaCompiler#execute
               }
