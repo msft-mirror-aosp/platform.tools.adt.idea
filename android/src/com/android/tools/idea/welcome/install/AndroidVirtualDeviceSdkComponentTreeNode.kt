@@ -155,25 +155,17 @@ constructor(
       enableKeyboard = true
       networkLatency = EmulatedProperties.DEFAULT_NETWORK_LATENCY
       networkSpeed = EmulatedProperties.DEFAULT_NETWORK_SPEED
+      cpuCoreCount = EmulatedProperties.defaultCpuCount(device)
       ram = DEFAULT_RAM_SIZE
       internalStorage = EmulatedProperties.defaultInternalStorage(device)
       vmHeap = DEFAULT_HEAP_SIZE
     }
-
-    val abi = Abi.getEnum(systemImageDescription.primaryAbiType)
-    val supportsSmp = abi != null && abi.supportsMultipleCpuCores() && maxCpuCores() > 1
-    avdBuilder.cpuCoreCount = if (supportsSmp) maxCpuCores() else 1
 
     try {
       return avdManager.createAvd(avdBuilder)
     } catch (e: AvdManagerException) {
       throw WizardException(e.message ?: "Unable to create AVD", e)
     }
-  }
-
-  /** Return the max number of cores that an AVD can use on this development system. */
-  private fun maxCpuCores(): Int {
-    return Runtime.getRuntime().availableProcessors() / 2
   }
 
   override val requiredSdkPackages: Collection<String>
