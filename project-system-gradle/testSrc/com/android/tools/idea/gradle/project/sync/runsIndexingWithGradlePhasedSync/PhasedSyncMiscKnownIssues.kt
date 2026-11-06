@@ -102,7 +102,6 @@ internal object GradleProjectPathConsistencyIssues {
       TestProject.KOTLIN_MULTIPLATFORM_JVM_KMPAPP, // some source sets not included
       TestProject.KOTLIN_MULTIPLATFORM, // some source sets not included
       TestProject.KOTLIN_MULTIPLATFORM_IOS,
-      TestProject.SIMPLE_APPLICATION_MULTIPLE_ROOTS,
     )
 }
 
