@@ -2160,6 +2160,11 @@ public final class StudioFlags {
                     "Enable Agent Tabs",
                     "Enables opening the Agent UI as Editor Tabs.");
 
+  public static final Flag<Boolean> STUDIOBOT_AGENT_CHAT_HISTORY_TOOLWINDOW =
+    new BooleanFlag(STUDIOBOT, "agent.chat.history.toolwindow",
+                    "Enable Agent Chat History Tool Window",
+                    "Enables the Agent Chat History Tool Window.");
+
   public static final Flag<Boolean> STUDIOBOT_AGENT_NESTED_EDITOR_ENABLED =
     new BooleanFlag(STUDIOBOT, "agent.nested.editor.enabled",
                     "Enable Agent Nested Editor",
