@@ -133,12 +133,15 @@ class InteractivePreviewNavigationController(
    * [ClassLoader] after interactive mode stops.
    */
   fun clear() {
+    // Clear the cached dispatcher owner for this preview's ClassLoader before nulling out backPressDispatcherOwner
+    backPressDispatcherOwner?.javaClass?.classLoader?.let {
+      InteractivePreviewBackNavigationUpdater.clearForClassLoader(it)
+    }
     backPressDispatcherOwner = null
     isBackGestureInProgress = false
     hasNavDisplayInViewTree = false
     executeInRenderSessionAsync = { it.run() }
     resetCachedMethods()
-    InteractivePreviewBackNavigationUpdater.clear()
   }
 
   /** Loads the dispatcher owner field used to perform back navigation when using androidx.navigation3. */
