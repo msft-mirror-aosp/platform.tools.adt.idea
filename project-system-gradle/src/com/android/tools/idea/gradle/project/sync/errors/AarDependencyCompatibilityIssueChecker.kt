@@ -21,6 +21,7 @@ import com.android.tools.idea.gradle.project.sync.issues.processor.UpdateCompile
 import com.android.tools.idea.gradle.project.sync.quickFixes.moduleBuildFiles
 import com.intellij.build.issue.BuildIssue
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import java.util.concurrent.CompletableFuture
@@ -78,25 +79,27 @@ class UpdateCompileSdkQuickFix(val modulesWithSuggestedMinCompileSdk: Map<String
 
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
     val future = CompletableFuture<Any>()
-    try {
-      if (!project.isDisposed) {
-        val buildFilesWithSuggestedMinCompileSdk = buildMap {
-          for ((modulePath, minCompileSdk) in modulesWithSuggestedMinCompileSdk) {
-            project.moduleBuildFiles(modulePath).forEach { put(it, minCompileSdk) }
+    invokeLater {
+      try {
+        if (!project.isDisposed) {
+          val buildFilesWithSuggestedMinCompileSdk = buildMap {
+            for ((modulePath, minCompileSdk) in modulesWithSuggestedMinCompileSdk) {
+              project.moduleBuildFiles(modulePath).forEach { put(it, minCompileSdk) }
+            }
+          }
+          if (buildFilesWithSuggestedMinCompileSdk.isEmpty()) {
+            // There is nothing to change, show an error message
+            Messages.showErrorDialog(project, "Could not determine build files to apply fix", "Update minCompileSdk")
+          } else {
+            val processor = UpdateCompileSdkProcessor(project, buildFilesWithSuggestedMinCompileSdk)
+            processor.setPreviewUsages(true)
+            processor.run()
           }
         }
-        if (buildFilesWithSuggestedMinCompileSdk.isEmpty()) {
-          // There is nothing to change, show an error message
-          Messages.showErrorDialog(project, "Could not determine build files to apply fix", "Update minCompileSdk")
-        } else {
-          val processor = UpdateCompileSdkProcessor(project, buildFilesWithSuggestedMinCompileSdk)
-          processor.setPreviewUsages(true)
-          processor.run()
-        }
+        future.complete(null)
+      } catch (e: Exception) {
+        future.completeExceptionally(e)
       }
-      future.complete(null)
-    } catch (e: Exception) {
-      future.completeExceptionally(e)
     }
     return future
   }
