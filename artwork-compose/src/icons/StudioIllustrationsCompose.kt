@@ -81,6 +81,12 @@ object StudioIllustrationsCompose {
         "/studio/illustrations/common/package-apk.svg",
         StudioIllustrationsCompose.javaClass,
       ) // 72x72
+    val Plant: IntelliJIconKey =
+      IntelliJIconKey(
+        "/studio/illustrations/common/plant.svg",
+        "/studio/illustrations/common/plant.svg",
+        StudioIllustrationsCompose.javaClass,
+      ) // 64x64
     val PlayConsoleIcon: IntelliJIconKey =
       IntelliJIconKey(
         "/studio/illustrations/common/play-console-icon.svg",
