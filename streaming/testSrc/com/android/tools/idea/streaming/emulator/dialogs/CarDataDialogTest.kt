@@ -59,6 +59,10 @@ import com.intellij.ui.components.JBTextArea
 import com.intellij.ui.components.JBTextField
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.ui.table.TableView
+import java.awt.event.KeyEvent.VK_DOWN
+import java.awt.event.KeyEvent.VK_KP_DOWN
+import java.awt.event.KeyEvent.VK_KP_UP
+import java.awt.event.KeyEvent.VK_UP
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JButton
@@ -221,6 +225,68 @@ class CarDataDialogTest {
     waitForCondition(5.seconds) {
       val actualSpeed = fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED)?.getFloatValues(0) ?: -1f
       abs(actualSpeed - expected100KmhMps) < 0.01f
+    }
+
+    // Up/Down keys increment/decrement within current unit bounds (-50..250 km/h) and sync slider and emulator.
+    ui.keyboard.setFocus(speedField)
+    ui.keyboard.pressAndRelease(VK_UP)
+    ui.keyboard.pressAndRelease(VK_KP_UP)
+    assertThat(speedField.text).isEqualTo("102")
+    assertThat(speedSlider.value).isEqualTo(102)
+    val expected102KmhMps = 102 * 1000f / 3600f
+    waitForCondition(5.seconds) {
+      val actualSpeed = fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED)?.getFloatValues(0) ?: -1f
+      abs(actualSpeed - expected102KmhMps) < 0.01f
+    }
+
+    ui.keyboard.pressAndRelease(VK_DOWN)
+    ui.keyboard.pressAndRelease(VK_KP_DOWN)
+    assertThat(speedField.text).isEqualTo("100")
+    assertThat(speedSlider.value).isEqualTo(100)
+    waitForCondition(5.seconds) {
+      val actualSpeed = fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED)?.getFloatValues(0) ?: -1f
+      abs(actualSpeed - expected100KmhMps) < 0.01f
+    }
+
+    // Out-of-range and extreme Int values clamp to unit bounds before stepping (no overflow/underflow).
+    speedField.text = "999"
+    ui.keyboard.pressAndRelease(VK_DOWN)
+    assertThat(speedField.text).isEqualTo("249")
+    assertThat(speedSlider.value).isEqualTo(249)
+    val expected249KmhMps = 249 * 1000f / 3600f
+    waitForCondition(5.seconds) {
+      val actualSpeed = fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED)?.getFloatValues(0) ?: -1f
+      abs(actualSpeed - expected249KmhMps) < 0.01f
+    }
+
+    speedField.text = "-100"
+    ui.keyboard.pressAndRelease(VK_UP)
+    assertThat(speedField.text).isEqualTo("-49")
+    assertThat(speedSlider.value).isEqualTo(-49)
+    val expectedMinus49KmhMps = -49 * 1000f / 3600f
+    waitForCondition(5.seconds) {
+      val actualSpeed = fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED)?.getFloatValues(0) ?: 1f
+      abs(actualSpeed - expectedMinus49KmhMps) < 0.01f
+    }
+
+    speedField.text = Int.MAX_VALUE.toString()
+    ui.keyboard.pressAndRelease(VK_UP)
+    assertThat(speedField.text).isEqualTo("250")
+    assertThat(speedSlider.value).isEqualTo(250)
+    val expected250KmhMps = 250 * 1000f / 3600f
+    waitForCondition(5.seconds) {
+      val actualSpeed = fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED)?.getFloatValues(0) ?: -1f
+      abs(actualSpeed - expected250KmhMps) < 0.01f
+    }
+
+    speedField.text = Int.MIN_VALUE.toString()
+    ui.keyboard.pressAndRelease(VK_DOWN)
+    assertThat(speedField.text).isEqualTo("-50")
+    assertThat(speedSlider.value).isEqualTo(-50)
+    val expectedMinus50KmhMps = -50 * 1000f / 3600f
+    waitForCondition(5.seconds) {
+      val actualSpeed = fakeEmulator.getVehicleProperty(VehicleProperty.PERF_VEHICLE_SPEED)?.getFloatValues(0) ?: 1f
+      abs(actualSpeed - expectedMinus50KmhMps) < 0.01f
     }
 
     // Selecting Park resets speed to 0.

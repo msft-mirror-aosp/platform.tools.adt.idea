@@ -41,6 +41,8 @@ import java.awt.Dimension
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
 import java.awt.event.ItemEvent
+import java.awt.event.KeyAdapter
+import java.awt.event.KeyEvent
 import javax.swing.ComboBoxModel
 import javax.swing.JList
 import javax.swing.JSlider
@@ -194,6 +196,33 @@ internal class CarSensorDataTab(private val owner: CarDataDialog) {
                       object : FocusAdapter() {
                         override fun focusLost(e: FocusEvent) {
                           commitSpeed()
+                        }
+                      }
+                    )
+                    addKeyListener(
+                      object : KeyAdapter() {
+                        override fun keyPressed(event: KeyEvent) {
+                          if (!speedInitialized || isSyncingControls || event.modifiersEx != 0) return
+                          val step =
+                            when (event.keyCode) {
+                              KeyEvent.VK_UP,
+                              KeyEvent.VK_KP_UP -> 1
+                              KeyEvent.VK_DOWN,
+                              KeyEvent.VK_KP_DOWN -> -1
+                              else -> return
+                            }
+                          val minSpeed = speedUnit.minSpeed
+                          val maxSpeed = speedUnit.maxSpeed
+                          val current = currentDisplaySpeed()
+                          val base = (text.trim().toIntOrNull() ?: current).coerceIn(minSpeed, maxSpeed)
+                          val newSpeed = (base + step).coerceIn(minSpeed, maxSpeed)
+                          if (newSpeed != current) {
+                            setDisplaySpeedFromUi(newSpeed)
+                          } else {
+                            owner.clearErrorMessage()
+                            syncSpeedControls(newSpeed)
+                          }
+                          event.consume()
                         }
                       }
                     )
