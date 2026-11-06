@@ -37,6 +37,7 @@ internal class AndroidStudioDefaultToolWindowLayoutExtension : DefaultToolWindow
         weight = 0.25f
         contentUiType = ToolWindowDescriptor.ToolWindowContentUiType.COMBO
       }
+      addOrUpdate("Agent Chat History") { weight = 0.25f }
       addOrUpdate("Commit") { weight = 0.25f }
       addOrUpdate("Resources Explorer") { weight = 0.25f }
     }
