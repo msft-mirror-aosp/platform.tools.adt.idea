@@ -231,13 +231,18 @@ private class InnerStateInspectionPanel(
 
   private suspend fun setTextInEditor(text: String) {
     val document = editor.document
+    if (document.text == text) {
+      return
+    }
     try {
       document.setReadOnly(false)
-      edtWriteAction { document.setText(text) }
-      editor.markupModel.removeAllHighlighters()
-      highlightInvalidations(text)
+      edtWriteAction {
+        document.setText(text)
+        editor.markupModel.removeAllHighlighters()
+        highlightInvalidations(text)
+        foldingDetector.detectFoldingInWriteAction()
+      }
       hyperlinkDetector.detectHyperlinks()
-      foldingDetector.detectFolding()
     } finally {
       document.setReadOnly(true)
     }
@@ -265,6 +270,7 @@ private class InnerStateInspectionPanel(
     val document = editorFactory.createDocument("")
     (document as DocumentImpl).setAcceptSlashR(true)
     UndoUtil.disableUndoFor(document)
+    document.setReadOnly(true)
     val editor = editorFactory.createViewer(document, project, EditorKind.CONSOLE) as EditorEx
     val editorSettings = editor.settings
     editorSettings.isAllowSingleLogicalLineFolding = true

@@ -19,6 +19,7 @@ import com.android.tools.idea.layoutinspector.LayoutInspectorBundle
 import com.intellij.openapi.application.edtWriteAction
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.ex.FoldingModelEx
+import com.intellij.util.concurrency.annotations.RequiresWriteLock
 import org.jetbrains.kotlin.utils.indexOfFirst
 
 private const val RECORD_READ_OF = "at androidx.compose.runtime.CompositionImpl.recordReadOf"
@@ -104,13 +105,17 @@ internal class RecompositionFoldingDetector(private val editor: Editor) {
   private var lines: List<String> = emptyList()
 
   suspend fun detectFolding() {
+    if (foldingModel == null) return
+    edtWriteAction { detectFoldingInWriteAction() }
+  }
+
+  @RequiresWriteLock
+  fun detectFoldingInWriteAction() {
     val model = foldingModel ?: return
-    edtWriteAction {
-      model.runBatchFoldingOperation {
-        fetchLines()
-        model.clearFoldRegions()
-        foldLines()
-      }
+    model.runBatchFoldingOperation {
+      fetchLines()
+      model.clearFoldRegions()
+      foldLines()
     }
   }
 

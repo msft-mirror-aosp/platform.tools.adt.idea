@@ -125,7 +125,7 @@ class RecompositionUiPanelIntegrationTest {
 
     // Check that the HyperLinkDetector processed the content with all available filters.
     val editor = panel.getUserData(STATE_READ_EDITOR_KEY)!!
-    assertThat(editor.markupModel.allHighlighters.size).isEqualTo(3)
+    waitForCondition(10.seconds) { editor.markupModel.allHighlighters.size == 3 }
 
     // Layout the swing components since InnerStateInspectionPanel was just created.
     ui.layout()
@@ -254,7 +254,7 @@ class RecompositionUiPanelIntegrationTest {
       expectedText = StringUtil.convertLineSeparators(TestUtils.resolveWorkspacePathUnchecked(file).readText())
     }
     val editor = getUserData(STATE_READ_EDITOR_KEY)!!
-    waitForCondition(10.seconds) { editor.document.text == expectedText }
+    waitForCondition(10.seconds) { !editor.document.isWritable && editor.document.text == expectedText }
   }
 
   private fun RecompositionUiPanel.checkComposableInspected() {
