@@ -7,6 +7,7 @@ load("//tools/adt/idea/studio:studio.bzl", "android_studio", "android_studio_con
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "app_icon")
 load("//tools/base/bazel:bazel.bzl", "iml_module", "iml_test")
 load("//tools/vendor/google/alt-lang:exports.bzl", "STUDIO_NDK_LSP_PLUGINS", "STUDIO_NDK_SEARCHABLE_OPTIONS_PLUGINS")
+load("//tools/vendor/google/lightbuild-plugin:exports.bzl", "STUDIO_LIGHTBUILD_PLUGINS", "STUDIO_LIGHTBUILD_SEARCHABLE_OPTIONS_PLUGINS")
 load(
     "//tools/vendor/google/ml:aiplugin/aiplugin.bzl",
     "AIPLUGIN_CORE_LIBS",
@@ -1169,15 +1170,13 @@ STUDIO_CORE_PLUGINS = [
     "//tools/adt/idea/studio:com.google.applinkassistant.ai",
     "//tools/adt/idea/studio:com.google.targetsdkversionassistant",
     "//tools/adt/idea/studio:com.android.tools.gradle.dsl",
-    "//tools/vendor/google/optional-plugins/project-system-lightbuild:com.google.lightbuild",
-    "//tools/vendor/google/optional-plugins/project-system-lightbuild/aiplugin-lightbuild:com.google.lightbuild.aiplugin",
 ]
 
-STUDIO_BASE_PLUGINS = STUDIO_CORE_PLUGINS + STUDIO_NDK_LSP_PLUGINS
+STUDIO_BASE_PLUGINS = STUDIO_CORE_PLUGINS + STUDIO_NDK_LSP_PLUGINS + STUDIO_LIGHTBUILD_PLUGINS
 
 # Searchable options can't be controlled by --//tools/vendor/google/alt-lang/lsp4ij/as-plugin:enabled flag
 # because select() objects cannot be iterated over in Starlark macros during the loading phase.
-STUDIO_SEARCHABLE_OPTIONS_PLUGINS = STUDIO_CORE_PLUGINS + STUDIO_NDK_SEARCHABLE_OPTIONS_PLUGINS
+STUDIO_SEARCHABLE_OPTIONS_PLUGINS = STUDIO_CORE_PLUGINS + STUDIO_NDK_SEARCHABLE_OPTIONS_PLUGINS + STUDIO_LIGHTBUILD_SEARCHABLE_OPTIONS_PLUGINS
 
 android_studio(
     name = "android-studio",
@@ -1195,35 +1194,6 @@ android_studio(
     plugins = STUDIO_BASE_PLUGINS,
     searchable_options_metadata = SEARCHABLE_OPTIONS,
     searchable_options_plugin_lst = STUDIO_SEARCHABLE_OPTIONS_PLUGINS,
-    selector = "AndroidStudio",
-    update_message_template = ":update_message.html",
-    version_code_name = STUDIO_CODENAME,
-    version_micro_patch = STUDIO_MICRO_PATCH,
-    version_release_number = STUDIO_RELEASE_NUMBER,
-    visibility = ["//visibility:public"],
-)
-
-android_studio(
-    name = "android-studio-with-optional-plugins",
-    codesign_entitlements = "codesign/entitlements.xml",
-    configurations = [
-        ":canary",
-        ":nightly",
-        ":stable",
-    ],
-    generate_package_metadata = False,
-    jre = "//prebuilts/studio/jdk:jdk-bundle",
-    legacy_default_configuration = STUDIO_CONFIG,
-    mac_document_types = "mac_document_types.plist",
-    platform = "@intellij//:intellij-sdk",
-    plugins = STUDIO_BASE_PLUGINS + [
-        "//tools/vendor/google/optional-plugins:plugins",
-    ],
-    searchable_options_deps = {
-        "canary": [":android-studio.canary.searchable-options"],
-        "nightly": [":android-studio.nightly.searchable-options"],
-        "stable": [":android-studio.stable.searchable-options"],
-    },
     selector = "AndroidStudio",
     update_message_template = ":update_message.html",
     version_code_name = STUDIO_CODENAME,
@@ -1491,9 +1461,8 @@ iml_module(
         "//tools/vendor/google/alt-lang/ios-lang",
         "@intellij//:intellij-sdk",
         "@intellij//:com.intellij.java",
-        "//tools/vendor/google/optional-plugins",
-        "//tools/vendor/google/optional-plugins/project-system-lightbuild:intellij.android.projectSystem.lightbuild",
-        "//tools/vendor/google/optional-plugins/project-system-lightbuild/aiplugin-lightbuild:intellij.android.lightbuild.aiplugin",
+        "//tools/vendor/google/lightbuild-plugin:lightbuild.projectSystem",
+        "//tools/vendor/google/lightbuild-plugin/aiplugin:lightbuild.aiplugin",
         "//tools/adt/idea/smali:intellij.android.smali",
     ],
 )
@@ -3060,4 +3029,17 @@ sh_binary(
 sh_binary(
     name = "update_expected_studio_files",
     srcs = ["//tools/adt/idea/studio:tests/update_expected_studio_files.sh"],
+)
+
+# managed by go/iml_to_build
+iml_module(
+    name = "studio-legacy-lightbuild",
+    iml_files = ["studio-legacy-lightbuild.iml"],
+    visibility = ["//visibility:public"],
+    # do not sort: must match IML order
+    deps = [
+        "//tools/adt/idea/studio",
+        "//tools/vendor/google/lume-release/project-system-lightbuild:intellij.android.projectSystem.lightbuild",
+        "//tools/vendor/google/lume-release/project-system-lightbuild/aiplugin-lightbuild:intellij.android.lightbuild.aiplugin",
+    ],
 )
