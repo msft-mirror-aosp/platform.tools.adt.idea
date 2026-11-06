@@ -20,6 +20,7 @@ import static com.android.testutils.TestUtils.resolveWorkspacePath;
 import com.android.repository.testframework.FakeProgressIndicator;
 import com.android.repository.util.InstallerUtil;
 import com.android.testutils.JarTestSuiteRunner;
+import com.android.testutils.OsType;
 import com.android.testutils.RepoLinker;
 import com.android.testutils.TestUtils;
 import com.android.testutils.diff.UnifiedDiff;
@@ -28,9 +29,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
 import org.junit.ClassRule;
 
@@ -100,8 +103,25 @@ public class IdeaTestSuiteBase {
     // set compose property for unit tests
     System.setProperty("compose.swing.render.on.graphics", "true");
     // b/435253226
-    System.setProperty("skiko.library.path",
-                       resolveWorkspacePath(requiredJvmArgs.get("skiko.library.path")).toString());
+    Path skikoDir = resolveWorkspacePath(requiredJvmArgs.get("skiko.library.path"));
+    if (OsType.getHostOs() == OsType.WINDOWS) {
+      skikoDir = copySkikoToShortPath(skikoDir);
+    }
+    System.setProperty("skiko.library.path", skikoDir.toString());
+  }
+
+  /**
+   * Skia cannot open icudtl.dat on Windows when its path is longer than MAX_PATH. The runfiles path
+   * can be longer, so we copy the Skiko native files to a short directory.
+   */
+  private static Path copySkikoToShortPath(Path skikoDir) throws IOException {
+    Path target = createTmpDir("skiko");
+    try (Stream<Path> files = Files.list(skikoDir)) {
+      for (Path file : (Iterable<Path>)files::iterator) {
+        Files.copy(file, target.resolve(file.getFileName().toString()), StandardCopyOption.REPLACE_EXISTING);
+      }
+    }
+    return target;
   }
 
   private static Map<String, String> readJvmArgsProperties(Path path) throws IOException {
