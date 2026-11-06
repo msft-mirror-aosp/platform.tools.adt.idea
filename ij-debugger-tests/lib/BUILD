@@ -24,6 +24,7 @@ kotlin_library(
         "@tools_idea//java/debugger/shared",
         "@tools_idea//java/execution/openapi:java-execution",
         "@tools_idea//java/testFramework",
+        "@tools_idea//libraries/kotlinc/kotlin-compiler-common:libraries-kotlinc-kotlin-compiler-common",
         "@tools_idea//platform/core-api:core",
         "@tools_idea//platform/core-impl",
         "@tools_idea//platform/core-ui",
@@ -39,7 +40,6 @@ kotlin_library(
         "@tools_idea//plugins/kotlin/jvm-debugger/evaluation",
         "@tools_idea//plugins/kotlin/jvm-debugger/testFramework:testFramework_test_lib",
         "@tools_idea//plugins/kotlin/tests-common:common-tests_test_lib",
-        "@tools_idea_lib//:kotlinc-kotlin-compiler-common",
     ],
 )
 
