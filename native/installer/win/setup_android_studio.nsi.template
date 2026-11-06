@@ -93,7 +93,7 @@ RequestExecutionLevel admin # The uninstaller always runs in admin mode
 !define BAD_CHARS '?%*:|"<>!;'
 
 !define VERSION_MAJOR 2026
-!define VERSION_MINOR 2
+!define VERSION_MINOR 3
 !ifndef VERSION
     !define VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.{VERSION_MICRO_PATCH}
 !endif

@@ -8,8 +8,8 @@ visibility([
     "//tools/vendor/google/aswb/searchable-options",
 ])
 
-STUDIO_CODENAME = "Rabbit 3"
+STUDIO_CODENAME = "Stingray 1"
 STUDIO_CONFIG = "canary"
 STUDIO_VERSION = "Canary"
-STUDIO_MICRO_PATCH = "3.3"
-STUDIO_RELEASE_NUMBER = 3
+STUDIO_MICRO_PATCH = "1.1"
+STUDIO_RELEASE_NUMBER = 1
