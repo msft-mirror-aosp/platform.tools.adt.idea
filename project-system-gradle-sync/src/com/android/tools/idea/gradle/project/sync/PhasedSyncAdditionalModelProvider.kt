@@ -123,6 +123,7 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
         }
       }
 
+    recordCheckpointData(MeasurementCheckpoint.ANDROID_FINISHED, syncOptions)
     buildModels.forEach { model ->
       if (syncOptions.flags.studioDebugMode) {
         populateDebugInfo(model, modelConsumer, this.javaClass)

@@ -69,6 +69,7 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
     buildModels: MutableCollection<out GradleBuild>,
     modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
   ) {
+    recordCheckpointData(MeasurementCheckpoint.ANDROID_STARTED, syncOptions)
     // Synchronized because the nested actions below add to it in parallel.
     val exceptionsPerProject: MutableList<Pair<BasicGradleProject, Throwable>> = Collections.synchronizedList(mutableListOf())
     // .first call seems a bit silly, but it's what we do on the other side too

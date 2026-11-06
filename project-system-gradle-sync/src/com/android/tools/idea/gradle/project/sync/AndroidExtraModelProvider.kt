@@ -77,7 +77,9 @@ private class AndroidExtraModelProviderImpl(private val syncOptions: SyncActionO
   private val syncCounters = SyncCounters()
 
   fun populateBuildModels(controller: BuildController, buildModel: GradleBuild, consumer: GradleModelConsumer) {
-    recordCheckpointData(MeasurementCheckpoint.ANDROID_STARTED)
+    if (!syncOptions.flags.studioFlagPhasedSyncEnabled) {
+      recordCheckpointData(MeasurementCheckpoint.ANDROID_STARTED, syncOptions)
+    }
     // Flatten the platform's handling of included builds. We need all models together to resolve cross `includeBuild` dependencies
     // correctly. This, unfortunately, makes assumptions about the order in which these methods are invoked. If broken it will be caught
     // by any test attempting to sync a composite build.
@@ -108,28 +110,11 @@ private class AndroidExtraModelProviderImpl(private val syncOptions: SyncActionO
           consumer,
         )
         .populateBuildModels()
-      recordCheckpointData(MeasurementCheckpoint.ANDROID_FINISHED)
+      // If we reach here it means that we fetched the android models using this model, and the finished event should be recorder here,
+      // because PhasedSyncAdditionalModelProvider won't run if this model run anyway.
+      recordCheckpointData(MeasurementCheckpoint.ANDROID_FINISHED, syncOptions, syncCounters)
       if (syncOptions.flags.studioDebugMode) {
         populateDebugInfo(buildModel, consumer, this.javaClass)
-      }
-    }
-  }
-
-  private fun recordCheckpointData(checkpoint: MeasurementCheckpoint) {
-    if (syncOptions.flags.studioFlagSyncStatsOutputDirectory.isNotEmpty()) {
-      writeCheckpointTimestamp(syncOptions.flags.studioFlagSyncStatsOutputDirectory, checkpoint)
-      if (checkpoint == MeasurementCheckpoint.ANDROID_FINISHED) {
-        writeStatsToFile(syncOptions.flags.studioFlagSyncStatsOutputDirectory, syncCounters)
-      }
-    }
-    if (syncOptions.flags.studioHprofOutputDirectory.isNotEmpty()) {
-      captureSnapshot(syncOptions.flags.studioHprofOutputDirectory, checkpoint)
-    }
-    if (syncOptions.flags.studioHeapAnalysisOutputDirectory.isNotEmpty()) {
-      if (syncOptions.flags.studioHeapAnalysisLightweightMode) {
-        captureHeapHistogramOfCurrentProcess(syncOptions.flags.studioHeapAnalysisOutputDirectory, checkpoint)
-      } else {
-        analyzeCurrentProcessHeap(syncOptions.flags.studioHeapAnalysisOutputDirectory, checkpoint)
       }
     }
   }
@@ -152,6 +137,29 @@ private class AndroidExtraModelProviderImpl(private val syncOptions: SyncActionO
       )
       .flatten()
       .forEach { (projectModel, fetchedModel, fetchedClass) -> modelConsumer.consumeProjectModel(projectModel, fetchedModel, fetchedClass) }
+  }
+}
+
+fun recordCheckpointData(
+  checkpoint: MeasurementCheckpoint,
+  syncOptions: SyncActionOptions,
+  syncCounters: SyncCounters? = null,
+) {
+  if (syncOptions.flags.studioFlagSyncStatsOutputDirectory.isNotEmpty()) {
+    writeCheckpointTimestamp(syncOptions.flags.studioFlagSyncStatsOutputDirectory, checkpoint)
+    if (checkpoint == MeasurementCheckpoint.ANDROID_FINISHED && syncCounters != null) {
+      writeStatsToFile(syncOptions.flags.studioFlagSyncStatsOutputDirectory, syncCounters)
+    }
+  }
+  if (syncOptions.flags.studioHprofOutputDirectory.isNotEmpty()) {
+    captureSnapshot(syncOptions.flags.studioHprofOutputDirectory, checkpoint)
+  }
+  if (syncOptions.flags.studioHeapAnalysisOutputDirectory.isNotEmpty()) {
+    if (syncOptions.flags.studioHeapAnalysisLightweightMode) {
+      captureHeapHistogramOfCurrentProcess(syncOptions.flags.studioHeapAnalysisOutputDirectory, checkpoint)
+    } else {
+      analyzeCurrentProcessHeap(syncOptions.flags.studioHeapAnalysisOutputDirectory, checkpoint)
+    }
   }
 }
 
