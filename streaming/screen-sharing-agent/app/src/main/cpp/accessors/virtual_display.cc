@@ -37,23 +37,21 @@ VirtualDisplay::~VirtualDisplay() {
   ReleaseDisplay();
 }
 
-VirtualDisplay& VirtualDisplay::operator=(VirtualDisplay&& other) noexcept {
-  ReleaseDisplay();
-  JObject::operator=(static_cast<JObject&&>(other));
+VirtualDisplay& VirtualDisplay::operator=(VirtualDisplay&& other) {
+  if (this != &other) {
+    ReleaseDisplay();
+    JObject::operator=(static_cast<JObject&&>(other));
+  }
   return *this;
 }
 
 void VirtualDisplay::ReleaseDisplay() {
   if (IsNotNull()) {
-    CallVoidMethod(GetJni(), release_method_);
-    Release();
-  }
-}
-
-void VirtualDisplay::ReleaseDisplay(Jni jni) {
-  if (IsNotNull()) {
+    Jni jni = GetJni();
+    jni.CheckAndClearException();
     CallVoidMethod(jni, release_method_);
-    Release();
+    jni.CheckAndClearException();
+    Reset();
   }
 }
 

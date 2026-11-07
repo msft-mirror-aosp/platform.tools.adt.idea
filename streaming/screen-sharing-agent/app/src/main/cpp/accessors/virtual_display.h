@@ -26,16 +26,19 @@ namespace screensharing {
 class VirtualDisplay : public JObject {
 public:
   using JObject::JObject;
+  VirtualDisplay(VirtualDisplay&& other) noexcept = default;
   explicit VirtualDisplay(JObject&& virtual_display);
 
   ~VirtualDisplay();
 
-  VirtualDisplay& operator=(VirtualDisplay&& other) noexcept;
+  VirtualDisplay& operator=(VirtualDisplay&& other);
 
   void Resize(int32_t width, int32_t height, int32_t density_dpi);
   void SetSurface(ANativeWindow* surface);
   void ReleaseDisplay();
-  void ReleaseDisplay(Jni jni);
+
+  JObject& MakeGlobal() = delete;
+  JObject&& ToGlobal() && = delete;
 
 private:
   static jmethodID set_surface_method_;

@@ -27,7 +27,7 @@ public:
   AudioRecord() noexcept = default;
   ~AudioRecord();
 
-  AudioRecord& operator=(AudioRecord&& other) noexcept;
+  AudioRecord& operator=(AudioRecord&& other);
 
   // Destroys the AudioRecord.
   void Release();

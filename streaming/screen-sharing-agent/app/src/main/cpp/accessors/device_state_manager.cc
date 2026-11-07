@@ -141,85 +141,90 @@ bool DeviceStateManager::InitializeStatics(Jni jni) {
     return false;  // Support for device states was introduced in API 31.
   }
 
-  {
-    unique_lock lock(static_initialization_mutex_);
-    if (!statics_initialized_) {
-      statics_initialized_ = true;
-      device_state_manager_ =
-          ServiceManager::GetServiceAsInterface(jni, "device_state", "android/hardware/devicestate/IDeviceStateManager", true, true);
-      if (device_state_manager_.IsNull()) {
-        return false;
+  unique_lock lock(static_initialization_mutex_);
+  if (!statics_initialized_) {
+    statics_initialized_ = true;
+    JObject device_state_manager =
+        ServiceManager::GetServiceAsInterface(jni, "device_state", "android/hardware/devicestate/IDeviceStateManager", true, true);
+    if (device_state_manager.IsNull()) {
+      return false;
+    }
+    JClass clazz = device_state_manager.GetClass();
+    get_device_state_info_method_ = clazz.GetMethod("getDeviceStateInfo", "()Landroid/hardware/devicestate/DeviceStateInfo;");
+
+    JObject device_state_info = device_state_manager.CallObjectMethod(jni, get_device_state_info_method_);
+    if (device_state_info.IsNull()) {
+      // May happen if the initial state hasn't been committed.
+      Log::W(jni.GetAndClearException(), "Device state is not available");
+      return false;
+    }
+    DeviceStateInfo::InitializeStatics(device_state_info);
+    supported_device_states_ = DeviceStateInfo::GetSupportedStates(device_state_info);
+    if (supported_device_states_.size() == 1) {
+      supported_device_states_.clear();  // A single device state is treated the same as no states.
+    }
+    if (!supported_device_states_.empty()) {
+      bool registerCallbackReturnsStateInfo = Agent::feature_level() >= 35;
+      const char* signature = registerCallbackReturnsStateInfo ?
+          "(Landroid/hardware/devicestate/IDeviceStateManagerCallback;)Landroid/hardware/devicestate/DeviceStateInfo;" :
+          "(Landroid/hardware/devicestate/IDeviceStateManagerCallback;)V";
+      jmethodID register_callback_method = nullptr;
+      if (Agent::feature_level() == 35) {
+        // In API 35 the registerCallback method may have either of the two signatures.
+        register_callback_method = clazz.FindMethod("registerCallback", signature);
+        signature = "(Landroid/hardware/devicestate/IDeviceStateManagerCallback;)V"; // Fall back to the old signature.
+        registerCallbackReturnsStateInfo = false;
       }
-      JClass clazz = device_state_manager_.GetClass();
-      get_device_state_info_method_ = clazz.GetMethod("getDeviceStateInfo", "()Landroid/hardware/devicestate/DeviceStateInfo;");
-
-      JObject device_state_info = device_state_manager_.CallObjectMethod(jni, get_device_state_info_method_);
-      if (device_state_info.IsNull()) {
-        // May happen if the initial state hasn't been committed.
-        Log::W(jni.GetAndClearException(), "Device state is not available");
-        device_state_manager_.MakeGlobal();
-        return true;
+      if (register_callback_method == nullptr) {
+        register_callback_method = clazz.GetMethod("registerCallback", signature);
       }
-      DeviceStateInfo::InitializeStatics((device_state_info));
-      supported_device_states_ = DeviceStateInfo::GetSupportedStates(device_state_info);
-      if (supported_device_states_.size() == 1) {
-        supported_device_states_.clear();  // A single device state is treated the same as no states.
+      request_state_method_ = clazz.GetMethod("requestState", "(Landroid/os/IBinder;II)V");
+      if (Agent::feature_level() >= 33) {
+        cancel_state_request_method_ = clazz.GetMethod("cancelStateRequest", "()V");
       }
-      if (!supported_device_states_.empty()) {
-        bool registerCallbackReturnsStateInfo = Agent::feature_level() >= 35;
-        const char* signature = registerCallbackReturnsStateInfo ?
-            "(Landroid/hardware/devicestate/IDeviceStateManagerCallback;)Landroid/hardware/devicestate/DeviceStateInfo;" :
-            "(Landroid/hardware/devicestate/IDeviceStateManagerCallback;)V";
-        jmethodID register_callback_method = nullptr;
-        if (Agent::feature_level() == 35) {
-          // In API 35 the registerCallback method may have either of the two signatures.
-          register_callback_method = clazz.FindMethod("registerCallback", signature);
-          signature = "(Landroid/hardware/devicestate/IDeviceStateManagerCallback;)V"; // Fall back to the old signature.
-          registerCallbackReturnsStateInfo = false;
-        }
-        if (register_callback_method == nullptr) {
-          register_callback_method = clazz.GetMethod("registerCallback", signature);
-        }
-        request_state_method_ = clazz.GetMethod("requestState", "(Landroid/os/IBinder;II)V");
-        if (Agent::feature_level() >= 33) {
-          cancel_state_request_method_ = clazz.GetMethod("cancelStateRequest", "()V");
-        }
 
-        binder_class_ = jni.GetClass("android/os/Binder");
-        binder_constructor_ = binder_class_.GetConstructor("()V");
+      binder_class_ = jni.GetClass("android/os/Binder");
+      binder_constructor_ = binder_class_.GetConstructor("()V");
 
-        binder_class_.MakeGlobal();
-        device_state_manager_.MakeGlobal();
+      binder_class_.MakeGlobal();
+      device_state_manager_ = std::move(device_state_manager).ToGlobal();
 
-        JObject device_state_info2;
-        if (Agent::feature_level() != 34 || Agent::device_manufacturer() != XIAOMI) {
-          // Instantiate DeviceStateManagerCallback and call IDeviceStateManager.registerCallback passing it as the parameter.
-          // Don't do it on Xiaomi API 34 to avoid a crash due to
-          // "SecurityException: The calling process has already registered an IDeviceStateManagerCallback"
-          clazz = jni.GetClass("com/android/tools/screensharing/DeviceStateManagerCallback");
-          JObject callback = clazz.NewObject(jni, clazz.GetConstructor("()V"));
-          if (registerCallbackReturnsStateInfo) {
-            device_state_info2 = device_state_manager_.CallObjectMethod(jni, register_callback_method, callback.ref());
-          } else {
-            device_state_manager_.CallVoidMethod(jni, register_callback_method, callback.ref());
-            // Obtain a fresh device state info after setting up the callback.
-            device_state_info2 = device_state_manager_.CallObjectMethod(jni, get_device_state_info_method_);
+      JObject device_state_info2;
+      if (Agent::feature_level() != 34 || Agent::device_manufacturer() != XIAOMI) {
+        // Instantiate DeviceStateManagerCallback and call IDeviceStateManager.registerCallback passing it as the parameter.
+        // Don't do it on Xiaomi API 34 to avoid a crash due to
+        // "SecurityException: The calling process has already registered an IDeviceStateManagerCallback"
+        clazz = jni.GetClass("com/android/tools/screensharing/DeviceStateManagerCallback");
+        JObject callback = clazz.NewObject(jni, clazz.GetConstructor("()V"));
+        if (registerCallbackReturnsStateInfo) {
+          device_state_info2 = device_state_manager_.CallObjectMethod(jni, register_callback_method, callback.ref());
+        } else {
+          device_state_manager_.CallVoidMethod(jni, register_callback_method, callback.ref());
+        }
+        JThrowable exception = jni.GetAndClearException();
+        if (exception.IsNotNull()) {
+          Log::W(std::move(exception), "Unable to register DeviceStateManagerCallback");
+        } else if (!registerCallbackReturnsStateInfo) {
+          // Obtain a fresh device state info after setting up the callback.
+          device_state_info2 = device_state_manager_.CallObjectMethod(jni, get_device_state_info_method_);
+          if (device_state_info2.IsNull()) {
+            jni.CheckAndClearException();
           }
         }
-
-        if (device_state_info2.IsNull()) {
-          device_state_info2 = std::move(device_state_info);
-        }
-        unique_lock state_lock(state_mutex_);
-        base_state_identifier_ = DeviceStateInfo::GetBaseStateIdentifier(device_state_info2);
-        current_state_identifier_ = DeviceStateInfo::GetCurrentStateIdentifier(device_state_info2);
-        Log::D("DeviceStateManager::InitializeStatics: base_state_identifier_=%d current_state_identifier_=%d",
-               base_state_identifier_, current_state_identifier_);
       }
+
+      if (device_state_info2.IsNull()) {
+        device_state_info2 = std::move(device_state_info);
+      }
+      unique_lock state_lock(state_mutex_);
+      base_state_identifier_ = DeviceStateInfo::GetBaseStateIdentifier(device_state_info2);
+      current_state_identifier_ = DeviceStateInfo::GetCurrentStateIdentifier(device_state_info2);
+      Log::D("DeviceStateManager::InitializeStatics: base_state_identifier_=%d current_state_identifier_=%d",
+             base_state_identifier_, current_state_identifier_);
     }
   }
 
-  return true;
+  return device_state_manager_.IsNotNull();
 }
 
 const std::vector<DeviceState>& DeviceStateManager::GetSupportedDeviceStates(Jni jni) {
@@ -307,10 +312,8 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_android_tools_screensharing_DeviceStateManagerCallback_onDeviceStateInfoChanged(
     JNIEnv* jni_env, jobject thiz, jobject info) {
-  Jni jni = Jni(jni_env);
-  JObject device_state_info(jni, std::move(info));
-  DeviceStateManager::OnDeviceStateChanged(jni, device_state_info);
-  device_state_info.Release();
+  Jni jni(jni_env);
+  DeviceStateManager::OnDeviceStateChanged(jni, JObject(jni, jni->NewLocalRef(info)));
 }
 
 }  // namespace screensharing

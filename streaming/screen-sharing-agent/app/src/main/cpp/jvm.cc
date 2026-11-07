@@ -28,14 +28,52 @@ using namespace std;
 namespace {
 
 mutex static_initialization_mutex_;
+thread_local bool reporting_allocation_failure = false;
+
+[[noreturn]] void ReportAllocationFailure(JNIEnv* jni_env, const char* type_name, int32_t length = -1) {
+  Jni jni(jni_env);
+  ExitCode exit_code;
+  JThrowable exception;
+  if (reporting_allocation_failure) {
+    exit_code = jni.CheckAndClearException() ? JAVA_EXCEPTION : NULL_POINTER;
+  } else {
+    reporting_allocation_failure = true;
+    exception = jni.GetAndClearException();
+    exit_code = exception.IsNull() ? NULL_POINTER : JAVA_EXCEPTION;
+  }
+  if (length >= 0) {
+    Log::Fatal(exit_code, std::move(exception), "Unable to create %s[%d]", type_name, length);
+  } else {
+    Log::Fatal(exit_code, std::move(exception), "Unable to create %s", type_name);
+  }
+}
+
+[[noreturn]] void ReportAllocationFailure(JNIEnv* jni_env, const JClass& element_class, int32_t length) {
+  Jni jni(jni_env);
+  ExitCode exit_code;
+  JThrowable exception;
+  string type_name;
+  if (reporting_allocation_failure) {
+    exit_code = jni.CheckAndClearException() ? JAVA_EXCEPTION : NULL_POINTER;
+    type_name = "<unknown_class>";
+  } else {
+    reporting_allocation_failure = true;
+    exception = jni.GetAndClearException();
+    exit_code = exception.IsNull() ? NULL_POINTER : JAVA_EXCEPTION;
+    type_name = element_class.GetName(jni_env);
+  }
+  Log::Fatal(exit_code, std::move(exception), "Unable to create %s[%d]", type_name.c_str(), length);
+}
 
 }
 
-JObject& JObject::operator=(JObject&& other) noexcept {
-  DeleteRef();
-  jni_env_ = other.jni_env_;
-  ref_ = other.ref_;
-  other.ref_ = nullptr;
+JObject& JObject::operator=(JObject&& other) {
+  if (this != &other) {
+    DeleteRef();
+    jni_env_ = other.jni_env_;
+    ref_ = other.ref_;
+    other.ref_ = nullptr;
+  }
   return *this;
 }
 
@@ -109,7 +147,7 @@ int8_t JObject::CallByteMethod(JNIEnv* jni_env, jmethodID method, ...) const {
 float JObject::CallFloatMethod(JNIEnv* jni_env, jmethodID method, ...) const {
   va_list args;
   va_start(args, method);
-  float result = jni_env->CallByteMethodV(ref_, method, args);
+  float result = jni_env->CallFloatMethodV(ref_, method, args);
   va_end(args);
   return result;
 }
@@ -164,11 +202,7 @@ string JObject::GetStringValue() const {
   if (IsNull()) {
     Log::Fatal(NULL_POINTER, "JObject::GetStringValue is called on a null object");
   }
-  jstring jstr = static_cast<jstring>(ref_);
-  const char* localName = jni_env_->GetStringUTFChars(jstr, nullptr);
-  string result(localName);
-  jni_env_->ReleaseStringUTFChars(jstr, localName);
-  return result;
+  return JString::GetValue(GetJni(), static_cast<jstring>(ref_));
 }
 
 string JObject::ToString() const {
@@ -178,7 +212,7 @@ string JObject::ToString() const {
   return JString::ValueOf(ref_);
 }
 
-void JObject::DeleteRef() noexcept {
+void JObject::DeleteRef() {
   if (ref_ != nullptr) {
     if (jni_env_ == nullptr) {
       Jvm::GetJni()->DeleteGlobalRef(ref_);
@@ -196,7 +230,7 @@ void JObject::IllegalGlobalReferenceUse() {
 jfieldID JClass::GetStaticFieldId(JNIEnv* jni_env, const char* name, const char* signature) const {
   auto field = jni_env->GetStaticFieldID(ref(), name, signature);
   if (field == nullptr) {
-    GetJni()->ExceptionClear();
+    jni_env->ExceptionClear();
     Log::Fatal(FIELD_NOT_FOUND, "Unable to find the static %s.%s field with signature \"%s\"", GetName(jni_env).c_str(), name, signature);
   }
   return field;
@@ -205,7 +239,7 @@ jfieldID JClass::GetStaticFieldId(JNIEnv* jni_env, const char* name, const char*
 jfieldID JClass::GetFieldId(JNIEnv* jni_env, const char* name, const char* signature) const {
   auto field = jni_env->GetFieldID(ref(), name, signature);
   if (field == nullptr) {
-    GetJni()->ExceptionClear();
+    jni_env->ExceptionClear();
     Log::Fatal(FIELD_NOT_FOUND, "Unable to find the %s.%s field with signature \"%s\"", GetName(jni_env).c_str(), name, signature);
   }
   return field;
@@ -214,7 +248,7 @@ jfieldID JClass::GetFieldId(JNIEnv* jni_env, const char* name, const char* signa
 jmethodID JClass::GetStaticMethod(JNIEnv* jni_env, const char* name, const char* signature) const {
   auto method = jni_env->GetStaticMethodID(ref(), name, signature);
   if (method == nullptr) {
-    GetJni()->ExceptionClear();
+    jni_env->ExceptionClear();
     Log::Fatal(METHOD_NOT_FOUND, "Unable to find the static %s.%s method with signature \"%s\"", GetName(jni_env).c_str(), name, signature);
   }
   return method;
@@ -223,7 +257,7 @@ jmethodID JClass::GetStaticMethod(JNIEnv* jni_env, const char* name, const char*
 jmethodID JClass::GetMethod(JNIEnv* jni_env, const char* name, const char* signature) const {
   auto method = jni_env->GetMethodID(ref(), name, signature);
   if (method == nullptr) {
-    GetJni()->ExceptionClear();
+    jni_env->ExceptionClear();
     Log::Fatal(METHOD_NOT_FOUND, "Unable to find the %s.%s method with signature \"%s\"", GetName(jni_env).c_str(), name, signature);
   }
   return method;
@@ -232,7 +266,7 @@ jmethodID JClass::GetMethod(JNIEnv* jni_env, const char* name, const char* signa
 jmethodID JClass::GetConstructor(JNIEnv* jni_env, const char* signature) const {
   auto constructor = jni_env->GetMethodID(ref(), "<init>", signature);
   if (constructor == nullptr) {
-    GetJni()->ExceptionClear();
+    jni_env->ExceptionClear();
     Log::Fatal(CONSTRUCTOR_NOT_FOUND, "Unable to find the %s constructor with signature \"%s\"", GetName(jni_env).c_str(), signature);
   }
   return constructor;
@@ -243,9 +277,9 @@ jmethodID JClass::GetDeclaredOrInheritedMethod(JNIEnv* jni_env, const char* name
   if (method != nullptr) {
     return method;
   }
-  GetJni()->ExceptionClear();
+  jni_env->ExceptionClear();
   for (JClass clazz = GetSuperclass(jni_env); !clazz.IsNull(); clazz = clazz.GetSuperclass(jni_env)) {
-    method = jni_env->GetMethodID(ref(), name, signature);
+    method = jni_env->GetMethodID(clazz.ref(), name, signature);
     if (method != nullptr) {
       return method;
     }
@@ -284,14 +318,16 @@ string JClass::GetName(JNIEnv* jni_env) const {
   }
   auto name = down_cast<jstring>(jni_env->CallObjectMethod(ref(), Jvm::class_get_name_method_));
   if (name == nullptr) {
+    jni_env->ExceptionClear();
     // For some mysterious reason the java.lang.Class.getName method sometimes returns null,
     // but returns the correct class name when retried.
     name = down_cast<jstring>(jni_env->CallObjectMethod(ref(), Jvm::class_get_name_method_));
     if (name == nullptr) {
+      jni_env->ExceptionClear();
       return "<unknown_class>";
     }
   }
-  return JString(jni_env, name).GetValue();
+  return JString(jni_env, std::move(name)).GetValue();
 }
 
 JObject JClass::NewObject(JNIEnv* jni_env, jmethodID constructor, ...) const {
@@ -316,7 +352,11 @@ JObjectArray JClass::NewObjectArray(int32_t length, jobject initial_element) con
 }
 
 JObjectArray JClass::NewObjectArray(JNIEnv* jni_env, int32_t length, jobject initial_element) const {
-  return JObjectArray(jni_env, jni_env->NewObjectArray(length, ref(), initial_element));
+  JObjectArray result(jni_env, jni_env->NewObjectArray(length, ref(), initial_element));
+  if (result.IsNull()) {
+    ReportAllocationFailure(jni_env, *this, length);
+  }
+  return result;
 }
 
 JObject JClass::CallStaticObjectMethod(JNIEnv* jni_env, jmethodID method, ...) const {
@@ -344,15 +384,21 @@ void JClass::CallStaticVoidMethod(JNIEnv* jni_env, jmethodID method, ...) const 
 
 JString::JString(JNIEnv* jni_env, const char* value)
     : JRef(jni_env, value == nullptr ? nullptr : jni_env->NewStringUTF(value)) {
+  if (value != nullptr && IsNull()) {
+    ReportAllocationFailure(jni_env, "java.lang.String");
+  }
 }
 
-string JString::GetValue() const {
-  if (IsNull()) {
+string JString::GetValue(JNIEnv* jni_env, jstring str) {
+  if (str == nullptr) {
     Log::Fatal(NULL_POINTER, "JString::GetValue is called on a null String");
   }
-  const char* localName = GetJni()->GetStringUTFChars(ref(), nullptr);
-  string result(localName);
-  GetJni()->ReleaseStringUTFChars(ref(), localName);
+  const char* utf = jni_env->GetStringUTFChars(str, nullptr);
+  if (utf == nullptr) {
+    ReportAllocationFailure(jni_env, "UTF-8 string");
+  }
+  string result(utf);
+  jni_env->ReleaseStringUTFChars(str, utf);
   return result;
 }
 
@@ -396,16 +442,22 @@ void JObjectArray::SetElement(JNIEnv* jni_env, int32_t index, const JObject& ele
 
 JCharArray::JCharArray(JNIEnv* jni_env, int32_t length)
     : JRef(jni_env, jni_env->NewCharArray(length)) {
+  if (IsNull()) {
+    ReportAllocationFailure(jni_env, "char", length);
+  }
 }
 
 JCharArray::JCharArray(JNIEnv* jni_env, int32_t length, const uint16_t* elements)
-    : JRef(jni_env, jni_env->NewCharArray(length)) {
+    : JCharArray(jni_env, length) {
   SetRegion(jni_env, 0, length, elements);
 }
 
 JShortArray::JShortArray(JNIEnv* jni_env, int32_t length)
     : JRef(jni_env, jni_env->NewShortArray(length)),
       length_(length) {
+  if (IsNull()) {
+    ReportAllocationFailure(jni_env, "short", length);
+  }
 }
 
 void JShortArray::GetRegion(JNIEnv* jni_env, int32_t start, int32_t len, int16_t* buf) const {
@@ -414,10 +466,13 @@ void JShortArray::GetRegion(JNIEnv* jni_env, int32_t start, int32_t len, int16_t
 
 JFloatArray::JFloatArray(JNIEnv* jni_env, int32_t length)
     : JRef(jni_env, jni_env->NewFloatArray(length)) {
+  if (IsNull()) {
+    ReportAllocationFailure(jni_env, "float", length);
+  }
 }
 
 JFloatArray::JFloatArray(JNIEnv* jni_env, int32_t length, const float* elements)
-    : JRef(jni_env, jni_env->NewFloatArray(length)) {
+    : JFloatArray(jni_env, length) {
   SetRegion(jni_env, 0, length, elements);
 }
 
@@ -426,7 +481,7 @@ JClass Jni::GetClass(const char* name) const {
   if (clazz == nullptr) {
     Log::Fatal(CLASS_NOT_FOUND, "Unable to find the %s class", name);
   }
-  return JClass(jni_env_, clazz);
+  return JClass(jni_env_, std::move(clazz));
 }
 
 std::vector<int64_t> Jni::GetElements(jlongArray array) const {
@@ -449,7 +504,7 @@ JThrowable Jni::GetAndClearException() const {
   if (exception != nullptr) {
     jni_env_->ExceptionClear();
   }
-  return JThrowable(jni_env_, exception);
+  return JThrowable(jni_env_, std::move(exception));
 }
 
 string JThrowable::Describe() const {
@@ -459,6 +514,10 @@ string JThrowable::Describe() const {
   Jni jni = GetJni();
   jmethodID method = throwable_helper_class_.GetStaticMethod(jni, "describe", "(Ljava/lang/Throwable;)Ljava/lang/String;");
   JString str = JString(jni, jni->CallStaticObjectMethod(throwable_helper_class_.ref(), method, ref()));
+  if (str.IsNull()) {
+    jni.CheckAndClearException();
+    return GetClass().GetName(jni);
+  }
   return str.GetValue();
 }
 

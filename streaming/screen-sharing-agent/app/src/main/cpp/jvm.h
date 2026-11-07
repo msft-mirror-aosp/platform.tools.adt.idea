@@ -39,56 +39,60 @@ public:
   JObject() noexcept
       : jni_env_(nullptr),
         ref_(nullptr) {
-  };
+  }
   JObject(JNIEnv* jni_env, jobject&& ref) noexcept
       : jni_env_(jni_env),
         ref_(ref) {
   }
+  JObject(JNIEnv* jni_env, const jobject& ref) = delete;
   JObject(JObject&& other) noexcept
       : jni_env_(other.jni_env_),
         ref_(other.ref_) {
     other.ref_ = nullptr;
   }
-  JObject(JNIEnv* jni_env, JObject&& other)
-      : jni_env_(jni_env),
-        ref_(other.Release()) {
-  }
-  JObject(JNIEnv* jni_env, JObject& other) = delete;
+  JObject(JNIEnv* jni_env, const JObject& other) = delete;
 
   ~JObject() {
     DeleteRef();
   }
 
-  JObject& operator=(JObject&& other) noexcept;
+  JObject& operator=(JObject&& other);
 
   // Returns the underlying Java object reference.
-  operator jobject() const {
+  operator jobject() const noexcept {
     return ref_;
   }
 
   // Returns the underlying Java object reference.
-  [[nodiscard]] jobject ref() const {
+  [[nodiscard]] jobject ref() const noexcept {
     return ref_;
   }
 
   // Returns the underlying jobject and releases the ownership.
-  jobject Release() {
+  [[nodiscard]] jobject Release() noexcept {
     auto ref = ref_;
     ref_ = nullptr;
     return ref;
   }
 
-  [[nodiscard]] bool IsNull() const {
+  // Deletes the underlying Java object reference. IsNull() will return true after Reset().
+  void Reset() {
+    DeleteRef();
+    ref_ = nullptr;
+    jni_env_ = nullptr;
+  }
+
+  [[nodiscard]] bool IsNull() const noexcept {
     return ref_ == nullptr;
   }
 
-  [[nodiscard]] bool IsNotNull() const {
+  [[nodiscard]] bool IsNotNull() const noexcept {
     return ref_ != nullptr;
   }
 
   // Converts a local reference to a global one and deletes the local reference.
   JObject& MakeGlobal();
-  [[nodiscard]] JObject&& ToGlobal()&& {
+  [[nodiscard]] JObject&& ToGlobal() && {
     return std::move(MakeGlobal());
   }
 
@@ -150,7 +154,7 @@ protected:
   }
 
 private:
-  void DeleteRef() noexcept;
+  void DeleteRef();
   [[noreturn]] static void IllegalGlobalReferenceUse();
 
   JNIEnv* jni_env_;  // Non-null for local and null for global references.
@@ -163,14 +167,15 @@ template <typename Wrapper, typename Base>
 class JRef : public JObject {
 public:
   using JObject::JObject;
-  JRef(JNIEnv* jni_env, Base&& ref)
-      : JObject(jni_env, ref) {
+  JRef(JNIEnv* jni_env, Base&& ref) noexcept
+      : JObject(jni_env, static_cast<jobject>(ref)) {
   }
+  JRef(JNIEnv* jni_env, const Base& ref) = delete;
   explicit JRef(JObject&& other) noexcept
       : JObject(std::move(other)) {
   }
 
-  Wrapper& operator=(Wrapper&& other) noexcept {
+  Wrapper& operator=(Wrapper&& other) {
     return down_cast<Wrapper&>(JObject::operator=(static_cast<JObject&&>(other)));
   }
 
@@ -189,12 +194,12 @@ public:
   Wrapper& MakeGlobal() {
     return down_cast<Wrapper&>(JObject::MakeGlobal());
   };
-  [[nodiscard]] Wrapper&& ToGlobal()&& {
+  [[nodiscard]] Wrapper&& ToGlobal() && {
     return std::move(MakeGlobal());
   };
 
   template <class U = Base>
-  typename std::enable_if<std::is_base_of<_jarray, std::remove_pointer_t<U>>::value, int32_t>::type
+  [[nodiscard]] typename std::enable_if<std::is_base_of<_jarray, std::remove_pointer_t<U>>::value, int32_t>::type
   GetLength() const {
     return GetJni()->GetArrayLength(ref());
   }
@@ -267,11 +272,14 @@ public:
   JString& MakeGlobal() {
     return down_cast<JString&>(JRef::MakeGlobal());
   };
-  [[nodiscard]] JString&& ToGlobal()&& {
+  [[nodiscard]] JString&& ToGlobal() && {
     return std::move(MakeGlobal());
   };
 
-  [[nodiscard]] std::string GetValue() const;
+  [[nodiscard]] std::string GetValue() const {
+    return GetValue(GetJni(), ref());
+  }
+  [[nodiscard]] static std::string GetValue(JNIEnv* jni_env, jstring str);
   // Returns the result of calling String.valueOf(obj).
   [[nodiscard]] static std::string ValueOf(jobject obj);
 
@@ -407,15 +415,15 @@ private:
 
 class Jni {
 public:
-  Jni(JNIEnv* jni_env)
+  Jni(JNIEnv* jni_env) noexcept
     : jni_env_(jni_env) {
   }
 
-  operator JNIEnv*() const {
+  operator JNIEnv*() const noexcept {
     return jni_env_;
   }
 
-  JNIEnv* operator->() const {
+  JNIEnv* operator->() const noexcept {
     return jni_env_;
   }
 

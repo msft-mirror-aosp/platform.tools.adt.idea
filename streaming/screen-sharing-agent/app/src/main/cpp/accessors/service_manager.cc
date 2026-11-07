@@ -80,7 +80,8 @@ Java_com_android_tools_screensharing_ServiceManager_getServiceAsInterface(
     JNIEnv* jni_env, jclass clazz, jstring name, jstring type, jboolean wait_if_necessary, jboolean allow_null) {
   Jni jni(jni_env);
   return ServiceManager::GetServiceAsInterface(
-      jni, JString(jni, name).GetValue().c_str(), JString(jni, type).GetValue().c_str(), wait_if_necessary, allow_null).Release();
+      jni, JString::GetValue(jni, name).c_str(), JString::GetValue(jni, type).c_str(),
+      wait_if_necessary, allow_null).Release();
 }
 
 }  // namespace screensharing

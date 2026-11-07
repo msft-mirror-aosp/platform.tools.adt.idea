@@ -148,6 +148,44 @@ Size ConfigureCodec(AMediaCodec* codec, const CodecInfo& codec_info, Size max_vi
   return video_size;
 }
 
+// RAII wrapper around a SurfaceControl display token (used on API < 34).
+class DisplayToken : public JObject {
+public:
+  using JObject::JObject;
+  DisplayToken(DisplayToken&& other) noexcept = default;
+  explicit DisplayToken(JObject&& token) noexcept
+      : JObject(std::move(token)) {
+  }
+
+  ~DisplayToken() {
+    ReleaseDisplay();
+  }
+
+  DisplayToken& operator=(DisplayToken&& other) {
+    if (this != &other) {
+      ReleaseDisplay();
+      JObject::operator=(static_cast<JObject&&>(other));
+    }
+    return *this;
+  }
+
+  void ReleaseDisplay() {
+    if (IsNotNull()) {
+      Jni jni = GetJni();
+      jni.CheckAndClearException();
+      SurfaceControl::DestroyDisplay(jni, *this);
+      jni.CheckAndClearException();
+      Reset();
+    }
+  }
+
+  JObject& MakeGlobal() = delete;
+  JObject&& ToGlobal() && = delete;
+
+private:
+  DISALLOW_COPY_AND_ASSIGN(DisplayToken);
+};
+
 }  // namespace
 
 DisplayStreamer::DisplayStreamer(int32_t display_id, const CodecInfo* codec_info, Size max_video_resolution,
@@ -173,7 +211,6 @@ void DisplayStreamer::Stop() {
   StopCodec();
   thread_handle_.Join();
   DeleteCodec();
-  ReleaseVirtualDisplay(Jvm::GetJni());
 }
 
 void DisplayStreamer::OnDisplayAdded(int32_t display_id) {
@@ -206,6 +243,12 @@ void DisplayStreamer::Run() {
   uint32_t frame_before_timeout = 0;
 
   NativeWindow surface;
+  VirtualDisplay virtual_display;
+  DisplayToken display_token;
+  auto release_virtual_display = [&]() {
+    virtual_display.ReleaseDisplay();
+    display_token.ReleaseDisplay();
+  };
 
   while (stop_reason != FrameStreamStopReason::END_OF_STREAM && !thread_handle_.IsStopping() && !Agent::IsShuttingDown()) {
     DisplayInfo display_info = DisplayManager::GetDisplayInfo(jni, display_id_);
@@ -223,7 +266,7 @@ void DisplayStreamer::Run() {
     } else {
       frame_before_timeout = 0;
       frame_timeout_ = INITIAL_FRAME_TIMEOUT;
-      ReleaseVirtualDisplay(jni);
+      release_virtual_display();
     }
     Log::D("Display %d: stop_reason=%d, frame_number_=%u frame_before_timeout=%u frame_timeout_=%lld ms",
            display_id_, stop_reason, frame_number_, frame_before_timeout, frame_timeout_.count());
@@ -231,7 +274,7 @@ void DisplayStreamer::Run() {
       unique_lock lock(mutex_);
       if (codec_stop_pending_) {
         codec_stop_pending_ = false;
-        ReleaseVirtualDisplay(jni);
+        release_virtual_display();
         continue;  // Start another loop to refresh display information.
       }
       display_info_ = display_info;
@@ -253,26 +296,26 @@ void DisplayStreamer::Run() {
         Log::Fatal(INPUT_SURFACE_CREATION_ERROR, "Display %d: AMediaCodec_createInputSurface returned %d", display_id_, status);
       }
       if (Agent::feature_level() >= 34) {
-        if (virtual_display_.IsNull()) {
+        if (virtual_display.IsNull()) {
           string display_name = StringPrintf("studio.screen.sharing:%d", display_id_);
-          virtual_display_ = DisplayManager::CreateVirtualDisplay(
+          virtual_display = DisplayManager::CreateVirtualDisplay(
               jni, display_name.c_str(), video_size.width, video_size.height, display_id_, new_surface);
         } else {
-          virtual_display_.Resize(video_size.width, video_size.height, display_info_.logical_density_dpi);
-          virtual_display_.SetSurface(new_surface);
+          virtual_display.Resize(video_size.width, video_size.height, display_info_.logical_density_dpi);
+          virtual_display.SetSurface(new_surface);
         }
       } else {
-        if (display_token_.IsNull()) {
+        if (display_token.IsNull()) {
           string display_name = StringPrintf("studio.screen.sharing:%d", display_id_);
           bool secure = Agent::feature_level() < 31;  // Creation of secure displays is not allowed on API 31+.
-          display_token_ = SurfaceControl::CreateDisplay(jni, display_name.c_str(), secure);
-          if (display_token_.IsNull()) {
+          display_token = DisplayToken(SurfaceControl::CreateDisplay(jni, display_name.c_str(), secure));
+          if (display_token.IsNull()) {
             Log::Fatal(VIRTUAL_DISPLAY_CREATION_ERROR, "Display %d: unable to create a virtual display", display_id_);
           }
         }
         int32_t height = lround(static_cast<double>(video_size.width) * display_info.logical_size.height / display_info.logical_size.width);
         int32_t y = (video_size.height - height) / 2;
-        SurfaceControl::ConfigureProjection(jni, display_token_, new_surface, display_info, { 0, y, video_size.width, height });
+        SurfaceControl::ConfigureProjection(jni, display_token, new_surface, display_info, { 0, y, video_size.width, height });
       }
       surface = std::move(new_surface);
       StartCodecUnlocked();
@@ -318,7 +361,7 @@ void DisplayStreamer::Run() {
     }
   }
 
-  ReleaseVirtualDisplay(jni);
+  release_virtual_display();
   WindowManager::RemoveRotationWatcher(jni, display_id_, &display_rotation_watcher_);
   DisplayManager::RemoveDisplayListener(this);
 
@@ -510,13 +553,6 @@ bool DisplayStreamer::ReduceBitRate() {
   bit_rate_reduced_ = true;
   Log::I("Display %d: bit rate reduced to %d", display_id_, bit_rate_);
   return true;
-}
-
-void DisplayStreamer::ReleaseVirtualDisplay(Jni jni) {
-  virtual_display_.ReleaseDisplay(jni);
-  if (display_token_.IsNotNull()) {
-    SurfaceControl::DestroyDisplay(jni, display_token_.Release());
-  }
 }
 
 DisplayStreamer::DisplayRotationWatcher::DisplayRotationWatcher(DisplayStreamer* display_streamer)

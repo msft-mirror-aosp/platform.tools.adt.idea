@@ -40,7 +40,7 @@ constexpr int AudioMixingRule_RULE_MATCH_ATTRIBUTE_USAGE = 0x1;
 // From https://android.googlesource.com/platform/frameworks/base/+/main/media/java/android/media/AudioTimestamp.java.
 constexpr int AudioTimestamp_TIMEBASE_MONOTONIC = 0;
 
-void UnregisterAudioPolicy(Jni jni, JObject&& policy) {
+void UnregisterAudioPolicy(Jni jni, JObject policy) {
   if (policy.IsNull()) {
     return;
   }
@@ -48,6 +48,7 @@ void UnregisterAudioPolicy(Jni jni, JObject&& policy) {
   jmethodID unregister_method =
       audio_manager_class.GetStaticMethod("unregisterAudioPolicyAsyncStatic", "(Landroid/media/audiopolicy/AudioPolicy;)V");
   audio_manager_class.CallStaticVoidMethod(jni, unregister_method, policy.ref());
+  jni.CheckAndClearException();
 }
 
 JObject CreateAudioRecord(Jni jni, int32_t audio_sample_rate, JObject* out_policy) {
@@ -151,7 +152,7 @@ AudioRecord::AudioRecord(Jni jni, int32_t audio_sample_rate)
   read_method_ = clazz.GetMethod("read", "([SII)I");
   get_timestamp_method_ = clazz.GetMethod("getTimestamp", "(Landroid/media/AudioTimestamp;I)I");
   JClass audio_timestamp_class = jni.GetClass("android/media/AudioTimestamp");
-  audio_timestamp_ = audio_timestamp_class.NewObject(jni, audio_timestamp_class.GetConstructor());
+  audio_timestamp_ = audio_timestamp_class.NewObject(jni, audio_timestamp_class.GetConstructor()).ToGlobal();
   audio_timestamp_nano_time_field_ = audio_timestamp_class.GetFieldId(jni, "nanoTime", "J");
 }
 
@@ -159,7 +160,10 @@ AudioRecord::~AudioRecord() {
   Release();
 }
 
-AudioRecord& AudioRecord::operator=(AudioRecord&& other) noexcept {
+AudioRecord& AudioRecord::operator=(AudioRecord&& other) {
+  if (this == &other) {
+    return *this;
+  }
   Release();
   audio_policy_ = std::move(other.audio_policy_);
   audio_record_ = std::move(other.audio_record_);
@@ -175,11 +179,16 @@ AudioRecord& AudioRecord::operator=(AudioRecord&& other) noexcept {
 
 void AudioRecord::Release() {
   if (audio_record_.IsNotNull()) {
-    Jvm::GetJni()->CallVoidMethod(audio_record_.Release(), release_method_);
+    Jni jni = Jvm::GetJni();
+    jni.CheckAndClearException();
+    audio_record_.CallVoidMethod(jni, release_method_);
+    jni.CheckAndClearException();
+    audio_record_.Reset();
   }
   if (audio_policy_.IsNotNull()) {
     UnregisterAudioPolicy(Jvm::GetJni(), std::move(audio_policy_));
   }
+  audio_timestamp_.Reset();
 }
 
 bool AudioRecord::Start(Jni jni) {
@@ -206,7 +215,7 @@ int64_t AudioRecord::GetTimestamp(Jni jni) {
   if (res < 0) {
     return res;
   }
-  return audio_timestamp_.GetLongField(audio_timestamp_nano_time_field_);
+  return audio_timestamp_.GetLongField(jni, audio_timestamp_nano_time_field_);
 }
 
 }  // namespace screensharing

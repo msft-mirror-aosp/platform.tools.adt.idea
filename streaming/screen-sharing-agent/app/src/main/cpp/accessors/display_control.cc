@@ -42,7 +42,7 @@ void DisplayControl::InitializeStatics(Jni jni) {
       Log::I("The SurfaceControl.getPhysicalDisplayIds and SurfaceControl.getPhysicalDisplayToken methods don't exist."
              " Attempting to use DisplayControl");
       // SurfaceControl doesn't have the necessary method. Load libandroid_servers.so and use DisplayControl instead.
-      class_ = JClass();
+      class_.Reset();
       const char* class_path = getenv("SYSTEMSERVERCLASSPATH");
       if (class_path == nullptr || class_path[0] == '\0') {
         Log::W("SYSTEMSERVERCLASSPATH is not defined");
