@@ -633,6 +633,8 @@
 +++Android Studio.app/Contents/lib/intellij.libraries.ktor.io.jar
 +++Android Studio.app/Contents/lib/intellij.libraries.ktor.network.tls.jar
 +++Android Studio.app/Contents/lib/intellij.libraries.ktor.server.cio.jar
++++Android Studio.app/Contents/lib/intellij.libraries.ktor.server.content.negotiation.jar
++++Android Studio.app/Contents/lib/intellij.libraries.ktor.server.sse.jar
 +++Android Studio.app/Contents/lib/intellij.libraries.ktor.utils.jar
 +++Android Studio.app/Contents/lib/intellij.libraries.lucene.common.jar
 +++Android Studio.app/Contents/lib/intellij.libraries.lz4.jar
@@ -926,9 +928,6 @@
 +++Android Studio.app/Contents/lib/jetbrains.intellij.deps.java.atk.wrapper.linux.jar
 +++Android Studio.app/Contents/lib/jps-model.jar
 +++Android Studio.app/Contents/lib/kotlinx-coroutines-guava.jar
-+++Android Studio.app/Contents/lib/ktor-server-content-negotiation.jar
-+++Android Studio.app/Contents/lib/ktor-server-routing-openapi.jar
-+++Android Studio.app/Contents/lib/ktor-server-sse-jvm.jar
 +++Android Studio.app/Contents/lib/nio-fs.jar
 +++Android Studio.app/Contents/lib/platform-loader.jar
 +++Android Studio.app/Contents/lib/resources.jar
@@ -4706,6 +4705,8 @@
 ---Android Studio Preview.app/Contents/lib/intellij.libraries.ktor.io.jar
 ---Android Studio Preview.app/Contents/lib/intellij.libraries.ktor.network.tls.jar
 ---Android Studio Preview.app/Contents/lib/intellij.libraries.ktor.server.cio.jar
+---Android Studio Preview.app/Contents/lib/intellij.libraries.ktor.server.content.negotiation.jar
+---Android Studio Preview.app/Contents/lib/intellij.libraries.ktor.server.sse.jar
 ---Android Studio Preview.app/Contents/lib/intellij.libraries.ktor.utils.jar
 ---Android Studio Preview.app/Contents/lib/intellij.libraries.lucene.common.jar
 ---Android Studio Preview.app/Contents/lib/intellij.libraries.lz4.jar
@@ -4999,9 +5000,6 @@
 ---Android Studio Preview.app/Contents/lib/jetbrains.intellij.deps.java.atk.wrapper.linux.jar
 ---Android Studio Preview.app/Contents/lib/jps-model.jar
 ---Android Studio Preview.app/Contents/lib/kotlinx-coroutines-guava.jar
----Android Studio Preview.app/Contents/lib/ktor-server-content-negotiation.jar
----Android Studio Preview.app/Contents/lib/ktor-server-routing-openapi.jar
----Android Studio Preview.app/Contents/lib/ktor-server-sse-jvm.jar
 ---Android Studio Preview.app/Contents/lib/nio-fs.jar
 ---Android Studio Preview.app/Contents/lib/platform-loader.jar
 ---Android Studio Preview.app/Contents/lib/resources.jar

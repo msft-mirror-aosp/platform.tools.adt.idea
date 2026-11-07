@@ -637,6 +637,8 @@ android-studio/lib/intellij.libraries.ktor.client.jar
 android-studio/lib/intellij.libraries.ktor.io.jar
 android-studio/lib/intellij.libraries.ktor.network.tls.jar
 android-studio/lib/intellij.libraries.ktor.server.cio.jar
+android-studio/lib/intellij.libraries.ktor.server.content.negotiation.jar
+android-studio/lib/intellij.libraries.ktor.server.sse.jar
 android-studio/lib/intellij.libraries.ktor.utils.jar
 android-studio/lib/intellij.libraries.lucene.common.jar
 android-studio/lib/intellij.libraries.lz4.jar
@@ -930,9 +932,6 @@ android-studio/lib/intellij.spellchecker.xml.jar
 android-studio/lib/jetbrains.intellij.deps.java.atk.wrapper.linux.jar
 android-studio/lib/jps-model.jar
 android-studio/lib/kotlinx-coroutines-guava.jar
-android-studio/lib/ktor-server-content-negotiation.jar
-android-studio/lib/ktor-server-routing-openapi.jar
-android-studio/lib/ktor-server-sse-jvm.jar
 android-studio/lib/nio-fs.jar
 android-studio/lib/platform-loader.jar
 android-studio/lib/resources.jar
