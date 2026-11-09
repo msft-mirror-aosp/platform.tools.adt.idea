@@ -697,8 +697,13 @@ public final class GroovyDslUtil {
     }
 
     PsiElement added = createPsiElementInsideList(parent, expression, parentPsi, newExpressionPsi);
+    if (added == null) {
+      return null;
+    }
     expression.setPsiElement(added);
+    expression.setExpression(added);
     expression.commit();
+    expression.reset();
     return expression.getPsiElement();
   }
 

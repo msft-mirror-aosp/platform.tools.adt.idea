@@ -928,6 +928,11 @@ public abstract class GradlePropertiesDslElement extends GradleDslElementImpl {
         element.create();
         item.myElementState = EXISTING;
       });
+      myProperties.applyElements(e -> {
+        if (e.isModified()) {
+          e.applyChanges();
+        }
+      });
     }
   }
 

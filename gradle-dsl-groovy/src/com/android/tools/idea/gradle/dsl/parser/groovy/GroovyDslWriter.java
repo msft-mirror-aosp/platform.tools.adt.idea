@@ -409,11 +409,6 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
     if (addedElement instanceof GrMethodCallExpression) {
       methodCall.setPsiElement(addedElement);
       methodCall.getArgumentsElement().setPsiElement(((GrMethodCallExpression)addedElement).getArgumentList());
-      methodCall.getArgumentsElement().applyChanges();
-
-      if (methodCall.getUnsavedClosure() != null) {
-        createAndAddClosure(methodCall.getUnsavedClosure(), methodCall);
-      }
 
       if (addedElement.getPrevSibling() instanceof GrParameterList) {
         // Empty parameter list by default is added by parser for block so it looks like

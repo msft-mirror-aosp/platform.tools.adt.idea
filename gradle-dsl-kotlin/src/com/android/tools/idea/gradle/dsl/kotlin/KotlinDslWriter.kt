@@ -504,11 +504,6 @@ class KotlinDslWriter(override val internalContext: BuildModelContext) : KotlinD
         is KtCallExpression -> {
           methodCall.psiElement = addedMethodExpression
           methodCall.argumentsElement.psiElement = addedMethodExpression.valueArgumentList
-
-          val unsavedClosure = methodCall.unsavedClosure
-          if (unsavedClosure != null) {
-            createAndAddClosure(unsavedClosure, methodCall)
-          }
           return methodCall.psiElement
         }
         else -> return null
@@ -527,12 +522,6 @@ class KotlinDslWriter(override val internalContext: BuildModelContext) : KotlinD
     } else if (argumentList.isEmpty()) {
       methodCall.psiElement = addedElement
       methodCall.argumentsElement.psiElement = addedElement.valueArgumentList
-      methodCall.argumentsElement.applyChanges()
-
-      val unsavedClosure = methodCall.unsavedClosure
-      if (unsavedClosure != null) {
-        createAndAddClosure(unsavedClosure, methodCall)
-      }
       return methodCall.psiElement
     }
 

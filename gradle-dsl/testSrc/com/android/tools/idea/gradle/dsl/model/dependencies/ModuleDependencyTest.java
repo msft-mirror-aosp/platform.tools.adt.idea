@@ -324,6 +324,7 @@ public class ModuleDependencyTest extends GradleFileModelTestCase {
 
     assertTrue(buildModel.isModified());
     applyChangesAndReparse(buildModel);
+    verifyFileContents(myBuildFile, TestFile.SET_NAMES_ON_ITEMS_IN_EXPRESSION_LIST_EXPECTED);
 
     dependencies = buildModel.dependencies().modules();
     assertThat(dependencies).hasSize(2);
@@ -604,6 +605,7 @@ public class ModuleDependencyTest extends GradleFileModelTestCase {
     SET_NAME_ON_MAP_NOTATION_WITHOUT_CONFIGURATION_EXPECTED("setNameOnMapNotationWithoutConfigurationExpected"),
     SET_NAME_WITH_PATH_HAVING_SAME_SEGMENT_NAMES("setNameWithPathHavingSameSegmentNames"),
     SET_NAMES_ON_ITEMS_IN_EXPRESSION_LIST("setNamesOnItemsInExpressionList"),
+    SET_NAMES_ON_ITEMS_IN_EXPRESSION_LIST_EXPECTED("setNamesOnItemsInExpressionListExpected"),
     RESET("reset"),
     ADD_CLOSURE_TO_DEPENDENCY("addClosureToDependency"),
     MULTI_TYPE_APPLICATION_STATEMENT_DOES_NOT_THROW_EXCEPTION("multiTypeApplicationStatementDoesNotThrowException"),

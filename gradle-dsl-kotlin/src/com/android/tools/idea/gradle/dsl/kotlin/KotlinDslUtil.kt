@@ -808,7 +808,9 @@ internal fun createListElement(expression: GradleDslSettableExpression): PsiElem
 
   val added = createPsiElementInsideList(parent, expression, parentPsi, expressionPsi) ?: return null
   expression.psiElement = added
+  expression.setExpression((added as? KtValueArgument)?.getArgumentExpression() ?: added)
   expression.commit()
+  expression.reset()
   return expression.psiElement
 }
 
