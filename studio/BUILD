@@ -18,7 +18,7 @@ load(":version.bzl", "STUDIO_CODENAME", "STUDIO_CONFIG", "STUDIO_MICRO_PATCH", "
 
 package(
     default_package_metadata = [
-        "//build/bazel/licenses:Android-Apache-2.0",
+        "@build_conf//licenses:Android-Apache-2.0",
     ],
 )
 

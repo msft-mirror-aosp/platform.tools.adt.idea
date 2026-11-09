@@ -1,9 +1,9 @@
 """This file contains Bazel build rules for the Android Studio release distribution"""
 
+load("@build_conf//rules/gathering:prebuilt_package_metadata.bzl", "prebuilt_package_metadata")
+load("@build_conf//rules/gathering:write_package_metadata.bzl", "write_package_metadata")
 load("@rules_java//java:defs.bzl", "JavaInfo", "java_binary")
 load("@rules_python//python:defs.bzl", "py_binary", "py_test")
-load("//build/bazel/rules/gathering:prebuilt_package_metadata.bzl", "prebuilt_package_metadata")
-load("//build/bazel/rules/gathering:write_package_metadata.bzl", "write_package_metadata")
 load("//tools/adt/idea/studio/rules:app-icon.bzl", "AppIconInfo", "replace_app_icon")
 load("//tools/base/bazel:bazel.bzl", "ImlModuleInfo")
 load("//tools/base/bazel:expand_template.bzl", "expand_template_ex")
