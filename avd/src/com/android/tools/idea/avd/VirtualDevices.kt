@@ -18,9 +18,12 @@ package com.android.tools.idea.avd
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.AvdManager
 import com.android.sdklib.internal.avd.AvdNames
+import com.android.sdklib.internal.avd.Environment
+import com.android.sdklib.internal.avd.SceneMode
 import com.android.sdklib.internal.avd.uniquifyAvdFolder
 import com.android.sdklib.internal.avd.uniquifyAvdName
 import com.android.tools.idea.adddevicedialog.FormFactors
+import com.android.tools.idea.flags.StudioFlags
 import java.nio.file.Path
 
 internal class VirtualDevices(private val avdManager: AvdManager) {
@@ -30,7 +33,16 @@ internal class VirtualDevices(private val avdManager: AvdManager) {
     avdBuilder.avdName = avdManager.uniquifyAvdName(AvdNames.cleanAvdName(device.name))
     avdBuilder.avdFolder = avdManager.uniquifyAvdFolder(avdBuilder.avdName)
     if (device.formFactor == FormFactors.AI_GLASSES) {
-      avdBuilder.environment = getDefaultEnvironmentFile()
+      avdBuilder.environment =
+        getDefaultEnvironmentFile()?.let { file ->
+          val sceneMode =
+            if (StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.get() && EnvironmentFileAnalyzer.is360Image(file)) {
+              SceneMode.IMAGE_360
+            } else {
+              SceneMode.IMAGE_FILE
+            }
+          Environment(file, sceneMode)
+        }
     }
 
     return avdManager.createAvd(avdBuilder)

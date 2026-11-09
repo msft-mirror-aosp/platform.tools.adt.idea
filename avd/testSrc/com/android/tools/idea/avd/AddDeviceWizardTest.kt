@@ -34,20 +34,24 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import com.android.flags.junit.FlagRule
+import com.android.repository.testframework.FakeProgressIndicator
 import com.android.sdklib.AndroidVersion
 import com.android.sdklib.PathFileWrapper
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.devices.Device
 import com.android.sdklib.internal.avd.AvdManager
 import com.android.sdklib.internal.avd.ConfigKey
+import com.android.sdklib.internal.avd.EnvironmentKey
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
 import com.android.tools.idea.adddevicedialog.FormFactors
+import com.android.tools.idea.avd.EnvironmentFileAnalyzerTest.Companion.createMockJpegWithXmp
 import com.android.tools.idea.avdmanager.AccelerationErrorCode
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.AndroidSdksImpl
+import com.android.utils.PathUtils
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.ApplicationRule
@@ -55,11 +59,15 @@ import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.registerOrReplaceServiceInstance
+import com.intellij.testFramework.replaceService
 import java.nio.file.Files
 import kotlin.io.path.createTempDirectory
 import kotlin.io.path.listDirectoryEntries
+import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 @RunsInEdt
 class AddDeviceWizardTest {
@@ -189,6 +197,59 @@ class AddDeviceWizardTest {
       val properties = checkNotNull(AvdManager.parseIniFile(PathFileWrapper(avdFolder.resolve("config.ini")), null))
       assertThat(properties[ConfigKey.LCD_TRANSPARENT]).isEqualTo("yes")
       assertThat(properties[ConfigKey.FORCE_COLD_BOOT_MODE]).isEqualTo("yes")
+      val defaultEnv = runBlocking { EnvironmentsUpdater.getInstance().getEnvironments() }.first { it.isDefault }
+      val environmentProperties =
+        checkNotNull(AvdManager.parseIniFile(PathFileWrapper(avdFolder.resolve(AvdManager.ENVIRONMENT_INI)), null))
+      assertThat(environmentProperties[EnvironmentKey.SCENE_MODE])
+        .isEqualTo("image360:${PathUtils.toSystemIndependentPath(defaultEnv.path)}")
+    }
+  }
+
+  @Test
+  fun addAiGlassesDevice_sets360And2dEnvironmentModes() = runBlocking {
+    with(SdkFixture()) {
+      val api36Glasses = createLocalSystemImage("ai-glasses", listOf(SystemImageTags.AI_GLASSES_TAG), AndroidVersion(36, null, 9, false))
+      setLocalPackages(api36Glasses)
+      val glassesProfile = deviceManager.getDevice("ai_glasses_device", "Google")!!
+      val systemImage = sdkHandler.getSystemImageManager(FakeProgressIndicator()).images.single()
+
+      val envDir = sdkRoot.resolve("environments")
+      Files.createDirectories(envDir)
+      val image360Path = envDir.resolve("custom-panorama.jpg")
+      Files.write(image360Path, createMockJpegWithXmp("Panorama", isDefault = true, is360 = true))
+      val image2dPath = envDir.resolve("custom-flat.jpg")
+      Files.write(image2dPath, createMockJpegWithXmp("Flat", isDefault = true, is360 = false))
+
+      val mockUpdater = mock<EnvironmentsUpdater>()
+      ApplicationManager.getApplication().replaceService(EnvironmentsUpdater::class.java, mockUpdater, disposableRule.disposable)
+
+      // 1. 360 default environment image -> image360:<path>
+      whenever(mockUpdater.getEnvironments()).thenReturn(listOf(EnvironmentImage(image360Path, "Panorama", isDefault = true)))
+      val device360 =
+        VirtualDevice(glassesProfile).apply {
+          initializeFromProfile()
+          name = "Glasses 360"
+          image = systemImage
+          expandedStorage = None
+        }
+      val avdInfo360 = VirtualDevices(avdManager).add(device360)
+      val envProps360 =
+        checkNotNull(AvdManager.parseIniFile(PathFileWrapper(avdInfo360.dataFolderPath.resolve(AvdManager.ENVIRONMENT_INI)), null))
+      assertThat(envProps360[EnvironmentKey.SCENE_MODE]).isEqualTo("image360:${PathUtils.toSystemIndependentPath(image360Path)}")
+
+      // 2. 2D default environment image -> imagefile:<path>
+      whenever(mockUpdater.getEnvironments()).thenReturn(listOf(EnvironmentImage(image2dPath, "Flat", isDefault = true)))
+      val device2d =
+        VirtualDevice(glassesProfile).apply {
+          initializeFromProfile()
+          name = "Glasses 2D"
+          image = systemImage
+          expandedStorage = None
+        }
+      val avdInfo2d = VirtualDevices(avdManager).add(device2d)
+      val envProps2d =
+        checkNotNull(AvdManager.parseIniFile(PathFileWrapper(avdInfo2d.dataFolderPath.resolve(AvdManager.ENVIRONMENT_INI)), null))
+      assertThat(envProps2d[EnvironmentKey.SCENE_MODE]).isEqualTo("imagefile:${PathUtils.toSystemIndependentPath(image2dPath)}")
     }
   }
 

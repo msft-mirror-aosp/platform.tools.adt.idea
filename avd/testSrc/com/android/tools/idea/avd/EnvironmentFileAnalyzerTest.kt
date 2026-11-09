@@ -205,20 +205,22 @@ class EnvironmentFileAnalyzerTest {
   }
 
   companion object {
-    internal fun createMockJpegWithXmp(title: String, isDefault: Boolean): ByteArray {
+    internal fun createMockJpegWithXmp(title: String, isDefault: Boolean, is360: Boolean = false): ByteArray {
       val androidemulatorAttribute = if (isDefault) " xmlns:androidemulator=\"urn:androidemulator:metadata:private:1.0\"" else ""
+      val gpanoAttribute = if (is360) " xmlns:GPano=\"http://ns.google.com/photos/1.0/panorama/\"" else ""
       val defaultTag = if (isDefault) "\n         <androidemulator:isDefault>true</androidemulator:isDefault>" else ""
+      val gpanoTag = if (is360) "\n         <GPano:ProjectionType>equirectangular</GPano:ProjectionType>" else ""
 
       val xml =
         """
         <x:xmpmeta xmlns:x="adobe:ns:meta/">
          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-          <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/"$androidemulatorAttribute>
+          <rdf:Description rdf:about="" xmlns:dc="http://purl.org/dc/elements/1.1/"$androidemulatorAttribute$gpanoAttribute>
            <dc:title>
             <rdf:Alt>
              <rdf:li xml:lang="x-default">$title</rdf:li>
             </rdf:Alt>
-           </dc:title>$defaultTag
+           </dc:title>$defaultTag$gpanoTag
           </rdf:Description>
          </rdf:RDF>
         </x:xmpmeta>
