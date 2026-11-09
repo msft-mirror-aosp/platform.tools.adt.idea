@@ -21,6 +21,7 @@ import com.android.testutils.AssumeUtil.assumeNotWindows
 import com.android.tools.idea.gradle.project.GradleExperimentalSettings
 import com.android.tools.idea.gradle.project.sync.GradleSyncState
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
+import com.android.tools.idea.gradle.util.AGP_BUILT_IN_KOTLIN_VERSION
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironment
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
@@ -414,7 +415,7 @@ enum class TestProject(
       projectRoot.resolve("build.gradle").replaceContent { content ->
         content.replace(
           "classpath 'com.android.tools.build:gradle:",
-          "classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'\nclasspath 'com.android.tools.build:gradle:",
+          "classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:$AGP_BUILT_IN_KOTLIN_VERSION'\nclasspath 'com.android.tools.build:gradle:",
         )
       }
     },

@@ -2032,7 +2032,7 @@ MODULE                        : project.app
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -3130,7 +3130,7 @@ MODULE                        : project.lib
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -4238,7 +4238,7 @@ MODULE                        : includedLib1.app
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -5375,7 +5375,7 @@ MODULE                        : includedLib1.lib
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -6548,7 +6548,7 @@ MODULE                        : TestCompositeLib3.app
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -7656,7 +7656,7 @@ MODULE                        : TestCompositeLib3.lib
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl

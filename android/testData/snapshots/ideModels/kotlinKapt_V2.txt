@@ -1761,6 +1761,7 @@ MODULE                        : MainActivity.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-annotation-processing-gradle/<KOTLIN_VERSION>/kotlin-annotation-processing-gradle-<KOTLIN_VERSION>.jar
                     returnValueChecker            : default
                     useFirLT                      : true
             localDebugAndroidTest
@@ -1779,6 +1780,7 @@ MODULE                        : MainActivity.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-annotation-processing-gradle/<KOTLIN_VERSION>/kotlin-annotation-processing-gradle-<KOTLIN_VERSION>.jar
                     returnValueChecker            : default
                     useFirLT                      : true
             localDebugUnitTest
@@ -1796,6 +1798,7 @@ MODULE                        : MainActivity.app
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-annotation-processing-gradle/<KOTLIN_VERSION>/kotlin-annotation-processing-gradle-<KOTLIN_VERSION>.jar
                     returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>
@@ -1838,8 +1841,8 @@ MODULE                        : MainActivity.javaLib
                     assertionsMode                : legacy
                     backendThreads                : 1
                     destination                   : <ROOT>/javaLib/build/classes/kotlin/main
-                    jvmTarget                     : 24
-                    moduleName                    : javaLib
+                    jvmTarget                     : 25
+                    moduleName                    : MainActivity:javaLib
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -1847,6 +1850,14 @@ MODULE                        : MainActivity.javaLib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-annotation-processing-gradle/<KOTLIN_VERSION>/kotlin-annotation-processing-gradle-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                     returnValueChecker            : default
                     useFirLT                      : true
             test
@@ -1855,8 +1866,8 @@ MODULE                        : MainActivity.javaLib
                     assertionsMode                : legacy
                     backendThreads                : 1
                     destination                   : <ROOT>/javaLib/build/classes/kotlin/test
-                    jvmTarget                     : 24
-                    moduleName                    : javaLib_test
+                    jvmTarget                     : 25
+                    moduleName                    : MainActivity:javaLib_test
                     noReflect                     : true
                     noStdlib                      : true
                     autoAdvanceApiVersion         : true
@@ -1864,6 +1875,14 @@ MODULE                        : MainActivity.javaLib
                     explicitApi                   : disable
                     explicitReturnTypes           : disable
                     headerModeType                : any
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-embeddable-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-annotation-processing-gradle/<KOTLIN_VERSION>/kotlin-annotation-processing-gradle-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-compiler-impl-embeddable/<KOTLIN_VERSION>/kotlin-scripting-compiler-impl-embeddable-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-jvm/<KOTLIN_VERSION>/kotlin-scripting-jvm-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-scripting-common/<KOTLIN_VERSION>/kotlin-scripting-common-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-stdlib/<KOTLIN_VERSION>/kotlin-stdlib-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/kotlin/kotlin-script-runtime/<KOTLIN_VERSION>/kotlin-script-runtime-<KOTLIN_VERSION>.jar
+                    - pluginClasspaths            : <M2>/org/jetbrains/annotations/13.0/annotations-13.0.jar
                     returnValueChecker            : default
                     useFirLT                      : true
         gradleUserHome                : <GRADLE>

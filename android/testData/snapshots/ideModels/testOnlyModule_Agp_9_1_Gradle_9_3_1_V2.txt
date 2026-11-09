@@ -1217,7 +1217,7 @@ MODULE                        : project.app
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -1751,7 +1751,7 @@ MODULE                        : project.benchmark
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             benchmark                     : KotlinTaskPropertiesImpl
@@ -2267,7 +2267,7 @@ MODULE                        : project.test
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -2782,7 +2782,7 @@ MODULE                        : project.test2
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl

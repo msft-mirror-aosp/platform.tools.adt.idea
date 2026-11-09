@@ -423,6 +423,9 @@ Plugin                        : org.gradle.language.base.plugins.LifecycleBasePl
 Plugin                        : org.gradle.plugin.devel.plugins.JavaGradlePluginPlugin
     PluginType                    : BINARY_PLUGIN
     PluginDisplayNames            : org.gradle.java-gradle-plugin
+Plugin                        : org.jetbrains.kotlin.gradle.plugin.BuildMetricsPlugin
+    PluginType                    : BINARY_PLUGIN
+    PluginDisplayNames            : org.jetbrains.kotlin.gradle.plugin.BuildMetricsPlugin
 Plugin                        : org.jetbrains.kotlin.gradle.plugin.KotlinBaseApiPlugin
     PluginType                    : BINARY_PLUGIN
     PluginDisplayNames            : org.jetbrains.kotlin.gradle.plugin.KotlinBaseApiPlugin

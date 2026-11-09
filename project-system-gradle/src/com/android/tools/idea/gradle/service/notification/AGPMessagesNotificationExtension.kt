@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.service.notification
 
+import com.android.tools.idea.gradle.project.build.output.BuildOutputParserUtils.KOTLIN_COMPILATION_ERROR_EXCEPTION
 import com.android.tools.idea.gradle.project.build.output.BuildOutputParserUtils.isCompilationFailureLine
 import com.android.tools.idea.gradle.project.build.output.JavaLanguageLevelDeprecationOutputParser
 import com.intellij.execution.rmi.RemoteUtil
@@ -60,6 +61,21 @@ class AGPMessagesNotificationExtension : ExternalSystemNotificationExtension {
     // Add same filtering as in GradleBuildFailureParser here so that empty error node is not created from exception.
     val unwrapped = RemoteUtil.unwrap(error)
     val messageFirstLine = unwrapped.message?.lineSequence()?.firstOrNull()
-    return messageFirstLine?.isCompilationFailureLine() == true
+    if (messageFirstLine?.isCompilationFailureLine() == true) {
+      return true
+    }
+    // Starting in KGP 2.4, BuildToolsApiCompilationWork reports compiler diagnostics via Gradle's
+    // Problems API by throwing CompilationErrorException(<diagnostic message>) instead of
+    // CompilationErrorException("Compilation error. See log for more details"). Over the Gradle
+    // Tooling API, the cause is serialized as a PlaceholderException whose toString() starts with
+    // CompilationErrorException's class name.
+    return generateSequence(unwrapped) { it.cause }
+      .any { cause ->
+        cause.javaClass.name == KOTLIN_COMPILATION_ERROR_EXCEPTION ||
+          cause.toString().let {
+            it == KOTLIN_COMPILATION_ERROR_EXCEPTION ||
+              it.startsWith("$KOTLIN_COMPILATION_ERROR_EXCEPTION:")
+          }
+      }
   }
 }

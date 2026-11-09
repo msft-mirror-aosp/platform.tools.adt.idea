@@ -2753,7 +2753,7 @@ MODULE                        : project.app
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             basicBarDebug                 : KotlinTaskPropertiesImpl
@@ -4299,7 +4299,7 @@ MODULE                        : project.dyn_feature
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             basicBarDebug                 : KotlinTaskPropertiesImpl
@@ -5461,7 +5461,7 @@ MODULE                        : project.lib
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -5892,7 +5892,7 @@ MODULE                        : project.nested1
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -6327,7 +6327,7 @@ MODULE                        : project.nested1.deep
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -6958,7 +6958,7 @@ MODULE                        : project.nested2
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             basicDebug                    : KotlinTaskPropertiesImpl
@@ -7387,7 +7387,7 @@ MODULE                        : project.nested2.deep
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -7829,7 +7829,7 @@ MODULE                        : project.nested2.trans.deep2
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl

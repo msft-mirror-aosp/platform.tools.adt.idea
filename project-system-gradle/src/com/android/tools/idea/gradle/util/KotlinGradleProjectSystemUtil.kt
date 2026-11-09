@@ -73,12 +73,11 @@ fun AgpVersion.getKotlinVersion(): String? {
 const val AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION = "2.2.10"
 
 /** The default Kotlin Gradle plugin version that AGP @ HEAD recommends using. */
-const val AGP_BUILT_IN_KOTLIN_VERSION = "2.2.10"
+const val AGP_BUILT_IN_KOTLIN_VERSION = "2.4.20"
 
 /**
- * Returns true if [kotlinVersion] is Kotlin Gradle plugin 2.2.0 or higher (including 2.2.0
- * pre-release versions such as Beta, RC, or dev), where `android.kotlinOptions.jvmTarget` is
- * deprecated in favor of `kotlin.compilerOptions.jvmTarget`.
+ * Returns true if [kotlinVersion] is Kotlin Gradle plugin 2.2.0 or higher (including 2.2.0 pre-release versions such as Beta, RC, or dev),
+ * where `android.kotlinOptions.jvmTarget` is deprecated in favor of `kotlin.compilerOptions.jvmTarget`.
  */
 fun shouldUseKotlinCompilerOptionsDsl(kotlinVersion: String?): Boolean {
   val parsed = kotlinVersion?.trim()?.let { KotlinGradlePluginVersion.parse(it) } ?: return false

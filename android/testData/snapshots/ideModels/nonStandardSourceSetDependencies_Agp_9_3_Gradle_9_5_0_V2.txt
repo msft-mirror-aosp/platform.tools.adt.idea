@@ -2178,7 +2178,7 @@ MODULE                        : NonStandardSourceSetDependencies.app
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -2467,7 +2467,7 @@ MODULE                        : NonStandardSourceSetDependencies.desktop
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-platform-jvm
         kotlinTaskProperties
             main                          : KotlinTaskPropertiesImpl
@@ -3531,7 +3531,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-a
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -3901,7 +3901,7 @@ MODULE                        : NonStandardSourceSetDependencies.javaLibrary
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-platform-jvm
         kotlinTaskProperties
             main                          : KotlinTaskPropertiesImpl
@@ -4511,7 +4511,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -5029,7 +5029,7 @@ MODULE                        : NonStandardSourceSetDependencies.lib
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl

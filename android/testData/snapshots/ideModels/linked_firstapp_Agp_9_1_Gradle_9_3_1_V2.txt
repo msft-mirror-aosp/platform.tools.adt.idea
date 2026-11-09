@@ -1713,7 +1713,7 @@ MODULE                        : My_First_App.app
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl
@@ -2867,7 +2867,7 @@ MODULE                        : My_First_App.app.mysharedlibrary
         gradleUserHome                : <GRADLE>
         hasKotlinPlugin               : true
         kotlinGradlePluginVersion     : KotlinGradlePluginVersionImpl
-            versionString                 : <AGP_BUILT_IN_KOTLIN_VERSION>
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         kotlinTarget                  : kotlin-android
         kotlinTaskProperties
             debug                         : KotlinTaskPropertiesImpl

@@ -36,6 +36,7 @@ class KotlinGradleProjectSystemUtilTest {
     assertEquals(AGP_BUILT_IN_KOTLIN_VERSION, AgpVersion.parse("9.6.0-alpha01").getKotlinVersion())
     assertEquals(AGP_BUILT_IN_KOTLIN_VERSION, AgpVersion.parse("100.0.0").getKotlinVersion())
     assertEquals("2.2.10", AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION)
+    assertEquals("2.4.20", AGP_BUILT_IN_KOTLIN_VERSION)
   }
 
   @Test

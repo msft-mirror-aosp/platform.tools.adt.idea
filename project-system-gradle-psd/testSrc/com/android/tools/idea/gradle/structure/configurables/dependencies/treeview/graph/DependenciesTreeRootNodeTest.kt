@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinitio
 import com.android.tools.idea.gradle.structure.configurables.ui.PsUISettings
 import com.android.tools.idea.gradle.structure.configurables.ui.testStructure
 import com.android.tools.idea.gradle.structure.model.android.psTestWithProject
+import com.android.tools.idea.gradle.util.AGP_BUILT_IN_KOTLIN_VERSION
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.intellij.testFramework.RunsInEdt
@@ -92,7 +93,7 @@ class DependenciesTreeRootNodeTest {
             com.example.libs:lib2
                 lib2:0.9.1
                 lib2:1.0
-            org.jetbrains.kotlin:kotlin-stdlib:2.2.10
+            org.jetbrains.kotlin:kotlin-stdlib:$AGP_BUILT_IN_KOTLIN_VERSION
             org.jetbrains:annotations:13.0
             lib (..)
             libsam1-1.1.jar (../lib)

@@ -22,6 +22,7 @@ import com.android.tools.idea.gradle.structure.configurables.ui.testStructure
 import com.android.tools.idea.gradle.structure.model.PsProjectImpl
 import com.android.tools.idea.gradle.structure.model.android.PsAndroidModule
 import com.android.tools.idea.gradle.structure.model.android.psTestWithProject
+import com.android.tools.idea.gradle.util.AGP_BUILT_IN_KOTLIN_VERSION
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.intellij.testFramework.RunsInEdt
@@ -87,7 +88,7 @@ open class ResolvedDependenciesTreeRootNodeTest {
       app
           freeDebug
               mainModule
-                  kotlin-stdlib:2.2.10 (org.jetbrains.kotlin)
+                  kotlin-stdlib:$AGP_BUILT_IN_KOTLIN_VERSION (org.jetbrains.kotlin)
                       annotations:13.0 (org.jetbrains)
                   lib1:1.0 (com.example.libs)
                       lib2:1.0 (com.example.libs)
@@ -98,7 +99,7 @@ open class ResolvedDependenciesTreeRootNodeTest {
           freeDebugAndroidTest
               freeDebug
                   mainModule
-                      kotlin-stdlib:2.2.10 (org.jetbrains.kotlin)
+                      kotlin-stdlib:$AGP_BUILT_IN_KOTLIN_VERSION (org.jetbrains.kotlin)
                           annotations:13.0 (org.jetbrains)
                       lib1:1.0 (com.example.libs)
                           lib2:1.0 (com.example.libs)
@@ -109,7 +110,7 @@ open class ResolvedDependenciesTreeRootNodeTest {
           freeDebugUnitTest
               freeDebug
                   mainModule
-                      kotlin-stdlib:2.2.10 (org.jetbrains.kotlin)
+                      kotlin-stdlib:$AGP_BUILT_IN_KOTLIN_VERSION (org.jetbrains.kotlin)
                           annotations:13.0 (org.jetbrains)
                       lib1:1.0 (com.example.libs)
                           lib2:1.0 (com.example.libs)
@@ -119,7 +120,7 @@ open class ResolvedDependenciesTreeRootNodeTest {
                           lib4:1.0 (com.example.jlib)
           freeRelease
               mainModule
-                  kotlin-stdlib:2.2.10 (org.jetbrains.kotlin)
+                  kotlin-stdlib:$AGP_BUILT_IN_KOTLIN_VERSION (org.jetbrains.kotlin)
                       annotations:13.0 (org.jetbrains)
                   lib1:1.0,0.9.1→1.0 (com.example.libs)
                       lib2:1.0 (com.example.libs)
@@ -129,7 +130,7 @@ open class ResolvedDependenciesTreeRootNodeTest {
                       lib4:1.0 (com.example.jlib)
           paidDebug
               mainModule
-                  kotlin-stdlib:2.2.10 (org.jetbrains.kotlin)
+                  kotlin-stdlib:$AGP_BUILT_IN_KOTLIN_VERSION (org.jetbrains.kotlin)
                       annotations:13.0 (org.jetbrains)
                   lib1:1.0 (com.example.libs)
                       lib2:1.0 (com.example.libs)
@@ -138,7 +139,7 @@ open class ResolvedDependenciesTreeRootNodeTest {
           paidDebugAndroidTest
               paidDebug
                   mainModule
-                      kotlin-stdlib:2.2.10 (org.jetbrains.kotlin)
+                      kotlin-stdlib:$AGP_BUILT_IN_KOTLIN_VERSION (org.jetbrains.kotlin)
                           annotations:13.0 (org.jetbrains)
                       lib1:1.0 (com.example.libs)
                           lib2:1.0 (com.example.libs)
@@ -147,7 +148,7 @@ open class ResolvedDependenciesTreeRootNodeTest {
           paidDebugUnitTest
               paidDebug
                   mainModule
-                      kotlin-stdlib:2.2.10 (org.jetbrains.kotlin)
+                      kotlin-stdlib:$AGP_BUILT_IN_KOTLIN_VERSION (org.jetbrains.kotlin)
                           annotations:13.0 (org.jetbrains)
                       lib1:1.0 (com.example.libs)
                           lib2:1.0 (com.example.libs)
@@ -155,7 +156,7 @@ open class ResolvedDependenciesTreeRootNodeTest {
                                   lib4:1.0 (com.example.jlib)
           paidRelease
               mainModule
-                  kotlin-stdlib:2.2.10 (org.jetbrains.kotlin)
+                  kotlin-stdlib:$AGP_BUILT_IN_KOTLIN_VERSION (org.jetbrains.kotlin)
                       annotations:13.0 (org.jetbrains)
                   lib1:1.0,0.9.1→1.0 (com.example.libs)
                       lib2:1.0 (com.example.libs)

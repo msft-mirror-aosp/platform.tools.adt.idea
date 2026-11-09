@@ -18,7 +18,10 @@ package com.android.tools.idea.gradle.project.build.output
 import com.android.testutils.AssumeUtil
 import com.android.tools.idea.gradle.project.build.output.tomlParser.TomlErrorParserTest.Companion.getVersionCatalogLibsBuildIssueDescription
 import com.android.tools.idea.gradle.project.build.output.tomlParser.TomlErrorParserTest.Companion.getVersionCatalogLibsBuildOutput
+import com.android.tools.idea.gradle.service.notification.AGPMessagesNotificationExtension
+import com.google.common.truth.Truth.assertThat
 import com.intellij.build.events.MessageEvent
+import com.intellij.openapi.externalSystem.model.ExternalSystemException
 import com.intellij.openapi.util.io.FileUtil
 import org.jetbrains.plugins.gradle.execution.build.output.GradleOutputDispatcherFactory.TaskNameId
 import org.junit.Rule
@@ -266,6 +269,83 @@ Run with --stacktrace option to get the stack trace. Run with --info or --debug 
           )
         ),
     )
+  }
+
+  @Test
+  fun kotlinProblemsApiCompilationErrorIgnoredByFailureParser() {
+    val brokenKt = temporaryFolder.newFile("ExampleUnitTest.kt")
+    val buildOutput =
+      """
+      > Task :mylibrary:compileDebugUnitTestKotlin
+      e: $brokenKt: (17, 9): Unresolved reference 'assertEqual'.
+
+      > Task :mylibrary:compileDebugUnitTestKotlin FAILED
+
+      FAILURE: Build failed with an exception.
+
+      * What went wrong:
+      Execution failed for task ':mylibrary:compileDebugUnitTestKotlin' (registered by plugin 'com.android.internal.version-check').
+      > A failure occurred while executing org.jetbrains.kotlin.compilerRunner.btapi.BuildToolsApiCompilationWork
+         > Kotlin compiler: UNRESOLVED_REFERENCE
+             Kotlin compiler error
+               Unresolved reference 'assertEqual'.
+               Location: ${brokenKt.path} line 17
+
+      * Try:
+      > Run with --stacktrace option to get the stack trace.
+      > Get more help at https://help.gradle.org.
+
+      BUILD FAILED in 1s
+      """
+        .trimIndent()
+    parseOutput(
+      parentEventId = "testId",
+      gradleOutput = buildOutput,
+      expectedEvents =
+        listOf(
+          ExpectedEvent(
+            message = "Unresolved reference 'assertEqual'.",
+            isFileMessageEvent = true,
+            isBuildIssueEvent = false,
+            isDuplicateMessageAware = false,
+            group = "Kotlin Compiler",
+            kind = MessageEvent.Kind.ERROR,
+            parentId = "testId",
+            filePosition = "$brokenKt:17:9-17:9",
+            // KotlincOutputParser appends a trailing newline to FileMessageEventImpl.description,
+            // which BuildIssueDescriptionComposer trims when wrapping with an additional quickfix.
+            description =
+              "e: $brokenKt: (17, 9): Unresolved reference 'assertEqual'." +
+                if (additionalQuickfixProviderAvailable == true) "" else "\n",
+          )
+        ),
+    )
+  }
+
+  @Test
+  fun agpMessagesNotificationExtensionRecognizesKotlinProblemsApiCompilationError() {
+    val extension = AGPMessagesNotificationExtension()
+    val placeholderCause =
+      object : Throwable("Unresolved reference 'assertEqual'.") {
+        override fun toString(): String =
+          "org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Unresolved reference 'assertEqual'."
+      }
+    val compilationFailure =
+      ExternalSystemException("Unresolved reference 'assertEqual'.").apply {
+        initCause(placeholderCause)
+      }
+    assertThat(extension.isInternalError(compilationFailure)).isTrue()
+
+    val internalCompilerCrashCause =
+      object : Throwable("Internal compiler error. See log for more details") {
+        override fun toString(): String =
+          "org.jetbrains.kotlin.gradle.tasks.FailedCompilationException: Internal compiler error. See log for more details"
+      }
+    val internalCrash =
+      ExternalSystemException("Internal compiler error. See log for more details").apply {
+        initCause(internalCompilerCrashCause)
+      }
+    assertThat(extension.isInternalError(internalCrash)).isFalse()
   }
 
   @Test fun scriptLocationParsed() = testBuildFileType("Script")

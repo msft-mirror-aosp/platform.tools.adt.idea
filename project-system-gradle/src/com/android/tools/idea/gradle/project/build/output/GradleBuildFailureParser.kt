@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.project.build.output
 
+import com.android.tools.idea.gradle.project.build.output.BuildOutputParserUtils.KOTLIN_COMPILATION_ERROR_EXCEPTION
 import com.android.tools.idea.gradle.project.build.output.BuildOutputParserUtils.isCompilationFailureLine
 import com.intellij.build.FilePosition
 import com.intellij.build.events.BuildEvent
@@ -134,7 +135,7 @@ abstract class GradleBuildFailureParser(
     }
 
     // compilation errors should be added by the respective compiler output parser.
-    if (reasonLine.isCompilationFailureLine()) {
+    if (isCompilationFailure(reasonLine, parsedMessage, exception)) {
       handleCompilationFailure(parentId, errorText, messageConsumer)
       return false
     }
@@ -172,6 +173,27 @@ abstract class GradleBuildFailureParser(
       }
     }
     return true
+  }
+
+  private fun isCompilationFailure(
+    reasonLine: String,
+    parsedMessage: ParsedFailureDetails,
+    exception: String,
+  ): Boolean {
+    if (reasonLine.isCompilationFailureLine()) return true
+    if (
+      parsedMessage.whatWentWrongSectionLines.any {
+        it.trimStart().startsWith("> ") && it.substringAfter("> ").trimEnd('.').isCompilationFailureLine()
+      }
+    ) {
+      return true
+    }
+    return exception.lineSequence().any {
+      it == KOTLIN_COMPILATION_ERROR_EXCEPTION ||
+        it.startsWith("$KOTLIN_COMPILATION_ERROR_EXCEPTION:") ||
+        it == "Caused by: $KOTLIN_COMPILATION_ERROR_EXCEPTION" ||
+        it.startsWith("Caused by: $KOTLIN_COMPILATION_ERROR_EXCEPTION:")
+    }
   }
 
   protected open fun handleCompilationFailure(parentId: Any, errorText: String, messageConsumer: Consumer<in BuildEvent>) {

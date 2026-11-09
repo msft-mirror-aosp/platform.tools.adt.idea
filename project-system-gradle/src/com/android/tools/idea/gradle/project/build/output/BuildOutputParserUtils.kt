@@ -38,9 +38,16 @@ object BuildOutputParserUtils {
       startsWith("BUILD SUCCESSFUL") ||
       startsWith("CONFIGURE SUCCESSFUL")
 
+  const val KOTLIN_COMPILATION_ERROR_EXCEPTION =
+    "org.jetbrains.kotlin.gradle.tasks.CompilationErrorException"
+
   fun String.isCompilationFailureLine(): Boolean =
     this.startsWith("Compilation failed") ||
       this == "Compilation error. See log for more details" ||
+      // Starting in KGP 2.4, BuildToolsApiCompilationWork reports compiler errors via Gradle's
+      // Problems API with display name "Kotlin compiler: <DIAGNOSTIC_ID>" (or "Kotlin compiler error").
+      this == "Kotlin compiler error" ||
+      this.startsWith("Kotlin compiler: ") ||
       this == "Script compilation error:" ||
       this.contains("compiler failed")
 
