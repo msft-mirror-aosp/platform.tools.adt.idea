@@ -15,6 +15,9 @@
  */
 package com.android.build.attribution.ui.controllers
 
+import com.android.annotations.concurrency.Slow
+import com.android.annotations.concurrency.UiThread
+import com.android.annotations.concurrency.WorkerThread
 import com.android.build.attribution.BuildAttributionWarningsFilter
 import com.android.build.attribution.analyzers.CHECK_JETIFIER_TASK_NAME
 import com.android.build.attribution.analyzers.IncompatiblePluginWarning
@@ -54,6 +57,7 @@ import com.intellij.ide.BrowserUtil
 import com.intellij.lang.properties.IProperty
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.colors.CodeInsightColors
@@ -62,12 +66,15 @@ import com.intellij.openapi.editor.ex.util.EditorUtil
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.options.ShowSettingsUtil
+import com.intellij.openapi.progress.ProgressIndicator
+import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.MessageType
 import com.intellij.openapi.ui.popup.Balloon
 import com.intellij.openapi.ui.popup.JBPopupFactory
 import com.intellij.psi.PsiElement
 import com.intellij.ui.awt.RelativePoint
+import com.intellij.util.concurrency.ThreadingAssertions
 import com.intellij.util.ui.RangeBlinker
 import java.time.Duration
 import java.util.function.Supplier
@@ -222,16 +229,30 @@ class BuildAnalyzerViewController(
     analytics.migrateToNonTransitiveRClassesClicked()
   }
 
+  @UiThread
   override fun updatePluginClicked(pluginWarningData: IncompatiblePluginWarning) {
-    val duration = runAndMeasureDuration {
-      val openFile =
-        PluginVersionDeclarationFinder(project)
-          .findFileToOpen(pluginWarningData.pluginInfo.pluginArtifact, pluginWarningData.plugin.displayNames())
-      if (openFile?.canNavigate() == true) {
-        openFile.navigate(true)
+    if (project.isDisposed) return
+    val watch = Stopwatch.createStarted()
+    object : Task.Backgroundable(project, "Finding Plugin Version Declaration", true) {
+        @Volatile private var openFile: OpenFileDescriptor? = null
+
+        override fun run(indicator: ProgressIndicator) {
+          indicator.isIndeterminate = true
+          openFile =
+            PluginVersionDeclarationFinder(project)
+              .findFileToOpen(pluginWarningData.pluginInfo.pluginArtifact, pluginWarningData.plugin.displayNames())
+        }
+
+        override fun onSuccess() {
+          if (project.isDisposed) return
+          val fileToOpen = openFile
+          if (fileToOpen?.canNavigate() == true) {
+            fileToOpen.navigate(true)
+          }
+          analytics.updatePluginButtonClicked(watch.elapsed())
+        }
       }
-    }
-    analytics.updatePluginButtonClicked(duration)
+      .queue()
   }
 
   override fun runCheckJetifierTask() {
@@ -332,15 +353,24 @@ class WindowsDefenderPageHandlerImpl(val service: WindowsDefenderCheckService) :
 
 class PluginVersionDeclarationFinder(val project: Project) {
 
+  @Slow
+  @WorkerThread
   fun findFileToOpen(pluginArtifact: GradlePluginsData.DependencyCoordinates?, pluginDisplayNames: Set<String>): OpenFileDescriptor? {
-    val buildModel = ProjectBuildModel.get(project)
-    val rootBuildModel = buildModel.projectBuildModel
-    val psiToOpen = findPluginDeclarationPsi(rootBuildModel, pluginArtifact, pluginDisplayNames)
-    return if (psiToOpen != null) {
-      OpenFileDescriptor(project, psiToOpen.containingFile.virtualFile, psiToOpen.textOffset)
-    } else {
-      rootBuildModel?.virtualFile?.let { OpenFileDescriptor(project, it, -1) }
-    }
+    ThreadingAssertions.assertBackgroundThread()
+    if (project.isDisposed) return null
+    return ReadAction.nonBlocking<OpenFileDescriptor?> {
+        if (project.isDisposed) return@nonBlocking null
+        val buildModel = ProjectBuildModel.get(project)
+        val rootBuildModel = buildModel.projectBuildModel
+        val psiToOpen = findPluginDeclarationPsi(rootBuildModel, pluginArtifact, pluginDisplayNames)
+        if (psiToOpen != null) {
+          psiToOpen.containingFile?.virtualFile?.let { OpenFileDescriptor(project, it, psiToOpen.textOffset) }
+        } else {
+          rootBuildModel?.virtualFile?.let { OpenFileDescriptor(project, it, -1) }
+        }
+      }
+      .expireWith(project)
+      .executeSynchronously()
   }
 
   private fun findPluginDeclarationPsi(
