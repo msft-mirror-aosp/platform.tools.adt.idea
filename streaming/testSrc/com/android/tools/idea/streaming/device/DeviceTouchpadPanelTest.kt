@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 import javax.swing.Box.createHorizontalGlue
 import javax.swing.BoxLayout
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -98,8 +99,8 @@ class DeviceTouchpadPanelTest {
         MotionEventMessage(
           pointers = listOf(MotionEventMessage.Pointer(21, 246, 0)),
           action = MotionEventMessage.ACTION_DOWN,
-          buttonState = MotionEventMessage.BUTTON_PRIMARY,
-          actionButton = MotionEventMessage.BUTTON_PRIMARY,
+          buttonState = 0,
+          actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
@@ -112,12 +113,15 @@ class DeviceTouchpadPanelTest {
         MotionEventMessage(
           pointers = listOf(MotionEventMessage.Pointer(460, 186, 0)),
           action = MotionEventMessage.ACTION_MOVE,
-          buttonState = MotionEventMessage.BUTTON_PRIMARY,
+          buttonState = 0,
           actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
       )
+
+    // Zero-delta drag should not emit a redundant ACTION_MOVE.
+    ui.mouse.dragTo(touchpadPanel.x + 200, touchpadPanel.y + 25)
 
     ui.mouse.release()
     val upMessage = agent.getNextControlMessage(2.seconds) as MotionEventMessage
@@ -127,7 +131,60 @@ class DeviceTouchpadPanelTest {
           pointers = listOf(MotionEventMessage.Pointer(460, 186, 0)),
           action = MotionEventMessage.ACTION_UP,
           buttonState = 0,
-          actionButton = MotionEventMessage.BUTTON_PRIMARY,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    // Drag over the edge of the touchpad and back into the touchpad.
+    ui.mouse.press(touchpadPanel.x + 200, touchpadPanel.y + 25)
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(460, 186, 0)),
+          action = MotionEventMessage.ACTION_DOWN,
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    ui.mouse.dragTo(touchpadPanel.x + 210, touchpadPanel.y + 25)
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(479, 186, 0)),
+          action = MotionEventMessage.ACTION_UP,
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    ui.mouse.dragTo(touchpadPanel.x + 205, touchpadPanel.y + 20)
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(472, 246, 0)),
+          action = MotionEventMessage.ACTION_DOWN,
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    ui.mouse.release()
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(472, 246, 0)),
+          action = MotionEventMessage.ACTION_UP,
+          buttonState = 0,
+          actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
@@ -143,8 +200,8 @@ class DeviceTouchpadPanelTest {
         MotionEventMessage(
           pointers = listOf(MotionEventMessage.Pointer(10, 246, 0)),
           action = MotionEventMessage.ACTION_DOWN,
-          buttonState = MotionEventMessage.BUTTON_PRIMARY,
-          actionButton = MotionEventMessage.BUTTON_PRIMARY,
+          buttonState = 0,
+          actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
@@ -160,7 +217,7 @@ class DeviceTouchpadPanelTest {
           pointers = listOf(MotionEventMessage.Pointer(10, 246, 0)),
           action = MotionEventMessage.ACTION_UP,
           buttonState = 0,
-          actionButton = MotionEventMessage.BUTTON_PRIMARY,
+          actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
@@ -172,8 +229,8 @@ class DeviceTouchpadPanelTest {
         MotionEventMessage(
           pointers = listOf(MotionEventMessage.Pointer(114, 246, 1)),
           action = MotionEventMessage.ACTION_DOWN,
-          buttonState = MotionEventMessage.BUTTON_PRIMARY,
-          actionButton = MotionEventMessage.BUTTON_PRIMARY,
+          buttonState = 0,
+          actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
@@ -181,18 +238,33 @@ class DeviceTouchpadPanelTest {
 
     // Drag so that both fingers are inside the touchpad.
     ui.mouse.dragTo(touchpadPanel.x + 100, touchpadPanel.y + 20)
+    val pointerDownMessage = agent.getNextControlMessage(2.seconds) as MotionEventMessage
+    assertThat(pointerDownMessage)
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(114, 246, 1)),
+          action = MotionEventMessage.ACTION_POINTER_DOWN or (0 shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT),
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
     val multiMoveMessage = agent.getNextControlMessage(2.seconds) as MotionEventMessage
     assertThat(multiMoveMessage)
       .isEqualTo(
         MotionEventMessage(
           pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
           action = MotionEventMessage.ACTION_MOVE,
-          buttonState = MotionEventMessage.BUTTON_PRIMARY,
+          buttonState = 0,
           actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
       )
+
+    // Zero-delta drag should not emit a redundant ACTION_MOVE.
+    ui.mouse.dragTo(touchpadPanel.x + 100, touchpadPanel.y + 20)
 
     // Terminate dragging.
     ui.mouse.release()
@@ -203,7 +275,7 @@ class DeviceTouchpadPanelTest {
           pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
           action = MotionEventMessage.ACTION_UP,
           buttonState = 0,
-          actionButton = MotionEventMessage.BUTTON_PRIMARY,
+          actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
@@ -217,8 +289,8 @@ class DeviceTouchpadPanelTest {
         MotionEventMessage(
           pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
           action = MotionEventMessage.ACTION_DOWN,
-          buttonState = MotionEventMessage.BUTTON_PRIMARY,
-          actionButton = MotionEventMessage.BUTTON_PRIMARY,
+          buttonState = 0,
+          actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
@@ -226,13 +298,52 @@ class DeviceTouchpadPanelTest {
 
     // Drag closer to the right edge of the touchpad so that one of the fingers leaves the touchpad.
     ui.mouse.dragTo(touchpadPanel.x + 190, touchpadPanel.y + 20)
-    val oneFingerLeavesMessage = agent.getNextControlMessage(2.seconds) as MotionEventMessage
-    assertThat(oneFingerLeavesMessage)
+    val pointerUpMessage = agent.getNextControlMessage(2.seconds) as MotionEventMessage
+    assertThat(pointerUpMessage)
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(479, 246, 1)),
+          action = MotionEventMessage.ACTION_POINTER_UP or (1 shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT),
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+    val oneFingerLeavesMoveMessage = agent.getNextControlMessage(2.seconds) as MotionEventMessage
+    assertThat(oneFingerLeavesMoveMessage)
       .isEqualTo(
         MotionEventMessage(
           pointers = listOf(MotionEventMessage.Pointer(356, 246, 0)),
           action = MotionEventMessage.ACTION_MOVE,
-          buttonState = MotionEventMessage.BUTTON_PRIMARY,
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    // Drag back so that both fingers are inside the touchpad again.
+    ui.mouse.dragTo(touchpadPanel.x + 100, touchpadPanel.y + 20)
+    val secondPointerDownMessage = agent.getNextControlMessage(2.seconds) as MotionEventMessage
+    assertThat(secondPointerDownMessage)
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(356, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
+          action = MotionEventMessage.ACTION_POINTER_DOWN or (1 shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT),
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+    val secondFingerEntersMoveMessage = agent.getNextControlMessage(2.seconds) as MotionEventMessage
+    assertThat(secondFingerEntersMoveMessage)
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
+          action = MotionEventMessage.ACTION_MOVE,
+          buttonState = 0,
           actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
@@ -246,10 +357,10 @@ class DeviceTouchpadPanelTest {
     assertThat(cancelMultiDragMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(356, 246, 0)),
+          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
           action = MotionEventMessage.ACTION_UP,
           buttonState = 0,
-          actionButton = MotionEventMessage.BUTTON_PRIMARY,
+          actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
@@ -260,8 +371,8 @@ class DeviceTouchpadPanelTest {
         MotionEventMessage(
           pointers = listOf(MotionEventMessage.Pointer(460, 246, 0)),
           action = MotionEventMessage.ACTION_DOWN,
-          buttonState = MotionEventMessage.BUTTON_PRIMARY,
-          actionButton = MotionEventMessage.BUTTON_PRIMARY,
+          buttonState = 0,
+          actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )
@@ -276,7 +387,59 @@ class DeviceTouchpadPanelTest {
           pointers = listOf(MotionEventMessage.Pointer(460, 246, 0)),
           action = MotionEventMessage.ACTION_UP,
           buttonState = 0,
-          actionButton = MotionEventMessage.BUTTON_PRIMARY,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+  }
+
+  @Test
+  fun testDisconnectionDuringDrag() {
+    ui.mouse.press(touchpadPanel.x + 10, touchpadPanel.y + 20)
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(21, 246, 0)),
+          action = MotionEventMessage.ACTION_DOWN,
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    runBlocking { agent.crash() }
+    waitForCondition(15, SECONDS) { !agent.isRunning && deviceClient.deviceController == null }
+
+    // Release while disconnected.
+    ui.mouse.release()
+
+    // Reconnect and verify a new gesture starts with ACTION_DOWN.
+    deviceClient.establishAgentConnectionWithoutVideoStreamAsync(project)
+    waitForCondition(15, SECONDS) { agent.isRunning && deviceClient.deviceController != null }
+
+    ui.mouse.press(touchpadPanel.x + 10, touchpadPanel.y + 20)
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(21, 246, 0)),
+          action = MotionEventMessage.ACTION_DOWN,
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    ui.mouse.release()
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(21, 246, 0)),
+          action = MotionEventMessage.ACTION_UP,
+          buttonState = 0,
+          actionButton = 0,
           displayId = DISPLAY_ID,
           isMouse = false,
         )

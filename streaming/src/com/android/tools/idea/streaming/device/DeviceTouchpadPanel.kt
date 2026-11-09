@@ -26,46 +26,80 @@ internal class DeviceTouchpadPanel(
   private val displaySize: Dimension,
 ) : AbstractTouchpadPanel(NOMINAL_TOUCHPAD_SIZE) {
 
-  private var wasDown = false
+  private val activePointers = arrayOfNulls<MotionEventMessage.Pointer>(touches.size)
+  private var lastDeviceController: DeviceController? = null
 
   override fun sendTouches(touches: List<Touch>) {
-    val deviceController = deviceClient.deviceController ?: return
-    val activeTouches = touches.filter { it.pressure > 0 }
-    val pointers: List<MotionEventMessage.Pointer>
-    val action: Int
-    val buttonState: Int
-    val actionButton: Int
+    val deviceController = deviceClient.deviceController
+    if (deviceController !== lastDeviceController) {
+      lastDeviceController = deviceController
+      activePointers.fill(null)
+    }
+    if (deviceController == null) {
+      return
+    }
+    val downPointers = touches.mapNotNull { if (it.pressure > 0) it.toPointer() else null }
 
-    if (activeTouches.isNotEmpty()) {
-      pointers = activeTouches.map { it.toPointer() }
-      if (!wasDown) {
-        wasDown = true
-        action = MotionEventMessage.ACTION_DOWN
-        buttonState = MotionEventMessage.BUTTON_PRIMARY
-        actionButton = MotionEventMessage.BUTTON_PRIMARY
-      } else {
-        action = MotionEventMessage.ACTION_MOVE
-        buttonState = MotionEventMessage.BUTTON_PRIMARY
-        actionButton = 0
+    if (downPointers.isEmpty()) {
+      val pointers = touches.filter { activePointers[it.id] != null }.map { it.toPointer() }
+      activePointers.fill(null)
+      if (pointers.isNotEmpty()) {
+        deviceController.sendMotionEvent(pointers, MotionEventMessage.ACTION_UP)
       }
-    } else {
-      pointers = touches.map { it.toPointer() }
-      wasDown = false
-      action = MotionEventMessage.ACTION_UP
-      buttonState = 0
-      actionButton = MotionEventMessage.BUTTON_PRIMARY
+      return
     }
 
-    val message =
-      MotionEventMessage(
-        pointers = pointers,
-        action = action,
-        buttonState = buttonState,
-        actionButton = actionButton,
-        displayId = displayId,
-        isMouse = false,
-      )
-    deviceController.sendControlMessage(message)
+    if (activePointers.all { it == null }) {
+      for (pointer in downPointers) {
+        activePointers[pointer.pointerId] = pointer
+      }
+      deviceController.sendMotionEvent(downPointers, MotionEventMessage.ACTION_DOWN)
+      return
+    }
+
+    for (touch in touches) {
+      if (touch.pressure == 0 && activePointers[touch.id] != null) {
+        val pointer = touch.toPointer()
+        activePointers[touch.id] = pointer
+        val pointers = activePointers.filterNotNull()
+        val pointerIndex = pointers.indexOf(pointer)
+        deviceController.sendMotionEvent(
+          pointers,
+          MotionEventMessage.ACTION_POINTER_UP or (pointerIndex shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT),
+        )
+        activePointers[touch.id] = null
+      }
+    }
+
+    for (pointer in downPointers) {
+      if (activePointers[pointer.pointerId] == null) {
+        activePointers[pointer.pointerId] = pointer
+        val pointers = activePointers.filterNotNull()
+        val pointerIndex = pointers.indexOf(pointer)
+        deviceController.sendMotionEvent(
+          pointers,
+          MotionEventMessage.ACTION_POINTER_DOWN or (pointerIndex shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT),
+        )
+      }
+    }
+
+    var moved = false
+    for (pointer in downPointers) {
+      if (pointer != activePointers[pointer.pointerId]) {
+        activePointers[pointer.pointerId] = pointer
+        moved = true
+      }
+    }
+
+    if (moved) {
+      deviceController.sendMotionEvent(activePointers.filterNotNull(), MotionEventMessage.ACTION_MOVE)
+    }
+  }
+
+  private fun DeviceController.sendMotionEvent(pointers: List<MotionEventMessage.Pointer>, action: Int) {
+    sendControlMessage(
+      MotionEventMessage(pointers = pointers, action = action, buttonState = 0, actionButton = 0, displayId = displayId, isMouse = false)
+    )
   }
 
   private fun Touch.toPointer(): MotionEventMessage.Pointer {
