@@ -44,7 +44,20 @@ class ClearAppStorageTest {
     val device = mockDevice("com.company.application")
     clearAppStorage(projectRule.project, device, "com.company.application", RunStats(projectRule.project))
 
-    verify(device).executeShellCommand(eq("pm clear com.company.application"), any())
+    verify(device).executeShellCommand(eq("pm clear --user current com.company.application"), any())
+  }
+
+  @Test
+  fun appExists_multiplePackagesAndErrorOutput_success() {
+    val device =
+      mockDevice(
+        "com.company.application",
+        "com.company.application.debug",
+        extraListOutput = "Error: java.lang.SecurityException: Shell does not have permission to access user 10",
+      )
+    clearAppStorage(projectRule.project, device, "com.company.application", RunStats(projectRule.project))
+
+    verify(device).executeShellCommand(eq("pm clear --user current com.company.application"), any())
   }
 
   @Test
@@ -52,7 +65,7 @@ class ClearAppStorageTest {
     val device = mockDevice("com.company.application", clearAppStorageSuccess = false)
     clearAppStorage(projectRule.project, device, "com.company.application", RunStats(projectRule.project))
 
-    verify(device).executeShellCommand(eq("pm clear com.company.application"), any())
+    verify(device).executeShellCommand(eq("pm clear --user current com.company.application"), any())
     val notificationInfo =
       notificationRule.notifications.find { it.content == "Failed to clear app storage for com.company.application on device device1" }
     Truth.assertThat(notificationInfo).isNotNull()
@@ -63,20 +76,31 @@ class ClearAppStorageTest {
     val device = mockDevice("com.company.application1")
     clearAppStorage(projectRule.project, device, "com.company.application", RunStats(projectRule.project))
 
-    verify(device, never()).executeShellCommand(eq("pm clear com.company.application"), any())
+    verify(device, never()).executeShellCommand(eq("pm clear --user current com.company.application"), any())
   }
 }
 
-private fun mockDevice(packageName: String, clearAppStorageSuccess: Boolean = true): IDevice {
+private fun mockDevice(
+  vararg packageNames: String,
+  clearAppStorageSuccess: Boolean = true,
+  extraListOutput: String = "",
+): IDevice {
   val mock = mock<IDevice>()
   whenever(mock.executeShellCommand(any(), any())).thenAnswer {
     val command = it.arguments[0] as String
     val receiver = it.arguments[1] as CollectingOutputReceiver
     val result =
       when {
-        command == "pm clear $packageName" -> if (clearAppStorageSuccess) "Success" else "Failed"
-        command.startsWith("pm list packages ") -> if (command.endsWith(" $packageName")) "package:$packageName" else ""
-        command.startsWith("pm list packages") -> "some.package"
+        command.startsWith("pm clear --user current ") -> {
+          val pkg = command.removePrefix("pm clear --user current ")
+          if (pkg in packageNames && clearAppStorageSuccess) "Success" else "Failed"
+        }
+        command.startsWith("pm list packages --user current ") -> {
+          val filter = command.removePrefix("pm list packages --user current ")
+          val matching = packageNames.filter { it.contains(filter) }.map { "package:$it" }
+          (matching + listOfNotNull(extraListOutput.takeIf { it.isNotEmpty() })).joinToString("\n")
+        }
+        command == "pm list packages --user current" -> "some.package"
         else -> fail("""Command "$command" not setup in mock""")
       }
     whenever(mock.name).thenReturn("device1")

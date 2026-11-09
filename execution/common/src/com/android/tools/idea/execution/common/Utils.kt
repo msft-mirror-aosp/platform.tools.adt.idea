@@ -48,17 +48,16 @@ fun clearAppStorage(project: Project, device: IDevice, packageName: String, stat
   stats.track("CLEAR_APP_STORAGE_TASK") {
     // TODO(b/567222753): Remove logs when bug is fixed
     val logger = Logger.getInstance("com.android.tools.idea.execution.common.Utils")
-    val packageList = device.shellToString("pm list packages $packageName")
+    val packageList = device.shellToString("pm list packages --user current $packageName")
     logger.debug("clearAppStorage: packageName=$packageName packageList=$packageList")
-    val found = packageList.contains("^package:${packageName.replace(".", "\\.")}$".toRegex())
-    if (!found) {
+    if (packageList.lineSequence().none { it.trim() == "package:$packageName" }) {
       logger.info("clearAppStorage: Package $packageName not found on device")
-      val installed = device.shellToString("pm list packages")
+      val installed = device.shellToString("pm list packages --user current")
       logger.debug("clearAppStorage: Installed packages:\n${installed.prependIndent("  ")}")
       return@track
     }
-    val result = device.shellToString("pm clear $packageName").trim()
-    logger.debug("clearAppStorage: 'pm clear $packageName' returned $result")
+    val result = device.shellToString("pm clear --user current $packageName").trim()
+    logger.debug("clearAppStorage: 'pm clear --user current $packageName' returned $result")
     if (result != "Success") {
       val message = "Failed to clear app storage for $packageName on device ${device.name}"
       RunConfigurationNotifier.notifyWarning(project, "", message)

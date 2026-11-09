@@ -213,7 +213,7 @@ class AndroidRunConfigurationExecutorTest {
     processHandler.startNotify()
 
     assertThat(logcatCleared).isTrue() // comes from [com.android.tools.idea.run.tasks.ClearAppStorageTaskKt.clearAppStorage]
-    assertThat(deviceState.pmLogs).contains("list packages google.simpleapplication")
+    assertThat(deviceState.pmLogs).contains("list packages --user current google.simpleapplication")
     assertThat(processHandler).isInstanceOf(AndroidProcessHandler::class.java)
     assertThat((processHandler as AndroidProcessHandler).targetApplicationId).isEqualTo(APPLICATION_ID)
     assertThat(processHandler.autoTerminate).isEqualTo(true)
@@ -525,7 +525,7 @@ class AndroidRunConfigurationExecutorTest {
     processHandler.startNotify()
 
     assertThat(logcatCleared).isTrue() // comes from [com.android.tools.idea.run.tasks.ClearAppStorageTaskKt.clearAppStorage]
-    assertThat(deviceState.pmLogs).contains("list packages google.simpleapplication")
+    assertThat(deviceState.pmLogs).contains("list packages --user current google.simpleapplication")
     assertThat(processHandler).isInstanceOf(AndroidProcessHandler::class.java)
     assertThat((processHandler as AndroidProcessHandler).targetApplicationId).isEqualTo(APPLICATION_ID)
     assertThat(processHandler.autoTerminate).isEqualTo(true)
@@ -950,7 +950,7 @@ class AndroidRunConfigurationExecutorTest {
     processHandler.startNotify()
 
     assertThat(logcatCleared).isTrue() // comes from [com.android.tools.idea.run.tasks.ClearAppStorageTaskKt.clearAppStorage]
-    assertThat(deviceState.pmLogs).contains("list packages google.simpleapplication")
+    assertThat(deviceState.pmLogs).contains("list packages --user current google.simpleapplication")
     assertThat(processHandler).isInstanceOf(AndroidProcessHandler::class.java)
     assertThat((processHandler as AndroidProcessHandler).targetApplicationId).isEqualTo(APPLICATION_ID)
     assertThat(processHandler.autoTerminate).isEqualTo(true)
