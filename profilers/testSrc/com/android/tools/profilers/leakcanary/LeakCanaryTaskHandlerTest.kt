@@ -46,6 +46,7 @@ import kotlin.test.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito.doReturn
 
 class LeakCanaryTaskHandlerTest : WithFakeTimer {
   @get:org.junit.Rule val applicationRule = ApplicationRule()
@@ -223,6 +224,60 @@ class LeakCanaryTaskHandlerTest : WithFakeTimer {
     assertTrue(result)
     assertEquals(4, stage.leaks.value.size) // 4 leaks after load
   }
+
+  @Test
+  fun `library version is saved with the flag on`() {
+    leakCanaryTaskHandler.saveLibraryVersion(streamId = 1, pid = 10, thresholdEvent(version = "1.1.0"))
+
+    assertEquals("1.1.0", loadStudioLeakCanaryVersion(ideProfilerServices.temporaryProfilerPreferences, streamId = 1, pid = 10))
+  }
+
+  @Test
+  fun `library version is not saved with the flag off`() {
+    ideProfilerServices.enableLeakCanaryOccurrences(false)
+
+    leakCanaryTaskHandler.saveLibraryVersion(streamId = 1, pid = 10, thresholdEvent(version = "1.1.0"))
+
+    assertEquals(null, loadStudioLeakCanaryVersion(ideProfilerServices.temporaryProfilerPreferences, streamId = 1, pid = 10))
+  }
+
+  @Test
+  fun `isProjectProcess matches the project app and its sub-processes`() {
+    assertTrue(isProjectProcess("com.app", "com.app"))
+    assertTrue(isProjectProcess("com.app", "com.app:leakcanary"))
+    assertFalse(isProjectProcess("com.app", "com.other.app"))
+    assertFalse(isProjectProcess(null, "com.app"))
+    assertFalse(isProjectProcess("", "com.app"))
+  }
+
+  @Test
+  fun `check before recording saves the library version`() {
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0, studioLeakCanaryVersion = "1.1.0"),
+    )
+    val device = FakeTransportService.FAKE_DEVICE
+    val process = FakeTransportService.FAKE_PROCESS
+    val streamId = FakeTransportService.FAKE_DEVICE_ID
+    doReturn(streamId).`when`(profilers).getStreamId(device)
+    val preferences = ideProfilerServices.temporaryProfilerPreferences
+
+    runWithPolling {
+      leakCanaryTaskHandler.checkSupportForDeviceAndProcess(device, process)
+      val deadline = System.currentTimeMillis() + 10_000
+      while (loadStudioLeakCanaryVersion(preferences, streamId, process.pid) == null && System.currentTimeMillis() < deadline) {
+        Thread.sleep(10)
+      }
+    }
+
+    assertEquals("1.1.0", loadStudioLeakCanaryVersion(preferences, streamId, process.pid))
+  }
+
+  private fun thresholdEvent(version: String): Common.Event =
+    Common.Event.newBuilder()
+      .setKind(Common.Event.Kind.LEAKCANARY_THRESHOLD)
+      .setLeakcanaryThreshold(Common.LeakCanaryThresholdData.newBuilder().setThreshold(5).setStudioLeakcanaryVersion(version))
+      .build()
 
   @Test
   fun testCheckSupportForDeviceAndProcess() {

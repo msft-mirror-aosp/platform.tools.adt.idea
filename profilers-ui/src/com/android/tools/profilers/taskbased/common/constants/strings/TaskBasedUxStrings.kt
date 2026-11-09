@@ -191,10 +191,16 @@ object TaskBasedUxStrings {
   const val LEAKCANARY_TOOLTIP_FORCE_DUMP_WAITING = "Wait for at least 1 retained object to be detected before forcing a heap dump."
   const val LEAKCANARY_TOOLTIP_FORCE_DUMP_THRESHOLD_REACHED = "An automatic heap dump is already being captured."
   const val LEAKCANARY_TOOLTIP_FORCE_DUMP_EXECUTING = "A forced heap dump is already in progress..."
+  const val LEAKCANARY_TOOLTIP_FORCE_DUMP_ANALYZING = "LeakCanary is analyzing a heap dump. Wait for it to finish."
   const val LEAKCANARY_TOOLTIP_FORCE_DUMP_STOPPING = "A final heap dump is being captured before stopping."
   const val LEAKCANARY_TOOLTIP_FORCE_DUMP_STOPPING_NO_DUMP = "The recording is currently stopping."
   const val LEAKCANARY_BANNER_MESSAGE = "On-device customizations are being bypassed. Switch to App Customization to enable them."
   const val LEAKCANARY_EDIT_CONFIGURATION = "Edit configuration"
+  const val LEAKCANARY_OPEN_BUILD_FILE = "Open build file"
+
+  /** Shown when the app's studio-leakcanary is older than the version Android Studio needs. */
+  fun getLeakCanaryOutdatedLibraryMessage(foundVersion: String, minVersion: String) =
+    "The app's 'studio-leakcanary' dependency $foundVersion is outdated, so results might be incomplete. Update it to $minVersion or newer."
 
   fun getTaskTooltip(taskType: ProfilerTaskType, isProfilerHomeTabV2Enabled: Boolean = false) =
     if (isProfilerHomeTabV2Enabled) {

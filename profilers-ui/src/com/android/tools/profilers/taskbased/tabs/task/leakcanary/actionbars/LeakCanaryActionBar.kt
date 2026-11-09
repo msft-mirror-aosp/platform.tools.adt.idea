@@ -43,6 +43,7 @@ import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedU
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_CAPTURING_DUMP
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_FORCE_DUMP
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_RETAINED_OBJECT
+import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_TOOLTIP_FORCE_DUMP_ANALYZING
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_TOOLTIP_FORCE_DUMP_EXECUTING
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_TOOLTIP_FORCE_DUMP_STOPPING
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.LEAKCANARY_TOOLTIP_FORCE_DUMP_STOPPING_NO_DUMP
@@ -74,7 +75,15 @@ fun LeakCanaryActionBar(leakCanaryModel: LeakCanaryModel) {
   val retainedObjectThreshold by leakCanaryModel.retainedObjectThreshold.collectAsState()
   val isStopping by leakCanaryModel.isStopping.collectAsState()
   val isForceDumpExecuting by leakCanaryModel.isForceDumpExecuting.collectAsState()
-  val isForceDumpEnabled = objectRetainedCount > 0 && objectRetainedCount < retainedObjectThreshold && !isStopping && !isForceDumpExecuting
+  val analysisProgress by leakCanaryModel.analysisProgress.collectAsState()
+  // With perfa events in ON_DEVICE mode, LeakCanary can start a heap dump by itself. Don't allow a new heap dump while it analyzes one.
+  val isOnDeviceAnalysisRunning = leakCanaryModel.usesOnDeviceEvents && analysisProgress in 1..99
+  val isForceDumpEnabled =
+    objectRetainedCount > 0 &&
+      objectRetainedCount < retainedObjectThreshold &&
+      !isStopping &&
+      !isForceDumpExecuting &&
+      !isOnDeviceAnalysisRunning
 
   val forceDumpTooltipText =
     when {
@@ -82,6 +91,7 @@ fun LeakCanaryActionBar(leakCanaryModel: LeakCanaryModel) {
       isStopping -> LEAKCANARY_TOOLTIP_FORCE_DUMP_STOPPING_NO_DUMP
       objectRetainedCount >= retainedObjectThreshold -> LEAKCANARY_TOOLTIP_FORCE_DUMP_THRESHOLD_REACHED
       isForceDumpExecuting -> LEAKCANARY_TOOLTIP_FORCE_DUMP_EXECUTING
+      isOnDeviceAnalysisRunning -> LEAKCANARY_TOOLTIP_FORCE_DUMP_ANALYZING
       objectRetainedCount == 0 -> LEAKCANARY_TOOLTIP_FORCE_DUMP_WAITING
       else -> null
     }

@@ -73,10 +73,12 @@ import com.intellij.notification.NotificationType;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProcessCanceledException;
@@ -100,6 +102,7 @@ import com.intellij.psi.search.ProjectScope;
 import com.intellij.psi.search.searches.AllClassesSearch;
 import com.intellij.util.Processor;
 import com.intellij.util.Query;
+import com.intellij.util.concurrency.AppExecutorUtil;
 import com.intellij.util.containers.ContainerUtil;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -547,6 +550,41 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
       }
     });
     return future;
+  }
+
+  @Override
+  public boolean hasStudioLeakCanaryBuildFile() {
+    return ReadAction.compute(() -> !myProject.isDisposed() && findAppBuildFile() != null);
+  }
+
+  @Override
+  public void openStudioLeakCanaryDeclaration() {
+    // Reading files is slow, so the line is found off the main thread, and the file is opened on the main thread.
+    // A non-blocking read doesn't hold up edits. It restarts if an edit comes in, and stops if the project closes.
+    ReadAction.nonBlocking(() -> {
+        VirtualFile buildFile = findAppBuildFile();
+        return buildFile != null
+               ? StudioLeakCanaryDeclarationFinder.findStudioLeakCanaryDeclaration(
+                 buildFile, StudioLeakCanaryDeclarationFinder.findVersionCatalog(myProject))
+               : null;
+      })
+      .expireWith(myProject)
+      .finishOnUiThread(ModalityState.defaultModalityState(), declaration -> {
+        if (declaration == null) {
+          getLogger().warn("No Gradle build file found for the app module, so studio-leakcanary can't be opened.");
+          return;
+        }
+        new OpenFileDescriptor(myProject, declaration.getFile(), declaration.getLine(), 0).navigate(true);
+      })
+      .submit(AppExecutorUtil.getAppExecutorService());
+  }
+
+  /** Returns the Gradle build file of the app module in the selected run configuration, or null. */
+  @Nullable
+  private VirtualFile findAppBuildFile() {
+    AndroidRunConfigurationBase configuration = getAndroidRunConfiguration();
+    Module module = configuration != null ? configuration.getConfigurationModule().getModule() : null;
+    return module != null ? StudioLeakCanaryDeclarationFinder.findGradleBuildFile(module) : null;
   }
 
   @Nullable

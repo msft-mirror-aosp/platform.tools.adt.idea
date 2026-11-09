@@ -237,4 +237,38 @@ class LeakCanaryActionBarTest : WithFakeTimer {
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsDisplayed()
     composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsNotEnabled()
   }
+
+  @Test
+  fun `force heap dump button disabled while LeakCanary analyzes on the device`() {
+    leakCanaryModel.usesOnDeviceEvents = true
+    leakCanaryModel.setIsRecording(true)
+    leakCanaryModel.setObjectRetainedCount(1)
+    leakCanaryModel.setAnalysisProgress(40)
+
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
+    composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsDisplayed()
+    composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsNotEnabled()
+  }
+
+  @Test
+  fun `force heap dump button enabled during analysis progress without perfa events`() {
+    leakCanaryModel.usesOnDeviceEvents = false
+    leakCanaryModel.setIsRecording(true)
+    leakCanaryModel.setObjectRetainedCount(1)
+    leakCanaryModel.setAnalysisProgress(40)
+
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
+    composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsEnabled()
+  }
+
+  @Test
+  fun `force heap dump button enabled again when the on-device analysis is done`() {
+    leakCanaryModel.usesOnDeviceEvents = true
+    leakCanaryModel.setIsRecording(true)
+    leakCanaryModel.setObjectRetainedCount(1)
+    leakCanaryModel.setAnalysisProgress(100)
+
+    composeTestRule.setContent { LeakCanaryActionBar(leakCanaryModel = leakCanaryModel) }
+    composeTestRule.onNodeWithText(LEAKCANARY_FORCE_DUMP).assertIsEnabled()
+  }
 }

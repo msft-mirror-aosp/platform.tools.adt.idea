@@ -630,6 +630,28 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     return myIsPccApp;
   }
 
+  private boolean myHasStudioLeakCanaryBuildFile = false;
+  private int myOpenStudioLeakCanaryDeclarationCount = 0;
+
+  public void setHasStudioLeakCanaryBuildFile(boolean hasBuildFile) {
+    myHasStudioLeakCanaryBuildFile = hasBuildFile;
+  }
+
+  @Override
+  public boolean hasStudioLeakCanaryBuildFile() {
+    return myHasStudioLeakCanaryBuildFile;
+  }
+
+  @Override
+  public void openStudioLeakCanaryDeclaration() {
+    myOpenStudioLeakCanaryDeclarationCount++;
+  }
+
+  /** How many times the studio-leakcanary declaration was opened. */
+  public int getOpenStudioLeakCanaryDeclarationCount() {
+    return myOpenStudioLeakCanaryDeclarationCount;
+  }
+
   @Override
   public void buildAndLaunchAction(boolean profileableMode, ProcessListModel.@NotNull ProfilerDeviceSelection device) { }
 

@@ -232,6 +232,17 @@ interface IdeProfilerServices {
   fun addDependency(artifact: GoogleMavenArtifactId, dependencyType: DependencyType): CompletableFuture<Boolean> =
     CompletableFuture.completedFuture(false)
 
+  /**
+   * Returns true if the app module of the selected run configuration has a Gradle build file. Reads files, so call it off the main thread.
+   */
+  fun hasStudioLeakCanaryBuildFile(): Boolean = false
+
+  /**
+   * Opens the file where studio-leakcanary is declared, with the cursor on that line. Looks in the app module's build file, then in the
+   * project's version catalog. If neither has it, opens the app module's build file at the top.
+   */
+  fun openStudioLeakCanaryDeclaration() {}
+
   fun isDebuggerAttached(deviceId: String, pid: Int): Boolean
 
   /**

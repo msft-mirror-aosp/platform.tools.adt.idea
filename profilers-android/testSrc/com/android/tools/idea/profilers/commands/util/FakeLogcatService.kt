@@ -25,11 +25,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.consumeAsFlow
 
 internal class FakeLogcatService : LogcatService {
-  private var channel: Channel<List<LogcatMessage>>? = null
+  @Volatile private var channel: Channel<List<LogcatMessage>>? = null
 
   private var invocations = AtomicInteger()
 
   private val clearRequests = mutableListOf<String>()
+
+  /** True once readLogcat() was called, so messages can be sent. */
+  fun isReading() = channel != null
 
   suspend fun logMessages(vararg messages: LogcatMessage) {
     channel?.send(messages.asList()) ?: throw IllegalStateException("Channel not setup. Did you call readLogcat()?")

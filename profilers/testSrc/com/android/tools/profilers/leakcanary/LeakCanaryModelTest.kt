@@ -22,6 +22,7 @@ import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.idea.transport.faketransport.commands.CommandHandler
 import com.android.tools.leakcanarylib.data.Analysis
+import com.android.tools.leakcanarylib.data.AnalysisFailure
 import com.android.tools.leakcanarylib.data.AnalysisSuccess
 import com.android.tools.leakcanarylib.data.GcRootType
 import com.android.tools.leakcanarylib.data.Leak
@@ -37,17 +38,24 @@ import com.android.tools.profiler.proto.LeakCanary
 import com.android.tools.profiler.proto.LeakCanary.LeakCanaryAnalysisStatus
 import com.android.tools.profilers.FakeFeatureTracker
 import com.android.tools.profilers.FakeIdeProfilerServices
+import com.android.tools.profilers.Notification
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.WithFakeTimer
 import com.android.tools.profilers.cpu.config.LeakCanaryConfiguration
 import com.android.tools.profilers.cpu.config.LeakCanaryMode
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration
+import com.android.tools.profilers.tasks.analytics.LeakCanaryProcessingErrorCode
+import com.android.tools.profilers.tasks.analytics.LeakCanaryStartErrorCode
 import com.android.tools.profilers.tasks.analytics.LeakCanaryUiAction
+import com.intellij.openapi.util.text.StringUtil.escapeXmlEntities
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.LoggedErrorProcessor
 import com.intellij.testFramework.UsefulTestCase.assertEmpty
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -65,6 +73,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 
@@ -467,6 +476,974 @@ class LeakCanaryModelTest : WithFakeTimer {
 
     assertEquals(7, stage.retainedObjectThreshold.value)
     assertEquals(-1, ideProfilerServices.temporaryProfilerPreferences.getInt("LEAKCANARY_THRESHOLD", -1))
+  }
+
+  @Test
+  fun `stopListening sends stop count tracking command in ON_DEVICE mode`() {
+    assertStopCountTrackingSentOnce(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE)
+  }
+
+  @Test
+  fun `stopListening sends stop count tracking command in ON_HOST mode`() {
+    assertStopCountTrackingSentOnce(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST)
+  }
+
+  /** Starts and stops a recording in the given mode, and checks that the stop count tracking command was sent once. */
+  private fun assertStopCountTrackingSentOnce(mode: Commands.StartLeakCanaryTaskData.LeakCanaryMode) {
+    ideProfilerServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", 10)
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.START_LEAKCANARY_TASK,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
+    )
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
+    )
+    val stopCountHandler = CountingCommandHandler(timer)
+    transportService.setCommandHandler(Commands.Command.CommandType.STOP_LEAKCANARY_OBJECT_COUNT_TRACKING, stopCountHandler)
+
+    stage.setLeakCanaryMode(mode)
+    runWithPolling { stage.startListening() }
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    assertEquals(mode, stage.leakcanaryMode)
+    assertEquals(0, stopCountHandler.count)
+
+    stage.stopListening()
+
+    assertEquals(1, stopCountHandler.count)
+  }
+
+  @Test
+  fun `perfa events are used only in ON_DEVICE with the flag on`() {
+    startOnDevice(occurrencesEnabled = true)
+    assertTrue(stage.usesOnDeviceEvents)
+    stage.stopListening()
+
+    startOnDevice(occurrencesEnabled = false)
+    assertFalse(stage.usesOnDeviceEvents)
+  }
+
+  @Test
+  fun `on-device errors are ignored in ON_HOST with the flag on`() {
+    startRecording(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST, occurrencesEnabled = true)
+    assertFalse(stage.usesOnDeviceEvents)
+
+    sendPerfaEvent(deviceErrorEvent(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_UNSUPPORTED_VERSION))
+
+    assertTrue(stage.isRecording.value)
+    assertEquals(null, ideProfilerServices.notification)
+  }
+
+  @Test
+  fun `perfa count is shown in ON_DEVICE and does not force a heap dump`() {
+    val forceDumpHandler = CountingCommandHandler(timer)
+    transportService.setCommandHandler(Commands.Command.CommandType.FORCE_DUMP_LEAKCANARY_ON_DEVICE, forceDumpHandler)
+    startOnDevice(occurrencesEnabled = true)
+
+    sendPerfaEvent(countEvent(10)) // Above the threshold of 5.
+
+    assertEquals(10, stage.objectRetainedCount.value)
+    assertEquals(0, forceDumpHandler.count)
+    assertFalse(stage.isForceDumpExecuting.value)
+  }
+
+  @Test
+  fun `perfa progress is shown in ON_DEVICE`() {
+    startOnDevice(occurrencesEnabled = true)
+
+    sendPerfaEvent(progressEvent(42))
+
+    assertEquals(42, stage.analysisProgress.value)
+  }
+
+  @Test
+  fun `perfa count and progress are ignored in ON_DEVICE with the flag off`() {
+    startOnDevice(occurrencesEnabled = false)
+
+    sendPerfaEvent(countEvent(3))
+    sendPerfaEvent(progressEvent(42))
+
+    assertEquals(0, stage.objectRetainedCount.value)
+    assertEquals(0, stage.analysisProgress.value)
+  }
+
+  @Test
+  fun `logcat and perfa analysis events are both used with perfa events`() {
+    startOnDevice(occurrencesEnabled = true)
+
+    // Logcat still sends leaks added by hand with the LeakCanary:Manual tag.
+    sendPerfaEvent(FakeLeakCanaryCommandHandler.getLeakCanaryEvent(profilers, "SingleApplicationLeak.txt"))
+    assertEquals(1, stage.leaks.value.size)
+
+    sendPerfaEvent(structuredResultEvent())
+    assertEquals(2, stage.leaks.value.size)
+  }
+
+  @Test
+  fun `logcat analysis events are still used in ON_DEVICE with the flag off`() {
+    startOnDevice(occurrencesEnabled = false)
+
+    sendPerfaEvent(FakeLeakCanaryCommandHandler.getLeakCanaryEvent(profilers, "SingleApplicationLeak.txt"))
+
+    assertEquals(1, stage.leaks.value.size)
+  }
+
+  @Test
+  fun `perfa result keeps the count and saves the device LeakCanary version`() {
+    startOnDevice(occurrencesEnabled = true)
+    sendPerfaEvent(countEvent(3))
+    assertFalse(isSharkVersionEmitted())
+
+    sendPerfaEvent(structuredResultEvent())
+
+    assertEquals(1, stage.leaks.value.size)
+    assertEquals(3, stage.objectRetainedCount.value)
+    assertTrue(isSharkVersionEmitted())
+  }
+
+  @Test
+  fun `logcat result resets the count in ON_DEVICE with the flag off`() {
+    startOnDevice(occurrencesEnabled = false)
+    stage.setObjectRetainedCount(3)
+
+    sendPerfaEvent(FakeLeakCanaryCommandHandler.getLeakCanaryEvent(profilers, "SingleApplicationLeak.txt"))
+
+    assertEquals(0, stage.objectRetainedCount.value)
+  }
+
+  @Test
+  fun `perfa analysis failure keeps recording and shows no message`() {
+    startOnDevice(occurrencesEnabled = true)
+
+    val failure =
+      AnalysisFailure(
+        heapDumpFile = File("/tmp/test.hprof"),
+        createdAtTimeMillis = 1000L,
+        dumpDurationMillis = 50L,
+        analysisDurationMillis = 150L,
+        exception = Exception("Shark failed"),
+      )
+
+    sendPerfaEvent(analysisEvent(LeakCanaryProtoAdapter.toProto(failure)))
+
+    assertTrue(stage.isRecording.value)
+    assertEquals(null, ideProfilerServices.notification)
+  }
+
+  @Test
+  fun `unsupported version error shows a message and stops`() {
+    assertDeviceErrorStops(
+      Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_UNSUPPORTED_VERSION,
+      "Android Studio doesn't support this LeakCanary version. If you added LeakCanary yourself, use the version from studio-leakcanary instead.",
+      LeakCanaryProcessingErrorCode.UNKNOWN_ERROR,
+    )
+  }
+
+  @Test
+  fun `heap dump failed error shows a warning and keeps recording`() {
+    assertDeviceWarningKeepsRecording(
+      Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_ON_DEVICE_HEAP_DUMP_FAILED,
+      "Heap dump failed on the device, so this heap dump has no leak results. Check that the device has enough free storage.",
+      LeakCanaryProcessingErrorCode.HEAP_DUMP_GENERATION_FAILED,
+    )
+  }
+
+  @Test
+  fun `save failed error shows a warning and keeps recording`() {
+    assertDeviceWarningKeepsRecording(
+      Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_ON_DEVICE_SAVE_FAILED,
+      "Couldn't save the LeakCanary analysis result on the device. Check that the device has enough free storage.",
+      LeakCanaryProcessingErrorCode.UNKNOWN_ERROR,
+    )
+  }
+
+  @Test
+  fun `result read failed error shows a warning and keeps recording`() {
+    assertDeviceWarningKeepsRecording(
+      Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_ON_DEVICE_RESULT_READ_FAILED,
+      "Couldn't get the LeakCanary analysis result from the device, so this heap dump has no leak results.",
+      LeakCanaryProcessingErrorCode.UNKNOWN_ERROR,
+    )
+  }
+
+  @Test
+  fun `heap dump failed error ends the wait after force dump`() {
+    startOnDevice(occurrencesEnabled = true)
+    stage.setObjectRetainedCount(1)
+    stage.forceHeapDump(isUserInitiated = true)
+    assertTrue(stage.isForceDumpExecuting.value)
+
+    sendPerfaEvent(deviceErrorEvent(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_ON_DEVICE_HEAP_DUMP_FAILED))
+
+    assertFalse(stage.isForceDumpExecuting.value)
+    assertEquals(null, onDeviceAnswerWaitNs())
+    assertTrue(stage.isRecording.value)
+  }
+
+  @Test
+  fun `progress sent before a save failed error is ignored`() {
+    startOnDevice(occurrencesEnabled = true)
+    stage.setObjectRetainedCount(1)
+    stage.forceHeapDump(isUserInitiated = true)
+    val errorTimestamp = nextEventTimestamp + 10
+
+    // The error is handled first, and the older progress comes in a later poll.
+    transportService.addEventToStream(
+      profilers.session.streamId,
+      deviceErrorEvent(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_ON_DEVICE_SAVE_FAILED)
+        .toBuilder()
+        .setTimestamp(errorTimestamp)
+        .build(),
+    )
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    transportService.addEventToStream(
+      profilers.session.streamId,
+      progressEvent(98).toBuilder().setTimestamp(errorTimestamp - 1).build(),
+    )
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+
+    assertEquals(0, stage.analysisProgress.value)
+    assertFalse(stage.isForceDumpExecuting.value)
+  }
+
+  @Test
+  fun `save failed error clears the progress`() {
+    startOnDevice(occurrencesEnabled = true)
+    sendPerfaEvent(progressEvent(98))
+
+    sendPerfaEvent(deviceErrorEvent(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_ON_DEVICE_SAVE_FAILED))
+
+    assertEquals(0, stage.analysisProgress.value)
+    assertTrue(stage.isRecording.value)
+  }
+
+  @Test
+  fun `save failed error finishes a pending stop`() {
+    startOnDevice(occurrencesEnabled = true)
+    sendPerfaEvent(progressEvent(98))
+    stage.requestStopRecording()
+    assertTrue(stage.isStopping.value)
+
+    sendPerfaEvent(deviceErrorEvent(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_ON_DEVICE_SAVE_FAILED))
+
+    assertFalse(stage.isRecording.value)
+  }
+
+  @Test
+  fun `the warning shows again each time the error comes`() {
+    startOnDevice(occurrencesEnabled = true)
+    val error = deviceErrorEvent(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_ON_DEVICE_HEAP_DUMP_FAILED)
+    sendPerfaEvent(error)
+    assertEquals("LeakCanary Warning", ideProfilerServices.notification?.title)
+
+    ideProfilerServices.showNotification(Notification(Notification.Severity.INFO, "other", "other", null))
+    sendPerfaEvent(error)
+
+    assertEquals("LeakCanary Warning", ideProfilerServices.notification?.title)
+    assertTrue(stage.isRecording.value)
+  }
+
+  @Test
+  fun `on-device errors are ignored with the flag off`() {
+    startOnDevice(occurrencesEnabled = false)
+
+    sendPerfaEvent(deviceErrorEvent(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_ON_DEVICE_SAVE_FAILED))
+    sendPerfaEvent(deviceErrorEvent(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_ON_DEVICE_RESULT_READ_FAILED))
+
+    assertTrue(stage.isRecording.value)
+    assertEquals(null, ideProfilerServices.notification)
+  }
+
+  @Test
+  fun `app context error sends only start failed telemetry and stops`() {
+    val loggedErrors = sendOlderDeviceError(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_APP_CONTEXT_NULL)
+
+    val tracker = ideProfilerServices.featureTracker as FakeFeatureTracker
+    assertEquals(LeakCanaryStartErrorCode.APP_CONTEXT_NULL, tracker.lastTaskStartFailedMetadata?.leakCanaryStartStatus)
+    assertEquals(0, tracker.taskProcessingFailedCount)
+    assertEquals(listOf("LeakCanary Fatal Error (UNKNOWN_ERROR): Failed to get Application Context on device."), loggedErrors)
+    assertEquals("LeakCanary Task Failed", ideProfilerServices.notification?.title)
+    assertFalse(stage.isRecording.value)
+  }
+
+  @Test
+  fun `logcat parsing error sends processing failed telemetry once`() {
+    sendOlderDeviceError(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_LOGCAT_PARSING_FAILURE)
+
+    val tracker = ideProfilerServices.featureTracker as FakeFeatureTracker
+    assertEquals(1, tracker.taskProcessingFailedCount)
+    assertEquals(LeakCanaryProcessingErrorCode.PARSING_FAILURE, tracker.lastTaskProcessingFailedMetadata?.leakCanaryProcessingStatus)
+    assertFalse(stage.isRecording.value)
+  }
+
+  @Test
+  fun `broadcast delivery error sends processing failed telemetry once`() {
+    sendOlderDeviceError(Common.LeakCanaryDeviceError.ErrorType.LEAKCANARY_ERROR_BROADCAST_DELIVERY_FAILED)
+
+    val tracker = ideProfilerServices.featureTracker as FakeFeatureTracker
+    assertEquals(1, tracker.taskProcessingFailedCount)
+    assertEquals(
+      LeakCanaryProcessingErrorCode.BROADCAST_DELIVERY_FAILED,
+      tracker.lastTaskProcessingFailedMetadata?.leakCanaryProcessingStatus,
+    )
+    assertFalse(stage.isRecording.value)
+  }
+
+  @Test
+  fun `force dump is enabled again after 60 seconds without an answer`() {
+    startOnDevice(occurrencesEnabled = true)
+    stage.setObjectRetainedCount(1)
+
+    stage.forceHeapDump(isUserInitiated = true)
+    assertTrue(stage.isForceDumpExecuting.value)
+
+    timer.tick(TimeUnit.SECONDS.toNanos(59))
+    assertTrue(stage.isForceDumpExecuting.value)
+    timer.tick(TimeUnit.SECONDS.toNanos(2))
+    assertFalse(stage.isForceDumpExecuting.value)
+    assertTrue(stage.isRecording.value)
+  }
+
+  @Test
+  fun `progress starts the 60 second wait again`() {
+    startOnDevice(occurrencesEnabled = true)
+    stage.setObjectRetainedCount(1)
+    stage.forceHeapDump(isUserInitiated = true)
+
+    timer.tick(TimeUnit.SECONDS.toNanos(50))
+    sendPerfaEvent(progressEvent(10)) // Also ticks 1 second.
+    timer.tick(TimeUnit.SECONDS.toNanos(50))
+
+    assertTrue(stage.isForceDumpExecuting.value)
+    timer.tick(TimeUnit.SECONDS.toNanos(10))
+    assertFalse(stage.isForceDumpExecuting.value)
+  }
+
+  @Test
+  fun `stop finishes after 60 seconds without an answer`() {
+    startOnDevice(occurrencesEnabled = true)
+    stage.setObjectRetainedCount(1)
+
+    stage.requestStopRecording() // Forces a heap dump first.
+    assertTrue(stage.isStopping.value)
+
+    timer.tick(TimeUnit.SECONDS.toNanos(59))
+    assertTrue(stage.isRecording.value)
+    timer.tick(TimeUnit.SECONDS.toNanos(2))
+    assertFalse(stage.isRecording.value)
+    assertFalse(stage.isStopping.value)
+  }
+
+  @Test
+  fun `stop during a running analysis finishes after 60 seconds without an answer`() {
+    // The stage gets a real task tracker only when it is entered. Without it, telemetry is dropped.
+    profilers.stage = stage
+    startOnDevice(occurrencesEnabled = true)
+    sendPerfaEvent(progressEvent(30))
+
+    stage.requestStopRecording() // No new heap dump, an analysis is already running.
+    assertTrue(stage.isStopping.value)
+
+    timer.tick(TimeUnit.SECONDS.toNanos(59))
+    assertTrue(stage.isRecording.value)
+    timer.tick(TimeUnit.SECONDS.toNanos(2))
+    assertFalse(stage.isRecording.value)
+    val tracker = ideProfilerServices.featureTracker as FakeFeatureTracker
+    assertEquals(LeakCanaryUiAction.CANCELLED_DURING_ANALYSIS, tracker.lastLeakCanaryUiAction)
+  }
+
+  @Test
+  fun `stop finishes when the perfa result comes`() {
+    startOnDevice(occurrencesEnabled = true)
+    stage.setObjectRetainedCount(1)
+    stage.requestStopRecording()
+
+    sendPerfaEvent(structuredResultEvent())
+
+    assertFalse(stage.isRecording.value)
+    assertEquals(1, stage.leaks.value.size)
+  }
+
+  @Test
+  fun `stop during a running analysis finishes when the perfa result comes`() {
+    startOnDevice(occurrencesEnabled = true)
+    sendPerfaEvent(progressEvent(30))
+    stage.requestStopRecording()
+    assertTrue(stage.isStopping.value)
+
+    sendPerfaEvent(structuredResultEvent())
+
+    assertFalse(stage.isRecording.value)
+    assertEquals(1, stage.leaks.value.size)
+  }
+
+  @Test
+  fun `progress sent before the result does not show the analysis as running again`() {
+    startOnDevice(occurrencesEnabled = true)
+    stage.setObjectRetainedCount(1)
+    stage.forceHeapDump(isUserInitiated = true)
+
+    // Both arrive in the same poll. The result is handled first, because its listener was registered first.
+    addPerfaEvent(progressEvent(98))
+    addPerfaEvent(structuredResultEvent())
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+
+    assertEquals(0, stage.analysisProgress.value)
+    assertFalse(stage.isForceDumpExecuting.value)
+  }
+
+  @Test
+  fun `progress of the next analysis is shown after a result`() {
+    startOnDevice(occurrencesEnabled = true)
+    sendPerfaEvent(progressEvent(98))
+    sendPerfaEvent(structuredResultEvent())
+    assertEquals(0, stage.analysisProgress.value)
+
+    sendPerfaEvent(progressEvent(10))
+
+    assertEquals(10, stage.analysisProgress.value)
+  }
+
+  @Test
+  fun `timeout after force dump clears a stalled progress`() {
+    startOnDevice(occurrencesEnabled = true)
+    stage.setObjectRetainedCount(1)
+    stage.forceHeapDump(isUserInitiated = true)
+    sendPerfaEvent(progressEvent(40))
+
+    timer.tick(TimeUnit.SECONDS.toNanos(61))
+
+    assertEquals(0, stage.analysisProgress.value)
+    assertFalse(stage.isForceDumpExecuting.value)
+    assertTrue(stage.isRecording.value)
+  }
+
+  @Test
+  fun `perfa analysis failure ends the wait and enables force dump again`() {
+    startOnDevice(occurrencesEnabled = true)
+    stage.setObjectRetainedCount(1)
+    stage.requestStopRecording() // Forces a heap dump first.
+    assertTrue(stage.isStopping.value)
+
+    val failure =
+      AnalysisFailure(
+        heapDumpFile = File("/tmp/test.hprof"),
+        createdAtTimeMillis = 1000L,
+        dumpDurationMillis = 50L,
+        analysisDurationMillis = 150L,
+        exception = Exception("Shark failed"),
+      )
+    sendPerfaEvent(analysisEvent(LeakCanaryProtoAdapter.toProto(failure)))
+
+    // The failure is an answer, so the pending Stop finishes right away.
+    assertFalse(stage.isRecording.value)
+    assertFalse(stage.isForceDumpExecuting.value)
+  }
+
+  @Test
+  fun `count at the threshold still forces a heap dump in ON_HOST with the flag on`() {
+    assertOnHostCountForcesHeapDump(occurrencesEnabled = true)
+  }
+
+  @Test
+  fun `count at the threshold still forces a heap dump in ON_HOST with the flag off`() {
+    assertOnHostCountForcesHeapDump(occurrencesEnabled = false)
+  }
+
+  /** Starts ON_HOST and checks that Studio dumps the heap only when the count reaches the threshold. */
+  private fun assertOnHostCountForcesHeapDump(occurrencesEnabled: Boolean) {
+    startRecording(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST, occurrencesEnabled)
+
+    sendPerfaEvent(countEvent(stage.retainedObjectThreshold.value - 1))
+    verify(mockHeapDumper, never()).triggerAndAnalyze()
+
+    sendPerfaEvent(countEvent(stage.retainedObjectThreshold.value))
+    verify(mockHeapDumper).triggerAndAnalyze()
+  }
+
+  @Test
+  fun `no 60 second wait with the flag off`() {
+    startOnDevice(occurrencesEnabled = false)
+    stage.setObjectRetainedCount(1)
+    stage.forceHeapDump(isUserInitiated = true)
+
+    timer.tick(TimeUnit.SECONDS.toNanos(61))
+
+    assertTrue(stage.isForceDumpExecuting.value)
+  }
+
+  @Test
+  fun `outdated library banner shows in ON_DEVICE with the flag on`() {
+    saveVersionForSession("0.0.1")
+    ideProfilerServices.setHasStudioLeakCanaryBuildFile(true)
+    profilers.preferredProcessName = FakeTransportService.FAKE_PROCESS_NAME
+
+    startOnDevice(occurrencesEnabled = true)
+
+    assertEquals("0.0.1", stage.outdatedLibraryVersion.value)
+    assertTrue(stage.canOpenBuildFile.value)
+  }
+
+  @Test
+  fun `outdated library banner shows in ON_HOST with the flag on`() {
+    saveVersionForSession("0.0.1")
+
+    startRecording(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST, occurrencesEnabled = true)
+
+    assertEquals("0.0.1", stage.outdatedLibraryVersion.value)
+  }
+
+  @Test
+  fun `no outdated library banner with the flag off`() {
+    saveVersionForSession("0.0.1")
+
+    startOnDevice(occurrencesEnabled = false)
+
+    assertEquals(null, stage.outdatedLibraryVersion.value)
+  }
+
+  @Test
+  fun `no outdated library banner for the minimum version`() {
+    saveVersionForSession(MIN_STUDIO_LEAKCANARY_VERSION)
+
+    startOnDevice(occurrencesEnabled = true)
+
+    assertEquals(null, stage.outdatedLibraryVersion.value)
+  }
+
+  @Test
+  fun `no outdated library banner when no version was saved`() {
+    startOnDevice(occurrencesEnabled = true)
+
+    assertEquals(null, stage.outdatedLibraryVersion.value)
+  }
+
+  @Test
+  fun `no Open build file link without a build file`() {
+    saveVersionForSession("0.0.1")
+    ideProfilerServices.setHasStudioLeakCanaryBuildFile(false)
+    profilers.preferredProcessName = FakeTransportService.FAKE_PROCESS_NAME
+
+    startOnDevice(occurrencesEnabled = true)
+
+    assertEquals("0.0.1", stage.outdatedLibraryVersion.value)
+    assertFalse(stage.canOpenBuildFile.value)
+  }
+
+  @Test
+  fun `no Open build file link when the profiled app is not the project app`() {
+    saveVersionForSession("0.0.1")
+    ideProfilerServices.setHasStudioLeakCanaryBuildFile(true)
+    profilers.preferredProcessName = "com.other.app"
+
+    startOnDevice(occurrencesEnabled = true)
+
+    assertEquals("0.0.1", stage.outdatedLibraryVersion.value)
+    assertFalse(stage.canOpenBuildFile.value)
+  }
+
+  @Test
+  fun `Open build file link resets on the next recording`() {
+    saveVersionForSession("0.0.1")
+    ideProfilerServices.setHasStudioLeakCanaryBuildFile(true)
+    profilers.preferredProcessName = FakeTransportService.FAKE_PROCESS_NAME
+    startOnDevice(occurrencesEnabled = true)
+    assertTrue(stage.canOpenBuildFile.value)
+    stage.stopListening()
+
+    saveVersionForSession(MIN_STUDIO_LEAKCANARY_VERSION)
+    startOnDevice(occurrencesEnabled = true)
+
+    assertEquals(null, stage.outdatedLibraryVersion.value)
+    assertFalse(stage.canOpenBuildFile.value)
+  }
+
+  @Test
+  fun `version in the threshold the model asks for is saved and checked`() {
+    startWithModelThresholdFetch(occurrencesEnabled = true, threshold = 5)
+
+    assertEquals("0.0.1", stage.outdatedLibraryVersion.value)
+    assertEquals(
+      "0.0.1",
+      loadStudioLeakCanaryVersion(ideProfilerServices.temporaryProfilerPreferences, profilers.session.streamId, profilers.session.pid),
+    )
+  }
+
+  @Test
+  fun `version in the threshold the model asks for is ignored with the flag off`() {
+    startWithModelThresholdFetch(occurrencesEnabled = false, threshold = 5)
+
+    assertEquals(null, stage.outdatedLibraryVersion.value)
+    assertEquals(
+      null,
+      loadStudioLeakCanaryVersion(ideProfilerServices.temporaryProfilerPreferences, profilers.session.streamId, profilers.session.pid),
+    )
+  }
+
+  @Test
+  fun `version in the threshold the model asks for is ignored when the library did not answer`() {
+    startWithModelThresholdFetch(occurrencesEnabled = true, threshold = 0)
+
+    assertEquals(null, stage.outdatedLibraryVersion.value)
+    assertEquals(
+      null,
+      loadStudioLeakCanaryVersion(ideProfilerServices.temporaryProfilerPreferences, profilers.session.streamId, profilers.session.pid),
+    )
+  }
+
+  /** Starts ON_DEVICE with no saved threshold, so the model asks for it. The reply has [threshold] and the version "0.0.1". */
+  private fun startWithModelThresholdFetch(occurrencesEnabled: Boolean, threshold: Int) {
+    ideProfilerServices.enableLeakCanaryOccurrences(occurrencesEnabled)
+    ideProfilerServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", -1)
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.START_LEAKCANARY_TASK,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
+    )
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.GET_LEAKCANARY_THRESHOLD,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0, retainedObjectThreshold = threshold, studioLeakCanaryVersion = "0.0.1"),
+    )
+
+    stage.setLeakCanaryMode(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE)
+    runWithPolling { stage.startListening() }
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    // The reply reached the model.
+    assertEquals(threshold, stage.retainedObjectThreshold.value)
+  }
+
+  @Test
+  fun `config banner waits while the outdated library banner shows`() {
+    extraConfigs.add(LeakCanaryConfiguration("LeakCanary").apply { source = LeakCanaryMode.STUDIO })
+    saveVersionForSession("0.0.1")
+
+    startRecording(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST, occurrencesEnabled = true)
+
+    assertEquals("0.0.1", stage.outdatedLibraryVersion.value)
+    assertFalse(stage.isBannerVisible.value)
+
+    stage.dismissOutdatedLibraryBanner()
+
+    assertEquals(null, stage.outdatedLibraryVersion.value)
+    assertTrue(stage.isBannerVisible.value)
+  }
+
+  @Test
+  fun `open build file opens the studio-leakcanary declaration`() {
+    stage.openBuildFile()
+
+    assertEquals(1, ideProfilerServices.openStudioLeakCanaryDeclarationCount)
+  }
+
+  @Test
+  fun `Manual trace shows its leaks in ON_HOST with the flag on`() {
+    startRecording(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST, occurrencesEnabled = true)
+
+    sendPerfaEvent(manualTraceEvent())
+
+    assertTrue(stage.leaks.value.isNotEmpty())
+    assertEquals(stage.leaks.value.first(), stage.selectedLeak.value)
+  }
+
+  @Test
+  fun `saved copy of a host result is not shown again in ON_HOST`() {
+    startRecording(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST, occurrencesEnabled = true)
+
+    sendPerfaEvent(structuredResultEvent())
+
+    assertTrue(stage.leaks.value.isEmpty())
+  }
+
+  @Test
+  fun `Manual trace is not read in ON_HOST with the flag off`() {
+    startRecording(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST, occurrencesEnabled = false)
+
+    sendPerfaEvent(manualTraceEvent())
+
+    assertTrue(stage.leaks.value.isEmpty())
+  }
+
+  @Test
+  fun `Manual trace during a host heap dump keeps Force dump grey in ON_HOST`() {
+    `when`(mockHeapDumper.triggerAndAnalyze()).thenReturn(true)
+    startRecording(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST, occurrencesEnabled = true)
+    stage.forceHeapDump(isUserInitiated = true)
+    assertTrue(stage.isForceDumpExecuting.value)
+
+    sendPerfaEvent(manualTraceEvent())
+
+    assertTrue(stage.leaks.value.isNotEmpty())
+    assertTrue(stage.isForceDumpExecuting.value)
+  }
+
+  @Test
+  fun `Manual trace during a device analysis keeps progress and Stop in ON_DEVICE`() {
+    startOnDevice(occurrencesEnabled = true)
+    sendPerfaEvent(progressEvent(30))
+    stage.requestStopRecording() // An analysis is running, so Stop waits for its result.
+
+    sendPerfaEvent(manualTraceEvent())
+
+    assertTrue(stage.leaks.value.isNotEmpty())
+    assertEquals(30, stage.analysisProgress.value)
+    assertTrue(stage.isStopping.value)
+    assertTrue(stage.isRecording.value)
+    // The 60 second wait for the device answer still runs.
+    timer.tick(TimeUnit.SECONDS.toNanos(61))
+    assertFalse(stage.isRecording.value)
+  }
+
+  /** Saves the studio-leakcanary version for the app process of the session, as the pre-start check does. */
+  private fun saveVersionForSession(version: String) {
+    saveStudioLeakCanaryVersion(
+      ideProfilerServices.temporaryProfilerPreferences,
+      profilers.session.streamId,
+      profilers.session.pid,
+      version,
+    )
+  }
+
+  /** Starts a recording in ON_DEVICE mode with the given occurrences flag. */
+  private fun startOnDevice(occurrencesEnabled: Boolean) {
+    startRecording(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE, occurrencesEnabled)
+  }
+
+  /** Starts a recording in the given mode with the given occurrences flag. */
+  private fun startRecording(mode: Commands.StartLeakCanaryTaskData.LeakCanaryMode, occurrencesEnabled: Boolean) {
+    ideProfilerServices.enableLeakCanaryOccurrences(occurrencesEnabled)
+    ideProfilerServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", 5)
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.START_LEAKCANARY_TASK,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
+    )
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.STOP_LEAKCANARY_TASK,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
+    )
+    stage.setLeakCanaryMode(mode)
+    runWithPolling { stage.startListening() }
+    assertEquals(mode, stage.leakcanaryMode)
+  }
+
+  /** Sends an event as perfa would, and lets the poller deliver it. */
+  private fun sendPerfaEvent(event: Common.Event) {
+    addPerfaEvent(event)
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+  }
+
+  /** Adds an event as perfa would, without delivering it yet. Each event gets a later time than the one before, like in the daemon. */
+  private fun addPerfaEvent(event: Common.Event) {
+    transportService.addEventToStream(profilers.session.streamId, event.toBuilder().setTimestamp(nextEventTimestamp++).build())
+  }
+
+  // Event times must be after the session start, which the listeners use as their start time. The wall clock in ms is far larger than
+  // the fake timer's start, so it works.
+  private var nextEventTimestamp = System.currentTimeMillis()
+
+  private fun countEvent(count: Int): Common.Event =
+    Common.Event.newBuilder()
+      .setPid(profilers.session.pid)
+      .setKind(Common.Event.Kind.LEAKCANARY_OBJECT_COUNT)
+      .setLeakcanaryObjectCount(Common.LeakCanaryObjectCountData.newBuilder().setCount(count))
+      .build()
+
+  private fun progressEvent(percent: Int): Common.Event =
+    Common.Event.newBuilder()
+      .setPid(profilers.session.pid)
+      .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS_PROGRESS)
+      .setLeakcanaryAnalysisProgress(Common.LeakCanaryAnalysisProgress.newBuilder().setPercent(percent))
+      .build()
+
+  private fun deviceErrorEvent(errorType: Common.LeakCanaryDeviceError.ErrorType): Common.Event =
+    Common.Event.newBuilder()
+      .setPid(profilers.session.pid)
+      .setKind(Common.Event.Kind.LEAKCANARY_DEVICE_ERROR)
+      .setLeakcanaryDeviceError(Common.LeakCanaryDeviceError.newBuilder().setErrorType(errorType))
+      .build()
+
+  private fun analysisEvent(data: LeakCanary.LeakCanaryAnalysisData): Common.Event =
+    Common.Event.newBuilder()
+      .setGroupId(profilers.session.pid.toLong())
+      .setPid(profilers.session.pid)
+      .setKind(Common.Event.Kind.LEAKCANARY_ANALYSIS)
+      .setLeakcanaryAnalysis(data)
+      .build()
+
+  /** A LeakCanary:Manual trace, as the Logcat handler sends it: text only. */
+  private fun manualTraceEvent(): Common.Event = FakeLeakCanaryCommandHandler.getLeakCanaryEvent(profilers, "SingleApplicationLeak.txt")
+
+  /** A structured result with one leak, as perfa sends it. */
+  private fun structuredResultEvent(): Common.Event =
+    analysisEvent(
+      LeakCanaryProtoAdapter.toProto(
+        AnalysisSuccess(
+          heapDumpFile = File("/tmp/test.hprof"),
+          createdAtTimeMillis = 1000L,
+          dumpDurationMillis = 50L,
+          analysisDurationMillis = 150L,
+          metadata = mapOf("LeakCanary version" to "2.14"),
+          leaks = listOf(oneTraceLeak()),
+        )
+      )
+    )
+
+  private fun oneTraceLeak(): Leak =
+    Leak(
+      type = LeakType.APPLICATION_LEAKS,
+      retainedByteSize = 1000,
+      signature = "perfa_sig",
+      leakTraceCount = 1,
+      displayedLeakTrace =
+        listOf(
+          LeakTrace(
+            gcRootType = GcRootType.JAVA_FRAME,
+            nodes =
+              listOf(
+                Node(
+                  nodeType = LeakTraceNodeType.INSTANCE,
+                  className = "com.example.LeakingActivity",
+                  leakingStatus = LeakingStatus.YES,
+                  leakingStatusReason = "Destroyed",
+                  retainedHeapSize = "1 kB",
+                  retainedObjectCount = 1,
+                  notes = emptyList(),
+                  referencingField = null,
+                )
+              ),
+          )
+        ),
+    )
+
+  private fun isSharkVersionEmitted(): Boolean {
+    val field = LeakCanaryModel::class.java.getDeclaredField("isSharkVersionEmitted")
+    field.isAccessible = true
+    return (field.get(stage) as AtomicBoolean).get()
+  }
+
+  /** Time since the wait for a device answer started, or null when Studio is not waiting. */
+  private fun onDeviceAnswerWaitNs(): Long? {
+    val field = LeakCanaryModel::class.java.getDeclaredField("onDeviceAnswerWaitNs")
+    field.isAccessible = true
+    return field.get(stage) as Long?
+  }
+
+  /** Starts ON_DEVICE with the flag on, sends the device error, and checks the error pop-up, the telemetry and the stop. */
+  private fun assertDeviceErrorStops(
+    errorType: Common.LeakCanaryDeviceError.ErrorType,
+    message: String,
+    telemetryCode: LeakCanaryProcessingErrorCode,
+  ) {
+    sendDeviceErrorAndCheckPopup(
+      errorType,
+      Notification.Severity.ERROR,
+      "LeakCanary Task Failed",
+      message,
+      telemetryCode,
+      expectedErrorLogs = listOf("LeakCanary Fatal Error ($telemetryCode): $message"),
+    )
+    assertFalse(stage.isRecording.value)
+  }
+
+  /** Starts ON_DEVICE with the flag on, sends the device error, and checks the warning pop-up, the telemetry and that recording goes on. */
+  private fun assertDeviceWarningKeepsRecording(
+    errorType: Common.LeakCanaryDeviceError.ErrorType,
+    message: String,
+    telemetryCode: LeakCanaryProcessingErrorCode,
+  ) {
+    // A warning is not a Studio bug, so nothing may be logged as an error.
+    sendDeviceErrorAndCheckPopup(
+      errorType,
+      Notification.Severity.WARNING,
+      "LeakCanary Warning",
+      message,
+      telemetryCode,
+      expectedErrorLogs = emptyList(),
+    )
+    assertTrue(stage.isRecording.value)
+  }
+
+  /** Starts a recording with a real task tracker, sends one of the older device errors, and returns the errors that were logged. */
+  private fun sendOlderDeviceError(errorType: Common.LeakCanaryDeviceError.ErrorType): List<String> {
+    // The stage gets a real task tracker only when it is entered. Without it, telemetry is dropped.
+    profilers.stage = stage
+    startOnDevice(occurrencesEnabled = false)
+
+    // A logged error fails the test unless it is caught here.
+    val loggedErrors = mutableListOf<String>()
+    LoggedErrorProcessor.executeWith<RuntimeException>(
+      object : LoggedErrorProcessor() {
+        override fun processError(category: String, message: String, details: Array<out String>, t: Throwable?): Set<Action> {
+          loggedErrors.add(message)
+          return Action.NONE
+        }
+      }
+    ) {
+      sendPerfaEvent(deviceErrorEvent(errorType))
+    }
+    return loggedErrors
+  }
+
+  private fun sendDeviceErrorAndCheckPopup(
+    errorType: Common.LeakCanaryDeviceError.ErrorType,
+    severity: Notification.Severity,
+    title: String,
+    message: String,
+    telemetryCode: LeakCanaryProcessingErrorCode,
+    expectedErrorLogs: List<String>,
+  ) {
+    // The stage gets a real task tracker only when it is entered. Without it, telemetry is dropped.
+    profilers.stage = stage
+    startOnDevice(occurrencesEnabled = true)
+
+    // A logged error fails the test unless it is caught here.
+    val loggedErrors = mutableListOf<String>()
+    LoggedErrorProcessor.executeWith<RuntimeException>(
+      object : LoggedErrorProcessor() {
+        override fun processError(category: String, message: String, details: Array<out String>, t: Throwable?): Set<Action> {
+          loggedErrors.add(message)
+          return Action.NONE
+        }
+      }
+    ) {
+      sendPerfaEvent(deviceErrorEvent(errorType))
+    }
+
+    assertEquals(expectedErrorLogs, loggedErrors)
+    assertEquals(severity, ideProfilerServices.notification?.severity)
+    assertEquals(title, ideProfilerServices.notification?.title)
+    // The balloon shows HTML, so the text is escaped (for example, ' becomes &#39;).
+    assertEquals(escapeXmlEntities(message), ideProfilerServices.notification?.text)
+    val tracker = ideProfilerServices.featureTracker as FakeFeatureTracker
+    assertEquals(telemetryCode, tracker.lastTaskProcessingFailedMetadata?.leakCanaryProcessingStatus)
+  }
+
+  @Test
+  fun `set mode command sends occurrences flag when on`() {
+    assertSetModeSendsOccurrences(true)
+  }
+
+  @Test
+  fun `set mode command sends occurrences flag when off`() {
+    assertSetModeSendsOccurrences(false)
+  }
+
+  /** Starts a recording with the given flag value, and checks the set mode command carries it. */
+  private fun assertSetModeSendsOccurrences(enabled: Boolean) {
+    ideProfilerServices.enableLeakCanaryOccurrences(enabled)
+    ideProfilerServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", 10)
+    transportService.setCommandHandler(
+      Commands.Command.CommandType.START_LEAKCANARY_TASK,
+      FakeLeakCanaryCommandHandler(timer, profilers, listOf(), 0),
+    )
+    val setModeHandler = CountingCommandHandler(timer)
+    transportService.setCommandHandler(Commands.Command.CommandType.SET_STUDIO_LEAKCANARY_MODE, setModeHandler)
+
+    stage.setLeakCanaryMode(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE)
+    runWithPolling { stage.startListening() }
+
+    assertEquals(1, setModeHandler.count)
+    val data = setModeHandler.lastCommand!!.setStudioLeakcanaryMode
+    assertEquals(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE, data.mode)
+    assertEquals(enabled, data.profilerLeakcanaryOccurrences)
   }
 
   @Test
@@ -1258,12 +2235,24 @@ class LeakCanaryModelTest : WithFakeTimer {
   }
 }
 
+/** Counts how many times a command was sent and keeps the last one. Sends no events. */
+class CountingCommandHandler(timer: FakeTimer) : CommandHandler(timer) {
+  var count = 0
+  var lastCommand: Commands.Command? = null
+
+  override fun handleCommand(command: Commands.Command, events: MutableList<Common.Event>) {
+    count++
+    lastCommand = command
+  }
+}
+
 class FakeLeakCanaryCommandHandler(
   timer: FakeTimer,
   val profilers: StudioProfilers,
   val leaksToSendFiles: List<String>,
   val startTimestamp: Long,
   val retainedObjectThreshold: Int = 5,
+  val studioLeakCanaryVersion: String = "",
 ) : CommandHandler(timer) {
   override fun handleCommand(command: Commands.Command, events: MutableList<Common.Event>) {
 
@@ -1318,7 +2307,12 @@ class FakeLeakCanaryCommandHandler(
             .setCommandId(command.commandId)
             .setTimestamp(System.currentTimeMillis())
             .setKind(Common.Event.Kind.LEAKCANARY_THRESHOLD)
-            .setLeakcanaryThreshold(Common.LeakCanaryThresholdData.newBuilder().setThreshold(retainedObjectThreshold).build())
+            .setLeakcanaryThreshold(
+              Common.LeakCanaryThresholdData.newBuilder()
+                .setThreshold(retainedObjectThreshold)
+                .setStudioLeakcanaryVersion(studioLeakCanaryVersion)
+                .build()
+            )
             .build()
         )
       }

@@ -60,6 +60,7 @@ import com.android.tools.profilers.taskbased.common.dividers.ToolWindowHorizonta
 import com.android.tools.profilers.taskbased.common.dividers.ToolWindowVerticalDivider
 import com.android.tools.profilers.taskbased.tabs.task.leakcanary.actionbars.LeakCanaryActionBar
 import com.android.tools.profilers.taskbased.tabs.task.leakcanary.banner.LeakCanaryBanner
+import com.android.tools.profilers.taskbased.tabs.task.leakcanary.banner.OutdatedLibraryBanner
 import com.android.tools.profilers.taskbased.tabs.task.leakcanary.insight.LeakInsightPanel
 import com.android.tools.profilers.taskbased.tabs.task.leakcanary.leakdetails.LeakDetailsPanel
 import com.android.tools.profilers.taskbased.tabs.task.leakcanary.leaklist.LeakListView
@@ -78,6 +79,8 @@ fun LeakCanaryScreen(leakCanaryModel: LeakCanaryModel, ideProfilerComponents: Id
   val selectedLeakOccurrenceIndex by leakCanaryModel.selectedLeakOccurrenceIndex.collectAsState()
   val isOccurrencesEnabled = leakCanaryModel.isOccurrencesEnabled
   val isBannerVisible by leakCanaryModel.isBannerVisible.collectAsState()
+  val outdatedLibraryVersion by leakCanaryModel.outdatedLibraryVersion.collectAsState()
+  val canOpenBuildFile by leakCanaryModel.canOpenBuildFile.collectAsState()
   val traceNodes = selectedLeak?.displayedLeakTrace?.getOrNull(selectedLeakOccurrenceIndex)?.nodes ?: emptyList()
   var openStates by remember(selectedLeak, selectedLeakOccurrenceIndex) { mutableStateOf(List(traceNodes.size) { false }) }
 
@@ -126,6 +129,14 @@ fun LeakCanaryScreen(leakCanaryModel: LeakCanaryModel, ideProfilerComponents: Id
         }
       }
   ) {
+    outdatedLibraryVersion?.let { version ->
+      OutdatedLibraryBanner(
+        foundVersion = version,
+        showOpenBuildFile = canOpenBuildFile,
+        onOpenBuildFileClick = leakCanaryModel::openBuildFile,
+        onBannerClose = leakCanaryModel::dismissOutdatedLibraryBanner,
+      )
+    }
     if (isBannerVisible) {
       LeakCanaryBanner(
         onBannerClose = leakCanaryModel::dismissBanner,

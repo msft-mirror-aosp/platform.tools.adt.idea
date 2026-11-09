@@ -19,6 +19,7 @@ import com.android.ddmlib.IDevice
 import com.android.sdklib.AndroidVersion
 import com.android.testutils.TestUtils
 import com.android.tools.adtui.model.FakeTimer
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.io.grpc.ManagedChannel
 import com.android.tools.idea.io.grpc.inprocess.InProcessChannelBuilder
 import com.android.tools.idea.logcat.message.LogLevel
@@ -52,6 +53,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -112,6 +114,11 @@ class LeakCanaryLogcatCommandHandlerTest {
     transportServiceGrpc = spy(TransportServiceGrpc.newBlockingStub(channel))
     `when`(transportServiceGrpc.getCurrentTime(any())).thenReturn(Transport.TimeResponse.newBuilder().setTimestampNs(startTime).build())
     handler = LeakCanaryLogcatCommandHandler(mockDevice, transportServiceGrpc, mockEventQueue)
+  }
+
+  @After
+  fun tearDown() {
+    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.clearOverride()
   }
 
   @Test
@@ -312,48 +319,10 @@ class LeakCanaryLogcatCommandHandlerTest {
     // Before pushing messages wait for logcat to setup
     waitForEvent(this)
 
-    val validLeak =
-      """
-      ====================================
-      HEAP ANALYSIS RESULT
-      ====================================
-      1 APPLICATION LEAKS
-
-      References underlined with "~~~" are likely causes.
-      Learn more at https://squ.re/leaks.
-
-      0 bytes retained by leaking objects
-      Signature: hash
-      ┬───
-      │ GC Root: System class
-      │
-      ╰→ java.lang.Object instance
-           Leaking: YES (ObjectWatcher was watching this)
-      ====================================
-      0 LIBRARY LEAKS
-
-      A Library Leak is a leak caused by a known bug in 3rd party code that you do not have control over.
-      See https://square.github.io/leakcanary/fundamentals-how-leakcanary-works/#4-categorizing-leaks
-      ====================================
-      0 UNREACHABLE OBJECTS
-
-      An unreachable object is still in memory but LeakCanary could not find a strong reference path
-      from GC roots.
-      ====================================
-      METADATA
-
-      Please include this in bug reports and Stack Overflow questions.
-      Analysis duration: 1000 ms
-      Heap dump file path: -
-      Heap dump timestamp: 0
-      Heap dump duration: Unknown
-      ====================================
-      """
-        .trimIndent()
-
     // PID is different (999 vs 123), process name is arbitrary ("pid-29941"), BUT tag is "LeakCanary:Manual".
     // This simulates the user doing `adb shell log -t LeakCanary:Manual ...`
-    val message1 = LogcatMessage(LogcatHeader(LogLevel.DEBUG, 999, 2, "-", "-", "LeakCanary:Manual", Instant.ofEpochMilli(1000)), validLeak)
+    val message1 =
+      LogcatMessage(LogcatHeader(LogLevel.DEBUG, 999, 2, "-", "-", "LeakCanary:Manual", Instant.ofEpochMilli(1000)), MANUAL_LEAK)
 
     mockLogcatService.logMessages(message1)
     // Simulate some delay to allow coroutines to process
@@ -367,6 +336,134 @@ class LeakCanaryLogcatCommandHandlerTest {
     assertTrue(event.leakcanaryAnalysis.data.contains("HEAP ANALYSIS RESULT"))
 
     verifyEndEvent()
+  }
+
+  @Test
+  fun testFlagOnIgnoresLeakCanaryTagButKeepsManual() = runTest {
+    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(true)
+    startTask()
+
+    // Count, progress, a complete trace and a partial trace, all with the LeakCanary tag.
+    logWhenReady(appLog("LeakCanary", "Found 3 objects retained"), appLog("LeakCanary", "Analysis in progress, 50% done"))
+    pushLogcatMessages(ImmutableList.of("SingleApplicationLeak.txt", "IncompleteLeakWithoutBytesRetained.txt"), mockLogcatService, false)
+    // A Manual trace after them. Lines are handled in order, so once it arrives, the lines above were handled too.
+    mockLogcatService.logMessages(appLog("LeakCanary:Manual", MANUAL_LEAK))
+    waitUntil { mockEventQueue.any { it.leakcanaryAnalysis.data.contains("Analysis duration: 1000 ms") } }
+
+    assertEquals(2, mockEventQueue.size)
+    verifyStartEvent()
+    assertTrue(mockEventQueue.poll().leakcanaryAnalysis.data.contains("Analysis duration: 1000 ms"))
+    verifyEndEvent()
+  }
+
+  @Test
+  fun testFlagOnKeepsManualPartialTrace() = runTest {
+    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(true)
+    startTask()
+
+    waitUntilLogcatIsRead()
+    pushLogcatMessages(ImmutableList.of("IncompleteLeakWithoutBytesRetained.txt"), mockLogcatService, false, tag = "LeakCanary:Manual")
+    waitUntil { mockEventQueue.size >= 2 }
+
+    assertEquals(2, mockEventQueue.size)
+    verifyStartEvent()
+    assertTrue(mockEventQueue.poll().leakcanaryAnalysis.data.contains("0 bytes retained by leaking objects"))
+    verifyEndEvent()
+  }
+
+  @Test
+  fun testFlagOffReadsCountFromLeakCanaryTag() = runTest {
+    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(false)
+    startTask()
+
+    logWhenReady(appLog("LeakCanary", "Found 3 objects retained"))
+    waitUntil { mockEventQueue.size >= 2 }
+
+    assertEquals(2, mockEventQueue.size)
+    verifyStartEvent()
+    assertEquals(Common.Event.Kind.LEAKCANARY_ANALYSIS, mockEventQueue.poll().kind)
+    verifyEndEvent()
+  }
+
+  @Test
+  fun testFlagOnReadsOnlyManualInOnHost() = runTest {
+    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(true)
+    startTask(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST)
+
+    logWhenReady(appLog("LeakCanary", "Found 3 objects retained"))
+    pushLogcatMessages(ImmutableList.of("SingleApplicationLeak.txt"), mockLogcatService, false)
+    // Lines are handled in order, so once the Manual trace arrives, the lines above were handled too.
+    mockLogcatService.logMessages(appLog("LeakCanary:Manual", MANUAL_LEAK))
+    waitUntil { mockEventQueue.any { it.leakcanaryAnalysis.data.contains("Analysis duration: 1000 ms") } }
+
+    assertEquals(2, mockEventQueue.size)
+    verifyStartEvent()
+    assertTrue(mockEventQueue.poll().leakcanaryAnalysis.data.contains("Analysis duration: 1000 ms"))
+    verifyEndEvent()
+  }
+
+  @Test
+  fun testFlagOnKeepsManualPartialTraceInOnHost() = runTest {
+    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(true)
+    startTask(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST)
+
+    waitUntilLogcatIsRead()
+    pushLogcatMessages(ImmutableList.of("IncompleteLeakWithoutBytesRetained.txt"), mockLogcatService, false, tag = "LeakCanary:Manual")
+    waitUntil { mockEventQueue.size >= 2 }
+
+    assertEquals(2, mockEventQueue.size)
+    verifyStartEvent()
+    assertTrue(mockEventQueue.poll().leakcanaryAnalysis.data.contains("0 bytes retained by leaking objects"))
+    verifyEndEvent()
+  }
+
+  @Test
+  fun testFlagOffDoesNotReadLogcatInOnHost() = runTest {
+    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(false)
+    startTask(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST)
+
+    // Logcat reading starts right away when it is used, so this short wait is enough to see that it didn't start.
+    Thread.sleep(200)
+
+    assertFalse(mockLogcatService.isReading())
+    assertEquals(1, mockEventQueue.size)
+    verifyStartEvent()
+    verifyEndEvent()
+  }
+
+  private fun startTask(mode: Commands.StartLeakCanaryTaskData.LeakCanaryMode = Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE) {
+    val startTaskData = Commands.StartLeakCanaryTaskData.newBuilder().setMode(mode).build()
+    handler.execute(
+      Commands.Command.newBuilder()
+        .setType(Commands.Command.CommandType.START_LEAKCANARY_TASK)
+        .setStartLeakcanaryTask(startTaskData)
+        .setPid(123)
+        .build()
+    )
+  }
+
+  /** A log line from the app (pid 123) with the given tag. */
+  private fun appLog(tag: String, message: String) =
+    LogcatMessage(LogcatHeader(LogLevel.DEBUG, 123, 2, "app1", "", tag, Instant.ofEpochMilli(1000)), message)
+
+  /** Sends the messages as soon as the handler has started reading Logcat. */
+  private suspend fun logWhenReady(vararg messages: LogcatMessage) {
+    waitUntilLogcatIsRead()
+    mockLogcatService.logMessages(*messages)
+  }
+
+  /** Waits until the handler has started reading Logcat. */
+  private fun waitUntilLogcatIsRead() {
+    waitUntil { mockLogcatService.isReading() }
+  }
+
+  /** Waits up to 5 seconds for [condition]. Fails if it never becomes true. */
+  private fun waitUntil(condition: () -> Boolean) {
+    val deadline = System.currentTimeMillis() + 5000
+    while (!condition() && System.currentTimeMillis() < deadline) {
+      Thread.sleep(10)
+    }
+    assertTrue("Timed out after 5 seconds.", condition())
   }
 
   private fun verifyStartEvent() {
@@ -425,6 +522,7 @@ class LeakCanaryLogcatCommandHandlerTest {
     listOfFiles: ImmutableList<String>,
     mockLogcatService: FakeLogcatService,
     oneLinePerLogEntry: Boolean,
+    tag: String = "LeakCanary",
   ): MutableList<String> {
     val resultList = mutableListOf<String>()
     listOfFiles.forEach { fileName ->
@@ -433,7 +531,7 @@ class LeakCanaryLogcatCommandHandlerTest {
         val fileContent = file.readText()
         val fileContentEachLine = if (oneLinePerLogEntry) fileContent.split("\n") else listOf(fileContent)
         for (leakLine in fileContentEachLine) {
-          val message = LogcatMessage(LogcatHeader(LogLevel.DEBUG, 123, 2, "app1", "", "LeakCanary", Instant.ofEpochMilli(1000)), leakLine)
+          val message = LogcatMessage(LogcatHeader(LogLevel.DEBUG, 123, 2, "app1", "", tag, Instant.ofEpochMilli(1000)), leakLine)
           mockLogcatService.logMessages(message)
         }
         resultList.add(fileContent)
@@ -452,5 +550,45 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   companion object {
     private const val TEST_DATA_PATH = "tools/adt/idea/profilers/testData/sampleLeaks/"
+
+    /** A complete trace, as injected with `adb shell log -t LeakCanary:Manual`. */
+    private val MANUAL_LEAK =
+      """
+      ====================================
+      HEAP ANALYSIS RESULT
+      ====================================
+      1 APPLICATION LEAKS
+
+      References underlined with "~~~" are likely causes.
+      Learn more at https://squ.re/leaks.
+
+      0 bytes retained by leaking objects
+      Signature: hash
+      ┬───
+      │ GC Root: System class
+      │
+      ╰→ java.lang.Object instance
+           Leaking: YES (ObjectWatcher was watching this)
+      ====================================
+      0 LIBRARY LEAKS
+
+      A Library Leak is a leak caused by a known bug in 3rd party code that you do not have control over.
+      See https://square.github.io/leakcanary/fundamentals-how-leakcanary-works/#4-categorizing-leaks
+      ====================================
+      0 UNREACHABLE OBJECTS
+
+      An unreachable object is still in memory but LeakCanary could not find a strong reference path
+      from GC roots.
+      ====================================
+      METADATA
+
+      Please include this in bug reports and Stack Overflow questions.
+      Analysis duration: 1000 ms
+      Heap dump file path: -
+      Heap dump timestamp: 0
+      Heap dump duration: Unknown
+      ====================================
+      """
+        .trimIndent()
   }
 }

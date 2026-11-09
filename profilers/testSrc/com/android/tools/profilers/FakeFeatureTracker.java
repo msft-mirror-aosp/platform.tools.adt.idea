@@ -113,6 +113,9 @@ public final class FakeFeatureTracker implements FeatureTracker {
   private TaskStopFailedMetadata myLastTaskStopFailedMetadata;
   private TaskProcessingFailedMetadata myLastTaskProcessingFailedMetadata;
 
+  /** How many processing-failed events were sent. */
+  private int myTaskProcessingFailedCount;
+
   private LeakCanaryUiAction myLastLeakCanaryUiAction;
   private LeakCanaryLeakAnalysis myLastLeakCanaryLeakAnalysis;
   private boolean myLeakCanaryAutoInjectPopupShown;
@@ -604,6 +607,7 @@ public final class FakeFeatureTracker implements FeatureTracker {
                               @NotNull TaskProcessingFailedMetadata taskProcessingFailedMetadata) {
     myLastTaskMetadata = taskMetadata;
     myLastTaskProcessingFailedMetadata = taskProcessingFailedMetadata;
+    myTaskProcessingFailedCount++;
   }
 
   @Override
@@ -643,6 +647,10 @@ public final class FakeFeatureTracker implements FeatureTracker {
 
   public TaskProcessingFailedMetadata getLastTaskProcessingFailedMetadata() {
     return myLastTaskProcessingFailedMetadata;
+  }
+
+  public int getTaskProcessingFailedCount() {
+    return myTaskProcessingFailedCount;
   }
 
   public LeakCanaryUiAction getLastLeakCanaryUiAction() {

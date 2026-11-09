@@ -41,6 +41,7 @@ import com.android.tools.profilers.tasks.args.TaskArgs
 import com.android.tools.profilers.tasks.args.singleartifact.leakcanary.LeakCanaryTaskArgs
 import com.android.tools.profilers.tasks.taskhandlers.TaskHandlerUtils
 import com.android.tools.profilers.tasks.taskhandlers.singleartifact.SingleArtifactTaskHandler
+import com.google.common.annotations.VisibleForTesting
 import fleet.util.logging.logger
 import java.util.Timer
 import java.util.TimerTask
@@ -53,6 +54,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 private val logger = logger<LeakCanaryTaskHandler>()
+
+/**
+ * Returns true if [processName] belongs to the app of the selected run configuration, whose package is [preferredProcessName]. The part
+ * after ':' is ignored, so 'com.app:leakcanary' matches 'com.app'.
+ */
+internal fun isProjectProcess(preferredProcessName: String?, processName: String): Boolean =
+  !preferredProcessName.isNullOrEmpty() && preferredProcessName.split(':').first() == processName.split(':').first()
 
 class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : SingleArtifactTaskHandler<LeakCanaryModel>(sessionsManager) {
 
@@ -139,6 +147,7 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
             profilers.ideServices.mainExecutor.execute {
               profilers.ideServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", threshold)
               logger.info("Stored LeakCanary threshold $threshold in preferences.")
+              saveLibraryVersion(profilers.session.streamId, profilers.session.pid, event)
             }
           } else if (threshold == REFLECTION_FAILED_THRESHOLD) {
             logger.info("Studio_leakCanary library present but reflection failed.")
@@ -408,6 +417,18 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
   }
 
   /**
+   * Saves the studio-leakcanary version from the threshold event, so the LeakCanary task can check it. Only with the occurrences flag on.
+   */
+  @VisibleForTesting
+  fun saveLibraryVersion(streamId: Long, pid: Int, event: Common.Event) {
+    if (profilers.ideServices.featureConfig.isLeakCanaryOccurrencesEnabled) {
+      val version = event.leakcanaryThreshold.studioLeakcanaryVersion
+      saveStudioLeakCanaryVersion(profilers.ideServices.temporaryProfilerPreferences, streamId, pid, version)
+      logger.info("Stored studio-leakcanary version \"$version\" for pid $pid.")
+    }
+  }
+
+  /**
    * Verifies whether the selected device and process support the LeakCanary task.
    *
    * By default, the LeakCanary task requires a debuggable process.
@@ -482,7 +503,7 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
       // To determine if the user is trying to profile an external APK vs their currently opened project,
       // we compare the selected process against the IDE's preferredProcessName.
       // We split by ':' to safely handle multi-process applications (e.g., matching 'com.app:leakcanary' to 'com.app').
-      val isProjectMatch = !preferredProcess.isNullOrEmpty() && preferredProcess.split(':').first() == selectedProcess.split(':').first()
+      val isProjectMatch = isProjectProcess(preferredProcess, selectedProcess)
 
       if (!isProjectMatch) {
         return StartTaskSelectionError(StartTaskSelectionErrorCode.LEAKCANARY_NOT_FOUND_EXTERNAL_PROCESS)
@@ -601,6 +622,7 @@ class LeakCanaryTaskHandler(private val sessionsManager: SessionsManager) : Sing
             if (found) {
               profilers.ideServices.temporaryProfilerPreferences.setInt("LEAKCANARY_THRESHOLD", threshold)
               logger.info("Stored LeakCanary threshold $threshold in preferences.")
+              saveLibraryVersion(streamId, process.pid, event)
             } else if (threshold == REFLECTION_FAILED_THRESHOLD) {
               logger.info("Stuio_leakCanary library present but reflection failed for $processId")
             } else {

@@ -16,6 +16,7 @@
 package com.android.tools.idea.profilers.commands
 
 import com.android.ddmlib.IDevice
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.logcat.message.LogcatMessage
 import com.android.tools.idea.logcat.service.LogcatService
 import com.android.tools.idea.transport.TransportProxy
@@ -69,6 +70,10 @@ class LeakCanaryLogcatCommandHandler(
   private var isCapturingCompleteTrace = false
   private var capturedLogsForCompleteTrace = StringBuilder()
 
+  // With the occurrences flag on, LeakCanary's own results come from perfa (ON_DEVICE) or from Studio's analysis (ON_HOST), so only
+  // LeakCanary:Manual lines are read from Logcat, in both modes.
+  private var readsOnlyManualTag = false
+
   companion object {
     private const val LEAKCANARY_TAG = "LeakCanary"
     private const val LEAKCANARY_MANUAL_TAG = "LeakCanary:Manual"
@@ -100,9 +105,12 @@ class LeakCanaryLogcatCommandHandler(
     startTimeNs = getCurrentTimestampInNs()
     pid = command.pid
 
-    // In ON_DEVICE mode, the device generates logs that need to be parsed, so we actively read the logcat stream.
-    if (currentMode == LeakCanaryMode.ON_DEVICE) {
+    // In ON_DEVICE mode, the device generates logs that need to be parsed, so we actively read the logcat stream. With the occurrences
+    // flag on, Logcat is also read in ON_HOST mode, for LeakCanary:Manual traces.
+    val occurrencesEnabled = StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.get()
+    if (currentMode == LeakCanaryMode.ON_DEVICE || occurrencesEnabled) {
       resetTrackingState()
+      readsOnlyManualTag = occurrencesEnabled
       readLeakLog()
     }
 
@@ -261,7 +269,7 @@ class LeakCanaryLogcatCommandHandler(
   }
 
   private fun isValidTag(tag: String): Boolean {
-    return tag == LEAKCANARY_TAG || tag == LEAKCANARY_MANUAL_TAG
+    return (tag == LEAKCANARY_TAG && !readsOnlyManualTag) || tag == LEAKCANARY_MANUAL_TAG
   }
 
   // Returns true if any event was sent, false otherwise.
@@ -270,7 +278,7 @@ class LeakCanaryLogcatCommandHandler(
     val analysisProgressRegex = """Analysis in progress, (\d+)% done""".toRegex()
     var handled = false
 
-    if (logcatMessage.header.tag != LEAKCANARY_TAG) return false
+    if (logcatMessage.header.tag != LEAKCANARY_TAG || readsOnlyManualTag) return false
 
     logcatMessage.message.split("\n").forEach { line ->
       if (retainedObjectsRegex.containsMatchIn(line) || analysisProgressRegex.containsMatchIn(line)) {
