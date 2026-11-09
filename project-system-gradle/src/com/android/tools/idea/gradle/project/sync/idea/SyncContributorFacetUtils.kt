@@ -26,9 +26,7 @@ import com.intellij.openapi.roots.ExternalProjectSystemRegistry
 import com.intellij.openapi.util.JDOMUtil
 import com.intellij.platform.workspace.jps.entities.FacetEntity
 import com.intellij.platform.workspace.jps.entities.FacetEntityTypeId
-import com.intellij.platform.workspace.jps.entities.FacetId
 import com.intellij.platform.workspace.jps.entities.ModuleEntityBuilder
-import com.intellij.platform.workspace.jps.entities.ModuleId
 import java.io.File
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase
@@ -36,9 +34,13 @@ import org.jetbrains.plugins.gradle.util.GradleConstants
 
 internal fun SyncContributorAndroidProjectContext.createAndroidGradleFacet(moduleEntity: ModuleEntityBuilder) {
   val configuration = GradleFacet.getFacetType().createDefaultConfiguration().apply { LAST_KNOWN_AGP_VERSION = versions.agpVersionAsString }
-  val facetId =
-    FacetId(GradleFacet.ANDROID_GRADLE_FACET_NAME, FacetEntityTypeId(GradleFacet.getFacetType().stringId), ModuleId(moduleEntity.name))
-  createFacet(facetId, GradleFacet.getFacetTypeId(), configuration, moduleEntity)
+  createFacet(
+    GradleFacet.ANDROID_GRADLE_FACET_NAME,
+    FacetEntityTypeId(GradleFacet.getFacetType().stringId),
+    GradleFacet.getFacetTypeId(),
+    configuration,
+    moduleEntity,
+  )
 }
 
 internal fun SyncContributorAndroidProjectContext.createAndroidFacet(moduleEntity: ModuleEntityBuilder) {
@@ -73,22 +75,26 @@ internal fun SyncContributorAndroidProjectContext.createAndroidFacet(moduleEntit
       }
     }
 
-  val facetId = FacetId(AndroidFacet.NAME, FacetEntityTypeId(AndroidFacet.getFacetType().stringId), ModuleId(moduleEntity.name))
-
-  createFacet(facetId, AndroidFacet.getFacetType().id, configuration, moduleEntity)
+  createFacet(
+    AndroidFacet.NAME,
+    FacetEntityTypeId(AndroidFacet.getFacetType().stringId),
+    AndroidFacet.getFacetType().id,
+    configuration,
+    moduleEntity,
+  )
 }
 
 private fun SyncContributorAndroidProjectContext.createFacet(
-  facetId: FacetId,
+  name: String,
+  typeId: FacetEntityTypeId,
   facetTypeId: FacetTypeId<*>,
   configuration: FacetConfiguration,
   moduleEntity: ModuleEntityBuilder,
 ) {
   val facet =
     FacetEntity(
-      facetId.parentId,
-      facetId.name,
-      facetId.type,
+      name,
+      typeId,
       createProjectEntitySource(GradleSyncPhase.SOURCE_SET_MODEL_PHASE),
     )
   // Set external source for facet, as this is not serialized
