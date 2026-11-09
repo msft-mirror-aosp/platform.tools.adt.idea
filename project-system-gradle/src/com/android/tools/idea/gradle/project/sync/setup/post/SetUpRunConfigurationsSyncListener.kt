@@ -18,7 +18,6 @@ package com.android.tools.idea.gradle.project.sync.setup.post
 import com.android.tools.idea.project.AndroidRunConfigurationsManager
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.util.concurrency.AppExecutorUtil
 import java.util.concurrent.Callable
@@ -29,17 +28,15 @@ class SetUpRunConfigurationsSyncListener(private val project: Project) : Project
     // create any run configurations, even if indexing hasn't finished yet.
     AndroidRunConfigurationsManager.getInstance(project).createProjectRunConfigurations()
 
-    if (DumbService.isDumb(project)) {
-      // once indexing is finished, potentially create more run configurations
-      ReadAction.nonBlocking(
-          Callable {
-            if (project.isDisposed) return@Callable
-            AndroidRunConfigurationsManager.getInstance(project).createProjectRunConfigurations()
-          }
-        )
-        .inSmartMode(project)
-        .coalesceBy(this)
-        .submit(AppExecutorUtil.getAppExecutorService())
-    }
+    // Once indexing is finished, potentially create more run configurations.
+    ReadAction.nonBlocking(
+        Callable {
+          if (project.isDisposed) return@Callable
+          AndroidRunConfigurationsManager.getInstance(project).createProjectRunConfigurations()
+        }
+      )
+      .inSmartMode(project)
+      .coalesceBy(this)
+      .submit(AppExecutorUtil.getAppExecutorService())
   }
 }
