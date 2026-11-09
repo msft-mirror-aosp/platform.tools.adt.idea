@@ -29,8 +29,7 @@ internal object KmpConsistencyIssues {
   internal fun projectStructure(testProject: TestProject): Set<String> =
     when (testProject.template) {
       TestProjectToSnapshotPaths.KOTLIN_MULTIPLATFORM,
-      TestProjectToSnapshotPaths.NON_STANDARD_SOURCE_SET_DEPENDENCIES,
-      TestProjectToSnapshotPaths.ANDROID_KOTLIN_MULTIPLATFORM ->
+      TestProjectToSnapshotPaths.NON_STANDARD_SOURCE_SET_DEPENDENCIES ->
         setOf(
           // TODO(b/384022658): Linked android module group is still set for KMP holder modules by full sync, but not phased sync
           "LINKED_ANDROID_MODULE_GROUP",
@@ -50,17 +49,13 @@ internal object KmpConsistencyIssues {
   internal fun ideModels(testProject: TestProject): Set<String> =
     when (testProject.template) {
       TestProjectToSnapshotPaths.KOTLIN_MULTIPLATFORM,
-      TestProjectToSnapshotPaths.NON_STANDARD_SOURCE_SET_DEPENDENCIES,
-      TestProjectToSnapshotPaths.ANDROID_KOTLIN_MULTIPLATFORM ->
+      TestProjectToSnapshotPaths.NON_STANDARD_SOURCE_SET_DEPENDENCIES ->
         setOf(
           // TODO(b/384022658): Dependencies to kotlin multiplatform modules can't be set up as module set up is not supported by phased
           // sync
           "Classpath/module (<PROJECT>-:module2",
           "Classpath/module (<PROJECT>-:feature-b",
           "Classpath/module (<PROJECT>-:common-commonMain)",
-          "Classpath/module (<PROJECT>-:kmpFirstLib",
-          "Classpath/module (<PROJECT>-:kmpSecondLib",
-          "Classpath/module (<PROJECT>-:kmpJvmOnly",
         )
 
       else -> emptySet()

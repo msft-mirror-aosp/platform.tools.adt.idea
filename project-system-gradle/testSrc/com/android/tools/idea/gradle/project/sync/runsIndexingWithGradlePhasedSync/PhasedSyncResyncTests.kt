@@ -49,8 +49,7 @@ fun ModuleDumpWithType.filterOutKnownResyncIssues(testProject: TestProject): Mod
 private fun ModuleDumpWithType.filterOutFullResyncIssues(testProject: TestProject) =
   copy(
     projectStructure =
-      projectStructure.filter { line -> (MiscResyncIssues.fullResyncProjectStructure(testProject)).none { line.contains(it) } },
-    ideModels = ideModels.filter { line -> (KmpConsistencyIssues.ideModels(testProject)).none { line.contains(it) } },
+      projectStructure.filter { line -> (MiscResyncIssues.fullResyncProjectStructure(testProject)).none { line.contains(it) } }
   )
 
 @RunWith(Parameterized::class)
