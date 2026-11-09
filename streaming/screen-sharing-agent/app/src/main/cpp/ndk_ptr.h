@@ -39,7 +39,7 @@ public:
   }
 
   // Replaces the managed object.
-  void Reset(NdkType* ptr = nullptr) noexcept {
+  void Reset(NdkType* ptr = nullptr) {
     if (pointer_ != nullptr && pointer_ != ptr) {
       NdkDelete(pointer_);
     }
@@ -51,25 +51,25 @@ public:
     return *this;
   }
 
-  NdkPtr& operator=(NdkPtr&& other) noexcept {
+  NdkPtr& operator=(NdkPtr&& other) {
     Reset(other.pointer_);
     other.pointer_ = nullptr;
     return *this;
   }
 
-  bool operator==(nullptr_t) const {
+  [[nodiscard]] bool operator==(nullptr_t) const noexcept {
     return pointer_ == nullptr;
   }
 
-  bool operator!=(nullptr_t) const {
+  [[nodiscard]] bool operator!=(nullptr_t) const noexcept {
     return pointer_ != nullptr;
   }
 
-  [[nodiscard]] bool IsNull() const {
+  [[nodiscard]] bool IsNull() const noexcept {
     return pointer_ == nullptr;
   }
 
-  [[nodiscard]] bool IsNotNull() const {
+  [[nodiscard]] bool IsNotNull() const noexcept {
     return pointer_ != nullptr;
   }
 

@@ -25,23 +25,23 @@ namespace screensharing {
 struct Size {
   Size(int32_t width, int32_t height) noexcept : width(width), height(height) {}
 
-  bool operator==(Size other) const noexcept {
+  [[nodiscard]] bool operator==(Size other) const noexcept {
     return width == other.width && height == other.height;
   }
 
-  bool operator!=(Size other) const {
+  [[nodiscard]] bool operator!=(Size other) const noexcept {
     return width != other.width || height != other.height;
   }
 
-  [[nodiscard]] Size Rotated(int32_t rotation) const {
+  [[nodiscard]] Size Rotated(int32_t rotation) const noexcept {
     return rotation % 2 == 0 ? *this : Size(height, width);
   }
 
-  static Size ofRect(const ARect& rect) {
+  [[nodiscard]] static Size ofRect(const ARect& rect) noexcept {
     return Size(rect.right - rect.left, rect.bottom - rect.top);
   }
 
-  [[nodiscard]] ARect toRect() const {
+  [[nodiscard]] ARect toRect() const noexcept {
     return ARect { 0, 0, width, height };
   }
 
@@ -50,14 +50,14 @@ struct Size {
 };
 
 struct Point {
-  Point(int32_t x, int32_t y) : x(x), y(y) {}
+  Point(int32_t x, int32_t y) noexcept : x(x), y(y) {}
 
   int32_t x;
   int32_t y;
 };
 
 // Converts the rotation value to the canonical [0, 3] range.
-inline uint8_t NormalizeRotation(int32_t rotation) {
+[[nodiscard]] inline uint8_t NormalizeRotation(int32_t rotation) noexcept {
   return rotation & 0x03;
 }
 
