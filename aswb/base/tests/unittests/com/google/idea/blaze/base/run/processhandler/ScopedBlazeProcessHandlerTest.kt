@@ -178,6 +178,7 @@ class ScopedBlazeProcessHandlerTest : BlazeTestCase() {
 
   @Test
   fun customTerminator_killProcess_runsCustomActionBeforeKillingLocalProcess() {
+    val startedFile = File(tempDir, "started")
     val events = mutableListOf<String>()
     val onExitCalled = CountDownLatch(1)
     val terminator =
@@ -195,13 +196,20 @@ class ScopedBlazeProcessHandlerTest : BlazeTestCase() {
       }
     val handler =
       createHandler(
-        command = listOf("/bin/sh", "-c", "sleep 30"),
+        command =
+          listOf(
+            "/bin/sh",
+            "-c",
+            "touch ${startedFile.absolutePath}; sleep 30",
+          ),
         processTerminator = terminator,
         onScopeEnd = {},
         onExit = { onExitCalled.countDown() },
       )
 
     handler.startNotify()
+    waitForFile(startedFile)
+
     handler.killProcess()
     assertThat(handler.waitFor(5000)).isTrue()
     assertThat(onExitCalled.await(5, TimeUnit.SECONDS)).isTrue()
