@@ -22,7 +22,10 @@ import com.android.tools.idea.gradle.project.sync.AndroidSyncExceptionType.AGP_V
 import com.android.tools.idea.gradle.project.sync.AndroidSyncExceptionType.AGP_VERSION_INCOMPATIBLE
 import com.android.tools.idea.gradle.project.sync.AndroidSyncExceptionType.AGP_VERSION_TOO_NEW
 import com.android.tools.idea.gradle.project.sync.AndroidSyncExceptionType.AGP_VERSION_TOO_OLD
+import com.android.tools.idea.gradle.project.sync.AndroidSyncExceptionType.NO_VARIANTS_FOUND
+import com.android.utils.findGradleBuildFile
 import java.util.regex.Pattern
+import org.gradle.tooling.model.gradle.BasicGradleProject
 
 /** Marker interface for all exceptions that are triggered via Android specific errors in project import. */
 open class AndroidSyncException(
@@ -50,6 +53,19 @@ enum class AndroidSyncExceptionType {
   NO_VALID_NATIVE_ABI_FOUND,
   NO_VARIANTS_FOUND,
 }
+
+fun createNoVariantsFoundSyncException(
+  gradleProject: BasicGradleProject,
+  syncIssues: List<IdeSyncIssue>? = null,
+): AndroidSyncException =
+  AndroidSyncException(
+    type = NO_VARIANTS_FOUND,
+    message =
+      "No variants found for '${gradleProject.path}'. Check ${findGradleBuildFile(gradleProject.projectDirectory).absolutePath} to ensure at least one variant exists and address any sync warnings and errors.",
+    buildPath = gradleProject.projectIdentifier.buildIdentifier.rootDir.path,
+    modulePath = gradleProject.path,
+    syncIssues = syncIssues,
+  )
 
 class AgpVersionTooOld(agpVersion: AgpVersion) : AndroidSyncException(AGP_VERSION_TOO_OLD, generateMessage(agpVersion)) {
   companion object {

@@ -40,7 +40,6 @@ import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.android.tools.idea.gradle.model.impl.toImpl
 import com.android.tools.idea.gradle.model.ndk.v2.IdeNativeModule
 import com.android.tools.idea.gradle.project.sync.Modules.createUniqueModuleId
-import com.android.utils.findGradleBuildFile
 import java.io.File
 import org.gradle.tooling.BuildController
 import org.gradle.tooling.model.Model
@@ -237,13 +236,7 @@ constructor(
     val selectedVariantName =
       syncedVariant?.name
         ?: allVariants?.map { it.name }?.getDefaultOrFirstItem("debug")
-        ?: throw AndroidSyncException(
-          AndroidSyncExceptionType.NO_VARIANTS_FOUND,
-          "No variants found for '${gradleProject.path}'. Check ${findGradleBuildFile(gradleProject.projectDirectory).absolutePath} to ensure at least one variant exists and address any sync warnings and errors.",
-          gradleProject.projectIdentifier.buildIdentifier.rootDir.path,
-          gradleProject.path,
-          projectSyncIssues,
-        )
+        ?: throw createNoVariantsFoundSyncException(gradleProject, projectSyncIssues)
     return DeliverableAndroidModule(
       gradleProject = gradleProject,
       projectSyncIssues = projectSyncIssues,

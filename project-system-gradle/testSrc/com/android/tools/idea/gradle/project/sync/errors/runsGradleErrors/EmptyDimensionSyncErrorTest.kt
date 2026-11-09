@@ -19,6 +19,7 @@ import com.android.SdkConstants
 import com.android.testutils.VirtualTimeScheduler
 import com.android.tools.analytics.TestUsageTracker
 import com.android.tools.analytics.UsageTracker
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
@@ -53,12 +54,36 @@ class EmptyDimensionSyncErrorTest {
 
   @After
   fun cleanUp() {
+    StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.clearOverride()
     usageTracker.close()
     UsageTracker.cleanAfterTesting()
   }
 
   @Test
   fun testSyncErrorOnEmptyFavorDimension_firstSync() {
+    StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.override(false)
+    checkEmptyFlavorDimensionFirstSync()
+  }
+
+  @Test
+  fun testSyncErrorOnEmptyFavorDimension_firstSync_legacyModelProvidersDisabled() {
+    StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.override(true)
+    checkEmptyFlavorDimensionFirstSync()
+  }
+
+  @Test
+  fun testSyncErrorOnEmptyFavorDimension_subsequentSync() {
+    StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.override(false)
+    checkEmptyFlavorDimensionSubsequentSync()
+  }
+
+  @Test
+  fun testSyncErrorOnEmptyFavorDimension_subsequentSync_legacyModelProvidersDisabled() {
+    StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.override(true)
+    checkEmptyFlavorDimensionSubsequentSync()
+  }
+
+  private fun checkEmptyFlavorDimensionFirstSync() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
 
     val buildFile = preparedProject.root.resolve("app").resolve(SdkConstants.FN_BUILD_GRADLE)
@@ -116,8 +141,7 @@ class EmptyDimensionSyncErrorTest {
       .containsExactly(listOf(AndroidStudioEvent.GradleSyncIssueType.TYPE_EMPTY_FLAVOR_DIMENSION))
   }
 
-  @Test
-  fun testSyncErrorOnEmptyFavorDimension_subsequentSync() {
+  private fun checkEmptyFlavorDimensionSubsequentSync() {
     println(">>> start _subsequentSync test " + Thread.currentThread())
     val allBuildEventsProcessedLatch = CountDownLatch(2) // Two syncs are expected in this test and we need to wait for both.
     projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION).open(

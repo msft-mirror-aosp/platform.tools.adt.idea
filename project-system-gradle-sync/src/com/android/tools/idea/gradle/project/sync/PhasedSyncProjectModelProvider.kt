@@ -21,6 +21,7 @@ import com.android.builder.model.v2.ide.AndroidGradlePluginProjectFlags
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.AndroidProject
 import com.android.builder.model.v2.models.BasicAndroidProject
+import com.android.builder.model.v2.models.ProjectSyncIssues
 import com.android.builder.model.v2.models.Versions
 import com.android.builder.model.v2.models.ndk.NativeModelBuilderParameter
 import com.android.builder.model.v2.models.ndk.NativeModule
@@ -114,20 +115,7 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
       }
       verifyIncompatibleAgpVersionsAreNotUsedOrFailSync(cachedModels)
     } catch (e: AndroidSyncException) {
-      modelConsumer.consumeBuildModel(
-        buildModels.first(),
-        IdeAndroidSyncError(
-          type = e.type,
-          message = e.message.orEmpty(),
-          stackTrace = e.stackTrace.map { it.toString() },
-          buildPath = e.buildPath,
-          modulePath = e.modulePath,
-          syncIssues = e.syncIssues,
-        ),
-        IdeAndroidSyncError::class.java,
-      )
-      cachedModels.clear() // Clear versions so later phased sync providers don't process modules
-      cachedModels.hasSyncError = true
+      reportSyncExceptionAndClearCachedModels(e, buildModels, modelConsumer)
       return
     }
 
@@ -150,7 +138,11 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
                     basicAndroidProject.variants.toList().getDefaultVariant(androidDsl.buildTypes, androidDsl.productFlavors)
                   val selectedVariantName =
                     computeVariantNameToBeSynced(syncOptions, gradleProject.moduleId(), basicAndroidProject, defaultVariantName)
-                      ?: return@BuildAction null
+                      ?: throw createNoVariantsFoundSyncException(
+                        gradleProject,
+                        controller.findModel(gradleProject, ProjectSyncIssues::class.java)?.syncIssues?.toV2SyncIssueData().orEmpty() +
+                          legacyAndroidGradlePluginProperties.getProblemsAsSyncIssues(),
+                      )
 
                   val modelCache = modelCacheV2Impl(internedModels, modelVersions, syncTestMode = syncOptions.syncTestMode)
                   val ideAndroidProject =
@@ -191,6 +183,14 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
           }
         )
         .filterNotNull()
+
+    val syncExceptionsByProject =
+      exceptionsPerProject.mapNotNull { (project, exception) -> (exception as? AndroidSyncException)?.let { project to it } }.toMap()
+    if (syncExceptionsByProject.isNotEmpty()) {
+      val e = buildModels.asSequence().flatMap { it.projects }.firstNotNullOf { syncExceptionsByProject[it] }
+      reportSyncExceptionAndClearCachedModels(e, buildModels, modelConsumer)
+      return
+    }
 
     // Prepare Android projects to map dynamic features to their target Apps.
     val indexedModels =
@@ -287,6 +287,27 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
       }
     }
   }
+
+  private fun reportSyncExceptionAndClearCachedModels(
+    e: AndroidSyncException,
+    buildModels: Collection<GradleBuild>,
+    modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
+  ) {
+    modelConsumer.consumeBuildModel(
+      buildModels.first(),
+      IdeAndroidSyncError(
+        type = e.type,
+        message = e.message.orEmpty(),
+        stackTrace = e.stackTrace.map { it.toString() },
+        buildPath = e.buildPath,
+        modulePath = e.modulePath,
+        syncIssues = e.syncIssues,
+      ),
+      IdeAndroidSyncError::class.java,
+    )
+    cachedModels.clear() // Clear versions so later phased sync providers don't process modules
+    cachedModels.hasSyncError = true
+  }
 }
 
 private fun verifyIncompatibleAgpVersionsAreNotUsedOrFailSync(cachedModels: ModelProviderCachedData) {
@@ -338,8 +359,11 @@ private fun computeVariantNameToBeSynced(
   moduleId: String,
   basicAndroidProject: BasicAndroidProject,
   defaultVariantName: String?,
-): String? =
-  when (syncOptions) {
+): String? {
+  if (basicAndroidProject.variants.isEmpty()) {
+    return null
+  }
+  return when (syncOptions) {
     is SingleVariantSyncActionOptions ->
       // newly user-selected variant
       syncOptions.switchVariantRequest
@@ -354,6 +378,7 @@ private fun computeVariantNameToBeSynced(
     else -> null
   } // default variant as specified by the build script (computation could still end up being null)
   ?: defaultVariantName.also { LOG.debug("Picked the default variant $it for $moduleId") }
+}
 
 private fun Versions.isAtLeastAgp8() = AgpVersion.parse(agp).isAtLeast(8, 0, 0)
 

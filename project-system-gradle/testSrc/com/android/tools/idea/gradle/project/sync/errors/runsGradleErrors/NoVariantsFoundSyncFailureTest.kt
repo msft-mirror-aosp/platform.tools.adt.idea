@@ -16,6 +16,7 @@
 package com.android.tools.idea.gradle.project.sync.errors.runsGradleErrors
 
 import com.android.SdkConstants
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
 import com.google.common.truth.Truth
@@ -25,12 +26,29 @@ import com.intellij.build.events.BuildIssueEvent
 import com.intellij.build.events.FailureResult
 import com.intellij.build.events.FinishBuildEvent
 import com.intellij.build.events.MessageEvent
+import org.junit.After
 import org.junit.Test
 
 class NoVariantsFoundSyncFailureTest : AbstractSyncFailureIntegrationTest() {
 
+  @After
+  fun resetFlags() {
+    StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.clearOverride()
+  }
+
   @Test
   fun testNoVariantsFoundFailure() {
+    StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.override(false)
+    checkNoVariantsFoundFailure()
+  }
+
+  @Test
+  fun testNoVariantsFoundFailure_legacyModelProvidersDisabled() {
+    StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.override(true)
+    checkNoVariantsFoundFailure()
+  }
+
+  private fun checkNoVariantsFoundFailure() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.SIMPLE_APPLICATION)
 
     val buildFile = preparedProject.root.resolve("app").resolve(SdkConstants.FN_BUILD_GRADLE)
@@ -58,6 +76,11 @@ class NoVariantsFoundSyncFailureTest : AbstractSyncFailureIntegrationTest() {
             expect.that(failures).hasSize(1)
             failures.firstOrNull()?.let {
               expect.that(BuildConsoleUtils.getMessageTitle(it.message!!)).isEqualTo("No variants found for ':app'")
+              expect
+                .that(it.message)
+                .startsWith(
+                  "No variants found for ':app'. Check ${buildFile.absolutePath} to ensure at least one variant exists and address any sync warnings and errors."
+                )
             }
           }
         }
