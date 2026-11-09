@@ -31,7 +31,7 @@ import org.jetbrains.kotlin.util.capitalizeDecapitalize.capitalizeAsciiOnly
 const val GRADLE_SNAPSHOT_VERSION = "9.10.0-20261108003312+0000"
 // For available versions:
 // https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev/org/jetbrains/kotlin/kotlin-compiler/maven-metadata.xml
-const val KOTLIN_SNAPSHOT_VERSION = "2.5.20-dev-2076"
+const val KOTLIN_SNAPSHOT_VERSION = "2.5.20-dev-3466"
 
 /** An AGP Version definition to be used in AGP integration tests. */
 enum class AgpVersionSoftwareEnvironmentDescriptor(
