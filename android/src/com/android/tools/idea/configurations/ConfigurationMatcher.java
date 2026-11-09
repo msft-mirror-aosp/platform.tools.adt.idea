@@ -306,7 +306,9 @@ public class ConfigurationMatcher {
     State selectedState = myConfiguration.getDeviceState();
     FolderConfiguration editedConfig = myConfiguration.getEditedConfig();
     ConfigurationModelModule module = myConfiguration.getConfigModule();
-    if (selectedState != null) {
+    Device currentDevice = myConfiguration.getDevice();
+    // Layout rendering requires a screen; do not consider a screenless device compatible.
+    if (selectedState != null && currentDevice != null && currentDevice.getDefaultHardware().getScreen() != null) {
       FolderConfiguration currentConfig = Configuration.getFolderConfig(module, selectedState, myConfiguration.getLocale(),
                                                                         myConfiguration.getTarget());
       if (editedConfig.isMatchFor(currentConfig)) {
@@ -328,7 +330,7 @@ public class ConfigurationMatcher {
       State matchState = null;
       Device device = myConfiguration.getDevice();
       IAndroidTarget target = myConfiguration.getTarget();
-      if (device != null && target != null) {
+      if (device != null && device.getDefaultHardware().getScreen() != null && target != null) {
         VersionQualifier versionQualifier = new VersionQualifier(target.getVersion().getFeatureLevel());
         mainloop:
         for (State state : device.getAllStates()) {
@@ -435,6 +437,12 @@ public class ConfigurationMatcher {
     ConfigurationModelModule module = myConfiguration.getConfigModule();
 
     for (Device device : deviceList) {
+      // Screenless devices (e.g. displayless audio glasses) have no screen definitions and
+      // cannot render layouts. They match unqualified resource configs with a default density
+      // rank, so skip them to avoid selecting a screenless device and crashing on render.
+      if (device.getDefaultHardware().getScreen() == null) {
+        continue;
+      }
       for (State state : device.getAllStates()) {
 
         // loop on the list of config bundles to create full
@@ -684,8 +692,8 @@ public class ConfigurationMatcher {
         stateName = deviceState != null ? deviceState.getName() : null;
       }
       State selectedState = DeviceState.getDeviceState(device, stateName);
-      if (selectedState == null) {
-        return null; // Invalid state name passed in for the current device.
+      if (selectedState == null || device.getDefaultHardware().getScreen() == null) {
+        return null; // Invalid state name passed in for the current device or device is screenless.
       }
       if (locale == null) {
         locale = configuration.getLocale();

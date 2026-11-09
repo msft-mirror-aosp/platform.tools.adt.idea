@@ -151,7 +151,9 @@ private val EMPTY_DEVICE_CHANGE_LISTENER = object : DeviceChangeListener {}
  * @param deviceChangeListener A listener that is notified when the user selects a new device.
  * @param deviceFilter An optional predicate to filter which devices are offered in the menu.
  */
-class DeviceMenuAction @JvmOverloads constructor(
+class DeviceMenuAction
+@JvmOverloads
+constructor(
   private val deviceChangeListener: DeviceChangeListener = EMPTY_DEVICE_CHANGE_LISTENER,
   private val deviceFilter: ((Device) -> Boolean)? = null,
 ) : DropDownAction("Device for Preview", "Device for Preview", StudioIcons.LayoutEditor.Toolbar.VIRTUAL_DEVICES) {
@@ -263,9 +265,11 @@ class DeviceMenuAction @JvmOverloads constructor(
     selectionMade = addAutomotiveDeviceSection(groupedDevices, currentDevice, selectionMade)
     selectionMade = addXrDeviceSection(groupedDevices, currentDevice, selectionMade)
     val avdDevices =
-      configuration.settings.avdDevices.let { devices ->
-        if (deviceFilter != null) devices.filter(deviceFilter) else devices
-      }
+      configuration.settings.avdDevices
+        .filter { it.defaultHardware.screen != null }
+        .let { devices ->
+          if (deviceFilter != null) devices.filter(deviceFilter) else devices
+        }
     selectionMade = addAvdDeviceSection(avdDevices, currentDevice, selectionMade)
     selectionMade = addOtherDeviceSection(groupedDevices, currentDevice, selectionMade)
     addGenericDeviceAndNewDefinitionSection(groupedDevices, currentDevice, selectionMade)
@@ -559,7 +563,7 @@ class DeviceMenuAction @JvmOverloads constructor(
           groupedDevices[DeviceGroup.TV],
           groupedDevices[DeviceGroup.AUTOMOTIVE],
           groupedDevices[DeviceGroup.XR],
-          config.settings.avdDevices,
+          config.settings.avdDevices.filter { it.defaultHardware.screen != null },
           groupedDevices[DeviceGroup.GENERIC],
         )
         .map { it ?: emptyList() }
@@ -614,7 +618,9 @@ class AddDeviceDefinitionAction : AnAction() {
     coroutineScope.launch(Dispatchers.EDT) {
       val avdInfo = showAddDeviceDialog(project, e.componentToRestoreFocusTo()) ?: return@launch
       val device = config.settings.createDeviceForAvd(avdInfo) ?: return@launch
-      config.setDevice(device, true)
+      if (device.defaultHardware.screen != null) {
+        config.setDevice(device, true)
+      }
     }
   }
 }
@@ -742,6 +748,9 @@ open class SetDeviceAction(
   }
 
   override fun updateConfiguration(configuration: Configuration, commit: Boolean) {
+    if (device.defaultHardware.screen == null) {
+      return
+    }
     // Attempt to jump to the default orientation of the new device; for example, if you're viewing
     // a layout in
     // portrait orientation on a Nexus 4 (its default), and you switch to a Nexus 10, we jump to
@@ -806,6 +815,9 @@ private class SetWearDeviceAction(
   selected: Boolean,
 ) : SetDeviceAction(title, updatePresentationCallback, deviceChangeListener, device, defaultIcon, selected) {
   override fun updateConfiguration(configuration: Configuration, commit: Boolean) {
+    if (device.defaultHardware.screen == null) {
+      return
+    }
     val prevDevice = configuration.cachedDevice
     var newState: String? = null
 
@@ -857,6 +869,9 @@ private class SetAvdAction(
   }
 
   override fun updateConfiguration(configuration: Configuration, commit: Boolean) {
+    if (device.defaultHardware.screen == null) {
+      return
+    }
     val prevDevice = configuration.cachedDevice
     if (commit) {
       configuration.settings.selectDevice(device)

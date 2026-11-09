@@ -167,4 +167,22 @@ class ScreenViewTest {
     assertEquals(100, outDimension.width)
     assertEquals(167, outDimension.height)
   }
+
+  @Test
+  fun `device content size policy with screenless device sets zero size`() {
+    val screenView = mock(ScreenView::class.java)
+    val configuration = mock(Configuration::class.java)
+    val device = buildDevice("DisplaylessGlasses", buildState().apply { hardware.screen = null })
+    whenever(configuration.cachedDevice).thenReturn(device)
+    whenever(configuration.deviceState).thenReturn(device.defaultState)
+
+    whenever(screenView.configuration).thenReturn(configuration)
+
+    val outDimension = Dimension(123, 123)
+
+    DEVICE_CONTENT_SIZE_POLICY.measure(screenView, outDimension)
+
+    assertEquals(0, outDimension.width)
+    assertEquals(0, outDimension.height)
+  }
 }

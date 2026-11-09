@@ -117,6 +117,57 @@ class ConfigurationManagerTest : AndroidTestCase() {
       .get()
   }
 
+  fun testConfigurationDoesNotSelectScreenlessDevice() {
+    val baseFile = myFixture.addFileToProject("res/layout/activity_main.xml", LAYOUT_FILE_TEXT)
+    val sw600File = myFixture.addFileToProject("res/layout-sw600dp/activity_main.xml", LAYOUT_FILE_TEXT)
+
+    val manager = ConfigurationManager.getOrCreateInstance(myModule)
+    // Precondition: keeps the test from silently going vacuous if sdklib renames or drops the device.
+    assertTrue("Available devices must contain at least one screenless device", manager.devices.any { it.defaultHardware.screen == null })
+
+    val baseDevice = manager.getConfiguration(baseFile.virtualFile).device
+    assertNotNull("A matching device should be selected for the base layout", baseDevice)
+    assertNotNull("Selected device must have a screen", baseDevice?.defaultHardware?.screen)
+
+    val sw600Device = manager.getConfiguration(sw600File.virtualFile).device
+    assertNotNull("A matching device should be selected for the layout-sw600dp", sw600Device)
+    assertNotNull("Selected device must have a screen", sw600Device?.defaultHardware?.screen)
+  }
+
+  fun testAdaptConfigSelectionRecoversFromScreenlessDevice() {
+    val file = myFixture.addFileToProject("res/layout/activity_main.xml", LAYOUT_FILE_TEXT)
+    val manager = ConfigurationManager.getOrCreateInstance(myModule)
+    val screenlessDevice = manager.devices.first { it.defaultHardware.screen == null }
+    val configuration = manager.getConfiguration(file.virtualFile)
+
+    // Simulate an existing configuration pointing to a screenless device
+    configuration.setDevice(screenlessDevice, false)
+    assertEquals(screenlessDevice, configuration.device)
+
+    // adaptConfigSelection should recognize the screenless device cannot render layouts and re-adapt
+    val matcher = ConfigurationMatcher(configuration, file.virtualFile)
+    matcher.adaptConfigSelection(true)
+
+    val adaptedDevice = configuration.device
+    assertNotNull("A matching device should be selected after adaptation", adaptedDevice)
+    assertNotNull("Re-adapted device must have a screen", adaptedDevice?.defaultHardware?.screen)
+  }
+
+  fun testRecentDevicesSkipsScreenlessDevice() {
+    val file = myFixture.addFileToProject("res/layout/activity_main.xml", LAYOUT_FILE_TEXT)
+    val manager = ConfigurationManager.getOrCreateInstance(myModule)
+    val screenlessDevice = manager.devices.first { it.defaultHardware.screen == null }
+
+    // Pre-populate MRU with a screenless device
+    manager.selectDevice(screenlessDevice)
+
+    // ConfigurationForFile.computeBestDevice() must skip the screenless device and pick one with a screen
+    val configuration = manager.getConfiguration(file.virtualFile)
+    val device = configuration.device
+    assertNotNull("A device should be computed for the file", device)
+    assertNotNull("Selected device must have a screen even if MRU had screenless device", device?.defaultHardware?.screen)
+  }
+
   fun testWearProjectUsesWearDeviceByDefault() {
     val manifest = AppExecutorUtil.getAppExecutorService().submit<Manifest?> { Manifest.getMainManifest(myFacet) }.get()
     assertNotNull(manifest)

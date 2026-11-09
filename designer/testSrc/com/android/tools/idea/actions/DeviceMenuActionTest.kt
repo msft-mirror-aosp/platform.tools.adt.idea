@@ -275,12 +275,11 @@ class DeviceMenuActionTest {
     assertThat(allDeviceActions[1].device).isEqualTo(device)
 
     // Check that only one device is selected
-    val selectedActions =
-      allDeviceActions.filter {
-        val event = TestActionEvent.createTestEvent()
-        it.update(event)
-        Toggleable.isSelected(event.presentation)
-      }
+    val selectedActions = allDeviceActions.filter {
+      val event = TestActionEvent.createTestEvent()
+      it.update(event)
+      Toggleable.isSelected(event.presentation)
+    }
     assertThat(selectedActions.size).isEqualTo(1)
   }
 
@@ -436,17 +435,19 @@ class DeviceMenuActionTest {
     // With no filter, "Display Glasses" is present in the menu under XR.
     val unfilteredMenu = DeviceMenuAction()
     unfilteredMenu.updateActions(dataContext)
-    val unfilteredActual = withContext(Dispatchers.EDT) {
-      prettyPrintActions(unfilteredMenu, { action: AnAction -> !isAvdAction(action) }, dataContext)
-    }
+    val unfilteredActual =
+      withContext(Dispatchers.EDT) {
+        prettyPrintActions(unfilteredMenu, { action: AnAction -> !isAvdAction(action) }, dataContext)
+      }
     assertThat(unfilteredActual).contains("Display Glasses (450 × 450 dp, mdpi)")
 
     // With a filter excluding AI Glasses, "Display Glasses" is excluded while other devices remain.
     val filteredMenu = DeviceMenuAction(deviceFilter = { !Device.isAiGlasses(it) })
     filteredMenu.updateActions(dataContext)
-    val filteredActual = withContext(Dispatchers.EDT) {
-      prettyPrintActions(filteredMenu, { action: AnAction -> !isAvdAction(action) }, dataContext)
-    }
+    val filteredActual =
+      withContext(Dispatchers.EDT) {
+        prettyPrintActions(filteredMenu, { action: AnAction -> !isAvdAction(action) }, dataContext)
+      }
     assertThat(filteredActual).doesNotContain("Display Glasses")
     assertThat(filteredActual).contains("XR Headset (1280 × 1279 dp, xhdpi)")
     assertThat(filteredActual).contains("Pixel 10")
@@ -462,17 +463,97 @@ class DeviceMenuActionTest {
 
     val glassesOnlyMenu = DeviceMenuAction(deviceFilter = { Device.isAiGlasses(it) })
     glassesOnlyMenu.updateActions(dataContext)
-    val actual = withContext(Dispatchers.EDT) {
-      prettyPrintActions(glassesOnlyMenu, { action: AnAction -> !isAvdAction(action) }, dataContext)
-    }
+    val actual =
+      withContext(Dispatchers.EDT) {
+        prettyPrintActions(glassesOnlyMenu, { action: AnAction -> !isAvdAction(action) }, dataContext)
+      }
     assertThat(actual).doesNotContain("Reference Devices")
     assertThat(actual).doesNotContain("Phones")
     assertThat(actual).doesNotContain("Tablets")
     assertThat(actual).contains("Display Glasses (450 × 450 dp, mdpi)")
   }
+
+  @Test
+  fun testScreenlessAvdExcludedFromMenu() = runBlocking {
+    val screenlessDeviceBuilder = Device.Builder()
+    screenlessDeviceBuilder.setName("Screenless AVD")
+    screenlessDeviceBuilder.setId("screenless_avd")
+    screenlessDeviceBuilder.setManufacturer("Google")
+    val hardware = Hardware()
+    hardware.screen = null
+    val state = State()
+    state.isDefaultState = true
+    state.hardware = hardware
+    screenlessDeviceBuilder.addState(state)
+    screenlessDeviceBuilder.addSoftware(Software())
+    val screenlessDevice = screenlessDeviceBuilder.build()
+
+    val configurationSettings = TestConfigurationSettings(emptyList(), listOf(screenlessDevice))
+    val configuration = Configuration.create(configurationSettings, FolderConfiguration.createDefault())
+    val dataContext = SimpleDataContext.getSimpleContext(CONFIGURATIONS, listOf(configuration))
+
+    val menuAction = DeviceMenuAction()
+    menuAction.updateActions(dataContext)
+    val actual =
+      withContext(Dispatchers.EDT) {
+        prettyPrintActions(menuAction, { true }, dataContext)
+      }
+
+    assertThat(actual).doesNotContain("Screenless AVD")
+    assertThat(DeviceMenuAction.getSortedMajorDevices(configuration)).doesNotContain(screenlessDevice)
+  }
+
+  @Test
+  fun testSetDeviceActionDoesNotSelectScreenlessDevice() = runBlocking {
+    val layoutFile =
+      projectRule.fixture.addFileToProject(
+        "res/layout/layout.xml",
+        // language=xml
+        """
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          android:orientation="vertical">
+         </LinearLayout>
+        """
+          .trimIndent(),
+      )
+
+    val configuration = readAction {
+      ConfigurationManager.getOrCreateInstance(layoutFile.module!!).getConfiguration(layoutFile.virtualFile)
+    }
+    val initialDevice = configuration.device
+    assertThat(initialDevice).isNotNull()
+    assertThat(initialDevice?.defaultHardware?.screen).isNotNull()
+
+    val screenlessDeviceBuilder = Device.Builder()
+    screenlessDeviceBuilder.setName("Screenless Device")
+    screenlessDeviceBuilder.setId("screenless_device")
+    screenlessDeviceBuilder.setManufacturer("Google")
+    val hardware = Hardware()
+    hardware.screen = null
+    val state = State()
+    state.isDefaultState = true
+    state.hardware = hardware
+    screenlessDeviceBuilder.addState(state)
+    screenlessDeviceBuilder.addSoftware(Software())
+    val screenlessDevice = screenlessDeviceBuilder.build()
+
+    val dataContext = SimpleDataContext.getSimpleContext(CONFIGURATIONS, listOf(configuration))
+    val action = SetDeviceAction("Screenless Device", {}, object : DeviceChangeListener {}, screenlessDevice, null, false)
+    withContext(Dispatchers.EDT) {
+      action.actionPerformed(TestActionEvent.createTestEvent(dataContext))
+    }
+
+    // Configuration device must remain unchanged and not set to screenless device
+    assertThat(configuration.device).isEqualTo(initialDevice)
+  }
 }
 
-private class TestConfigurationSettings(private val testDevices: List<Device>) : ConfigurationSettings {
+private class TestConfigurationSettings(
+  private val testDevices: List<Device>,
+  private val testAvdDevices: List<Device> = emptyList(),
+) : ConfigurationSettings {
   override val defaultDevice: Device?
     get() = null
 
@@ -520,5 +601,5 @@ private class TestConfigurationSettings(private val testDevices: List<Device>) :
     get() = emptyList()
 
   override val avdDevices: List<Device>
-    get() = emptyList()
+    get() = testAvdDevices
 }

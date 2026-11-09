@@ -62,10 +62,16 @@ public class ScreenView extends ScreenViewBase {
         HardwareConfig config =
           new HardwareConfigHelper(device).setOrientation(state.getOrientation()).getConfig();
 
-        float densityRatio = Density.DEFAULT_DENSITY * 1.0f / config.getDensity().getDpiValue();
-        int dpWidth = Math.round(config.getScreenWidth() * densityRatio);
-        int dpHeight = Math.round(config.getScreenHeight() * densityRatio);
-        outDimension.setSize(dpWidth, dpHeight);
+        Density density = config.getDensity();
+        if (density != null) {
+          float densityRatio = Density.DEFAULT_DENSITY * 1.0f / density.getDpiValue();
+          int dpWidth = Math.round(config.getScreenWidth() * densityRatio);
+          int dpHeight = Math.round(config.getScreenHeight() * densityRatio);
+          outDimension.setSize(dpWidth, dpHeight);
+        }
+        else {
+          outDimension.setSize(0, 0);
+        }
       }
     }
   };

@@ -54,6 +54,7 @@ class ConfigurationForFile(val file: VirtualFile, manager: ConfigurationManager,
 
   override fun computeBestDevice(): Device? {
     for (device in mySettings.recentDevices) {
+      if (device.defaultHardware.screen == null) continue
       val finalStateName = stateName ?: device.defaultState.name
       val selectedState: State = device.getDeviceState(finalStateName)!!
       val module = settings.module
