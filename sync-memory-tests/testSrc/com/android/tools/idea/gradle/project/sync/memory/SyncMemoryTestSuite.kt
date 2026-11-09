@@ -20,11 +20,13 @@ import com.android.tools.idea.gradle.project.sync.BenchmarkProject.KMP_2000
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_1000
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_200
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_2000
+import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_2000_ISOLATED_PROJECTS
 import com.android.tools.idea.gradle.project.sync.BenchmarkProject.STANDARD_4200
 import com.android.tools.idea.gradle.project.sync.MULTI_APP_100_NAME
 import com.android.tools.idea.gradle.project.sync.MULTI_APP_190_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_1000_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_GRADLE_LATEST_NAME
+import com.android.tools.idea.gradle.project.sync.SUBSET_2000_ISOLATED_PROJECTS_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_KOTLIN_LATEST_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_200_NAME
@@ -53,6 +55,15 @@ class Benchmark2000KotlinMultiplatformMemoryTest {
 
 open class Benchmark2000MemoryTest {
   @get:Rule val benchmarkTestRule = createMemoryBenchmarkTestRule(SUBSET_2000_NAME, STANDARD_2000)
+  @get:Rule val captureFromHistogramRule = CaptureSyncMemoryFromHistogramRule(benchmarkTestRule.projectName)
+
+  @Test fun testMemory() = benchmarkTestRule.openProject()
+}
+
+// Same project as Benchmark2000MemoryTest, but with Gradle Project Isolation enabled, which allows Gradle to reuse the tooling models of
+// previous syncs from the configuration cache.
+class Benchmark2000IsolatedProjectsMemoryTest {
+  @get:Rule val benchmarkTestRule = createMemoryBenchmarkTestRule(SUBSET_2000_ISOLATED_PROJECTS_NAME, STANDARD_2000_ISOLATED_PROJECTS)
   @get:Rule val captureFromHistogramRule = CaptureSyncMemoryFromHistogramRule(benchmarkTestRule.projectName)
 
   @Test fun testMemory() = benchmarkTestRule.openProject()
