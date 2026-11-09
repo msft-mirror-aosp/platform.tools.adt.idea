@@ -21,6 +21,7 @@ import com.android.tools.idea.gradle.project.entities.GradleProjectPathSymbolicI
 import com.android.tools.idea.gradle.project.entities.gradleProjectPath
 import com.android.tools.idea.projectsystem.ProjectSyncModificationTracker
 import com.android.utils.FileUtils
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsDataStorage
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil
 import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil.getExternalModuleType
 import com.intellij.openapi.module.Module
@@ -206,5 +207,10 @@ fun Project.findModule(gradleProjectPath: GradleProjectPath): Module? =
 
 fun GradleProjectPath.resolveIn(project: Project): Module? = project.findModule(this)
 
+@Suppress("UnstableApiUsage")
 private fun gradleProjectPathModificationTrackers(project: Project) =
-  listOf(ProjectRootModificationTracker.getInstance(project), ProjectSyncModificationTracker.getInstance(project))
+  listOf(
+    ProjectRootModificationTracker.getInstance(project),
+    ProjectSyncModificationTracker.getInstance(project),
+    ExternalProjectsDataStorage.getInstance(project),
+  )

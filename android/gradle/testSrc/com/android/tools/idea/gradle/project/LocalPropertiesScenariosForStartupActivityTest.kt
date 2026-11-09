@@ -24,11 +24,14 @@ import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.gradleModuleModel
 import com.android.tools.idea.gradle.project.sync.GradleSyncInvoker
 import com.android.tools.idea.gradle.project.sync.GradleSyncListener
+import com.android.tools.idea.projectsystem.ProjectSyncModificationTracker
 import com.android.tools.idea.projectsystem.gradle.LINKED_ANDROID_GRADLE_MODULE_GROUP
 import com.android.tools.idea.projectsystem.gradle.getAndroidTestModule
+import com.android.tools.idea.projectsystem.gradle.getGradleProjectPath
 import com.android.tools.idea.projectsystem.gradle.getMainModule
 import com.android.tools.idea.projectsystem.gradle.getUnitTestModule
 import com.android.tools.idea.projectsystem.gradle.isLinkedAndroidModule
+import com.android.tools.idea.projectsystem.gradle.resolveIn
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.gradleModule
@@ -39,8 +42,12 @@ import com.google.wireless.android.sdk.stats.GradleSyncStats.Trigger
 import com.intellij.facet.FacetManager
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.externalSystem.service.project.ProjectDataManager
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsDataStorage
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.testFramework.RunsInEdt
@@ -48,6 +55,7 @@ import com.intellij.testFramework.replaceService
 import java.io.File
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.kotlin.idea.core.util.toVirtualFile
+import org.jetbrains.plugins.gradle.util.GradleConstants
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -150,6 +158,58 @@ class LocalPropertiesScenariosForStartupActivityTest {
     assertThat(ProjectStructure.getInstance(project).appHolderModules).containsExactly(appHolder)
     assertThat(AndroidFacet.getInstance(appHolder)!!.externalSource).isNotNull()
     assertThat(GradleFacet.getInstance(appHolder)!!.externalSource).isNotNull()
+  }
+
+  @Test
+  fun `test cached GradleProjectPath is invalidated when ExternalProjectsDataStorage loads`() {
+    val project = projectRule.project
+    val appHolder = project.gradleModule(":app")!!
+    val expectedAppPath = appHolder.getGradleProjectPath()!!
+    val externalProjectInfo =
+      ProjectDataManager.getInstance().getExternalProjectData(project, GradleConstants.SYSTEM_ID, project.basePath!!)!!
+
+    // Simulate a freshly reopened project where workspace model entities from the previous session are not attached and
+    // ExternalProjectsDataStorage has not yet finished loading external project data.
+    ModuleManager.getInstance(project).modules.forEach { module ->
+      module.putUserData(LINKED_ANDROID_GRADLE_MODULE_GROUP, null)
+      FacetManager.getInstance(module).let { facetManager ->
+        (facetManager.getFacetsByType(GradleFacet.getFacetTypeId()) + facetManager.getFacetsByType(AndroidFacet.ID)).forEach { facet ->
+          facet.externalSource = null
+        }
+      }
+    }
+    runWriteAction {
+      project.workspaceModel.updateProjectModel("Clear cached entities for reopen test") { storage ->
+        storage.entities(GradleProjectPathEntity::class.java).toList().forEach(storage::removeEntity)
+        storage.entities(GradleAndroidModelEntity::class.java).toList().forEach(storage::removeEntity)
+        storage.entities(GradleModuleModelEntity::class.java).toList().forEach(storage::removeEntity)
+      }
+    }
+    val dataStorage = ExternalProjectsDataStorage.getInstance(project)
+    ExternalProjectsManagerImpl.getInstance(project).forgetExternalProjectData(GradleConstants.SYSTEM_ID, project.basePath!!)
+    dataStorage.incModificationCount()
+
+    // Query getGradleProjectPath() and resolveIn() before ExternalProjectsDataStorage finishes loading (b/582423009).
+    assertThat(appHolder.getGradleProjectPath()).isNull()
+    assertThat(expectedAppPath.resolveIn(project)).isNull()
+
+    val rootModCountBefore = ProjectRootModificationTracker.getInstance(project).modificationCount
+    val syncModCountBefore = ProjectSyncModificationTracker.getInstance(project).modificationCount
+
+    // Simulate ExternalProjectsDataStorage finishing load(), which updates dataStorage and only increments its modification count.
+    dataStorage.update(externalProjectInfo)
+
+    assertThat(ProjectRootModificationTracker.getInstance(project).modificationCount).isEqualTo(rootModCountBefore)
+    assertThat(ProjectSyncModificationTracker.getInstance(project).modificationCount).isEqualTo(syncModCountBefore)
+    assertThat(appHolder.getGradleProjectPath()).isEqualTo(expectedAppPath)
+    assertThat(expectedAppPath.resolveIn(project)).isEqualTo(appHolder)
+
+    executeMyStartupActivity()
+
+    assertThat(myRequest).isNull()
+    assertThat(appHolder.isLinkedAndroidModule()).isTrue()
+    assertThat(GradleAndroidModel.get(appHolder)).isNotNull()
+    assertThat(appHolder.gradleModuleModel).isNotNull()
   }
 
   private fun executeMyStartupActivity() {
