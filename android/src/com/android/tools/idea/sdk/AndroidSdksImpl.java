@@ -198,6 +198,16 @@ public class AndroidSdksImpl implements AndroidSdks {
   @Override
   @Nullable
   public Sdk create(@NotNull IAndroidTarget target, @NotNull File sdkPath, @NotNull String sdkName, boolean addRoots) {
+    PreparedSdk preparedSdk = prepareSdk(target, sdkPath, sdkName, addRoots);
+    if (preparedSdk == null) {
+      return null;
+    }
+    return WriteAction.computeAndWait(preparedSdk::commit);
+  }
+
+  @Override
+  @Nullable
+  public PreparedSdk prepareSdk(@NotNull IAndroidTarget target, @NotNull File sdkPath, @NotNull String sdkName, boolean addRoots) {
     int androidPlatformToAutocreate = StudioFlags.ANDROID_PLATFORM_TO_AUTOCREATE.get();
     if (androidPlatformToAutocreate > 0) {
       int actualLevel = target.getVersion().getApiLevel();
@@ -228,10 +238,10 @@ public class AndroidSdksImpl implements AndroidSdks {
 
     SdkModificator sdkModificator = getAndInitialiseSdkModificator(sdk, target);
     sdkModificator.setHomePath(toSystemIndependentName(sdkPath.getPath()));
-    setUpSdkAndCommit(sdkModificator, sdkName, Arrays.asList(table.getAllJdks()), addRoots);
-
-    ApplicationManager.getApplication().runWriteAction(() -> ProjectJdkTable.getInstance().addJdk(sdk));
-    return sdk;
+    if (addRoots) {
+      setUpSdkRootsAndAnnotations(target, sdkModificator);
+    }
+    return new PreparedSdk(target, sdk, sdkModificator, sdkName);
   }
 
   @Override
@@ -239,7 +249,11 @@ public class AndroidSdksImpl implements AndroidSdks {
                        @NotNull IAndroidTarget target,
                        @NotNull String sdkName,
                        @NotNull Collection<Sdk> allSdks) {
-    setUpSdkAndCommit(getAndInitialiseSdkModificator(androidSdk, target), sdkName, allSdks, true /* add roots */);
+    SdkModificator sdkModificator = getAndInitialiseSdkModificator(androidSdk, target);
+    String name = createUniqueSdkName(sdkName, allSdks);
+    sdkModificator.setName(name);
+    setUpSdkRootsAndAnnotations(target, sdkModificator);
+    WriteAction.runAndWait(sdkModificator::commitChanges);
   }
 
   @NotNull
@@ -252,32 +266,16 @@ public class AndroidSdksImpl implements AndroidSdks {
     return sdkModificator;
   }
 
-  private void setUpSdkAndCommit(@NotNull SdkModificator sdkModificator,
-                                 @NotNull String sdkName,
-                                 @NotNull Collection<Sdk> allSdks,
-                                 boolean addRoots) {
-    AndroidSdkAdditionalData data = (AndroidSdkAdditionalData)sdkModificator.getSdkAdditionalData();
-    assert data != null;
-    AndroidSdkData androidSdkData = AndroidSdkData.getSdkData(sdkModificator.getHomePath());
-    assert androidSdkData != null;
-    IAndroidTarget target = data.getBuildTarget(androidSdkData);
-    assert target != null;
-
-    String name = createUniqueSdkName(sdkName, allSdks);
-    sdkModificator.setName(name);
-
-    if (addRoots) {
-      List<OrderRoot> newRoots = getLibraryRootsForTarget(target, FilePaths.stringToFile(sdkModificator.getHomePath()), true);
-      sdkModificator.removeAllRoots();
-      for (OrderRoot orderRoot : newRoots) {
-        sdkModificator.addRoot(orderRoot.getFile(), orderRoot.getType());
-      }
-      findAndSetPlatformSources(target, sdkModificator);
-
-      // TODO move this method to Jdks.
-      attachJdkAnnotations(sdkModificator);
+  private void setUpSdkRootsAndAnnotations(@NotNull IAndroidTarget target, @NotNull SdkModificator sdkModificator) {
+    List<OrderRoot> newRoots = getLibraryRootsForTarget(target, FilePaths.stringToFile(sdkModificator.getHomePath()), true);
+    sdkModificator.removeAllRoots();
+    for (OrderRoot orderRoot : newRoots) {
+      sdkModificator.addRoot(orderRoot.getFile(), orderRoot.getType());
     }
-    WriteAction.run(sdkModificator::commitChanges);
+    findAndSetPlatformSources(target, sdkModificator);
+
+    // TODO move this method to Jdks.
+    attachJdkAnnotations(sdkModificator);
   }
 
   @Override

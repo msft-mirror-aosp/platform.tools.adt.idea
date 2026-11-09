@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.sdk;
 
+import static com.intellij.openapi.projectRoots.impl.SdkConfigurationUtil.createUniqueSdkName;
+
 import com.android.annotations.NonNull;
 import com.android.sdklib.IAndroidTarget;
 import com.android.sdklib.repository.AndroidSdkHandler;
@@ -22,12 +24,14 @@ import com.android.tools.sdk.AndroidSdkData;
 import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.projectRoots.ProjectJdkTable;
 import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.projectRoots.SdkModificator;
 import com.intellij.openapi.roots.libraries.ui.OrderRoot;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiElement;
 import java.io.File;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import org.jetbrains.annotations.NonNls;
@@ -53,6 +57,7 @@ public interface AndroidSdks {
   @Nullable Sdk tryToCreate(@NotNull File sdkPath, @NotNull String targetHashString);
   @Nullable Sdk create(@NotNull IAndroidTarget target, @NotNull File sdkPath, boolean addRoots);
   @Nullable Sdk create(@NotNull IAndroidTarget target, @NotNull File sdkPath, @NotNull String sdkName, boolean addRoots);
+  @Nullable PreparedSdk prepareSdk(@NotNull IAndroidTarget target, @NotNull File sdkPath, @NotNull String sdkName, boolean addRoots);
   void setUpSdk(@NotNull Sdk androidSdk, @NotNull IAndroidTarget target, @NotNull String sdkName, @NotNull Collection<Sdk> allSdks);
   void findAndSetPlatformSources(@NotNull IAndroidTarget target, @NotNull SdkModificator sdkModificator);
   /**
@@ -65,4 +70,19 @@ public interface AndroidSdks {
   @VisibleForTesting void replaceLibraries(@NotNull Sdk sdk, @NotNull VirtualFile[] libraries);
   boolean isInAndroidSdk(@NonNull PsiElement element);
   boolean isInAndroidSdk(@NonNull Project project, @NonNull VirtualFile file);
+
+  record PreparedSdk(@NotNull IAndroidTarget target,
+                     @NotNull Sdk sdk,
+                     @NotNull SdkModificator sdkModificator,
+                     @NotNull String sdkName) {
+    @NotNull
+    public Sdk commit() {
+      ApplicationManager.getApplication().assertWriteAccessAllowed();
+      ProjectJdkTable table = ProjectJdkTable.getInstance();
+      sdkModificator.setName(createUniqueSdkName(sdkName, Arrays.asList(table.getAllJdks())));
+      sdkModificator.commitChanges();
+      table.addJdk(sdk);
+      return sdk;
+    }
+  }
 }

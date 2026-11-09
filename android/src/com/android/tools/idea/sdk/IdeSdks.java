@@ -80,6 +80,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -392,55 +393,52 @@ public class IdeSdks {
   }
 
   /**
-   * Sets the path of Android Studio's Android SDK. This method should be called in a write action. It is assumed that the given path has
-   * been validated by {@link #isValidAndroidSdkPath(File)}. This method will fail silently if the given path is not valid.
+   * Sets the path of Android Studio's Android SDK. It is assumed that the given path has been validated by
+   * {@link #isValidAndroidSdkPath(File)}. This method will fail silently if the given path is not valid.
    *
    * @param path the path of the Android SDK.
-   * @see com.intellij.openapi.application.Application#runWriteAction(Runnable)
    */
   @NotNull
   public List<Sdk> setAndroidSdkPath(@NotNull File path) {
     if (AndroidSdkPath.isValid(path)) {
-      ApplicationManager.getApplication().assertWriteAccessAllowed();
-
-      // Store default sdk path for the application as well in order to be able to re-use it for other ide projects if necessary.
-      AndroidSdkPathStore.getInstance().setAndroidSdkPath(path.toPath());
-
-      // Since removing SDKs is *not* asynchronous, we force an update of the SDK Manager.
-      // If we don't force this update, AndroidSdks will still use the old SDK until all SDKs are properly deleted.
-      updateSdkData(path);
-
-      // Set up a list of SDKs we don't need any more. At the end we'll delete them.
-      List<Sdk> sdksToDelete = new ArrayList<>();
-
       Path resolved = resolvePath(path.toPath());
       // Parse out the new SDK. We'll need its targets to set up IntelliJ SDKs for each.
       AndroidSdkData sdkData = getSdkData(resolved, true);
-      if (sdkData != null) {
-        // Iterate over all current existing IJ Android SDKs
-        for (Sdk sdk : myAndroidSdks.getAllAndroidSdks()) {
-          if (sdk.getName().startsWith(SDK_NAME_PREFIX)) {
-            sdksToDelete.add(sdk);
+      IAndroidTarget[] targets = sdkData != null ? sdkData.getTargets(false /* do not include add-ons */) : new IAndroidTarget[0];
+      List<AndroidSdks.PreparedSdk> preparedSdks =
+        sdkData != null ? prepareAndroidSdkPerAndroidTarget(sdkData, targets, false) : Collections.emptyList();
+
+      return WriteAction.computeAndWait(() -> {
+        // Store default sdk path for the application as well in order to be able to re-use it for other ide projects if necessary.
+        AndroidSdkPathStore.getInstance().setAndroidSdkPath(path.toPath());
+
+        // Since removing SDKs is *not* asynchronous, we force an update of the SDK Manager.
+        // If we don't force this update, AndroidSdks will still use the old SDK until all SDKs are properly deleted.
+        myAndroidSdks.setSdkData(sdkData);
+
+        // Set up a list of SDKs we don't need any more. At the end we'll delete them.
+        List<Sdk> sdksToDelete = new ArrayList<>();
+        if (sdkData != null) {
+          // Iterate over all current existing IJ Android SDKs
+          for (Sdk sdk : myAndroidSdks.getAllAndroidSdks()) {
+            if (sdk.getName().startsWith(SDK_NAME_PREFIX)) {
+              sdksToDelete.add(sdk);
+            }
           }
         }
-      }
-      for (Sdk sdk : sdksToDelete) {
-        ProjectJdkTable.getInstance().removeJdk(sdk);
-      }
+        for (Sdk sdk : sdksToDelete) {
+          ProjectJdkTable.getInstance().removeJdk(sdk);
+        }
 
-      // If there are any API targets that we haven't created IntelliJ SDKs for yet, fill those in.
-      List<Sdk> sdks = createAndroidSdkPerAndroidTarget(resolved.toFile());
+        // If there are any API targets that we haven't created IntelliJ SDKs for yet, fill those in.
+        List<Sdk> sdks = targets.length > 0 ? commitPreparedAndroidSdks(preparedSdks) : Collections.emptyList();
 
-      afterAndroidSdkPathUpdate(resolved.toFile());
+        afterAndroidSdkPathUpdate(resolved.toFile());
 
-      return sdks;
+        return sdks;
+      });
     }
     return Collections.emptyList();
-  }
-
-  private void updateSdkData(@NotNull File path) {
-    AndroidSdkData oldSdkData = getSdkData(path);
-    myAndroidSdks.setSdkData(oldSdkData);
   }
 
   private static void afterAndroidSdkPathUpdate(@NotNull File androidSdkPath) {
@@ -486,14 +484,38 @@ public class IdeSdks {
     if (targets.length == 0) {
       return Collections.emptyList();
     }
-    List<Sdk> sdks = new ArrayList<>();
+    List<AndroidSdks.PreparedSdk> preparedSdks = prepareAndroidSdkPerAndroidTarget(sdkData, targets, true);
+    return WriteAction.computeAndWait(() -> commitPreparedAndroidSdks(preparedSdks));
+  }
+
+  @NotNull
+  private List<AndroidSdks.PreparedSdk> prepareAndroidSdkPerAndroidTarget(@NotNull AndroidSdkData sdkData,
+                                                                          @NotNull IAndroidTarget[] targets,
+                                                                          boolean checkExisting) {
+    if (targets.length == 0) {
+      return Collections.emptyList();
+    }
+    Set<AndroidVersion> existingVersions = checkExisting ? getExistingIdeAndroidSdkVersions() : new HashSet<>();
+    List<AndroidSdks.PreparedSdk> preparedSdks = new ArrayList<>();
     for (IAndroidTarget target : targets) {
-      if (target.isPlatform() && !doesIdeAndroidSdkExist(target)) {
+      if (target.isPlatform() && existingVersions.add(target.getVersion())) {
         String name = myAndroidSdks.chooseNameForNewLibrary(target);
-        Sdk sdk = myAndroidSdks.create(target, sdkData.getLocationFile(), name, true);
-        if (sdk != null) {
-          sdks.add(sdk);
+        AndroidSdks.PreparedSdk preparedSdk = myAndroidSdks.prepareSdk(target, sdkData.getLocationFile(), name, true);
+        if (preparedSdk != null) {
+          preparedSdks.add(preparedSdk);
         }
+      }
+    }
+    return preparedSdks;
+  }
+
+  @NotNull
+  private List<Sdk> commitPreparedAndroidSdks(@NotNull List<AndroidSdks.PreparedSdk> preparedSdks) {
+    Set<AndroidVersion> existingVersions = getExistingIdeAndroidSdkVersions();
+    List<Sdk> sdks = new ArrayList<>();
+    for (AndroidSdks.PreparedSdk preparedSdk : preparedSdks) {
+      if (existingVersions.add(preparedSdk.target().getVersion())) {
+        sdks.add(preparedSdk.commit());
       }
     }
     updateWelcomeRunAndroidSdkAction();
@@ -501,18 +523,15 @@ public class IdeSdks {
   }
 
   /**
-   * Returns true if an IntelliJ SDK with the default naming convention already exists for the given Android build target.
+   * Returns the set of Android versions for which an IntelliJ SDK with the default naming convention already exists.
    */
-  private boolean doesIdeAndroidSdkExist(@NotNull IAndroidTarget target) {
+  @NotNull
+  private Set<AndroidVersion> getExistingIdeAndroidSdkVersions() {
+    Set<AndroidVersion> versions = new HashSet<>();
     for (Sdk sdk : getEligibleAndroidSdks()) {
-      IAndroidTarget platformTarget = getTarget(sdk);
-      AndroidVersion version = target.getVersion();
-      AndroidVersion existingVersion = platformTarget.getVersion();
-      if (existingVersion.equals(version)) {
-        return true;
-      }
+      versions.add(getTarget(sdk).getVersion());
     }
-    return false;
+    return versions;
   }
 
   @NotNull

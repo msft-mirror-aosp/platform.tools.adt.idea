@@ -30,7 +30,6 @@ import com.android.tools.sdk.SdkPaths.ValidationResult;
 import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ApplicationNamesInfo;
-import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.externalSystem.model.ExternalSystemException;
 import com.intellij.openapi.project.Project;
@@ -38,7 +37,6 @@ import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.Ref;
-import com.intellij.util.ModalityUiUtil;
 import java.io.File;
 import java.io.IOException;
 import org.jetbrains.annotations.NotNull;
@@ -135,8 +133,8 @@ public class SdkSyncImpl implements SdkSync {
     ValidationResult validationResult = validateAndroidSdk(projectAndroidSdkPath.toPath(), true);
     if (!validationResult.success) {
       // If we have the IDE default SDK but not a valid project SDK, update local.properties with the default SDK path and exit.
-      ApplicationManager.getApplication().invokeAndWait(() -> {
-        if (!ApplicationManager.getApplication().isUnitTestMode()) {
+      if (!ApplicationManager.getApplication().isUnitTestMode()) {
+        ApplicationManager.getApplication().invokeAndWait(() -> {
           String error = validationResult.message;
           if (isEmpty(error)) {
             error = String.format("The path \n'%1$s'\n" + "does not refer to a valid Android SDK.", projectAndroidSdkPath.getPath());
@@ -146,9 +144,9 @@ public class SdkSyncImpl implements SdkSync {
           Messages.showErrorDialog(String.format(format, error, ideAndroidSdkPath.getPath(),
                                                  ApplicationNamesInfo.getInstance().getFullProductName()),
                                    ERROR_DIALOG_TITLE);
-        }
-        setProjectSdk(localProperties, ideAndroidSdkPath);
-      });
+        });
+      }
+      setProjectSdk(localProperties, ideAndroidSdkPath);
       return;
     }
 
@@ -166,6 +164,7 @@ public class SdkSyncImpl implements SdkSync {
                                  "necessary Android platforms or build tools.",
                                  ideAndroidSdkPath.getPath(), projectAndroidSdkPath.getPath(),
                                  ApplicationNamesInfo.getInstance().getFullProductName());
+      Ref<Boolean> yesNoResult = new Ref<>();
       ApplicationManager.getApplication().invokeAndWait(() -> {
         // We need to pass the project, so on Mac, the "Mac sheet" showing this message shows inside the IDE during UI tests, otherwise
         // it will show outside and the UI testing infrastructure cannot see it. It is overall a good practice to pass the project when
@@ -174,15 +173,16 @@ public class SdkSyncImpl implements SdkSync {
           .yesText("Use " + ApplicationNamesInfo.getInstance().getFullProductName() + "'s SDK")
           .noText("Use Project's SDK")
           .ask(project);
-        if (userChoseYes) {
-          // Use Android Studio's SDK
-          setProjectSdk(localProperties, ideAndroidSdkPath);
-        }
-        else {
-          // Use project's SDK
-          setIdeSdk(localProperties, projectAndroidSdkPath);
-        }
+        yesNoResult.set(userChoseYes);
       });
+      if (yesNoResult.get()) {
+        // Use Android Studio's SDK
+        setProjectSdk(localProperties, ideAndroidSdkPath);
+      }
+      else {
+        // Use project's SDK
+        setIdeSdk(localProperties, projectAndroidSdkPath);
+      }
     }
   }
 
@@ -194,10 +194,7 @@ public class SdkSyncImpl implements SdkSync {
     // Just to be on the safe side, we update local.properties.
     setProjectSdk(localProperties, projectAndroidSdkPath);
 
-    ModalityUiUtil.invokeLaterIfNeeded(ModalityState.defaultModalityState(),
-                                       () -> ApplicationManager.getApplication().runWriteAction(() -> {
-                                         IdeSdks.getInstance().setAndroidSdkPath(projectAndroidSdkPath);
-                                       }));
+    IdeSdks.getInstance().setAndroidSdkPath(projectAndroidSdkPath);
   }
 
   private static void setProjectSdk(@NotNull LocalProperties localProperties, @NotNull File androidSdkPath) {

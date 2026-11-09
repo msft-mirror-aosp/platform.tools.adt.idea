@@ -26,8 +26,10 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.externalSystem.model.ExternalSystemException;
 import com.intellij.openapi.util.Ref;
 import com.intellij.testFramework.HeavyPlatformTestCase;
+import com.intellij.testFramework.PlatformTestUtil;
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.Future;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -99,6 +101,19 @@ public class SdkSyncImplTest extends HeavyPlatformTestCase {
     mySdkSync.syncIdeAndProjectAndroidSdks(myLocalProperties, null);
 
     assertDefaultSdkSet();
+  }
+
+  public void testSyncIdeAndProjectAndroidHomesFromBackgroundThread() throws Exception {
+    myLocalProperties.setAndroidSdkPath(myAndroidSdkPath);
+    myLocalProperties.save();
+
+    Future<?> future = ApplicationManager.getApplication().executeOnPooledThread(() -> {
+      mySdkSync.syncIdeAndProjectAndroidSdks(myLocalProperties, null);
+    });
+    PlatformTestUtil.waitForFuture(future, 60_000);
+
+    assertDefaultSdkSet();
+    assertFalse(myIdeSdks.getEligibleAndroidSdks().isEmpty());
   }
 
   public void testSyncIdeAndProjectAndroidHomesWhenNoLocalPropertiesExistsAndUserSelectsValidSdkPath() throws Exception {

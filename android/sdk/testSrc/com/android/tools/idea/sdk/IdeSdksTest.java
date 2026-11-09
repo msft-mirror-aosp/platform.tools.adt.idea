@@ -52,6 +52,7 @@ import com.intellij.openapi.projectRoots.Sdk;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.testFramework.HeavyPlatformTestCase;
+import com.intellij.testFramework.PlatformTestUtil;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -60,6 +61,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.jetbrains.android.facet.AndroidFacet;
@@ -165,6 +168,38 @@ public class IdeSdksTest extends HeavyPlatformTestCase {
     assertOneSdkPerAvailableTarget(sdks);
 
     File androidSdkPath = myIdeSdks.getAndroidSdkPath();
+    assertNotNull(androidSdkPath);
+    assertEquals(myAndroidSdkPath.getPath(), androidSdkPath.getPath());
+  }
+
+  public void testSetAndroidSdkPathFromBackgroundThread() {
+    AtomicBoolean preparedOffEdtOutsideWriteAction = new AtomicBoolean(false);
+    AndroidSdksImpl androidSdksSpy = new AndroidSdksImpl(myIdeInfo) {
+      @Override
+      public PreparedSdk prepareSdk(@NotNull IAndroidTarget target, @NotNull File sdkPath, @NotNull String sdkName, boolean addRoots) {
+        preparedOffEdtOutsideWriteAction.set(
+          !ApplicationManager.getApplication().isDispatchThread() && !ApplicationManager.getApplication().isWriteAccessAllowed());
+        return super.prepareSdk(target, sdkPath, sdkName, addRoots);
+      }
+    };
+    IdeSdks ideSdks = new IdeSdks(androidSdksSpy, new Jdks(myIdeInfo), myEmbeddedDistributionPaths, myIdeInfo);
+
+    Future<List<Sdk>> future =
+      ApplicationManager.getApplication().executeOnPooledThread(() -> ideSdks.setAndroidSdkPath(myAndroidSdkPath));
+    List<Sdk> sdks = PlatformTestUtil.waitForFuture(future, 60_000);
+    assertTrue(preparedOffEdtOutsideWriteAction.get());
+    assertOneSdkPerAvailableTarget(sdks);
+
+    // Calling setAndroidSdkPath a second time should replace old SDKs without appending " (1)" to SDK names.
+    Future<List<Sdk>> secondFuture =
+      ApplicationManager.getApplication().executeOnPooledThread(() -> ideSdks.setAndroidSdkPath(myAndroidSdkPath));
+    List<Sdk> replacedSdks = PlatformTestUtil.waitForFuture(secondFuture, 60_000);
+    assertOneSdkPerAvailableTarget(replacedSdks);
+    for (Sdk sdk : replacedSdks) {
+      assertThat(sdk.getName()).doesNotContain("(1)");
+    }
+
+    File androidSdkPath = ideSdks.getAndroidSdkPath();
     assertNotNull(androidSdkPath);
     assertEquals(myAndroidSdkPath.getPath(), androidSdkPath.getPath());
   }
