@@ -90,7 +90,7 @@ class PhasedSyncKaptPatchTest {
       }
     cachedModels.versions[appProject] = versions
     val initialVariant = createTestVariant()
-    cachedModels.selectedVariant[appProject] = initialVariant
+    cachedModels.fetchedVariants[appProject] = listOf(initialVariant)
     cachedModels.data[appProject] =
       CachedAndroidProjectData(
         selectedVariantName = "debug",
@@ -126,6 +126,79 @@ class PhasedSyncKaptPatchTest {
     val variant = ideAndroidModels.fetchedVariants.single()
     assertThat(variant.mainArtifact.generatedSourceFolders).contains(kaptDir.toImpl())
     assertThat(variant.hostTestArtifacts.single().generatedSourceFolders).contains(kaptUnitTestDir.toImpl())
+  }
+
+  @Test
+  fun `PhasedSyncAdditionalModelProvider populates all fetched variants in AllVariantsSyncActionOptions`() {
+    val rootDir = tempFolder.newFolder("projectAllVariants")
+    val appDir = File(rootDir, "app").apply { mkdirs() }
+    val kaptDebugDir = File(appDir, "build/generated/source/kaptKotlin/debug")
+    val kaptReleaseDir = File(appDir, "build/generated/source/kaptKotlin/release")
+
+    val appProject = createBasicGradleProject(rootDir, appDir, ":app")
+    val gradleBuild = createGradleBuild(rootDir, listOf(appProject))
+
+    val kaptDebugSourceSet =
+      Mockito.mock(KaptSourceSetModel::class.java).apply {
+        whenever(sourceSetName).thenReturn("debug")
+        whenever(generatedKotlinSourcesDirFile).thenReturn(kaptDebugDir)
+      }
+    val kaptReleaseSourceSet =
+      Mockito.mock(KaptSourceSetModel::class.java).apply {
+        whenever(sourceSetName).thenReturn("release")
+        whenever(generatedKotlinSourcesDirFile).thenReturn(kaptReleaseDir)
+      }
+    val kaptModel =
+      Mockito.mock(KaptGradleModel::class.java).apply {
+        whenever(isEnabled).thenReturn(true)
+        whenever(sourceSets).thenReturn(listOf(kaptDebugSourceSet, kaptReleaseSourceSet))
+      }
+
+    val cachedModels = ModelProviderCachedData(disableLegacyModelProvidersForSupportedProjects = true)
+    cachedModels.markAllProjectsSupportedByPhasedSync()
+    val versions =
+      Mockito.mock(Versions::class.java).apply {
+        whenever(agp).thenReturn("8.0.0")
+        whenever(versions).thenReturn(emptyMap())
+      }
+    cachedModels.versions[appProject] = versions
+    val debugVariant = createTestVariant("debug")
+    val releaseVariant = createTestVariant("release")
+    cachedModels.fetchedVariants[appProject] = listOf(debugVariant, releaseVariant)
+    cachedModels.data[appProject] =
+      CachedAndroidProjectData(
+        selectedVariantName = "debug",
+        modelVersions = ModelVersions(AgpVersion.parse("8.0.0"), ModelVersion(Int.MIN_VALUE, Int.MIN_VALUE, "8.0.0"), null),
+        ideAndroidProject = createTestAndroidProject(rootDir, appDir, listOf(debugVariant, releaseVariant)),
+        shouldSkipRuntimeClassPathForLibraries = false,
+        allOutgoingProjectDependencies = emptyList(),
+      )
+    cachedModels.setKaptGradleModel(appProject, kaptModel)
+
+    val controller = createEmptyBuildController()
+    val consumedProjectModels = mutableListOf<Triple<BasicGradleProject, Class<*>, Any>>()
+    val consumer =
+      object : GradleModelConsumer {
+        override fun consumeBuildModel(buildModel: BuildModel, `object`: Any, clazz: Class<*>) = Unit
+
+        override fun consumeProjectModel(projectModel: BasicGradleProject, `object`: Any, clazz: Class<*>) {
+          consumedProjectModels += Triple(projectModel, clazz, `object`)
+        }
+      }
+
+    val allVariantsOptions =
+      AllVariantsSyncActionOptions(
+        flags = createSingleVariantSyncOptions().flags,
+        syncTestMode = SyncTestMode.PRODUCTION,
+        additionalClassifierArtifactsAction = AdditionalClassifierArtifactsActionOptions(emptyList()),
+      )
+    PhasedSyncAdditionalModelProvider(allVariantsOptions, cachedModels).populateModels(controller, listOf(gradleBuild), consumer)
+
+    val ideAndroidModels = consumedProjectModels.single { it.second == IdeAndroidModels::class.java }.third as IdeAndroidModels
+    assertThat(ideAndroidModels.selectedVariantName).isEqualTo("debug")
+    assertThat(ideAndroidModels.fetchedVariants.map { it.name }).containsExactly("debug", "release").inOrder()
+    assertThat(ideAndroidModels.fetchedVariants[0].mainArtifact.generatedSourceFolders).contains(kaptDebugDir.toImpl())
+    assertThat(ideAndroidModels.fetchedVariants[1].mainArtifact.generatedSourceFolders).contains(kaptReleaseDir.toImpl())
   }
 
   private fun createTestAndroidProject(
@@ -168,12 +241,12 @@ class PhasedSyncKaptPatchTest {
       testSuites = emptyList(),
     )
 
-  private fun createTestVariant(): IdeVariantCoreImpl {
+  private fun createTestVariant(variantName: String = "debug"): IdeVariantCoreImpl {
     val mainArtifact =
       IdeAndroidArtifactCoreImpl(
         name = IdeArtifactName.MAIN,
-        compileTaskName = "compileDebugJavaWithJavac",
-        assembleTaskName = "assembleDebug",
+        compileTaskName = "compile${variantName.replaceFirstChar { it.uppercase() }}JavaWithJavac",
+        assembleTaskName = "assemble${variantName.replaceFirstChar { it.uppercase() }}",
         classesFolder = emptyList<FileImpl>(),
         variantSourceProvider = null,
         multiFlavorSourceProvider = null,
@@ -202,8 +275,8 @@ class PhasedSyncKaptPatchTest {
     val unitTestArtifact =
       IdeJavaArtifactCoreImpl(
         name = IdeArtifactName.UNIT_TEST,
-        compileTaskName = "compileDebugUnitTestJavaWithJavac",
-        assembleTaskName = "assembleDebugUnitTest",
+        compileTaskName = "compile${variantName.replaceFirstChar { it.uppercase() }}UnitTestJavaWithJavac",
+        assembleTaskName = "assemble${variantName.replaceFirstChar { it.uppercase() }}UnitTest",
         classesFolder = emptyList<FileImpl>(),
         variantSourceProvider = null,
         multiFlavorSourceProvider = null,
@@ -218,14 +291,14 @@ class PhasedSyncKaptPatchTest {
         bytecodeTransforms = null,
       )
     return IdeVariantCoreImpl(
-      name = "debug",
-      displayName = "debug",
+      name = variantName,
+      displayName = variantName,
       mainArtifact = mainArtifact,
       testSuiteArtifacts = emptyList(),
       hostTestArtifacts = listOf(unitTestArtifact),
       deviceTestArtifacts = emptyList(),
       testFixturesArtifact = null,
-      buildType = "debug",
+      buildType = variantName,
       productFlavors = emptyList(),
       minSdkVersion = Mockito.mock(IdeApiVersionImpl::class.java),
       targetSdkVersion = null,

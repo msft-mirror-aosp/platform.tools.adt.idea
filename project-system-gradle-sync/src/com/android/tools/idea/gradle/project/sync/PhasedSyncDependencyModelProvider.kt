@@ -76,50 +76,57 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
           val ideAndroidProjectMap = allProjects.mapNotNull { cachedData.data[it]?.let { data -> it to data.ideAndroidProject } }.toMap()
           val androidProjectPathResolver = buildAndroidProjectPathResolver(allProjects, ideAndroidProjectMap)
 
-          buildModel.projects.mapNotNull { gradleProject ->
-            BuildAction {
-              runCatching {
-                val data = cachedData.data[gradleProject] ?: return@BuildAction null
-                val ideAndroidProject = data.ideAndroidProject
-                val variantDependencies =
-                  controller.findVariantDependenciesV2Model(
-                    project = gradleProject,
-                    modelVersions = data.modelVersions,
-                    variantName = data.selectedVariantName,
-                  ) {
-                    when {
-                      !hasInboundDependencyByPath.contains(gradleProject.path) ->
-                        it.buildAllRuntimeClasspaths(syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport)
-                      data.shouldSkipRuntimeClassPathForLibraries &&
-                        ideAndroidProject.projectType == IdeAndroidProjectType.PROJECT_TYPE_LIBRARY ->
-                        it.buildOnlyTestRuntimeClasspaths(
-                          buildUnitTestsRuntime = syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryUnitTests,
-                          buildScreenshotTestsRuntime = syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryScreenshotTests,
-                          addAdditionalArtifactsInModel = syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport,
-                        )
-
-                      else -> it.buildAllRuntimeClasspaths(syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport)
-                    }
-                  } ?: return@BuildAction null
-                val selectedVariant = ideAndroidProject.coreVariants.single { it.name == data.selectedVariantName }
-                val result =
-                  fetchAndProcessAndroidDependenciesModel(
-                    variantDependencies,
-                    data.modelVersions,
-                    buildModel,
-                    gradleProject,
-                    selectedVariant,
-                    ideAndroidProject.bootClasspath,
-                    internedModels,
-                    androidProjectPathResolver = androidProjectPathResolver,
-                    buildPathMap = buildPathMap,
-                    syncOptions.syncTestMode,
-                  )
-                exceptionsPerProject += result.exceptions.map { gradleProject to it }
-                result.ignoreExceptionsAndGet()?.let { gradleProject to it }
+          buildModel.projects.flatMap { gradleProject ->
+            val data = cachedData.data[gradleProject] ?: return@flatMap emptyList()
+            val ideAndroidProject = data.ideAndroidProject
+            val variantsToFetch =
+              when (syncOptions) {
+                is SingleVariantSyncActionOptions -> listOf(ideAndroidProject.coreVariants.single { it.name == data.selectedVariantName })
+                is AllVariantsSyncActionOptions -> ideAndroidProject.coreVariants
               }
-                .onFailure { exceptionsPerProject += gradleProject to it }
-                .getOrNull()
+            variantsToFetch.map { variantToFetch ->
+              BuildAction {
+                runCatching {
+                  val variantDependencies =
+                    controller.findVariantDependenciesV2Model(
+                      project = gradleProject,
+                      modelVersions = data.modelVersions,
+                      variantName = variantToFetch.name,
+                    ) {
+                      when {
+                        !hasInboundDependencyByPath.contains(gradleProject.path) ->
+                          it.buildAllRuntimeClasspaths(syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport)
+                        syncOptions is SingleVariantSyncActionOptions &&
+                          data.shouldSkipRuntimeClassPathForLibraries &&
+                          ideAndroidProject.projectType == IdeAndroidProjectType.PROJECT_TYPE_LIBRARY ->
+                          it.buildOnlyTestRuntimeClasspaths(
+                            buildUnitTestsRuntime = syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryUnitTests,
+                            buildScreenshotTestsRuntime = syncOptions.flags.studioFlagBuildRuntimeClasspathForLibraryScreenshotTests,
+                            addAdditionalArtifactsInModel = syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport,
+                          )
+
+                        else -> it.buildAllRuntimeClasspaths(syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport)
+                      }
+                    } ?: return@BuildAction null
+                  val result =
+                    fetchAndProcessAndroidDependenciesModel(
+                      variantDependencies,
+                      data.modelVersions,
+                      buildModel,
+                      gradleProject,
+                      variantToFetch,
+                      ideAndroidProject.bootClasspath,
+                      internedModels,
+                      androidProjectPathResolver = androidProjectPathResolver,
+                      buildPathMap = buildPathMap,
+                      syncOptions.syncTestMode,
+                    )
+                  exceptionsPerProject += result.exceptions.map { gradleProject to it }
+                  result.ignoreExceptionsAndGet()?.let { gradleProject to it }
+                }
+                  .onFailure { exceptionsPerProject += gradleProject to it }
+                  .getOrNull()
+              }
             }
           }
         }
@@ -131,22 +138,34 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
       IdeUnresolvedLibraryTableImpl::class.java,
     )
 
-    result.filterNotNull().forEach { (gradleProject, variantWithPostProcessor) ->
-      val ideVariant = variantWithPostProcessor.postProcess()
-      modelConsumer.consumeProjectModel(gradleProject, ideVariant, IdeVariantCore::class.java)
-      // Store the selected variant to later create IdeAndroidModels with it in the additional model provider. IdeAndroidModels is still
+    result.filterNotNull().groupBy({ it.first }, { it.second.postProcess() }).forEach { (gradleProject, ideVariants) ->
+      val data =
+        checkNotNull(cachedData.data[gradleProject]) {
+          "No cached Android project data found for ${gradleProject.path}"
+        }
+      // Store the fetched variants to later create IdeAndroidModels with them in the additional model provider. IdeAndroidModels is still
       // required by a few different code paths.
-      cachedData.selectedVariant[gradleProject] = ideVariant
-      // Fetch unresolved dependencies for this variant.
+      cachedData.fetchedVariants[gradleProject] = ideVariants
+      // GradleModelConsumer.consumeProjectModel stores at most one model per (project, Class), and IdeVariantCore is read exclusively by
+      // SyncContributorAndroidProjectDependenciesContext to populate WorkspaceModel dependencies for the IDE's single active variant.
+      // All fetched variants are stored in cachedData.fetchedVariants above and consumed together via IdeAndroidModels.
+      val selectedVariant =
+        checkNotNull(ideVariants.firstOrNull { it.name == data.selectedVariantName }) {
+          "Selected variant '${data.selectedVariantName}' not found in fetched variants for ${gradleProject.path}: ${ideVariants.map { it.name }}"
+        }
+      modelConsumer.consumeProjectModel(gradleProject, selectedVariant, IdeVariantCore::class.java)
+      // Fetch unresolved dependencies across the fetched variants.
       unresolvedDependenciesPerProject[gradleProject] =
-        mutableListOf<IdeUnresolvedDependency>()
-          .apply {
-            addAll(ideVariant.mainArtifact.unresolvedDependencies)
-            ideVariant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.let { addAll(it.unresolvedDependencies) }
-            ideVariant.testFixturesArtifact?.let { addAll(it.unresolvedDependencies) }
-            ideVariant.hostTestArtifacts.forEach { addAll(it.unresolvedDependencies) }
+        ideVariants
+          .flatMap { variant ->
+            buildList {
+              addAll(variant.mainArtifact.unresolvedDependencies)
+              variant.deviceTestArtifacts.find { it.name == IdeArtifactName.ANDROID_TEST }?.let { addAll(it.unresolvedDependencies) }
+              variant.testFixturesArtifact?.let { addAll(it.unresolvedDependencies) }
+              variant.hostTestArtifacts.forEach { addAll(it.unresolvedDependencies) }
+            }
           }
-          .toList()
+          .distinct()
     }
 
     val exceptionsPerProjectMap = exceptionsPerProject.groupBy({ it.first }) { it.second }

@@ -28,7 +28,7 @@ import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
 class ModelProviderCachedData(private val disableLegacyModelProvidersForSupportedProjects: Boolean) : Serializable {
   internal val versions = ConcurrentHashMap<BasicGradleProject, Versions>()
   internal val data = ConcurrentHashMap<BasicGradleProject, CachedAndroidProjectData>()
-  internal val selectedVariant = ConcurrentHashMap<BasicGradleProject, IdeVariantCoreImpl>()
+  internal val fetchedVariants = ConcurrentHashMap<BasicGradleProject, List<IdeVariantCoreImpl>>()
 
   internal val kaptGradleModel = ConcurrentHashMap<BasicGradleProject, KaptGradleModel>()
 
@@ -50,7 +50,7 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
     data.computeIfPresent(gradleProject) { _, cachedData ->
       cachedData.copy(ideAndroidProject = (cachedData.ideAndroidProject as IdeAndroidProjectImpl).patchForKapt(kaptModel))
     }
-    selectedVariant.computeIfPresent(gradleProject) { _, variant -> variant.patchForKapt(kaptModel) }
+    fetchedVariants.computeIfPresent(gradleProject) { _, variants -> variants.patchForKapt(kaptModel) }
   }
 
   /**
@@ -72,7 +72,7 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
   fun clear() {
     versions.clear()
     data.clear()
-    selectedVariant.clear()
+    fetchedVariants.clear()
     kaptGradleModel.clear()
     exceptionsAndSyncIssues.clear()
     modelCache.clear()

@@ -138,8 +138,16 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
 
                   val defaultVariantName =
                     basicAndroidProject.variants.toList().getDefaultVariant(androidDsl.buildTypes, androidDsl.productFlavors)
+                  // GradleModelConsumer.consumeProjectModel stores at most one model per (project, Class), and IdeBasicVariantName /
+                  // IdeVariantCore are read exclusively by the WorkspaceModel sync contributors to configure the IDE's single active
+                  // variant. When syncing all variants, fall back to defaultVariantName here so the sync contributors and IdeAndroidModels
+                  // receive a valid active variant while all variants are fetched and delivered via IdeAndroidModels.
                   val selectedVariantName =
-                    computeVariantNameToBeSynced(syncOptions, gradleProject.moduleId(), basicAndroidProject, defaultVariantName)
+                    when (syncOptions) {
+                      is SingleVariantSyncActionOptions ->
+                        computeVariantNameToBeSynced(syncOptions, gradleProject.moduleId(), basicAndroidProject, defaultVariantName)
+                      is AllVariantsSyncActionOptions -> defaultVariantName
+                    }
                       ?: throw createNoVariantsFoundSyncException(
                         gradleProject,
                         controller.findModel(gradleProject, ProjectSyncIssues::class.java)?.syncIssues?.toV2SyncIssueData().orEmpty() +
@@ -231,7 +239,7 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
 
     // Store the list of issues from the variant resolution if any.
     val variantsResolutionIssues = mutableMapOf<BasicGradleProject, Throwable>()
-    if (syncOptions.flags.studioFlagUsedPhasedSyncVariantResolution) {
+    if (syncOptions is SingleVariantSyncActionOptions && syncOptions.flags.studioFlagUsedPhasedSyncVariantResolution) {
       setupProjectsVariantsAndConsume(updatedResults, syncOptions, modelConsumer, cachedModels, variantsResolutionIssues)
     } else {
       updatedResults.forEach { (gradleProject, data) ->
@@ -255,8 +263,8 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
           buildModel.projects.mapNotNull { gradleProject ->
             BuildAction {
               // If this is not a project that we support , then we should not fetch the KAPT model in this case.
-              cachedModels.versions[gradleProject] ?: return@BuildAction null
-              val kaptModel = controller.fetchModel<KaptGradleModel>(gradleProject, cachedModels.data[gradleProject]?.selectedVariantName)
+              val data = cachedModels.data[gradleProject] ?: return@BuildAction null
+              val kaptModel = controller.fetchModel<KaptGradleModel>(gradleProject, syncOptions, data.selectedVariantName)
               kaptModel?.let { gradleProject to it }
             }
           }
@@ -357,7 +365,7 @@ private val LOG = logger<PhasedSyncProjectModelProvider>()
 
 /** Use [Modules.createUniqueModuleId] to provide module id. */
 private fun computeVariantNameToBeSynced(
-  syncOptions: SyncActionOptions,
+  syncOptions: SingleVariantSyncActionOptions,
   moduleId: String,
   basicAndroidProject: BasicAndroidProject,
   defaultVariantName: String?,
@@ -365,21 +373,18 @@ private fun computeVariantNameToBeSynced(
   if (basicAndroidProject.variants.isEmpty()) {
     return null
   }
-  return when (syncOptions) {
-    is SingleVariantSyncActionOptions ->
-      // newly user-selected variant
-      syncOptions.switchVariantRequest
-        .takeIf { it?.moduleId == moduleId }
-        ?.variantName
-        ?.also { LOG.debug("Picked user-selected variant $it for $moduleId") }
-        // variants selected by the last sync, only if it still exists
-        ?: syncOptions.selectedVariants
-          .getSelectedVariant(moduleId)
-          .takeIf { basicAndroidProject.variants.map { it.name }.contains(it) }
-          ?.also { LOG.debug("Picked selected variant from last sync $it for $moduleId") }
-    else -> null
-  } // default variant as specified by the build script (computation could still end up being null)
-  ?: defaultVariantName.also { LOG.debug("Picked the default variant $it for $moduleId") }
+  // newly user-selected variant
+  return syncOptions.switchVariantRequest
+    .takeIf { it?.moduleId == moduleId }
+    ?.variantName
+    ?.also { LOG.debug("Picked user-selected variant $it for $moduleId") }
+    // variants selected by the last sync, only if it still exists
+    ?: syncOptions.selectedVariants
+      .getSelectedVariant(moduleId)
+      .takeIf { basicAndroidProject.variants.map { it.name }.contains(it) }
+      ?.also { LOG.debug("Picked selected variant from last sync $it for $moduleId") }
+    // default variant as specified by the build script (computation could still end up being null)
+    ?: defaultVariantName.also { LOG.debug("Picked the default variant $it for $moduleId") }
 }
 
 private fun Versions.isAtLeastAgp8() = AgpVersion.parse(agp).isAtLeast(8, 0, 0)
@@ -387,19 +392,25 @@ private fun Versions.isAtLeastAgp8() = AgpVersion.parse(agp).isAtLeast(8, 0, 0)
 /** Cache the current variant's buildTypes + fallbacks, and flavors + fallbacks. */
 fun BasicGradleProject.moduleId() = Modules.createUniqueModuleId(projectIdentifier.buildIdentifier.rootDir, path)
 
-internal inline fun <reified T> BuildController.fetchModel(gradleProject: BasicGradleProject, selectedVariantName: String?) =
-  if (selectedVariantName != null) {
-    findModel(
-      gradleProject,
-      T::class.java,
-      ModelBuilderService.Parameter::class.java,
-      {
-        it.value =
-          androidArtifactSuffixes.joinToString(separator = ",") { artifactSuffix -> selectedVariantName.appendCapitalized(artifactSuffix) }
-      },
-    )
-  } else {
-    findModel(gradleProject, T::class.java)
+internal inline fun <reified T> BuildController.fetchModel(
+  gradleProject: BasicGradleProject,
+  syncOptions: SyncActionOptions,
+  selectedVariantName: String,
+): T? =
+  when (syncOptions) {
+    is SingleVariantSyncActionOptions ->
+      findModel(
+        gradleProject,
+        T::class.java,
+        ModelBuilderService.Parameter::class.java,
+        {
+          it.value =
+            androidArtifactSuffixes.joinToString(separator = ",") { artifactSuffix ->
+              selectedVariantName.appendCapitalized(artifactSuffix)
+            }
+        },
+      )
+    is AllVariantsSyncActionOptions -> findModel(gradleProject, T::class.java)
   }
 
 fun <T> T.getAllChildren(childrenFunction: (T) -> List<out T>): List<T> {

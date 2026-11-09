@@ -45,11 +45,10 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
     @Suppress("NAME_SHADOWING") val controller = controller.toCachingController(cachedModels)
     val actions = buildModels.flatMap { buildModel ->
       buildModel.projects.mapNotNull { gradleProject ->
-        if (cachedModels.versions[gradleProject] != null) {
-          BuildAction { controller ->
-            gradleProject to controller.fetchModel<KotlinGradleModel>(gradleProject, cachedModels.data[gradleProject]?.selectedVariantName)
-          }
-        } else null
+        val data = cachedModels.data[gradleProject] ?: return@mapNotNull null
+        BuildAction { controller ->
+          gradleProject to controller.fetchModel<KotlinGradleModel>(gradleProject, syncOptions, data.selectedVariantName)
+        }
       }
     }
 
@@ -140,9 +139,13 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
 
 private fun createIdeAndroidModels(cachedModels: ModelProviderCachedData, gradleProject: BasicGradleProject) =
   cachedModels.data[gradleProject]?.let { data ->
+    val fetchedVariants =
+      checkNotNull(cachedModels.fetchedVariants[gradleProject]) {
+        "No fetched variants found for ${gradleProject.path}"
+      }
     IdeAndroidModels(
       data.ideAndroidProject as IdeAndroidProjectImpl,
-      listOf(cachedModels.selectedVariant[gradleProject]!!),
+      fetchedVariants,
       data.selectedVariantName,
       selectedAbiName = null,
       v2NativeModule = null,
