@@ -51,9 +51,13 @@ import com.android.tools.idea.gradle.dsl.parser.settings.DefaultsDslElement;
 import com.android.tools.idea.gradle.dsl.utils.BuildScriptUtil;
 import com.google.common.collect.ClassToInstanceMap;
 import com.google.common.collect.MutableClassToInstanceMap;
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.vfs.StandardFileSystems;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VfsUtilCore;
@@ -80,6 +84,7 @@ import org.jetbrains.annotations.SystemIndependent;
  * and their associated models.
  */
 public final class BuildModelContext {
+  private static final Logger LOG = Logger.getInstance(BuildModelContext.class);
 
   public interface ResolvedConfigurationFileLocationProvider {
     @Nullable
@@ -241,7 +246,7 @@ public final class BuildModelContext {
                                         @NotNull VirtualFile file,
                                         @NotNull String moduleName,
                                         boolean isApplied) {
-    return ReadAction.nonBlocking(() -> {
+    return runInNonBlockingReadAction(() -> {
       GradleBuildFile buildDslFile = new GradleBuildFile(file, project, moduleName, this);
       try {
         if (!isApplied) {
@@ -257,7 +262,7 @@ public final class BuildModelContext {
         cleanupFailedBuildFile(buildDslFile);
         throw t;
       }
-    }).executeSynchronously();
+    });
   }
 
   @NotNull
@@ -283,7 +288,7 @@ public final class BuildModelContext {
   public GradleBuildFile initializeContext(@NotNull Project project, @Nullable VirtualFile file) {
     // First parse the main project build file.
     if (file != null) {
-      GradleBuildFile result = ReadAction.nonBlocking(() -> {
+      GradleBuildFile result = runInNonBlockingReadAction(() -> {
         GradleBuildFile buildDslFile = new GradleBuildFile(file, project, ":", this);
         setRootProjectFile(buildDslFile);
         try {
@@ -299,22 +304,36 @@ public final class BuildModelContext {
           cleanupFailedBuildFile(buildDslFile);
           throw t;
         }
-      }).executeSynchronously();
+      });
       putBuildFile(file.getUrl(), result);
       return result;
     }
     else {
       // in case root build file is not there, we still need to parse settings for catalogs
-      ReadAction.nonBlocking(() -> {
+      runInNonBlockingReadAction(() -> {
         VirtualFile maybeSettingsFile = getProjectSettingsFile();
         if (maybeSettingsFile != null) {
           GradleSettingsFile settingsFile = getOrCreateSettingsFile(maybeSettingsFile);
           populateVersionCatalogFiles(new GradleSettingsModelImpl(settingsFile));
         }
         return null;
-      }).executeSynchronously();
+      });
       return null;
     }
+  }
+
+  // ReadAction.nonBlocking(...).executeSynchronously() throws when called on lock-free EDT (no enclosing
+  // read/write-intent lock), such as from raw Swing listeners. Fall back to a blocking read action on EDT
+  // and log the caller stack trace so remaining UI-thread callers can be migrated to background threads.
+  private static <T> T runInNonBlockingReadAction(@NotNull Computable<T> computation) {
+    Application app = ApplicationManager.getApplication();
+    if (app.isDispatchThread()) {
+      if (!app.isUnitTestMode()) {
+        LOG.warn("BuildModelContext invoked on EDT; Gradle build files should be parsed on a background thread", new Throwable());
+      }
+      return app.runReadAction(computation);
+    }
+    return ReadAction.nonBlocking(computation::compute).executeSynchronously();
   }
 
   private void cleanupFailedBuildFile(@NotNull GradleBuildFile buildDslFile) {
