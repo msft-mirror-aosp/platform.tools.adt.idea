@@ -1394,6 +1394,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Open the Android Studio update dialog",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Open the Device Pairing dialog which allows connecting devices over Wi-Fi",
       "path": "ActionManager"
     },
@@ -1843,6 +1847,10 @@
     },
     {
       "hit": "Turn passthrough on or off",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Update Android Studio",
       "path": "ActionManager"
     },
     {

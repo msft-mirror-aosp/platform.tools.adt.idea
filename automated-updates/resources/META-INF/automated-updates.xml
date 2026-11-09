@@ -1,4 +1,4 @@
-﻿<!--
+<!--
   ~ Copyright (C) 2026 The Android Open Source Project
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,4 +19,11 @@
     <registryKey key="ide.hide.toolbox.promo" overrides="true" defaultValue="true"
         description="Hides Toolbox promo in Updates configurable" />
   </extensions>
+
+  <actions>
+    <action id="AutomatedUpdates.UpdateAndroidStudio" class="com.android.tools.idea.automatedupdates.UpdateAndroidStudioAction"
+        text="Update Android Studio" description="Open the Android Studio update dialog">
+      <add-to-group group-id="MainToolbarRight" anchor="before" relative-to-action="SettingsEntryPoint" />
+    </action>
+  </actions>
 </idea-plugin>

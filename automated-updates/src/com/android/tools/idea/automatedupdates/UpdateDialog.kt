@@ -15,4 +15,18 @@
  */
 package com.android.tools.idea.automatedupdates
 
-class UpdateDialog() {}
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.ui.dsl.builder.panel
+import javax.swing.JComponent
+
+class UpdateDialog(project: Project? = null) : DialogWrapper(project) {
+  init {
+    title = "Update Android Studio"
+    init()
+  }
+
+  public override fun createCenterPanel(): JComponent = panel {
+    row { label("Update Android Studio") }
+  }
+}
