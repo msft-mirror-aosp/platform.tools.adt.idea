@@ -19,7 +19,6 @@ package com.android.tools.idea.gradle.project.sync
 
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.IdeInfo
-import com.android.tools.idea.flags.StudioFlags.PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED
 import com.android.tools.idea.gradle.project.sync.issues.SyncFailureUsageReporter
 import com.android.tools.idea.gradle.project.sync.jdk.JdkAnalyticsTracker.reportGradleJdkConfiguration
 import com.android.tools.idea.gradle.project.sync.messages.GradleSyncMessages
@@ -547,10 +546,7 @@ class GradleSyncStateHolder constructor(private val project: Project) {
     }
 
     override fun onSyncPhaseCompleted(context: ProjectResolverContext, phase: GradleSyncPhase) {
-      if (
-        phase == GradleSyncPhase.SOURCE_SET_MODEL_PHASE ||
-          (phase == GradleSyncPhase.DEPENDENCY_MODEL_PHASE && PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED.get())
-      ) {
+      if (phase == GradleSyncPhase.SOURCE_SET_MODEL_PHASE || (phase == GradleSyncPhase.DEPENDENCY_MODEL_PHASE)) {
         getInstance(context.project).publish {
           context.project.messageBus.syncPublisher(PROJECT_SYSTEM_MODELS_UPDATED_TOPIC).androidModelsUpdated()
         }
