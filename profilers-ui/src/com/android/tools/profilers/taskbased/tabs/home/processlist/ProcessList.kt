@@ -34,15 +34,9 @@ import org.jetbrains.jewel.ui.component.Text
 @Composable
 fun ProcessList(processListModel: ProcessListModel, modifier: Modifier = Modifier) {
   Column(modifier = modifier) {
-    val deviceList by processListModel.deviceList.collectAsState()
     val selectedDevice by processListModel.selectedDevice.collectAsState()
     val selectedDevicesCount by processListModel.selectedDevicesCount.collectAsState()
-    DeviceSelection(
-      deviceList = deviceList,
-      selectedDevice = selectedDevice,
-      selectedDevicesCount = selectedDevicesCount,
-      onDeviceSelection = processListModel::onDeviceSelection,
-    )
+    DeviceSelection(selectedDevice = selectedDevice, selectedDevicesCount = selectedDevicesCount)
 
     val preferredProcessName by processListModel.preferredProcessName.collectAsState()
     val selectedProcess by processListModel.selectedProcess.collectAsState()

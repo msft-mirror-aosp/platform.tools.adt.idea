@@ -20,8 +20,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.android.tools.idea.IdeInfo
-import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings.DEVICE_SELECTION_TOOLTIP
 import com.android.tools.profilers.taskbased.common.dividers.ToolWindowHorizontalDivider
 import com.android.tools.profilers.taskbased.home.selections.deviceprocesses.ProcessListModel.ProfilerDeviceSelection
@@ -31,18 +29,9 @@ import org.jetbrains.jewel.ui.component.Tooltip
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DeviceSelection(
-  deviceList: List<Common.Device>,
-  selectedDevice: ProfilerDeviceSelection?,
-  selectedDevicesCount: Int,
-  onDeviceSelection: (Common.Device) -> Unit,
-) {
+fun DeviceSelection(selectedDevice: ProfilerDeviceSelection?, selectedDevicesCount: Int) {
   Column(modifier = Modifier.fillMaxWidth()) {
-    if (IdeInfo.isGameTool()) {
-      DeviceSelectionDropdown(deviceList = deviceList, selectedDevice = selectedDevice, onDeviceSelection = onDeviceSelection)
-    } else {
-      Tooltip({ Text(DEVICE_SELECTION_TOOLTIP) }) { DeviceSelectionContent(selectedDevice, selectedDevicesCount) }
-      ToolWindowHorizontalDivider()
-    }
+    Tooltip({ Text(DEVICE_SELECTION_TOOLTIP) }) { DeviceSelectionContent(selectedDevice, selectedDevicesCount) }
+    ToolWindowHorizontalDivider()
   }
 }

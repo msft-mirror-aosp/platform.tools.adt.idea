@@ -22,7 +22,6 @@ import com.android.sdklib.AndroidVersion;
 import com.android.tools.adtui.RangeTooltipComponent;
 import com.android.tools.adtui.TabularLayout;
 import com.android.tools.adtui.model.AspectObserver;
-import com.android.tools.idea.IdeInfo;
 import com.intellij.ui.HyperlinkAdapter;
 import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.components.JBPanel;
@@ -160,25 +159,16 @@ public abstract class ProfilerMonitorView<T extends ProfilerMonitor> extends Asp
     myContainer.add(disabledMessage, new TabularLayout.Constraint(0, 0, 3));
 
     if (isPreO()) {
-      if (IdeInfo.isGameTool()) {
-        HyperlinkLabel linkToInstructionMessage = new HyperlinkLabel();
-        linkToInstructionMessage.setTextWithHyperlink("Please recompile the APK with <hyperlink>advanced profiling enabled</hyperlink>.");
-        linkToInstructionMessage.setHyperlinkTarget("https://developer.android.com/r/studio-ui/advanced-profiling");
-        myContainer.add(linkToInstructionMessage, new TabularLayout.Constraint(1, 1));
-        linkToInstructionMessage.setFont(STANDARD_FONT);
-      }
-      else {
-        HyperlinkLabel linkToConfigMessage = new HyperlinkLabel();
-        linkToConfigMessage.setTextWithHyperlink("Configure this setting in the <hyperlink>Run Configuration</hyperlink>");
-        linkToConfigMessage.addHyperlinkListener(new HyperlinkAdapter() {
-          @Override
-          protected void hyperlinkActivated(@NotNull HyperlinkEvent e) {
-            myMonitor.getProfilers().getIdeServices().enableAdvancedProfiling();
-          }
-        });
-        myContainer.add(linkToConfigMessage, new TabularLayout.Constraint(1, 1));
-        linkToConfigMessage.setFont(STANDARD_FONT);
-      }
+      HyperlinkLabel linkToConfigMessage = new HyperlinkLabel();
+      linkToConfigMessage.setTextWithHyperlink("Configure this setting in the <hyperlink>Run Configuration</hyperlink>");
+      linkToConfigMessage.addHyperlinkListener(new HyperlinkAdapter() {
+        @Override
+        protected void hyperlinkActivated(@NotNull HyperlinkEvent e) {
+          myMonitor.getProfilers().getIdeServices().enableAdvancedProfiling();
+        }
+      });
+      myContainer.add(linkToConfigMessage, new TabularLayout.Constraint(1, 1));
+      linkToConfigMessage.setFont(STANDARD_FONT);
     }
   }
 

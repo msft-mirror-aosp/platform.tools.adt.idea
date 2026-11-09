@@ -24,7 +24,6 @@ import com.android.tools.adtui.model.stdui.CommonAction.SeparatorAction
 import com.android.tools.adtui.stdui.CommonButton
 import com.android.tools.adtui.stdui.StandardColors
 import com.android.tools.adtui.stdui.menu.CommonDropDownButton
-import com.android.tools.idea.IdeInfo
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.IdeProfilerComponents
 import com.android.tools.profilers.ProfilerAspect
@@ -43,7 +42,6 @@ import com.android.tools.profilers.memory.HprofSessionArtifact
 import com.android.tools.profilers.memory.LegacyAllocationsArtifactView
 import com.android.tools.profilers.memory.LegacyAllocationsSessionArtifact
 import com.android.tools.profilers.sessions.SessionArtifactView.ArtifactDrawInfo
-import com.android.utils.usLocaleCapitalize
 import com.google.common.annotations.VisibleForTesting
 import com.google.common.collect.Ordering
 import com.intellij.icons.AllIcons
@@ -267,14 +265,12 @@ class SessionsView(val profilers: StudioProfilers, val ideProfilerComponents: Id
               fun addOtherProcessesFlyout(tag: String, actions: List<CommonAction>) =
                 when {
                   actions.isNotEmpty() -> {
-                    val title = if (IdeInfo.isGameTool()) "${tag.usLocaleCapitalize()} processes" else "Other $tag processes"
-                    val otherProcessesFlyout = CommonAction(title, null)
+                    val otherProcessesFlyout = CommonAction("Other $tag processes", null)
                     otherProcessesFlyout.addChildrenActions(actions)
                     deviceAction.addChildrenActions(otherProcessesFlyout)
                   }
                   else -> {
-                    val title = if (IdeInfo.isGameTool()) "No $tag processes" else "No other $tag processes"
-                    deviceAction.addChildrenActions(disabledAction(title))
+                    deviceAction.addChildrenActions(disabledAction("No other $tag processes"))
                   }
                 }
 

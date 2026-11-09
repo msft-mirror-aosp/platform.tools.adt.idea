@@ -26,7 +26,6 @@ import com.android.tools.adtui.model.axis.ResizingAxisComponentModel;
 import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
 import com.android.tools.adtui.model.updater.Updatable;
 import com.android.tools.adtui.model.updater.Updater;
-import com.android.tools.idea.IdeInfo;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.io.grpc.StatusRuntimeException;
 import com.android.tools.idea.transport.manager.StreamQueryUtils;
@@ -607,9 +606,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
    * Reads main toolbar's device dropdown selections and updates the respective device state model with such selection data.
    */
   private void readMainToolbarDeviceSelection() {
-    if (IdeInfo.isGameTool()) {
-      return;
-    }
     List<ToolbarDeviceSelection> toolbarDeviceSelections = myToolbarDeviceSelectionsFetcher.invoke();
     int toolbarSelectedDevicesCount = toolbarDeviceSelections.size();
 

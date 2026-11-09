@@ -16,7 +16,6 @@
 package com.android.tools.profilers.taskbased.home.selections.deviceprocesses
 
 import com.android.tools.adtui.model.AspectObserver
-import com.android.tools.idea.IdeInfo
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.ProfilerAspect
 import com.android.tools.profilers.StudioProfilers
@@ -77,21 +76,6 @@ class ProcessListModel(val profilers: StudioProfilers) : AspectObserver() {
     _deviceList.value = newDeviceToProcesses.keys.toList()
 
     checkForPreferredProcess()
-
-    // In the standalone/game-tool profiler, device selection is made via a dropdown in the profiler UI with only running devices listed.
-    // Therefore, if the device selected in the dropdown is disconnected, and thus no longer available in the dropdown, the selection of
-    // such device should be removed. This reset logic is not necessary in the case of the regular/non-standalone profiler as the selection
-    // is made and read via the main toolbar's device dropdown. This allows for the selection of offline devices, unlike the standalone
-    // profiler, making this reset logic unnecessary.
-    if (!isSelectedDeviceRunning() && IdeInfo.isGameTool()) {
-      logger.info("IDE is GameTool and selected device is not running. Resetting device selection.")
-      resetDeviceSelection()
-    }
-
-    // Only the standalone profiler has the device selection-dropdown that can utilize auto-selection.
-    if (IdeInfo.isGameTool()) {
-      autoSelectDevice()
-    }
 
     updateProcessSelection()
     reorderProcessList()
@@ -206,14 +190,6 @@ class ProcessListModel(val profilers: StudioProfilers) : AspectObserver() {
     preferredProcess?.let { onProcessSelection(it) }
   }
 
-  /** Auto-selects a device if there is no device is currently selected and there is only one online device. */
-  private fun autoSelectDevice() {
-    val updatedDevices = _deviceList.value
-    if (!isDeviceSelected() && updatedDevices.size == 1) {
-      onDeviceSelection(updatedDevices.first())
-    }
-  }
-
   /**
    * Converts a Studio main toolbar device selection to a profiler-level device selection and registers it.
    *
@@ -248,7 +224,7 @@ class ProcessListModel(val profilers: StudioProfilers) : AspectObserver() {
     }
   }
 
-  /** Performs selection of Common.Device selected from standalone profiler device dropdown. */
+  /** Performs selection of the given running [Common.Device]. */
   fun onDeviceSelection(newDevice: Common.Device) {
     doDeviceSelection(
       newDevice.model,
@@ -314,15 +290,6 @@ class ProcessListModel(val profilers: StudioProfilers) : AspectObserver() {
   }
 
   private fun isDeviceSelected() = _selectedDevice.value != null
-
-  /**
-   * Returns whether the currently selected device is running or not.
-   *
-   * This can be determined by checking if the selected device is in the keys of the device to processes map returned by the transport
-   * pipeline. This map only contains running devices.
-   */
-  private fun isSelectedDeviceRunning() =
-    _deviceList.value.firstOrNull { _selectedDevice.value != null && it.deviceId == _selectedDevice.value!!.device.deviceId } != null
 
   data class ToolbarDeviceSelection(
     val name: String,

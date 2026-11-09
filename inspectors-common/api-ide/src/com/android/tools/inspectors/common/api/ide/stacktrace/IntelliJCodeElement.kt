@@ -15,7 +15,6 @@
  */
 package com.android.tools.inspectors.common.api.ide.stacktrace
 
-import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.codenavigation.CodeLocation
 import com.android.tools.inspectors.common.api.stacktrace.CodeElement
 import com.android.tools.inspectors.common.api.stacktrace.CodeElement.NO_PACKAGE
@@ -44,12 +43,7 @@ class IntelliJCodeElement(private val project: Project, private val codeLocation
       simpleClassName = if (dot + 1 < className.length) className.substring(dot + 1) else UNKONWN_CLASS
     }
 
-    isInUserCode =
-      when {
-        IdeInfo.isGameTool() -> false
-        codeLocation.isNativeCode -> isInNativeSources()
-        else -> isInSources()
-      }
+    isInUserCode = if (codeLocation.isNativeCode) isInNativeSources() else isInSources()
   }
 
   override fun getCodeLocation() = codeLocation
