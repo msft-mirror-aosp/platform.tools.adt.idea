@@ -46,6 +46,7 @@ import com.intellij.openapi.diagnostic.currentClassLogger
 import com.intellij.openapi.roots.AnnotationOrderRootType
 import com.intellij.openapi.roots.JavadocOrderRootType
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.platform.workspace.jps.entities.DependencyScope
 import com.intellij.platform.workspace.jps.entities.LibraryDependency
 import com.intellij.platform.workspace.jps.entities.LibraryEntity
@@ -171,9 +172,29 @@ private class SyncContributorAndroidProjectDependenciesContext(
       .filter { it.isFile }
       .map { LibraryRoot(it.toLibraryRootPath(), LibraryRootTypeId(AnnotationOrderRootType.getInstance().name())) }
 
-  fun IdeArtifactLibrary.sourcesAndJavaDocRoots() =
-    listOfNotNull(docJar?.let { LibraryRoot(it.toLibraryRootPath(), LibraryRootTypeId(JavadocOrderRootType.getInstance().name())) }) +
-      srcJars.map { LibraryRoot(it.toLibraryRootPath(), LibraryRootTypeId.SOURCES) }
+  fun IdeArtifactLibrary.sourcesAndJavaDocRoots(): List<LibraryRoot> {
+    // Check if we have existing external libraries in the project storage.
+    val existingRoots by
+      lazy(LazyThreadSafetyMode.NONE) {
+        androidProjectContext.project.workspaceModel.currentSnapshot
+          .resolve(LibraryId(processName(), LibraryTableId.ProjectLibraryTableId))
+          ?.roots
+          .orEmpty()
+      }
+    val javaDocRootType = LibraryRootTypeId(JavadocOrderRootType.getInstance().name())
+    val javaDocRoots =
+      docJar?.let { listOf(LibraryRoot(it.toLibraryRootPath(), javaDocRootType)) }
+        // If Gradle didn't provide any docJar, then we use the project's manually added/existing one.
+        ?: existingRoots.filter { it.type == javaDocRootType }
+    val sourceRoots =
+      if (srcJars.isNotEmpty()) {
+        srcJars.map { LibraryRoot(it.toLibraryRootPath(), LibraryRootTypeId.SOURCES) }
+      } else {
+        // Use the attached or manually added sources if nothing to add from the current Sync.
+        existingRoots.filter { it.type == LibraryRootTypeId.SOURCES }
+      }
+    return javaDocRoots + sourceRoots
+  }
 
   fun IdeJavaLibrary.getOrCreateLibraryEntity(entitySource: EntitySource, moduleName: String) =
     getOrCreateLibraryEntity(moduleName, processName()) {

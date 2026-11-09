@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.gradle.project.sync.runsIndexingWithGradlePhasedSync
 
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.entities.GradleAndroidModelEntity
 import com.android.tools.idea.gradle.project.entities.GradleModuleModelEntity
 import com.android.tools.idea.gradle.project.sync.snapshots.PreparedTestProject.Companion.openTestProject
@@ -25,7 +24,6 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.android.tools.idea.testing.SnapshotComparisonTest
 import com.android.tools.idea.testing.assertIsEqualToSnapshot
-import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.requestSyncAndWait
 import com.android.utils.combineAsCamelCase
 import com.intellij.java.impl.dependencySubstitution.LibraryMavenCoordinateEntity
@@ -59,7 +57,6 @@ import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncExtension
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase
 import org.jetbrains.plugins.gradle.util.GradleConstants
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -83,11 +80,6 @@ class WorkspaceModelChangesPerPhaseSnapshotTest(val testProject: TestProject) : 
   override val snapshotDirectoryWorkspaceRelativePath: String = "tools/adt/idea/android/testData/snapshots/wsmChangedEvents/resync"
 
   override fun getName() = testProject.name.lowercase().split("_").combineAsCamelCase()
-
-  @Before
-  fun disableDependencyResolutionPhase() { // Disable this for now as we're not optimizing dependency resolution yet
-    StudioFlags.PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED.overrideForTest(false, projectRule.testRootDisposable)
-  }
 
   sealed class Change {
     data class WorkspaceModelChange(val event: VersionedStorageChange) : Change()

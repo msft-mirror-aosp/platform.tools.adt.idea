@@ -36,7 +36,6 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
 import com.android.tools.idea.testing.OpenPreparedProjectOptions
 import com.android.tools.idea.testing.findAppModule
-import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.gradleModule
 import com.android.tools.idea.testing.openPreparedProject
 import com.android.tools.idea.testing.requestSyncAndWait
@@ -116,9 +115,6 @@ class SyncScenariosIntegrationTest {
   /** Manually added Sources on Librarys should only be removed if Gradle does not provide any. */
   @Test
   fun testAddedSourcesOnNoSourceLibraryArentRemoved() {
-    // TODO(b/384022658): This is tricky to fix with phased sync right now, because the dependencies are not modeled as entities.
-    // This might change with next platform merge, forcing this test to non-phased sync for now.
-    StudioFlags.PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED.overrideForTest(false, projectRule.testRootDisposable)
     val preparedProject = projectRule.prepareTestProject(TestProject.SIMPLE_APPLICATION)
     val libWithNoSources = "com.google.truth:truth:0.44"
     val libWithSources = "junit:junit:4.12"
