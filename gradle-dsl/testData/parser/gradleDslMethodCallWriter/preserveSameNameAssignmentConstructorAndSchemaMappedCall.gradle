@@ -1,0 +1,4 @@
+sameAssign = sameAssign('old')
+android {
+  testNamespace('com.example.oldtest')
+}

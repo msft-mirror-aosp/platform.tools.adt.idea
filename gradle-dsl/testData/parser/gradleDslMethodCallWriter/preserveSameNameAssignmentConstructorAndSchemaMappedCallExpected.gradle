@@ -1,0 +1,5 @@
+sameAssign = sameAssign('new')
+android {
+  testNamespace('com.example.newtest')
+}
+File = new File('out.txt')

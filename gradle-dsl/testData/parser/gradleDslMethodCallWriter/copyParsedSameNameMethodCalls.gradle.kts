@@ -1,0 +1,5 @@
+topCall("old1", "old2")
+android {
+  namespace = "com.example.app"
+  customCall("first", "second")
+}

@@ -350,7 +350,8 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
 
     GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(parentPsiElement.getProject());
     GradleDslElement fakeElement = new GradleDslLiteral(methodCall.getParent(), GradleNameElement.fake(methodCall.getMethodName()));
-    String methodCallText = (methodCall.isConstructor() ? "new " : "") + quotePartsIfNecessary(maybeTrimForParent(fakeElement, this)) + "()";
+    String methodName = quotePartsIfNecessary(maybeTrimForParent(fakeElement, this));
+    String methodCallText = (methodCall.isConstructor() ? "new " : "") + methodName + "()";
     String statementText;
     if (!methodCall.getNameElement().isEmpty()) {
       ExternalNameInfo info = maybeTrimForParent(methodCall, this);
@@ -358,8 +359,16 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
       if (syntax == UNKNOWN) {
         syntax = methodCall.getExternalSyntax();
       }
-      String elementName = quotePartsIfNecessary(info) + " ";
-      statementText = elementName + (syntax == ASSIGNMENT ? "= " : "") + methodCallText;
+      String elementName = quotePartsIfNecessary(info);
+      if (!elementName.equals(methodName) ||
+          (syntax == ASSIGNMENT && methodCall.getExternalSyntax() == ASSIGNMENT) ||
+          methodCall.isConstructor()) {
+        statementText = elementName + " " + (syntax == ASSIGNMENT ? "= " : "") + methodCallText;
+      }
+      else {
+        // Ex: proguardFile() where the external name matches the method name; create a single call rather than `foo foo()`.
+        statementText = methodCallText;
+      }
     }
     else {
       statementText = methodCallText;
