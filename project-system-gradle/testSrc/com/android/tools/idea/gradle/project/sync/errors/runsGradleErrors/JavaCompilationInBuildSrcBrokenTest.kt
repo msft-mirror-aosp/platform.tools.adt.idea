@@ -23,10 +23,12 @@ import com.google.wireless.android.sdk.stats.BuildErrorMessage
 import com.intellij.build.events.BuildIssueEvent
 import com.intellij.build.events.DuplicateMessageAware
 import com.intellij.build.events.MessageEvent
+import org.junit.Ignore
 import org.junit.Test
 
 class JavaCompilationInBuildSrcBrokenTest : AbstractSyncFailureIntegrationTest() {
 
+  @Ignore("b/582995573")
   @Test
   fun testBrokenCompilation() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.APP_WITH_BUILDSRC)
