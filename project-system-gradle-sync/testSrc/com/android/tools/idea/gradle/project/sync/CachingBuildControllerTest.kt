@@ -27,6 +27,7 @@ import com.android.ide.gradle.model.ArtifactIdentifierImpl
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginPropertiesModelParameters
 import com.android.ide.gradle.model.artifacts.AdditionalClassifierArtifactsModel
+import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.google.common.truth.Truth.assertThat
 import java.io.File
 import kotlin.test.assertFailsWith
@@ -214,11 +215,20 @@ class CachingBuildControllerTest {
     val javaLib = gradleProject(buildRootDir = File("/root"), projectPath = ":javaLib")
     val unsupportedAndroidApp = gradleProject(buildRootDir = File("/root"), projectPath = ":unsupportedAndroidApp")
     val gradleBuild = gradleBuild(buildRootDir = File("/root"), projects = listOf(app, javaLib, unsupportedAndroidApp))
+    val options = syncOptions(statsDir = statsDir.absolutePath)
     cachedModels.versions[app] = Mockito.mock(Versions::class.java)
+    cachedModels.data[app] =
+      CachedAndroidProjectData(
+        modelVersions = Mockito.mock(ModelVersions::class.java),
+        selectedVariantName = "debug",
+        ideAndroidProject = Mockito.mock(IdeAndroidProjectImpl::class.java),
+        shouldSkipRuntimeClassPathForLibraries = false,
+        allOutgoingProjectDependencies = emptyList(),
+      )
+    cachedModels.fetchedVariants[app] = emptyList()
     gradle.nullProjectModels += (javaLib to Versions::class.java)
 
-    PhasedSyncAdditionalModelProvider(syncOptions(statsDir = statsDir.absolutePath), cachedModels)
-      .populateModels(gradle.controller(), listOf(gradleBuild), NoOpConsumer)
+    PhasedSyncAdditionalModelProvider(options, cachedModels).populateModels(gradle.controller(), listOf(gradleBuild), NoOpConsumer)
 
     // When legacy providers will run after PhasedSyncAdditionalModelProvider, it must keep the cache populated and leave
     // ANDROID_FINISHED to AndroidExtraModelProvider.
@@ -234,7 +244,7 @@ class CachingBuildControllerTest {
 
     val requestsAfterPhasedSync = gradle.requests.size
     val cachingController = gradle.controller().toCachingController(cachedModels)
-    assertThat(cachingController.findModel(app, KotlinGradleModel::class.java)).isNotNull()
+    assertThat(cachingController.fetchModel<KotlinGradleModel>(app, options, "debug")).isNotNull()
     assertThat(cachingController.findModel(javaLib, KotlinGradleModel::class.java)).isNotNull()
     assertThat(cachingController.findModel(javaLib, KaptGradleModel::class.java)).isNotNull()
     assertThat(gradle.requests).hasSize(requestsAfterPhasedSync)
