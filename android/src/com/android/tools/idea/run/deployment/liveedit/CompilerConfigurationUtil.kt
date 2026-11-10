@@ -16,7 +16,9 @@
 package com.android.tools.idea.run.deployment.liveedit
 
 import com.android.tools.idea.flags.StudioFlags
+import com.android.tools.idea.util.findAndroidModule
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.components.KaCompilationOptionsBuilder
 import org.jetbrains.kotlin.cli.common.arguments.CommonCompilerArgumentsConfigurator
@@ -31,21 +33,22 @@ import org.jetbrains.kotlin.psi.KtFile
 
 @OptIn(KaExperimentalApi::class)
 fun KaCompilationOptionsBuilder.configureCompilerOptions(module: Module, file: KtFile) {
-  if (file.module != module) {
+  if (file.module != module && ModuleUtilCore.findModuleForFile(file) != module) {
     // *Note*: currently all 3 callers satisfy this condition and [module] parameter is going to be removed once both compose previews and
     // live edit migration to build system specific extension points is completed.
     error("$file must belong to $module")
   }
 
+  val targetModule = module.findAndroidModule() ?: module
   val moduleNameFromFacet =
-    KotlinFacet.get(module)?.let { kotlinFacet ->
+    KotlinFacet.get(targetModule)?.let { kotlinFacet ->
       when (val compilerArguments = kotlinFacet.configuration.settings.compilerArguments) {
         is K2JVMCompilerArguments -> compilerArguments.moduleName
         is K2MetadataCompilerArguments -> compilerArguments.moduleName
         else -> null
       }
     }
-  moduleName(moduleNameFromFacet ?: module.name)
+  moduleName(moduleNameFromFacet ?: targetModule.name)
 
   // This flag was created mostly for experimental Live Edit for ASwB. We should no longer be relying it
   // once we can fetch flags from QuerySync
@@ -57,6 +60,6 @@ fun KaCompilationOptionsBuilder.configureCompilerOptions(module: Module, file: K
     val languageSettings = mainKotlinCompilerOptions.toLanguageVersionSettings(CommonCompilerArgumentsConfigurator.Reporter.DoNothing)
     setOptions(languageSettings)
   } else {
-    setOptions(file.languageVersionSettings)
+    setOptions(if (targetModule != module) targetModule.languageVersionSettings else file.languageVersionSettings)
   }
 }

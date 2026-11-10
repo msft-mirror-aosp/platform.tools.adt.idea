@@ -33,6 +33,7 @@ import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.testFramework.LightVirtualFile
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.components.KaCompilationOptionsBuilder
@@ -42,6 +43,7 @@ import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnostic
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnosticWithPsi
 import org.jetbrains.kotlin.analysis.api.diagnostics.getDefaultMessageWithFactoryName
 import org.jetbrains.kotlin.analysis.api.projectStructure.contextModule
+import org.jetbrains.kotlin.analysis.api.projectStructure.isDangling
 import org.jetbrains.kotlin.idea.base.facet.implementingModules
 import org.jetbrains.kotlin.idea.base.facet.platform.platform
 import org.jetbrains.kotlin.idea.base.projectStructure.toKaSourceModuleForProduction
@@ -71,16 +73,20 @@ internal class LiveEditCompilerForK2(private val project: Project, private val m
 
 @OptIn(KaExperimentalApi::class)
 private fun getCompileTargetFile(original: KtFile, module: Module): KtFile {
-  if (!module.platform.isCommon()) {
-    return original
-  }
-
-  if (module.implementingModules.filter { it.platform.isJvm() }.size < 2) {
-    return original
-  }
-
   val androidModule = module.findAndroidModule() ?: return original
+  if (androidModule == module) {
+    return original
+  }
+
+  val isInMemory = original.isDangling || original.virtualFile is LightVirtualFile
+  if (!isInMemory && (!module.platform.isCommon() || module.implementingModules.filter { it.platform.isJvm() }.size < 2)) {
+    return original
+  }
+
   val sourceModule = androidModule.toKaSourceModuleForProduction() ?: androidModule.toKaSourceModuleForTest() ?: return original
+  if (original.isDangling && original.contextModule == sourceModule) {
+    return original
+  }
 
   // create a dangling copy of this file with the proper (Android) context.
   val danglingFile = KtPsiFactory(module.project).createFile(original.name, original.text)

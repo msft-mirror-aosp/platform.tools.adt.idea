@@ -30,6 +30,9 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.JavaLibraryDependency
 import com.android.tools.idea.testing.JavaModuleModelBuilder
 import com.android.tools.tests.AdtTestKotlinArtifacts
+import com.intellij.facet.FacetManager
+import com.intellij.facet.impl.FacetUtil
+import com.intellij.notebook.editor.BackedVirtualFile
 import com.intellij.openapi.application.ApplicationListener
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
@@ -38,14 +41,21 @@ import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileTypes.PlainTextFileType
+import com.intellij.openapi.module.ModuleType
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.EmptyProgressIndicator
+import com.intellij.openapi.roots.ModuleRootModificationUtil
+import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFileFactory
+import com.intellij.testFramework.LightVirtualFile
+import com.intellij.testFramework.PsiTestUtil
 import com.intellij.testFramework.assertInstanceOf
 import com.intellij.util.io.delete
 import com.jetbrains.rd.util.AtomicInteger
 import java.io.File
+import java.net.URLClassLoader
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -54,7 +64,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
+import org.jetbrains.kotlin.analysis.api.projectStructure.contextModule
+import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
+import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
+import org.jetbrains.kotlin.idea.base.facet.implementingModules
+import org.jetbrains.kotlin.idea.base.facet.platform.platform
+import org.jetbrains.kotlin.idea.base.projectStructure.toKaSourceModuleForProduction
 import org.jetbrains.kotlin.idea.base.util.module
+import org.jetbrains.kotlin.idea.core.util.toPsiFile
+import org.jetbrains.kotlin.idea.facet.KotlinFacetType
+import org.jetbrains.kotlin.platform.CommonPlatforms
+import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
+import org.jetbrains.kotlin.platform.jvm.isJvm
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImplementationDetail
 import org.junit.Assert.assertEquals
@@ -599,4 +620,159 @@ internal class EmbeddedCompilerClientImplTest {
       }
     }
   }
+
+  @Test
+  @OptIn(KaExperimentalApi::class)
+  fun `in-memory compilation backed by KMP commonMain with single Android JVM target resolves Android symbols and moduleName`() =
+    runBlocking {
+      val appFile =
+        projectRule.fixture.addFileToProject(
+          "app/src/main/java/com/test/AndroidPreview.kt",
+          """
+          package com.test
+
+          annotation class AndroidOnlyPreview(val name: String = "")
+          """
+            .trimIndent(),
+        )
+      val appModule = readAction { appFile.module!! }
+
+      val commonRoot = Files.createTempDirectory("commonMain")
+      try {
+        val commonModule = runWriteActionAndWait {
+          val commonRootVf = VfsUtil.findFile(commonRoot, true)!!
+          val mod = PsiTestUtil.addModule(projectRule.project, ModuleType.EMPTY, "commonMain", commonRootVf)
+          PsiTestUtil.addLibrary(mod, "stdlib", AdtTestKotlinArtifacts.kotlinStdlib.parent, AdtTestKotlinArtifacts.kotlinStdlib.name)
+          val composeJar = File(composeRuntimePath)
+          PsiTestUtil.addLibrary(mod, "compose", composeJar.parent, composeJar.name)
+          ModuleRootModificationUtil.addDependency(appModule, mod)
+
+          val commonFacet = FacetUtil.addFacet(mod, KotlinFacetType.INSTANCE, "Kotlin")
+          commonFacet.configuration.settings.apply {
+            useProjectSettings = false
+            targetPlatform = CommonPlatforms.defaultCommonPlatform
+            compilerArguments =
+              K2MetadataCompilerArguments().apply {
+                multiPlatform = true
+                moduleName = "common_metadata"
+              }
+            updateMergedArguments()
+          }
+
+          val appFacet = FacetUtil.addFacet(appModule, KotlinFacetType.INSTANCE, "Kotlin")
+          appFacet.configuration.settings.apply {
+            useProjectSettings = false
+            targetPlatform = JvmPlatforms.defaultJvmPlatform
+            implementedModuleNames = listOf(mod.name)
+            dependsOnModuleNames = listOf(mod.name)
+            compilerArguments =
+              K2JVMCompilerArguments().apply {
+                multiPlatform = true
+                moduleName = "app_android_debug"
+              }
+            updateMergedArguments()
+          }
+          mod
+        }
+
+        val commonSourceIoFile = commonRoot.resolve("com/test/CommonCard.kt")
+        Files.createDirectories(commonSourceIoFile.parent)
+        Files.writeString(
+          commonSourceIoFile,
+          """
+          package com.test
+
+          class CommonCard {
+            internal fun title(): String = "Hello KMP"
+          }
+          """
+            .trimIndent(),
+        )
+        val commonVirtualFile = VfsUtil.findFile(commonSourceIoFile, true)!!
+
+        readAction {
+          assertEquals(commonModule, ModuleUtilCore.findModuleForFile(commonVirtualFile, projectRule.project))
+          // Verify this reproduces the exact 1-JVM-target KMP topology (Android + non-JVM, size == 1 < 2).
+          assertEquals(1, commonModule.implementingModules.count { it.platform.isJvm() })
+        }
+
+        val inMemoryCode =
+          """
+          package com.test
+
+          @AndroidOnlyPreview(name = "KMP")
+          fun InMemoryPreview(): String = CommonCard().title()
+
+          class InMemoryHelper {
+            internal fun checkMangling(): Int = 42
+          }
+          """
+            .trimIndent()
+
+        // Test both KMP commonMain platform representations:
+        // 1) CommonPlatforms (e.g. Android + iOS/Web, where module.platform.isCommon() == true and jvmImplementingModules.size == 1),
+        // 2) JvmPlatforms (e.g. Android-only or Android + Desktop KMP, where commonizer sets commonMain's platform to JVM so
+        //    module.platform.isCommon() == false even though commonMain lacks AndroidFacet and Android-specific dependencies),
+        // and both caller styles (contextModule left on commonMain vs pre-bound to androidMain).
+        for (commonPlatform in listOf(CommonPlatforms.defaultCommonPlatform, JvmPlatforms.defaultJvmPlatform)) {
+          runWriteActionAndWait {
+            FacetManager.getInstance(commonModule)
+              .getFacetByType(KotlinFacetType.TYPE_ID)!!
+              .configuration
+              .settings
+              .apply {
+                targetPlatform = commonPlatform
+                updateMergedArguments()
+              }
+          }
+          for (bindAndroidContextUpFront in listOf(false, true)) {
+            val inMemoryPsiFile = readAction {
+              val lightVirtualFile =
+                @Suppress("UnstableApiUsage")
+                object : LightVirtualFile("InMemoryPreview.kt", commonVirtualFile.fileType, inMemoryCode), BackedVirtualFile {
+                  override fun getOriginFile(): VirtualFile = commonVirtualFile
+
+                  override fun getParent(): VirtualFile? = commonVirtualFile.parent
+                }
+              (lightVirtualFile.toPsiFile(projectRule.project) as KtFile).also { ktFile ->
+                val targetForContext = if (bindAndroidContextUpFront) appModule else commonModule
+                ktFile.contextModule = targetForContext.toKaSourceModuleForProduction()
+              }
+            }
+
+            val outputDirectory = Files.createTempDirectory("kmp_out")
+            try {
+              val buildTargetReference = readAction { BuildTargetReference.from(commonModule, inMemoryPsiFile.virtualFile) }
+              val result =
+                compiler.compileRequest(
+                  ApplicationLiveEditServices.LegacyForTests(projectRule.project),
+                  listOf(inMemoryPsiFile),
+                  buildTargetReference,
+                  outputDirectory,
+                  EmptyProgressIndicator(),
+                )
+              assertInstanceOf<CompilationResult.Success>(result)
+              assertEquals(
+                listOf("InMemoryHelper.class", "InMemoryPreviewKt.class"),
+                outputDirectory.toFileNameSet().sorted(),
+              )
+
+              // Verify internal members are mangled with the Android target's moduleName ("app_android_debug"),
+              // not commonMain's metadata moduleName ("common_metadata").
+              URLClassLoader(arrayOf(outputDirectory.toUri().toURL()), null).use { loader ->
+                val helperClass = loader.loadClass("com.test.InMemoryHelper")
+                assertTrue(
+                  "Expected internal method mangled with app_android_debug, got: ${helperClass.declaredMethods.map { it.name }}",
+                  helperClass.declaredMethods.any { it.name == "checkMangling\$app_android_debug" },
+                )
+              }
+            } finally {
+              outputDirectory.delete(true)
+            }
+          }
+        }
+      } finally {
+        commonRoot.delete(true)
+      }
+    }
 }
