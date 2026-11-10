@@ -16,9 +16,14 @@
 package org.jetbrains.android.uipreview.classloading
 
 import com.android.SdkConstants
+import com.android.ide.common.rendering.api.ResourceNamespace.RES_AUTO
+import com.android.ide.common.rendering.api.ResourceReference
+import com.android.resources.ResourceType
 import com.android.tools.idea.projectsystem.DependencyScopeType
 import com.android.tools.idea.projectsystem.TestProjectSystem
 import com.android.tools.idea.projectsystem.getModuleSystem
+import com.android.tools.idea.res.ResourceClassRegistry
+import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.idea.res.TestResourceIdManager
 import com.android.tools.idea.res.addAarDependency
 import com.android.tools.idea.testing.AndroidProjectRule
@@ -92,6 +97,21 @@ class LibraryResourceClassLoaderTest {
     addAarDependency(androidProjectRule.fixture, androidProjectRule.module, "emptyAarLib", "com.example.mylibrary.empty") { resDir ->
       resDir.parentFile.resolve(SdkConstants.FN_RESOURCE_TEXT).writeText("")
     }
+    // Stand-in for androidx.core, whose R$id is used by ViewCompat (e.g. R.id.tag_accessibility_pane_title) during Compose renders.
+    addAarDependency(androidProjectRule.fixture, androidProjectRule.module, "androidxCore", "androidx.core") { resDir ->
+      resDir.parentFile.resolve(SdkConstants.FN_RESOURCE_TEXT).writeText("int id tag_accessibility_pane_title 0x7f080001")
+      resDir.parentFile
+        .resolve("res/values/ids.xml")
+        .writeText(
+          // language=xml
+          """
+          <resources>
+            <item type="id" name="tag_accessibility_pane_title"/>
+          </resources>
+          """
+            .trimIndent()
+        )
+    }
 
     projectSystem =
       TestProjectSystem(
@@ -159,6 +179,54 @@ class LibraryResourceClassLoaderTest {
     classLoader.loadClass("com.example.mylibrary.R")
     classLoader.loadClass("com.example.mylibrary.R${'$'}layout")
   }
+
+  // Regression test for b/584171735
+  @Test
+  fun `library R class is found after the ResourceClassRegistry cache is cleared`() {
+    // Before the module is compiled there is no R.jar, so library R classes can only come from the light classes that
+    // LibraryResourceClassLoader generates through the ResourceClassRegistry. The libraries used to be registered only once, so class
+    // loaders still in use failed to load library R classes after the registry was cleared, e.g. by AppResourceRepository.refreshChildren
+    // when a build running in the background creates generated source folders.
+    val moduleClassLoader = createNotCompiledModuleClassLoader()
+    assertNotNull(moduleClassLoader.loadClass("androidx.core.R"))
+
+    // Production callers also reset the dynamic IDs when they clear the registry.
+    ResourceClassRegistry.get(androidProjectRule.project).clearCache()
+    resourceIdManger.resetDynamicIds()
+
+    val idClass = moduleClassLoader.loadClass("androidx.core.R${'$'}id")
+    val id = idClass.getDeclaredField("tag_accessibility_pane_title").getInt(null)
+    assertEquals(ResourceReference(RES_AUTO, ResourceType.ID, "tag_accessibility_pane_title"), resourceIdManger.findById(id))
+  }
+
+  @Test
+  fun `library R class is found after the app resources are replaced`() {
+    val moduleClassLoader = createNotCompiledModuleClassLoader()
+    assertNotNull(moduleClassLoader.loadClass("androidx.core.R"))
+
+    // The registrations are kept per app resources repository, and resetting the caches creates a new one.
+    StudioResourceRepositoryManager.getInstance(androidProjectRule.module)!!.resetAllCaches()
+
+    assertNotNull(moduleClassLoader.loadClass("androidx.core.R${'$'}id"))
+  }
+
+  @Test
+  fun `R class that is not from a library is not found after the ResourceClassRegistry cache is cleared`() {
+    val moduleClassLoader = createNotCompiledModuleClassLoader()
+    ResourceClassRegistry.get(androidProjectRule.project).clearCache()
+
+    assertThrowsClassNotFoundException { moduleClassLoader.loadClass("test.R") }
+    // Re-registering for the miss above does not break the library R classes.
+    assertNotNull(moduleClassLoader.loadClass("androidx.core.R${'$'}id"))
+  }
+
+  /**
+   * Returns a class loader with the same structure as StudioModuleClassLoader: the [LibraryResourceClassLoader] is the parent of a
+   * [DelegatingClassLoader] that loads the project classes (ModuleClassLoaderImpl). The child loader finds nothing because the module has
+   * not been compiled yet.
+   */
+  private fun createNotCompiledModuleClassLoader() =
+    DelegatingClassLoader(LibraryResourceClassLoader(null, androidProjectRule.module, nullDelegatingClassLoader), nullDelegatingClassLoader)
 
   @Test
   fun `disposed module throws ClassNotFoundException`() {

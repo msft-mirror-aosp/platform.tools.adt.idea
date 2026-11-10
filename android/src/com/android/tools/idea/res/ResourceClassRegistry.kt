@@ -36,7 +36,11 @@ import org.jetbrains.annotations.TestOnly
 private val PACKAGE_TIMEOUT = 5.minutes
 
 /** Returns whether this is an R class or one of its inner classes. */
-private fun String.isRClassName() = endsWith(".R") || substringAfterLast('.').startsWith("R$")
+private fun String.isRClassName(): Boolean {
+  val lastDot = lastIndexOf('.')
+  if (lastDot < 0) return false
+  return endsWith(".R") || startsWith("R$", lastDot + 1)
+}
 
 /**
  * A project-wide registry for class lookup of resource classes (R classes).
@@ -61,17 +65,48 @@ class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Du
    * the [AppResourceRepository] of the module in question.
    */
   fun addLibrary(repo: ResourceRepository, idManager: ResourceIdManager, packageName: String?) {
-    if (packageName.isNullOrEmpty()) return
-    synchronized(lock) {
-      var info = repoMap[repo]
-      if (info == null) {
-        // Explicit cleanup for Disposable instead of waiting for GC. Registered before adding the repository, so that an already disposed
-        // repository is never added.
-        if (repo is Disposable && !Disposer.tryRegister(repo) { removeRepository(repo) }) return
-        info = ResourceRepositoryInfo(repo, idManager)
-        repoMap[repo] = info
-      }
-      info.packages.add(packageName)
+    addLibraries(repo, idManager, listOf(packageName))
+  }
+
+  /** Same as [addLibrary] for all the [packageNames], registered atomically: [clearCache] can not drop only some of them. */
+  fun addLibraries(repo: ResourceRepository, idManager: ResourceIdManager, packageNames: Collection<String?>) {
+    synchronized(lock) { addLibrariesLocked(repo, idManager, packageNames) }
+  }
+
+  /**
+   * Same as [addLibraries], and then returns the class definition of [className] for [repo] like [findClassDefinition]. The class is looked
+   * up in the same atomic step as the registration, so a concurrent [clearCache] can not drop the registration first.
+   */
+  fun addLibrariesAndFindClassDefinition(
+    repo: ResourceRepository,
+    idManager: ResourceIdManager,
+    packageNames: Collection<String?>,
+    className: String,
+  ): ByteArray? {
+    if (!className.isRClassName()) return null
+    val pkg = className.substringBeforeLast(".", "")
+    val generator =
+      synchronized(lock) {
+        addLibrariesLocked(repo, idManager, packageNames)
+        repoMap[repo]?.takeIf { pkg in it.packages }?.resourceClassGenerator
+      } ?: return null
+    // The generator does not depend on the registry, so this works even if the registry is cleared in the meantime.
+    return synchronized(generator) { generator.generate(className) }
+  }
+
+  @GuardedBy("lock")
+  private fun addLibrariesLocked(repo: ResourceRepository, idManager: ResourceIdManager, packageNames: Collection<String?>) {
+    val names = packageNames.mapNotNull { it?.takeIf(String::isNotEmpty) }
+    if (names.isEmpty()) return
+    var info = repoMap[repo]
+    if (info == null) {
+      // Explicit cleanup for Disposable instead of waiting for GC. Registered before adding the repository, so that an already disposed
+      // repository is never added.
+      if (repo is Disposable && !Disposer.tryRegister(repo) { removeRepository(repo) }) return
+      info = ResourceRepositoryInfo(repo, idManager)
+      repoMap[repo] = info
+    }
+    if (info.packages.addAll(names)) {
       packages = createPackageCache() // Invalidate cache.
     }
   }
@@ -83,7 +118,7 @@ class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Du
     if (synchronized(lock) { pkg !in packages.get() }) return null
     // Read outside the lock, since this can create the repository.
     val appResources = repositoryManager.appResources
-    val generator = synchronized(lock) { repoMap[appResources]?.resourceClassGenerator } ?: return null
+    val generator = synchronized(lock) { repoMap[appResources]?.takeIf { pkg in it.packages }?.resourceClassGenerator } ?: return null
     // ResourceClassGenerator caches the values it generates and is not thread safe.
     return synchronized(generator) { generator.generate(className) }
   }

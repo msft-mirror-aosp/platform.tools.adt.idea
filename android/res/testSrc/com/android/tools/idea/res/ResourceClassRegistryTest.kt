@@ -105,6 +105,16 @@ class ResourceClassRegistryTest {
   }
 
   @Test
+  fun findClassDefinition_packageInOtherRepository() {
+    registry.addLibrary(repository, idManager, PKG_1)
+    registry.addLibrary(disposableRepository, idManager, PKG_2)
+    whenever(manager.appResources).thenReturn(disposableRepository)
+
+    assertThat(registry.findClassDefinition("$PKG_1.R", manager)).isNull()
+    assertThat(registry.findClassDefinition("$PKG_2.R", manager)).isNotNull()
+  }
+
+  @Test
   fun findClassDefinition() {
     registry.addLibrary(repository, idManager, PKG_1)
 
@@ -165,5 +175,34 @@ class ResourceClassRegistryTest {
 
     registry.addLibrary(repository, idManager, PKG_1)
     assertThat(registry.findClassDefinition("$PKG_1.R", manager)).isNotNull()
+  }
+
+  @Test
+  fun addLibraries() {
+    registry.addLibraries(repository, idManager, listOf(PKG_1, null, "", PKG_2))
+
+    assertThat(registry.findClassDefinition("$PKG_1.R", manager)).isNotNull()
+    assertThat(registry.findClassDefinition("$PKG_2.R", manager)).isNotNull()
+  }
+
+  @Test
+  fun addLibrariesAndFindClassDefinition() {
+    val bytes = registry.addLibrariesAndFindClassDefinition(repository, idManager, listOf(PKG_1), "$PKG_1.R\$string")
+
+    assertThat(Integer.toHexString(ByteBuffer.wrap(bytes).int)).startsWith("cafebabe")
+    assertThat(registry.findClassDefinition("$PKG_1.R", manager)).isNotNull()
+  }
+
+  @Test
+  fun addLibrariesAndFindClassDefinition_classNotInPackages() {
+    assertThat(registry.addLibrariesAndFindClassDefinition(repository, idManager, listOf(PKG_1), "$PKG_2.R")).isNull()
+    assertThat(registry.addLibrariesAndFindClassDefinition(repository, idManager, listOf(PKG_1), "$PKG_1.StrongBad")).isNull()
+  }
+
+  @Test
+  fun addLibrariesAndFindClassDefinition_disposedRepo() {
+    Disposer.dispose(disposableRepository as Disposable)
+
+    assertThat(registry.addLibrariesAndFindClassDefinition(disposableRepository, idManager, listOf(PKG_1), "$PKG_1.R")).isNull()
   }
 }

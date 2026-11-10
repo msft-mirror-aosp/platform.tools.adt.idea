@@ -23,7 +23,6 @@ import com.android.tools.idea.res.ResourceClassRegistry
 import com.android.tools.idea.res.StudioResourceIdManager
 import com.android.tools.idea.res.StudioResourceRepositoryManager
 import com.android.tools.rendering.classloading.loaders.DelegatingClassLoader
-import com.android.tools.res.ids.ResourceIdManager
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
@@ -46,36 +45,33 @@ private fun ExternalAndroidLibrary.getResolvedPackageName(): String? {
   }
 }
 
-/** Register this [ExternalAndroidLibrary] with the [ResourceClassRegistry]. */
-private fun ResourceClassRegistry.registerLibraryResources(
-  externalLib: ExternalAndroidLibrary,
-  idManager: ResourceIdManager,
-  repositoryManager: StudioResourceRepositoryManager,
-) {
-  val resolvedPackageName = externalLib.getResolvedPackageName() ?: return
-  this.addLibrary(repositoryManager.appResources, idManager, resolvedPackageName)
-}
-
-/** Register all the [Module] resources, including libraries and dependencies with the [ResourceClassRegistry]. */
-private fun registerResources(module: Module) {
-  val androidFacet: AndroidFacet = AndroidFacet.getInstance(module) ?: return
-  val repositoryManager = StudioResourceRepositoryManager.getInstance(androidFacet)
+/**
+ * Registers all the [Module] resources, including libraries and dependencies, with the [ResourceClassRegistry] and returns the registered
+ * package names.
+ */
+private fun registerResources(module: Module): Set<String> {
+  val androidFacet: AndroidFacet = AndroidFacet.getInstance(module) ?: return emptySet()
   val idManager = StudioResourceIdManager.get(module)
-  val classRegistry = ResourceClassRegistry.get(module.project)
 
   // If final ids are used, we will read the real class from disk later (in loadAndParseRClass), using this class loader. So we
   // can't treat it specially here, or we will read the wrong bytecode later.
-  if (!idManager.finalIdsUsed) {
-    val resourcePackageNames = runReadAction { androidFacet.getModuleSystem().moduleDependencies.getResourcePackageNames(false) }
-    for (resourcePackageName in resourcePackageNames) {
-      classRegistry.addLibrary(repositoryManager.appResources, idManager, resourcePackageName)
-    }
+  val modulePackageNames =
+    if (idManager.finalIdsUsed) emptyList()
+    else runReadAction { androidFacet.getModuleSystem().moduleDependencies.getResourcePackageNames(false) }
+  val libraryPackageNames =
+    module
+      .getModuleSystem()
+      .getAndroidLibraryDependencies(DependencyScopeType.MAIN)
+      .filter { it.hasResources }
+      .mapNotNull { it.getResolvedPackageName() }
+  val packageNames = (modulePackageNames + libraryPackageNames).filter { it.isNotEmpty() }.toSet()
+
+  // Only create the app resources repository if there is something to register.
+  if (packageNames.isNotEmpty()) {
+    val appResources = StudioResourceRepositoryManager.getInstance(androidFacet).appResources
+    ResourceClassRegistry.get(module.project).addLibraries(appResources, idManager, packageNames)
   }
-  module
-    .getModuleSystem()
-    .getAndroidLibraryDependencies(DependencyScopeType.MAIN)
-    .filter { it.hasResources }
-    .forEach { classRegistry.registerLibraryResources(it, idManager, repositoryManager) }
+  return packageNames
 }
 
 // matches foo.bar.R or foo.bar.R$baz
@@ -88,9 +84,13 @@ class LibraryResourceClassLoader(parent: ClassLoader?, module: Module?, private 
   ClassLoader(parent) {
   private val moduleRef = WeakReference(module)
 
-  init {
-    getModule()?.let { registerResources(it) }
-  }
+  /**
+   * Packages registered in the [ResourceClassRegistry] when this class loader was created. The registry is project wide and can be cleared
+   * at any time, even while this class loader is in use (b/584171735). For example, a build running in the background creates generated
+   * source folders, and the resulting project roots change refreshes the app resources of every module, which clears the registry. Missing
+   * R classes of these packages are then registered again.
+   */
+  private val registeredPackages: Set<String> = getModule()?.let { registerResources(it) } ?: emptySet()
 
   /** Returns the [Module] to be used for the library class loading if it still exists and is not disposed. */
   private fun getModule(): Module? {
@@ -121,11 +121,24 @@ class LibraryResourceClassLoader(parent: ClassLoader?, module: Module?, private 
       }
     }
 
-    val facet: AndroidFacet = AndroidFacet.getInstance(module) ?: throw ClassNotFoundException(name)
+    val facet: AndroidFacet = AndroidFacet.getInstance(module)?.takeUnless { it.isDisposed } ?: throw ClassNotFoundException(name)
     val repositoryManager = StudioResourceRepositoryManager.getInstance(facet)
-    val data = ResourceClassRegistry.get(module.project).findClassDefinition(name, repositoryManager) ?: throw ClassNotFoundException(name)
+    val data = findClassDefinition(module, name, repositoryManager) ?: throw ClassNotFoundException(name)
     Logger.getInstance(LibraryResourceClassLoader::class.java).debug("  Defining class from AAR registry")
     return defineClass(name, data, 0, data.size)
+  }
+
+  private fun findClassDefinition(module: Module, name: String, repositoryManager: StudioResourceRepositoryManager): ByteArray? {
+    val classRegistry = ResourceClassRegistry.get(module.project)
+    classRegistry.findClassDefinition(name, repositoryManager)?.let {
+      return it
+    }
+    // Not an R class of the registered packages, so there is nothing to register again.
+    if (name.substringBeforeLast('.', "") !in registeredPackages) return null
+    // The registry was cleared since this class loader registered the packages: register them again. The class is looked up in the same
+    // atomic step, so that the registry can not be cleared again in between.
+    val idManager = StudioResourceIdManager.get(module)
+    return classRegistry.addLibrariesAndFindClassDefinition(repositoryManager.appResources, idManager, registeredPackages, name)
   }
 
   override fun findClass(name: String): Class<*> =
