@@ -904,18 +904,21 @@ class SqliteEvaluatorControllerTest {
     val databaseInspectorModel = OpenDatabaseInspectorModel()
     val databaseRepository = OpenDatabaseRepository(project, taskExecutor)
     val workDb = SqliteDatabaseId.fromLiveDatabase("androidx.work.workdb", 1)
-    val database2 = SqliteDatabaseId.fromLiveDatabase("db2", 2)
+    val firebaseDb = SqliteDatabaseId.fromLiveDatabase("com.google.android.datatransport.events", 21)
+    val appDatabase = SqliteDatabaseId.fromLiveDatabase("db2", 3)
     runDispatching {
       databaseRepository.addDatabaseConnection(workDb, mockDatabaseConnection)
-      databaseRepository.addDatabaseConnection(database2, mockDatabaseConnection)
+      databaseRepository.addDatabaseConnection(firebaseDb, mockDatabaseConnection)
+      databaseRepository.addDatabaseConnection(appDatabase, mockDatabaseConnection)
     }
     databaseInspectorModel.addDatabaseSchema(workDb, SqliteSchema(emptyList()))
-    databaseInspectorModel.addDatabaseSchema(database2, SqliteSchema(emptyList()))
+    databaseInspectorModel.addDatabaseSchema(firebaseDb, SqliteSchema(emptyList()))
+    databaseInspectorModel.addDatabaseSchema(appDatabase, SqliteSchema(emptyList()))
 
     val controller = sqliteEvaluatorController(databaseInspectorModel, databaseRepository, initialDatabaseId = null)
     controller.setUp()
 
-    verify(viewFactory.sqliteEvaluatorView).setDatabases(eq(listOf(workDb, database2)), eq(database2))
+    verify(viewFactory.sqliteEvaluatorView).setDatabases(eq(listOf(workDb, firebaseDb, appDatabase)), eq(appDatabase))
   }
 
   @Test

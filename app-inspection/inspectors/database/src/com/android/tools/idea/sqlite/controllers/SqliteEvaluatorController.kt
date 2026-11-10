@@ -42,7 +42,11 @@ import com.intellij.openapi.util.Disposer
 import java.util.LinkedList
 import java.util.concurrent.Executor
 
-private val standardDatabases = setOf("androidx.work.workdb")
+private val standardDatabases =
+  setOf(
+    "androidx.work.workdb",
+    "com.google.android.datatransport.events",
+  )
 
 /**
  * Implementation of the application logic related to running queries and updates on a sqlite database.
