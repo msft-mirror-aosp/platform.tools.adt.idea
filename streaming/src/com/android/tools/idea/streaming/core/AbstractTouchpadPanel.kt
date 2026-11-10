@@ -23,6 +23,7 @@ import com.intellij.ui.util.height
 import com.intellij.ui.util.width
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.components.BorderLayoutPanel
+import java.awt.Component
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
@@ -37,10 +38,16 @@ import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseEvent.BUTTON1
 import javax.swing.SwingConstants
+import javax.swing.SwingUtilities
+import kotlin.math.roundToInt
 
 /** Represents the touchpad of an Android device or AVD, e.g. AI glasses. */
 abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : BorderLayoutPanel() {
 
+  /**
+   * A touch point in touchpad coordinates (`0 until touchpadSize.width`, `0 until touchpadSize.height`), with `(0, 0)` at the top-left
+   * corner and [y] increasing downward.
+   */
   data class Touch(val id: Int, var x: Int = 0, var y: Int = 0, var pressure: Int = 0)
 
   private var multiTouchMode: Boolean = false
@@ -52,7 +59,7 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
       }
     }
 
-  /** Last coordinates of the mouse pointer inside the panel or during an active button-1 drag, or null otherwise. */
+  /** Last coordinates of the mouse pointer while touch feedback is visible inside the touchpad, or null otherwise. */
   private var lastMouseCoordinates: Point? = null
     set(value) {
       if (value != field) {
@@ -69,7 +76,9 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
       }
     }
 
+  private var previousTouchpadPoint: Point? = null
   private val mouseListener = MyMouseListener()
+  private val forwardingMouseListener = ForwardingMouseListener()
   protected val touches: Array<Touch> = Array(2) { id -> Touch(id) }
 
   init {
@@ -80,6 +89,12 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
     addMouseListener(mouseListener)
     addMouseMotionListener(mouseListener)
     addKeyListener(MyKeyListener())
+  }
+
+  /** Allows touchpad drag gestures to start on [component] (e.g., an enclosing margin panel) and cross into this touchpad. */
+  internal fun registerDragSource(component: Component) {
+    component.addMouseListener(forwardingMouseListener)
+    component.addMouseMotionListener(forwardingMouseListener)
   }
 
   override fun getPreferredSize(): Dimension {
@@ -148,11 +163,26 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
     }
   }
 
-  private fun updateMouseState(event: MouseEvent) {
-    val modifiers = event.modifiersEx
+  private fun updateMouseState(x: Int, y: Int, modifiers: Int) {
     mouseButtonPressed = (modifiers and BUTTON1_DOWN_MASK) != 0
-    lastMouseCoordinates = if (mouseButtonPressed || contains(event.x, event.y)) Point(event.x, event.y) else null
     multiTouchMode = (modifiers and SHIFT_DOWN_MASK) != 0
+    lastMouseCoordinates = if (hasVisibleTouchFeedback(x, y)) Point(x, y) else null
+  }
+
+  private fun hasVisibleTouchFeedback(x: Int, y: Int): Boolean {
+    val insets = insets
+    val w = width - insets.width
+    val h = height - insets.height
+    if (w <= 0 || h <= 0) {
+      return false
+    }
+    val touchpadRectangle = Rectangle(insets.left, insets.top, w, h)
+    if (!multiTouchMode) {
+      return touchpadRectangle.contains(x, y)
+    }
+    val fingerDistance = FINGER_DISTANCE.scaled(w.toDouble() / touchpadSize.width)
+    val x1 = x - fingerDistance / 2
+    return touchpadRectangle.contains(x1, y) || touchpadRectangle.contains(x1 + fingerDistance, y)
   }
 
   // Terminates ongoing dragging if any.
@@ -169,15 +199,139 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
     }
   }
 
-  private fun sendMouseEvent(x: Int, y: Int, withPressure: Boolean) {
+  private fun toTouchpadCoordinates(x: Int, y: Int): Point {
+    val insets = insets
     val w = width - insets.width
     val h = height - insets.height
-
-    val pressure = if (withPressure) PRESSURE_RANGE_MAX else 0
-    // Touchpad coordinates.
     val touchpadX = (x - insets.left).scaledUnbiased(w, touchpadSize.width)
-    // Touchpad's Y axis points in opposite direction compared to the computer screen.
-    val touchpadY = (h - 1 - (y - insets.top)).scaledUnbiased(h, touchpadSize.height)
+    val touchpadY = (y - insets.top).scaledUnbiased(h, touchpadSize.height)
+    return Point(touchpadX, touchpadY)
+  }
+
+  private fun handleMousePressed(x: Int, y: Int, modifiers: Int, requestFocusImmediately: Boolean = true) {
+    if (width <= insets.width || height <= insets.height) {
+      return
+    }
+    if (requestFocusImmediately) {
+      requestFocusInWindow()
+    }
+    updateMouseState(x, y, modifiers)
+    if (mouseButtonPressed) {
+      val curr = toTouchpadCoordinates(x, y)
+      previousTouchpadPoint = curr
+      sendTouchpadEvent(curr.x, curr.y, true)
+      if (!requestFocusImmediately && touches.any { it.pressure != 0 }) {
+        requestFocusInWindow()
+      }
+    } else {
+      previousTouchpadPoint = null
+    }
+  }
+
+  private fun handleMouseDragged(x: Int, y: Int, modifiers: Int) {
+    if (width <= insets.width || height <= insets.height) {
+      return
+    }
+    updateMouseState(x, y, modifiers)
+    if (!mouseButtonPressed) {
+      previousTouchpadPoint = null
+      return
+    }
+    val curr = toTouchpadCoordinates(x, y)
+    val prev = previousTouchpadPoint
+    previousTouchpadPoint = curr
+    if (prev == null) {
+      sendTouchpadEvent(curr.x, curr.y, true)
+      return
+    }
+
+    val halfFingerDistance = if (multiTouchMode) FINGER_DISTANCE / 2 else 0
+    val minMidX = -halfFingerDistance
+    val maxMidX = touchpadSize.width - 1 + halfFingerDistance
+    val maxY = touchpadSize.height - 1
+    val wasVerticallyInside = prev.y in 0..maxY
+    val isVerticallyInside = curr.y in 0..maxY
+
+    when {
+      !wasVerticallyInside && !isVerticallyInside -> {
+        // Fast vertical flick that jumped completely across the touchpad in a single mouse frame.
+        val clipped = clipSegment(prev.x, prev.y, curr.x, curr.y, minMidX, maxMidX, 0, maxY)
+        if (clipped != null) {
+          ensureFocused()
+          sendTouchpadEvent(clipped.entry.x, clipped.entry.y, true)
+          if (clipped.exit != clipped.entry) {
+            sendTouchpadEvent(clipped.exit.x, clipped.exit.y, true)
+          }
+          sendTouchpadEvent(clipped.exit.x, clipped.exit.y, false)
+        }
+      }
+      !wasVerticallyInside && isVerticallyInside -> {
+        // Entered across the top or bottom border: anchor ACTION_DOWN at the border intersection.
+        val clipped = clipSegment(prev.x, prev.y, curr.x, curr.y, minMidX, maxMidX, 0, maxY)
+        if (clipped != null) {
+          ensureFocused()
+          sendTouchpadEvent(clipped.entry.x, clipped.entry.y, true)
+          if (curr != clipped.entry) {
+            sendTouchpadEvent(curr.x, curr.y, true)
+          }
+        } else {
+          sendTouchpadEvent(curr.x, curr.y, true)
+        }
+      }
+      wasVerticallyInside && !isVerticallyInside -> {
+        // Exited across the top or bottom border: emit ACTION_MOVE at the border intersection before ACTION_UP.
+        val clipped = clipSegment(prev.x, prev.y, curr.x, curr.y, minMidX, maxMidX, 0, maxY)
+        if (clipped != null && touches.any { it.pressure != 0 }) {
+          ensureFocused()
+          if (clipped.exit != prev) {
+            sendTouchpadEvent(clipped.exit.x, clipped.exit.y, true)
+          }
+          sendTouchpadEvent(clipped.exit.x, clipped.exit.y, false)
+        } else {
+          sendTouchpadEvent(curr.x, curr.y, true)
+        }
+      }
+      else -> {
+        if (curr.x in minMidX..maxMidX) {
+          ensureFocused()
+        } else if (prev.x !in minMidX..maxMidX) {
+          val clipped = clipSegment(prev.x, prev.y, curr.x, curr.y, minMidX, maxMidX, 0, maxY)
+          if (clipped != null) {
+            ensureFocused()
+            sendTouchpadEvent(clipped.entry.x, clipped.entry.y, true)
+            if (clipped.exit != clipped.entry) {
+              sendTouchpadEvent(clipped.exit.x, clipped.exit.y, true)
+            }
+            sendTouchpadEvent(clipped.exit.x, clipped.exit.y, false)
+            return
+          }
+        }
+        sendTouchpadEvent(curr.x, curr.y, true)
+      }
+    }
+  }
+
+  private fun handleMouseReleased(x: Int, y: Int, button: Int, modifiers: Int) {
+    if (width <= insets.width || height <= insets.height) {
+      previousTouchpadPoint = null
+      return
+    }
+    updateMouseState(x, y, modifiers)
+    if (button == BUTTON1) {
+      previousTouchpadPoint = null
+      val curr = toTouchpadCoordinates(x, y)
+      sendTouchpadEvent(curr.x, curr.y, false)
+    }
+  }
+
+  private fun ensureFocused() {
+    if (!isFocusOwner) {
+      requestFocusInWindow()
+    }
+  }
+
+  private fun sendTouchpadEvent(touchpadX: Int, touchpadY: Int, withPressure: Boolean) {
+    val pressure = if (withPressure) PRESSURE_RANGE_MAX else 0
     val touchesToSend = mutableListOf<Touch>()
     if (multiTouchMode) {
       addTouchWithAdjustments(0, touchpadX - FINGER_DISTANCE / 2, touchpadY, pressure, touchesToSend)
@@ -207,6 +361,7 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
     touchesToSend.add(touch.copy())
   }
 
+  /** Sends [touches] to the device or emulator. Note that [Touch.y] is top-down (`0` at the top edge). */
   protected abstract fun sendTouches(touches: List<Touch>)
 
   private fun isInsideTouchpad(x: Int, y: Int): Boolean = 0 <= x && x < touchpadSize.width && 0 <= y && y < touchpadSize.height
@@ -214,18 +369,11 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
   private inner class MyMouseListener : MouseAdapter() {
 
     override fun mousePressed(event: MouseEvent) {
-      requestFocusInWindow()
-      updateMouseState(event)
-      if (mouseButtonPressed) {
-        sendMouseEvent(event.x, event.y, true)
-      }
+      handleMousePressed(event.x, event.y, event.modifiersEx)
     }
 
     override fun mouseReleased(event: MouseEvent) {
-      updateMouseState(event)
-      if (event.button == BUTTON1) {
-        sendMouseEvent(event.x, event.y, false)
-      }
+      handleMouseReleased(event.x, event.y, event.button, event.modifiersEx)
     }
 
     override fun mouseExited(event: MouseEvent) {
@@ -235,14 +383,33 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
     }
 
     override fun mouseDragged(event: MouseEvent) {
-      updateMouseState(event)
-      if (mouseButtonPressed) {
-        sendMouseEvent(event.x, event.y, true)
-      }
+      handleMouseDragged(event.x, event.y, event.modifiersEx)
     }
 
     override fun mouseMoved(event: MouseEvent) {
-      updateMouseState(event)
+      updateMouseState(event.x, event.y, event.modifiersEx)
+    }
+  }
+
+  private inner class ForwardingMouseListener : MouseAdapter() {
+
+    override fun mousePressed(event: MouseEvent) {
+      if (event.button == BUTTON1) {
+        val point = SwingUtilities.convertPoint(event.component, event.point, this@AbstractTouchpadPanel)
+        handleMousePressed(point.x, point.y, event.modifiersEx, requestFocusImmediately = false)
+      }
+    }
+
+    override fun mouseDragged(event: MouseEvent) {
+      val point = SwingUtilities.convertPoint(event.component, event.point, this@AbstractTouchpadPanel)
+      handleMouseDragged(point.x, point.y, event.modifiersEx)
+    }
+
+    override fun mouseReleased(event: MouseEvent) {
+      if (event.button == BUTTON1) {
+        val point = SwingUtilities.convertPoint(event.component, event.point, this@AbstractTouchpadPanel)
+        handleMouseReleased(point.x, point.y, event.button, event.modifiersEx)
+      }
     }
   }
 
@@ -260,6 +427,49 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
       multiTouchMode = (event.modifiersEx and SHIFT_DOWN_MASK) != 0
     }
   }
+}
+
+private class ClippedSegment(val entry: Point, val exit: Point)
+
+/** Clips segment `(x0, y0) -> (x1, y1)` to `[minX, maxX] x [minY, maxY]` using Liang-Barsky, returning null if disjoint. */
+private fun clipSegment(x0: Int, y0: Int, x1: Int, y1: Int, minX: Int, maxX: Int, minY: Int, maxY: Int): ClippedSegment? {
+  if (minX > maxX || minY > maxY) {
+    return null
+  }
+  val dx = (x1 - x0).toDouble()
+  val dy = (y1 - y0).toDouble()
+  var tEnter = 0.0
+  var tExit = 1.0
+
+  fun clipAxis(p: Double, q: Double): Boolean {
+    if (p == 0.0) {
+      return q >= 0.0
+    }
+    val t = q / p
+    if (p < 0.0) {
+      if (t > tExit) return false
+      if (t > tEnter) tEnter = t
+    } else {
+      if (t < tEnter) return false
+      if (t < tExit) tExit = t
+    }
+    return true
+  }
+
+  if (
+    !clipAxis(-dx, (x0 - minX).toDouble()) ||
+      !clipAxis(dx, (maxX - x0).toDouble()) ||
+      !clipAxis(-dy, (y0 - minY).toDouble()) ||
+      !clipAxis(dy, (maxY - y0).toDouble())
+  ) {
+    return null
+  }
+
+  val entryX = (x0 + tEnter * dx).roundToInt().coerceIn(minX, maxX)
+  val entryY = (y0 + tEnter * dy).roundToInt().coerceIn(minY, maxY)
+  val exitX = (x0 + tExit * dx).roundToInt().coerceIn(minX, maxX)
+  val exitY = (y0 + tExit * dy).roundToInt().coerceIn(minY, maxY)
+  return ClippedSegment(Point(entryX, entryY), Point(exitX, exitY))
 }
 
 private const val PREFERRED_HEIGHT = 40

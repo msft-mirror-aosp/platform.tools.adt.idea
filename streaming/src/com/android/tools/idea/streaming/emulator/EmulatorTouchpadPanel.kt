@@ -37,7 +37,8 @@ internal class EmulatorTouchpadPanel(
     for (touch in touches) {
       val protoTouch = protoTouches[touch.id]
       protoTouch.x = touch.x
-      protoTouch.y = touch.y
+      // Emulator touchpad's Y axis points in opposite direction compared to the computer screen.
+      protoTouch.y = touchpadSize.height - 1 - touch.y
       protoTouch.pressure = touch.pressure
       touchpadEvent.addTouches(protoTouch)
     }

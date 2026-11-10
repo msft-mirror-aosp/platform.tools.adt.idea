@@ -29,6 +29,7 @@ abstract class AbstractGlassesInputPanel(touchpadPanel: AbstractTouchpadPanel?) 
     border = Borders.compound(Borders.customLineBottom(JBColor.border()), Borders.empty(5, 10))
     if (touchpadPanel != null) {
       add(touchpadPanel)
+      touchpadPanel.registerDragSource(this)
     }
 
     val actionManager = ActionManager.getInstance()
@@ -37,6 +38,7 @@ abstract class AbstractGlassesInputPanel(touchpadPanel: AbstractTouchpadPanel?) 
       val toolbar = actionManager.createActionToolbar("GlassesInputPanel", actionGroup, true)
       toolbar.targetComponent = this
       add(toolbar.component)
+      touchpadPanel?.registerDragSource(toolbar.component)
     }
   }
 }

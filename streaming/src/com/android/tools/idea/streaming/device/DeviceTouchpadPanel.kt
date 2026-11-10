@@ -105,7 +105,8 @@ internal class DeviceTouchpadPanel(
   private fun Touch.toPointer(): MotionEventMessage.Pointer {
     return MotionEventMessage.Pointer(
       x.scaledUnbiased(NOMINAL_TOUCHPAD_SIZE.width, displaySize.width),
-      y.scaledUnbiased(NOMINAL_TOUCHPAD_SIZE.height, displaySize.height),
+      // Glasses projection expects Y coordinates pointing up from the bottom of the touchpad.
+      (NOMINAL_TOUCHPAD_SIZE.height - 1 - y).scaledUnbiased(NOMINAL_TOUCHPAD_SIZE.height, displaySize.height),
       id,
     )
   }
