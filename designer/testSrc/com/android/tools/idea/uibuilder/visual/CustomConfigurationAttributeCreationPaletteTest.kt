@@ -16,6 +16,7 @@
 package com.android.tools.idea.uibuilder.visual
 
 import com.android.sdklib.devices.Device
+import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.common.type.DesignerTypeRegistrar
 import com.android.tools.idea.configurations.DeviceGroup
 import com.android.tools.idea.uibuilder.LayoutTestCase
@@ -48,10 +49,16 @@ class CustomConfigurationAttributeCreationPaletteTest : LayoutTestCase() {
     val mockedConsumer = Mockito.mock(MyConsumer::class.java)
 
     val palette = CustomConfigurationAttributeCreationPalette(data) { mockedConsumer.accept(it.name) }
+    FakeUi(palette, testRootDisposable)
 
     val addButton = (palette.components[2] as JPanel).components.filterIsInstance<JButton>().first { it.text == "Add" }
+    val rootPane = checkNotNull(palette.rootPane)
+    assertTrue(addButton.isDefaultButton)
     addButton.action.actionPerformed(Mockito.mock(ActionEvent::class.java))
     Mockito.verify(mockedConsumer).accept("Preview")
+
+    palette.parent.remove(palette)
+    assertNull(rootPane.defaultButton)
   }
 
   fun testCreateConfigurationWithPreloadedData() {
@@ -64,10 +71,16 @@ class CustomConfigurationAttributeCreationPaletteTest : LayoutTestCase() {
     val mockedConsumer = Mockito.mock(MyConsumer::class.java)
 
     val palette = CustomConfigurationAttributeCreationPalette(data) { mockedConsumer.accept(it.name) }
+    FakeUi(palette, testRootDisposable)
 
     val addButton = (palette.components[2] as JPanel).components.filterIsInstance<JButton>().first { it.text == "Add" }
+    val rootPane = checkNotNull(palette.rootPane)
+    assertTrue(addButton.isDefaultButton)
     addButton.action.actionPerformed(Mockito.mock(ActionEvent::class.java))
     Mockito.verify(mockedConsumer).accept("Preview")
+
+    palette.parent.remove(palette)
+    assertNull(rootPane.defaultButton)
   }
 
   fun testDeviceGrouping() {

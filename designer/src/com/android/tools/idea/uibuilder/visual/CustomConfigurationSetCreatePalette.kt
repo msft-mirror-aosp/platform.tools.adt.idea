@@ -16,6 +16,7 @@
 package com.android.tools.idea.uibuilder.visual
 
 import com.android.tools.adtui.common.AdtPrimaryPanel
+import com.intellij.ui.AncestorListenerAdapter
 import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
@@ -28,8 +29,10 @@ import java.awt.event.ActionEvent
 import javax.swing.AbstractAction
 import javax.swing.JButton
 import javax.swing.JComponent
+import javax.swing.JRootPane
 import javax.swing.JSeparator
 import javax.swing.UIManager
+import javax.swing.event.AncestorEvent
 import javax.swing.event.DocumentEvent
 
 private const val CUSTOM_SET_NAME = "Create a Custom Category"
@@ -121,10 +124,36 @@ class CustomConfigurationSetCreatePalette(val onCreated: (String) -> Unit) : Adt
     addButton.text = "Add"
 
     addButton.isFocusable = true
+    addButton.registerAsDefaultButton()
     panel.add(addButton, BorderLayout.CENTER)
 
     return panel
   }
 
   override fun requestFocusInWindow(): Boolean = defaultFocusComponent?.requestFocusInWindow() ?: false
+}
+
+/**
+ * Registers this [JButton] as the ancestor [JRootPane.defaultButton] while mounted in a popup or dialog hierarchy, and clears it on removal
+ * so lightweight balloon popups do not leave a stale default button attached to the host window's [JRootPane].
+ */
+internal fun JButton.registerAsDefaultButton() {
+  addAncestorListener(
+    object : AncestorListenerAdapter() {
+      private var attachedRootPane: JRootPane? = null
+
+      override fun ancestorAdded(event: AncestorEvent?) {
+        val rootPane = event?.component?.rootPane
+        attachedRootPane = rootPane
+        rootPane?.defaultButton = this@registerAsDefaultButton
+      }
+
+      override fun ancestorRemoved(event: AncestorEvent?) {
+        if (attachedRootPane?.defaultButton === this@registerAsDefaultButton) {
+          attachedRootPane?.defaultButton = null
+        }
+        attachedRootPane = null
+      }
+    }
+  )
 }

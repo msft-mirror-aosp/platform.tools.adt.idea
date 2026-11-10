@@ -331,6 +331,7 @@ class CustomConfigurationAttributeCreationPalette(
     addButton.text = "Add"
 
     addButton.isFocusable = true
+    addButton.registerAsDefaultButton()
     panel.add(addButton, BorderLayout.CENTER)
 
     return panel

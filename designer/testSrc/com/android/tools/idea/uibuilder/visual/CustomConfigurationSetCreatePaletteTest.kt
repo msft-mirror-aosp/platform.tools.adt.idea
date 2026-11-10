@@ -15,13 +15,18 @@
  */
 package com.android.tools.idea.uibuilder.visual
 
+import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.ComponentUtil
 import com.intellij.ui.components.JBTextField
+import java.awt.event.KeyEvent
 import javax.swing.JButton
+import kotlin.test.assertNotNull
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -66,5 +71,25 @@ class CustomConfigurationSetCreatePaletteTest {
 
     textField.text = existingCustomSetName
     assertFalse(addButton.isEnabled)
+  }
+
+  @Test
+  fun testEnterSubmitsDefaultAddButtonAndClearsOnRemoval() {
+    var createdName: String? = null
+    val palette = CustomConfigurationSetCreatePalette { createdName = it }
+    val fakeUi = FakeUi(palette, projectRule.testRootDisposable)
+
+    val textField = ComponentUtil.findComponentsOfType(palette, JBTextField::class.java).single()
+    val addButton = ComponentUtil.findComponentsOfType(palette, JButton::class.java).single()
+    val rootPane = assertNotNull(palette.rootPane)
+    assertTrue(addButton.isDefaultButton)
+
+    textField.text = "Custom123"
+    fakeUi.keyboard.setFocus(textField)
+    fakeUi.keyboard.pressAndRelease(KeyEvent.VK_ENTER)
+    assertEquals("Custom123", createdName)
+
+    palette.parent.remove(palette)
+    assertNull(rootPane.defaultButton)
   }
 }
