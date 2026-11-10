@@ -34,6 +34,9 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
 
   internal val exceptionsAndSyncIssues = ConcurrentHashMap<BasicGradleProject, IdeAndroidSyncIssuesAndExceptions>()
 
+  /** Models requested through [toCachingController], shared by all model providers of a sync. See [CachingBuildController]. */
+  internal val modelCache = ConcurrentHashMap<ModelCacheKey, Any>()
+
   internal var hasSyncError: Boolean = false
 
   private var allProjectsSupportedByPhasedSync: Boolean = false
@@ -51,13 +54,10 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
   }
 
   /**
-   * If the flag is on to do so, only run legacy providers when there are Gradle subprojects that are not supported. This is used to
-   * mutually exclusively run legacy and phased sync model providers.
+   * If the flag is on to do so, only run legacy providers when there are Gradle subprojects that are not supported.
    *
-   * The new phased sync source set model provider (and its corresponding sync contributor) always runs because it is considered lightweight
-   * enough.`
-   *
-   * Dependency model provider is controlled by a completely separate flag and is not affected by this.
+   * Phased sync model providers always run (when enabled) and populate [modelCache], while legacy model providers run last and only when
+   * this property is true.
    */
   val shouldRunLegacyModelProviders: Boolean
     get() = !hasSyncError && (!disableLegacyModelProvidersForSupportedProjects || !allProjectsSupportedByPhasedSync)
@@ -75,6 +75,7 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
     selectedVariant.clear()
     kaptGradleModel.clear()
     exceptionsAndSyncIssues.clear()
+    modelCache.clear()
   }
 }
 

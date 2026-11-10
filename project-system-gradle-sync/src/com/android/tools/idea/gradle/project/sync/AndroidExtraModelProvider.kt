@@ -55,6 +55,8 @@ class AndroidExtraModelProvider(private val syncOptions: SyncActionOptions, priv
     if (!cachedModels.shouldRunLegacyModelProviders) {
       return
     }
+    // Serve the models already fetched by the phased sync model providers from the cache instead of requesting them again.
+    @Suppress("NAME_SHADOWING") val controller = controller.toCachingController(cachedModels)
     for (buildModel in buildModels) {
       impl.populateProjectModels(controller, buildModel.projects, modelConsumer)
       impl.populateBuildModels(controller, buildModel, modelConsumer)
@@ -110,8 +112,8 @@ private class AndroidExtraModelProviderImpl(private val syncOptions: SyncActionO
           consumer,
         )
         .populateBuildModels()
-      // If we reach here it means that we fetched the android models using this model, and the finished event should be recorder here,
-      // because PhasedSyncAdditionalModelProvider won't run if this model run anyway.
+      // When legacy model providers run, this provider runs last (after all phased sync model providers), so ANDROID_FINISHED is recorded
+      // here instead of in PhasedSyncAdditionalModelProvider.
       recordCheckpointData(MeasurementCheckpoint.ANDROID_FINISHED, syncOptions, syncCounters)
       if (syncOptions.flags.studioDebugMode) {
         populateDebugInfo(buildModel, consumer, this.javaClass)

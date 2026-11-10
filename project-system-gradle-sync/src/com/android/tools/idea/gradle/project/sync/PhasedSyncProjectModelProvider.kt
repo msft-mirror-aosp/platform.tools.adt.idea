@@ -71,6 +71,8 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
     modelConsumer: ProjectImportModelProvider.GradleModelConsumer,
   ) {
     recordCheckpointData(MeasurementCheckpoint.ANDROID_STARTED, syncOptions)
+    // Cache the requested models so that the model providers running after this one don't need to request them again.
+    @Suppress("NAME_SHADOWING") val controller = controller.toCachingController(cachedModels)
     // Synchronized because the nested actions below add to it in parallel.
     val exceptionsPerProject: MutableList<Pair<BasicGradleProject, Throwable>> = Collections.synchronizedList(mutableListOf())
     // .first call seems a bit silly, but it's what we do on the other side too

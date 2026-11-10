@@ -677,16 +677,15 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     val disableLegacyModelProvidersForSupportedProjects =
       StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.get()
     val cachedModels = ModelProviderCachedData(disableLegacyModelProvidersForSupportedProjects)
-    return listOf<ProjectImportModelProvider>(AndroidExtraModelProvider(syncOptions, cachedModels)) +
-      if (resolverCtx.isPhasedSyncEnabled) {
-        listOfNotNull(
-          PhasedSyncProjectModelProvider(syncOptions, cachedModels),
-          PhasedSyncDependencyModelProvider(syncOptions, cachedModels),
-          PhasedSyncAdditionalModelProvider(syncOptions, cachedModels),
-        )
-      } else {
-        emptyList()
-      }
+    return if (resolverCtx.isPhasedSyncEnabled) {
+      listOfNotNull(
+        PhasedSyncProjectModelProvider(syncOptions, cachedModels),
+        PhasedSyncDependencyModelProvider(syncOptions, cachedModels),
+        PhasedSyncAdditionalModelProvider(syncOptions, cachedModels),
+      )
+    } else {
+      emptyList()
+    } + listOf<ProjectImportModelProvider>(AndroidExtraModelProvider(syncOptions, cachedModels))
   }
 
   override fun preImportCheck() {

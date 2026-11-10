@@ -52,6 +52,8 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
     if (cachedData.hasSyncError) {
       return
     }
+    // Cache the requested models so that the model providers running after this one don't need to request them again.
+    @Suppress("NAME_SHADOWING") val controller = controller.toCachingController(cachedData)
     // Synchronized because the nested actions below add to it in parallel.
     val exceptionsPerProject: MutableList<Pair<BasicGradleProject, Throwable>> = Collections.synchronizedList(mutableListOf())
     val unresolvedDependenciesPerProject = mutableMapOf<BasicGradleProject, List<IdeUnresolvedDependency>>()
