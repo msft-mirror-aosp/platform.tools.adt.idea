@@ -24,6 +24,7 @@ import com.google.idea.blaze.android.run.NativeSymbolFinder
 import com.google.idea.blaze.base.BlazeTestCase
 import com.google.idea.blaze.base.command.buildresult.BuildResult
 import com.google.idea.blaze.base.run.DeployedApplicationTargetStore
+import com.google.idea.blaze.base.run.DeployedApplicationTargets
 import com.google.idea.blaze.base.run.RuntimeArtifactCache
 import com.google.idea.blaze.base.run.RuntimeArtifactKind
 import com.google.idea.blaze.base.scope.BlazeContext
@@ -74,6 +75,10 @@ class BlazeAndroidDeployInfoTest : BlazeTestCase() {
   }
 
   private fun registerMockSymbolFinder(symbolFile: File) {
+    registerSymbolFinderByTarget(mapOf(mainAppLabel to listOf(symbolFile)))
+  }
+
+  private fun registerSymbolFinderByTarget(symbolsByTarget: Map<Label, List<File>>) {
     val mockSymbolFinder =
       object : NativeSymbolFinder {
         override val additionalBuildFlags: String = "--output_groups=+test_ndk_symbols"
@@ -83,7 +88,7 @@ class BlazeAndroidDeployInfoTest : BlazeTestCase() {
           context: BlazeContext,
           target: Label,
           buildOutputs: BlazeBuildOutputs,
-        ): List<File> = listOf(symbolFile)
+        ): List<File> = symbolsByTarget[target].orEmpty()
       }
     symbolFinderEp!!.registerExtension(mockSymbolFinder)
   }
@@ -111,6 +116,10 @@ class BlazeAndroidDeployInfoTest : BlazeTestCase() {
 
     expect.withMessage("mainAppPackageName").that(deployInfo.mainAppPackageName).isEqualTo(mainAppPackageName)
     expect.withMessage("trackedTargets").that(mockTargetStore.trackedTargets).containsEntry(mainAppPackageName, mainAppLabel)
+    expect
+      .withMessage("coDeployedTargets")
+      .that(mockTargetStore.getTargetsForApplication(mainAppPackageName))
+      .isEqualTo(DeployedApplicationTargets(mainAppLabel, emptySet()))
 
     val apkInfos = deployInfo.apkInfos
     expect.withMessage("apkInfos size").that(apkInfos).hasSize(1)
@@ -159,6 +168,14 @@ class BlazeAndroidDeployInfoTest : BlazeTestCase() {
     expect.withMessage("appUnderTestPackageName").that(deployInfo.appUnderTestPackageName).isEqualTo(appPackageName)
     expect.withMessage("main app tracked target").that(mockTargetStore.trackedTargets).containsEntry(testPackageName, testAppLabel)
     expect.withMessage("app under test tracked target").that(mockTargetStore.trackedTargets).containsEntry(appPackageName, mainAppLabel)
+    expect
+      .withMessage("test app co-deployed targets")
+      .that(mockTargetStore.getTargetsForApplication(testPackageName))
+      .isEqualTo(DeployedApplicationTargets(testAppLabel, setOf(mainAppLabel)))
+    expect
+      .withMessage("app under test co-deployed targets")
+      .that(mockTargetStore.getTargetsForApplication(appPackageName))
+      .isEqualTo(DeployedApplicationTargets(mainAppLabel, setOf(testAppLabel)))
 
     val apkInfos = deployInfo.apkInfos
     expect.withMessage("apkInfos size").that(apkInfos).hasSize(2)
@@ -198,6 +215,7 @@ class BlazeAndroidDeployInfoTest : BlazeTestCase() {
       )
 
     assertThat(deployInfo.symbolFiles).containsExactly(symbolFile)
+    assertThat(deployInfo.symbolDirs).containsExactly(File("/tmp"))
   }
 
   @Test
@@ -221,6 +239,61 @@ class BlazeAndroidDeployInfoTest : BlazeTestCase() {
       )
 
     assertThat(deployInfo.symbolFiles).isEmpty()
+    assertThat(deployInfo.symbolDirs).isEmpty()
+  }
+
+  @Test
+  fun `fetchDeployArtifacts for instrumentation test with native symbols populates symbolDirs for both APKs`() {
+    val testSymbol1 = File("/cache/test_symbols/libtest_jni.so")
+    val testSymbol2 = File("/cache/test_symbols/libhelper.so")
+    val appSymbol = File("/cache/app_symbols/libapp_jni.so")
+    registerSymbolFinderByTarget(
+      mapOf(
+        testAppLabel to listOf(testSymbol1, testSymbol2),
+        mainAppLabel to listOf(appSymbol),
+      )
+    )
+
+    val testAppDeployData = DeployData(testAppLabel, stubManifest(testPackageName), listOf(stubOutputArtifact("test/test.apk")))
+    val appUnderTestDeployData = DeployData(mainAppLabel, stubManifest(appPackageName), listOf(stubOutputArtifact("app/app.apk")))
+    val mockCacheLocally: CacheLocallyFunction = { _, _, _, _ -> listOf(dummyApkPath) }
+
+    val deployInfo =
+      BlazeAndroidDeployInfo.fetchDeployArtifacts(
+        project,
+        dummyBuildOutputs,
+        mainApp = testAppDeployData,
+        appUnderTest = appUnderTestDeployData,
+        fetchNativeSymbols = true,
+        context = BlazeContext.create(),
+        cacheLocally = mockCacheLocally,
+      )
+
+    assertThat(deployInfo.symbolFiles).containsExactly(testSymbol1, testSymbol2, appSymbol).inOrder()
+    assertThat(deployInfo.symbolDirs).containsExactly(File("/cache/test_symbols"), File("/cache/app_symbols")).inOrder()
+  }
+
+  @Test
+  fun `symbolDirs omits symbol files without a parent directory`() {
+    val parentlessSymbolFile = File("libnative.so")
+    registerMockSymbolFinder(parentlessSymbolFile)
+
+    val mainAppDeployData = DeployData(mainAppLabel, stubManifest(appPackageName), listOf(dummyApkArtifact))
+    val mockCacheLocally: CacheLocallyFunction = { _, _, _, _ -> listOf(dummyApkPath) }
+
+    val deployInfo =
+      BlazeAndroidDeployInfo.fetchDeployArtifacts(
+        project,
+        dummyBuildOutputs,
+        mainApp = mainAppDeployData,
+        appUnderTest = null,
+        fetchNativeSymbols = true,
+        context = BlazeContext.create(),
+        cacheLocally = mockCacheLocally,
+      )
+
+    assertThat(deployInfo.symbolFiles).containsExactly(parentlessSymbolFile)
+    assertThat(deployInfo.symbolDirs).isEmpty()
   }
 
   @Test
@@ -247,16 +320,87 @@ class BlazeAndroidDeployInfoTest : BlazeTestCase() {
 
     assertThat(exception).hasMessageThat().contains("Valid manifest must have a package name")
   }
+
+  @Test
+  fun `fetchDeployArtifacts for self-instrumenting test does not pair target with itself`() {
+    val selfDeployData = DeployData(testAppLabel, stubManifest(testPackageName), listOf(stubOutputArtifact("test/self_test.apk")))
+    val mockCacheLocally: CacheLocallyFunction = { _, _, _, _ -> listOf(dummyApkPath) }
+
+    BlazeAndroidDeployInfo.fetchDeployArtifacts(
+      project,
+      dummyBuildOutputs,
+      mainApp = selfDeployData,
+      appUnderTest = selfDeployData,
+      fetchNativeSymbols = false,
+      context = BlazeContext.create(),
+      cacheLocally = mockCacheLocally,
+    )
+
+    assertThat(mockTargetStore.trackCallCount).isEqualTo(1)
+    assertThat(mockTargetStore.trackedTargets).containsEntry(testPackageName, testAppLabel)
+    assertThat(mockTargetStore.getTargetsForApplication(testPackageName)).isEqualTo(DeployedApplicationTargets(testAppLabel, emptySet()))
+  }
+
+  @Test
+  fun `fetchDeployArtifacts redeploying app under test standalone clears prior instrumentation pairing`() {
+    val testDeployData = DeployData(testAppLabel, stubManifest(testPackageName), listOf(stubOutputArtifact("test/test.apk")))
+    val appDeployData = DeployData(mainAppLabel, stubManifest(appPackageName), listOf(stubOutputArtifact("app/app.apk")))
+    val mockCacheLocally: CacheLocallyFunction = { _, _, _, _ -> listOf(dummyApkPath) }
+
+    BlazeAndroidDeployInfo.fetchDeployArtifacts(
+      project,
+      dummyBuildOutputs,
+      mainApp = testDeployData,
+      appUnderTest = appDeployData,
+      fetchNativeSymbols = false,
+      context = BlazeContext.create(),
+      cacheLocally = mockCacheLocally,
+    )
+    assertThat(mockTargetStore.getTargetsForApplication(appPackageName))
+      .isEqualTo(DeployedApplicationTargets(mainAppLabel, setOf(testAppLabel)))
+    assertThat(mockTargetStore.getTargetsForApplication(testPackageName))
+      .isEqualTo(DeployedApplicationTargets(testAppLabel, setOf(mainAppLabel)))
+
+    BlazeAndroidDeployInfo.fetchDeployArtifacts(
+      project,
+      dummyBuildOutputs,
+      mainApp = appDeployData,
+      appUnderTest = null,
+      fetchNativeSymbols = false,
+      context = BlazeContext.create(),
+      cacheLocally = mockCacheLocally,
+    )
+
+    assertThat(mockTargetStore.getTargetsForApplication(appPackageName)).isEqualTo(DeployedApplicationTargets(mainAppLabel, emptySet()))
+    assertThat(mockTargetStore.getTargetsForApplication(testPackageName)).isEqualTo(DeployedApplicationTargets(testAppLabel, emptySet()))
+  }
 }
 
 private class MockDeployedApplicationTargetStore : DeployedApplicationTargetStore {
+  var trackCallCount = 0
   val trackedTargets = mutableMapOf<String, Label>()
+  private val coDeployedTargets = mutableMapOf<Label, MutableSet<Label>>()
 
-  override fun trackTargetForApplication(applicationId: String, target: Label) {
+  override fun trackTargetForApplication(applicationId: String, target: Label, deployedWith: Set<Label>) {
+    trackCallCount++
     trackedTargets[applicationId] = target
+    val companions = deployedWith.filterTo(linkedSetOf()) { it != target }
+    val previous = coDeployedTargets.remove(target).orEmpty()
+    for (removed in previous - companions) {
+      coDeployedTargets[removed]?.remove(target)
+    }
+    if (companions.isNotEmpty()) {
+      coDeployedTargets[target] = companions
+      for (companion in companions) {
+        coDeployedTargets.getOrPut(companion) { linkedSetOf() }.add(target)
+      }
+    }
   }
 
   override fun getTargetForApplication(applicationId: String): Label? = trackedTargets[applicationId]
+
+  override fun getTargetsForApplication(applicationId: String): DeployedApplicationTargets? =
+    trackedTargets[applicationId]?.let { primary -> DeployedApplicationTargets(primary, coDeployedTargets[primary]?.toSet().orEmpty()) }
 
   override fun getAllApplicationIds(): Set<String> = trackedTargets.keys
 }

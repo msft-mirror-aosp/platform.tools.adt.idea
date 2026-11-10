@@ -98,10 +98,6 @@
     <DesugaringLibraryConfigFilesLocator implementation="com.google.idea.blaze.android.projectsystem.BazelDesugaringLibraryConfigFilesLocator"/>
   </extensions>
 
-  <extensions defaultExtensionNs="com.google.idea.bazel.cpp">
-    <CppSupportChecker implementation="com.google.idea.blaze.android.cppimpl.NdkCppSupportChecker" />
-  </extensions>
-
   <extensions defaultExtensionNs="com.android.ide">
     <sdkEventListener implementation="com.google.idea.blaze.android.sdk.AndroidSdkListener"/>
   </extensions>
@@ -136,10 +132,5 @@
     <projectsystem.ApplicationProjectContextProvider
             implementation="com.google.idea.blaze.android.run.BazelApplicationProjectContextProvider"/>
     <gemini.nepFineTuneDataListener implementation="com.google.idea.blaze.base.editor.BlazeNepFineTuneDataLogger"/>
-  </extensions>
-
-  <extensions defaultExtensionNs="com.android.tools">
-    <ndk.run.NativeDebuggerAppContextProvider
-        implementation="com.google.idea.blaze.android.run.BazelNativeDebuggerAppContextProvider" />
   </extensions>
 </idea-plugin>

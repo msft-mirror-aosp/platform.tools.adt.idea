@@ -18,13 +18,33 @@ package com.google.idea.blaze.base.run
 import com.google.idea.blaze.common.Label
 import com.intellij.openapi.project.Project
 
+/** Target label and co-deployed companion targets recorded for an application ID. */
+data class DeployedApplicationTargets(val target: Label, val deployedWith: Set<Label>) {
+  /** All deployed targets with [target] ordered ahead of [deployedWith]. */
+  val allTargets: Set<Label>
+    get() = buildSet {
+      add(target)
+      addAll(deployedWith)
+    }
+}
+
 /** Service for mapping deployed application IDs to their Bazel target labels. */
 interface DeployedApplicationTargetStore {
-  /** Associates the given [applicationId] with the deployed [target]. */
-  fun trackTargetForApplication(applicationId: String, target: Label)
+  /**
+   * Associates the given [applicationId] with the deployed [target] and records any companion targets [deployedWith] it into the same
+   * process (for example, the test APK and app under test in a separate-target `android_instrumentation_test`, or an empty set when
+   * deployed alone).
+   */
+  fun trackTargetForApplication(applicationId: String, target: Label, deployedWith: Set<Label>)
 
   /** Returns the target label associated with the given [applicationId], or null if none is tracked. */
   fun getTargetForApplication(applicationId: String): Label?
+
+  /**
+   * Returns the primary target label and any co-deployed companion targets for [applicationId], or null if [applicationId] is not tracked.
+   */
+  fun getTargetsForApplication(applicationId: String): DeployedApplicationTargets? =
+    getTargetForApplication(applicationId)?.let { primary -> DeployedApplicationTargets(primary, emptySet()) }
 
   /** Returns all tracked application IDs for the project. */
   fun getAllApplicationIds(): Set<String>

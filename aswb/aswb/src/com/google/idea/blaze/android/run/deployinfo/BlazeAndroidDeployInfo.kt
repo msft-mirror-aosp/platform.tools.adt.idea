@@ -18,7 +18,6 @@ package com.google.idea.blaze.android.run.deployinfo
 import com.android.tools.idea.run.ApkFileUnit
 import com.android.tools.idea.run.ApkInfo
 import com.android.tools.idea.run.ApkProvisionException
-import com.android.tools.ndk.run.SymbolDir
 import com.google.idea.blaze.android.manifest.ManifestParser.ParsedManifest
 import com.google.idea.blaze.android.run.BazelApkProvider
 import com.google.idea.blaze.android.run.BazelApplicationIdProvider
@@ -80,8 +79,8 @@ private constructor(
 
   fun toApkProvider(): BazelApkProvider = BazelApkProvider(apkInfos)
 
-  val symbolDirs: List<SymbolDir>
-    get() = symbolFiles.map { SymbolDir.WithoutSubdirectories(it.parentFile) }.distinct()
+  val symbolDirs: List<File>
+    get() = symbolFiles.mapNotNull { it.parentFile }.distinct()
 
   companion object {
 
@@ -104,9 +103,26 @@ private constructor(
       val nativeSymbols = nativeSymbolTargets.flatMap { fetchNativeSymbols(project, context, it, buildOutputs) }
 
       val targetStore = DeployedApplicationTargetStore.getInstance(project)
-      targetStore.trackTargetForApplication(mainAppPackage.applicationId, mainApp.targetLabel)
-      if (testTargetAppPackage != null) {
-        targetStore.trackTargetForApplication(testTargetAppPackage.applicationId, appUnderTest.targetLabel)
+      when {
+        testTargetAppPackage == null || appUnderTest.targetLabel == mainApp.targetLabel -> {
+          targetStore.trackTargetForApplication(
+            mainAppPackage.applicationId,
+            mainApp.targetLabel,
+            deployedWith = emptySet(),
+          )
+        }
+        else -> {
+          targetStore.trackTargetForApplication(
+            mainAppPackage.applicationId,
+            mainApp.targetLabel,
+            deployedWith = setOf(appUnderTest.targetLabel),
+          )
+          targetStore.trackTargetForApplication(
+            testTargetAppPackage.applicationId,
+            appUnderTest.targetLabel,
+            deployedWith = setOf(mainApp.targetLabel),
+          )
+        }
       }
 
       return BlazeAndroidDeployInfo(

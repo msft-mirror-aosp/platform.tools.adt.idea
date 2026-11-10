@@ -43,8 +43,8 @@ class BazelProjectSystemTest : BlazeTestCase() {
 
   @Test
   fun testGetKnownApplicationIds_returnsAllFromTargetStore() {
-    mockTargetStore.trackTargetForApplication("com.example.app1", Label.of("//java/com/example:app1"))
-    mockTargetStore.trackTargetForApplication("com.example.app2", Label.of("//java/com/example:app2"))
+    mockTargetStore.trackTargetForApplication("com.example.app1", Label.of("//java/com/example:app1"), deployedWith = emptySet())
+    mockTargetStore.trackTargetForApplication("com.example.app2", Label.of("//java/com/example:app2"), deployedWith = emptySet())
 
     val projectSystem = BazelProjectSystem(project)
     assertThat(projectSystem.getKnownApplicationIds()).containsExactly("com.example.app1", "com.example.app2")
@@ -59,7 +59,7 @@ class BazelProjectSystemTest : BlazeTestCase() {
   private class MockDeployedApplicationTargetStore : DeployedApplicationTargetStore {
     private val targets = mutableMapOf<String, Label>()
 
-    override fun trackTargetForApplication(applicationId: String, target: Label) {
+    override fun trackTargetForApplication(applicationId: String, target: Label, deployedWith: Set<Label>) {
       targets[applicationId] = target
     }
 

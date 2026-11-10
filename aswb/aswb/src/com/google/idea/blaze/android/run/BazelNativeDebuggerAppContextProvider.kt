@@ -41,7 +41,7 @@ class BazelNativeDebuggerAppContextProvider : NativeDebuggerAppContextProvider, 
 
       override fun getApplicationId(): String = context.applicationId
 
-      override fun getSymDirs(abis: List<Abi>): Collection<SymbolDir> = context.symbolDirs
+      override fun getSymDirs(abis: List<Abi>): Collection<SymbolDir> = context.symbolDirs.map { SymbolDir.WithoutSubdirectories(it) }
 
       override fun getSourceMap(): Map<String, String> {
         val workingDirPath = WorkspaceRoot.fromProject(context.project).directory().path

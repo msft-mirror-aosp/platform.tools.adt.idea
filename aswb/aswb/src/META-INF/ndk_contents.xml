@@ -33,6 +33,15 @@
     <androidDebugger implementation="com.google.idea.blaze.android.cppimpl.debug.BlazeNativeAndroidDebugger"/>
   </extensions>
 
+  <extensions defaultExtensionNs="com.google.idea.bazel.cpp">
+    <CppSupportChecker implementation="com.google.idea.blaze.android.cppimpl.NdkCppSupportChecker" />
+  </extensions>
+
+  <extensions defaultExtensionNs="com.android.tools">
+    <ndk.run.NativeDebuggerAppContextProvider
+        implementation="com.google.idea.blaze.android.run.BazelNativeDebuggerAppContextProvider" />
+  </extensions>
+
   <extensions defaultExtensionNs="com.intellij">
     <notificationGroup id="Native Debugger Warning" displayType="BALLOON"/>
   </extensions>

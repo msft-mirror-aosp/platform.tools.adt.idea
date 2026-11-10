@@ -45,7 +45,7 @@ class BazelNativeDebuggerAppContextProviderTest : BlazeTestCase() {
   fun testGetNativeDebuggerAppContext_withBazelContext() {
     val provider = BazelNativeDebuggerAppContextProvider()
     val workspaceRoot = WorkspaceRoot(File("/path/to/workspace"))
-    val symDir = SymbolDir.WithoutSubdirectories(File("/path/to/symbols"))
+    val symDir = File("/path/to/symbols")
     val context =
       BazelApplicationProjectContext.forDeployedApplication(
         project = project,
@@ -58,7 +58,7 @@ class BazelNativeDebuggerAppContextProviderTest : BlazeTestCase() {
     assertThat(nativeContext).isNotNull()
     assertThat(nativeContext!!.project).isSameInstanceAs(project)
     assertThat(nativeContext.applicationId).isEqualTo("com.example.app")
-    assertThat(nativeContext.getSymDirs(listOf(Abi.ARM64_V8A))).containsExactly(symDir)
+    assertThat(nativeContext.getSymDirs(listOf(Abi.ARM64_V8A))).containsExactly(SymbolDir.WithoutSubdirectories(symDir))
     assertThat(nativeContext.sourceMap).containsExactly("/proc/self/cwd", workspaceRoot.directory().path)
     assertThat(nativeContext.getExplicitModuleSymbolMap(Abi.ARM64_V8A)).isEmpty()
     assertThat(nativeContext.modulesToVerify).isEmpty()
@@ -67,8 +67,8 @@ class BazelNativeDebuggerAppContextProviderTest : BlazeTestCase() {
   @Test
   fun testGetNativeDebuggerAppContext_withMultipleSymbolDirs() {
     val provider = BazelNativeDebuggerAppContextProvider()
-    val symDir1 = SymbolDir.WithoutSubdirectories(File("/path/to/symbols"))
-    val symDir2 = SymbolDir.WithoutSubdirectories(File("/other/path/symbols"))
+    val symDir1 = File("/path/to/symbols")
+    val symDir2 = File("/other/path/symbols")
     val context =
       BazelApplicationProjectContext.forDeployedApplication(
         project = project,
@@ -79,7 +79,11 @@ class BazelNativeDebuggerAppContextProviderTest : BlazeTestCase() {
 
     val nativeContext = provider.getNativeDebuggerAppContext(context)
     assertThat(nativeContext).isNotNull()
-    assertThat(nativeContext!!.getSymDirs(listOf(Abi.ARM64_V8A))).containsExactly(symDir1, symDir2)
+    assertThat(nativeContext!!.getSymDirs(listOf(Abi.ARM64_V8A)))
+      .containsExactly(
+        SymbolDir.WithoutSubdirectories(symDir1),
+        SymbolDir.WithoutSubdirectories(symDir2),
+      )
   }
 
   @Test

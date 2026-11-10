@@ -49,13 +49,14 @@ class DeployedApplicationTargetStoreImplTest {
     val applicationId = "com.example.app"
     val target = Label.of("//java/com/example:app")
 
-    targetStore.trackTargetForApplication(applicationId, target)
+    targetStore.trackTargetForApplication(applicationId, target, emptySet())
 
     val mappingsFile = applicationIdsDirectory.resolve("application_ids.txt")
     assertThat(mappingsFile.isRegularFile()).isTrue()
     assertThat(mappingsFile.readText().trim()).isEqualTo("$target $applicationId")
 
     assertThat(targetStore.getTargetForApplication(applicationId)).isEqualTo(target)
+    assertThat(targetStore.getTargetsForApplication(applicationId)).isEqualTo(DeployedApplicationTargets(target, emptySet()))
   }
 
   @Test
@@ -64,10 +65,10 @@ class DeployedApplicationTargetStoreImplTest {
     val target1 = Label.of("//java/com/example:app1")
     val target2 = Label.of("//java/com/example:app2")
 
-    targetStore.trackTargetForApplication(applicationId, target1)
+    targetStore.trackTargetForApplication(applicationId, target1, emptySet())
     assertThat(targetStore.getTargetForApplication(applicationId)).isEqualTo(target1)
 
-    targetStore.trackTargetForApplication(applicationId, target2)
+    targetStore.trackTargetForApplication(applicationId, target2, emptySet())
     assertThat(targetStore.getTargetForApplication(applicationId)).isEqualTo(target2)
 
     val mappingsFile = applicationIdsDirectory.resolve("application_ids.txt")
@@ -80,11 +81,11 @@ class DeployedApplicationTargetStoreImplTest {
     val oldAppId = "com.example.oldapp"
     val newAppId = "com.example.newapp"
 
-    targetStore.trackTargetForApplication(oldAppId, target)
+    targetStore.trackTargetForApplication(oldAppId, target, emptySet())
     assertThat(targetStore.getTargetForApplication(oldAppId)).isEqualTo(target)
     assertThat(targetStore.getAllApplicationIds()).containsExactly(oldAppId)
 
-    targetStore.trackTargetForApplication(newAppId, target)
+    targetStore.trackTargetForApplication(newAppId, target, emptySet())
     assertThat(targetStore.getTargetForApplication(newAppId)).isEqualTo(target)
     assertThat(targetStore.getTargetForApplication(oldAppId)).isNull()
     assertThat(targetStore.getAllApplicationIds()).containsExactly(newAppId)
@@ -95,9 +96,9 @@ class DeployedApplicationTargetStoreImplTest {
 
   @Test
   fun trackTargetForApplication_writesSortedEntriesByTarget() {
-    targetStore.trackTargetForApplication("com.b.app", Label.of("//java/b:app"))
-    targetStore.trackTargetForApplication("com.a.app", Label.of("//java/a:app"))
-    targetStore.trackTargetForApplication("com.c.app", Label.of("//java/c:app"))
+    targetStore.trackTargetForApplication("com.b.app", Label.of("//java/b:app"), emptySet())
+    targetStore.trackTargetForApplication("com.a.app", Label.of("//java/a:app"), emptySet())
+    targetStore.trackTargetForApplication("com.c.app", Label.of("//java/c:app"), emptySet())
 
     val mappingsFile = applicationIdsDirectory.resolve("application_ids.txt")
     val lines = mappingsFile.readText().lines().filter { it.isNotBlank() }
@@ -122,9 +123,9 @@ class DeployedApplicationTargetStoreImplTest {
 
   @Test
   fun getAllApplicationIds_returnsAllTrackedApplicationIds() {
-    targetStore.trackTargetForApplication("com.example.app1", Label.of("//java/com/example:app1"))
-    targetStore.trackTargetForApplication("com.example.app2", Label.of("//java/com/example:app2"))
-    targetStore.trackTargetForApplication("com.example.app3", Label.of("//java/com/example:app3"))
+    targetStore.trackTargetForApplication("com.example.app1", Label.of("//java/com/example:app1"), emptySet())
+    targetStore.trackTargetForApplication("com.example.app2", Label.of("//java/com/example:app2"), emptySet())
+    targetStore.trackTargetForApplication("com.example.app3", Label.of("//java/com/example:app3"), emptySet())
 
     assertThat(targetStore.getAllApplicationIds()).containsExactly("com.example.app1", "com.example.app2", "com.example.app3")
   }
@@ -144,9 +145,9 @@ class DeployedApplicationTargetStoreImplTest {
     val target2 = Label.of("//java/com/example:app2")
     val target3 = Label.of("//java/com/example:app3")
 
-    store.trackTargetForApplication("com.example.app1", target1)
-    store.trackTargetForApplication("com.example.app2", target2)
-    store.trackTargetForApplication("com.example.app3", target3)
+    store.trackTargetForApplication("com.example.app1", target1, emptySet())
+    store.trackTargetForApplication("com.example.app2", target2, emptySet())
+    store.trackTargetForApplication("com.example.app3", target3, emptySet())
 
     // Modification count increments after sync
     knownTargets = setOf(target1, target3)
@@ -196,5 +197,181 @@ class DeployedApplicationTargetStoreImplTest {
     val newStore = DeployedApplicationTargetStoreImpl.createForTest(applicationIdsDirectory)
     assertThat(newStore.getAllApplicationIds()).isEmpty()
     assertThat(newStore.getTargetForApplication("any.app")).isNull()
+  }
+
+  @Test
+  fun `trackTargetForApplication records symmetric co-deployed targets and persists across store reload`() {
+    val appTarget = Label.of("//java/com/example:app")
+    val testTarget = Label.of("//javatests/com/example:app_test")
+
+    targetStore.trackTargetForApplication("com.example.app.test", testTarget, setOf(appTarget))
+    targetStore.trackTargetForApplication("com.example.app", appTarget, setOf(testTarget))
+
+    assertThat(targetStore.getTargetsForApplication("com.example.app")).isEqualTo(DeployedApplicationTargets(appTarget, setOf(testTarget)))
+    assertThat(targetStore.getTargetsForApplication("com.example.app.test"))
+      .isEqualTo(DeployedApplicationTargets(testTarget, setOf(appTarget)))
+
+    val mappingsFile = applicationIdsDirectory.resolve("application_ids.txt")
+    val lines = mappingsFile.readText().lines().filter { it.isNotBlank() }
+    assertThat(lines)
+      .containsExactly(
+        "//java/com/example:app com.example.app //javatests/com/example:app_test",
+        "//javatests/com/example:app_test com.example.app.test //java/com/example:app",
+      )
+      .inOrder()
+
+    val reloadedStore = DeployedApplicationTargetStoreImpl.createForTest(applicationIdsDirectory)
+    assertThat(reloadedStore.getTargetForApplication("com.example.app")).isEqualTo(appTarget)
+    assertThat(reloadedStore.getTargetForApplication("com.example.app.test")).isEqualTo(testTarget)
+    assertThat(reloadedStore.getTargetsForApplication("com.example.app"))
+      .isEqualTo(DeployedApplicationTargets(appTarget, setOf(testTarget)))
+    assertThat(reloadedStore.getTargetsForApplication("com.example.app.test"))
+      .isEqualTo(DeployedApplicationTargets(testTarget, setOf(appTarget)))
+  }
+
+  @Test
+  fun `redeploying target alone clears stale co-deployed pairing on both sides and on disk`() {
+    val appTarget = Label.of("//java/com/example:app")
+    val testTarget = Label.of("//javatests/com/example:app_test")
+
+    targetStore.trackTargetForApplication("com.example.app.test", testTarget, setOf(appTarget))
+    targetStore.trackTargetForApplication("com.example.app", appTarget, setOf(testTarget))
+    assertThat(targetStore.getTargetsForApplication("com.example.app")?.deployedWith).containsExactly(testTarget)
+
+    targetStore.trackTargetForApplication("com.example.app", appTarget, emptySet())
+    assertThat(targetStore.getTargetsForApplication("com.example.app")?.deployedWith).isEmpty()
+    assertThat(targetStore.getTargetsForApplication("com.example.app.test")?.deployedWith).isEmpty()
+
+    val mappingsFile = applicationIdsDirectory.resolve("application_ids.txt")
+    val lines = mappingsFile.readText().lines().filter { it.isNotBlank() }
+    assertThat(lines)
+      .containsExactly(
+        "//java/com/example:app com.example.app",
+        "//javatests/com/example:app_test com.example.app.test",
+      )
+      .inOrder()
+
+    val reloadedStore = DeployedApplicationTargetStoreImpl.createForTest(applicationIdsDirectory)
+    assertThat(reloadedStore.getTargetsForApplication("com.example.app")?.deployedWith).isEmpty()
+    assertThat(reloadedStore.getTargetsForApplication("com.example.app.test")?.deployedWith).isEmpty()
+  }
+
+  @Test
+  fun `redeploying target with a new companion unlinks previous companion`() {
+    val appTarget = Label.of("//java/com/example:app")
+    val testTarget1 = Label.of("//javatests/com/example:app_test1")
+    val testTarget2 = Label.of("//javatests/com/example:app_test2")
+
+    targetStore.trackTargetForApplication("com.example.app.test1", testTarget1, setOf(appTarget))
+    targetStore.trackTargetForApplication("com.example.app", appTarget, setOf(testTarget1))
+
+    targetStore.trackTargetForApplication("com.example.app.test2", testTarget2, setOf(appTarget))
+    targetStore.trackTargetForApplication("com.example.app", appTarget, setOf(testTarget2))
+
+    assertThat(targetStore.getTargetsForApplication("com.example.app")?.deployedWith).containsExactly(testTarget2)
+    assertThat(targetStore.getTargetsForApplication("com.example.app.test2")?.deployedWith).containsExactly(appTarget)
+    assertThat(targetStore.getTargetsForApplication("com.example.app.test1")?.deployedWith).isEmpty()
+
+    val reloadedStore = DeployedApplicationTargetStoreImpl.createForTest(applicationIdsDirectory)
+    assertThat(reloadedStore.getTargetsForApplication("com.example.app")?.deployedWith).containsExactly(testTarget2)
+    assertThat(reloadedStore.getTargetsForApplication("com.example.app.test2")?.deployedWith).containsExactly(appTarget)
+    assertThat(reloadedStore.getTargetsForApplication("com.example.app.test1")?.deployedWith).isEmpty()
+  }
+
+  @Test
+  fun `self-instrumenting target ignores self-pairing`() {
+    val selfTarget = Label.of("//javatests/com/example:self_test")
+
+    targetStore.trackTargetForApplication("com.example.self", selfTarget, setOf(selfTarget))
+
+    assertThat(targetStore.getTargetsForApplication("com.example.self")).isEqualTo(DeployedApplicationTargets(selfTarget, emptySet()))
+    val mappingsFile = applicationIdsDirectory.resolve("application_ids.txt")
+    assertThat(mappingsFile.readText().trim()).isEqualTo("$selfTarget com.example.self")
+  }
+
+  @Test
+  fun `evicting target via applicationId reassignment clears its co-deployed links`() {
+    val oldAppTarget = Label.of("//java/com/example:app_v1")
+    val newAppTarget = Label.of("//java/com/example:app_v2")
+    val testTarget = Label.of("//javatests/com/example:app_test")
+
+    targetStore.trackTargetForApplication("com.example.app.test", testTarget, setOf(oldAppTarget))
+    targetStore.trackTargetForApplication("com.example.app", oldAppTarget, setOf(testTarget))
+    targetStore.trackTargetForApplication("com.example.app", newAppTarget, emptySet())
+
+    assertThat(targetStore.getTargetForApplication("com.example.app")).isEqualTo(newAppTarget)
+    assertThat(targetStore.getTargetsForApplication("com.example.app")?.deployedWith).isEmpty()
+    assertThat(targetStore.getTargetsForApplication("com.example.app.test")?.deployedWith).isEmpty()
+  }
+
+  @Test
+  fun `cleanupOnAccess prunes stale companion targets from co-deployed sets and disk`() {
+    val modTracker = SimpleModificationTracker()
+    var knownTargets: Set<Label>? = null
+    val store =
+      DeployedApplicationTargetStoreImpl(
+        applicationIdsDirectory,
+        knownTargetsSupplier = { knownTargets },
+        modificationTracker = modTracker,
+      )
+
+    val appTarget = Label.of("//java/com/example:app")
+    val staleTestTarget = Label.of("//javatests/com/example:deleted_test")
+
+    store.trackTargetForApplication("com.example.app.test", staleTestTarget, setOf(appTarget))
+    store.trackTargetForApplication("com.example.app", appTarget, setOf(staleTestTarget))
+    assertThat(store.getTargetsForApplication("com.example.app")?.deployedWith).containsExactly(staleTestTarget)
+
+    knownTargets = setOf(appTarget)
+    modTracker.incModificationCount()
+
+    assertThat(store.getTargetsForApplication("com.example.app")?.deployedWith).isEmpty()
+    assertThat(store.getTargetsForApplication("com.example.app.test")).isNull()
+
+    val mappingsFile = applicationIdsDirectory.resolve("application_ids.txt")
+    assertThat(mappingsFile.readText().trim()).isEqualTo("$appTarget com.example.app")
+  }
+
+  @Test
+  fun `legacy two-column mappings file loads backward-compatibly alongside paired entries`() {
+    Files.createDirectories(applicationIdsDirectory)
+    val mappingsFile = applicationIdsDirectory.resolve("application_ids.txt")
+    mappingsFile.writeText(
+      """
+      # Legacy two-column entry + new paired entry
+      //java/com/example:standalone com.example.standalone
+      //java/com/example:app com.example.app //javatests/com/example:app_test
+      //javatests/com/example:app_test com.example.app.test //java/com/example:app
+      """
+        .trimIndent()
+    )
+
+    val newStore = DeployedApplicationTargetStoreImpl.createForTest(applicationIdsDirectory)
+    val standaloneTarget = Label.of("//java/com/example:standalone")
+    val appTarget = Label.of("//java/com/example:app")
+    val testTarget = Label.of("//javatests/com/example:app_test")
+
+    assertThat(newStore.getTargetsForApplication("com.example.standalone"))
+      .isEqualTo(DeployedApplicationTargets(standaloneTarget, emptySet()))
+    assertThat(newStore.getTargetsForApplication("com.example.app")).isEqualTo(DeployedApplicationTargets(appTarget, setOf(testTarget)))
+    assertThat(newStore.getTargetsForApplication("com.example.app.test"))
+      .isEqualTo(DeployedApplicationTargets(testTarget, setOf(appTarget)))
+  }
+
+  @Test
+  fun `getTargetsForApplication returns primary and companions in single lookup`() {
+    assertThat(targetStore.getTargetsForApplication("non.existent.app")).isNull()
+
+    val appTarget = Label.of("//java/com/example:app")
+    val testTarget = Label.of("//javatests/com/example:app_test")
+    targetStore.trackTargetForApplication("com.example.app.test", testTarget, setOf(appTarget))
+    targetStore.trackTargetForApplication("com.example.app", appTarget, setOf(testTarget))
+
+    val appTargets = targetStore.getTargetsForApplication("com.example.app")
+    assertThat(appTargets).isEqualTo(DeployedApplicationTargets(appTarget, setOf(testTarget)))
+    assertThat(appTargets?.allTargets).containsExactly(appTarget, testTarget).inOrder()
+    val testTargets = targetStore.getTargetsForApplication("com.example.app.test")
+    assertThat(testTargets).isEqualTo(DeployedApplicationTargets(testTarget, setOf(appTarget)))
+    assertThat(testTargets?.allTargets).containsExactly(testTarget, appTarget).inOrder()
   }
 }

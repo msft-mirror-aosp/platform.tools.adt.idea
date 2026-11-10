@@ -15,8 +15,6 @@
  */
 package com.google.idea.blaze.base.run
 
-import com.google.common.collect.BiMap
-import com.google.common.collect.HashBiMap
 import com.google.idea.blaze.base.qsync.QuerySyncManager
 import com.google.idea.blaze.common.AtomicFileWriter
 import com.google.idea.blaze.common.Label
@@ -49,20 +47,38 @@ class DeployedApplicationTargetStoreImpl(
     modificationTracker = QuerySyncManager.getInstance(project).projectModificationTracker,
   )
 
+  private data class TargetEntry(
+    val applicationId: String,
+    val deployedWith: MutableSet<Label>,
+  )
+
   private val mappingsFile: Path
     get() = applicationIdsDirectory.resolve(MAPPINGS_FILE_NAME)
 
   private val lock = Any()
-  private val targetToAppId: BiMap<Label, String> by lazy {
+  private val targets: MutableMap<Label, TargetEntry> by lazy {
     synchronized(lock) {
-      loadMappings()
+      loadTargets()
     }
   }
 
-  private fun loadMappings(): BiMap<Label, String> {
-    val mappings = HashBiMap.create<Label, String>()
+  /**
+   * Loads persisted target mappings from `application_ids.txt`.
+   *
+   * Blank lines and `#` comments are ignored. Each non-empty line is whitespace-delimited: `<target-label> <application-id>
+   * [<co-deployed-target-label> ...]`.
+   *
+   * Example:
+   * ```
+   * //java/com/example:app com.example.app //javatests/com/example:app_test
+   * //java/com/example:standalone com.example.standalone
+   * //javatests/com/example:app_test com.example.app.test //java/com/example:app
+   * ```
+   */
+  private fun loadTargets(): MutableMap<Label, TargetEntry> {
+    val loadedTargets = mutableMapOf<Label, TargetEntry>()
     if (!mappingsFile.isRegularFile()) {
-      return mappings
+      return loadedTargets
     }
     return try {
       for (line in mappingsFile.readLines(StandardCharsets.UTF_8)) {
@@ -70,17 +86,18 @@ class DeployedApplicationTargetStoreImpl(
         if (trimmed.isEmpty() || trimmed.startsWith("#")) {
           continue
         }
-        val parts = trimmed.split(WHITESPACE_REGEX, limit = 2)
-        if (parts.size == 2 && parts[0].isNotEmpty() && parts[1].isNotEmpty()) {
-          val target = Label.of(parts[0])
+        val parts = trimmed.split(WHITESPACE_REGEX)
+        if (parts.size >= 2 && parts[0].isNotEmpty() && parts[1].isNotEmpty()) {
+          val target = Label.parseLabelIfValid(parts[0]) ?: continue
           val appId = parts[1]
-          mappings.forcePut(target, appId)
+          val companions = parts.drop(2).mapNotNullTo(linkedSetOf()) { Label.parseLabelIfValid(it) }
+          recordMapping(loadedTargets, target, appId, companions)
         }
       }
-      mappings
+      loadedTargets
     } catch (e: IOException) {
       logger.error("Failed to read application ID mappings from $mappingsFile", e)
-      mappings
+      loadedTargets
     }
   }
 
@@ -91,7 +108,12 @@ class DeployedApplicationTargetStoreImpl(
     if (currentModCount != lastModificationCount) {
       val knownTargets = knownTargetsSupplier()
       if (knownTargets != null) {
-        val changed = targetToAppId.keys.retainAll(knownTargets)
+        var changed = targets.keys.retainAll(knownTargets)
+        for (entry in targets.values) {
+          if (entry.deployedWith.retainAll(knownTargets)) {
+            changed = true
+          }
+        }
         if (changed) {
           saveMappings()
         }
@@ -100,11 +122,37 @@ class DeployedApplicationTargetStoreImpl(
     }
   }
 
-  override fun trackTargetForApplication(applicationId: String, target: Label) {
+  override fun trackTargetForApplication(applicationId: String, target: Label, deployedWith: Set<Label>) {
     synchronized(lock) {
       cleanUpStaleTargetsIfNeeded()
-      targetToAppId.forcePut(target, applicationId)
+      recordMapping(targets, target, applicationId, deployedWith)
       saveMappings()
+    }
+  }
+
+  private fun recordMapping(
+    targetMap: MutableMap<Label, TargetEntry>,
+    target: Label,
+    applicationId: String,
+    deployedWith: Set<Label>,
+  ) {
+    val evictedTarget = targetMap.entries.firstOrNull { it.key != target && it.value.applicationId == applicationId }?.key
+    if (evictedTarget != null) {
+      targetMap.remove(evictedTarget)
+      for (entry in targetMap.values) {
+        entry.deployedWith.remove(evictedTarget)
+      }
+    }
+
+    val companions = deployedWith.filterTo(linkedSetOf()) { it != target }
+    targetMap[target] = TargetEntry(applicationId, companions)
+    for ((otherTarget, otherEntry) in targetMap) {
+      if (otherTarget == target) continue
+      if (otherTarget in companions) {
+        otherEntry.deployedWith.add(target)
+      } else {
+        otherEntry.deployedWith.remove(target)
+      }
     }
   }
 
@@ -114,12 +162,16 @@ class DeployedApplicationTargetStoreImpl(
         Files.createDirectories(applicationIdsDirectory)
       }
       AtomicFileWriter.create(mappingsFile).use { writer ->
-        val sortedEntries = targetToAppId.entries.sortedBy { it.key.toString() }
+        val sortedEntries = targets.entries.sortedBy { it.key.toString() }
         val output = buildString {
-          for ((target, appId) in sortedEntries) {
+          for ((target, entry) in sortedEntries) {
             append(target.toString())
             append(' ')
-            append(appId)
+            append(entry.applicationId)
+            for (companion in entry.deployedWith.sortedBy { it.toString() }) {
+              append(' ')
+              append(companion.toString())
+            }
             append('\n')
           }
         }
@@ -134,14 +186,22 @@ class DeployedApplicationTargetStoreImpl(
   override fun getTargetForApplication(applicationId: String): Label? {
     synchronized(lock) {
       cleanUpStaleTargetsIfNeeded()
-      return targetToAppId.inverse()[applicationId]
+      return targets.entries.firstOrNull { it.value.applicationId == applicationId }?.key
+    }
+  }
+
+  override fun getTargetsForApplication(applicationId: String): DeployedApplicationTargets? {
+    synchronized(lock) {
+      cleanUpStaleTargetsIfNeeded()
+      val (primaryTarget, entry) = targets.entries.firstOrNull { it.value.applicationId == applicationId } ?: return null
+      return DeployedApplicationTargets(primaryTarget, entry.deployedWith.toSet())
     }
   }
 
   override fun getAllApplicationIds(): Set<String> {
     synchronized(lock) {
       cleanUpStaleTargetsIfNeeded()
-      return targetToAppId.values.toSet()
+      return targets.values.mapTo(linkedSetOf()) { it.applicationId }
     }
   }
 

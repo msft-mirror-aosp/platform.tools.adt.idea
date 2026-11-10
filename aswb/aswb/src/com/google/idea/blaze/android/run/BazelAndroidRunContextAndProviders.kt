@@ -22,11 +22,11 @@ import com.android.tools.idea.run.ApkProvider
 import com.android.tools.idea.run.ApplicationIdProvider
 import com.android.tools.idea.run.ConsoleProvider
 import com.android.tools.idea.run.editor.ProfilerState
-import com.android.tools.ndk.run.SymbolDir
 import com.google.idea.blaze.android.run.deployinfo.BlazeAndroidDeployInfo
 import com.google.idea.blaze.android.run.runner.LiveEditDataExtractor
 import com.intellij.execution.Executor
 import com.intellij.openapi.project.Project
+import java.io.File
 
 /** Holds the context data required to run an Android application. */
 class BazelAndroidRunContext(
@@ -68,10 +68,10 @@ private constructor(
   val project: Project,
   override val applicationId: String,
   val liveEditDataExtractor: LiveEditDataExtractor?,
-  private val symbolDirsProvider: () -> List<SymbolDir>,
+  private val symbolDirsProvider: () -> List<File>,
 ) : ApplicationProjectContext {
 
-  val symbolDirs: List<SymbolDir> by lazy { symbolDirsProvider() }
+  val symbolDirs: List<File> by lazy { symbolDirsProvider() }
 
   companion object {
     @JvmStatic
@@ -79,7 +79,7 @@ private constructor(
       project: Project,
       applicationId: String,
       liveEditDataExtractor: LiveEditDataExtractor?,
-      symbolDirs: List<SymbolDir>,
+      symbolDirs: List<File>,
     ): BazelApplicationProjectContext =
       BazelApplicationProjectContext(
         project = project,
@@ -92,7 +92,7 @@ private constructor(
     fun forRunningApplication(
       project: Project,
       applicationId: String,
-      symbolDirsProvider: () -> List<SymbolDir>,
+      symbolDirsProvider: () -> List<File>,
     ): BazelApplicationProjectContext =
       BazelApplicationProjectContext(
         project = project,

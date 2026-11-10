@@ -36,8 +36,8 @@ class BlazeAndroidModelTest : BlazeTestCase() {
 
   @Test
   fun testAllApplicationIds_returnsAllFromTargetStore() {
-    mockTargetStore.trackTargetForApplication("com.example.app1", Label.of("//java/com/example:app1"))
-    mockTargetStore.trackTargetForApplication("com.example.app2", Label.of("//java/com/example:app2"))
+    mockTargetStore.trackTargetForApplication("com.example.app1", Label.of("//java/com/example:app1"), deployedWith = emptySet())
+    mockTargetStore.trackTargetForApplication("com.example.app2", Label.of("//java/com/example:app2"), deployedWith = emptySet())
 
     val model =
       BlazeAndroidModel(
@@ -62,7 +62,7 @@ class BlazeAndroidModelTest : BlazeTestCase() {
   private class MockDeployedApplicationTargetStore : DeployedApplicationTargetStore {
     private val targets = mutableMapOf<String, Label>()
 
-    override fun trackTargetForApplication(applicationId: String, target: Label) {
+    override fun trackTargetForApplication(applicationId: String, target: Label, deployedWith: Set<Label>) {
       targets[applicationId] = target
     }
 

@@ -18,13 +18,13 @@ package com.google.idea.blaze.android.run
 import com.android.tools.idea.projectsystem.ApplicationProjectContext
 import com.android.tools.idea.projectsystem.ApplicationProjectContextProvider
 import com.android.tools.idea.projectsystem.ApplicationProjectContextProvider.RunningApplicationIdentity
-import com.android.tools.ndk.run.SymbolDir
 import com.google.idea.blaze.android.projectsystem.BazelProjectSystem
 import com.google.idea.blaze.android.projectsystem.BazelToken
 import com.google.idea.blaze.base.run.DeployedApplicationTargetStore
 import com.google.idea.blaze.base.run.RuntimeArtifactCache
 import com.google.idea.blaze.base.run.RuntimeArtifactKind
 import com.intellij.openapi.project.Project
+import java.io.File
 
 /** An implementation of [ApplicationProjectContextProvider] for the Blaze project system. */
 class BazelApplicationProjectContextProvider : ApplicationProjectContextProvider<BazelProjectSystem>, BazelToken {
@@ -40,12 +40,14 @@ class BazelApplicationProjectContextProvider : ApplicationProjectContextProvider
     }
   }
 
-  private fun getSymbolDirs(project: Project, applicationId: String): List<SymbolDir> {
-    val target = DeployedApplicationTargetStore.getInstance(project).getTargetForApplication(applicationId) ?: return emptyList()
-    return RuntimeArtifactCache.getInstance(project)
-      .getCachedArtifacts(target, RuntimeArtifactKind.SYMBOL_FILE)
+  private fun getSymbolDirs(project: Project, applicationId: String): List<File> {
+    val targets =
+      DeployedApplicationTargetStore.getInstance(project).getTargetsForApplication(applicationId)?.allTargets ?: return emptyList()
+    val artifactCache = RuntimeArtifactCache.getInstance(project)
+    return targets
+      .flatMap { target -> artifactCache.getCachedArtifacts(target, RuntimeArtifactKind.SYMBOL_FILE) }
       .mapNotNull { it.parent }
       .distinct()
-      .map { SymbolDir.WithoutSubdirectories(it.toFile()) }
+      .map { it.toFile() }
   }
 }

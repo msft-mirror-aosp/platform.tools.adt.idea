@@ -15,8 +15,10 @@
  */
 package com.google.idea.blaze.android.run.testrecorder;
 
-import com.google.idea.blaze.android.cppimpl.debug.BlazeAutoAndroidDebuggerBase;
+import com.google.idea.blaze.base.model.BlazeProjectData;
+import com.google.idea.blaze.base.model.primitives.LanguageClass;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
+import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 
 /** Implementation of TestRecorderBlazeCommandRunConfigurationProxy. */
 public class TestRecorderBlazeCommandRunConfigurationProxy
@@ -29,6 +31,9 @@ public class TestRecorderBlazeCommandRunConfigurationProxy
 
   @Override
   public boolean isNativeProject() {
-    return BlazeAutoAndroidDebuggerBase.isNativeCodeInProject(getModule().getProject());
+    BlazeProjectData blazeProjectData =
+        BlazeProjectDataManager.getInstance(getModule().getProject()).getBlazeProjectData();
+    return blazeProjectData != null
+        && blazeProjectData.getWorkspaceLanguageSettings().isLanguageActive(LanguageClass.C);
   }
 }
