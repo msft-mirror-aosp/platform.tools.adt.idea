@@ -154,6 +154,10 @@ class DeviceInfoPanelTest {
       retryUntilPassing(5.seconds) {
         assertThat(panel.apiLevel).isEqualTo("30")
         assertThat(panel.power).isEqualTo("Battery: 83")
+        assertThat(panel.resolutionLabel.isVisible).isTrue()
+        assertThat(panel.resolutionDpLabel.isVisible).isTrue()
+        assertThat(panel.densityLabel.isVisible).isTrue()
+        assertThat(panel.screenDiagram.isVisible).isTrue()
         assertThat(panel.resolution).isEqualTo("1080 × 2280")
         assertThat(panel.resolutionDp).isEqualTo("393 × 830")
         assertThat(panel.density).isEqualTo("440 dpi")
@@ -183,6 +187,29 @@ class DeviceInfoPanelTest {
         assertThat(panel.preferredAbi).isEqualTo("arm64-v8a")
         assertThat(panel.abiList).isEqualTo("arm64-v8a")
       }
+    }
+  }
+
+  @Test
+  fun testPopulateDeviceInfo_displayless() = runBlocking {
+    withContext(Dispatchers.EDT) {
+      val props = DeviceProperties.buildForTest {
+        manufacturer = "Google"
+        model = "Audio Glasses"
+        androidVersion = AndroidVersion(36, null, 0, true)
+        isVirtual = true
+        isDisplayless = true
+        icon = StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_GLASS
+      }
+
+      val panel = DeviceInfoPanel()
+      panel.populateDeviceInfo(props)
+
+      assertThat(panel.apiLevel).isEqualTo("36.0")
+      assertThat(panel.resolutionLabel.isVisible).isFalse()
+      assertThat(panel.resolutionDpLabel.isVisible).isFalse()
+      assertThat(panel.densityLabel.isVisible).isFalse()
+      assertThat(panel.screenDiagram.isVisible).isFalse()
     }
   }
 

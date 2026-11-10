@@ -232,6 +232,10 @@ internal fun DeviceInfoPanel.populateDeviceInfo(properties: DeviceProperties) {
   apiLevel = properties.androidVersion?.apiStringWithExtension ?: "Unknown"
   preferredAbi = properties.preferredAbi?.toString() ?: properties.primaryAbi?.toString() ?: "Unknown"
   abiList = properties.abiList.joinToString(",").ifBlank { "Unknown" }
+  val hasDisplay = properties.isDisplayless != true
+  resolutionLabel.isVisible = hasDisplay
+  resolutionDpLabel.isVisible = hasDisplay
+  densityLabel.isVisible = hasDisplay
   resolution = properties.resolution?.toString() ?: "Unknown"
   val resolutionDp = properties.resolutionDp
   this.resolutionDp = resolutionDp?.toString() ?: "Unknown"
