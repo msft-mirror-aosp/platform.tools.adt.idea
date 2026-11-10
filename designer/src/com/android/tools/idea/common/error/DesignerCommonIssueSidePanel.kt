@@ -68,6 +68,7 @@ class DesignerCommonIssueSidePanel(
 
   init {
     Disposer.register(parentDisposable, this)
+    minimumSize = JBUI.emptySize()
     splitter.setResizeEnabled(true)
     add(splitter, BorderLayout.CENTER)
   }
@@ -96,6 +97,7 @@ private class DesignerCommonIssueDetailPanel(
 
   init {
     border = JBUI.Borders.empty(18, 12, 0, 0)
+    minimumSize = JBUI.emptySize()
     add(createTitle(), BorderLayout.NORTH)
     add(createContent(), BorderLayout.CENTER)
     createBottomPanel(issue.messageTips, issue.hyperlinkListener)?.let { add(it, BorderLayout.SOUTH) }
@@ -109,6 +111,7 @@ private class DesignerCommonIssueDetailPanel(
     JBLabel(issue.summary).apply {
       font = font.deriveFont(Font.BOLD)
       putClientProperty("html.disable", true)
+      minimumSize = JBUI.emptySize()
     }
 
   private fun createContent(): JComponent {

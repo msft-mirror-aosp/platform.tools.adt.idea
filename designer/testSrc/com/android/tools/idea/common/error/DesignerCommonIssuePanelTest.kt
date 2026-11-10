@@ -161,6 +161,40 @@ class DesignerCommonIssuePanelTest {
 
   @RunsInEdt
   @Test
+  fun testLongIssueSummaryDoesNotCollapseTreeInSplitter() {
+    val panel =
+      DesignerCommonIssuePanel(
+        rule.testRootDisposable,
+        rule.project,
+        false,
+        "name",
+        SHARED_ISSUE_PANEL_TAB_ID,
+        { LayoutValidationNodeFactory },
+        EmptyFilter,
+        { "" },
+      )
+    IdeEventQueue.getInstance().flushQueue()
+    val tree = assertNotNull(UIUtil.findComponentOfType(panel.getComponent(), Tree::class.java))
+    val longSummary = "Cycle found (count=51) evaluating 'content_main': " + " -> '<include layout=@layout/content_main>'".repeat(10)
+    rule.project.messageBus
+      .syncPublisher(IssueProviderListener.TOPIC)
+      .issueUpdated(this, listOf(TestIssue(summary = longSummary, description = "some description")))
+
+    val root = assertInstanceOf<DesignerCommonIssueRoot>(tree.model.root)
+    val fileNode = assertInstanceOf<NoFileNode>(root.getChildren().single())
+    val issueNode = fileNode.getChildren().single()
+    val splitter = assertNotNull(UIUtil.findComponentOfType(panel.getComponent(), OnePixelSplitter::class.java))
+
+    splitter.setSize(800, 600)
+    tree.selectionPath = TreePath(issueNode)
+    splitter.doLayout()
+
+    assertEquals(400, splitter.firstComponent.width)
+    assertEquals(399, splitter.secondComponent.width)
+  }
+
+  @RunsInEdt
+  @Test
   fun testContextData() {
     rule.projectRule.replaceService(DataManager::class.java, DataManagerImpl())
 
