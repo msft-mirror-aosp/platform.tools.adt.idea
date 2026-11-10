@@ -19,15 +19,14 @@ import com.android.tools.idea.execution.common.debug.AndroidDebugger;
 import com.android.tools.idea.execution.common.debug.AndroidDebuggerState;
 import com.android.tools.idea.execution.common.debug.impl.java.AndroidJavaDebugger;
 import com.android.tools.idea.run.editor.AndroidDebuggerInfoProvider;
-import com.google.idea.blaze.android.cppimpl.debug.BlazeNativeAndroidDebugger;
 import com.google.idea.blaze.android.run.binary.BlazeAndroidBinaryRunConfigurationState;
+import com.google.idea.blaze.android.run.runner.BlazeAndroidDebuggerService;
 import com.google.idea.blaze.android.run.test.BlazeAndroidTestRunConfigurationState;
 import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
 import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.intellij.execution.configurations.RunConfiguration;
 import com.intellij.openapi.project.Project;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.jetbrains.annotations.Nullable;
@@ -45,7 +44,8 @@ public class BlazeCommandAndroidDebuggerInfoProvider implements AndroidDebuggerI
   @SuppressWarnings("rawtypes") // List includes multiple AndroidDebuggerState types.
   public List<AndroidDebugger> getAndroidDebuggers(RunConfiguration configuration) {
     if (getCommonState(configuration) != null) {
-      return Arrays.asList(new BlazeNativeAndroidDebugger(), new AndroidJavaDebugger());
+      return BlazeAndroidDebuggerService.getInstance(configuration.getProject())
+          .getRunConfigurationDebuggers();
     }
     return Collections.emptyList();
   }

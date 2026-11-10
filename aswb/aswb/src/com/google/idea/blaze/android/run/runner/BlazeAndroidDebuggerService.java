@@ -20,12 +20,20 @@ import com.android.tools.idea.execution.common.debug.AndroidDebuggerState;
 import com.android.tools.idea.execution.common.debug.impl.java.AndroidJavaDebugger;
 import com.android.tools.ndk.run.editor.NativeAndroidDebuggerState;
 import com.google.idea.blaze.android.cppimpl.debug.BlazeAutoAndroidDebugger;
+import com.google.idea.blaze.android.cppimpl.debug.BlazeNativeAndroidDebugger;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.project.Project;
+import java.util.List;
+import org.jetbrains.annotations.Nullable;
 
-/** Provides android debuggers and debugger states for blaze projects. */
+/**
+ * Provides android debuggers and debugger states for blaze projects.
+ *
+ * <p>Delegates to a registered {@link BlazeAndroidDebuggerProvider} extension when present,
+ * falling back to the default NDK native and Java debuggers.
+ */
 public interface BlazeAndroidDebuggerService {
 
   static BlazeAndroidDebuggerService getInstance(Project project) {
@@ -34,6 +42,13 @@ public interface BlazeAndroidDebuggerService {
 
   /** Returns a different debugger depending on whether or not native debugging is required. */
   AndroidDebugger getDebugger(boolean isNativeDebuggingEnabled);
+
+  /**
+   * Returns the debuggers reported by {@code BlazeCommandAndroidDebuggerInfoProvider} for Blaze
+   * Android binary and instrumentation-test run configurations.
+   */
+  @SuppressWarnings("rawtypes") // List includes multiple AndroidDebuggerState types.
+  List<AndroidDebugger> getRunConfigurationDebuggers();
 
   /**
    * Returns fully initialized debugger states.
@@ -54,11 +69,29 @@ public interface BlazeAndroidDebuggerService {
 
     @Override
     public AndroidDebugger getDebugger(boolean isNativeDebuggingEnabled) {
+      BlazeAndroidDebuggerProvider provider = getExtensionProvider();
+      if (provider != null) {
+        return provider.getDebugger(isNativeDebuggingEnabled);
+      }
       return isNativeDebuggingEnabled ? new BlazeAutoAndroidDebugger() : new AndroidJavaDebugger();
     }
 
     @Override
+    @SuppressWarnings({"rawtypes", "unchecked"}) // List includes multiple AndroidDebuggerState types.
+    public List<AndroidDebugger> getRunConfigurationDebuggers() {
+      BlazeAndroidDebuggerProvider provider = getExtensionProvider();
+      if (provider != null) {
+        return (List) provider.getRunConfigurationDebuggers();
+      }
+      return List.of(new BlazeNativeAndroidDebugger(), new AndroidJavaDebugger());
+    }
+
+    @Override
     public AndroidDebuggerState getDebuggerState(AndroidDebugger debugger) {
+      BlazeAndroidDebuggerProvider provider = getExtensionProvider();
+      if (provider != null) {
+        return provider.getDebuggerState(project, debugger);
+      }
       AndroidDebuggerState debuggerState = debugger.createState();
       if (isNdkPluginLoaded() && debuggerState instanceof NativeAndroidDebuggerState) {
         NativeAndroidDebuggerState nativeState = (NativeAndroidDebuggerState) debuggerState;
@@ -68,6 +101,13 @@ public interface BlazeAndroidDebuggerService {
         nativeState.setWorkingDir(workingDirPath);
       }
       return debuggerState;
+    }
+
+    @Nullable
+    private static BlazeAndroidDebuggerProvider getExtensionProvider() {
+      return BlazeAndroidDebuggerProvider.EP_NAME.getExtensionsIfPointIsRegistered().stream()
+          .findFirst()
+          .orElse(null);
     }
   }
 
