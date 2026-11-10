@@ -82,6 +82,6 @@ class AarDependencyCompatibilityIssueCheckerIntegrationTest {
     Truth.assertThat(buildIssue).isInstanceOf(AarDependencyCompatibilityIssue::class.java)
     Truth.assertThat(buildIssue.quickFixes[0]).isInstanceOf(UpdateCompileSdkQuickFix::class.java)
     val quickFix = (buildIssue.quickFixes[0] as UpdateCompileSdkQuickFix)
-    Truth.assertThat(quickFix.modulesWithSuggestedMinCompileSdk).isEqualTo(mapOf(":app" to 34))
+    Truth.assertThat(quickFix.modulesWithSuggestedCompileSdk).isEqualTo(mapOf(":app" to 34))
   }
 }

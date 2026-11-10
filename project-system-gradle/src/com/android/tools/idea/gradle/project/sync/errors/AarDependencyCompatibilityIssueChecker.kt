@@ -45,22 +45,22 @@ class AarDependencyCompatibilityIssueChecker : GradleIssueChecker {
     }
     val rootMessage = rootCause.message ?: return null
     val issueComposer = BuildIssueComposer(rootMessage, issueTitle = "Aar Dependency compatibility issues")
-    val modulesWithSuggestedMinCompileSdk = mutableMapOf<String, Int>()
+    val modulesWithSuggestedCompileSdk = mutableMapOf<String, Int>()
     var matchResult = COMPILE_SDK_ISSUE_REGEX.find(rootMessage)
     while (matchResult != null) {
       val modulePath = matchResult.groups["modulePath"]?.value
       if (modulePath != null) {
-        val suggestedMinCompileSdk = matchResult.groups["minCompileSdk"]?.value?.toIntOrNull()
-        if (suggestedMinCompileSdk != null) {
-          modulesWithSuggestedMinCompileSdk.merge(modulePath, suggestedMinCompileSdk, Math::max)
+        val suggestedCompileSdk = matchResult.groups["minCompileSdk"]?.value?.toIntOrNull()
+        if (suggestedCompileSdk != null) {
+          modulesWithSuggestedCompileSdk.merge(modulePath, suggestedCompileSdk, Math::max)
         }
       }
       matchResult = matchResult.next()
     }
-    if (modulesWithSuggestedMinCompileSdk.isEmpty()) {
+    if (modulesWithSuggestedCompileSdk.isEmpty()) {
       return null
     }
-    issueComposer.addQuickFix(UpdateCompileSdkQuickFix(modulesWithSuggestedMinCompileSdk))
+    issueComposer.addQuickFix(UpdateCompileSdkQuickFix(modulesWithSuggestedCompileSdk))
     return AarDependencyCompatibilityIssue(issueComposer.composeBuildIssue())
   }
 }
@@ -73,25 +73,25 @@ class AarDependencyCompatibilityIssue(private val buildIssue: BuildIssue) : Buil
   override fun getNavigatable(project: Project) = buildIssue.getNavigatable(project)
 }
 
-class UpdateCompileSdkQuickFix(val modulesWithSuggestedMinCompileSdk: Map<String, Int>) : DescribedBuildIssueQuickFix {
-  override val id = "update.modules.minCompileSdk"
-  override val description = "Update minCompileSdk in modules with dependencies that require a higher minCompileSdk."
+class UpdateCompileSdkQuickFix(val modulesWithSuggestedCompileSdk: Map<String, Int>) : DescribedBuildIssueQuickFix {
+  override val id = "update.modules.compileSdk"
+  override val description = "Update compileSdk in modules with dependencies that require a higher compileSdk."
 
   override fun runQuickFix(project: Project, dataContext: DataContext): CompletableFuture<*> {
     val future = CompletableFuture<Any>()
     invokeLater {
       try {
         if (!project.isDisposed) {
-          val buildFilesWithSuggestedMinCompileSdk = buildMap {
-            for ((modulePath, minCompileSdk) in modulesWithSuggestedMinCompileSdk) {
-              project.moduleBuildFiles(modulePath).forEach { put(it, minCompileSdk) }
+          val buildFilesWithSuggestedCompileSdk = buildMap {
+            for ((modulePath, compileSdk) in modulesWithSuggestedCompileSdk) {
+              project.moduleBuildFiles(modulePath).forEach { put(it, compileSdk) }
             }
           }
-          if (buildFilesWithSuggestedMinCompileSdk.isEmpty()) {
+          if (buildFilesWithSuggestedCompileSdk.isEmpty()) {
             // There is nothing to change, show an error message
-            Messages.showErrorDialog(project, "Could not determine build files to apply fix", "Update minCompileSdk")
+            Messages.showErrorDialog(project, "Could not determine build files to apply fix", "Update compileSdk")
           } else {
-            val processor = UpdateCompileSdkProcessor(project, buildFilesWithSuggestedMinCompileSdk)
+            val processor = UpdateCompileSdkProcessor(project, buildFilesWithSuggestedCompileSdk)
             processor.setPreviewUsages(true)
             processor.run()
           }

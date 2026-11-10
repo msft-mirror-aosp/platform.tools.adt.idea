@@ -30,7 +30,7 @@ class AarDependencyCompatibilityIssueCheckerTest {
   private val COMPILE_SDK_ISSUE_PATTERN =
     """$DEPENDENCY_PATTERN $MODULE_COMPILED_AGAINST_PATTERN $COMPILE_SDK_UPDATE_RECOMMENDED_ACTION_PATTERN"""
   private val UPDATE_LINK =
-    "<a href=\"update.modules.minCompileSdk\">Update minCompileSdk in modules with dependencies that require a higher minCompileSdk.</a>"
+    "<a href=\"update.modules.compileSdk\">Update compileSdk in modules with dependencies that require a higher compileSdk.</a>"
 
   private val issueChecker = AarDependencyCompatibilityIssueChecker()
 
@@ -85,9 +85,9 @@ class AarDependencyCompatibilityIssueCheckerTest {
     Truth.assertThat(buildIssue?.quickFixes).hasSize(1)
     val quickFix = buildIssue?.quickFixes?.get(0)
     Truth.assertThat(quickFix).isInstanceOf(UpdateCompileSdkQuickFix::class.java)
-    val modulesWithMinCompileSdk = (quickFix as UpdateCompileSdkQuickFix).modulesWithSuggestedMinCompileSdk
-    Truth.assertThat(modulesWithMinCompileSdk).hasSize(1)
-    Truth.assertThat(modulesWithMinCompileSdk[":app"]).isEqualTo(34)
+    val modulesWithCompileSdk = (quickFix as UpdateCompileSdkQuickFix).modulesWithSuggestedCompileSdk
+    Truth.assertThat(modulesWithCompileSdk).hasSize(1)
+    Truth.assertThat(modulesWithCompileSdk[":app"]).isEqualTo(34)
   }
 
   @Test
@@ -102,10 +102,10 @@ class AarDependencyCompatibilityIssueCheckerTest {
     Truth.assertThat(buildIssue?.quickFixes).hasSize(1)
     val quickFix = buildIssue?.quickFixes?.get(0)
     Truth.assertThat(quickFix).isInstanceOf(UpdateCompileSdkQuickFix::class.java)
-    val modulesWithMinCompileSdk = (quickFix as UpdateCompileSdkQuickFix).modulesWithSuggestedMinCompileSdk
-    Truth.assertThat(modulesWithMinCompileSdk).hasSize(2)
-    Truth.assertThat(modulesWithMinCompileSdk[":app"]).isEqualTo(34)
-    Truth.assertThat(modulesWithMinCompileSdk[":app1"]).isEqualTo(33)
+    val modulesWithCompileSdk = (quickFix as UpdateCompileSdkQuickFix).modulesWithSuggestedCompileSdk
+    Truth.assertThat(modulesWithCompileSdk).hasSize(2)
+    Truth.assertThat(modulesWithCompileSdk[":app"]).isEqualTo(34)
+    Truth.assertThat(modulesWithCompileSdk[":app1"]).isEqualTo(33)
   }
 
   private fun getRootMessage(moduleName: String, currentCompileSdk: String, minCompileSdk: String, dependency: String) =

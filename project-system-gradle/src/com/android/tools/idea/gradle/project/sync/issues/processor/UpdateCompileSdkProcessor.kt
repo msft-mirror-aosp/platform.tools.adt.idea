@@ -31,7 +31,7 @@ import com.intellij.util.containers.toArray
 import java.util.Arrays
 import java.util.stream.Collectors
 
-class UpdateCompileSdkProcessor(val project: Project, private val buildFilesWithNewMinCompileSdk: Map<VirtualFile, Int>) :
+class UpdateCompileSdkProcessor(val project: Project, private val buildFilesWithNewCompileSdk: Map<VirtualFile, Int>) :
   BaseRefactoringProcessor(project) {
   override fun createUsageViewDescriptor(usages: Array<out UsageInfo>): UsageViewDescriptor =
     object : UsageViewDescriptor {
@@ -49,14 +49,14 @@ class UpdateCompileSdkProcessor(val project: Project, private val buildFilesWith
     val projectBuildModel = ProjectBuildModel.get(myProject)
 
     val usages: MutableList<UsageInfo> = ArrayList()
-    for ((file, newMinCompileSdk) in buildFilesWithNewMinCompileSdk) {
+    for ((file, newCompileSdk) in buildFilesWithNewCompileSdk) {
 
       if (!file.isValid || !file.isWritable) {
         continue
       }
       val android = projectBuildModel.getModuleBuildModel(file).android()
       val existingCompileSdkVersion = android.compileSdkVersion()
-      if (newMinCompileSdk.toString() == existingCompileSdkVersion.toString()) {
+      if (newCompileSdk.toString() == existingCompileSdkVersion.toString()) {
         continue
       }
       val element = existingCompileSdkVersion.fullExpressionPsiElement
@@ -79,12 +79,12 @@ class UpdateCompileSdkProcessor(val project: Project, private val buildFilesWith
     val projectBuildModel = ProjectBuildModel.get(myProject)
 
     val elements = Arrays.stream(usages).map { usage: UsageInfo -> usage.element }.collect(Collectors.toList())
-    for ((file, newMinCompileSdk) in buildFilesWithNewMinCompileSdk) {
+    for ((file, newCompileSdk) in buildFilesWithNewCompileSdk) {
       val android = projectBuildModel.getModuleBuildModel(file).android()
       val compileSdkVersion = android.compileSdkVersion()
       val element = compileSdkVersion.fullExpressionPsiElement
       if (element != null && elements.contains(element)) {
-        compileSdkVersion.setValue(newMinCompileSdk)
+        compileSdkVersion.setValue(newCompileSdk)
       }
     }
     projectBuildModel.applyChanges()
