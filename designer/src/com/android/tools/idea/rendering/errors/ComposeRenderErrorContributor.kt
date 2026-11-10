@@ -20,106 +20,48 @@ import com.android.tools.idea.rendering.errors.ui.MessageTip
 import com.android.tools.idea.rendering.errors.ui.RenderErrorModel.Issue
 import com.android.tools.rendering.HtmlLinkManager
 import com.android.tools.rendering.RenderLogger
+import com.android.tools.rendering.compose.ComposeRenderErrorType
+import com.android.tools.rendering.compose.ComposeRenderErrors
 import com.android.utils.HtmlBuilder
 import com.intellij.lang.annotation.HighlightSeverity
-import java.lang.reflect.InvocationTargetException
-import java.util.concurrent.TimeoutException
 import javax.swing.event.HyperlinkListener
 
 /**
- * Contributor for generating Compose-specific render errors. This object analyzes [Throwable]s and log messages from rendering and maps
- * them to user-friendly error reports.
+ * Contributor for generating Compose-specific render errors.
+ *
+ * Detection and classification of the [Throwable]s is delegated to the shared, UI-independent [ComposeRenderErrors]; this object only maps
+ * each [ComposeRenderErrorType] to its Android Studio presentation ([Issue] severity, HTML content and message tips).
  */
 object ComposeRenderErrorContributor {
 
   // region Public API - These methods must remain stable for external contract.
-  const val VIEW_MODEL_HINT =
-    """
-      This appears to be a ViewModel-related error, as Previews cannot instantiate them directly.
-      A common solution is to refactor the Composable to accept state parameters directly, instead
-      of the whole ViewModel instance.
-      Alternatively, consider mocking the ViewModel or providing a custom factory for the Preview.
-      """
 
-  /**
-   * Hint for [ClassCastException] when trying to cast `BridgeContext` (used in Layoutlib for previews) to a platform `Context` like
-   * `Activity`.
-   */
-  const val CLASS_CAST_EXCEPTION_HINT =
-    """
-      To resolve this error and ensure the resilience of the Composables across both preview and
-      runtime environments, the recommended practice is to avoid direct casting. Instead, you
-      should implement a safe, recursive findActivity() extension function. This function is
-      designed to properly traverse the Context hierarchy, returning the actual Activity when
-      present or safely yielding null when running in a preview. This allows you to interact
-      with the Activity using the safe-call operator ?., thereby preventing rendering errors
-      and maintaining a smooth development workflow.
-      """
-  const val COMPOSITION_LOCAL_NOT_FOUND_HINT =
-    """
-      This error is not a bug in the Compose framework; it is an intentional "fail-fast" mechanism.
-      Here's the background you need to know:
-      * Purpose of CompositionLocal: It's a way to pass data down the composable tree implicitly,
-      without having to pass it as a parameter to every single composable.
-      * Creation: When a CompositionLocal is created (e.g., with staticCompositionLocalOf), it
-      requires a defaultFactory lambda. This lambda is only executed if a composable tries to access
-       the local's value (via .current) but no value has been provided by an ancestor in the tree.
-      * The Crash: For essential services that have no sensible default (like theme colors or screen
-      density), the standard practice is to make this defaultFactory throw an IllegalStateException.
-      The error is always solved by wrapping the composable (or one of its ancestors) in the correct
-       CompositionLocalProvider composable, which provides a value for that specific
-       CompositionLocal.
-      """
+  // TODO(b/552871624): The constants and throwable helpers below are thin delegates kept for callers outside this repository (e.g. the
+  //  aiplugin Compose preview agent tools). Once those callers use ComposeRenderErrors directly, everything in this region except
+  //  reportComposeErrors can be removed.
+  const val VIEW_MODEL_HINT = ComposeRenderErrors.VIEW_MODEL_HINT
+  const val CLASS_CAST_EXCEPTION_HINT = ComposeRenderErrors.CLASS_CAST_EXCEPTION_HINT
+  const val COMPOSITION_LOCAL_NOT_FOUND_HINT = ComposeRenderErrors.COMPOSITION_LOCAL_NOT_FOUND_HINT
 
-  /** Returns a hint for the given [throwable] if it is a known Compose issue. */
+  /** Returns a hint for the given [throwable] if it is a known Compose issue. See [ComposeRenderErrors.getHint]. */
+  @JvmStatic fun getHint(throwable: Throwable?): String? = ComposeRenderErrors.getHint(throwable)
+
+  /** Checks if the given [Throwable] is one of the types that this contributor reports via [reportComposeErrors]. */
+  @JvmStatic fun isHandledByComposeContributor(throwable: Throwable?): Boolean = ComposeRenderErrors.isHandled(throwable)
+
+  /** See [ComposeRenderErrors.isCompositionLocalThrowable]. */
+  @JvmStatic fun isCompositionLocalThrowable(throwable: Throwable?): Boolean = ComposeRenderErrors.isCompositionLocalThrowable(throwable)
+
+  /** See [ComposeRenderErrors.isViewModelThrowable]. */
+  @JvmStatic fun isViewModelThrowable(throwable: Throwable?): Boolean = ComposeRenderErrors.isViewModelThrowable(throwable)
+
+  /** See [ComposeRenderErrors.isClassCastException]. */
+  @JvmStatic fun isClassCastException(throwable: Throwable?): Boolean = ComposeRenderErrors.isClassCastException(throwable)
+
+  /** See [ComposeRenderErrors.unwrapIfInvocationTargetException]. */
   @JvmStatic
-  fun getHint(throwable: Throwable?): String? =
-    when {
-      isViewModelThrowable(throwable) -> VIEW_MODEL_HINT
-      isCompositionLocalThrowable(throwable) -> COMPOSITION_LOCAL_NOT_FOUND_HINT
-      isClassCastException(throwable) -> CLASS_CAST_EXCEPTION_HINT
-      else -> null
-    }
-
-  /** Checks if the given [Throwable] is one of the types that this contributor can handle. */
-  @JvmStatic
-  fun isHandledByComposeContributor(throwable: Throwable?): Boolean = ComposeRenderErrorType.entries.any { it.predicate(throwable) }
-
-  /**
-   * Returns true if the [Throwable] represents a failure to find a CompositionLocal. We are only catching the missing CompositionLocal
-   * errors coming from the androidx library by matching the error message they provide. If a developer provides their own error, this will
-   * not catch it by design as they might want to have their own messages. In androidx this error message is defined here:
-   * androidx/compose/ui/platform/CompositionLocals.kt, in function noLocalProvidedFor.
-   */
-  @JvmStatic
-  fun isCompositionLocalThrowable(throwable: Throwable?): Boolean =
-    throwable is IllegalStateException &&
-      throwable.message?.startsWith("CompositionLocal") == true &&
-      throwable.message?.endsWith("not present") == true
-
-  /**
-   * Returns true if the given [Throwable] corresponds to a failure when instantiating a ViewModel. This is used to detect when a @Preview
-   * fails to render because a ViewModel is being used.
-   */
-  @JvmStatic
-  fun isViewModelThrowable(throwable: Throwable?): Boolean =
-    throwable?.let { throwable ->
-      throwable.stackTrace.any {
-        (it.methodName == "viewModel" || it.className.endsWith("ViewModelProvider") || it.className.endsWith("ViewModelKt")) &&
-          it.className.startsWith("androidx.lifecycle")
-      }
-    } ?: false
-
-  /**
-   * Returns true if the given [Throwable] corresponds to a ClassCastException when casting to Activity. This is used to detect when
-   * a @Preview fails to render because layoutlib's `BridgeContext` can not be cast to an activity.
-   */
-  @JvmStatic
-  fun isClassCastException(throwable: Throwable?): Boolean {
-    if (throwable !is ClassCastException) return false
-    val message = throwable.message ?: return false
-    return message.startsWith("class com.android.layoutlib.bridge.android.BridgeContext cannot be cast to class android.app.Activity")
-  }
+  fun unwrapIfInvocationTargetException(throwable: Throwable?): Throwable? =
+    ComposeRenderErrors.unwrapIfInvocationTargetException(throwable)
 
   /** Analyzes the logged errors and returns a list of [Issue] for Compose-specific problems. */
   @JvmStatic
@@ -129,191 +71,131 @@ object ComposeRenderErrorContributor {
     linkHandler: HyperlinkListener = HyperlinkListener {},
   ): List<Issue> =
     logger.messages.mapNotNull { message ->
-      // We try to unwrap the exception in case it's an [InvocationTargetException] that should be unwrapped.
-      val unwrapped = unwrapIfInvocationTargetException(message.throwable)
-      ComposeRenderErrorType.entries
-        .firstOrNull { it.predicate(unwrapped) }
-        ?.let { errorType ->
-          val builder =
-            Issue.builder()
-              .setSeverity(errorType.severity)
-              .setSummary(errorType.summary(unwrapped))
-              .setLinkHandler(linkHandler)
-              .setThrowable(unwrapped)
-
-          errorType.htmlContentProvider?.let { provider -> builder.setHtmlContent(provider(linkManager, unwrapped)) }
-          errorType.messageTipProvider?.let { provider -> builder.addMessageTip(provider(linkManager, unwrapped)) }
-
-          builder.build()
+      val match = ComposeRenderErrors.match(message.throwable) ?: return@mapNotNull null
+      val presentation = match.type.presentation()
+      Issue.builder()
+        .setSeverity(presentation.severity)
+        .setSummary(match.summary)
+        .setLinkHandler(linkHandler)
+        .setThrowable(match.rootCause)
+        .apply {
+          presentation.htmlContent?.let { setHtmlContent(it(linkManager, match.rootCause)) }
+          presentation.messageTip?.let { addMessageTip(it(linkManager, match.rootCause)) }
         }
+        .build()
     }
 
   // endregion
 
-  /**
-   * Unwraps [InvocationTargetException] recursively to get the original cause of a reflection-based failure. This is necessary because
-   * Compose Previews are invoked via reflection, and if they fail, the underlying reason for the failure is wrapped in an
-   * [InvocationTargetException].
-   *
-   * If the wrapper has no cause, the wrapper itself is returned.
-   */
-  @JvmStatic
-  tailrec fun unwrapIfInvocationTargetException(throwable: Throwable?): Throwable? {
-    val cause = (throwable as? InvocationTargetException)?.cause
-    return if (cause == null || cause === throwable) throwable else unwrapIfInvocationTargetException(cause)
-  }
+  // region Android Studio presentation of each shared error type
 
-  // region Internal implementation details
-
-  /**
-   * Returns true if the [Throwable] represents a failure to instantiate a Preview Composable. This means that the user probably added one
-   * or more previews and a build is needed.
-   */
-  private fun isComposeNotFoundThrowable(throwable: Throwable?): Boolean {
-    return throwable is NoSuchMethodException &&
-      throwable.stackTrace.getOrNull(1)?.methodName?.startsWith("invokeComposableViaReflection") == true
-  }
-
-  /**
-   * Returns true if the [Throwable] represents a failure to instantiate a Preview Composable with `PreviewParameterProvider`. This will
-   * detect the case where the parameter type does not match the `PreviewParameterProvider`.
-   */
-  private fun isPreviewParameterMismatchThrowable(throwable: Throwable?): Boolean {
-    return throwable is IllegalArgumentException &&
-      throwable.message == "argument type mismatch" &&
-      (throwable.stackTrace.drop(5).firstOrNull()?.methodName?.startsWith("invokeComposable") == true)
-  }
-
-  /**
-   * Returns true if [throwable] is a [NoSuchMethodException] that fails to find a method called `FailToLoadPreviewParameterProvider`. This
-   * is a fake name defined in `ComposePreviewElement`, and we use it as a fake PreviewElement name when there is a failure to load a
-   * `PreviewParameterProvider`, otherwise the crash will cause no previews to be displayed. Instead, we want to display a Preview
-   * containing errors and let the user know there was an error to load their PreviewParameterProvider.
-   */
-  private fun isFailToLoadPreviewParameterProvider(throwable: Throwable?): Boolean {
-    val providerClass = "${'$'}FailToLoadPreviewParameterProvider"
-    return throwable is NoSuchMethodException &&
-      (throwable.message?.endsWith(providerClass) == true || throwable.message?.endsWith("$providerClass not found") == true)
-  }
-
-  /** Returns true if [throwable] is a [TimeoutException] happening during the rendering of a Compose Preview. */
-  private fun isTimeoutToLoadPreview(throwable: Throwable?): Boolean {
-    return throwable is TimeoutException
-  }
-
-  /**
-   * Enum representing the different types of Compose render errors that we can handle. Each error type has a predicate to detect it, a
-   * severity, a summary, and functions to generate the HTML for the report. The order of the enum values is important, as it defines the
-   * order in which we check for errors. More specific errors should come before more generic ones.
-   */
-  private enum class ComposeRenderErrorType(
-    val predicate: (Throwable?) -> Boolean,
+  /** Android Studio presentation of a [ComposeRenderErrorType]: the [Issue] severity plus optional HTML body and bottom-panel tip. */
+  private class IssuePresentation(
     val severity: HighlightSeverity,
-    val summary: (Throwable?) -> String,
-    val htmlContentProvider: ((HtmlLinkManager, Throwable?) -> HtmlBuilder)? = null,
-    val messageTipProvider: ((HtmlLinkManager, Throwable?) -> MessageTip)? = null,
-  ) {
-    PREVIEW_PARAMETER_PROVIDER_MISMATCH(
-      predicate = { isPreviewParameterMismatchThrowable(it) },
-      severity = HighlightSeverity.ERROR,
-      summary = { "PreviewParameterProvider/@Preview type mismatch." },
-      messageTipProvider = { linkManager, _ ->
-        createBuildTheProjectMessage(
-          linkManager,
-          "The type of the PreviewParameterProvider must match the @Preview input parameter type annotated with it.",
+    val htmlContent: ((HtmlLinkManager, Throwable) -> HtmlBuilder)? = null,
+    val messageTip: ((HtmlLinkManager, Throwable) -> MessageTip)? = null,
+  )
+
+  /**
+   * Returns the [IssuePresentation] for this error type. The `when` is intentionally exhaustive so that adding a new
+   * [ComposeRenderErrorType] in `tools.rendering` fails compilation here until a presentation is defined for it.
+   */
+  private fun ComposeRenderErrorType.presentation(): IssuePresentation =
+    when (this) {
+      ComposeRenderErrorType.PREVIEW_PARAMETER_PROVIDER_MISMATCH ->
+        IssuePresentation(
+          severity = HighlightSeverity.ERROR,
+          messageTip = { linkManager, _ ->
+            createBuildTheProjectMessage(
+              linkManager,
+              "The type of the PreviewParameterProvider must match the @Preview input parameter type annotated with it.",
+            )
+          },
         )
-      },
-    ),
-    FAIL_TO_LOAD_PREVIEW_PARAMETER_PROVIDER(
-      predicate = { isFailToLoadPreviewParameterProvider(it) },
-      severity = HighlightSeverity.ERROR,
-      summary = { "Fail to load PreviewParameterProvider" },
-      htmlContentProvider = { _, _ ->
-        HtmlBuilder()
-          .addLink(
-            "There was problem to load the ",
-            "PreviewParameterProvider",
-            " defined. Please double-check its constructor and the values property implementation. The IDE logs should contain" +
-              " the full exception stack trace.",
-            "https://developer.android.com/develop/ui/compose/tooling/previews#preview-data",
-          )
-      },
-    ),
-    COMPOSE_PREVIEW_NOT_FOUND(
-      predicate = { isComposeNotFoundThrowable(it) },
-      severity = HighlightSeverity.WARNING,
-      summary = { throwable -> "Unable to find @Preview '${throwable!!.message}'" },
-      messageTipProvider = { linkManager, _ ->
-        createBuildTheProjectMessage(linkManager, "The preview will display after rebuilding the project.")
-      },
-    ),
-    TIMEOUT_TO_LOAD_PREVIEW(
-      predicate = { isTimeoutToLoadPreview(it) },
-      severity = HighlightSeverity.ERROR,
-      summary = { "Timeout error" },
-      htmlContentProvider = { _, _ ->
-        HtmlBuilder()
-          .add("The preview took too long to load. The issue can be caused by long operations or infinite loops on the Preview code.")
-          .newline()
-          .add("If you think this issue is not caused by your code, you can report a bug in our issue tracker.")
-      },
-      messageTipProvider = { linkManager, _ -> createAddReportBugMessage(linkManager, null) },
-    ),
-    CLASS_CAST_EXCEPTION(
-      predicate = { throwable -> isClassCastException(throwable) },
-      severity = HighlightSeverity.ERROR,
-      summary = { "Context cannot be cast to Activity in Compose Preview" },
-      htmlContentProvider = { linkManager, throwable ->
-        HtmlBuilder()
-          .add(
-            "The java.lang.ClassCastException you are currently seeing in Jetpack Compose " +
-              "Previews occurs because the @Preview environment provides a non-activity Context " +
-              "(BridgeContext) that cannot be cast to an Activity. "
-          )
-          .newline()
-          .newline()
-          .addExceptionMessage(linkManager, throwable)
-      },
-    ),
-    COMPOSITION_LOCAL_NOT_FOUND(
-      predicate = { throwable -> isCompositionLocalThrowable(throwable) },
-      severity = HighlightSeverity.ERROR,
-      summary = { "Failed to instantiate Composition Local" },
-      htmlContentProvider = { linkManager, throwable ->
-        HtmlBuilder()
-          .addLink(
-            "This preview was unable to find a ",
-            "CompositionLocal",
-            ". ",
-            "https://developer.android.com/jetpack/compose/compositionlocal",
-          )
-          .add("You might need to define it so it can render correctly.")
-          .newlineIfNecessary()
-          .addExceptionMessage(linkManager, throwable)
-      },
-    ),
-    VIEW_MODEL_INSTANTIATION(
-      predicate = { throwable -> isViewModelThrowable(throwable) },
-      severity = HighlightSeverity.ERROR,
-      summary = { "Failed to instantiate a ViewModel" },
-      htmlContentProvider = { linkManager, throwable ->
-        HtmlBuilder()
-          .addLink("This preview uses a ", "ViewModel", ". ", "https://developer.android.com/topic/libraries/architecture/viewmodel")
-          .add(
-            "ViewModels often trigger operations not supported by Compose Preview, " +
-              "such as database access, I/O operations, or network requests. "
-          )
-          .addLink(
-            "You can ",
-            "read more",
-            " about preview limitations in our external documentation.",
-            "https://developer.android.com/jetpack/compose/tooling/" + "previews#preview-viewmodel",
-          )
-          .newlineIfNecessary()
-          .addExceptionMessage(linkManager, throwable)
-      },
-    ),
-  }
+      ComposeRenderErrorType.FAIL_TO_LOAD_PREVIEW_PARAMETER_PROVIDER ->
+        IssuePresentation(
+          severity = HighlightSeverity.ERROR,
+          htmlContent = { _, _ ->
+            HtmlBuilder()
+              .addLink(
+                "There was problem to load the ",
+                "PreviewParameterProvider",
+                " defined. Please double-check its constructor and the values property implementation. The IDE logs should contain" +
+                  " the full exception stack trace.",
+                "https://developer.android.com/develop/ui/compose/tooling/previews#preview-data",
+              )
+          },
+        )
+      ComposeRenderErrorType.COMPOSE_PREVIEW_NOT_FOUND ->
+        IssuePresentation(
+          severity = HighlightSeverity.WARNING,
+          messageTip = { linkManager, _ ->
+            createBuildTheProjectMessage(linkManager, "The preview will display after rebuilding the project.")
+          },
+        )
+      ComposeRenderErrorType.TIMEOUT_TO_LOAD_PREVIEW ->
+        IssuePresentation(
+          severity = HighlightSeverity.ERROR,
+          htmlContent = { _, _ ->
+            HtmlBuilder()
+              .add("The preview took too long to load. The issue can be caused by long operations or infinite loops on the Preview code.")
+              .newline()
+              .add("If you think this issue is not caused by your code, you can report a bug in our issue tracker.")
+          },
+          messageTip = { linkManager, _ -> createAddReportBugMessage(linkManager, null) },
+        )
+      ComposeRenderErrorType.CLASS_CAST_TO_ACTIVITY ->
+        IssuePresentation(
+          severity = HighlightSeverity.ERROR,
+          htmlContent = { linkManager, throwable ->
+            HtmlBuilder()
+              .add(
+                "The java.lang.ClassCastException you are currently seeing in Jetpack Compose " +
+                  "Previews occurs because the @Preview environment provides a non-activity Context " +
+                  "(BridgeContext) that cannot be cast to an Activity. "
+              )
+              .newline()
+              .newline()
+              .addExceptionMessage(linkManager, throwable)
+          },
+        )
+      ComposeRenderErrorType.COMPOSITION_LOCAL_NOT_FOUND ->
+        IssuePresentation(
+          severity = HighlightSeverity.ERROR,
+          htmlContent = { linkManager, throwable ->
+            HtmlBuilder()
+              .addLink(
+                "This preview was unable to find a ",
+                "CompositionLocal",
+                ". ",
+                "https://developer.android.com/jetpack/compose/compositionlocal",
+              )
+              .add("You might need to define it so it can render correctly.")
+              .newlineIfNecessary()
+              .addExceptionMessage(linkManager, throwable)
+          },
+        )
+      ComposeRenderErrorType.VIEW_MODEL_INSTANTIATION ->
+        IssuePresentation(
+          severity = HighlightSeverity.ERROR,
+          htmlContent = { linkManager, throwable ->
+            HtmlBuilder()
+              .addLink("This preview uses a ", "ViewModel", ". ", "https://developer.android.com/topic/libraries/architecture/viewmodel")
+              .add(
+                "ViewModels often trigger operations not supported by Compose Preview, " +
+                  "such as database access, I/O operations, or network requests. "
+              )
+              .addLink(
+                "You can ",
+                "read more",
+                " about preview limitations in our external documentation.",
+                "https://developer.android.com/jetpack/compose/tooling/" + "previews#preview-viewmodel",
+              )
+              .newlineIfNecessary()
+              .addExceptionMessage(linkManager, throwable)
+          },
+        )
+    }
 
   // endregion
 }

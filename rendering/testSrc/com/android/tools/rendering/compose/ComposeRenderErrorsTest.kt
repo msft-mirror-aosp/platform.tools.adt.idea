@@ -156,6 +156,7 @@ class ComposeRenderErrorsTest {
     assertThat(match?.rootCause).isSameAs(matching)
     assertThat(match?.summary).isEqualTo("Failed to instantiate Composition Local")
     assertThat(match?.hint).isEqualTo(ComposeRenderErrors.COMPOSITION_LOCAL_NOT_FOUND_HINT)
+    assertThat(ComposeRenderErrors.getHint(wrapped)).isEqualTo(ComposeRenderErrors.COMPOSITION_LOCAL_NOT_FOUND_HINT)
     assertThat(ComposeRenderErrors.isHandled(wrapped)).isTrue()
 
     val unknown = RuntimeException("Unknown generic error")

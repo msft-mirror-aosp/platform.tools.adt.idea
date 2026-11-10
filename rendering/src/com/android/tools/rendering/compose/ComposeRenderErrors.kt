@@ -34,6 +34,10 @@ object ComposeRenderErrors {
       Alternatively, consider mocking the ViewModel or providing a custom factory for the Preview.
       """
 
+  /**
+   * Hint for [ClassCastException] when trying to cast `BridgeContext` (used in Layoutlib for previews) to a platform `Context` like
+   * `Activity`.
+   */
   const val CLASS_CAST_EXCEPTION_HINT =
     """
       To resolve this error and ensure the resilience of the Composables across both preview and
@@ -62,8 +66,11 @@ object ComposeRenderErrors {
       """
 
   /**
-   * Unwraps [InvocationTargetException] recursively to get the original root cause of a reflection-based failure. If the wrapper has no
-   * cause, the wrapper itself is returned.
+   * Unwraps [InvocationTargetException] recursively to get the original root cause of a reflection-based failure. This is necessary because
+   * Compose Previews are invoked via reflection, and if they fail, the underlying reason for the failure is wrapped in an
+   * [InvocationTargetException].
+   *
+   * If the wrapper has no cause, the wrapper itself is returned.
    */
   @JvmStatic
   tailrec fun unwrapIfInvocationTargetException(throwable: Throwable?): Throwable? {
@@ -129,12 +136,21 @@ data class ComposeRenderErrorMatch(
   val hint: String?,
 )
 
-/** Known Compose preview rendering failure modes. */
+/**
+ * Known Compose preview rendering failure modes. Each error type has a predicate to detect it, a summary and an optional remediation hint.
+ *
+ * The order of the enum values is important, as it defines the order in which [ComposeRenderErrors.match] checks for errors. More specific
+ * errors should come before more generic ones.
+ */
 enum class ComposeRenderErrorType(
   private val predicate: (Throwable) -> Boolean,
   val summary: (Throwable) -> String,
   val hint: String? = null,
 ) {
+  /**
+   * Failure to instantiate a Preview Composable with a `PreviewParameterProvider`: the parameter type does not match the
+   * `PreviewParameterProvider`.
+   */
   PREVIEW_PARAMETER_PROVIDER_MISMATCH(
     predicate = { t ->
       t is IllegalArgumentException &&
@@ -143,6 +159,12 @@ enum class ComposeRenderErrorType(
     },
     summary = { "PreviewParameterProvider/@Preview type mismatch." },
   ),
+  /**
+   * A [NoSuchMethodException] that fails to find a method called `FailToLoadPreviewParameterProvider`. This is a fake name defined in
+   * `ComposePreviewElement`, and we use it as a fake PreviewElement name when there is a failure to load a `PreviewParameterProvider`,
+   * otherwise the crash will cause no previews to be displayed. Instead, we want to display a Preview containing errors and let the user
+   * know there was an error to load their PreviewParameterProvider.
+   */
   FAIL_TO_LOAD_PREVIEW_PARAMETER_PROVIDER(
     predicate = { t ->
       t is NoSuchMethodException &&
@@ -151,16 +173,22 @@ enum class ComposeRenderErrorType(
     },
     summary = { "Fail to load PreviewParameterProvider" },
   ),
+  /** Failure to instantiate a Preview Composable. This means that the user probably added one or more previews and a build is needed. */
   COMPOSE_PREVIEW_NOT_FOUND(
     predicate = { t ->
       t is NoSuchMethodException && t.stackTrace.getOrNull(1)?.methodName?.startsWith("invokeComposableViaReflection") == true
     },
     summary = { t -> "Unable to find @Preview '${t.message}'" },
   ),
+  /** A [TimeoutException] happening during the rendering of a Compose Preview. */
   TIMEOUT_TO_LOAD_PREVIEW(
     predicate = { it is TimeoutException },
     summary = { "Timeout error" },
   ),
+  /**
+   * A [ClassCastException] when casting to `Activity`. This is used to detect when a @Preview fails to render because layoutlib's
+   * `BridgeContext` can not be cast to an activity.
+   */
   CLASS_CAST_TO_ACTIVITY(
     predicate = { t ->
       t is ClassCastException &&
@@ -170,6 +198,12 @@ enum class ComposeRenderErrorType(
     summary = { "Context cannot be cast to Activity in Compose Preview" },
     hint = ComposeRenderErrors.CLASS_CAST_EXCEPTION_HINT,
   ),
+  /**
+   * A failure to find a CompositionLocal. We are only catching the missing CompositionLocal errors coming from the androidx library by
+   * matching the error message they provide. If a developer provides their own error, this will not catch it by design as they might want
+   * to have their own messages. In androidx this error message is defined here: androidx/compose/ui/platform/CompositionLocals.kt, in
+   * function noLocalProvidedFor.
+   */
   COMPOSITION_LOCAL_NOT_FOUND(
     predicate = { t ->
       t is IllegalStateException && t.message?.startsWith("CompositionLocal") == true && t.message?.endsWith("not present") == true
@@ -177,6 +211,10 @@ enum class ComposeRenderErrorType(
     summary = { "Failed to instantiate Composition Local" },
     hint = ComposeRenderErrors.COMPOSITION_LOCAL_NOT_FOUND_HINT,
   ),
+  /**
+   * A failure when instantiating a ViewModel. This is used to detect when a @Preview fails to render because a ViewModel is being used.
+   * Detected from the stack trace rather than the exception type, so it is the most generic check and must stay last.
+   */
   VIEW_MODEL_INSTANTIATION(
     predicate = { t ->
       t.stackTrace.any {
