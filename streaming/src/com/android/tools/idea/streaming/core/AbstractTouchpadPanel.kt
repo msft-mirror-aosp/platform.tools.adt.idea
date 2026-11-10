@@ -52,7 +52,7 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
       }
     }
 
-  /** Last coordinates of the mouse pointer while the first button was pressed. Set to null when the first mouse button is released. */
+  /** Last coordinates of the mouse pointer inside the panel or during an active button-1 drag, or null otherwise. */
   private var lastMouseCoordinates: Point? = null
     set(value) {
       if (value != field) {
@@ -105,31 +105,38 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
     val w = width - insets.width
     val h = height - insets.height
     val touchpadRectangle = Rectangle(insets.left, insets.top, w, h)
-    if (!touchpadRectangle.contains(point)) {
+    val scale = w.toDouble() / touchpadSize.width
+    val radius = TOUCH_FEEDBACK_RADIUS.scaled(scale)
+    val fingers =
+      if (multiTouchMode) {
+        val fingerDistance = FINGER_DISTANCE.scaled(scale)
+        val x1 = point.x - fingerDistance / 2
+        listOf(Point(x1, point.y), Point(x1 + fingerDistance, point.y))
+      } else {
+        listOf(point)
+      }
+    if (fingers.none { touchpadRectangle.contains(it) }) {
       return
     }
 
     val g = graphics.create() as Graphics2D
-    g.setRenderingHints(
-      RenderingHints(
-        mapOf(
-          RenderingHints.KEY_ANTIALIASING to RenderingHints.VALUE_ANTIALIAS_ON,
-          RenderingHints.KEY_RENDERING to RenderingHints.VALUE_RENDER_QUALITY,
+    try {
+      @Suppress("UsePropertyAccessSyntax") // False positive.
+      g.setRenderingHints(
+        RenderingHints(
+          mapOf(
+            RenderingHints.KEY_ANTIALIASING to RenderingHints.VALUE_ANTIALIAS_ON,
+            RenderingHints.KEY_RENDERING to RenderingHints.VALUE_RENDER_QUALITY,
+          )
         )
       )
-    )
-    g.clip = touchpadRectangle
-    g.color = JBUI.CurrentTheme.Tooltip.grayedForeground()
-    val scale = w.toDouble() / touchpadSize.width
-    val radius = TOUCH_FEEDBACK_RADIUS.scaled(scale)
-    if (multiTouchMode) {
-      val fingerDistance = FINGER_HALF_DISTANCE.scaled(scale)
-      val finger = Point(point.x - fingerDistance / 2, point.y)
-      drawTouchFeedback(g, finger, radius)
-      finger.x += fingerDistance
-      drawTouchFeedback(g, finger, radius)
-    } else {
-      drawTouchFeedback(g, point, radius)
+      g.clip = touchpadRectangle
+      g.color = JBUI.CurrentTheme.Tooltip.grayedForeground()
+      for (finger in fingers) {
+        drawTouchFeedback(g, finger, radius)
+      }
+    } finally {
+      g.dispose()
     }
   }
 
@@ -143,9 +150,9 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
 
   private fun updateMouseState(event: MouseEvent) {
     val modifiers = event.modifiersEx
-    lastMouseCoordinates = Point(event.x, event.y)
-    multiTouchMode = (modifiers and SHIFT_DOWN_MASK) != 0
     mouseButtonPressed = (modifiers and BUTTON1_DOWN_MASK) != 0
+    lastMouseCoordinates = if (mouseButtonPressed || contains(event.x, event.y)) Point(event.x, event.y) else null
+    multiTouchMode = (modifiers and SHIFT_DOWN_MASK) != 0
   }
 
   // Terminates ongoing dragging if any.
@@ -173,8 +180,8 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
     val touchpadY = (h - 1 - (y - insets.top)).scaledUnbiased(h, touchpadSize.height)
     val touchesToSend = mutableListOf<Touch>()
     if (multiTouchMode) {
-      addTouchWithAdjustments(0, touchpadX - FINGER_HALF_DISTANCE, touchpadY, pressure, touchesToSend)
-      addTouchWithAdjustments(1, touchpadX + FINGER_HALF_DISTANCE, touchpadY, pressure, touchesToSend)
+      addTouchWithAdjustments(0, touchpadX - FINGER_DISTANCE / 2, touchpadY, pressure, touchesToSend)
+      addTouchWithAdjustments(1, touchpadX + FINGER_DISTANCE / 2, touchpadY, pressure, touchesToSend)
     } else {
       addTouchWithAdjustments(0, touchpadX, touchpadY, pressure, touchesToSend)
     }
@@ -222,12 +229,9 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
     }
 
     override fun mouseExited(event: MouseEvent) {
-      if (mouseButtonPressed) {
-        // Moving over the edge of the display view will terminate the ongoing dragging.
-        sendMouseEvent(event.x, event.y, false)
+      if (!mouseButtonPressed) {
+        lastMouseCoordinates = null
       }
-      lastMouseCoordinates = null
-      mouseButtonPressed = false
     }
 
     override fun mouseDragged(event: MouseEvent) {
@@ -258,9 +262,7 @@ abstract class AbstractTouchpadPanel(protected val touchpadSize: Dimension) : Bo
   }
 }
 
-val DEFAULT_TOUCHPAD_SIZE: Dimension = Dimension(1543, 297)
-
 private const val PREFERRED_HEIGHT = 40
 private const val TOUCH_FEEDBACK_RADIUS: Int = 100
-private const val FINGER_HALF_DISTANCE: Int = 260
+private const val FINGER_DISTANCE: Int = 260
 const val PRESSURE_RANGE_MAX = 0x400

@@ -32,7 +32,13 @@ import com.intellij.ui.components.JBBox
 import com.intellij.util.ui.JBUI
 import java.awt.Color
 import java.awt.Dimension
+import java.awt.event.InputEvent.BUTTON1_DOWN_MASK
 import java.awt.event.KeyEvent.VK_SHIFT
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
+import java.awt.event.MouseEvent.BUTTON1
+import java.awt.event.MouseEvent.MOUSE_DRAGGED
+import java.awt.event.MouseEvent.MOUSE_RELEASED
 import javax.swing.Box.createHorizontalGlue
 import javax.swing.BoxLayout
 import kotlin.time.Duration.Companion.seconds
@@ -55,44 +61,49 @@ class EmulatorTouchpadPanelTest {
   private val glasses by lazy { createGlassesAvd() }
   private val touchpadPanel by lazy { createTouchpadPanel() }
   private val ui: FakeUi by lazy { createFakeUi(touchpadPanel) }
+  private var lastMouseX = 0
+  private var lastMouseY = 0
 
   @Test
   fun testSingleTouch() {
     assertAppearance("SingleTouch1")
 
-    ui.mouse.press(touchpadPanel.x + 10, touchpadPanel.y + 20)
+    ui.pressMouse(touchpadPanel.x + 10, touchpadPanel.y + 20)
     val call = glasses.getNextGrpcCall(2.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo("touchpad_event { touches { x: 70 y: 152 pressure: 1024 expiration: NEVER_EXPIRE } }")
     assertAppearance("SingleTouch2")
 
-    ui.mouse.dragTo(touchpadPanel.x + 200, touchpadPanel.y + 25)
+    ui.dragMouseTo(touchpadPanel.x + 200, touchpadPanel.y + 25)
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo("touchpad_event { touches { x: 1479 y: 115 pressure: 1024 expiration: NEVER_EXPIRE } }")
-    ui.mouse.release()
+    ui.releaseMouse()
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo("touchpad_event { touches { x: 1479 y: 115 expiration: NEVER_EXPIRE } }")
     assertAppearance("SingleTouch3")
 
-    ui.mouse.press(touchpadPanel.x + 200, touchpadPanel.y + 25)
+    ui.pressMouse(touchpadPanel.x + 200, touchpadPanel.y + 25)
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo("touchpad_event { touches { x: 1479 y: 115 pressure: 1024 expiration: NEVER_EXPIRE } }")
 
     // Drag over the edge of the touchpad.
-    ui.mouse.dragTo(touchpadPanel.x + 210, touchpadPanel.y + 25)
+    ui.dragMouseTo(touchpadPanel.x + 210, touchpadPanel.y + 25)
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo("touchpad_event { touches { x: 1542 y: 115 expiration: NEVER_EXPIRE } }")
 
     // Drag into the touchpad.
-    ui.mouse.dragTo(touchpadPanel.x + 205, touchpadPanel.y + 20)
+    ui.dragMouseTo(touchpadPanel.x + 205, touchpadPanel.y + 20)
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo("touchpad_event { touches { x: 1517 y: 152 pressure: 1024 expiration: NEVER_EXPIRE } }")
+    ui.releaseMouse()
+    assertThat(shortDebugString(call.getNextRequest(2.seconds)))
+      .isEqualTo("touchpad_event { touches { x: 1517 y: 152 expiration: NEVER_EXPIRE } }")
   }
 
   @Test
   fun testMultiTouch() {
-    ui.mouse.press(touchpadPanel.x + 5, touchpadPanel.y + 20)
+    ui.pressMouse(touchpadPanel.x + 5, touchpadPanel.y + 20)
     val call = glasses.getNextGrpcCall(2.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
@@ -100,59 +111,124 @@ class EmulatorTouchpadPanelTest {
 
     // Press Shift to trigger multi-touch mode.
     ui.keyboard.press(VK_SHIFT)
-    ui.mouse.dragTo(touchpadPanel.x + 15, touchpadPanel.y + 20)
+    ui.dragMouseTo(touchpadPanel.x + 15, touchpadPanel.y + 20)
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo("touchpad_event { touches { x: 33 y: 152 expiration: NEVER_EXPIRE } }")
     // The mode is multi-touch but only one of the fingers is inside the touchpad.
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
-      .isEqualTo("touchpad_event { touches { x: 367 y: 152 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE } }")
+      .isEqualTo("touchpad_event { touches { x: 237 y: 152 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE } }")
     assertAppearance("MultiTouch1")
 
     // Drag so that both fingers are inside the touchpad.
-    ui.mouse.dragTo(touchpadPanel.x + 100, touchpadPanel.y + 20)
+    ui.dragMouseTo(touchpadPanel.x + 100, touchpadPanel.y + 20)
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo(
-        "touchpad_event { touches { x: 478 y: 152 pressure: 1024 expiration: NEVER_EXPIRE }" +
-          " touches { x: 998 y: 152 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE } }"
+        "touchpad_event { touches { x: 608 y: 152 pressure: 1024 expiration: NEVER_EXPIRE }" +
+          " touches { x: 868 y: 152 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE } }"
       )
 
     // Terminate dragging.
-    ui.mouse.release()
+    ui.releaseMouse()
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo(
-        "touchpad_event { touches { x: 478 y: 152 expiration: NEVER_EXPIRE }" +
-          " touches { x: 998 y: 152 identifier: 1 expiration: NEVER_EXPIRE } }"
+        "touchpad_event { touches { x: 608 y: 152 expiration: NEVER_EXPIRE }" +
+          " touches { x: 868 y: 152 identifier: 1 expiration: NEVER_EXPIRE } }"
       )
     assertAppearance("MultiTouch2")
 
-    // Start dragging again.
-    ui.mouse.press(touchpadPanel.x + 100, touchpadPanel.y + 20)
+    // Start dragging again and slide both fingers sequentially off the right edge.
+    ui.pressMouse(touchpadPanel.x + 100, touchpadPanel.y + 20)
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo(
-        "touchpad_event { touches { x: 478 y: 152 pressure: 1024 expiration: NEVER_EXPIRE }" +
-          " touches { x: 998 y: 152 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE } }"
+        "touchpad_event { touches { x: 608 y: 152 pressure: 1024 expiration: NEVER_EXPIRE }" +
+          " touches { x: 868 y: 152 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE } }"
+      )
+
+    // Leading finger leaves the touchpad while cursor midpoint is still inside the panel.
+    ui.dragMouseTo(touchpadPanel.x + 195, touchpadPanel.y + 20)
+    assertThat(shortDebugString(call.getNextRequest(2.seconds)))
+      .isEqualTo(
+        "touchpad_event { touches { x: 1312 y: 152 pressure: 1024 expiration: NEVER_EXPIRE }" +
+          " touches { x: 1542 y: 152 identifier: 1 expiration: NEVER_EXPIRE } }"
+      )
+
+    // Cursor midpoint leaves the panel (triggering mouseExited) while trailing finger is still inside the touchpad.
+    ui.dragMouseTo(touchpadPanel.x + 212, touchpadPanel.y + 20)
+    assertThat(shortDebugString(call.getNextRequest(2.seconds)))
+      .isEqualTo("touchpad_event { touches { x: 1438 y: 152 pressure: 1024 expiration: NEVER_EXPIRE } }")
+
+    // Trailing finger also leaves the touchpad.
+    ui.dragMouseTo(touchpadPanel.x + 230, touchpadPanel.y + 20)
+    assertThat(shortDebugString(call.getNextRequest(2.seconds)))
+      .isEqualTo("touchpad_event { touches { x: 1542 y: 152 expiration: NEVER_EXPIRE } }")
+
+    // Releasing the mouse button outside the panel after both fingers have lifted should not emit extra events.
+    ui.releaseMouse()
+
+    // Start dragging again.
+    ui.pressMouse(touchpadPanel.x + 100, touchpadPanel.y + 20)
+    assertThat(shortDebugString(call.getNextRequest(2.seconds)))
+      .isEqualTo(
+        "touchpad_event { touches { x: 608 y: 152 pressure: 1024 expiration: NEVER_EXPIRE }" +
+          " touches { x: 868 y: 152 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE } }"
       )
 
     // Drag closer to the right edge of the touchpad so that one of the fingers leaves the touchpad.
-    ui.mouse.dragTo(touchpadPanel.x + 190, touchpadPanel.y + 20)
+    ui.dragMouseTo(touchpadPanel.x + 195, touchpadPanel.y + 20)
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo(
-        "touchpad_event { touches { x: 1145 y: 152 pressure: 1024 expiration: NEVER_EXPIRE }" +
+        "touchpad_event { touches { x: 1312 y: 152 pressure: 1024 expiration: NEVER_EXPIRE }" +
           " touches { x: 1542 y: 152 identifier: 1 expiration: NEVER_EXPIRE } }"
       )
 
     // Terminate multi-touch mode.
     ui.keyboard.release(VK_SHIFT)
-    ui.mouse.dragTo(touchpadPanel.x + 200, touchpadPanel.y + 20)
+    ui.dragMouseTo(touchpadPanel.x + 200, touchpadPanel.y + 20)
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
-      .isEqualTo("touchpad_event { touches { x: 1145 y: 152 expiration: NEVER_EXPIRE } }")
+      .isEqualTo("touchpad_event { touches { x: 1312 y: 152 expiration: NEVER_EXPIRE } }")
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo("touchpad_event { touches { x: 1479 y: 152 pressure: 1024 expiration: NEVER_EXPIRE } }")
 
     // Terminate dragging.
-    ui.mouse.release()
+    ui.releaseMouse()
     assertThat(shortDebugString(call.getNextRequest(2.seconds)))
       .isEqualTo("touchpad_event { touches { x: 1479 y: 152 expiration: NEVER_EXPIRE } }")
+  }
+
+  /** Simulates mouse press, tracking coordinates for Swing drag-capture outside [touchpadPanel]. */
+  private fun FakeUi.pressMouse(x: Int, y: Int) {
+    lastMouseX = x
+    lastMouseY = y
+    mouse.press(x, y)
+  }
+
+  /**
+   * Simulates mouse drag, forwarding `MOUSE_DRAGGED` to [touchpadPanel] even outside its bounds to match Swing's `LightweightDispatcher`
+   * drag-capture behavior (`FakeMouse` only dispatches `MOUSE_EXITED` when leaving [touchpadPanel]).
+   */
+  private fun FakeUi.dragMouseTo(x: Int, y: Int) {
+    lastMouseX = x
+    lastMouseY = y
+    mouse.dragTo(x, y)
+    if (targetMouseEvent(x, y)?.component !== touchpadPanel) {
+      val relative = toRelative(touchpadPanel, x, y)
+      val modifiers = keyboard.toModifiersCode() or BUTTON1_DOWN_MASK
+      touchpadPanel.dispatchEvent(
+        MouseEvent(touchpadPanel, MOUSE_DRAGGED, System.currentTimeMillis(), modifiers, relative.x, relative.y, 1, false, 0)
+      )
+    }
+  }
+
+  /** Simulates mouse release, forwarding `MOUSE_RELEASED` to [touchpadPanel] if released outside its bounds. */
+  private fun FakeUi.releaseMouse() {
+    mouse.release()
+    if (targetMouseEvent(lastMouseX, lastMouseY)?.component !== touchpadPanel) {
+      val relative = toRelative(touchpadPanel, lastMouseX, lastMouseY)
+      val modifiers = keyboard.toModifiersCode()
+      touchpadPanel.dispatchEvent(
+        MouseEvent(touchpadPanel, MOUSE_RELEASED, System.currentTimeMillis(), modifiers, relative.x, relative.y, 1, false, BUTTON1)
+      )
+    }
   }
 
   private fun createTouchpadPanel(): EmulatorTouchpadPanel {
@@ -169,6 +245,7 @@ class EmulatorTouchpadPanelTest {
         isOpaque = true
         background = Color(0xF2F2F2)
         border = JBUI.Borders.empty(5, 10)
+        addMouseListener(object : MouseAdapter() {})
         add(touchpadPanel)
         add(createHorizontalGlue())
       }

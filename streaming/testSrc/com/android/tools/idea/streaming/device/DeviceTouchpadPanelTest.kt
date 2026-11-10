@@ -30,7 +30,13 @@ import com.intellij.ui.components.JBBox
 import com.intellij.util.ui.JBUI
 import java.awt.Color
 import java.awt.Dimension
+import java.awt.event.InputEvent.BUTTON1_DOWN_MASK
 import java.awt.event.KeyEvent.VK_SHIFT
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
+import java.awt.event.MouseEvent.BUTTON1
+import java.awt.event.MouseEvent.MOUSE_DRAGGED
+import java.awt.event.MouseEvent.MOUSE_RELEASED
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit.SECONDS
 import javax.swing.Box.createHorizontalGlue
@@ -75,6 +81,8 @@ class DeviceTouchpadPanelTest {
 
   private val touchpadPanel by lazy { createTouchpadPanel() }
   private val ui: FakeUi by lazy { createFakeUi(touchpadPanel) }
+  private var lastMouseX = 0
+  private var lastMouseY = 0
 
   @Before
   fun setUp() {
@@ -138,7 +146,7 @@ class DeviceTouchpadPanelTest {
       )
 
     // Drag over the edge of the touchpad and back into the touchpad.
-    ui.mouse.press(touchpadPanel.x + 200, touchpadPanel.y + 25)
+    ui.pressMouse(touchpadPanel.x + 200, touchpadPanel.y + 25)
     assertThat(agent.getNextControlMessage(2.seconds))
       .isEqualTo(
         MotionEventMessage(
@@ -151,7 +159,7 @@ class DeviceTouchpadPanelTest {
         )
       )
 
-    ui.mouse.dragTo(touchpadPanel.x + 210, touchpadPanel.y + 25)
+    ui.dragMouseTo(touchpadPanel.x + 210, touchpadPanel.y + 25)
     assertThat(agent.getNextControlMessage(2.seconds))
       .isEqualTo(
         MotionEventMessage(
@@ -164,7 +172,7 @@ class DeviceTouchpadPanelTest {
         )
       )
 
-    ui.mouse.dragTo(touchpadPanel.x + 205, touchpadPanel.y + 20)
+    ui.dragMouseTo(touchpadPanel.x + 205, touchpadPanel.y + 20)
     assertThat(agent.getNextControlMessage(2.seconds))
       .isEqualTo(
         MotionEventMessage(
@@ -177,7 +185,7 @@ class DeviceTouchpadPanelTest {
         )
       )
 
-    ui.mouse.release()
+    ui.releaseMouse()
     assertThat(agent.getNextControlMessage(2.seconds))
       .isEqualTo(
         MotionEventMessage(
@@ -227,7 +235,7 @@ class DeviceTouchpadPanelTest {
     assertThat(multiDownMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(114, 246, 1)),
+          pointers = listOf(MotionEventMessage.Pointer(73, 246, 1)),
           action = MotionEventMessage.ACTION_DOWN,
           buttonState = 0,
           actionButton = 0,
@@ -242,7 +250,7 @@ class DeviceTouchpadPanelTest {
     assertThat(pointerDownMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(114, 246, 1)),
+          pointers = listOf(MotionEventMessage.Pointer(189, 246, 0), MotionEventMessage.Pointer(73, 246, 1)),
           action = MotionEventMessage.ACTION_POINTER_DOWN or (0 shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT),
           buttonState = 0,
           actionButton = 0,
@@ -254,7 +262,7 @@ class DeviceTouchpadPanelTest {
     assertThat(multiMoveMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
+          pointers = listOf(MotionEventMessage.Pointer(189, 246, 0), MotionEventMessage.Pointer(270, 246, 1)),
           action = MotionEventMessage.ACTION_MOVE,
           buttonState = 0,
           actionButton = 0,
@@ -272,7 +280,7 @@ class DeviceTouchpadPanelTest {
     assertThat(multiUpMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
+          pointers = listOf(MotionEventMessage.Pointer(189, 246, 0), MotionEventMessage.Pointer(270, 246, 1)),
           action = MotionEventMessage.ACTION_UP,
           buttonState = 0,
           actionButton = 0,
@@ -281,13 +289,83 @@ class DeviceTouchpadPanelTest {
         )
       )
 
+    // Start dragging again and slide both fingers sequentially off the right edge.
+    ui.pressMouse(touchpadPanel.x + 100, touchpadPanel.y + 20)
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(189, 246, 0), MotionEventMessage.Pointer(270, 246, 1)),
+          action = MotionEventMessage.ACTION_DOWN,
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    // Leading finger leaves the touchpad while cursor midpoint is still inside the panel.
+    ui.dragMouseTo(touchpadPanel.x + 195, touchpadPanel.y + 20)
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(189, 246, 0), MotionEventMessage.Pointer(479, 246, 1)),
+          action = MotionEventMessage.ACTION_POINTER_UP or (1 shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT),
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(408, 246, 0)),
+          action = MotionEventMessage.ACTION_MOVE,
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    // Cursor midpoint leaves the panel (triggering mouseExited) while trailing finger is still inside the touchpad.
+    ui.dragMouseTo(touchpadPanel.x + 212, touchpadPanel.y + 20)
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(447, 246, 0)),
+          action = MotionEventMessage.ACTION_MOVE,
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    // Trailing finger also leaves the touchpad.
+    ui.dragMouseTo(touchpadPanel.x + 230, touchpadPanel.y + 20)
+    assertThat(agent.getNextControlMessage(2.seconds))
+      .isEqualTo(
+        MotionEventMessage(
+          pointers = listOf(MotionEventMessage.Pointer(479, 246, 0)),
+          action = MotionEventMessage.ACTION_UP,
+          buttonState = 0,
+          actionButton = 0,
+          displayId = DISPLAY_ID,
+          isMouse = false,
+        )
+      )
+
+    // Releasing the mouse button outside the panel after both fingers have lifted should not emit extra events.
+    ui.releaseMouse()
+
     // Start dragging again.
     ui.mouse.press(touchpadPanel.x + 100, touchpadPanel.y + 20)
     val startDragAgainMessage = agent.getNextControlMessage(2.seconds) as MotionEventMessage
     assertThat(startDragAgainMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
+          pointers = listOf(MotionEventMessage.Pointer(189, 246, 0), MotionEventMessage.Pointer(270, 246, 1)),
           action = MotionEventMessage.ACTION_DOWN,
           buttonState = 0,
           actionButton = 0,
@@ -297,12 +375,12 @@ class DeviceTouchpadPanelTest {
       )
 
     // Drag closer to the right edge of the touchpad so that one of the fingers leaves the touchpad.
-    ui.mouse.dragTo(touchpadPanel.x + 190, touchpadPanel.y + 20)
+    ui.mouse.dragTo(touchpadPanel.x + 195, touchpadPanel.y + 20)
     val pointerUpMessage = agent.getNextControlMessage(2.seconds) as MotionEventMessage
     assertThat(pointerUpMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(479, 246, 1)),
+          pointers = listOf(MotionEventMessage.Pointer(189, 246, 0), MotionEventMessage.Pointer(479, 246, 1)),
           action = MotionEventMessage.ACTION_POINTER_UP or (1 shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT),
           buttonState = 0,
           actionButton = 0,
@@ -314,7 +392,7 @@ class DeviceTouchpadPanelTest {
     assertThat(oneFingerLeavesMoveMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(356, 246, 0)),
+          pointers = listOf(MotionEventMessage.Pointer(408, 246, 0)),
           action = MotionEventMessage.ACTION_MOVE,
           buttonState = 0,
           actionButton = 0,
@@ -329,7 +407,7 @@ class DeviceTouchpadPanelTest {
     assertThat(secondPointerDownMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(356, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
+          pointers = listOf(MotionEventMessage.Pointer(408, 246, 0), MotionEventMessage.Pointer(270, 246, 1)),
           action = MotionEventMessage.ACTION_POINTER_DOWN or (1 shl MotionEventMessage.ACTION_POINTER_INDEX_SHIFT),
           buttonState = 0,
           actionButton = 0,
@@ -341,7 +419,7 @@ class DeviceTouchpadPanelTest {
     assertThat(secondFingerEntersMoveMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
+          pointers = listOf(MotionEventMessage.Pointer(189, 246, 0), MotionEventMessage.Pointer(270, 246, 1)),
           action = MotionEventMessage.ACTION_MOVE,
           buttonState = 0,
           actionButton = 0,
@@ -357,7 +435,7 @@ class DeviceTouchpadPanelTest {
     assertThat(cancelMultiDragMessage)
       .isEqualTo(
         MotionEventMessage(
-          pointers = listOf(MotionEventMessage.Pointer(148, 246, 0), MotionEventMessage.Pointer(310, 246, 1)),
+          pointers = listOf(MotionEventMessage.Pointer(189, 246, 0), MotionEventMessage.Pointer(270, 246, 1)),
           action = MotionEventMessage.ACTION_UP,
           buttonState = 0,
           actionButton = 0,
@@ -446,6 +524,42 @@ class DeviceTouchpadPanelTest {
       )
   }
 
+  /** Simulates mouse press, tracking coordinates for Swing drag-capture outside [touchpadPanel]. */
+  private fun FakeUi.pressMouse(x: Int, y: Int) {
+    lastMouseX = x
+    lastMouseY = y
+    mouse.press(x, y)
+  }
+
+  /**
+   * Simulates mouse drag, forwarding `MOUSE_DRAGGED` to [touchpadPanel] even outside its bounds to match Swing's `LightweightDispatcher`
+   * drag-capture behavior (`FakeMouse` only dispatches `MOUSE_EXITED` when leaving [touchpadPanel]).
+   */
+  private fun FakeUi.dragMouseTo(x: Int, y: Int) {
+    lastMouseX = x
+    lastMouseY = y
+    mouse.dragTo(x, y)
+    if (targetMouseEvent(x, y)?.component !== touchpadPanel) {
+      val relative = toRelative(touchpadPanel, x, y)
+      val modifiers = keyboard.toModifiersCode() or BUTTON1_DOWN_MASK
+      touchpadPanel.dispatchEvent(
+        MouseEvent(touchpadPanel, MOUSE_DRAGGED, System.currentTimeMillis(), modifiers, relative.x, relative.y, 1, false, 0)
+      )
+    }
+  }
+
+  /** Simulates mouse release, forwarding `MOUSE_RELEASED` to [touchpadPanel] if released outside its bounds. */
+  private fun FakeUi.releaseMouse() {
+    mouse.release()
+    if (targetMouseEvent(lastMouseX, lastMouseY)?.component !== touchpadPanel) {
+      val relative = toRelative(touchpadPanel, lastMouseX, lastMouseY)
+      val modifiers = keyboard.toModifiersCode()
+      touchpadPanel.dispatchEvent(
+        MouseEvent(touchpadPanel, MOUSE_RELEASED, System.currentTimeMillis(), modifiers, relative.x, relative.y, 1, false, BUTTON1)
+      )
+    }
+  }
+
   private fun createTouchpadPanel(): DeviceTouchpadPanel = DeviceTouchpadPanel(deviceClient, DISPLAY_ID, Dimension(480, 480))
 
   private fun createFakeUi(touchpadPanel: DeviceTouchpadPanel): FakeUi {
@@ -454,6 +568,7 @@ class DeviceTouchpadPanelTest {
         isOpaque = true
         background = Color(0xF2F2F2)
         border = JBUI.Borders.empty(5, 10)
+        addMouseListener(object : MouseAdapter() {})
         add(touchpadPanel)
         add(createHorizontalGlue())
       }
