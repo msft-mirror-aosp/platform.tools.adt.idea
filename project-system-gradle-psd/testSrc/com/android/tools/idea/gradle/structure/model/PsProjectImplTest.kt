@@ -26,23 +26,31 @@ import com.android.tools.idea.gradle.util.GradleWrapper
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.BuildEnvironment
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.TransactionGuard
+import com.intellij.openapi.application.TransactionGuardImpl
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.testFramework.RunsInEdt
+import java.awt.EventQueue
+import javax.swing.SwingUtilities
 import org.hamcrest.core.IsEqual.equalTo
 import org.hamcrest.core.IsNull.nullValue
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThat
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeThat
 import org.junit.Rule
 import org.junit.Test
 
-@RunsInEdt
 class PsProjectImplTest {
 
   @get:Rule val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
   private val changedModules = mutableSetOf<String>()
 
+  @RunsInEdt
   @Test
   fun testModuleOrder() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY)
@@ -114,6 +122,7 @@ class PsProjectImplTest {
     }
   }
 
+  @RunsInEdt
   @Test
   fun testRemoveModule() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY)
@@ -131,6 +140,7 @@ class PsProjectImplTest {
     }
   }
 
+  @RunsInEdt
   @Test
   fun testRemoveDynamicFeatureModule() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY)
@@ -170,6 +180,7 @@ class PsProjectImplTest {
     }
   }
 
+  @RunsInEdt
   @Test
   fun testRemoveMiddleModule() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY)
@@ -189,6 +200,7 @@ class PsProjectImplTest {
     }
   }
 
+  @RunsInEdt
   @Test
   fun testApplyRunAndReparse() {
     val newSuffix = "testApplyRunAndReparse"
@@ -250,6 +262,7 @@ class PsProjectImplTest {
     }
   }
 
+  @RunsInEdt
   @Test
   fun testApplyRunAndReparse_cancel() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY)
@@ -273,6 +286,7 @@ class PsProjectImplTest {
     }
   }
 
+  @RunsInEdt
   @Test
   fun testAgpVersion() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY)
@@ -287,6 +301,7 @@ class PsProjectImplTest {
     }
   }
 
+  @RunsInEdt
   @Test
   fun testAgpVersion_missing() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY)
@@ -303,6 +318,7 @@ class PsProjectImplTest {
     }
   }
 
+  @RunsInEdt
   @Test
   fun testGradleVersion() {
     val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY)
@@ -318,7 +334,96 @@ class PsProjectImplTest {
     }
   }
 
+  @Test
+  fun testApplyChangesAndReparseOnLockFreeEdt() {
+    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_SAMPLE_GROOVY)
+    val versionCatalogFile = preparedProject.root.resolve("gradle/libs.versions.toml")
+    versionCatalogFile.parentFile.mkdirs()
+    versionCatalogFile.writeText(
+      """
+      [versions]
+      myVersion = "1.0.0"
+      """
+        .trimIndent()
+    )
+
+    preparedProject.open { resolvedProject ->
+      val app = ApplicationManager.getApplication()
+      lateinit var psProject: PsProjectImpl
+      var modulesChangedOnEdt = false
+      var versionCatalogsChangedOnEdt = false
+      var catalogVariablesChangedOnEdt = false
+      var dependenciesReloadedOnEdt = false
+      app.invokeAndWait {
+        psProject = PsProjectImpl(resolvedProject)
+        psProject.androidGradlePluginVersion = "1.23".asParsed()
+        val appModule = psProject.findModuleByGradlePath(":app") as PsAndroidModule
+        appModule.dependencies
+        appModule.findBuildType("debug")!!.applicationIdSuffix = "lockFreeEdt".asParsed()
+        val libsCatalog = psProject.versionCatalogs.first { it.name == "libs" }
+        libsCatalog.variables.getVariable("myVersion")!!.value = "2.0.0".asParsed()
+        psProject.removeModule(gradlePath = ":nested2:deep")
+
+        psProject.modules.onChange(projectRule.testRootDisposable) {
+          assertTrue(EventQueue.isDispatchThread())
+          assertTrue(app.isWriteIntentLockAcquired)
+          modulesChangedOnEdt = true
+        }
+        psProject.versionCatalogs.onChange(projectRule.testRootDisposable) {
+          assertTrue(EventQueue.isDispatchThread())
+          assertTrue(app.isWriteIntentLockAcquired)
+          versionCatalogsChangedOnEdt = true
+        }
+        libsCatalog.variables.onChange(projectRule.testRootDisposable) {
+          assertTrue(EventQueue.isDispatchThread())
+          assertTrue(app.isWriteIntentLockAcquired)
+          catalogVariablesChangedOnEdt = true
+        }
+        appModule.addDependencyChangedListener(projectRule.testRootDisposable) { event ->
+          if (event is PsModule.DependenciesReloadedEvent) {
+            assertTrue(EventQueue.isDispatchThread())
+            assertTrue(app.isWriteIntentLockAcquired)
+            dependenciesReloadedOnEdt = true
+          }
+        }
+      }
+      assertTrue(psProject.isModified)
+
+      SwingUtilities.invokeAndWait {
+        (TransactionGuard.getInstance() as TransactionGuardImpl).performUserActivity {
+          assertTrue(EventQueue.isDispatchThread())
+          assertFalse(app.isReadAccessAllowed)
+          assertFalse(app.isWriteIntentLockAcquired)
+          psProject.applyChanges()
+        }
+      }
+
+      assertFalse(psProject.isModified)
+      assertTrue(modulesChangedOnEdt)
+      assertTrue(versionCatalogsChangedOnEdt)
+      assertTrue(catalogVariablesChangedOnEdt)
+      assertTrue(dependenciesReloadedOnEdt)
+
+      runReadAction {
+        assertThat(psProject.androidGradlePluginVersion, equalTo("1.23".asParsed()))
+        val appModule = psProject.findModuleByGradlePath(":app") as PsAndroidModule
+        assertThat(
+          appModule.findBuildType("debug")!!.applicationIdSuffix,
+          equalTo("lockFreeEdt".asParsed()),
+        )
+        val libsCatalog = psProject.versionCatalogs.first { it.name == "libs" }
+        assertThat(
+          libsCatalog.variables.getVariable("myVersion")!!.value,
+          equalTo("2.0.0".asParsed()),
+        )
+        assertThat(psProject.findModuleByGradlePath(":nested2:deep")?.isDeclared, nullValue())
+      }
+    }
+  }
+
   private fun PsProject.testSubscribeToNotifications() {
-    this.onModuleChanged(projectRule.testRootDisposable) { module -> changedModules.add(module.gradlePath.orEmpty()) }
+    this.onModuleChanged(projectRule.testRootDisposable) { module ->
+      changedModules.add(module.gradlePath.orEmpty())
+    }
   }
 }

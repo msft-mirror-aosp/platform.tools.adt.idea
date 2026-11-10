@@ -29,8 +29,14 @@ import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.android.tools.idea.gradle.util.GradleWrapper
 import com.google.common.util.concurrent.ListenableFuture
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.WriteIntentReadAction
+import com.intellij.openapi.application.readAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
+import com.intellij.platform.ide.progress.ModalTaskOwner
+import com.intellij.platform.ide.progress.TaskCancellation
+import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
@@ -112,12 +118,7 @@ class PsProjectImpl(
         }
         isModified = false
       }
-      parsedModel = GradleModelProvider.getInstance().getProjectModel(ideProject).withAgpVersionContext(ideProject)
-      variables.refresh()
-      buildScriptVariables.refresh()
-      internalResolvedModuleModels = null
-      moduleCollection.refresh()
-      versionCatalogCollection.refresh()
+      reparse()
     }
   }
 
@@ -136,12 +137,40 @@ class PsProjectImpl(
       }
     }
     if (runnable()) {
-      parsedModel = GradleModelProvider.getInstance().getProjectModel(ideProject).withAgpVersionContext(ideProject)
-      variables.refresh()
-      internalResolvedModuleModels = null
-      moduleCollection.refresh()
+      reparse()
       isModified = true // This is to trigger apply() which in turn will trigger the final sync.
     }
+  }
+
+  private fun reparse() {
+    fun parseModel(): ProjectBuildModel =
+      GradleModelProvider.getInstance().getProjectModel(ideProject).withAgpVersionContext(ideProject).also { model ->
+        model.modules.forEach { model.getBuildModelByGradlePath(it) }
+      }
+    val application = ApplicationManager.getApplication()
+    if (application.isDispatchThread) {
+      assert(!application.isWriteAccessAllowed)
+      val newParsedModel =
+        runWithModalProgressBlocking(
+          ModalTaskOwner.project(ideProject),
+          "Applying changes to the project structure...",
+          TaskCancellation.nonCancellable(),
+        ) {
+          readAction(::parseModel)
+        }
+      WriteIntentReadAction.run { updateParsedModel(newParsedModel) }
+    } else {
+      application.runReadAction { updateParsedModel(parseModel()) }
+    }
+  }
+
+  private fun updateParsedModel(newParsedModel: ProjectBuildModel) {
+    parsedModel = newParsedModel
+    variables.refresh()
+    buildScriptVariables.refresh()
+    internalResolvedModuleModels = null
+    moduleCollection.refresh()
+    versionCatalogCollection.refresh()
   }
 
   override fun onModuleChanged(disposable: Disposable, handler: (PsModule) -> Unit) {

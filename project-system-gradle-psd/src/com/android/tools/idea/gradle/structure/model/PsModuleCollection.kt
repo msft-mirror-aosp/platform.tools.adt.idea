@@ -192,7 +192,7 @@ fun Project.getHolderModuleByGradlePath(gradlePath: String) =
     .modules
     .firstOrNull { it.getGradleProjectPath().run { this is GradleHolderProjectPath && path == gradlePath } }
 
-private fun ProjectBuildModel.getBuildModelByGradlePath(gradlePath: String): GradleBuildModel? =
+internal fun ProjectBuildModel.getBuildModelByGradlePath(gradlePath: String): GradleBuildModel? =
   when {
     projectSettingsModel == null && gradlePath == ":" -> projectBuildModel
     else -> {
@@ -208,5 +208,5 @@ private fun ProjectBuildModel.getBuildModelByGradlePath(gradlePath: String): Gra
     }
   }
 
-private val ProjectBuildModel.modules: Set<String>
+internal val ProjectBuildModel.modules: Set<String>
   get() = projectSettingsModel.let { it?.modulePaths() ?: setOf(":") }

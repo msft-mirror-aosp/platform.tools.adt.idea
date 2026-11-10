@@ -396,8 +396,9 @@ class PsVariablesTest {
     val projectDir = preparedProject.root
 
     preparedProject.open { project ->
+      val projectVFile = projectDir.toVirtualFile()!!
       runWriteCommandAction(project) {
-        val buildFile = projectDir.toVirtualFile()!!.createChildData(this, "build.gradle")
+        val buildFile = projectVFile.createChildData(this, "build.gradle")
         VfsUtil.saveText(
           buildFile,
           """
@@ -405,17 +406,17 @@ class PsVariablesTest {
           """
             .trimIndent(),
         )
-
-        val psProject = PsProjectImpl(project)
-        val variables = psProject.variables
-        val variable = variables.findElement("version1")!!
-
-        variable.setName("version2")
-        psProject.applyChanges()
-
-        val updatedContent = VfsUtil.loadText(buildFile)
-        assertThat(updatedContent.trim(), equalTo("ext.version2 = '1.0'"))
       }
+
+      val psProject = PsProjectImpl(project)
+      val variables = psProject.variables
+      val variable = variables.findElement("version1")!!
+
+      variable.setName("version2")
+      psProject.applyChanges()
+
+      val updatedContent = VfsUtil.loadText(projectVFile.findChild("build.gradle")!!)
+      assertThat(updatedContent.trim(), equalTo("ext.version2 = '1.0'"))
     }
   }
 }
