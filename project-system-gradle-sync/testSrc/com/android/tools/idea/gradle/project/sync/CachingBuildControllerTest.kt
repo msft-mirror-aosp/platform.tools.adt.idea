@@ -78,6 +78,21 @@ class CachingBuildControllerTest {
   }
 
   @Test
+  fun `failed findModel requests cache null so subsequent findModel does not retry`() {
+    gradle.failingModels += AdditionalClassifierArtifactsModel::class.java
+    val controller = gradle.controller().toCachingController(cachedModels)
+    val guava = ArtifactIdentifierImpl("com.google.guava", "guava", "33.0")
+    fun findAdditionalClassifierArtifacts() =
+      controller.findModel(app, AdditionalClassifierArtifactsModel::class.java, AdditionalClassifierArtifactsModelParameter::class.java) {
+        it.artifactIdentifiers = listOf(guava)
+      }
+
+    assertFailsWith<RuntimeException> { findAdditionalClassifierArtifacts() }
+    assertThat(findAdditionalClassifierArtifacts()).isNull()
+    assertThat(gradle.requests).hasSize(1)
+  }
+
+  @Test
   fun `models are cached per project and build`() {
     val lib = gradleProject(buildRootDir = File("/root"), projectPath = ":lib")
     val includedApp = gradleProject(buildRootDir = File("/included"), projectPath = ":app")
@@ -142,6 +157,75 @@ class CachingBuildControllerTest {
   }
 
   @Test
+  fun `models with AdditionalClassifierArtifactsModelParameter are cached by identifier set`() {
+    val controller = gradle.controller().toCachingController(cachedModels)
+    val guava = ArtifactIdentifierImpl("com.google.guava", "guava", "33.0")
+    val junit = ArtifactIdentifierImpl("junit", "junit", "4.13.2")
+    fun findAdditionalClassifierArtifacts(vararg ids: ArtifactIdentifierImpl) =
+      controller.findModel(app, AdditionalClassifierArtifactsModel::class.java, AdditionalClassifierArtifactsModelParameter::class.java) {
+        it.artifactIdentifiers = ids.toList()
+      }
+
+    val first = findAdditionalClassifierArtifacts(guava, junit)
+
+    assertThat(findAdditionalClassifierArtifacts(junit, guava)).isSameAs(first)
+    assertThat(findAdditionalClassifierArtifacts(guava)).isNotSameAs(first)
+    assertThat(gradle.requests).hasSize(2)
+  }
+
+  @Test
+  fun `fetchAdditionalClassifierArtifactsModel skips Gradle request when all artifacts are cached or local`() {
+    val recordedParameters = mutableListOf<List<String>>()
+    val controller =
+      Mockito.mock(BuildController::class.java) { invocation ->
+        when (invocation.method.name) {
+          "findModel" -> {
+            val action = invocation.arguments[3] as org.gradle.api.Action<AdditionalClassifierArtifactsModelParameter>
+            val recorded =
+              object : AdditionalClassifierArtifactsModelParameter {
+                private var ids: Collection<com.android.ide.gradle.model.ArtifactIdentifier> = emptyList()
+
+                override fun getArtifactIdentifiers() = ids
+
+                override fun setArtifactIdentifiers(ids: Collection<com.android.ide.gradle.model.ArtifactIdentifier>) {
+                  this.ids = ids
+                }
+              }
+            action.execute(recorded)
+            recordedParameters += recorded.artifactIdentifiers.map(::idToString)
+            Mockito.mock(AdditionalClassifierArtifactsModel::class.java)
+          }
+          else -> null
+        }
+      }
+    val guava = ArtifactIdentifierImpl("com.google.guava", "guava", "33.0")
+    val localJar = ArtifactIdentifierImpl("__local_jars__", "foo.jar", "unspecified")
+
+    // Resync with everything cached (plus a local jar): must return null without calling controller.findModel.
+    val cachedResult =
+      fetchAdditionalClassifierArtifactsModel(
+        controller = controller,
+        findModelRoot = app,
+        identifiers = listOf(guava, localJar),
+        cachedLibraries = setOf("com.google.guava:guava:33.0"),
+      )
+    assertThat(cachedResult).isNull()
+    assertThat(recordedParameters).isEmpty()
+
+    // Initial sync (or partially cached): calls controller.findModel with only uncached non-local identifiers.
+    val junit = ArtifactIdentifierImpl("junit", "junit", "4.13.2")
+    val freshResult =
+      fetchAdditionalClassifierArtifactsModel(
+        controller = controller,
+        findModelRoot = app,
+        identifiers = listOf(guava, localJar, junit),
+        cachedLibraries = setOf("com.google.guava:guava:33.0"),
+      )
+    assertThat(freshResult).isNotNull()
+    assertThat(recordedParameters).containsExactly(listOf("junit:junit:4.13.2"))
+  }
+
+  @Test
   fun `models requested only once per sync are always delegated`() {
     val controller = gradle.controller().toCachingController(cachedModels)
     fun findNativeModule() =
@@ -149,14 +233,9 @@ class CachingBuildControllerTest {
         it.variantsToGenerateBuildInformation = emptyList()
         it.abisToGenerateBuildInformation = emptyList()
       }
-    fun findAdditionalClassifierArtifacts() =
-      controller.findModel(app, AdditionalClassifierArtifactsModel::class.java, AdditionalClassifierArtifactsModelParameter::class.java) {
-        it.artifactIdentifiers = listOf(ArtifactIdentifierImpl("com.google.guava", "guava", "33.0"))
-      }
 
     assertThat(findNativeModule()).isNotSameAs(findNativeModule())
-    assertThat(findAdditionalClassifierArtifacts()).isNotSameAs(findAdditionalClassifierArtifacts())
-    assertThat(gradle.requests).hasSize(4)
+    assertThat(gradle.requests).hasSize(2)
     assertThat(cachedModels.modelCache).isEmpty()
   }
 
@@ -277,6 +356,7 @@ class CachingBuildControllerTest {
     val requests = mutableListOf<Class<*>>()
     val nullModels = mutableSetOf<Class<*>>()
     val nullProjectModels = mutableSetOf<Pair<Any?, Class<*>>>()
+    val failingModels = mutableSetOf<Class<*>>()
 
     fun controller(): BuildController =
       Mockito.mock(BuildController::class.java) { invocation ->
@@ -286,6 +366,7 @@ class CachingBuildControllerTest {
             val target = invocation.arguments[0]
             val modelType = invocation.arguments[1] as Class<*>
             requests += modelType
+            if (modelType in failingModels) throw RuntimeException("Failed to fetch ${modelType.simpleName}")
             if (modelType in nullModels || (target to modelType) in nullProjectModels) null else Mockito.mock(modelType)
           }
           "run" -> (invocation.arguments[0] as Collection<*>).map { (it as BuildAction<*>).execute(controller()) }

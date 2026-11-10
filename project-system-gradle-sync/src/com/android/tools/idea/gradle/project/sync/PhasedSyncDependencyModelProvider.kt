@@ -132,9 +132,11 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
         }
       )
 
+    val libraryTable = internedModels.apply { prepare() }.createLibraryTable()
+    cachedData.libraryTable = libraryTable
     modelConsumer.consumeBuildModel(
       buildModels.first(),
-      internedModels.apply { prepare() }.createLibraryTable(),
+      libraryTable,
       IdeUnresolvedLibraryTableImpl::class.java,
     )
 

@@ -532,12 +532,13 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
     val project = project
     val libraryFilePaths = project?.let(LibraryFilePaths::getInstance)
     val artifactLookup = Function { library: IdeArtifactLibrary ->
-      // Attempt to find the source/doc/samples jars within the library if we haven't injected the additional artifacts model builder
-      if (additionalArtifacts == null) {
+      // Attempt to find the source/doc jars embedded within the library first (populated by VariantDependencies on AGP 8.10+).
+      if (library.srcJars.isNotEmpty() || library.docJar != null) {
         return@Function AdditionalArtifactsPaths(library.srcJars, library.docJar)
       }
 
-      // Otherwise fall back to using the model from the injected model builder.
+      // Otherwise fall back to the injected AdditionalClassifierArtifactsModel builder and the LibraryFilePaths cache (additionalArtifacts
+      // may be null on resync when all artifact identifiers were already cached in LibraryFilePaths).
       val artifactId = library.component?.toIdentifier() ?: library.name
       // First check to see if we just obtained any paths from Gradle. Since we don't request all the paths this can be null
       // or contain an incomplete set of entries. In order to complete this set we need to obtain the reminder from LibraryFilePaths cache.

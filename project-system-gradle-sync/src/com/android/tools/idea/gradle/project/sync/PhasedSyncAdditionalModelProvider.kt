@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.project.sync
 
 import com.android.builder.model.v2.models.ProjectSyncIssues
 import com.android.builder.model.v2.models.Versions
+import com.android.ide.gradle.model.artifacts.AdditionalClassifierArtifactsModel
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
 import org.gradle.tooling.BuildAction
@@ -47,13 +48,30 @@ class PhasedSyncAdditionalModelProvider(val syncOptions: SyncActionOptions, val 
       buildModel.projects.mapNotNull { gradleProject ->
         val data = cachedModels.data[gradleProject] ?: return@mapNotNull null
         BuildAction { controller ->
-          gradleProject to controller.fetchModel<KotlinGradleModel>(gradleProject, syncOptions, data.selectedVariantName)
+          val kotlinModel = controller.fetchModel<KotlinGradleModel>(gradleProject, syncOptions, data.selectedVariantName)
+          val additionalArtifactsResult =
+            controller.fetchAdditionalClassifierArtifactsModelForPhasedSync(gradleProject, syncOptions, cachedModels)
+          Triple(gradleProject, kotlinModel, additionalArtifactsResult)
         }
       }
     }
 
-    controller.run(actions).filterNotNull().forEach { (gradleProject, kotlinModel) ->
+    controller.run(actions).filterNotNull().forEach { (gradleProject, kotlinModel, additionalArtifactsResult) ->
       kotlinModel?.let { modelConsumer.consumeProjectModel(gradleProject, it, KotlinGradleModel::class.java) }
+      additionalArtifactsResult
+        ?.onSuccess { additionalArtifacts ->
+          additionalArtifacts?.let {
+            modelConsumer.consumeProjectModel(gradleProject, it, AdditionalClassifierArtifactsModel::class.java)
+          }
+        }
+        ?.onFailure { exception ->
+          val current = cachedModels.exceptionsAndSyncIssues[gradleProject]
+          cachedModels.exceptionsAndSyncIssues[gradleProject] =
+            IdeAndroidSyncIssuesAndExceptions(
+              syncIssues = current?.syncIssues.orEmpty(),
+              exceptions = current?.exceptions.orEmpty() + exception,
+            )
+        }
       createIdeAndroidModels(cachedModels, gradleProject)?.let {
         modelConsumer.consumeProjectModel(gradleProject, it, IdeAndroidModels::class.java)
       }

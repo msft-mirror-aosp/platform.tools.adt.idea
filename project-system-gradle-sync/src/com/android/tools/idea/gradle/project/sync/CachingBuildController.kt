@@ -19,6 +19,7 @@ import com.android.builder.model.v2.models.ModelBuilderParameter
 import com.android.builder.model.v2.models.ProjectSyncIssues
 import com.android.builder.model.v2.models.ndk.NativeModelBuilderParameter
 import com.android.ide.gradle.model.AdditionalClassifierArtifactsModelParameter
+import com.android.ide.gradle.model.ArtifactIdentifier
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginPropertiesModelParameters
 import java.io.File
 import org.gradle.api.Action
@@ -109,7 +110,13 @@ private class CachingBuildController(private val delegate: BuildController, val 
     val cached = cachedData.modelCache[key]
     if (cached === NULL_MODEL && allowNull) return null as T
     if (cached != null && cached !== NULL_MODEL) return cached as T
-    return compute().also { cachedData.modelCache.putIfAbsent(key, it ?: NULL_MODEL) }
+    return try {
+      compute().also { cachedData.modelCache.putIfAbsent(key, it ?: NULL_MODEL) }
+    } catch (t: Throwable) {
+      // Cache results even if null so we can avoid doing it later. This will be helpful for heavy Ops.
+      cachedData.modelCache.putIfAbsent(key, NULL_MODEL)
+      throw t
+    }
   }
 }
 
@@ -135,10 +142,7 @@ private val UNCACHED_PARAMETER_TYPES: Set<Class<*>> =
     // only
     // to check whether a project has native models; for the projects it supports, that null result could not be reused for the getModel
     // request of AndroidExtraModelProvider anyway.
-    NativeModelBuilderParameter::class.java,
-    // Used for the `AdditionalClassifierArtifactsModel` model, which only AndroidExtraModelProvider requests (see
-    // [getAdditionalClassifierArtifactsModel]).
-    AdditionalClassifierArtifactsModelParameter::class.java,
+    NativeModelBuilderParameter::class.java
   )
 
 /**
@@ -153,6 +157,7 @@ internal fun <P : Any> recordParameters(parameterType: Class<P>, parameterInitia
       ModelBuilderParameter::class.java -> RecordedModelBuilderParameter()
       ModelBuilderService.Parameter::class.java -> RecordedModelBuilderServiceParameter()
       LegacyAndroidGradlePluginPropertiesModelParameters::class.java -> RecordedLegacyAndroidGradlePluginPropertiesModelParameters()
+      AdditionalClassifierArtifactsModelParameter::class.java -> RecordedAdditionalClassifierArtifactsModelParameter()
       else ->
         error(
           "Unexpected parameter type ${parameterType.name}: add a recorder for it to cache its requests, or add it to UNCACHED_PARAMETER_TYPES."
@@ -202,3 +207,16 @@ private data class RecordedLegacyAndroidGradlePluginPropertiesModelParameters(
   override var missingDimensionStrategies: Boolean = false,
   override var sourceProvidersConfigurationNames: Boolean = false,
 ) : LegacyAndroidGradlePluginPropertiesModelParameters
+
+/**
+ * Records an [AdditionalClassifierArtifactsModelParameter], used for the `AdditionalClassifierArtifactsModel` model (see
+ * [fetchAdditionalClassifierArtifactsModel]). Keyed as a [Set] because the model builder resolves the unordered set of artifacts.
+ */
+private data class RecordedAdditionalClassifierArtifactsModelParameter(var recordedIdentifiers: Set<ArtifactIdentifier> = emptySet()) :
+  AdditionalClassifierArtifactsModelParameter {
+  override fun getArtifactIdentifiers(): Collection<ArtifactIdentifier> = recordedIdentifiers
+
+  override fun setArtifactIdentifiers(ids: Collection<ArtifactIdentifier>) {
+    recordedIdentifiers = ids.toSet()
+  }
+}

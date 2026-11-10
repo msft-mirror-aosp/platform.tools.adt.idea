@@ -306,7 +306,7 @@ data class ModuleConfiguration(
 fun Collection<String>.getDefaultOrFirstItem(defaultValue: String): String? =
   if (contains(defaultValue)) defaultValue else minByOrNull { it }
 
-private fun collectIdentifiers(
+internal fun collectIdentifiers(
   variants: Collection<IdeVariantCoreImpl>,
   libraryResolver: (LibraryReference) -> IdeUnresolvedLibrary,
 ): List<ArtifactIdentifier> {

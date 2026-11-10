@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.project.sync
 import com.android.builder.model.v2.models.Versions
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
+import com.android.tools.idea.gradle.model.impl.IdeUnresolvedLibraryTableImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import java.io.Serializable
 import java.util.concurrent.ConcurrentHashMap
@@ -29,6 +30,7 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
   internal val versions = ConcurrentHashMap<BasicGradleProject, Versions>()
   internal val data = ConcurrentHashMap<BasicGradleProject, CachedAndroidProjectData>()
   internal val fetchedVariants = ConcurrentHashMap<BasicGradleProject, List<IdeVariantCoreImpl>>()
+  internal var libraryTable: IdeUnresolvedLibraryTableImpl? = null
 
   internal val kaptGradleModel = ConcurrentHashMap<BasicGradleProject, KaptGradleModel>()
 
@@ -73,6 +75,7 @@ class ModelProviderCachedData(private val disableLegacyModelProvidersForSupporte
     versions.clear()
     data.clear()
     fetchedVariants.clear()
+    libraryTable = null
     kaptGradleModel.clear()
     exceptionsAndSyncIssues.clear()
     modelCache.clear()
