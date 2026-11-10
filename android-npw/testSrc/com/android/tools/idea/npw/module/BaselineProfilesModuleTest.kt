@@ -21,6 +21,7 @@ import com.android.tools.idea.gradle.dsl.model.android.android
 import com.android.tools.idea.gradle.model.IdeBasicVariant
 import com.android.tools.idea.npw.NewProjectWizardTestUtils.getAgpVersion
 import com.android.tools.idea.npw.baselineprofiles.getBaselineProfilesMinSdk
+import com.android.tools.idea.npw.baselineprofiles.getModuleMinSdk
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.BaselineProfilesMacrobenchmarkCommon
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.RUN_CONFIGURATION_NAME
 import com.android.tools.idea.npw.module.recipes.baselineProfilesModule.baselineProfileTaskName
@@ -105,28 +106,40 @@ class BaselineProfilesModuleTest {
 
   @Test
   fun checkMinSdkUsesLowestPGOOrTargetModule() {
+    assertThat(getModuleMinSdk(null)).isNull()
+    assertThat(getBaselineProfilesMinSdk(null)).isEqualTo(SdkVersionInfo.LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION)
+
     projectRule.load(TestProjectPaths.ANDROIDX_WITH_LIB_MODULE, agpVersion = getAgpVersion())
 
     val project = projectRule.project
 
-    val appModule = project.findAppModule()
-
-    val projectBuildModel = ProjectBuildModel.getOrLog(appModule.project)
-    val targetModuleAndroidModel = projectBuildModel?.getModuleBuildModel(appModule)?.android()
-
     // Verify anything lower than LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION is not used
     val lowerThanPGO = SdkVersionInfo.LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION - 1
-    targetModuleAndroidModel?.defaultConfig()?.minSdkVersion()?.setValue(lowerThanPGO)
-    WriteCommandAction.runWriteCommandAction(project) { projectBuildModel?.applyChanges() }
+    val lowBuildModel = ProjectBuildModel.get(project)
+    checkNotNull(lowBuildModel.getModuleBuildModel(project.findAppModule()))
+      .android()
+      .defaultConfig()
+      .minSdkVersion()
+      .setValue(lowerThanPGO)
+    WriteCommandAction.runWriteCommandAction(project) { lowBuildModel.applyChanges() }
+    projectRule.requestSyncAndWait()
 
-    assertThat(getBaselineProfilesMinSdk(appModule)).isEqualTo(SdkVersionInfo.LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION)
+    assertThat(getModuleMinSdk(project.findAppModule())).isEqualTo(lowerThanPGO)
+    assertThat(getBaselineProfilesMinSdk(project.findAppModule())).isEqualTo(SdkVersionInfo.LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION)
 
     // Verify anything higher than LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION is preserved
     val higherThanPGO = SdkVersionInfo.LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION + 1
-    targetModuleAndroidModel?.defaultConfig()?.minSdkVersion()?.setValue(higherThanPGO)
-    WriteCommandAction.runWriteCommandAction(project) { projectBuildModel?.applyChanges() }
+    val highBuildModel = ProjectBuildModel.get(project)
+    checkNotNull(highBuildModel.getModuleBuildModel(project.findAppModule()))
+      .android()
+      .defaultConfig()
+      .minSdkVersion()
+      .setValue(higherThanPGO)
+    WriteCommandAction.runWriteCommandAction(project) { highBuildModel.applyChanges() }
+    projectRule.requestSyncAndWait()
 
-    assertThat(getBaselineProfilesMinSdk(appModule)).isEqualTo(higherThanPGO)
+    assertThat(getModuleMinSdk(project.findAppModule())).isEqualTo(higherThanPGO)
+    assertThat(getBaselineProfilesMinSdk(project.findAppModule())).isEqualTo(higherThanPGO)
   }
 
   @Test

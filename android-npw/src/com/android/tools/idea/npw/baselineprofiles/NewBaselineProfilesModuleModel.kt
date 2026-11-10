@@ -16,8 +16,7 @@
 package com.android.tools.idea.npw.baselineprofiles
 
 import com.android.sdklib.SdkVersionInfo
-import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
-import com.android.tools.idea.gradle.dsl.model.android.android
+import com.android.tools.idea.model.AndroidModel
 import com.android.tools.idea.npw.model.ExistingProjectModelData
 import com.android.tools.idea.npw.model.MultiTemplateRenderer
 import com.android.tools.idea.npw.model.ProjectSyncInvoker
@@ -86,8 +85,5 @@ fun getBaselineProfilesMinSdk(targetModule: Module?): Int {
 @VisibleForTesting
 fun getModuleMinSdk(targetModule: Module?): Int? {
   targetModule ?: return null
-  val projectBuildModel = ProjectBuildModel.getOrLog(targetModule.project) ?: return null
-  val targetModuleAndroidModel = projectBuildModel.getModuleBuildModel(targetModule)?.android() ?: return null
-
-  return targetModuleAndroidModel.defaultConfig().minSdkVersion().toInt()
+  return AndroidModel.get(targetModule)?.minSdkVersion?.featureLevel
 }
