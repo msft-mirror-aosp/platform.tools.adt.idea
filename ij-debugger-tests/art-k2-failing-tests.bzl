@@ -46,19 +46,16 @@ _tests = [
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoInlineSamWithParameterDestructuring",  # b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoLambdaWithParameterDestructuring",
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Uncategorized.testStepIntoSamWithParameterDestructuring",  # b/578038532
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testBreakpointInOneLineLambda",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testCoroutineUnitElimination",  # b/578123886
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testEquals",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFilterFunctionCallsInTryCatchBlock",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFinallyBlock",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFunLiteral",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testFunctionCallStoredToVariable",  # b/578038532
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testIdea334404",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testIdea362864",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testInitBlocks",  # b/495501447
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testInsideCallChain",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testLambdaWithImplicitReturn",  # b/578038532
-    "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testLineBreakpointWithMethodReference",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSequentialInlineFunctionCalls",
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSeveralFunLiterals",  # b/578038532
     "K2IdeK2CodeKotlinSteppingTestGenerated$Custom.testSeveralFunLiteralsInClass",  # b/578038532
