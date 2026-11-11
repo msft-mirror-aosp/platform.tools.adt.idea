@@ -200,19 +200,24 @@ class TemplateEngineProjectWizardTest {
     val t2 = createTemplate("Template Wear", listOf("wear"))
     val t3 = createTemplate("Template Custom B", listOf("category:Custom Category B"))
     val t4 = createTemplate("Template Custom A", listOf("category:Custom Category A"))
+    val t5 = createTemplate("Template XR", listOf("xr"))
 
-    val mockRegistry = mock<TemplateRegistryService>().apply { whenever(this.getTemplateDefinitions()).thenReturn(listOf(t1, t2, t3, t4)) }
+    val mockRegistry =
+      mock<TemplateRegistryService>().apply { whenever(this.getTemplateDefinitions()).thenReturn(listOf(t1, t2, t3, t4, t5)) }
     ApplicationManager.getApplication().replaceService(TemplateRegistryService::class.java, mockRegistry, disposable)
 
     val viewModel = ChooseProjectViewModel(mockRegistry)
     val gridEntries = viewModel.categories.filterIsInstance<TemplateEngineTemplateGridProjectEntry>()
 
-    assertThat(gridEntries).hasSize(2)
+    assertThat(gridEntries).hasSize(3)
     assertThat(gridEntries[0].categoryTitle).isEqualTo("Phone and Large screens")
     assertThat(gridEntries[0].templates).containsExactly(t1, t4, t3)
 
     assertThat(gridEntries[1].categoryTitle).isEqualTo("Wear OS")
     assertThat(gridEntries[1].templates).containsExactly(t2)
+
+    assertThat(gridEntries[2].categoryTitle).isEqualTo("XR")
+    assertThat(gridEntries[2].templates).containsExactly(t5)
   }
 
   @Test

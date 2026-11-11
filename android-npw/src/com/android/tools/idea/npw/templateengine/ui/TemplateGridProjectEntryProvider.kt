@@ -83,6 +83,7 @@ class TemplateGridProjectEntryProvider : AndroidProjectEntryProvider {
       metadata.tags.contains(WizardConstants.TAG_WEAR) -> FormFactor.WEAR
       metadata.tags.contains(WizardConstants.TAG_TV) -> FormFactor.TV
       metadata.tags.contains(WizardConstants.TAG_CAR) -> FormFactor.AUTOMOTIVE
+      metadata.tags.contains(WizardConstants.TAG_XR) -> FormFactor.XR
       else -> FormFactor.MOBILE
     }
 

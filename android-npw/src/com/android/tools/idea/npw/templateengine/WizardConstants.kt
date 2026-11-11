@@ -54,6 +54,7 @@ object WizardConstants {
   const val TAG_WEAR = "wear"
   const val TAG_TV = "tv"
   const val TAG_CAR = "car"
+  const val TAG_XR = "xr"
 
   val templateCellSize = 192.dp
 
