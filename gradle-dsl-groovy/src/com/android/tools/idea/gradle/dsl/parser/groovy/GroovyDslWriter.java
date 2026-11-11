@@ -23,6 +23,8 @@ import static com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.External
 import static com.android.tools.idea.gradle.dsl.parser.SharedParserUtilsKt.isDomainObjectConfiguratorMethodName;
 import static com.android.tools.idea.gradle.dsl.parser.SharedParserUtilsKt.isGradleContainerMethodName;
 import static com.android.tools.idea.gradle.dsl.parser.SharedParserUtilsKt.maybeTrimForParent;
+import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.adoptAfter;
+import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.adoptBefore;
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.applyDslLiteralOrReference;
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.closableBlockNeedsNewline;
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.createAndAddClosure;
@@ -40,6 +42,7 @@ import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.need
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.processListElement;
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.processMapElement;
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.quotePartsIfNecessary;
+import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.replaceWithClone;
 import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mASSIGN;
 import static org.jetbrains.plugins.groovy.lang.psi.GroovyElementTypes.ML_COMMENT;
 import static org.jetbrains.plugins.groovy.lang.psi.impl.PsiImplUtil.isWhiteSpaceOrNls;
@@ -119,11 +122,8 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
       e = e.getParent();
     }
 
-    // 4. Copy the old PsiElement tree.
-    PsiElement treeCopy = e.copy();
-
-    // 5. Replace what we need to replace.
-    PsiElement newTree = toReplace.replace(treeCopy);
+    // 4. Clone the old PsiElement AST and replace the placeholder without resolving Groovy references.
+    PsiElement newTree = replaceWithClone(toReplace, e);
 
     // 6. Delete the original tree.
     e.delete();
@@ -245,40 +245,46 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
       PsiElement firstFileChild = parentPsiElement.getFirstChild();
       if (addBefore) {
         // should really do this for all kinds of parentPsiElement, not just GroovyFile
-        addedElement = parentPsiElement.addBefore(statement, anchor);
+        addedElement = adoptBefore(parentPsiElement, statement, anchor);
       }
       else if (firstFileChild != null && firstFileChild.getNode().getElementType() == ML_COMMENT && anchor == null) {
-        addedElement = parentPsiElement.addAfter(statement, firstFileChild);
+        addedElement = adoptAfter(parentPsiElement, statement, firstFileChild);
       }
       else {
-        addedElement = parentPsiElement.addAfter(statement, anchor);
+        addedElement = adoptAfter(parentPsiElement, statement, anchor);
       }
 
-      if (!isWhiteSpaceOrNls(addedElement.getPrevSibling())) {
-        parentPsiElement.addBefore(lineTerminator, addedElement);
-      }
-      if (addBefore) {
-        parentPsiElement.addAfter(lineTerminator, addedElement);
+      if (addedElement != null) {
+        if (!isWhiteSpaceOrNls(addedElement.getPrevSibling())) {
+          parentPsiElement.addBefore(lineTerminator, addedElement);
+        }
+        if (addBefore) {
+          parentPsiElement.addAfter(lineTerminator, addedElement);
+        }
       }
     }
     else if (parentPsiElement instanceof GrClosableBlock) {
-      addedElement = parentPsiElement.addAfter(statement, anchor);
-      PsiElement prevSibling = addedElement.getPrevSibling();
-      if (!(anchorAfter instanceof GradleDslAnchor.Start)) {
-        if (!(prevSibling instanceof GrParameterList)) {
-          parentPsiElement.addBefore(lineTerminator, addedElement);
+      addedElement = adoptAfter(parentPsiElement, statement, anchor);
+      if (addedElement != null) {
+        PsiElement prevSibling = addedElement.getPrevSibling();
+        if (!(anchorAfter instanceof GradleDslAnchor.Start)) {
+          if (!(prevSibling instanceof GrParameterList)) {
+            parentPsiElement.addBefore(lineTerminator, addedElement);
+          }
         }
-      }
-      else {
-        parentPsiElement.addAfter(lineTerminator, addedElement);
-        if (closableBlockNeedsNewline((GrClosableBlock)parentPsiElement)) {
-          parentPsiElement.addBefore(lineTerminator, addedElement);
+        else {
+          parentPsiElement.addAfter(lineTerminator, addedElement);
+          if (closableBlockNeedsNewline((GrClosableBlock)parentPsiElement)) {
+            parentPsiElement.addBefore(lineTerminator, addedElement);
+          }
         }
       }
     }
     else {
-      addedElement = parentPsiElement.addAfter(statement, anchor);
-      parentPsiElement.addBefore(lineTerminator, addedElement);
+      addedElement = adoptAfter(parentPsiElement, statement, anchor);
+      if (addedElement != null) {
+        parentPsiElement.addBefore(lineTerminator, addedElement);
+      }
     }
     if (element.isBlockElement()) {
       GrClosableBlock closableBlock = getClosableBlock(addedElement);
@@ -374,7 +380,7 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
       statementText = methodCallText;
     }
     GrStatement statement = factory.createStatementFromText(statementText);
-    PsiElement addedElement = parentPsiElement.addAfter(statement, anchor);
+    PsiElement addedElement = adoptAfter(parentPsiElement, statement, anchor);
 
     if (addedElement instanceof GrApplicationStatement) {
       GrExpression[] expressionArguments = ((GrApplicationStatement)addedElement).getArgumentList().getExpressionArguments();
@@ -471,7 +477,7 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
     // We are assigning a list to a property.
     if (psiElement instanceof GrAssignmentExpression || psiElement instanceof GrVariableDeclaration) {
       GrExpression emptyMap = GroovyPsiElementFactory.getInstance(psiElement.getProject()).createExpressionFromText("[]");
-      PsiElement element = psiElement.addAfter(emptyMap, psiElement.getLastChild());
+      PsiElement element = adoptAfter(psiElement, emptyMap, psiElement.getLastChild());
       // Overwrite the PsiElement set by createDslElement() to cause the elements of the map to be put into the correct place.
       // e.g within the brackets. For example this will replace the PsiElement "prop1 = " with "[]".
       expressionList.setPsiElement(element);
@@ -496,7 +502,7 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
       GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(psiElement.getProject());
       GrArgumentList argumentList = factory.createArgumentListFromText("xyz");
       argumentList.getFirstChild().delete(); // Workaround to get an empty argument list.
-      PsiElement added = psiElement.addAfter(argumentList, psiElement.getLastChild());
+      PsiElement added = adoptAfter(psiElement, argumentList, psiElement.getLastChild());
       if (added instanceof GrArgumentList) {
         GrArgumentList addedArgumentList = (GrArgumentList)added;
         expressionList.setPsiElement(addedArgumentList);
@@ -543,7 +549,7 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
     // We are assigning a map to a property.
     if (psiElement instanceof GrAssignmentExpression || psiElement instanceof GrVariableDeclaration) {
       GrExpression emptyMap = GroovyPsiElementFactory.getInstance(psiElement.getProject()).createExpressionFromText("[:]");
-      PsiElement element = psiElement.addAfter(emptyMap, psiElement.getLastChild());
+      PsiElement element = adoptAfter(psiElement, emptyMap, psiElement.getLastChild());
       // Overwrite the PsiElement set by createDslElement() to cause the elements of the map to be put into the correct place.
       // e.g within the brackets. For example this will replace the PsiElement "prop1 = " with "[:]".
       expressionMap.setPsiElement(element);
@@ -554,7 +560,7 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
       GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(psiElement.getProject());
       GrArgumentList argumentList = factory.createArgumentListFromText("xyz");
       argumentList.getFirstChild().delete(); // Workaround to get an empty argument list.
-      PsiElement added = psiElement.addAfter(argumentList, psiElement.getLastChild());
+      PsiElement added = adoptAfter(psiElement, argumentList, psiElement.getLastChild());
       if (added instanceof GrArgumentList) {
         GrArgumentList addedArgumentList = (GrArgumentList)added;
         expressionMap.setPsiElement(addedArgumentList);

@@ -68,9 +68,9 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiNamedElement;
 import com.intellij.psi.TokenType;
+import com.intellij.psi.codeStyle.CodeStyleManager;
 import com.intellij.psi.impl.CheckUtil;
 import com.intellij.psi.impl.source.codeStyle.CodeEditUtil;
-import com.intellij.psi.impl.source.tree.ChangeUtil;
 import com.intellij.psi.impl.source.tree.TreeElement;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.util.IncorrectOperationException;
@@ -624,29 +624,203 @@ public final class GroovyDslUtil {
   }
 
   /**
-   * This method is used in order to add elements to the back of a map,
-   * it is derived from {@link ASTDelegatePsiElement#addInternal(ASTNode, ASTNode, ASTNode, Boolean)}.
+   * Inserts a newly synthesized {@code newElement} before {@code anchor} inside {@code parent}
+   * without invoking {@link com.intellij.psi.impl.source.tree.ChangeUtil#copyToElement(PsiElement)}.
+   *
+   * <p>Standard {@code PsiElement.add*}/{@code replace}/{@code copy} operations copy subtrees
+   * through {@code ChangeUtil}, which invokes {@code GroovyChangeUtilSupport.encodeInformation} and
+   * resolves every {@code GrReferenceElement} in the fragment. For unresolved Gradle DSL
+   * identifiers, Groovy falls back to {@code GroovyDslFileIndex.getDslScripts}, blocking the caller
+   * while bundled {@code .gdsl} scripts are parsed and compiled on background threads (b/472823740).
+   * Because IntelliJ Platform's {@code ChangeUtil} does not expose an option to skip
+   * {@code TreeCopyHandler} encoding and {@code GroovyDslWriter} already constructs exact external
+   * Groovy syntax via {@code GroovyPsiElementFactory}, we move the newly generated AST node directly
+   * into {@code parent} via {@link CodeEditUtil} (matching {@link ASTDelegatePsiElement#addInternal}).
+   *
+   * <p>{@code newElement} must be a freshly synthesized throwaway element, never a live element
+   * retained elsewhere or a node reused across multiple insertions (enforced by
+   * {@link #prepareSynthesizedNodeForAdoption}).
    */
-  private static @Nullable PsiElement realAddBefore(@NotNull GrListOrMap element,
+  static @Nullable PsiElement adoptBefore(@NotNull PsiElement parent,
+                                          @NotNull PsiElement newElement,
+                                          @Nullable PsiElement anchor) {
+    if (parent instanceof GrArgumentList argList
+        && (newElement instanceof GrExpression || newElement instanceof GrNamedArgument)) {
+      PsiElement effectiveAnchor = anchor != null ? anchor : argList.getLastChild();
+      if (effectiveAnchor == null) {
+        return adoptChildRaw(argList, newElement, null, true);
+      }
+      effectiveAnchor = effectiveAnchor.getPrevSibling();
+      while (effectiveAnchor != null
+          && !(effectiveAnchor instanceof GrExpression)
+          && !(effectiveAnchor instanceof GrNamedArgument)) {
+        effectiveAnchor = effectiveAnchor.getPrevSibling();
+      }
+      return adoptAfter(argList, newElement, effectiveAnchor);
+    }
+    if (parent instanceof GrListOrMap listOrMap && newElement instanceof GrExpression) {
+      PsiElement effectiveAnchor = anchor != null ? anchor : listOrMap.getRBrack();
+      if (effectiveAnchor == null) {
+        return adoptChildRaw(listOrMap, newElement, null, true);
+      }
+      effectiveAnchor = effectiveAnchor.getPrevSibling();
+      while (effectiveAnchor != null
+          && !(effectiveAnchor instanceof GrExpression)
+          && !(effectiveAnchor instanceof GrNamedArgument)) {
+        effectiveAnchor = effectiveAnchor.getPrevSibling();
+      }
+      return adoptAfter(listOrMap, newElement, effectiveAnchor);
+    }
+    return adoptChildRaw(parent, newElement, anchor, true);
+  }
+
+  /** See {@link #adoptBefore(PsiElement, PsiElement, PsiElement)}. */
+  static @Nullable PsiElement adoptAfter(@NotNull PsiElement parent,
+                                         @NotNull PsiElement newElement,
+                                         @Nullable PsiElement anchor) {
+    if (parent instanceof GrArgumentList argList
+        && (newElement instanceof GrExpression || newElement instanceof GrNamedArgument)) {
+      boolean insertComma = argList.getAllArguments().length != 0;
+      PsiElement effectiveAnchor = anchor != null ? anchor : argList.getLeftParen();
+      PsiElement added = adoptChildRaw(argList, newElement, effectiveAnchor, false);
+      if (added != null && insertComma) {
+        ASTNode listNode = argList.getNode();
+        if (effectiveAnchor == argList.getLeftParen()) {
+          PsiElement nextSibling = added.getNextSibling();
+          listNode.addLeaf(mCOMMA, ",", nextSibling != null ? nextSibling.getNode() : null);
+        }
+        else {
+          listNode.addLeaf(mCOMMA, ",", added.getNode());
+        }
+        CodeStyleManager.getInstance(argList.getProject()).reformat(argList);
+      }
+      return added;
+    }
+    if (parent instanceof GrListOrMap listOrMap && newElement instanceof GrExpression) {
+      boolean insertComma = !listOrMap.isEmpty();
+      PsiElement effectiveAnchor = anchor != null ? anchor : listOrMap.getLBrack();
+      PsiElement added = adoptChildRaw(listOrMap, newElement, effectiveAnchor, false);
+      if (added != null && insertComma) {
+        ASTNode listNode = listOrMap.getNode();
+        if (effectiveAnchor == listOrMap.getLBrack()) {
+          PsiElement nextSibling = added.getNextSibling();
+          listNode.addLeaf(mCOMMA, ",", nextSibling != null ? nextSibling.getNode() : null);
+        }
+        else {
+          listNode.addLeaf(mCOMMA, ",", added.getNode());
+        }
+        CodeStyleManager.getInstance(listOrMap.getProject()).reformat(listOrMap);
+      }
+      return added;
+    }
+    return adoptChildRaw(parent, newElement, anchor, false);
+  }
+
+  private static @Nullable PsiElement adoptChildRaw(@NotNull PsiElement parent,
                                                     @NotNull PsiElement newElement,
-                                                    @NotNull PsiElement anchor) {
-    CheckUtil.checkWritable(element);
-    TreeElement elementCopy = ChangeUtil.copyToElement(newElement);
-    ASTNode anchorNode = getAnchorNode(element, anchor.getNode(), true);
-    ASTNode newNode = CodeEditUtil.addChildren(element.getNode(), elementCopy, elementCopy, anchorNode);
-    if (newNode == null) {
+                                                    @Nullable PsiElement anchor,
+                                                    boolean before) {
+    CheckUtil.checkWritable(parent);
+    ASTNode parentNode = parent.getNode();
+    ASTNode newNode = prepareSynthesizedNodeForAdoption(parent, newElement);
+    ASTNode anchorNode = getAnchorNode(parent, anchor == null ? null : anchor.getNode(), before);
+    ASTNode addedNode = CodeEditUtil.addChildren(parentNode, newNode, newNode, anchorNode);
+    if (addedNode == null) {
       LOG.warn(new IncorrectOperationException("Element cannot be added"));
       return null;
     }
-    if (newNode instanceof TreeElement) {
-      return ChangeUtil.decodeInformation((TreeElement)newNode).getPsi();
-    }
-    return newNode.getPsi();
+    return addedNode.getPsi();
   }
 
   /**
-   * This method has been taken from {@link ASTDelegatePsiElement} in order to implement a correct version of
-   * {@link #realAddBefore}.
+   * Appends a newly synthesized argument or named argument to {@code argList}, matching
+   * {@code GrArgumentListImpl.addNamedArgument} anchor selection while placing command-argument
+   * named entries at the end and bypassing {@code ChangeUtil} reference resolution.
+   */
+  static @Nullable PsiElement appendToArgumentList(@NotNull GrArgumentList argList,
+                                                   @NotNull GroovyPsiElement argument) {
+    PsiElement anchor;
+    GrNamedArgument[] namedArgs = argList.getNamedArguments();
+    if (argument instanceof GrNamedArgument
+        && !(argList instanceof GrCommandArgumentList)
+        && namedArgs.length > 0) {
+      anchor = namedArgs[namedArgs.length - 1];
+    }
+    else {
+      GroovyPsiElement[] allArgs = argList.getAllArguments();
+      anchor = allArgs.length > 0 ? allArgs[allArgs.length - 1] : argList.getLeftParen();
+    }
+    return adoptAfter(argList, argument, anchor);
+  }
+
+  /**
+   * Replaces {@code target} with a newly synthesized {@code replacement} directly via
+   * {@link CodeEditUtil#replaceChild}, bypassing {@code ChangeUtil} reference resolution.
+   */
+  static @NotNull PsiElement replaceWithSynthesized(@NotNull PsiElement target,
+                                                    @NotNull PsiElement replacement) {
+    CheckUtil.checkWritable(target);
+    ASTNode targetNode = target.getNode();
+    ASTNode replacementNode = prepareSynthesizedNodeForAdoption(target, replacement);
+    CodeEditUtil.replaceChild(targetNode.getTreeParent(), targetNode, replacementNode);
+    return replacementNode.getPsi();
+  }
+
+  /**
+   * Asserts that {@code candidate} is a freshly synthesized, unconsumed PSI fragment residing in a
+   * non-physical dummy file or holder before splicing it into {@code destination}. If violated in
+   * production (where {@link Logger#error} logs without aborting), returns a clone so a live or
+   * previously inserted PSI subtree is never detached.
+   */
+  private static @NotNull ASTNode prepareSynthesizedNodeForAdoption(@NotNull PsiElement destination,
+                                                                    @NotNull PsiElement candidate) {
+    ASTNode node = candidate.getNode();
+    if (node == null) {
+      throw new IncorrectOperationException("Cannot adopt PSI element without an ASTNode: " + candidate);
+    }
+    PsiFile sourceFile = candidate.isValid() ? candidate.getContainingFile() : null;
+    PsiFile targetFile = destination.getContainingFile();
+    boolean freshSynthesized =
+      CodeEditUtil.isNodeGenerated(node)
+      && sourceFile != null
+      && !sourceFile.isPhysical()
+      && sourceFile != targetFile;
+    if (!freshSynthesized) {
+      LOG.error("Expected a freshly synthesized, unconsumed PSI element, got: " + candidate);
+      if (node instanceof TreeElement treeElement) {
+        TreeElement copy = (TreeElement)treeElement.clone();
+        CodeEditUtil.setNodeGeneratedRecursively(copy, true);
+        return copy;
+      }
+    }
+    return node;
+  }
+
+  /**
+   * Replaces {@code target} with an AST clone of an existing {@code source} subtree directly via
+   * {@link CodeEditUtil#replaceChild}, preserving original indentation without invoking
+   * {@code ChangeUtil} reference resolution.
+   */
+  static @NotNull PsiElement replaceWithClone(@NotNull PsiElement target,
+                                              @NotNull PsiElement source) {
+    CheckUtil.checkWritable(target);
+    ASTNode targetNode = target.getNode();
+    TreeElement sourceNode = (TreeElement)source.getNode();
+    int oldIndentation = CodeEditUtil.getOldIndentation(sourceNode);
+    if (oldIndentation < 0) {
+      CodeEditUtil.saveWhitespacesInfo(sourceNode);
+    }
+    TreeElement copy = (TreeElement)sourceNode.clone();
+    if (oldIndentation < 0) {
+      CodeEditUtil.setOldIndentation(sourceNode, -1);
+    }
+    CodeEditUtil.replaceChild(targetNode.getTreeParent(), targetNode, copy);
+    return copy.getPsi();
+  }
+
+  /**
+   * Computes the {@code anchorBefore} child node for {@link CodeEditUtil#addChildren}, matching
+   * {@link ASTDelegatePsiElement#addInternal}.
    */
   private static ASTNode getAnchorNode(@NotNull PsiElement element, final ASTNode anchor, final Boolean before) {
     ASTNode anchorBefore;
@@ -676,7 +850,7 @@ public final class GroovyDslUtil {
       }
     }
 
-    return realAddBefore(map, newValue, map.getRBrack());
+    return adoptBefore(map, newValue, map.getRBrack());
   }
 
   @Nullable
@@ -726,21 +900,14 @@ public final class GroovyDslUtil {
     GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(newLiteral.getProject());
     GrNamedArgument namedArgument = factory.createNamedArgument(expression.getName(), newLiteral);
     PsiElement added;
-    if (parentPsiElement instanceof GrCommandArgumentList) {
-      // addNamedArgument() on a GrCommandArgumentList adds the argument before the last existing argument, if any.  Although it doesn't
-      // directly affect the semantics, we want to add new elements at the end of the argument list.  (This doesn't work for general
-      // GrArgumentLists because the last child of the Psi might be the closing bracket of an explicit method call.)
-      added = parentPsiElement.addAfter(namedArgument, parentPsiElement.getLastChild());
+    if (parentPsiElement instanceof GrArgumentList argList) {
+      added = appendToArgumentList(argList, namedArgument);
     }
-    else if (parentPsiElement instanceof GrArgumentList) {
-      added = ((GrArgumentList)parentPsiElement).addNamedArgument(namedArgument);
-    }
-    else if (parentPsiElement instanceof GrListOrMap) {
-      GrListOrMap grListOrMap = (GrListOrMap)parentPsiElement;
+    else if (parentPsiElement instanceof GrListOrMap grListOrMap) {
       added = addToMap(grListOrMap, namedArgument);
     }
     else {
-      added = parentPsiElement.addBefore(namedArgument, parentPsiElement.getLastChild());
+      added = adoptBefore(parentPsiElement, namedArgument, parentPsiElement.getLastChild());
     }
     if (added instanceof GrNamedArgument) {
       GrNamedArgument addedNameArgument = (GrNamedArgument)added;
@@ -773,7 +940,7 @@ public final class GroovyDslUtil {
     GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(parentPsi.getProject());
     String expressionText = parentPsi.getText() + " " + expression.getName() + " " + expressionPsi.getText();
     GrExpression newInfixExpression = factory.createExpressionFromText(expressionText);
-    PsiElement newParentPsi = parentPsi.replace(newInfixExpression);
+    PsiElement newParentPsi = replaceWithSynthesized(parentPsi, newInfixExpression);
     parent.setPsiElement(newParentPsi);
 
     expression.setPsiElement(newParentPsi.getLastChild().getLastChild());
@@ -796,7 +963,7 @@ public final class GroovyDslUtil {
     }
     PsiElement psiExpression = ensureGroovyPsi(expression.getExpression());
     if (psiExpression != null) {
-      PsiElement replace = psiExpression.replace(newLiteral);
+      PsiElement replace = replaceWithSynthesized(psiExpression, newLiteral);
       if (replace instanceof GrLiteral || replace instanceof GrReferenceExpression || replace instanceof GrIndexProperty) {
         expression.setExpression(replace);
       }
@@ -806,26 +973,26 @@ public final class GroovyDslUtil {
       PsiElement added;
       // This element will look like "propertyName propertyValue" and we need to create an intermediate psiElement (commandArgumentList)
       // to prevent breaking the psiTree of a GrApplicationStatement.
-      if (psiElement instanceof GrApplicationStatement) {
+      if (psiElement instanceof GrApplicationStatement applicationStatement) {
         GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(psiElement.getProject());
         // Create a fake applicationStatement element.
         GrApplicationStatement fakeStatement = (GrApplicationStatement)(factory.createStatementFromText("a 'a'"));
         GrCommandArgumentList arguments = fakeStatement.getArgumentList();
         // Empty the arguments list so we can use it for psiElement.
         arguments.getFirstChild().delete();
-        psiElement.addAfter(arguments, psiElement.getLastChild());
-        added = ((GrApplicationStatement)psiElement).getArgumentList().add(newLiteral);
+        adoptAfter(psiElement, arguments, psiElement.getLastChild());
+        added = appendToArgumentList(applicationStatement.getArgumentList(), newLiteral);
       }
-      else if (psiElement instanceof GrMethodCallExpression) {
+      else if (psiElement instanceof GrMethodCallExpression methodCallExpression) {
         GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(psiElement.getProject());
         GrMethodCallExpression fakeExpression = (GrMethodCallExpression)(factory.createExpressionFromText("a('a')"));
         GrArgumentList arguments = fakeExpression.getArgumentList();
         arguments.getExpressionArguments()[0].delete();
-        psiElement.addAfter(arguments, psiElement.getLastChild());
-        added = ((GrMethodCallExpression)psiElement).getArgumentList().add(newLiteral);
+        adoptAfter(psiElement, arguments, psiElement.getLastChild());
+        added = appendToArgumentList(methodCallExpression.getArgumentList(), newLiteral);
       }
       else {
-        added = psiElement.addAfter(newLiteral, psiElement.getLastChild());
+        added = adoptAfter(psiElement, newLiteral, psiElement.getLastChild());
       }
       expression.setExpression(added);
 
@@ -852,25 +1019,25 @@ public final class GroovyDslUtil {
     GrExpression expressionFromText = factory.createExpressionFromText("[]");
     GrNamedArgument namedArgument = factory.createNamedArgument(expressionList.getName(), expressionFromText);
     PsiElement added;
-    if (parentPsiElement instanceof GrArgumentList) {
-      GrArgumentList argList = (GrArgumentList)parentPsiElement;
-      // This call can return a placeholder PsiElement. We can't use its return value.
-      argList.addNamedArgument(namedArgument);
-
-      GrNamedArgument[] args = argList.getNamedArguments();
-      added = args[args.length - 1];
+    if (parentPsiElement instanceof GrArgumentList argList) {
+      added = appendToArgumentList(argList, namedArgument);
     }
-    else if (parentPsiElement instanceof GrListOrMap) {
-      GrListOrMap listOrMap = (GrListOrMap)parentPsiElement;
+    else if (parentPsiElement instanceof GrListOrMap listOrMap) {
       // For list and maps we need to add the element delimiter "," after the added element if there is more than one.
       if (!listOrMap.isEmpty()) {
         final ASTNode node = listOrMap.getNode();
         node.addLeaf(mCOMMA, ",", listOrMap.getLBrack().getNextSibling().getNode());
       }
-      added = parentPsiElement.addAfter(namedArgument, parentPsiElement.getLastChild());
+      else {
+        // Empty maps are defined by [:], so strip the colon before adding the first named entry.
+        while (listOrMap.getLBrack().getNextSibling() != listOrMap.getRBrack()) {
+          listOrMap.getLBrack().getNextSibling().delete();
+        }
+      }
+      added = adoptAfter(listOrMap, namedArgument, listOrMap.getLBrack());
     }
     else {
-      added = parentPsiElement.addAfter(namedArgument, parentPsiElement.getLastChild());
+      added = adoptAfter(parentPsiElement, namedArgument, parentPsiElement.getLastChild());
     }
     if (added instanceof GrNamedArgument) {
       GrNamedArgument addedNameArgument = (GrNamedArgument)added;
@@ -960,16 +1127,21 @@ public final class GroovyDslUtil {
             (parentPsi instanceof GrArgumentList && ((GrArgumentList)parentPsi).getAllArguments().length > 0));
   }
 
-  static void emplaceElementIntoList(@NotNull PsiElement anchorBefore, @NotNull PsiElement list, @NotNull PsiElement newElement) {
+  static PsiElement emplaceElementIntoList(@NotNull PsiElement anchorBefore, @NotNull PsiElement list, @NotNull PsiElement newElement) {
+    CheckUtil.checkWritable(list);
     final ASTNode node = list.getNode();
+    final ASTNode newNode = prepareSynthesizedNodeForAdoption(list, newElement);
     final ASTNode anchor = anchorBefore.getNode().getTreeNext();
-    node.addChild(newElement.getNode(), anchor);
-    node.addLeaf(mCOMMA, ",", newElement.getNode());
+    node.addChild(newNode, anchor);
+    node.addLeaf(mCOMMA, ",", newNode);
+    return newNode.getPsi();
   }
 
   static PsiElement emplaceElementToFrontOfList(@NotNull PsiElement listElement, @NotNull PsiElement newElement) {
     assert listElement instanceof GrListOrMap || listElement instanceof GrArgumentList;
+    CheckUtil.checkWritable(listElement);
     final ASTNode node = listElement.getNode();
+    final ASTNode newNode = prepareSynthesizedNodeForAdoption(listElement, newElement);
     if (listElement instanceof GrListOrMap) {
       GrListOrMap list = (GrListOrMap)listElement;
       final ASTNode anchor = list.getLBrack().getNode().getTreeNext();
@@ -978,7 +1150,7 @@ public final class GroovyDslUtil {
         node.addLeaf(TokenType.WHITE_SPACE, " ", anchor);
       }
       // We want to anchor this off the added mCOMMA node.
-      node.addChild(newElement.getNode(), list.getLBrack().getNode().getTreeNext());
+      node.addChild(newNode, list.getLBrack().getNode().getTreeNext());
     }
     else if (((GrArgumentList)listElement).getLeftParen() != null) {
       GrArgumentList list = (GrArgumentList)listElement;
@@ -989,7 +1161,7 @@ public final class GroovyDslUtil {
         node.addLeaf(mCOMMA, ",", anchor);
         node.addLeaf(TokenType.WHITE_SPACE, " ", anchor);
       }
-      node.addChild(newElement.getNode(), list.getLeftParen().getNode().getTreeNext());
+      node.addChild(newNode, list.getLeftParen().getNode().getTreeNext());
     }
     else {
       ASTNode anchor = getFirstASTNode(listElement);
@@ -998,10 +1170,10 @@ public final class GroovyDslUtil {
         node.addLeaf(TokenType.WHITE_SPACE, " ", anchor);
       }
       // We want to anchor this off the added mCOMMA node
-      node.addChild(newElement.getNode(), getFirstASTNode(listElement));
+      node.addChild(newNode, getFirstASTNode(listElement));
     }
 
-    return newElement;
+    return newNode.getPsi();
   }
 
   @Nullable
@@ -1025,8 +1197,7 @@ public final class GroovyDslUtil {
       PsiElement anchorPsi = after.getDslElement().getPsiElement();
       assert anchorPsi != null;
 
-      emplaceElementIntoList(anchorPsi, parentPsiElement, newElement);
-      added = newElement;
+      added = emplaceElementIntoList(anchorPsi, parentPsiElement, newElement);
     }
     else {
       added = emplaceElementToFrontOfList(parentPsiElement, newElement);
@@ -1153,14 +1324,14 @@ public final class GroovyDslUtil {
     }
     else if (element instanceof GradleDslNamedDomainElement && ((GradleDslNamedDomainElement)element).getMethodName() != null) {
       PsiElement psiElement = getPsiElementFactory(element).createLiteralFromValue(newName);
-      newElement = oldName.replace(psiElement);
+      newElement = replaceWithSynthesized(oldName, psiElement);
     }
     else {
       PsiElement psiElement = createNameElement(element, quotePartIfNecessary(newName));
       if (psiElement == null) {
         return;
       }
-      newElement = oldName.replace(psiElement);
+      newElement = replaceWithSynthesized(oldName, psiElement);
     }
     element.getNameElement().commitNameChange(newElement, writer, element.getParent());
   }
@@ -1296,13 +1467,13 @@ public final class GroovyDslUtil {
     GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(psiElement.getProject());
     GrClosableBlock block = factory.createClosureFromText("{ }");
     PsiElement newElement;
-    if (psiElement instanceof GrApplicationStatement) {
-      GrArgumentList argumentList = ((GrApplicationStatement)psiElement).getArgumentList();
-      newElement = argumentList.addAfter(block, argumentList.getLastChild());
+    if (psiElement instanceof GrApplicationStatement applicationStatement) {
+      GrArgumentList argumentList = applicationStatement.getArgumentList();
+      newElement = appendToArgumentList(argumentList, block);
     }
     else {
       psiElement.addAfter(factory.createWhiteSpace(), psiElement.getLastChild());
-      newElement = psiElement.addAfter(block, psiElement.getLastChild());
+      newElement = adoptAfter(psiElement, block, psiElement.getLastChild());
     }
     closure.setPsiElement(newElement);
     closure.applyChanges();
