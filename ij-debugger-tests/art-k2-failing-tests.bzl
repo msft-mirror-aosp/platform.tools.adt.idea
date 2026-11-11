@@ -7,8 +7,6 @@ load(":ij-debugger-tests.bzl", "include_k2")
 # K2IdeK2CodeKotlinEvaluateExpressionTestGenerated and K2IdeK2CodeKotlinSteppingTestGenerated.
 _tests = [
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testAnonymousFun",  # b/575539285, b/578038532
-    "K2IdeK2CodeBreakpointHighlightingTestGenerated.testConditionalReturn",  # b/575823083
-    "K2IdeK2CodeBreakpointHighlightingTestGenerated.testConditionalReturnInLambda",  # b/575823083
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testDefaultLambdaParameter",  # b/578038532
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testMultiLineLambda",  # b/578123886
     "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFun1",  # b/579461799

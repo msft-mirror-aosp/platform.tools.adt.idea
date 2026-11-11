@@ -55,7 +55,7 @@ def debugger_test(
 
     if expected_results:
         env = env | {
-            "EXPECTED_RESULTS_FILE": "$(location " + expected_results + ")",
+            "EXPECTED_RESULTS_FILE": "$(execpath " + expected_results + ")",
             "JB_TEST_EXCECUTION_RESULT_INTERCEPTOR": "com.google.android.tools.debugger.test.lib.ExpectedFailuresInterceptor",
         }
         data = data + [expected_results]
@@ -78,10 +78,10 @@ def debugger_test(
         jvm_flags = jvm_flags + [
             "-Didea.platform.prefix=AndroidStudio",
         ]
-        runtime_deps = runtime_deps + [
+        runtime_deps = [
             "//tools/adt/idea/ij-debugger-tests/lib:art-attacher",
             "@tools_idea//adt-branding:android-adt-branding",
-        ]
+        ] + runtime_deps
 
     java_test(
         name = name,

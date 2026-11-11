@@ -15,18 +15,23 @@
  */
 package com.android.tools.idea.debug
 
+import com.intellij.debugger.BytecodeInspector
 import com.intellij.debugger.engine.DebugProcessImpl
+import com.intellij.debugger.engine.DebuggerUtils
 import com.intellij.debugger.engine.PositionManagerAsync
+import com.intellij.debugger.impl.DebuggerUtilsEx
 import com.intellij.openapi.application.readAction
 import com.intellij.psi.util.parentOfType
 import com.sun.jdi.LocalVariable
 import com.sun.jdi.Location
 import com.sun.jdi.Method
+import com.sun.jdi.VirtualMachine
 import java.util.LinkedList
 import kexter.Dex
 import kexter.DexBytecode
 import kexter.DexMethod
 import kexter.DexMethodDebugInfo
+import kexter.Instruction
 import kexter.InvokeInstruction
 import kexter.LineTableEntry
 import kexter.Opcode
@@ -40,7 +45,7 @@ import org.jetbrains.kotlin.idea.debugger.stepping.smartStepInto.KotlinSmartStep
 import org.jetbrains.kotlin.idea.debugger.stepping.smartStepInto.SmartStepIntoContext
 import org.jetbrains.kotlin.psi.KtNamedFunction
 
-class DexBytecodeInspectorImpl : DexBytecodeInspector {
+class DexBytecodeInspectorImpl : DexBytecodeInspector, BytecodeInspector {
   /**
    * Checks if the method is a simple delegate to a static method by performing a bytecode instruction test.
    *
@@ -109,6 +114,28 @@ class DexBytecodeInspectorImpl : DexBytecodeInspector {
     val filterer = KotlinSmartStepTargetFilterer(targets, debugProcess)
     filterer.visitMethodUntilLocation(debugProcess, method, lines, location, dex)
     return filterer.getUnvisitedTargets()
+  }
+
+  override fun isApplicable(virtualMachine: VirtualMachine) = DebuggerUtils.isAndroidVM(virtualMachine)
+
+  override fun findInlineConditionalReturnLocations(method: Method, lineNumber: Int): List<Location> {
+    val bytecode = DexBytecode.fromBytes(method.bytecodes(), method.getDebugInfo())
+    val instructions = bytecode.instructionsForLineNumber(lineNumber)
+    // // Implicit return instruction at the end of bytecode should not be treated as conditional return.
+    val lastInstruction = bytecode.getLastInstructionOfLastLine()?.index ?: return emptyList()
+    val returns = instructions.filter { it.opcode.isReturn() && it.index != lastInstruction }
+    return returns.map { method.locationOfCodeIndex(it.index.toLong()) }
+  }
+
+  override fun isConditionalReturnLocation(location: Location): Boolean {
+    val method = DebuggerUtilsEx.getMethod(location) ?: return false
+    val bytecode = DexBytecode.fromBytes(method.bytecodes(), method.getDebugInfo())
+    val instructions = bytecode.instructionsForLineNumber(location.lineNumber())
+    val index = location.codeIndex().toUInt()
+    val instruction = instructions.find { it.index == index } ?: return false
+
+    // // Implicit return instruction at the end of bytecode should not be treated as conditional return.
+    return instruction.opcode.isReturn() && instruction.index != bytecode.getLastInstructionOfLastLine()?.index
   }
 }
 
@@ -262,3 +289,50 @@ private suspend fun getCalledInlineFunction(positionManager: PositionManagerAsyn
 }
 
 private data class ScopedVariable(val variable: LocalVariable, val scope: ClosedRange<Location>)
+
+/**
+ * Returns the last instruction of the last line in the source code.
+ *
+ * Note that this is not the same as getting the last instruction of the bytecode. For example:
+ * ```
+ * fun headAndTail(s: Set<Int>): Pair<Int, Int>? {
+ *   val head = s.firstOrNull() ?: return null
+ *   val tail = s.last()
+ *   return Pair(head, tail)
+ * }
+ * ```
+ *
+ * Generates code (opcode arguments removed for readability):
+ * ```
+ *     3:  0000: move-object
+ *         0001: check-cast
+ *         0003: invoke-static
+ *         0006: move-result-object
+ *         0007: check-cast
+ *         0009: if-eqz
+ *         000b: invoke-virtual
+ *         000e: move-result
+ *     4:  000f: move-object
+ *         0010: check-cast
+ *         0012: invoke-static
+ *         0015: move-result-object
+ *         0016: check-cast
+ *         0018: invoke-virtual
+ *         001b: move-result
+ *     5:  001c: new-instance
+ *         001e: invoke-static
+ *         0021: move-result-object
+ *         0022: invoke-static
+ *         0025: move-result-object
+ *         0026: invoke-direct
+ *         0029: return-object
+ *     3:  002a: const/4
+ *         002b: return-object
+ * ```
+ *
+ * Notice that the last instruction on the bytecode is on source line 3 while the last source line is 5
+ */
+private fun DexBytecode.getLastInstructionOfLastLine(): Instruction? {
+  val lastLine = debugInfo.lineTable.maxOfOrNull { it.lineNumber } ?: return null
+  return instructionsForLineNumber(lastLine).lastOrNull()
+}

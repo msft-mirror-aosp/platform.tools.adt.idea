@@ -23,6 +23,7 @@ import com.android.tools.idea.debug.DexFinder
 import com.android.tools.idea.debug.childrenrenderer.AndroidKotlinRendererProvider
 import com.android.tools.idea.flags.StudioFlags
 import com.intellij.core.CoreApplicationEnvironment
+import com.intellij.debugger.BytecodeInspector
 import com.intellij.debugger.engine.FieldVisibilityProvider
 import com.intellij.debugger.engine.RemoteDebugProcessHandler
 import com.intellij.debugger.engine.RemoteStateState
@@ -109,6 +110,10 @@ private val JDI_HELPER_CLASS_LOADER_EP = ExtensionPointName.create<JdiHelperClas
 private val DEX_BYTECODE_INSPECTOR_EP: ExtensionPointName<DexBytecodeInspector> =
   ExtensionPointName.create("com.intellij.debugger.dexBytecodeInspector")
 
+@Suppress("UnresolvedPluginConfigReference")
+private val BYTECODE_INSPECTOR_EP: ExtensionPointName<BytecodeInspector> =
+  ExtensionPointName.create("com.intellij.debugger.bytecodeInspector")
+
 /** Attaches to an ART VM */
 @Suppress("unused")
 internal class ArtAttacher : VmAttacher {
@@ -146,7 +151,9 @@ internal class ArtAttacher : VmAttacher {
     project.registerExtension(AndroidDexer.extensionPointName, AndroidDexerImpl(project), disposable)
     application.registerExtension(FIELD_VISIBILITY_PROVIDER_EP, AndroidFieldVisibilityProvider(), disposable)
     application.registerExtension(JDI_HELPER_CLASS_LOADER_EP, AndroidJdiHelperClassLoader(), disposable)
-    application.registerExtension(DEX_BYTECODE_INSPECTOR_EP, DexBytecodeInspectorImpl(), disposable)
+    val bytecodeInspector = DexBytecodeInspectorImpl()
+    application.registerExtension(DEX_BYTECODE_INSPECTOR_EP, bytecodeInspector, disposable)
+    application.registerExtension(BYTECODE_INSPECTOR_EP, bytecodeInspector, disposable)
     application.registerExtension(
       CompoundRendererProvider.EP_NAME,
       AndroidKotlinRendererProvider(),
