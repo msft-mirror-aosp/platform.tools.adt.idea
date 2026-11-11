@@ -370,4 +370,145 @@ class InteractivePreviewNavigationControllerTest {
     assertThat(controller.canShowNavigationPanel()).isFalse()
     assertThat(controller.getNavigationHistory()).isEmpty()
   }
+
+  @Test
+  fun testScreenLevelBackHandlerPreservesSceneNavigationHistoryAndCanBackPress() {
+    // Define a fake BackHandlerInfo matching androidx.activity.compose.BackHandler's non-destination info
+    data class BackHandlerInfo(val owner: Any, val compositeKey: Long)
+
+    // Define a fake NavigationEventHandler holding isBackEnabled, currentInfo, and backInfo
+    class FakeRegisteredHandler(
+      var isBackEnabled: Boolean,
+      var currentInfo: Any,
+      var backInfo: List<Any> = emptyList(),
+    )
+
+    // Define a fake NavigationEventProcessor holding overlayHandlers and defaultHandlers
+    class FakeNavigationEventProcessor(
+      val overlayHandlers: List<FakeRegisteredHandler> = emptyList(),
+      val defaultHandlers: List<FakeRegisteredHandler> = emptyList(),
+    )
+
+    // Define a fake NavigationEventDispatcher exposing sharedProcessor
+    class FakeDispatcher(val sharedProcessor: FakeNavigationEventProcessor)
+
+    // Define a fake NavigationEventDispatcherOwner exposing navigationEventDispatcher, canBackPress, and getHistory
+    class FakeDispatcherOwnerWithHandlers(
+      val navigationEventDispatcher: FakeDispatcher,
+      var canBackPressValue: Boolean,
+      var rawHistory: List<Any>,
+    ) {
+      fun canBackPress(): Boolean = canBackPressValue
+
+      fun getHistory(): List<Any> = rawHistory
+    }
+
+    // Set up root RouteA with an active screen-level BackHandler(enabled = true)
+    val backHandlerInfo = BackHandlerInfo(owner = "FakeOwner", compositeKey = 42L)
+    val screenBackHandler = FakeRegisteredHandler(isBackEnabled = true, currentInfo = backHandlerInfo)
+    val navDisplayHandler = FakeRegisteredHandler(isBackEnabled = true, currentInfo = "RouteA", backInfo = emptyList())
+    val processor = FakeNavigationEventProcessor(defaultHandlers = listOf(screenBackHandler, navDisplayHandler))
+    val dispatcherOwner =
+      FakeDispatcherOwnerWithHandlers(
+        navigationEventDispatcher = FakeDispatcher(processor),
+        // At root [RouteA], history.currentIndex is 0 so owner.canBackPress() returns false
+        canBackPressValue = false,
+        // NavigationEventProcessor puts activeHandler.currentInfo (BackHandlerInfo) into history
+        rawHistory = listOf(backHandlerInfo),
+      )
+
+    // Configure controller to trust FakeDispatcherOwnerWithHandlers
+    val controller =
+      createController().apply {
+        setIsTrustedNavigationEventDispatcherOwnerForTestOnly { it is FakeDispatcherOwnerWithHandlers }
+      }
+    controller.updateObjects(dispatcherOwner, TestComposeViewAdapterViewObj(), hasNavDisplay = true)
+
+    // Verify RouteA is shown in navigation history instead of BackHandlerInfo, and back press is enabled while BackHandler is active
+    assertThat(controller.getNavigationHistory()).containsExactly("RouteA").inOrder()
+    assertThat(controller.canBackPress()).isTrue()
+
+    // Simulate clicking Navigate Back on RouteA, which disables the screen-level BackHandler
+    screenBackHandler.isBackEnabled = false
+    dispatcherOwner.rawHistory = listOf("RouteA")
+
+    // Verify RouteA remains in navigation history and back press becomes disabled at root once BackHandler is disabled
+    assertThat(controller.getNavigationHistory()).containsExactly("RouteA").inOrder()
+    assertThat(controller.canBackPress()).isFalse()
+
+    // Simulate navigating forward to RouteB where RouteB has an active screen-level BackHandler(enabled = true)
+    screenBackHandler.isBackEnabled = true
+    navDisplayHandler.backInfo = listOf("RouteA")
+    navDisplayHandler.currentInfo = "RouteB"
+    dispatcherOwner.canBackPressValue = true
+    dispatcherOwner.rawHistory = listOf("RouteA", backHandlerInfo)
+
+    // Verify both RouteA and RouteB are preserved in navigation history and BackHandlerInfo is excluded
+    assertThat(controller.getNavigationHistory()).containsExactly("RouteA", "RouteB").inOrder()
+    assertThat(controller.canBackPress()).isTrue()
+  }
+
+  @Test
+  fun testMultipleRootNavDisplaysAndNestedDestinationHandlersPreserveAllCurrentInfos() {
+    // Define a fake OnBackPressedCallbackInfo matching androidx.activity.OnBackPressedCallbackInfo
+    data class OnBackPressedCallbackInfo(val callback: Any)
+
+    class FakeRegisteredHandler(
+      var isBackEnabled: Boolean,
+      var currentInfo: Any,
+      var backInfo: List<Any> = emptyList(),
+    )
+
+    class FakeNavigationEventProcessor(
+      val overlayHandlers: List<FakeRegisteredHandler> = emptyList(),
+      val defaultHandlers: List<FakeRegisteredHandler> = emptyList(),
+    )
+
+    class FakeDispatcher(val sharedProcessor: FakeNavigationEventProcessor)
+
+    class FakeDispatcherOwnerWithHandlers(
+      val navigationEventDispatcher: FakeDispatcher,
+      var canBackPressValue: Boolean,
+      var rawHistory: List<Any>,
+    ) {
+      fun canBackPress(): Boolean = canBackPressValue
+
+      fun getHistory(): List<Any> = rawHistory
+    }
+
+    // Register two root NavDisplay handlers (innermost first in LIFO defaultHandlers) with empty backInfo
+    val outerNavHandler = FakeRegisteredHandler(isBackEnabled = true, currentInfo = "OuterA", backInfo = emptyList())
+    val innerNavHandler = FakeRegisteredHandler(isBackEnabled = true, currentInfo = "Inner1", backInfo = emptyList())
+    val callbackInfo = OnBackPressedCallbackInfo(callback = "Callback")
+    val callbackHandler = FakeRegisteredHandler(isBackEnabled = false, currentInfo = callbackInfo)
+    val processor = FakeNavigationEventProcessor(defaultHandlers = listOf(callbackHandler, innerNavHandler, outerNavHandler))
+    val dispatcherOwner =
+      FakeDispatcherOwnerWithHandlers(
+        navigationEventDispatcher = FakeDispatcher(processor),
+        canBackPressValue = false,
+        rawHistory = emptyList(),
+      )
+
+    val controller =
+      createController().apply {
+        setIsTrustedNavigationEventDispatcherOwnerForTestOnly { it is FakeDispatcherOwnerWithHandlers }
+      }
+    controller.updateObjects(dispatcherOwner, TestComposeViewAdapterViewObj(), hasNavDisplay = true)
+
+    // Verify multiple root NavDisplays with empty backInfo do not falsely enable Navigate Back
+    assertThat(controller.canBackPress()).isFalse()
+    assertThat(controller.getNavigationHistory()).containsExactly("OuterA", "Inner1").inOrder()
+
+    // Advance both outer and inner NavDisplays and enable the screen-level callback handler
+    outerNavHandler.backInfo = listOf("OuterA")
+    outerNavHandler.currentInfo = "OuterB"
+    innerNavHandler.backInfo = listOf("Inner1")
+    innerNavHandler.currentInfo = "Inner2"
+    callbackHandler.isBackEnabled = true
+    dispatcherOwner.rawHistory = listOf("OuterA", "Inner1", callbackInfo)
+
+    // Verify both OuterB and Inner2 currentInfos are preserved in outer-to-inner order
+    assertThat(controller.canBackPress()).isTrue()
+    assertThat(controller.getNavigationHistory()).containsExactly("OuterA", "OuterB", "Inner1", "Inner2").inOrder()
+  }
 }

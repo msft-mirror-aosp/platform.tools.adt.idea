@@ -16,6 +16,8 @@
 package com.android.tools.idea.compose.preview.interactive
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NavigationInfoParserTest {
@@ -77,6 +79,16 @@ class NavigationInfoParserTest {
   @Suppress("ClassName") private class lowercaseHomeRoute
 
   @Suppress("ClassName") private data class lowercaseProductRoute(val itemId: Int)
+
+  private data class BackHandlerInfo(val owner: Any, val compositeKey: Long) : FakeNavigationEventInfo()
+
+  private data class PredictiveBackHandlerInfo(val owner: Any, val compositeKey: Long) : FakeNavigationEventInfo()
+
+  private data class OnBackPressedCallbackInfo(val callback: Any) : FakeNavigationEventInfo()
+
+  private class NavigationEventInfo {
+    object None : FakeNavigationEventInfo()
+  }
 
   @Test
   fun testParsePlainStringScreenName() {
@@ -205,5 +217,41 @@ class NavigationInfoParserTest {
     // Verifies that empty or whitespace strings return an empty list rather than an empty UI card.
     assertEquals(emptyList<NavigationItemInfo>(), parseNavigationItem(""))
     assertEquals(emptyList<NavigationItemInfo>(), parseNavigationItem("   "))
+  }
+
+  @Test
+  fun testNonDestinationNavigationEventInfoPlaceholdersAreIgnored() {
+    // Instantiate all four AndroidX non-destination NavigationEventInfo placeholder types
+    val backHandlerInfo = BackHandlerInfo(owner = Any(), compositeKey = 42L)
+    val predictiveBackHandlerInfo = PredictiveBackHandlerInfo(owner = Any(), compositeKey = 99L)
+    val onBackPressedCallbackInfo = OnBackPressedCallbackInfo(callback = Any())
+    val noneInfo = NavigationEventInfo.None
+
+    // Verify each placeholder is identified as non-destination and returns an empty list when parsed
+    assertTrue(isNonDestinationNavigationEventInfo(backHandlerInfo))
+    assertTrue(isNonDestinationNavigationEventInfo(predictiveBackHandlerInfo))
+    assertTrue(isNonDestinationNavigationEventInfo(onBackPressedCallbackInfo))
+    assertTrue(isNonDestinationNavigationEventInfo(noneInfo))
+    assertEquals(emptyList<NavigationItemInfo>(), parseNavigationItem(backHandlerInfo))
+    assertEquals(emptyList<NavigationItemInfo>(), parseNavigationItem(predictiveBackHandlerInfo))
+    assertEquals(emptyList<NavigationItemInfo>(), parseNavigationItem(onBackPressedCallbackInfo))
+    assertEquals(emptyList<NavigationItemInfo>(), parseNavigationItem(noneInfo))
+
+    // Verify mixed iterables filter out non-destination placeholders while keeping real destinations
+    val mixedItems = listOf(HomeRoute, backHandlerInfo, ProfileRoute, noneInfo)
+    assertEquals(
+      listOf(NavigationItemInfo(navKey = "HomeRoute"), NavigationItemInfo(navKey = "ProfileRoute")),
+      parseNavigationItem(mixedItems),
+    )
+  }
+
+  @Test
+  fun testIsNonDestinationNavigationEventInfoReturnsFalseForNullAndDestinations() {
+    // Verify null and valid destination entries are never misclassified as non-destination placeholders
+    assertFalse(isNonDestinationNavigationEventInfo(null))
+    assertFalse(isNonDestinationNavigationEventInfo(HomeRoute))
+    assertFalse(isNonDestinationNavigationEventInfo(ProductRoute(id = 1)))
+    val validSceneInfo = FakeSceneInfo(scene = FakeSinglePaneScene(entry = FakeNavEntry<Any>(key = HomeRoute)))
+    assertFalse(isNonDestinationNavigationEventInfo(validSceneInfo))
   }
 }

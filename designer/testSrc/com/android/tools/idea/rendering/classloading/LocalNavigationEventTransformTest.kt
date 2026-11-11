@@ -30,6 +30,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Before
 import org.junit.Test
 
@@ -165,6 +166,20 @@ class LocalNavigationEventTransformTest {
       )
     val lastOwner = updaterClass.callMethod("getLastOwner")
     assertNull(lastOwner)
+  }
+
+  @Test
+  fun `getCurrent reuses the same FakeNavigationEventDispatcherOwner across repeated calls`() {
+    // Clear any explicit owner so getCurrent falls back to FakeNavigationEventDispatcherOwner
+    localNavigationEventOwnerClass.callMethod("setCurrentNavigationEventDispatcherOwner", null)
+
+    // Invoke getCurrent multiple times as NavDisplay and BackHandler do within one preview render
+    val firstResolvedOwner = localNavigationEventOwnerClass.callMethod("getCurrent", fakeComposer, 0)
+    val secondResolvedOwner = localNavigationEventOwnerClass.callMethod("getCurrent", fakeComposer, 0)
+
+    // Verify both reads receive the exact same cached FakeNavigationEventDispatcherOwner instance
+    assertNotNull(firstResolvedOwner)
+    assertSame(firstResolvedOwner, secondResolvedOwner)
   }
 
   fun Class<*>.callMethod(methodName: String, vararg arguments: Any?): Any? {

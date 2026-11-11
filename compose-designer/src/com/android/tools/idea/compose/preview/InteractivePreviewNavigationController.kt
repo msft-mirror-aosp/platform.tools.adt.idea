@@ -20,6 +20,8 @@ import com.android.tools.adtui.compose.StudioComposePanel
 import com.android.tools.environment.Logger
 import com.android.tools.idea.compose.preview.interactive.NavigationControlsContent
 import com.android.tools.idea.compose.preview.interactive.NavigationItemInfo
+import com.android.tools.idea.compose.preview.interactive.getReflectedProperty
+import com.android.tools.idea.compose.preview.interactive.isNonDestinationNavigationEventInfo
 import com.android.tools.idea.compose.preview.scene.InteractivePreviewBackNavigationUpdater
 import com.android.tools.idea.compose.preview.util.isEdgeNavigationImplemented
 import com.android.tools.idea.preview.analytics.InteractivePreviewUsageTracker
@@ -180,7 +182,19 @@ class InteractivePreviewNavigationController(
   fun canBackPress(): Boolean {
     val owner = backPressDispatcherOwner ?: return false
     val resolvedMethod = canBackPressMethod ?: owner.findMethod(CAN_BACK_PRESS).also { canBackPressMethod = it }
-    return resolvedMethod?.invoke(owner) as? Boolean ?: false
+    if (resolvedMethod?.invoke(owner) as? Boolean == true) {
+      return true
+    }
+
+    // At the root destination (where history.currentIndex == 0), owner.canBackPress() returns false
+    // even if a screen-level BackHandler(enabled = true) or PredictiveBackHandler is active on top of NavDisplay.
+    return getRegisteredNavigationHandlers(owner).any { handler ->
+      val isEnabled = getReflectedProperty(handler, IS_BACK_ENABLED_PROPERTY) as? Boolean == true
+      if (!isEnabled) return@any false
+      val currentInfo = getReflectedProperty(handler, CURRENT_INFO_PROPERTY)
+      val backInfo = getReflectedProperty(handler, BACK_INFO_PROPERTY) as? Collection<*>
+      isNonDestinationNavigationEventInfo(currentInfo) || !backInfo.isNullOrEmpty()
+    }
   }
 
   /**
@@ -255,8 +269,60 @@ class InteractivePreviewNavigationController(
   fun getNavigationHistory(): List<Any> {
     val owner = backPressDispatcherOwner ?: return emptyList()
     val resolvedMethod = navigationHistory ?: owner.findMethod(GET_BACK_HISTORY).also { navigationHistory = it }
-    return resolvedMethod?.invoke(owner) as? List<Any> ?: emptyList()
+    val rawHistory = (resolvedMethod?.invoke(owner) as? List<*>)?.filterNotNull().orEmpty()
+
+    // Return the dispatcher's mergedHistory directly when it already contains only destination entries.
+    if (rawHistory.isNotEmpty() && rawHistory.none(::isNonDestinationNavigationEventInfo)) {
+      return rawHistory
+    }
+
+    // When a screen-level BackHandler or non-destination handler is active on top of NavDisplay,
+    // NavigationEventProcessor replaces history.currentInfo with that handler's placeholder info.
+    // Reconstruct the destination stack in outer-to-inner order from the registered destination handlers.
+    val destinationHandlers =
+      getRegisteredNavigationHandlers(owner).filter { handler ->
+        val currentInfo = getReflectedProperty(handler, CURRENT_INFO_PROPERTY)
+        currentInfo != null && !isNonDestinationNavigationEventInfo(currentInfo)
+      }
+    if (destinationHandlers.isNotEmpty()) {
+      return destinationHandlers.asReversed().flatMap { handler ->
+        val backDestinations =
+          snapshotElements(getReflectedProperty(handler, BACK_INFO_PROPERTY)).filterNot(::isNonDestinationNavigationEventInfo)
+        val currentDestination = getReflectedProperty(handler, CURRENT_INFO_PROPERTY)?.takeUnless(::isNonDestinationNavigationEventInfo)
+        if (currentDestination != null) {
+          backDestinations + currentDestination
+        } else {
+          backDestinations
+        }
+      }
+    }
+
+    return rawHistory.filterNot(::isNonDestinationNavigationEventInfo)
   }
+
+  /**
+   * Returns all registered `NavigationEventHandler` instances from [owner]'s `NavigationEventDispatcher.sharedProcessor` in dispatch
+   * priority order (`overlayHandlers` followed by `defaultHandlers`).
+   */
+  private fun getRegisteredNavigationHandlers(owner: Any): List<Any> {
+    val dispatcher = getReflectedProperty(owner, NAVIGATION_EVENT_DISPATCHER_PROPERTY) ?: return emptyList()
+    val processor = getReflectedProperty(dispatcher, SHARED_PROCESSOR_PROPERTY) ?: return emptyList()
+    val overlayHandlers = snapshotElements(getReflectedProperty(processor, OVERLAY_HANDLERS_PROPERTY))
+    val defaultHandlers = snapshotElements(getReflectedProperty(processor, DEFAULT_HANDLERS_PROPERTY))
+    return overlayHandlers + defaultHandlers
+  }
+
+  /**
+   * Takes a thread-safe snapshot of a collection or iterable so EDT reads do not fail if the render thread mutates handlers concurrently.
+   */
+  private fun snapshotElements(collectionOrIterable: Any?): List<Any> = runCatching {
+    when (collectionOrIterable) {
+      is Collection<*> -> collectionOrIterable.toTypedArray().filterNotNull()
+      is Iterable<*> -> collectionOrIterable.toList().filterNotNull()
+      else -> emptyList()
+    }
+  }
+    .getOrDefault(emptyList())
 
   /**
    * Parses a navigation history item into [NavigationItemInfo] entries inside the active render session so reflection and `toString()`
@@ -369,6 +435,13 @@ class InteractivePreviewNavigationController(
     private const val ON_BACK_PRESS_COMPLETED = "onBackPressCompleted"
     private const val ON_BACK_PRESS_CANCELLED = "onBackPressCancelled"
     private const val GET_BACK_HISTORY = "getHistory"
+    private const val NAVIGATION_EVENT_DISPATCHER_PROPERTY = "navigationEventDispatcher"
+    private const val SHARED_PROCESSOR_PROPERTY = "sharedProcessor"
+    private const val OVERLAY_HANDLERS_PROPERTY = "overlayHandlers"
+    private const val DEFAULT_HANDLERS_PROPERTY = "defaultHandlers"
+    private const val IS_BACK_ENABLED_PROPERTY = "isBackEnabled"
+    private const val CURRENT_INFO_PROPERTY = "currentInfo"
+    private const val BACK_INFO_PROPERTY = "backInfo"
     private const val EXPECTED_NAVIGATION_EVENT_DISPATCHER_OWNER_CLASS_NAME =
       "androidx.navigationevent.compose.FakeNavigationEventDispatcherOwner"
 

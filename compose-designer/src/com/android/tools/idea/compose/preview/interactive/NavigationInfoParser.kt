@@ -24,12 +24,41 @@ private const val ENTRIES_PROPERTY = "entries"
 /** Property name to reflectively read the destination key from a `NavEntry`. */
 private const val KEY_PROPERTY = "key"
 
+/** Class name of `androidx.activity.compose.BackHandler`'s internal `NavigationEventInfo` wrapper. */
+private const val BACK_HANDLER_INFO_CLASS_NAME = "androidx.activity.compose.BackHandlerInfo"
+
+/** Class name of `androidx.activity.compose.PredictiveBackHandler`'s internal `NavigationEventInfo` wrapper. */
+private const val PREDICTIVE_BACK_HANDLER_INFO_CLASS_NAME = "androidx.activity.compose.PredictiveBackHandlerInfo"
+
+/** Class name of `androidx.activity.OnBackPressedDispatcher`'s internal `NavigationEventInfo` wrapper. */
+private const val ON_BACK_PRESSED_CALLBACK_INFO_CLASS_NAME = "androidx.activity.OnBackPressedCallbackInfo"
+
+/** Class name of `androidx.navigationevent.NavigationEventInfo.None` placeholder info. */
+private const val NAVIGATION_EVENT_INFO_NONE_CLASS_NAME = "androidx.navigationevent.NavigationEventInfo\$None"
+
 /**
  * Structured representation of a parsed navigation stack entry for display in the interactive preview UI.
  *
  * @property navKey The extracted human-readable navigation key or screen name (e.g., "Home", "Product(id=1)").
  */
 data class NavigationItemInfo(val navKey: String)
+
+/**
+ * Returns `true` if [navigationInfoItem] is an internal non-destination `NavigationEventInfo` placeholder (such as `BackHandlerInfo`,
+ * `PredictiveBackHandlerInfo`, `OnBackPressedCallbackInfo`, or `NavigationEventInfo.None`) rather than a route or scene.
+ */
+internal fun isNonDestinationNavigationEventInfo(navigationInfoItem: Any?): Boolean {
+  if (navigationInfoItem == null) return false
+  val className = navigationInfoItem.javaClass.name
+  return className == BACK_HANDLER_INFO_CLASS_NAME ||
+    className.endsWith("\$BackHandlerInfo") ||
+    className == PREDICTIVE_BACK_HANDLER_INFO_CLASS_NAME ||
+    className.endsWith("\$PredictiveBackHandlerInfo") ||
+    className == ON_BACK_PRESSED_CALLBACK_INFO_CLASS_NAME ||
+    className.endsWith("\$OnBackPressedCallbackInfo") ||
+    className == NAVIGATION_EVENT_INFO_NONE_CLASS_NAME ||
+    className.endsWith("NavigationEventInfo\$None")
+}
 
 /**
  * Extracts a list of [NavigationItemInfo] objects from a navigation back stack history item using reflection.
@@ -48,6 +77,11 @@ data class NavigationItemInfo(val navKey: String)
 fun parseNavigationItem(navigationInfoItem: Any): List<NavigationItemInfo> {
   if (navigationInfoItem is Iterable<*>) {
     return navigationInfoItem.filterNotNull().flatMap(::parseNavigationItem)
+  }
+
+  // Ignore internal non-destination back handler placeholders so they never render as stack cards
+  if (isNonDestinationNavigationEventInfo(navigationInfoItem)) {
+    return emptyList()
   }
 
   // 1. Unwrap `SceneInfo.scene` if this item is a `SceneInfo` container.
@@ -76,14 +110,14 @@ fun parseNavigationItem(navigationInfoItem: Any): List<NavigationItemInfo> {
  * classloader. Accessing `Scene.entries` (defined on the `Scene` interface) requires invoking `getEntries()` on potentially internal scene
  * implementations (such as `SinglePaneScene` or `DialogScene`), while accessing `NavEntry.key` requires reading its private `key` field.
  */
-private fun getReflectedProperty(targetObject: Any, propertyName: String): Any? {
+internal fun getReflectedProperty(targetObject: Any, propertyName: String): Any? {
   val getterMethodName = "get${propertyName.replaceFirstChar { it.uppercaseChar() }}"
   val classHierarchy = generateSequence<Class<*>>(targetObject.javaClass) { it.superclass }
 
   // 1. Look for a getter method (e.g., getScene(), getEntries()) across the class hierarchy to read the property.
   val getterMethod = classHierarchy.firstNotNullOfOrNull { currentClass ->
     currentClass.declaredMethods.firstOrNull { method ->
-      method.name == getterMethodName && method.parameterCount == 0
+      (method.name == getterMethodName || (propertyName.startsWith("is") && method.name == propertyName)) && method.parameterCount == 0
     }
   }
   if (getterMethod != null) {

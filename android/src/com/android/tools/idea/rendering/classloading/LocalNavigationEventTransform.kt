@@ -24,6 +24,10 @@ import org.objectweb.asm.Opcodes
 
 private const val LOCAL_NAVIGATION_EVENT_OWNER_EVENT = "androidx/navigationevent/compose/LocalNavigationEventDispatcherOwner"
 
+private const val FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER = "androidx/navigationevent/compose/FakeNavigationEventDispatcherOwner"
+
+private const val FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER_FIELD = "fakeNavigationEventDispatcherOwner"
+
 private const val INTERACTIVE_PREVIEW_BACK_NAVIGATION_UPDATER =
   "com/android/tools/idea/compose/preview/scene/InteractivePreviewBackNavigationUpdater"
 
@@ -75,6 +79,24 @@ class LocalNavigationEventTransform(delegate: ClassVisitor) : ClassVisitor(Opcod
       return super.visitMethod(modifiedAccess, "getCurrent$ORIGINAL_SUFFIX", descriptor, signature, exceptions)
     }
     return super.visitMethod(access, name, descriptor, signature, exceptions)
+  }
+
+  override fun visitEnd() {
+    if (StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK.get() && isLocalNavigationEventTransformOwner) {
+      // Cache a single FakeNavigationEventDispatcherOwner per preview classloader so NavDisplay and any
+      // screen-level BackHandler or PredictiveBackHandler share the same NavigationEventDispatcher
+      val fieldVisitor =
+        super.visitField(
+          Opcodes.ACC_PRIVATE or Opcodes.ACC_STATIC or Opcodes.ACC_VOLATILE,
+          FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER_FIELD,
+          "L$FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER;",
+          null,
+          null,
+        )
+      fieldVisitor?.visitAnnotation("Lorg/jetbrains/annotations/Nullable;", false)?.visitEnd()
+      fieldVisitor?.visitEnd()
+    }
+    super.visitEnd()
   }
 
   /**
@@ -253,39 +275,56 @@ class LocalNavigationEventTransform(delegate: ClassVisitor) : ClassVisitor(Opcod
     }
 
   /**
-   * Generates the bytecode for setting the [NavigationEventDispatcherOwner] on the [InteractivePreviewBackNavigationUpdater].
-   *
-   * This method performs the following operations:
-   * 1. Creates a new instance of `androidx.navigationevent.compose.FakeNavigationEventDispatcherOwner`.
-   * 2. Initializes the instance.
-   * 3. Stores the instance in a local variable.
-   * 4. Retrieves the static instance of [InteractivePreviewBackNavigationUpdater].
-   * 5. Calls [InteractivePreviewBackNavigationUpdater.setNavigationEventDispatcherOwner] with the created owner.
+   * Generates the bytecode for retrieving or creating the shared `FakeNavigationEventDispatcherOwner` instance and registering it with
+   * [InteractivePreviewBackNavigationUpdater].
    *
    * @param methodVisitor The [MethodVisitor] to write the instructions to.
-   * @return The [Label] marking the end of the initialization and setting process.
+   * @return The [Label] marking the start of the owner local variable scope.
    */
   private fun setNavigationEventDispatcherOwner(methodVisitor: MethodVisitor): Label =
     with(methodVisitor) {
       val label5 = Label()
       visitLabel(label5)
-      visitLineNumber(50, label5)
-      // val owner = FakeNavigationEventDispatcherOwner()
-      visitTypeInsn(Opcodes.NEW, "androidx/navigationevent/compose/FakeNavigationEventDispatcherOwner")
+      visitLineNumber(45, label5)
+      // Resolve the cached FakeNavigationEventDispatcherOwner or create a new one on first read
+      visitFieldInsn(
+        Opcodes.GETSTATIC,
+        LOCAL_NAVIGATION_EVENT_OWNER_EVENT,
+        FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER_FIELD,
+        "L$FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER;",
+      )
       visitInsn(Opcodes.DUP)
-      visitMethodInsn(Opcodes.INVOKESPECIAL, "androidx/navigationevent/compose/FakeNavigationEventDispatcherOwner", "<init>", "()V", false)
-      visitVarInsn(Opcodes.ASTORE, 4)
       val label6 = Label()
+      visitJumpInsn(Opcodes.IFNONNULL, label6)
+      visitInsn(Opcodes.POP)
+      visitTypeInsn(Opcodes.NEW, FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER)
+      visitInsn(Opcodes.DUP)
+      visitMethodInsn(Opcodes.INVOKESPECIAL, FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER, "<init>", "()V", false)
       visitLabel(label6)
-      visitLineNumber(51, label6)
-      // InteractivePreviewBackNavigationUpdater.setNavigationEventDispatcherOwner(owner)
+      visitLineNumber(44, label6)
+      visitFrame(Opcodes.F_SAME1, 0, null, 1, arrayOf<Any>(FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER))
+      visitVarInsn(Opcodes.ASTORE, 4)
+      val label7 = Label()
+      visitLabel(label7)
+      visitLineNumber(46, label7)
+      // Persist the shared FakeNavigationEventDispatcherOwner on LocalNavigationEventDispatcherOwner
+      visitVarInsn(Opcodes.ALOAD, 4)
+      visitFieldInsn(
+        Opcodes.PUTSTATIC,
+        LOCAL_NAVIGATION_EVENT_OWNER_EVENT,
+        FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER_FIELD,
+        "L$FAKE_NAVIGATION_EVENT_DISPATCHER_OWNER;",
+      )
+      val label8 = Label()
+      visitLabel(label8)
+      visitLineNumber(47, label8)
+      // Update InteractivePreviewBackNavigationUpdater with the shared dispatcher owner
       visitFieldInsn(
         Opcodes.GETSTATIC,
         INTERACTIVE_PREVIEW_BACK_NAVIGATION_UPDATER,
         "INSTANCE",
         "L$INTERACTIVE_PREVIEW_BACK_NAVIGATION_UPDATER;",
       )
-      // owner
       visitVarInsn(Opcodes.ALOAD, 4)
       visitMethodInsn(
         Opcodes.INVOKEVIRTUAL,
@@ -294,7 +333,7 @@ class LocalNavigationEventTransform(delegate: ClassVisitor) : ClassVisitor(Opcod
         "(Ljava/lang/Object;)V",
         false,
       )
-      return label6
+      return label7
     }
 }
 
@@ -315,6 +354,7 @@ We want to wrap the current (in java getCurrent()) method to check its returning
 1) Rename the getCurrent() to getCurrent_Original().
 2) Wrapping getCurrent_Original with a new getCurrent().
 3) Visit the new getCurrent() and intercepting getCurrent_Original if it returns a null value.
+4) Cache a single FakeNavigationEventDispatcherOwner instance in a private static field so all callers share the same dispatcher.
 
 Why bytecode manipulation?
 NavigationEventDispatcherOwner is used in the navigationevent library, which is using compileSdk 36, and we can't yet bump ui-tooling library to compileSdk 36.
@@ -327,6 +367,8 @@ public object LocalNavigationEventDispatcherOwner {
   private val LocalNavigationEventDispatcherOwner =
         compositionLocalWithHostDefaultOf(NavigationEventDispatcherOwnerHostDefaultKey)
 
+  private var fakeNavigationEventDispatcherOwner: FakeNavigationEventDispatcherOwner? = null
+
   public val current_Original: NavigationEventDispatcherOwner?
     @Composable
     get() = LocalNavigationEventDispatcherOwner.current
@@ -334,8 +376,8 @@ public object LocalNavigationEventDispatcherOwner {
   public val current: NavigationEventDispatcherOwner?
     @Composable
     get() = if (current_Original == null) {
-      // Created by FakeOnBackPressedDispatcherOwnerDump
-      val owner = FakeNavigationEventDispatcherOwner()
+      val owner = fakeNavigationEventDispatcherOwner ?: FakeNavigationEventDispatcherOwner()
+      fakeNavigationEventDispatcherOwner = owner
       InteractivePreviewBackNavigationUpdater.setNavigationEventDispatcherOwner(owner)
       owner
     } else {
