@@ -226,6 +226,7 @@ DEFAULT_INTEGRATION_TEST_PLUGINS = [
     "//tools/adt/idea/studio:com.android.tools.design",
     "//tools/adt/idea/studio:androidx.compose.plugins.idea",
     "//tools/adt/idea/studio:com.google.tools.ij.aiplugin",
+    "//tools/adt/idea/studio:com.google.tools.ij.gemini",
     "//tools/adt/idea/studio:com.android.tools.idea.smali",
 ]
 

@@ -23,6 +23,7 @@
     <orderEntry type="module" module-name="targetsdkversion-upgrade-assistant" />
     <orderEntry type="module" module-name="intellij.android.gmd-code-completion" />
     <orderEntry type="module" module-name="aiplugin.android-plugin" />
+    <orderEntry type="module" module-name="gemini-plugin" />
     <orderEntry type="module" module-name="aiplugin.experimental" />
     <orderEntry type="module" module-name="studio-sdk-all-plugins" />
     <orderEntry type="module" module-name="intellij.android.gradle.dsl.plugin" />

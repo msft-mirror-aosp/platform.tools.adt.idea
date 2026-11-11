@@ -89,6 +89,7 @@ public class StartUpTest {
           new ArrayList<>(
               Arrays.asList(
                   "Artifacts Repository Resolver",
+                  "AI in Android Studio",
                   "Android",
                   "Android APK Support",
                   "Android Design Tools",

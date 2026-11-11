@@ -1050,7 +1050,6 @@ studio_plugin(
     modules = {
         "aiplugin.jar": [
             "//tools/vendor/google/ml/aiplugin/android:aiplugin.android",
-            "//tools/vendor/google/ml/aiplugin/android/login:aiplugin.android.login",
             "//tools/vendor/google/ml/aiplugin/android/gradle:aiplugin.android.gradle",
             "//tools/vendor/google/ml/aiplugin/android/enterprise:aiplugin.android.enterprise",
             "//tools/vendor/google/ml/aiplugin/android/onboarding-common:aiplugin.android.onboarding-common",
@@ -1100,6 +1099,22 @@ studio_plugin(
         "@intellij//:org.intellij.groovy",
         "@intellij//:org.jetbrains.kotlin",
     ] + AIPLUGIN_STUDIO_DEPS,
+)
+
+studio_plugin(
+    name = "com.google.tools.ij.gemini",
+    directory = "gemini-google",
+    modules = {
+        "gemini-plugin.jar": [
+            "//tools/vendor/google/ml/aiplugin/gemini-plugin",
+            "//tools/vendor/google/ml/aiplugin/android/login:aiplugin.android.login",
+        ],
+    },
+    visibility = ["//visibility:public"],
+    deps = [
+        ":com.google.tools.ij.aiplugin",
+        ":org.jetbrains.android",
+    ],
 )
 
 studio_plugin(
@@ -1161,6 +1176,7 @@ STUDIO_CORE_PLUGINS = [
     "//tools/adt/idea/studio:com.google.services.git4insights",
     "//tools/adt/idea/studio:com.google.services.firebase",
     "//tools/adt/idea/studio:com.google.tools.ij.aiplugin",
+    "//tools/adt/idea/studio:com.google.tools.ij.gemini",
     "//tools/adt/idea/studio:com.google.gct.directaccess",
     "//tools/adt/idea/studio:com.android.gmdcodecompletion",
     "//tools/adt/idea/studio:com.android.tools.idea.smali",
@@ -1454,6 +1470,7 @@ iml_module(
         "//tools/vendor/google/targetsdkversion-upgrade-assistant",
         "//tools/adt/idea/gmd-code-completion:intellij.android.gmd-code-completion",
         "//tools/vendor/google/ml/aiplugin/android-plugin:aiplugin.android-plugin",
+        "//tools/vendor/google/ml/aiplugin/gemini-plugin",
         "//tools/vendor/google/ml/aiplugin/experimental:aiplugin.experimental",
         "//tools/adt/idea/studio:studio-sdk-all-plugins",
         "//tools/adt/idea/gradle-dsl-plugin:intellij.android.gradle.dsl.plugin",
