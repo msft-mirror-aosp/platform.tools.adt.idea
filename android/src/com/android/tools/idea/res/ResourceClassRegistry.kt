@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.res
 
+import com.android.annotations.concurrency.GuardedBy
 import com.android.ide.common.resources.ResourceRepository
 import com.android.tools.res.ResourceRepositoryManager
 import com.android.tools.res.ids.ResourceClassGenerator
@@ -37,13 +38,19 @@ private val PACKAGE_TIMEOUT = 5.minutes
 /** Returns whether this is an R class or one of its inner classes. */
 private fun String.isRClassName() = endsWith(".R") || substringAfterLast('.').startsWith("R$")
 
-/** A project-wide registry for class lookup of resource classes (R classes). */
+/**
+ * A project-wide registry for class lookup of resource classes (R classes).
+ *
+ * The registry is used concurrently: libraries are registered when class loaders are created and R classes are looked up from render
+ * threads, while [clearCache] can be called from any thread (e.g. when the project roots change). All the state is guarded by [lock].
+ */
 @Service(Service.Level.PROJECT)
 class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Duration) {
   constructor() : this(PACKAGE_TIMEOUT)
 
-  private val repoMap = WeakHashMap<ResourceRepository, ResourceRepositoryInfo>()
-  private var packages: TimeoutCachedValue<Set<String>> = createPackageCache()
+  private val lock = Any()
+  @GuardedBy("lock") private val repoMap = WeakHashMap<ResourceRepository, ResourceRepositoryInfo>()
+  @GuardedBy("lock") private var packages: TimeoutCachedValue<Set<String>> = createPackageCache()
 
   /**
    * Adds definition of a new R class to the registry. The R class will contain resources from the given repo and will be generated when
@@ -55,28 +62,30 @@ class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Du
    */
   fun addLibrary(repo: ResourceRepository, idManager: ResourceIdManager, packageName: String?) {
     if (packageName.isNullOrEmpty()) return
-    var info = repoMap[repo]
-    if (info == null) {
-      info = ResourceRepositoryInfo(repo, idManager)
-      repoMap[repo] = info
-      // Explicit cleanup for Disposable instead of waiting for GC.
-      if (repo is Disposable && !Disposer.tryRegister(repo) { removeRepository(repo) }) {
-        removeRepository(repo)
-        return
+    synchronized(lock) {
+      var info = repoMap[repo]
+      if (info == null) {
+        // Explicit cleanup for Disposable instead of waiting for GC. Registered before adding the repository, so that an already disposed
+        // repository is never added.
+        if (repo is Disposable && !Disposer.tryRegister(repo) { removeRepository(repo) }) return
+        info = ResourceRepositoryInfo(repo, idManager)
+        repoMap[repo] = info
       }
+      info.packages.add(packageName)
+      packages = createPackageCache() // Invalidate cache.
     }
-    info.packages.add(packageName)
-    packages = createPackageCache() // Invalidate cache.
   }
 
   /** Looks up a class definition for the given name, if possible */
   fun findClassDefinition(className: String, repositoryManager: ResourceRepositoryManager): ByteArray? {
     if (!className.isRClassName()) return null
     val pkg = className.substringBeforeLast(".", "")
-    if (pkg in packages.get()) {
-      return repoMap[repositoryManager.appResources]?.resourceClassGenerator?.generate(className)
-    }
-    return null
+    if (synchronized(lock) { pkg !in packages.get() }) return null
+    // Read outside the lock, since this can create the repository.
+    val appResources = repositoryManager.appResources
+    val generator = synchronized(lock) { repoMap[appResources]?.resourceClassGenerator } ?: return null
+    // ResourceClassGenerator caches the values it generates and is not thread safe.
+    return synchronized(generator) { generator.generate(className) }
   }
 
   /**
@@ -86,23 +95,29 @@ class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Du
    * @see ResourceIdManager.resetDynamicIds
    */
   fun clearCache() {
-    repoMap.clear()
-    packages = createPackageCache()
+    synchronized(lock) {
+      repoMap.clear()
+      packages = createPackageCache()
+    }
   }
 
+  @GuardedBy("lock")
   private fun createPackageCache() =
     TimeoutCachedValue(packageTimeout.inWholeMilliseconds, TimeUnit.MILLISECONDS) {
+      // Only computed from packages.get(), which is always called with the lock held.
       buildSet { repoMap.values.forEach { this.addAll(it.packages) } }
     }
 
   private fun removeRepository(repo: ResourceRepository) {
-    repoMap.remove(repo)
-    packages = createPackageCache()
+    synchronized(lock) {
+      repoMap.remove(repo)
+      packages = createPackageCache()
+    }
   }
 
   private class ResourceRepositoryInfo(repo: ResourceRepository, idManager: ResourceIdManager) {
-    val resourceClassGenerator = ResourceClassGenerator.create(idManager, repo)
-    val packages = mutableSetOf<String>()
+    val resourceClassGenerator: ResourceClassGenerator = ResourceClassGenerator.create(idManager, repo)
+    @GuardedBy("ResourceClassRegistry.lock") val packages = mutableSetOf<String>()
   }
 
   companion object {
