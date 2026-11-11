@@ -694,7 +694,12 @@ class EmulatorToolWindowPanelTest {
     emulator.setDisplayPowerMode(PRIMARY_DISPLAY_ID, DisplayPowerModeNotification.PowerMode.OFF)
     panel.waitForFrame(++frameNumber, 2.seconds)
     waitForCondition(2.seconds) { displayOffIndicator.isVisible }
-    assertAppearance("DisplayGlassesDisplayOff1", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
+    assertAppearance(
+      "DisplayGlassesDisplayOff1",
+      maxPercentDifferentLinux = 0.002,
+      maxPercentDifferentMac = 0.04,
+      maxPercentDifferentWindows = 0.15,
+    )
 
     emulator.setDisplayPowerMode(PRIMARY_DISPLAY_ID, DisplayPowerModeNotification.PowerMode.ON)
     panel.waitForFrame(++frameNumber, 2.seconds)
@@ -733,7 +738,12 @@ class EmulatorToolWindowPanelTest {
     fakeUi.layoutAndDispatchEvents()
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 430 height: 362")
-    assertAppearance("AudioGlassesToolbarActions1", maxPercentDifferentMac = 0.04, maxPercentDifferentWindows = 0.15)
+    assertAppearance(
+      "AudioGlassesToolbarActions1",
+      maxPercentDifferentLinux = 0.002,
+      maxPercentDifferentMac = 0.04,
+      maxPercentDifferentWindows = 0.15,
+    )
     emulator.clearGrpcCallLog()
 
     var button = fakeUi.getComponent<ActionButton> { it.action.templateText == "Connect/Disconnect Microphone" }

@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.streaming.core
 
-import com.intellij.codeInsight.hint.HintUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
@@ -42,7 +41,7 @@ class DisplayIndicatorPopup(text: String) : JPanel() {
   override fun paint(g: Graphics) {
     val g2 = g.create() as Graphics2D
     try {
-      g2.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.8f)
+      g2.composite = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.9f)
       super.paint(g2)
     } finally {
       g2.dispose()
@@ -53,9 +52,11 @@ class DisplayIndicatorPopup(text: String) : JPanel() {
     val g2 = g.create() as Graphics2D
     try {
       g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-      g2.color = HintUtil.getInformationColor()
       val arc = height.toDouble()
+      g2.color = JBUI.CurrentTheme.Banner.INFO_BACKGROUND
       g2.fill(RoundRectangle2D.Double(0.0, 0.0, width.toDouble(), height.toDouble(), arc, arc))
+      g2.color = JBUI.CurrentTheme.Banner.INFO_BORDER_COLOR
+      g2.draw(RoundRectangle2D.Double(0.5, 0.5, width - 1.0, height - 1.0, arc - 1.0, arc - 1.0))
     } finally {
       g2.dispose()
     }
