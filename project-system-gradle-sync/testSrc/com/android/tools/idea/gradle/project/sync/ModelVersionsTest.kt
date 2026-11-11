@@ -141,6 +141,7 @@ class ModelVersionsTest {
       studioFlagSupportFutureAgpVersions = supportFutureAgpVersions,
       studioFlagFetchKotlinModelsInParallel = false,
       studioFlagUsedPhasedSyncVariantResolution = false,
+      studioFlagPhasedSyncDependencyResolutionEnabled = false,
     )
 
   private companion object {

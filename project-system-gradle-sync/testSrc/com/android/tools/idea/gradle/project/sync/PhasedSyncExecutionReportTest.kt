@@ -165,6 +165,7 @@ class PhasedSyncExecutionReportTest {
         studioFlagSupportFutureAgpVersions = false,
         studioFlagFetchKotlinModelsInParallel = true,
         studioFlagUsedPhasedSyncVariantResolution = true,
+        studioFlagPhasedSyncDependencyResolutionEnabled = true,
       )
     return SingleVariantSyncActionOptions(
       flags = flags,

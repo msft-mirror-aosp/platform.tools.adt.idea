@@ -374,7 +374,10 @@ internal class AndroidSourceRootSyncDependencyPhaseContributor : GradleSyncContr
 
     LOG.info("Processing phase DEPENDENCY_MODEL_PHASE for Android.")
     val previousResult = checkNotNull(context.getUserData(SOURCE_SET_UPDATE_RESULT_KEY)) { "No result from source set phase!" }
-    return setupAndroidDependenciesForAllProjects(context, previousResult.allAndroidProjectContexts, storage)
+    if (StudioFlags.PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED.get()) {
+      return setupAndroidDependenciesForAllProjects(context, previousResult.allAndroidProjectContexts, storage)
+    }
+    return storage
   }
 }
 

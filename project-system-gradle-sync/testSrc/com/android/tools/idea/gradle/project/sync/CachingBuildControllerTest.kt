@@ -337,6 +337,7 @@ class CachingBuildControllerTest {
           studioFlagSupportFutureAgpVersions = false,
           studioFlagFetchKotlinModelsInParallel = true,
           studioFlagUsedPhasedSyncVariantResolution = true,
+          studioFlagPhasedSyncDependencyResolutionEnabled = true,
           studioFlagPhasedSyncEnabled = true,
         ),
       syncTestMode = SyncTestMode.PRODUCTION,

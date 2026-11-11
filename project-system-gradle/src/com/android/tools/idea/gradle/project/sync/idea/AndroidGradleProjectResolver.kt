@@ -674,14 +674,15 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
   override fun getModelProviders(): List<ProjectImportModelProvider> {
     val project = checkNotNull(project) { "Project is null!" }
     val syncOptions = resolverCtx.getSyncOptions(project)
+    val dependencyResolutionEnabled = StudioFlags.PHASED_SYNC_DEPENDENCY_RESOLUTION_ENABLED.get()
     val disableLegacyModelProvidersForSupportedProjects =
       StudioFlags.PHASED_SYNC_DISABLE_LEGACY_MODEL_PROVIDERS_FOR_SUPPORTED_PROJECTS.get()
     val cachedModels = ModelProviderCachedData(disableLegacyModelProvidersForSupportedProjects)
     return if (resolverCtx.isPhasedSyncEnabled) {
       listOfNotNull(
         PhasedSyncProjectModelProvider(syncOptions, cachedModels),
-        PhasedSyncDependencyModelProvider(syncOptions, cachedModels),
-        PhasedSyncAdditionalModelProvider(syncOptions, cachedModels),
+        PhasedSyncDependencyModelProvider(syncOptions, cachedModels).takeIf { dependencyResolutionEnabled },
+        PhasedSyncAdditionalModelProvider(syncOptions, cachedModels).takeIf { dependencyResolutionEnabled },
       )
     } else {
       emptyList()
