@@ -354,44 +354,44 @@ class PsProjectImplTest {
       var versionCatalogsChangedOnEdt = false
       var catalogVariablesChangedOnEdt = false
       var dependenciesReloadedOnEdt = false
-      app.invokeAndWait {
-        psProject = PsProjectImpl(resolvedProject)
-        psProject.androidGradlePluginVersion = "1.23".asParsed()
-        val appModule = psProject.findModuleByGradlePath(":app") as PsAndroidModule
-        appModule.dependencies
-        appModule.findBuildType("debug")!!.applicationIdSuffix = "lockFreeEdt".asParsed()
-        val libsCatalog = psProject.versionCatalogs.first { it.name == "libs" }
-        libsCatalog.variables.getVariable("myVersion")!!.value = "2.0.0".asParsed()
-        psProject.removeModule(gradlePath = ":nested2:deep")
-
-        psProject.modules.onChange(projectRule.testRootDisposable) {
-          assertTrue(EventQueue.isDispatchThread())
-          assertTrue(app.isWriteIntentLockAcquired)
-          modulesChangedOnEdt = true
-        }
-        psProject.versionCatalogs.onChange(projectRule.testRootDisposable) {
-          assertTrue(EventQueue.isDispatchThread())
-          assertTrue(app.isWriteIntentLockAcquired)
-          versionCatalogsChangedOnEdt = true
-        }
-        libsCatalog.variables.onChange(projectRule.testRootDisposable) {
-          assertTrue(EventQueue.isDispatchThread())
-          assertTrue(app.isWriteIntentLockAcquired)
-          catalogVariablesChangedOnEdt = true
-        }
-        appModule.addDependencyChangedListener(projectRule.testRootDisposable) { event ->
-          if (event is PsModule.DependenciesReloadedEvent) {
-            assertTrue(EventQueue.isDispatchThread())
-            assertTrue(app.isWriteIntentLockAcquired)
-            dependenciesReloadedOnEdt = true
-          }
-        }
-      }
-      assertTrue(psProject.isModified)
-
       SwingUtilities.invokeAndWait {
         (TransactionGuard.getInstance() as TransactionGuardImpl).performUserActivity {
           assertTrue(EventQueue.isDispatchThread())
+          assertFalse(app.isReadAccessAllowed)
+          assertFalse(app.isWriteIntentLockAcquired)
+          psProject = PsProjectImpl(resolvedProject)
+          psProject.androidGradlePluginVersion = "1.23".asParsed()
+          val appModule = psProject.findModuleByGradlePath(":app") as PsAndroidModule
+          appModule.dependencies
+          appModule.findBuildType("debug")!!.applicationIdSuffix = "lockFreeEdt".asParsed()
+          val libsCatalog = psProject.versionCatalogs.first { it.name == "libs" }
+          libsCatalog.variables.getVariable("myVersion")!!.value = "2.0.0".asParsed()
+          psProject.removeModule(gradlePath = ":nested2:deep")
+
+          psProject.modules.onChange(projectRule.testRootDisposable) {
+            assertTrue(EventQueue.isDispatchThread())
+            assertTrue(app.isWriteIntentLockAcquired)
+            modulesChangedOnEdt = true
+          }
+          psProject.versionCatalogs.onChange(projectRule.testRootDisposable) {
+            assertTrue(EventQueue.isDispatchThread())
+            assertTrue(app.isWriteIntentLockAcquired)
+            versionCatalogsChangedOnEdt = true
+          }
+          libsCatalog.variables.onChange(projectRule.testRootDisposable) {
+            assertTrue(EventQueue.isDispatchThread())
+            assertTrue(app.isWriteIntentLockAcquired)
+            catalogVariablesChangedOnEdt = true
+          }
+          appModule.addDependencyChangedListener(projectRule.testRootDisposable) { event ->
+            if (event is PsModule.DependenciesReloadedEvent) {
+              assertTrue(EventQueue.isDispatchThread())
+              assertTrue(app.isWriteIntentLockAcquired)
+              dependenciesReloadedOnEdt = true
+            }
+          }
+
+          assertTrue(psProject.isModified)
           assertFalse(app.isReadAccessAllowed)
           assertFalse(app.isWriteIntentLockAcquired)
           psProject.applyChanges()

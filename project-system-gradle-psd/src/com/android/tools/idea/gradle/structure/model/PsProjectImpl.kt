@@ -48,8 +48,7 @@ class PsProjectImpl(
   override val repositorySearchFactory: RepositorySearchFactory = CachingRepositorySearchFactory(),
 ) : PsChildModel(), PsProject {
   override val descriptor by PsProjectDescriptors
-  override var parsedModel: ProjectBuildModel =
-    GradleModelProvider.getInstance().getProjectModel(ideProject).withAgpVersionContext(ideProject)
+  override var parsedModel: ProjectBuildModel = parseModel("Loading project structure...")
     private set
 
   override val buildScriptVariables: PsVariables
@@ -143,24 +142,32 @@ class PsProjectImpl(
   }
 
   private fun reparse() {
-    fun parseModel(): ProjectBuildModel =
+    val newParsedModel = parseModel("Applying changes to the project structure...")
+    val application = ApplicationManager.getApplication()
+    if (application.isDispatchThread) {
+      WriteIntentReadAction.run { updateParsedModel(newParsedModel) }
+    } else {
+      application.runReadAction { updateParsedModel(newParsedModel) }
+    }
+  }
+
+  private fun parseModel(progressTitle: String): ProjectBuildModel {
+    fun parseBuildModels(): ProjectBuildModel =
       GradleModelProvider.getInstance().getProjectModel(ideProject).withAgpVersionContext(ideProject).also { model ->
         model.modules.forEach { model.getBuildModelByGradlePath(it) }
       }
     val application = ApplicationManager.getApplication()
-    if (application.isDispatchThread) {
+    return if (application.isDispatchThread) {
       assert(!application.isWriteAccessAllowed)
-      val newParsedModel =
-        runWithModalProgressBlocking(
-          ModalTaskOwner.project(ideProject),
-          "Applying changes to the project structure...",
-          TaskCancellation.nonCancellable(),
-        ) {
-          readAction(::parseModel)
-        }
-      WriteIntentReadAction.run { updateParsedModel(newParsedModel) }
+      runWithModalProgressBlocking(
+        ModalTaskOwner.project(ideProject),
+        progressTitle,
+        TaskCancellation.nonCancellable(),
+      ) {
+        readAction(::parseBuildModels)
+      }
     } else {
-      application.runReadAction { updateParsedModel(parseModel()) }
+      application.runReadAction<ProjectBuildModel>(::parseBuildModels)
     }
   }
 
