@@ -24,6 +24,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.util.io.FileUtil
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.util.PathUtil.toSystemDependentName
 import com.intellij.util.PathUtil.toSystemIndependentName
@@ -43,6 +44,10 @@ fun Project.saveAndDump(
   dumpToAction: ProjectDumpAction = { project, projectDumper -> projectDumper.dumpProject(project) },
 ): String {
   runInEdtAndWait { ApplicationManager.getApplication().saveAll() }
+  // Saving the project writes .idea files to disk and can trigger VFS refresh and re-indexing
+  // (entering dumb mode). Wait for indexes to be ready again before dumping the project (e.g.
+  // querying AndroidManifestIndex for targetSdk when not specified in build files).
+  IndexingTestUtil.waitUntilIndexesAreReady(this)
   val dumper =
     ProjectDumper(
       androidSdk = getSdk().toFile(),
