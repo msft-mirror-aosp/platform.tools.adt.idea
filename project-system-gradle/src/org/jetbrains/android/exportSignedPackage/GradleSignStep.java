@@ -601,8 +601,8 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
 
   private static @NotNull String getPublishingDescriptionText() {
     return StudioFlags.PLAY_PUBLISHING_CREATE_APP.get()
-           ? "Upload the signed App Bundle to a new or existing Play app listing."
-           : "Upload the signed App Bundle to an existing Play app listing.";
+           ? "Upload the signed App Bundle to a new or existing Play app."
+           : "Upload the signed App Bundle to an existing Play app.";
   }
 
   private @Nullable Boolean registrationStateToBoolean() {

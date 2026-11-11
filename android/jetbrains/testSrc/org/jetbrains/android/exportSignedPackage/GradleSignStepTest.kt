@@ -351,8 +351,8 @@ class GradleSignStepTest {
     gradleSignStep._init(testAndroidModel)
 
     val labelTexts = UIUtil.findComponentsOfType(gradleSignStep.component, JBLabel::class.java).map { it.text }
-    assertThat(labelTexts).contains("Upload the signed App Bundle to an existing Play app listing.")
-    assertThat(labelTexts).doesNotContain("Upload the signed App Bundle to a new or existing Play app listing.")
+    assertThat(labelTexts).contains("Upload the signed App Bundle to an existing Play app.")
+    assertThat(labelTexts).doesNotContain("Upload the signed App Bundle to a new or existing Play app.")
   }
 
   @Test
@@ -370,7 +370,7 @@ class GradleSignStepTest {
     gradleSignStep._init(testAndroidModel)
 
     val labelTexts = UIUtil.findComponentsOfType(gradleSignStep.component, JBLabel::class.java).map { it.text }
-    assertThat(labelTexts).contains("Upload the signed App Bundle to a new or existing Play app listing.")
+    assertThat(labelTexts).contains("Upload the signed App Bundle to a new or existing Play app.")
   }
 
   @Test
