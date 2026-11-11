@@ -39,7 +39,7 @@ import org.jetbrains.kotlin.utils.ThreadSafe
 /** Cache of AAR resource repositories. */
 @ThreadSafe
 open class AarResourceRepositoryCache protected constructor() {
-  private val mySourceRepositories = CacheBuilder.newBuilder().softValues().build<ResourceFolder, AarSourceResourceRepository>()
+  @Volatile private var mySourceRepositories = createCache()
 
   /**
    * Returns a cached or a newly created source resource repository.
@@ -55,9 +55,11 @@ open class AarResourceRepositoryCache protected constructor() {
     if (resFolder.root.toPath() == null) {
       throw IllegalArgumentException("Cannot find resource directory ${resFolder.root} for ${library.libraryName()}")
     }
-    return getRepository(resFolder, mySourceRepositories) {
-      AarSourceResourceRepository.create(resFolder.root, resFolder.resources, library.libraryName(), createCachingData(library))
-    }
+    return getRepository(resFolder, mySourceRepositories) { createSourceRepository(library, resFolder) }
+  }
+
+  protected open fun createSourceRepository(library: ExternalAndroidLibrary, resFolder: ResourceFolder): AarSourceResourceRepository {
+    return AarSourceResourceRepository.create(resFolder.root, resFolder.resources, library.libraryName(), createCachingData(library))
   }
 
   fun removeSourceRepository(resourceFolder: ResourceFolder) {
@@ -65,7 +67,10 @@ open class AarResourceRepositoryCache protected constructor() {
   }
 
   fun clear() {
-    mySourceRepositories.invalidateAll()
+    // Replace the cache instance instead of calling invalidateAll(). Guava's storeLoadedValue re-inserts values from loads
+    // that were already in flight when invalidateAll() ran, and can even overwrite a newer post-clear loading entry. With a
+    // new instance, in-flight loads finish into the orphaned cache and post-clear callers start from an empty one.
+    mySourceRepositories = createCache()
   }
 
   private fun createCachingData(library: ExternalAndroidLibrary): CachingData? {
@@ -111,6 +116,10 @@ open class AarResourceRepositoryCache protected constructor() {
     @JvmStatic
     val instance: AarResourceRepositoryCache
       get() = ApplicationManager.getApplication().getService(AarResourceRepositoryCache::class.java)
+
+    private fun createCache(): Cache<ResourceFolder, AarSourceResourceRepository> {
+      return CacheBuilder.newBuilder().softValues().build()
+    }
 
     private fun <K : Any, T : AarResourceRepository> getRepository(key: K, cache: Cache<K, T>, factory: () -> T): T {
       return cache.getAndUnwrap(key) { factory() }

@@ -31,21 +31,31 @@ import com.android.tools.res.LocalResourceRepository;
 import com.android.tools.res.MultiResourceRepository;
 import com.google.common.collect.Iterables;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.testFramework.fixtures.IdeaProjectTestFixture;
 import com.intellij.testFramework.fixtures.TestFixtureBuilder;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import kotlin.Unit;
 import org.jetbrains.android.AndroidTestCase;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Tests for {@link StudioResourceRepositoryManager}.
@@ -96,6 +106,153 @@ public class StudioResourceRepositoryManagerTest extends AndroidTestCase {
       .syncEnded(ProjectSystemSyncManager.SyncResult.SUCCESS);
     assertThat(dynamicRepo.getResources(ResourceNamespace.RES_AUTO, ResourceType.STRING)).isEmpty();
     repositoryManager.updateRootsAndLibraries();
+  }
+
+  /**
+   * Checks that {@link StudioResourceRepositoryManager#resetResources()}, which runs on the EDT after the first successful
+   * sync, does not wait for an in-progress library resource map computation, and that the map computed before the reset
+   * is not cached (b/503267386).
+   */
+  public void testResetResourcesDoesNotBlockOnLibraryResourceMapComputation() throws Exception {
+    StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(myFacet);
+    checkInvalidationDuringLibraryResourceMapComputation(repositoryManager, repositoryManager::resetResources);
+  }
+
+  /**
+   * Checks that {@link StudioResourceRepositoryManager#updateRootsAndLibraries()} does not wait for an in-progress library
+   * resource map computation, and that the map computed before the update is not cached.
+   */
+  public void testUpdateRootsAndLibrariesDoesNotBlockOnLibraryResourceMapComputation() throws Exception {
+    StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(myFacet);
+    checkInvalidationDuringLibraryResourceMapComputation(repositoryManager, repositoryManager::updateRootsAndLibraries);
+  }
+
+  /**
+   * Runs {@code invalidate} while a library resource map computation is in progress on another thread, and checks that
+   * {@code invalidate} does not wait for it and that the map being computed is not cached.
+   */
+  private static void checkInvalidationDuringLibraryResourceMapComputation(@NotNull StudioResourceRepositoryManager repositoryManager,
+                                                                           @NotNull Runnable invalidate) throws Exception {
+    AtomicInteger computationCount = new AtomicInteger();
+    CountDownLatch computationStarted = new CountDownLatch(1);
+    CountDownLatch releaseComputation = new CountDownLatch(1);
+    repositoryManager.setLibraryResourceMapComputationListenerForTests(() -> {
+      if (computationCount.incrementAndGet() == 1) {
+        computationStarted.countDown();
+        try {
+          releaseComputation.await();
+        }
+        catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    });
+
+    Future<?> libraries = null;
+    Future<?> invalidation = null;
+    try {
+      libraries = ApplicationManager.getApplication().executeOnPooledThread(repositoryManager::getLibraryResources);
+      assertThat(computationStarted.await(10, TimeUnit.SECONDS)).isTrue();
+
+      // Before the fix for b/503267386, this blocked until the library resource map computation above finished.
+      invalidation = ApplicationManager.getApplication().executeOnPooledThread(invalidate);
+      invalidation.get(10, TimeUnit.SECONDS);
+
+      releaseComputation.countDown();
+      libraries.get(10, TimeUnit.SECONDS);
+
+      // The map computed before the invalidation is stale, so it must be recomputed once, and then cached.
+      int computationsBefore = computationCount.get();
+      repositoryManager.getLibraryResources();
+      assertThat(computationCount.get()).isEqualTo(computationsBefore + 1);
+      repositoryManager.getLibraryResources();
+      assertThat(computationCount.get()).isEqualTo(computationsBefore + 1);
+    }
+    finally {
+      releaseComputation.countDown();
+      // Let the background work finish before the facet is disposed in tearDown. Failures are already reported above.
+      awaitQuietly(invalidation);
+      awaitQuietly(libraries);
+      repositoryManager.setLibraryResourceMapComputationListenerForTests(null);
+    }
+  }
+
+  public void testResetResourcesRebuildsInFlightAppResources() throws Exception {
+    StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(myFacet);
+    checkInvalidationRebuildsInFlightAppResources(repositoryManager, repositoryManager::resetResources);
+  }
+
+  public void testUpdateRootsAndLibrariesRebuildsInFlightAppResources() throws Exception {
+    StudioResourceRepositoryManager repositoryManager = StudioResourceRepositoryManager.getInstance(myFacet);
+    checkInvalidationRebuildsInFlightAppResources(repositoryManager, repositoryManager::updateRootsAndLibraries);
+  }
+
+  private void checkInvalidationRebuildsInFlightAppResources(@NotNull StudioResourceRepositoryManager repositoryManager,
+                                                             @NotNull Runnable invalidate) throws Exception {
+    AtomicInteger computationCount = new AtomicInteger();
+    CountDownLatch appRepoReadLibraries = new CountDownLatch(1);
+    CountDownLatch releaseComputation = new CountDownLatch(1);
+    repositoryManager.setLibraryResourceMapComputationListenerForTests(() -> {
+      int count = computationCount.incrementAndGet();
+      if (count == 1) {
+        // Prevent the precompute step in getAppResources() from caching the map so AppResourceRepository.create()
+        // computes it again below.
+        repositoryManager.resetResources();
+      }
+      else if (count == 2) {
+        appRepoReadLibraries.countDown();
+        try {
+          releaseComputation.await();
+        }
+        catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    });
+
+    Future<LocalResourceRepository<VirtualFile>> appResourcesFuture = null;
+    try {
+      appResourcesFuture = ApplicationManager.getApplication()
+        .executeOnPooledThread((Callable<LocalResourceRepository<VirtualFile>>)repositoryManager::getAppResources);
+      assertThat(appRepoReadLibraries.await(10, TimeUnit.SECONDS)).isTrue();
+
+      addAarDependency(myFixture, myModule, "mylibrary", "com.example.mylibrary",
+                       resDir -> {
+                         try {
+                           Path values = resDir.toPath().resolve("values");
+                           Files.createDirectories(values);
+                           Files.writeString(values.resolve("strings.xml"), "<resources><string name=\"lib_str\">hi</string></resources>");
+                         }
+                         catch (IOException e) {
+                           throw new UncheckedIOException(e);
+                         }
+                         return Unit.INSTANCE;
+                       });
+      invalidate.run();
+
+      releaseComputation.countDown();
+      LocalResourceRepository<VirtualFile> appResources = appResourcesFuture.get(10, TimeUnit.SECONDS);
+
+      assertThat(repositoryManager.getAppResources()).isSameAs(appResources);
+      assertThat(Disposer.isDisposed((Disposable)appResources)).isFalse();
+      assertThat(appResources.getResources(ResourceNamespace.RES_AUTO, ResourceType.STRING, "lib_str")).hasSize(1);
+    }
+    finally {
+      releaseComputation.countDown();
+      awaitQuietly(appResourcesFuture);
+      repositoryManager.setLibraryResourceMapComputationListenerForTests(null);
+    }
+  }
+
+  private static void awaitQuietly(@Nullable Future<?> future) {
+    if (future == null) {
+      return;
+    }
+    try {
+      future.get(10, TimeUnit.SECONDS);
+    }
+    catch (Exception ignored) {
+    }
   }
 
   public void testConcurrentGetAppResources() throws Exception {

@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.res;
 
+import com.android.ProgressManagerAdapter;
 import com.android.annotations.concurrency.GuardedBy;
 import com.android.annotations.concurrency.Slow;
 import com.android.ide.common.rendering.api.ResourceNamespace;
@@ -67,7 +68,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.sdk.AndroidPlatforms;
 import org.jetbrains.annotations.NotNull;
@@ -78,40 +81,36 @@ import org.jetbrains.annotations.VisibleForTesting;
 public final class StudioResourceRepositoryManager implements Disposable, ResourceRepositoryManager {
   private static final Key<StudioResourceRepositoryManager> KEY = Key.create(StudioResourceRepositoryManager.class.getName());
 
-  private static final Object APP_RESOURCES_LOCK = new Object();
-  private static final Object PROJECT_RESOURCES_LOCK = new Object();
   private static final Object MODULE_RESOURCES_LOCK = new Object();
   private static final Object TEST_RESOURCES_LOCK = new Object();
 
   @NotNull private final AndroidFacet myFacet;
 
-  @GuardedBy("APP_RESOURCES_LOCK")
-  private AppResourceRepository myAppResources;
+  /**
+   * Incremented every time cached repositories or the library resource map are invalidated. Values built outside
+   * their lock are only cached if this generation did not change while they were being built.
+   */
+  private final AtomicLong myGeneration = new AtomicLong();
 
-  @GuardedBy("PROJECT_RESOURCES_LOCK")
-  private LocalResourceRepository<VirtualFile> myProjectResources;
+  private final ResettableValue<AppResourceRepository> myAppResources = new ResettableValue<>();
+  private final ResettableValue<ProjectResourceRepository> myProjectResources = new ResettableValue<>();
+  private final ResettableValue<TestAppResourceRepository> myTestAppResources = new ResettableValue<>();
+  private final ResettableValue<SampleDataResourceRepository> mySampleDataResources = new ResettableValue<>();
+
+  /** Libraries and their corresponding resource repositories. */
+  private final ResettableValue<Map<ExternalAndroidLibrary, AarResourceRepository>> myLibraryResourceMap = new ResettableValue<>();
 
   @GuardedBy("MODULE_RESOURCES_LOCK")
   private LocalResourceRepository<VirtualFile> myModuleResources;
 
   @GuardedBy("TEST_RESOURCES_LOCK")
-  private LocalResourceRepository<VirtualFile> myTestAppResources;
-
-  @GuardedBy("TEST_RESOURCES_LOCK")
   private LocalResourceRepository<VirtualFile> myTestModuleResources;
 
-  @GuardedBy("mySampleDataLock")
-  private SampleDataResourceRepository mySampleDataResources;
-  private final Object mySampleDataLock = new Object();
+  private volatile CachedValue<LocalesAndLanguages> myLocalesAndLanguages;
 
-  @GuardedBy("PROJECT_RESOURCES_LOCK")
-  private CachedValue<LocalesAndLanguages> myLocalesAndLanguages;
-
-  /** Libraries and their corresponding resource repositories. */
-  @GuardedBy("myLibraryLock")
-  private Map<ExternalAndroidLibrary, AarResourceRepository> myLibraryResourceMap;
-
-  private final Object myLibraryLock = new Object();
+  /** Called at the start of every library resource map computation. Only set in tests. */
+  @Nullable
+  private volatile Runnable myLibraryResourceMapComputationListenerForTests;
 
 
   @Nullable
@@ -287,36 +286,10 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
   @Slow
   @NotNull
   public LocalResourceRepository<VirtualFile> getAppResources() {
-    LocalResourceRepository<VirtualFile> appResources = getCachedAppResources();
-    if (appResources != null) {
-      return appResources;
-    }
-    if (myFacet.isDisposed()) {
-      return new EmptyRepository<>();
-    }
-
-    getLibraryResources(); // Precompute library resources to do less work inside the read action below.
-
-    AppResourceRepository appResourceRepository = AppResourceRepository.create(myFacet, this);
-    LocalResourceRepository<VirtualFile> appResourceRepositoryToReturn;
-    synchronized (APP_RESOURCES_LOCK) {
-      if (myFacet.isDisposed()) {
-        Disposer.dispose(appResourceRepository);
-        return new EmptyRepository<>();
-      }
-      if (myAppResources == null) {
-        myAppResources = appResourceRepository;
-      }
-      appResourceRepositoryToReturn = myAppResources;
-    }
-
-    if (appResourceRepositoryToReturn != appResourceRepository) {
-      // If we ended up not using the new one we have allocated, dispose it.
-      // This could happen if there was another call that allocated myAppResources before we could have the result.
-      Disposer.dispose(appResourceRepository);
-    }
-
-    return appResourceRepositoryToReturn;
+    return getOrCreateRepository(myAppResources, () -> {
+      getLibraryResources(); // Precompute library resources to do less work inside the read action below.
+      return AppResourceRepository.create(myFacet, this);
+    });
   }
 
   /**
@@ -330,9 +303,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
    */
   @Nullable
   public LocalResourceRepository<VirtualFile> getCachedAppResources() {
-    synchronized (APP_RESOURCES_LOCK) {
-      return myAppResources;
-    }
+    return myAppResources.getCached();
   }
 
   /**
@@ -348,30 +319,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
   @Slow
   @NotNull
   public LocalResourceRepository<VirtualFile> getProjectResources() {
-    LocalResourceRepository<VirtualFile> projectResources = getCachedProjectResources();
-    if (projectResources != null) {
-      return projectResources;
-    }
-    if (myFacet.isDisposed()) {
-      return new EmptyRepository<>();
-    }
-
-    ProjectResourceRepository projectResourceRepository = ProjectResourceRepository.create(myFacet, this);
-    LocalResourceRepository<VirtualFile> projectResourceRepositoryToReturn;
-    synchronized (PROJECT_RESOURCES_LOCK) {
-      if (myProjectResources == null) {
-        myProjectResources = projectResourceRepository;
-      }
-      projectResourceRepositoryToReturn = myProjectResources;
-    }
-
-    if (projectResourceRepositoryToReturn != projectResourceRepository) {
-      // If we ended up not using the new one we have allocated, dispose it.
-      // This could happen if there was another call that allocated myProjectResources before we could have the result.
-      Disposer.dispose(projectResourceRepository);
-    }
-
-    return projectResourceRepositoryToReturn;
+    return getOrCreateRepository(myProjectResources, () -> ProjectResourceRepository.create(myFacet, this));
   }
 
   /**
@@ -383,9 +331,7 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
    */
   @Nullable
   public LocalResourceRepository<VirtualFile> getCachedProjectResources() {
-    synchronized (PROJECT_RESOURCES_LOCK) {
-      return myProjectResources;
-    }
+    return myProjectResources.getCached();
   }
 
   /**
@@ -462,39 +408,12 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
    */
   @NotNull
   public LocalResourceRepository<VirtualFile> getTestAppResources() {
-    LocalResourceRepository<VirtualFile> testAppResources = getCachedTestAppResources();
-    if (testAppResources != null) {
-      return testAppResources;
-    }
-    if (myFacet.isDisposed()) {
-      return new EmptyRepository<>();
-    }
-
-    TestAppResourceRepository testAppResourceRepository = TestAppResourceRepository.create(myFacet, this);
-    LocalResourceRepository<VirtualFile> testAppResourceRepositoryToReturn;
-    synchronized (TEST_RESOURCES_LOCK) {
-      if (myFacet.isDisposed()) {
-        Disposer.dispose(testAppResourceRepository);
-        return new EmptyRepository<>();
-      }
-      if (myTestAppResources == null) {
-        myTestAppResources = testAppResourceRepository;
-      }
-      testAppResourceRepositoryToReturn = myTestAppResources;
-    }
-
-    if (testAppResourceRepositoryToReturn != testAppResourceRepository) {
-      Disposer.dispose(testAppResourceRepository);
-    }
-
-    return testAppResourceRepositoryToReturn;
+    return getOrCreateRepository(myTestAppResources, () -> TestAppResourceRepository.create(myFacet, this));
   }
 
   @Nullable
   private LocalResourceRepository<VirtualFile> getCachedTestAppResources() {
-    synchronized (TEST_RESOURCES_LOCK) {
-      return myTestAppResources;
-    }
+    return myTestAppResources.getCached();
   }
 
   /**
@@ -523,52 +442,18 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
   @Slow
   @NotNull
   public LocalResourceRepository<VirtualFile> getSampleDataResources() {
-    LocalResourceRepository<VirtualFile> sampleDataResources = getCachedSampleDataResources();
-    if (sampleDataResources != null) {
-      return sampleDataResources;
-    }
-    if (myFacet.isDisposed()) {
-      return new EmptyRepository<>();
-    }
-
-    SampleDataResourceRepository sampleDataResourceRepository = new SampleDataResourceRepository(myFacet, this);
-    LocalResourceRepository<VirtualFile> sampleDataResourceRepositoryToReturn;
-    synchronized (mySampleDataLock) {
-      if (myFacet.isDisposed()) {
-        Disposer.dispose(sampleDataResourceRepository);
-        return new EmptyRepository<>();
-      }
-      if (mySampleDataResources == null) {
-        mySampleDataResources = sampleDataResourceRepository;
-      }
-      sampleDataResourceRepositoryToReturn = mySampleDataResources;
-    }
-
-    if (sampleDataResourceRepositoryToReturn != sampleDataResourceRepository) {
-      Disposer.dispose(sampleDataResourceRepository);
-    }
-
-    return sampleDataResourceRepositoryToReturn;
+    return getOrCreateRepository(mySampleDataResources, () -> new SampleDataResourceRepository(myFacet, this));
   }
 
   @Nullable
   public LocalResourceRepository<VirtualFile> getCachedSampleDataResources() {
-    synchronized (mySampleDataLock) {
-      return mySampleDataResources;
-    }
+    return mySampleDataResources.getCached();
   }
 
   public void reloadSampleResources() {
-    synchronized (mySampleDataLock) {
-      if (mySampleDataResources == null) {
-        return;
-      }
-    }
-
-    synchronized (mySampleDataLock) {
-      if (mySampleDataResources != null) {
-        mySampleDataResources.reload();
-      }
+    SampleDataResourceRepository sampleResources = mySampleDataResources.getCached();
+    if (sampleResources != null) {
+      sampleResources.reload();
     }
   }
 
@@ -595,53 +480,35 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     return AndroidTargetData.get(androidPlatform.getSdkData(), androidPlatform.getTarget()).getFrameworkResources(languages, overlays);
   }
 
-  @SuppressWarnings("Duplicates") // No way to refactor this without something like Variable Handles.
   public void resetResources() {
     List<LocalResourceRepository<VirtualFile>> removedRepositories = new ArrayList<>(6);
 
-    synchronized (myLibraryLock) {
-      myLibraryResourceMap = null;
-    }
+    // Reset leaves before parents and bump myGeneration inside each reset so a parent repository cannot snapshot
+    // a post-reset generation and still read a pre-reset child.
+    myLibraryResourceMap.reset();
 
     synchronized (MODULE_RESOURCES_LOCK) {
       if (myModuleResources != null) {
         removedRepositories.add(myModuleResources);
         myModuleResources = null;
       }
+      myGeneration.incrementAndGet();
     }
 
-    synchronized (PROJECT_RESOURCES_LOCK) {
-      if (myProjectResources != null) {
-        removedRepositories.add(myProjectResources);
-        myProjectResources = null;
-        myLocalesAndLanguages = CachedValuesManager.getManager(getProject()).createCachedValue(this::newLocalesAndLanguagesCachedValue);
-      }
+    if (addIfNotNull(removedRepositories, myProjectResources.reset())) {
+      myLocalesAndLanguages = CachedValuesManager.getManager(getProject()).createCachedValue(this::newLocalesAndLanguagesCachedValue);
     }
-
-    synchronized (APP_RESOURCES_LOCK) {
-      synchronized (mySampleDataLock) {
-        if (mySampleDataResources != null) {
-          removedRepositories.add(mySampleDataResources);
-          mySampleDataResources = null;
-        }
-      }
-
-      if (myAppResources != null) {
-        removedRepositories.add(myAppResources);
-        myAppResources = null;
-      }
-    }
+    addIfNotNull(removedRepositories, mySampleDataResources.reset());
+    addIfNotNull(removedRepositories, myAppResources.reset());
 
     synchronized (TEST_RESOURCES_LOCK) {
-      if (myTestAppResources != null) {
-        removedRepositories.add(myTestAppResources);
-        myTestAppResources = null;
-      }
       if (myTestModuleResources != null) {
         removedRepositories.add(myTestModuleResources);
         myTestModuleResources = null;
       }
+      myGeneration.incrementAndGet();
     }
+    addIfNotNull(removedRepositories, myTestAppResources.reset());
 
     // Reset is done separately from disposal, since reset isn't needed in all disposal scenarios. Specifically,
     // there are 2 ways these repositories can be disposed:
@@ -655,6 +522,15 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     for (LocalResourceRepository<VirtualFile> repository : removedRepositories) {
       disposeAndRefreshService.disposeAndNotifyParents(repository);
     }
+  }
+
+  private static boolean addIfNotNull(@NotNull List<LocalResourceRepository<VirtualFile>> list,
+                                      @Nullable LocalResourceRepository<VirtualFile> repository) {
+    if (repository != null) {
+      list.add(repository);
+      return true;
+    }
+    return false;
   }
 
   @Override
@@ -671,10 +547,12 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
     // race conditions where one of the resource sets in this class is requested again before the
     // registry is cleared, ending up with a stale ResourceFolderRepository.
     ResourceFolderRegistry.getInstance(getProject()).reset(myFacet);
+    // Same for the AAR repositories. The library resource map is computed outside its lock, so clearing the cache
+    // after resetResources() would let a computation that starts in between cache a map built from stale repositories.
+    AarResourceRepositoryCache.getInstance().clear();
 
     resetResources();
     ConfigurationManager.getOrCreateInstance(myFacet.getModule()).getResolverCache().reset();
-    AarResourceRepositoryCache.getInstance().clear();
   }
 
   @NotNull
@@ -687,18 +565,20 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
       return;
     }
     try {
-      ProjectResourceRepository projectResources = (ProjectResourceRepository)getCachedProjectResources();
-      AppResourceRepository appResources = (AppResourceRepository)getCachedAppResources();
+      // Preserve the old library resources during update to prevent them from being garbage collected prematurely.
+      // Resetting first bumps myGeneration before sampling cached repositories below so any build started before this
+      // update either published already (and is refreshed below) or sees the generation change and rebuilds.
+      Map<ExternalAndroidLibrary, AarResourceRepository> oldLibraryResourceMap = myLibraryResourceMap.reset();
+
+      ProjectResourceRepository projectResources = myProjectResources.getCached();
       if (projectResources != null) {
         projectResources.refreshChildren();
+        // Bump the generation after refreshing projectResources so an in-flight AppResourceRepository build that read
+        // projectResources before refreshChildren() finished cannot publish stale leaf repositories afterwards.
+        myGeneration.incrementAndGet();
       }
 
-      Map<ExternalAndroidLibrary, AarResourceRepository> oldLibraryResourceMap;
-      synchronized (myLibraryLock) {
-        // Preserve the old library resources during update to prevent them from being garbage collected prematurely.
-        oldLibraryResourceMap = myLibraryResourceMap;
-        myLibraryResourceMap = null;
-      }
+      AppResourceRepository appResources = myAppResources.getCached();
       if (appResources != null) {
         appResources.refreshChildren();
       }
@@ -710,7 +590,8 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
         throw new AssertionError();
       }
 
-      if (getCachedTestAppResources() instanceof TestAppResourceRepository testAppResources) {
+      TestAppResourceRepository testAppResources = myTestAppResources.getCached();
+      if (testAppResources != null) {
         testAppResources.refreshChildren();
       }
     }
@@ -760,12 +641,10 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
 
   @NotNull
   private Map<ExternalAndroidLibrary, AarResourceRepository> getLibraryResourceMap() {
-    synchronized (myLibraryLock) {
-      if (myLibraryResourceMap == null) {
-        myLibraryResourceMap = computeLibraryResourceMap();
-      }
-      return myLibraryResourceMap;
-    }
+    // Compute the map outside myLibraryResourceMap's lock. Loading the AAR repositories can take a long time, and holding
+    // the lock while doing it blocks resetResources, which is called on the EDT after the first successful sync (b/503267386).
+    // Concurrent callers may compute the map in parallel, but AarResourceRepositoryCache shares the underlying repositories.
+    return myLibraryResourceMap.getOrCompute(this::computeLibraryResourceMap);
   }
 
   @NotNull
@@ -795,11 +674,25 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
       throw t;
     }
 
+    Runnable listener = myLibraryResourceMapComputationListenerForTests;
+    if (listener != null) {
+      listener.run();
+    }
+
     return map.build();
   }
 
   private static void cancelPendingTasks(Collection<Future<AarResourceRepository>> futures) {
-    futures.forEach(f -> f.cancel(true));
+    // Do not interrupt running tasks. The AAR repositories are shared through AarResourceRepositoryCache, and interrupting
+    // a load makes NIO throw ClosedByInterruptException, which could leave a partially loaded repository in the cache for
+    // other callers. Tasks that have not started are dropped; at most one load per disk-I/O pool thread is already running,
+    // and queued tasks read the current cache instance when they start rather than when submitted.
+    futures.forEach(f -> f.cancel(false));
+  }
+
+  @TestOnly
+  void setLibraryResourceMapComputationListenerForTests(@Nullable Runnable listener) {
+    myLibraryResourceMapComputationListenerForTests = listener;
   }
 
   /**
@@ -842,15 +735,115 @@ public final class StudioResourceRepositoryManager implements Disposable, Resour
 
   @NotNull
   private LocalesAndLanguages getLocalesAndLanguages() {
-    CachedValue<LocalesAndLanguages> localesAndLanguages;
-    synchronized (PROJECT_RESOURCES_LOCK) {
-      localesAndLanguages = myLocalesAndLanguages;
-    }
-
-    return localesAndLanguages.getValue();
+    return myLocalesAndLanguages.getValue();
   }
 
   private record LocalesAndLanguages(@NotNull ImmutableList<Locale> locales, @NotNull ImmutableSortedSet<String> languages) {
+  }
+
+  @NotNull
+  private <T extends LocalResourceRepository<VirtualFile> & Disposable>
+  LocalResourceRepository<VirtualFile> getOrCreateRepository(@NotNull ResettableValue<T> holder,
+                                                             @NotNull Supplier<@NotNull T> create) {
+    while (true) {
+      long generation;
+      synchronized (holder.lock) {
+        if (holder.value != null) {
+          return holder.value;
+        }
+        if (myFacet.isDisposed()) {
+          return new EmptyRepository<>();
+        }
+        generation = myGeneration.get();
+      }
+
+      T created = create.get();
+
+      LocalResourceRepository<VirtualFile> published = null;
+      boolean facetDisposed;
+      synchronized (holder.lock) {
+        facetDisposed = myFacet.isDisposed();
+        if (!facetDisposed) {
+          if (holder.value == null && myGeneration.get() == generation) {
+            holder.value = created;
+          }
+          published = holder.value;
+        }
+      }
+
+      if (published == created) {
+        return created;
+      }
+      // Either the facet was disposed, another caller published first, or a reset invalidated this build.
+      // Always dispose the unused repository because its parent disposable is this manager.
+      Disposer.dispose(created);
+      if (facetDisposed) {
+        return new EmptyRepository<>();
+      }
+      if (published != null) {
+        return published;
+      }
+      ProgressManagerAdapter.checkCanceled();
+    }
+  }
+
+  /**
+   * Lazily cached value computed outside its lock and guarded against concurrent resets via {@link #myGeneration}.
+   * <p>
+   * Computing resource repositories and the library resource map can take a long time (disk I/O, AAR loading, and
+   * loading dependent modules), so holding the field lock across computation would block {@link #resetResources()}
+   * and {@link #updateRootsAndLibraries()} on the EDT. Computing outside the lock without a generation check would
+   * allow a slow computation started before a reset to publish stale data (or embed pre-reset child repositories)
+   * after the reset completes. Pairing a short lock critical section with the manager-wide {@link #myGeneration}
+   * counter keeps resets non-blocking while rejecting stale publications across dependent fields.
+   */
+  private final class ResettableValue<T> {
+    private final Object lock = new Object();
+    @GuardedBy("lock")
+    @Nullable
+    private T value;
+
+    @Nullable
+    T getCached() {
+      synchronized (lock) {
+        return value;
+      }
+    }
+
+    @NotNull
+    T getOrCompute(@NotNull Supplier<@NotNull T> compute) {
+      long generation;
+      synchronized (lock) {
+        if (value != null) {
+          return value;
+        }
+        generation = myGeneration.get();
+      }
+
+      T computed = compute.get();
+
+      synchronized (lock) {
+        if (value != null) {
+          // Another caller published its value first. Return that one so all callers see the same instance.
+          return value;
+        }
+        if (myGeneration.get() == generation) {
+          value = computed;
+        }
+        // If invalidated while computing, return to this caller without caching so the next call recomputes it.
+        return computed;
+      }
+    }
+
+    @Nullable
+    T reset() {
+      synchronized (lock) {
+        T old = value;
+        value = null;
+        myGeneration.incrementAndGet();
+        return old;
+      }
+    }
   }
 
   /**
