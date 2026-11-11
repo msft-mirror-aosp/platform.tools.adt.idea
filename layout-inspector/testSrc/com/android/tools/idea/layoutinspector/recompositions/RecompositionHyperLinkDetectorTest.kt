@@ -18,11 +18,15 @@ package com.android.tools.idea.layoutinspector.recompositions
 import com.android.testutils.TestUtils
 import com.android.tools.idea.layoutinspector.TestScopeRule
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.impl.EditorHyperlinkListener
 import com.intellij.openapi.editor.ex.EditorEx
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import java.io.File
+import java.nio.file.Files
 import kotlin.io.path.readText
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
@@ -111,5 +115,27 @@ class RecompositionHyperLinkDetectorTest {
       region(116, "Recomposer.kt:156")
       region(117, "Recomposer.kt:635")
     }
+  }
+
+  @Test
+  fun testIgnoresUnsafePlatformConsoleFilters() = runTest {
+    val externalScript = Files.createTempFile("b511294663_recomposition_", ".gradle").toFile().apply { deleteOnExit() }
+    val normalizedPath = externalScript.absolutePath.replace(File.separatorChar, '/')
+    assertThat(LocalFileSystem.getInstance().findFileByPathIfCached(normalizedPath)).isNull()
+
+    val text =
+      """
+      State read value: Build file '${externalScript.absolutePath}' line: 1
+      Listening for transport dt_socket at address: 127.0.0.1:5005
+          at com.example.recompositiontest.MainActivityKt.Foo(MainActivity.kt:60)
+      """
+        .trimIndent()
+    val editor = projectRule.createEditorWithContent(text) as EditorEx
+    val detector = SynchronousHyperLinkDetector(editor, this, EditorHyperlinkListener {})
+    detector.filterJob.join()
+    detector.detectHyperlinks()
+
+    assertThat(LocalFileSystem.getInstance().findFileByPathIfCached(normalizedPath)).isNull()
+    validateMarkupModel(editor.markupModel) { region(3, "MainActivity.kt:60") }
   }
 }

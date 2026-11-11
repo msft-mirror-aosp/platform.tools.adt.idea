@@ -31,9 +31,12 @@ import com.google.wireless.android.sdk.stats.ParallelAndroidTestReportUiEvent
 import com.intellij.execution.impl.ConsoleViewImpl
 import com.intellij.execution.ui.ConsoleViewContentType
 import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.application.impl.NonBlockingReadActionImpl
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.IndexingTestUtil
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
@@ -42,8 +45,10 @@ import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.awt.Container
 import java.io.File
+import java.nio.file.Files
 import java.util.Base64
 import javax.swing.JPanel
+import javax.swing.event.AncestorEvent
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -830,6 +835,49 @@ class DetailsViewContentViewTest {
     view.myLogsView.waitAllRequests()
     assertThat(view.isLoadingLogs).isFalse()
     assertThat(view.myLogsView.text).isEqualTo("No logs available")
+  }
+
+  @Test
+  fun logsView_deviceOutputDoesNotTriggerHostConsoleFilters() {
+    IndexingTestUtil.waitUntilIndexesAreReady(projectRule.project)
+    val externalScript = Files.createTempFile("b511294663_probe_", ".gradle").toFile().apply { deleteOnExit() }
+    val normalizedPath = externalScript.absolutePath.replace(File.separatorChar, '/')
+    assertThat(LocalFileSystem.getInstance().findFileByPathIfCached(normalizedPath)).isNull()
+
+    val view = createView()
+    // Mount console editor and simulate Swing ancestorAdded (triggered when DetailsViewContentView is shown in the tool window).
+    view.myLogsView.component
+    view.myLogsView.ancestorListeners.forEach {
+      it.ancestorAdded(AncestorEvent(view.myLogsView, AncestorEvent.ANCESTOR_ADDED, view.rootPanel, view.myLogsView.parent))
+    }
+
+    val testDevice = device("device id", "device name")
+    whenever(mockTestResults.getTestCaseResult(testDevice)).thenReturn(AndroidTestCaseResult.FAILED)
+    whenever(mockTestResults.getLogcat(testDevice)).thenReturn("I/TestRunner: started")
+    whenever(mockTestResults.getErrorStackTrace(testDevice))
+      .thenReturn(
+        "java.lang.RuntimeException: Build file '${externalScript.absolutePath}' line: 1\n" +
+          "Listening for transport dt_socket at address: 127.0.0.1:5005"
+      )
+
+    view.setResults(testDevice, mockTestResults)
+    view.pathResolutionFuture?.let { PlatformTestUtil.waitForFuture(it) }
+    // Drain predefined filter loading (ConsoleViewImpl.updatePredefinedFiltersLater), console flush, and AsyncFilterRunner tasks.
+    NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
+    UIUtil.dispatchAllInvocationEvents()
+    view.myLogsView.waitAllRequests()
+    NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
+    UIUtil.dispatchAllInvocationEvents()
+    view.myLogsView.getHyperlinks()!!.waitForPendingFilters(5_000)
+
+    // Device-supplied output must NOT trigger uncached host VFS disk probes via GradleConsoleFilter or debugger attach inlays.
+    assertThat(LocalFileSystem.getInstance().findFileByPathIfCached(normalizedPath)).isNull()
+    val hyperlinks = view.myLogsView.getHyperlinks()!!
+    val pathStart = view.myLogsView.text.indexOf(externalScript.absolutePath)
+    assertThat(pathStart).isAtLeast(0)
+    val pathEnd = pathStart + externalScript.absolutePath.length - 1
+    assertThat(hyperlinks.getAllHyperlinks(pathStart, pathEnd)).isEmpty()
+    assertThat(hyperlinks.collectAllInlays()).isEmpty()
   }
 
   private fun createEncodedJourneyArtifact(): String {

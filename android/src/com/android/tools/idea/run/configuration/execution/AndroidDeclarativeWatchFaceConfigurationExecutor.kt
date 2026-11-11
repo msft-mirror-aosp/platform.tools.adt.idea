@@ -23,6 +23,7 @@ import com.android.tools.deployer.model.App
 import com.android.tools.deployer.model.component.ComponentType
 import com.android.tools.deployer.model.component.WatchFace
 import com.android.tools.deployer.modelv1.component.CommandResultReceiverV1
+import com.android.tools.idea.console.createDeviceTextConsoleBuilder
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AndroidSessionInfo
 import com.android.tools.idea.execution.common.ApplicationDeployer
@@ -36,7 +37,6 @@ import com.android.tools.idea.run.DeviceFutures
 import com.android.tools.idea.run.ShowLogcatListener
 import com.android.tools.idea.run.configuration.AndroidDeclarativeWatchFaceConfiguration
 import com.intellij.execution.ExecutionException
-import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.RunContentDescriptor
@@ -180,7 +180,7 @@ class AndroidDeclarativeWatchFaceConfigurationExecutor(
   }
 
   private fun createConsole(): ConsoleView {
-    val console = TextConsoleBuilderFactory.getInstance().createBuilder(environment.project).console
+    val console = createDeviceTextConsoleBuilder(environment.project).console
     Disposer.register(environment.project, console)
     return console
   }

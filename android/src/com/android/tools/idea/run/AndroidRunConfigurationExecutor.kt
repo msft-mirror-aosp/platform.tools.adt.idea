@@ -21,6 +21,7 @@ import com.android.tools.deployer.common.DeployerException
 import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.deployer.model.App
 import com.android.tools.idea.backup.BackupManager
+import com.android.tools.idea.console.createDeviceTextConsoleBuilder
 import com.android.tools.idea.deploy.DeploymentConfiguration
 import com.android.tools.idea.editors.liveedit.LiveEditService
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
@@ -52,7 +53,6 @@ import com.android.tools.idea.run.util.LaunchUtils
 import com.android.tools.idea.util.androidFacet
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.RunnerAndConfigurationSettings
-import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
@@ -414,7 +414,7 @@ class AndroidRunConfigurationExecutor(
   }
 
   private fun createConsole(): ConsoleView {
-    val console = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
+    val console = createDeviceTextConsoleBuilder(project).console
     Disposer.register(project, console)
     return console
   }

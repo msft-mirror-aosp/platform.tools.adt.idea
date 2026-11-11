@@ -17,6 +17,7 @@ package com.android.tools.idea.testartifacts.instrumented.testsuite.view
 
 import com.android.annotations.concurrency.UiThread
 import com.android.tools.adtui.stdui.CommonButton
+import com.android.tools.idea.console.createDeviceConsoleView
 import com.android.tools.idea.testartifacts.instrumented.testsuite.api.ActionPlaces
 import com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResults
 import com.android.tools.idea.testartifacts.instrumented.testsuite.api.getFullTestCaseName
@@ -134,7 +135,7 @@ constructor(
   @get:VisibleForTesting val contentView: DetailsViewContentView = DetailsViewContentView(parentDisposable, project, logger, headerActions)
 
   val rawTestLogConsoleView: ConsoleViewImpl =
-    ConsoleViewImpl(project, /* viewer= */ true).apply { Disposer.register(parentDisposable, this) }
+    createDeviceConsoleView(project, viewer = true).apply { Disposer.register(parentDisposable, this) }
 
   private val myRawTestLogConsoleViewWithVerticalToolbar: NonOpaquePanel =
     NonOpaquePanel(BorderLayout()).apply {

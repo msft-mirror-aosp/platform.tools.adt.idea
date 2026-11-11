@@ -21,6 +21,7 @@ import com.android.tools.deployer.Activator
 import com.android.tools.deployer.common.DeployerException
 import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.deployer.model.App
+import com.android.tools.idea.console.createDeviceTextConsoleBuilder
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AndroidSessionInfo
 import com.android.tools.idea.execution.common.AppRunSettings
@@ -37,7 +38,6 @@ import com.android.tools.idea.run.ProcessHandlerApplicationTerminator
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.RunConfiguration
-import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.RunContentDescriptor
@@ -190,7 +190,7 @@ abstract class AndroidConfigurationExecutorBase(
   ): XSessionStartedResult
 
   private fun createConsole(): ConsoleView {
-    val console = TextConsoleBuilderFactory.getInstance().createBuilder(project).console
+    val console = createDeviceTextConsoleBuilder(project).console
     Disposer.register(project, console)
     return console
   }

@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.testartifacts.instrumented.testsuite.view
 
+import com.android.tools.idea.console.createDeviceConsoleView
 import com.android.tools.idea.testartifacts.instrumented.testsuite.api.ActionPlaces
 import com.android.tools.idea.testartifacts.instrumented.testsuite.api.AndroidTestResults
 import com.android.tools.idea.testartifacts.instrumented.testsuite.logging.AndroidTestSuiteLogger
@@ -158,7 +159,7 @@ open class DetailsViewContentView(
     tabs.addTab(myScreenshotAttributesTab)
 
     // Create logcat tab.
-    myLogsView = ConsoleViewImpl(project, /* viewer= */ true)
+    myLogsView = createDeviceConsoleView(project, viewer = true)
     Disposer.register(this, myLogsView)
     logger.addImpressionWhenDisplayed(myLogsView.component, ParallelAndroidTestReportUiEvent.UiElement.TEST_SUITE_LOG_VIEW)
 
@@ -186,7 +187,7 @@ open class DetailsViewContentView(
     tabs.addTab(logsTab)
 
     // Create benchmark tab.
-    myBenchmarkView = ConsoleViewImpl(project, /* viewer= */ true)
+    myBenchmarkView = createDeviceConsoleView(project, viewer = true)
     Disposer.register(this, myBenchmarkView)
     val benchmarkViewWithVerticalToolbar =
       createAccessiblePanel(BorderLayout(), accessibleName = "Benchmark View", roleOnMac = AccessibleRole.PANEL).apply {

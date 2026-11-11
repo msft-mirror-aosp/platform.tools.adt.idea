@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.layoutinspector.recompositions
 
+import com.android.tools.idea.console.getDeviceConsoleFilters
 import com.intellij.codeInsight.navigation.actions.ClickLinkAction
 import com.intellij.execution.filters.CompositeFilter
-import com.intellij.execution.impl.ConsoleViewUtil
 import com.intellij.execution.impl.EditorHyperlinkListener
 import com.intellij.execution.impl.EditorHyperlinkSupport
 import com.intellij.openapi.actionSystem.ActionManager
@@ -55,11 +55,11 @@ internal open class RecompositionHyperLinkDetector(
 
   init {
     filterJob = scope.launch {
-      // Add all standard filters (this will include hyperlinks of the fileName of each line)
+      // Add the device-safe filter allowlist (stack-trace links + SafeUrlFilter).
       // Performed as a background task based on `ConsoleViewImpl.updatePredefinedFiltersLater()`
       // TODO: Remove filterJob when Intellij allows us to specify a testDispatcher in a
       // readAction.
-      val filters = smartReadAction(project) { ConsoleViewUtil.computeConsoleFilters(project, null, GlobalSearchScope.allScope(project)) }
+      val filters = smartReadAction(project) { getDeviceConsoleFilters(project, GlobalSearchScope.allScope(project)) }
       // Allow custom extensions to add hyperlinks:
       LayoutInspectorRecompositionFilterProvider.EP_NAME.extensionList.map { it.create(editor) }.forEach { filter.addFilter(it) }
 

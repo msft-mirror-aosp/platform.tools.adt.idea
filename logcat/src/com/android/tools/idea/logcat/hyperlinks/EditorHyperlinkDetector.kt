@@ -16,6 +16,7 @@
 package com.android.tools.idea.logcat.hyperlinks
 
 import com.android.sdklib.AndroidApiLevel
+import com.android.tools.idea.console.SafeUrlFilter
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.logcat.LogcatConsoleFilterProvider
 import com.android.tools.idea.logcat.util.LOGGER

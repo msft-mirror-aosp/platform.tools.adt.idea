@@ -16,6 +16,7 @@
 package com.android.tools.idea.execution.common.debug.impl.java
 
 import com.android.ddmlib.Client
+import com.android.tools.idea.console.createDeviceTextConsoleBuilder
 import com.android.tools.idea.execution.common.debug.AndroidJavaDebugEnvironment
 import com.android.tools.idea.execution.common.processhandler.AndroidRemoteDebugProcessHandler
 import com.intellij.debugger.DebuggerGlobalSearchScope
@@ -23,7 +24,6 @@ import com.intellij.debugger.DebuggerManagerEx
 import com.intellij.execution.DefaultExecutionResult
 import com.intellij.execution.ExecutionResult
 import com.intellij.execution.configurations.RemoteConnection
-import com.intellij.execution.filters.TextConsoleBuilderFactory
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
@@ -68,7 +68,7 @@ internal class AndroidJavaDebugEnvironmentImpl(
       throw IllegalStateException("The project is disposed and hence the debug environment is invalid")
     }
 
-    val console = consoleViewToReuse ?: TextConsoleBuilderFactory.getInstance().createBuilder(project).console
+    val console = consoleViewToReuse ?: createDeviceTextConsoleBuilder(project).console
     Disposer.register(project, console)
     val debugProcessHandler = AndroidRemoteDebugProcessHandler(project, client, detachIsDefault)
     console.attachToProcess(debugProcessHandler)
