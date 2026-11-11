@@ -76,22 +76,11 @@ class StudioTests(unittest.TestCase):
         "plugins/android/lib/game-tools-protos.jar",
     ]
 
-    archive_files_required = {
-        "linux": [
-            "bin/game-tools.sh",
-            "bin/profiler.sh",
-        ],
-        "win": [
-            "bin/game-tools.bat",
-            "bin/profiler.bat",
-        ],
-    }
-
-    for platform in archive_files_required.keys():
+    for platform in ["linux", "win"]:
       name = "tools/adt/idea/studio/android-studio.%s.zip" % platform
       with zipfile.ZipFile(name) as file:
         files = file.namelist()
-      for req in all_required + archive_files_required[platform]:
+      for req in all_required:
         if not any(file_name.endswith(req) for file_name in files):
           self.fail("Required file " + req + " not found in " + platform  + " distribution.")
 

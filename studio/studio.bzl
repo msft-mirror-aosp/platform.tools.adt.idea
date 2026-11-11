@@ -707,11 +707,6 @@ def _stamp_platform(ctx, platform, platform_files, added_plugins):
         args.add("--replace_selector", system_selector)
         _stamp(ctx, args, [], studio_sh, stamped_studio_sh)
 
-        game_tools_sh, stamped_game_tools_sh = _declare_stamped_file(ctx, ret, platform, platform.base_path + "bin/game-tools.sh")
-        args = ctx.actions.args()
-        args.add("--replace_selector", system_selector)
-        _stamp(ctx, args, [], game_tools_sh, stamped_game_tools_sh)
-
         install_txt, stamped_install_txt = _declare_stamped_file(ctx, ret, platform, platform.base_path + "Install-Linux-tar.txt")
         args = ctx.actions.args()
         args.add("--replace_selector", system_selector)
@@ -740,11 +735,6 @@ def _stamp_platform(ctx, platform, platform_files, added_plugins):
         args = ctx.actions.args()
         args.add("--replace_selector", system_selector)
         _stamp(ctx, args, [], studio_bat, stamped_studio_bat)
-
-        game_tools_bat, stamped_game_tools_bat = _declare_stamped_file(ctx, ret, platform, platform.base_path + "bin/game-tools.bat")
-        args = ctx.actions.args()
-        args.add("--replace_selector", system_selector)
-        _stamp(ctx, args, [], game_tools_bat, stamped_game_tools_bat)
 
     product_info_json, stamped_product_info_json = _declare_stamped_file(ctx, ret, platform, platform.resource_path + "product-info.json")
     args = ctx.actions.args()
@@ -825,10 +815,8 @@ def _get_external_attributes(all_files):
         "plugins/android/resources/native/libimage_converter.dylib",
         "bin/format.sh",
         "bin/fsnotifier",
-        "bin/game-tools.sh",
         "bin/inspect.sh",
         "bin/ltedit.sh",
-        "bin/profiler.sh",
         "bin/restarter",
         "bin/studio",
         "bin/studio.sh",
