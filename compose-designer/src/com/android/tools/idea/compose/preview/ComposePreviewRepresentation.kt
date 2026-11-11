@@ -620,15 +620,7 @@ constructor(
     usageTrackerProvider().logStartupTime((System.currentTimeMillis() - startUpStart).toInt(), peerPreviews)
     interactiveManager.start()
     withContext(Dispatchers.EDT) {
-      if (interactivePreviewNavigationController.canShowNavigationPanel()) {
-        // When interactive navigation controls can be shown, reset the zoom-to-fit settings
-        // and re-trigger zoomToFit so that the design surface adjusts its viewport and scale
-        // properly to accommodate the bottom navigation controls panel.
-        val zoomController = surface.zoomController as DesignSurfaceZoomController
-        zoomController.resetZoomToFitSettings()
-        interactivePreviewNavigationController.showNavigationControls(instance)
-        zoomController.zoomToFit()
-      }
+      showNavigationControlsAndZoomToFitIfAvailable(instance)
     }
     requestVisibilityAndNotificationsUpdate()
     ActivityTracker.getInstance().inc()
@@ -1127,13 +1119,33 @@ constructor(
       val hasNoRenderErrors = surface.sceneManagers.none { it.renderResult.isErrorResult(COMPOSE_VIEW_ADAPTER_FQN) }
       if (hasNoRenderErrors && isPreviewModeChanging.getAndSet(false)) {
         launch(Dispatchers.EDT) {
-          if (!surface.restorePreviousScale()) {
+          if (!showNavigationControlsAndZoomToFitIfAvailable() && !surface.restorePreviousScale()) {
             surface.zoomController.zoomToFit()
           }
         }
       }
       updateResizePanel()
     }
+  }
+
+  /**
+   * Displays the bottom navigation controls panel if available for [instance] and triggers zoom-to-fit so the surface adjusts its viewport
+   * and scale to accommodate the bottom panel.
+   *
+   * @return true if the navigation controls panel can be shown, false otherwise.
+   */
+  private fun showNavigationControlsAndZoomToFitIfAvailable(
+    instance: ComposePreviewElementInstance<*>? = (mode.value as? PreviewMode.Interactive)?.selected as? ComposePreviewElementInstance<*>
+  ): Boolean {
+    if (instance == null || !interactivePreviewNavigationController.canShowNavigationPanel()) return false
+    // Avoid recreating the navigation controls panel or re-arming zoom-to-fit if it was already shown during this interactive session
+    if (interactivePreviewNavigationController.getBottomPanelComponent() == null) {
+      val zoomController = surface.zoomController as DesignSurfaceZoomController
+      zoomController.resetZoomToFitSettings()
+      interactivePreviewNavigationController.showNavigationControls(instance)
+      zoomController.zoomToFit()
+    }
+    return true
   }
 
   /**
@@ -1399,9 +1411,10 @@ constructor(
               .takeIf { it is FlowableCollection.Present }
               ?.asCollection()
               ?.toList()
+          // Force a full refresh whenever a preview mode transition is still pending so onAfterRender is guaranteed to run
           val needsFullRefresh =
             refreshRequest.refreshType != ComposePreviewRefreshType.QUALITY &&
-              (invalidated.getAndSet(false) || renderedPreviews != previewsToRender)
+              (invalidated.getAndSet(false) || renderedPreviews != previewsToRender || isPreviewModeChanging.get())
           invalidateIfCancelled = needsFullRefresh
 
           composeWorkBench.hasContent = previewsToRender.isNotEmpty() || mode.value is PreviewMode.UiCheck

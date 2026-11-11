@@ -30,6 +30,7 @@ import com.android.tools.configurations.ConfigurationListener
 import com.android.tools.idea.common.error.DesignerCommonIssuePanel
 import com.android.tools.idea.common.error.IssueProviderListener
 import com.android.tools.idea.common.error.SharedIssuePanelProvider
+import com.android.tools.idea.common.surface.DesignSurfaceZoomController
 import com.android.tools.idea.common.surface.getDesignSurface
 import com.android.tools.idea.compose.ComposeProjectRule
 import com.android.tools.idea.compose.PsiComposePreviewElementInstance
@@ -882,6 +883,62 @@ class ComposePreviewRepresentationTest {
 
     // Ensure the view is in zoom-to-fit (canZoomToFit is false).
     assertThat(mainSurface.zoomController.canZoomToFit()).isFalse()
+  }
+
+  // Regression test for b/581521066
+  @Test
+  fun testInteractivePreviewNavigationPanelShownOnSinglePreviewWhenRefreshFollowsModeChange() {
+    val singlePreviewFile = runWriteActionAndWait {
+      fixture.addFileToProjectAndInvalidate(
+        "SinglePreview.kt",
+        // language=kotlin
+        """
+        import androidx.compose.ui.tooling.preview.Preview
+        import androidx.compose.runtime.Composable
+
+        @Composable
+        @Preview
+        fun SinglePreview() {
+        }
+        """
+          .trimIndent(),
+      )
+    }
+
+    runComposePreviewRepresentationTest(singlePreviewFile) {
+      // Compile and render the single preview in static mode first
+      val composePreviewRepresentation = createPreviewAndCompile(expectedModelCount = 1)
+      val singlePreviewElement = mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }.single()
+      val interactiveNavigationController = composePreviewRepresentation.getInteractiveNavigationControllerForTestOnly()
+
+      // Start Interactive Mode while navigation controls are not yet available during the initial refresh
+      setModeAndWaitForRefresh(PreviewMode.Interactive(singlePreviewElement))
+      assertThat(composePreviewRepresentation.getBottomPanelForTestOnly()).isNull()
+
+      // Switch back to Default mode and populate navigation objects as updated during interactive rendering
+      setModeAndWaitForRefresh(PreviewMode.Default())
+      val composeViewAdapterWithNavigationDisplay = TestComposeViewAdapterViewObj(onBackPressProgressCallback = { _, _ -> })
+      interactiveNavigationController.updateObjects(
+        currentNavigationEventDispatcherOwnerObj = null,
+        currentComposeViewAdapterObj = composeViewAdapterWithNavigationDisplay,
+        hasNavDisplay = true,
+      )
+
+      // Enter Interactive Mode on the single-preview file and verify the navigation panel is shown and zoomed to fit
+      setModeAndWaitForRefresh(PreviewMode.Interactive(singlePreviewElement))
+      delayUntilCondition(100) { composePreviewRepresentation.getBottomPanelForTestOnly() != null }
+      assertThat(interactiveNavigationController.canShowNavigationPanel()).isTrue()
+      assertThat(composePreviewRepresentation.getBottomPanelForTestOnly()).isNotNull()
+      assertThat(mainSurface.zoomController.canZoomToFit()).isFalse()
+
+      // Simulate the initial surface resize from attaching the bottom panel, then verify manual zoom is preserved across subsequent resizes
+      val designSurfaceZoomController = mainSurface.zoomController as DesignSurfaceZoomController
+      designSurfaceZoomController.notifyDesignSurfaceResized(width = 500, height = 500, isShowing = true)
+      designSurfaceZoomController.setScale(2.0)
+      assertThat(designSurfaceZoomController.scale).isEqualTo(2.0)
+      designSurfaceZoomController.notifyDesignSurfaceResized(width = 600, height = 600, isShowing = true)
+      assertThat(designSurfaceZoomController.scale).isEqualTo(2.0)
+    }
   }
 
   @Test
