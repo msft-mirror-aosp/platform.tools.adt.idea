@@ -19,6 +19,7 @@ import static com.android.tools.adtui.workbench.AttachedToolWindow.TOOL_WINDOW_P
 import static com.android.tools.adtui.workbench.PalettePanelToolContent.MIN_TOOL_WIDTH;
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -38,9 +39,11 @@ import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx;
 import com.intellij.openapi.ui.ThreeComponentsSplitter;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.testFramework.LeakHunter;
 import com.intellij.testFramework.ServiceContainerUtil;
 import com.intellij.util.EventDispatcher;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.KeyboardFocusManager;
 import java.awt.Point;
@@ -482,6 +485,71 @@ public class WorkBenchTest extends WorkBenchTestCase {
     assertThat(myModel.getAllTools()).hasSize(3);
     assertThat(myModel.getAllTools().stream().noneMatch(AttachedToolWindow::isMinimized)).isTrue();
     verifyNoInteractions(myWorkBenchManager);
+  }
+
+  public void testDisposeClearsFocusCycleRoot() {
+    KeyboardFocusManager kfm = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+    Container previousRoot = kfm.getCurrentFocusCycleRoot();
+    try {
+      WorkBench<String> workBench = new WorkBench<>(getProject(), "LOCAL_BENCH", myFileEditor, getTestRootDisposable());
+      workBench.init(new JPanel(), "CONTEXT", myDefinitions, false);
+      kfm.setGlobalCurrentFocusCycleRoot(workBench);
+      Disposer.dispose(workBench);
+      assertThat(kfm.getCurrentFocusCycleRoot()).isNull();
+      clearInvocations(myWorkBenchManager, myFloatingToolWindowManager);
+      reset(myWorkBenchManager, myFloatingToolWindowManager);
+      LeakHunter.checkLeak(kfm, WorkBench.class, wb -> wb == workBench);
+    }
+    finally {
+      kfm.setGlobalCurrentFocusCycleRoot(previousRoot);
+    }
+  }
+
+  public void testDisposeClearsAttachedToolWindowFocusCycleRoot() {
+    KeyboardFocusManager kfm = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+    Container previousRoot = kfm.getCurrentFocusCycleRoot();
+    try {
+      JPanel toolInnerRoot = new JPanel();
+      toolInnerRoot.setFocusCycleRoot(true);
+      myToolWindow1.getComponent().add(toolInnerRoot);
+      kfm.setGlobalCurrentFocusCycleRoot(toolInnerRoot);
+      Disposer.dispose(myWorkBench);
+      assertThat(kfm.getCurrentFocusCycleRoot()).isNull();
+    }
+    finally {
+      kfm.setGlobalCurrentFocusCycleRoot(previousRoot);
+    }
+  }
+
+  public void testDisposeClearsDescendantFocusCycleRoot() {
+    KeyboardFocusManager kfm = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+    Container previousRoot = kfm.getCurrentFocusCycleRoot();
+    try {
+      JPanel innerRoot = new JPanel();
+      innerRoot.setFocusCycleRoot(true);
+      myContent.add(innerRoot);
+      kfm.setGlobalCurrentFocusCycleRoot(innerRoot);
+      Disposer.dispose(myWorkBench);
+      assertThat(kfm.getCurrentFocusCycleRoot()).isNull();
+    }
+    finally {
+      kfm.setGlobalCurrentFocusCycleRoot(previousRoot);
+    }
+  }
+
+  public void testDisposePreservesUnrelatedFocusCycleRoot() {
+    KeyboardFocusManager kfm = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+    Container previousRoot = kfm.getCurrentFocusCycleRoot();
+    try {
+      JPanel unrelatedRoot = new JPanel();
+      unrelatedRoot.setFocusCycleRoot(true);
+      kfm.setGlobalCurrentFocusCycleRoot(unrelatedRoot);
+      Disposer.dispose(myWorkBench);
+      assertThat(kfm.getCurrentFocusCycleRoot()).isSameAs(unrelatedRoot);
+    }
+    finally {
+      kfm.setGlobalCurrentFocusCycleRoot(previousRoot);
+    }
   }
 
   @SuppressWarnings("SameParameterValue")

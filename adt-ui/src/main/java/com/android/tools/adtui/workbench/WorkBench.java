@@ -40,6 +40,7 @@ import com.intellij.util.ui.JBUI;
 import com.intellij.util.ui.accessibility.ScreenReader;
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.KeyboardFocusManager;
 import java.awt.Point;
@@ -89,7 +90,7 @@ import org.jetbrains.annotations.TestOnly;
  *
  * @param <T> Specifies the type of data controlled by this {@link WorkBench}.
  */
-public class WorkBench<T> extends JBLayeredPane implements Disposable {
+public class WorkBench<T> extends JBLayeredPane implements Disposable.Parent {
   private static Logger LOG = Logger.getInstance(WorkBench.class);
 
   private final Project myProject;
@@ -328,6 +329,14 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
     }
   }
 
+  @Override
+  public void beforeTreeDispose() {
+    // Child Disposables (such as AttachedToolWindow) run dispose() bottom-up before
+    // WorkBench.dispose() and detach their panels, so clear any descendant root first.
+    clearFocusCycleRoot();
+  }
+
+  @Override
   public void dispose() {
     LOG.debug("dispose");
     isDisposed = true;
@@ -339,6 +348,10 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
     setToolContext(null);
     myModel.clearContextAndTools();
 
+    // Clear before removing children while parent links are intact (for any descendant root),
+    // and again after removeAll() in case AWT focus transfer during removal re-sets this root.
+    clearFocusCycleRoot();
+
     // Clean up all the children panels to avoid accidental memory leaks.
     myMainPanel.removeAll();
     mySplitter.setInnerComponent(null);
@@ -346,9 +359,20 @@ public class WorkBench<T> extends JBLayeredPane implements Disposable {
     mySplitter.setLastComponent(null);
     mySplitter.removeAll();
     myLoadingPanel.removeAll();
+    clearFocusCycleRoot();
   }
 
   // ----------------------------------- Implementation --------------------------------------------------------------- //
+
+  private void clearFocusCycleRoot() {
+    // KeyboardFocusManager stores the current focus cycle root in a static field that AWT never
+    // resets on removeNotify(). Clear it if it points to (or inside) this disposed WorkBench.
+    KeyboardFocusManager focusManager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+    Container focusCycleRoot = focusManager.getCurrentFocusCycleRoot();
+    if (focusCycleRoot != null && SwingUtilities.isDescendingFrom(focusCycleRoot, this)) {
+      focusManager.setGlobalCurrentFocusCycleRoot(null);
+    }
+  }
 
   WorkBench(@NotNull Project project,
             @NotNull String name,
