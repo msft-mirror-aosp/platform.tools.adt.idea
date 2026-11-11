@@ -69,8 +69,8 @@ import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
-import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.MenuComboBox
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Slider
 import org.jetbrains.jewel.ui.component.Text
@@ -403,11 +403,19 @@ private fun DropDownAction(
         JewelTheme.globalColors.text.disabled
       }
     Text(text = label, modifier = Modifier.padding(vertical = DEFAULT_SPACING), color = labelColor, maxLines = 1, softWrap = false)
+    // Format the accessible label and selected edge state for the navigation edge dropdown.
+    val selectedEdgeName = selectedEdge.value.visibleName
+    val edgeDropdownDescription = message("action.navigate.back.navigation.edge.dropdown.description", selectedEdgeName)
     Tooltip(tooltip = { Text(message("action.navigate.back.navigation.edge.disabled.tooltip")) }, enabled = !enabled) {
-      Dropdown(
-        modifier = Modifier.testTag(NavigationControlsPanelTestTags.edgeDropdown).widthIn(min = 100.dp),
+      MenuComboBox(
+        labelContent = { Text(selectedEdgeName, maxLines = 1, softWrap = false) },
+        modifier =
+          Modifier.testTag(NavigationControlsPanelTestTags.edgeDropdown).widthIn(min = 100.dp).semantics {
+            contentDescription = edgeDropdownDescription
+            stateDescription = selectedEdgeName
+          },
         enabled = enabled,
-        menuContent = {
+        content = {
           for (edge in BackNavigationEdge.entries) {
             selectableItem(
               selected = selectedEdge.value == edge,
@@ -420,9 +428,7 @@ private fun DropDownAction(
             }
           }
         },
-      ) {
-        Text(selectedEdge.value.visibleName, maxLines = 1, softWrap = false)
-      }
+      )
     }
   }
 

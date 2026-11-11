@@ -733,4 +733,66 @@ class NavigationControlsPanelUiTest {
     composeTestRule.waitForIdle()
     assertEquals("0%", progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
   }
+
+  @Test
+  fun testEdgeDropdownAccessibilitySemantics() {
+    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    composeTestRule.setContent {
+      NavigationControlsPanel(
+        isEdgeNavigationImplemented = { true },
+        canBackPress = { true },
+        onBackPress = {},
+        onBackPressStart = {},
+        onBackPressProgress = { _, _ -> },
+        onBackPressTrackProgress = {},
+        onEdgeDropdownPress = {},
+        fpsUpdater = fpsUpdater,
+      )
+    }
+
+    // Verify the dropdown initially exposes "Navigation Edge: None" and stateDescription "None"
+    val expectedNoneDescription =
+      message("action.navigate.back.navigation.edge.dropdown.description", BackNavigationEdge.EDGE_NONE.visibleName)
+    val edgeDropdownNode = composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.edgeDropdown)
+    composeTestRule.onNodeWithContentDescription(expectedNoneDescription).assertIsDisplayed()
+    assertEquals(
+      listOf(expectedNoneDescription),
+      edgeDropdownNode.fetchSemanticsNode().config[SemanticsProperties.ContentDescription],
+    )
+    assertEquals(
+      BackNavigationEdge.EDGE_NONE.visibleName,
+      edgeDropdownNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
+    )
+
+    // Select the Left edge option and verify the accessible description and stateDescription update to "Left"
+    edgeDropdownNode.performClick()
+    composeTestRule.onNodeWithText(BackNavigationEdge.EDGE_LEFT.visibleName).assertIsDisplayed().performClick()
+    val expectedLeftDescription =
+      message("action.navigate.back.navigation.edge.dropdown.description", BackNavigationEdge.EDGE_LEFT.visibleName)
+    composeTestRule.onNodeWithContentDescription(expectedLeftDescription).assertIsDisplayed()
+    assertEquals(
+      listOf(expectedLeftDescription),
+      edgeDropdownNode.fetchSemanticsNode().config[SemanticsProperties.ContentDescription],
+    )
+    assertEquals(
+      BackNavigationEdge.EDGE_LEFT.visibleName,
+      edgeDropdownNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
+    )
+
+    // Select the Right edge option and verify the accessible description and stateDescription update to "Right"
+    edgeDropdownNode.performClick()
+    composeTestRule.onNodeWithText(BackNavigationEdge.EDGE_RIGHT.visibleName).assertIsDisplayed().performClick()
+    val expectedRightDescription =
+      message("action.navigate.back.navigation.edge.dropdown.description", BackNavigationEdge.EDGE_RIGHT.visibleName)
+    composeTestRule.onNodeWithContentDescription(expectedRightDescription).assertIsDisplayed()
+    assertEquals(
+      listOf(expectedRightDescription),
+      edgeDropdownNode.fetchSemanticsNode().config[SemanticsProperties.ContentDescription],
+    )
+    assertEquals(
+      BackNavigationEdge.EDGE_RIGHT.visibleName,
+      edgeDropdownNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
+    )
+  }
 }
