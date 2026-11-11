@@ -237,7 +237,6 @@ internal fun textComponent(
   maxLineLength: Int = MAX_LINE_LENGTH_WORD_WRAP,
   action: HyperlinkEventAction = HyperlinkEventAction.HTML_HYPERLINK_INSTANCE,
 ): JEditorPane {
-  @Suppress("UnstableApiUsage")
   return DslLabel(DslLabelType.LABEL).apply {
     this.action = action
     this.maxLineLength = maxLineLength
@@ -324,3 +323,7 @@ internal val DeviceHandle.pairedPhoneId: DeviceId?
 
 internal val DeviceHandle.deviceType: DeviceType?
   get() = state.properties.deviceType
+
+/** Returns a non-blank error description for [throwable], falling back to its class name. */
+internal fun formatErrorMessage(throwable: Throwable): String =
+  throwable.message?.takeIf { it.isNotBlank() } ?: throwable.javaClass.simpleName.ifEmpty { throwable.javaClass.name }

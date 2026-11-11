@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.streaming.core.CloseDialogAction
+import com.android.tools.idea.streaming.core.formatErrorMessage
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.utils.throwIfCancellation
 import com.intellij.openapi.application.EDT
@@ -212,7 +213,7 @@ internal abstract class AbstractExtendedControlsDialog(
 
   /** Shows a red error message at the bottom of the dialog for [throwable]. */
   protected fun showError(throwable: Throwable) {
-    showError(throwable.message?.takeIf { it.isNotBlank() } ?: throwable.javaClass.simpleName.ifEmpty { throwable.javaClass.name })
+    showError(formatErrorMessage(throwable))
   }
 
   /** Shows a red error message at the bottom of the dialog. */

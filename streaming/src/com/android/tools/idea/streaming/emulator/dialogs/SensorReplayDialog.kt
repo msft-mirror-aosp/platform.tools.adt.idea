@@ -44,7 +44,6 @@ import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.ui.ColoredTableCellRenderer
 import com.intellij.ui.ToolbarDecorator
 import com.intellij.ui.components.ActionLink
 import com.intellij.ui.components.JBLabel
@@ -54,18 +53,14 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.dialog
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.AlignX
-import com.intellij.ui.dsl.builder.DslComponentProperty
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.dsl.gridLayout.UnscaledGaps
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
-import com.intellij.util.ui.ColumnInfo
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
 import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.awt.Component
-import java.awt.Dimension
 import java.awt.KeyboardFocusManager
 import java.awt.event.ItemEvent
 import java.io.IOException
@@ -75,13 +70,10 @@ import java.nio.file.Path
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
 import javax.swing.DefaultComboBoxModel
-import javax.swing.Icon
 import javax.swing.JButton
 import javax.swing.JPanel
-import javax.swing.JTable
 import javax.swing.ListSelectionModel
 import javax.swing.SwingConstants
-import javax.swing.table.TableCellRenderer
 import kotlin.time.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -90,7 +82,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.jetbrains.annotations.Nls
 import org.jetbrains.annotations.NonNls
 import org.jetbrains.annotations.VisibleForTesting
 
@@ -408,7 +399,7 @@ internal class SensorReplayDialog(emulator: EmulatorController) :
             }
         cell(playPauseButton).accessibleName(playLabel)
 
-        @Suppress("UnstableApiUsage") placeholder().resizableColumn()
+        placeholder().resizableColumn()
 
         val speedLabel = message("sensor.replay.dialog.label.playback.speed")
         comboBox(
@@ -662,57 +653,22 @@ internal class SensorReplayDialog(emulator: EmulatorController) :
 
   private class SavedSessionsTableModel :
     ListTableModel<SensorSessionItem>(
-      object : ColumnInfo<SensorSessionItem, SensorSessionItem>(message("sensor.replay.dialog.column.file.name")) {
-        private val renderer =
-          object : ColoredTableCellRenderer() {
-            override fun customizeCellRenderer(
-              table: JTable,
-              value: Any?,
-              selected: Boolean,
-              hasFocus: Boolean,
-              row: Int,
-              column: Int,
-            ) {
-              if (value is SensorSessionItem) {
-                append(value.fileName)
-                setToolTipText(HtmlChunk.text(value.path.toString()))
-              }
-            }
-          }
+      object : TextColumnInfo<SensorSessionItem>(message("sensor.replay.dialog.column.file.name")) {
+        override fun valueOf(item: SensorSessionItem): String = item.fileName
 
-        override fun valueOf(item: SensorSessionItem): SensorSessionItem = item
-
-        override fun getRenderer(item: SensorSessionItem): TableCellRenderer = renderer
+        override fun getCellTooltipText(item: SensorSessionItem): String = item.path.toString()
       }
     )
 
   private class TimelineTableModel :
     ListTableModel<TimelineEntry>(
-      object : ColumnInfo<TimelineEntry, String>(message("sensor.replay.dialog.column.time.range")) {
+      object : TextColumnInfo<TimelineEntry>(message("sensor.replay.dialog.column.time.range")) {
         override fun valueOf(item: TimelineEntry): String = item.timeRange
       },
-      object : ColumnInfo<TimelineEntry, String>(message("sensor.replay.dialog.column.event.count")) {
+      object : TextColumnInfo<TimelineEntry>(message("sensor.replay.dialog.column.event.count")) {
         override fun valueOf(item: TimelineEntry): String = item.eventCount.toString()
       },
     )
-
-  private class IconButton(icon: Icon?, @Nls tooltip: String, action: () -> Unit) : JButton() {
-    init {
-      this.icon = icon
-      isOpaque = false
-      setToolTipText(HtmlChunk.text(tooltip))
-      putClientProperty("JButton.buttonType", "square")
-      putClientProperty(DslComponentProperty.VISUAL_PADDINGS, UnscaledGaps(3))
-      addActionListener { action() }
-    }
-
-    override fun getPreferredSize(): Dimension {
-      val size = super.getPreferredSize()
-      return Dimension(size.height, size.height)
-    }
-
-    override fun getMinimumSize(): Dimension = preferredSize
-  }
 
   companion object {
     @NonNls @VisibleForTesting const val SAVED_SENSOR_FILES_PROPERTY = "com.android.tools.idea.streaming.emulator.sensor.replay.saved.files"

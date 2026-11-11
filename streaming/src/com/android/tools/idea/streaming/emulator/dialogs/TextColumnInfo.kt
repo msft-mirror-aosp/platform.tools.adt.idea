@@ -15,7 +15,9 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
+import com.intellij.ide.setToolTipText
 import com.intellij.openapi.util.NlsContexts
+import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.util.ui.ColumnInfo
 import java.awt.Component
 import javax.swing.JTable
@@ -24,6 +26,8 @@ import javax.swing.table.TableCellRenderer
 
 /** String-valued [ColumnInfo] that renders cells without a per-cell focus border. */
 internal abstract class TextColumnInfo<T>(name: @NlsContexts.ColumnName String) : ColumnInfo<T, String>(name) {
+  open fun getCellTooltipText(item: T): @NlsContexts.Tooltip String? = null
+
   private val renderer =
     object : DefaultTableCellRenderer() {
       override fun getTableCellRendererComponent(
@@ -36,5 +40,9 @@ internal abstract class TextColumnInfo<T>(name: @NlsContexts.ColumnName String) 
       ): Component = super.getTableCellRendererComponent(table, value, isSelected, false, row, column)
     }
 
-  override fun getRenderer(item: T): TableCellRenderer = renderer
+  override fun getRenderer(item: T): TableCellRenderer {
+    val tooltip = getCellTooltipText(item)?.takeIf { it.isNotBlank() }
+    renderer.setToolTipText(tooltip?.let(HtmlChunk::text))
+    return renderer
+  }
 }

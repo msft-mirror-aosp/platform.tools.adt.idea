@@ -15,8 +15,10 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
+import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.time.DateTimeException
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -24,6 +26,7 @@ import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.math.max
 import kotlin.math.roundToInt
+import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 
@@ -35,17 +38,19 @@ internal object GpxKmlParser {
   private const val DEFAULT_SPEED_MPS = 10.0 // 36 km/h
   private const val MIN_CALCULATED_DELAY_SEC = 2.0
 
-  fun parseFile(file: Path): List<GpsFix> {
-    val fileName = file.fileName.toString().lowercase(Locale.ROOT)
+  fun parseFile(file: Path): List<GpsFix> =
+    Files.newInputStream(file).buffered().use { stream -> parseStream(file.fileName.toString(), stream) }
+
+  fun parseStream(fileName: String, inputStream: InputStream): List<GpsFix> {
+    val lowerCaseName = fileName.lowercase(Locale.ROOT)
     return when {
-      fileName.endsWith(".gpx") -> parseGpx(file)
-      fileName.endsWith(".kml") -> parseKml(file)
-      else -> throw IllegalArgumentException("Unsupported file type: ${file.fileName}")
+      lowerCaseName.endsWith(".gpx") -> parseGpx(parseXmlDocument(inputStream))
+      lowerCaseName.endsWith(".kml") -> parseKml(parseXmlDocument(inputStream))
+      else -> throw IllegalArgumentException("Unsupported file type: $fileName")
     }
   }
 
-  private fun parseGpx(file: Path): List<GpsFix> {
-    val doc = parseXmlDocument(file)
+  private fun parseGpx(doc: Document): List<GpsFix> {
     val root = doc.documentElement ?: throw IllegalArgumentException("Empty GPX document")
     val fixes = mutableListOf<GpsFix>()
 
@@ -183,20 +188,23 @@ internal object GpxKmlParser {
       val match = regex.matchEntire(timeStr) ?: throw IllegalArgumentException("Improperly formatted time: $timeStr")
       val (year, month, day, hour, minute, second) = match.destructured
       val dateTime =
-        LocalDateTime.of(
-          year.toInt(),
-          month.toInt(),
-          day.toInt(),
-          hour.toInt(),
-          minute.toInt(),
-          second.toInt(),
-        )
+        try {
+          LocalDateTime.of(
+            year.toInt(),
+            month.toInt(),
+            day.toInt(),
+            hour.toInt(),
+            minute.toInt(),
+            second.toInt(),
+          )
+        } catch (e: DateTimeException) {
+          throw IllegalArgumentException("Improperly formatted time: $timeStr", e)
+        }
       return dateTime.toEpochSecond(ZoneOffset.UTC)
     }
   }
 
-  private fun parseKml(file: Path): List<GpsFix> {
-    val doc = parseXmlDocument(file)
+  private fun parseKml(doc: Document): List<GpsFix> {
     val root = doc.documentElement ?: throw IllegalArgumentException("Empty KML document")
     val fixes = mutableListOf<GpsFix>()
     traverseKmlNode(root, fixes)
@@ -381,16 +389,14 @@ internal object GpxKmlParser {
     return result
   }
 
-  private fun parseXmlDocument(file: Path) =
-    Files.newInputStream(file).buffered().use { stream ->
-      DocumentBuilderFactory.newInstance()
-        .apply {
-          isNamespaceAware = true
-          setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-        }
-        .newDocumentBuilder()
-        .parse(stream)
-    }
+  private fun parseXmlDocument(inputStream: InputStream): Document =
+    DocumentBuilderFactory.newInstance()
+      .apply {
+        isNamespaceAware = true
+        setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+      }
+      .newDocumentBuilder()
+      .parse(inputStream)
 
   private val Element.localOrTagName: String
     get() = localName ?: tagName.substringAfter(':')
@@ -407,3 +413,11 @@ internal data class GpsFix(
 ) : Comparable<GpsFix> {
   override fun compareTo(other: GpsFix): Int = timeEpochSeconds.compareTo(other.timeEpochSeconds)
 }
+
+/** A point along a route with a delay (in seconds at 1X speed) from the previous point. */
+internal data class RoutePoint(
+  val latitude: Double,
+  val longitude: Double,
+  val elevation: Double = 0.0,
+  val delaySeconds: Double = 0.0,
+)

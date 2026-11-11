@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.tools.idea.streaming.StreamingBundle.message
 import com.intellij.ide.setToolTipText
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.ui.JBColor
 import com.intellij.ui.scale.JBUIScale
@@ -28,8 +29,10 @@ import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
+import java.awt.GraphicsEnvironment
 import java.awt.Point
 import java.awt.RenderingHints
+import java.awt.Toolkit
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseWheelEvent
@@ -37,8 +40,9 @@ import java.awt.geom.Ellipse2D
 import java.awt.geom.Path2D
 import java.awt.geom.Rectangle2D
 import java.awt.geom.RoundRectangle2D
-import java.time.format.DateTimeFormatter
+import java.awt.image.BufferedImage
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import javax.swing.JButton
 import javax.swing.JComponent
 import kotlin.math.abs
@@ -46,14 +50,14 @@ import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.roundToInt
+import org.jetbrains.annotations.VisibleForTesting
 
 /**
  * Interactive offline Swing map component supporting Web Mercator projection, vector world landmass rendering, adaptive lat/lon graticule
- * grid, pan/zoom, bundled major cities, click-to-select pin, saved point pins, device location marker (blue dot), and route
- * polyline/waypoint rendering.
+ * grid, pan/zoom, bundled major cities, device location marker (blue dot), and route polyline/waypoint rendering.
  */
 @Suppress("UseJBColor")
-internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JComponent() {
+internal class MapPanel : JComponent() {
 
   var center: GeoPoint = GeoPoint.DEFAULT
     private set
@@ -63,20 +67,6 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
 
   /** Current GPS location of the emulator (rendered as a blue dot with white halo). */
   var deviceLocation: GeoPoint? = null
-    set(value) {
-      field = value
-      repaint()
-    }
-
-  /** Selected/pending point on the map (rendered as a red map pin). */
-  var selectedPoint: GeoPoint? = null
-    set(value) {
-      field = value
-      repaint()
-    }
-
-  /** Saved points rendered as small markers on the map. */
-  var savedPoints: List<SavedPointItem> = emptyList()
     set(value) {
       field = value
       repaint()
@@ -103,9 +93,7 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
       repaint()
     }
 
-  private var dragStartPoint: Point? = null
   private var dragLastPoint: Point? = null
-  private var wasDragged = false
 
   private val zoomInButton = createZoomButton("+", message("location.dialog.zoom.in"), "zoomInButton") { setZoomLevel(zoom + 1.0) }
   val zoomOutButton = createZoomButton("\u2212", message("location.dialog.zoom.out"), "zoomOutButton") { setZoomLevel(zoom - 1.0) }
@@ -114,7 +102,8 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
     layout = null
     isOpaque = true
     isFocusable = true
-    cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+    updatePanCursor()
+    addPropertyChangeListener("graphicsConfiguration") { updatePanCursor() }
 
     add(zoomInButton)
     add(zoomOutButton)
@@ -125,36 +114,21 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
           if (!isEnabled) return
           if (e.button == MouseEvent.BUTTON1) {
             requestFocusInWindow()
-            dragStartPoint = e.point
             dragLastPoint = e.point
-            wasDragged = false
           }
         }
 
         override fun mouseDragged(e: MouseEvent) {
           if (!isEnabled) return
           val last = dragLastPoint ?: return
-          val start = dragStartPoint ?: return
-          if (!wasDragged && start.distance(e.point) > JBUIScale.scale(DRAG_THRESHOLD_PX)) {
-            wasDragged = true
-          }
-          if (wasDragged) {
-            val dx = e.x - last.x
-            val dy = e.y - last.y
-            dragLastPoint = e.point
-            panByPixels(-dx.toDouble(), -dy.toDouble())
-          }
+          val dx = e.x - last.x
+          val dy = e.y - last.y
+          dragLastPoint = e.point
+          panByPixels(-dx.toDouble(), -dy.toDouble())
         }
 
         override fun mouseReleased(e: MouseEvent) {
-          if (!isEnabled) return
-          if (e.button == MouseEvent.BUTTON1 && !wasDragged && dragStartPoint != null) {
-            val clickedGeo = pixelToGeoPoint(e.x.toDouble(), e.y.toDouble())
-            onMapClicked(clickedGeo)
-          }
-          dragStartPoint = null
           dragLastPoint = null
-          wasDragged = false
         }
 
         override fun mouseWheelMoved(e: MouseWheelEvent) {
@@ -171,6 +145,24 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
     addMouseListener(mouseHandler)
     addMouseMotionListener(mouseHandler)
     addMouseWheelListener(mouseHandler)
+  }
+
+  override fun updateUI() {
+    super.updateUI()
+    updatePanCursor()
+  }
+
+  private fun updatePanCursor() {
+    val newCursor =
+      if (isEnabled) {
+        val targetSize = getPanCursorTargetSize(this)
+        panCursors.getOrPut(targetSize) { createPanCursor(targetSize) }
+      } else {
+        Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR)
+      }
+    if (cursor !== newCursor) {
+      cursor = newCursor
+    }
   }
 
   private fun createZoomButton(text: String, tooltip: String, buttonName: String, action: () -> Unit): JButton {
@@ -245,7 +237,7 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
 
   override fun setEnabled(enabled: Boolean) {
     super.setEnabled(enabled)
-    cursor = Cursor.getPredefinedCursor(if (enabled) Cursor.HAND_CURSOR else Cursor.DEFAULT_CURSOR)
+    updatePanCursor()
     updateZoomButtons()
   }
 
@@ -320,7 +312,8 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
   }
 
   /** Converts component pixel coordinates `(px, py)` to a [GeoPoint]. */
-  fun pixelToGeoPoint(px: Double, py: Double): GeoPoint {
+  @VisibleForTesting
+  internal fun pixelToGeoPoint(px: Double, py: Double): GeoPoint {
     val w = width.takeIf { it > 0 } ?: JBUIScale.scale(PREFERRED_WIDTH)
     val h = height.takeIf { it > 0 } ?: JBUIScale.scale(PREFERRED_HEIGHT)
     val worldSize = GeoMath.worldSize(zoom)
@@ -370,12 +363,10 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
       paintLandPolygons(g2, isDark)
       paintGraticule(g2, isDark)
       paintWorldCities(g2, isDark)
-      paintSavedPoints(g2, isDark)
       paintRoute(g2)
       routeOrigin?.let { paintWaypointMarker(g2, it, ORIGIN_COLOR) }
       routeDestination?.let { paintWaypointMarker(g2, it, DESTINATION_COLOR) }
       deviceLocation?.let { paintDeviceLocationDot(g2, it) }
-      selectedPoint?.let { paintPinMarker(g2, it) }
       paintScaleBar(g2, isDark)
       paintCoordinatesFooter(g2, isDark)
 
@@ -684,25 +675,6 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
     }
   }
 
-  private fun paintSavedPoints(g2: Graphics2D, isDark: Boolean) {
-    if (savedPoints.isEmpty()) return
-    val r = JBUIScale.scale(4.5f).toDouble()
-    val labelColor = if (isDark) Color(0xE8, 0xEA, 0xED) else Color(0x20, 0x21, 0x24)
-    g2.font = JBFont.small()
-    for ((name, latitude, longitude, elevation) in savedPoints) {
-      val pt = geoPointToPixel(GeoPoint(latitude, longitude, elevation))
-      if (pt.x !in -20..(width + 20) || pt.y !in -20..(height + 20)) continue
-      g2.color = Color.WHITE
-      g2.fill(Ellipse2D.Double(pt.x - r - 1.5, pt.y - r - 1.5, (r + 1.5) * 2, (r + 1.5) * 2))
-      g2.color = SAVED_POINT_COLOR
-      g2.fill(Ellipse2D.Double(pt.x - r, pt.y - r, r * 2, r * 2))
-      if (name.isNotBlank()) {
-        g2.color = labelColor
-        g2.drawString(name, pt.x + JBUIScale.scale(7), pt.y + JBUIScale.scale(4))
-      }
-    }
-  }
-
   private fun paintRoute(g2: Graphics2D) {
     if (routePoints.size < 2) return
     val path = Path2D.Double()
@@ -749,32 +721,6 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
     g2.fill(Ellipse2D.Double(pt.x - dotRadius, pt.y - dotRadius, dotRadius * 2, dotRadius * 2))
   }
 
-  /** Renders the selected point red tear-drop pin. */
-  private fun paintPinMarker(g2: Graphics2D, point: GeoPoint) {
-    val pt = geoPointToPixel(point)
-    val radius = JBUIScale.scale(8).toDouble()
-    val pinHeight = JBUIScale.scale(20).toDouble()
-    val cx = pt.x.toDouble()
-    val cy = pt.y.toDouble() - pinHeight + radius
-
-    val pinPath = Path2D.Double()
-    pinPath.moveTo(cx, pt.y.toDouble())
-    pinPath.curveTo(cx - radius * 1.1, cy + radius * 0.6, cx - radius, cy - radius * 0.2, cx - radius, cy)
-    pinPath.curveTo(cx - radius, cy - radius * 0.6, cx - radius * 0.55, cy - radius, cx, cy - radius)
-    pinPath.curveTo(cx + radius * 0.55, cy - radius, cx + radius, cy - radius * 0.6, cx + radius, cy)
-    pinPath.curveTo(cx + radius, cy - radius * 0.2, cx + radius * 1.1, cy + radius * 0.6, cx, pt.y.toDouble())
-    pinPath.closePath()
-
-    g2.color = PIN_COLOR
-    g2.fill(pinPath)
-    g2.color = Color.WHITE
-    g2.stroke = BasicStroke(JBUIScale.scale(1.5f))
-    g2.draw(pinPath)
-
-    val innerRadius = radius * 0.38
-    g2.fill(Ellipse2D.Double(cx - innerRadius, cy - innerRadius, innerRadius * 2, innerRadius * 2))
-  }
-
   private fun paintScaleBar(g2: Graphics2D, isDark: Boolean) {
     val mpp = GeoMath.metersPerPixel(center.latitude, zoom)
     if (mpp <= 0.0 || !mpp.isFinite()) return
@@ -805,7 +751,7 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
   }
 
   private fun paintCoordinatesFooter(g2: Graphics2D, isDark: Boolean) {
-    val activePoint = selectedPoint ?: deviceLocation ?: center
+    val activePoint = deviceLocation ?: center
     val text = activePoint.formatCoordinates()
     g2.font = JBFont.small()
     val fm = g2.fontMetrics
@@ -823,17 +769,90 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
   }
 
   companion object {
-    private const val PREFERRED_WIDTH = 340
-    private const val PREFERRED_HEIGHT = 360
+    private const val PREFERRED_WIDTH = 360
+    private const val PREFERRED_HEIGHT = 320
     private const val MIN_WIDTH = 240
     private const val MIN_HEIGHT = 220
     private const val ZOOM_BUTTON_SIZE = 28
     private const val ZOOM_BUTTON_MARGIN = 10
-    private const val DRAG_THRESHOLD_PX = 4
+    private const val CURSOR_BASE_SIZE = 24
+    private const val CURSOR_LOGICAL_SIZE = 32
+
+    private val panCursors = ConcurrentHashMap<Int, Cursor>()
+
+    private fun getPanCursorTargetSize(component: JComponent): Int {
+      // On macOS, AWT scales cursor images for Retina automatically. On Linux/Windows, cursor bitmaps
+      // are passed to the native windowing system in physical pixels, so scale by sysScale/userScale.
+      val cursorScale = if (SystemInfo.isMac) 1f else maxOf(JBUIScale.sysScale(component), JBUIScale.scale(1f))
+      return (CURSOR_LOGICAL_SIZE * cursorScale).toInt().coerceAtLeast(CURSOR_LOGICAL_SIZE)
+    }
+
+    private fun createPanCursor(targetSize: Int): Cursor {
+      if (GraphicsEnvironment.isHeadless()) {
+        return Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+      }
+      val toolkit = Toolkit.getDefaultToolkit()
+      val bestSize = toolkit.getBestCursorSize(targetSize, targetSize)
+      val width = bestSize.width.takeIf { it >= 16 } ?: targetSize
+      val height = bestSize.height.takeIf { it >= 16 } ?: targetSize
+      @Suppress("UndesirableClassUsage") val image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+      val g2 = image.createGraphics()
+      try {
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+        g2.scale(width.toDouble() / CURSOR_BASE_SIZE, height.toDouble() / CURSOR_BASE_SIZE)
+        val c = CURSOR_BASE_SIZE / 2.0
+        val triangles =
+          arrayOf(
+            createTriangle(c, c - 9.2, c - 3.8, c - 5.2, c + 3.8, c - 5.2),
+            createTriangle(c, c + 9.2, c - 3.8, c + 5.2, c + 3.8, c + 5.2),
+            createTriangle(c - 9.2, c, c - 5.2, c - 3.8, c - 5.2, c + 3.8),
+            createTriangle(c + 9.2, c, c + 5.2, c - 3.8, c + 5.2, c + 3.8),
+          )
+        val outlineStroke = BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_MITER)
+        val centerDotWhite = Ellipse2D.Double(c - 3.0, c - 3.0, 6.0, 6.0)
+        val centerDotBlack = Ellipse2D.Double(c - 1.7, c - 1.7, 3.4, 3.4)
+
+        val shadow = g2.create() as Graphics2D
+        try {
+          shadow.translate(0.5, 1.0)
+          shadow.color = Color(0, 0, 0, 75)
+          shadow.stroke = outlineStroke
+          for (triangle in triangles) {
+            shadow.draw(triangle)
+            shadow.fill(triangle)
+          }
+          shadow.fill(centerDotWhite)
+        } finally {
+          shadow.dispose()
+        }
+
+        g2.color = Color.WHITE
+        g2.stroke = outlineStroke
+        for (triangle in triangles) {
+          g2.draw(triangle)
+        }
+        g2.fill(centerDotWhite)
+
+        g2.color = Color.BLACK
+        for (triangle in triangles) {
+          g2.fill(triangle)
+        }
+        g2.fill(centerDotBlack)
+      } finally {
+        g2.dispose()
+      }
+      return toolkit.createCustomCursor(image, Point(width / 2, height / 2), "MapPanCursor")
+    }
+
+    private fun createTriangle(x1: Double, y1: Double, x2: Double, y2: Double, x3: Double, y3: Double): Path2D.Double =
+      Path2D.Double().apply {
+        moveTo(x1, y1)
+        lineTo(x2, y2)
+        lineTo(x3, y3)
+        closePath()
+      }
 
     private val DEVICE_DOT_COLOR = Color(0x42, 0x86, 0xF5)
-    private val PIN_COLOR = Color(0xEA, 0x43, 0x35)
-    private val SAVED_POINT_COLOR = Color(0xFB, 0xBC, 0x04)
     private val ROUTE_LINE_COLOR = Color(0x42, 0x85, 0xF4)
     private val ORIGIN_COLOR = Color(0x34, 0xA8, 0x53)
     private val DESTINATION_COLOR = Color(0xEA, 0x43, 0x35)
@@ -859,7 +878,5 @@ internal class MapPanel(private val onMapClicked: (GeoPoint) -> Unit = {}) : JCo
         2_000_000.0,
         5_000_000.0,
       )
-
-    val DEFAULT_NAME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss", Locale.US)
   }
 }

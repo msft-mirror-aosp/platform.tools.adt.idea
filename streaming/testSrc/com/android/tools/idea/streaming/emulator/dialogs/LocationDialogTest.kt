@@ -15,41 +15,50 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.android.emulator.control.GpsState
 import com.android.testutils.waitForCondition
-import com.android.tools.adtui.actions.executeAction
-import com.android.tools.adtui.actions.updateAndGetActionPresentation
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
-import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
+import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
+import com.android.tools.idea.streaming.core.ProgressSlider
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.FakeEmulator
 import com.android.tools.idea.streaming.emulator.FakeEmulatorRule
 import com.android.tools.idea.streaming.emulator.RunningEmulatorCatalog
+import com.google.common.collect.Range
 import com.google.common.truth.Truth.assertThat
+import com.intellij.icons.AllIcons
 import com.intellij.ide.util.PropertiesComponent
-import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.actionSystem.ActionToolbar
+import com.intellij.openapi.fileChooser.FileChooserDescriptor
+import com.intellij.openapi.fileChooser.FileChooserDialog
+import com.intellij.openapi.fileChooser.impl.FileChooserUtil
+import com.intellij.openapi.fileChooser.universal.UniversalFileChooser
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.IconLoader
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
-import com.intellij.ui.AnActionButton
-import com.intellij.ui.CommonActionsPanel
-import com.intellij.ui.SearchTextField
 import com.intellij.ui.components.JBCheckBox
-import com.intellij.ui.components.JBTabbedPane
-import com.intellij.ui.components.JBTextArea
-import com.intellij.ui.components.JBTextField
+import com.intellij.ui.components.JBLabel
+import com.intellij.ui.scale.JBUIScale
 import com.intellij.ui.table.TableView
-import java.awt.event.KeyEvent
+import java.awt.Cursor
+import java.awt.GraphicsEnvironment
 import java.awt.geom.Line2D
-import java.nio.file.Files
 import javax.swing.JButton
 import javax.swing.JComponent
-import javax.swing.JLayeredPane
+import javax.swing.JLabel
+import javax.swing.JPanel
+import javax.swing.JSlider
+import javax.swing.UIManager
+import kotlin.io.path.writeText
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -77,6 +86,7 @@ class LocationDialogTest {
       emulatorRule,
       tempFolder,
       EdtRule(),
+      PortableUiFontRule(),
       HeadlessDialogRule(),
     )
 
@@ -85,8 +95,9 @@ class LocationDialogTest {
 
   @Before
   fun setUp() {
-    PropertiesComponent.getInstance().unsetValue(LocationDialog.SAVED_POINTS_STORAGE_KEY)
     PropertiesComponent.getInstance().unsetValue(LocationDialog.SAVED_ROUTES_STORAGE_KEY)
+    PropertiesComponent.getInstance().unsetValue(LocationDialog.SELECTED_ROUTE_STORAGE_KEY)
+    PropertiesComponent.getInstance().unsetValue(LocationDialog.SORT_ORDER_STORAGE_KEY)
     val testAvdFolder = FakeEmulator.createPhoneAvd(emulatorRule.avdRoot)
     fakeEmulator = emulatorRule.newEmulator(testAvdFolder)
     fakeEmulator.start()
@@ -99,431 +110,140 @@ class LocationDialogTest {
 
   @After
   fun tearDown() {
-    PropertiesComponent.getInstance().unsetValue(LocationDialog.SAVED_POINTS_STORAGE_KEY)
     PropertiesComponent.getInstance().unsetValue(LocationDialog.SAVED_ROUTES_STORAGE_KEY)
+    PropertiesComponent.getInstance().unsetValue(LocationDialog.SELECTED_ROUTE_STORAGE_KEY)
+    PropertiesComponent.getInstance().unsetValue(LocationDialog.SORT_ORDER_STORAGE_KEY)
   }
 
   @Test
-  fun testInitialStateAndSetLocation() {
+  fun testInitialStateLayoutAndZoomLimits() {
     PropertiesComponent.getInstance()
       .setValue(
-        LocationDialog.SAVED_POINTS_STORAGE_KEY,
-        """[{"name":"Saved HQ","latitude":37.422,"longitude":-122.084,"elevation":5.0,"description":"HQ"}]""",
+        LocationDialog.SAVED_ROUTES_STORAGE_KEY,
+        """[{"name":"Paris Walk","description":"Louvre","durationSeconds":20,"points":[{"latitude":48.8566,"longitude":2.3522,"elevation":35.0,"delaySeconds":0.0},{"latitude":48.8606,"longitude":2.3376,"elevation":35.0,"delaySeconds":20.0}]}]""",
       )
-    runBlocking {
-      emulatorController.setGps(GpsState.newBuilder().setLatitude(37.7749).setLongitude(-122.4194).setAltitude(15.0).build())
-    }
 
     fakeEmulator.pauseGrpc()
-    val dialog = LocationDialog(emulatorController).show()
-    val rootPane = dialog.rootPane
-    val ui = FakeUi(rootPane)
+    val locationDialog = LocationDialog(emulatorController)
+    val dialogWrapper = locationDialog.show(projectRule.project)
+    val ui = FakeUi(dialogWrapper.rootPane)
     ui.layoutAndDispatchEvents()
 
-    val searchField = ui.getComponent<SearchTextField> { it.name == "locationSearchField" }
-    val mapPanel = ui.getComponent<MapPanel> { it.name == "singlePointMap" }
-    val latField = ui.getComponent<JBTextField> { it.name == "latitudeField" }
-    val lonField = ui.getComponent<JBTextField> { it.name == "longitudeField" }
-    val eleField = ui.getComponent<JBTextField> { it.name == "elevationField" }
-    val savePointButton = ui.getComponent<JButton> { it.name == "savePointButton" }
-    val setLocationButton = ui.getComponent<JButton> { it.name == "setLocationButton" }
-    val pointsTable = ui.getComponent<TableView<*>> { it.name == "savedPointsTable" }
+    val routesTable = ui.getComponent<TableView<SavedRouteItem>> { it.name == "savedRoutesTable" }
+    val routesMap = ui.getComponent<MapPanel> { it.name == "routesMap" }
+    val slider = ui.getComponent<JSlider> { it.name == "playbackSlider" }
+    val timeLabel = ui.getComponent<JBLabel> { it.name == "playbackTimeLabel" }
+    val playPauseButton = ui.getComponent<JButton> { it.name == "playPauseButton" }
+    val repeatCheckBox = ui.getComponent<JBCheckBox> { it.name == "repeatPlaybackCheckBox" }
+    val speedComboBox = ui.getComponent<ComboBox<*>> { it.name == "playbackSpeedComboBox" }
+    val speedItems = (0 until speedComboBox.itemCount).map { speedComboBox.getItemAt(it).toString() }
+    assertThat(speedItems).containsExactly("1X", "2X", "5X", "10X", "20X", "50X", "100X").inOrder()
 
-    assertThat(searchField.isEnabled).isFalse()
-    assertThat(mapPanel.isEnabled).isFalse()
-    assertThat(latField.isEnabled).isFalse()
-    assertThat(latField.text).isEmpty()
-    assertThat(lonField.isEnabled).isFalse()
-    assertThat(lonField.text).isEmpty()
-    assertThat(eleField.isEnabled).isFalse()
-    assertThat(eleField.text).isEmpty()
-    assertThat(savePointButton.isEnabled).isFalse()
-    assertThat(setLocationButton.isEnabled).isFalse()
-    assertThat(pointsTable.isEnabled).isFalse()
-    assertThat(pointsTable.rowCount).isEqualTo(1)
+    // Map is positioned to the right of the saved routes table, matching SensorReplayDialog's master-detail layout.
+    assertThat(ui.getPosition(routesTable).x).isLessThan(ui.getPosition(routesMap).x)
+    assertThat(routesMap.cursor).isNotEqualTo(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))
+    assertThat(routesMap.cursor).isNotEqualTo(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR))
+    assertThat(routesMap.zoomOutButton.cursor).isEqualTo(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR))
+    assertThat(routesTable.rowCount).isEqualTo(1)
+    assertThat(routesTable.selectedRow).isEqualTo(0)
+    assertThat(timeLabel.text).isEqualTo("00:00 / 00:20")
 
-    // Double-clicking or selecting in pointsTable while disabled before initial GPS arrives must be ignored.
-    val tablePos = ui.getPosition(pointsTable)
-    val cellRect = pointsTable.getCellRect(0, 0, true)
-    val rowCenterX = tablePos.x + cellRect.centerX.toInt()
-    val rowCenterY = tablePos.y + cellRect.centerY.toInt()
-    ui.mouse.doubleClick(rowCenterX, rowCenterY)
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-    assertThat(pointsTable.selectedRow).isEqualTo(-1)
-    assertThat(mapPanel.selectedPoint).isNull()
-    assertThat(latField.text).isEmpty()
+    // Verify icon-only square Play button presentation, tooltip, and accessible name.
+    assertThat(playPauseButton.text).isEmpty()
+    assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Execute)
+    assertThat(playPauseButton.toolTipText).isEqualTo("Play")
+    assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Play")
+    assertThat(playPauseButton.preferredSize.width).isEqualTo(playPauseButton.preferredSize.height)
+    assertThat(slider).isInstanceOf(ProgressSlider::class.java)
 
-    pointsTable.selectionModel.setSelectionInterval(0, 0)
-    assertThat(mapPanel.selectedPoint).isNull()
-    assertThat(latField.text).isEmpty()
-    pointsTable.selectionModel.clearSelection()
+    // Playback and seeking stay disabled until initial GPS arrives, while saved route selection & map remain usable.
+    assertThat(playPauseButton.isEnabled).isFalse()
+    assertThat(slider.isEnabled).isFalse()
+    assertThat(repeatCheckBox.isEnabled).isTrue()
+    assertThat(speedComboBox.isEnabled).isTrue()
+    assertThat(routesMap.routePoints).hasSize(2)
+    val routeCenterBeforeGps = routesMap.center
 
     fakeEmulator.resumeGrpc()
-    waitForCondition(5.seconds) { latField.isEnabled && latField.text == "37.7749" }
-    assertThat(searchField.isEnabled).isTrue()
-    assertThat(mapPanel.isEnabled).isTrue()
-    assertThat(lonField.isEnabled).isTrue()
-    assertThat(lonField.text).isEqualTo("-122.4194")
-    assertThat(eleField.isEnabled).isTrue()
-    assertThat(eleField.text).isEqualTo("15.0")
-    assertThat(savePointButton.isEnabled).isTrue()
-    assertThat(setLocationButton.isEnabled).isTrue()
-    assertThat(pointsTable.isEnabled).isTrue()
+    waitForCondition(5.seconds) { playPauseButton.isEnabled }
+    assertThat(slider.isEnabled).isTrue()
 
-    // Once initialized, selecting the saved point updates the map and coordinate fields.
-    pointsTable.selectionModel.setSelectionInterval(0, 0)
-    assertThat(mapPanel.selectedPoint).isNotNull()
-    assertThat(latField.text).isEqualTo("37.4220")
-
-    // Verify offline map renders cleanly.
-    assertThat(ui.render().width).isGreaterThan(0)
-
-    // Test invalid latitude disables Set Location button.
-    latField.text = "95.0"
-    assertThat(setLocationButton.isEnabled).isFalse()
-
-    // Test valid coordinates enable Set Location button and send GpsState to emulator.
-    latField.text = "40.7128"
-    lonField.text = "-74.0060"
-    eleField.text = "10.5"
-    assertThat(setLocationButton.isEnabled).isTrue()
-
-    ui.clickOn(setLocationButton)
+    // Initial getGps completion must not pan routesMap away from the already-selected route,
+    // and must send the first point of the initially selected route to the emulator.
+    assertThat(routesMap.center).isEqualTo(routeCenterBeforeGps)
+    assertThat(routesMap.deviceLocation).isEqualTo(GeoPoint(48.8566, 2.3522, 35.0))
     waitForCondition(5.seconds) {
-      abs(fakeEmulator.gpsLocation.latitude - 40.7128) < 1e-4 &&
-        abs(fakeEmulator.gpsLocation.longitude - (-74.0060)) < 1e-4 &&
-        abs(fakeEmulator.gpsLocation.altitude - 10.5) < 1e-4
+      abs(fakeEmulator.gpsLocation.latitude - 48.8566) < 1e-4 && abs(fakeEmulator.gpsLocation.longitude - 2.3522) < 1e-4
     }
 
-    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
-    assertThat(dialog.isShowing).isFalse()
-  }
-
-  @Test
-  fun testMapClickOfflineSearchAndSavedPointsCrud() {
-    val dialogWrapper = LocationDialog(emulatorController).show()
-    val rootPane = dialogWrapper.rootPane
-    val ui = FakeUi(rootPane)
-
-    val mapPanel = ui.getComponent<MapPanel> { it.name == "singlePointMap" }
-    val searchField = ui.getComponent<SearchTextField> { it.name == "locationSearchField" }
-    val latField = ui.getComponent<JBTextField> { it.name == "latitudeField" }
-    val lonField = ui.getComponent<JBTextField> { it.name == "longitudeField" }
-    val pointsTable = ui.getComponent<TableView<*>> { it.name == "savedPointsTable" }
-    val actionsPanel = ui.findAllComponents<CommonActionsPanel>()[0]
-
-    waitForCondition(5.seconds) { latField.text == "37.4220" }
-
-    // Click on map to select a point.
-    ui.layoutAndDispatchEvents()
-    ui.clickOn(mapPanel)
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-
-    // Verify zooming out is limited so that when centered at the equator, the visible vertical range is -60° to +60° (120°).
-    mapPanel.panTo(GeoPoint(0.0, 0.0))
-    mapPanel.setZoomLevel(GeoMath.MIN_ZOOM)
-    assertThat(mapPanel.zoomOutButton.isEnabled).isFalse()
-    val topLat = mapPanel.pixelToGeoPoint(0.0, 0.0).latitude
-    val bottomLat = mapPanel.pixelToGeoPoint(0.0, mapPanel.height.toDouble()).latitude
+    // Verify offline map renders cleanly and zooming out is limited to -60°..+60° when centered at the equator.
+    assertThat(ui.render().width).isGreaterThan(0)
+    routesMap.panTo(GeoPoint(0.0, 0.0))
+    routesMap.setZoomLevel(GeoMath.MIN_ZOOM)
+    assertThat(routesMap.zoomOutButton.isEnabled).isFalse()
+    val topLat = routesMap.pixelToGeoPoint(0.0, 0.0).latitude
+    val bottomLat = routesMap.pixelToGeoPoint(0.0, routesMap.height.toDouble()).latitude
     assertThat(topLat).isWithin(1e-2).of(60.0)
     assertThat(bottomLat).isWithin(1e-2).of(-60.0)
-    mapPanel.setZoomLevel(GeoMath.DEFAULT_ZOOM)
-    assertThat(mapPanel.zoomOutButton.isEnabled).isTrue()
-
-    // Search for a bundled city via SearchTextField by pressing Enter, and verify the dialog remains open.
-    searchField.text = "San Francisco"
-    ui.keyboard.setFocus(searchField.textEditor)
-    ui.keyboard.pressAndRelease(KeyEvent.VK_ENTER)
-    assertThat(dialogWrapper.isShowing).isTrue()
-    assertThat(latField.text).isEqualTo("37.7749")
-    assertThat(lonField.text).isEqualTo("-122.4194")
-
-    // Search using DMS coordinates.
-    searchField.text = "37°49'11.64\"N 122°28'41.88\"W"
-    searchField.textEditor.postActionEvent()
-    assertThat(latField.text).isEqualTo("37.8199")
-    assertThat(lonField.text).isEqualTo("-122.4783")
-
-    // Save the point via Add action on ToolbarDecorator.
-    val addAction = actionsPanel.getAnAction(CommonActionsPanel.Buttons.ADD)!!
-    val editAction = actionsPanel.getAnAction(CommonActionsPanel.Buttons.EDIT)!!
-    val removeAction = actionsPanel.getAnAction(CommonActionsPanel.Buttons.REMOVE)!!
-
-    createModalDialogAndInteractWithIt({ performAction(addAction) }) { editDlg ->
-      val editUi = FakeUi(editDlg.rootPane)
-      val nameField = editUi.getComponent<JBTextField> { it.name == "pointNameField" }
-      val descArea = editUi.getComponent<JBTextArea> { it.name == "pointDescriptionArea" }
-      nameField.text = "Golden Gate"
-      descArea.text = "San Francisco landmark"
-      editUi.clickOn(editDlg.rootPane.defaultButton)
-    }
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-
-    assertThat(pointsTable.rowCount).isEqualTo(1)
-    assertThat(pointsTable.getValueAt(0, 0)).isEqualTo("Golden Gate")
-    assertThat(pointsTable.getValueAt(0, 1)).isEqualTo("37.8199, -122.4783")
-    assertThat(pointsTable.getValueAt(0, 2)).isEqualTo("San Francisco landmark")
-
-    // Search for a saved point by name after panning away.
-    searchField.text = "Tokyo"
-    searchField.textEditor.postActionEvent()
-    assertThat(latField.text).isEqualTo("35.6762")
-    searchField.text = "Golden Gate"
-    searchField.textEditor.postActionEvent()
-    assertThat(latField.text).isEqualTo("37.8199")
-    assertThat(pointsTable.selectedRow).isEqualTo(0)
-
-    // Manually editing a coordinate field clears the saved points table selection.
-    latField.text = "35.6762"
-    assertThat(pointsTable.selectedRow).isEqualTo(-1)
-    assertThat(isPresentationEnabled(editAction)).isFalse()
-
-    // Re-selecting the saved point restores its coordinates and allows editing.
-    pointsTable.selectionModel.setSelectionInterval(0, 0)
-    assertThat(isPresentationEnabled(editAction)).isTrue()
-    assertThat(latField.text).isEqualTo("37.8199")
-    createModalDialogAndInteractWithIt({ performAction(editAction) }) { editDlg ->
-      val editUi = FakeUi(editDlg.rootPane)
-      val nameField = editUi.getComponent<JBTextField> { it.name == "pointNameField" }
-      nameField.text = "Golden Gate Updated"
-      editUi.clickOn(editDlg.rootPane.defaultButton)
-    }
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-    assertThat(pointsTable.getValueAt(0, 0)).isEqualTo("Golden Gate Updated")
-    assertThat(latField.text).isEqualTo("37.8199")
-    assertThat(lonField.text).isEqualTo("-122.4783")
-
-    // Remove the saved point.
-    performAction(removeAction)
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-    assertThat(pointsTable.rowCount).isEqualTo(0)
+    routesMap.setZoomLevel(GeoMath.DEFAULT_ZOOM)
+    assertThat(routesMap.zoomOutButton.isEnabled).isTrue()
 
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialogWrapper.isShowing).isFalse()
   }
 
   @Test
-  fun testRoutesCreationSavingAndPlayback() {
+  fun testSavedRoutesColumnMinimumAndPreferredWidth() {
     val locationDialog = LocationDialog(emulatorController)
-    val dialogWrapper = locationDialog.show()
+    val dialogWrapper = locationDialog.show(projectRule.project)
     val rootPane = dialogWrapper.rootPane
     val ui = FakeUi(rootPane)
 
-    val tabbedPane = ui.getComponent<JBTabbedPane> { it.name == "locationTabbedPane" }
-    tabbedPane.selectedIndex = 1
+    val savedRoutesTablePanel = ui.getComponent<JPanel> { it.name == "savedRoutesTablePanel" }
+    assertThat(savedRoutesTablePanel.preferredSize.width).isEqualTo(JBUIScale.scale(280))
+    assertThat(savedRoutesTablePanel.minimumSize.width).isEqualTo(JBUIScale.scale(200))
+
+    rootPane.size = rootPane.preferredSize
     ui.layoutAndDispatchEvents()
+    assertThat(savedRoutesTablePanel.width).isEqualTo(JBUIScale.scale(280))
 
-    val originField = ui.getComponent<JBTextField> { it.name == "originField" }
-    val destinationField = ui.getComponent<JBTextField> { it.name == "destinationField" }
-    val swapWaypointsButton = ui.getComponent<JButton> { it.name == "swapWaypointsButton" }
-    val findRouteButton = ui.getComponent<JButton> { it.name == "findRouteButton" }
-    val saveRouteButton = ui.getComponent<JButton> { it.name == "saveRouteButton" }
-    val playRouteButton = ui.getComponent<JButton> { it.name == "playRouteButton" }
-    val travelModeComboBox = ui.getComponent<ComboBox<TravelMode>> { it.name == "travelModeComboBox" }
-    val speedComboBox = ui.getComponent<ComboBox<*>> { it.name == "playbackSpeedComboBox" }
-    val repeatCheckBox = ui.getComponent<JBCheckBox> { it.name == "repeatPlaybackCheckBox" }
-    val routesTable = ui.getComponent<TableView<*>> { it.name == "savedRoutesTable" }
+    rootPane.size = rootPane.minimumSize
+    ui.layoutAndDispatchEvents()
+    assertThat(savedRoutesTablePanel.width).isEqualTo(JBUIScale.scale(200))
 
-    assertThat(playRouteButton.isEnabled).isFalse()
-    assertThat(saveRouteButton.isEnabled).isFalse()
-
-    originField.text = "37.4220, -122.0840"
-    destinationField.text = "37.4230, -122.0850"
-    ui.keyboard.setFocus(originField)
-    ui.keyboard.pressAndRelease(KeyEvent.VK_ENTER)
-    assertThat(dialogWrapper.isShowing).isTrue()
-    waitForCondition(5.seconds) { playRouteButton.isEnabled }
-
-    ui.keyboard.setFocus(destinationField)
-    ui.keyboard.pressAndRelease(KeyEvent.VK_ENTER)
-    assertThat(dialogWrapper.isShowing).isTrue()
-
-    // Verify westward headings are normalized to [0.0, 360.0).
-    assertThat(GeoMath.headingDegrees(0.0, 0.0, 0.0, -1.0)).isWithin(1e-6).of(270.0)
-    assertThat(GeoMath.headingDegrees(37.4220, -122.0840, 37.4230, -122.0850))
-      .isIn(com.google.common.collect.Range.closedOpen(270.0, 360.0))
-
-    // Verify antimeridian (±180°) route interpolation and fitBounds wrap across the shortest 2° seam instead of 358° backwards.
-    val antimeridianRoute =
-      OfflineLocationResolver.computeDirectRoute(
-        origin = GeoPoint(0.0, 179.0),
-        destination = GeoPoint(0.0, -179.0),
-        mode = TravelMode.DRIVING,
-      )
-    assertThat(antimeridianRoute.points.size).isGreaterThan(2)
-    for ((_, longitude) in antimeridianRoute.points) {
-      assertThat(abs(longitude)).isAtLeast(179.0 - 1e-6)
-    }
-    locationDialog.routesMap.fitBounds(antimeridianRoute.points.map { GeoPoint(it.latitude, it.longitude, it.elevation) })
-    assertThat(abs(locationDialog.routesMap.center.longitude)).isWithin(1e-6).of(180.0)
-    assertThat(locationDialog.routesMap.zoom).isGreaterThan(5.0)
-    // Restore original route bounds on routesMap.
-    ui.clickOn(findRouteButton)
-
-    assertThat(playRouteButton.isEnabled).isTrue()
-    assertThat(saveRouteButton.isEnabled).isTrue()
-    val pointCount = locationDialog.routesMap.routePoints.size
-    assertThat(pointCount).isAtLeast(2)
-
-    // Save the route.
-    createModalDialogAndInteractWithIt({ ui.clickOn(saveRouteButton) }) { saveDlg ->
-      val saveUi = FakeUi(saveDlg.rootPane)
-      val nameField = saveUi.getComponent<JBTextField> { it.name == "routeNameField" }
-      val descArea = saveUi.getComponent<JBTextArea> { it.name == "routeDescriptionArea" }
-      nameField.text = "Morning Commute"
-      descArea.text = "Campus to North Bayshore"
-      saveUi.clickOn(saveDlg.rootPane.defaultButton)
-    }
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-
-    assertThat(routesTable.rowCount).isEqualTo(1)
-    assertThat(routesTable.getValueAt(0, 0)).isEqualTo("Morning Commute")
-    assertThat(routesTable.getValueAt(0, 1)).isEqualTo("Driving")
-    assertThat(routesTable.getValueAt(0, 2)).isEqualTo(pointCount.toString())
-
-    // Clear input fields, re-select the saved route, and verify waypoints and text fields are populated.
-    originField.text = ""
-    destinationField.text = ""
-    routesTable.selectionModel.clearSelection()
-    routesTable.selectionModel.setSelectionInterval(0, 0)
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-    assertThat(originField.text).isEqualTo("37.4220, -122.0840")
-    assertThat(destinationField.text).isEqualTo("37.4230, -122.0850")
-
-    // Verify swapWaypointsButton and travelModeComboBox recalculate the route after selecting a saved route.
-    ui.clickOn(swapWaypointsButton)
-    assertThat(originField.text).isEqualTo("37.4230, -122.0850")
-    assertThat(destinationField.text).isEqualTo("37.4220, -122.0840")
-    ui.clickOn(swapWaypointsButton)
-    assertThat(originField.text).isEqualTo("37.4220, -122.0840")
-    assertThat(destinationField.text).isEqualTo("37.4230, -122.0850")
-    travelModeComboBox.selectedItem = TravelMode.WALKING
-    travelModeComboBox.selectedItem = TravelMode.DRIVING
-
-    // Play the route at 5X speed with a short update interval.
-    speedComboBox.selectedItem = PlaybackSpeed.SPEED_5X
-    repeatCheckBox.isSelected = false
-    locationDialog.startRoutePlayback(updateInterval = 20.milliseconds)
-    assertThat(playRouteButton.text).isEqualTo("Stop Route")
-    assertThat(tabbedPane.isEnabledAt(0)).isFalse()
-    assertThat(routesTable.isEnabled).isFalse()
-    assertThat(travelModeComboBox.isEnabled).isFalse()
-    assertThat(originField.isEnabled).isFalse()
-    assertThat(destinationField.isEnabled).isFalse()
-
-    // Restart playback while already running and verify the canceled job's finally block does not reset the new playback state.
-    locationDialog.startRoutePlayback(updateInterval = 20.milliseconds)
-    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
-    assertThat(playRouteButton.text).isEqualTo("Stop Route")
-    assertThat(tabbedPane.isEnabledAt(0)).isFalse()
-    assertThat(routesTable.isEnabled).isFalse()
-    assertThat(travelModeComboBox.isEnabled).isFalse()
-    assertThat(originField.isEnabled).isFalse()
-    assertThat(destinationField.isEnabled).isFalse()
-
-    // Wait for playback to complete and reach destination.
-    waitForCondition(5.seconds) {
-      playRouteButton.text == "Play Route" &&
-        abs(fakeEmulator.gpsLocation.latitude - 37.4230) < 1e-4 &&
-        abs(fakeEmulator.gpsLocation.longitude - (-122.0850)) < 1e-4
-    }
-    assertThat(tabbedPane.isEnabledAt(0)).isTrue()
-    assertThat(routesTable.isEnabled).isTrue()
-    assertThat(travelModeComboBox.isEnabled).isTrue()
-    assertThat(originField.isEnabled).isTrue()
-    assertThat(destinationField.isEnabled).isTrue()
-
-    // Start playback again with repeat enabled, then close the dialog while playing and verify speed resets to 0.0.
-    repeatCheckBox.isSelected = true
-    locationDialog.startRoutePlayback(updateInterval = 20.milliseconds)
-    waitForCondition(5.seconds) { fakeEmulator.gpsLocation.speed > 0.0 }
-    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
-    assertThat(dialogWrapper.isShowing).isFalse()
-    waitForCondition(5.seconds) { fakeEmulator.gpsLocation.speed == 0.0 }
+    dialogWrapper.close(DialogWrapper.CLOSE_EXIT_CODE)
   }
 
   @Test
-  fun testRoutesTabWhileInitialGpsPending() {
-    fakeEmulator.pauseGrpc()
+  fun testImportGpxAndKmlFilesAndRemoval() {
     val locationDialog = LocationDialog(emulatorController)
-    val dialogWrapper = locationDialog.show()
+    val dialogWrapper = locationDialog.show(projectRule.project)
     val ui = FakeUi(dialogWrapper.rootPane)
 
-    val tabbedPane = ui.getComponent<JBTabbedPane> { it.name == "locationTabbedPane" }
-    tabbedPane.selectedIndex = 1
-    ui.layoutAndDispatchEvents()
+    val routesTable = ui.getComponent<TableView<SavedRouteItem>> { it.name == "savedRoutesTable" }
+    val routesMap = ui.getComponent<MapPanel> { it.name == "routesMap" }
+    val slider = ui.getComponent<JSlider> { it.name == "playbackSlider" }
+    val timeLabel = ui.getComponent<JBLabel> { it.name == "playbackTimeLabel" }
+    val playPauseButton = ui.getComponent<JButton> { it.name == "playPauseButton" }
+    val repeatCheckBox = ui.getComponent<JBCheckBox> { it.name == "repeatPlaybackCheckBox" }
+    val speedLabel = ui.getComponent<JLabel> { it.name == "playbackSpeedLabel" }
+    val speedComboBox = ui.getComponent<ComboBox<*>> { it.name == "playbackSpeedComboBox" }
 
-    val originField = ui.getComponent<JBTextField> { it.name == "originField" }
-    val destinationField = ui.getComponent<JBTextField> { it.name == "destinationField" }
-    val findRouteButton = ui.getComponent<JButton> { it.name == "findRouteButton" }
-    val saveRouteButton = ui.getComponent<JButton> { it.name == "saveRouteButton" }
-    val playRouteButton = ui.getComponent<JButton> { it.name == "playRouteButton" }
+    waitForCondition(5.seconds) { routesMap.deviceLocation != null }
+    assertThat(routesTable.rowCount).isEqualTo(0)
+    assertThat(playPauseButton.isEnabled).isFalse()
+    assertThat(playPauseButton.disabledIcon).isEqualTo(IconLoader.getDisabledIcon(AllIcons.Actions.Execute))
+    assertThat(slider.isEnabled).isFalse()
+    assertThat(timeLabel.isEnabled).isFalse()
+    assertThat(repeatCheckBox.isEnabled).isFalse()
+    assertThat(speedLabel.isEnabled).isFalse()
+    assertThat(speedComboBox.isEnabled).isFalse()
+    val emptyFragments = routesTable.emptyText.wrappedFragmentsIterable.toList()
+    assertThat(emptyFragments.joinToString(" ") { it.toString() }).isEqualTo("Click the plus button below to import a GPX or KML file")
 
-    // Route authoring works while getGps is pending, but Play Route stays disabled until initial GPS state arrives.
-    originField.text = "48.8566, 2.3522"
-    destinationField.text = "48.8606, 2.3376"
-    ui.clickOn(findRouteButton)
-    assertThat(saveRouteButton.isEnabled).isTrue()
-    assertThat(playRouteButton.isEnabled).isFalse()
-    val routeCenterBeforeGps = locationDialog.routesMap.center
-
-    fakeEmulator.resumeGrpc()
-    waitForCondition(5.seconds) { playRouteButton.isEnabled }
-
-    // Initial getGps completion must not pan routesMap away from the already-configured route.
-    assertThat(locationDialog.routesMap.center).isEqualTo(routeCenterBeforeGps)
-
-    // Single Points tab is also initialized and enabled.
-    tabbedPane.selectedIndex = 0
-    ui.layoutAndDispatchEvents()
-    val latitudeField = ui.getComponent<JBTextField> { it.name == "latitudeField" }
-    val setLocationButton = ui.getComponent<JButton> { it.name == "setLocationButton" }
-    assertThat(latitudeField.isEnabled).isTrue()
-    assertThat(latitudeField.text).isNotEmpty()
-    assertThat(setLocationButton.isEnabled).isTrue()
-
-    ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
-    assertThat(dialogWrapper.isShowing).isFalse()
-  }
-
-  @Test
-  fun testImportGpxAndKmlFiles() {
-    val locationDialog = LocationDialog(emulatorController)
-    val dialogWrapper = locationDialog.show()
-    val rootPane = dialogWrapper.rootPane
-    val ui = FakeUi(rootPane)
-
-    val tabbedPane = ui.getComponent<JBTabbedPane> { it.name == "locationTabbedPane" }
-    val pointsTable = ui.getComponent<TableView<*>> { it.name == "savedPointsTable" }
-    val routesTable = ui.getComponent<TableView<*>> { it.name == "savedRoutesTable" }
-
-    // 1. Import a single-waypoint GPX file -> adds to Saved Points.
-    val singlePtGpx = tempFolder.newFile("single_point.gpx").toPath()
-    Files.writeString(
-      singlePtGpx,
-      """
-      <?xml version="1.0" encoding="UTF-8"?>
-      <gpx version="1.1">
-        <wpt lat="37.5000" lon="-122.2000">
-          <ele>12.5</ele>
-          <name>Redwood City</name>
-          <desc>Peninsula stop</desc>
-        </wpt>
-      </gpx>
-      """
-        .trimIndent(),
-    )
-    locationDialog.importGpxKmlFile(singlePtGpx)
-    waitForCondition(5.seconds) { pointsTable.rowCount == 1 }
-    assertThat(tabbedPane.selectedIndex).isEqualTo(0)
-    assertThat(pointsTable.getValueAt(0, 0)).isEqualTo("Redwood City")
-    assertThat(pointsTable.getValueAt(0, 1)).isEqualTo("37.5000, -122.2000")
-    assertThat(pointsTable.getValueAt(0, 2)).isEqualTo("Peninsula stop")
-
-    // 2. Import a multipoint GPX track -> switches to Routes tab and adds to Saved Routes.
+    // 1. Import via ToolbarDecorator's Add action and verify file chooser descriptor filters GPX/KML files.
     val routeGpx = tempFolder.newFile("track_route.gpx").toPath()
-    Files.writeString(
-      routeGpx,
+    routeGpx.writeText(
       """
       <?xml version="1.0" encoding="UTF-8"?>
       <gpx version="1.1">
@@ -547,20 +267,85 @@ class LocationDialogTest {
         </trk>
       </gpx>
       """
-        .trimIndent(),
+        .trimIndent()
     )
-    locationDialog.importGpxKmlFile(routeGpx)
-    waitForCondition(5.seconds) { routesTable.rowCount == 1 }
-    assertThat(tabbedPane.selectedIndex).isEqualTo(1)
-    assertThat(routesTable.getValueAt(0, 0)).isEqualTo("Bike Trail")
-    assertThat(routesTable.getValueAt(0, 2)).isEqualTo("3")
-    assertThat(routesTable.getValueAt(0, 3)).isEqualTo("45s")
-    assertThat((routesTable.getRow(0) as SavedRouteItem).description).isEqualTo("Morning ride")
+    val notesTxt = tempFolder.newFile("notes.txt").toPath().apply { writeText("ignored") }
+    val localFs = LocalFileSystem.getInstance()
+    val routeGpxVf = checkNotNull(localFs.refreshAndFindFileByNioFile(routeGpx))
+    val notesTxtVf = checkNotNull(localFs.refreshAndFindFileByNioFile(notesTxt))
 
-    // 3. Import a KML route with a non-geometry Placemark and a MultiGeometry Placemark -> adds to Saved Routes.
+    val defaultChooserCreator = locationDialog.fileChooserCreator
+    var capturedDescriptor: FileChooserDescriptor? = null
+    locationDialog.fileChooserCreator = { descriptor, parentComponent, project ->
+      capturedDescriptor = descriptor
+      if (!GraphicsEnvironment.isHeadless()) {
+        val defaultChooser = defaultChooserCreator(descriptor, parentComponent, project)
+        try {
+          @Suppress("UnstableApiUsage") assertThat(defaultChooser).isInstanceOf(UniversalFileChooser.Dialog::class.java)
+        } finally {
+          Disposer.dispose((defaultChooser as DialogWrapper).disposable)
+        }
+      }
+      FileChooserDialog { _, _ -> FileChooserUtil.getChosenFiles(descriptor, listOf(notesTxtVf, routeGpxVf)).toTypedArray() }
+    }
+    performToolbarAction(ui, "Add")
+    waitForCondition(5.seconds) { routesTable.rowCount == 1 }
+
+    val descriptor = checkNotNull(capturedDescriptor)
+    assertThat(FileChooserUtil.getChosenFiles(descriptor, listOf(routeGpxVf, notesTxtVf))).containsExactly(routeGpxVf)
+
+    assertThat(routesTable.items[0].name).isEqualTo("Bike Trail")
+    assertThat(routesTable.getValueAt(0, 1)).isEqualTo("3")
+    assertThat(routesTable.getValueAt(0, 2)).isEqualTo("45s")
+    assertThat(routesTable.items[0].description).isEqualTo("Morning ride")
+    assertThat(timeLabel.text).isEqualTo("00:00 / 00:45")
+    assertThat(playPauseButton.isEnabled).isTrue()
+    assertThat(slider.isEnabled).isTrue()
+    assertThat(timeLabel.isEnabled).isTrue()
+    assertThat(repeatCheckBox.isEnabled).isTrue()
+    assertThat(speedLabel.isEnabled).isTrue()
+    assertThat(speedComboBox.isEnabled).isTrue()
+    assertThat(routesMap.routePoints).hasSize(3)
+    assertThat(routesMap.routeOrigin).isEqualTo(GeoPoint(37.4000, -122.0500, 5.0))
+    assertThat(routesMap.routeDestination).isEqualTo(GeoPoint(37.4100, -122.0600, 7.0))
+    waitForCondition(5.seconds) {
+      abs(fakeEmulator.gpsLocation.latitude - 37.4000) < 1e-4 && abs(fakeEmulator.gpsLocation.longitude - (-122.0500)) < 1e-4
+    }
+
+    // 2. Import a single-waypoint GPX file -> adds 1-point entry; all playback-related controls are disabled.
+    val singlePtGpx = tempFolder.newFile("single_point.gpx").toPath()
+    singlePtGpx.writeText(
+      """
+      <?xml version="1.0" encoding="UTF-8"?>
+      <gpx version="1.1">
+        <wpt lat="37.5000" lon="-122.2000">
+          <ele>12.5</ele>
+          <name>Redwood City</name>
+          <desc>Peninsula stop</desc>
+        </wpt>
+      </gpx>
+      """
+        .trimIndent()
+    )
+    locationDialog.importGpxKmlFile(singlePtGpx)
+    waitForCondition(5.seconds) { routesTable.rowCount == 2 }
+    assertThat(routesTable.items[1].name).isEqualTo("Redwood City")
+    assertThat(routesTable.getValueAt(1, 1)).isEqualTo("1")
+    assertThat(routesTable.getValueAt(1, 2)).isEqualTo("0s")
+    assertThat(slider.isEnabled).isFalse()
+    assertThat(timeLabel.isEnabled).isFalse()
+    assertThat(playPauseButton.isEnabled).isFalse()
+    assertThat(playPauseButton.disabledIcon).isEqualTo(IconLoader.getDisabledIcon(AllIcons.Actions.Execute))
+    assertThat(repeatCheckBox.isEnabled).isFalse()
+    assertThat(speedLabel.isEnabled).isFalse()
+    assertThat(speedComboBox.isEnabled).isFalse()
+    waitForCondition(5.seconds) {
+      abs(fakeEmulator.gpsLocation.latitude - 37.5000) < 1e-4 && abs(fakeEmulator.gpsLocation.longitude - (-122.2000)) < 1e-4
+    }
+
+    // 3. Import a KML route with a non-geometry Placemark and a MultiGeometry Placemark.
     val routeKml = tempFolder.newFile("placemark_route.kml").toPath()
-    Files.writeString(
-      routeKml,
+    routeKml.writeText(
       """
       <?xml version="1.0" encoding="UTF-8"?>
       <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -584,17 +369,16 @@ class LocationDialogTest {
         </Document>
       </kml>
       """
-        .trimIndent(),
+        .trimIndent()
     )
     locationDialog.importGpxKmlFile(routeKml)
-    waitForCondition(5.seconds) { routesTable.rowCount == 2 }
-    assertThat(routesTable.getValueAt(1, 0)).isEqualTo("Bay Bridge Run")
-    assertThat(routesTable.getValueAt(1, 2)).isEqualTo("2")
+    waitForCondition(5.seconds) { routesTable.rowCount == 3 }
+    assertThat(routesTable.items[2].name).isEqualTo("Bay Bridge Run")
+    assertThat(routesTable.getValueAt(0, 1)).isEqualTo("2")
 
-    // 3b. Import a KML gx:Track with <when> timestamps -> preserves recorded segment durations.
+    // 4. Import a KML gx:Track with <when> timestamps -> preserves recorded segment durations.
     val gxTrackKml = tempFolder.newFile("gx_track.kml").toPath()
-    Files.writeString(
-      gxTrackKml,
+    gxTrackKml.writeText(
       """
       <?xml version="1.0" encoding="UTF-8"?>
       <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
@@ -613,18 +397,18 @@ class LocationDialogTest {
         </Document>
       </kml>
       """
-        .trimIndent(),
+        .trimIndent()
     )
     locationDialog.importGpxKmlFile(gxTrackKml)
-    waitForCondition(5.seconds) { routesTable.rowCount == 3 }
-    assertThat(routesTable.getValueAt(2, 0)).isEqualTo("Timed KML Track")
-    assertThat(routesTable.getValueAt(2, 2)).isEqualTo("3")
-    assertThat(routesTable.getValueAt(2, 3)).isEqualTo("1m 5s")
+    waitForCondition(5.seconds) { routesTable.rowCount == 4 }
+    assertThat(routesTable.items[3].name).isEqualTo("Timed KML Track")
+    assertThat(routesTable.getValueAt(3, 1)).isEqualTo("3")
+    assertThat(routesTable.getValueAt(3, 2)).isEqualTo("1m 5s")
+    assertThat(timeLabel.text).isEqualTo("00:00 / 01:05")
 
-    // 4. Import a GPX track with mixed timed/untimed points -> preserves track order and computes reasonable duration.
+    // 5. Import a GPX track with mixed timed/untimed points -> preserves track order and computes reasonable duration.
     val mixedGpx = tempFolder.newFile("mixed_times.gpx").toPath()
-    Files.writeString(
-      mixedGpx,
+    mixedGpx.writeText(
       """
       <?xml version="1.0" encoding="UTF-8"?>
       <gpx version="1.1">
@@ -640,45 +424,90 @@ class LocationDialogTest {
         </trk>
       </gpx>
       """
-        .trimIndent(),
+        .trimIndent()
     )
     locationDialog.importGpxKmlFile(mixedGpx)
-    waitForCondition(5.seconds) { routesTable.rowCount == 4 }
-    val mixedRoute = routesTable.getRow(3) as SavedRouteItem
+    waitForCondition(5.seconds) { routesTable.rowCount == 5 }
+    val mixedRoute = routesTable.getRow(2) as SavedRouteItem
     assertThat(mixedRoute.name).isEqualTo("Mixed Timestamps")
     assertThat(mixedRoute.points.map { it.latitude }).containsExactly(37.4000, 37.4050, 37.4100).inOrder()
     assertThat(mixedRoute.durationSeconds).isLessThan(3600)
 
-    // 5. Out-of-range or non-finite coordinates in GPX and KML are rejected.
+    // 6. Re-importing an already-imported file shows a duplicate error without adding a second entry.
+    locationDialog.importGpxKmlFile(routeGpx)
+    waitForCondition(5.seconds) { hasValidationError(ui, "Route or location 'Bike Trail' has already been imported") }
+    assertThat(routesTable.rowCount).isEqualTo(5)
+
+    // 7. Empty or invalid GPX/KML files show validation errors without modifying saved routes.
+    val emptyGpx = tempFolder.newFile("empty.gpx").toPath().apply { writeText("""<?xml version="1.0"?><gpx version="1.1"/>""") }
+    locationDialog.importGpxKmlFile(emptyGpx)
+    waitForCondition(5.seconds) { hasValidationError(ui, "No valid locations found in the file") }
+    assertThat(routesTable.rowCount).isEqualTo(5)
+
     val invalidGpx = tempFolder.newFile("invalid_lat.gpx").toPath()
-    Files.writeString(
-      invalidGpx,
+    invalidGpx.writeText(
       """
       <?xml version="1.0" encoding="UTF-8"?>
       <gpx version="1.1">
         <wpt lat="95.0" lon="-122.2000" />
       </gpx>
       """
-        .trimIndent(),
+        .trimIndent()
     )
     assertThrows(IllegalArgumentException::class.java) { GpxKmlParser.parseFile(invalidGpx) }
+    locationDialog.importGpxKmlFile(invalidGpx)
+    waitForCondition(5.seconds) { hasValidationError(ui, "Failed to parse GPX/KML file:") }
+
+    val invalidTimeGpx = tempFolder.newFile("invalid_time.gpx").toPath()
+    invalidTimeGpx.writeText(
+      """
+      <?xml version="1.0" encoding="UTF-8"?>
+      <gpx version="1.1">
+        <wpt lat="37.5000" lon="-122.2000">
+          <time>2026-13-45T25:61:61</time>
+        </wpt>
+      </gpx>
+      """
+        .trimIndent()
+    )
+    assertThrows(IllegalArgumentException::class.java) { GpxKmlParser.parseFile(invalidTimeGpx) }
+    locationDialog.importGpxKmlFile(invalidTimeGpx)
+    waitForCondition(5.seconds) { hasValidationError(ui, "Failed to parse GPX/KML file:") }
+    assertThat(routesTable.rowCount).isEqualTo(5)
+
+    // Non-local VirtualFile (toNioPath throws UnsupportedOperationException) imports via stream without crashing.
+    val nonLocalVf =
+      LightVirtualFile(
+        "virtual_stop.gpx",
+        """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <gpx version="1.1">
+          <wpt lat="37.4500" lon="-122.1500">
+            <name>Virtual Stop</name>
+          </wpt>
+        </gpx>
+        """
+          .trimIndent(),
+      )
+    assertThrows(UnsupportedOperationException::class.java) { nonLocalVf.toNioPath() }
+    locationDialog.fileChooserCreator = { _, _, _ -> FileChooserDialog { _, _ -> arrayOf(nonLocalVf) } }
+    performToolbarAction(ui, "Add")
+    waitForCondition(5.seconds) { routesTable.rowCount == 6 }
 
     val nanGpx = tempFolder.newFile("nan_lat.gpx").toPath()
-    Files.writeString(
-      nanGpx,
+    nanGpx.writeText(
       """
       <?xml version="1.0" encoding="UTF-8"?>
       <gpx version="1.1">
         <wpt lat="NaN" lon="-122.2000" />
       </gpx>
       """
-        .trimIndent(),
+        .trimIndent()
     )
     assertThrows(IllegalArgumentException::class.java) { GpxKmlParser.parseFile(nanGpx) }
 
     val invertedKml = tempFolder.newFile("inverted_coords.kml").toPath()
-    Files.writeString(
-      invertedKml,
+    invertedKml.writeText(
       """
       <?xml version="1.0" encoding="UTF-8"?>
       <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -689,12 +518,312 @@ class LocationDialogTest {
         </Placemark>
       </kml>
       """
-        .trimIndent(),
+        .trimIndent()
     )
     assertThrows(IllegalArgumentException::class.java) { GpxKmlParser.parseFile(invertedKml) }
 
+    // 7. Verify antimeridian (±180°) fitBounds wraps across the shortest 2° seam instead of 358° backwards.
+    routesMap.fitBounds(listOf(GeoPoint(0.0, 179.0), GeoPoint(0.0, -179.0)))
+    assertThat(abs(routesMap.center.longitude)).isWithin(1e-6).of(180.0)
+    assertThat(routesMap.zoom).isGreaterThan(5.0)
+
+    // 8. Select "Bay Bridge Run" (view row 0), close and reopen dialog -> persisted routes and selected route are restored, then remove all
+    // routes.
+    routesTable.selectionModel.setSelectionInterval(0, 0)
+    dialogWrapper.close(DialogWrapper.CLOSE_EXIT_CODE)
+    val reopenedDialog = LocationDialog(emulatorController)
+    val reopenedWrapper = reopenedDialog.show(projectRule.project)
+    val reopenedUi = FakeUi(reopenedWrapper.rootPane)
+    val reopenedTable = reopenedUi.getComponent<TableView<SavedRouteItem>> { it.name == "savedRoutesTable" }
+    val reopenedMap = reopenedUi.getComponent<MapPanel> { it.name == "routesMap" }
+    val reopenedSlider = reopenedUi.getComponent<JSlider> { it.name == "playbackSlider" }
+    val reopenedTimeLabel = reopenedUi.getComponent<JBLabel> { it.name == "playbackTimeLabel" }
+    val reopenedPlayPause = reopenedUi.getComponent<JButton> { it.name == "playPauseButton" }
+    waitForCondition(5.seconds) { reopenedPlayPause.isEnabled }
+    assertThat(reopenedTable.rowCount).isEqualTo(6)
+    assertThat(reopenedTable.selectedRow).isEqualTo(0)
+    assertThat(reopenedTable.selectedObject?.name).isEqualTo("Bay Bridge Run")
+
+    reopenedTable.selectionModel.setSelectionInterval(0, reopenedTable.rowCount - 1)
+    performToolbarAction(reopenedUi, "Remove")
+    waitForCondition(5.seconds) { reopenedTable.rowCount == 0 }
+    assertThat(reopenedMap.routePoints).isEmpty()
+    assertThat(reopenedMap.routeOrigin).isNull()
+    assertThat(reopenedMap.routeDestination).isNull()
+    assertThat(reopenedTimeLabel.text).isEqualTo("00:00 / 00:00")
+    assertThat(reopenedPlayPause.isEnabled).isFalse()
+    assertThat(reopenedSlider.isEnabled).isFalse()
+
+    reopenedUi.clickOn(reopenedUi.getComponent<JButton> { it.text == "Close" })
+    assertThat(reopenedWrapper.isShowing).isFalse()
+  }
+
+  @Test
+  fun testColumnSortingSelectedRoutePersistenceAndNoFocusBorder() {
+    val routeA =
+      SavedRouteItem(
+        name = "alpha route",
+        description = "Short 10-point walk",
+        durationSeconds = 30,
+        points = List(10) { RoutePoint(37.4 + it * 0.001, -122.0, 0.0, if (it == 0) 0.0 else 3.0) },
+      )
+    val pointB =
+      SavedRouteItem(
+        name = "Beta Point",
+        description = "Single waypoint",
+        durationSeconds = 0,
+        points = listOf(RoutePoint(37.5, -122.1, 0.0, 0.0)),
+      )
+    val routeC =
+      SavedRouteItem(
+        name = "gamma route",
+        description = "Longer 2-point drive",
+        durationSeconds = 120,
+        points = listOf(RoutePoint(37.6, -122.2, 0.0, 0.0), RoutePoint(37.7, -122.3, 0.0, 120.0)),
+      )
+    PropertiesComponent.getInstance()
+      .setValue(LocationDialog.SAVED_ROUTES_STORAGE_KEY, com.google.gson.Gson().toJson(listOf(routeC, routeA, pointB)))
+
+    val locationDialog = LocationDialog(emulatorController)
+    val dialogWrapper = locationDialog.show(projectRule.project)
+    val ui = FakeUi(dialogWrapper.rootPane)
+    ui.layoutAndDispatchEvents()
+
+    val routesTable = ui.getComponent<TableView<SavedRouteItem>> { it.name == "savedRoutesTable" }
+    val routesMap = ui.getComponent<MapPanel> { it.name == "routesMap" }
+    assertThat(routesTable.rowCount).isEqualTo(3)
+    // Sorted by Name ascending by default, with the first visible item selected.
+    assertThat((0 until routesTable.rowCount).map { routesTable.getRow(it).name })
+      .containsExactly("alpha route", "Beta Point", "gamma route")
+      .inOrder()
+    assertThat(routesTable.selectedObject?.name).isEqualTo("alpha route")
+
+    // Verify no focus border is added to any cell (including Name) when focused and selected.
+    val noFocusBorder = UIManager.getBorder("Table.cellNoFocusBorder")
+    for (col in 0 until routesTable.columnCount) {
+      val renderer = routesTable.getCellRenderer(0, col)
+      val value = routesTable.getValueAt(0, col)
+      val focusedComp = renderer.getTableCellRendererComponent(routesTable, value, true, true, 0, col) as JComponent
+      val unfocusedComp = renderer.getTableCellRendererComponent(routesTable, value, true, false, 0, col) as JComponent
+      assertThat(focusedComp.border).isEqualTo(unfocusedComp.border)
+      if (noFocusBorder != null) {
+        assertThat(focusedComp.border).isEqualTo(noFocusBorder)
+      }
+    }
+    // Verify Name column cell renderer preserves route description tooltip.
+    val nameRendererComp = routesTable.prepareRenderer(routesTable.getCellRenderer(0, 0), 0, 0) as JComponent
+    assertThat(nameRendererComp.toolTipText).contains("Short 10-point walk")
+
+    // Click Name column header -> toggles from default ascending to descending, then back to ascending.
+    clickTableHeader(ui, routesTable, 0)
+    assertThat((0 until routesTable.rowCount).map { routesTable.getRow(it).name })
+      .containsExactly("gamma route", "Beta Point", "alpha route")
+      .inOrder()
+    assertThat(routesTable.selectedObject?.name).isEqualTo("alpha route")
+    clickTableHeader(ui, routesTable, 0)
+    assertThat((0 until routesTable.rowCount).map { routesTable.getRow(it).name })
+      .containsExactly("alpha route", "Beta Point", "gamma route")
+      .inOrder()
+
+    // Click Points column header -> numeric sort (1, 2, 10, not lexicographic "1", "10", "2").
+    clickTableHeader(ui, routesTable, 1)
+    assertThat((0 until routesTable.rowCount).map { routesTable.getRow(it).name })
+      .containsExactly("Beta Point", "gamma route", "alpha route")
+      .inOrder()
+    clickTableHeader(ui, routesTable, 1)
+    assertThat((0 until routesTable.rowCount).map { routesTable.getRow(it).name })
+      .containsExactly("alpha route", "gamma route", "Beta Point")
+      .inOrder()
+
+    // Click Duration column header -> numeric duration sort (0s, 30s, 2m 0s).
+    clickTableHeader(ui, routesTable, 2)
+    assertThat((0 until routesTable.rowCount).map { routesTable.getRow(it).name })
+      .containsExactly("Beta Point", "alpha route", "gamma route")
+      .inOrder()
+
+    // Select "Beta Point" (view row 0), verify it sends GPS to emulator, close dialog, and verify both sort order and selection are
+    // preserved on reopen.
+    routesTable.selectionModel.setSelectionInterval(0, 0)
+    assertThat(routesTable.selectedObject?.name).isEqualTo("Beta Point")
+    assertThat(routesMap.routeOrigin).isEqualTo(GeoPoint(37.5, -122.1, 0.0))
+    waitForCondition(5.seconds) {
+      abs(fakeEmulator.gpsLocation.latitude - 37.5) < 1e-4 && abs(fakeEmulator.gpsLocation.longitude - (-122.1)) < 1e-4
+    }
+    dialogWrapper.close(DialogWrapper.CLOSE_EXIT_CODE)
+
+    val reopenedDialog = LocationDialog(emulatorController)
+    val reopenedWrapper = reopenedDialog.show(projectRule.project)
+    val reopenedUi = FakeUi(reopenedWrapper.rootPane)
+    reopenedUi.layoutAndDispatchEvents()
+    val reopenedTable = reopenedUi.getComponent<TableView<SavedRouteItem>> { it.name == "savedRoutesTable" }
+    val reopenedMap = reopenedUi.getComponent<MapPanel> { it.name == "routesMap" }
+    assertThat((0 until reopenedTable.rowCount).map { reopenedTable.getRow(it).name })
+      .containsExactly("Beta Point", "alpha route", "gamma route")
+      .inOrder()
+    assertThat(reopenedTable.selectedObject?.name).isEqualTo("Beta Point")
+    assertThat(reopenedMap.routeOrigin).isEqualTo(GeoPoint(37.5, -122.1, 0.0))
+
+    // Reverse Duration sort order to descending, reopen again, and verify descending sort order is preserved.
+    clickTableHeader(reopenedUi, reopenedTable, 2)
+    assertThat((0 until reopenedTable.rowCount).map { reopenedTable.getRow(it).name })
+      .containsExactly("gamma route", "alpha route", "Beta Point")
+      .inOrder()
+    reopenedWrapper.close(DialogWrapper.CLOSE_EXIT_CODE)
+
+    val thirdDialog = LocationDialog(emulatorController)
+    val thirdWrapper = thirdDialog.show(projectRule.project)
+    val thirdUi = FakeUi(thirdWrapper.rootPane)
+    thirdUi.layoutAndDispatchEvents()
+    val thirdTable = thirdUi.getComponent<TableView<SavedRouteItem>> { it.name == "savedRoutesTable" }
+    assertThat((0 until thirdTable.rowCount).map { thirdTable.getRow(it).name })
+      .containsExactly("gamma route", "alpha route", "Beta Point")
+      .inOrder()
+    assertThat(thirdTable.selectedObject?.name).isEqualTo("Beta Point")
+
+    thirdWrapper.close(DialogWrapper.CLOSE_EXIT_CODE)
+  }
+
+  @Test
+  fun testRoutePlaybackSeekPauseRepeatAndClose() {
+    val locationDialog = LocationDialog(emulatorController)
+    locationDialog.playbackUpdateInterval = 20.milliseconds
+    val dialogWrapper = locationDialog.show(projectRule.project)
+    val ui = FakeUi(dialogWrapper.rootPane)
+
+    val routesTable = ui.getComponent<TableView<*>> { it.name == "savedRoutesTable" }
+    val slider = ui.getComponent<JSlider> { it.name == "playbackSlider" }
+    val timeLabel = ui.getComponent<JBLabel> { it.name == "playbackTimeLabel" }
+    val playPauseButton = ui.getComponent<JButton> { it.name == "playPauseButton" }
+    val speedComboBox = ui.getComponent<ComboBox<PlaybackSpeed>> { it.name == "playbackSpeedComboBox" }
+    val repeatCheckBox = ui.getComponent<JBCheckBox> { it.name == "repeatPlaybackCheckBox" }
+
+    // Verify westward headings are normalized to [0.0, 360.0).
+    assertThat(GeoMath.headingDegrees(0.0, 0.0, 0.0, -1.0)).isWithin(1e-6).of(270.0)
+    assertThat(GeoMath.headingDegrees(37.4220, -122.0840, 37.4230, -122.0850)).isIn(Range.closedOpen(270.0, 360.0))
+
+    val routeGpx = tempFolder.newFile("commute.gpx").toPath()
+    routeGpx.writeText(
+      """
+      <?xml version="1.0" encoding="UTF-8"?>
+      <gpx version="1.1">
+        <trk>
+          <name>Morning Commute</name>
+          <trkseg>
+            <trkpt lat="37.4220" lon="-122.0840">
+              <ele>5.0</ele>
+              <time>2026-10-20T10:00:00Z</time>
+            </trkpt>
+            <trkpt lat="37.4230" lon="-122.0850">
+              <ele>15.0</ele>
+              <time>2026-10-20T10:00:04Z</time>
+            </trkpt>
+          </trkseg>
+        </trk>
+      </gpx>
+      """
+        .trimIndent()
+    )
+    locationDialog.importGpxKmlFile(routeGpx)
+    waitForCondition(5.seconds) { routesTable.rowCount == 1 && playPauseButton.isEnabled }
+    assertThat(timeLabel.text).isEqualTo("00:00 / 00:04")
+
+    // Seek to 50% (2s) -> interpolates halfway between origin and destination with speed 0.
+    slider.value = 500
+    waitForCondition(5.seconds) {
+      abs(fakeEmulator.gpsLocation.latitude - 37.4225) < 1e-4 && abs(fakeEmulator.gpsLocation.longitude - (-122.0845)) < 1e-4
+    }
+    assertThat(fakeEmulator.gpsLocation.speed).isEqualTo(0.0)
+    assertThat(timeLabel.text).isEqualTo("00:02 / 00:04")
+
+    // Start playback from 50% at 5X speed.
+    speedComboBox.selectedItem = PlaybackSpeed.SPEED_5X
+    repeatCheckBox.isSelected = false
+    ui.clickOn(playPauseButton)
+    assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Pause)
+    assertThat(playPauseButton.toolTipText).isEqualTo("Pause")
+    assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Pause")
+    assertThat(routesTable.isEnabled).isFalse()
+
+    // Pause mid-playback or restart playback while already running and verify canceled job does not reset new state.
+    locationDialog.startRoutePlayback(updateInterval = 20.milliseconds)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Pause)
+    assertThat(routesTable.isEnabled).isFalse()
+
+    // Pause playback manually and verify speed resets to 0.0 and controls become interactive.
+    ui.clickOn(playPauseButton)
+    assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Execute)
+    assertThat(playPauseButton.toolTipText).isEqualTo("Play")
+    assertThat(routesTable.isEnabled).isTrue()
+    waitForCondition(5.seconds) { fakeEmulator.gpsLocation.speed == 0.0 }
+
+    // Resume playback to completion -> reaches destination, resets speed to 0.0 and slider to 0.
+    ui.clickOn(playPauseButton)
+    waitForCondition(5.seconds) {
+      playPauseButton.icon == AllIcons.Actions.Execute &&
+        abs(fakeEmulator.gpsLocation.latitude - 37.4230) < 1e-4 &&
+        abs(fakeEmulator.gpsLocation.longitude - (-122.0850)) < 1e-4 &&
+        fakeEmulator.gpsLocation.speed == 0.0
+    }
+    assertThat(slider.value).isEqualTo(0)
+    assertThat(timeLabel.text).isEqualTo("00:00 / 00:04")
+    assertThat(routesTable.isEnabled).isTrue()
+
+    // Seek to the very end while playing (with repeat off) -> finishes at destination instead of restarting from 0.
+    speedComboBox.selectedItem = PlaybackSpeed.SPEED_1X
+    ui.clickOn(playPauseButton)
+    waitForCondition(5.seconds) { playPauseButton.icon == AllIcons.Actions.Pause && fakeEmulator.gpsLocation.speed > 0.0 }
+    slider.valueIsAdjusting = true
+    slider.value = SensorSessionPlayer.SLIDER_MAX
+    slider.valueIsAdjusting = false
+    waitForCondition(5.seconds) {
+      playPauseButton.icon == AllIcons.Actions.Execute &&
+        abs(fakeEmulator.gpsLocation.latitude - 37.4230) < 1e-4 &&
+        abs(fakeEmulator.gpsLocation.longitude - (-122.0850)) < 1e-4 &&
+        fakeEmulator.gpsLocation.speed == 0.0
+    }
+    assertThat(slider.value).isEqualTo(0)
+    assertThat(timeLabel.text).isEqualTo("00:00 / 00:04")
+
+    // Start playback again with repeat enabled, then close dialog while playing -> resets speed to 0.0.
+    repeatCheckBox.isSelected = true
+    ui.clickOn(playPauseButton)
+    waitForCondition(5.seconds) { fakeEmulator.gpsLocation.speed > 0.0 }
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialogWrapper.isShowing).isFalse()
+    waitForCondition(5.seconds) { fakeEmulator.gpsLocation.speed == 0.0 }
+  }
+
+  @Test
+  fun testRouteEvaluationWithZeroDelaysAndGsonDeserialization() {
+    val route =
+      SavedRouteItem(
+        name = "Zero-delay segments",
+        durationSeconds = 30,
+        points =
+          listOf(
+            RoutePoint(0.0, 0.0, 0.0, 0.0),
+            RoutePoint(1.0, 1.0, 10.0, 0.0),
+            RoutePoint(2.0, 2.0, 20.0, 10.0),
+            RoutePoint(3.0, 3.0, 30.0, 0.0),
+            RoutePoint(5.0, 5.0, 50.0, 20.0),
+          ),
+      )
+    val gson = com.google.gson.Gson()
+    val json = gson.toJson(route)
+    assertThat(json).doesNotContain("cachedCumulativeTimesSeconds")
+    val roundTripped = gson.fromJson(json, SavedRouteItem::class.java)
+    assertThat(roundTripped.duration).isEqualTo(30.seconds)
+    assertThat(roundTripped.cumulativeTimesSeconds === roundTripped.cumulativeTimesSeconds).isTrue()
+
+    // At 0s, skips leading zero-delay segment (0->1) and starts on segment (1->2).
+    assertThat(LocationDialog.evaluateRouteAt(roundTripped, 0.seconds, 1)?.point).isEqualTo(GeoPoint(1.0, 1.0, 10.0))
+    // At 10s, hits end of segment (1->2) before middle zero-delay segment (2->3).
+    assertThat(LocationDialog.evaluateRouteAt(roundTripped, 10.seconds, 1)?.point).isEqualTo(GeoPoint(2.0, 2.0, 20.0))
+    // At 20s, interpolates halfway through segment (3->4).
+    assertThat(LocationDialog.evaluateRouteAt(roundTripped, 20.seconds, 1)?.point).isEqualTo(GeoPoint(4.0, 4.0, 40.0))
+    // At end, clamps to destination.
+    assertThat(LocationDialog.evaluateRouteAt(roundTripped, 30.seconds, 1)?.point).isEqualTo(GeoPoint(5.0, 5.0, 50.0))
   }
 
   @Test
@@ -753,41 +882,26 @@ class LocationDialogTest {
     }
   }
 
-  private fun performAction(action: AnAction) {
-    if (action is AnActionButton) {
-      val contextComponent =
-        object : JLayeredPane() {
-          override fun isShowing(): Boolean = true
-        }
-      action.withContextComponent(contextComponent) {
-        executeAction(action)
-      }
-    } else {
-      executeAction(action)
+  private fun performToolbarAction(ui: FakeUi, actionName: String) {
+    val toolbar = ui.getComponent<ActionToolbar>()
+    waitForCondition(5.seconds) {
+      toolbar.updateActionsAsync()
+      toolbar.actions.any { it.templatePresentation.text == actionName }
     }
+    val button = ui.getComponent<JComponent> { it.accessibleContext?.accessibleName == actionName }
+    ui.clickOn(button)
   }
 
-  private fun isPresentationEnabled(action: AnAction): Boolean {
-    return if (action is AnActionButton) {
-      val contextComponent =
-        object : JLayeredPane() {
-          override fun isShowing(): Boolean = true
-        }
-      action.withContextComponent(contextComponent) {
-        updateAndGetActionPresentation(action).isEnabled
-      }
-    } else {
-      updateAndGetActionPresentation(action).isEnabled
-    }
+  private fun clickTableHeader(ui: FakeUi, table: TableView<*>, column: Int) {
+    val header = table.tableHeader
+    val rect = header.getHeaderRect(column)
+    ui.mouse.click(ui.getPosition(header).x + rect.centerX.toInt(), ui.getPosition(header).y + rect.centerY.toInt())
   }
 
-  private fun <T> AnActionButton.withContextComponent(component: JComponent, function: () -> T): T {
-    val savedContextComponent = contextComponent
-    try {
-      contextComponent = component
-      return function()
-    } finally {
-      contextComponent = savedContextComponent
+  private fun hasValidationError(ui: FakeUi, substring: String): Boolean {
+    return ui.findAllComponents<JComponent>().any { component ->
+      component.isShowing && component.accessibleContext?.accessibleName?.contains(substring) == true ||
+        (component as? JBLabel)?.text?.contains(substring) == true
     }
   }
 }

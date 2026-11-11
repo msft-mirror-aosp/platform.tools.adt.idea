@@ -57,9 +57,6 @@ internal object GeoMath {
     return EARTH_RADIUS_NM * c
   }
 
-  /** Calculates the great-circle distance between two points in meters. */
-  fun distanceMeters(start: GeoPoint, end: GeoPoint): Double = distanceMeters(start.latitude, start.longitude, end.latitude, end.longitude)
-
   /** Calculates the great-circle distance between two coordinates in meters. */
   fun distanceMeters(startLat: Double, startLon: Double, endLat: Double, endLon: Double): Double =
     distanceNm(startLat, startLon, endLat, endLon) * METERS_PER_NM

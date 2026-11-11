@@ -198,6 +198,23 @@ class SensorReplayDialogTest {
     assertThat(ui.getComponent<JBLabel> { it.name == "fileNameValueLabel" }.text).isEqualTo("highway_drive.pb")
     assertThat(moreLink.isVisible).isTrue()
 
+    // Verify File and timeline cells do not paint a focus border when clicked/focused, and File preserves path tooltip.
+    val fileRenderer = savedTable.getCellRenderer(0, 0)
+    val fileValue = savedTable.getValueAt(0, 0)
+    val focusedFileComp = fileRenderer.getTableCellRendererComponent(savedTable, fileValue, true, true, 0, 0) as JComponent
+    val unfocusedFileComp = fileRenderer.getTableCellRendererComponent(savedTable, fileValue, true, false, 0, 0) as JComponent
+    assertThat(focusedFileComp.border).isEqualTo(unfocusedFileComp.border)
+    assertThat(focusedFileComp.toolTipText).contains(sessionFile1.toString())
+    for (col in 0 until timelineTable.columnCount) {
+      val timelineRenderer = timelineTable.getCellRenderer(0, col)
+      val timelineValue = timelineTable.getValueAt(0, col)
+      val focusedTimelineComp =
+        timelineRenderer.getTableCellRendererComponent(timelineTable, timelineValue, true, true, 0, col) as JComponent
+      val unfocusedTimelineComp =
+        timelineRenderer.getTableCellRendererComponent(timelineTable, timelineValue, true, false, 0, col) as JComponent
+      assertThat(focusedTimelineComp.border).isEqualTo(unfocusedTimelineComp.border)
+    }
+
     // Close and reopen dialog on same emulator: saved sessions are preserved.
     dialog.close(DialogWrapper.CLOSE_EXIT_CODE)
     val reopenedDialog = SensorReplayDialog(emulatorController).show(projectRule.project)
