@@ -241,6 +241,7 @@ studiobot.prompt.library.rules=COMPLETE:2025
 studiobot.prompt.library=COMPLETE:2025
 studiobot.quick.edit.enabled=PREVIEW
 studiobot.replace.text.tool.enabled=COMPLETE:2026
+studiobot.skills.custom.catalogs.enabled=INTERNAL
 studiobot.skills.management.ux.enabled=COMPLETE:2026
 studiobot.skills.v2.enabled=COMPLETE:2026
 studiobot.sticky.user.query.enabled=PREVIEW
