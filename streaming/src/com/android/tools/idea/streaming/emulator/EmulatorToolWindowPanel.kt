@@ -21,7 +21,7 @@ import com.android.emulator.control.DisplayConfiguration
 import com.android.emulator.control.DisplayConfigurations
 import com.android.emulator.control.ExtendedControlsStatus
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
+import com.android.sdklib.util.ProcessHandleProvider
 import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.avdmanager.EmulatorLogListener
 import com.android.tools.idea.concurrency.createCoroutineScope

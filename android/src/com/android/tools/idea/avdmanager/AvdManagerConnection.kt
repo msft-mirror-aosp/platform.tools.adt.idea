@@ -24,7 +24,6 @@ import com.android.sdklib.SystemImageTags
 import com.android.sdklib.deviceprovisioner.DeviceActionCanceledException
 import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.DeviceType
-import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
 import com.android.sdklib.deviceprovisioner.deviceType
 import com.android.sdklib.devices.Abi
 import com.android.sdklib.internal.avd.AvdBuilder
@@ -37,6 +36,7 @@ import com.android.sdklib.internal.avd.EmulatorPackage
 import com.android.sdklib.internal.avd.UserSettingsKey
 import com.android.sdklib.internal.avd.getEmulatorPackage
 import com.android.sdklib.repository.AndroidSdkHandler
+import com.android.sdklib.util.ProcessHandleProvider
 import com.android.tools.idea.avdmanager.AccelerationErrorSolution.SolutionCode
 import com.android.tools.idea.avdmanager.AvdManagerConnection.Companion.NULL_CONNECTION
 import com.android.tools.idea.avdmanager.DeviceSkinUpdater.updateSkin
@@ -83,6 +83,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
@@ -135,24 +136,10 @@ constructor(
   @Slow
   @JvmOverloads
   fun stopAvd(avd: AvdInfo, forcibly: Boolean = false) {
-    // TODO: Move the implementation to AvdManager when it starts targeting JDK 9+.
     avdManager ?: return
-    val pid = avdManager.getPid(avd)
-    if (pid != 0L) {
-      ProcessHandleProvider.getProcessHandle(pid)?.let {
-        // Kill the emulator process if it is running.
-        val termination = it.onExit()
-        if (!termination.isDone) {
-          val success = if (forcibly) it.destroyForcibly() else it.destroy()
-          if (success) {
-            RunningAvdTracker.getInstance().shuttingDown(avd.dataFolderPath)
-            try {
-              // Wait for the emulator process to terminate.
-              termination.get()
-            } catch (_: Exception) {}
-          }
-        }
-      }
+    RunningAvdTracker.getInstance().shuttingDown(avd.dataFolderPath)
+    runBlocking {
+      avdManager.stopAvd(avd, forcibly)
     }
   }
 

@@ -17,8 +17,8 @@ package com.android.tools.idea.streaming.emulator
 
 import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.GuardedBy
-import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
 import com.android.sdklib.deviceprovisioner.RunningAvd
+import com.android.sdklib.util.ProcessHandleProvider
 import com.android.tools.concurrency.AndroidIoManager
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.concurrency.createCoroutineScope

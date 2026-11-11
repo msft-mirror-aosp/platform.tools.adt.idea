@@ -23,7 +23,7 @@ import com.android.emulator.control.Posture.PostureValue
 import com.android.emulator.control.ThemingStyle
 import com.android.mockito.kotlin.whenever
 import com.android.sdklib.AndroidVersion
-import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
+import com.android.sdklib.util.ProcessHandleProvider
 import com.android.testutils.GoldenImageRule
 import com.android.testutils.ProcessHandleProviderRule
 import com.android.testutils.waitForCondition

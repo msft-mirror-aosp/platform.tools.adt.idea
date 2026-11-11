@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.streaming.emulator
 
-import com.android.sdklib.deviceprovisioner.ProcessHandleProvider
+import com.android.sdklib.util.ProcessHandleProvider
 import com.android.testutils.ProcessHandleProviderRule
 import com.android.testutils.waitForCondition
 import com.android.tools.idea.avdmanager.EmulatorLogListener

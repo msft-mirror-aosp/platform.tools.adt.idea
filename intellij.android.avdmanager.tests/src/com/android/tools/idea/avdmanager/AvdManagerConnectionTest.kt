@@ -16,12 +16,15 @@
 package com.android.tools.idea.avdmanager
 
 import com.android.repository.testframework.FakeProgressIndicator
+import com.android.sdklib.deviceprovisioner.RunningAvd
 import com.android.sdklib.devices.DeviceManager
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.AvdManager
 import com.android.sdklib.internal.avd.OnDiskSkin
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.sdklib.repository.targets.SystemImage
+import com.android.sdklib.util.ProcessHandleProvider
+import com.android.testutils.FakeProcessHandle
 import com.android.testutils.file.createInMemoryFileSystemAndFolder
 import com.android.testutils.file.recordExistingFile
 import com.android.testutils.truth.PathSubject
@@ -105,6 +108,33 @@ class AvdManagerConnectionTest : AndroidTestCase() {
         avdFolder.resolve("user-settings.ini"),
         avdFolder.resolve("userdata.img"),
       )
+  }
+
+  fun testStopAvd() {
+    val processHandle = FakeProcessHandle(412503)
+    ProcessHandleProvider.overrideForTest(
+      object : ProcessHandleProvider.Factory {
+        override fun getProcessHandle(pid: Long): ProcessHandle? = if (pid == 412503L) processHandle else null
+      }
+    )
+    try {
+      val avd = avdManager.createAvd(avdFolder, name, systemImage, null, null, null, null, null, null, false, false, false)
+      val lockFile = avdManager.resolveLockFile(avd, "hardware-qemu.ini.lock")
+      Files.createDirectories(lockFile.parent)
+      Files.write(lockFile, "412503".toByteArray())
+      val tracker = RunningAvdTracker.getInstance()
+      tracker.started(avd.dataFolderPath, processHandle, RunningAvd.RunType.STANDALONE)
+      var wasShuttingDownWhenExited = false
+      processHandle.onExit().thenRun { wasShuttingDownWhenExited = tracker.runningAvds[avd.dataFolderPath]?.isShuttingDown == true }
+
+      avdManagerConnection.stopAvd(avd)
+
+      assertThat(processHandle.isAlive).isFalse()
+      assertThat(wasShuttingDownWhenExited).isTrue()
+      assertThat(tracker.runningAvds).doesNotContainKey(avd.dataFolderPath)
+    } finally {
+      ProcessHandleProvider.overrideForTest(null)
+    }
   }
 
   // Note: This only tests a small part of startAvd(). We are not set up
