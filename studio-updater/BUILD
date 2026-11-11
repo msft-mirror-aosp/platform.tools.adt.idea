@@ -6,13 +6,29 @@ load("//tools/base/bazel:kotlin.bzl", "kotlin_library")
 # Thus we keep dependencies to a minimum.
 kotlin_library(
     name = "studio-updater",
-    srcs = glob([
-        "src/**/*.java",
-        "src/**/*.kt",
-    ]),
+    srcs = ["src/com/studio/updater/StudioUpdaterService.java"],
     resource_strip_prefix = "tools/adt/idea/studio-updater/resources",
     resources = glob(["resources/**"]),
     visibility = ["//tools/adt/idea/studio:__pkg__"],
+    deps = [
+        ":studio-updater-analytics",
+        "@intellij//:updater",
+    ],
+)
+
+# The patch updater analytics without the UpdaterService registration (META-INF/services), so that other
+# products can report the same events from their own UpdaterService. A deploy jar runs every registered
+# UpdaterService, so these products must not depend on :studio-updater.
+kotlin_library(
+    name = "studio-updater-analytics",
+    srcs = glob(
+        [
+            "src/com/studio/updater/*.java",
+            "src/com/studio/updater/*.kt",
+        ],
+        exclude = ["src/com/studio/updater/StudioUpdaterService.java"],
+    ),
+    visibility = ["//tools/profiler/apa-updater:__pkg__"],
     deps = [
         "//tools/analytics-library/tracker:tools.analytics-tracker",
         "//tools/base/common:tools.common",
