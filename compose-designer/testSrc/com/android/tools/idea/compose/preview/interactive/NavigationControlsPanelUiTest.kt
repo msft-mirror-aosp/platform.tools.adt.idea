@@ -795,4 +795,50 @@ class NavigationControlsPanelUiTest {
       edgeDropdownNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
     )
   }
+
+  @Test
+  fun testDoubleClickingBackButtonWithinDelayOnlyPopsOnce() {
+    var backPressStartCallCount = 0
+    var backPressCompletedCallCount = 0
+
+    composeTestRule.setContent {
+      NavigationControlsPanel(
+        isEdgeNavigationImplemented = { true },
+        canBackPress = { true },
+        onBackPress = { backPressCompletedCallCount++ },
+        onBackPressStart = { backPressStartCallCount++ },
+        onBackPressProgress = { _, _ -> },
+        onBackPressTrackProgress = {},
+        onEdgeDropdownPress = {},
+        fpsUpdater = MutableSharedFlow(),
+      )
+    }
+
+    // Pause auto-advancement so the two clicks occur inside the 100ms coroutine delay window
+    composeTestRule.mainClock.autoAdvance = false
+    val backButtonNode = composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.backButton).assertIsDisplayed()
+
+    // Perform the first click and advance 30ms into the 100ms delay window
+    backButtonNode.performClick()
+    composeTestRule.mainClock.advanceTimeBy(30L)
+    assertEquals(1, backPressStartCallCount)
+    assertEquals(0, backPressCompletedCallCount)
+
+    // Perform a second overlapping click while the first back press coroutine is still in flight
+    backButtonNode.performClick()
+    composeTestRule.mainClock.advanceTimeBy(100L)
+    composeTestRule.mainClock.autoAdvance = true
+    composeTestRule.waitForIdle()
+
+    // Verify only a single back press start and completion occurred from the double-click
+    assertEquals(1, backPressStartCallCount)
+    assertEquals(1, backPressCompletedCallCount)
+
+    // Perform another click after the first back press has finished and verify it triggers normally
+    backButtonNode.performClick()
+    composeTestRule.mainClock.advanceTimeBy(100L)
+    composeTestRule.waitForIdle()
+    assertEquals(2, backPressStartCallCount)
+    assertEquals(2, backPressCompletedCallCount)
+  }
 }

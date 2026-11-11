@@ -151,6 +151,8 @@ fun NavigationControlsPanel(
 ) {
   var sliderPosition by rememberSaveable { mutableFloatStateOf(0f) }
   var backStarted by remember { mutableStateOf(false) }
+  // Tracks whether a Navigate Back button click coroutine is currently in flight to prevent double-clicks from popping twice
+  var isBackPressInFlight by remember { mutableStateOf(false) }
   val coroutineScope = rememberCoroutineScope()
   val showEdgeNavigation by produceState(false, isEdgeNavigationImplemented) { value = isEdgeNavigationImplemented() }
   val selectedEdge = rememberSaveable { mutableStateOf(BackNavigationEdge.EDGE_NONE) }
@@ -175,20 +177,28 @@ fun NavigationControlsPanel(
           modifier = Modifier.testTag(NavigationControlsPanelTestTags.backButton).widthIn(min = 135.dp),
           enabled = backNavigationAvailable,
           onClick = {
+            // Ignore overlapping clicks while the 100ms back press start-to-complete sequence is in flight
+            if (isBackPressInFlight) return@OutlinedButton
+            isBackPressInFlight = true
             coroutineScope.launch {
-              if (!backStarted) {
-                backStarted = true
-                val selectedEdge = selectedEdge.value
-                // TODO(b/539916536): This is a temporary solution for predictive back navigation.
-                // Currently, the limitation is about the predictive back gesture transition continuing to the end,
-                // but we expect it to hand off to a separate transition spec after the swipe passes the committed threshold.
-                // This should be properly fixed when new APIs for predictive back are released.
-                onBackPressStart(selectedEdge)
-                // Introduce a minor delay to allow the initial back navigation gesture animation frame
-                // to initialize properly before triggering the back press completion event.
-                delay(100.milliseconds)
+              try {
+                if (!backStarted) {
+                  backStarted = true
+                  val selectedEdge = selectedEdge.value
+                  // TODO(b/539916536): This is a temporary solution for predictive back navigation.
+                  // Currently, the limitation is about the predictive back gesture transition continuing to the end,
+                  // but we expect it to hand off to a separate transition spec after the swipe passes the committed threshold.
+                  // This should be properly fixed when new APIs for predictive back are released.
+                  onBackPressStart(selectedEdge)
+                  // Introduce a minor delay to allow the initial back navigation gesture animation frame
+                  // to initialize properly before triggering the back press completion event.
+                  delay(100.milliseconds)
+                }
+                onBackPress()
+              } finally {
+                backStarted = false
+                isBackPressInFlight = false
               }
-              onBackPress()
             }
           },
         ) {
