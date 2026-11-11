@@ -24,6 +24,7 @@ add_library(
         accessors/input_manager.cc
         accessors/key_character_map.cc
         accessors/key_event.cc
+        accessors/keyguard_manager.cc
         accessors/looper.cc
         accessors/motion_event.cc
         accessors/pointer_helper.cc

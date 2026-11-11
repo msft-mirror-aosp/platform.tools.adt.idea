@@ -86,6 +86,7 @@ sealed class ControlMessage(val type: Int) {
           UiSettingsChangeRequest.TYPE -> UiSettingsChangeRequest.deserialize(stream)
           UiSettingsChangeResponse.TYPE -> UiSettingsChangeResponse.deserialize(stream)
           ResetUiSettingsRequest.TYPE -> ResetUiSettingsRequest.deserialize(stream)
+          LockScreenStateNotification.TYPE -> LockScreenStateNotification.deserialize(stream)
           else -> throw StreamFormatException("Unrecognized control message type $type")
         }
       FlightRecorder.log { "${TraceUtils.currentTime} deserialize: message = $message" }
@@ -1162,6 +1163,26 @@ internal data class ResetUiSettingsRequest(override val requestId: Int) : Correl
     override fun deserialize(stream: Base128InputStream): ResetUiSettingsRequest {
       val requestId = stream.readInt()
       return ResetUiSettingsRequest(requestId)
+    }
+  }
+}
+
+/** Notification of a lock screen state change. */
+internal data class LockScreenStateNotification(val locked: Boolean) : ControlMessage(TYPE) {
+
+  override fun serialize(stream: Base128OutputStream) {
+    super.serialize(stream)
+    stream.writeBoolean(locked)
+  }
+
+  override fun toString(): String = "LockScreenStateNotification(locked=$locked)"
+
+  companion object : Deserializer {
+    const val TYPE = 36
+
+    override fun deserialize(stream: Base128InputStream): LockScreenStateNotification {
+      val locked = stream.readBoolean()
+      return LockScreenStateNotification(locked)
     }
   }
 }

@@ -1195,4 +1195,27 @@ private:
   DISALLOW_COPY_AND_ASSIGN(ResetUiSettingsRequest);
 };
 
+// Notification of a lock screen state change.
+class LockScreenStateNotification : public ControlMessage {
+public:
+  explicit LockScreenStateNotification(bool locked)
+      : ControlMessage(TYPE),
+        locked_(locked) {
+  }
+  ~LockScreenStateNotification() override = default;
+
+  [[nodiscard]] bool locked() const { return locked_; }
+
+  void Serialize(Base128OutputStream& stream) const override;
+
+  static constexpr int TYPE = 36;
+
+private:
+  friend class ControlMessage;
+
+  bool locked_;
+
+  DISALLOW_COPY_AND_ASSIGN(LockScreenStateNotification);
+};
+
 }  // namespace screensharing

@@ -28,6 +28,7 @@
 #include "accessors/input_manager.h"
 #include "accessors/key_character_map.h"
 #include "accessors/key_event.h"
+#include "accessors/keyguard_manager.h"
 #include "accessors/motion_event.h"
 #include "accessors/pointer_helper.h"
 #include "accessors/surface_control.h"
@@ -44,7 +45,7 @@ namespace screensharing {
 
 // Processes control socket commands.
 class Controller : private DisplayManager::DisplayListener, ClipboardManager::ClipboardListener, DeviceStateManager::DeviceStateListener,
-                           XrSimulatedInputManager::EnvironmentListener {
+                           XrSimulatedInputManager::EnvironmentListener, KeyguardManager::KeyguardLockedStateListener {
 public:
   explicit Controller(int socket_fd);
   ~Controller() override;
@@ -134,6 +135,9 @@ private:
   void ChangeUiSetting(const UiSettingsChangeRequest& request);
   void ResetUiSettings(const ResetUiSettingsRequest& request);
 
+  void OnKeyguardLockedStateChanged(bool is_keyguard_locked) override;
+  void SendLockScreenStateNotification();
+
   void StartDisplayPolling();
   void StopDisplayPolling();
   void PollDisplays();
@@ -173,6 +177,9 @@ private:
   std::map<int32_t, DisplayInfo> current_displays_;
 
   UiSettings ui_settings_;
+
+  std::atomic_bool keyguard_locked_ = false;
+  bool sent_keyguard_locked_ = false;
 
   std::chrono::steady_clock::time_point poll_displays_until_;
 

@@ -460,4 +460,9 @@ UiSettingsChangeRequest* UiSettingsChangeRequest::createAppLocaleChangeRequest(i
   return request;
 }
 
+void LockScreenStateNotification::Serialize(Base128OutputStream& stream) const {
+  ControlMessage::Serialize(stream);
+  stream.WriteBool(locked_);
+}
+
 }  // namespace screensharing

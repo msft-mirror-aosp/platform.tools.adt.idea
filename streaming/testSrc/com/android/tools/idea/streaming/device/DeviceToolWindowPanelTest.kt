@@ -76,6 +76,7 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestDataProvider
 import com.intellij.testFramework.replaceService
 import com.intellij.ui.LayeredIcon
+import com.intellij.ui.components.JBLabel
 import icons.StudioIcons
 import it.unimi.dsi.fastutil.bytes.ByteArrayList
 import java.awt.Component
@@ -809,6 +810,83 @@ class DeviceToolWindowPanelTest {
 
     val zoomToolbarBackToVertical = fakeUi.getComponent<FloatingToolbarContainer>()
     assertThat(zoomToolbarBackToVertical.height).isGreaterThan(zoomToolbarBackToVertical.width)
+  }
+
+  @Test
+  fun testProtectedContentPopup() {
+    device = agentRule.connectDevice("Pixel 8", 34, Dimension(1080, 2400))
+    panel.createContent(false)
+
+    fakeUi.layoutAndDispatchEvents()
+    waitForCondition(10.seconds) { agent.isRunning && panel.isConnected }
+    waitForFrame(5.seconds)
+
+    val displayPanel = fakeUi.getComponent<DeviceDisplayPanel>()
+    val deviceController = panel.primaryDisplayView!!.deviceController!!
+    val protectedContentPopup = fakeUi.getComponent<JBLabel> { it.text == "Sensitive content hidden" }.parent
+    assertThat(protectedContentPopup.isVisible).isFalse()
+
+    // Lock screen is active, but the upper 80% of the display is not black -> popup stays hidden.
+    agent.lockScreenActive = true
+    val unlockedCheckFrame = agent.getFrameNumber(PRIMARY_DISPLAY_ID)
+    waitForCondition(2.seconds) { deviceController.isLockScreenActive && displayPanel.lastCheckedFrameNumber >= unlockedCheckFrame }
+    assertThat(protectedContentPopup.isVisible).isFalse()
+
+    // Black frame while lock screen is active -> popup becomes visible.
+    runBlocking { agent.renderBlackScreen(PRIMARY_DISPLAY_ID) }
+    waitForFrame(minFrameNumber = agent.getFrameNumber(PRIMARY_DISPLAY_ID))
+    waitForCondition(2.seconds) { protectedContentPopup.isVisible }
+
+    // Non-black content extending into the upper 80% -> popup hides.
+    runBlocking { agent.renderBlackScreen(PRIMARY_DISPLAY_ID, nonBlackBottomFraction = 0.25) }
+    waitForFrame(minFrameNumber = agent.getFrameNumber(PRIMARY_DISPLAY_ID))
+    waitForCondition(2.seconds) { !protectedContentPopup.isVisible }
+
+    // Non-black content strictly below the upper 80% -> popup becomes visible again.
+    runBlocking { agent.renderBlackScreen(PRIMARY_DISPLAY_ID, nonBlackBottomFraction = 0.15) }
+    val bottomStripFrame = agent.getFrameNumber(PRIMARY_DISPLAY_ID)
+    waitForFrame(minFrameNumber = bottomStripFrame)
+    waitForCondition(2.seconds) { displayPanel.lastCheckedFrameNumber >= bottomStripFrame && protectedContentPopup.isVisible }
+
+    // Lock screen becomes inactive while display is still black -> popup hides.
+    agent.lockScreenActive = false
+    waitForCondition(2.seconds) { !protectedContentPopup.isVisible }
+
+    // Verify popup is shown when lock screen is active before connecting and a black frame arrives, and hidden on crash/disconnect.
+    panel.destroyContent()
+    waitForCondition(2.seconds) { !agent.videoStreamActive }
+    runBlocking { agent.stop() }
+    waitForCondition(2.seconds) { !agent.isRunning }
+
+    agent.lockScreenActive = true
+    panel.createContent(false)
+    fakeUi.layoutAndDispatchEvents()
+    waitForCondition(10.seconds) { agent.isRunning && panel.isConnected }
+    waitForFrame(5.seconds)
+    val displayPanel2 = fakeUi.getComponent<DeviceDisplayPanel>()
+    val deviceController2 = panel.primaryDisplayView!!.deviceController!!
+    val protectedContentPopup2 = fakeUi.getComponent<JBLabel> { it.text == "Sensitive content hidden" }.parent
+    val initialFrame2 = agent.getFrameNumber(PRIMARY_DISPLAY_ID)
+    waitForCondition(2.seconds) { deviceController2.isLockScreenActive && displayPanel2.lastCheckedFrameNumber >= initialFrame2 }
+    assertThat(protectedContentPopup2.isVisible).isFalse()
+
+    // Encoded black frame while lock screen is active -> popup becomes visible.
+    runBlocking { agent.renderBlackScreen(PRIMARY_DISPLAY_ID) }
+    waitForFrame(minFrameNumber = agent.getFrameNumber(PRIMARY_DISPLAY_ID))
+    waitForCondition(2.seconds) { protectedContentPopup2.isVisible }
+
+    // Empty video frame (screen off) while lock screen is active -> popup hides.
+    runBlocking { agent.produceEmptyVideoFrame(PRIMARY_DISPLAY_ID) }
+    waitForFrame(minFrameNumber = agent.getFrameNumber(PRIMARY_DISPLAY_ID))
+    waitForCondition(2.seconds) { !protectedContentPopup2.isVisible }
+
+    // Encoded black frame again -> popup becomes visible, and hides on crash/disconnect.
+    runBlocking { agent.renderBlackScreen(PRIMARY_DISPLAY_ID) }
+    waitForFrame(minFrameNumber = agent.getFrameNumber(PRIMARY_DISPLAY_ID))
+    waitForCondition(2.seconds) { protectedContentPopup2.isVisible }
+
+    runBlocking { agent.crash() }
+    waitForCondition(2.seconds) { !protectedContentPopup2.isVisible }
   }
 
   private fun FakeUi.mousePressOn(component: Component) {

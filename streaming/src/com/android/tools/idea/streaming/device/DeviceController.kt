@@ -73,12 +73,17 @@ internal class DeviceController(disposableParent: Disposable, private val contro
   private val deviceStateListeners: MutableList<DeviceStateListener> = ContainerUtil.createLockFreeCopyOnWriteList()
   private val displayListeners: MutableList<DisplayListener> = ContainerUtil.createLockFreeCopyOnWriteList()
   private val xrEnvironmentListeners: MutableList<XrEnvironmentListener> = ContainerUtil.createLockFreeCopyOnWriteList()
+  private val lockScreenListeners: MutableList<LockScreenListener> = ContainerUtil.createLockFreeCopyOnWriteList()
   @Volatile
   var supportedFoldingStates: List<FoldingState> = emptyList()
     private set
 
   @Volatile
   var currentFoldingState: FoldingState? = null
+    private set
+
+  @Volatile
+  var isLockScreenActive: Boolean = false
     private set
 
   @Volatile var xrInputUnavailableReason: XrInputUnavailableNotification.Reason? = null
@@ -211,6 +216,10 @@ internal class DeviceController(disposableParent: Disposable, private val contro
       executor.awaitTermination(2, TimeUnit.SECONDS)
     } catch (_: InterruptedException) {} finally {
       deviceClipboardListeners.clear()
+      deviceStateListeners.clear()
+      displayListeners.clear()
+      xrEnvironmentListeners.clear()
+      lockScreenListeners.clear()
     }
   }
 
@@ -255,6 +264,16 @@ internal class DeviceController(disposableParent: Disposable, private val contro
     xrEnvironmentListeners.remove(listener)
   }
 
+  /** Adds a [LockScreenListener]. The added listener immediately receives a call with the current lock screen state. */
+  internal fun addLockScreenListener(listener: LockScreenListener) {
+    lockScreenListeners.add(listener)
+    listener.onLockScreenStateChanged(isLockScreenActive)
+  }
+
+  internal fun removeLockScreenListener(listener: LockScreenListener) {
+    lockScreenListeners.remove(listener)
+  }
+
   private fun startReceivingMessages() {
     receiverScope.launch {
       while (true) {
@@ -272,6 +291,7 @@ internal class DeviceController(disposableParent: Disposable, private val contro
             is XrPassthroughCoefficientChangedNotification -> setXrPassthroughCoefficient(message.passthroughCoefficient)
             is XrEnvironmentChangedNotification -> setXrEnvironment(message.environment)
             is XrInputUnavailableNotification -> onXrInputUnavailable(message)
+            is LockScreenStateNotification -> onLockScreenStateChanged(message)
             else -> logger.error("Unexpected type of a received message: ${message.type}")
           }
         } catch (_: EOFException) {
@@ -376,6 +396,15 @@ internal class DeviceController(disposableParent: Disposable, private val contro
     }
   }
 
+  private fun onLockScreenStateChanged(message: LockScreenStateNotification) {
+    if (isLockScreenActive != message.locked) {
+      isLockScreenActive = message.locked
+      for (listener in lockScreenListeners) {
+        listener.onLockScreenStateChanged(message.locked)
+      }
+    }
+  }
+
   @AnyThread
   internal interface DeviceClipboardListener {
     fun onDeviceClipboardChanged(text: String)
@@ -407,6 +436,11 @@ internal class DeviceController(disposableParent: Disposable, private val contro
     fun onXrEnvironmentChanged(environment: XrEnvironment)
 
     fun onXrInputUnavailable(reason: XrInputUnavailableNotification.Reason)
+  }
+
+  @AnyThread
+  internal interface LockScreenListener {
+    fun onLockScreenStateChanged(locked: Boolean)
   }
 
   private class ResponseCallbackMap {

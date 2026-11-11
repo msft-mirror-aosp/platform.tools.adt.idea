@@ -213,6 +213,19 @@ class FakeScreenSharingAgent(
   @Volatile var xrPassthroughCoefficient: Float = 0F
   @Volatile var xrEnvironment: XrEnvironment = XrEnvironment.LIVING_ROOM_DAY
 
+  private val lockScreenActiveInternal = AtomicBoolean()
+  var lockScreenActive: Boolean
+    get() = lockScreenActiveInternal.get()
+    set(value) {
+      if (lockScreenActiveInternal.getAndSet(value) != value) {
+        agentsScope.launch {
+          if (isRunning) {
+            sendLockScreenStateNotification()
+          }
+        }
+      }
+    }
+
   @Volatile
   var maxVideoEncoderResolution = 2048 // Many phones, for example Galaxy Z Fold3, have VP8 encoder limited to 2048x2048 resolution.
   @Volatile
@@ -480,6 +493,11 @@ class FakeScreenSharingAgent(
     return withContext(singleThreadedDispatcher) { displayStreamers[displayId]?.produceEmptyFrame() }
   }
 
+  /** Renders a completely black frame except for a white strip in the bottom [nonBlackBottomFraction] portion of the display. */
+  suspend fun renderBlackScreen(displayId: Int, nonBlackBottomFraction: Double = 0.0) {
+    return withContext(singleThreadedDispatcher) { displayStreamers[displayId]?.renderBlackScreen(nonBlackBottomFraction) }
+  }
+
   suspend fun produceInvalidVideoFrame(displayId: Int) {
     return withContext(singleThreadedDispatcher) { displayStreamers[displayId]?.produceInvalidFrame() }
   }
@@ -741,6 +759,10 @@ class FakeScreenSharingAgent(
     sendNotificationOrResponse(XrEnvironmentChangedNotification(xrEnvironment))
   }
 
+  private fun sendLockScreenStateNotification() {
+    sendNotificationOrResponse(LockScreenStateNotification(lockScreenActive))
+  }
+
   private fun sendUiSettings(message: UiSettingsRequest) {
     with(currentUiSettings) {
       sendNotificationOrResponse(
@@ -816,6 +838,7 @@ class FakeScreenSharingAgent(
 
     private var presentationTimestampOffset = 0L
     private var lastImageFlavor: Int = 0
+    private var blackScreenNonBlackBottomFraction: Double? = null
     var displayOrientationCorrection: Int = 0
     @Volatile
     var frameNumber: UInt = 0u
@@ -825,13 +848,41 @@ class FakeScreenSharingAgent(
 
     /** Renders display content using the last used image flavor and sends all produced video frames. */
     suspend fun renderDisplay() {
-      renderDisplay(lastImageFlavor)
+      val bottomFraction = blackScreenNonBlackBottomFraction
+      if (bottomFraction != null) {
+        renderBlackScreen(bottomFraction)
+      } else {
+        renderDisplay(lastImageFlavor)
+      }
     }
 
     /** Renders display content for the given [imageFlavor] and sends all produced video frames. */
     suspend fun renderDisplay(imageFlavor: Int) {
       lastImageFlavor = imageFlavor
+      blackScreenNonBlackBottomFraction = null
+      val orientation = if (rotatedWithDevice) deviceOrientation else 0
+      renderImage { size ->
+        drawDisplayImage(size.rotatedByQuadrants(-orientation), imageFlavor, displayId).rotatedByQuadrants(orientation)
+      }
+    }
 
+    /** Renders a black screen with an optional white strip at the bottom. */
+    suspend fun renderBlackScreen(nonBlackBottomFraction: Double = 0.0) {
+      blackScreenNonBlackBottomFraction = nonBlackBottomFraction
+      renderImage { size ->
+        BufferedImage(size.width, size.height, BufferedImage.TYPE_3BYTE_BGR).apply {
+          if (nonBlackBottomFraction > 0.0) {
+            val g = createGraphics()
+            g.paint = Color.WHITE
+            val nonBlackHeight = (size.height * nonBlackBottomFraction).roundToInt().coerceIn(0, size.height)
+            g.fillRect(0, size.height - nonBlackHeight, size.width, nonBlackHeight)
+            g.dispose()
+          }
+        }
+      }
+    }
+
+    private suspend fun renderImage(imageProvider: (size: Dimension) -> BufferedImage) {
       val size = computeDisplayImageSize()
       val videoSize = Dimension(size.width, size.height.roundUpToMultipleOf8())
       val encoderContext =
@@ -864,9 +915,7 @@ class FakeScreenSharingAgent(
         throw RuntimeException("av_frame_make_writable failed")
       }
 
-      val orientation = if (rotatedWithDevice) deviceOrientation else 0
-      val unrotatedSize = size.rotatedByQuadrants(-orientation)
-      val image = drawDisplayImage(unrotatedSize, imageFlavor, displayId).rotatedByQuadrants(orientation)
+      val image = imageProvider(size)
 
       val rgbFrame =
         av_frame_alloc().apply {
@@ -1399,6 +1448,10 @@ class FakeScreenSharingAgent(
         if (isXrHeadset) {
           sendXrPassthroughCoefficientChangedNotification()
           sendXrEnvironmentChangedNotification()
+        }
+
+        if (lockScreenActive) {
+          sendLockScreenStateNotification()
         }
 
         while (true) {

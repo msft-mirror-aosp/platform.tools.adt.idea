@@ -185,6 +185,7 @@ void Controller::Shutdown() {
   if (Agent::device_type() == DeviceType::XR) {
     XrSimulatedInputManager::RemoveEnvironmentListener(this);
   }
+  KeyguardManager::RemoveKeyguardLockedStateListener(this);
   // Reset the UI settings back to the state they were before any changes were made by UI settings commands.
   ui_settings_.Reset(nullptr);
 }
@@ -222,6 +223,8 @@ void Controller::Initialize() {
 
   DisplayManager::AddDisplayListener(jni_, this);
   current_displays_ = GetDisplays();
+
+  KeyguardManager::AddKeyguardLockedStateListener(jni_, this);
 
   if (Agent::device_type() == DeviceType::XR) {
     auto status = XrSimulatedInputManager::Initialize(jni_);
@@ -280,6 +283,7 @@ void Controller::Run() {
         if (Agent::device_type() == DeviceType::XR) {
           SendXrEnvironmentNotification();
         }
+        SendLockScreenStateNotification();
 
         if (poll_displays_until_ != steady_clock::time_point()) {
           PollDisplays();
@@ -1061,6 +1065,20 @@ void Controller::ResetUiSettings(const ResetUiSettingsRequest& request) {
   UiSettingsResponse response(request.request_id());
   ui_settings_.Reset(&response);
   SendControlMessage(response);
+}
+
+void Controller::OnKeyguardLockedStateChanged(bool is_keyguard_locked) {
+  Log::D("Controller::OnKeyguardLockedStateChanged(%s)", is_keyguard_locked ? "true" : "false");
+  keyguard_locked_ = is_keyguard_locked;
+}
+
+void Controller::SendLockScreenStateNotification() {
+  bool locked = keyguard_locked_;
+  if (locked != sent_keyguard_locked_) {
+    Log::D("Sending LockScreenStateNotification(%s)", locked ? "true" : "false");
+    SendControlMessage(LockScreenStateNotification(locked));
+    sent_keyguard_locked_ = locked;
+  }
 }
 
 void Controller::OnDisplayAdded(int32_t display_id) {
