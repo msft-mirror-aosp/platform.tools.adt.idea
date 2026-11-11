@@ -429,7 +429,6 @@ maven_repository(
         "@maven//:com.google.prefab.cli_2.1.0",
         "@maven//:com.google.protobuf.protobuf-javalite_3.19.1",  # XR template
         "@maven//:com.google.protobuf.protobuf-javalite_4.28.2",  # XR template
-        "@maven//:com.squareup.okio.okio-jvm_3.0.0",
         "@maven//:com.squareup.okio.okio_3.4.0",
         "@maven//:commons-lang.commons-lang_2.4",
         "@maven//:io.ktor.ktor-client-content-negotiation-jvm_2.3.2",

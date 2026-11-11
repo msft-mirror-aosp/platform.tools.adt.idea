@@ -7,6 +7,7 @@ iml_module(
     iml_files = ["app-inspection.inspectors.network.model.iml"],
     lint_baseline = "lint_baseline.xml",
     visibility = ["//visibility:public"],
+    runtime_deps = ["//prebuilts/tools/common/m2:brotli4j-platform"],
     # do not sort: must match IML order
     deps = [
         "@intellij//:intellij-sdk",
@@ -21,7 +22,7 @@ iml_module(
         "//tools/adt/idea/codenavigation",
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/base/annotations:studio.android.sdktools.android-annotations",
-        "//prebuilts/tools/common/m2:brotli-dec-0.1.2",
+        "//prebuilts/tools/common/m2:brotli4j",
     ],
 )
 

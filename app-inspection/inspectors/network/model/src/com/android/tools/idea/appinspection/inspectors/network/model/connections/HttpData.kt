@@ -15,6 +15,8 @@
  */
 package com.android.tools.idea.appinspection.inspectors.network.model.connections
 
+import com.aayushatharva.brotli4j.Brotli4jLoader
+import com.aayushatharva.brotli4j.decoder.BrotliInputStream
 import com.android.tools.adtui.model.Range
 import com.android.tools.idea.protobuf.ByteString
 import com.intellij.util.io.URLUtil
@@ -25,7 +27,6 @@ import java.net.URI
 import java.util.TreeMap
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
-import org.brotli.dec.BrotliInputStream
 import studio.network.inspection.NetworkInspectorProtocol
 import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent.Header
 import studio.network.inspection.NetworkInspectorProtocol.HttpConnectionEvent.HttpTransport
@@ -117,7 +118,7 @@ data class HttpData(
     val encodings = getContentEncodings().map { it.lowercase() }
     return when {
       encodings.contains("gzip") -> responsePayload.readWith { GZIPInputStream(it) }
-      encodings.contains("br") -> responsePayload.readWith { BrotliInputStream(it) }
+      encodings.contains("br") && isBrotliAvailable() -> responsePayload.readWith { BrotliInputStream(it) }
       else -> responsePayload
     }
   }
@@ -287,3 +288,11 @@ private fun ByteString.readWith(wrap: (InputStream) -> InputStream): ByteString 
     this
   }
 }
+
+private fun isBrotliAvailable(): Boolean =
+  try {
+    Brotli4jLoader.ensureAvailability()
+    Brotli4jLoader.isAvailable()
+  } catch (_: Throwable) {
+    false
+  }

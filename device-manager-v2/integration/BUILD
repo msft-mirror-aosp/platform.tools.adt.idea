@@ -8,7 +8,6 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "//tools/adt/idea/.idea/libraries:junit4",
-        "//prebuilts/tools/common/m2:junit-4.12",
         "//tools/adt/idea/as-driver:as-driver.utils",
         "@intellij//:intellij-sdk",
         "//tools/adt/idea/.idea/libraries:truth",

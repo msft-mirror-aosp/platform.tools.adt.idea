@@ -60,7 +60,6 @@ iml_module(
         "//tools/adt/idea/android-common:intellij.android.common",
         "//tools/base/flags:studio.android.sdktools.flags",
         "//tools/base/testutils:studio.android.sdktools.testutils",
-        "//prebuilts/tools/common/m2:JUnit4",
         "//tools/analytics-library/testing:android.sdktools.analytics-testing",
         "//tools/analytics-library/tracker:analytics-tracker",
         "//tools/base/perf-logger:studio.perf-logger",

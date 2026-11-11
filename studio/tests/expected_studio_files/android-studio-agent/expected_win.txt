@@ -1916,6 +1916,7 @@ android-studio/plugins/android/lib/asm-tree-9.11.1.jar
 android-studio/plugins/android/lib/asm-util-9.11.1.jar
 android-studio/plugins/android/lib/auto-common-0.10.jar
 android-studio/plugins/android/lib/backgroundtask_inspector_java_proto.jar
+android-studio/plugins/android/lib/brotli4j-1.24.0.jar
 android-studio/plugins/android/lib/build-analysis-results-proto.jar
 android-studio/plugins/android/lib/build-common.jar
 android-studio/plugins/android/lib/chime_kt_proto.jar
@@ -1925,7 +1926,6 @@ android-studio/plugins/android/lib/compilerCommon.antlr_runtime.shaded_jar.jar
 android-studio/plugins/android/lib/core-3.5.0.jar
 android-studio/plugins/android/lib/data-binding.jar
 android-studio/plugins/android/lib/database_inspector_java_proto.jar
-android-studio/plugins/android/lib/dec-0.1.2.jar
 android-studio/plugins/android/lib/deploy_java_proto.jar
 android-studio/plugins/android/lib/emulator_java_proto.jar
 android-studio/plugins/android/lib/explainer.jar
@@ -1987,6 +1987,7 @@ android-studio/plugins/android/lib/lint-ide.jar
 android-studio/plugins/android/lib/logcat-proto.jar
 android-studio/plugins/android/lib/manifest-merger.jar
 android-studio/plugins/android/lib/memory-usage.jar
+android-studio/plugins/android/lib/native-windows-x86_64-1.24.0.jar
 android-studio/plugins/android/lib/network_inspector_java_proto.jar
 android-studio/plugins/android/lib/okio-jvm-3.17.0.jar
 android-studio/plugins/android/lib/opencensus-api-0.31.1.jar
@@ -2011,6 +2012,7 @@ android-studio/plugins/android/lib/sdk-common.jar
 android-studio/plugins/android/lib/sdk-tools.jar
 android-studio/plugins/android/lib/sdklib-sdk-schema.jar
 android-studio/plugins/android/lib/sdklib.jar
+android-studio/plugins/android/lib/service-1.24.0.jar
 android-studio/plugins/android/lib/shared.jar
 android-studio/plugins/android/lib/shark-2.14.jar
 android-studio/plugins/android/lib/shark-android-2.14.jar
@@ -2709,8 +2711,8 @@ android-studio/plugins/gemini/lib/gemini-coder_proto_shaded.jar
 android-studio/plugins/gemini/lib/gemini.so.jar
 android-studio/plugins/gemini/lib/gemini_plugin_proto.jar
 android-studio/plugins/gemini/lib/google-api-services-cloudresourcemanager-v1beta1-rev20240128-2.0.0.jar
-android-studio/plugins/gemini/lib/jackson-datatype-jdk8-2.18.2.jar
-android-studio/plugins/gemini/lib/jackson-datatype-jsr310-2.18.2.jar
+android-studio/plugins/gemini/lib/jackson-datatype-jdk8-2.22.2.jar
+android-studio/plugins/gemini/lib/jackson-datatype-jsr310-2.22.2.jar
 android-studio/plugins/gemini/lib/libagent_log_proto.jar
 android-studio/plugins/gemini/lib/libfeedback_java_proto.jar
 android-studio/plugins/gemini/lib/libgoogle_auth_intellij_lib.jar

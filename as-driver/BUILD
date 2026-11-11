@@ -101,7 +101,7 @@ iml_module(
     exports = ["//tools/emulator/testlib:android.sdktools.testlib"],
     # do not sort: must match IML order
     deps = [
-        "//prebuilts/tools/common/m2:junit-4.12",
+        "//prebuilts/tools/common/m2:junit-4.13.2",
         "//tools/adt/idea/as-driver:asdriver_proto",
     ],
 )
@@ -134,7 +134,7 @@ iml_module(
     test_srcs = ["integration/testSrc"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
-    deps = ["//prebuilts/tools/common/m2:junit-4.12"],
+    deps = ["//prebuilts/tools/common/m2:junit-4.13.2"],
 )
 
 iml_test(

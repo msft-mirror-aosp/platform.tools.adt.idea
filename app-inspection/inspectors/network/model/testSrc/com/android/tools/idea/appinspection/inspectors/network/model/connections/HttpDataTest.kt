@@ -175,6 +175,19 @@ class HttpDataTest {
   }
 
   @Test
+  fun decodeMalformedBrotliResponsePayload_showRawPayload() {
+    val malformedBytes = "Not a brotli".toByteArray()
+    val data =
+      createFakeHttpData(
+        1,
+        responseHeaders =
+          listOf(httpHeader("content-length", "10000"), httpHeader("response-status-code", "200"), httpHeader("content-encoding", "br")),
+        responsePayload = ByteString.copyFrom(malformedBytes),
+      )
+    assertThat(data.getReadableResponsePayload().toByteArray()).isEqualTo(malformedBytes)
+  }
+
+  @Test
   fun keyInMapEntriesIsStoredAsIs() {
     val header = "RESPONSE-status-CoDe"
     val data = createFakeHttpData(1, responseHeaders = listOf(httpHeader(header, "200")))

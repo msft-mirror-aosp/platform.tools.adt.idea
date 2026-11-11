@@ -12,7 +12,6 @@ iml_module(
     test_deps = [
         "//tools/adt/idea/.idea/libraries:junit4",
         "@intellij//:intellij-sdk",
-        "//prebuilts/tools/common/m2:junit-4.12",
         "//tools/adt/idea/as-driver:as-driver.utils",
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/base/common:studio.android.sdktools.common",

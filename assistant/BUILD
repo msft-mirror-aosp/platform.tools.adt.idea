@@ -46,7 +46,6 @@ iml_module(
         "//tools/base/testutils:studio.android.sdktools.testutils",
         "//tools/adt/idea/adt-testutils:intellij.android.adt.testutils",
         "//tools/adt/idea/adt-ui:intellij.android.adt.ui",
-        "//prebuilts/tools/common/m2:junit-4.12",
         "//tools/adt/idea/.idea/libraries:mockito-kotlin",
     ],
     test_srcs = ["testSrc"],

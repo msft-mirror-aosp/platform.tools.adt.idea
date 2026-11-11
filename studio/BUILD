@@ -85,7 +85,7 @@ studio_plugin(
         "//prebuilts/tools/common/archive-patcher:explainer",
         "//prebuilts/tools/common/archive-patcher:generator",
         "//prebuilts/tools/common/archive-patcher:shared",
-        "//prebuilts/tools/common/m2:brotli-dec-0.1.2",
+        "//prebuilts/tools/common/m2:brotli4j",
         "//prebuilts/tools/common/m2:eclipse-layout-kernel",
         "//prebuilts/tools/common/m2:juniversalchardet",
         "//prebuilts/tools/common/m2:javapoet",
@@ -443,6 +443,7 @@ studio_plugin(
     },
     resources = {
         "lib": [
+            "//prebuilts/tools/common/m2:brotli4j-platform-bundle",
             "//prebuilts/tools/common/m2:ffmpeg-platform-bundle",
         ],
         "resources": [
@@ -1509,7 +1510,6 @@ iml_module(
     # do not sort: must match IML order
     test_deps = [
         "//tools/adt/idea/.idea/libraries:junit4",
-        "//prebuilts/tools/common/m2:junit-4.12",
         "//tools/adt/idea/as-driver:as-driver.utils",
         "//tools/base/common:studio.android.sdktools.common",
         "//tools/base/testutils:studio.android.sdktools.testutils",

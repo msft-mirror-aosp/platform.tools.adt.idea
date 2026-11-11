@@ -2396,6 +2396,7 @@ Android Studio Preview.app/Contents/plugins/android/lib/asm-tree-9.11.1.jar
 Android Studio Preview.app/Contents/plugins/android/lib/asm-util-9.11.1.jar
 Android Studio Preview.app/Contents/plugins/android/lib/auto-common-0.10.jar
 Android Studio Preview.app/Contents/plugins/android/lib/backgroundtask_inspector_java_proto.jar
+Android Studio Preview.app/Contents/plugins/android/lib/brotli4j-1.24.0.jar
 Android Studio Preview.app/Contents/plugins/android/lib/build-analysis-results-proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/build-common.jar
 Android Studio Preview.app/Contents/plugins/android/lib/chime_kt_proto.jar
@@ -2405,7 +2406,6 @@ Android Studio Preview.app/Contents/plugins/android/lib/compilerCommon.antlr_run
 Android Studio Preview.app/Contents/plugins/android/lib/core-3.5.0.jar
 Android Studio Preview.app/Contents/plugins/android/lib/data-binding.jar
 Android Studio Preview.app/Contents/plugins/android/lib/database_inspector_java_proto.jar
-Android Studio Preview.app/Contents/plugins/android/lib/dec-0.1.2.jar
 Android Studio Preview.app/Contents/plugins/android/lib/deploy_java_proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/emulator_java_proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/explainer.jar
@@ -2467,6 +2467,7 @@ Android Studio Preview.app/Contents/plugins/android/lib/lint-ide.jar
 Android Studio Preview.app/Contents/plugins/android/lib/logcat-proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/manifest-merger.jar
 Android Studio Preview.app/Contents/plugins/android/lib/memory-usage.jar
+Android Studio Preview.app/Contents/plugins/android/lib/native-osx-x86_64-1.24.0.jar
 Android Studio Preview.app/Contents/plugins/android/lib/network_inspector_java_proto.jar
 Android Studio Preview.app/Contents/plugins/android/lib/okio-jvm-3.17.0.jar
 Android Studio Preview.app/Contents/plugins/android/lib/opencensus-api-0.31.1.jar
@@ -2491,6 +2492,7 @@ Android Studio Preview.app/Contents/plugins/android/lib/sdk-common.jar
 Android Studio Preview.app/Contents/plugins/android/lib/sdk-tools.jar
 Android Studio Preview.app/Contents/plugins/android/lib/sdklib-sdk-schema.jar
 Android Studio Preview.app/Contents/plugins/android/lib/sdklib.jar
+Android Studio Preview.app/Contents/plugins/android/lib/service-1.24.0.jar
 Android Studio Preview.app/Contents/plugins/android/lib/shared.jar
 Android Studio Preview.app/Contents/plugins/android/lib/shark-2.14.jar
 Android Studio Preview.app/Contents/plugins/android/lib/shark-android-2.14.jar
@@ -3188,8 +3190,8 @@ Android Studio Preview.app/Contents/plugins/gemini/lib/gemini-coder_proto_shaded
 Android Studio Preview.app/Contents/plugins/gemini/lib/gemini.so.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/gemini_plugin_proto.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/google-api-services-cloudresourcemanager-v1beta1-rev20240128-2.0.0.jar
-Android Studio Preview.app/Contents/plugins/gemini/lib/jackson-datatype-jdk8-2.18.2.jar
-Android Studio Preview.app/Contents/plugins/gemini/lib/jackson-datatype-jsr310-2.18.2.jar
+Android Studio Preview.app/Contents/plugins/gemini/lib/jackson-datatype-jdk8-2.22.2.jar
+Android Studio Preview.app/Contents/plugins/gemini/lib/jackson-datatype-jsr310-2.22.2.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/libagent_log_proto.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/libfeedback_java_proto.jar
 Android Studio Preview.app/Contents/plugins/gemini/lib/libgoogle_auth_intellij_lib.jar

@@ -107,7 +107,7 @@ maven.install(
         "com.android.tools:desugar_jdk_libs_configuration_nio:2.0.4",
         "com.android.tools.build:gradle:8.7.0",
         "com.android.tools:r8:8.5.35",
-        "org.bouncycastle:bcprov-jdk18on:1.77",
+        "org.bouncycastle:bcprov-jdk18on:1.86",
         "org.hamcrest:hamcrest-core:2.2",
         "org.robolectric:robolectric:4.14.1",
         "com.google.flogger:flogger:0.8",
