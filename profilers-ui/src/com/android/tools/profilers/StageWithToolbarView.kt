@@ -129,6 +129,10 @@ class StageWithToolbarView(
     }
 
     timelineNavigationToolbar = JPanel(ProfilerLayout.createToolbarLayout())
+    // The timeline controls are reused across tasks and move between toolbars, e.g. into the Live Telemetry toolbar. Transparent panels
+    // show the background of the toolbar hosting them, rather than one they got in a previous host, such as the background that Islands
+    // themes give to components shown in a tool window.
+    timelineNavigationToolbar.isOpaque = false
     toolbar.add(timelineNavigationToolbar, BorderLayout.EAST)
     timelineNavigationToolbar.border = JBEmptyBorder(0, 0, 0, 2)
 
@@ -140,6 +144,7 @@ class StageWithToolbarView(
       )
     timelineNavigationToolbar.add(timelineZoomToolbar.component)
     goLiveToolbar = JPanel(ProfilerLayout.createToolbarLayout())
+    goLiveToolbar.isOpaque = false
     goLiveToolbar.add(FlatSeparator())
 
     goLiveButton = CommonToggleButton("", StudioIcons.Profiler.Toolbar.GOTO_LIVE)

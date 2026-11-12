@@ -41,7 +41,8 @@ class TimelineZoomToolbar(
   parentDisposable: Disposable? = null,
 ) : AspectObserver() {
 
-  val component: JPanel = JPanel(ProfilerLayout.createToolbarLayout())
+  /** Transparent, so that it shows the background of the toolbar it is in, see [StageWithToolbarView]. */
+  val component: JPanel = JPanel(ProfilerLayout.createToolbarLayout()).apply { isOpaque = false }
 
   val zoomOutButton: CommonButton =
     CommonButton(AllIcons.General.ZoomOut).apply {

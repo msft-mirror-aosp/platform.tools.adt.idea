@@ -408,6 +408,15 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
     Truth.assertThat(stageWithToolbarView.timelineNavigationToolbar.isVisible).isTrue()
   }
 
+  @Test
+  fun timelineNavigationToolbarPanelsAreTransparent() {
+    // The timeline controls move between toolbars, e.g. into the Live Telemetry toolbar, so their panels must show the background of the
+    // toolbar hosting them rather than paint their own.
+    Truth.assertThat(stageWithToolbarView.timelineNavigationToolbar.isOpaque).isFalse()
+    Truth.assertThat(stageWithToolbarView.timelineZoomToolbar.component.isOpaque).isFalse()
+    Truth.assertThat((stageWithToolbarView.goLiveButton.parent as JComponent).isOpaque).isFalse()
+  }
+
   private fun startSessionWithNewDeviceAndProcess() {
     val onlineDevice =
       Common.Device.newBuilder()

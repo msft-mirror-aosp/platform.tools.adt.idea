@@ -32,6 +32,7 @@ import com.android.tools.profilers.StudioProfilers
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import java.awt.Color
 import java.util.concurrent.TimeUnit
 import javax.swing.JLabel
 import javax.swing.ListSelectionModel
@@ -136,6 +137,32 @@ class CpuThreadsViewTest {
   fun backgroundShouldBeDefaultStage() {
     val threadsView = CpuThreadsView(stage)
     assertThat(getThreadsList(threadsView).background).isEqualTo(ProfilerColors.DEFAULT_STAGE_BACKGROUND)
+  }
+
+  @Test
+  fun threadLabelBackgroundFollowsListBackground() {
+    val threadsView = CpuThreadsView(stage)
+    populateThreads()
+    // Update the view range triggering an aspect change in CpuThreadsModel.
+    stage.timeline.viewRange.set(stage.timeline.dataRange)
+    val threadsList = getThreadsList(threadsView)
+    assertThat(threadsList.model.size).isEqualTo(1)
+
+    // The list background depends on where the list is shown, e.g. Islands themes give components in a tool window a different background
+    // than in an editor. The thread name label must not have a background of its own.
+    for (listBackground in listOf(ProfilerColors.DEFAULT_STAGE_BACKGROUND, Color(0x123456))) {
+      threadsList.background = listBackground
+      val labelBackground = getThreadLabel(threadsList, isSelected = false).background
+      assertThat(labelBackground.rgb and 0xFFFFFF).isEqualTo(listBackground.rgb and 0xFFFFFF)
+      assertThat(labelBackground.alpha).isEqualTo(0xEF)
+    }
+
+    assertThat(getThreadLabel(threadsList, isSelected = true).background).isEqualTo(ProfilerColors.CPU_THREAD_SELECTED_BACKGROUND)
+  }
+
+  private fun getThreadLabel(threadsList: DragAndDropList<CpuThreadsModel.RangedCpuThread>, isSelected: Boolean): JLabel {
+    val cell = threadsList.cellRenderer.getListCellRendererComponent(threadsList, threadsList.model.getElementAt(0), 0, isSelected, false)
+    return TreeWalker(cell).descendants().filterIsInstance<JLabel>().first()
   }
 
   private fun getThreadsList(threadsView: CpuThreadsView) =

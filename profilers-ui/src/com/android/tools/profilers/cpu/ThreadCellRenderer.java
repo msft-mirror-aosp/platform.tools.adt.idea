@@ -26,6 +26,7 @@ import com.android.tools.adtui.model.StateChartModel;
 import com.android.tools.adtui.model.updater.UpdatableManager;
 import com.android.tools.profilers.ProfilerColors;
 import com.android.tools.profilers.ProfilerLayout;
+import com.intellij.ui.ColorUtil;
 import com.intellij.ui.NewUI;
 import com.intellij.util.ui.JBDimension;
 import com.intellij.util.ui.JBUI;
@@ -42,6 +43,11 @@ import javax.swing.border.CompoundBorder;
 import org.jetbrains.annotations.NotNull;
 
 public class ThreadCellRenderer extends CpuCellRenderer<CpuThreadsModel.RangedCpuThread, ThreadState> {
+  /**
+   * Opacity of the thread name label background, so that the part of the thread state chart that the label covers shows through slightly.
+   */
+  private static final int LABEL_BACKGROUND_ALPHA = 0xEF;
+
   /**
    * Maps a {@link StateChart} to a {@link EnumColors} helper class to return the proper color object for the {@link StateChart}
    */
@@ -75,7 +81,9 @@ public class ThreadCellRenderer extends CpuCellRenderer<CpuThreadsModel.RangedCp
     myLabel.setIcon(null);
     Border iconIndent = JBUI.Borders.emptyLeft(reorderIcon.getIconWidth() + myLabel.getIconTextGap());
     myLabel.setBorder(new CompoundBorder(iconIndent, ProfilerLayout.CPU_THREADS_RIGHT_BORDER));
-    myLabel.setBackground(ProfilerColors.THREAD_LABEL_BACKGROUND);
+    // Matches the list background, which depends on where the list is shown (e.g. Islands themes give components in a tool window a
+    // different background than in an editor), so that the thread names have no separate background.
+    myLabel.setBackground(ColorUtil.toAlpha(list.getBackground(), LABEL_BACKGROUND_ALPHA));
     myLabel.setForeground(ProfilerColors.THREAD_LABEL_TEXT);
 
     // Instead of using just one statechart for the cell renderer and set its model here, we cache the statecharts

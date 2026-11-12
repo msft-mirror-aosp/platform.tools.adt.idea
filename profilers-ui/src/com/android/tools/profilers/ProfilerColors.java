@@ -133,8 +133,6 @@ public class ProfilerColors {
 
   public static final Color SELECTED_THREAD_LABEL_TEXT = Gray.xFF;
 
-  public static final Color THREAD_LABEL_BACKGROUND = new JBColor(new Color(0xEFFFFFFF, true), new Color(0xEF2B2D2E, true));
-
   public static final Color THREAD_LABEL_BORDER = new JBColor(new Color(0x0C000000, true), new Color(0x0CFFFFFF, true));
 
   public static final Color CAPTURE_SPARKLINE = new JBColor(0xC2D6F6, 0x455563);
