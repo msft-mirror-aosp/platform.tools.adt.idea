@@ -95,8 +95,6 @@ class FindingsDetailsPanelTest {
 
     composeTestRule.onNodeWithTag("finding_title", useUnmergedTree = true).assertTextEquals(sampleFinding.displayName)
     composeTestRule.onNodeWithContentDescription(sampleFinding.severity.name, useUnmergedTree = true).assertIsDisplayed()
-    composeTestRule.onNodeWithTag("finding_category_badge", useUnmergedTree = true).assertIsDisplayed()
-    composeTestRule.onNodeWithText(sampleFinding.category.displayName, useUnmergedTree = true).assertIsDisplayed()
     composeTestRule.onNodeWithTag("finding_description", useUnmergedTree = true).assertTextEquals(sampleFinding.description)
   }
 
@@ -111,7 +109,6 @@ class FindingsDetailsPanelTest {
     panel.updateFinding(null)
 
     composeTestRule.onNodeWithTag("finding_title", useUnmergedTree = true).assertDoesNotExist()
-    composeTestRule.onNodeWithTag("finding_category_badge", useUnmergedTree = true).assertDoesNotExist()
     composeTestRule.onNodeWithTag("empty_details_text", useUnmergedTree = true).assertTextEquals("Select a finding to view details.")
   }
 

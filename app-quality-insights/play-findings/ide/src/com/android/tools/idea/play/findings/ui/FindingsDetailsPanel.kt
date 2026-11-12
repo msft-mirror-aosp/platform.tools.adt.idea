@@ -55,13 +55,11 @@ import javax.swing.JComponent
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
-import org.jetbrains.jewel.ui.component.Badge
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.TabData
 import org.jetbrains.jewel.ui.component.TabStrip
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.theme.badgeStyle
 import org.jetbrains.jewel.ui.theme.defaultTabStyle
 
 @VisibleForTesting internal const val EMPTY_DETAILS_TEXT = "Select a finding to view details."
@@ -79,8 +77,8 @@ internal sealed interface FindingDetailSubTab {
 }
 
 /**
- * Displays the details of a selected [AppFinding], including its title, severity icon, category badge, description, and optional sub-tabs
- * (such as crash stack trace and visual evidence).
+ * Displays the details of a selected [AppFinding], including its title, severity icon, description, and optional sub-tabs (such as crash
+ * stack trace and visual evidence).
  */
 class FindingsDetailsPanel(
   parentDisposable: Disposable,
@@ -156,17 +154,6 @@ class FindingsDetailsPanel(
                 fontWeight = FontWeight.Bold,
                 fontSize = JewelTheme.defaultTextStyle.fontSize * 1.15f,
                 modifier = Modifier.testTag("finding_title"),
-              )
-            }
-
-            Badge(
-              style = JewelTheme.badgeStyle.purpleSecondary,
-              textStyle = JewelTheme.defaultTextStyle,
-              modifier = Modifier.testTag("finding_category_badge"),
-            ) {
-              Text(
-                text = finding.category.displayName,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
               )
             }
 
