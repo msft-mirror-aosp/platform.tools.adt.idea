@@ -1,0 +1,15 @@
+<component name="libraryTable">
+  <library name="jetty">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/eclipse/jetty/ee8/jetty-ee8-nested/12.1.15/jetty-ee8-nested-12.1.15.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/eclipse/jetty/jetty-http/12.1.15/jetty-http-12.1.15.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/eclipse/jetty/jetty-io/12.1.15/jetty-io-12.1.15.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/eclipse/jetty/jetty-security/12.1.15/jetty-security-12.1.15.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/eclipse/jetty/jetty-server/12.1.15/jetty-server-12.1.15.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/eclipse/jetty/jetty-session/12.1.15/jetty-session-12.1.15.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/eclipse/jetty/jetty-util/12.1.15/jetty-util-12.1.15.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
