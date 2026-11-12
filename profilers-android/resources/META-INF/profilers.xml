@@ -110,7 +110,7 @@
               extensions="pftrace;perfetto-trace;perfetto"/>
     <fileType name="ProfilerDatabase" implementationClass="com.android.tools.idea.profilers.capture.ProfilerDatabaseFileType"
               extensions="asdb"/>
-    <projectService serviceInterface="com.android.tools.sherlock.common.perfetto.ai.PerfettoAiService"
+    <projectService serviceInterface="com.android.tools.sherlock.common.ai.perfetto.PerfettoAiService"
                     serviceImplementation="com.android.tools.idea.profilers.perfetto.ai.GeminiPerfettoAiService" />
   </extensions>
   <extensions defaultExtensionNs="com.android.tools.idea.transport">

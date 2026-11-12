@@ -20,7 +20,7 @@ import com.android.tools.idea.gemini.GeminiPluginApiV2
 import com.android.tools.idea.gemini.LlmChatInToolWindowResult
 import com.android.tools.idea.gemini.LlmFailureReason
 import com.android.tools.idea.project.AndroidNotification
-import com.android.tools.sherlock.common.perfetto.ai.BasePerfettoAiService
+import com.android.tools.sherlock.common.ai.perfetto.BasePerfettoAiService
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
