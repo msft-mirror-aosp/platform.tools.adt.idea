@@ -23,6 +23,8 @@ import com.android.tools.idea.testing.findAppModule
 import com.android.tools.idea.testing.onEdt
 import com.android.tools.idea.util.androidFacet
 import com.google.common.truth.Truth.assertThat
+import com.intellij.execution.ExecutionManager
+import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.impl.NonBlockingReadActionImpl
 import com.intellij.openapi.externalSystem.action.task.RunExternalSystemTaskAction
@@ -34,12 +36,15 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.replaceService
 import org.junit.Assume
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 
 /** Test for run configuration selector {@link RunExternalSystemTaskAction} */
 @RunsInEdt
@@ -62,14 +67,16 @@ class AndroidTestConfigurationSelectorTest {
   @Test
   fun testRunTaskAsNewRunConfiguration() {
     projectRule.loadProject(TestProjectPaths.SIMPLE_APPLICATION)
+    val mockExecutionManager = mock<ExecutionManager>()
+    project.replaceService(ExecutionManager::class.java, mockExecutionManager, projectRule.fixture.testRootDisposable)
     val testFacet = project.findAppModule().getAndroidTestModule()!!.androidFacet!!
 
-    val mockProjectSystemId = mock(ProjectSystemId::class.java)
+    val mockProjectSystemId = mock<ProjectSystemId>()
     `when`(mockProjectSystemId.readableName).thenReturn("test project name")
     val androidTestClassName = "google.simpleapplication.ApplicationTest"
     val element: PsiElement = JavaPsiFacade.getInstance(project).findClass(androidTestClassName, GlobalSearchScope.projectScope(project))!!
     val context = TestConfigurationTestingUtil.createContext(project, element)
-    val mockActionEvent = mock(AnActionEvent::class.java)
+    val mockActionEvent = mock<AnActionEvent>()
     `when`(mockActionEvent.dataContext).thenReturn(context.dataContext)
     `when`(mockActionEvent.place).thenReturn(context.place)
     val testTaskData =
@@ -77,6 +84,7 @@ class AndroidTestConfigurationSelectorTest {
     TestRunExternalSystemTaskAction().performDelegator(project, mockProjectSystemId, testTaskData, mockActionEvent)
     NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
 
+    verify(mockExecutionManager).restartRunProfile(any<ExecutionEnvironment>())
     val runConfig = context.runManager.selectedConfiguration!!.configuration as AndroidTestRunConfiguration
     assertThat(runConfig.checkConfiguration(testFacet)).isEmpty()
     assertThat(runConfig.CLASS_NAME).isEqualTo(androidTestClassName)
