@@ -512,6 +512,7 @@ filegroup(
         "//tools/vendor/google/asfg/g3plugins/ext:intellijext_java_grpc",
         "//tools/vendor/google/asfp/ninja:libninja",
         "//tools/vendor/google/asfp/soong-model:libtools.soong-model",
+        "//tools/vendor/google/asfp/soong-model:libtools.soong-model-fixtures",
         "//tools/vendor/google/cuttlefish-plugin:libhost-orch-config-proto",
         "//tools/vendor/google/directaccess-client:directaccess_client_proto",
         "//tools/vendor/google/firebase-provisioning:firebase_provisioning_proto",
