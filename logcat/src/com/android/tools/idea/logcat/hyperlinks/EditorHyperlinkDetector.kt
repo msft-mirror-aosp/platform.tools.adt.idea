@@ -90,8 +90,14 @@ internal class EditorHyperlinkDetector(
   }
 
   companion object {
-    // These filters don't apply to Logcat output
-    private val IGNORE_FILTERS =
-      setOf(GradleConsoleFilter::class.java.name, "com.intellij.debugger.impl.attach.JavaDebuggerAttachFilter", UrlFilter::class.java.name)
+    // These filters don't apply to Logcat output. Entries are binary class names (nested classes use '$');
+    // EditorHyperlinkDetectorTest verifies each one still exists.
+    @VisibleForTesting
+    internal val IGNORE_FILTERS =
+      setOf(
+        GradleConsoleFilter::class.java.name,
+        "com.intellij.debugger.impl.attach.JavaDebuggerConsoleFilterProvider\$JavaDebuggerAttachFilter",
+        UrlFilter::class.java.name,
+      )
   }
 }

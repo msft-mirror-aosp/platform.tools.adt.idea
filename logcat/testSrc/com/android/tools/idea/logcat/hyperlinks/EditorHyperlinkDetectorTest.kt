@@ -45,7 +45,11 @@ import org.junit.Test
 
 // Intentionally split from HyperlinkDetector.IGNORE_FILTERS to make it harder to accidentally remove something from IGNORE_FILTERS
 private val UNSAFE_FILTERS =
-  listOf(GradleConsoleFilter::class.java.name, "com.intellij.debugger.impl.attach.JavaDebuggerAttachFilter", UrlFilter::class.java.name)
+  listOf(
+    GradleConsoleFilter::class.java.name,
+    "com.intellij.debugger.impl.attach.JavaDebuggerConsoleFilterProvider\$JavaDebuggerAttachFilter",
+    UrlFilter::class.java.name,
+  )
 
 /** Tests for [editorHyperlinkDetector] */
 @RunsInEdt
@@ -74,6 +78,19 @@ class EditorHyperlinkDetectorTest {
 
     val expected = expectedFilters.filterNot { it::class.java.name in UNSAFE_FILTERS }.map { it::class }
     waitForCondition { hyperlinkDetector.filter.compositeFilter.filters.map { it::class }.containsAll(expected) }
+    assertThat(hyperlinkDetector.filter.compositeFilter.filters.map { it::class.java.name }).containsNoneIn(UNSAFE_FILTERS)
+  }
+
+  @Test
+  fun ignoreFilters_matchRealPlatformFilters() {
+    UNSAFE_FILTERS.forEach { Class.forName(it, /* initialize= */ false, javaClass.classLoader) }
+    EditorHyperlinkDetector.IGNORE_FILTERS.forEach { Class.forName(it, /* initialize= */ false, javaClass.classLoader) }
+    val consoleFilterNames =
+      ConsoleViewUtil.computeConsoleFilters(project, /* consoleView= */ null, GlobalSearchScope.allScope(project)).map {
+        it::class.java.name
+      }
+    assertThat(consoleFilterNames).containsAllIn(UNSAFE_FILTERS)
+    assertThat(consoleFilterNames).containsAllIn(EditorHyperlinkDetector.IGNORE_FILTERS)
   }
 
   /** Tests that we include filters from the extensions. */
