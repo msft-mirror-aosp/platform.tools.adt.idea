@@ -964,38 +964,7 @@ public final class GroovyDslUtil {
     PsiElement psiExpression = ensureGroovyPsi(expression.getExpression());
     if (psiExpression != null) {
       PsiElement replace = replaceWithSynthesized(psiExpression, newLiteral);
-      if (replace instanceof GrLiteral || replace instanceof GrReferenceExpression || replace instanceof GrIndexProperty) {
-        expression.setExpression(replace);
-      }
-    }
-    else {
-      // This element has just been created and will currently look like "propertyName =" or "propertyName ". Here we add the value.
-      PsiElement added;
-      // This element will look like "propertyName propertyValue" and we need to create an intermediate psiElement (commandArgumentList)
-      // to prevent breaking the psiTree of a GrApplicationStatement.
-      if (psiElement instanceof GrApplicationStatement applicationStatement) {
-        GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(psiElement.getProject());
-        // Create a fake applicationStatement element.
-        GrApplicationStatement fakeStatement = (GrApplicationStatement)(factory.createStatementFromText("a 'a'"));
-        GrCommandArgumentList arguments = fakeStatement.getArgumentList();
-        // Empty the arguments list so we can use it for psiElement.
-        arguments.getFirstChild().delete();
-        adoptAfter(psiElement, arguments, psiElement.getLastChild());
-        added = appendToArgumentList(applicationStatement.getArgumentList(), newLiteral);
-      }
-      else if (psiElement instanceof GrMethodCallExpression methodCallExpression) {
-        GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(psiElement.getProject());
-        GrMethodCallExpression fakeExpression = (GrMethodCallExpression)(factory.createExpressionFromText("a('a')"));
-        GrArgumentList arguments = fakeExpression.getArgumentList();
-        arguments.getExpressionArguments()[0].delete();
-        adoptAfter(psiElement, arguments, psiElement.getLastChild());
-        added = appendToArgumentList(methodCallExpression.getArgumentList(), newLiteral);
-      }
-      else {
-        added = adoptAfter(psiElement, newLiteral, psiElement.getLastChild());
-      }
-      expression.setExpression(added);
-
+      expression.setExpression(replace);
       if (expression.getUnsavedClosure() != null) {
         createAndAddClosure(expression.getUnsavedClosure(), expression);
       }

@@ -43,7 +43,6 @@ import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.proc
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.processMapElement;
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.quotePartsIfNecessary;
 import static com.android.tools.idea.gradle.dsl.parser.groovy.GroovyDslUtil.replaceWithClone;
-import static org.jetbrains.plugins.groovy.lang.lexer.GroovyTokenTypes.mASSIGN;
 import static org.jetbrains.plugins.groovy.lang.psi.GroovyElementTypes.ML_COMMENT;
 import static org.jetbrains.plugins.groovy.lang.psi.impl.PsiImplUtil.isWhiteSpaceOrNls;
 
@@ -54,10 +53,10 @@ import com.android.tools.idea.gradle.dsl.parser.ExternalNameInfo.ExternalNameSyn
 import com.android.tools.idea.gradle.dsl.parser.GradleDslWriter;
 import com.android.tools.idea.gradle.dsl.parser.elements.*;
 import com.android.tools.idea.gradle.dsl.parser.repositories.MavenRepositoryDslElement;
-import com.intellij.lang.ASTNode;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElement;
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElementFactory;
@@ -70,7 +69,9 @@ import org.jetbrains.plugins.groovy.lang.psi.api.statements.arguments.GrNamedArg
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.blocks.GrClosableBlock;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrApplicationStatement;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrCommandArgumentList;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrExpression;
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrMethodCall;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrNewExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.path.GrMethodCallExpression;
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.params.GrParameterList;
@@ -197,45 +198,25 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
       }
     }
     else if (syntax == ASSIGNMENT || syntax == AUGMENTED_ASSIGNMENT || syntax == SET_METHOD) {
+      String dummyValue =
+        element instanceof GradleDslExpressionList ? "[]" :
+        element instanceof GradleDslExpressionMap ? "[:]" :
+        "'abc'";
       if (element.getElementType() == PropertyType.REGULAR) {
         switch (syntax) {
-          case ASSIGNMENT: statementText += " = 'abc'"; break;
-          case AUGMENTED_ASSIGNMENT: statementText += " += 'abc'"; break;
-          case SET_METHOD: statementText += ".set('abc')"; break;
+          case ASSIGNMENT: statementText += " = " + dummyValue; break;
+          case AUGMENTED_ASSIGNMENT: statementText += " += " + dummyValue; break;
+          case SET_METHOD: statementText += ".set(" + dummyValue + ")"; break;
         }
       }
       else if (element.getElementType() == PropertyType.VARIABLE) {
-        statementText = "def " + statementText + " = 'abc'";
+        statementText = "def " + statementText + " = " + dummyValue;
       }
     }
     else {
-      statementText += " \"abc\", \"xyz\"";
+      statementText += " 'abc'";
     }
     GrStatement statement = factory.createStatementFromText(statementText);
-    // TODO: Move these workarounds to a more sensible way of doing things.
-    if (statement instanceof GrApplicationStatement applicationStatement) {
-      // Workaround to create an application statement.
-      applicationStatement.getArgumentList().delete();
-    }
-    else if (statement instanceof GrAssignmentExpression assignment) {
-      // Workaround to create an assignment statement
-      if (assignment.getRValue() != null) {
-        assignment.getRValue().delete();
-      }
-    }
-    else if (statement instanceof GrVariableDeclaration variableDeclaration) {
-      for (GrVariable var : variableDeclaration.getVariables()) {
-        if (var.getInitializerGroovy() != null) {
-          var.getInitializerGroovy().delete();
-          // The '=' gets deleted here, add it back.
-          final ASTNode node = var.getNode();
-          node.addLeaf(mASSIGN, "=", var.getLastChild().getNode().getTreeNext());
-        }
-      }
-    }
-    else if (syntax == SET_METHOD && statement instanceof GrMethodCallExpression methodCallExpression) {
-      methodCallExpression.getArgumentList().delete();
-    }
     PsiElement lineTerminator = factory.createLineTerminator(1);
     PsiElement addedElement;
     PsiElement anchor = getPsiElementForAnchor(parentPsiElement, anchorAfter);
@@ -295,16 +276,38 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
     else {
       if (addedElement instanceof GrApplicationStatement ||
           addedElement instanceof GrAssignmentExpression ||
-          addedElement instanceof GrVariableDeclaration) {
-        // This is for the workarounds above, this ensures that applyDslLiteral is called to actually add the value to
-        // either the application or assignment statement.
+          addedElement instanceof GrVariableDeclaration ||
+          (syntax == SET_METHOD && addedElement instanceof GrMethodCallExpression)) {
         element.setPsiElement(addedElement);
-      }
-      else if (syntax == SET_METHOD && addedElement instanceof GrMethodCallExpression) {
-        element.setPsiElement(addedElement);
+        if (element instanceof GradleDslSimpleExpression simpleExpression) {
+          GrExpression addedExpression = findExpression(addedElement);
+          if (addedExpression != null) {
+            simpleExpression.setExpression(addedExpression);
+          }
+        }
       }
     }
     return element.getPsiElement();
+  }
+
+  @Nullable
+  private static GrExpression findExpression(@Nullable PsiElement psiElement) {
+    if (psiElement instanceof GrAssignmentExpression assignment) {
+      return assignment.getRValue();
+    }
+    if (psiElement instanceof GrVariableDeclaration variableDeclaration) {
+      GrVariable[] variables = variableDeclaration.getVariables();
+      if (variables.length > 0) {
+        return variables[0].getInitializerGroovy();
+      }
+    }
+    if (psiElement instanceof GrMethodCall methodCall) {
+      GrExpression[] expressions = methodCall.getArgumentList().getExpressionArguments();
+      if (expressions.length > 0) {
+        return expressions[0];
+      }
+    }
+    return null;
   }
 
   @Override
@@ -475,12 +478,9 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
     }
 
     // We are assigning a list to a property.
-    if (psiElement instanceof GrAssignmentExpression || psiElement instanceof GrVariableDeclaration) {
-      GrExpression emptyMap = GroovyPsiElementFactory.getInstance(psiElement.getProject()).createExpressionFromText("[]");
-      PsiElement element = adoptAfter(psiElement, emptyMap, psiElement.getLastChild());
-      // Overwrite the PsiElement set by createDslElement() to cause the elements of the map to be put into the correct place.
-      // e.g within the brackets. For example this will replace the PsiElement "prop1 = " with "[]".
-      expressionList.setPsiElement(element);
+    if (psiElement instanceof GrAssignmentExpression || psiElement instanceof GrVariableDeclaration || psiElement instanceof GrMethodCallExpression) {
+      GrExpression emptyList = findExpression(psiElement);
+      expressionList.setPsiElement(emptyList);
       return expressionList.getPsiElement();
     }
 
@@ -498,16 +498,11 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
       }
     }
 
-    if (psiElement instanceof GrApplicationStatement) {
-      GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(psiElement.getProject());
-      GrArgumentList argumentList = factory.createArgumentListFromText("xyz");
+    if (psiElement instanceof GrApplicationStatement applicationStatement) {
+      GrCommandArgumentList argumentList = applicationStatement.getArgumentList();
       argumentList.getFirstChild().delete(); // Workaround to get an empty argument list.
-      PsiElement added = adoptAfter(psiElement, argumentList, psiElement.getLastChild());
-      if (added instanceof GrArgumentList) {
-        GrArgumentList addedArgumentList = (GrArgumentList)added;
-        expressionList.setPsiElement(addedArgumentList);
-        return addedArgumentList;
-      }
+      expressionList.setPsiElement(argumentList);
+      return argumentList;
     }
 
     return null;
@@ -547,25 +542,17 @@ public class GroovyDslWriter extends GroovyDslNameConverter implements GradleDsl
     }
 
     // We are assigning a map to a property.
-    if (psiElement instanceof GrAssignmentExpression || psiElement instanceof GrVariableDeclaration) {
-      GrExpression emptyMap = GroovyPsiElementFactory.getInstance(psiElement.getProject()).createExpressionFromText("[:]");
-      PsiElement element = adoptAfter(psiElement, emptyMap, psiElement.getLastChild());
-      // Overwrite the PsiElement set by createDslElement() to cause the elements of the map to be put into the correct place.
-      // e.g within the brackets. For example this will replace the PsiElement "prop1 = " with "[:]".
-      expressionMap.setPsiElement(element);
-      return element;
+    if (psiElement instanceof GrAssignmentExpression || psiElement instanceof GrVariableDeclaration || psiElement instanceof GrMethodCallExpression) {
+      GrExpression emptyMap = findExpression(psiElement);
+      expressionMap.setPsiElement(emptyMap);
+      return expressionMap.getPsiElement();
     }
 
-    if (psiElement instanceof GrApplicationStatement) {
-      GroovyPsiElementFactory factory = GroovyPsiElementFactory.getInstance(psiElement.getProject());
-      GrArgumentList argumentList = factory.createArgumentListFromText("xyz");
+    if (psiElement instanceof GrApplicationStatement applicationStatement) {
+      GrCommandArgumentList argumentList = applicationStatement.getArgumentList();
       argumentList.getFirstChild().delete(); // Workaround to get an empty argument list.
-      PsiElement added = adoptAfter(psiElement, argumentList, psiElement.getLastChild());
-      if (added instanceof GrArgumentList) {
-        GrArgumentList addedArgumentList = (GrArgumentList)added;
-        expressionMap.setPsiElement(addedArgumentList);
-        return addedArgumentList;
-      }
+      expressionMap.setPsiElement(argumentList);
+      return argumentList;
     }
 
     return null;

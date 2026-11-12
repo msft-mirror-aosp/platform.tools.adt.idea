@@ -60,6 +60,8 @@ import org.jetbrains.plugins.groovy.lang.psi.GrReferenceElement
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElementFactory
 import org.jetbrains.plugins.groovy.lang.psi.api.auxiliary.GrListOrMap
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.GrVariableDeclaration
+import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrApplicationStatement
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.GrAssignmentExpression
 import org.jetbrains.plugins.groovy.lang.psi.api.statements.expressions.path.GrMethodCallExpression
 import org.jetbrains.plugins.groovy.lang.resolve.NonCodeMembersContributor
@@ -469,6 +471,21 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
 
     applyAndVerifyNoResolve(projectModel)
 
+    assertThat((defVar.psiElement as GrVariableDeclaration).variables.single().initializerGroovy)
+      .isSameAs(defVar.expression)
+    assertThat((augProp.psiElement as GrAssignmentExpression).rValue).isSameAs(augProp.expression)
+    assertThat(
+        (setterProp.psiElement as GrMethodCallExpression)
+          .argumentList
+          .expressionArguments
+          .single()
+      )
+      .isSameAs(setterProp.expression)
+    assertThat(
+        (cmdProp.psiElement as GrApplicationStatement).argumentList.expressionArguments.single()
+      )
+      .isSameAs(cmdProp.expression)
+
     assertThat(loadNormalizedText(myBuildFile).trimEnd())
       .isEqualTo(
         """
@@ -794,5 +811,93 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
           .trimIndent()
       )
     assertThat(itemsList.initializers.map { it.text }).containsExactly("ListRef.TWO", "ListRef.TWO", "ListRef.ONE").inOrder()
+  }
+
+  @Test
+  fun testSetMethodExpressionListAndMapCreationAndMutation() {
+    assumeTrue(!isKotlinScript)
+
+    writeToBuildFile(
+      """
+      ext {
+          convertedList.set(InitialRefs.SCALAR_A)
+          convertedMap.set(InitialRefs.SCALAR_B)
+      }
+      """
+        .trimIndent()
+    )
+
+    val projectModel = projectBuildModel
+    val buildModel = projectModel.projectBuildModel!!
+    val fileDsl = buildModel.dslElement()
+    val extDsl = buildModel.ext().dslElement()
+
+    // Converting existing `.set(...)` properties to list/map preserves `SET_METHOD` syntax on the replacement element.
+    val convertedList = buildModel.ext().findProperty("convertedList").convertToEmptyList()
+    val convertedMap = buildModel.ext().findProperty("convertedMap").convertToEmptyMap()
+    convertedList.addListValue()!!.setValue(RawText("ListRef.ONE", "ListRef.ONE"))
+    convertedMap.getMapValue("first")!!.setValue(RawText("MapRef.ONE", "MapRef.ONE"))
+
+    // Direct `GradleDslExpressionList` and `GradleDslExpressionMap` elements created with `SET_METHOD` syntax.
+    val directSetList =
+      GradleDslExpressionList(fileDsl, GradleNameElement.create("directSetList"), true).apply {
+        elementType = REGULAR
+        externalSyntax = SET_METHOD
+        addNewExpression(
+          GradleDslLiteral(this, GradleNameElement.empty()).apply {
+            setValue(RawText("DirectRef.ONE", "DirectRef.ONE"))
+          }
+        )
+      }
+    fileDsl.setNewElement(directSetList)
+
+    val directSetMap =
+      GradleDslExpressionMap(fileDsl, GradleNameElement.create("directSetMap"), true).apply {
+        elementType = REGULAR
+        externalSyntax = SET_METHOD
+        addNewLiteral("firstKey", RawText("DirectRef.VAL_ONE", "DirectRef.VAL_ONE"))
+      }
+    fileDsl.setNewElement(directSetMap)
+
+    encodedReferences.clear()
+    dynamicMemberPlaces.clear()
+    runWriteCommandAction(project) {
+      fileDsl.applyChanges()
+
+      assertThat(convertedList.psiElement).isInstanceOf(GrListOrMap::class.java)
+      assertThat(convertedMap.psiElement).isInstanceOf(GrListOrMap::class.java)
+      assertThat(directSetList.psiElement).isInstanceOf(GrListOrMap::class.java)
+      assertThat(directSetMap.psiElement).isInstanceOf(GrListOrMap::class.java)
+      assertThat(extDsl.getPropertyElement("convertedList", GradleDslExpressionList::class.java))
+        .isSameAs(convertedList.rawElement)
+      assertThat(extDsl.getPropertyElement("convertedMap", GradleDslExpressionMap::class.java))
+        .isSameAs(convertedMap.rawElement)
+
+      // Subsequent mutations on the created `SET_METHOD` list/map must update the inner `GrListOrMap` in place.
+      convertedList.addListValue()!!.setValue(RawText("ListRef.TWO", "ListRef.TWO"))
+      convertedMap.getMapValue("second")!!.setValue(RawText("MapRef.TWO", "MapRef.TWO"))
+      directSetList.addNewExpression(
+        GradleDslLiteral(directSetList, GradleNameElement.empty()).apply {
+          setValue(RawText("DirectRef.TWO", "DirectRef.TWO"))
+        }
+      )
+      directSetMap.addNewLiteral("secondKey", RawText("DirectRef.VAL_TWO", "DirectRef.VAL_TWO"))
+
+      projectModel.applyChanges()
+    }
+    assertNoReferenceCopyOrDynamicResolve()
+
+    assertThat(loadNormalizedText(myBuildFile).trimEnd())
+      .isEqualTo(
+        """
+        ext {
+            convertedList.set([ListRef.ONE, ListRef.TWO])
+            convertedMap.set([first: MapRef.ONE, second: MapRef.TWO])
+        }
+        directSetList.set([DirectRef.ONE, DirectRef.TWO])
+        directSetMap.set([firstKey: DirectRef.VAL_ONE, secondKey: DirectRef.VAL_TWO])
+        """
+          .trimIndent()
+      )
   }
 }
