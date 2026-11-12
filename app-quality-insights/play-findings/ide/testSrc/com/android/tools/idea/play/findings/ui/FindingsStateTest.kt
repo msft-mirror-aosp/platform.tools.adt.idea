@@ -18,8 +18,6 @@ package com.android.tools.idea.play.findings.ui
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingCategory
 import com.android.tools.idea.findings.model.FindingSeverity
-import com.android.tools.idea.insights.LoadingState
-import com.android.tools.idea.insights.ai.AiInsight
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,37 +30,24 @@ class FindingsStateTest {
   private val finding2 = AppFinding("findings/2", FindingCategory.USER_EXPERIENCE, FindingSeverity.WARNING, displayName = "Finding 2")
 
   @Test
-  fun defaultState_hasNoInsight() {
-    assertThat(FindingsState().currentInsight).isNull()
+  fun defaultState_hasNoSelectedFinding() {
+    assertThat(FindingsState().selectedFinding).isNull()
   }
 
   @Test
-  fun withSelection_newFinding_startsLoadingInsight() {
+  fun withSelection_updatesSelectedFinding() {
     val state = FindingsState().withSelection(finding1)
-
     assertThat(state.selectedFinding).isEqualTo(finding1)
-    assertThat(state.currentInsight).isEqualTo(LoadingState.Loading("Fetching insights..."))
-  }
 
-  @Test
-  fun withSelection_differentFinding_resetsInsightToLoading() {
-    val state = FindingsState(selectedFinding = finding1, currentInsight = LoadingState.Ready(AiInsight("insight"))).withSelection(finding2)
+    val updated = state.withSelection(finding2)
+    assertThat(updated.selectedFinding).isEqualTo(finding2)
 
-    assertThat(state.selectedFinding).isEqualTo(finding2)
-    assertThat(state.currentInsight).isEqualTo(LoadingState.Loading("Fetching insights..."))
-  }
-
-  @Test
-  fun withSelection_null_clearsInsight() {
-    val state = FindingsState(selectedFinding = finding1, currentInsight = LoadingState.Ready(AiInsight("insight"))).withSelection(null)
-
-    assertThat(state.selectedFinding).isNull()
-    assertThat(state.currentInsight).isNull()
+    assertThat(updated.withSelection(null).selectedFinding).isNull()
   }
 
   @Test
   fun withSelection_sameFinding_keepsState() {
-    val state = FindingsState(selectedFinding = finding1, currentInsight = LoadingState.Ready(AiInsight("insight")))
+    val state = FindingsState(selectedFinding = finding1)
 
     assertThat(state.withSelection(finding1)).isSameAs(state)
   }

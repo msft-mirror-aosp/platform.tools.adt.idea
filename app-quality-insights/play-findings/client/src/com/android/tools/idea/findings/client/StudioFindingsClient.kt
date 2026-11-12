@@ -30,6 +30,8 @@ import com.android.tools.idea.findings.model.toFindingCategory
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.insights.LoadingState
 import com.google.gct.login2.fstLoginFeature
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonParser
 import com.google.play.androidpublisher.v3.ComputeFindingsResponse as ProtoComputeFindingsResponse
 import com.google.play.androidpublisher.v3.Finding as ProtoFinding
 import com.google.play.androidpublisher.v3.FindingData as ProtoFindingData
@@ -45,6 +47,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private val LOG = Logger.getInstance(StudioFindingsClient::class.java)
+
+/** Serializes JSON without HTML escaping, so characters such as '=' in URLs are not written as `\u003d`. */
+private val UNESCAPED_GSON = GsonBuilder().disableHtmlEscaping().create()
 
 val StudioFlags.PlayFindingsEndpoint.url: String
   get() =
@@ -109,7 +114,13 @@ internal fun ProtoFinding.toDomain(): AppFinding {
   //  ignoringUnknownFields(), re-serializing ProtoFinding here drops any new fields not yet in
   //  Studio's compiled proto. Revisit how to better support forward-compatibility for new API
   //  finding types/details.
-  val jsonPayload = runCatching { JsonFormat.printer().omittingInsignificantWhitespace().print(this) }.getOrDefault("")
+  val jsonPayload = runCatching {
+    val json = JsonFormat.printer().omittingInsignificantWhitespace().print(this)
+    // Protobuf's JSON printer HTML-escapes characters such as '=' (as \u003d); re-serialize without that escaping so asset URLs
+    // (e.g. screenshot URLs ending in "=s0") stay intact and readable in prompts.
+    UNESCAPED_GSON.toJson(JsonParser.parseString(json))
+  }
+    .getOrDefault("")
 
   return AppFinding(
     name = name,

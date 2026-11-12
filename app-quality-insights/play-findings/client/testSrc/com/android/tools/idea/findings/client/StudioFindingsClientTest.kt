@@ -399,7 +399,7 @@ class StudioFindingsClientTest {
                 .setLargeScreensLayout(
                   LargeScreensLayoutFindingData.newBuilder()
                     .setLayoutIssueType(LargeScreensLayoutFindingData.LayoutIssueType.DOES_NOT_USE_ENTIRE_SCREEN)
-                    .setScreenshotFifeUrl("https://lh3.googleusercontent.com/layout-screenshot")
+                    .setScreenshotFifeUrl("https://lh3.googleusercontent.com/layout-screenshot=s0")
                     .setDeviceInfo(protoDeviceInfo)
                 )
             )
@@ -443,10 +443,12 @@ class StudioFindingsClientTest {
 
     assertThat(findings[0].category).isEqualTo(FindingCategory.USER_EXPERIENCE)
     assertThat(findings[0].displayName).isEqualTo("App does not use entire screen")
+    // The JSON payload keeps asset URLs unescaped ('=' is not written as \u003d) so they match VisualEvidence.
+    assertThat(findings[0].jsonPayload).contains("\"https://lh3.googleusercontent.com/layout-screenshot=s0\"")
     assertThat(findings[0].context)
       .isEqualTo(
         FindingContext(
-          visualEvidences = listOf(VisualEvidence(url = "https://lh3.googleusercontent.com/layout-screenshot")),
+          visualEvidences = listOf(VisualEvidence(url = "https://lh3.googleusercontent.com/layout-screenshot=s0")),
           deviceInfo = expectedDeviceInfo,
         )
       )

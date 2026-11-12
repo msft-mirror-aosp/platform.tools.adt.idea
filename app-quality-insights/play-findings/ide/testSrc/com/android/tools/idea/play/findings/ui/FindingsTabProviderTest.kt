@@ -22,7 +22,6 @@ import com.android.tools.idea.insights.AppInsightsModel
 import com.android.tools.idea.insights.InsightsProvider
 import com.android.tools.idea.insights.OfflineStatusManagerImpl
 import com.android.tools.idea.insights.Selection
-import com.android.tools.idea.insights.experiments.InsightFeedback
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.ui.AppInsightsTabPanel
 import com.android.tools.idea.play.findings.PlayFindingsInsightsProvider
@@ -95,15 +94,10 @@ private class FakeFindingsProjectLevelController(project: Project) : FindingsPro
 
   override val provider: InsightsProvider = PlayFindingsInsightsProvider
   override val connections: StateFlow<Selection<Connection>> = MutableStateFlow(Selection.emptySelection())
-  override val aiInsightToolkit: FindingsInsightToolkit = FindingsInsightToolkit(project)
 
   override fun refresh() = Unit
 
   override fun selectFinding(finding: AppFinding?) {
     mutableState.value = mutableState.value.copy(selectedFinding = finding)
   }
-
-  override fun refreshInsight(forceGenerateNewInsight: Boolean) = Unit
-
-  override fun submitInsightFeedback(feedback: InsightFeedback) = Unit
 }

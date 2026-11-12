@@ -23,11 +23,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -51,10 +53,12 @@ import com.android.tools.idea.findings.model.FindingContext
 import com.android.tools.idea.findings.model.VisualEvidence
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
+import icons.StudioIconsCompose
 import javax.swing.JComponent
 import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
+import org.jetbrains.jewel.ui.component.Chip
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.TabData
@@ -83,6 +87,7 @@ internal sealed interface FindingDetailSubTab {
 class FindingsDetailsPanel(
   parentDisposable: Disposable,
   private val project: Project,
+  private val onAskAiClick: (AppFinding) -> Unit = {},
 ) {
 
   @get:VisibleForTesting
@@ -140,7 +145,7 @@ class FindingsDetailsPanel(
             verticalArrangement = Arrangement.spacedBy(10.dp),
           ) {
             Row(
-              modifier = Modifier.testTag("finding_title_row"),
+              modifier = Modifier.fillMaxWidth().testTag("finding_title_row"),
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -149,12 +154,26 @@ class FindingsDetailsPanel(
                 contentDescription = finding.severity.name,
                 modifier = Modifier.testTag("finding_severity_icon"),
               )
+              // weight(fill = false) keeps "Ask AI" right next to the title, while long titles wrap instead of pushing it out.
               Text(
                 text = finding.displayName,
                 fontWeight = FontWeight.Bold,
                 fontSize = JewelTheme.defaultTextStyle.fontSize * 1.15f,
-                modifier = Modifier.testTag("finding_title"),
+                modifier = Modifier.weight(1f, fill = false).testTag("finding_title"),
               )
+              Spacer(Modifier.width(4.dp))
+              Chip(onClick = { onAskAiClick(finding) }, modifier = Modifier.testTag("ask_ai_button")) {
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                  Icon(
+                    key = StudioIconsCompose.StudioBot.GenericAiAction,
+                    contentDescription = null,
+                  )
+                  Text("Ask AI")
+                }
+              }
             }
 
             SelectionContainer {

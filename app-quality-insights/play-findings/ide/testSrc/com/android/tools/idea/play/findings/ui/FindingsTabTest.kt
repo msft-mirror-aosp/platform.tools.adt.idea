@@ -21,8 +21,6 @@ import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.insights.InsightsProvider
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.Selection
-import com.android.tools.idea.insights.analytics.TestAppInsightsTracker
-import com.android.tools.idea.insights.experiments.InsightFeedback
 import com.android.tools.idea.insights.model.common.WithCount
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.ui.AppInsightsToolbar
@@ -92,7 +90,6 @@ class FindingsTabTest {
       FindingsTab(
         controller = controller,
         project = projectRule.project,
-        tracker = TestAppInsightsTracker,
         clock = Clock.fixed(Instant.parse("2026-10-01T00:00:00Z"), ZoneOffset.UTC),
         mainContext = Dispatchers.Unconfined,
       )
@@ -342,7 +339,6 @@ private class TestFindingsController(project: Project) : FindingsProjectLevelCon
 
   override val provider: InsightsProvider = PlayFindingsInsightsProvider
   override val connections: StateFlow<Selection<Connection>> = MutableStateFlow(Selection.emptySelection())
-  override val aiInsightToolkit: FindingsInsightToolkit = FindingsInsightToolkit(project)
 
   override fun refresh() {
     refreshCount++
@@ -351,8 +347,4 @@ private class TestFindingsController(project: Project) : FindingsProjectLevelCon
   override fun selectFinding(finding: AppFinding?) {
     mutableState.value = mutableState.value.copy(selectedFinding = finding)
   }
-
-  override fun refreshInsight(forceGenerateNewInsight: Boolean) = Unit
-
-  override fun submitInsightFeedback(feedback: InsightFeedback) = Unit
 }

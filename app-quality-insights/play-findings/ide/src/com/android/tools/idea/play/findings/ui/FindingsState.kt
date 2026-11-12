@@ -17,32 +17,24 @@ package com.android.tools.idea.play.findings.ui
 
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.insights.LoadingState
-import com.android.tools.idea.insights.ai.AiInsight
 
 /**
  * Represents the UI and data state of the Play Console Findings tab.
  *
  * @property currentFindings The [LoadingState] of the findings list for the active package.
  * @property selectedFinding The currently selected [AppFinding], or null if no finding is selected.
- * @property currentInsight The [LoadingState] of the AI-generated [AiInsight] for [selectedFinding], or `null` when no finding is selected
- *   (so there is no insight to show and no fetch is pending).
  * @property packageName The package name for which findings are currently loaded.
  */
 data class FindingsState(
   val currentFindings: LoadingState<List<AppFinding>> = LoadingState.Loading,
   val selectedFinding: AppFinding? = null,
-  val currentInsight: LoadingState<AiInsight>? = null,
   val packageName: String? = null,
 ) {
-  /**
-   * Returns a copy with [finding] selected, resetting [currentInsight] when the selection changes: to [LoadingState.Loading] for a new
-   * finding (the insight pipeline will fetch it), or to `null` when the selection is cleared. Re-selecting the current finding returns this
-   * state unchanged.
-   */
+  /** Returns a copy with [finding] selected, or this state unchanged when [finding] is already selected. */
   fun withSelection(finding: AppFinding?): FindingsState =
     if (finding == selectedFinding) {
       this
     } else {
-      copy(selectedFinding = finding, currentInsight = finding?.let { LoadingState.Loading("Fetching insights...") })
+      copy(selectedFinding = finding)
     }
 }

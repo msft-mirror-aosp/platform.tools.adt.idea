@@ -17,16 +17,10 @@ package com.android.tools.idea.play.findings.ui
 
 import com.android.tools.adtui.common.primaryContentBackground
 import com.android.tools.adtui.util.ActionToolbarUtil
-import com.android.tools.adtui.workbench.AutoHide
-import com.android.tools.adtui.workbench.Side
-import com.android.tools.adtui.workbench.Split
-import com.android.tools.adtui.workbench.ToolWindowDefinition
-import com.android.tools.adtui.workbench.WorkBench
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.findings.model.AppFinding
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.insights.LoadingState
-import com.android.tools.idea.insights.analytics.AppInsightsTracker
 import com.android.tools.idea.insights.model.common.GroupAware
 import com.android.tools.idea.insights.ui.APP_INSIGHTS_ID
 import com.android.tools.idea.insights.ui.AppInsightsToolbar
@@ -35,6 +29,7 @@ import com.android.tools.idea.insights.ui.TimestampState
 import com.android.tools.idea.insights.ui.actions.AppInsightsDisplayRefreshTimestampAction
 import com.android.tools.idea.insights.ui.actions.AppInsightsToggleAction
 import com.android.tools.idea.insights.ui.actions.TreeDropDownAction
+import com.android.tools.idea.play.findings.submitFindingQueryToAgent
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionToolbar
@@ -51,7 +46,6 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.ScrollPaneFactory
 import com.intellij.ui.SideBorder
 import com.intellij.ui.components.JBLoadingPanel
-import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.time.Clock
 import javax.swing.Icon
@@ -89,30 +83,30 @@ internal fun emptyTableText(packageName: String?, hasFindings: Boolean) =
     else -> NO_MATCHING_FINDINGS_TEXT
   }
 
-/** Context placeholder for the Findings tool window workbench. */
-class FindingsToolWindowContext
-
 /**
  * The main tab panel for Play Console Findings.
  *
- * Layout consists of a top filter toolbar above a three-pane [WorkBench] and [ThreeComponentsSplitter]:
+ * Layout consists of a top filter toolbar above a two-pane [ThreeComponentsSplitter]:
  * - **Top toolbar**: Category/severity filter dropdowns, refresh action, and last-refreshed timestamp.
  * - **Left pane**: [FindingsTableView] listing findings matching the active filters.
- * - **Center pane**: [FindingsDetailsPanel] displaying metadata, description, and evidence for the selected finding.
- * - **Right side panel**: Docked [FindingsInsightPanel] tool window showing Gemini-generated insights for the selected finding.
+ * - **Right pane**: [FindingsDetailsPanel] displaying metadata, description, "Ask AI" action, and evidence for the selected finding.
  */
 class FindingsTab(
   private val controller: FindingsProjectLevelController,
   private val project: Project,
-  private val tracker: AppInsightsTracker,
   clock: Clock = Clock.systemDefaultZone(),
   mainContext: CoroutineContext = Dispatchers.EDT,
 ) : JPanel(BorderLayout()), Disposable {
   private val scope = createCoroutineScope(mainContext)
 
-  @VisibleForTesting internal val detailsPanel = FindingsDetailsPanel(parentDisposable = this, project = project)
+  @VisibleForTesting
+  internal val detailsPanel =
+    FindingsDetailsPanel(
+      parentDisposable = this,
+      project = project,
+      onAskAiClick = ::askAi,
+    )
   private val table = FindingsTableView(onSelectionChanged = ::updateSelection)
-  private val workBench = WorkBench<FindingsToolWindowContext>(project, "AQI_FINDINGS", null, this)
 
   @VisibleForTesting internal val categoryFilter = FindingsFilter.MultiSelect(onFilterUpdated = ::onFilterUpdated) { category }
   @VisibleForTesting
@@ -142,12 +136,20 @@ class FindingsTab(
     val loadingPanel = createLoadingTablePanel()
     val splitter = createSplitter(loadingPanel)
 
-    workBench.init(splitter, FindingsToolWindowContext(), createToolWindowDefinitions(), false)
     add(createToolbar().component, BorderLayout.NORTH)
-    add(workBench, BorderLayout.CENTER)
+    add(splitter, BorderLayout.CENTER)
 
     updateSelection(null)
     observeControllerState(loadingPanel)
+  }
+
+  private fun askAi(finding: AppFinding) {
+    scope.launch {
+      val query =
+        "Generate a detailed insight for the Play Console finding \"${finding.displayName}\". " +
+          "Investigate the likely cause in this project and suggest a fix if applicable."
+      submitFindingQueryToAgent(project = project, finding = finding, query = query)
+    }
   }
 
   /**
@@ -227,23 +229,6 @@ class FindingsTab(
         lastSize = minSize
       }
     }
-
-  private fun createToolWindowDefinitions(): List<ToolWindowDefinition<FindingsToolWindowContext>> =
-    listOf(
-      ToolWindowDefinition(
-        "Insights",
-        AllIcons.Actions.IntentionBulbGrey,
-        "FINDINGS_INSIGHTS",
-        Side.RIGHT,
-        Split.TOP,
-        AutoHide.DOCKED,
-        JBUI.scale(400),
-        ToolWindowDefinition.DEFAULT_BUTTON_SIZE,
-        ToolWindowDefinition.ALLOW_BASICS,
-      ) { disposable ->
-        FindingsInsightPanel(project, controller, disposable, tracker)
-      }
-    )
 
   /** Collects [FindingsProjectLevelController.state] to drive the loading overlay, table rows, filters, and details panel. */
   private fun observeControllerState(loadingPanel: JBLoadingPanel) {

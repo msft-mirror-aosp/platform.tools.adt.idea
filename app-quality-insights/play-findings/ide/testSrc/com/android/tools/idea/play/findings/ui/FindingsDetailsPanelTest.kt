@@ -95,7 +95,26 @@ class FindingsDetailsPanelTest {
 
     composeTestRule.onNodeWithTag("finding_title", useUnmergedTree = true).assertTextEquals(sampleFinding.displayName)
     composeTestRule.onNodeWithContentDescription(sampleFinding.severity.name, useUnmergedTree = true).assertIsDisplayed()
+    composeTestRule.onNodeWithTag("ask_ai_button", useUnmergedTree = true).assertIsDisplayed()
+    composeTestRule.onNodeWithText("Ask AI", useUnmergedTree = true).assertIsDisplayed()
     composeTestRule.onNodeWithTag("finding_description", useUnmergedTree = true).assertTextEquals(sampleFinding.description)
+  }
+
+  @Test
+  fun testAskAiButtonInvokesCallback() {
+    var clickedFinding: AppFinding? = null
+    val panel =
+      FindingsDetailsPanel(
+        parentDisposable = disposableRule.disposable,
+        project = projectRule.project,
+        onAskAiClick = { clickedFinding = it },
+      )
+    composeTestRule.setContent { panel.FindingsDetailsContent() }
+
+    panel.updateFinding(sampleFinding)
+    composeTestRule.onNodeWithTag("ask_ai_button").performClick()
+
+    assertThat(clickedFinding).isEqualTo(sampleFinding)
   }
 
   @Test
@@ -115,7 +134,8 @@ class FindingsDetailsPanelTest {
   @Test
   fun testSwitchingFindingResetsScrollPosition() {
     val panel = FindingsDetailsPanel(parentDisposable = disposableRule.disposable, project = projectRule.project)
-    composeTestRule.setContent { Box(Modifier.size(250.dp, 150.dp)) { panel.FindingsDetailsContent() } }
+    // Wide enough for the title and "Ask AI" chip to fit on one line, so the scroll offset is predictable.
+    composeTestRule.setContent { Box(Modifier.size(450.dp, 150.dp)) { panel.FindingsDetailsContent() } }
 
     val longFinding =
       AppFinding(
