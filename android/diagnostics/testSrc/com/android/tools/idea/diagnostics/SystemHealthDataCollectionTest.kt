@@ -135,12 +135,18 @@ class SystemHealthDataCollectionTest {
     assertEquals(-2, event.systemHealthEvent.exit.jvmSignalNumber)
   }
 
+  /**
+   * Returns the events logged by [systemHealthDataCollection]. The test application also logs other events in the background, for example
+   * the IDE_PLUGIN_INFO startup report from AndroidStudioUsageTracker, and they can land in [testUsageTracker] while a test runs.
+   */
+  private fun systemHealthUsages() =
+    testUsageTracker.usages.filter { it.studioEvent.kind == AndroidStudioEvent.EventKind.SYSTEM_HEALTH_EVENT }
+
   private fun expectSingleEventAndClear(): AndroidStudioEvent {
-    val usages = testUsageTracker.usages
+    val usages = systemHealthUsages()
     UsefulTestCase.assertSize(1, usages)
-    val studioEvent = usages[0].studioEvent
-    usages.clear()
-    return studioEvent
+    testUsageTracker.usages.clear()
+    return usages[0].studioEvent
   }
 
   @Test
@@ -165,7 +171,7 @@ class SystemHealthDataCollectionTest {
       scheduler.advanceBy(5, TimeUnit.MINUTES)
     }
 
-    val usages = testUsageTracker.usages
+    val usages = systemHealthUsages()
     assert(usages.all { it.studioEvent.systemHealthEvent.uiFreeze.freezeId == 1L })
     assert(usages.all { it.studioEvent.systemHealthEvent.eventType == SystemHealthEvent.SystemHealthEventType.UI_FREEZE_UPDATE })
     assertContentEquals(
@@ -200,7 +206,7 @@ class SystemHealthDataCollectionTest {
         .map { it.toMillis() },
       usages.map { it.studioEvent.systemHealthEvent.uiFreeze.durationMs }.sorted(),
     )
-    usages.clear()
+    testUsageTracker.usages.clear()
 
     systemHealthDataCollection.triggers.uiFreezeFinished(Duration.ofMinutes(120).toMillis())
     scheduler.advanceBy(1L)
