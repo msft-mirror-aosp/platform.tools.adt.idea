@@ -1,0 +1,6 @@
+ext {
+    convertedList.set([ListRef.ONE, ListRef.TWO])
+    convertedMap.set([first: MapRef.ONE, second: MapRef.TWO])
+}
+directSetList.set([DirectRef.ONE, DirectRef.TWO])
+directSetMap.set([firstKey: DirectRef.VAL_ONE, secondKey: DirectRef.VAL_TWO])

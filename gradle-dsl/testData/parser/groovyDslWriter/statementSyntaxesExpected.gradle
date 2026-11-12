@@ -1,0 +1,23 @@
+/* Header comment */
+ext {
+    catalogRef = libs.some.bundle
+    localSdk = [api: ApiLevel.CURRENT, nestedMap: [inner: InnerRef.ONE]]
+    onlyListMap = [items: [ListRef.FIRST, ListRef.SECOND]]
+    mixedMap = [flags: [FlagRef.ENABLED], first: MapRef.A, second: MapRef.B]
+    helperCalls = [firstHelper(HelperArg.ONE), secondHelper(HelperArg.TWO)]
+}
+def computedVar = UnresolvedType.VALUE
+augItems += ExtraItems.DEFAULT
+maxParallel.set(BuildConfig.MAX_WORKERS)
+customDirective CustomTarget.DEBUG
+customApply plugin: PluginIds.APP, from: ScriptPaths.COMMON, targets: [Targets.LINUX]
+assignedTask = registerTask(TaskTypes.VERIFY) {
+    group = TaskGroups.CHECK
+}
+android {
+    productFlavors {
+        demo {
+            dimension = 'tier'
+        }
+    }
+}

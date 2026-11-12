@@ -1,0 +1,9 @@
+android {
+    defaultConfig {
+        proguardFiles ProguardConfigs.BASE, getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+    }
+}
+dependencies {
+    implementation fileTree(dir: 'updatedLibs', include: ['*.aar', '*.jar']), fileTree('extra')
+    implementation project(configuration: 'debug', path: ':renamedOne'), project(configuration: 'release', path: ':renamedTwo'), project(':renamedThree')
+}

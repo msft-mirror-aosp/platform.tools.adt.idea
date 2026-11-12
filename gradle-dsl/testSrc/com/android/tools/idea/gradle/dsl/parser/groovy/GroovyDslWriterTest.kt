@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.gradle.dsl.parser.groovy
 
+import com.android.tools.idea.gradle.dsl.TestFileName
 import com.android.tools.idea.gradle.dsl.api.GradleFileModel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.ArtifactDependencySpec
@@ -55,7 +56,9 @@ import com.intellij.psi.impl.source.tree.TreeCopyHandler
 import com.intellij.psi.impl.source.tree.TreeElement
 import com.intellij.psi.scope.PsiScopeProcessor
 import com.intellij.testFramework.LoggedErrorProcessor
+import java.io.File
 import java.util.Collections
+import org.jetbrains.annotations.SystemDependent
 import org.jetbrains.plugins.groovy.lang.psi.GrReferenceElement
 import org.jetbrains.plugins.groovy.lang.psi.GroovyFile
 import org.jetbrains.plugins.groovy.lang.psi.GroovyPsiElementFactory
@@ -70,14 +73,16 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Regression tests for b/472823740 verifying that [GroovyDslWriter] and [GroovyDslUtil] mutate Groovy PSI without triggering
- * [TreeCopyHandler] reference encoding (`GroovyChangeUtilSupport`) or dynamic `.gdsl` member resolution
- * (`GroovyDslFileIndex.getDslScripts`), while preserving exact indentation and enforcing synthesized-element adoption invariants.
+ * Regression tests for b/472823740 verifying that [GroovyDslWriter] and [GroovyDslUtil] mutate
+ * Groovy PSI without triggering [TreeCopyHandler] reference encoding (`GroovyChangeUtilSupport`) or
+ * dynamic `.gdsl` member resolution (`GroovyDslFileIndex.getDslScripts`), while preserving exact
+ * indentation and enforcing synthesized-element adoption invariants.
  */
 class GroovyDslWriterTest : GradleFileModelTestCase() {
 
   private val encodedReferences: MutableList<String> = Collections.synchronizedList(mutableListOf())
-  private val dynamicMemberPlaces: MutableList<String> = Collections.synchronizedList(mutableListOf())
+  private val dynamicMemberPlaces: MutableList<String> =
+    Collections.synchronizedList(mutableListOf())
 
   @Before
   fun installPsiCopyAndResolveRecorders() {
@@ -149,24 +154,10 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
   fun testNewProjectTemplateApplyChangesSkipsGroovyReferenceResolution() {
     assumeTrue(!isKotlinScript)
 
-    writeToSettingsFile("include ':${SUB_MODULE_NAME}'\n")
+    writeToSettingsFile(subModuleSettingsText)
     writeToBuildFile("")
     writeToSubModuleBuildFile("")
-    writeToVersionCatalogFile(
-      """
-      [versions]
-      agp = "8.9.0"
-      coreKtx = "1.15.0"
-
-      [libraries]
-      androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-
-      [plugins]
-      android-application = { id = "com.android.application", version.ref = "agp" }
-      kotlin-android = { id = "org.jetbrains.kotlin.android", version = "2.0.21" }
-      """
-        .trimIndent()
-    )
+    writeToVersionCatalogFile(TestFile.NEW_PROJECT_TEMPLATE_CATALOG)
 
     val projectModel = projectBuildModel
     val catalogs = projectModel.versionCatalogsModel
@@ -195,7 +186,10 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
       config.versionCode().setValue(1)
       config.versionName().setValue("1.0")
       config.testInstrumentationRunner().setValue("androidx.test.runner.AndroidJUnitRunner")
-      config.manifestPlaceholders().getMapValue("hostName")!!.setValue(RawText("ext.host", "ext.host"))
+      config
+        .manifestPlaceholders()
+        .getMapValue("hostName")!!
+        .setValue(RawText("ext.host", "ext.host"))
     }
     android
       .buildTypes()
@@ -221,114 +215,24 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
 
     applyAndVerifyNoResolve(projectModel)
 
-    assertThat(loadNormalizedText(myBuildFile).trimEnd())
-      .isEqualTo(
-        """
-        plugins {
-            alias(libs.plugins.android.application) apply false
-            alias(libs.plugins.kotlin.android) apply false
-            id 'com.android.library' version '8.9.0' apply false
-        }
-        """
-          .trimIndent()
-      )
-
-    assertThat(loadNormalizedText(mySubModuleBuildFile).trimEnd())
-      .isEqualTo(
-        """
-        plugins {
-            alias(libs.plugins.android.application)
-            alias(libs.plugins.kotlin.android)
-        }
-        android {
-            namespace = 'com.example.myapplication'
-            compileSdk = 35
-            defaultConfig {
-                manifestPlaceholders = [hostName: ext.host]
-                applicationId = 'com.example.myapplication'
-                minSdk = 24
-                targetSdk = 35
-                versionCode = 1
-                versionName = '1.0'
-                testInstrumentationRunner = 'androidx.test.runner.AndroidJUnitRunner'
-            }
-            buildTypes {
-                release {
-                    minifyEnabled = false
-                    proguardFiles 'proguard-rules.pro'
-                }
-            }
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_11
-                targetCompatibility = JavaVersion.VERSION_11
-            }
-            buildFeatures {
-                compose = true
-            }
-        }
-        dependencies {
-            implementation 'androidx.appcompat:appcompat:1.7.0', {
-                exclude group: 'com.android.support', module: 'support-annotations'
-            }
-            implementation fileTree(dir: 'libs', include: ['*.jar'])
-            implementation libs.androidx.core.ktx
-        }
-        """
-          .trimIndent()
-      )
+    verifyFileContents(myBuildFile, TestFile.NEW_PROJECT_TEMPLATE_ROOT_EXPECTED)
+    verifyFileContents(mySubModuleBuildFile, TestFile.NEW_PROJECT_TEMPLATE_SUB_MODULE_EXPECTED)
 
     // Re-parse and mutate/delete existing live PSI elements in a second applyChanges() pass.
     val reparsedProject = projectBuildModel
     val reparsedApp = reparsedProject.getModuleBuildModel(mySubModuleBuildFile)
-    assertThat(reparsedApp.android().compileOptions().sourceCompatibility().toLanguageLevel()).isEqualTo(LanguageLevel.JDK_11)
+    assertThat(reparsedApp.android().compileOptions().sourceCompatibility().toLanguageLevel())
+      .isEqualTo(LanguageLevel.JDK_11)
     reparsedApp.android().compileOptions().sourceCompatibility().setLanguageLevel(LanguageLevel.JDK_17)
     reparsedApp.android().defaultConfig().minSdkVersion().setValue(26)
     reparsedApp.dependencies().remove(reparsedApp.dependencies().fileTrees().single())
 
     applyAndVerifyNoResolve(reparsedProject)
 
-    assertThat(loadNormalizedText(mySubModuleBuildFile).trimEnd())
-      .isEqualTo(
-        """
-        plugins {
-            alias(libs.plugins.android.application)
-            alias(libs.plugins.kotlin.android)
-        }
-        android {
-            namespace = 'com.example.myapplication'
-            compileSdk = 35
-            defaultConfig {
-                manifestPlaceholders = [hostName: ext.host]
-                applicationId = 'com.example.myapplication'
-                minSdk = 26
-                targetSdk = 35
-                versionCode = 1
-                versionName = '1.0'
-                testInstrumentationRunner = 'androidx.test.runner.AndroidJUnitRunner'
-            }
-            buildTypes {
-                release {
-                    minifyEnabled = false
-                    proguardFiles 'proguard-rules.pro'
-                }
-            }
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_11
-            }
-            buildFeatures {
-                compose = true
-            }
-        }
-        dependencies {
-            implementation 'androidx.appcompat:appcompat:1.7.0', {
-                exclude group: 'com.android.support', module: 'support-annotations'
-            }
-            implementation libs.androidx.core.ktx
-        }
-        """
-          .trimIndent()
-      )
+    verifyFileContents(
+      mySubModuleBuildFile,
+      TestFile.NEW_PROJECT_TEMPLATE_SUB_MODULE_REPARSED_EXPECTED,
+    )
   }
 
   @Test
@@ -336,14 +240,17 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
     assumeTrue(!isKotlinScript)
 
     // Start with a file-level block comment to exercise the ML_COMMENT insertion branch.
-    writeToBuildFile("/* Header comment */")
+    writeToBuildFile(TestFile.STATEMENT_SYNTAXES)
 
     val projectModel = projectBuildModel
     val buildModel = projectModel.projectBuildModel!!
     val fileDsl = buildModel.dslElement()
 
     // Uncreated `ext` parent triggers `needToCreateParent` (`addBefore` branch in GroovyDslWriter).
-    buildModel.ext().findProperty("catalogRef").setValue(RawText("libs.some.bundle", "libs.some.bundle"))
+    buildModel
+      .ext()
+      .findProperty("catalogRef")
+      .setValue(RawText("libs.some.bundle", "libs.some.bundle"))
     val localVar = buildModel.ext().findProperty("localSdk")
     localVar.setValue(RawText("SdkConstants.LATEST", "SdkConstants.LATEST"))
     localVar.convertToEmptyMap() // exercise map conversion then overwrite in separate property
@@ -386,7 +293,8 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
       }
     fileDsl.setNewElement(cmdProp)
 
-    // Empty literal map populated solely with a nested list (`[:]` colon removal in createNamedArgumentList).
+    // Empty literal map populated solely with a nested list (`[:]` colon removal in
+    // createNamedArgumentList).
     val listOnlyMap = buildModel.ext().findProperty("onlyListMap").convertToEmptyMap()
     val onlyList = listOnlyMap.getMapValue("items")!!.convertToEmptyList()
     onlyList.addListValue()!!.setValue(RawText("ListRef.FIRST", "ListRef.FIRST"))
@@ -396,9 +304,14 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
     val mixedMap = buildModel.ext().findProperty("mixedMap").convertToEmptyMap()
     mixedMap.getMapValue("first")!!.setValue(RawText("MapRef.A", "MapRef.A"))
     mixedMap.getMapValue("second")!!.setValue(RawText("MapRef.B", "MapRef.B"))
-    mixedMap.getMapValue("flags")!!.convertToEmptyList().addListValue()!!.setValue(RawText("FlagRef.ENABLED", "FlagRef.ENABLED"))
+    mixedMap
+      .getMapValue("flags")!!
+      .convertToEmptyList()
+      .addListValue()!!
+      .setValue(RawText("FlagRef.ENABLED", "FlagRef.ENABLED"))
 
-    // Literal list (`GrListOrMap`) populated with `GradleDslMethodCall` expressions (`adoptAfter` on `GrListOrMap`).
+    // Literal list (`GrListOrMap`) populated with `GradleDslMethodCall` expressions (`adoptAfter`
+    // on `GrListOrMap`).
     val extDsl = buildModel.ext().dslElement()
     val callList =
       GradleDslExpressionList(extDsl, GradleNameElement.create("helperCalls"), true).apply {
@@ -445,7 +358,8 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
       }
     commandMap.setNewElement(cmdNestedList)
 
-    // Method call with RawText argument and attached closure (`createDslMethodCall` + `createAndAddClosure`).
+    // Method call with RawText argument and attached closure (`createDslMethodCall` +
+    // `createAndAddClosure`).
     val methodCall =
       GradleDslMethodCall(fileDsl, GradleNameElement.create("assignedTask"), "registerTask").apply {
         externalSyntax = ASSIGNMENT
@@ -466,7 +380,8 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
       }
     fileDsl.setNewElement(methodCall)
 
-    // Named domain element creation + later rename (`maybeUpdateName` literal & identifier branches).
+    // Named domain element creation + later rename (`maybeUpdateName` literal & identifier
+    // branches).
     buildModel.android().addProductFlavor("demo").dimension().setValue("tier")
 
     applyAndVerifyNoResolve(projectModel)
@@ -486,44 +401,21 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
       )
       .isSameAs(cmdProp.expression)
 
-    assertThat(loadNormalizedText(myBuildFile).trimEnd())
-      .isEqualTo(
-        """
-        /* Header comment */
-        ext {
-            catalogRef = libs.some.bundle
-            localSdk = [api: ApiLevel.CURRENT, nestedMap: [inner: InnerRef.ONE]]
-            onlyListMap = [items: [ListRef.FIRST, ListRef.SECOND]]
-            mixedMap = [flags: [FlagRef.ENABLED], first: MapRef.A, second: MapRef.B]
-            helperCalls = [firstHelper(HelperArg.ONE), secondHelper(HelperArg.TWO)]
-        }
-        def computedVar = UnresolvedType.VALUE
-        augItems += ExtraItems.DEFAULT
-        maxParallel.set(BuildConfig.MAX_WORKERS)
-        customDirective CustomTarget.DEBUG
-        customApply plugin: PluginIds.APP, from: ScriptPaths.COMMON, targets: [Targets.LINUX]
-        assignedTask = registerTask(TaskTypes.VERIFY) {
-            group = TaskGroups.CHECK
-        }
-        android {
-            productFlavors {
-                demo {
-                    dimension = 'tier'
-                }
-            }
-        }
-        """
-          .trimIndent()
-      )
+    verifyFileContents(myBuildFile, TestFile.STATEMENT_SYNTAXES_EXPECTED)
 
-    // Re-parse and test value replacement (`replaceWithSynthesized`) + property/flavor renaming (`maybeUpdateName`).
+    // Re-parse and test value replacement (`replaceWithSynthesized`) + property/flavor renaming
+    // (`maybeUpdateName`).
     val reparsedProject = projectBuildModel
     val reparsedBuild = reparsedProject.projectBuildModel!!
-    reparsedBuild.ext().findProperty("catalogRef").setValue(RawText("libs.updated.bundle", "libs.updated.bundle"))
+    reparsedBuild
+      .ext()
+      .findProperty("catalogRef")
+      .setValue(RawText("libs.updated.bundle", "libs.updated.bundle"))
     reparsedBuild.ext().findProperty("catalogRef").rename("renamedCatalogRef")
     reparsedBuild.android().productFlavors().single { it.name() == "demo" }.rename("full")
     val reparsedExt = reparsedBuild.ext().dslElement()
-    val reparsedCallList = reparsedExt.getPropertyElement("helperCalls", GradleDslExpressionList::class.java)!!
+    val reparsedCallList =
+      reparsedExt.getPropertyElement("helperCalls", GradleDslExpressionList::class.java)!!
     reparsedCallList.addNewExpression(
       GradleDslMethodCall(reparsedCallList, GradleNameElement.empty(), "zeroHelper").apply {
         addNewArgument(
@@ -537,37 +429,14 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
 
     applyAndVerifyNoResolve(reparsedProject)
 
-    assertThat(loadNormalizedText(myBuildFile).trimEnd())
-      .isEqualTo(
-        """
-        /* Header comment */
-        ext {
-            renamedCatalogRef = libs.updated.bundle
-            localSdk = [api: ApiLevel.CURRENT, nestedMap: [inner: InnerRef.ONE]]
-            onlyListMap = [items: [ListRef.FIRST, ListRef.SECOND]]
-            mixedMap = [flags: [FlagRef.ENABLED], first: MapRef.A, second: MapRef.B]
-            helperCalls = [zeroHelper(HelperArg.ZERO), firstHelper(HelperArg.ONE), secondHelper(HelperArg.TWO)]
-        }
-        def computedVar = UnresolvedType.VALUE
-        augItems += ExtraItems.DEFAULT
-        maxParallel.set(BuildConfig.MAX_WORKERS)
-        customDirective CustomTarget.DEBUG
-        customApply plugin: PluginIds.APP, from: ScriptPaths.COMMON, targets: [Targets.LINUX]
-        assignedTask = registerTask(TaskTypes.VERIFY) {
-            group = TaskGroups.CHECK
-        }
-        android {
-            productFlavors {
-                full {
-                    dimension = 'tier'
-                }
-            }
-        }
-        """
-          .trimIndent()
-      )
+    verifyFileContents(myBuildFile, TestFile.STATEMENT_SYNTAXES_REPARSED_EXPECTED)
   }
 
+  // Build file snippets are kept inline in this test because it explicitly verifies that
+  // GroovyDslWriter.moveDslElement (via GroovyDslUtil.replaceWithClone and
+  // CodeEditUtil.setOldIndentation) preserves exact 0/4/8-space indentation when moving
+  // blocks/statements and when subsequently adding nested elements inside moved blocks;
+  // GradleFileModelTestCase.verifyFileContents strips all spaces and tabs before comparing.
   @Test
   fun testMoveDslElementClonesAstWithoutReferenceResolution() {
     assumeTrue(!isKotlinScript)
@@ -595,7 +464,8 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
     val extDsl = buildModel.ext().dslElement()
     val extElements = extDsl.elements
 
-    // Reorder statements with unresolved references inside `ext { ... }` and move `ext` above `android`.
+    // Reorder statements with unresolved references inside `ext { ... }` and move `ext` above
+    // `android`.
     extDsl.moveElementTo(0, extElements["third"]!!)
     extDsl.moveElementTo(2, extElements["first"]!!)
     fileDsl.moveElementTo(0, extDsl)
@@ -619,12 +489,20 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
           .trimIndent()
       )
 
-    // Reparse, add a nested element inside moved blocks, update/delete properties, and verify indentation.
+    // Reparse, add a nested element inside moved blocks, update/delete properties, and verify
+    // indentation.
     val reparsedProject = projectBuildModel
     val reparsedBuild = reparsedProject.projectBuildModel!!
-    reparsedBuild.ext().findProperty("first").setValue(RawText("UnresolvedRefs.DELTA", "UnresolvedRefs.DELTA"))
+    reparsedBuild
+      .ext()
+      .findProperty("first")
+      .setValue(RawText("UnresolvedRefs.DELTA", "UnresolvedRefs.DELTA"))
     reparsedBuild.ext().findProperty("second").delete()
-    reparsedBuild.android().compileOptions().targetCompatibility().setLanguageLevel(LanguageLevel.JDK_11)
+    reparsedBuild
+      .android()
+      .compileOptions()
+      .targetCompatibility()
+      .setLanguageLevel(LanguageLevel.JDK_11)
 
     applyAndVerifyNoResolve(reparsedProject)
 
@@ -650,26 +528,15 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
   fun testNonLiteralExpressionListMutationsPreserveCommasAndSkipResolve() {
     assumeTrue(!isKotlinScript)
 
-    writeToBuildFile(
-      """
-      android {
-          defaultConfig {
-              proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-          }
-      }
-      dependencies {
-          implementation fileTree(dir: 'libs', include: '*.jar'), fileTree('extra')
-          implementation project(path: ':one', configuration: 'debug'), project(path: ':two', configuration: 'release'), project(":three")
-      }
-      """
-        .trimIndent()
-    )
+    writeToBuildFile(TestFile.NON_LITERAL_EXPRESSION_LIST_MUTATIONS)
 
     val projectModel = projectBuildModel
     val buildModel = projectModel.projectBuildModel!!
 
     val proguardFiles = buildModel.android().defaultConfig().proguardFiles()
-    proguardFiles.addListValueAt(0)!!.setValue(RawText("ProguardConfigs.BASE", "ProguardConfigs.BASE"))
+    proguardFiles
+      .addListValueAt(0)!!
+      .setValue(RawText("ProguardConfigs.BASE", "ProguardConfigs.BASE"))
 
     val firstTree = buildModel.dependencies().fileTrees()[0]
     firstTree.dir().setValue("updatedLibs")
@@ -684,21 +551,7 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
 
     applyAndVerifyNoResolve(projectModel)
 
-    assertThat(loadNormalizedText(myBuildFile).trimEnd())
-      .isEqualTo(
-        """
-        android {
-            defaultConfig {
-                proguardFiles ProguardConfigs.BASE, getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            }
-        }
-        dependencies {
-            implementation fileTree(dir: 'updatedLibs', include: ['*.aar', '*.jar']), fileTree('extra')
-            implementation project(configuration: 'debug', path: ':renamedOne'), project(configuration: 'release', path: ':renamedTwo'), project(':renamedThree')
-        }
-        """
-          .trimIndent()
-      )
+    verifyFileContents(myBuildFile, TestFile.NON_LITERAL_EXPRESSION_LIST_MUTATIONS_EXPECTED)
 
     val reparsed = projectBuildModel.projectBuildModel!!
     assertThat(reparsed.dependencies().fileTrees()).hasSize(2)
@@ -711,30 +564,16 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
   fun testAdoptAndReplaceHelpersRejectLiveAndReusedElements() {
     assumeTrue(!isKotlinScript)
 
-    writeToBuildFile(
-      """
-      ext {
-          existing = LiveRef.ORIGINAL
-          target = LiveRef.TARGET
-          items = [ListRef.ONE]
-      }
-      """
-        .trimIndent()
-    )
-    writeToSubModuleBuildFile(
-      """
-      ext {
-          foreign = ForeignRef.VALUE
-      }
-      """
-        .trimIndent()
-    )
+    writeToBuildFile(TestFile.ADOPT_AND_REPLACE_HELPERS)
+    writeToSubModuleBuildFile(TestFile.ADOPT_AND_REPLACE_HELPERS_SUB)
 
     val psiManager = PsiManager.getInstance(myProject)
     val buildPsi = psiManager.findFile(myBuildFile) as GroovyFile
     val foreignPsi = psiManager.findFile(mySubModuleBuildFile) as GroovyFile
-    val extClosure = (buildPsi.topStatements.single() as GrMethodCallExpression).closureArguments.single()
-    val foreignClosure = (foreignPsi.topStatements.single() as GrMethodCallExpression).closureArguments.single()
+    val extClosure =
+      (buildPsi.topStatements.single() as GrMethodCallExpression).closureArguments.single()
+    val foreignClosure =
+      (foreignPsi.topStatements.single() as GrMethodCallExpression).closureArguments.single()
     val existingStmt = extClosure.statements[0] as GrAssignmentExpression
     val targetStmt = extClosure.statements[1] as GrAssignmentExpression
     val itemsStmt = extClosure.statements[2] as GrAssignmentExpression
@@ -745,100 +584,118 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
     encodedReferences.clear()
     dynamicMemberPlaces.clear()
 
+    // Individual detached PSI statements/expressions below are synthesized directly via
+    // GroovyPsiElementFactory (rather than build files) to test GroovyDslUtil adoption invariants.
     runWriteCommandAction(myProject) {
-      // 1. Live element from the same physical file must be rejected without detaching the original.
-      val sameFileErr = LoggedErrorProcessor.executeAndReturnLoggedError {
-        GroovyDslUtil.adoptAfter(extClosure, existingStmt, itemsStmt)
-        GroovyDslUtil.adoptBefore(extClosure, factory.createLineTerminator(1), existingStmt.nextSibling)
-      }
-      assertThat(sameFileErr).hasMessageThat().contains("Expected a freshly synthesized, unconsumed PSI element")
+      // 1. Live element from the same physical file must be rejected without detaching the
+      // original.
+      val sameFileErr =
+        LoggedErrorProcessor.executeAndReturnLoggedError {
+          GroovyDslUtil.adoptAfter(extClosure, existingStmt, itemsStmt)
+          GroovyDslUtil.adoptBefore(
+            extClosure,
+            factory.createLineTerminator(1),
+            existingStmt.nextSibling,
+          )
+        }
+      assertThat(sameFileErr)
+        .hasMessageThat()
+        .contains("Expected a freshly synthesized, unconsumed PSI element")
       assertThat(existingStmt.isValid).isTrue()
       assertThat(extClosure.statements[0]).isSameAs(existingStmt)
 
       // 2. Live element from another physical file must be rejected without mutating that file.
-      val foreignFileErr = LoggedErrorProcessor.executeAndReturnLoggedError {
-        GroovyDslUtil.adoptBefore(extClosure, foreignStmt, extClosure.rBrace)
-      }
-      assertThat(foreignFileErr).hasMessageThat().contains("Expected a freshly synthesized, unconsumed PSI element")
+      val foreignFileErr =
+        LoggedErrorProcessor.executeAndReturnLoggedError {
+          GroovyDslUtil.adoptBefore(extClosure, foreignStmt, extClosure.rBrace)
+        }
+      assertThat(foreignFileErr)
+        .hasMessageThat()
+        .contains("Expected a freshly synthesized, unconsumed PSI element")
       assertThat(foreignStmt.containingFile).isSameAs(foreignPsi)
 
-      // 3. Live expression passed to replaceWithSynthesized must be rejected without detaching source.
-      val replaceLiveErr = LoggedErrorProcessor.executeAndReturnLoggedError {
-        GroovyDslUtil.replaceWithSynthesized(targetStmt.rValue!!, existingStmt.rValue!!)
-      }
-      assertThat(replaceLiveErr).hasMessageThat().contains("Expected a freshly synthesized, unconsumed PSI element")
+      // 3. Live expression passed to replaceWithSynthesized must be rejected without detaching
+      // source.
+      val replaceLiveErr =
+        LoggedErrorProcessor.executeAndReturnLoggedError {
+          GroovyDslUtil.replaceWithSynthesized(targetStmt.rValue!!, existingStmt.rValue!!)
+        }
+      assertThat(replaceLiveErr)
+        .hasMessageThat()
+        .contains("Expected a freshly synthesized, unconsumed PSI element")
       assertThat(existingStmt.text).isEqualTo("existing = LiveRef.ORIGINAL")
       assertThat(targetStmt.text).isEqualTo("target = LiveRef.ORIGINAL")
 
-      // 4. Reusing a synthesized statement across two adopt* calls in the same write action must fail on the second call.
+      // 4. Reusing a synthesized statement across two adopt* calls in the same write action must
+      // fail on the second call.
       val synthStmt = factory.createStatementFromText("reused = SynthRef.ONCE")
       GroovyDslUtil.adoptBefore(extClosure, factory.createLineTerminator(1), extClosure.rBrace)
-      val firstAdopted = GroovyDslUtil.adoptBefore(extClosure, synthStmt, extClosure.rBrace) as GrAssignmentExpression
-      val reuseStmtErr = LoggedErrorProcessor.executeAndReturnLoggedError {
-        GroovyDslUtil.adoptAfter(extClosure, synthStmt, firstAdopted)
-      }
-      assertThat(reuseStmtErr).hasMessageThat().contains("Expected a freshly synthesized, unconsumed PSI element")
+      val firstAdopted =
+        GroovyDslUtil.adoptBefore(extClosure, synthStmt, extClosure.rBrace)
+          as GrAssignmentExpression
+      val reuseStmtErr =
+        LoggedErrorProcessor.executeAndReturnLoggedError {
+          GroovyDslUtil.adoptAfter(extClosure, synthStmt, firstAdopted)
+        }
+      assertThat(reuseStmtErr)
+        .hasMessageThat()
+        .contains("Expected a freshly synthesized, unconsumed PSI element")
       assertThat(firstAdopted.isValid).isTrue()
       assertThat(firstAdopted.parent).isSameAs(extClosure)
 
       // 5. Passing a child of an already-adopted synthesized subtree must also fail.
-      val childOfAdoptedErr = LoggedErrorProcessor.executeAndReturnLoggedError {
-        GroovyDslUtil.replaceWithSynthesized(targetStmt.rValue!!, firstAdopted.rValue!!)
-      }
-      assertThat(childOfAdoptedErr).hasMessageThat().contains("Expected a freshly synthesized, unconsumed PSI element")
+      val childOfAdoptedErr =
+        LoggedErrorProcessor.executeAndReturnLoggedError {
+          GroovyDslUtil.replaceWithSynthesized(targetStmt.rValue!!, firstAdopted.rValue!!)
+        }
+      assertThat(childOfAdoptedErr)
+        .hasMessageThat()
+        .contains("Expected a freshly synthesized, unconsumed PSI element")
       assertThat(firstAdopted.text).isEqualTo("reused = SynthRef.ONCE")
 
-      // 6. Reusing a synthesized expression in emplaceElement* list helpers must fail on the second call.
+      // 6. Reusing a synthesized expression in emplaceElement* list helpers must fail on the second
+      // call.
       val synthListItem = factory.createExpressionFromText("ListRef.TWO")
       val firstListInserted = GroovyDslUtil.emplaceElementToFrontOfList(itemsList, synthListItem)
-      val reuseListErr = LoggedErrorProcessor.executeAndReturnLoggedError {
-        GroovyDslUtil.emplaceElementIntoList(firstListInserted, itemsList, synthListItem)
-      }
-      assertThat(reuseListErr).hasMessageThat().contains("Expected a freshly synthesized, unconsumed PSI element")
+      val reuseListErr =
+        LoggedErrorProcessor.executeAndReturnLoggedError {
+          GroovyDslUtil.emplaceElementIntoList(firstListInserted, itemsList, synthListItem)
+        }
+      assertThat(reuseListErr)
+        .hasMessageThat()
+        .contains("Expected a freshly synthesized, unconsumed PSI element")
     }
 
     PsiDocumentManager.getInstance(myProject).commitAllDocuments()
     runWriteCommandAction(myProject) { FileDocumentManager.getInstance().saveAllDocuments() }
 
     assertNoReferenceCopyOrDynamicResolve()
-    assertThat(loadNormalizedText(mySubModuleBuildFile))
-      .isEqualTo(
-        """
-        ext {
-            foreign = ForeignRef.VALUE
-        }
-        """
-          .trimIndent()
-      )
-    assertThat(itemsList.initializers.map { it.text }).containsExactly("ListRef.TWO", "ListRef.TWO", "ListRef.ONE").inOrder()
+    verifyFileContents(mySubModuleBuildFile, TestFile.ADOPT_AND_REPLACE_HELPERS_SUB)
+    assertThat(itemsList.initializers.map { it.text })
+      .containsExactly("ListRef.TWO", "ListRef.TWO", "ListRef.ONE")
+      .inOrder()
   }
 
   @Test
   fun testSetMethodExpressionListAndMapCreationAndMutation() {
     assumeTrue(!isKotlinScript)
 
-    writeToBuildFile(
-      """
-      ext {
-          convertedList.set(InitialRefs.SCALAR_A)
-          convertedMap.set(InitialRefs.SCALAR_B)
-      }
-      """
-        .trimIndent()
-    )
+    writeToBuildFile(TestFile.SET_METHOD_EXPRESSION_LIST_AND_MAP)
 
     val projectModel = projectBuildModel
     val buildModel = projectModel.projectBuildModel!!
     val fileDsl = buildModel.dslElement()
     val extDsl = buildModel.ext().dslElement()
 
-    // Converting existing `.set(...)` properties to list/map preserves `SET_METHOD` syntax on the replacement element.
+    // Converting existing `.set(...)` properties to list/map preserves `SET_METHOD` syntax on the
+    // replacement element.
     val convertedList = buildModel.ext().findProperty("convertedList").convertToEmptyList()
     val convertedMap = buildModel.ext().findProperty("convertedMap").convertToEmptyMap()
     convertedList.addListValue()!!.setValue(RawText("ListRef.ONE", "ListRef.ONE"))
     convertedMap.getMapValue("first")!!.setValue(RawText("MapRef.ONE", "MapRef.ONE"))
 
-    // Direct `GradleDslExpressionList` and `GradleDslExpressionMap` elements created with `SET_METHOD` syntax.
+    // Direct `GradleDslExpressionList` and `GradleDslExpressionMap` elements created with
+    // `SET_METHOD` syntax.
     val directSetList =
       GradleDslExpressionList(fileDsl, GradleNameElement.create("directSetList"), true).apply {
         elementType = REGULAR
@@ -873,7 +730,8 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
       assertThat(extDsl.getPropertyElement("convertedMap", GradleDslExpressionMap::class.java))
         .isSameAs(convertedMap.rawElement)
 
-      // Subsequent mutations on the created `SET_METHOD` list/map must update the inner `GrListOrMap` in place.
+      // Subsequent mutations on the created `SET_METHOD` list/map must update the inner
+      // `GrListOrMap` in place.
       convertedList.addListValue()!!.setValue(RawText("ListRef.TWO", "ListRef.TWO"))
       convertedMap.getMapValue("second")!!.setValue(RawText("MapRef.TWO", "MapRef.TWO"))
       directSetList.addNewExpression(
@@ -887,17 +745,28 @@ class GroovyDslWriterTest : GradleFileModelTestCase() {
     }
     assertNoReferenceCopyOrDynamicResolve()
 
-    assertThat(loadNormalizedText(myBuildFile).trimEnd())
-      .isEqualTo(
-        """
-        ext {
-            convertedList.set([ListRef.ONE, ListRef.TWO])
-            convertedMap.set([first: MapRef.ONE, second: MapRef.TWO])
-        }
-        directSetList.set([DirectRef.ONE, DirectRef.TWO])
-        directSetMap.set([firstKey: DirectRef.VAL_ONE, secondKey: DirectRef.VAL_TWO])
-        """
-          .trimIndent()
-      )
+    verifyFileContents(myBuildFile, TestFile.SET_METHOD_EXPRESSION_LIST_AND_MAP_EXPECTED)
+  }
+
+  enum class TestFile(val path: @SystemDependent String) : TestFileName {
+    ADOPT_AND_REPLACE_HELPERS("adoptAndReplaceHelpers"),
+    ADOPT_AND_REPLACE_HELPERS_SUB("adoptAndReplaceHelpersSub"),
+    NEW_PROJECT_TEMPLATE_CATALOG("newProjectTemplateCatalog.toml"),
+    NEW_PROJECT_TEMPLATE_ROOT_EXPECTED("newProjectTemplateRootExpected"),
+    NEW_PROJECT_TEMPLATE_SUB_MODULE_EXPECTED("newProjectTemplateSubModuleExpected"),
+    NEW_PROJECT_TEMPLATE_SUB_MODULE_REPARSED_EXPECTED(
+      "newProjectTemplateSubModuleReparsedExpected"
+    ),
+    NON_LITERAL_EXPRESSION_LIST_MUTATIONS("nonLiteralExpressionListMutations"),
+    NON_LITERAL_EXPRESSION_LIST_MUTATIONS_EXPECTED("nonLiteralExpressionListMutationsExpected"),
+    SET_METHOD_EXPRESSION_LIST_AND_MAP("setMethodExpressionListAndMap"),
+    SET_METHOD_EXPRESSION_LIST_AND_MAP_EXPECTED("setMethodExpressionListAndMapExpected"),
+    STATEMENT_SYNTAXES("statementSyntaxes"),
+    STATEMENT_SYNTAXES_EXPECTED("statementSyntaxesExpected"),
+    STATEMENT_SYNTAXES_REPARSED_EXPECTED("statementSyntaxesReparsedExpected");
+
+    override fun toFile(basePath: @SystemDependent String, extension: String): File {
+      return super.toFile("$basePath/groovyDslWriter/$path", extension)
+    }
   }
 }

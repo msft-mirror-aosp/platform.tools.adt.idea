@@ -1,0 +1,4 @@
+ext {
+    convertedList.set(InitialRefs.SCALAR_A)
+    convertedMap.set(InitialRefs.SCALAR_B)
+}

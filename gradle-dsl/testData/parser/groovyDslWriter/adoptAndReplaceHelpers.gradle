@@ -1,0 +1,5 @@
+ext {
+    existing = LiveRef.ORIGINAL
+    target = LiveRef.TARGET
+    items = [ListRef.ONE]
+}
