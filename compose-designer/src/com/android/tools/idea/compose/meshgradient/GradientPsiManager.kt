@@ -490,8 +490,8 @@ class GradientPsiManager(private val project: Project) {
     var hasStops = false
 
     /**
-     * The explicitly passed arguments, mapped to whether they can be overwritten when edited: their value was statically evaluated without
-     * depending on runtime state (e.g. animations) or resolving a property reference.
+     * The explicitly passed arguments, mapped to whether their value could be statically evaluated. Values that depend on runtime state
+     * (e.g. animations) are not considered evaluated, as the editor cannot update them without removing that dependency.
      */
     val arguments = mutableMapOf<String, Pair<KtValueArgument, Boolean>>()
 
@@ -503,7 +503,7 @@ class GradientPsiManager(private val project: Project) {
       val argument = callExpr.findValueArgument(name, if (hasStops) -1 else index) ?: return default
       val evaluation = ValueEvaluation(onDynamic, importsByFile)
       val value = argument.getArgumentExpression()?.let { parse(it, evaluation.ctx) }
-      arguments[name] = argument to (value != null && !evaluation.isDynamic && !evaluation.resolvesProperty)
+      arguments[name] = argument to (value != null && !evaluation.isDynamic)
       return value ?: default.also { onDynamic() }
     }
   }
@@ -1412,14 +1412,11 @@ class GradientPsiManager(private val project: Project) {
 
   /**
    * The static evaluation of a single value. Notifications that it depends on dynamic or unresolvable values are recorded in [isDynamic]
-   * and forwarded to [parentOnDynamic]; [resolvesProperty] records whether any [KtProperty] was entered during evaluation.
+   * and forwarded to [parentOnDynamic].
    */
   private class ValueEvaluation(private val parentOnDynamic: () -> Unit, importsByFile: ImportsByFile) {
     var isDynamic = false
       private set
-
-    val resolvesProperty: Boolean
-      get() = ctx.hasEnteredProperty
 
     val ctx =
       EvalContext(
@@ -1445,9 +1442,6 @@ class GradientPsiManager(private val project: Project) {
     private val activeProperties = mutableSetOf<KtProperty>()
     private val frames = ArrayDeque<MutableList<KtProperty>>()
     private var steps = 0
-
-    var hasEnteredProperty = false
-      private set
 
     /** Flags the evaluated expression as depending on dynamic or unresolvable values. */
     fun markDynamic() {
@@ -1479,7 +1473,6 @@ class GradientPsiManager(private val project: Project) {
     /** Marks [property] as being evaluated. Returns false if it already is, which means its value depends on itself. */
     fun enter(property: KtProperty): Boolean {
       check(frames.isNotEmpty()) { "Properties can only be entered within a frame" }
-      hasEnteredProperty = true
       if (!activeProperties.add(property)) return false
       frames.last().add(property)
       return true

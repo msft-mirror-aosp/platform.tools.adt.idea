@@ -258,7 +258,7 @@ class GradientBrushWriteBackTest {
   }
 
   @Test
-  fun argumentEditWithVariableReferenceFailsWhileUnchangedReferenceIsKept() {
+  fun unchangedVariableReferenceInArgumentIsKeptWhileEditedOneIsReplaced() {
     val file =
       projectRule.fixture.addFileToProject(
         "src/test/Brushes.kt",
@@ -277,16 +277,47 @@ class GradientBrushWriteBackTest {
       assertFalse(dialog.state.hasDynamicOrUnresolvedValues)
     }
 
-    assertEditFails(file, "linearGradient", message("gradient.editor.error.argument.unresolved", ARG_START)) { start = Offset(1f, 1f) }
-
-    assertEditFails(file, "linearGradient", message("gradient.editor.error.argument.unresolved", ARG_START)) {
-      start = Offset(1f, 1f)
-      addColorStop(Color.Green)
-    }
+    assertEquals(GradientWriteResult.Written, edit(file, "linearGradient") { end = Offset(20f, 20f) })
+    assertEquals(
+      "Brush.linearGradient(0f to Color.Red, 1f to Color.Blue, start = myStart, end = Offset(20f, 20f))",
+      file.brushText(),
+    )
 
     assertEquals(GradientWriteResult.Written, edit(file, "linearGradient") { addColorStop(Color.Green) })
     assertEquals(
-      "Brush.linearGradient(0f to Color.Red, 0.5f to Color(0xFF00FF00), 1f to Color.Blue, start = myStart, end = Offset(10f, 10f))",
+      "Brush.linearGradient(0f to Color.Red, 0.5f to Color(0xFF00FF00), 1f to Color.Blue, start = myStart, end = Offset(20f, 20f))",
+      file.brushText(),
+    )
+
+    assertEquals(GradientWriteResult.Written, edit(file, "linearGradient") { start = Offset(1f, 1f) })
+    assertEquals(
+      "Brush.linearGradient(0f to Color.Red, 0.5f to Color(0xFF00FF00), 1f to Color.Blue, start = Offset(1f, 1f), end = Offset(20f, 20f))",
+      file.brushText(),
+    )
+    assertTrue("Should keep myStart declaration intact", file.currentText().contains("val myStart = Offset(0f, 0f)"))
+  }
+
+  @Test
+  fun horizontalGradientWithVariableAxisConvertsToLinearKeepingUnchangedVariable() {
+    val file =
+      projectRule.fixture.addFileToProject(
+        "src/test/Brushes.kt",
+        """
+        package test
+
+        $DEFAULT_IMPORTS
+
+        val myStartX = 10f
+        val brush = Brush.horizontalGradient(listOf(Color.Red, Color.Blue), startX = myStartX, endX = 100f)
+        """
+          .trimIndent(),
+      ) as KtFile
+
+    val result = edit(file, "horizontalGradient") { end = Offset(100f, 50f) }
+
+    assertEquals(GradientWriteResult.Written, result)
+    assertEquals(
+      "Brush.linearGradient(listOf(Color.Red, Color.Blue), start = Offset(myStartX, 0f), end = Offset(100f, 50f))",
       file.brushText(),
     )
   }
