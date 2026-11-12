@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -106,12 +107,45 @@ public class EmulatorQuickbootSnapshotGenerator {
              Emulator.BootMode.COLD_BOOT_AND_SNAPSHOT_SAVE)) {
       emulator.waitForBoot();
       adb.waitForDevice(emulator);
+      waitForIdle(adb, emulator);
     }
 
     Path androidHome = fileSystem.getAndroidHome();
     Path avdHome = androidHome.resolve("avd");
     zip(avdHome, outputZip, avdName + ".avd", avdName + ".ini");
     System.out.println("Quickboot snapshot successfully saved to: " + outputZip.toAbsolutePath());
+  }
+
+  /**
+   * Waits until the post-boot work of the device has finished, so that the snapshot doesn't capture work in progress: after every snapshot
+   * load, the clock jumps forward to the current time, so the timeouts of operations in progress expire right away. For example, a snapshot
+   * saved while System UI was still starting a service made System UI ANR 11 s after almost every load, and its "System UI isn't
+   * responding" dialog took the window focus from the apps under test.
+   */
+  private static void waitForIdle(Adb adb, Emulator emulator) throws Exception {
+    runUntilMarker(adb, emulator, "am wait-for-broadcast-idle && echo BROADCASTS_IDLE", "BROADCASTS_IDLE", 5);
+    // Services that are starting (or binding, or stopping) are listed with a non-zero executeNesting. They come in bursts after boot, so wait
+    // until there have been none for 10 s in a row. If they never settle, print the busy services, so the failure says which ones.
+    String waitForServices =
+      "idle=0; for i in $(seq 1 300); do"
+      + " if dumpsys activity services 2>/dev/null | grep -q 'executeNesting=[1-9]'; then idle=0; else idle=$((idle+1)); fi;"
+      + " [ $idle -ge 10 ] && { echo SERVICES_IDLE; exit 0; }; sleep 1; done;"
+      + " echo 'Services still busy after 300 s:';"
+      // Each service is listed as a "* ServiceRecord{...}" line followed by its fields, such as executeNesting.
+      + " dumpsys activity services 2>/dev/null | while read -r line; do case \"$line\" in"
+      + " *ServiceRecord{*) service=$line;; *executeNesting=[1-9]*) echo \"$service: $line\";; esac; done;"
+      + " exit 1";
+    runUntilMarker(adb, emulator, waitForServices, "SERVICES_IDLE", 6);
+  }
+
+  /**
+   * Runs {@code script} in a shell on the device, and throws unless it prints {@code marker} within {@code timeoutMinutes}, e.g. because it
+   * failed or hung, so that the build fails instead of caching a snapshot of a device that isn't idle.
+   */
+  private static void runUntilMarker(Adb adb, Emulator emulator, String script, String marker, long timeoutMinutes) throws Exception {
+    try (Adb command = adb.runCommand(new String[] {"shell", script}, emulator)) {
+      command.waitForLog(".*" + marker + ".*", timeoutMinutes, TimeUnit.MINUTES);
+    }
   }
 
   public static void zip(Path sourceDir, Path zipFile, String... entries) throws IOException {
