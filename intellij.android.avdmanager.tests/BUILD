@@ -22,6 +22,7 @@ iml_module(
         "//tools/adt/idea/android-concurrency:intellij.android.concurrency.tests",
         "//tools/base/repository:studio.android.sdktools.repository.tests",
         "//tools/base/sdklib:studio.android.sdktools.sdklib.tests",
+        "//tools/base/adblib:studio.android.sdktools.adblib.tests",
         "//tools/base/device-provisioner:studio.android.sdktools.device-provisioner.tests",
     ],
     test_friends = ["//tools/adt/idea/android:intellij.android.core"],

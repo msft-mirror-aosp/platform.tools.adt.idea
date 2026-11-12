@@ -23,7 +23,10 @@ import com.android.repository.api.RepoPackage
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.deviceprovisioner.DeviceActionCanceledException
 import com.android.sdklib.deviceprovisioner.DeviceActionException
+import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceType
+import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
+import com.android.sdklib.deviceprovisioner.awaitReady
 import com.android.sdklib.deviceprovisioner.deviceType
 import com.android.sdklib.devices.Abi
 import com.android.sdklib.internal.avd.AvdBuilder
@@ -41,6 +44,7 @@ import com.android.tools.idea.avdmanager.AccelerationErrorSolution.SolutionCode
 import com.android.tools.idea.avdmanager.AvdManagerConnection.Companion.NULL_CONNECTION
 import com.android.tools.idea.avdmanager.DeviceSkinUpdater.updateSkin
 import com.android.tools.idea.avdmanager.emulatorcommand.EmulatorCommandBuilder
+import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.log.LogWrapper
 import com.android.tools.idea.progress.StudioLoggerProgressIndicator
@@ -51,18 +55,22 @@ import com.android.utils.PathUtils
 import com.intellij.credentialStore.isFulfilled
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.execution.process.ProcessEvent
+import com.intellij.execution.process.ProcessHandler
+import com.intellij.execution.process.ProcessListener
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
+import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.platform.ide.progress.withBackgroundProgress
-import com.intellij.platform.util.progress.reportProgress
+import com.intellij.platform.util.progress.reportProgressScope
 import com.intellij.platform.util.progress.withProgressText
 import com.intellij.util.net.ProxyConfiguration
 import com.intellij.util.net.ProxyConfiguration.StaticProxyConfiguration
@@ -74,14 +82,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 import java.util.WeakHashMap
-import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 import kotlin.io.path.listDirectoryEntries
+import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -143,13 +151,92 @@ constructor(
     }
   }
 
-  /** Starts the AVD, after running checks and possibly resolving some errors. */
+  /** Starts the AVD, after running checks and possibly resolving some errors, and waits for it to finish booting. */
   open suspend fun startAvd(
     project: Project?,
     avd: AvdInfo,
     forceLaunchInToolWindow: Boolean = false,
     bootMode: BootMode = BootMode.fromProperties(avd.properties),
   ) {
+    val processHandler = startAvdProcess(project, avd, forceLaunchInToolWindow, bootMode)
+    if (project != null) {
+      val deviceHandle = project.findDeviceHandle(avd)
+      if (deviceHandle == null) {
+        IJ_LOG.warn("No DeviceHandle found for AVD ${avd.dataFolderPath}; not waiting for boot to complete.")
+        return
+      }
+      awaitAvdBoot(project, deviceHandle, processHandler)
+    }
+  }
+
+  /** Show a progress indicator and wait for the device to either boot or terminate, or timeout after 5 minutes if neither happens. */
+  private suspend fun awaitAvdBoot(project: Project, deviceHandle: DeviceHandle, processHandler: ProcessHandler) {
+    // Launch each monitor in parallel, and cancel the others via scopeContext when one happens.
+    coroutineScope {
+      val scopeContext = coroutineContext
+      // Show fake progress indicator
+      launch {
+        withBackgroundProgress(project, "Launching emulator") {
+          reportProgressScope(80) { reporter ->
+            withProgressText("Starting AVD...") {
+              repeat(80) {
+                reporter.itemStep { delay(100) }
+              }
+            }
+          }
+        }
+      }
+      // Wait for boot
+      launch {
+        deviceHandle.awaitReady()
+        scopeContext.cancelChildren()
+      }
+      // Wait for termination
+      launch {
+        if (processHandler.awaitTermination() != 0) {
+          throw DeviceActionException("The emulator process for AVD ${deviceHandle.state.properties.title} has terminated.")
+        }
+        scopeContext.cancelChildren()
+      }
+      // Wait for timeout
+      launch {
+        delay(5.minutes)
+        val msg = "Timed out after 5 minutes waiting for emulator to come online."
+        IJ_LOG.warn(msg)
+        throw DeviceActionException(msg)
+      }
+    }
+  }
+
+  private suspend fun ProcessHandler.awaitTermination(): Int {
+    val result = CompletableDeferred<Int>()
+    val listener =
+      object : ProcessListener {
+        override fun processTerminated(event: ProcessEvent) {
+          result.complete(event.exitCode)
+        }
+      }
+    addProcessListener(listener)
+    try {
+      exitCode?.let { result.complete(it) }
+      return result.await()
+    } finally {
+      removeProcessListener(listener)
+    }
+  }
+
+  private fun Project.findDeviceHandle(avd: AvdInfo): DeviceHandle? =
+    service<DeviceProvisionerService>().deviceProvisioner.devices.value.find {
+      (it.state.properties as? LocalEmulatorProperties)?.avdPath == avd.dataFolderPath
+    }
+
+  /** Starts the AVD process, after running checks and possibly resolving some errors. */
+  protected open suspend fun startAvdProcess(
+    project: Project?,
+    avd: AvdInfo,
+    forceLaunchInToolWindow: Boolean = false,
+    bootMode: BootMode = BootMode.fromProperties(avd.properties),
+  ): ProcessHandler {
     avdManager ?: throw DeviceActionException("No Android SDK Found")
     checkNotNull(sdkHandler)
 
@@ -165,7 +252,7 @@ constructor(
       updateSkin(skin)
     }
 
-    withContext(Dispatchers.Default) {
+    return withContext(Dispatchers.Default) {
       val code = checkAcceleration(sdkHandler)
       continueToStartAvdIfAccelerationErrorIsNotBlocking(code, project, avd, forceLaunchInToolWindow, bootMode)
     }
@@ -177,7 +264,7 @@ constructor(
     avd: AvdInfo,
     forceLaunchInToolWindow: Boolean,
     bootMode: BootMode,
-  ) {
+  ): ProcessHandler {
     if (!code.problem.isEmpty()) {
       IJ_LOG.warn(String.format("Launching %s: %s: %s", avd.name, code, code.problem))
     }
@@ -208,91 +295,62 @@ constructor(
   private fun isQemuNextRequired(avd: AvdInfo) =
     QemuNext.isRequired() && avd.androidVersion.androidApiLevel.majorVersion >= 37 && avd.deviceType() == DeviceType.HANDHELD
 
-  private suspend fun continueToStartAvd(project: Project?, avd: AvdInfo, forceLaunchInToolWindow: Boolean, bootMode: BootMode): Unit =
-    coroutineScope {
-      // Check AVD-specific error conditions
-      if (isQemuNextRequired(avd)) {
-        if (sdkHandler?.getEmulatorPackage(REPO_LOG, requireLatestEmulator = true) == null) {
-          return@coroutineScope handleAccelerationError(
-            project,
-            avd,
-            forceLaunchInToolWindow,
-            bootMode,
-            AccelerationErrorCode.QEMU_NEXT_REQUIRED,
-          )
-        }
-      }
-
-      var avd = avd
-      val emulator = emulator
-      if (emulator == null) {
-        IJ_LOG.error("No emulator binary found!")
-        throw DeviceActionException("No emulator installed")
-      }
-
-      val emulatorBinary = emulator.emulatorBinary
-      if (emulatorBinary == null) {
-        IJ_LOG.error("No emulator binary found!")
-        throw DeviceActionException("No emulator binary found")
-      }
-
-      val avdManager = checkNotNull(avdManager)
-      avd = avdManager.reloadAvd(avd) // Reload the AVD in case it was modified externally.
-      val avdName = avd.displayName
-
-      val pid = avdManager.getPid(avd)
-      if (pid != 0L) {
-        if (ProcessHandleProvider.getProcessHandle(pid)?.isAlive == true) {
-          // TODO: Bring the running emulator's window to the front.
-          throw AvdIsAlreadyRunningException(avd.displayName, pid)
-        } else {
-          avdManager.deleteLockFiles(avd)
-        }
-      }
-
-      val commandLine = newEmulatorCommand(project, emulatorBinary, avd, forceLaunchInToolWindow, bootMode)
-      val runner = EmulatorRunner(commandLine, avd)
-
-      val processHandler =
-        try {
-          runner.start()
-        } catch (e: ExecutionException) {
-          IJ_LOG.error("Error launching emulator", e)
-          throw DeviceActionException(String.format("Error launching emulator %1\$s", avdName), e)
-        }
-
-      // It takes >= 8 seconds to start the Emulator. Display a small progress indicator; otherwise,
-      // it seems like the action wasn't invoked.
-      val progressJob = launch {
-        if (project != null) {
-          withBackgroundProgress(project, "Launching emulator") {
-            reportProgress(80) { reporter ->
-              withProgressText("Starting AVD...") {
-                repeat(80) {
-                  reporter.itemStep { delay(100) }
-                  if (processHandler.isProcessTerminated) {
-                    return@withProgressText
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      try {
-        EmulatorConnectionListener.getDeviceForEmulator(
-            project,
-            avd.displayName,
-            avd.dataFolderPath.toString(),
-            processHandler,
-            5,
-            TimeUnit.MINUTES,
-          )
-          .await()
-      } finally {
-        progressJob.cancel()
+  private suspend fun continueToStartAvd(
+    project: Project?,
+    avd: AvdInfo,
+    forceLaunchInToolWindow: Boolean,
+    bootMode: BootMode,
+  ): ProcessHandler {
+    // Check AVD-specific error conditions
+    if (isQemuNextRequired(avd)) {
+      if (sdkHandler?.getEmulatorPackage(REPO_LOG, requireLatestEmulator = true) == null) {
+        return handleAccelerationError(
+          project,
+          avd,
+          forceLaunchInToolWindow,
+          bootMode,
+          AccelerationErrorCode.QEMU_NEXT_REQUIRED,
+        )
       }
     }
+
+    var avd = avd
+    val emulator = emulator
+    if (emulator == null) {
+      IJ_LOG.error("No emulator binary found!")
+      throw DeviceActionException("No emulator installed")
+    }
+
+    val emulatorBinary = emulator.emulatorBinary
+    if (emulatorBinary == null) {
+      IJ_LOG.error("No emulator binary found!")
+      throw DeviceActionException("No emulator binary found")
+    }
+
+    val avdManager = checkNotNull(avdManager)
+    avd = avdManager.reloadAvd(avd) // Reload the AVD in case it was modified externally.
+    val avdName = avd.displayName
+
+    val pid = avdManager.getPid(avd)
+    if (pid != 0L) {
+      if (ProcessHandleProvider.getProcessHandle(pid)?.isAlive == true) {
+        // TODO: Bring the running emulator's window to the front.
+        throw AvdIsAlreadyRunningException(avd.displayName, pid)
+      } else {
+        avdManager.deleteLockFiles(avd)
+      }
+    }
+
+    val commandLine = newEmulatorCommand(project, emulatorBinary, avd, forceLaunchInToolWindow, bootMode)
+    val runner = EmulatorRunner(commandLine, avd)
+
+    return try {
+      runner.start()
+    } catch (e: ExecutionException) {
+      IJ_LOG.error("Error launching emulator", e)
+      throw DeviceActionException(String.format("Error launching emulator %1\$s", avdName), e)
+    }
+  }
 
   protected open fun newEmulatorCommand(
     project: Project?,
@@ -334,7 +392,7 @@ constructor(
     launchInToolWindow: Boolean,
     bootMode: BootMode,
     code: AccelerationErrorCode,
-  ) {
+  ): ProcessHandler {
     if (code.solution == SolutionCode.NONE) {
       throw DeviceActionException("${code.problem}\n\n${code.solutionMessage}\n")
     }
@@ -344,7 +402,7 @@ constructor(
       throw DeviceActionCanceledException("Could not start AVD")
     }
 
-    tryFixingAccelerationError(project, info, launchInToolWindow, bootMode, code)
+    return tryFixingAccelerationError(project, info, launchInToolWindow, bootMode, code)
   }
 
   private suspend fun showAccelerationErrorDialog(code: AccelerationErrorCode, project: Project?): Int =
@@ -373,7 +431,7 @@ constructor(
     launchInToolWindow: Boolean,
     bootMode: BootMode,
     code: AccelerationErrorCode,
-  ) {
+  ): ProcessHandler {
     val changeWasMade = CompletableDeferred<Boolean>()
 
     ApplicationManager.getApplication()
@@ -382,7 +440,7 @@ constructor(
       )
 
     if (changeWasMade.await()) {
-      startAvd(project, avd, launchInToolWindow, bootMode)
+      return startAvdProcess(project, avd, launchInToolWindow, bootMode)
     } else {
       throw DeviceActionCanceledException("Retry after fixing problem by hand")
     }
