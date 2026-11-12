@@ -131,7 +131,9 @@ class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Du
    */
   fun clearCache() {
     synchronized(lock) {
-      repoMap.clear()
+      // Keep the repositories, so that their disposal is not registered again when their libraries are added back: every registration adds
+      // a Disposer child to the repository. Only drop their packages and the classes generated so far.
+      repoMap.values.forEach { it.clear() }
       packages = createPackageCache()
     }
   }
@@ -150,9 +152,19 @@ class ResourceClassRegistry @TestOnly constructor(private val packageTimeout: Du
     }
   }
 
-  private class ResourceRepositoryInfo(repo: ResourceRepository, idManager: ResourceIdManager) {
-    val resourceClassGenerator: ResourceClassGenerator = ResourceClassGenerator.create(idManager, repo)
+  private class ResourceRepositoryInfo(private val repo: ResourceRepository, private val idManager: ResourceIdManager) {
+    @GuardedBy("ResourceClassRegistry.lock")
+    var resourceClassGenerator: ResourceClassGenerator = ResourceClassGenerator.create(idManager, repo)
+      private set
+
     @GuardedBy("ResourceClassRegistry.lock") val packages = mutableSetOf<String>()
+
+    /** Drops the registered packages and the classes generated so far. */
+    @GuardedBy("ResourceClassRegistry.lock")
+    fun clear() {
+      packages.clear()
+      resourceClassGenerator = ResourceClassGenerator.create(idManager, repo)
+    }
   }
 
   companion object {

@@ -16,6 +16,7 @@
 package com.android.tools.idea.res
 
 import com.android.ide.common.rendering.api.ResourceNamespace
+import com.android.tools.idea.testing.DisposerExplorer
 import com.android.tools.res.CacheableResourceRepository
 import com.android.tools.res.ResourceRepositoryManager
 import com.android.tools.res.ids.ResourceIdManagerBase
@@ -204,5 +205,20 @@ class ResourceClassRegistryTest {
     Disposer.dispose(disposableRepository as Disposable)
 
     assertThat(registry.addLibrariesAndFindClassDefinition(disposableRepository, idManager, listOf(PKG_1), "$PKG_1.R")).isNull()
+  }
+
+  @Test
+  fun clearCache_keepsRepositoryRegistered() {
+    whenever(manager.appResources).thenReturn(disposableRepository)
+    registry.addLibrary(disposableRepository, idManager, PKG_1)
+    registry.clearCache()
+    assertThat(registry.findClassDefinition("$PKG_1.R", manager)).isNull()
+
+    // Adding the library back reuses the repository registration, and disposing the repository still removes it.
+    registry.addLibrary(disposableRepository, idManager, PKG_1)
+    assertThat(DisposerExplorer.getChildren(disposableRepository as Disposable)).hasSize(1)
+    assertThat(registry.findClassDefinition("$PKG_1.R", manager)).isNotNull()
+    Disposer.dispose(disposableRepository as Disposable)
+    assertThat(registry.findClassDefinition("$PKG_1.R", manager)).isNull()
   }
 }
