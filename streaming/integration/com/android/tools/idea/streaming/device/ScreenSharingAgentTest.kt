@@ -48,6 +48,7 @@ import java.awt.Component
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.event.KeyEvent
+import java.awt.event.KeyEvent.VK_CONTROL
 import java.awt.event.KeyEvent.VK_SHIFT
 import java.nio.file.Files
 import java.util.regex.Pattern
@@ -267,6 +268,68 @@ class ScreenSharingAgentTest {
           PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
           waitForLog(path.last().releaseLog(), INPUT_TIMEOUT)
         }
+      }
+    }
+  }
+
+  @Test
+  fun touchEvents_multitouch() {
+    waitFrames(1)
+    assertThat(deviceView.projectionRectangle).isNotNull()
+
+    val firstTouch = Point(90, 90)
+    val p1 = Point(60, 160)
+    val p2 = Point(80, 180)
+    runEventLogger {
+      adb.logcat {
+        executeWithRetries<InterruptedException>(LONG_DEVICE_OPERATION_TIMEOUT) {
+          fakeUi.mouse.click(firstTouch.x, firstTouch.y)
+          PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+          waitForLogs(firstTouch.clickLogs(), INPUT_TIMEOUT)
+        }
+
+        fakeUi.keyboard.setFocus(deviceView)
+        fakeUi.mouse.moveTo(p1)
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        waitForLogs(
+          listOf(
+            ".*: MOTION EVENT: ACTION_HOVER_ENTER ${p1.coordinates} p=0\\.0",
+            ".*: MOTION EVENT: ACTION_HOVER_MOVE ${p1.coordinates} p=0\\.0",
+          ),
+          INPUT_TIMEOUT,
+        )
+
+        fakeUi.keyboard.press(VK_CONTROL)
+        try {
+          fakeUi.mouse.press(p1)
+          try {
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            waitForLogs(
+              listOf(
+                ".*: MOTION EVENT: ACTION_HOVER_EXIT ${p1.coordinates} p=0\\.0",
+                ".*: TOUCH EVENT: ACTION_DOWN ${p1.coordinates} p=1\\.0",
+                ".*: TOUCH EVENT: ACTION_POINTER_DOWN\\(1\\) ${p1.coordinates} p=1\\.0 ${p1.mirroredCoordinates} p=1\\.0",
+              ),
+              INPUT_TIMEOUT,
+            )
+
+            fakeUi.mouse.dragTo(p2)
+            PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+            waitForLog(".*: TOUCH EVENT: ACTION_MOVE ${p2.coordinates} p=1\\.0 ${p2.mirroredCoordinates} p=1\\.0", INPUT_TIMEOUT)
+          } finally {
+            fakeUi.mouse.release()
+          }
+        } finally {
+          fakeUi.keyboard.release(VK_CONTROL)
+        }
+        PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+        waitForLogs(
+          listOf(
+            ".*: TOUCH EVENT: ACTION_POINTER_UP\\(1\\) ${p2.coordinates} p=1\\.0 ${p2.mirroredCoordinates} p=0\\.0",
+            ".*: TOUCH EVENT: ACTION_UP ${p2.coordinates} p=1\\.0",
+          ),
+          INPUT_TIMEOUT,
+        )
       }
     }
   }
@@ -517,7 +580,7 @@ class ScreenSharingAgentTest {
 
     private fun Point.dragToLog(): String = logForTouchEventAction("ACTION_MOVE")
 
-    private fun Point.logForTouchEventAction(action: String): String = ".*: TOUCH EVENT: $action $coordinates"
+    private fun Point.logForTouchEventAction(action: String): String = ".*: TOUCH EVENT: $action $coordinates p=1\\.0"
 
     private fun Point.scrollLog(v: Float = 0.0f, h: Float = 0.0f): String = ".*: MOTION EVENT: ACTION_SCROLL $coordinates v=$v h=$h"
 
@@ -525,6 +588,14 @@ class ScreenSharingAgentTest {
       get() {
         val devicePoint = deviceView.toDeviceDisplayCoordinates(this)!!
         return Pattern.quote("(${devicePoint.x.toDouble()},${devicePoint.y.toDouble()})")
+      }
+
+    private val Point.mirroredCoordinates: String
+      get() {
+        val devicePoint = deviceView.toDeviceDisplayCoordinates(this)!!
+        val mirroredX = (deviceView.deviceDisplaySize.width - devicePoint.x).toDouble()
+        val mirroredY = (deviceView.deviceDisplaySize.height - devicePoint.y).toDouble()
+        return Pattern.quote("($mirroredX,$mirroredY)")
       }
 
     private fun waitFrames(numFrames: Int) {

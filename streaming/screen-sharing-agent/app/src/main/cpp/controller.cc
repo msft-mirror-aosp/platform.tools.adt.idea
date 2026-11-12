@@ -562,6 +562,7 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
       event.source = AINPUT_SOURCE_STYLUS | AINPUT_SOURCE_TOUCHSCREEN;
     }
 
+    auto action_code = action & AMOTION_EVENT_ACTION_MASK;
     for (auto& pointer: message.pointers()) {
       JObject properties = pointer_properties_.GetElement(jni_, event.pointer_count);
       pointer_helper_->SetPointerId(properties, pointer.pointer_id);
@@ -571,8 +572,11 @@ void Controller::ProcessMotionEvent(const MotionEventMessage& message) {
       pointer_helper_->ClearPointerCoords(coordinates);
       Point point = AdjustedDisplayCoordinates(pointer.x, pointer.y, display_info);
       pointer_helper_->SetPointerCoords(coordinates, point.x, point.y);
-      float pressure = action == AMOTION_EVENT_ACTION_DOWN || action == AMOTION_EVENT_ACTION_UP ||
-          action == AMOTION_EVENT_ACTION_BUTTON_PRESS || action == AMOTION_EVENT_ACTION_BUTTON_RELEASE ? 1 : 0;
+      float pressure =
+          action_code == AMOTION_EVENT_ACTION_DOWN || action_code == AMOTION_EVENT_ACTION_POINTER_DOWN ||
+          action_code == AMOTION_EVENT_ACTION_MOVE || action_code == AMOTION_EVENT_ACTION_UP ||
+          (action_code == AMOTION_EVENT_ACTION_POINTER_UP && event.pointer_count != action >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT) ||
+          action_code == AMOTION_EVENT_ACTION_BUTTON_PRESS || action_code == AMOTION_EVENT_ACTION_BUTTON_RELEASE ? 1 : 0;
       pointer_helper_->SetPointerPressure(coordinates, pressure);
       for (auto const& [axis, value]: pointer.axis_values) {
         pointer_helper_->SetAxisValue(coordinates, axis, value);

@@ -144,7 +144,7 @@ public class EventLoggingActivity extends Activity {
   private String pointersToString(MotionEvent event) {
     StringBuilder result = new StringBuilder();
     for (int i = 0; i < event.getPointerCount(); ++i) {
-      result.append(" (").append(event.getX(i)).append(",").append(event.getY(i)).append(")");
+      result.append(" (").append(event.getX(i)).append(",").append(event.getY(i)).append(") p=").append(event.getPressure(i));
     }
     return result.toString();
   }
