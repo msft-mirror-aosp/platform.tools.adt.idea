@@ -301,59 +301,60 @@ class EmulatorExtendedControlsActionGroupTest {
 
     val children = group.getChildren(actionManager)
     assertThat(children).hasLength(14)
-    val locationAction = children[0]
-    assertThat(locationAction.templatePresentation.text).isEqualTo("Location")
-    assertThat(locationAction.templatePresentation.icon).isEqualTo(StagingIcons.LOCATION)
-
-    val displaysAction = children[1]
+    var index = 0
+    val displaysAction = children[index++]
     assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
     assertThat(displaysAction.templatePresentation.icon).isEqualTo(StagingIcons.DISPLAYS)
 
-    val cellularAction = children[2]
+    val cellularAction = children[index++]
     assertThat(cellularAction.templatePresentation.text).isEqualTo("Cellular")
     assertThat(cellularAction.templatePresentation.icon).isEqualTo(StagingIcons.CELLULAR)
 
-    val batteryAction = children[3]
-    assertThat(batteryAction.templatePresentation.text).isEqualTo("Battery")
-    assertThat(batteryAction.templatePresentation.icon).isEqualTo(StagingIcons.BATTERY)
-
-    val cameraAction = children[4]
-    assertThat(cameraAction.templatePresentation.text).isEqualTo("Camera")
-    assertThat(cameraAction.templatePresentation.icon).isEqualTo(StagingIcons.CAMERA)
-
-    val phoneAction = children[5]
+    val phoneAction = children[index++]
     assertThat(phoneAction.templatePresentation.text).isEqualTo("Phone")
     assertThat(phoneAction.templatePresentation.icon).isEqualTo(StagingIcons.PHONE)
 
-    val devicePoseAction = children[6]
-    assertThat(devicePoseAction.templatePresentation.text).isEqualTo("Device Pose")
-    assertThat(devicePoseAction.templatePresentation.icon).isEqualTo(StagingIcons.DEVICE_POSE)
+    val locationAction = children[index++]
+    assertThat(locationAction.templatePresentation.text).isEqualTo("Location")
+    assertThat(locationAction.templatePresentation.icon).isEqualTo(StagingIcons.LOCATION)
 
-    val sensorsAction = children[7]
-    assertThat(sensorsAction.templatePresentation.text).isEqualTo("Sensors")
-    assertThat(sensorsAction.templatePresentation.icon).isEqualTo(StagingIcons.SENSORS)
+    val batteryAction = children[index++]
+    assertThat(batteryAction.templatePresentation.text).isEqualTo("Battery")
+    assertThat(batteryAction.templatePresentation.icon).isEqualTo(StagingIcons.BATTERY)
 
-    val fingerprintAction = children[8]
+    val fingerprintAction = children[index++]
     assertThat(fingerprintAction.templatePresentation.text).isEqualTo("Fingerprint")
     assertThat(fingerprintAction.templatePresentation.icon).isEqualTo(StagingIcons.FINGERPRINT)
 
-    val microphoneAction = children[9]
+    val microphoneAction = children[index++]
     assertThat(microphoneAction.templatePresentation.text).isEqualTo("Microphone")
     assertThat(microphoneAction.templatePresentation.icon).isEqualTo(StagingIcons.MICROPHONE)
 
-    val carDataAction = children[10]
+    val devicePoseAction = children[index++]
+    assertThat(devicePoseAction.templatePresentation.text).isEqualTo("Device Pose")
+    assertThat(devicePoseAction.templatePresentation.icon).isEqualTo(StagingIcons.DEVICE_POSE)
+
+    val sensorsAction = children[index++]
+    assertThat(sensorsAction.templatePresentation.text).isEqualTo("Sensors")
+    assertThat(sensorsAction.templatePresentation.icon).isEqualTo(StagingIcons.SENSORS)
+
+    val cameraAction = children[index++]
+    assertThat(cameraAction.templatePresentation.text).isEqualTo("Camera")
+    assertThat(cameraAction.templatePresentation.icon).isEqualTo(StagingIcons.CAMERA)
+
+    val carDataAction = children[index++]
     assertThat(carDataAction.templatePresentation.text).isEqualTo("Car Data")
     assertThat(carDataAction.templatePresentation.icon).isEqualTo(StagingIcons.CAR_DATA)
 
-    val sensorReplayAction = children[11]
+    val sensorReplayAction = children[index++]
     assertThat(sensorReplayAction.templatePresentation.text).isEqualTo("Sensor Replay")
     assertThat(sensorReplayAction.templatePresentation.icon).isEqualTo(StagingIcons.SENSOR_REPLAY)
 
-    val carRotaryAction = children[12]
+    val carRotaryAction = children[index++]
     assertThat(carRotaryAction.templatePresentation.text).isEqualTo("Car Rotary")
     assertThat(carRotaryAction.templatePresentation.icon).isEqualTo(StagingIcons.CAR_ROTARY)
 
-    val googleAssistantAction = children[13]
+    val googleAssistantAction = children[index++]
     assertThat(googleAssistantAction.templatePresentation.text).isEqualTo("Google Assistant")
     assertThat(googleAssistantAction.templatePresentation.icon).isEqualTo(StagingIcons.GOOGLE_ASSISTANT)
 

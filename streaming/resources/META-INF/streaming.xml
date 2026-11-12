@@ -289,26 +289,26 @@
               icon="AllIcons.Actions.More" text="Extended Controls" description="Show emulator extended controls"/>
       <group id="android.emulator.extended.controls" class="com.android.tools.idea.streaming.emulator.actions.EmulatorExtendedControlsActionGroup"
              icon="AllIcons.Actions.More" text="Extended Controls" description="Extended emulator controls" popup="true">
-        <action id="android.emulator.location" class="com.android.tools.idea.streaming.emulator.actions.EmulatorLocationAction"
-                icon="com.android.tools.idea.streaming.StagingIcons.LOCATION" text="Location" description="Open location controls"/>
         <action id="android.emulator.displays" class="com.android.tools.idea.streaming.emulator.actions.EmulatorDisplaysAction"
-                icon="com.android.tools.idea.streaming.StagingIcons.DISPLAYS" text="Displays" description="Configure Displays"/>
+                icon="com.android.tools.idea.streaming.StagingIcons.DISPLAYS" text="Displays" description="Configure displays"/>
         <action id="android.emulator.cellular" class="com.android.tools.idea.streaming.emulator.actions.EmulatorCellularAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.CELLULAR" text="Cellular" description="Open cellular settings"/>
-        <action id="android.emulator.battery" class="com.android.tools.idea.streaming.emulator.actions.EmulatorBatteryAction"
-                icon="com.android.tools.idea.streaming.StagingIcons.BATTERY" text="Battery" description="Open battery settings"/>
-        <action id="android.emulator.camera" class="com.android.tools.idea.streaming.emulator.actions.EmulatorCameraAction"
-                icon="com.android.tools.idea.streaming.StagingIcons.CAMERA" text="Camera" description="Open camera settings"/>
         <action id="android.emulator.phone" class="com.android.tools.idea.streaming.emulator.actions.EmulatorPhoneAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.PHONE" text="Phone" description="Open phone controls"/>
-        <action id="android.emulator.device.pose" class="com.android.tools.idea.streaming.emulator.actions.EmulatorDevicePoseAction"
-                icon="com.android.tools.idea.streaming.StagingIcons.DEVICE_POSE" text="Device Pose" description="Open device pose controls"/>
-        <action id="android.emulator.sensors" class="com.android.tools.idea.streaming.emulator.actions.EmulatorSensorsAction"
-                icon="com.android.tools.idea.streaming.StagingIcons.SENSORS" text="Sensors" description="Open virtual sensors controls"/>
+        <action id="android.emulator.location" class="com.android.tools.idea.streaming.emulator.actions.EmulatorLocationAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.LOCATION" text="Location" description="Open location controls"/>
+        <action id="android.emulator.battery" class="com.android.tools.idea.streaming.emulator.actions.EmulatorBatteryAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.BATTERY" text="Battery" description="Open battery settings"/>
         <action id="android.emulator.fingerprint" class="com.android.tools.idea.streaming.emulator.actions.EmulatorFingerprintAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.FINGERPRINT" text="Fingerprint" description="Open fingerprint controls"/>
         <action id="android.emulator.microphone" class="com.android.tools.idea.streaming.emulator.actions.EmulatorMicrophoneAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.MICROPHONE" text="Microphone" description="Open microphone controls"/>
+        <action id="android.emulator.device.pose" class="com.android.tools.idea.streaming.emulator.actions.EmulatorDevicePoseAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.DEVICE_POSE" text="Device Pose" description="Open device pose controls"/>
+        <action id="android.emulator.sensors" class="com.android.tools.idea.streaming.emulator.actions.EmulatorSensorsAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.SENSORS" text="Sensors" description="Open virtual sensors controls"/>
+        <action id="android.emulator.camera" class="com.android.tools.idea.streaming.emulator.actions.EmulatorCameraAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.CAMERA" text="Camera" description="Open camera settings"/>
         <action id="android.emulator.car.data" class="com.android.tools.idea.streaming.emulator.actions.EmulatorCarDataAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.CAR_DATA" text="Car Data" description="Open car data controls"/>
         <action id="android.emulator.sensor.replay" class="com.android.tools.idea.streaming.emulator.actions.EmulatorSensorReplayAction"
