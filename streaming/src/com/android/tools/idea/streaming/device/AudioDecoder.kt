@@ -47,7 +47,6 @@ import org.bytedeco.ffmpeg.global.avcodec.av_parser_close
 import org.bytedeco.ffmpeg.global.avcodec.av_parser_init
 import org.bytedeco.ffmpeg.global.avcodec.av_parser_parse2
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_alloc_context3
-import org.bytedeco.ffmpeg.global.avcodec.avcodec_close
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_find_decoder
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_free_context
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_open2
@@ -57,11 +56,9 @@ import org.bytedeco.ffmpeg.global.avutil.AV_NOPTS_VALUE
 import org.bytedeco.ffmpeg.global.avutil.AV_SAMPLE_FMT_S16
 import org.bytedeco.ffmpeg.global.avutil.av_frame_alloc
 import org.bytedeco.ffmpeg.global.avutil.av_frame_free
-import org.bytedeco.ffmpeg.global.avutil.av_opt_set_int
-import org.bytedeco.ffmpeg.global.avutil.av_opt_set_sample_fmt
-import org.bytedeco.ffmpeg.global.swresample.swr_alloc
-import org.bytedeco.ffmpeg.global.swresample.swr_close
+import org.bytedeco.ffmpeg.global.swresample.swr_alloc_set_opts2
 import org.bytedeco.ffmpeg.global.swresample.swr_convert_frame
+import org.bytedeco.ffmpeg.global.swresample.swr_free
 import org.bytedeco.ffmpeg.global.swresample.swr_init
 import org.bytedeco.ffmpeg.swresample.SwrContext
 import org.bytedeco.javacpp.BytePointer
@@ -182,10 +179,9 @@ internal class AudioDecoder(private val audioChannel: SuspendingSocketChannel, p
     override fun close() {
       player?.stop()
       if (!swrContext.isNull) {
-        swr_close(swrContext)
+        swr_free(swrContext)
       }
       av_parser_close(parserContext)
-      avcodec_close(codecContext)
       avcodec_free_context(codecContext)
       av_frame_free(decodingFrame)
       av_frame_free(outFrame)
@@ -296,16 +292,26 @@ internal class AudioDecoder(private val audioChannel: SuspendingSocketChannel, p
     }
 
     private fun createSwrContext(channelLayout: AVChannelLayout, sampleFormat: Int, sampleRate: Int): SwrContext {
-      val context = swr_alloc()
-      val channelLayoutMask = channelLayout.u_mask()
-      av_opt_set_int(context, "in_channel_layout", channelLayoutMask, 0)
-      av_opt_set_int(context, "out_channel_layout", channelLayoutMask, 0)
-      val longSampleRate = sampleRate.toLong()
-      av_opt_set_int(context, "in_sample_rate", longSampleRate, 0)
-      av_opt_set_int(context, "out_sample_rate", longSampleRate, 0)
-      av_opt_set_sample_fmt(context, "in_sample_fmt", sampleFormat, 0)
-      av_opt_set_sample_fmt(context, "out_sample_fmt", AV_SAMPLE_FMT_S16, 0)
-      swr_init(context)
+      val context = SwrContext()
+      if (
+        swr_alloc_set_opts2(
+          context,
+          channelLayout,
+          AV_SAMPLE_FMT_S16,
+          sampleRate,
+          channelLayout,
+          sampleFormat,
+          sampleRate,
+          0,
+          null,
+        ) < 0
+      ) {
+        throw AudioDecoderException("Could not allocate SwrContext")
+      }
+      if (swr_init(context) < 0) {
+        swr_free(context)
+        throw AudioDecoderException("Could not initialize SwrContext")
+      }
       return context
     }
   }

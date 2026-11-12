@@ -1,16 +1,16 @@
 <component name="libraryTable">
   <library name="ffmpeg-platform">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/ffmpeg-platform/7.1.1-1.5.12/ffmpeg-platform-7.1.1-1.5.12.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/ffmpeg/7.1.1-1.5.12/ffmpeg-7.1.1-1.5.12-linux-x86_64.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/ffmpeg/7.1.1-1.5.12/ffmpeg-7.1.1-1.5.12-macosx-arm64.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/ffmpeg/7.1.1-1.5.12/ffmpeg-7.1.1-1.5.12-macosx-x86_64.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/ffmpeg/7.1.1-1.5.12/ffmpeg-7.1.1-1.5.12-windows-x86_64.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/javacpp-platform/1.5.12/javacpp-platform-1.5.12.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/javacpp/1.5.12/javacpp-1.5.12-linux-x86_64.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/javacpp/1.5.12/javacpp-1.5.12-macosx-arm64.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/javacpp/1.5.12/javacpp-1.5.12-macosx-x86_64.jar!/" />
-      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/javacpp/1.5.12/javacpp-1.5.12-windows-x86_64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/ffmpeg-platform/8.1.2-1.5.14/ffmpeg-platform-8.1.2-1.5.14.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/ffmpeg/8.1.2-1.5.14/ffmpeg-8.1.2-1.5.14-linux-x86_64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/ffmpeg/8.1.2-1.5.14/ffmpeg-8.1.2-1.5.14-macosx-arm64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/ffmpeg/8.1.2-1.5.14/ffmpeg-8.1.2-1.5.14-macosx-x86_64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/ffmpeg/8.1.2-1.5.14/ffmpeg-8.1.2-1.5.14-windows-x86_64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/javacpp-platform/1.5.14/javacpp-platform-1.5.14.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/javacpp/1.5.14/javacpp-1.5.14-linux-x86_64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/javacpp/1.5.14/javacpp-1.5.14-macosx-arm64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/javacpp/1.5.14/javacpp-1.5.14-macosx-x86_64.jar!/" />
+      <root url="jar://$PROJECT_DIR$/../../../prebuilts/tools/common/m2/repository/org/bytedeco/javacpp/1.5.14/javacpp-1.5.14-windows-x86_64.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />
