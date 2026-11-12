@@ -40,6 +40,7 @@ import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.TitledSeparator
+import com.intellij.ui.components.BrowserLink
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.UIUtil
 import icons.StudioIcons
@@ -334,6 +335,10 @@ class GradleSignStepTest {
 
     assertThat(gradleSignStep.myPublishingPanel.isVisible).isTrue()
     assertThat(gradleSignStep.myContinueToPlayCheckBox.isVisible).isTrue()
+    assertThat(gradleSignStep.myPublishingLearnMorePanel.isVisible).isTrue()
+    val learnMoreLink = UIUtil.findComponentsOfType(gradleSignStep.myPublishingLearnMorePanel, BrowserLink::class.java).single()
+    assertThat(learnMoreLink.text).isEqualTo("Learn more")
+    assertThat(learnMoreLink.url).isEqualTo("https://developer.android.com/r/studio-ui/publish/publish-to-play")
   }
 
   @Test
@@ -510,6 +515,8 @@ class GradleSignStepTest {
 
     gradleSignStep._init(testAndroidModel)
 
+    assertThat(gradleSignStep.myPublishingLearnMorePanel.isVisible).isTrue()
+
     // Select only one variant
     gradleSignStep.myBuildVariantsList.setSelectedIndices(intArrayOf(0))
 
@@ -543,12 +550,14 @@ class GradleSignStepTest {
     assertThat(gradleSignStep.myContinueToPlayCheckBox.isEnabled).isFalse()
     assertThat(gradleSignStep.myContinueToPlayCheckBox.isVisible).isFalse()
     assertThat(gradleSignStep.myContinueToPlayCheckBox.isSelected).isFalse()
+    assertThat(gradleSignStep.myPublishingLearnMorePanel.isVisible).isFalse()
     // Verify label and description texts
     val textLabels = UIUtil.findComponentsOfType(gradleSignStep.component, JBLabel::class.java)
     val checkboxLabelText = textLabels.find { it.text == "Unsupported Header" }
     assertThat(checkboxLabelText).isNotNull()
     val descLabelText = textLabels.find { it.text == "<html>This is an important unsupported explanation.</html>" }
     assertThat(descLabelText).isNotNull()
+    assertThat(descLabelText!!.minimumSize.width).isEqualTo(0)
   }
 
   @Test

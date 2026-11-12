@@ -69,6 +69,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.DefaultListSelectionModel;
@@ -90,6 +92,8 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
   @NonNls private static final String PROPERTY_BUNDLE_PATH = "ExportBundle.BundlePath";
   @VisibleForTesting
   @NonNls static final String PROPERTY_BUILD_VARIANTS = "ExportApk.BuildVariants";
+  private static final String PUBLISH_TO_PLAY_LEARN_MORE_URL =
+      "https://developer.android.com/r/studio-ui/publish/publish-to-play";
 
   private JPanel myContentPanel;
   private TextFieldWithBrowseButton myApkPathField;
@@ -116,7 +120,14 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
   final JCheckBox myContinueToPlayCheckBox = new JCheckBox();
   final BorderLayoutPanel myPublishingPanel = new BorderLayoutPanel();
   private final JBLabel myPublishingCheckboxLabel = new JBLabel("Continue to the Publish for Testing Wizard");
-  private final JBLabel myPublishingDescriptionLabel = new JBLabel(getPublishingDescriptionText());
+  private final JBLabel myPublishingDescriptionLabel =
+      new JBLabel(getPublishingDescriptionText()) {
+        @Override
+        public Dimension getMinimumSize() {
+          return new Dimension(0, super.getMinimumSize().height);
+        }
+      };
+  final Box myPublishingLearnMorePanel = Box.createHorizontalBox();
 
   private final AdiClient myAdiClient;
 
@@ -416,8 +427,17 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
       });
       myPublishingDescriptionLabel.setForeground(DISABLED_TEXT_COLOR);
 
+      myPublishingLearnMorePanel.add(Box.createHorizontalStrut(JBUI.scale(5)));
+      myPublishingLearnMorePanel.add(new BrowserLink("Learn more", PUBLISH_TO_PLAY_LEARN_MORE_URL));
+
+      JPanel descriptionPanel = new JPanel();
+      descriptionPanel.setLayout(new BoxLayout(descriptionPanel, BoxLayout.X_AXIS));
+      descriptionPanel.setOpaque(false);
+      descriptionPanel.add(myPublishingDescriptionLabel);
+      descriptionPanel.add(myPublishingLearnMorePanel);
+
       textPanel.addToTop(myPublishingCheckboxLabel);
-      textPanel.addToCenter(myPublishingDescriptionLabel);
+      textPanel.addToCenter(descriptionPanel);
 
       BorderLayoutPanel publishingPanel = new BorderLayoutPanel();
       BorderLayoutPanel checkBoxPanel = new BorderLayoutPanel();
@@ -594,6 +614,7 @@ public class GradleSignStep extends ExportSignedPackageWizardStep {
     myPublishingPanel.setVisible(showPublishing);
     myContinueToPlayCheckBox.setEnabled(enableCheckbox);
     myContinueToPlayCheckBox.setVisible(enableCheckbox);
+    myPublishingLearnMorePanel.setVisible(enableCheckbox);
     if (!enableCheckbox) {
       myContinueToPlayCheckBox.setSelected(false);
     }
