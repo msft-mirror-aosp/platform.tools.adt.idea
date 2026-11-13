@@ -44,13 +44,18 @@ class BuildOutputErrorsListener(
 
   override fun onEvent(buildId: Any, event: BuildEvent) {
     if (buildId != externalSystemTaskId) return
-    toBuildErrorMessage(event)?.let { buildErrorMessages.add(it) }
+    toBuildErrorMessage(event)?.let {
+      synchronized(buildErrorMessages) {
+        buildErrorMessages.add(it)
+      }
+    }
     if (event is FinishBuildEvent) {
       try {
+        val messages = synchronized(buildErrorMessages) { buildErrorMessages.toList() }
         // When running tests, this result is 'successful' even if build failed with e.g. compilation failure.
         // So if we collected anything report anyway.
-        if (event.result is FailureResult || buildErrorMessages.isNotEmpty()) {
-          onFailureFinishBuildEvent(buildErrorMessages)
+        if (event.result is FailureResult || messages.isNotEmpty()) {
+          onFailureFinishBuildEvent(messages)
         }
       } finally {
         Disposer.dispose(listenerDisposable)
