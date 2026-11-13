@@ -64,7 +64,11 @@ class NavigationControlsPanelUiTest {
   @Test
   fun testBottomNavigationContentUi() {
     val canBackPressMutable = mutableStateOf(true)
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
 
     var backPressCallCount = 0
     var backPressProgressCallCount = 0
@@ -122,14 +126,20 @@ class NavigationControlsPanelUiTest {
 
     // Verify tooltip appears when back button is disabled
     composeTestRule.onNodeWithText(message("action.navigate.back.button.disabled.tooltip")).assertDoesNotExist()
-    composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.backButton).performMouseInput { moveTo(center) }
+    composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.backButton).performMouseInput {
+      moveTo(center)
+    }
     composeTestRule.mainClock.advanceTimeBy(1201L) // org.jetbrains.jewel.ui.component.styling.TooltipMetrics delay is 1200ms
     composeTestRule.onNodeWithText(message("action.navigate.back.button.disabled.tooltip")).assertIsDisplayed()
 
     // Verify clicking disabled button does not increment counter
     val countBeforeClick = backPressCallCount
     composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.backButton).performClick()
-    assertEquals("Callback should not be triggered when button is disabled", countBeforeClick, backPressCallCount)
+    assertEquals(
+      "Callback should not be triggered when button is disabled",
+      countBeforeClick,
+      backPressCallCount,
+    )
   }
 
   @Test
@@ -152,7 +162,8 @@ class NavigationControlsPanelUiTest {
 
     composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.backButton).performClick()
 
-    // Immediately after click, onBackPressStart should be called, but onBackPress should wait for delay
+    // Immediately after click, onBackPressStart should be called, but onBackPress should wait for
+    // delay
     assertEquals(BackNavigationEdge.EDGE_NONE, backPressStartCalledWithEdge)
 
     // Advance clock past the delay (100ms)
@@ -164,8 +175,16 @@ class NavigationControlsPanelUiTest {
 
   @Test
   fun testProgressSliderResetsOnBackPressCompletedFlow() {
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    val backPressCompletedFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
+    val backPressCompletedFlow =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
 
     composeTestRule.setContent {
       NavigationControlsPanel(
@@ -187,7 +206,8 @@ class NavigationControlsPanelUiTest {
     // Drag the slider to update the value
     composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.progressSlider).assertIsDisplayed().performTouchInput { swipeRight() }
 
-    // Since swipeRight drags the slider, the label should be updated to a positive float value (e.g., 1.0f or something similar)
+    // Since swipeRight drags the slider, the label should be updated to a positive float value
+    // (e.g., 1.0f or something similar)
     // We can verify that it is NOT at 0.0f anymore
     composeTestRule.onNodeWithText(message("action.navigate.back.predictive.back.progress", 0.0f)).assertDoesNotExist()
 
@@ -223,12 +243,20 @@ class NavigationControlsPanelUiTest {
 
     val composeViewAdapterObjFake = TestComposeViewAdapterViewObj(onBackPressCancelledCallback = { cancelledCalled = true })
 
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
 
     val controller =
-      InteractivePreviewNavigationController(usageTrackerProvider = { tracker }, fpsUpdater = fpsUpdater).apply {
-        updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
-      }
+      InteractivePreviewNavigationController(
+          usageTrackerProvider = { tracker },
+          fpsUpdater = fpsUpdater,
+        )
+        .apply {
+          updateObjects(null, composeViewAdapterObjFake, hasNavDisplay = false)
+        }
 
     composeTestRule.setContent {
       NavigationControlsContent(
@@ -255,7 +283,11 @@ class NavigationControlsPanelUiTest {
 
   @Test
   fun testEdgeDropdownDisabledWhenShowEdgeNavigationIsFalse() {
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
 
     composeTestRule.setContent {
       NavigationControlsPanel(
@@ -282,15 +314,24 @@ class NavigationControlsPanelUiTest {
 
     // Verify tooltip appears when edge dropdown is disabled
     composeTestRule.onNodeWithText(message("action.navigate.back.navigation.edge.disabled.tooltip")).assertDoesNotExist()
-    composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.edgeDropdown).performMouseInput { moveTo(center) }
+    composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.edgeDropdown).performMouseInput {
+      moveTo(center)
+    }
     composeTestRule.mainClock.advanceTimeBy(1201L) // org.jetbrains.jewel.ui.component.styling.TooltipMetrics delay is 1200ms
     composeTestRule.onNodeWithText(message("action.navigate.back.navigation.edge.disabled.tooltip")).assertIsDisplayed()
   }
 
   @Test
   fun testVisualStackRendering() {
-    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      true,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
     var historyList = emptyList<String>()
 
     composeTestRule.setContent {
@@ -336,8 +377,15 @@ class NavigationControlsPanelUiTest {
 
   @Test
   fun testVisualStackRenderingWithNavigationHistory() {
-    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      true,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
     val historyList = listOf("ScreenX", "ScreenY", "ScreenZ")
 
     composeTestRule.setContent {
@@ -363,9 +411,17 @@ class NavigationControlsPanelUiTest {
 
   @Test
   fun testVisualStackRenderingWithMultiScreenEntry() {
-    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    // A non-data class inherits Object.toString() ("...Home@hex"), verifying reflection extracts the simple class name.
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      true,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
+    // A non-data class inherits Object.toString() ("...Home@hex"), verifying reflection extracts
+    // the simple class name.
     class Home
     data class Product(val id: Int)
     val historyList = listOf(listOf(Home(), Product(id = 1)))
@@ -391,8 +447,15 @@ class NavigationControlsPanelUiTest {
 
   @Test
   fun testVisualStackRenderingWithNavigationInfoObjects() {
-    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      true,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
 
     class FakeNavEntry(@Suppress("unused") private val key: Any)
     class FakeScene(@Suppress("unused") val entries: List<FakeNavEntry>)
@@ -432,7 +495,8 @@ class NavigationControlsPanelUiTest {
     assertEquals(1, firstSceneInfo.sceneReadCount)
     assertEquals(1, secondSceneInfo.sceneReadCount)
 
-    // Push a third item and trigger recomposition via fpsUpdater; existing items must not be re-parsed via reflection.
+    // Push a third item and trigger recomposition via fpsUpdater; existing items must not be
+    // re-parsed via reflection.
     historyList = listOf(firstSceneInfo, secondSceneInfo, thirdSceneInfo)
     fpsUpdater.tryEmit(Unit)
     composeTestRule.waitForIdle()
@@ -477,8 +541,15 @@ class NavigationControlsPanelUiTest {
 
   @Test
   fun testVisualStackNotRenderedWhenFlagDisabled() {
-    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(false, projectRule.project)
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      false,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
     val historyList = listOf("ScreenX", "ScreenY", "ScreenZ")
 
     composeTestRule.setContent {
@@ -506,8 +577,15 @@ class NavigationControlsPanelUiTest {
   @Test
   fun testNavigationControlsContentSandboxesParse() {
     // Enable the visual back stack feature flag for the test
-    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      true,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
     var isRenderSessionReady = false
     var renderSessionActionCount = 0
 
@@ -554,7 +632,8 @@ class NavigationControlsPanelUiTest {
       )
     }
 
-    // When the initial render session execution is dropped, the next fpsUpdater tick retries and parses both items
+    // When the initial render session execution is dropped, the next fpsUpdater tick retries and
+    // parses both items
     composeTestRule.waitForIdle()
     assertEquals(0, renderSessionActionCount)
     isRenderSessionReady = true
@@ -564,7 +643,8 @@ class NavigationControlsPanelUiTest {
     composeTestRule.onNodeWithText("Screen1").assertIsDisplayed()
     assertEquals(2, renderSessionActionCount)
 
-    // Subsequent fpsUpdater ticks should reuse cached parsed items without dispatching to the render session
+    // Subsequent fpsUpdater ticks should reuse cached parsed items without dispatching to the
+    // render session
     fpsUpdater.tryEmit(Unit)
     composeTestRule.waitForIdle()
     assertEquals(2, renderSessionActionCount)
@@ -574,7 +654,11 @@ class NavigationControlsPanelUiTest {
   fun testStateRestorationPreservesSliderPositionAndSelectedEdge() {
     var currentSaveableStateRegistry = SaveableStateRegistry(emptyMap()) { true }
     val isPanelVisible = mutableStateOf(true)
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
 
     composeTestRule.setContent {
       if (isPanelVisible.value) {
@@ -622,8 +706,15 @@ class NavigationControlsPanelUiTest {
   @Test
   fun testVisualStackCurrentItemTextUsesAccessibleContrastColor() {
     // Enable the visual back stack feature flag and capture the active Jewel theme colors
-    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(true, projectRule.project)
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      true,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
     val historyList = listOf("Screen1", "Screen2")
     var expectedNormalTextColor = Color.Unspecified
     var focusedOutlineAccentColor = Color.Unspecified
@@ -646,7 +737,8 @@ class NavigationControlsPanelUiTest {
       )
     }
 
-    // Verify the active card route text, the "Current" badge text, and the inactive card route text all use text.normal
+    // Verify the active card route text, the "Current" badge text, and the inactive card route text
+    // all use text.normal
     val currentRouteTextColor = retrieveNodeTextColor("Screen2")
     val currentBadgeTextColor = retrieveNodeTextColor(message("action.navigate.back.stack.current"))
     val previousRouteTextColor = retrieveNodeTextColor("Screen1")
@@ -657,7 +749,8 @@ class NavigationControlsPanelUiTest {
     assertNotEquals(focusedOutlineAccentColor, currentRouteTextColor)
     assertNotEquals(focusedOutlineAccentColor, currentBadgeTextColor)
 
-    // Verify WCAG 1.4.3 / GAR 2026 minimum 4.5:1 contrast ratio against both the 12% tinted card and 20% tinted badge backgrounds
+    // Verify WCAG 1.4.3 / GAR 2026 minimum 4.5:1 contrast ratio against both the 12% tinted card
+    // and 20% tinted badge backgrounds
     val activeCardBackgroundColor = focusedOutlineAccentColor.copy(alpha = 0.12f).compositeOver(panelBackgroundColor)
     val currentBadgeBackgroundColor = focusedOutlineAccentColor.copy(alpha = 0.2f).compositeOver(activeCardBackgroundColor)
     val routeTextContrastRatio = calculateContrastRatio(currentRouteTextColor, activeCardBackgroundColor)
@@ -674,7 +767,8 @@ class NavigationControlsPanelUiTest {
   }
 
   private fun retrieveNodeTextColor(nodeText: String): Color {
-    // Query the unmerged semantics tree so each Text node inside the clickable Row exposes its own TextLayoutResult
+    // Query the unmerged semantics tree so each Text node inside the clickable Row exposes its own
+    // TextLayoutResult
     val textLayoutResults = mutableListOf<TextLayoutResult>()
     val semanticsNode = composeTestRule.onNodeWithText(nodeText, useUnmergedTree = true).assertIsDisplayed().fetchSemanticsNode()
     semanticsNode.config[SemanticsActions.GetTextLayoutResult].action?.invoke(textLayoutResults)
@@ -692,8 +786,16 @@ class NavigationControlsPanelUiTest {
 
   @Test
   fun testProgressSliderAccessibilitySemantics() {
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    val backPressCompletedFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
+    val backPressCompletedFlow =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
 
     composeTestRule.setContent {
       NavigationControlsPanel(
@@ -716,27 +818,49 @@ class NavigationControlsPanelUiTest {
       listOf(expectedDescription),
       progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.ContentDescription],
     )
-    assertEquals("0%", progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+    assertEquals(
+      "0%",
+      progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
+    )
 
-    // Update the slider progress via the accessibility SetProgress action and verify the rounded percentage stateDescription
-    progressSliderNode.performSemanticsAction(SemanticsActions.SetProgress) { setProgressAction -> setProgressAction(0.333f) }
+    // Update the slider progress via the accessibility SetProgress action and verify the rounded
+    // percentage stateDescription
+    progressSliderNode.performSemanticsAction(SemanticsActions.SetProgress) { setProgressAction ->
+      setProgressAction(0.333f)
+    }
     composeTestRule.waitForIdle()
-    assertEquals("33%", progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+    assertEquals(
+      "33%",
+      progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
+    )
 
-    // Update the slider progress to 100% via the accessibility SetProgress action and verify stateDescription reaches 100%
-    progressSliderNode.performSemanticsAction(SemanticsActions.SetProgress) { setProgressAction -> setProgressAction(1.0f) }
+    // Update the slider progress to 100% via the accessibility SetProgress action and verify
+    // stateDescription reaches 100%
+    progressSliderNode.performSemanticsAction(SemanticsActions.SetProgress) { setProgressAction ->
+      setProgressAction(1.0f)
+    }
     composeTestRule.waitForIdle()
-    assertEquals("100%", progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+    assertEquals(
+      "100%",
+      progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
+    )
 
     // Emit a back press completion event and verify stateDescription resets back to 0%
     backPressCompletedFlow.tryEmit(Unit)
     composeTestRule.waitForIdle()
-    assertEquals("0%", progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription])
+    assertEquals(
+      "0%",
+      progressSliderNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
+    )
   }
 
   @Test
   fun testEdgeDropdownAccessibilitySemantics() {
-    val fpsUpdater = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
 
     composeTestRule.setContent {
       NavigationControlsPanel(
@@ -753,7 +877,10 @@ class NavigationControlsPanelUiTest {
 
     // Verify the dropdown initially exposes "Navigation Edge: None" and stateDescription "None"
     val expectedNoneDescription =
-      message("action.navigate.back.navigation.edge.dropdown.description", BackNavigationEdge.EDGE_NONE.visibleName)
+      message(
+        "action.navigate.back.navigation.edge.dropdown.description",
+        BackNavigationEdge.EDGE_NONE.visibleName,
+      )
     val edgeDropdownNode = composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.edgeDropdown)
     composeTestRule.onNodeWithContentDescription(expectedNoneDescription).assertIsDisplayed()
     assertEquals(
@@ -765,11 +892,15 @@ class NavigationControlsPanelUiTest {
       edgeDropdownNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
     )
 
-    // Select the Left edge option and verify the accessible description and stateDescription update to "Left"
+    // Select the Left edge option and verify the accessible description and stateDescription update
+    // to "Left"
     edgeDropdownNode.performClick()
     composeTestRule.onNodeWithText(BackNavigationEdge.EDGE_LEFT.visibleName).assertIsDisplayed().performClick()
     val expectedLeftDescription =
-      message("action.navigate.back.navigation.edge.dropdown.description", BackNavigationEdge.EDGE_LEFT.visibleName)
+      message(
+        "action.navigate.back.navigation.edge.dropdown.description",
+        BackNavigationEdge.EDGE_LEFT.visibleName,
+      )
     composeTestRule.onNodeWithContentDescription(expectedLeftDescription).assertIsDisplayed()
     assertEquals(
       listOf(expectedLeftDescription),
@@ -780,11 +911,15 @@ class NavigationControlsPanelUiTest {
       edgeDropdownNode.fetchSemanticsNode().config[SemanticsProperties.StateDescription],
     )
 
-    // Select the Right edge option and verify the accessible description and stateDescription update to "Right"
+    // Select the Right edge option and verify the accessible description and stateDescription
+    // update to "Right"
     edgeDropdownNode.performClick()
     composeTestRule.onNodeWithText(BackNavigationEdge.EDGE_RIGHT.visibleName).assertIsDisplayed().performClick()
     val expectedRightDescription =
-      message("action.navigate.back.navigation.edge.dropdown.description", BackNavigationEdge.EDGE_RIGHT.visibleName)
+      message(
+        "action.navigate.back.navigation.edge.dropdown.description",
+        BackNavigationEdge.EDGE_RIGHT.visibleName,
+      )
     composeTestRule.onNodeWithContentDescription(expectedRightDescription).assertIsDisplayed()
     assertEquals(
       listOf(expectedRightDescription),

@@ -98,8 +98,12 @@ fun NavigationControlsContent(
         interactivePreviewNavigationController.trackNavigationBackPress()
       },
       onBackPressStart = { interactivePreviewNavigationController.backPressStart(it) },
-      onBackPressProgress = { progress, edge -> interactivePreviewNavigationController.backPressProgress(progress, edge) },
-      onBackPressTrackProgress = { interactivePreviewNavigationController.trackNavigationProgressPress() },
+      onBackPressProgress = { progress, edge ->
+        interactivePreviewNavigationController.backPressProgress(progress, edge)
+      },
+      onBackPressTrackProgress = {
+        interactivePreviewNavigationController.trackNavigationProgressPress()
+      },
       onEdgeDropdownPress = {
         interactivePreviewNavigationController.trackEdgeDropdownPress()
         interactivePreviewNavigationController.backPressCancelled()
@@ -151,13 +155,17 @@ fun NavigationControlsPanel(
 ) {
   var sliderPosition by rememberSaveable { mutableFloatStateOf(0f) }
   var backStarted by remember { mutableStateOf(false) }
-  // Tracks whether a Navigate Back button click coroutine is currently in flight to prevent double-clicks from popping twice
+  // Tracks whether a Navigate Back button click coroutine is currently in flight to prevent
+  // double-clicks from popping twice
   var isBackPressInFlight by remember { mutableStateOf(false) }
   val coroutineScope = rememberCoroutineScope()
   val showEdgeNavigation by produceState(false, isEdgeNavigationImplemented) { value = isEdgeNavigationImplemented() }
   val selectedEdge = rememberSaveable { mutableStateOf(BackNavigationEdge.EDGE_NONE) }
   val backNavigationAvailable by produceState(canBackPress(), fpsUpdater) { fpsUpdater.collect { value = canBackPress() } }
-  val navigationHistory by produceState(getNavigationHistory(), fpsUpdater) { fpsUpdater.collect { value = getNavigationHistory() } }
+  val navigationHistory by
+    produceState(getNavigationHistory(), fpsUpdater) {
+      fpsUpdater.collect { value = getNavigationHistory() }
+    }
 
   LaunchedEffect(backPressCompletedFlow) {
     backPressCompletedFlow.collect {
@@ -172,12 +180,16 @@ fun NavigationControlsPanel(
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalArrangement = Arrangement.spacedBy(DEFAULT_SPACING, Alignment.CenterVertically),
     ) {
-      Tooltip(tooltip = { Text(message("action.navigate.back.button.disabled.tooltip")) }, enabled = !backNavigationAvailable) {
+      Tooltip(
+        tooltip = { Text(message("action.navigate.back.button.disabled.tooltip")) },
+        enabled = !backNavigationAvailable,
+      ) {
         OutlinedButton(
           modifier = Modifier.testTag(NavigationControlsPanelTestTags.backButton).widthIn(min = 135.dp),
           enabled = backNavigationAvailable,
           onClick = {
-            // Ignore overlapping clicks while the 100ms back press start-to-complete sequence is in flight
+            // Ignore overlapping clicks while the 100ms back press start-to-complete sequence is in
+            // flight
             if (isBackPressInFlight) return@OutlinedButton
             isBackPressInFlight = true
             coroutineScope.launch {
@@ -186,11 +198,14 @@ fun NavigationControlsPanel(
                   backStarted = true
                   val selectedEdge = selectedEdge.value
                   // TODO(b/539916536): This is a temporary solution for predictive back navigation.
-                  // Currently, the limitation is about the predictive back gesture transition continuing to the end,
-                  // but we expect it to hand off to a separate transition spec after the swipe passes the committed threshold.
+                  // Currently, the limitation is about the predictive back gesture transition
+                  // continuing to the end,
+                  // but we expect it to hand off to a separate transition spec after the swipe
+                  // passes the committed threshold.
                   // This should be properly fixed when new APIs for predictive back are released.
                   onBackPressStart(selectedEdge)
-                  // Introduce a minor delay to allow the initial back navigation gesture animation frame
+                  // Introduce a minor delay to allow the initial back navigation gesture animation
+                  // frame
                   // to initialize properly before triggering the back press completion event.
                   delay(100.milliseconds)
                 }
@@ -202,10 +217,14 @@ fun NavigationControlsPanel(
             }
           },
         ) {
-          Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
             Icon(
               key = StudioIconsCompose.Emulator.Toolbar.Back,
-              // The contentDescription is not needed as this icon is decorative to a text label which describes already what the button
+              // The contentDescription is not needed as this icon is decorative to a text label
+              // which describes already what the button
               // does.
               contentDescription = null,
               tint =
@@ -239,7 +258,10 @@ fun NavigationControlsPanel(
         // Format the accessible label and percentage state for the predictive back progress slider.
         val progressDescription = message("action.navigate.back.predictive.back.progress.description")
         val progressPercentageState = "${(sliderPosition * 100).roundToInt()}%"
-        Text(modifier = Modifier.padding(DEFAULT_SPACING), text = message("action.navigate.back.predictive.back.progress", sliderPosition))
+        Text(
+          modifier = Modifier.padding(DEFAULT_SPACING),
+          text = message("action.navigate.back.predictive.back.progress", sliderPosition),
+        )
         Slider(
           modifier =
             Modifier.padding(DEFAULT_SPACING).testTag(NavigationControlsPanelTestTags.progressSlider).semantics {
@@ -286,7 +308,11 @@ private fun BackStack(
     modifier = Modifier.padding(vertical = DEFAULT_SPACING).fillMaxWidth().testTag(NavigationControlsPanelTestTags.visualStack),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Text(text = message("action.navigate.back.stack.title"), fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+    Text(
+      text = message("action.navigate.back.stack.title"),
+      fontWeight = FontWeight.Bold,
+      modifier = Modifier.padding(bottom = 8.dp),
+    )
     if (navigationHistory.isEmpty()) {
       Text(
         text = message("action.navigate.back.stack.empty"),
@@ -364,10 +390,15 @@ private fun BackStackItem(
     horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    // In adaptive layouts on larger screens (such as foldables, tablets, or desktop displaying two-pane or list-detail
-    // scenes), a single back stack entry can contain multiple active navigation keys displayed side by side.
+    // In adaptive layouts on larger screens (such as foldables, tablets, or desktop displaying
+    // two-pane or list-detail
+    // scenes), a single back stack entry can contain multiple active navigation keys displayed side
+    // by side.
     // We render each navigation key on its own line for clarity.
-    Column(modifier = Modifier.weight(1f, fill = false), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(
+      modifier = Modifier.weight(1f, fill = false),
+      verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
       navKeys.forEach { (navKey) ->
         Text(text = navKey, fontWeight = FontWeight.Bold, color = textColor)
       }
@@ -412,11 +443,20 @@ private fun DropDownAction(
       } else {
         JewelTheme.globalColors.text.disabled
       }
-    Text(text = label, modifier = Modifier.padding(vertical = DEFAULT_SPACING), color = labelColor, maxLines = 1, softWrap = false)
+    Text(
+      text = label,
+      modifier = Modifier.padding(vertical = DEFAULT_SPACING),
+      color = labelColor,
+      maxLines = 1,
+      softWrap = false,
+    )
     // Format the accessible label and selected edge state for the navigation edge dropdown.
     val selectedEdgeName = selectedEdge.value.visibleName
     val edgeDropdownDescription = message("action.navigate.back.navigation.edge.dropdown.description", selectedEdgeName)
-    Tooltip(tooltip = { Text(message("action.navigate.back.navigation.edge.disabled.tooltip")) }, enabled = !enabled) {
+    Tooltip(
+      tooltip = { Text(message("action.navigate.back.navigation.edge.disabled.tooltip")) },
+      enabled = !enabled,
+    ) {
       MenuComboBox(
         labelContent = { Text(selectedEdgeName, maxLines = 1, softWrap = false) },
         modifier =
