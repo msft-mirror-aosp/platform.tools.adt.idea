@@ -53,10 +53,8 @@ import javax.swing.Icon
 
 /** NOTE THIS FILE IS AUTO-GENERATED. DO NOT EDIT IT BY HAND, run "tools/adt/idea/streaming/generate_icons.sh" to update. */
 object StagingIcons {
-  private fun load(path: String, cacheKey: Int, flags: Int): Icon {
-    @Suppress("UnstableApiUsage")
-    return IconManager.getInstance().loadRasterizedIcon(path, StagingIcons::class.java.classLoader, cacheKey, flags)
-  }
+  private fun load(path: String, cacheKey: Int, flags: Int): Icon =
+    IconManager.getInstance().loadRasterizedIcon(path, StagingIcons::class.java.classLoader, cacheKey, flags)
 EOF
 
 if [ -f "$JAVA_FILE" ]; then
