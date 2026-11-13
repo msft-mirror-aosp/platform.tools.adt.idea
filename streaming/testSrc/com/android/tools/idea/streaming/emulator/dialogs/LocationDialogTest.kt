@@ -151,7 +151,7 @@ class LocationDialogTest {
     // Verify icon-only square Play button presentation, tooltip, and accessible name.
     assertThat(playPauseButton.text).isEmpty()
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Execute)
-    assertThat(playPauseButton.toolTipText).isEqualTo("Play")
+    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Play")
     assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Play")
     assertThat(playPauseButton.preferredSize.width).isEqualTo(playPauseButton.preferredSize.height)
     assertThat(slider).isInstanceOf(ProgressSlider::class.java)
@@ -740,7 +740,7 @@ class LocationDialogTest {
     repeatCheckBox.isSelected = false
     ui.clickOn(playPauseButton)
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Pause)
-    assertThat(playPauseButton.toolTipText).isEqualTo("Pause")
+    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Pause")
     assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Pause")
     assertThat(routesTable.isEnabled).isFalse()
 
@@ -753,7 +753,7 @@ class LocationDialogTest {
     // Pause playback manually and verify speed resets to 0.0 and controls become interactive.
     ui.clickOn(playPauseButton)
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Execute)
-    assertThat(playPauseButton.toolTipText).isEqualTo("Play")
+    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Play")
     assertThat(routesTable.isEnabled).isTrue()
     waitForCondition(5.seconds) { fakeEmulator.gpsLocation.speed == 0.0 }
 

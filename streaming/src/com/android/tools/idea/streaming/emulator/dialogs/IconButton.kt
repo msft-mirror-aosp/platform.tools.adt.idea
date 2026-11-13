@@ -15,9 +15,10 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
-import com.intellij.ide.setToolTipText
+import com.intellij.ide.HelpTooltip
 import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.text.HtmlChunk
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.dsl.builder.DslComponentProperty
 import com.intellij.ui.dsl.gridLayout.UnscaledGaps
 import java.awt.Dimension
@@ -25,15 +26,32 @@ import javax.swing.Icon
 import javax.swing.JButton
 import org.jetbrains.annotations.Nls
 
-/** Square icon-only button used for playback controls in extended controls dialogs. */
+/** Square icon-only button used in extended controls dialogs. */
 internal class IconButton(icon: Icon, @Nls tooltip: String, action: () -> Unit) : JButton() {
+  private val helpTooltip = HelpTooltip().setTitle(HtmlChunk.text(tooltip))
+  var tooltipText: @Nls String? = tooltip
+    private set
+
   init {
     this.icon = icon
     isOpaque = false
-    setToolTipText(HtmlChunk.text(tooltip))
+    // Use HelpTooltip directly instead of setToolTipText as a workaround for IJPL-261599.
+    helpTooltip.installOn(this)
     putClientProperty("JButton.buttonType", "square")
     putClientProperty(DslComponentProperty.VISUAL_PADDINGS, UnscaledGaps(3))
     addActionListener { action() }
+  }
+
+  override fun setToolTipText(text: String?) {
+    tooltipText = text
+    helpTooltip.setTitle(text?.let(HtmlChunk::text))
+    helpTooltip.installOn(this)
+  }
+
+  fun setToolTipText(html: HtmlChunk?) {
+    tooltipText = html?.toString()?.let(StringUtil::unescapeXmlEntities)
+    helpTooltip.setTitle(html)
+    helpTooltip.installOn(this)
   }
 
   override fun setIcon(defaultIcon: Icon?) {

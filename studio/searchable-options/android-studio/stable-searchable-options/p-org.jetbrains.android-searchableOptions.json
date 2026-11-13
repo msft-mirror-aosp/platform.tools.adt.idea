@@ -1162,6 +1162,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Keyboard",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Layout Inspector",
       "path": "ActionManager"
     },
@@ -1355,6 +1359,10 @@
     },
     {
       "hit": "Open fingerprint controls",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open keyboard controls",
       "path": "ActionManager"
     },
     {

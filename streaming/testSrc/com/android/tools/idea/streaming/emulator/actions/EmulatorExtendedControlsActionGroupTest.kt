@@ -36,6 +36,7 @@ import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import icons.StudioIcons
 import org.junit.Rule
 import org.junit.Test
 
@@ -71,6 +72,7 @@ class EmulatorExtendedControlsActionGroupTest {
     val sensorReplayActionId = "android.emulator.sensor.replay"
     val carRotaryActionId = "android.emulator.car.rotary"
     val googleAssistantActionId = "android.emulator.google.assistant"
+    val keyboardActionId = "android.emulator.keyboard"
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
     val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -133,6 +135,10 @@ class EmulatorExtendedControlsActionGroupTest {
       updateAndGetActionPresentation(googleAssistantActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(googleAssistantDisabled.isVisible).isFalse()
     assertThat(googleAssistantDisabled.isEnabled).isFalse()
+
+    val keyboardDisabled = updateAndGetActionPresentation(keyboardActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(keyboardDisabled.isVisible).isFalse()
+    assertThat(keyboardDisabled.isEnabled).isFalse()
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
     val presentationEnabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -287,6 +293,27 @@ class EmulatorExtendedControlsActionGroupTest {
     val fingerprintApi22 = updateAndGetActionPresentation(fingerprintActionId, api22View, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(fingerprintApi22.isVisible).isFalse()
     assertThat(fingerprintApi22.isEnabled).isFalse()
+
+    val desktopApi35View =
+      emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createDesktopAvd(path, androidVersion = AndroidVersion(35, 0)) })
+    val keyboardDesktopApi35 =
+      updateAndGetActionPresentation(keyboardActionId, desktopApi35View, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(keyboardDesktopApi35.isVisible).isFalse()
+    assertThat(keyboardDesktopApi35.isEnabled).isFalse()
+
+    val desktopApi36View =
+      emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createDesktopAvd(path, androidVersion = AndroidVersion(36, 0)) })
+    val keyboardDesktopApi36 =
+      updateAndGetActionPresentation(keyboardActionId, desktopApi36View, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(keyboardDesktopApi36.isVisible).isTrue()
+    assertThat(keyboardDesktopApi36.isEnabled).isTrue()
+
+    StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
+    val keyboardDesktopFlagDisabled =
+      updateAndGetActionPresentation(keyboardActionId, desktopApi36View, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(keyboardDesktopFlagDisabled.isVisible).isFalse()
+    assertThat(keyboardDesktopFlagDisabled.isEnabled).isFalse()
+    StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
   }
 
   @Test
@@ -300,11 +327,15 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(14)
+    assertThat(children).hasLength(15)
     var index = 0
     val displaysAction = children[index++]
     assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
     assertThat(displaysAction.templatePresentation.icon).isEqualTo(StagingIcons.DISPLAYS)
+
+    val keyboardAction = children[index++]
+    assertThat(keyboardAction.templatePresentation.text).isEqualTo("Keyboard")
+    assertThat(keyboardAction.templatePresentation.icon).isEqualTo(StudioIcons.DeviceConfiguration.KEYBOARD)
 
     val cellularAction = children[index++]
     assertThat(cellularAction.templatePresentation.text).isEqualTo("Cellular")
@@ -450,9 +481,16 @@ class EmulatorExtendedControlsActionGroupTest {
     val googleAssistantDlg = findModelessDialog<DialogWrapper> { it.title == "Google Assistant ($tvAvdName)" }!!
     assertThat(modelessDialogs).containsExactly(microphoneDlg, carRotaryDlg2, googleAssistantDlg)
 
+    val desktopView = emulatorViewRule.newEmulatorView(avdCreator = { path -> FakeEmulator.createDesktopAvd(path) })
+    val desktopAvdName = desktopView.emulator.emulatorId.avdName
+    executeAction(keyboardAction, desktopView, emulatorViewRule.project, ActionPlaces.POPUP)
+    val keyboardDlg = findModelessDialog<DialogWrapper> { it.title == "Keyboard ($desktopAvdName)" }!!
+    assertThat(modelessDialogs).containsExactly(microphoneDlg, carRotaryDlg2, googleAssistantDlg, keyboardDlg)
+
     microphoneDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
     carRotaryDlg2.close(DialogWrapper.CLOSE_EXIT_CODE)
     googleAssistantDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
+    keyboardDlg.close(DialogWrapper.CLOSE_EXIT_CODE)
     assertThat(modelessDialogs).isEmpty()
   }
 }

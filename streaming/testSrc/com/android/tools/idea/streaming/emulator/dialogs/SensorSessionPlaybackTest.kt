@@ -204,7 +204,7 @@ class SensorSessionPlaybackTest {
     // Verify icon-only square Play button presentation, tooltip, and accessible name.
     assertThat(playPauseButton.text).isEmpty()
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Execute)
-    assertThat(playPauseButton.toolTipText).isEqualTo("Play")
+    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Play")
     assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Play")
     assertThat(playPauseButton.preferredSize.width).isEqualTo(playPauseButton.preferredSize.height)
 
@@ -249,7 +249,7 @@ class SensorSessionPlaybackTest {
     assertThat(slider.value).isEqualTo(0)
     assertThat(playPauseButton.text).isEmpty()
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Execute)
-    assertThat(playPauseButton.toolTipText).isEqualTo("Play")
+    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Play")
     assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Play")
 
     // Test Play -> Pause -> Resume during a 2s session: Pause preserves position without resetting, and Play resumes from pause point.
@@ -277,7 +277,7 @@ class SensorSessionPlaybackTest {
     assertThat(playPauseButton.isPlayingState).isTrue()
     assertThat(playPauseButton.text).isEmpty()
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Pause)
-    assertThat(playPauseButton.toolTipText).isEqualTo("Pause")
+    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Pause")
     assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Pause")
     assertThat(slider.isEnabled).isTrue()
     assertThat(speedCombo.isEnabled).isTrue()
@@ -290,7 +290,7 @@ class SensorSessionPlaybackTest {
     assertThat(playPauseButton.isPlayingState).isFalse()
     assertThat(playPauseButton.text).isEmpty()
     assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Execute)
-    assertThat(playPauseButton.toolTipText).isEqualTo("Play")
+    assertThat((playPauseButton as IconButton).tooltipText).isEqualTo("Play")
     assertThat(playPauseButton.accessibleContext.accessibleName).isEqualTo("Play")
     assertThat(slider.isEnabled).isTrue()
     assertThat(speedCombo.isEnabled).isTrue()

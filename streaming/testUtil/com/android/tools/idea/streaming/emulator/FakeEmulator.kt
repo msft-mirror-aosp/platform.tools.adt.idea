@@ -3255,6 +3255,103 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       return createAvd(avdId, avdFolder, configIni, hardwareIni)
     }
 
+    /** Creates a fake Desktop AVD. */
+    @JvmStatic
+    fun createDesktopAvd(
+      parentFolder: Path,
+      sdkFolder: Path = getSdkFolder(parentFolder),
+      androidVersion: AndroidVersion = AndroidVersion(37, 0),
+    ): Path {
+      val api = androidVersion.androidApiLevel.majorVersion
+      val avdId = "Desktop_API_$api"
+      val avdFolder = parentFolder.resolve("${avdId}.avd")
+      val avdName = avdId.replace('_', ' ')
+      val systemImage = "system-images/android-$api/android-desktop/x86_64/"
+      val systemImageFolder = sdkFolder.resolve(systemImage)
+
+      val configIni =
+        """
+        AvdId=${avdId}
+        PlayStore.enabled=false
+        abi.type=x86_64
+        avd.ini.displayname=${avdName}
+        avd.ini.encoding=UTF-8
+        disk.dataPartition.size=2G
+        hw.accelerometer=no
+        hw.arc=false
+        hw.audioInput=yes
+        hw.battery=yes
+        hw.camera.back=None
+        hw.camera.front=None
+        hw.cpu.arch=x86_64
+        hw.cpu.ncore=4
+        hw.dPad=no
+        hw.device.manufacturer=Google
+        hw.device.name=desktop_small
+        hw.gps=yes
+        hw.gpu.enabled=yes
+        hw.gpu.mode=auto
+        hw.initialOrientation=landscape
+        hw.keyboard=yes
+        hw.lcd.density=160
+        hw.lcd.height=1080
+        hw.lcd.width=1920
+        hw.mainKeys=no
+        hw.ramSize=2048
+        hw.sdCard=no
+        hw.sensors.orientation=no
+        hw.sensors.proximity=no
+        hw.trackBall=no
+        image.sysdir.1=$systemImage
+        runtime.network.latency=none
+        runtime.network.speed=full
+        showDeviceFrame=no
+        skin.dynamic=yes
+        skin.path=_no_skin
+        tag.display=Android Desktop
+        tag.id=android-desktop
+        """
+          .trimIndent()
+
+      val hardwareIni =
+        """
+        hw.cpu.arch = x86_64
+        hw.cpu.model = qemu32
+        hw.cpu.ncore = 4
+        hw.lcd.density = 160
+        hw.lcd.width = 1920
+        hw.lcd.height = 1080
+        hw.ramSize = 2048
+        hw.screen = multi-touch
+        hw.dPad = false
+        hw.rotaryInput = false
+        hw.gsmModem = false
+        hw.gps = true
+        hw.battery = true
+        hw.accelerometer = false
+        hw.audioInput = true
+        hw.audioOutput = true
+        hw.sdCard = false
+        android.sdk.root = $sdkFolder
+        """
+          .trimIndent()
+
+      val sourceProperties =
+        """
+        Pkg.Desc=System Image x86_64 with Android Desktop.
+        SystemImage.Abi=x86_64
+        SystemImage.TagId=android-desktop
+        SystemImage.TagDisplay=Android Desktop
+        SystemImage.GpuSupport=true
+        Addon.VendorId=google
+        Addon.VendorDisplay=Google Inc.
+        """
+          .trimIndent()
+
+      createSystemImage(systemImageFolder, androidVersion, sourceProperties)
+      return createAvd(avdId, avdFolder, configIni, hardwareIni)
+    }
+
     private fun createSystemImage(
       systemImageFolder: Path,
       androidVersion: AndroidVersion,

@@ -43,6 +43,30 @@ object StagingIcons {
 
   @JvmField val GOOGLE_ASSISTANT: Icon = load("icons/google-assistant.svg", -333299809, 2)
 
+  @JvmField val KEY_BRIGHTNESS_DOWN: Icon = load("icons/key-brightness-down.svg", 1389975761, 2)
+
+  @JvmField val KEY_BRIGHTNESS_UP: Icon = load("icons/key-brightness-up.svg", 332707351, 2)
+
+  @JvmField val KEY_FORWARD: Icon = load("icons/key-forward.svg", -1087725823, 2)
+
+  @JvmField val KEY_FULL_SCREEN: Icon = load("icons/key-full-screen.svg", 439907722, 2)
+
+  @JvmField val KEY_LOCK: Icon = load("icons/key-lock.svg", 1792595361, 2)
+
+  @JvmField val KEY_MEDIA_NEXT: Icon = load("icons/key-media-next.svg", 947096032, 2)
+
+  @JvmField val KEY_MEDIA_PREVIOUS: Icon = load("icons/key-media-previous.svg", -2145591538, 2)
+
+  @JvmField val KEY_MIC_MUTE: Icon = load("icons/key-mic-mute.svg", 1385107103, 2)
+
+  @JvmField val KEY_PLAY_PAUSE: Icon = load("icons/key-play-pause.svg", -940528362, 2)
+
+  @JvmField val KEY_REFRESH: Icon = load("icons/key-refresh.svg", 59001077, 2)
+
+  @JvmField val KEY_SCREEN_CAPTURE: Icon = load("icons/key-screen-capture.svg", 16953352, 2)
+
+  @JvmField val KEY_VOLUME_MUTE: Icon = load("icons/key-volume-mute.svg", -1485563216, 2)
+
   @JvmField val LANDSCAPE: Icon = load("icons/landscape.svg", 417612118, 2)
 
   @JvmField val LOCATION: Icon = load("icons/location.svg", -2013611464, 2)
