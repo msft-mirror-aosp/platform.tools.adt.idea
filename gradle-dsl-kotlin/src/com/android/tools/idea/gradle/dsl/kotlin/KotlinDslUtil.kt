@@ -704,6 +704,15 @@ internal fun deleteIfEmpty(psiElement: PsiElement?, containingDslElement: Gradle
       is KtBinaryExpression -> { // This includes assignment expressions and maps elements.
         if (psiElement.right == null) psiElement.delete()
       }
+      is KtBinaryExpressionWithTypeRHS -> {
+        // getOperationReference() ("as" / "as?") is itself a KtExpression, so getLeft()
+        // (which calls findChildByClass(KtExpression.class)) returns operationReference
+        // when the left operand has been deleted.
+        if (psiElement.left == psiElement.operationReference) psiElement.delete()
+      }
+      is KtParenthesizedExpression -> {
+        if (psiElement.expression == null) psiElement.delete()
+      }
       is KtBlockExpression -> { // This represents Blocks structure without the { }.
         // Check if the block is empty, then delete it.
         // We should not delete a block if it has KtScript as parent because a script should always have a block even if empty.

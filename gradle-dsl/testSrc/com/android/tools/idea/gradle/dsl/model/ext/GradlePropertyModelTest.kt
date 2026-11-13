@@ -355,6 +355,49 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
   }
 
   @Test
+  fun testDeleteCastValuesKts() {
+    isIrrelevantForGroovy("tests KotlinScript-specific cast syntax")
+    writeToBuildFile(TestFile.DELETE_CAST_VALUES_KTS)
+    val buildModel = gradleBuildModel
+    var ext = buildModel.ext()
+
+    // Removing one item from a cast collection must keep the cast and the remaining item intact.
+    ext.findProperty("castList").getValue(LIST_TYPE)!![0].delete()
+    ext.findProperty("castMap").getValue(MAP_TYPE)!!["key"]!!.delete()
+    // Deleting individual cast and nested-wrapper properties must leave other properties untouched.
+    ext.findProperty("castString").delete()
+    ext.findProperty("nestedParensAroundCast").delete()
+    ext.findProperty("castAroundParens").delete()
+
+    applyChangesAndReparse(buildModel)
+    verifyFileContents(myBuildFile, TestFile.DELETE_CAST_VALUES_KTS_EXPECTED)
+    assertEquals(getContents(TestFile.DELETE_CAST_VALUES_KTS_EXPECTED).trim(), loadBuildFile().trim())
+
+    ext = buildModel.ext()
+    verifyListProperty(ext.findProperty("castList"), listOf("b"))
+    verifyMapProperty(ext.findProperty("castMap"), mapOf("num" to 42))
+    verifyListProperty(ext.findProperty("castParenthesizedList"), listOf("c", "d"))
+    verifyPropertyModel(ext.findProperty("castInt"), INTEGER_TYPE, 42, INTEGER, REGULAR, 0)
+    assertEquals(NONE, ext.findProperty("castString").valueType)
+    assertEquals(NONE, ext.findProperty("nestedParensAroundCast").valueType)
+    assertEquals(NONE, ext.findProperty("castAroundParens").valueType)
+
+    // Deleting the remaining cast properties must leave the file empty.
+    ext.findProperty("castList").delete()
+    ext.findProperty("castMap").delete()
+    ext.findProperty("castParenthesizedList").delete()
+    ext.findProperty("castReferenceToCastList").delete()
+    ext.findProperty("castInt").delete()
+    ext.findProperty("castBoolean").delete()
+    ext.findProperty("castDouble").delete()
+    ext.findProperty("castToOtherType").delete()
+    ext.findProperty("castToReference").delete()
+
+    applyChangesAndReparse(buildModel)
+    verifyFileContents(myBuildFile, "")
+  }
+
+  @Test
   fun testVariables() {
     writeToBuildFile(TestFile.VARIABLES)
 
@@ -3941,6 +3984,8 @@ class GradlePropertyModelTest : GradleFileModelTestCase() {
     PROPERTIES("properties"),
     CAST_COLLECTION_VALUES_FOR_KTS_ARRAY_EXPRESSION("castCollectionValuesForKTSArrayExpression"),
     MODIFY_CAST_VALUES_FOR_KTS_ARRAY_EXPRESSION_EXPECTED("modifyCastValuesForKTSArrayExpressionExpected"),
+    DELETE_CAST_VALUES_KTS("deleteCastValuesKts"),
+    DELETE_CAST_VALUES_KTS_EXPECTED("deleteCastValuesKtsExpected"),
     PROPERTIES_EXTERNAL("propertiesExternal"),
     PROPERTIES_FROM_SCRATCH("propertiesFromScratch"),
     PROPERTIES_FROM_SCRATCH_EXPECTED("propertiesFromScratchExpected"),

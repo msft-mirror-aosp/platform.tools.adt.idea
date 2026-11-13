@@ -1774,6 +1774,28 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
   }
 
   @Test
+  fun testSetCompileSdkVersionFromExistingReference() {
+    writeToSettingsFile(subModuleSettingsText)
+    writeToBuildFile(TestFile.SET_COMPILE_SDK_VERSION_FROM_EXISTING_REFERENCE_ROOT)
+    writeToSubModuleBuildFile(TestFile.SET_COMPILE_SDK_VERSION_FROM_EXISTING_REFERENCE_SUB)
+
+    val pbm = projectBuildModel
+    val rootBuildModel = pbm.projectBuildModel!!
+    val subModuleBuildModel = pbm.getModuleBuildModel(mySubModule)!!
+    val android = subModuleBuildModel.android()
+
+    assertEquals("compileSdkVersion", "android-35", android.compileSdkVersion())
+
+    android.compileSdkVersion().setValue(ReferenceTo(rootBuildModel.ext().findProperty("compileSdkVersion2")))
+    applyChangesAndReparse(pbm)
+    verifyFileContents(myBuildFile, TestFile.SET_COMPILE_SDK_VERSION_FROM_EXISTING_REFERENCE_ROOT)
+    // Groovy subprojects inherit rootProject.ext properties unqualified, whereas KTS uses rootProject.extra[...] as String.
+    verifyFileContents(mySubModuleBuildFile, TestFile.SET_COMPILE_SDK_VERSION_FROM_EXISTING_REFERENCE_SUB_EXPECTED)
+    val reparsedSub = pbm.getModuleBuildModel(mySubModule)!!
+    assertEquals("compileSdkVersion", "android-36", reparsedSub.android().compileSdkVersion())
+  }
+
+  @Test
   fun testSetCompileSdkVersionToLibsVersionReference() {
     writeToVersionCatalogFile("compileSdk = \"36\"")
     writeToBuildFile(TestFile.ADD_AND_APPLY_COMPILE_SDK_EXPECTED)
@@ -2326,6 +2348,9 @@ class AndroidModelTest : AndroidGradleFileModelTestCase() {
     SET_COMPILE_SDK_VERSION_TO_ADD_ON_STRING_EXPECTED("setCompileSdkVersionToAddOnStringExpected"),
     SET_COMPILE_SDK_VERSION_TO_REFERENCE("setCompileSdkVersionToReference"),
     SET_COMPILE_SDK_VERSION_TO_REFERENCE_EXPECTED("setCompileSdkVersionToReferenceExpected"),
+    SET_COMPILE_SDK_VERSION_FROM_EXISTING_REFERENCE_ROOT("setCompileSdkVersionFromExistingReferenceRoot"),
+    SET_COMPILE_SDK_VERSION_FROM_EXISTING_REFERENCE_SUB("setCompileSdkVersionFromExistingReferenceSub"),
+    SET_COMPILE_SDK_VERSION_FROM_EXISTING_REFERENCE_SUB_EXPECTED("setCompileSdkVersionFromExistingReferenceSubExpected"),
     SET_PROGUARD_FILES_TO_REFERENCE("setProguardFilesToReference"),
     SET_PROGUARD_FILES_TO_REFERENCE_EXPECTED("setProguardFilesToReferenceExpected"),
     SET_PROGUARD_FILES_TO_LIST("setProguardFilesToList"),

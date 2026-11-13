@@ -1,0 +1,9 @@
+extra["castList"] = listOf("b") as List<String>
+extra["castMap"] = mapOf("num" to 42) as Map<String, Any>
+extra["castParenthesizedList"] = (listOf("c", "d")) as List<String>
+extra["castReferenceToCastList"] = extra["castList"] as List<String>
+extra["castInt"] = 42 as Int
+extra["castBoolean"] = true as Boolean
+extra["castDouble"] = 2.5 as Double
+extra["castToOtherType"] = true as Boolean
+extra["castToReference"] = "ref" as String

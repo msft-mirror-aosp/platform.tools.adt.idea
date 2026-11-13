@@ -1,0 +1,4 @@
+ext {
+  compileSdkVersion = 'android-35'
+  compileSdkVersion2 = 'android-36'
+}
