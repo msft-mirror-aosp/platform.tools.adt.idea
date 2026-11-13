@@ -132,7 +132,8 @@ class PsProjectImplTest {
       project.removeModule(gradlePath = ":nested2:deep")
       assertThat(project.findModuleByGradlePath(":nested2:deep")?.isDeclared, nullValue())
 
-      project.applyChanges() // applyChanges() discards resolved models.
+      project.applyChanges()
+      project.reparse() // reparse() discards resolved models.
       assertThat(project.findModuleByGradlePath(":nested2:deep")?.isDeclared, nullValue())
 
       project.testResolve() // A removed module should not reappear unless it is in the middle of a hierarchy.
@@ -162,7 +163,8 @@ class PsProjectImplTest {
 
       assertThat(project.findModuleByGradlePath(":app")?.isModified, equalTo(true))
 
-      project.applyChanges() // applyChanges() discards resolved models.
+      project.applyChanges()
+      project.reparse() // reparse() discards resolved models.
       assertThat(project.findModuleByGradlePath(":dyn_feature")?.isDeclared, nullValue())
       assertThat(
         project
@@ -191,7 +193,8 @@ class PsProjectImplTest {
       runWriteAction { project.ideProject.baseDir.findFileByRelativePath("/nested2/build.gradle")!!.delete("test") }
       assertThat(project.findModuleByGradlePath(":nested2")?.isDeclared, nullValue())
 
-      project.applyChanges() // applyChanges() discards resolved models.
+      project.applyChanges()
+      project.reparse() // reparse() discards resolved models.
       // A removed module should reappear because it is in the middle of the hierarchy.
       assertThat(project.findModuleByGradlePath(":nested2")?.isDeclared, equalTo(false))
 
@@ -274,6 +277,7 @@ class PsProjectImplTest {
 
         anotherProjectInstance.removeModule(gradlePath = ":nested2:deep")
         anotherProjectInstance.applyChanges()
+        anotherProjectInstance.reparse()
 
         // Different DSL models are independent.
         assumeThat(project.findModuleByGradlePath(":nested2:deep")?.isDeclared, equalTo(true))
@@ -395,10 +399,18 @@ class PsProjectImplTest {
           assertFalse(app.isReadAccessAllowed)
           assertFalse(app.isWriteIntentLockAcquired)
           psProject.applyChanges()
+          assertFalse(psProject.isModified)
+          assertFalse(modulesChangedOnEdt)
+          assertFalse(versionCatalogsChangedOnEdt)
+          assertFalse(catalogVariablesChangedOnEdt)
+          assertFalse(dependenciesReloadedOnEdt)
+
+          assertFalse(app.isReadAccessAllowed)
+          assertFalse(app.isWriteIntentLockAcquired)
+          psProject.reparse()
         }
       }
 
-      assertFalse(psProject.isModified)
       assertTrue(modulesChangedOnEdt)
       assertTrue(versionCatalogsChangedOnEdt)
       assertTrue(catalogVariablesChangedOnEdt)

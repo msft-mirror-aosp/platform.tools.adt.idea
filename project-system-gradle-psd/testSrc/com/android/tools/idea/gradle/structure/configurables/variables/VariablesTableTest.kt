@@ -1355,6 +1355,7 @@ private val DefaultMutableTreeNode.defaultVersionCatalogChild: Any
 private fun PsProject.applyAllChanges() {
   if (isModified) {
     applyChanges()
+    reparse()
   }
   forEachModule({ module ->
     if (module.isModified) {

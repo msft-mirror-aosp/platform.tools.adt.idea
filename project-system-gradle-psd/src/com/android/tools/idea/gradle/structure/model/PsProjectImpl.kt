@@ -117,7 +117,6 @@ class PsProjectImpl(
         }
         isModified = false
       }
-      reparse()
     }
   }
 
@@ -129,19 +128,14 @@ class PsProjectImpl(
   internal fun getResolvedModuleModelsByGradlePath(): Map<String, PsResolvedModuleModel> = internalResolvedModuleModels ?: mapOf()
 
   fun applyRunAndReparse(runnable: () -> Boolean) {
-    if (isModified) {
-      WriteCommandAction.writeCommandAction(ideProject).withName("Applying changes to the project structure.").run<RuntimeException> {
-        parsedModel.applyChanges()
-        isModified = false
-      }
-    }
+    applyChanges()
     if (runnable()) {
       reparse()
       isModified = true // This is to trigger apply() which in turn will trigger the final sync.
     }
   }
 
-  private fun reparse() {
+  override fun reparse() {
     val newParsedModel = parseModel("Applying changes to the project structure...")
     val application = ApplicationManager.getApplication()
     if (application.isDispatchThread) {

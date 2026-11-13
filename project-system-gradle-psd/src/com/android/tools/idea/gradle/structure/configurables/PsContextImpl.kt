@@ -122,7 +122,10 @@ constructor(
         }
 
         override fun projectStructureChanged() {
-          if (!disableSync) this@PsContextImpl.requestGradleModels()
+          if (!disableSync) {
+            project.reparse()
+            this@PsContextImpl.requestGradleModels()
+          }
         }
       },
       this,

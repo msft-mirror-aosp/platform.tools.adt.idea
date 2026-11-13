@@ -47,6 +47,8 @@ interface PsProject : PsModel {
 
   fun applyChanges()
 
+  fun reparse()
+
   fun removeModule(gradlePath: String)
 
   fun onModuleChanged(disposable: Disposable, handler: (PsModule) -> Unit)

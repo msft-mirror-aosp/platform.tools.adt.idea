@@ -865,6 +865,7 @@ class PsAndroidModuleTest {
 
       appModule.buildTypes.toList()[0].jniDebuggable = true.asParsed()
       project.applyChanges()
+      project.reparse()
       assertThat(appModule).isSameAs(project.findModuleByGradlePath(":") as PsAndroidModule?)
 
       assertThat(appModule.resolvedModel).isNull()
@@ -887,6 +888,9 @@ class PsAndroidModuleTest {
         val debugBuildType = appModule.buildTypes.find { it.name == "debug" }!!
         debugBuildType.jniDebuggable = true.asParsed()
         project.applyChanges()
+        assertThat(appModule.resolvedModel).isNotNull()
+        project.reparse()
+        assertThat(appModule.resolvedModel).isNull()
         FileDocumentManager.getInstance().saveAllDocuments()
         val resolver = GradleResolver()
         val disposable = Disposer.newDisposable()
@@ -923,6 +927,7 @@ class PsAndroidModuleTest {
         val debugBuildType = nestedModules.buildTypes.find { it.name == "debug" }!!
         debugBuildType.jniDebuggable = true.asParsed()
         project.applyChanges()
+        project.reparse()
         FileDocumentManager.getInstance().saveAllDocuments()
         val resolver = GradleResolver()
         val disposable = Disposer.newDisposable()
