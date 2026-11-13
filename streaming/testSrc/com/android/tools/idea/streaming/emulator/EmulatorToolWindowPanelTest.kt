@@ -51,6 +51,7 @@ import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.ToggleFloatingXrToolbarAction
 import com.android.tools.idea.streaming.actions.ZoomAction
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
+import com.android.tools.idea.streaming.core.STREAMING_CONTENT_PANEL_KEY
 import com.android.tools.idea.streaming.core.SplitPanel
 import com.android.tools.idea.streaming.core.ZoomType
 import com.android.tools.idea.streaming.core.expandFloatingToolbar
@@ -73,6 +74,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.configurationStore.deserialize
 import com.intellij.configurationStore.serialize
 import com.intellij.ide.ActivityTracker
+import com.intellij.ide.DataManager
 import com.intellij.ide.ui.LafManager
 import com.intellij.ide.ui.laf.UIThemeLookAndFeelInfoImpl
 import com.intellij.openapi.actionSystem.ActionGroup
@@ -94,6 +96,7 @@ import com.intellij.ui.LayeredIcon
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import icons.StudioIcons
+import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
 import java.awt.Cursor
@@ -124,6 +127,7 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseEvent.MOUSE_MOVED
 import java.nio.file.Path
 import java.util.concurrent.TimeoutException
+import javax.swing.JPanel
 import javax.swing.JSlider
 import javax.swing.JViewport
 import kotlin.test.fail
@@ -1042,6 +1046,41 @@ class EmulatorToolWindowPanelTest {
     panel.destroyContent()
     assertThat(panel.primaryDisplayView).isNull()
     streamScreenshotCall.waitForCancellation(2.seconds)
+  }
+
+  @Test
+  fun testSidePanelHiddenWhenLayoutInspectorActive() {
+    val avdFolder = FakeEmulator.createTvAvd(emulatorRule.avdRoot)
+    panel = createWindowPanel(avdFolder)
+    panel.createContent(true)
+    panel.size = Dimension(400, 600)
+    fakeUi.layoutAndDispatchEvents()
+
+    val tvRemotePanel = panel.getDescendant<TvRemotePanel>()
+    assertThat(panel.isLayoutInspectorActive).isFalse()
+    assertThat(tvRemotePanel.isVisible).isTrue()
+    assertThat(tvRemotePanel.height).isGreaterThan(0)
+
+    // Simulate Embedded Layout Inspector wrapping the streaming content panel.
+    val streamingContentPanel = DataManager.getInstance().getDataContext(panel).getData(STREAMING_CONTENT_PANEL_KEY)!!
+    val originalParent = streamingContentPanel.parent
+    val wrapper = JPanel(BorderLayout())
+    originalParent.remove(streamingContentPanel)
+    wrapper.add(streamingContentPanel, BorderLayout.CENTER)
+    originalParent.add(wrapper, BorderLayout.CENTER)
+    fakeUi.layoutAndDispatchEvents()
+
+    assertThat(panel.isLayoutInspectorActive).isTrue()
+    assertThat(tvRemotePanel.isVisible).isFalse()
+
+    // Unwrap the content panel simulating disabling of Layout Inspector.
+    originalParent.remove(wrapper)
+    originalParent.add(streamingContentPanel, BorderLayout.CENTER)
+    fakeUi.layoutAndDispatchEvents()
+
+    assertThat(panel.isLayoutInspectorActive).isFalse()
+    assertThat(tvRemotePanel.isVisible).isTrue()
+    assertThat(tvRemotePanel.height).isGreaterThan(0)
   }
 
   @Test

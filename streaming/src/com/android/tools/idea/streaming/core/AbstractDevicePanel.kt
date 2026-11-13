@@ -61,6 +61,7 @@ import java.awt.event.ComponentEvent
 import java.awt.event.ComponentListener
 import java.awt.event.ContainerEvent
 import java.awt.event.ContainerListener
+import java.awt.event.HierarchyEvent
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JLabel
@@ -121,10 +122,14 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
    * [NotificationHolderPanel] places [centerPanel] inside an internal `BorderLayoutPanel` child, so when Layout Inspector is inactive,
    * `centerPanel.parent.parent` is [notificationHolderPanel]. When the embedded Layout Inspector is enabled on this tab, it retrieves
    * [centerPanel] via [STREAMING_CONTENT_PANEL_KEY] and wraps it inside its own container (`LayoutInspectorRootPanel`) within that parent
-   * panel, restoring [centerPanel] to its original parent when disabled or disposed.
+   * panel, restoring [centerPanel] to its original parent when disabled or disposed. The side panels added by [addTopPanel] and
+   * [addBottomPanel] are hidden while Layout Inspector is active.
    */
   internal val isLayoutInspectorActive: Boolean
     get() = centerPanel.parent?.parent !== notificationHolderPanel
+
+  /** Panels added by [addTopPanel] and [addBottomPanel]. They are hidden while the embedded Layout Inspector is active. */
+  private val sidePanels = mutableListOf<JComponent>()
 
   private val displayPanelsMap = Int2ObjectRBTreeMap<T>()
   internal val displayPanels: Collection<T>
@@ -159,7 +164,22 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
 
     addToCenter(notificationHolderPanel)
 
+    // The embedded Layout Inspector is activated and deactivated by reparenting centerPanel.
+    centerPanel.addHierarchyListener { event ->
+      if (event.changeFlags and HierarchyEvent.PARENT_CHANGED.toLong() != 0L) {
+        updateSidePanelVisibility()
+      }
+    }
+
     updateToolbar()
+  }
+
+  /** Hides the side panels when the embedded Layout Inspector is active and shows them when it is not. */
+  private fun updateSidePanelVisibility() {
+    val visible = !isLayoutInspectorActive
+    for (sidePanel in sidePanels) {
+      sidePanel.isVisible = visible
+    }
   }
 
   private fun updateToolbar() {
@@ -202,6 +222,7 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
     panel.addToTop(topPanel)
     panel.addToCenter(notificationHolderPanel)
     addToCenter(panel)
+    addSidePanel(topPanel)
   }
 
   /** Adds the given panel below the central content panel. */
@@ -210,6 +231,12 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
     panel.addToCenter(notificationHolderPanel)
     panel.addToBottom(bottomPanel)
     addToCenter(panel)
+    addSidePanel(bottomPanel)
+  }
+
+  private fun addSidePanel(sidePanel: JComponent) {
+    sidePanels.add(sidePanel)
+    sidePanel.isVisible = !isLayoutInspectorActive
   }
 
   override fun addNotification(notificationPanel: EditorNotificationPanel) {
