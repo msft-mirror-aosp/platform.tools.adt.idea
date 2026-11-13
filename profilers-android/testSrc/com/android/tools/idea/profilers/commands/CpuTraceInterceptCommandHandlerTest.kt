@@ -79,6 +79,15 @@ class CpuTraceInterceptCommandHandlerTest {
   }
 
   @Test
+  fun `ShouldHandle skips memory perfetto traces`() {
+    val commandHandler = setupInterceptForTest(1)
+
+    // Native Allocations and Heap Dump record with perfetto too, but must not set up tracing in the app they record.
+    val command = buildCommand(1, TraceType.PERFETTO, profilerType = Trace.ProfilerType.MEMORY)
+    Truth.assertThat(commandHandler.shouldHandle(command)).isFalse()
+  }
+
+  @Test
   fun `Trace command is forwarded`() {
     val testPid = 1
     val commandHandler = setupInterceptForTest(testPid)
@@ -260,7 +269,7 @@ class CpuTraceInterceptCommandHandlerTest {
     return CpuTraceInterceptCommandHandler(mockClient.device, TransportServiceGrpc.newBlockingStub(channel))
   }
 
-  fun buildCommand(cmdId: Int, traceType: TraceType, testPid: Int = 1) =
+  fun buildCommand(cmdId: Int, traceType: TraceType, testPid: Int = 1, profilerType: Trace.ProfilerType = Trace.ProfilerType.CPU) =
     Commands.Command.newBuilder()
       .apply {
         type = Commands.Command.CommandType.START_TRACE
@@ -269,7 +278,7 @@ class CpuTraceInterceptCommandHandlerTest {
         startTrace =
           Trace.StartTrace.newBuilder()
             .apply {
-              profilerType = Trace.ProfilerType.CPU
+              this.profilerType = profilerType
               val configuration =
                 Trace.TraceConfiguration.newBuilder().apply {
                   abiCpuArch = "FakeAbi"

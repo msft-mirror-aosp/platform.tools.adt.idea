@@ -79,13 +79,13 @@ class CpuTraceInterceptCommandHandler(val device: IDevice, private val transport
   private val log = Logger.getInstance(CpuTraceInterceptCommandHandler::class.java)
 
   override fun shouldHandle(command: Commands.Command): Boolean {
-    // We only check perfetto traces.
+    // We only check perfetto traces of the CPU profiler. Memory recordings, like Native Allocations and Heap Dump, use perfetto too, but
+    // must not set up tracing in the app: it would change the app they record, and CpuTraceStopCommandHandler would never stop it.
     return when (command.type) {
       Commands.Command.CommandType.START_TRACE -> {
-        TraceType.from(command.startTrace.configuration) == TraceType.PERFETTO
+        command.startTrace.profilerType == Trace.ProfilerType.CPU && TraceType.from(command.startTrace.configuration) == TraceType.PERFETTO
       }
-      // The overhead of enabling the SDK tracing is minimal, we do not need to issue
-      // a broadcast to disable it.
+      // The legacy (Tracing 1.0) SDK handshake needs no disable broadcast; Tracing 2.0 is stopped by CpuTraceStopCommandHandler.
       else -> false
     }
   }
