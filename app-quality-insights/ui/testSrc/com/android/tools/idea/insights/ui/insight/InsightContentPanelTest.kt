@@ -33,6 +33,7 @@ import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.ai.AiInsightToolkit
 import com.android.tools.idea.insights.ai.AiModelInfo
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
+import com.android.tools.idea.insights.model.connection.ConnectionMode
 import com.android.tools.idea.insights.ui.AI_INSIGHT_TOOLKIT_KEY
 import com.android.tools.idea.insights.ui.APP_INSIGHTS_TRACKER_KEY
 import com.android.tools.idea.insights.ui.SELECTED_APP_ID_KEY
@@ -49,6 +50,7 @@ import com.intellij.ui.HyperlinkLabel
 import com.intellij.ui.TitledSeparator
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBLoadingPanel
+import java.awt.Dimension
 import java.net.SocketTimeoutException
 import java.time.Instant
 import javax.swing.JButton
@@ -60,7 +62,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withTimeout
@@ -82,7 +83,7 @@ class InsightContentPanelTest {
 
   @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(EdtRule()).around(projectRule).around(loginFeatureRule)
 
-  private lateinit var currentInsightFlow: MutableStateFlow<LoadingState<AiInsight?>>
+  private lateinit var contentStateFlow: MutableStateFlow<InsightContentState>
   private lateinit var insightContentPanel: InsightContentPanel
 
   private val errorText: String
@@ -115,8 +116,8 @@ class InsightContentPanelTest {
     doReturn(projectRule.project).whenever(mockController).project
     doReturn(mockAiInsightToolkit).whenever(mockController).aiInsightToolkit
     doReturn(FAKE_INSIGHTS_PROVIDER).whenever(mockController).provider
-    currentInsightFlow = MutableStateFlow(LoadingState.Ready(AiInsight("insight", ISSUE1.sampleEvent)))
-    insightContentPanel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
+    contentStateFlow = MutableStateFlow(InsightContentState(LoadingState.Ready(AiInsight("insight", ISSUE1.sampleEvent))))
+    insightContentPanel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
   }
 
   @After
@@ -126,20 +127,20 @@ class InsightContentPanelTest {
 
   @Test
   fun `test loading state`() = runBlocking {
-    currentInsightFlow.update { LoadingState.Loading }
+    updateInsight(LoadingState.Loading)
 
     val fakeUi = FakeUi(insightContentPanel)
 
     val loadingPanel = fakeUi.findComponent<JBLoadingPanel>() ?: fail("Loading panel not found")
     assertThat(loadingPanel.getLoadingText()).isEqualTo("Fetching issue data...")
 
-    currentInsightFlow.update { LoadingState.Loading("Generating insight...") }
+    updateInsight(LoadingState.Loading("Generating insight..."))
     waitForCondition(2.seconds) { loadingPanel.getLoadingText() == "Generating insight..." }
   }
 
   @Test
   fun `test value null, then action not fired text`() = runBlocking {
-    currentInsightFlow.update { LoadingState.Ready(null) }
+    updateInsight(LoadingState.Ready(null))
 
     FakeUi(insightContentPanel)
     delayUntilStatusTextVisible()
@@ -149,7 +150,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test insight empty, then no insight`() = runBlocking {
-    currentInsightFlow.update { LoadingState.Ready(DEFAULT_AI_INSIGHT) }
+    updateInsight(LoadingState.Ready(DEFAULT_AI_INSIGHT))
 
     FakeUi(insightContentPanel)
     delayUntilStatusTextVisible()
@@ -160,7 +161,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test failure shows failure message if available`() = runBlocking {
-    currentInsightFlow.update { LoadingState.UnknownFailure("Some failure", SocketTimeoutException()) }
+    updateInsight(LoadingState.UnknownFailure("Some failure", SocketTimeoutException()))
 
     FakeUi(insightContentPanel)
     delayUntilStatusTextVisible()
@@ -171,7 +172,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test failure shows generic failure message when message unavailable`() = runBlocking {
-    currentInsightFlow.update { LoadingState.UnknownFailure(null) }
+    updateInsight(LoadingState.UnknownFailure(null))
 
     FakeUi(insightContentPanel)
     delayUntilStatusTextVisible()
@@ -181,10 +182,23 @@ class InsightContentPanelTest {
   }
 
   @Test
+  fun `test failure shows retry link that regenerates insight`() = runBlocking {
+    updateInsight(LoadingState.UnknownFailure("Some failure"))
+
+    val fakeUi = createSizedFakeUi()
+    delayUntilStatusTextVisible()
+
+    assertThat(statusTextLines).containsExactly("Failed to generate insight", "Some failure", "Retry").inOrder()
+
+    fakeUi.clickRetryLink()
+    verify(mockController).refreshInsight(forceGenerateNewInsight = true)
+  }
+
+  @Test
   fun `test user needs onboarding shows enable insight button`() = runBlocking {
     val mutex = Mutex(locked = true)
     doAnswer { mutex.unlock() }.whenever(mockAiInsightToolkit).showOnboarding()
-    currentInsightFlow.update { LoadingState.Unauthorized("") }
+    updateInsight(LoadingState.Unauthorized(""))
 
     val fakeUi = FakeUi(insightContentPanel)
 
@@ -203,34 +217,50 @@ class InsightContentPanelTest {
   }
 
   @Test
-  fun `test offline mode`() = runBlocking {
-    currentInsightFlow.update { LoadingState.NetworkFailure(null) }
+  fun `test offline mode`(): Unit = runBlocking {
+    updateInsight(LoadingState.NetworkFailure(null), ConnectionMode.OFFLINE)
 
     FakeUi(insightContentPanel)
     delayUntilStatusTextVisible()
 
-    assertThat(errorText).isEqualTo("Insights data is not available.")
-    assertThat(secondaryText).isEmpty()
+    assertThat(statusTextLines).containsExactly("Insights data is not available.")
+  }
+
+  @Test
+  fun `test network failure while online shows retry link`() = runBlocking {
+    updateInsight(LoadingState.NetworkFailure("Connection reset"))
+
+    val fakeUi = createSizedFakeUi()
+    delayUntilStatusTextVisible()
+
+    assertThat(statusTextLines).containsExactly("Insights data is not available.", "Retry").inOrder()
+
+    fakeUi.clickRetryLink()
+    verify(mockController).refreshInsight(forceGenerateNewInsight = true)
   }
 
   @Test
   fun `test quota exhausted`() = runBlocking {
-    currentInsightFlow.update {
+    updateInsight(
       LoadingState.NetworkFailure(
         "Quota exceeded for quota metric 'Duet Task API requests' and limit 'Duet Task API requests per day per user' of service 'cloudaicompanion.googleapis.com' for consumer 'project_number:123456789'."
       )
-    }
+    )
 
-    FakeUi(insightContentPanel)
+    val fakeUi = createSizedFakeUi()
     delayUntilStatusTextVisible()
 
-    assertThat(errorText).isEqualTo("Quota exhausted")
-    assertThat(secondaryText).isEqualTo("You have consumed your available daily quota for insights.")
+    assertThat(statusTextLines)
+      .containsExactly("Quota exhausted", "You have consumed your available daily quota for insights.", "Retry")
+      .inOrder()
+
+    fakeUi.clickRetryLink()
+    verify(mockController).refreshInsight(forceGenerateNewInsight = true)
   }
 
   @Test
   fun `test gemini is not enabled due to plugin not enabled`() = runBlocking {
-    currentInsightFlow.update { LoadingState.Unauthorized("Gemini is disabled") }
+    updateInsight(LoadingState.Unauthorized("Gemini is disabled"))
 
     delayUntilStatusTextVisible()
 
@@ -240,7 +270,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test unsupported operation`() = runBlocking {
-    currentInsightFlow.update { LoadingState.UnsupportedOperation("Some message") }
+    updateInsight(LoadingState.UnsupportedOperation("Some message"))
 
     FakeUi(insightContentPanel)
     delayUntilStatusTextVisible()
@@ -251,7 +281,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test illegal state shows auto-generation panel`() = runBlocking {
-    currentInsightFlow.update { LoadingState.InsightAutogenerateDisabled }
+    updateInsight(LoadingState.InsightAutogenerateDisabled)
 
     val fakeUi = FakeUi(insightContentPanel)
 
@@ -261,7 +291,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test clicking 'Generate insight' in auto-generation panel refreshes insight`() = runBlocking {
-    currentInsightFlow.update { LoadingState.InsightAutogenerateDisabled }
+    updateInsight(LoadingState.InsightAutogenerateDisabled)
 
     val fakeUi = FakeUi(insightContentPanel)
     val generateLink =
@@ -274,7 +304,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test clicking 'Enable auto-generation' in auto-generation panel sets auto-generation and refreshes insight`() = runBlocking {
-    currentInsightFlow.update { LoadingState.InsightAutogenerateDisabled }
+    updateInsight(LoadingState.InsightAutogenerateDisabled)
 
     val fakeUi = FakeUi(insightContentPanel)
     val enableLink =
@@ -288,7 +318,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test tooltip in auto-generation panel`() = runBlocking {
-    currentInsightFlow.update { LoadingState.InsightAutogenerateDisabled }
+    updateInsight(LoadingState.InsightAutogenerateDisabled)
 
     val fakeUi = FakeUi(insightContentPanel)
     fakeUi.findComponent<AutoGenerateInsightPanel>() ?: fail("AutoGenerateInsightPanel not found")
@@ -310,9 +340,9 @@ class InsightContentPanelTest {
 
   @Test
   fun `test model name visible when insight generated`() = runBlocking {
-    val panel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
+    val panel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
     val insight = AiInsight("insight text", ISSUE1.sampleEvent, modelInfo = AiModelInfo("Gemini Flash", null))
-    currentInsightFlow.update { LoadingState.Ready(insight) }
+    updateInsight(LoadingState.Ready(insight))
 
     val fakeUi = FakeUi(panel)
     val titledSeparator = fakeUi.findComponent<TitledSeparator>() ?: fail("TitledSeparator not found")
@@ -322,9 +352,9 @@ class InsightContentPanelTest {
 
   @Test
   fun `test model and provider name visible when insight generated`() = runBlocking {
-    val panel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
+    val panel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
     val insight = AiInsight("insight text", ISSUE1.sampleEvent, modelInfo = AiModelInfo("Gemini Flash", "Google"))
-    currentInsightFlow.update { LoadingState.Ready(insight) }
+    updateInsight(LoadingState.Ready(insight))
 
     val fakeUi = FakeUi(panel)
     val titledSeparator = fakeUi.findComponent<TitledSeparator>() ?: fail("TitledSeparator not found")
@@ -334,9 +364,9 @@ class InsightContentPanelTest {
 
   @Test
   fun `test provider name only visible when insight generated`() = runBlocking {
-    val panel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
+    val panel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
     val insight = AiInsight("insight text", ISSUE1.sampleEvent, modelInfo = AiModelInfo(null, "Google"))
-    currentInsightFlow.update { LoadingState.Ready(insight) }
+    updateInsight(LoadingState.Ready(insight))
 
     val fakeUi = FakeUi(panel)
     val titledSeparator = fakeUi.findComponent<TitledSeparator>() ?: fail("TitledSeparator not found")
@@ -346,9 +376,9 @@ class InsightContentPanelTest {
 
   @Test
   fun `test model header hidden when model and provider name are null`() = runBlocking {
-    val panel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
+    val panel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
     val insight = AiInsight("insight text", ISSUE1.sampleEvent, modelInfo = AiModelInfo(null, null))
-    currentInsightFlow.update { LoadingState.Ready(insight) }
+    updateInsight(LoadingState.Ready(insight))
 
     val fakeUi = FakeUi(panel)
     val titledSeparator = fakeUi.findComponent<TitledSeparator>() ?: fail("TitledSeparator not found")
@@ -357,8 +387,8 @@ class InsightContentPanelTest {
 
   @Test
   fun `test model name visible when auto-generation disabled`() = runBlocking {
-    val panel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
-    currentInsightFlow.update { LoadingState.InsightAutogenerateDisabled }
+    val panel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
+    updateInsight(LoadingState.InsightAutogenerateDisabled)
 
     val fakeUi = FakeUi(panel)
     val titledSeparator = fakeUi.findComponent<TitledSeparator>() ?: fail("TitledSeparator not found")
@@ -368,8 +398,8 @@ class InsightContentPanelTest {
 
   @Test
   fun `test model name visible when no model available`() = runBlocking {
-    val panel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
-    currentInsightFlow.update { LoadingState.NoModelAvailable }
+    val panel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
+    updateInsight(LoadingState.NoModelAvailable)
 
     val fakeUi = FakeUi(panel)
     val titledSeparator = fakeUi.findComponent<TitledSeparator>() ?: fail("TitledSeparator not found")
@@ -379,8 +409,8 @@ class InsightContentPanelTest {
 
   @Test
   fun `test no model available shows auto-generation panel with correct card`() = runBlocking {
-    val panel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
-    currentInsightFlow.update { LoadingState.NoModelAvailable }
+    val panel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
+    updateInsight(LoadingState.NoModelAvailable)
 
     val fakeUi = FakeUi(panel)
 
@@ -399,8 +429,8 @@ class InsightContentPanelTest {
   @Test
   fun `test no model available shows correct message when model manager is enabled`() = runBlocking {
     StudioFlags.MODEL_MANAGER_ENABLED.overrideForTest(true, projectRule.disposable)
-    val panel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
-    currentInsightFlow.update { LoadingState.NoModelAvailable }
+    val panel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
+    updateInsight(LoadingState.NoModelAvailable)
 
     val fakeUi = FakeUi(panel)
     val textPane = fakeUi.findComponent<JTextPane> { it.text.contains("No model assigned") }
@@ -411,8 +441,8 @@ class InsightContentPanelTest {
   @Test
   fun `test no model available shows correct message when model manager is disabled`() = runBlocking {
     StudioFlags.MODEL_MANAGER_ENABLED.overrideForTest(false, projectRule.disposable)
-    val panel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
-    currentInsightFlow.update { LoadingState.NoModelAvailable }
+    val panel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
+    updateInsight(LoadingState.NoModelAvailable)
 
     val fakeUi = FakeUi(panel)
     val textPane = fakeUi.findComponent<JTextPane> { it.text.contains("No model assigned") }
@@ -422,7 +452,7 @@ class InsightContentPanelTest {
 
   @Test
   fun `test clicking 'Assign model' in auto-generation panel invokes handleModelAssignment`(): Unit = runBlocking {
-    currentInsightFlow.update { LoadingState.NoModelAvailable }
+    updateInsight(LoadingState.NoModelAvailable)
 
     val fakeUi = FakeUi(insightContentPanel)
     val assignModelLink = fakeUi.findComponent<HyperlinkLabel> { it.text == "Assign model" } ?: fail("Assign model link not found")
@@ -433,8 +463,8 @@ class InsightContentPanelTest {
 
   @Test
   fun `test clicking regenerate generates insight irrespective of auto generate setting`() = runBlocking {
-    val panel = InsightContentPanel(mockController, scope, currentInsightFlow, mockTracker, projectRule.disposable)
-    currentInsightFlow.update { LoadingState.NoModelAvailable }
+    val panel = InsightContentPanel(mockController, scope, contentStateFlow, mockTracker, projectRule.disposable)
+    updateInsight(LoadingState.NoModelAvailable)
 
     val fakeUi = FakeUi(panel)
     val regenerateLink = fakeUi.findComponent<HyperlinkLabel> { it.text == "Regenerate" } ?: fail("Regenerate link not found")
@@ -445,4 +475,23 @@ class InsightContentPanelTest {
   }
 
   private suspend fun delayUntilStatusTextVisible() = delayUntilCondition(200) { insightContentPanel.emptyStateText.isStatusVisible }
+
+  private fun updateInsight(insight: LoadingState<AiInsight?>, mode: ConnectionMode = ConnectionMode.ONLINE) {
+    contentStateFlow.value = InsightContentState(insight, mode)
+  }
+
+  private val statusTextLines: List<String>
+    get() = insightContentPanel.emptyStateText.toString().lines()
+
+  /** Gives the panel a real size so that clicks on the status text can be located. */
+  private fun createSizedFakeUi(): FakeUi {
+    insightContentPanel.size = Dimension(400, 400)
+    return FakeUi(insightContentPanel).apply { layout() }
+  }
+
+  /** The status text is centered and "Retry" is its last line, so click just above the bottom of the text. */
+  private fun FakeUi.clickRetryLink() {
+    val bottomOfText = insightContentPanel.emptyStateText.pointBelow
+    mouse.click(insightContentPanel.width / 2, bottomOfText.y - 2)
+  }
 }

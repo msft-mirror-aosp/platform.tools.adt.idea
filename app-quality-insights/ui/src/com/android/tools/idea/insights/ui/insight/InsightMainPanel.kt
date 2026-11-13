@@ -51,7 +51,9 @@ class InsightMainPanel(controller: AppInsightsCrashController, tracker: AppInsig
     InsightContentPanel(
       controller,
       scope,
-      controller.state.map { it.currentInsight }.stateIn(scope, SharingStarted.Eagerly, LoadingState.Ready(null)),
+      controller.state
+        .map { InsightContentState(it.currentInsight, it.mode) }
+        .stateIn(scope, SharingStarted.Eagerly, InsightContentState(LoadingState.Ready(null))),
       tracker,
       parentDisposable,
     )

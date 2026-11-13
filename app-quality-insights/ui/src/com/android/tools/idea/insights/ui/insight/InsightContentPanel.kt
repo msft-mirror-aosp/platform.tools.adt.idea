@@ -19,9 +19,11 @@ import com.android.tools.idea.insights.AppInsightsCrashController
 import com.android.tools.idea.insights.LoadingState
 import com.android.tools.idea.insights.ai.AiInsight
 import com.android.tools.idea.insights.analytics.AppInsightsTracker
+import com.android.tools.idea.insights.model.connection.ConnectionMode
 import com.android.tools.idea.insights.ui.AI_INSIGHT_TOOLKIT_KEY
 import com.android.tools.idea.insights.ui.APP_INSIGHTS_TRACKER_KEY
 import com.android.tools.idea.insights.ui.AppInsightsStatusText
+import com.android.tools.idea.insights.ui.EMPTY_STATE_LINK_FORMAT
 import com.android.tools.idea.insights.ui.EMPTY_STATE_TEXT_FORMAT
 import com.android.tools.idea.insights.ui.EMPTY_STATE_TITLE_FORMAT
 import com.android.tools.idea.insights.ui.SELECTED_APP_ID_KEY
@@ -44,6 +46,7 @@ import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.panels.VerticalLayout
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.StatusText
 import java.awt.BorderLayout
 import java.awt.CardLayout
 import java.awt.Graphics
@@ -68,11 +71,14 @@ private const val RESOURCE_EXHAUSTED_MESSAGE =
 
 private const val DEFAULT_LOADING_TEXT = "Fetching issue data..."
 
+/** What [InsightContentPanel] renders: the current insight, and the connection mode it was produced in. */
+data class InsightContentState(val insight: LoadingState<AiInsight?>, val mode: ConnectionMode = ConnectionMode.ONLINE)
+
 /** [JPanel] that is shown in the [InsightToolWindow] when an insight is available. */
 class InsightContentPanel(
   private val controller: AppInsightsCrashController,
   scope: CoroutineScope,
-  currentInsightFlow: StateFlow<LoadingState<AiInsight?>>,
+  contentStateFlow: StateFlow<InsightContentState>,
   private val tracker: AppInsightsTracker,
   parentDisposable: Disposable,
 ) : JPanel(), UiDataProvider, Disposable {
@@ -80,6 +86,9 @@ class InsightContentPanel(
   private val cardLayout = CardLayout()
 
   private val insightTextPane = InsightTextPane(controller.project)
+
+  private val currentInsightFlow =
+    contentStateFlow.map { it.insight }.stateIn(scope, SharingStarted.Eagerly, contentStateFlow.value.insight)
 
   private val insightLinksPanel = InsightLinksPanel(controller, currentInsightFlow, tracker, this)
 
@@ -161,9 +170,9 @@ class InsightContentPanel(
     add(enableInsightPanel, ONBOARDING_REQUIRED)
 
     scope.launch {
-      currentInsightFlow
+      contentStateFlow
         .onEach { reset() }
-        .collect { aiInsight ->
+        .collect { (aiInsight, mode) ->
           // TODO(b/431055979): Handle StatusRuntimeException from Gemini correctly
           when (aiInsight) {
             is LoadingState.Ready -> {
@@ -230,17 +239,16 @@ class InsightContentPanel(
             }
             is LoadingState.NetworkFailure -> {
               val message = aiInsight.message
-              if (message?.contains(RESOURCE_EXHAUSTED_MESSAGE) == true) {
-                emptyStateText.apply {
-                  clear()
+              emptyStateText.apply {
+                clear()
+                if (message?.contains(RESOURCE_EXHAUSTED_MESSAGE) == true) {
                   appendText("Quota exhausted", EMPTY_STATE_TITLE_FORMAT)
                   appendLine("You have consumed your available daily quota for insights.")
-                }
-              } else {
-                emptyStateText.apply {
-                  clear()
+                } else {
                   appendText("Insights data is not available.")
                 }
+                // Retrying while offline would fail the same way.
+                if (mode != ConnectionMode.OFFLINE) appendRetryLink()
               }
               showEmptyCard()
             }
@@ -249,6 +257,7 @@ class InsightContentPanel(
                 clear()
                 appendText("Failed to generate insight", EMPTY_STATE_TITLE_FORMAT)
                 appendLine(aiInsight.getCauseMessageOrDefault(), EMPTY_STATE_TEXT_FORMAT, null)
+                appendRetryLink()
               }
               showEmptyCard()
             }
@@ -256,6 +265,10 @@ class InsightContentPanel(
         }
     }
   }
+
+  // The failure may be specific to the current model or agent (e.g. quota or credits), so the user may switch and retry.
+  private fun StatusText.appendRetryLink() =
+    appendLine("Retry", EMPTY_STATE_LINK_FORMAT) { controller.refreshInsight(forceGenerateNewInsight = true) }
 
   private fun updateInsightText(text: String) {
     insightTextPane.text = text
