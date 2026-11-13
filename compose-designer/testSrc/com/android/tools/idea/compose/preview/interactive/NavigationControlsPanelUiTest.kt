@@ -22,12 +22,14 @@ import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -46,12 +48,14 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.preview.analytics.InteractivePreviewUsageTracker
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.intellij.testFramework.ProjectRule
+import java.awt.image.BufferedImage
 import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -534,7 +538,7 @@ class NavigationControlsPanelUiTest {
       )
     }
 
-    composeTestRule.onNodeWithText(message("action.navigate.back.stack.current")).assertIsDisplayed()
+    composeTestRule.onNodeWithText(message("action.navigate.back.stack.current"), useUnmergedTree = true).assertIsDisplayed()
     composeTestRule.onNodeWithText("Screen2").assertIsDisplayed().assertHasNoClickAction()
     composeTestRule.onNodeWithText("Screen1").assertIsDisplayed().assertHasNoClickAction()
   }
@@ -975,5 +979,111 @@ class NavigationControlsPanelUiTest {
     composeTestRule.waitForIdle()
     assertEquals(2, backPressStartCallCount)
     assertEquals(2, backPressCompletedCallCount)
+  }
+
+  @Test
+  fun testVisualStackAccessibilitySemantics() {
+    // Enable the visual back stack feature flag and render a two-entry navigation history
+    StudioFlags.COMPOSE_INTERACTIVE_PREVIEW_PREDICTIVE_BACK_STACK_VISUAL.overrideForTest(
+      true,
+      projectRule.project,
+    )
+    val fpsUpdater =
+      MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+      )
+    var historyList = listOf("Screen1", "Screen2")
+
+    composeTestRule.setContent {
+      NavigationControlsPanel(
+        isEdgeNavigationImplemented = { true },
+        getNavigationHistory = { historyList },
+        canBackPress = { true },
+        onBackPress = {},
+        onBackPressStart = {},
+        onBackPressProgress = { _, _ -> },
+        onBackPressTrackProgress = {},
+        onEdgeDropdownPress = {},
+        fpsUpdater = fpsUpdater,
+      )
+    }
+
+    // Verify the "Navigation Stack:" section title is marked with Heading semantics
+    val stackHeaderNode = composeTestRule.onNodeWithText(message("action.navigate.back.stack.title")).assertIsDisplayed()
+    assertTrue(SemanticsProperties.Heading in stackHeaderNode.fetchSemanticsNode().config)
+
+    // Capture the baseline unfocused panel image before requesting focus on any card
+    val unfocusedPanelImage = composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.panel).captureToImage().toAwtImage()
+
+    // Verify the active card merges both the route name and "Current" badge into Text, is
+    // focusable, and is not a disabled button
+    val expectedCurrentBadgeText = message("action.navigate.back.stack.current")
+    val activeCardNode = composeTestRule.onNodeWithText("Screen2").assertIsDisplayed().assertHasNoClickAction()
+    val activeCardConfig = activeCardNode.fetchSemanticsNode().config
+    assertTrue(activeCardConfig.isMergingSemanticsOfDescendants)
+    assertEquals(
+      listOf("Screen2", expectedCurrentBadgeText),
+      activeCardConfig[SemanticsProperties.Text].map { annotatedString -> annotatedString.text },
+    )
+    assertFalse(SemanticsProperties.StateDescription in activeCardConfig)
+    assertFalse(SemanticsProperties.Disabled in activeCardConfig)
+    assertFalse(SemanticsProperties.Role in activeCardConfig)
+    assertTrue(SemanticsActions.RequestFocus in activeCardConfig)
+    // Verify the merged card semantics bounds include the 12.dp outer padding around the inner text
+    val innerRouteTextBounds = composeTestRule.onNodeWithText("Screen2", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+    val mergedActiveCardBounds = activeCardNode.fetchSemanticsNode().boundsInRoot
+    assertTrue(mergedActiveCardBounds.left < innerRouteTextBounds.left)
+    assertTrue(mergedActiveCardBounds.top < innerRouteTextBounds.top)
+    assertTrue(mergedActiveCardBounds.right > innerRouteTextBounds.right)
+    assertTrue(mergedActiveCardBounds.bottom > innerRouteTextBounds.bottom)
+    activeCardNode.performSemanticsAction(SemanticsActions.RequestFocus)
+    composeTestRule.waitForIdle()
+    assertTrue(activeCardNode.fetchSemanticsNode().config[SemanticsProperties.Focused])
+
+    // Verify the inactive card is merged, focusable, renders a visible focus outline, and only
+    // exposes the route name in Text without the "Current" badge
+    val inactiveCardNode = composeTestRule.onNodeWithText("Screen1").assertIsDisplayed().assertHasNoClickAction()
+    val inactiveCardConfig = inactiveCardNode.fetchSemanticsNode().config
+    assertTrue(inactiveCardConfig.isMergingSemanticsOfDescendants)
+    assertEquals(
+      listOf("Screen1"),
+      inactiveCardConfig[SemanticsProperties.Text].map { annotatedString -> annotatedString.text },
+    )
+    assertFalse(SemanticsProperties.StateDescription in inactiveCardConfig)
+    assertFalse(SemanticsProperties.Disabled in inactiveCardConfig)
+    assertFalse(SemanticsProperties.Role in inactiveCardConfig)
+    assertTrue(SemanticsActions.RequestFocus in inactiveCardConfig)
+    inactiveCardNode.performSemanticsAction(SemanticsActions.RequestFocus)
+    composeTestRule.waitForIdle()
+    assertTrue(inactiveCardNode.fetchSemanticsNode().config[SemanticsProperties.Focused])
+    val focusedPanelImage = composeTestRule.onNodeWithTag(NavigationControlsPanelTestTags.panel).captureToImage().toAwtImage()
+    assertFalse(
+      "Focusing a back stack card should render a visible focus outline",
+      areImagesIdentical(unfocusedPanelImage, focusedPanelImage),
+    )
+
+    // Push a new entry onto the back stack and verify focus stays bound to Screen1 rather than
+    // jumping to the shifted reversed slot
+    historyList = listOf("Screen1", "Screen2", "Screen3")
+    fpsUpdater.tryEmit(Unit)
+    composeTestRule.waitForIdle()
+    assertTrue(composeTestRule.onNodeWithText("Screen1").fetchSemanticsNode().config[SemanticsProperties.Focused])
+    assertFalse(composeTestRule.onNodeWithText("Screen2").fetchSemanticsNode().config[SemanticsProperties.Focused])
+  }
+
+  private fun areImagesIdentical(firstImage: BufferedImage, secondImage: BufferedImage): Boolean {
+    // Compare dimensions before checking individual pixel RGB values
+    if (firstImage.width != secondImage.width || firstImage.height != secondImage.height) {
+      return false
+    }
+    for (pixelX in 0 until firstImage.width) {
+      for (pixelY in 0 until firstImage.height) {
+        if (firstImage.getRGB(pixelX, pixelY) != secondImage.getRGB(pixelX, pixelY)) {
+          return false
+        }
+      }
+    }
+    return true
   }
 }

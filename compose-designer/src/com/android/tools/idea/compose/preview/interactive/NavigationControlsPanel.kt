@@ -19,6 +19,7 @@ package com.android.tools.idea.compose.preview.interactive
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -46,8 +48,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +70,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
+import org.jetbrains.jewel.foundation.Stroke
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
@@ -75,6 +80,7 @@ import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Slider
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.Tooltip
+import org.jetbrains.jewel.ui.focusOutline
 
 private val DEFAULT_SPACING = 8.dp
 
@@ -308,10 +314,12 @@ private fun BackStack(
     modifier = Modifier.padding(vertical = DEFAULT_SPACING).fillMaxWidth().testTag(NavigationControlsPanelTestTags.visualStack),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
+    // Mark the section title as an accessibility heading so screen readers can jump directly to the
+    // navigation stack.
     Text(
       text = message("action.navigate.back.stack.title"),
       fontWeight = FontWeight.Bold,
-      modifier = Modifier.padding(bottom = 8.dp),
+      modifier = Modifier.padding(bottom = 8.dp).semantics { heading() },
     )
     if (navigationHistory.isEmpty()) {
       Text(
@@ -332,56 +340,73 @@ private fun BackStack(
         // Display in reverse order so the newest/active item is on top of the stack.
         navigationHistory.asReversed().forEachIndexed { index, navigationInfoItem ->
           val isCurrentActiveNavigationItem = index == 0
-          val navKeys by
-            produceState(
-              parsedNavigationItemsCache[navigationInfoItem] ?: emptyList(),
-              navigationInfoItem,
-              fpsUpdater,
-            ) {
-              fun requestParseIfNeeded() {
-                val cachedKeys = parsedNavigationItemsCache[navigationInfoItem]
-                if (cachedKeys != null) {
-                  value = cachedKeys
-                } else {
-                  parseNavigationItem(navigationInfoItem) { parsedKeys ->
-                    if (parsedKeys.isNotEmpty()) {
-                      parsedNavigationItemsCache[navigationInfoItem] = parsedKeys
+          // Key by the forward stack index and item so the parsed state producer and focus state
+          // stay bound to the specific entry across pushes and pops.
+          key(navigationHistory.lastIndex - index, navigationInfoItem) {
+            val navKeys by
+              produceState(
+                parsedNavigationItemsCache[navigationInfoItem] ?: emptyList(),
+                navigationInfoItem,
+                fpsUpdater,
+              ) {
+                fun requestParseIfNeeded() {
+                  val cachedKeys = parsedNavigationItemsCache[navigationInfoItem]
+                  if (cachedKeys != null) {
+                    value = cachedKeys
+                  } else {
+                    parseNavigationItem(navigationInfoItem) { parsedKeys ->
+                      if (parsedKeys.isNotEmpty()) {
+                        parsedNavigationItemsCache[navigationInfoItem] = parsedKeys
+                      }
+                      value = parsedKeys
                     }
-                    value = parsedKeys
+                  }
+                }
+                requestParseIfNeeded()
+                fpsUpdater.collect {
+                  if (value.isEmpty()) {
+                    requestParseIfNeeded()
                   }
                 }
               }
-              requestParseIfNeeded()
-              fpsUpdater.collect {
-                if (value.isEmpty()) {
-                  requestParseIfNeeded()
-                }
-              }
-            }
-          BackStackItem(
-            navKeys = navKeys,
-            isCurrentActiveNavigationItem = isCurrentActiveNavigationItem,
-          )
+            BackStackItem(
+              navKeys = navKeys,
+              isCurrentActiveNavigationItem = isCurrentActiveNavigationItem,
+            )
+          }
         }
       }
     }
   }
 }
 
+@OptIn(ExperimentalJewelApi::class)
 @Composable
 private fun BackStackItem(
   navKeys: List<NavigationItemInfo>,
   isCurrentActiveNavigationItem: Boolean,
 ) {
+  // Track focus state so focusing a back stack item shows the Jewel focus outline.
+  var isFocused by remember { mutableStateOf(false) }
   val activeAccent = JewelTheme.globalColors.outlines.focused
   val borderColors = if (isCurrentActiveNavigationItem) activeAccent else JewelTheme.globalColors.borders.normal
   val backGroundColor = if (isCurrentActiveNavigationItem) activeAccent.copy(alpha = 0.12f) else JewelTheme.globalColors.panelBackground
   val textColor = JewelTheme.globalColors.text.normal
   val itemShape = RoundedCornerShape(8.dp)
 
+  // Merge route and badge text into a single keyboard-focusable card node so screen readers reach
+  // every back stack entry via Tab and announce both the route and the active item's Current badge.
   Row(
     modifier =
-      Modifier.clip(itemShape)
+      Modifier.onFocusChanged { focusState -> isFocused = focusState.isFocused }
+        .focusOutline(
+          showOutline = isFocused,
+          outlineShape = itemShape,
+          alignment = Stroke.Alignment.Inside,
+        )
+        .semantics(mergeDescendants = true) {}
+        .focusable()
+        .clip(itemShape)
         .border(width = 1.dp, color = borderColors, shape = itemShape)
         .background(color = backGroundColor, shape = itemShape)
         .padding(12.dp)
