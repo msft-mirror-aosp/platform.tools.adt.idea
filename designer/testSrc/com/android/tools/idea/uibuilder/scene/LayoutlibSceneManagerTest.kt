@@ -24,6 +24,7 @@ import com.android.SdkConstants.LINEAR_LAYOUT
 import com.android.SdkConstants.PreferenceTags.PREFERENCE_SCREEN
 import com.android.SdkConstants.TAG_MENU
 import com.android.SdkConstants.VIEW
+import com.android.ide.common.rendering.api.SessionParams.RenderingMode
 import com.android.tools.idea.common.fixtures.ModelBuilder
 import com.android.tools.idea.common.type.DesignerTypeRegistrar
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
@@ -214,7 +215,7 @@ class LayoutlibSceneManagerTest : SceneTest() {
 
     try {
       val sceneManager = shrinkModel.surface.getSceneManager(shrinkModel) as LayoutlibSceneManager
-      sceneManager.sceneRenderConfiguration.useShrinkRendering = true
+      sceneManager.sceneRenderConfiguration.renderingMode = RenderingMode.SHRINK
       sceneManager.requestRenderAndWait()
 
       val initialResult = sceneManager.renderResult!!

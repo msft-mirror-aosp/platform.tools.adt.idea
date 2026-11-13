@@ -17,6 +17,7 @@ package com.android.tools.idea.compose.preview
 
 import com.android.SdkConstants
 import com.android.ide.common.rendering.api.Bridge
+import com.android.ide.common.rendering.api.SessionParams.RenderingMode
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.compose.COMPOSE_VIEW_ADAPTER_FQN
 import com.android.tools.idea.common.error.DesignerCommonIssuePanel
@@ -272,7 +273,7 @@ fun configureLayoutlibSceneManager(
 ): LayoutlibSceneManager = sceneManager.apply {
   sceneRenderConfiguration.let { config ->
     config.useTransparentRendering = !showDecorations
-    config.useShrinkRendering = !showDecorations
+    config.renderingMode = if (showDecorations) RenderingMode.NORMAL else RenderingMode.SHRINK
     // When the cache successful render image is enabled, the scene manager will retain the last
     // valid image even if subsequent renders fail. But do not cache in interactive mode as it
     // does not help, and it would make unnecessary copies of the bitmap.

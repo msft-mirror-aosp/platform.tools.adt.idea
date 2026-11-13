@@ -97,8 +97,8 @@ class LayoutlibSceneRenderConfiguration(
       }
     }
 
-  /** If true, [SessionParams.RenderingMode.SHRINK] will be used when rendering. */
-  var useShrinkRendering = false
+  /** The [SessionParams.RenderingMode] to use when rendering, or null to use the default one. */
+  var renderingMode: SessionParams.RenderingMode? = null
     set(value) {
       if (field != value) {
         field = value
@@ -106,7 +106,7 @@ class LayoutlibSceneRenderConfiguration(
       }
     }
 
-  /** If true, system decorations (status and navigation bards) will be painted when rendering. */
+  /** If true, system decorations (status and navigation bars) will be painted when rendering. */
   var showDecorations = false
     set(value) {
       if (field != value) {
@@ -209,7 +209,7 @@ class LayoutlibSceneRenderConfiguration(
         .setUseLoadViewFallbacks(useLoadViewFallbacks)
     if (quality < 1f) taskBuilder.withQuality(quality)
     if (!showDecorations) taskBuilder.disableDecorations()
-    if (useShrinkRendering) taskBuilder.withRenderingMode(SessionParams.RenderingMode.SHRINK)
+    renderingMode?.let { taskBuilder.withRenderingMode(it) }
     if (useTransparentRendering) taskBuilder.useTransparentBackground()
     if (usePrivateClassLoader) taskBuilder.usePrivateClassLoader()
     if (classesToPreload.isNotEmpty()) taskBuilder.preloadClasses(classesToPreload)

@@ -16,6 +16,7 @@
 package com.android.tools.idea.preview.representation
 
 import com.android.annotations.concurrency.UiThread
+import com.android.ide.common.rendering.api.SessionParams.RenderingMode
 import com.android.tools.idea.common.model.DefaultModelUpdater
 import com.android.tools.idea.common.model.NlDataProvider
 import com.android.tools.idea.common.model.NlModel
@@ -251,7 +252,7 @@ open class CommonPreviewRepresentation<T : PsiPreviewElementInstance>(
               sceneRenderConfiguration.let { config ->
                 config.useCustomInflater = useCustomInflater
                 config.useLoadViewFallbacks = false
-                config.useShrinkRendering = true
+                config.renderingMode = RenderingMode.SHRINK
                 config.renderingTopic = renderingTopic
               }
               updateAndRenderWhenActivated = false // don't re-render on activation

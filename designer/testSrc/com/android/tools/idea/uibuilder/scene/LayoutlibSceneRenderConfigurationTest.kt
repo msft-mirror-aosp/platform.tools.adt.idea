@@ -15,14 +15,36 @@
  */
 package com.android.tools.idea.uibuilder.scene
 
+import com.android.ide.common.rendering.api.SessionParams.RenderingMode
+import com.android.tools.configurations.Configuration
+import com.android.tools.idea.actions.LayoutPreviewHandler
 import com.android.tools.idea.common.model.NlModel
 import com.android.tools.idea.common.surface.LayoutScannerConfiguration
+import com.android.tools.idea.rendering.AndroidBuildTargetReference
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
+import com.android.tools.rendering.RenderLogger
+import com.android.tools.rendering.RenderService
+import com.android.tools.rendering.RenderService.RenderTaskBuilder
+import com.android.tools.rendering.RenderTask
 import com.google.common.truth.Truth.assertThat
+import com.intellij.psi.xml.XmlFile
+import java.util.concurrent.CompletableFuture
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.android.facet.AndroidFacet
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 class LayoutlibSceneRenderConfigurationTest {
+  @get:Rule val projectRule = AndroidProjectRule.inMemory()
+
   private val sceneRenderConfiguration =
     LayoutlibSceneRenderConfiguration(
         Mockito.mock(NlModel::class.java),
@@ -56,18 +78,6 @@ class LayoutlibSceneRenderConfigurationTest {
   }
 
   @Test
-  fun testSettingShrinkRenderingForcesReinflate() {
-    val defaultShrinkRendering = sceneRenderConfiguration.useShrinkRendering
-    assertThat(sceneRenderConfiguration.needsInflation.get()).isFalse()
-
-    sceneRenderConfiguration.useShrinkRendering = !defaultShrinkRendering
-    assertThat(sceneRenderConfiguration.needsInflation.get()).isTrue()
-
-    sceneRenderConfiguration.useShrinkRendering = defaultShrinkRendering
-    assertThat(sceneRenderConfiguration.needsInflation.get()).isTrue()
-  }
-
-  @Test
   fun testSettingTransparentRenderingForcesReinflate() {
     val defaultTransparentRendering = sceneRenderConfiguration.useTransparentRendering
     assertThat(sceneRenderConfiguration.needsInflation.get()).isFalse()
@@ -77,5 +87,58 @@ class LayoutlibSceneRenderConfigurationTest {
 
     sceneRenderConfiguration.useTransparentRendering = defaultTransparentRendering
     assertThat(sceneRenderConfiguration.needsInflation.get()).isTrue()
+  }
+
+  @Test
+  fun testChangingRenderingModeForcesReinflate() {
+    assertThat(sceneRenderConfiguration.renderingMode).isNull()
+    assertThat(sceneRenderConfiguration.needsInflation.get()).isFalse()
+
+    // Setting the same value does not force a reinflate
+    sceneRenderConfiguration.renderingMode = null
+    assertThat(sceneRenderConfiguration.needsInflation.get()).isFalse()
+
+    sceneRenderConfiguration.renderingMode = RenderingMode.SHRINK
+    assertThat(sceneRenderConfiguration.needsInflation.get()).isTrue()
+
+    sceneRenderConfiguration.needsInflation.set(false)
+    sceneRenderConfiguration.renderingMode = RenderingMode.SHRINK
+    assertThat(sceneRenderConfiguration.needsInflation.get()).isFalse()
+
+    sceneRenderConfiguration.renderingMode = RenderingMode.V_SCROLL
+    assertThat(sceneRenderConfiguration.needsInflation.get()).isTrue()
+
+    sceneRenderConfiguration.needsInflation.set(false)
+    sceneRenderConfiguration.renderingMode = null
+    assertThat(sceneRenderConfiguration.needsInflation.get()).isTrue()
+  }
+
+  @Test
+  fun testCreateRenderTaskUsesRenderingMode(): Unit = runBlocking {
+    val model = mock<NlModel>()
+    whenever(model.buildTarget).thenReturn(AndroidBuildTargetReference.gradleOnly(AndroidFacet.getInstance(projectRule.module)!!))
+    whenever(model.file).thenReturn(mock<XmlFile>())
+    val surface = mock<NlDesignSurface>()
+    whenever(surface.layoutPreviewHandler).thenReturn(mock<LayoutPreviewHandler>())
+    val config = LayoutlibSceneRenderConfiguration(model, surface, LayoutScannerConfiguration.DISABLED)
+    val taskBuilder = mock<RenderTaskBuilder>(defaultAnswer = Mockito.RETURNS_SELF)
+    whenever(taskBuilder.build(any())).thenAnswer { CompletableFuture.completedFuture(mock<RenderTask>()) }
+    val renderService = mock<RenderService>()
+    whenever(renderService.taskBuilder(any(), any(), any())).thenReturn(taskBuilder)
+
+    config.createRenderTask(mock<Configuration>(), renderService, RenderLogger())
+    verify(taskBuilder, never()).withRenderingMode(any())
+
+    config.renderingMode = RenderingMode.SHRINK
+    config.createRenderTask(mock<Configuration>(), renderService, RenderLogger())
+    verify(taskBuilder).withRenderingMode(RenderingMode.SHRINK)
+
+    config.renderingMode = RenderingMode.V_SCROLL
+    config.createRenderTask(mock<Configuration>(), renderService, RenderLogger())
+    verify(taskBuilder).withRenderingMode(RenderingMode.V_SCROLL)
+
+    config.renderingMode = null
+    config.createRenderTask(mock<Configuration>(), renderService, RenderLogger())
+    verify(taskBuilder, times(2)).withRenderingMode(any())
   }
 }
