@@ -115,16 +115,9 @@ class LayoutlibSceneRenderConfigurationTest {
 
   @Test
   fun testCreateRenderTaskUsesRenderingMode(): Unit = runBlocking {
-    val model = mock<NlModel>()
-    whenever(model.buildTarget).thenReturn(AndroidBuildTargetReference.gradleOnly(AndroidFacet.getInstance(projectRule.module)!!))
-    whenever(model.file).thenReturn(mock<XmlFile>())
-    val surface = mock<NlDesignSurface>()
-    whenever(surface.layoutPreviewHandler).thenReturn(mock<LayoutPreviewHandler>())
-    val config = LayoutlibSceneRenderConfiguration(model, surface, LayoutScannerConfiguration.DISABLED)
-    val taskBuilder = mock<RenderTaskBuilder>(defaultAnswer = Mockito.RETURNS_SELF)
-    whenever(taskBuilder.build(any())).thenAnswer { CompletableFuture.completedFuture(mock<RenderTask>()) }
-    val renderService = mock<RenderService>()
-    whenever(renderService.taskBuilder(any(), any(), any())).thenReturn(taskBuilder)
+    val config = createSceneRenderConfigurationForRenderTask()
+    val taskBuilder = createRenderTaskBuilder(mock<RenderTask>())
+    val renderService = createRenderService(taskBuilder)
 
     config.createRenderTask(mock<Configuration>(), renderService, RenderLogger())
     verify(taskBuilder, never()).withRenderingMode(any())
@@ -140,5 +133,67 @@ class LayoutlibSceneRenderConfigurationTest {
     config.renderingMode = null
     config.createRenderTask(mock<Configuration>(), renderService, RenderLogger())
     verify(taskBuilder, times(2)).withRenderingMode(any())
+  }
+
+  @Test
+  fun testCreateRenderTaskCallsOnRenderTaskCreated(): Unit = runBlocking {
+    val config = createSceneRenderConfigurationForRenderTask().apply { needsInflation.set(false) }
+    val task = mock<RenderTask>()
+    val renderService = createRenderService(createRenderTaskBuilder(task))
+    val logger = RenderLogger()
+    val createdTasks = mutableListOf<Pair<RenderTask, RenderLogger>>()
+    config.onRenderTaskCreated = { createdTask, taskLogger -> createdTasks.add(createdTask to taskLogger) }
+
+    assertThat(config.createRenderTask(mock<Configuration>(), renderService, logger)).isSameAs(task)
+    assertThat(createdTasks).containsExactly(task to logger)
+    verify(task, never()).disposeAsync()
+    // Setting the callback does not force a reinflate
+    assertThat(config.needsInflation.get()).isFalse()
+  }
+
+  @Test
+  fun testCreateRenderTaskDoesNotCallOnRenderTaskCreatedWithoutTask(): Unit = runBlocking {
+    val config = createSceneRenderConfigurationForRenderTask()
+    val renderService = createRenderService(createRenderTaskBuilder(task = null))
+    config.onRenderTaskCreated = { _, _ -> throw AssertionError("No task was created") }
+
+    assertThat(config.createRenderTask(mock<Configuration>(), renderService, RenderLogger())).isNull()
+  }
+
+  @Test
+  fun testCreateRenderTaskDisposesTaskWhenOnRenderTaskCreatedFails(): Unit = runBlocking {
+    val config = createSceneRenderConfigurationForRenderTask()
+    val task = mock<RenderTask>()
+    val renderService = createRenderService(createRenderTaskBuilder(task))
+    val failure = IllegalStateException("Failed")
+    config.onRenderTaskCreated = { _, _ -> throw failure }
+
+    val thrown = runCatching { config.createRenderTask(mock<Configuration>(), renderService, RenderLogger()) }.exceptionOrNull()
+    assertThat(thrown).isSameAs(failure)
+    verify(task).disposeAsync()
+  }
+
+  /** Returns a [LayoutlibSceneRenderConfiguration] whose model and surface have what `createRenderTask` reads from them. */
+  private fun createSceneRenderConfigurationForRenderTask(): LayoutlibSceneRenderConfiguration {
+    val model = mock<NlModel>()
+    whenever(model.buildTarget).thenReturn(AndroidBuildTargetReference.gradleOnly(AndroidFacet.getInstance(projectRule.module)!!))
+    whenever(model.file).thenReturn(mock<XmlFile>())
+    val surface = mock<NlDesignSurface>()
+    whenever(surface.layoutPreviewHandler).thenReturn(mock<LayoutPreviewHandler>())
+    return LayoutlibSceneRenderConfiguration(model, surface, LayoutScannerConfiguration.DISABLED)
+  }
+
+  /** Returns a [RenderTaskBuilder] that builds [task]. */
+  private fun createRenderTaskBuilder(task: RenderTask?): RenderTaskBuilder {
+    val taskBuilder = mock<RenderTaskBuilder>(defaultAnswer = Mockito.RETURNS_SELF)
+    whenever(taskBuilder.build(any())).thenAnswer { CompletableFuture.completedFuture(task) }
+    return taskBuilder
+  }
+
+  /** Returns a [RenderService] that uses [taskBuilder] for all its tasks. */
+  private fun createRenderService(taskBuilder: RenderTaskBuilder): RenderService {
+    val renderService = mock<RenderService>()
+    whenever(renderService.taskBuilder(any(), any(), any())).thenReturn(taskBuilder)
+    return renderService
   }
 }

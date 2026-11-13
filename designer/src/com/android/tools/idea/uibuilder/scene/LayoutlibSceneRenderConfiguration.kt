@@ -106,6 +106,12 @@ class LayoutlibSceneRenderConfiguration(
       }
     }
 
+  /**
+   * Called with every [RenderTask] created for the [model], before it is inflated, and with the [RenderLogger] of that task. It can be used
+   * to adjust the task based on information that is only available once the task exists, like its class loader.
+   */
+  var onRenderTaskCreated: ((RenderTask, RenderLogger) -> Unit)? = null
+
   /** If true, system decorations (status and navigation bars) will be painted when rendering. */
   var showDecorations = false
     set(value) {
@@ -225,6 +231,13 @@ class LayoutlibSceneRenderConfiguration(
     // Register a disposal callback that will be executed when the coroutine scope completes
     // (normally or due to cancellation)
     currentCoroutineContext().job.invokeOnCompletion { Disposer.dispose(disposable) }
-    return wrapRenderTaskBuilder(taskBuilder).build(disposable).await()
+    return wrapRenderTaskBuilder(taskBuilder).build(disposable).await()?.also { task ->
+      try {
+        onRenderTaskCreated?.invoke(task, logger)
+      } catch (t: Throwable) {
+        task.disposeAsync()
+        throw t
+      }
+    }
   }
 }
