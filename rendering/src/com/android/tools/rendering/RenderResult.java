@@ -19,6 +19,7 @@ import com.android.ide.common.rendering.api.RenderSession;
 import com.android.ide.common.rendering.api.ResourceReference;
 import com.android.ide.common.rendering.api.ResourceValue;
 import com.android.ide.common.rendering.api.Result;
+import com.android.ide.common.rendering.api.SessionParams.RenderingMode;
 import com.android.ide.common.rendering.api.ViewInfo;
 import com.android.tools.rendering.api.EnvironmentContext;
 import com.android.tools.rendering.api.IdeaModuleProvider;
@@ -63,6 +64,7 @@ public class RenderResult implements Disposable {
   @Nullable private final RenderContext myRenderContext;
   private boolean isDisposed;
   private final RenderResultStats myStats;
+  @Nullable private final RenderingMode myRenderingMode;
 
   /**
    * This is used to cache the dimensions for this result. It is calculated by getting the dimensions
@@ -87,6 +89,42 @@ public class RenderResult implements Disposable {
                       @Nullable Object validatorResult,
                       @NotNull Dimension rootViewDimensions,
                       @NotNull RenderResultStats stats) {
+    this(
+      sourceFileProvider,
+      project,
+      module,
+      logger,
+      renderContext,
+      hasRequestedCustomViews,
+      renderResult,
+      rootViews,
+      systemRootViews,
+      image,
+      defaultProperties,
+      defaultStyles,
+      validatorResult,
+      rootViewDimensions,
+      stats,
+      null
+    );
+  }
+
+  public RenderResult(@NotNull Supplier<PsiFile> sourceFileProvider,
+                      @NotNull Project project,
+                      @NotNull IdeaModuleProvider module,
+                      @NotNull RenderLogger logger,
+                      @Nullable RenderContext renderContext,
+                      boolean hasRequestedCustomViews,
+                      @NotNull Result renderResult,
+                      @NotNull ImmutableList<ViewInfo> rootViews,
+                      @NotNull ImmutableList<ViewInfo> systemRootViews,
+                      @NotNull RecyclableImage image,
+                      @NotNull Map<Object, Map<ResourceReference, ResourceValue>> defaultProperties,
+                      @NotNull Map<Object, ResourceReference> defaultStyles,
+                      @Nullable Object validatorResult,
+                      @NotNull Dimension rootViewDimensions,
+                      @NotNull RenderResultStats stats,
+                      @Nullable RenderingMode renderingMode) {
     myModule = module;
     myProject = project;
     myRenderContext = renderContext;
@@ -100,6 +138,7 @@ public class RenderResult implements Disposable {
     myDefaultStyles = defaultStyles;
     myValidatorResult = validatorResult;
     myStats = stats;
+    myRenderingMode = renderingMode;
     myHasRequestedCustomViews = hasRequestedCustomViews;
     myRootViewDimensions = rootViewDimensions;
   }
@@ -121,7 +160,8 @@ public class RenderResult implements Disposable {
       result.myDefaultStyles,
       result.myValidatorResult,
       result.myRootViewDimensions,
-      result.myStats
+      result.myStats,
+      result.myRenderingMode
     );
   }
 
@@ -173,7 +213,8 @@ public class RenderResult implements Disposable {
                                     @NotNull RenderLogger logger,
                                     @NotNull RecyclableImage image,
                                     boolean hasRequestedCustomViews,
-                                    boolean showDecorations) {
+                                    boolean showDecorations,
+                                    @Nullable RenderingMode renderingMode) {
     List<ViewInfo> rootViews = session.getRootViews();
     List<ViewInfo> systemRootViews = session.getSystemRootViews();
     Map<Object, Map<ResourceReference, ResourceValue>> defaultProperties = null;
@@ -201,7 +242,9 @@ public class RenderResult implements Disposable {
       defaultProperties != null ? ImmutableMap.copyOf(defaultProperties) : ImmutableMap.of(),
       defaultStyles != null ? ImmutableMap.copyOf(defaultStyles) : ImmutableMap.of(),
       session.getValidationData(),
-      getViewDimensions(viewsForDimensions), RenderResultStats.getEMPTY()
+      getViewDimensions(viewsForDimensions),
+      RenderResultStats.getEMPTY(),
+      renderingMode
     );
 
     if (LOG.isDebugEnabled()) {
@@ -209,6 +252,20 @@ public class RenderResult implements Disposable {
     }
 
     return result;
+  }
+
+  /**
+   * Creates a new {@link RenderResult} from a given RenderTask and RenderSession
+   */
+  @NotNull
+  public static RenderResult create(@NotNull RenderContext renderContext,
+                                    @NotNull RenderSession session,
+                                    @NotNull Supplier<PsiFile> file,
+                                    @NotNull RenderLogger logger,
+                                    @NotNull RecyclableImage image,
+                                    boolean hasRequestedCustomViews,
+                                    boolean showDecorations) {
+    return create(renderContext, session, file, logger, image, hasRequestedCustomViews, showDecorations, null);
   }
 
   @NotNull
@@ -229,6 +286,18 @@ public class RenderResult implements Disposable {
     @NotNull RecyclableImage image,
     @NotNull Dimension rootViewDimensions
   ) {
+    return copyWithNewImageAndRootViewDimensions(image, rootViewDimensions, myRenderingMode);
+  }
+
+  /**
+   * Creates a new {@link RenderResult} from this with a new image, root view dimensions, and rendering mode.
+   */
+  @NotNull
+  public RenderResult copyWithNewImageAndRootViewDimensions(
+    @NotNull RecyclableImage image,
+    @NotNull Dimension rootViewDimensions,
+    @Nullable RenderingMode renderingMode
+  ) {
     return new RenderResult(
       mySourceFileProvider,
       myProject,
@@ -244,7 +313,8 @@ public class RenderResult implements Disposable {
       myDefaultStyles,
       myValidatorResult,
       rootViewDimensions,
-      myStats
+      myStats,
+      renderingMode
     );
   }
 
@@ -268,7 +338,8 @@ public class RenderResult implements Disposable {
       myDefaultStyles,
       myValidatorResult,
       myRootViewDimensions,
-      myStats.combine(stats)
+      myStats.combine(stats),
+      myRenderingMode
     );
   }
 
@@ -419,5 +490,13 @@ public class RenderResult implements Disposable {
   @NotNull
   public RenderResultStats getStats() {
     return myStats;
+  }
+
+  /**
+   * Returns the {@link RenderingMode} used to produce this result, or null if unknown (for example on an error result).
+   */
+  @Nullable
+  public RenderingMode getRenderingMode() {
+    return myRenderingMode;
   }
 }

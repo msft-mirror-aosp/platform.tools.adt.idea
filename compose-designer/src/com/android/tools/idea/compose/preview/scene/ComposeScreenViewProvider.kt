@@ -16,7 +16,9 @@
 package com.android.tools.idea.compose.preview.scene
 
 import com.android.flags.ifEnabled
-import com.android.tools.idea.common.surface.DEVICE_CONFIGURATION_SHAPE_POLICY
+import com.android.ide.common.rendering.api.SessionParams.RenderingMode
+import com.android.resources.ScreenRound
+import com.android.sdklib.devices.screenShape
 import com.android.tools.idea.common.surface.Layer
 import com.android.tools.idea.common.surface.SQUARE_SHAPE_POLICY
 import com.android.tools.idea.common.surface.SceneLayer
@@ -40,10 +42,24 @@ import com.android.tools.idea.uibuilder.surface.layer.DiagnosticsLayer
 import com.android.tools.idea.uibuilder.surface.layer.HighlightLayer
 import com.android.tools.idea.uibuilder.surface.layer.UiCheckWarningLayer
 import com.android.tools.idea.uibuilder.surface.sizepolicy.ImageContentSizePolicy
+import com.android.tools.rendering.expandedCapsuleShape
 import com.google.common.collect.ImmutableList
 import com.google.wireless.android.sdk.stats.LayoutEditorState
 import com.intellij.analysis.problemsView.toolWindow.ProblemsView
 import java.awt.Shape
+
+/**
+ * Returns the screen shape of a preview rendered with [renderingMode]: a capsule instead of the stretched device circle for expanded
+ * renders on round devices (see [com.android.tools.rendering.expandedCapsuleShape]).
+ */
+private fun expandedScreenShape(sceneView: SceneView, renderingMode: RenderingMode?): Shape? {
+  val device = sceneView.configuration.cachedDevice ?: return null
+  if (device.defaultHardware.screen?.screenRound != ScreenRound.ROUND) return null
+  val size = sceneView.scaledContentSize
+  val originX = sceneView.x.toDouble()
+  val originY = sceneView.y.toDouble()
+  return expandedCapsuleShape(renderingMode, size.width, size.height, originX, originY) ?: device.screenShape(originX, originY, size)
+}
 
 class ComposeScreenViewProvider(private val previewManager: ComposePreviewManager) : ScreenViewProvider {
   override val displayName: String = "Compose"
@@ -96,7 +112,7 @@ class ComposeScreenViewProvider(private val previewManager: ComposePreviewManage
         object : ShapePolicy {
           override fun getShape(sceneView: SceneView): Shape? {
             return if (manager.model.dataProvider?.getData(PSI_COMPOSE_PREVIEW_ELEMENT_INSTANCE)?.displaySettings?.showDecoration == true) {
-              DEVICE_CONFIGURATION_SHAPE_POLICY.getShape(sceneView)
+              expandedScreenShape(sceneView, manager.renderResult?.renderingMode ?: manager.sceneRenderConfiguration.renderingMode)
             } else {
               SQUARE_SHAPE_POLICY.getShape(sceneView)
             }

@@ -18,6 +18,7 @@ package com.android.tools.idea.uibuilder.scene
 import com.android.SdkConstants
 import com.android.ide.common.rendering.api.RecyclableImage
 import com.android.ide.common.rendering.api.Result
+import com.android.ide.common.rendering.api.SessionParams.RenderingMode
 import com.android.ide.common.rendering.api.ViewInfo
 import com.android.resources.Density
 import com.android.testutils.delayUntilCondition
@@ -208,6 +209,19 @@ class LayoutlibSceneRendererTest {
     assertEquals("expected inflation but didn't happen", 3, taskInflateCount.get())
     assertEquals("expected render but didn't happen", 2, taskRenderCount.get())
     assertTrue(renderer.renderResult!!.renderResult.isSuccess)
+  }
+
+  @Test
+  fun testCachedRenderImagePreservesRenderingModeOnError(): Unit = runBlocking {
+    simulatedRenderResult = createRenderResult(Result.Status.SUCCESS, renderingMode = RenderingMode.V_SCROLL)
+    renderer.sceneRenderConfiguration.cacheSuccessfulRenderImage = true
+    renderer.requestRenderAndWait(trigger = null)
+    assertThat(renderer.renderResult!!.renderingMode).isEqualTo(RenderingMode.V_SCROLL)
+
+    simulatedRenderResult = createRenderResult(Result.Status.ERROR_RENDER, renderingMode = RenderingMode.NORMAL)
+    renderer.requestRenderAndWait(trigger = null)
+    assertThat(renderer.renderResult!!.renderResult.isSuccess).isFalse()
+    assertThat(renderer.renderResult!!.renderingMode).isEqualTo(RenderingMode.V_SCROLL)
   }
 
   @Test
@@ -526,7 +540,11 @@ class LayoutlibSceneRendererTest {
     inflateLatch.countDown()
   }
 
-  private fun createRenderResult(result: Result.Status, t: Throwable? = null): RenderResult {
+  private fun createRenderResult(
+    result: Result.Status,
+    t: Throwable? = null,
+    renderingMode: RenderingMode? = null,
+  ): RenderResult {
     return RenderResult(
       { projectRule.fixture.file },
       projectRule.project,
@@ -543,6 +561,7 @@ class LayoutlibSceneRendererTest {
       null,
       Dimension(0, 0),
       RenderResultStats.EMPTY,
+      renderingMode,
     )
   }
 

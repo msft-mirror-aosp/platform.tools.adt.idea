@@ -201,6 +201,7 @@ class LayoutlibSceneRenderer(
               newResult.copyWithNewImageAndRootViewDimensions(
                 RecyclableImage.copyOf(oldResult.getRenderedImage()),
                 oldResult.rootViewDimensions,
+                oldResult.renderingMode,
               )
             resultToDispose = newResult
           } else {
