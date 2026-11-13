@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.gradle.preview
 
+import com.android.ide.common.rendering.api.SessionParams.RenderingMode
 import com.android.testutils.ImageDiffUtil
 import com.android.testutils.delayUntilCondition
 import com.android.tools.adtui.actions.ZoomType
@@ -306,6 +307,57 @@ class ComposePreviewRepresentationGradleTest {
       ),
       allSceneViewPeerPanels.filter { it.isShowing }.map { it.displayName }.sorted(),
     )
+  }
+
+  @Test
+  fun `expanded preview is rendered non-expanded when ui-tooling does not support expand`() = runBlocking {
+    // Annotation changes take effect without rebuilding nor recompiling when fast preview is disabled
+    FastPreviewManager.getInstance(project).disable()
+
+    // The ui-tooling of this project does not have PreviewDeviceSpec, so it does not support expand.
+    val deviceSpec = "spec:width=411dp,height=891dp"
+    projectRule.runAndWaitForRefresh(allRefreshesFinishTimeout = 30.seconds, failOnTimeout = false) {
+      runWriteActionAndWait {
+        fixture.openFileInEditor(psiMainFile.virtualFile)
+        fixture.moveCaret("NavigatablePreview|")
+        // Move to the line with the annotation
+        fixture.editor.moveCaretLines(-2)
+        fixture.editor.executeAndSave {
+          insertText("@Preview(name = \"not expanded\", device = \"$deviceSpec\")\n")
+          insertText("@Preview(name = \"expanded\", device = \"$deviceSpec,expand=vertical\")\n")
+        }
+        PsiDocumentManager.getInstance(projectRule.project).commitAllDocuments()
+        FileDocumentManager.getInstance().saveAllDocuments()
+      }
+    }
+
+    fun sceneManager(deviceSpec: String) =
+      previewView.mainSurface.sceneManagers.singleOrNull {
+        it.model.dataProvider?.previewElement()?.configuration?.deviceSpec == deviceSpec
+      }
+    delayUntilCondition(250, 30.seconds) {
+      sceneManager(deviceSpec)?.renderResult?.renderResult?.isSuccess == true &&
+        sceneManager("$deviceSpec,expand=vertical")?.renderResult?.renderResult?.isSuccess == true
+    }
+    waitForAllRefreshesToFinish(30.seconds)
+    val notExpandedResult = sceneManager(deviceSpec)!!.renderResult!!
+    val expandedSceneManager = sceneManager("$deviceSpec,expand=vertical")!!
+    val expandedResult = expandedSceneManager.renderResult!!
+
+    // The preview is configured to expand, but it is rendered like the same preview without expand: shrunk to its content instead of
+    // being at least as big as the device.
+    assertEquals(RenderingMode.V_SCROLL, expandedSceneManager.sceneRenderConfiguration.renderingMode)
+    val notExpandedImage = notExpandedResult.renderedImage
+    val expandedImage = expandedResult.renderedImage
+    assertEquals(
+      notExpandedImage.width.toDouble() / notExpandedImage.height,
+      expandedImage.width.toDouble() / expandedImage.height,
+      0.02,
+    )
+    val unsupportedExpandWarning =
+      "expand in the device spec requires a newer version of androidx.compose.ui:ui-tooling; rendering at device size."
+    assertTrue(expandedResult.logger.messages.any { it.html.contains(unsupportedExpandWarning) })
+    assertFalse(notExpandedResult.logger.messages.any { it.html.contains("androidx.compose.ui:ui-tooling") })
   }
 
   @Test

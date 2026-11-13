@@ -48,6 +48,7 @@ import com.android.tools.idea.compose.preview.scene.InteractivePreviewBackNaviga
 import com.android.tools.idea.compose.preview.uicheck.UiCheckPanelProvider
 import com.android.tools.idea.compose.preview.util.containsOffset
 import com.android.tools.idea.compose.preview.util.isFastPreviewAvailable
+import com.android.tools.idea.compose.preview.util.previewElement
 import com.android.tools.idea.concurrency.AndroidCoroutinesAware
 import com.android.tools.idea.concurrency.FlowableCollection
 import com.android.tools.idea.concurrency.asCollection
@@ -117,7 +118,13 @@ import com.android.tools.idea.util.runWhenSmartAndSynced
 import com.android.tools.idea.util.toDisplayString
 import com.android.tools.preview.ComposePreviewElementInstance
 import com.android.tools.preview.PreviewDisplaySettings
+import com.android.tools.preview.config.ExpandAxis
+import com.android.tools.preview.config.Preview
+import com.android.tools.preview.config.parseExpandSettings
 import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
+import com.android.tools.rendering.compose.supportedComposePreviewDeviceSpecParameters
+import com.android.tools.rendering.compose.supportsExpand
+import com.android.tools.rendering.compose.unsupportedComposePreviewDeviceSpecWarning
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
 import com.google.wireless.android.sdk.stats.ComposePreviewLiteModeEvent
 import com.intellij.analysis.problemsView.toolWindow.ProblemsViewToolWindowUtils
@@ -148,6 +155,7 @@ import com.intellij.util.messages.Topic
 import com.intellij.util.ui.UIUtil
 import java.awt.BorderLayout
 import java.time.Duration
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -253,6 +261,10 @@ private fun createPreviewElementDataProvider(
  * Sets up the given [sceneManager] with the right values to work on the Compose Preview. Currently, this will configure if the preview
  * elements will be displayed with "full device size" or simply containing the previewed components (shrink mode).
  *
+ * The render area of non-interactive previews whose device spec sets `expand` grows along that axis to fit their scrollable content, if the
+ * project's `androidx.compose.ui:ui-tooling` supports it. A warning is logged for the `ui-tooling` device spec parameters that it does not
+ * support.
+ *
  * @param showDecorations when true, the rendered content will be shown with the full device size specified in the device configuration and
  *   with the frame decorations.
  * @param previewMode the current [PreviewMode], under which the preview will be rendered.
@@ -273,7 +285,29 @@ fun configureLayoutlibSceneManager(
 ): LayoutlibSceneManager = sceneManager.apply {
   sceneRenderConfiguration.let { config ->
     config.useTransparentRendering = !showDecorations
-    config.renderingMode = if (showDecorations) RenderingMode.NORMAL else RenderingMode.SHRINK
+    val previewElement = model.dataProvider?.previewElement()
+    // Interactive previews render at device size, and their tools:device does not have the expand parameters.
+    val isInteractive = previewMode is PreviewMode.Interactive
+    val expandRenderingMode = if (isInteractive) null else previewElement?.expandRenderingMode()
+    val deviceSpec = previewElement?.configuration?.deviceSpec?.let { if (isInteractive) withoutExpandParameters(it) else it }
+    val nonExpandedRenderingMode = if (showDecorations) RenderingMode.NORMAL else RenderingMode.SHRINK
+    config.renderingMode = expandRenderingMode ?: nonExpandedRenderingMode
+    config.onRenderTaskCreated = { task, logger ->
+      // Only queried for expanded previews and for device specs with ui-tooling parameters.
+      val supportedParameters by
+        lazy(LazyThreadSafetyMode.NONE) {
+          task.classLoader?.supportedComposePreviewDeviceSpecParameters().orEmpty()
+        }
+      // Expand only if the project's ui-tooling supports it. The rendering mode is always set here, so that the task uses the values this
+      // callback was created with even if the configuration changed while the task was being created.
+      task.setRenderingMode(expandRenderingMode?.takeIf { supportedParameters.supportsExpand() } ?: nonExpandedRenderingMode)
+      // Log a warning for the device spec parameters that the project's ui-tooling does not support. Device specs without ui-tooling
+      // parameters return null here without querying the supported parameters.
+      unsupportedComposePreviewDeviceSpecWarning(deviceSpec) { supportedParameters }
+        ?.let { warning ->
+          logger.warning(null, warning, null, null)
+        }
+    }
     // When the cache successful render image is enabled, the scene manager will retain the last
     // valid image even if subsequent renders fail. But do not cache in interactive mode as it
     // does not help, and it would make unnecessary copies of the bitmap.
@@ -306,6 +340,41 @@ fun configureLayoutlibSceneManager(
     } else {
       VisualLintMode.DISABLED
     }
+}
+
+/**
+ * Returns the [RenderingMode] that grows the render area of this preview along the `expand` axis of its device spec to fit its content, or
+ * null if its device spec does not set `expand`.
+ */
+private fun ComposePreviewElementInstance<*>.expandRenderingMode(): RenderingMode? =
+  when (parseExpandSettings(configuration.deviceSpec)?.axis) {
+    ExpandAxis.vertical -> RenderingMode.V_SCROLL
+    ExpandAxis.horizontal -> RenderingMode.H_SCROLL
+    null -> null
+  }
+
+private val EXPAND_DEVICE_SPEC_PARAMETERS =
+  setOf(
+    Preview.DeviceSpec.PARAMETER_EXPAND.lowercase(Locale.US),
+    Preview.DeviceSpec.PARAMETER_MAX_HEIGHT.lowercase(Locale.US),
+    Preview.DeviceSpec.PARAMETER_MAX_WIDTH.lowercase(Locale.US),
+  )
+
+/**
+ * Returns [deviceSpec] without the `expand`, `maxHeight`, and `maxWidth` parameters, so interactive previews (which render unexpanded at
+ * device size) do not trigger expanded-preview behavior such as Wear `LocalReduceMotion` in `ComposeViewAdapter`.
+ */
+@VisibleForTesting
+internal fun withoutExpandParameters(deviceSpec: String): String {
+  val trimmed = deviceSpec.trim()
+  if (!trimmed.startsWith(Preview.DeviceSpec.PREFIX, ignoreCase = true)) return deviceSpec
+  val entries = trimmed.substring(Preview.DeviceSpec.PREFIX.length).split(Preview.DeviceSpec.SEPARATOR)
+  val remaining = entries.filterNot { param ->
+    param.contains(Preview.DeviceSpec.OPERATOR) &&
+      param.substringBefore(Preview.DeviceSpec.OPERATOR).trim().lowercase(Locale.US) in EXPAND_DEVICE_SPEC_PARAMETERS
+  }
+  if (remaining.size == entries.size) return deviceSpec
+  return Preview.DeviceSpec.PREFIX + remaining.joinToString(Preview.DeviceSpec.SEPARATOR.toString())
 }
 
 /**
@@ -567,6 +636,10 @@ constructor(
             }
 
             if (mode.value is PreviewMode.Interactive) {
+              val strippedDeviceSpec = withoutExpandParameters(previewElement.configuration.deviceSpec)
+              if (strippedDeviceSpec != previewElement.configuration.deviceSpec) {
+                toolsAttribute("device", strippedDeviceSpec)
+              }
               toolsAttribute("lookaheadAnimationVisualDebuggingEnabled", isLookaheadAnimationVisualDebuggingEnabled.toString())
               toolsAttribute(
                 "lookaheadAnimationVisualDebuggingKeyLabelEnabled",

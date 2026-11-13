@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.compose.preview
 
+import com.android.ide.common.rendering.api.SessionParams.RenderingMode
 import com.android.resources.Density
 import com.android.resources.ScreenOrientation
 import com.android.sdklib.devices.Device
@@ -69,12 +70,15 @@ import com.android.tools.idea.testing.ui.createFakeToolWindow
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode.SourceCodeEditorProvider
 import com.android.tools.idea.uibuilder.options.NlOptionsConfigurable
+import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.uibuilder.surface.NlSurfaceBuilder
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintRenderIssue
 import com.android.tools.idea.uibuilder.visual.visuallint.VisualLintService
 import com.android.tools.preview.PreviewDisplaySettings
 import com.android.tools.preview.PreviewDisplaySettings.Background
+import com.android.tools.rendering.RenderLogger
+import com.android.tools.rendering.RenderTask
 import com.android.tools.visuallint.VisualLintErrorType
 import com.android.utils.HtmlBuilder
 import com.google.common.truth.Truth.assertThat
@@ -93,6 +97,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.diagnostic.LogLevel
@@ -112,6 +117,8 @@ import com.intellij.testFramework.assertInstanceOf
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.runInEdtAndWait
+import java.io.ByteArrayInputStream
+import java.io.InputStream
 import java.nio.file.Path
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
@@ -145,7 +152,10 @@ import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Opcodes
 
 /**
  * Utility method for tests that shows the string by splitting [background] into two separate components as it is defined in the `Preview`
@@ -1685,6 +1695,186 @@ class ComposePreviewRepresentationTest {
       val resizePanel = assertNotNull(composeView.focusMode?.component?.findDescendant<ResizePanel>())
       assertThat(resizePanel.getCurrentPreviewElementForTest()).isEqualTo(focusedElement)
     }
+  }
+
+  @Test
+  fun previewsWithExpandInDeviceSpecAreRenderedExpanded() {
+    runComposePreviewRepresentationTest(createExpandPreviewPsiFile()) {
+      createPreviewAndCompile(expectedModelCount = 4)
+
+      val renderingModeByPreview =
+        mainSurface.sceneManagers.associate {
+          it.model.dataProvider?.previewElement()?.methodFqn?.substringAfterLast('.') to it.sceneRenderConfiguration.renderingMode
+        }
+      assertThat(renderingModeByPreview)
+        .containsExactlyEntriesIn(
+          mapOf(
+            "PreviewNotExpanded" to RenderingMode.SHRINK,
+            "PreviewExpandedVertically" to RenderingMode.V_SCROLL,
+            "PreviewExpandedHorizontally" to RenderingMode.H_SCROLL,
+            "PreviewWithWindowPosture" to RenderingMode.SHRINK,
+          )
+        )
+      fun sceneManager(previewName: String) =
+        mainSurface.sceneManagers.single { it.model.dataProvider?.previewElement()?.methodFqn == "TestKt.$previewName" }
+      val expandedSceneManager = sceneManager("PreviewExpandedVertically")
+      val uiToolingWithoutPreviewDeviceSpec = object : ClassLoader(null) {}
+
+      // With a ui-tooling that does not support expand, the preview is not expanded and a warning is logged.
+      onRenderTaskCreated(expandedSceneManager, uiToolingWithoutPreviewDeviceSpec).let { (task, logger) ->
+        verify(task).setRenderingMode(RenderingMode.SHRINK)
+        assertThat(logger.messages.single().html)
+          .contains(
+            "expand, maxHeight in the device spec require a newer version of androidx.compose.ui:ui-tooling; rendering at device size."
+          )
+      }
+      // Previews with decorations fall back to the device size.
+      onRenderTaskCreated(sceneManager("PreviewExpandedHorizontally"), uiToolingWithoutPreviewDeviceSpec).let { (task, logger) ->
+        verify(task).setRenderingMode(RenderingMode.NORMAL)
+        assertThat(logger.messages.single().html)
+          .contains("expand in the device spec requires a newer version of androidx.compose.ui:ui-tooling; rendering at device size.")
+      }
+      // With a ui-tooling that supports expand, the preview is expanded. Parameter names are matched ignoring case.
+      onRenderTaskCreated(expandedSceneManager, uiToolingClassLoader("EXPAND,maxHeight")).let { (task, logger) ->
+        verify(task).setRenderingMode(RenderingMode.V_SCROLL)
+        assertThat(logger.messages).isEmpty()
+      }
+      // Other unsupported parameters are reported, and do not prevent expanding.
+      onRenderTaskCreated(expandedSceneManager, uiToolingClassLoader("expand")).let { (task, logger) ->
+        verify(task).setRenderingMode(RenderingMode.V_SCROLL)
+        assertThat(logger.messages.single().html)
+          .contains("maxHeight in the device spec requires a newer version of androidx.compose.ui:ui-tooling and will be ignored.")
+      }
+      onRenderTaskCreated(sceneManager("PreviewWithWindowPosture"), uiToolingClassLoader("expand")).let { (task, logger) ->
+        verify(task).setRenderingMode(RenderingMode.SHRINK)
+        assertThat(logger.messages.single().html)
+          .contains("windowPosture in the device spec requires a newer version of androidx.compose.ui:ui-tooling and will be ignored.")
+      }
+      // The supported parameters are not queried for device specs without ui-tooling parameters.
+      onRenderTaskCreated(sceneManager("PreviewNotExpanded"), uiToolingWithoutPreviewDeviceSpec).let { (task, logger) ->
+        verify(task, never()).classLoader
+        verify(task).setRenderingMode(RenderingMode.SHRINK)
+        assertThat(logger.messages).isEmpty()
+      }
+
+      val expandedElement =
+        mainSurface.models.mapNotNull { it.dataProvider?.previewElement() }.single { it.methodFqn == "TestKt.PreviewExpandedVertically" }
+      assertThat(runReadAction { expandedSceneManager.model.file.text })
+        .contains("tools:device=\"spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000dp\"")
+
+      setModeAndWaitForRefresh(PreviewMode.Interactive(expandedElement))
+      val interactiveSceneManager = mainSurface.sceneManagers.single()
+      assertThat(interactiveSceneManager.sceneRenderConfiguration.renderingMode).isEqualTo(RenderingMode.SHRINK)
+      val interactiveXml = runReadAction { interactiveSceneManager.model.file.text }
+      assertThat(interactiveXml).contains("tools:device=\"spec:width=411dp,height=891dp\"")
+      assertThat(interactiveXml).doesNotContain("expand=")
+      assertThat(interactiveXml).doesNotContain("maxHeight=")
+      // Interactive previews are not expanded, so there is nothing to fall back from or to warn about.
+      onRenderTaskCreated(interactiveSceneManager, uiToolingWithoutPreviewDeviceSpec).let { (task, logger) ->
+        verify(task, never()).classLoader
+        verify(task).setRenderingMode(RenderingMode.SHRINK)
+        assertThat(logger.messages).isEmpty()
+      }
+
+      setModeAndWaitForRefresh(PreviewMode.Default())
+      val restoredSceneManager = sceneManager("PreviewExpandedVertically")
+      assertThat(restoredSceneManager.sceneRenderConfiguration.renderingMode).isEqualTo(RenderingMode.V_SCROLL)
+      assertThat(runReadAction { restoredSceneManager.model.file.text })
+        .contains("tools:device=\"spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000dp\"")
+    }
+  }
+
+  /**
+   * Calls the `onRenderTaskCreated` of [sceneManager] with a [RenderTask] using [classLoader] and a new [RenderLogger], and returns both.
+   */
+  private fun onRenderTaskCreated(sceneManager: LayoutlibSceneManager, classLoader: ClassLoader): Pair<RenderTask, RenderLogger> {
+    val task = mock<RenderTask>()
+    whenever(task.classLoader).thenReturn(classLoader)
+    val logger = RenderLogger()
+    sceneManager.sceneRenderConfiguration.onRenderTaskCreated!!.invoke(task, logger)
+    return task to logger
+  }
+
+  /**
+   * Returns a [ClassLoader] with an `androidx.compose.ui.tooling.PreviewDeviceSpec` class declaring [supportedParameters] in its
+   * `SUPPORTED_PARAMETERS` constant, equivalent to:
+   * ```java
+   * package androidx.compose.ui.tooling;
+   *
+   * public final class PreviewDeviceSpec {
+   *   public static final String SUPPORTED_PARAMETERS = "<supportedParameters>";
+   * }
+   * ```
+   */
+  private fun uiToolingClassLoader(supportedParameters: String): ClassLoader {
+    val classWriter = ClassWriter(0)
+    classWriter.visit(
+      Opcodes.V17,
+      Opcodes.ACC_PUBLIC or Opcodes.ACC_FINAL or Opcodes.ACC_SUPER,
+      "androidx/compose/ui/tooling/PreviewDeviceSpec",
+      null,
+      "java/lang/Object",
+      null,
+    )
+    classWriter
+      .visitField(
+        Opcodes.ACC_PUBLIC or Opcodes.ACC_FINAL or Opcodes.ACC_STATIC,
+        "SUPPORTED_PARAMETERS",
+        "Ljava/lang/String;",
+        null,
+        supportedParameters,
+      )
+      .visitEnd()
+    classWriter.visitEnd()
+    val classBytes = classWriter.toByteArray()
+    return object : ClassLoader(null) {
+      override fun getResourceAsStream(name: String?): InputStream? =
+        if (name == "androidx/compose/ui/tooling/PreviewDeviceSpec.class") ByteArrayInputStream(classBytes) else null
+    }
+  }
+
+  @Test
+  fun testWithoutExpandParameters() {
+    assertThat(withoutExpandParameters("")).isEqualTo("")
+    assertThat(withoutExpandParameters("id:pixel_7")).isEqualTo("id:pixel_7")
+    assertThat(withoutExpandParameters("spec:width=411dp,height=891dp")).isEqualTo("spec:width=411dp,height=891dp")
+    assertThat(withoutExpandParameters(" SPEC:width=411dp,height=891dp ")).isEqualTo(" SPEC:width=411dp,height=891dp ")
+    assertThat(withoutExpandParameters("spec:width=227dp,height=227dp,isRound=true,expand=vertical"))
+      .isEqualTo("spec:width=227dp,height=227dp,isRound=true")
+    assertThat(withoutExpandParameters(" SPEC:parent=pixel_7,windowPosture=tabletop,EXPAND=horizontal,MaxWidth=1200dp,maxHeight=2000dp "))
+      .isEqualTo("spec:parent=pixel_7,windowPosture=tabletop")
+  }
+
+  private fun createExpandPreviewPsiFile(): PsiFile = runWriteActionAndWait {
+    fixture.addFileToProjectAndInvalidate(
+      "Test.kt",
+      // language=kotlin
+      """
+      import androidx.compose.ui.tooling.preview.Preview
+      import androidx.compose.runtime.Composable
+
+      @Composable
+      @Preview(device = "spec:width=411dp,height=891dp")
+      fun PreviewNotExpanded() {
+      }
+
+      @Composable
+      @Preview(device = "spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000dp")
+      fun PreviewExpandedVertically() {
+      }
+
+      @Composable
+      @Preview(showSystemUi = true, device = "spec:width=411dp,height=891dp,expand=horizontal")
+      fun PreviewExpandedHorizontally() {
+      }
+
+      @Composable
+      @Preview(device = "spec:width=411dp,height=891dp,windowPosture=tabletop")
+      fun PreviewWithWindowPosture() {
+      }
+      """
+        .trimIndent(),
+    )
   }
 
   private fun runComposePreviewRepresentationTest(

@@ -492,7 +492,6 @@ public class RenderTask {
     });
   }
 
-  @TestOnly
   @Nullable
   public ClassLoader getClassLoader() {
     return myModuleClassLoaderReference.getClassLoader();
