@@ -1020,15 +1020,17 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myFilesToCleanUp.add(captureFile.getParentFile());
 
     AspectObserver observer = new AspectObserver();
-    boolean[] heapDumpFinished = {false};
-    myStage.getAspect().addDependency(observer).onChange(MemoryProfilerAspect.HEAP_DUMP_FINISHED, () -> heapDumpFinished[0] = true);
+    int[] heapDumpFinishedCount = {0};
+    myStage.getAspect().addDependency(observer).onChange(MemoryProfilerAspect.HEAP_DUMP_FINISHED, () -> heapDumpFinishedCount[0]++);
 
     // Select it the way a finished recording is selected: from the stage's own capture series, once the timeline reaches it.
     myStage.setPendingCaptureStartTime(startTimeNs);
     myStage.enableSelectLatestCapture(true, MoreExecutors.directExecutor());
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    // Later timeline updates don't select it again.
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
 
-    assertThat(heapDumpFinished[0]).isTrue();
+    assertThat(heapDumpFinishedCount[0]).isEqualTo(1);
     assertThat(myIdeProfilerServices.getOpenedFile().getName()).isEqualTo(captureFileName);
     assertThat(myIdeProfilerServices.getOpenedFile().getName()).matches("heap-dump-\\d{8}T\\d{6}\\.perfetto-java-heap-dump");
     assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(ProfilerTaskType.HEAP_DUMP);

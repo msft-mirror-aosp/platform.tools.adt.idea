@@ -799,6 +799,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       }
 
       if (isUnifiedEditorEnabled) {
+        // Like doSelectCaptureDuration, stop waiting for this capture, or every timeline update selects it again until the session ends.
+        setPendingCaptureStartTime(INVALID_START_TIME);
         if (!getCaptureSelection().selectCaptureEntry(durationData.getCaptureEntry())) {
           return;
         }
