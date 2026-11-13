@@ -40,6 +40,7 @@ import com.android.sdklib.deviceprovisioner.makeAvdInfo
 import com.android.sdklib.deviceprovisioner.testContext
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.AvdInfo.AvdStatus
+import com.android.sdklib.internal.avd.ColdBoot
 import com.android.sdklib.internal.avd.ConfigKey
 import com.android.sdklib.internal.avd.QuickBoot
 import com.android.sdklib.internal.avd.UserSettingsKey
@@ -513,16 +514,19 @@ class StudioLocalEmulatorProvisionerPluginTest {
     val mockConnection = mock<AvdManagerConnection>()
     AvdManagerConnection.setConnectionFactory { _, _ -> mockConnection }
 
+    val basePhoneHandle = plugin.basePlugin.devices.value.first { it.id == phoneHandle.id }
+    val baseGlassesHandle = plugin.basePlugin.devices.value.first { it.id == glassesHandle.id }
+
     // Note that activation will not actually complete because we don't implement the fake ADB connection, so just verify that startAvd was
     // called.
-    val activationJob = launch { glassesHandle.activationAction.activate() }
+    val activationJob = launch { glassesHandle.activate(projectRule.project, forceLaunchInToolWindow = true, bootMode = ColdBoot) }
     yieldUntil {
-      kotlin
-        .runCatching {
-          verify(mockConnection).startAvd(projectRule.project, glassesInfo)
-          verify(mockConnection).startAvd(projectRule.project, phoneInfo)
-        }
-        .isSuccess
+      runCatching {
+        verify(mockConnection)
+          .startAvd(projectRule.project, baseGlassesHandle, glassesInfo, forceLaunchInToolWindow = true, bootMode = ColdBoot)
+        verify(mockConnection).startAvd(projectRule.project, basePhoneHandle, phoneInfo, forceLaunchInToolWindow = true)
+      }
+        .isSuccess && glassesHandle.state.isTransitioning && phoneHandle.state.isTransitioning
     }
 
     activationJob.cancel()

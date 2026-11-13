@@ -44,6 +44,7 @@ import com.android.tools.idea.avdmanager.AccelerationErrorSolution.SolutionCode
 import com.android.tools.idea.avdmanager.AvdManagerConnection.Companion.NULL_CONNECTION
 import com.android.tools.idea.avdmanager.DeviceSkinUpdater.updateSkin
 import com.android.tools.idea.avdmanager.emulatorcommand.EmulatorCommandBuilder
+import com.android.tools.idea.deviceprovisioner.ActivatableDeviceHandle
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.log.LogWrapper
@@ -85,6 +86,7 @@ import java.util.WeakHashMap
 import kotlin.coroutines.CoroutineContext
 import kotlin.io.path.listDirectoryEntries
 import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelChildren
@@ -93,6 +95,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.annotations.TestOnly
 import org.jetbrains.annotations.VisibleForTesting
 
@@ -151,20 +154,73 @@ constructor(
     }
   }
 
-  /** Starts the AVD, after running checks and possibly resolving some errors, and waits for it to finish booting. */
+  /**
+   * Shim to call [startAvd] but translate [DeviceActionCanceledException] to [CancellationException]. This should be used with care, as it
+   * will cause this coroutine to terminate normally rather than propagating the exception to the enclosing scope.
+   *
+   * @throws DeviceActionException if the emulator crashes or the device fails to come online
+   * @throws CancellationException if the emulator terminates normally before coming online (presumably terminated by the user)
+   */
+  open suspend fun startAvdAndCancelOnUserCancellation(
+    project: Project?,
+    avd: AvdInfo,
+    forceLaunchInToolWindow: Boolean = false,
+    bootMode: BootMode = BootMode.fromProperties(avd.properties),
+  ) {
+    try {
+      startAvd(project, avd, forceLaunchInToolWindow, bootMode)
+    } catch (e: DeviceActionCanceledException) {
+      throw CancellationException(e.message)
+    }
+  }
+
+  /**
+   * Starts the AVD, after running checks and possibly resolving some errors, and waits for it to finish booting.
+   *
+   * This is a compatibility shim for clients that do not already have a DeviceHandle or ActivatableDeviceHandle. Clients with those can
+   * directly invoke activate.
+   *
+   * @throws DeviceActionException if the emulator crashes or the device fails to come online
+   * @throws DeviceActionCanceledException if the emulator terminates normally before coming online (presumably terminated by the user)
+   */
   open suspend fun startAvd(
     project: Project?,
     avd: AvdInfo,
     forceLaunchInToolWindow: Boolean = false,
     bootMode: BootMode = BootMode.fromProperties(avd.properties),
   ) {
+    val deviceHandle = project?.findDeviceHandle(avd)
+    if (deviceHandle != null) {
+      deviceHandle.activate(project, forceLaunchInToolWindow, bootMode)
+      if (withTimeoutOrNull(5.minutes) { deviceHandle.awaitReady() } == null) {
+        throw DeviceActionException("Timed out after 5 minutes waiting for emulator to come online.")
+      }
+    } else {
+      if (project != null) {
+        IJ_LOG.warn("No DeviceHandle found for AVD ${avd.dataFolderPath}; not waiting for boot to complete.")
+      }
+      startAvdProcess(project, avd, forceLaunchInToolWindow, bootMode)
+    }
+  }
+
+  /**
+   * Starts the AVD process directly for the given [deviceHandle], after running checks and possibly resolving some errors, and waits for it
+   * to finish booting.
+   *
+   * This is the lower-level implementation used by StudioLocalEmulatorDeviceHandle.
+   *
+   * @throws DeviceActionException if the emulator crashes or the device fails to come online
+   * @throws DeviceActionCanceledException if the emulator terminates normally before coming online (presumably terminated by the user)
+   */
+  open suspend fun startAvd(
+    project: Project?,
+    deviceHandle: DeviceHandle,
+    avd: AvdInfo,
+    forceLaunchInToolWindow: Boolean = false,
+    bootMode: BootMode = BootMode.fromProperties(avd.properties),
+  ) {
     val processHandler = startAvdProcess(project, avd, forceLaunchInToolWindow, bootMode)
     if (project != null) {
-      val deviceHandle = project.findDeviceHandle(avd)
-      if (deviceHandle == null) {
-        IJ_LOG.warn("No DeviceHandle found for AVD ${avd.dataFolderPath}; not waiting for boot to complete.")
-        return
-      }
       awaitAvdBoot(project, deviceHandle, processHandler)
     }
   }
@@ -193,10 +249,11 @@ constructor(
       }
       // Wait for termination
       launch {
-        if (processHandler.awaitTermination() != 0) {
+        if (processHandler.awaitTermination() == 0) {
+          throw DeviceActionCanceledException("The emulator process for AVD ${deviceHandle.state.properties.title} was closed.")
+        } else {
           throw DeviceActionException("The emulator process for AVD ${deviceHandle.state.properties.title} has terminated.")
         }
-        scopeContext.cancelChildren()
       }
       // Wait for timeout
       launch {
@@ -225,10 +282,10 @@ constructor(
     }
   }
 
-  private fun Project.findDeviceHandle(avd: AvdInfo): DeviceHandle? =
+  private fun Project.findDeviceHandle(avd: AvdInfo): ActivatableDeviceHandle? =
     service<DeviceProvisionerService>().deviceProvisioner.devices.value.find {
       (it.state.properties as? LocalEmulatorProperties)?.avdPath == avd.dataFolderPath
-    }
+    } as? ActivatableDeviceHandle
 
   /** Starts the AVD process, after running checks and possibly resolving some errors. */
   protected open suspend fun startAvdProcess(

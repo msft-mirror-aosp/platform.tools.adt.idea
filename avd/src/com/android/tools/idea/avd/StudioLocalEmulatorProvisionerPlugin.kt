@@ -63,6 +63,7 @@ import com.android.tools.idea.avdmanager.AvdManagerConnection
 import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.avdmanager.checkAcceleration
 import com.android.tools.idea.avdmanager.logHypervisorMigrationEvent
+import com.android.tools.idea.deviceprovisioner.ActivatableDeviceHandle
 import com.android.tools.idea.deviceprovisioner.DeletableDeviceHandle
 import com.android.tools.idea.deviceprovisioner.DuplicatableDeviceHandle
 import com.android.tools.idea.deviceprovisioner.EditableDeviceHandle
@@ -70,6 +71,7 @@ import com.android.tools.idea.deviceprovisioner.GlassesInteractivePairableDevice
 import com.android.tools.idea.deviceprovisioner.NotificationBannersExtension
 import com.android.tools.idea.deviceprovisioner.ShowableOnDiskDeviceHandle
 import com.android.tools.idea.deviceprovisioner.StudioDefaultDeviceActionPresentation
+import com.android.tools.idea.deviceprovisioner.runCatchingDeviceActionException
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.SdkDownloadState
 import com.android.tools.idea.sdk.SdkDownloadTracker
@@ -221,6 +223,7 @@ class StudioLocalEmulatorDeviceHandle(
 ) :
   GlassesPairableDeviceHandle by baseDeviceHandle,
   GlassesInteractivePairableDeviceHandle,
+  ActivatableDeviceHandle,
   EditableDeviceHandle,
   DuplicatableDeviceHandle,
   ShowableOnDiskDeviceHandle,
@@ -277,13 +280,27 @@ class StudioLocalEmulatorDeviceHandle(
 
   private val defaultPresentation: DeviceAction.DefaultPresentation = StudioDefaultDeviceActionPresentation
 
-  private suspend fun doActivate(action: suspend () -> Unit) {
+  override suspend fun activate(
+    project: Project?,
+    forceLaunchInToolWindow: Boolean,
+    bootMode: BootMode?,
+  ) {
+    val effectiveProject = project ?: this.project
+    val resolvedBootMode = bootMode ?: BootMode.fromProperties(avdInfo.properties)
+    val action: suspend () -> Unit = {
+      startAvd(effectiveProject, avdInfo, forceLaunchInToolWindow, resolvedBootMode)
+    }
+
     // If we have a companion phone, launch it in parallel when we launch.
     val companionHandle = state.properties.pairedPhoneId?.let { phoneId -> deviceHandleFlow.value.find { it.id == phoneId } }
     if (companionHandle != null && companionHandle.activationAction.presentation.value.enabled) {
       coroutineScope {
         launch { baseDeviceHandle.activate(action) }
-        launch { companionHandle.activationAction.activate() }
+        launch {
+          runCatchingDeviceActionException(effectiveProject, companionHandle.state.properties.title) {
+            companionHandle.activate(effectiveProject, forceLaunchInToolWindow)
+          }
+        }
       }
     } else {
       baseDeviceHandle.activate(action)
@@ -291,7 +308,12 @@ class StudioLocalEmulatorDeviceHandle(
 
     if (state.properties.deviceType == DeviceType.AI_GLASSES && state.properties.pairedPhoneId == null) {
       scope.launch {
-        val state = withTimeoutOrNull(2.minutes) { awaitReady() } ?: return@launch
+        val state =
+          try {
+            withTimeoutOrNull(2.minutes) { awaitReady() }
+          } catch (_: DeviceActionException) {
+            null
+          } ?: return@launch
         if (state.connectedDevice.isUnpaired()) {
           launchAutomaticGlassesPairing()
         }
@@ -311,21 +333,24 @@ class StudioLocalEmulatorDeviceHandle(
       }
     }
 
-  private suspend fun startAvd(avdInfo: AvdInfo, bootMode: BootMode): Unit =
+  private suspend fun startAvd(
+    project: Project?,
+    avdInfo: AvdInfo,
+    forceLaunchInToolWindow: Boolean,
+    bootMode: BootMode,
+  ): Unit =
     // Note: the original DeviceManager does this in UI thread, but this may call
     // @Slow methods so switch
-    withContext(Dispatchers.Default) { avdManagerConnection.startAvd(project, avdInfo, bootMode = bootMode) }
+    withContext(Dispatchers.Default) {
+      avdManagerConnection.startAvd(project, baseDeviceHandle, avdInfo, forceLaunchInToolWindow, bootMode)
+    }
 
   override val activationAction =
     object : ActivationAction {
       override val presentation = defaultPresentation.fromContext().enabledIfActivatable()
 
       override suspend fun activate() {
-        doActivate {
-          // Consult the config to see what the default boot method is.
-          val bootMode = BootMode.fromProperties(avdInfo.properties)
-          startAvd(avdInfo, bootMode)
-        }
+        this@StudioLocalEmulatorDeviceHandle.activate(bootMode = null)
       }
     }
 
@@ -334,7 +359,7 @@ class StudioLocalEmulatorDeviceHandle(
       override val presentation = defaultPresentation.fromContext().enabledIfActivatable()
 
       override suspend fun activate() {
-        doActivate { startAvd(avdInfo, ColdBoot) }
+        activate(bootMode = ColdBoot)
       }
     }
 
@@ -348,10 +373,8 @@ class StudioLocalEmulatorDeviceHandle(
       withContext(ioDispatcher) { LocalEmulatorSnapshotReader(adbLogger).readSnapshots(avdInfo.dataFolderPath.resolve("snapshots")) }
 
     override suspend fun activate(snapshot: Snapshot) {
-      doActivate {
-        val snapshotName = (snapshot as LocalEmulatorSnapshot).path.fileName.toString()
-        startAvd(avdInfo, BootSnapshot(snapshotName))
-      }
+      val snapshotName = (snapshot as LocalEmulatorSnapshot).path.fileName.toString()
+      activate(bootMode = BootSnapshot(snapshotName))
     }
   }
 

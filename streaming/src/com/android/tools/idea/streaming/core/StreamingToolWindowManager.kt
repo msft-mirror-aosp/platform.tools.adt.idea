@@ -1569,17 +1569,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
           // Delay the onEmulatorHeadsUp call slightly to make it more likely that the emulator will
           // have registered itself by the time of the call.
           alarm.addRequest({ onEmulatorHeadsUp(avd.dataFolderPath, ActivationLevel.ACTIVATE_TAB) }, 200)
-          avdManager.startAvd(project, avd, forceLaunchInToolWindow = true)
-
-          if (avd.isAiGlassesDevice) {
-            val pairedPhoneAvd = deviceProvisioner.findPairedPhoneAvd(avd)
-            if (pairedPhoneAvd != null) {
-              val runningPairedPhone = RunningAvdTracker.getInstance().runningAvds[pairedPhoneAvd.dataFolderPath]
-              if (runningPairedPhone == null || runningPairedPhone.isShuttingDown) {
-                avdManager.startAvd(project, pairedPhoneAvd, forceLaunchInToolWindow = true)
-              }
-            }
-          }
+          avdManager.startAvdAndCancelOnUserCancellation(project, avd, forceLaunchInToolWindow = true)
         } catch (e: Exception) {
           e.throwIfCancellation()
           val avdName = avd.displayName
@@ -1847,16 +1837,6 @@ private var Content.deviceId: StreamingDeviceId?
 
 private val StreamingDeviceId.avdFolder: Path?
   get() = (this as? EmulatorDeviceId)?.emulatorId?.avdFolder
-
-private fun DeviceProvisioner.findPairedPhoneAvd(avd: AvdInfo): AvdInfo? {
-  val devices = devices.value
-  val handle = devices.findByAvdFolder(avd.dataFolderPath)
-  val pairedPhoneId = handle?.state?.properties?.pairedPhoneId ?: return null
-  val pairedPhoneHandle = devices.find { it.id == pairedPhoneId }
-  val pairedPhoneFolder = pairedPhoneHandle?.avdFolder ?: return null
-  val avdManager = AvdManagerConnection.getDefaultAvdManagerConnection()
-  return avdManager.getAvds(false).find { it.dataFolderPath == pairedPhoneFolder }
-}
 
 private val Content?.tracingId: String
   get() = "$simpleId ${this?.description}"
