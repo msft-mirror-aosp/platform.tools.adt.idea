@@ -17,12 +17,25 @@ package com.android.tools.idea.run
 
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.model.android.android
+import com.android.tools.idea.projectsystem.PROJECT_SYSTEM_SYNC_TOPIC
+import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.TransactionGuard
+import com.intellij.openapi.application.TransactionGuardImpl
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VfsUtilCore
+import java.awt.EventQueue
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
+import javax.swing.JList
+import javax.swing.SwingUtilities
 import junit.framework.TestCase.assertEquals
 import org.junit.After
 import org.junit.Rule
@@ -57,7 +70,7 @@ class UnsignedApkQuickFixTest {
       object : SigningConfigSelector {
         override fun showAndGet() = true
 
-        override fun selectedConfig() = signingConfigs[0]
+        override fun selectedConfig() = signingConfigs[0].name()
       }
 
     // Release build doesn't have a signing config assigned.
@@ -71,6 +84,83 @@ class UnsignedApkQuickFixTest {
     // Release build is now assigned the debug signing config.
     val expectedSigningConfig = updatedBuildModel.android().buildTypes().find { it.name() == "release" }?.signingConfig()
     assertThat(expectedSigningConfig?.valueAsString()).contains("debug")
+  }
+
+  @Test
+  fun applyFixFromLockFreeEdtParsesBuildModelOnBackgroundThread() {
+    projectRule.load(TestProjectPaths.SIMPLE_APPLICATION)
+
+    val project = projectRule.project
+    val module = projectRule.fixture.module
+    val app = ApplicationManager.getApplication()
+
+    val initialSigningConfig =
+      ReadAction.compute<String?, RuntimeException> {
+        ProjectBuildModel.get(project)
+          .getModuleBuildModel(module)!!
+          .android()
+          .buildTypes()
+          .find { it.name() == "release" }
+          ?.signingConfig()
+          ?.valueAsString()
+      }
+    assertThat(initialSigningConfig).isNull()
+
+    val syncResults = CopyOnWriteArrayList<ProjectSystemSyncManager.SyncResult>()
+    val callbackInvocations = AtomicInteger(0)
+    project.messageBus
+      .connect(projectRule.fixture.testRootDisposable)
+      .subscribe(PROJECT_SYSTEM_SYNC_TOPIC, ProjectSystemSyncManager.SyncResultListener { syncResults.add(it) })
+
+    SwingUtilities.invokeAndWait {
+      assertThat(EventQueue.isDispatchThread()).isTrue()
+      assertThat(app.isReadAccessAllowed).isFalse()
+      assertThat(app.isWriteIntentLockAcquired).isFalse()
+
+      // Simulate clicking the Run Configuration "Fix" button (an InputEvent user activity on
+      // lock-free Swing EDT: write-safe for TransactionGuard, with neither read nor write-intent lock).
+      (TransactionGuard.getInstance() as TransactionGuardImpl).performUserActivity {
+        assertThat(EventQueue.isDispatchThread()).isTrue()
+        assertThat(app.isReadAccessAllowed).isFalse()
+        assertThat(app.isWriteIntentLockAcquired).isFalse()
+
+        val unsignedApkQuickFix =
+          UnsignedApkQuickFix(module, "release", { callbackInvocations.incrementAndGet() }) { signingConfigs ->
+            assertThat(EventQueue.isDispatchThread()).isTrue()
+            assertThat(app.isReadAccessAllowed).isFalse()
+            assertThat(app.isWriteIntentLockAcquired).isFalse()
+            assertThat(signingConfigs).containsExactly("debug")
+
+            val dialog = SigningConfigSelectorDialog(signingConfigs)
+            try {
+              dialog.signingConfigComboBox.renderer.getListCellRendererComponent(JList(), signingConfigs.first(), 0, false, false)
+              val selected = dialog.selectedConfig()
+              assertThat(selected).isEqualTo("debug")
+              object : SigningConfigSelector {
+                override fun showAndGet() = true
+
+                override fun selectedConfig() = selected
+              }
+            } finally {
+              dialog.close(DialogWrapper.OK_EXIT_CODE)
+            }
+          }
+        quickFix = unsignedApkQuickFix
+        unsignedApkQuickFix.applyFix(DataContext.EMPTY_CONTEXT)
+      }
+    }
+
+    assertThat(syncResults).containsExactly(ProjectSystemSyncManager.SyncResult.SUCCESS)
+    assertThat(callbackInvocations.get()).isEqualTo(1)
+
+    val (updatedSigningConfig, buildFileText) =
+      ReadAction.compute<Pair<String?, String>, RuntimeException> {
+        val updatedBuildModel = ProjectBuildModel.get(project).getModuleBuildModel(module)!!
+        val value = updatedBuildModel.android().buildTypes().find { it.name() == "release" }?.signingConfig()?.valueAsString()
+        value to VfsUtilCore.loadText(updatedBuildModel.virtualFile)
+      }
+    assertThat(updatedSigningConfig).contains("debug")
+    assertThat(buildFileText).contains("signingConfigs.debug")
   }
 
   @Test
