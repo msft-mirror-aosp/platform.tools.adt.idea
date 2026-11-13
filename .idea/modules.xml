@@ -766,6 +766,8 @@
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/lldb/altlang.lldb.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/lldb/altlang.lldb.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/value-format/altlang.dap.valueformat.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/value-format/altlang.dap.valueformat.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/rust/altlang.rust.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/rust/altlang.rust.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/rust-analyzer/altlang.rust-analyzer.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/rust-analyzer/altlang.rust-analyzer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/rust-analyzer/altlang.rust-analyzer.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/rust-analyzer/altlang.rust-analyzer.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/dap/stepping-extra/altlang.dap.stepping-extra.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/dap/stepping-extra/altlang.dap.stepping-extra.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/rust/altlang.rust.tests.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/rust/altlang.rust.tests.iml" />
       <module fileurl="file://$PROJECT_DIR$/../../vendor/google/alt-lang/test/headless-emulator/altlang.test.headless-emulator.iml" filepath="$PROJECT_DIR$/../../vendor/google/alt-lang/test/headless-emulator/altlang.test.headless-emulator.iml" />
