@@ -19,6 +19,7 @@ import com.android.sdklib.AndroidVersion
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
+import com.android.tools.idea.transport.faketransport.commands.CommandHandler
 import com.android.tools.idea.transport.faketransport.commands.HeapDump
 import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Common
@@ -32,12 +33,15 @@ import com.android.tools.profilers.SessionArtifactUtils.createSessionItem
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.memory.HeapProfdSessionArtifact
 import com.android.tools.profilers.memory.MainMemoryProfilerStage
+import com.android.tools.profilers.memory.MemoryProfilerTestUtils
+import com.android.tools.profilers.perfetto.config.PerfettoTraceConfigBuilders
 import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.taskbased.home.StartTaskSelectionError.StartTaskSelectionErrorCode
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.args.singleartifact.memory.HeapDumpTaskArgs
 import com.android.tools.profilers.tasks.taskhandlers.TaskHandlerTestUtils
 import com.google.common.truth.Truth.assertThat
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
@@ -260,7 +264,77 @@ class HeapDumpTaskHandlerTest {
   }
 
   @Test
+  fun testPerfettoHeapDumpSendsOneStopAfterTheSession() {
+    val stopTrace = startPerfettoHeapDump(Trace.TraceStopStatus.Status.SUCCESS)
+
+    // A stop before the session has started the dump would leave the graph empty.
+    myTimer.tick(TimeUnit.MILLISECONDS.toNanos(PerfettoTraceConfigBuilders.JAVA_HEAP_GRAPH_STOP_DELAY_MS) - 1)
+    assertThat(stopTrace.stopCount).isEqualTo(0)
+    myTimer.tick(1)
+    assertThat(stopTrace.stopCount).isEqualTo(1)
+
+    // The daemon handles one stop at a time, so a second one would fail.
+    myTimer.tick(TimeUnit.SECONDS.toNanos(5))
+    assertThat(stopTrace.stopCount).isEqualTo(1)
+  }
+
+  @Test
+  fun testPerfettoHeapDumpStopFailureFailsTheRecording() {
+    startPerfettoHeapDump(Trace.TraceStopStatus.Status.STILL_PROFILING_AFTER_STOP)
+
+    // Send the stop, then deliver its status.
+    myTimer.tick(TimeUnit.MILLISECONDS.toNanos(PerfettoTraceConfigBuilders.JAVA_HEAP_GRAPH_STOP_DELAY_MS))
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+
+    // Heap Dump has no Stop button, so a failed stop has to end the recording.
+    val stage = myHeapDumpTaskHandler.stage!!
+    assertThat(stage.recordingScreenModel!!.isRecordingFailed.value).isTrue()
+    assertThat(stage.recordingOptionsModel.isRecording).isFalse()
+  }
+
+  @Test
   fun testGetTaskName() {
     assertThat(myHeapDumpTaskHandler.getTaskName()).isEqualTo("Heap Dump")
+  }
+
+  /** Starts a Heap Dump of a profileable app on Android 12, which records a Perfetto heap graph, and waits for the start to succeed. */
+  private fun startPerfettoHeapDump(stopStatus: Trace.TraceStopStatus.Status): FakeStopTrace {
+    ideProfilerServices.setRecordPerfettoHeapDumpEnabled(true)
+    TaskHandlerTestUtils.startSession(
+      ExposureLevel.PROFILEABLE,
+      AndroidVersion.VersionCodes.S,
+      myProfilers,
+      myTransportService,
+      myTimer,
+      Common.ProfilerTaskType.HEAP_DUMP,
+    )
+    MemoryProfilerTestUtils.setMockStartTraceStatus(myTransportService, myTimer, Trace.TraceStartStatus.Status.SUCCESS)
+    val stopTrace = FakeStopTrace(myTimer, stopStatus)
+    myTransportService.setCommandHandler(Commands.Command.CommandType.STOP_TRACE, stopTrace)
+    myHeapDumpTaskHandler.setupStage()
+    myHeapDumpTaskHandler.startTask(HeapDumpTaskArgs(false, null))
+    // Deliver the start status, which schedules the stop.
+    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    return stopTrace
+  }
+
+  /** Counts the STOP_TRACE commands, and answers each one with [stopStatus]. */
+  private class FakeStopTrace(timer: FakeTimer, private val stopStatus: Trace.TraceStopStatus.Status) : CommandHandler(timer) {
+    var stopCount = 0
+      private set
+
+    override fun handleCommand(command: Commands.Command, events: MutableList<Common.Event>) {
+      stopCount++
+      events.add(
+        Common.Event.newBuilder()
+          .setGroupId(timer.currentTimeNs)
+          .setPid(command.pid)
+          .setKind(Common.Event.Kind.TRACE_STATUS)
+          .setTimestamp(timer.currentTimeNs)
+          .setCommandId(command.commandId)
+          .setTraceStatus(Trace.TraceStatusData.newBuilder().setTraceStopStatus(Trace.TraceStopStatus.newBuilder().setStatus(stopStatus)))
+          .build()
+      )
+    }
   }
 }

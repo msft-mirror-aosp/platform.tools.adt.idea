@@ -878,6 +878,42 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
   }
 
   @Test
+  public void testStateNotSetOnEnterWhenOngoingHeapGraph() {
+    // A heap graph from an earlier Heap Dump is still being written. It stops on its own, so it can outlive its stage.
+    long startTimeNs = myTimer.getCurrentTimeNs();
+    myTransportService.addEventToStream(FAKE_DEVICE_ID, Common.Event.newBuilder()
+      .setPid(FAKE_PROCESS.getPid())
+      .setCommandId(1)
+      .setKind(Common.Event.Kind.TRACE_STATUS)
+      .setTimestamp(startTimeNs)
+      .setGroupId(startTimeNs)
+      .setTraceStatus(Trace.TraceStatusData.newBuilder()
+                        .setTraceStartStatus(Trace.TraceStartStatus.newBuilder()
+                                               .setStartTimeNs(startTimeNs)
+                                               .setStatus(Trace.TraceStartStatus.Status.SUCCESS)))
+      .build());
+    Trace.TraceInfo info = Trace.TraceInfo.newBuilder()
+      .setFromTimestamp(startTimeNs)
+      .setToTimestamp(Long.MAX_VALUE)
+      .setConfiguration(Trace.TraceConfiguration.newBuilder().setPerfettoOptions(
+        PerfettoConfig.TraceConfig.newBuilder().addDataSources(PerfettoConfig.TraceConfig.DataSource.newBuilder().setConfig(
+          PerfettoConfig.DataSourceConfig.newBuilder().setName(PerfettoTraceConfigBuilders.JAVA_HEAP_GRAPH_DATA_SOURCE_NAME)))))
+      .build();
+    myTransportService.addEventToStream(FAKE_DEVICE_ID, Common.Event.newBuilder()
+      .setPid(FAKE_PROCESS.getPid())
+      .setKind(Common.Event.Kind.MEMORY_TRACE)
+      .setTimestamp(startTimeNs)
+      .setGroupId(startTimeNs)
+      .setTraceData(Trace.TraceData.newBuilder().setTraceStarted(Trace.TraceData.TraceStarted.newBuilder().setTraceInfo(info)))
+      .build());
+
+    MainMemoryProfilerStage stage = new MainMemoryProfilerStage(myProfilers, myMockLoader);
+    stage.enter();
+    assertThat(stage.myNativeAllocationTracking).isFalse();
+    assertThat(stage.isTrackingAllocations()).isFalse();
+  }
+
+  @Test
   public void testNativeRecordingStopsWhenSessionDies() {
     myIdeProfilerServices.enableTaskBasedUx(false);
 
