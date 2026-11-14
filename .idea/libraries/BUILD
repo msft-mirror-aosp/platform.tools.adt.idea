@@ -101,6 +101,7 @@ jvm_import(
 jvm_import(
     name = "sqlite",
     jars = ["//prebuilts/tools/common/m2:sqlite_files"],
+    srcjar = "//prebuilts/tools/common/m2:sqlite_srcjar",
     visibility = ["//visibility:public"],
 )
 

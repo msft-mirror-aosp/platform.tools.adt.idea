@@ -2021,7 +2021,7 @@ android-studio/plugins/android/lib/sherlock-plugin-protos.jar
 android-studio/plugins/android/lib/smali-baksmali-3.0.9.jar
 android-studio/plugins/android/lib/smali-dexlib2-3.0.9.jar
 android-studio/plugins/android/lib/smali-util-3.0.9.jar
-android-studio/plugins/android/lib/sqlite-jdbc-3.51.1.0.jar
+android-studio/plugins/android/lib/sqlite-jdbc-3.54.1.0.jar
 android-studio/plugins/android/lib/studio-grpc.jar
 android-studio/plugins/android/lib/studio-proto.jar
 android-studio/plugins/android/lib/studio_cli_service_kt_proto.jar
@@ -2709,8 +2709,8 @@ android-studio/plugins/gemini/lib/gemini-coder_proto_shaded.jar
 android-studio/plugins/gemini/lib/gemini.so.jar
 android-studio/plugins/gemini/lib/gemini_plugin_proto.jar
 android-studio/plugins/gemini/lib/google-api-services-cloudresourcemanager-v1beta1-rev20240128-2.0.0.jar
-android-studio/plugins/gemini/lib/jackson-datatype-jdk8-2.22.2.jar
-android-studio/plugins/gemini/lib/jackson-datatype-jsr310-2.22.2.jar
+android-studio/plugins/gemini/lib/jackson-datatype-jdk8-2.22.4.jar
+android-studio/plugins/gemini/lib/jackson-datatype-jsr310-2.22.4.jar
 android-studio/plugins/gemini/lib/libagent_log_proto.jar
 android-studio/plugins/gemini/lib/libfeedback_java_proto.jar
 android-studio/plugins/gemini/lib/libgoogle_auth_intellij_lib.jar

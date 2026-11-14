@@ -1895,15 +1895,20 @@ class TableControllerTest {
     Disposer.register(disposable, tableController)
     pumpEventsAndWaitForFuture(tableController.setUp())
 
-    // Act
+    // Act: SQLite 3.54+ disallows `ALTER TABLE ... ADD COLUMN` for reserved rowid aliases
+    // (`rowid`, `oid`, `_rowid_`), so rebuild and rename `t1` to shadow all rowid aliases
+    // after `tableController.setUp()` has cached the initial `_rowid_` values.
     pumpEventsAndWaitForFuture(
-      customDatabaseConnection!!.execute(SqliteStatement(SqliteStatementType.UNKNOWN, "ALTER TABLE t1 ADD COLUMN rowid int"))
+      customDatabaseConnection!!.execute(
+        SqliteStatement(SqliteStatementType.UNKNOWN, "CREATE TABLE t1_new (c1 INT, rowid INT, oid INT, _rowid_ INT)")
+      )
     )
     pumpEventsAndWaitForFuture(
-      customDatabaseConnection!!.execute(SqliteStatement(SqliteStatementType.UNKNOWN, "ALTER TABLE t1 ADD COLUMN oid int"))
+      customDatabaseConnection!!.execute(SqliteStatement(SqliteStatementType.UNKNOWN, "INSERT INTO t1_new (c1) SELECT c1 FROM t1"))
     )
+    pumpEventsAndWaitForFuture(customDatabaseConnection!!.execute(SqliteStatement(SqliteStatementType.UNKNOWN, "DROP TABLE t1")))
     pumpEventsAndWaitForFuture(
-      customDatabaseConnection!!.execute(SqliteStatement(SqliteStatementType.UNKNOWN, "ALTER TABLE t1 ADD COLUMN _rowid_ int"))
+      customDatabaseConnection!!.execute(SqliteStatement(SqliteStatementType.UNKNOWN, "ALTER TABLE t1_new RENAME TO t1"))
     )
 
     val updatedTargetTable = pumpEventsAndWaitForFuture(customDatabaseConnection!!.readSchema()).tables.find { it.name == "t1" }!!
