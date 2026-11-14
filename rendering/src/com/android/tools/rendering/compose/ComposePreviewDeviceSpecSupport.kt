@@ -42,6 +42,10 @@ const val SUPPORTED_PARAMETERS_FIELD_NAME = "SUPPORTED_PARAMETERS"
 private const val DEVICE_SPEC_PREFIX = "spec:"
 private const val DEVICE_SPEC_SEPARATOR = ','
 private const val DEVICE_SPEC_OPERATOR = '='
+private const val PARAMETER_EXPAND = "expand"
+
+/** Returns whether this set of supported `PreviewDeviceSpec` parameters includes `expand`. */
+fun Set<String>.supportsExpand(): Boolean = any { it.equals(PARAMETER_EXPAND, ignoreCase = true) }
 
 /**
  * `ui-tooling` `spec:` parameters that shipped in `androidx.compose.ui:ui-tooling` (1.11.0-alpha06) before `PreviewDeviceSpec` existed.
@@ -71,6 +75,9 @@ private val UI_TOOLING_DEVICE_SPEC_PARAMETERS =
     "hasCamera",
     "hasMicrophone",
     "viewingDistance",
+    PARAMETER_EXPAND,
+    "maxHeight",
+    "maxWidth",
   )
 
 private val UI_TOOLING_PARAMETER_BY_LOWERCASE_NAME = UI_TOOLING_DEVICE_SPEC_PARAMETERS.associateBy { it.lowercase() }
@@ -117,24 +124,39 @@ fun ClassLoader.supportedComposePreviewDeviceSpecParameters(): Set<String> =
   }
 
 /**
- * Returns a warning for the `ui-tooling` `spec:` parameters used in [deviceSpec] that are not in [supportedParameters], or `null` if they
- * are all supported.
+ * Returns a warning for the `ui-tooling` `spec:` parameters used in [deviceSpec], and `expand` if [hasExpandSettings], that are not in
+ * [supportedParameters], or `null` if they are all supported.
  *
  * Parameters in [PRE_PREVIEW_DEVICE_SPEC_PARAMETERS] shipped before `PreviewDeviceSpec` existed and are only reported when
- * [supportedParameters] is non-empty. Each parameter is only reported once. [supportedParameters] is only queried if [deviceSpec] contains
- * a `ui-tooling` parameter.
+ * [supportedParameters] is non-empty. [hasExpandSettings] covers previews that are expanded without `expand` in [deviceSpec]. Each
+ * parameter is only reported once. [supportedParameters] is only queried, at most once, if [hasExpandSettings] is true or [deviceSpec]
+ * contains a `ui-tooling` parameter.
  */
-fun unsupportedComposePreviewDeviceSpecWarning(deviceSpec: String?, supportedParameters: () -> Set<String>): String? {
+fun unsupportedComposePreviewDeviceSpecWarning(
+  deviceSpec: String?,
+  hasExpandSettings: Boolean = false,
+  supportedParameters: () -> Set<String>,
+): String? {
   val usedParameters = parseUsedUiToolingParameters(deviceSpec)
-  if (usedParameters.isEmpty()) return null
+  if (!hasExpandSettings && usedParameters.isEmpty()) return null
   val supportedLowercase = supportedParameters().mapTo(HashSet()) { it.lowercase() }
-  val unsupportedParameters = usedParameters.filter { parameter ->
-    (supportedLowercase.isNotEmpty() || parameter !in PRE_PREVIEW_DEVICE_SPEC_PARAMETERS) && parameter.lowercase() !in supportedLowercase
+  val unsupportedParameters = buildSet {
+    if (hasExpandSettings && PARAMETER_EXPAND !in supportedLowercase) add(PARAMETER_EXPAND)
+    for (parameter in usedParameters) {
+      if (supportedLowercase.isEmpty() && parameter in PRE_PREVIEW_DEVICE_SPEC_PARAMETERS) continue
+      if (parameter.lowercase() !in supportedLowercase) add(parameter)
+    }
   }
   if (unsupportedParameters.isEmpty()) return null
   val parametersList = unsupportedParameters.joinToString(", ")
   val verb = if (unsupportedParameters.size == 1) "requires" else "require"
-  return "$parametersList in the device spec $verb a newer version of androidx.compose.ui:ui-tooling and will be ignored."
+  val suffix =
+    if (PARAMETER_EXPAND in unsupportedParameters) {
+      "; rendering at device size."
+    } else {
+      " and will be ignored."
+    }
+  return "$parametersList in the device spec $verb a newer version of androidx.compose.ui:ui-tooling$suffix"
 }
 
 private fun parseUsedUiToolingParameters(deviceSpec: String?): Set<String> {

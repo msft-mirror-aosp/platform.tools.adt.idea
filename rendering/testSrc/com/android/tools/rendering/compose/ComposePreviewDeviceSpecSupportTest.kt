@@ -188,6 +188,10 @@ class ComposePreviewDeviceSpecSupportTest {
 
   @Test
   fun unsupportedDeviceSpecWarning_reportsUnsupportedParameters() {
+    assertThat(emptySet<String>().supportsExpand()).isFalse()
+    assertThat(setOf("windowPosture").supportsExpand()).isFalse()
+    assertThat(setOf("expand", "maxHeight").supportsExpand()).isTrue()
+
     // Non-spec or tool-handled device specs do not query supportedParameters
     assertThat(
         unsupportedComposePreviewDeviceSpecWarning(null) {
@@ -209,12 +213,15 @@ class ComposePreviewDeviceSpecSupportTest {
         }
       )
       .isNull()
-    assertThat(
-        unsupportedComposePreviewDeviceSpecWarning("spec:parent=pixel_7,windowPosture=tabletop") {
-          setOf("windowPosture")
-        }
+    val expandedSpec = "spec:width=411dp,height=891dp,expand=vertical,maxHeight=2000dp"
+    assertThat(unsupportedComposePreviewDeviceSpecWarning(expandedSpec, hasExpandSettings = true) { setOf("expand", "maxHeight") }).isNull()
+    // expand is both in the device spec and in hasExpandSettings, but is only reported once.
+    assertThat(unsupportedComposePreviewDeviceSpecWarning(expandedSpec, hasExpandSettings = true) { emptySet() })
+      .isEqualTo(
+        "expand, maxHeight in the device spec require a newer version of androidx.compose.ui:ui-tooling; rendering at device size."
       )
-      .isNull()
+    assertThat(unsupportedComposePreviewDeviceSpecWarning("spec:parent=pixel_7", hasExpandSettings = true) { emptySet() })
+      .isEqualTo("expand in the device spec requires a newer version of androidx.compose.ui:ui-tooling; rendering at device size.")
     // Pre-PreviewDeviceSpec parameters (MediaQuery) do not warn when PreviewDeviceSpec is absent (emptySet()), because ui-tooling
     // 1.11.0-alpha06+ already supports them without PreviewDeviceSpec.class.
     assertThat(
@@ -224,16 +231,42 @@ class ComposePreviewDeviceSpecSupportTest {
       )
       .isNull()
     assertThat(
+        unsupportedComposePreviewDeviceSpecWarning("spec:parent=pixel_7,windowPosture=tabletop,expand=vertical", hasExpandSettings = true) {
+          emptySet()
+        }
+      )
+      .isEqualTo("expand in the device spec requires a newer version of androidx.compose.ui:ui-tooling; rendering at device size.")
+    assertThat(
         unsupportedComposePreviewDeviceSpecWarning("spec:parent=pixel_7,windowPosture=tabletop,WINDOWPOSTURE=book") {
           setOf("pointerPrecision")
         }
       )
       .isEqualTo("windowPosture in the device spec requires a newer version of androidx.compose.ui:ui-tooling and will be ignored.")
     // Case-insensitive matching, canonical parameter names, preserved order
-    val spec = " SPEC:parent=pixel_7,WINDOWPOSTURE=tabletop,POINTERPRECISION=fine,viewingDistance=near "
-    assertThat(unsupportedComposePreviewDeviceSpecWarning(spec) { setOf("pointerPrecision") })
+    val spec = " SPEC:parent=pixel_7,EXPAND=vertical,MAXHEIGHT=2000dp,MAXWIDTH=1000dp,windowPosture=tabletop "
+    assertThat(
+        unsupportedComposePreviewDeviceSpecWarning(spec) {
+          setOf("windowPosture", "expand", "maxHeight")
+        }
+      )
+      .isEqualTo("maxWidth in the device spec requires a newer version of androidx.compose.ui:ui-tooling and will be ignored.")
+    assertThat(
+        unsupportedComposePreviewDeviceSpecWarning("spec:parent=pixel_7,windowPosture=tabletop,viewingDistance=near") {
+          setOf("expand", "maxHeight", "maxWidth")
+        }
+      )
       .isEqualTo(
         "windowPosture, viewingDistance in the device spec require a newer version of androidx.compose.ui:ui-tooling and will be ignored."
       )
+  }
+
+  @Test
+  fun unsupportedDeviceSpecWarning_queriesSupportedParametersOnce() {
+    var queries = 0
+    unsupportedComposePreviewDeviceSpecWarning("spec:parent=pixel_7,expand=vertical,windowPosture=tabletop", hasExpandSettings = true) {
+      queries++
+      emptySet()
+    }
+    assertThat(queries).isEqualTo(1)
   }
 }
