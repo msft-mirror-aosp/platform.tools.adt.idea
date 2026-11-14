@@ -35,6 +35,7 @@ import com.android.tools.idea.publishing.play.client.type.AppEdit
 import com.android.tools.idea.publishing.play.client.type.Bundle
 import com.android.tools.idea.publishing.play.client.type.Track
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardState
+import com.android.tools.idea.publishing.play.wizard.clickExternalLinkAndAssertBrowsedUrl
 import com.android.tools.idea.testing.NotificationRule
 import com.google.common.truth.Truth.assertThat
 import com.google.gct.login2.LoginFeatureRule
@@ -152,6 +153,62 @@ class CreateReleasePageTest {
     // For new apps, ONLY "internal" should be available
     composeTestRule.onNodeWithText("Internal Test Track").performClick()
     composeTestRule.onNodeWithText("Alpha Track").assertDoesNotExist()
+  }
+
+  @Test
+  fun testNonInternalTrackShowsRequirementsBannerAndLearnMoreLink() {
+    fakeClient.config =
+      FakePlayPublishingClient.Config(
+        listEditTracksCall = { _, _ -> listOf(Track("internal"), Track("alpha"), Track("beta"), Track("qa")) }
+      )
+    val state = PlayPublishingWizardState(packageName = "com.example.app")
+    createWizard(state)
+
+    val bannerPrefix = "Publishing to this track requires a store listing and completed app setup in Play Console."
+
+    // Initially "Internal Test Track" is selected, so the banner is hidden.
+    composeTestRule.onNodeWithText("Internal Test Track").assertIsDisplayed()
+    composeTestRule.onNodeWithText(bannerPrefix, substring = true).assertDoesNotExist()
+
+    // Selecting Alpha Track displays the banner and Learn more link while keeping Publish app enabled.
+    composeTestRule.onNodeWithText("Internal Test Track").performClick()
+    composeTestRule.onNodeWithText("Alpha Track").performClick()
+    val bannerTextNode = composeTestRule.onNodeWithText(bannerPrefix, substring = true)
+    bannerTextNode.assertIsDisplayed()
+    composeTestRule.onNodeWithText("Publish app").assertIsEnabled()
+
+    // Clicking "Learn more" opens the DAC redirect URL.
+    bannerTextNode.clickExternalLinkAndAssertBrowsedUrl(
+      "Learn more",
+      "https://developer.android.com/r/studio-ui/publish/test-track-requirements",
+    )
+
+    // Selecting Beta Track keeps the banner displayed.
+    composeTestRule.onNodeWithText("Alpha Track").performClick()
+    composeTestRule.onNodeWithText("Beta Track").performClick()
+    composeTestRule.onNodeWithText(bannerPrefix, substring = true).assertIsDisplayed()
+
+    // Selecting a custom closed test track ("Qa Track") also keeps the banner displayed.
+    composeTestRule.onNodeWithText("Beta Track").performClick()
+    composeTestRule.onNodeWithText("Qa Track").performClick()
+    composeTestRule.onNodeWithText(bannerPrefix, substring = true).assertIsDisplayed()
+
+    // Switching back to Internal Test Track hides the banner.
+    composeTestRule.onNodeWithText("Qa Track").performClick()
+    composeTestRule.onNodeWithText("Internal Test Track").performClick()
+    composeTestRule.onNodeWithText(bannerPrefix, substring = true).assertDoesNotExist()
+  }
+
+  @Test
+  fun testDefaultNonInternalTrackShowsRequirementsBannerInitially() {
+    fakeClient.config = FakePlayPublishingClient.Config(listEditTracksCall = { _, _ -> listOf(Track("alpha")) })
+    val state = PlayPublishingWizardState(packageName = "com.example.app")
+    createWizard(state)
+
+    composeTestRule.onNodeWithText("Alpha Track").assertIsDisplayed()
+    composeTestRule
+      .onNodeWithText("Publishing to this track requires a store listing and completed app setup in Play Console.", substring = true)
+      .assertIsDisplayed()
   }
 
   @Test

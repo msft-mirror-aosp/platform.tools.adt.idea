@@ -57,6 +57,7 @@ import com.android.tools.idea.publishing.play.client.type.Track
 import com.android.tools.idea.publishing.play.wizard.FormField
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardHeader
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardState
+import com.android.tools.idea.publishing.play.wizard.TextWithExternalLinks
 import com.google.gct.login2.GoogleLoginService
 import com.google.wireless.android.sdk.stats.PlayPublishingEvent.CreateReleaseDetails.CreateReleaseResult
 import com.google.wireless.android.sdk.stats.PlayPublishingEvent.CreateReleaseDetails.TrackType
@@ -80,6 +81,7 @@ import org.jetbrains.jewel.ui.Outline
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Dropdown
 import org.jetbrains.jewel.ui.component.InlineErrorBanner
+import org.jetbrains.jewel.ui.component.InlineInformationBanner
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextArea
 import org.jetbrains.jewel.ui.component.TextField
@@ -89,6 +91,7 @@ private const val INTERNAL_TEST_TRACK_NAME = "internal"
 private const val ALPHA_TRACK_NAME = "alpha"
 private const val BETA_TRACK_NAME = "beta"
 private const val PRODUCTION_TRACK_NAME = "production"
+private const val TEST_TRACK_REQUIREMENTS_DAC_URL = "https://developer.android.com/r/studio-ui/publish/test-track-requirements"
 
 private val trackNameMap =
   mapOf(
@@ -188,6 +191,8 @@ fun WizardPageScope.CreateReleasePage(releaseNotesDebounceMillis: Long = 500) {
       PlayPublishingWizardHeader(subtitle = "Create release")
 
       Column(modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState())) {
+        val showTrackRequirementsBanner = selectedTrack != null && selectedTrack != INTERNAL_TEST_TRACK_NAME
+
         // Form fields
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
           FormField(label = "Publish to:") {
@@ -200,17 +205,28 @@ fun WizardPageScope.CreateReleasePage(releaseNotesDebounceMillis: Long = 500) {
             } else if (tracks.isEmpty()) {
               Text("No tracks found.", color = JewelTheme.globalColors.text.disabled, modifier = Modifier.padding(top = 8.dp))
             } else {
-              Dropdown(
-                modifier = Modifier.fillMaxWidth(),
-                menuContent = {
-                  tracks.forEach { track ->
-                    selectableItem(selected = (track.track == selectedTrack), onClick = { selectedTrack = track.track }) {
-                      Text(track.track.displayTrackName())
+              Column {
+                Dropdown(
+                  modifier = Modifier.fillMaxWidth(),
+                  menuContent = {
+                    tracks.forEach { track ->
+                      selectableItem(selected = (track.track == selectedTrack), onClick = { selectedTrack = track.track }) {
+                        Text(track.track.displayTrackName())
+                      }
+                    }
+                  },
+                ) {
+                  selectedTrack?.let { Text(it.displayTrackName()) }
+                }
+                if (showTrackRequirementsBanner) {
+                  Spacer(modifier = Modifier.height(8.dp))
+                  InlineInformationBanner(modifier = Modifier.fillMaxWidth()) {
+                    TextWithExternalLinks {
+                      append("Publishing to this track requires a store listing and completed app setup in Play Console. ")
+                      appendExternalLink("Learn more", TEST_TRACK_REQUIREMENTS_DAC_URL)
                     }
                   }
-                },
-              ) {
-                selectedTrack?.let { Text(it.displayTrackName()) }
+                }
               }
             }
           }
