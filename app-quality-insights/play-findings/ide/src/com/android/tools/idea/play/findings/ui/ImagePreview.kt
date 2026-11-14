@@ -103,7 +103,7 @@ internal fun ImagePreview(
             contentDescription = "Image preview",
             contentScale = ContentScale.Fit,
             modifier =
-              Modifier.sizeIn(maxWidth = 300.dp, maxHeight = 500.dp)
+              Modifier.sizeIn(maxWidth = 440.dp, maxHeight = 400.dp)
                 .border(1.dp, JewelTheme.globalColors.borders.normal)
                 .pointerHoverIcon(PointerIcon.Hand)
                 .focusProperties { canFocus = false }
