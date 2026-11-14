@@ -27,8 +27,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,17 +36,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.android.tools.adtui.compose.LocalProject
 import com.android.tools.adtui.compose.WizardAction
 import com.android.tools.adtui.compose.WizardPageScope
@@ -56,6 +45,7 @@ import com.android.tools.idea.gservices.DevServicesDeprecationDataProvider
 import com.android.tools.idea.publishing.play.PlayPublishingUsageTracker
 import com.android.tools.idea.publishing.play.wizard.FormField
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardHeader
+import com.android.tools.idea.publishing.play.wizard.TextWithExternalLinks
 import com.google.gct.login2.GoogleLoginService
 import com.google.gct.login2.PreferredUser
 import com.google.gct.login2.fstLoginFeature
@@ -76,7 +66,6 @@ import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.editorTabStyle
-import org.jetbrains.jewel.ui.theme.linkStyle
 
 private const val PLAY_PUBLISHING_SERVICE_ID = "play/publishing"
 private const val PLAY_PUBLISHING_SERVICE_NAME = "Google Play Publishing"
@@ -128,34 +117,13 @@ fun WizardPageScope.AccountChooserPage() {
           BulletItem("Configure your release")
         }
 
-        val linkStyle =
-          TextLinkStyles(
-            SpanStyle(color = JewelTheme.linkStyle.colors.content),
-            hoveredStyle = SpanStyle(color = JewelTheme.linkStyle.colors.content, textDecoration = TextDecoration.Underline),
+        TextWithExternalLinks {
+          append(
+            "You must have a Google Play developer account to publish apps. If you don't have one yet, you can start the registration at "
           )
-
-        val linkId = "external_link_icon"
-        val inlineContent =
-          mapOf(
-            linkId to
-              InlineTextContent(Placeholder(16.sp, 16.sp, PlaceholderVerticalAlign.Center)) {
-                Icon(AllIconsKeys.Ide.External_link_arrow, null)
-              }
-          )
-
-        Text(
-          buildAnnotatedString {
-            append(
-              "You must have a Google Play developer account to publish apps. If you don't have one yet, you can start the registration at "
-            )
-            withLink(LinkAnnotation.Clickable("signup", linkStyle) { BrowserUtil.browse("https://play.google.com/console/signup") }) {
-              append("Google Play Console")
-              appendInlineContent(linkId, " ")
-            }
-            append(" which might take several days.\n\nOnce complete, please return here to continue with publishing.")
-          },
-          inlineContent = inlineContent,
-        )
+          appendExternalLink("Google Play Console", "https://play.google.com/console/signup")
+          append(" which might take several days.\n\nOnce complete, please return here to continue with publishing.")
+        }
 
         if (loggedInUsers.isNotEmpty() && !deprecationData.isUnsupported()) {
           FormField(label = "Google account:") {

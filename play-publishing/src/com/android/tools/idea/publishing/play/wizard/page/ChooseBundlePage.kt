@@ -27,8 +27,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.text.InlineTextContent
-import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.runtime.Composable
@@ -49,15 +47,9 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.Placeholder
-import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,9 +66,9 @@ import com.android.tools.idea.publishing.play.client.type.App
 import com.android.tools.idea.publishing.play.extractAppMetadata
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardHeader
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardState
+import com.android.tools.idea.publishing.play.wizard.TextWithExternalLinks
 import com.google.gct.login2.GoogleLoginService
 import com.google.gct.login2.ui.GoogleLoginUserRow
-import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileChooser.FileChooser
 import com.intellij.openapi.fileChooser.FileChooserDescriptor
@@ -105,7 +97,6 @@ import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.linkStyle
 
 private const val UPLOAD_BUNDLE_DAC_URL = "https://developer.android.com/r/studio-ui/publish/upload-app-bundle"
 private const val PLAY_CONSOLE_URL = "https://play.google.com/console/"
@@ -514,19 +505,6 @@ private fun AppNotInConsoleBanner(
   onRefresh: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val linkStyle =
-    TextLinkStyles(
-      SpanStyle(color = JewelTheme.linkStyle.colors.content),
-      hoveredStyle = SpanStyle(color = JewelTheme.linkStyle.colors.content, textDecoration = TextDecoration.Underline),
-    )
-  val linkId = "external_link_icon"
-  val inlineContent =
-    mapOf(
-      linkId to
-        InlineTextContent(Placeholder(16.sp, 16.sp, PlaceholderVerticalAlign.Center)) {
-          Icon(AllIconsKeys.Ide.External_link_arrow, contentDescription = null)
-        }
-    )
   val playConsoleUrl = userEmail?.let { playConsoleViaAccountChooserUrl(it, PLAY_CONSOLE_URL) } ?: PLAY_CONSOLE_URL
 
   InlineInformationBanner(modifier = modifier) {
@@ -535,19 +513,11 @@ private fun AppNotInConsoleBanner(
       horizontalArrangement = Arrangement.spacedBy(16.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(
-        text =
-          buildAnnotatedString {
-            append("You can only publish releases for existing apps in Play Console. Go to ")
-            withLink(LinkAnnotation.Clickable("play_console", linkStyle) { BrowserUtil.browse(playConsoleUrl) }) {
-              append("Play Console")
-              appendInlineContent(linkId, " ")
-            }
-            append(" to create this app and then return here to publish a release for it.")
-          },
-        inlineContent = inlineContent,
-        modifier = Modifier.weight(1f),
-      )
+      TextWithExternalLinks(modifier = Modifier.weight(1f)) {
+        append("You can only publish releases for existing apps in Play Console. Go to ")
+        appendExternalLink("Play Console", playConsoleUrl)
+        append(" to create this app and then return here to publish a release for it.")
+      }
       // Keep the Refresh link in the layout (but invisible) while refreshing, so the banner text doesn't reflow.
       Box(contentAlignment = Alignment.Center) {
         Link(

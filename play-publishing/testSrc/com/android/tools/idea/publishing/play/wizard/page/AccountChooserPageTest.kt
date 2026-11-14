@@ -29,6 +29,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gservices.DevServicesDeprecationData
 import com.android.tools.idea.gservices.DevServicesDeprecationDataProvider
 import com.android.tools.idea.gservices.DevServicesDeprecationStatus
+import com.android.tools.idea.publishing.play.wizard.clickExternalLinkAndAssertBrowsedUrl
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
 import com.google.gct.login2.GoogleLoginService
@@ -81,12 +82,14 @@ class AccountChooserPageTest {
     composeTestRule.onNodeWithText("Upload your Android App Bundle (.aab)").assertIsDisplayed()
     composeTestRule.onNodeWithText("Configure your release").assertIsDisplayed()
 
-    composeTestRule
-      .onNodeWithText(
+    val registrationNode =
+      composeTestRule.onNodeWithText(
         "You must have a Google Play developer account to publish apps. If you don't have one yet, you can start the registration at Google Play Console",
         substring = true,
       )
-      .assertIsDisplayed()
+    registrationNode.assertIsDisplayed()
+
+    registrationNode.clickExternalLinkAndAssertBrowsedUrl("Google Play Console", "https://play.google.com/console/signup")
 
     composeTestRule
       .onNodeWithText("Signing in to Android Studio is required. You will be redirected to the web to sign in as the next step.")

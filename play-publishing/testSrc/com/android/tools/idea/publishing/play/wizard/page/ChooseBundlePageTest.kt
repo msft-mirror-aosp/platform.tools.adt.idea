@@ -16,23 +16,17 @@
 package com.android.tools.idea.publishing.play.wizard.page
 
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyChild
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performMouseInput
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.text.TextLayoutResult
-import com.android.mockito.kotlin.whenever
 import com.android.tools.adtui.compose.LocalProject
 import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
@@ -44,11 +38,11 @@ import com.android.tools.idea.publishing.play.client.FakePlayPublishingClient
 import com.android.tools.idea.publishing.play.client.PlayPublishingClient
 import com.android.tools.idea.publishing.play.client.type.App
 import com.android.tools.idea.publishing.play.wizard.PlayPublishingWizardState
+import com.android.tools.idea.publishing.play.wizard.clickExternalLinkAndAssertBrowsedUrl
 import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
 import com.google.gct.login2.LoginFeatureRule
 import com.google.gct.login2.LoginUsersRule
-import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.testFramework.DisposableRule
@@ -65,8 +59,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
-import org.mockito.ArgumentMatchers.anyString
-import org.mockito.Mockito
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.verifyNoInteractions
@@ -280,17 +272,10 @@ class ChooseBundlePageTest {
     composeTestRule.onNodeWithText("Next").assertIsNotEnabled()
 
     // Clicking the Play Console link opens the account-chooser URL for the active user
-    val textLayoutResults = mutableListOf<TextLayoutResult>()
-    bannerTextNode.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(textLayoutResults) }
-    val layoutResult = textLayoutResults.single()
-    val linkOffset = layoutResult.layoutInput.text.text.indexOf("Go to Play Console") + "Go to ".length
-    Mockito.mockStatic(BrowserUtil::class.java).use { browserUtil ->
-      val browsedUrls = mutableListOf<String>()
-      browserUtil.whenever<Unit> { BrowserUtil.browse(anyString()) }.thenAnswer { browsedUrls.add(it.arguments[0] as String) }
-
-      bannerTextNode.performMouseInput { click(layoutResult.getBoundingBox(linkOffset).center) }
-      assertThat(browsedUrls).containsExactly(playConsoleViaAccountChooserUrl("user@example.com", "https://play.google.com/console/"))
-    }
+    bannerTextNode.clickExternalLinkAndAssertBrowsedUrl(
+      "Play Console",
+      playConsoleViaAccountChooserUrl("user@example.com", "https://play.google.com/console/"),
+    )
   }
 
   @Test
