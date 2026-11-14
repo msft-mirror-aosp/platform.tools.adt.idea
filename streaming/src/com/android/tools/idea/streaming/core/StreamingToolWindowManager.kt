@@ -63,10 +63,10 @@ import com.android.tools.idea.streaming.emulator.displayNameWithApi
 import com.android.utils.FlightRecorder
 import com.android.utils.TraceUtils.currentTime
 import com.android.utils.TraceUtils.simpleId
+import com.android.utils.throwIfCancellation
 import com.github.benmanes.caffeine.cache.Cache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.intellij.icons.AllIcons
-import com.intellij.ide.actions.ToggleToolbarAction
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
@@ -395,7 +395,9 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
         try {
           val emulators = deferred.await()
           onEmulatorHeadsUp(serialNumber, emulators, activation)
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+          e.throwIfCancellation()
+        }
       }
     }
   }
@@ -419,7 +421,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
 
     val content = findContentByAvdFolder(avdFolder)
     if (content == null) {
-      RunningEmulatorCatalog.getInstance().updateNow()
+      @Suppress("DeferredResultUnused") RunningEmulatorCatalog.getInstance().updateNow()
       recentAvdLaunches.put(avdFolder, activation)
       alarm.addRequest(recentAvdLaunches::cleanUp, ATTENTION_REQUEST_EXPIRATION.inWholeMicroseconds)
     } else {
@@ -450,7 +452,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     contentShown = true
 
     val emulatorCatalog = RunningEmulatorCatalog.getInstance()
-    emulatorCatalog.updateNow()
+    @Suppress("DeferredResultUnused") emulatorCatalog.updateNow()
     emulatorCatalog.addListener(this, EMULATOR_DISCOVERY_INTERVAL_MILLIS)
     assert(emulators.isEmpty())
     emulators.addAll(emulatorCatalog.emulators.filter { it.emulatorId.isEmbedded }) // Ignore standalone emulators.
@@ -610,7 +612,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
         FlightRecorder.log {
           "$currentTime StreamingToolWindowManager.addPanel ${content.tracingId} splitting ${contentManager.simpleId} at ${layout.side} contentManagers.size: ${contentManagers.size}"
         }
-        @Suppress("UnstableApiUsage") (decorator as InternalDecoratorImpl).splitWithContent(content, layout.side, -1)
+        (decorator as InternalDecoratorImpl).splitWithContent(content, layout.side, -1)
         contentAdded = true
         (content.component.containingDecorator?.parent as? Splitter)?.proportion = layout.splitRatio
         createContentIfNecessary(panel)
@@ -737,8 +739,8 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     if (!panel.hasContent) {
       // The panel became visible - create its content.
       panel.createContent(deviceFrameVisible, savedUiState.remove(panel.id))
-      // Synchronize toolbar visibility across panels.
-      ToggleToolbarAction.setToolbarVisible(toolWindow, PropertiesComponent.getInstance(project), null)
+      // Synchronize toolbar visibility and orientation across panels.
+      panel.toolbarPlacement = toolbarPlacement
     }
   }
 
@@ -1260,7 +1262,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
       }
     }
 
-    @Suppress("UnstableApiUsage")
     override fun stateChanged(toolWindowManager: ToolWindowManager, toolWindow: ToolWindow, changeType: ToolWindowManagerEventType) {
       if (toolWindow != this@StreamingToolWindowManager.toolWindow) {
         return
@@ -1317,7 +1318,6 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
     }
 
     @UiThread
-    @Suppress("UnstableApiUsage")
     private fun showInSplitView(device1SerialNumber: String, device2SerialNumber: String) {
       if (!toolWindow.isVisible) {
         toolWindow.show { ToolWindowManager.getInstance(project).invokeLater { showInSplitView(device1SerialNumber, device2SerialNumber) } }
@@ -1412,7 +1412,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
 
   private inner class ToolbarPlacementActionGroup : DefaultActionGroup("Toolbar Placement", true), DumbAware {
     init {
-      for (placement in ToolbarPlacement.values()) {
+      for (placement in ToolbarPlacement.entries) {
         add(SetToolbarPlacementAction(placement))
       }
     }
@@ -1581,6 +1581,7 @@ internal class StreamingToolWindowManager @AnyThread constructor(private val too
             }
           }
         } catch (e: Exception) {
+          e.throwIfCancellation()
           val avdName = avd.displayName
           val message =
             e.message?.let { if (it.contains(avdName)) it else "Unable to launch $avdName - $it" } ?: "Unable to launch $avdName"
