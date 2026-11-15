@@ -52,12 +52,16 @@ public class SmRunnerUtils {
   public static final String BLAZE_FRAMEWORK = "blaze-test";
 
   public static SMTRunnerConsoleView getConsoleView(
-    Project project,
-    BlazeCommandRunConfiguration configuration,
-    Executor executor,
-    BlazeTestResultsProvider testResultFinderStrategy) {
-    SMTRunnerConsoleProperties properties =
-        new BlazeTestConsoleProperties(configuration, executor, testResultFinderStrategy);
+      Project project,
+      BlazeCommandRunConfiguration configuration,
+      Executor executor,
+      BlazeTestResultsProvider testResultFinderStrategy) {
+    return getConsoleView(
+        project, new BlazeTestConsoleProperties(configuration, executor, testResultFinderStrategy));
+  }
+
+  public static SMTRunnerConsoleView getConsoleView(
+      Project project, SMTRunnerConsoleProperties properties) {
     SMTRunnerConsoleView console =
         (SMTRunnerConsoleView)
             SMTestRunnerConnectionUtil.createConsole(BLAZE_FRAMEWORK, properties);

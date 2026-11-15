@@ -15,15 +15,17 @@
  */
 package com.google.idea.blaze.android.run.test;
 
+import com.android.tools.idea.console.DeviceConsoleUtils;
 import com.android.tools.idea.run.ConsoleProvider;
 import com.google.idea.blaze.android.run.test.BlazeAndroidTestLaunchMethodsProvider.AndroidTestLaunchMethod;
 import com.google.idea.blaze.base.run.BlazeCommandRunConfiguration;
+import com.google.idea.blaze.base.run.filter.BlazeSafeConsoleFilters;
 import com.google.idea.blaze.base.run.smrunner.SmRunnerUtils;
 import com.google.idea.blaze.base.run.testlogs.BlazeTestResultsProvider;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.Executor;
 import com.intellij.execution.executors.DefaultDebugExecutor;
-import com.intellij.execution.filters.TextConsoleBuilderFactory;
+import com.intellij.execution.filters.TextConsoleBuilder;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.openapi.Disposable;
@@ -58,9 +60,14 @@ class AitBlazeTestConsoleProvider implements ConsoleProvider {
     if (testResultFinderStrategy == null || isDebugging(executor)) {
       // SM runner console not yet supported when debugging, because we're calling this once per
       // test case (see ConnectBlazeTestDebuggerTask::setUpForReattachingDebugger)
-      return TextConsoleBuilderFactory.getInstance().createBuilder(project).getConsole();
+      TextConsoleBuilder builder = DeviceConsoleUtils.createDeviceTextConsoleBuilder(project);
+      BlazeSafeConsoleFilters.getSafeBlazeTestConsoleFilters(project).forEach(builder::addFilter);
+      return builder.getConsole();
     }
-    return SmRunnerUtils.getConsoleView(project, runConfiguration, executor, testResultFinderStrategy);
+    return SmRunnerUtils.getConsoleView(
+        project,
+        new BlazeAndroidTestConsoleProperties(
+            runConfiguration, executor, testResultFinderStrategy));
   }
 
   private static boolean isDebugging(Executor executor) {

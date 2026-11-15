@@ -15,11 +15,10 @@
  */
 package com.google.idea.blaze.android.run.binary;
 
+import com.android.tools.idea.console.DeviceConsoleUtils;
 import com.android.tools.idea.run.ConsoleProvider;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.Executor;
-import com.intellij.execution.filters.TextConsoleBuilder;
-import com.intellij.execution.filters.TextConsoleBuilderFactory;
 import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.openapi.Disposable;
@@ -39,9 +38,7 @@ public class BlazeAndroidBinaryConsoleProvider implements ConsoleProvider {
   public ConsoleView createAndAttach(
       @NotNull Disposable parent, @NotNull ProcessHandler handler, @NotNull Executor executor)
       throws ExecutionException {
-    final TextConsoleBuilder builder =
-        TextConsoleBuilderFactory.getInstance().createBuilder(project);
-    ConsoleView console = builder.getConsole();
+    ConsoleView console = DeviceConsoleUtils.createDeviceTextConsoleBuilder(project).getConsole();
     console.attachToProcess(handler);
     return console;
   }
