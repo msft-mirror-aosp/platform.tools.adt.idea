@@ -37,6 +37,8 @@ import com.android.tools.idea.testing.findAppModule
 import com.android.tools.idea.testing.requestSyncAndWait
 import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.RunManager
+import com.intellij.execution.RunManagerListener
+import com.intellij.execution.RunnerAndConfigurationSettings
 import com.intellij.execution.configurations.ConfigurationType
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
@@ -55,8 +57,11 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -647,6 +652,72 @@ class AndroidRunConfigurationsTest {
         runInEdtAndWait { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
         assertThat(runManager.allConfigurationsList.map { it.type.id to it.name }).containsExactlyElementsIn(expectedSmartConfigs)
       }
+    }
+  }
+
+  @Test
+  fun `createProjectRunConfigurations coalesces smart-mode passes across concurrent calls in dumb mode`() {
+    StudioFlags.WEAR_RUN_CONFIGS_AUTOCREATE_ENABLED.override(true)
+    StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_RUN_CONFIGURATION.override(true)
+    val preparedProject = projectRule.prepareTestProject(testProject = AndroidCoreTestProject.WEAR_WITH_TILE_COMPLICATION_AND_WATCHFACE)
+    preparedProject.open { project ->
+      val runManager = RunManager.getInstance(project)
+      val manager = AndroidRunConfigurationsManager.getInstance(project)
+      runManager.removeExistingRunConfigurations()
+
+      val nonSmartConfigurationsAdded = AtomicInteger(0)
+      val wearConfigurationsAdded = AtomicInteger(0)
+      project.messageBus
+        .connect(project)
+        .subscribe(
+          RunManagerListener.TOPIC,
+          object : RunManagerListener {
+            override fun runConfigurationAdded(settings: RunnerAndConfigurationSettings) {
+              when (val configuration = settings.configuration) {
+                is AndroidRunConfiguration -> {
+                  // Clear the module so each non-smart-mode pass adds a configuration and can be counted.
+                  configuration.setModule(null)
+                  nonSmartConfigurationsAdded.incrementAndGet()
+                }
+                is AndroidWearConfiguration -> {
+                  // Clear the component name so any redundant smart-mode pass would re-add the wear configurations.
+                  configuration.componentLaunchOptions.componentName = null
+                  wearConfigurationsAdded.incrementAndGet()
+                }
+              }
+            }
+          },
+        )
+
+      val dumbTask = DumbModeTestUtils.startEternalDumbModeTask(project)
+      val jobs: List<Job>
+      try {
+        jobs = List(3) { manager.createProjectRunConfigurations() }
+        runBlocking {
+          withTimeout(10_000) {
+            while (nonSmartConfigurationsAdded.get() < 3) {
+              delay(10)
+            }
+          }
+        }
+        assertThat(wearConfigurationsAdded.get()).isEqualTo(0)
+        jobs.forEach { assertThat(it.isCompleted).isFalse() }
+      } finally {
+        DumbModeTestUtils.endEternalDumbModeTaskAndWaitForSmartMode(project, dumbTask)
+      }
+
+      runBlocking { withTimeout(10_000) { jobs.joinAll() } }
+      runInEdtAndWait { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+
+      assertThat(nonSmartConfigurationsAdded.get()).isEqualTo(3)
+      // All 3 concurrent calls coalesce into a single smart-mode pass (3 wear components * 1 pass = 3, not 9).
+      assertThat(wearConfigurationsAdded.get()).isEqualTo(3)
+
+      // A subsequent call after the coalesced smart-mode pass completes still runs a new smart-mode pass.
+      val followUpJob = manager.createProjectRunConfigurations()
+      runBlocking { withTimeout(10_000) { followUpJob.join() } }
+      assertThat(nonSmartConfigurationsAdded.get()).isEqualTo(4)
+      assertThat(wearConfigurationsAdded.get()).isEqualTo(6)
     }
   }
 

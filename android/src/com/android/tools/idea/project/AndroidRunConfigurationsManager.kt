@@ -31,6 +31,7 @@ class AndroidRunConfigurationsManager(private val project: Project) {
 
   private val operationsStates = mutableListOf<Job>()
   private val mutex = Mutex()
+  private var smartModePassNeeded = false
 
   fun createProjectRunConfigurations() =
     project.coroutineScope
@@ -39,11 +40,16 @@ class AndroidRunConfigurationsManager(private val project: Project) {
           withBackgroundProgress(project, "Setting up run configurations...") {
             AndroidRunConfigurations.instance.createNonSmartModeRunConfigurations(project)
           }
+          smartModePassNeeded = true
         }
         // Wait for smart mode without holding the mutex, so indexing doesn't delay the
         // non-smart-mode pass of later calls or show a progress indicator while indexing.
         project.waitForSmartMode()
         mutex.withLock {
+          // A single smart-mode pass reads the latest project state once it starts, so it covers
+          // all non-smart-mode passes that completed before it acquired the mutex.
+          if (!smartModePassNeeded) return@withLock
+          smartModePassNeeded = false
           withBackgroundProgress(project, "Setting up run configurations...") {
             AndroidRunConfigurations.instance.createSmartModeRunConfigurations(project)
           }
