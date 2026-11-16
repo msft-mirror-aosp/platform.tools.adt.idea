@@ -422,11 +422,6 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     }
   }
 
-  /** Disables auto device+process selection. See: [StudioProfilers.setAutoProfilingEnabled] */
-  fun disableAutoProfiling() {
-    profilers.autoProfilingEnabled = false
-  }
-
   /** Tries to import a file into an imported session of the profilers and shows an error balloon if it fails to do so. */
   fun openFile(file: VirtualFile) {
     if (!profilers.sessionsManager.importSessionFromFile(File(file.path))) {

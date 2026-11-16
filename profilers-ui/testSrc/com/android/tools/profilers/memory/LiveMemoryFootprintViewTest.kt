@@ -32,12 +32,12 @@ import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.ProfilerTooltipMouseAdapter
-import com.android.tools.profilers.SessionProfilersView
 import com.android.tools.profilers.StageView
 import com.android.tools.profilers.StageWithToolbarView
 import com.android.tools.profilers.StreamingStage
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
+import com.android.tools.profilers.TaskProfilersView
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
@@ -84,7 +84,7 @@ open class LiveMemoryFootprintViewTest {
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
     myModel = LiveMemoryFootprintModel(profilers)
     myModel.enter()
-    myProfilersView = SessionProfilersView(profilers, myComponents, disposableRule.disposable)
+    myProfilersView = TaskProfilersView(profilers, myComponents, disposableRule.disposable)
   }
 
   @Test

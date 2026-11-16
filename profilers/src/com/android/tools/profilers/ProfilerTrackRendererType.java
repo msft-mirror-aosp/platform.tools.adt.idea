@@ -78,9 +78,5 @@ public enum ProfilerTrackRendererType {
   /**
    * For deadline text
    */
-  ANDROID_FRAME_DEADLINE_TEXT,
-  /**
-   * For Custom Event Visualization user events.
-   */
-  CUSTOM_EVENTS
+  ANDROID_FRAME_DEADLINE_TEXT
 }

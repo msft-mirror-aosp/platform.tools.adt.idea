@@ -84,7 +84,6 @@ constructor(private val project: Project, private val profilers: StudioProfilers
     if (isWindowExpanded) {
       isProfilingActiveBalloonShown = false
     } else {
-      profilers.autoProfilingEnabled = false
       if (hasAliveSession && !isProfilingActiveBalloonShown) {
         // Only shown the balloon if we detect the window is hidden for the first time.
         isProfilingActiveBalloonShown = true

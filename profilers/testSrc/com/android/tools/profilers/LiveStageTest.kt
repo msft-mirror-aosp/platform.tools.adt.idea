@@ -49,12 +49,6 @@ class LiveStageTest {
   }
 
   @Test
-  fun testStopDisableAutoProfiling() {
-    myLiveStage.exit()
-    assertThat(myLiveStage.studioProfilers.autoProfilingEnabled).isFalse()
-  }
-
-  @Test
   fun testExitModel() {
     myLiveStage.exit()
     val result = myLiveStage.liveModels

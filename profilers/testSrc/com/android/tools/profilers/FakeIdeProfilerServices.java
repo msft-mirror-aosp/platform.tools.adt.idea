@@ -308,11 +308,6 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
     return myFakeFeatureTracker;
   }
 
-  @Override
-  public void enableAdvancedProfiling() {
-    // No-op.
-  }
-
   @NotNull
   @Override
   public FeatureConfig getFeatureConfig() {

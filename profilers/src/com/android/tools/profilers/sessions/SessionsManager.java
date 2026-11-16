@@ -455,26 +455,10 @@ public class SessionsManager extends AspectModel<SessionAspect> {
   }
 
   /**
-   * Select the session with the matching id if one exists.
-   *
-   * @return true if the session is successfully selected,  false otherwise.
-   */
-  public boolean setSessionById(long sessionId) {
-    if (!mySessionItems.containsKey(sessionId)) {
-      return false;
-    }
-
-    setSession(mySessionItems.get(sessionId).getSession());
-    return true;
-  }
-
-  /**
    * Change the current selected session explicitly, such as when importing an old session or captured files, or the user manually navigate
-   * to a different session via the sessions panel.
-   * This has the effect of disabling the auto-process selection logic. Also see {@link StudioProfilers#setAutoProfilingEnabled(boolean)}.
+   * to a different session via the past recordings tab.
    */
   public void setSession(@NotNull Common.Session session) {
-    myProfilers.setAutoProfilingEnabled(false);
     setSessionInternal(session);
   }
 

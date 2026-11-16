@@ -92,8 +92,8 @@ import kotlin.Unit;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * This class represents the view of a capture taken from within the {@link CpuProfilerStageView}.
- * all captures of type {@link ProfilingConfiguration.TraceType} are supported.
+ * This class represents the view of a CPU capture (see {@link CpuCaptureStage}).
+ * All captures of type {@link ProfilingConfiguration.TraceType} are supported.
  */
 public class CpuCaptureStageView extends StageView<CpuCaptureStage> {
   /**

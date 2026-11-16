@@ -30,9 +30,9 @@ import com.android.tools.idea.transport.faketransport.FakeTransportService;
 import com.android.tools.profilers.FakeIdeProfilerComponents;
 import com.android.tools.profilers.FakeIdeProfilerServices;
 import com.android.tools.profilers.ProfilerClient;
-import com.android.tools.profilers.SessionProfilersView;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.StudioProfilersView;
+import com.android.tools.profilers.TaskProfilersView;
 import com.android.tools.profilers.memory.adapters.CaptureObject;
 import com.android.tools.profilers.memory.adapters.FakeCaptureObject;
 import com.android.tools.profilers.memory.adapters.FakeInstanceObject;
@@ -61,7 +61,7 @@ public class MemoryNavigationTest {
   @Rule public final EdtRule myEdtRule = new EdtRule();
 
   private MainMemoryProfilerStage myStage;
-  private MainMemoryProfilerStageView myStageView;
+  private CapturePanel myCapturePanel;
   private FakeIdeProfilerComponents myFakeIdeProfilerComponents;
 
   @Before
@@ -69,12 +69,14 @@ public class MemoryNavigationTest {
     FakeIdeProfilerServices profilerServices = new FakeIdeProfilerServices();
     StudioProfilers profilers = new StudioProfilers(new ProfilerClient(myGrpcChannel.getChannel()), profilerServices, myTimer);
     myFakeIdeProfilerComponents = new FakeIdeProfilerComponents();
-    StudioProfilersView profilersView = new SessionProfilersView(profilers, myFakeIdeProfilerComponents, myDisposableRule.getDisposable());
+    StudioProfilersView profilersView = new TaskProfilersView(profilers, myFakeIdeProfilerComponents, myDisposableRule.getDisposable());
 
     FakeCaptureObjectLoader loader = new FakeCaptureObjectLoader();
     loader.setReturnImmediateFuture(true);
     myStage = new MainMemoryProfilerStage(profilers, loader);
-    myStageView = new MainMemoryProfilerStageView(profilersView, myStage);
+    // The capture panel is hosted by AllocationStageView and MemoryCaptureStageView in production.
+    myCapturePanel = new CapturePanel(profilersView, myStage.getCaptureSelection(), null, myStage.getRangeSelectionModel().getSelectionRange(),
+                                      myFakeIdeProfilerComponents, myStage.getTimeline(), false);
   }
 
   @Test
@@ -93,11 +95,11 @@ public class MemoryNavigationTest {
       new CaptureDurationData<>(1, false, false, new CaptureEntry<CaptureObject>(new Object(), () -> fakeCaptureObject)), null);
 
     ClassSet instanceClassSet =
-      findDescendantClassSetNodeWithInstance(getRootClassifierSet(myStageView.getClassifierView().getTree()).getAdapter(), instance);
+      findDescendantClassSetNodeWithInstance(getRootClassifierSet(myCapturePanel.getClassifierView().getTree()).getAdapter(), instance);
     myStage.getCaptureSelection().selectClassSet(instanceClassSet);
 
     myStage.getCaptureSelection().selectInstanceObject(instance);
-    JTree classSetTree = myStageView.getInstanceDetailsView().getFieldTree();
+    JTree classSetTree = myCapturePanel.getInstanceDetailsView().getFieldTree();
     assertNotNull(classSetTree);
 
     // Check that the Go To Instance menu item exists but is disabled since no instance is selected
@@ -141,11 +143,11 @@ public class MemoryNavigationTest {
     assertEquals(fakeCaptureObject.getHeapSet(DEFAULT_HEAP_ID), myStage.getCaptureSelection().getSelectedHeapSet());
 
     ClassSet instanceClassSet =
-      findDescendantClassSetNodeWithInstance(getRootClassifierSet(myStageView.getClassifierView().getTree()).getAdapter(), fakeInstance);
+      findDescendantClassSetNodeWithInstance(getRootClassifierSet(myCapturePanel.getClassifierView().getTree()).getAdapter(), fakeInstance);
     myStage.getCaptureSelection().selectClassSet(instanceClassSet);
     myStage.getCaptureSelection().selectInstanceObject(fakeInstance);
 
-    JTree classifierTree = myStageView.getClassifierView().getTree();
+    JTree classifierTree = myCapturePanel.getClassifierView().getTree();
     assertNotNull(classifierTree);
     Supplier<CodeLocation> codeLocationSupplier = myFakeIdeProfilerComponents.getCodeLocationSupplier(classifierTree);
 

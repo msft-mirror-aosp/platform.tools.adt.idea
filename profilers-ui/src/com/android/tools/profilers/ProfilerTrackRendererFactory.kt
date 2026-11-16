@@ -29,7 +29,6 @@ import com.android.tools.profilers.cpu.PowerRailTrackRenderer
 import com.android.tools.profilers.cpu.RssMemoryTrackRenderer
 import com.android.tools.profilers.cpu.SurfaceflingerTrackRenderer
 import com.android.tools.profilers.cpu.VsyncTrackRenderer
-import com.android.tools.profilers.customevent.CustomEventTrackRenderer
 import com.android.tools.profilers.event.LifecycleTrackRenderer
 import com.android.tools.profilers.event.UserEventTrackRenderer
 import java.util.function.BooleanSupplier
@@ -54,6 +53,5 @@ class ProfilerTrackRendererFactory(private val myProfilersView: StudioProfilersV
       ProfilerTrackRendererType.ANDROID_FRAME_EVENT -> AndroidFrameEventTrackRenderer(vsyncEnabler)
       ProfilerTrackRendererType.ANDROID_FRAME_TIMELINE_EVENT -> JankyFrameTrackRenderer(myProfilersView, vsyncEnabler)
       ProfilerTrackRendererType.ANDROID_FRAME_DEADLINE_TEXT -> DeadlineTextRenderer(vsyncEnabler)
-      ProfilerTrackRendererType.CUSTOM_EVENTS -> CustomEventTrackRenderer()
     }
 }

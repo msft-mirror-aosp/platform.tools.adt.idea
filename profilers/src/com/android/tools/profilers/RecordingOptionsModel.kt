@@ -154,10 +154,6 @@ class RecordingOptionsModel : AspectModel<RecordingOptionsModel.Aspect>() {
     }
   }
 
-  fun getOptionNotReadyMessage(opt: RecordingOption) = notReadyOptions[opt]
-
-  fun isOptionReady(opt: RecordingOption) = getOptionNotReadyMessage(opt) == null
-
   /** Check if the recording option is recognized by this model */
   private fun RecordingOption?.isValid(): Boolean = this == null || this in builtInOptionList || this in customConfigurationModel
 
@@ -216,9 +212,5 @@ open class RecordingOption
 constructor(val title: String, val description: String, val startAction: Runnable, val stopAction: Runnable? = null) {
   override fun toString() = title
 }
-
-// Singleton object for the prototype display value
-// of the custom config dropdown.
-object PrototypeDisplayRecordingOption : RecordingOption("", "", {})
 
 private operator fun <T> ListModel<T>?.contains(item: T?): Boolean = this != null && (0 until size).any { getElementAt(it) == item }

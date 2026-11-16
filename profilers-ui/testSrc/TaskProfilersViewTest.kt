@@ -88,7 +88,7 @@ class TaskProfilersViewTest(private val isTestingProfileable: Boolean) {
 
   @Test
   fun testSameStageTransition() {
-    val stage = FakeStage(studioProfilers, "Really?", false)
+    val stage = FakeStage(studioProfilers, false)
     studioProfilers.stage = stage
     val view = view.stageView
 
@@ -99,7 +99,7 @@ class TaskProfilersViewTest(private val isTestingProfileable: Boolean) {
 
   @Test
   fun testViewHasNoExceptionsWhenProfilersStop() {
-    val stage = FakeStage(studioProfilers, "Really?", false)
+    val stage = FakeStage(studioProfilers, false)
     studioProfilers.stage = stage
 
     studioProfilers.stop()

@@ -37,7 +37,7 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Base class for handing CpuCellRendering, this class is used by Renderers that create state charts within
- * a list in the {@link CpuProfilerStageView}
+ * a list (e.g. the threads list in {@link CpuThreadsView}).
  *
  * @param <T> The first type is the type used for the {@link ListCellRenderer}, this type should match the model used for the List.
  * @param <K> The second type is the type used for the {@link StateChartData}, this should match the model used for the {@link StateChart}

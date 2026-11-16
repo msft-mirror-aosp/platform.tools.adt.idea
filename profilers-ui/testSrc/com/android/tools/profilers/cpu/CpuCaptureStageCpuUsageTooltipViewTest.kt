@@ -23,8 +23,8 @@ import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.ProfilersTestData
-import com.android.tools.profilers.SessionProfilersView
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.TaskProfilersView
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
@@ -56,7 +56,7 @@ class CpuCaptureStageCpuUsageTooltipViewTest {
   fun setUp() {
     val profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), myIdeServices, timer)
     profilers.setPreferredProcess(FakeTransportService.FAKE_DEVICE_NAME, FakeTransportService.FAKE_PROCESS_NAME, null)
-    val profilersView = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    val profilersView = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
     captureStage =
       CpuCaptureStage.create(
         profilers,

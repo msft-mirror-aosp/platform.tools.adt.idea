@@ -45,7 +45,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.VisibleForTesting;
 
 public class CpuUsageView extends JBPanel<CpuUsageView> {
   @NotNull protected final OverlayComponent myOverlayComponent;
@@ -76,7 +75,7 @@ public class CpuUsageView extends JBPanel<CpuUsageView> {
 
     myOverlayComponent = new OverlayComponent(new JPanel());
     // |CpuUsageView| does not receive any mouse events, because all mouse events are consumed by |OverlayComponent|
-    // We're dispatching them manually, so that |CpuProfilerStageView| could register CPU context menus or other mouse events
+    // We're dispatching them manually, so that the hosting view (e.g. |LiveCpuUsageView|) could register CPU context menus or other mouse events
     // directly into |CpuUsageView| instead of |OverlayComponent|.
     DelegateMouseEventHandler.delegateTo(this)
                              .installListenerOn(myOverlayComponent)
@@ -90,12 +89,6 @@ public class CpuUsageView extends JBPanel<CpuUsageView> {
     add(createLegendPanel(), new TabularLayout.Constraint(0, 0));
     add(myOverlayComponent, new TabularLayout.Constraint(0, 0));
     add(createLineChartPanel(), new TabularLayout.Constraint(0, 0));
-  }
-
-  @VisibleForTesting
-  public CpuUsageView(@NotNull CpuProfilerStage stage) {
-    this(stage.getCpuUsageAxis(), stage.getThreadCountAxis(), stage.getCpuUsage(), stage.getTraceDurations(),
-         stage.getLegends(), stage.getName(), stage::setAndSelectCapture);
   }
 
   @NotNull

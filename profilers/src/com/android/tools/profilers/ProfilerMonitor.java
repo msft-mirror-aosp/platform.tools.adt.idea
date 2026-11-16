@@ -22,8 +22,7 @@ import com.android.tools.profiler.proto.Common;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * A component of the StudioMonitor stage. This represents the part of each profiler that is shown
- * when monitoring an app (aka L1).
+ * A model for a monitor shown alongside the timeline of a stage (e.g. the events monitor).
  */
 public abstract class ProfilerMonitor extends AspectModel<ProfilerMonitor.Aspect> {
 

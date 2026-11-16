@@ -26,7 +26,6 @@ import com.android.tools.adtui.model.axis.ResizingAxisComponentModel;
 import com.android.tools.adtui.model.formatter.TimeAxisFormatter;
 import com.android.tools.adtui.model.updater.Updatable;
 import com.android.tools.adtui.model.updater.Updater;
-import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
 import com.android.tools.idea.io.grpc.StatusRuntimeException;
 import com.android.tools.idea.transport.manager.StreamQueryUtils;
 import com.android.tools.idea.transport.poller.TransportEventPoller;
@@ -43,8 +42,6 @@ import com.android.tools.profiler.proto.Transport.GetEventGroupsResponse;
 import com.android.tools.profiler.proto.Transport.TimeRequest;
 import com.android.tools.profiler.proto.Transport.TimeResponse;
 import com.android.tools.profilers.cpu.CpuProfiler;
-import com.android.tools.profilers.cpu.CpuProfilerStage;
-import com.android.tools.profilers.memory.MainMemoryProfilerStage;
 import com.android.tools.profilers.memory.MemoryProfiler;
 import com.android.tools.profilers.sessions.SessionAspect;
 import com.android.tools.profilers.sessions.SessionItem;
@@ -69,8 +66,6 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.text.StringUtil;
 import java.io.File;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -237,11 +232,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   private final Map<Common.SessionMetaData.SessionType, Runnable> mySessionChangeListener;
 
   /**
-   * Whether the profiler should auto-select a process to profile.
-   */
-  private boolean myAutoProfilingEnabled;
-
-  /**
    * Whether the profiler is in offline mode (e.g. viewing an imported file).
    */
   private final boolean myIsOffline;
@@ -367,7 +357,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     myTaskHomeTabModel = new TaskHomeTabModel(this);
     myPastRecordingsTabModel = new PastRecordingsTabModel(this);
 
-    // Order in which events are added to profilersBuilder will be order they appear in monitor stage
     ImmutableList.Builder<StudioProfiler> profilersBuilder = new ImmutableList.Builder<>();
     profilersBuilder.add(new CpuProfiler(this));
     profilersBuilder.add(new MemoryProfiler(this));
@@ -499,8 +488,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
       processFilter
     );
 
-    changed(ProfilerAspect.PREFERRED_PROCESS);
-
     if (processNameChanged) {
       changed(ProfilerAspect.PREFERRED_PROCESS_NAME);
     }
@@ -523,28 +510,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   @Nullable
   public String getPreferredProcessName() {
     return myPreference.processName;
-  }
-
-  /**
-   * Enable/disable auto device+process selection, which looks for the preferred device + process combination and starts profiling. If no
-   * preference has been set (via {@link #setProcess(Common.Device, Common.Process)}, then we profiling any online device+process combo.
-   */
-  public void setAutoProfilingEnabled(boolean enabled) {
-    myAutoProfilingEnabled = enabled;
-
-    if (enabled) {
-      getLogger().warn("Auto profiling should not be enabled or used when the Task-Based UX is enabled.");
-    }
-    // Do nothing. Let update() take care of which process should be selected.
-    // If setProcess() is called now, it may be confused if the process start/end events don't arrive immediately.
-    // For example, if the user ends a session (which will set myProcess null), then click the Run button.
-    // setAutoProfilingEnabled(true) will be called when Run button is clicked. If the previous process's
-    // DEAD event is delayed, setProcess() may start a new session on it (which is already dead) because
-    // the event stream shows it is still alive, and it's "new" in the perspective of StudioProfilers.
-  }
-
-  public boolean getAutoProfilingEnabled() {
-    return myAutoProfilingEnabled;
   }
 
   private List<Common.Device> getUpToDateDevices() {
@@ -785,10 +750,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     setStage(createDefaultStage());
   }
 
-  public void setMonitoringStage() {
-    setStage(new StudioMonitorStage(this));
-  }
-
   public void setProcess(@Nullable Common.Device device, @Nullable Common.Process process) {
     setProcess(device, process, Common.ProfilerTaskType.UNSPECIFIED_TASK, false);
   }
@@ -833,12 +794,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     List<Common.Process> processes = myProcesses.get(myDevice);
     if (process == null || processes == null || !processes.contains(process)) {
       process = getPreferredProcess(processes);
-    }
-    else {
-      // The user wants to select a different process explicitly.
-      // If the user intentionally selects something else, the profiler should not switch
-      // back to the preferred process in any cases.
-      setAutoProfilingEnabled(false);
     }
 
     // Update the process state to latest but continue in the same session
@@ -1055,7 +1010,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
             process.getState() == Common.Process.State.ALIVE &&
             myPreference.processFilter.test(process)) {
           myIdeServices.getFeatureTracker().trackAutoProfilingSucceeded();
-          myAutoProfilingEnabled = false;
           return process;
         }
       }
@@ -1218,18 +1172,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   }
 
   /**
-   * Returns the support level for the live process of given PID. Assumes the process is running.
-   * If the assumption cannot be guaranteed, use `getProcessForStreamIdPidTimestamp`, which may be slower.
-   */
-  @NotNull
-  public SupportLevel getLiveProcessSupportLevel(int pid) {
-    return myProcesses.values().stream().flatMap(Collection::stream)
-      .filter(p -> p.getPid() == pid).findFirst()
-      .map(p -> SupportLevel.of(p.getExposureLevel()))
-      .orElse(SupportLevel.NONE);
-  }
-
-  /**
    * Returns the process protobuf object from the given stream, of the given PID, at the given timestamp.
    */
   @NotNull
@@ -1299,19 +1241,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     return myViewAxis;
   }
 
-  /**
-   * Return the list of stages that target a specific profiler, which a user might want to jump
-   * between. This should exclude things like the top-level profiler stage, null stage, etc.
-   */
-  public List<Class<? extends Stage>> getDirectStages() {
-    ImmutableList.Builder<Class<? extends Stage>> listBuilder = ImmutableList.builder();
-    listBuilder.add(CpuProfilerStage.class);
-    listBuilder.add(MainMemoryProfilerStage.class);
-    boolean isPowerProfilerDisabled =
-      getIdeServices().getFeatureConfig().getSystemTracePowerProfilerDisplayMode() == PowerProfilerDisplayMode.HIDE;
-    return listBuilder.build();
-  }
-
   @NotNull
   public Class<? extends Stage> getStageClass() {
     return myStage.getClass();
@@ -1325,18 +1254,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   @VisibleForTesting
   public void setCurrentTaskHandlerFetcher(@Nullable Function0<ProfilerTaskHandler> currentTaskHandlerFetcher) {
     myCurrentTaskHandlerFetcher = currentTaskHandlerFetcher;
-  }
-
-  // TODO: Unify with how monitors expand.
-  public void setNewStage(Class<? extends Stage> clazz) {
-    try {
-      Constructor<? extends Stage> constructor = clazz.getConstructor(StudioProfilers.class);
-      Stage stage = constructor.newInstance(this);
-      setStage(stage);
-    }
-    catch (NoSuchMethodException | IllegalAccessException | InstantiationException | InvocationTargetException e) {
-      // will not happen
-    }
   }
 
   private StreamingStage createDefaultStage() {

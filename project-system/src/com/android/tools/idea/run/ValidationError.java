@@ -39,22 +39,13 @@ public final class ValidationError implements Comparable<ValidationError> {
     INFO
   }
 
-  /**
-   * Category describing the area of validation.
-   */
-  public enum Category {
-    PROFILER,
-  }
-
   @NotNull private final Severity mySeverity;
   @NotNull private final String myMessage;
-  @Nullable private final Category myCategory;
   @Nullable private final ConfigurationQuickFix myQuickfix;
 
-  private ValidationError(@NotNull Severity severity, @NotNull String message, @Nullable Category category, @Nullable ConfigurationQuickFix quickfix) {
+  private ValidationError(@NotNull Severity severity, @NotNull String message, @Nullable ConfigurationQuickFix quickfix) {
     mySeverity = severity;
     myMessage = message;
-    myCategory = category;
     myQuickfix = quickfix;
   }
 
@@ -65,12 +56,7 @@ public final class ValidationError implements Comparable<ValidationError> {
 
   @NotNull
   public static ValidationError fatal(@NotNull String message, @Nullable ConfigurationQuickFix quickfix) {
-    return new ValidationError(Severity.FATAL, message, null, quickfix);
-  }
-
-  @NotNull
-  public static ValidationError fatal(@NotNull String message, @Nullable Category category, @Nullable ConfigurationQuickFix quickfix) {
-    return new ValidationError(Severity.FATAL, message, category, quickfix);
+    return new ValidationError(Severity.FATAL, message, quickfix);
   }
 
   @NotNull
@@ -80,12 +66,7 @@ public final class ValidationError implements Comparable<ValidationError> {
 
   @NotNull
   public static ValidationError warning(@NotNull String message, @Nullable ConfigurationQuickFix quickfix) {
-    return new ValidationError(Severity.WARNING, message, null, quickfix);
-  }
-
-  @NotNull
-  public static ValidationError warning(@NotNull String message, @Nullable Category category, @Nullable ConfigurationQuickFix quickfix) {
-    return new ValidationError(Severity.WARNING, message, category, quickfix);
+    return new ValidationError(Severity.WARNING, message, quickfix);
   }
 
   @NotNull
@@ -95,12 +76,7 @@ public final class ValidationError implements Comparable<ValidationError> {
 
   @NotNull
   public static ValidationError info(@NotNull String message, @Nullable ConfigurationQuickFix quickfix) {
-    return new ValidationError(Severity.INFO, message, null, quickfix);
-  }
-
-  @NotNull
-  public static ValidationError info(@NotNull String message, @Nullable Category category, @Nullable ConfigurationQuickFix quickfix) {
-    return new ValidationError(Severity.INFO, message, category, quickfix);
+    return new ValidationError(Severity.INFO, message, quickfix);
   }
 
   @NotNull
@@ -121,11 +97,6 @@ public final class ValidationError implements Comparable<ValidationError> {
   @NotNull
   public String getMessage() {
     return myMessage;
-  }
-
-  @Nullable
-  public Category getCategory() {
-    return myCategory;
   }
 
   @Nullable

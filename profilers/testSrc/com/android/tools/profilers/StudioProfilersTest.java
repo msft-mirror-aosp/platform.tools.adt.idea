@@ -35,9 +35,6 @@ import com.android.tools.profiler.proto.Commands;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Common.AgentData;
 import com.android.tools.profiler.proto.Trace;
-import com.android.tools.profilers.cpu.CpuProfilerStage;
-import com.android.tools.profilers.customevent.CustomEventProfilerStage;
-import com.android.tools.profilers.memory.MainMemoryProfilerStage;
 import com.android.tools.profilers.taskbased.home.TaskHomeTabModel;
 import com.android.tools.profilers.taskbased.home.TaskHomeTabModel.ProfilingProcessStartingPoint;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
@@ -291,9 +288,8 @@ public final class StudioProfilersTest {
     }
 
     // Switch back to the first session, agent status should remain unspecified because it is ended.
-    // Note we cannot call 'setSession(session1)' because the session object in the session manager has been updated
-    // when it ended, and session manager doesn't want to set to an out-of-date session.
-    myProfilers.getSessionsManager().setSessionById(session1.getSessionId());
+    // Note that the session manager uses its own up-to-date copy of session1, which has been updated when it ended.
+    myProfilers.getSessionsManager().setSession(session1);
     for (int j = 0; j < AGENT_STATUS_MAX_RETRY_COUNT * 2; j++) {
       myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
     }
@@ -309,8 +305,8 @@ public final class StudioProfilersTest {
     assertThat(myProfilers.getAgentData().getStatus()).isEqualTo(AgentData.Status.UNATTACHABLE);
 
     // Switch to the first session and back should give UNATTACHABLE immediately.
-    myProfilers.getSessionsManager().setSessionById(session1.getSessionId());
-    myProfilers.getSessionsManager().setSessionById(session2.getSessionId());
+    myProfilers.getSessionsManager().setSession(session1);
+    myProfilers.getSessionsManager().setSession(session2);
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
     assertThat(myProfilers.getAgentData().getStatus()).isEqualTo(AgentData.Status.UNATTACHABLE);
   }
@@ -756,9 +752,6 @@ public final class StudioProfilersTest {
   public void testSessionDoesNotAutoStartOnProcessChangeWithTaskBasedUxEnabled() {
     myProfilers.setPreferredProcess(null, FAKE_PROCESS.getName(), null);
 
-    // Auto profiling is disabled in the Task-Based UX, and thus prevents the loading state from occurring on preferred process change.
-    assertThat(myProfilers.getAutoProfilingEnabled()).isFalse();
-
     Common.Device device = FAKE_DEVICE;
     myTransportService.addDevice(device);
 
@@ -782,32 +775,6 @@ public final class StudioProfilersTest {
     // Check that setProcess was not called on process change and thus the session id is the default of 0.
     assertThat(myProfilers.getSession().getPid()).isNotEqualTo(FAKE_PROCESS.getPid());
     assertThat(myProfilers.getSession().getPid()).isEqualTo(0);
-  }
-
-  @Test
-  public void testGetDirectStagesReturnsOnlyExpectedStages_Pre_O() {
-    Common.Device deviceNougat = createDevice(AndroidVersion.VersionCodes.N_MR1, "FakeDeviceN", Common.Device.State.ONLINE);
-    myTransportService.addDevice(deviceNougat);
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    myProfilers.setProcess(deviceNougat, null);
-    assertThat(myProfilers.getDevice().getSerial()).isEqualTo("FakeDeviceN");
-
-    assertThat(myProfilers.getDirectStages()).containsExactly(
-      CpuProfilerStage.class,
-      MainMemoryProfilerStage.class).inOrder();
-  }
-
-  @Test
-  public void testGetDirectStagesReturnsOnlyExpectedStages_O() {
-    Common.Device deviceOreo = createDevice(AndroidVersion.VersionCodes.O, "FakeDeviceO", Common.Device.State.ONLINE);
-    myTransportService.addDevice(deviceOreo);
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    myProfilers.setProcess(deviceOreo, null);
-    assertThat(myProfilers.getDevice().getSerial()).isEqualTo("FakeDeviceO");
-
-    assertThat(myProfilers.getDirectStages()).containsExactly(
-      CpuProfilerStage.class,
-      MainMemoryProfilerStage.class).inOrder();
   }
 
   @Test

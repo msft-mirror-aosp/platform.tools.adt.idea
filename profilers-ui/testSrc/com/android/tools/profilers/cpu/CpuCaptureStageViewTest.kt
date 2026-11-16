@@ -33,9 +33,9 @@ import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.ProfilersTestData
-import com.android.tools.profilers.SessionProfilersView
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
+import com.android.tools.profilers.TaskProfilersView
 import com.android.tools.profilers.Utils
 import com.android.tools.profilers.cpu.analysis.CaptureNodeAnalysisModel
 import com.android.tools.profilers.cpu.analysis.JankAnalysisModel
@@ -96,7 +96,7 @@ class CpuCaptureStageViewTest {
   fun setUp() {
     val profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), services, timer)
     profilers.setPreferredProcess(FakeTransportService.FAKE_DEVICE_NAME, FakeTransportService.FAKE_PROCESS_NAME, null)
-    profilersView = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    profilersView = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
     stage =
       CpuCaptureStage.create(

@@ -16,14 +16,11 @@
 package com.android.tools.profilers;
 
 import static com.android.tools.profilers.ProfilerFonts.H2_FONT;
-import static com.android.tools.profilers.ProfilerFonts.STANDARD_FONT;
 
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.adtui.RangeTooltipComponent;
 import com.android.tools.adtui.TabularLayout;
 import com.android.tools.adtui.model.AspectObserver;
-import com.intellij.ui.HyperlinkAdapter;
-import com.intellij.ui.HyperlinkLabel;
 import com.intellij.ui.components.JBPanel;
 import com.intellij.util.ui.JBUI;
 import java.awt.Color;
@@ -34,7 +31,6 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
-import javax.swing.event.HyperlinkEvent;
 import org.jetbrains.annotations.NotNull;
 
 public abstract class ProfilerMonitorView<T extends ProfilerMonitor> extends AspectObserver {
@@ -145,31 +141,14 @@ public abstract class ProfilerMonitorView<T extends ProfilerMonitor> extends Asp
   protected void populateCustomLoadingPanel(JPanel container) {}
 
   protected void populateDisabledView(JPanel container) {
-    TabularLayout layout = new TabularLayout("*,Fit-,*", "*");
+    TabularLayout layout = new TabularLayout("*", "*");
     myContainer.setLayout(layout);
-    if (isPreO()) {
-      layout.setRowSizing(0, "6*");
-      layout.setRowSizing(1, "4*");
-    }
 
     JLabel disabledMessage = new JLabel(getDisabledMessage());
     disabledMessage.setHorizontalAlignment(SwingConstants.CENTER);
     disabledMessage.setVerticalAlignment(SwingConstants.CENTER);
     disabledMessage.setFont(H2_FONT);
-    myContainer.add(disabledMessage, new TabularLayout.Constraint(0, 0, 3));
-
-    if (isPreO()) {
-      HyperlinkLabel linkToConfigMessage = new HyperlinkLabel();
-      linkToConfigMessage.setTextWithHyperlink("Configure this setting in the <hyperlink>Run Configuration</hyperlink>");
-      linkToConfigMessage.addHyperlinkListener(new HyperlinkAdapter() {
-        @Override
-        protected void hyperlinkActivated(@NotNull HyperlinkEvent e) {
-          myMonitor.getProfilers().getIdeServices().enableAdvancedProfiling();
-        }
-      });
-      myContainer.add(linkToConfigMessage, new TabularLayout.Constraint(1, 1));
-      linkToConfigMessage.setFont(STANDARD_FONT);
-    }
+    myContainer.add(disabledMessage, new TabularLayout.Constraint(0, 0));
   }
 
   /**

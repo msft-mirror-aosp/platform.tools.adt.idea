@@ -15,7 +15,6 @@
  */
 package com.android.tools.profilers.memory
 
-import com.android.tools.adtui.TreeWalker
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
@@ -24,9 +23,9 @@ import com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_
 import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
-import com.android.tools.profilers.SessionProfilersView
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
+import com.android.tools.profilers.TaskProfilersView
 import com.android.tools.profilers.memory.adapters.CaptureObject
 import com.android.tools.profilers.memory.adapters.FakeCaptureObject
 import com.google.common.truth.Truth.assertThat
@@ -36,7 +35,6 @@ import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
 import java.util.function.Supplier
-import javax.swing.JLabel
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -64,22 +62,11 @@ class MemoryCaptureStageViewTest {
     ideProfilerServices = FakeIdeProfilerServices()
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, myTimer)
     profilers.setPreferredProcess(FAKE_DEVICE_NAME, FAKE_PROCESS_NAME, null)
-    profilersView = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    profilersView = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
     mockLoader = FakeCaptureObjectLoader()
 
     // Advance the clock to make sure StudioProfilers has a chance to select device + process.
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-  }
-
-  @Test
-  fun testNavigationButtonNameIsCaptureInNewUi() {
-    // Load a fake capture
-    val fakeCapture = makeFakeCapture()
-    val stage = createStageWithCaptureLoaded(fakeCapture)
-    val view = MemoryCaptureStageView(profilersView, stage)
-    val walker = TreeWalker(view.toolbar)
-    val label = walker.descendantStream().filter { c -> c is JLabel }.findFirst().get() as JLabel
-    assertThat(label.text).startsWith(fakeCapture.name)
   }
 
   @Test

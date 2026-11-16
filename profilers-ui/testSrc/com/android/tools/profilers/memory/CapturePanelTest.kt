@@ -25,8 +25,8 @@ import com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_
 import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
-import com.android.tools.profilers.SessionProfilersView
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.TaskProfilersView
 import com.android.tools.profilers.memory.adapters.FakeCaptureObject
 import com.android.tools.profilers.memory.adapters.FakeInstanceObject
 import com.android.tools.profilers.memory.adapters.HeapDumpCaptureObject
@@ -112,7 +112,7 @@ class CapturePanelTest {
 
     val stage = MainMemoryProfilerStage(profilers, FakeCaptureObjectLoader())
     val selection = MemoryCaptureSelection(profilers.ideServices)
-    val profilersView = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    val profilersView = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
     val panel =
       CapturePanel(profilersView, selection, null, profilers.timeline.selectionRange, FakeIdeProfilerComponents(), profilers.timeline, true)
 
@@ -169,7 +169,7 @@ class CapturePanelTest {
 
     val stage = MainMemoryProfilerStage(profilers, FakeCaptureObjectLoader())
     val selection = MemoryCaptureSelection(profilers.ideServices)
-    val profilersView = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    val profilersView = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
     val panel =
       CapturePanel(profilersView, selection, null, profilers.timeline.selectionRange, FakeIdeProfilerComponents(), profilers.timeline, true)
 
@@ -217,7 +217,7 @@ class CapturePanelTest {
 
     val stage = MainMemoryProfilerStage(profilers, FakeCaptureObjectLoader())
     val selection = MemoryCaptureSelection(profilers.ideServices)
-    val profilersView = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    val profilersView = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
     val panel =
       CapturePanel(profilersView, selection, null, profilers.timeline.selectionRange, FakeIdeProfilerComponents(), profilers.timeline, true)
 
@@ -246,7 +246,7 @@ class CapturePanelTest {
     val capture = FakeCaptureObject.Builder().build()
     val heap = HeapSet(capture, "heap", 1)
     val selection = MemoryCaptureSelection(profilers.ideServices)
-    val profilersView = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    val profilersView = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
     val panel =
       CapturePanel(profilersView, selection, null, profilers.timeline.selectionRange, FakeIdeProfilerComponents(), profilers.timeline, true)
 
@@ -281,7 +281,7 @@ class CapturePanelTest {
     heap.setHeapRetainedSizes(74_600L, 5_500_000L)
 
     val selection = MemoryCaptureSelection(profilers.ideServices)
-    val profilersView = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    val profilersView = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
     val panel =
       CapturePanel(profilersView, selection, null, profilers.timeline.selectionRange, FakeIdeProfilerComponents(), profilers.timeline, true)
 

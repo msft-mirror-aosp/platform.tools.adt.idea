@@ -751,36 +751,6 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
   }
 
   @Test
-  public void testHasUserUsedCaptureViaHeapDump() {
-    assertThat(myStage.hasUserUsedMemoryCapture()).isFalse();
-    myStage.requestHeapDump();
-    assertThat(myStage.hasUserUsedMemoryCapture()).isTrue();
-  }
-
-  @Test
-  public void testHasUserUsedCaptureViaLegacyTracking() {
-    assertThat(myStage.hasUserUsedMemoryCapture()).isFalse();
-
-    long infoStart = TimeUnit.MICROSECONDS.toNanos(5);
-    MemoryProfilerTestUtils
-      .startTrackingHelper(myStage, myTransportService, myTimer, infoStart, Status.SUCCESS, true);
-    assertThat(myStage.hasUserUsedMemoryCapture()).isTrue();
-  }
-
-  @Test
-  public void testHasUserUsedCaptureViaSelection() {
-    assertThat(myStage.hasUserUsedMemoryCapture()).isFalse();
-    long infoStart = TimeUnit.MICROSECONDS.toNanos(5);
-    long infoEnd = TimeUnit.MICROSECONDS.toNanos(10);
-    AllocationsInfo info = AllocationsInfo.newBuilder().setStartTime(infoStart).setEndTime(infoEnd).setLegacy(true).build();
-
-    myTransportService.addEventToStream(
-      FAKE_DEVICE_ID, ProfilersTestData.generateMemoryAllocationInfoData(infoStart, FAKE_PROCESS.getPid(), info).build());
-    myStage.getRangeSelectionModel().set(5, 10);
-    assertThat(myStage.hasUserUsedMemoryCapture()).isTrue();
-  }
-
-  @Test
   public void testAllocationSamplingRateUpdates() {
     int[] samplingAspectChange = {0};
     myStage.getAspect().addDependency(myAspectObserver).onChange(MemoryProfilerAspect.LIVE_ALLOCATION_SAMPLING_MODE,

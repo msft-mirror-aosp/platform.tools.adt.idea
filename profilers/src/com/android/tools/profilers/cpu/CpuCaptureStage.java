@@ -255,11 +255,6 @@ public class CpuCaptureStage extends Stage<Timeline> {
             });
         }
       }
-
-      @Override
-      public void reportParsedTrace(@NotNull CpuCapture capture) {
-        // No-op: for imported traces, a CPU_TRACE event is inserted at import-time, so we do not need to insert another event here.
-      }
     };
   }
 
@@ -432,18 +427,6 @@ public class CpuCaptureStage extends Stage<Timeline> {
     myAspect.changed(Aspect.ANALYSIS_MODEL_UPDATED);
   }
 
-  @NotNull
-  @Override
-  public Stage<?> getParentStage() {
-    return new CpuProfilerStage(getStudioProfilers(), CpuCaptureMetadata.CpuProfilerEntryPoint.CHILD_STAGE_BACK_BTN_OR_FAILURE);
-  }
-
-  @NotNull
-  @Override
-  public Class<? extends Stage<?>> getHomeStageClass() {
-    return CpuProfilerStage.class;
-  }
-
   private void onCaptureParsed(@NotNull CpuCapture capture) {
     myTrackGroupTimeline.getDataRange().set(capture.getRange());
     ProfilerTaskType taskType = capture.getType().toTaskType();
@@ -463,7 +446,6 @@ public class CpuCaptureStage extends Stage<Timeline> {
         addPinnedCpuAnalysisModel(framesModel);
       }
     }
-    myContext.reportParsedTrace(capture);
   }
   /**
    * The order of track groups dictates their default order in the UI.

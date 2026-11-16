@@ -20,11 +20,9 @@ import static com.android.tools.profilers.cpu.config.ArtMethodTraceOutputFormatK
 
 import com.android.tools.adtui.model.AspectModel;
 import com.android.tools.adtui.model.DurationDataModel;
-import com.android.tools.adtui.model.EaseOutModel;
 import com.android.tools.adtui.model.Interpolatable;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.RangeSelectionModel;
-import com.android.tools.adtui.model.SeriesData;
 import com.android.tools.adtui.model.axis.AxisComponentModel;
 import com.android.tools.adtui.model.axis.ClampedAxisComponentModel;
 import com.android.tools.adtui.model.formatter.SingleUnitAxisFormatter;
@@ -49,7 +47,6 @@ import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.CpuProfilerConfigModel;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.AdditionalOptions;
-import com.android.tools.profilers.event.EventMonitor;
 import com.android.tools.profilers.taskbased.task.interim.RecordingScreenModel;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.android.tools.profilers.tasks.analytics.TaskFinishedState;
@@ -71,8 +68,6 @@ import org.jetbrains.annotations.Nullable;
 
 public class
 CpuProfilerStage extends StreamingStage implements InterimStage {
-  private static final String HAS_USED_CPU_CAPTURE = "cpu.used.capture";
-
   private static final SingleUnitAxisFormatter CPU_USAGE_FORMATTER = new SingleUnitAxisFormatter(1, 5, 10, "%");
   private static final SingleUnitAxisFormatter NUM_THREADS_AXIS = new SingleUnitAxisFormatter(1, 5, 1, "");
 
@@ -144,9 +139,6 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
   @NotNull
   private final RecordingScreenModel<CpuProfilerStage> myRecordingScreenModel;
 
-  @Nullable
-  private EventMonitor myEventMonitor;
-
   private final TransportListenerTracker myListenerTracker;
 
   public CpuProfilerStage(@NotNull StudioProfilers profilers) {
@@ -202,18 +194,9 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
     return Logger.getInstance(CpuProfilerStage.class);
   }
 
-  public boolean hasUserUsedCpuCapture() {
-    return getStudioProfilers().getIdeServices().getTemporaryProfilerPreferences().getBoolean(HAS_USED_CPU_CAPTURE, false);
-  }
-
   @NotNull
   public RangeSelectionModel getRangeSelectionModel() {
     return myCpuDataProvider.getRangeSelectionModel();
-  }
-
-  @NotNull
-  public EaseOutModel getInstructionsEaseOutModel() {
-    return myCpuDataProvider.getInstructionsEaseOutModel();
   }
 
   public AxisComponentModel getCpuUsageAxis() {
@@ -240,15 +223,6 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
     return myCpuDataProvider.getTraceDurations();
   }
 
-  public String getName() {
-    return "CPU";
-  }
-
-  @Nullable
-  public EventMonitor getEventMonitor() {
-    return myEventMonitor;
-  }
-
   public RecordingOptionsModel getRecordingModel() {
     return myRecordingOptionsModel;
   }
@@ -257,8 +231,6 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
   public CpuProfilerConfigModel getProfilerConfigModel() {
     return myProfilerConfigModel;
   }
-
-  public CpuCaptureMetadata.CpuProfilerEntryPoint getEntryPoint() { return myEntryPoint; }
 
   @NotNull
   @Override
@@ -274,10 +246,6 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
 
   @Override
   public void onEnter() {
-    myEventMonitor = getEventMonitorInstance();
-    if (myEventMonitor != null) {
-      myEventMonitor.enter();
-    }
     getStudioProfilers().getUpdater().register(getCpuUsage());
     getStudioProfilers().getUpdater().register(getTraceDurations());
     getStudioProfilers().getUpdater().register(myInProgressTraceHandler);
@@ -296,9 +264,6 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
 
   @Override
   public void onExit() {
-    if (myEventMonitor != null) {
-      myEventMonitor.exit();
-    }
     getStudioProfilers().getUpdater().unregister(getCpuUsage());
     getStudioProfilers().getUpdater().unregister(getTraceDurations());
     getStudioProfilers().getUpdater().unregister(myInProgressTraceHandler);
@@ -310,12 +275,6 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
     getRangeSelectionModel().clearListeners();
     getUpdatableManager().releaseAll();
     myListenerTracker.onExit();
-  }
-
-  @Nullable
-  private EventMonitor getEventMonitorInstance() {
-    boolean jvmtiEnabled = getStudioProfilers().getSessionsManager().getSelectedSessionMetaData().getJvmtiEnabled();
-    return jvmtiEnabled ? new EventMonitor(getStudioProfilers()) : null;
   }
 
   @Override
@@ -330,15 +289,6 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
 
   public AspectModel<CpuProfilerAspect> getAspect() {
     return myCpuDataProvider.getAspect();
-  }
-
-  public void toggleCapturing() {
-    if (myCaptureState == CpuProfilerStage.CaptureState.CAPTURING) {
-      stopCapturing();
-    }
-    else {
-      startCapturing();
-    }
   }
 
   public void startCapturing() {
@@ -369,9 +319,6 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
     // Execute a start trace command for cpu-based tracing and registers a listener for event reception and handling.
     // The startCapturingCallback with be called on event reception.
     CpuProfiler.startTracing(getStudioProfilers(), mySession, configuration, this::startCapturingCallback, null, listener -> myListenerTracker.trackListener(listener, false));
-
-    getStudioProfilers().getIdeServices().getTemporaryProfilerPreferences().setBoolean(HAS_USED_CPU_CAPTURE, true);
-    getInstructionsEaseOutModel().setCurrentRatio(1);
   }
 
   private void startCapturingCallback(@NotNull Trace.TraceStartStatus status) {
@@ -505,22 +452,6 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
     if (taskType != ProfilerTaskType.UNSPECIFIED) {
       getStudioProfilers().getIdeServices().closeTaskTab(taskType);
     }
-  }
-
-  /**
-   * Returns the trace ID of a capture whose range overlaps with a given range. If multiple captures overlap with it,
-   * the first trace ID found is returned.
-   */
-  @Nullable
-  public CpuTraceInfo getIntersectingTraceInfo(Range range) {
-    List<SeriesData<CpuTraceInfo>> infoList = getTraceDurations().getSeries().getSeriesForRange(range);
-    for (SeriesData<CpuTraceInfo> info : infoList) {
-      Range captureRange = info.value.getRange();
-      if (captureRange.intersectsWith(range)) {
-        return info.value;
-      }
-    }
-    return null;
   }
 
   public long currentTimeNs() {

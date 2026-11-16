@@ -90,11 +90,9 @@ class AllocationStageTest(private val isLive: Boolean) : WithFakeTimer {
     val handler = transportService.getRegisteredCommand(Commands.Command.CommandType.STOP_ALLOC_TRACKING) as MemoryAllocTracking
     val prevCommand = handler.lastCommand
     assertThat(stage.hasEndedTracking).isFalse()
-    assertThat(stage.confirmExitMessage).isNotNull()
 
     stage.stopTracking()
     assertThat(stage.hasEndedTracking).isTrue()
-    assertThat(stage.confirmExitMessage).isNull()
     tickOneSec()
     assertThat(stage.liveAllocationSamplingMode).isEqualTo(SAMPLED) // Stop command doesn't change sampling mode
     assertThat(handler.lastCommand.type).isEqualTo(Commands.Command.CommandType.STOP_ALLOC_TRACKING)

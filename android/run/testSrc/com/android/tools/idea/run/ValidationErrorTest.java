@@ -54,24 +54,22 @@ public class ValidationErrorTest extends TestCase {
     assertEquals("fatal1", sortedErrors.get(3).getMessage());
   }
 
-  public void testInfoWithCategoryAndQuickfix() {
+  public void testInfoWithQuickfix() {
     ConfigurationQuickFix quickfix = mock(ConfigurationQuickFix.class);
 
-    ValidationError error = ValidationError.info("info message", ValidationError.Category.PROFILER, quickfix);
+    ValidationError error = ValidationError.info("info message", quickfix);
 
     assertEquals(ValidationError.Severity.INFO, error.getSeverity());
     assertEquals("info message", error.getMessage());
-    assertEquals(ValidationError.Category.PROFILER, error.getCategory());
     assertSame(quickfix, error.getQuickfix());
     assertFalse(error.isFatal());
   }
 
-  public void testInfoWithoutCategoryOrQuickfix() {
+  public void testInfoWithoutQuickfix() {
     ValidationError error = ValidationError.info("info message");
 
     assertEquals(ValidationError.Severity.INFO, error.getSeverity());
     assertEquals("info message", error.getMessage());
-    assertNull(error.getCategory());
     assertNull(error.getQuickfix());
     assertFalse(error.isFatal());
   }

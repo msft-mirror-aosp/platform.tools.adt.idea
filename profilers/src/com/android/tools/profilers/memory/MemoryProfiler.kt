@@ -78,8 +78,6 @@ class MemoryProfiler(private val profilers: StudioProfilers) : StudioProfiler {
     }
   }
 
-  override fun newMonitor() = MemoryMonitor(profilers)
-
   override fun startProfiling(session: Common.Session) {}
 
   override fun stopProfiling(session: Common.Session) {

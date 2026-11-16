@@ -25,11 +25,11 @@ import com.android.tools.profilers.ExportableArtifact
 import com.android.tools.profilers.IdeProfilerComponents
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.sessions.SessionArtifact
-import com.android.tools.profilers.sessions.SessionsView.Companion.getImportAction
 import com.android.tools.profilers.taskbased.common.constants.dimensions.TaskBasedUxDimensions.TASK_ACTION_BAR_ACTION_HORIZONTAL_SPACE_DP
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import com.android.tools.profilers.taskbased.common.text.EllipsisText
 import com.intellij.openapi.ui.Messages
+import java.io.File
 import org.jetbrains.jewel.ui.component.OutlinedButton
 
 @Composable
@@ -43,7 +43,7 @@ fun RecordingActionGroup(
 ) {
   // TODO (b/332359184): Add back tooltips when b/332359184 is fixed.
   Row(horizontalArrangement = Arrangement.spacedBy(TASK_ACTION_BAR_ACTION_HORIZONTAL_SPACE_DP)) {
-    OutlinedButton(onClick = { getImportAction(ideProfilerComponents, profilers, null).run() }) {
+    OutlinedButton(onClick = { importRecording(ideProfilerComponents, profilers) }) {
       EllipsisText(text = TaskBasedUxStrings.IMPORT_RECORDING_DESC)
     }
 
@@ -85,6 +85,17 @@ fun RecordingActionGroup(
       },
     ) {
       EllipsisText(text = TaskBasedUxStrings.DELETE_RECORDING_DESC)
+    }
+  }
+}
+
+private val SUPPORTED_IMPORT_EXTENSIONS =
+  listOf("trace", "pftrace", "perfetto-trace", "perfetto", "alloc", "hprof", "prof", "perfetto-java-heap-dump", "heapprofd", "asdb")
+
+private fun importRecording(ideProfilerComponents: IdeProfilerComponents, profilers: StudioProfilers) {
+  ideProfilerComponents.createImportDialog().open({ "Open" }, SUPPORTED_IMPORT_EXTENSIONS) { file ->
+    if (!profilers.sessionsManager.importSessionFromFile(File(file.path))) {
+      ideProfilerComponents.createUiMessageHandler().displayErrorMessage(null, "File Open Error", "Unknown file type: ${file.path}")
     }
   }
 }

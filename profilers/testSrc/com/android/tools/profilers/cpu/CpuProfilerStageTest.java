@@ -31,9 +31,9 @@ import com.android.tools.profiler.proto.Cpu;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.FakeFeatureTracker;
 import com.android.tools.profilers.FakeIdeProfilerServices;
+import com.android.tools.profilers.NullMonitorStage;
 import com.android.tools.profilers.ProfilerClient;
 import com.android.tools.profilers.ProfilersTestData;
-import com.android.tools.profilers.StudioMonitorStage;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.Utils;
 import com.android.tools.profilers.cpu.CpuProfilerStage.CaptureState;
@@ -191,39 +191,11 @@ public final class CpuProfilerStageTest extends AspectObserver {
   }
 
   @Test
-  public void rangeIntersectionReturnsASingleTraceId() {
-    int traceId1 = 1;
-    int traceId2 = 2;
-
-    addTraceInfoHelper(traceId1, FAKE_PROCESS.getPid(), TimeUnit.MICROSECONDS.toNanos(10),
-                       TimeUnit.MICROSECONDS.toNanos(20), Trace.TraceConfiguration.getDefaultInstance());
-    addTraceInfoHelper(traceId2, FAKE_PROCESS.getPid(), TimeUnit.MICROSECONDS.toNanos(30),
-                       TimeUnit.MICROSECONDS.toNanos(40), Trace.TraceConfiguration.getDefaultInstance());
-
-    // No intersection.
-    CpuTraceInfo traceInfo = myStage.getIntersectingTraceInfo(new Range(0, 5));
-    assertThat(traceInfo).isNull();
-
-    // Intersecting only with trace 1.
-    traceInfo = myStage.getIntersectingTraceInfo(new Range(5, 15));
-    assertThat(traceInfo).isNotNull();
-    assertThat(traceInfo.getTraceId()).isEqualTo(traceId1);
-
-    // Intersecting only with trace 2.
-    traceInfo = myStage.getIntersectingTraceInfo(new Range(25, 35));
-    assertThat(traceInfo).isNotNull();
-    assertThat(traceInfo.getTraceId()).isEqualTo(traceId2);
-
-    // Intersecting with both traces. First trace is returned.
-    traceInfo = myStage.getIntersectingTraceInfo(new Range(0, 50));
-    assertThat(traceInfo).isNotNull();
-    assertThat(traceInfo.getTraceId()).isEqualTo(traceId1);
-  }
-
-  @Test
   public void testUsageTooltip() {
     myStage.enter();
-    myStage.setTooltip(new CpuProfilerStageCpuUsageTooltip(myStage));
+    myStage.setTooltip(new CpuProfilerStageCpuUsageTooltip(
+      new CpuProfilerStage.CpuStageLegends(myStage.getCpuUsage(), myStage.getStudioProfilers().getTimeline().getTooltipRange()),
+      myStage.getRangeSelectionModel(), myStage.getTraceDurations()));
     assertThat(myStage.getTooltip()).isInstanceOf(CpuProfilerStageCpuUsageTooltip.class);
     CpuProfilerStageCpuUsageTooltip tooltip = (CpuProfilerStageCpuUsageTooltip)myStage.getTooltip();
 
@@ -348,8 +320,8 @@ public final class CpuProfilerStageTest extends AspectObserver {
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS * 3);
     assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.CAPTURING);
 
-    // Go back to monitor stage and go back to a new Cpu profiler stage
-    myStage.getStudioProfilers().setStage(new StudioMonitorStage(myStage.getStudioProfilers()));
+    // Go to another stage and go back to a new Cpu profiler stage
+    myStage.getStudioProfilers().setStage(new NullMonitorStage(myStage.getStudioProfilers()));
     CpuProfilerStage stage = new CpuProfilerStage(myStage.getStudioProfilers());
     myStage.getStudioProfilers().setStage(stage);
     // Trigger an update to kick off the InProgressTraceHandler which syncs the capture state.
@@ -394,8 +366,8 @@ public final class CpuProfilerStageTest extends AspectObserver {
       myStage.getProfilerConfigModel().setProfilingConfiguration(FakeIdeProfilerServices.SIMPLEPERF_CONFIG);
       CpuProfilerTestUtils.startCapturing(myStage, myTransportService, true);
 
-      // Go back to monitor stage and go back to a new Cpu profiler stage
-      myStage.getStudioProfilers().setStage(new StudioMonitorStage(myStage.getStudioProfilers()));
+      // Go to another stage and go back to a new Cpu profiler stage
+      myStage.getStudioProfilers().setStage(new NullMonitorStage(myStage.getStudioProfilers()));
       CpuProfilerStage stage = new CpuProfilerStage(myStage.getStudioProfilers());
       myStage.getStudioProfilers().setStage(stage);
       // Trigger an update to kick off the InProgressTraceHandler which syncs the capture state.
@@ -425,8 +397,8 @@ public final class CpuProfilerStageTest extends AspectObserver {
     try {
       CpuProfilerTestUtils.startCapturing(myStage, myTransportService, true);
 
-      // Go back to monitor stage and go back to a new Cpu profiler stage
-      myStage.getStudioProfilers().setStage(new StudioMonitorStage(myStage.getStudioProfilers()));
+      // Go to another stage and go back to a new Cpu profiler stage
+      myStage.getStudioProfilers().setStage(new NullMonitorStage(myStage.getStudioProfilers()));
       CpuProfilerStage stage = new CpuProfilerStage(myStage.getStudioProfilers());
       myStage.getStudioProfilers().setStage(stage);
       // Trigger an update to kick off the InProgressTraceHandler which syncs the capture state.
@@ -821,15 +793,6 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
     CpuProfilerTestUtils.startCapturing(myStage, myTransportService, true);
     assertThat(timeline.isStreaming()).isTrue();
-  }
-
-  @Test
-  public void testHasUserUsedCapture() throws InterruptedException {
-    assertThat(myStage.getInstructionsEaseOutModel().getRatioComplete()).isWithin(0).of(0);
-    assertThat(myStage.hasUserUsedCpuCapture()).isFalse();
-    CpuProfilerTestUtils.startCapturing(myStage, myTransportService, true);
-    assertThat(myStage.getInstructionsEaseOutModel().getRatioComplete()).isWithin(0).of(1);
-    assertThat(myStage.hasUserUsedCpuCapture()).isTrue();
   }
 
   @Test

@@ -82,7 +82,6 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
   private fun buildStageView(stage: Stage<*>): StageView<*> =
     when (stage) {
       is NullMonitorStage -> NullMonitorStageView(fakeStudioProfilersView, stage)
-      is StudioMonitorStage -> StudioMonitorStageView(fakeStudioProfilersView, stage)
       is FakeStage -> FakeStageView(fakeStudioProfilersView, stage)
       else -> {
         throw IllegalStateException("Unsupported stage found: ${stage.stageType}")
@@ -236,20 +235,6 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
   }
 
   @Test
-  fun testLoadingPanelDoesNotShowWhileWaitingForPreferredProcess() {
-    Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
-    Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
-
-    // Sets a preferred process, the UI should NOT wait and show the loading panel.
-    endSession()
-    updatePreferredProcess(FakeTransportService.FAKE_DEVICE_NAME)
-    // Auto profiling is disabled, and thus prevents the loading state from occurring on preferred process change.
-    Truth.assertThat(studioProfilers.autoProfilingEnabled).isFalse()
-    Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
-    Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
-  }
-
-  @Test
   fun testLoadingPanelWhileWaitingForAgentAttach() {
     Assume.assumeFalse(isTestingProfileable) // hardcoded `FAKE_DEVICE` is different than one used for the profileable test
     Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
@@ -277,7 +262,7 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
 
   @Test
   fun nonTimelineStageHidesTimelineNavigationToolbar() {
-    studioProfilers.stage = FakeStage(studioProfilers, null, false)
+    studioProfilers.stage = FakeStage(studioProfilers, false)
     Truth.assertThat(stageWithToolbarView.timelineNavigationToolbar.isVisible).isFalse()
   }
 
@@ -335,11 +320,6 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
 
   private fun endSession() {
     studioProfilers.sessionsManager.endCurrentSession()
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
-  }
-
-  private fun updatePreferredProcess(preferredDeviceName: String) {
-    studioProfilers.setPreferredProcess(preferredDeviceName, FAKE_PROCESS_2, null)
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
   }
 

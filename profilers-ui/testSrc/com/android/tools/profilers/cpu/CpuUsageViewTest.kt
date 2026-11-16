@@ -24,6 +24,7 @@ import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_DEVICE_NAME
 import com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_PROCESS_NAME
 import com.android.tools.profilers.FakeIdeProfilerServices
+import com.android.tools.profilers.LiveStage
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
 import com.google.common.truth.Truth
@@ -40,7 +41,7 @@ class CpuUsageViewTest {
   @Rule @JvmField var grpcChannel = FakeGrpcChannel("CpuUsageNormalModeViewTest", FakeTransportService(timer))
   @get:Rule val myEdtRule = EdtRule()
 
-  private lateinit var stage: CpuProfilerStage
+  private lateinit var model: LiveCpuUsageModel
   private lateinit var ideServices: FakeIdeProfilerServices
 
   @Before
@@ -50,19 +51,29 @@ class CpuUsageViewTest {
     profilers.setPreferredProcess(FAKE_DEVICE_NAME, FAKE_PROCESS_NAME, null)
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
 
-    stage = CpuProfilerStage(profilers)
-    stage.studioProfilers.stage = stage
+    model = LiveCpuUsageModel(profilers, LiveStage(profilers))
   }
+
+  private fun createUsageView() =
+    CpuUsageView(
+      model.cpuUsageAxis,
+      model.threadCountAxis,
+      model.cpuUsage,
+      model.traceDurations,
+      model.legends,
+      model.name,
+      model::setAndSelectCapture,
+    )
 
   @Test
   fun shouldNotShowInstructionsPanel() {
-    val usageView = CpuUsageView(stage)
+    val usageView = createUsageView()
     Truth.assertThat(TreeWalker(usageView).descendants().filterIsInstance(InstructionsPanel::class.java)).hasSize(0)
   }
 
   @Test
   fun showsUsageChart() {
-    val usageView = CpuUsageView(stage)
+    val usageView = createUsageView()
     Truth.assertThat(TreeWalker(usageView).descendants().filterIsInstance(LineChart::class.java)).hasSize(1)
   }
 }

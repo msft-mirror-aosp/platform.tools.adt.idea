@@ -35,9 +35,9 @@ import com.android.tools.profiler.proto.Memory.AllocationStack;
 import com.android.tools.profilers.FakeIdeProfilerComponents;
 import com.android.tools.profilers.FakeIdeProfilerServices;
 import com.android.tools.profilers.ProfilerClient;
-import com.android.tools.profilers.SessionProfilersView;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.StudioProfilersView;
+import com.android.tools.profilers.TaskProfilersView;
 import com.android.tools.profilers.memory.adapters.CaptureObject;
 import com.android.tools.profilers.memory.adapters.FakeCaptureObject;
 import com.android.tools.profilers.memory.adapters.FakeFieldObject;
@@ -92,18 +92,20 @@ public class MemoryClassSetViewTest {
 
   private MemoryObjectTreeNode<HeapSet> myClassifierSetHeapNode;
   private MemoryObjectTreeNode<MemoryObject> myClassSetRootNode;
-  private MainMemoryProfilerStageView myStageView;
+  private CapturePanel myCapturePanel;
   private JTree myClassifierSetTree;
 
   @Before
   public void before() {
     StudioProfilers profilers = new StudioProfilers(new ProfilerClient(myGrpcChannel.getChannel()), new FakeIdeProfilerServices(), myTimer);
-    StudioProfilersView profilersView = new SessionProfilersView(profilers, myFakeIdeProfilerComponents, myDisposableRule.getDisposable());
+    StudioProfilersView profilersView = new TaskProfilersView(profilers, myFakeIdeProfilerComponents, myDisposableRule.getDisposable());
 
     FakeCaptureObjectLoader loader = new FakeCaptureObjectLoader();
     loader.setReturnImmediateFuture(true);
     myStage = new MainMemoryProfilerStage(profilers, loader);
-    myStageView = new MainMemoryProfilerStageView(profilersView, myStage);
+    // The capture panel is hosted by AllocationStageView and MemoryCaptureStageView in production.
+    myCapturePanel = new CapturePanel(profilersView, myStage.getCaptureSelection(), null, myStage.getRangeSelectionModel().getSelectionRange(),
+                                      myFakeIdeProfilerComponents, myStage.getTimeline(), false);
 
     myCaptureObject = new FakeCaptureObject.Builder().build();
     myInstanceObjects = Arrays.asList(
@@ -119,7 +121,7 @@ public class MemoryClassSetViewTest {
       new CaptureDurationData<>(1, false, false, new CaptureEntry<CaptureObject>(new Object(), () -> myCaptureObject)), null);
     myStage.getCaptureSelection().selectHeapSet(myCaptureObject.getHeapSet(FakeCaptureObject.DEFAULT_HEAP_ID));
 
-    myClassifierSetTree = myStageView.getClassifierView().getTree();
+    myClassifierSetTree = myCapturePanel.getClassifierView().getTree();
     assertNotNull(myClassifierSetTree);
     Object classifierRoot = myClassifierSetTree.getModel().getRoot();
     assertThat(classifierRoot).isInstanceOf(MemoryObjectTreeNode.class);
@@ -127,7 +129,7 @@ public class MemoryClassSetViewTest {
     //noinspection unchecked
     myClassifierSetHeapNode = (MemoryObjectTreeNode<HeapSet>)classifierRoot;
 
-    myClassSetView = myStageView.getClassSetView();
+    myClassSetView = myCapturePanel.getClassSetView();
     ClassifierSet classifierSet = myClassifierSetHeapNode.getAdapter().findContainingClassifierSet(myInstanceObjects.get(0));
     assertThat(classifierSet).isInstanceOf(ClassSet.class);
     myStage.getCaptureSelection().selectClassSet((ClassSet)classifierSet);
@@ -366,7 +368,7 @@ public class MemoryClassSetViewTest {
       null);
     myStage.getCaptureSelection().selectHeapSet(myCaptureObject.getHeapSet(FakeCaptureObject.DEFAULT_HEAP_ID));
 
-    myClassifierSetTree = myStageView.getClassifierView().getTree();
+    myClassifierSetTree = myCapturePanel.getClassifierView().getTree();
     assertThat(myClassifierSetTree).isNotNull();
     Object classifierRoot = myClassifierSetTree.getModel().getRoot();
     assertThat(classifierRoot).isInstanceOf(MemoryObjectTreeNode.class);

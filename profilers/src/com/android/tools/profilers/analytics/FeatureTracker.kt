@@ -63,9 +63,6 @@ interface FeatureTracker {
    */
   fun trackRunWithProfiling(metadata: RunWithProfilingMetadata)
 
-  /** Track when auto profiling is requested. e.g. when the user clicks "Profile", or "Run"/"Debug" while the profilers window is opened. */
-  fun trackAutoProfilingRequested()
-
   /** Track when auto profiling has found the matching process. */
   fun trackAutoProfilingSucceeded()
 
@@ -84,29 +81,11 @@ interface FeatureTracker {
   /** Track when the user takes an action to change the current process. This will only be tracked if the process actually changes. */
   fun trackChangeProcess(process: Common.Process)
 
-  /** Track when user presses the "+" button in the Sessions panel. */
-  fun trackSessionDropdownClicked()
-
   /** Track when the user explicitly creates a new session via the Sessions UI. */
   fun trackCreateSession(sessionType: SessionMetaData.SessionType, sourceType: SessionCreationSource)
 
-  /** Track when the user explicitly stops an ongoing profiling session, without starting a new one (e.g. selecting a new process). */
-  fun trackStopSession()
-
-  /** Track when the user toggles the Sessions panel. */
-  fun trackSessionsPanelStateChanged(isExpanded: Boolean)
-
-  /** Track when the user resizes the Sessions panel. This is only applicable in the expanded view. */
-  fun trackSessionsPanelResized()
-
   /** Track when the user selects a session item in the UI, and whether the associated session is currently active. */
   fun trackSessionArtifactSelected(artifact: SessionArtifact<*>, isSessionLive: Boolean)
-
-  /** Track when the user takes an action to return back to the top-level monitor view (from a specific profiler). */
-  fun trackGoBack()
-
-  /** Track when the user takes an action to change to a new monitor. */
-  fun trackSelectMonitor()
 
   /** Track when the user takes an action to zoom in one level. */
   fun trackZoomIn()
@@ -218,12 +197,6 @@ interface FeatureTracker {
 
   /** Track the user selecting the "Threads View" tab. */
   fun trackSelectNetworkThreadsView()
-
-  /** Track the user opening up the CPU profiling configurations dialog. */
-  fun trackOpenProfilingConfigDialog()
-
-  /** Track the user creating custom CPU profiling configurations. */
-  fun trackCreateCustomProfilingConfig()
 
   /** Track when the profiler tool window is created successfully. */
   fun trackProfilerToolWindowCreated()

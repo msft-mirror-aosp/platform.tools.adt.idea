@@ -21,29 +21,23 @@ import com.android.tools.profilers.SupportLevel.Feature.MEMORY_GC
 import com.android.tools.profilers.SupportLevel.Feature.MEMORY_HEAP_DUMP
 import com.android.tools.profilers.SupportLevel.Feature.MEMORY_JVM_RECORDING
 import com.android.tools.profilers.SupportLevel.Feature.MEMORY_LEAK_WITH_LEAKCANARY
-import com.android.tools.profilers.cpu.CpuProfiler
 import com.android.tools.profilers.cpu.CpuProfilerStage
 import com.android.tools.profilers.memory.MainMemoryProfilerStage
-import com.android.tools.profilers.memory.MemoryProfiler
 
 /**
  * Profiler's support level depending on a process's exposure level. For example, support is `DEBUGGABLE` for debuggable processes, and
  * `PROFILEABLE` for profileable processes.
  */
 enum class SupportLevel(
-  private val enablesMonitor: (Class<out StudioProfiler>) -> Boolean,
   private val enablesStage: (Class<out Stage<*>>) -> Boolean,
   private val enablesFeature: (Feature) -> Boolean,
 ) {
-  NONE(none(), none(), none()),
+  NONE(none(), none()),
   PROFILEABLE(
-    only(CpuProfiler::class.java, MemoryProfiler::class.java),
     only(CpuProfilerStage::class.java, MainMemoryProfilerStage::class.java),
     except(MEMORY_HEAP_DUMP, MEMORY_JVM_RECORDING, MEMORY_GC, EVENT_MONITOR, MEMORY_LEAK_WITH_LEAKCANARY),
   ),
-  DEBUGGABLE(all(), all(), all());
-
-  fun isMonitorSupported(profiler: StudioProfiler) = enablesMonitor(profiler::class.java)
+  DEBUGGABLE(all(), all());
 
   fun isStageSupported(stage: Class<out Stage<*>>) = enablesStage(stage)
 

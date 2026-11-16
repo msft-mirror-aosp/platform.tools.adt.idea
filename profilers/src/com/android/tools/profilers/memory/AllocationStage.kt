@@ -86,13 +86,7 @@ private constructor(
     }
   }
 
-  override fun getParentStage() = MainMemoryProfilerStage(studioProfilers, loader)
-
-  override fun getHomeStageClass() = MainMemoryProfilerStage::class.java
-
   override fun isInteractingWithTimeline() = false
-
-  override fun getConfirmExitMessage() = if (hasEndedTracking) null else "Going back will end allocation recording. Proceed?"
 
   override fun selectCaptureFromSelectionRange() {
     // `doSelectCaptureDuration` can run in the background.

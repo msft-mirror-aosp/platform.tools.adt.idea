@@ -15,17 +15,12 @@
  */
 package com.android.tools.idea.run.editor;
 
-import com.android.tools.idea.flags.StudioFlags;
-import com.android.tools.idea.run.ValidationError;
 import com.android.tools.idea.run.profiler.CpuProfilerConfig;
 import com.intellij.openapi.util.DefaultJDOMExternalizer;
 import com.intellij.openapi.util.InvalidDataException;
 import com.intellij.openapi.util.WriteExternalException;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Properties;
 import org.jdom.Element;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Holds all the project persisted state variables for the profilers.
@@ -56,7 +51,6 @@ public class ProfilerState {
   public static final String ENABLE_ADVANCED_OKHTTP_PROFILING_NAME = "android.profiler.okhttp.enabled";
 
   public static final String ENABLE_KEYBOARD_EVENT_NAME = "android.profiler.keyboard.event.enabled";
-  private boolean myCheckAdvancedProfiling;
 
   /**
    * Reads the state from the {@link Element}, overwriting all member values.
@@ -90,26 +84,9 @@ public class ProfilerState {
     return result;
   }
 
-  public void setCheckAdvancedProfiling(boolean checkAdvancedProfiling) {
-    myCheckAdvancedProfiling = checkAdvancedProfiling;
-  }
-
   public void disableStartupProfiling() {
     STARTUP_PROFILING_ENABLED = false;
     STARTUP_CPU_PROFILING_ENABLED = false;
     STARTUP_NATIVE_MEMORY_PROFILING_ENABLED = false;
-  }
-
-  @NotNull
-  public List<ValidationError> validate() {
-    List<ValidationError> errors = new LinkedList<>();
-    if (myCheckAdvancedProfiling) {
-      // Currently we do not check against the state of ADVANCED_PROFILING_ENABLED.
-      // As far as the profilers are concerned, the Run Configuration dialog needs to navigate to the profiling tab in any case based on
-      // this ValidationError, so users can obtain more info related to the profiler's configurations.
-      errors.add(ValidationError.info("Check advanced profiling status", ValidationError.Category.PROFILER, null));
-    }
-
-    return errors;
   }
 }

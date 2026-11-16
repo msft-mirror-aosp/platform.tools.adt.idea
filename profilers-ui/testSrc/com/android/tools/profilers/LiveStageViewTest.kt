@@ -73,7 +73,7 @@ class LiveStageViewTest {
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
     myStage = LiveStage(spyProfilers)
     myStage.enter()
-    myProfilersView = SessionProfilersView(spyProfilers, myComponents, disposableRule.disposable)
+    myProfilersView = TaskProfilersView(spyProfilers, myComponents, disposableRule.disposable)
   }
 
   private fun getJPanels(): List<JPanel> {

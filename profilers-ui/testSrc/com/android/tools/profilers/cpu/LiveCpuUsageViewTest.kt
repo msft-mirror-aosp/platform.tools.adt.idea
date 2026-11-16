@@ -32,13 +32,14 @@ import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
+import com.android.tools.profilers.LiveStage
 import com.android.tools.profilers.ProfilerClient
-import com.android.tools.profilers.SessionProfilersView
 import com.android.tools.profilers.StageView
 import com.android.tools.profilers.StageWithToolbarView
 import com.android.tools.profilers.StreamingStage
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
+import com.android.tools.profilers.TaskProfilersView
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
@@ -78,10 +79,10 @@ class LiveCpuUsageViewTest {
     profilers.setPreferredProcess(FakeTransportService.FAKE_DEVICE_NAME, FakeTransportService.FAKE_PROCESS_NAME, null)
     // One second must be enough for new devices (and processes) to be picked up
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    myStage = CpuProfilerStage(profilers)
+    myStage = LiveStage(profilers)
     myLiveAllocationModel = LiveCpuUsageModel(profilers, myStage)
     myLiveAllocationModel.enter()
-    myProfilersView = SessionProfilersView(profilers, myComponents, disposableRule.disposable)
+    myProfilersView = TaskProfilersView(profilers, myComponents, disposableRule.disposable)
   }
 
   @Test

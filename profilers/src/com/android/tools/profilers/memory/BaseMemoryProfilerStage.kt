@@ -41,8 +41,6 @@ abstract class BaseMemoryProfilerStage(
   val captureSelection = MemoryCaptureSelection(context.ideProfilerServices)
   protected var pendingCaptureStartTime = INVALID_START_TIME
   protected var updateCaptureOnSelection = true
-  val isPendingCapture
-    get() = pendingCaptureStartTime != INVALID_START_TIME
 
   private var hasExited = false
 

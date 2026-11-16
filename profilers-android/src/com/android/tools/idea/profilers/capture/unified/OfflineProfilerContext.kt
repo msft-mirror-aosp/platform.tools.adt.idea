@@ -67,6 +67,4 @@ class OfflineProfilerContext(
       component.repaint()
     }
   }
-
-  override fun reportParsedTrace(capture: CpuCapture) {}
 }

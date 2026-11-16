@@ -338,7 +338,7 @@ class ProcessListModelTest {
       myTimer,
     )
 
-    // PREFERRED_PROCESS aspect should be fired via the call to set the preferred process.
+    // PREFERRED_PROCESS_NAME aspect should be fired via the call to set the preferred process.
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
     assertThat(processListModel.deviceToProcesses.value).isNotEmpty()
     assertThat(processListModel.deviceToProcesses.value.size).isEqualTo(1)

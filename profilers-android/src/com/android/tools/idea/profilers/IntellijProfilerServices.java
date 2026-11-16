@@ -66,7 +66,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.intellij.execution.RunManager;
 import com.intellij.execution.RunnerAndConfigurationSettings;
-import com.intellij.execution.impl.EditConfigurationsDialog;
 import com.intellij.ide.BrowserUtil;
 import com.intellij.ide.actions.RevealFileAction;
 import com.intellij.notification.NotificationType;
@@ -323,30 +322,6 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
   @Override
   public FeatureTracker getFeatureTracker() {
     return myFeatureTracker;
-  }
-
-  /**
-   * Note - this opens the Run Configuration dialog which is modal and blocking until the dialog closes.
-   */
-  @Override
-  public void enableAdvancedProfiling() {
-    // Attempts to find the AndroidRunConfiguration to enable the profiler state validation.
-    AndroidRunConfigurationBase androidConfiguration = null;
-    RunManager runManager = RunManager.getInstance(myProject);
-    if (runManager != null) {
-      RunnerAndConfigurationSettings configurationSettings = runManager.getSelectedConfiguration();
-      if (configurationSettings != null && configurationSettings.getConfiguration() instanceof AndroidRunConfigurationBase) {
-        androidConfiguration = (AndroidRunConfigurationBase)configurationSettings.getConfiguration();
-        androidConfiguration.getProfilerState().setCheckAdvancedProfiling(true);
-      }
-    }
-
-    EditConfigurationsDialog dialog = new EditConfigurationsDialog(myProject);
-    dialog.show();
-
-    if (androidConfiguration != null) {
-      androidConfiguration.getProfilerState().setCheckAdvancedProfiling(false);
-    }
   }
 
   @NotNull

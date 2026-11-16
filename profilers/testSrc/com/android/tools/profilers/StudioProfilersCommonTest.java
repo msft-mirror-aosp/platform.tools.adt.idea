@@ -49,13 +49,13 @@ public final class StudioProfilersCommonTest {
   }
 
   @Test
-  public void testClearedOnMonitorStage() {
+  public void testSelectionClearedOnStageChange() {
     StudioProfilers profilers = getProfilersWithDeviceAndProcess();
     assertThat(profilers.getTimeline().getSelectionRange().isEmpty()).isTrue();
 
     profilers.setStage(new CpuProfilerStage(profilers));
     profilers.getTimeline().getSelectionRange().set(10, 10);
-    profilers.setMonitoringStage();
+    profilers.setDefaultStage();
 
     assertThat(profilers.getTimeline().getSelectionRange().isEmpty()).isTrue();
   }

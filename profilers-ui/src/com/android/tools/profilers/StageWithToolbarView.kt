@@ -112,7 +112,6 @@ class StageWithToolbarView(
       .addDependency(this)
       .onChange(ProfilerAspect.STAGE) { updateStageView(stageViewBuilder, containerComponent) }
       .onChange(ProfilerAspect.AGENT) { toggleStageLayout() }
-      .onChange(ProfilerAspect.PREFERRED_PROCESS) { toggleStageLayout() }
     updateStageView(stageViewBuilder, containerComponent)
     toggleStageLayout()
   }
@@ -254,13 +253,9 @@ class StageWithToolbarView(
 
   private fun toggleStageLayout() {
 
-    // Show the loading screen if StudioProfilers is waiting for a process to profile or if it is waiting for an agent to attach.
-    var loading =
-      studioProfilers.autoProfilingEnabled &&
-        studioProfilers.preferredProcessName != null &&
-        !studioProfilers.sessionsManager.isSessionAlive
+    // Show the loading screen if StudioProfilers is waiting for an agent to attach.
     val agentData = studioProfilers.agentData
-    loading = loading or (agentData.status == AgentData.Status.UNSPECIFIED && studioProfilers.sessionsManager.isSessionAlive)
+    var loading = agentData.status == AgentData.Status.UNSPECIFIED && studioProfilers.sessionsManager.isSessionAlive
 
     // Show the loading screen only if the device is supported.
     loading = loading and (studioProfilers.device != null && studioProfilers.device!!.unsupportedReason.isEmpty())

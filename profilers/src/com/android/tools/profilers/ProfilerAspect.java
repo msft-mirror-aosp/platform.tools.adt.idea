@@ -20,8 +20,6 @@ public enum ProfilerAspect {
   STAGE,
   // The set of devices and processes has changed.
   PROCESSES,
-  // The profile's preferred process has changed.
-  PREFERRED_PROCESS,
   // The profiler's preferred process name has changed.
   PREFERRED_PROCESS_NAME,
   // The agent attach state has changed

@@ -24,7 +24,6 @@ import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.SeriesData;
 import com.android.tools.adtui.model.updater.Updatable;
 import com.android.tools.adtui.model.updater.Updater;
-import com.android.tools.idea.io.grpc.StatusRuntimeException;
 import com.android.tools.idea.transport.TransportFileManager;
 import com.android.tools.idea.transport.poller.TransportEventListener;
 import com.android.tools.profiler.proto.Commands;
@@ -33,8 +32,6 @@ import com.android.tools.profiler.proto.Memory;
 import com.android.tools.profiler.proto.Memory.AllocationsInfo;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profiler.proto.Transport;
-import com.android.tools.profiler.proto.Transport.TimeRequest;
-import com.android.tools.profiler.proto.Transport.TimeResponse;
 import com.android.tools.profilers.FeatureConfig;
 import com.android.tools.profilers.IdeProfilerServices;
 import com.android.tools.profilers.InterimStage;
@@ -90,22 +87,13 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
   public static final int MEMORY_HPROF_SAFE_FACTOR =
     Math.max(1, Math.min(Integer.getInteger("profiler.memory.hprof.safeFactor", 10), 1000));
 
-  /**
-   * Whether the stage only contains heap dump data imported from hprof file
-   */
-  private final boolean myIsMemoryCaptureOnly;
-
   private final DurationDataModel<CaptureDurationData<? extends CaptureObject>> myHeapDumpDurations;
   private final DurationDataModel<CaptureDurationData<? extends CaptureObject>> myAllocationDurations;
   private final DurationDataModel<CaptureDurationData<? extends CaptureObject>> myNativeAllocationDurations;
   /**
-   * Heap dumps of profileable processes, captured as Perfetto heap graphs because {@code am dumpheap} is not permitted there. They are
-   * only recorded in the Task-Based UX, which shows this stage as a recording screen, so {@code MemoryTimelineComponent} doesn't draw
-   * them.
+   * Heap dumps of profileable processes, captured as Perfetto heap graphs because {@code am dumpheap} is not permitted there.
    */
   private final DurationDataModel<CaptureDurationData<? extends CaptureObject>> myJavaHeapGraphDurations;
-
-  private long myPendingLegacyAllocationStartTimeNs = BaseMemoryProfilerStage.INVALID_START_TIME;
 
   @VisibleForTesting boolean myNativeAllocationTracking = false;
 
@@ -191,9 +179,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
 
       @Override
       public void onParseFailure(@NotNull String message) { }
-
-      @Override
-      public void reportParsedTrace(@NotNull CpuCapture capture) { }
     };
   }
 
@@ -211,8 +196,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
                                  @NotNull Runnable stopAction) {
     super(profilers, loader);
     myListenerTracker = new TransportListenerTracker(profilers);
-    myIsMemoryCaptureOnly =
-      profilers.getSessionsManager().getSelectedSessionMetaData().getType() == Common.SessionMetaData.SessionType.MEMORY_CAPTURE;
 
     // TODO(b/122964201) Pass data range as 3rd param to RangedSeries to only show data from current session
     myHeapDumpDurations = makeModel(CaptureDataSeries::ofHeapDumpSamples);
@@ -251,10 +234,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     if (!isAlive && myNativeAllocationTracking) {
       toggleNativeAllocationTracking();
     }
-  }
-
-  public boolean hasUserUsedMemoryCapture() {
-    return getStudioProfilers().getIdeServices().getTemporaryProfilerPreferences().getBoolean(HAS_USED_MEMORY_CAPTURE, false);
   }
 
   @Override
@@ -320,10 +299,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     Range selectionRange = getTimeline().getSelectionRange();
     selectCaptureDuration(getIntersectingCaptureDuration(selectionRange), SwingUtilities::invokeLater);
     setUpdateCaptureOnSelection(true);
-  }
-
-  public boolean isMemoryCaptureOnly() {
-    return myIsMemoryCaptureOnly;
   }
 
   @Override
@@ -514,7 +489,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         setModelToRecordingNative();
         setPendingCaptureStartTime(status.getStartTimeNs());
         setTrackingAllocations(true);
-        myPendingLegacyAllocationStartTimeNs = status.getStartTimeNs();
         getTimeline().setStreaming(true);
         break;
       case FAILURE:
@@ -598,7 +572,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       myListenerTracker.trackListener(statusListener, false);
     }, getStudioProfilers().getIdeServices().getPoolExecutor());
     getTimeline().setStreaming(true);
-    getStudioProfilers().getIdeServices().getTemporaryProfilerPreferences().setBoolean(HAS_USED_MEMORY_CAPTURE, true);
   }
 
   /**
@@ -621,7 +594,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
    * {@link CaptureDataSeries#ofJavaHeapGraphSamples}.
    */
   private void requestJavaHeapGraphDump() {
-    IdeProfilerServices ide = getStudioProfilers().getIdeServices();
     Common.Process process = getStudioProfilers().getProcess();
     // The session's own device, which useJavaHeapGraphForHeapDump() has checked; the device selected in the UI can differ.
     Common.Device device = Objects.requireNonNull(getDeviceForSelectedSession());
@@ -641,7 +613,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
                      this::cleanupFailedJavaHeapGraphCapture);
 
     getTimeline().setStreaming(true);
-    ide.getTemporaryProfilerPreferences().setBoolean(HAS_USED_MEMORY_CAPTURE, true);
   }
 
   private void handleJavaHeapGraphStart(@NotNull Trace.TraceStartStatus status, @NotNull Trace.TraceConfiguration startConfiguration) {
@@ -749,7 +720,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         case SUCCESS:
           setTrackingAllocations(enable);
           setPendingCaptureStartTime(status.getStartTime());
-          myPendingLegacyAllocationStartTimeNs = enable ? status.getStartTime() : INVALID_START_TIME;
           break;
         case IN_PROGRESS:
           setTrackingAllocations(true);
@@ -773,23 +743,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
 
       if (isTrackingAllocations()) {
         getTimeline().setStreaming(true);
-        getStudioProfilers().getIdeServices().getTemporaryProfilerPreferences().setBoolean(HAS_USED_MEMORY_CAPTURE, true);
       }
     }, listener -> myListenerTracker.trackListener(listener, !enable));
-  }
-
-  public long getAllocationTrackingElapsedTimeNs() {
-    if (isTrackingAllocations()) {
-      try {
-        TimeResponse timeResponse = getStudioProfilers().getClient().getTransportClient()
-          .getCurrentTime(TimeRequest.newBuilder().setStreamId(getSessionData().getStreamId()).build());
-        return timeResponse.getTimestampNs() - myPendingLegacyAllocationStartTimeNs;
-      }
-      catch (StatusRuntimeException exception) {
-        getLogger().warn(exception);
-      }
-    }
-    return INVALID_START_TIME;
   }
 
   public boolean isNativeAllocationSamplingEnabled() {
@@ -970,11 +925,9 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     setTrackingAllocations(lastInfo != null && (lastInfo.getLegacy() && lastInfo.getEndTime() == Long.MAX_VALUE));
     if (isTrackingAllocations()) {
       setPendingCaptureStartTime(lastInfo.getStartTime());
-      myPendingLegacyAllocationStartTimeNs = lastInfo.getStartTime();
     }
     else {
       setPendingCaptureStartTime(INVALID_START_TIME);
-      myPendingLegacyAllocationStartTimeNs = INVALID_START_TIME;
     }
   }
 

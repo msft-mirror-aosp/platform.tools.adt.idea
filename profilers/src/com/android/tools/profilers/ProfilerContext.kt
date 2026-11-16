@@ -35,22 +35,9 @@ interface ProfilerContext {
 
   val isJvmtiEnabled: Boolean
 
-  /** Optionally provide a specific parent stage for UI navigation. */
-  val parentStage: Stage<*>?
-    get() = null
-
-  /** Optionally provide a specific home stage class for UI navigation. */
-  val homeStageClass: Class<out Stage<*>>?
-    get() = null
-
   /** Provides usage data series. Extracted here to avoid needing the gRPC TransportService. */
   fun getDataSeries(capture: CpuCapture?): DataSeries<Long>
 
   /** Called when a capture fails to parse. Implementations handle UI navigation/error reporting. */
   fun onParseFailure(message: String)
-
-  /**
-   * Called to report that an imported trace has been parsed. Implementations handle database event injection or other tracking as needed.
-   */
-  fun reportParsedTrace(capture: CpuCapture)
 }

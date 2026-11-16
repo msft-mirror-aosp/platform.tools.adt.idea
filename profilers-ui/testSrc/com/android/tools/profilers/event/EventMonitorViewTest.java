@@ -38,9 +38,9 @@ import com.android.tools.profiler.proto.Common;
 import com.android.tools.profilers.FakeIdeProfilerComponents;
 import com.android.tools.profilers.FakeIdeProfilerServices;
 import com.android.tools.profilers.ProfilerClient;
-import com.android.tools.profilers.SessionProfilersView;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.StudioProfilersView;
+import com.android.tools.profilers.TaskProfilersView;
 import com.android.tools.profilers.Utils;
 import com.google.common.truth.Truth;
 import com.intellij.testFramework.ApplicationRule;
@@ -99,7 +99,7 @@ public class EventMonitorViewTest {
     // Sessions are not started automatically, so explicitly start one with the fake process.
     Utils.startSessionOnFakeProcess(myProfilers, myTimer);
 
-    StudioProfilersView profilerView = new SessionProfilersView(myProfilers, new FakeIdeProfilerComponents(), myDisposableRule.getDisposable());
+    StudioProfilersView profilerView = new TaskProfilersView(myProfilers, new FakeIdeProfilerComponents(), myDisposableRule.getDisposable());
     myMonitorView = new EventMonitorView(profilerView, new EventMonitor(myProfilers));
 
     updateAgentData(DEFAULT_AGENT_ATTACHED_RESPONSE);
@@ -123,7 +123,7 @@ public class EventMonitorViewTest {
     // Set agent UnAttachable
     updateAgentData(DEFAULT_AGENT_UNATTACHABLE_RESPONSE);
     Component[]  children = myMonitorView.getComponent().getComponents();
-    assertEquals(myFeatureLevel < AndroidVersion.VersionCodes.O ? 2 : 1, children.length);
+    assertEquals(1, children.length);
 
     if (myFeatureLevel < AndroidVersion.VersionCodes.O) {
       assertTrue(children[0] instanceof JLabel);
@@ -149,7 +149,7 @@ public class EventMonitorViewTest {
     updateAgentData(DEFAULT_AGENT_UNATTACHABLE_RESPONSE);
 
     children = myMonitorView.getComponent().getComponents();
-    assertEquals(myFeatureLevel < AndroidVersion.VersionCodes.O ? 2 : 1, children.length);
+    assertEquals(1, children.length);
     assertTrue(children[0] instanceof JLabel);
     JLabel label = (JLabel)children[0];
     assertEquals(myMonitorView.getDisabledMessage(), label.getText());

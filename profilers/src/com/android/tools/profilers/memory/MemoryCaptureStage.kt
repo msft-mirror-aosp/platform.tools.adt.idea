@@ -16,7 +16,6 @@
 package com.android.tools.profilers.memory
 
 import com.android.tools.profilers.ProfilerContext
-import com.android.tools.profilers.Stage
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.memory.adapters.CaptureObject
 import com.android.tools.profilers.memory.adapters.HeapDumpCaptureObject
@@ -44,14 +43,6 @@ class MemoryCaptureStage(
   override fun onExit() {
     super.onExit()
     loader.stop()
-  }
-
-  override fun getParentStage(): Stage<*> {
-    return context.parentStage ?: MainMemoryProfilerStage(studioProfilers, loader)
-  }
-
-  override fun getHomeStageClass(): Class<out Stage<*>> {
-    return context.homeStageClass ?: MainMemoryProfilerStage::class.java
   }
 
   override fun isInteractingWithTimeline() = false

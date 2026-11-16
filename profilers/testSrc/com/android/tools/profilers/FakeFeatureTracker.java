@@ -147,11 +147,6 @@ public final class FakeFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackAutoProfilingRequested() {
-
-  }
-
-  @Override
   public void trackAutoProfilingSucceeded() {
 
   }
@@ -177,42 +172,12 @@ public final class FakeFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackSessionDropdownClicked() {
-
-  }
-
-  @Override
   public void trackCreateSession(Common.SessionMetaData.SessionType sessionType, SessionsManager.SessionCreationSource sourceType) {
 
   }
 
   @Override
-  public void trackStopSession() {
-
-  }
-
-  @Override
-  public void trackSessionsPanelStateChanged(boolean isExpanded) {
-
-  }
-
-  @Override
-  public void trackSessionsPanelResized() {
-
-  }
-
-  @Override
   public void trackSessionArtifactSelected(@NotNull SessionArtifact artifact, boolean isSessionLive) {
-
-  }
-
-  @Override
-  public void trackGoBack() {
-
-  }
-
-  @Override
-  public void trackSelectMonitor() {
 
   }
 
@@ -412,16 +377,6 @@ public final class FakeFeatureTracker implements FeatureTracker {
 
   @Override
   public void trackSelectNetworkThreadsView() {
-
-  }
-
-  @Override
-  public void trackOpenProfilingConfigDialog() {
-
-  }
-
-  @Override
-  public void trackCreateCustomProfilingConfig() {
 
   }
 

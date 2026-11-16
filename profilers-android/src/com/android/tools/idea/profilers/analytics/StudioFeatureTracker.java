@@ -302,11 +302,6 @@ public final class StudioFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackAutoProfilingRequested() {
-    track(AndroidProfilerEvent.Type.AUTO_PROFILING_REQUESTED);
-  }
-
-  @Override
   public void trackAutoProfilingSucceeded() {
     track(AndroidProfilerEvent.Type.AUTO_PROFILING_SUCCEEDED);
   }
@@ -338,11 +333,6 @@ public final class StudioFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackSessionDropdownClicked() {
-    track(AndroidProfilerEvent.Type.SESSION_DROPDOWN_CLICKED);
-  }
-
-  @Override
   public void trackCreateSession(Common.SessionMetaData.SessionType sessionType, SessionsManager.SessionCreationSource sourceType) {
     ProfilerSessionCreationMetaData.Builder builder = ProfilerSessionCreationMetaData.newBuilder()
       .setCreatedType(SESSION_TYPE_MAP.getOrDefault(sessionType, ProfilerSessionCreationMetaData.SessionType.UNKNOWN_SESSION))
@@ -352,37 +342,12 @@ public final class StudioFeatureTracker implements FeatureTracker {
   }
 
   @Override
-  public void trackStopSession() {
-    track(AndroidProfilerEvent.Type.SESSION_STOPPED);
-  }
-
-  @Override
-  public void trackSessionsPanelStateChanged(boolean isExpanded) {
-    track(isExpanded ? AndroidProfilerEvent.Type.SESSION_UI_EXPANDED : AndroidProfilerEvent.Type.SESSION_UI_COLLAPSED);
-  }
-
-  @Override
-  public void trackSessionsPanelResized() {
-    track(AndroidProfilerEvent.Type.SESSION_UI_RESIZED);
-  }
-
-  @Override
   public void trackSessionArtifactSelected(@NotNull SessionArtifact artifact, boolean isSessionLive) {
     ProfilerSessionSelectionMetaData.Builder builder = ProfilerSessionSelectionMetaData.newBuilder()
       .setSelectedType(
         SESSION_ARTIFACT_MAP.getOrDefault(artifact.getClass(), ProfilerSessionSelectionMetaData.ArtifactType.UNKNOWN_ARTIFACT_TYPE))
       .setIsSessionAlive(isSessionLive);
     newTracker(AndroidProfilerEvent.Type.SESSION_ARTIFACT_SELECTED).setSessionSelectionMetadata(builder.build()).track();
-  }
-
-  @Override
-  public void trackGoBack() {
-    track(AndroidProfilerEvent.Type.GO_BACK);
-  }
-
-  @Override
-  public void trackSelectMonitor() {
-    track(AndroidProfilerEvent.Type.SELECT_MONITOR);
   }
 
   @Override
@@ -578,16 +543,6 @@ public final class StudioFeatureTracker implements FeatureTracker {
   @Override
   public void trackSelectNetworkThreadsView() {
     track(AndroidProfilerEvent.Type.SELECT_CONNECTIONS_THREADS_VIEW);
-  }
-
-  @Override
-  public void trackOpenProfilingConfigDialog() {
-    track(AndroidProfilerEvent.Type.OPEN_CPU_CONFIG_DIALOG);
-  }
-
-  @Override
-  public void trackCreateCustomProfilingConfig() {
-    track(AndroidProfilerEvent.Type.CREATE_CPU_CONFIG);
   }
 
   @Override

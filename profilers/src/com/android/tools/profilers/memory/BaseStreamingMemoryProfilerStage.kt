@@ -105,7 +105,6 @@ abstract class BaseStreamingMemoryProfilerStage(
           override fun selectionCreated() {
             selectCaptureFromSelectionRange()
             profilers.ideServices.featureTracker.trackSelectRange()
-            profilers.ideServices.temporaryProfilerPreferences.setBoolean(HAS_USED_MEMORY_CAPTURE, true)
           }
 
           override fun selectionCleared() = selectCaptureFromSelectionRange()
@@ -299,7 +298,6 @@ abstract class BaseStreamingMemoryProfilerStage(
   }
 
   companion object {
-    protected const val HAS_USED_MEMORY_CAPTURE = "memory.used.capture"
     val MEMORY_AXIS_FORMATTER: BaseAxisFormatter = MemoryAxisFormatter(1, 5, 5)
     val OBJECT_COUNT_AXIS_FORMATTER: BaseAxisFormatter = SingleUnitAxisFormatter(1, 5, 5, "")
   }

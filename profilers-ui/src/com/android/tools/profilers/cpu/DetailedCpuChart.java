@@ -96,26 +96,6 @@ public class DetailedCpuChart {
          liveCpuUsageModel.getStage());
   }
 
-  public DetailedCpuChart(@NotNull StudioProfilersView profilersView,
-                          CpuProfilerStage cpuProfilerStage) {
-    this(profilersView,
-         cpuProfilerStage.getCpuUsageAxis(),
-         cpuProfilerStage.getThreadCountAxis(),
-         cpuProfilerStage.getCpuUsage(),
-         cpuProfilerStage.getTraceDurations(),
-         cpuProfilerStage.getLegends(),
-         cpuProfilerStage.getName(),
-         cpuProfilerStage::setAndSelectCapture,
-         cpuProfilerStage.getThreadStates(),
-         cpuProfilerStage.getUpdatableManager(),
-         cpuProfilerStage.getStudioProfilers(),
-         cpuProfilerStage.getTimeAxisGuide(),
-         cpuProfilerStage::getSelectedThread,
-         cpuProfilerStage::setSelectedThread,
-         cpuProfilerStage.getAspect(),
-         cpuProfilerStage);
-  }
-
   private DetailedCpuChart(@NotNull StudioProfilersView profilersView,
                           final AxisComponentModel cpuUsageAxis,
                           final AxisComponentModel threadCountAxis,

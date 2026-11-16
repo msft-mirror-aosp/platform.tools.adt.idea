@@ -222,8 +222,6 @@ public abstract class AndroidRunConfigurationBase extends ModuleBasedConfigurati
       errors.addAll(androidDebuggerState.validate(facet, executor));
     }
 
-    errors.addAll(myProfilerState.validate());
-
     return errors;
   }
 

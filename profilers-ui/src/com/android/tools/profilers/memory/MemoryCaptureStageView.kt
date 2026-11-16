@@ -17,7 +17,6 @@ package com.android.tools.profilers.memory
 
 import com.android.tools.adtui.common.AdtUiUtils.DEFAULT_HORIZONTAL_BORDERS
 import com.android.tools.adtui.common.AdtUiUtils.DEFAULT_VERTICAL_BORDERS
-import com.android.tools.adtui.model.formatter.TimeFormatter
 import com.android.tools.adtui.stdui.CloseButton
 import com.android.tools.profilers.StudioProfilersView
 import com.android.tools.profilers.memory.adapters.classifiers.ClassSet
@@ -28,8 +27,6 @@ import com.intellij.ui.components.JBPanel
 import com.intellij.util.ui.JBEmptyBorder
 import java.awt.BorderLayout
 import java.awt.CardLayout
-import java.util.concurrent.TimeUnit
-import javax.swing.JLabel
 import javax.swing.JPanel
 
 class MemoryCaptureStageView(profilersView: StudioProfilersView, stage: MemoryCaptureStage) :
@@ -116,29 +113,7 @@ class MemoryCaptureStageView(profilersView: StudioProfilersView, stage: MemoryCa
   // No toolbar is added to the memory capture stage view.
   override fun isToolbarVisible() = false
 
-  override fun getToolbar() =
-    JPanel(BorderLayout()).apply {
-      add(
-        JLabel().apply {
-          border = JBEmptyBorder(0, 4, 0, 2)
-          text =
-            when (val capture = stage.captureSelection.selectedCapture) {
-              null -> "Heap Dump"
-              else -> {
-                val startMicros = stage.timeline.dataRange.min.toLong()
-                val elapsedMicros = TimeUnit.NANOSECONDS.toMicros(capture.startTimeNs) - startMicros
-                // b/156547059
-                // It's plausible, but highly unlikely that `elapsedMicros` is 0 for a recorded heap dump.
-                // Often this happens when it's loaded from a file. Because it's difficult to get the filename
-                // from here, we simply omit the misleading information
-                if (elapsedMicros > 0) "${capture.name}: ${TimeFormatter.getSimplifiedClockString(elapsedMicros)}"
-                else "${capture.name} (loaded from file)"
-              }
-            }
-        },
-        BorderLayout.WEST,
-      )
-    }
+  override fun getToolbar() = JPanel()
 
   private fun showCaptureUi() {
     isLoading = false

@@ -19,8 +19,6 @@ import com.android.tools.profiler.proto.Common
 
 interface StudioProfiler {
 
-  fun newMonitor(): ProfilerMonitor
-
   fun startProfiling(session: Common.Session)
 
   fun stopProfiling(session: Common.Session)

@@ -49,8 +49,6 @@ public class ProfilerLayout {
 
   public static final Border MONITOR_BORDER = BorderFactory.createMatteBorder(0, 0, 1, 0, ProfilerColors.MONITOR_BORDER);
 
-  public static final int MONITOR_LEGEND_RIGHT_PADDING = JBUI.scale(12);
-
   /**
    * Space on the right for all legends when inside a profiler. Chosen so it lines up with the right axis units.
    */
@@ -81,7 +79,6 @@ public class ProfilerLayout {
 
   // The total usable height of the toolbar is 37px the 1px is for a 1px border at the bottom of the toolbar.
   public static final int TOOLBAR_HEIGHT = JBUI.scale(38);
-  public static final Border TOOLBAR_LABEL_BORDER = JBUI.Borders.empty(3, 8, 3, 3);
   public static final Border TOOLBAR_ICON_BORDER = JBUI.Borders.empty(4);
 
   /**
@@ -94,11 +91,6 @@ public class ProfilerLayout {
   public static final Border CPU_THREADS_RIGHT_BORDER = JBUI.Borders.customLine(ProfilerColors.CPU_AXIS_GUIDE_COLOR, 0, 0, 0, 2);
   public static final int CPU_HIDEABLE_PANEL_TITLE_LEFT_PADDING = 7;
   public static final int CPU_HIDEABLE_PANEL_TITLE_ICON_TEXT_GAP = 6;
-
-  /**
-   * Used in CustomEventTrackRenderer to set the preferred height.
-   */
-  public static final int CUSTOM_EVENT_VISUALIZATION_TRACK_HEIGHT = 100;
 
   private ProfilerLayout() {
     // Static class designed to hold constants only

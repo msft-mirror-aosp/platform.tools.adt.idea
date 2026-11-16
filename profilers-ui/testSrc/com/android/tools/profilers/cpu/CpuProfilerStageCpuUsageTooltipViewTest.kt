@@ -23,9 +23,12 @@ import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Trace
 import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
+import com.android.tools.profilers.LiveStage
+import com.android.tools.profilers.LiveStageView
 import com.android.tools.profilers.ProfilerClient
-import com.android.tools.profilers.SessionProfilersView
+import com.android.tools.profilers.StageView
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.TaskProfilersView
 import com.android.tools.profilers.TraceConfigOptionsUtils
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.google.common.truth.Truth.assertThat
@@ -44,7 +47,7 @@ import org.junit.Test
 class CpuProfilerStageCpuUsageTooltipViewTest {
   private val timer = FakeTimer()
   private val transportService = FakeTransportService(timer)
-  private lateinit var cpuStage: CpuProfilerStage
+  private lateinit var liveStage: LiveStage
   private lateinit var usageTooltipView: FakeCpuUsageTooltipView
 
   @Rule @JvmField val myGrpcChannel = FakeGrpcChannel("CpuUsageTooltipViewTest", transportService)
@@ -58,14 +61,15 @@ class CpuProfilerStageCpuUsageTooltipViewTest {
   fun setUp() {
     val profilerServices = FakeIdeProfilerServices()
     val profilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), profilerServices, timer)
-    cpuStage = CpuProfilerStage(profilers)
     timer.tick(TimeUnit.SECONDS.toNanos(1))
-    profilers.stage = cpuStage
-    val view = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
-    val stageView: CpuProfilerStageView = view.stageView as CpuProfilerStageView
-    val usageTooltip = CpuProfilerStageCpuUsageTooltip(cpuStage)
+    val view = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    // The CPU usage tooltip is shown in the live view (via LiveCpuUsageView) of the Live Telemetry task.
+    liveStage = LiveStage(profilers)
+    profilers.stage = liveStage
+    val stageView = view.stageView as LiveStageView
+    val usageTooltip = liveStage.liveModels.filterIsInstance<LiveCpuUsageModel>().single().tooltip as CpuProfilerStageCpuUsageTooltip
     usageTooltipView = FakeCpuUsageTooltipView(stageView, usageTooltip)
-    cpuStage.tooltip = usageTooltip
+    liveStage.tooltip = usageTooltip
     val tooltipTime = TimeUnit.SECONDS.toMicros(1)
     stageView.stage.timeline.apply {
       dataRange.set(0.0, TimeUnit.SECONDS.toMicros(5).toDouble())
@@ -83,7 +87,7 @@ class CpuProfilerStageCpuUsageTooltipViewTest {
     assertThat(labels[0].text).isEqualTo("00:01.000")
     assertThat(labels[1].text).isEqualTo("Selection Unavailable")
 
-    cpuStage.timeline.tooltipRange.set(TimeUnit.SECONDS.toMicros(3).toDouble(), TimeUnit.SECONDS.toMicros(3).toDouble())
+    liveStage.timeline.tooltipRange.set(TimeUnit.SECONDS.toMicros(3).toDouble(), TimeUnit.SECONDS.toMicros(3).toDouble())
     labels = TreeWalker(usageTooltipView.tooltipPanel).descendants().filterIsInstance<JLabel>()
     assertThat(labels).hasSize(2) // time, name, state, details unavailable
     assertThat(labels[0].text).isEqualTo("00:03.000")
@@ -119,7 +123,7 @@ class CpuProfilerStageCpuUsageTooltipViewTest {
     )
   }
 
-  private class FakeCpuUsageTooltipView(parent: CpuProfilerStageView, tooltip: CpuProfilerStageCpuUsageTooltip) :
+  private class FakeCpuUsageTooltipView(parent: StageView<*>, tooltip: CpuProfilerStageCpuUsageTooltip) :
     CpuProfilerStageCpuUsageTooltipView(parent, tooltip) {
     val tooltipPanel: JComponent = createComponent()
   }

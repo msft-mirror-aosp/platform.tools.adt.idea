@@ -31,14 +31,6 @@ public class ProfilerColors {
   private ProfilerColors() {
   }
 
-  public static final Color ACTIVE_SESSION_COLOR = new JBColor(0x58AB5C, 0x65BB69);
-
-  public static final Color SELECTED_SESSION_COLOR = new JBColor(0x397FE4, 0x7CAEFE);
-
-  public static final Color HOVERED_SESSION_COLOR = new JBColor(0xD6D6D6, 0x313435);
-
-  public static final Color SESSION_DIVIDER_COLOR = new JBColor(0xD8D6D6, 0x2F3031);
-
   public static final Color CPU_USAGE = new JBColor(0xa7e0d7, 0x397060);
 
   public static final Color CPU_USAGE_CAPTURED = new JBColor(0x19AF9A, 0x43CAA2);
@@ -195,8 +187,6 @@ public class ProfilerColors {
 
   public static final Color MONITOR_ERROR = new JBColor(0xFFEEEE, 0x332222);
 
-  public static final Color MONITOR_MAX_LINE = new JBColor(0xCCCDCD, 0x494949);
-
   public static final Color MONITOR_BORDER = new JBColor(0xC9C9C9, 0x3F4142);
 
   public static final Color NETWORK_CONNECTIONS_COLOR = new JBColor(new Color(0xEFC4B2), new Color(0x7D6B64));
@@ -210,8 +200,6 @@ public class ProfilerColors {
   public static final Color NETWORK_WAITING_COLOR = new JBColor(0xAAAAAA, 0xAAAAAA);
 
   public static final Color NETWORK_THREADS_VIEW_TOOLTIP_DIVIDER = new JBColor(0xD3D3D3, 0x565656);
-
-  public static final Color MEMORY_TOTAL = new JBColor(new Color(0x56BFEC), new Color(0x2B7DA2));
 
   public static final Color MEMORY_JAVA = new JBColor(new Color(0x56BFEC), new Color(0x2B7DA2));
 

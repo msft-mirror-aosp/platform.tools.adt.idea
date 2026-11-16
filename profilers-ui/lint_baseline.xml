@@ -59,17 +59,6 @@
     <issue
         id="JbUiStored"
         message="Do not store `JBUI.scale` scaled results in fields; this will not work correctly on dynamic theme or font size changes"
-        errorLine1="  public static final int MONITOR_LEGEND_RIGHT_PADDING = JBUI.scale(12);"
-        errorLine2="                                                              ~~~~~">
-        <location
-            file="src/com/android/tools/profilers/ProfilerLayout.java"
-            line="48"
-            column="63"/>
-    </issue>
-
-    <issue
-        id="JbUiStored"
-        message="Do not store `JBUI.scale` scaled results in fields; this will not work correctly on dynamic theme or font size changes"
         errorLine1="  public static final int PROFILER_LEGEND_RIGHT_PADDING = JBUI.scale(9);"
         errorLine2="                                                               ~~~~~">
         <location
@@ -162,19 +151,8 @@
         errorLine2="                                                         ~~~~~">
         <location
             file="src/com/android/tools/profilers/ProfilerMonitorView.java"
-            line="43"
+            line="38"
             column="58"/>
-    </issue>
-
-    <issue
-        id="JbUiStored"
-        message="Do not store `JBUI.scale` scaled results in fields; this will not work correctly on dynamic theme or font size changes"
-        errorLine1="    private static final int SIZE = JBUI.scale(10);"
-        errorLine2="                                         ~~~~~">
-        <location
-            file="src/com/android/tools/profilers/sessions/SessionItemView.java"
-            line="221"
-            column="42"/>
     </issue>
 
 </issues>

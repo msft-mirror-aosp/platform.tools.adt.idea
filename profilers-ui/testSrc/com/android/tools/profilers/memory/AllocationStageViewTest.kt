@@ -17,9 +17,10 @@ import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.ProfilersTestData
-import com.android.tools.profilers.SessionProfilersView
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
+import com.android.tools.profilers.TaskProfilersView
+import com.android.tools.profilers.Utils
 import com.android.tools.profilers.memory.BaseStreamingMemoryProfilerStage.LiveAllocationSamplingMode.FULL
 import com.android.tools.profilers.memory.BaseStreamingMemoryProfilerStage.LiveAllocationSamplingMode.NONE
 import com.android.tools.profilers.memory.BaseStreamingMemoryProfilerStage.LiveAllocationSamplingMode.SAMPLED
@@ -75,7 +76,7 @@ class AllocationStageViewTest(private val isLive: Boolean) {
       if (isLive) AllocationStage.makeLiveStage(profilers, mockLoader)
       else AllocationStage.makeStaticStage(profilers, minTrackingTimeUs = 1.0, maxTrackingTimeUs = 5.0)
     observer = MemoryAspectObserver(stage.aspect, stage.captureSelection.aspect)
-    profilersView = SessionProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
+    profilersView = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
     stageView = AllocationStageView(profilersView, stage)
 
     // Advance the clock to make sure StudioProfilers has a chance to select device + process.
@@ -202,6 +203,103 @@ class AllocationStageViewTest(private val isLive: Boolean) {
     // Point should be attached due to end of FULL mode
     validateRegion(renderedRegions[1], 0.5f, 0.5f, iconWidth, iconHeight)
     // Point should be detached because it's between SAMPLED and NONE modes
+    validateRegion(renderedRegions[2], 0.8f, 1f, iconWidth, iconHeight)
+    // Point should be attached due to start of FULL mode
+    validateRegion(renderedRegions[3], 1f, 0f, iconWidth, iconHeight)
+  }
+
+  @Test
+  fun `test gc duration attachment`() {
+    assumeTrue(!isLive)
+    val device =
+      Common.Device.newBuilder().setDeviceId(1).setFeatureLevel(AndroidVersion.VersionCodes.O).setState(Common.Device.State.ONLINE).build()
+    val process =
+      Common.Process.newBuilder()
+        .setDeviceId(1)
+        .setPid(2)
+        .setState(Common.Process.State.ALIVE)
+        .setExposureLevel(Common.Process.ExposureLevel.DEBUGGABLE)
+        .build()
+
+    // Set up test data from range 0us-10us. Note that the proto timestamps are in nanoseconds.
+    transportService.addEventToStream(device.deviceId, ProfilersTestData.generateMemoryAllocStatsData(process.pid, 0, 0).build())
+    transportService.addEventToStream(device.deviceId, ProfilersTestData.generateMemoryAllocStatsData(process.pid, 10, 100).build())
+
+    for (time in listOf(1L, 6L, 8L, 10L)) {
+      transportService.addEventToStream(
+        device.deviceId,
+        ProfilersTestData.generateMemoryGcData(
+            process.pid,
+            time,
+            Memory.MemoryGcData.newBuilder().setDuration(TimeUnit.MICROSECONDS.toNanos(1)).build(),
+          )
+          .build(),
+      )
+    }
+
+    // Start live allocation tracking
+    val info = Memory.AllocationsInfo.newBuilder().setStartTime(1).setSuccess(true).setLegacy(false)
+    transportService.addEventToStream(
+      device.deviceId,
+      ProfilersTestData.generateMemoryAllocationInfoData(1, process.pid, info.setEndTime(Long.MAX_VALUE).build()).setIsEnded(false).build(),
+    )
+    transportService.addEventToStream(
+      device.deviceId,
+      ProfilersTestData.generateMemoryAllocSamplingData(process.pid, 1, FULL.value).build(),
+    )
+    // Change allocation tracking sampling mode
+    transportService.addEventToStream(
+      device.deviceId,
+      ProfilersTestData.generateMemoryAllocSamplingData(process.pid, 5, SAMPLED.value).build(),
+    )
+    // Generate stop live allocation tracking
+    transportService.addEventToStream(
+      device.deviceId,
+      ProfilersTestData.generateMemoryAllocationInfoData(1, process.pid, info.setEndTime(8).build()).setIsEnded(true).build(),
+    )
+    // Restart live allocation tracking
+    transportService.addEventToStream(
+      device.deviceId,
+      ProfilersTestData.generateMemoryAllocationInfoData(10, process.pid, info.setStartTime(10).setEndTime(Long.MAX_VALUE).build())
+        .setIsEnded(false)
+        .build(),
+    )
+    transportService.addEventToStream(
+      device.deviceId,
+      ProfilersTestData.generateMemoryAllocSamplingData(process.pid, 10, FULL.value).build(),
+    )
+
+    // Set up the correct agent and session state so that the AllocationStageView can be initialized properly.
+    transportService.addDevice(device)
+    transportService.addProcess(device, process)
+    Utils.ensureLiveTaskHandler(profilers)
+    profilers.sessionsManager.endCurrentSession()
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    profilers.sessionsManager.beginSession(device.deviceId, device, process, Common.ProfilerTaskType.LIVE_VIEW, false)
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    // The stage's data provider is bound to the session selected when the stage is created, so create a new stage for the new session.
+    stage = AllocationStage.makeStaticStage(profilers, minTrackingTimeUs = 0.0, maxTrackingTimeUs = 10.0)
+    profilers.stage = stage
+    // Let the new stage pick up the data (e.g. the range of the objects series, which the GC durations are attached to).
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+
+    // Reset the timeline so that both data range and view range stays at (0,10) on the next tick.
+    stage.timeline.reset(0, TimeUnit.MICROSECONDS.toNanos(10))
+    stage.timeline.viewRange.set(0.0, 10.0)
+    val view = AllocationStageView(profilersView, stage)
+    // Tick a large enough time so that the renders interpolates to the final positions
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS * 10)
+
+    val durationDataRenderer = view.timelineComponent.gcDurationDataRenderer
+    val renderedRegions = durationDataRenderer.clickRegionCache
+    assertThat(renderedRegions.size).isEqualTo(4)
+    val iconWidth = StudioIcons.Profiler.Events.GARBAGE_EVENT.iconWidth.toFloat()
+    val iconHeight = StudioIcons.Profiler.Events.GARBAGE_EVENT.iconHeight.toFloat()
+    // Point should be attached due to start of FULL mode
+    validateRegion(renderedRegions[0], 0.1f, 0.9f, iconWidth, iconHeight)
+    // Point should be detached due to SAMPLED mode
+    validateRegion(renderedRegions[1], 0.6f, 1f, iconWidth, iconHeight)
+    // Point should be detached due to NONE mode
     validateRegion(renderedRegions[2], 0.8f, 1f, iconWidth, iconHeight)
     // Point should be attached due to start of FULL mode
     validateRegion(renderedRegions[3], 1f, 0f, iconWidth, iconHeight)

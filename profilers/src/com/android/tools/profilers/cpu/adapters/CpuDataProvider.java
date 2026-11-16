@@ -18,7 +18,6 @@ package com.android.tools.profilers.cpu.adapters;
 import com.android.tools.adtui.model.AspectModel;
 import com.android.tools.adtui.model.DataSeries;
 import com.android.tools.adtui.model.DurationDataModel;
-import com.android.tools.adtui.model.EaseOutModel;
 import com.android.tools.adtui.model.Range;
 import com.android.tools.adtui.model.RangeSelectionModel;
 import com.android.tools.adtui.model.RangedSeries;
@@ -40,7 +39,6 @@ import com.android.tools.profilers.cpu.CpuTraceInfo;
 import com.android.tools.profilers.cpu.DetailedCpuUsage;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 
 public class CpuDataProvider {
@@ -49,7 +47,6 @@ public class CpuDataProvider {
 
   private static final SingleUnitAxisFormatter NUM_THREADS_AXIS = new SingleUnitAxisFormatter(1, 5, 1, "");
 
-  protected static final long PROFILING_INSTRUCTIONS_EASE_OUT_NS = TimeUnit.SECONDS.toNanos(3);
   private final StudioProfilers myProfilers;
   private final CpuThreadsModel myThreadsStates;
   private final ClampedAxisComponentModel myCpuUsageAxis;
@@ -59,7 +56,6 @@ public class CpuDataProvider {
   private final CpuProfilerStage.CpuStageLegends myLegends;
   private final DurationDataModel<CpuTraceInfo> myTraceDurations;
   private final RangeSelectionModel myRangeSelectionModel;
-  private final EaseOutModel myInstructionsEaseOutModel;
 
   private final CpuTraceDataSeries myCpuTraceDataSeries;
 
@@ -92,8 +88,6 @@ public class CpuDataProvider {
 
     myRangeSelectionModel = buildRangeSelectionModel(selectionRange, viewRange);
 
-    myInstructionsEaseOutModel = new EaseOutModel(profilers.getUpdater(), PROFILING_INSTRUCTIONS_EASE_OUT_NS);
-
     myUpdatableManager = new UpdatableManager(myProfilers.getUpdater());
   }
 
@@ -121,11 +115,6 @@ public class CpuDataProvider {
   @NotNull
   public RangeSelectionModel getRangeSelectionModel() {
     return myRangeSelectionModel;
-  }
-
-  @NotNull
-  public EaseOutModel getInstructionsEaseOutModel() {
-    return myInstructionsEaseOutModel;
   }
 
   public AxisComponentModel getCpuUsageAxis() {

@@ -28,7 +28,6 @@ import com.android.tools.profiler.proto.Trace.TraceInfo;
 import com.android.tools.profiler.proto.Transport;
 import com.android.tools.profilers.ProfilerCaptureFileUtils;
 import com.android.tools.profilers.ProfilerClient;
-import com.android.tools.profilers.ProfilerMonitor;
 import com.android.tools.profilers.StudioProfiler;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.TraceConfigOptionsUtils;
@@ -110,11 +109,6 @@ public class CpuProfiler implements StudioProfiler {
 
     profilers.getIdeServices().getFeatureTracker().trackCreateSession(Common.SessionMetaData.SessionType.CPU_CAPTURE,
                                                                       SessionsManager.SessionCreationSource.MANUAL);
-  }
-
-  @Override
-  public @NotNull ProfilerMonitor newMonitor() {
-    return new CpuMonitor(profilers);
   }
 
   @Override
