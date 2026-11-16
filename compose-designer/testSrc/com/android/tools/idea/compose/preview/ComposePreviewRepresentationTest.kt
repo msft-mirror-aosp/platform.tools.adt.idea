@@ -106,6 +106,7 @@ import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.psi.PsiFile
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.assertInstanceOf
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
@@ -113,6 +114,7 @@ import com.intellij.testFramework.replaceService
 import com.intellij.testFramework.runInEdtAndWait
 import java.nio.file.Path
 import java.util.UUID
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.test.assertFails
@@ -136,10 +138,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito.atLeastOnce
 import org.mockito.Mockito.clearInvocations
 import org.mockito.Mockito.never
 import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.whenever
 
 /**
@@ -1619,6 +1624,65 @@ class ComposePreviewRepresentationTest {
     refreshDeferred.await()
 
     assertThat(preview.renderedPreviewElementsInstancesFlowForTest().value.asCollection()).hasSize(2)
+  }
+
+  // Regression test for b/585465669
+  @Test
+  fun enterFocusModeWithMultiplePreviewsCallsZoomToFitOnlyAfterFiltering() {
+    // Spy on the design surface and its zoom controller to observe when zoomToFit is invoked.
+    val surface = NlSurfaceBuilder.builder(fixture.project, fixture.testRootDisposable, false).build()
+    val surfaceSpy = spy(surface)
+    Disposer.register(fixture.testRootDisposable, surfaceSpy)
+
+    val zoomControllerSpy = spy(surface.zoomController)
+    whenever(surfaceSpy.zoomController).thenReturn(zoomControllerSpy)
+
+    // Record the scene manager count each time zoomToFit is called.
+    val sceneManagerCountsAtZoomToFit = CopyOnWriteArrayList<Int>()
+    runComposePreviewRepresentationTest(mainSurface = surfaceSpy) {
+      // Compile and render both previews in Default mode.
+      val preview = createPreviewAndCompile(expectedModelCount = 2)
+      assertThat(surfaceSpy.sceneManagers).hasSize(2)
+
+      // Select the first preview element to focus and flush the EDT so the initial Default-mode zoomToFit finishes before recording.
+      val focusedElement = surfaceSpy.models.mapNotNull { model -> model.dataProvider?.previewElement() }.first()
+      waitForAllRefreshesToFinish(30.seconds)
+      withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+      composeView.hasRendered = false
+      val hasRenderedStatesAtZoomToFit = CopyOnWriteArrayList<Boolean>()
+      whenever(zoomControllerSpy.zoomToFit()).thenAnswer { invocation ->
+        hasRenderedStatesAtZoomToFit.add(composeView.hasRendered)
+        sceneManagerCountsAtZoomToFit.add(surfaceSpy.sceneManagers.size)
+        invocation.callRealMethod()
+      }
+      clearInvocations(zoomControllerSpy)
+      sceneManagerCountsAtZoomToFit.clear()
+
+      // Pause addModelsWithoutRender in the Focus-mode filtering refresh (which runs on Dispatchers.Default after removeModels has
+      // already shrunk surface.sceneManagers to 1, but before rendering and onAfterRender complete) until onEnter(PreviewMode.Focus)
+      // has shown Focus mode on the EDT.
+      doAnswer { invocation ->
+          runBlocking { delayUntilCondition(50, timeout = 5.seconds) { composeView.focusMode != null } }
+          invocation.callRealMethod()
+        }
+        .whenever(surfaceSpy)
+        .addModelsWithoutRender(any())
+
+      // Enter Focus mode while 2 previews are rendered and wait for the filtering refresh to complete.
+      setModeAndWaitForRefresh(PreviewMode.Focus(focusedElement), waitForRefresh = true) {
+        composeView.focusMode != null && surfaceSpy.sceneManagers.size == 1 && sceneManagerCountsAtZoomToFit.isNotEmpty()
+      }
+      waitForAllRefreshesToFinish(30.seconds)
+      withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllEventsInIdeEventQueue() }
+
+      assertThat(sceneManagerCountsAtZoomToFit).doesNotContain(2)
+      assertThat(hasRenderedStatesAtZoomToFit).doesNotContain(false)
+      assertThat(hasRenderedStatesAtZoomToFit.toSet()).containsExactly(true)
+      assertThat(sceneManagerCountsAtZoomToFit.toSet()).containsExactly(1)
+      verify(zoomControllerSpy, atLeastOnce()).zoomToFit()
+      val resizePanel = assertNotNull(composeView.focusMode?.component?.findDescendant<ResizePanel>())
+      assertThat(resizePanel.getCurrentPreviewElementForTest()).isEqualTo(focusedElement)
+    }
   }
 
   private fun runComposePreviewRepresentationTest(
