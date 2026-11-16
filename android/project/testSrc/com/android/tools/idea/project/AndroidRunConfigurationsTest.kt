@@ -38,15 +38,28 @@ import com.android.tools.idea.testing.requestSyncAndWait
 import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.RunManager
 import com.intellij.execution.configurations.ConfigurationType
+import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
+import com.intellij.openapi.project.DumbService
+import com.intellij.openapi.project.IndexNotReadyException
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.psi.PsiClass
+import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.VfsTestUtil.createFile
 import com.intellij.testFramework.runInEdtAndWait
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.dom.manifest.UsesFeature
 import org.junit.After
@@ -463,7 +476,7 @@ class AndroidRunConfigurationsTest {
   }
 
   @Test
-  fun `createRunConfigurations caches watch feature check per facet`() {
+  fun `createSmartModeRunConfigurations caches watch feature check per facet`() {
     StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_RUN_CONFIGURATION.override(true)
     StudioFlags.WEAR_RUN_CONFIGS_AUTOCREATE_ENABLED.override(true)
 
@@ -473,13 +486,167 @@ class AndroidRunConfigurationsTest {
       val appFacet = project.getAndroidFacets().single { it.configuration.isAppProject }
 
       runManager.removeExistingRunConfigurations()
+      val watchFeatureChecks = AtomicInteger(0)
       runBlocking {
-        Mockito.mockStatic(LaunchUtils::class.java, Mockito.CALLS_REAL_METHODS).use { mockedLaunchUtils ->
-          AndroidRunConfigurations.instance.createRunConfigurations(project)
-          mockedLaunchUtils.verify({ LaunchUtils.isWatchFeatureRequired(appFacet) }, Mockito.times(1))
+        AndroidRunConfigurations.instance.createSmartModeRunConfigurations(project) { facet ->
+          if (facet == appFacet) {
+            watchFeatureChecks.incrementAndGet()
+          }
+          LaunchUtils.isWatchFeatureRequired(facet)
         }
       }
+      assertThat(watchFeatureChecks.get()).isEqualTo(1)
       assertThat(runManager.getConfigurationsList(AndroidDeclarativeWatchFaceConfigurationType())).hasSize(1)
+    }
+  }
+
+  @Test
+  fun `createNonSmartModeRunConfigurations and createSmartModeRunConfigurations create disjoint configuration sets`() {
+    StudioFlags.WEAR_RUN_CONFIGS_AUTOCREATE_ENABLED.override(true)
+    StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_RUN_CONFIGURATION.override(true)
+    val wearPreparedProject =
+      projectRule.prepareTestProject(
+        testProject = AndroidCoreTestProject.WEAR_WITH_TILE_COMPLICATION_AND_WATCHFACE,
+        name = "wear",
+      )
+    wearPreparedProject.open { project ->
+      val runManager = RunManager.getInstance(project)
+      val androidRunConfigType = AndroidRunConfigurationType.getInstance().factory.type
+
+      runManager.removeExistingRunConfigurations()
+      AndroidRunConfigurations.instance.createNonSmartModeRunConfigurations(project)
+      assertThat(runManager.getConfigurationsList(androidRunConfigType)).hasSize(1)
+      assertThat(runManager.allConfigurationsList.filterIsInstance<AndroidWearConfiguration>()).isEmpty()
+      assertThat(runManager.allConfigurationsList.filterIsInstance<AndroidDeclarativeWatchFaceConfiguration>()).isEmpty()
+
+      runManager.removeExistingRunConfigurations()
+      runBlocking { AndroidRunConfigurations.instance.createSmartModeRunConfigurations(project) }
+      assertThat(runManager.getConfigurationsList(androidRunConfigType)).isEmpty()
+      assertThat(runManager.allConfigurationsList.filterIsInstance<AndroidWearConfiguration>()).hasSize(3)
+      assertThat(runManager.allConfigurationsList.filterIsInstance<AndroidDeclarativeWatchFaceConfiguration>()).isEmpty()
+    }
+
+    val watchFacePreparedProject =
+      projectRule.prepareTestProject(
+        testProject = AndroidCoreTestProject.WEAR_DECLARATIVE_WATCHFACE,
+        name = "watchFace",
+      )
+    watchFacePreparedProject.open { project ->
+      val runManager = RunManager.getInstance(project)
+
+      runManager.removeExistingRunConfigurations()
+      AndroidRunConfigurations.instance.createNonSmartModeRunConfigurations(project)
+      assertThat(runManager.allConfigurationsList).isEmpty()
+
+      runManager.removeExistingRunConfigurations()
+      runBlocking { AndroidRunConfigurations.instance.createSmartModeRunConfigurations(project) }
+      assertThat(runManager.allConfigurationsList.filterIsInstance<AndroidDeclarativeWatchFaceConfiguration>()).hasSize(1)
+      assertThat(runManager.allConfigurationsList).hasSize(1)
+    }
+  }
+
+  @Test
+  fun `createNonSmartModeRunConfigurations does not require smart mode`() {
+    StudioFlags.WEAR_RUN_CONFIGS_AUTOCREATE_ENABLED.override(true)
+    StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_RUN_CONFIGURATION.override(true)
+    for (testProject in
+      listOf(
+        AndroidCoreTestProject.SIMPLE_APPLICATION,
+        AndroidCoreTestProject.WEAR_WITH_TILE_COMPLICATION_AND_WATCHFACE,
+        AndroidCoreTestProject.WEAR_DECLARATIVE_WATCHFACE,
+      )) {
+      val preparedProject = projectRule.prepareTestProject(testProject = testProject, name = testProject.name)
+      preparedProject.open { project ->
+        val runManager = RunManager.getInstance(project)
+
+        runManager.removeExistingRunConfigurations()
+        AndroidRunConfigurations.instance.createNonSmartModeRunConfigurations(project)
+        val smartModeConfigs = runManager.allConfigurationsList.map { it.type.id to it.name }
+
+        runManager.removeExistingRunConfigurations()
+        val dumbTask = DumbModeTestUtils.startEternalDumbModeTask(project)
+        try {
+          assertThat(runReadAction { DumbService.isDumb(project) }).isTrue()
+          AndroidRunConfigurations.instance.createNonSmartModeRunConfigurations(project)
+        } finally {
+          DumbModeTestUtils.endEternalDumbModeTaskAndWaitForSmartMode(project, dumbTask)
+        }
+        val dumbModeConfigs = runManager.allConfigurationsList.map { it.type.id to it.name }
+
+        runInEdtAndWait { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+        assertThat(dumbModeConfigs).containsExactlyElementsIn(smartModeConfigs)
+      }
+    }
+  }
+
+  @Test
+  fun `createSmartModeRunConfigurations requires smart mode for every configuration it creates`() {
+    StudioFlags.WEAR_RUN_CONFIGS_AUTOCREATE_ENABLED.override(true)
+    StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_RUN_CONFIGURATION.override(true)
+    for (testProject in
+      listOf(
+        AndroidCoreTestProject.SIMPLE_APPLICATION,
+        AndroidCoreTestProject.WEAR_DECLARATIVE_WATCHFACE,
+        AndroidCoreTestProject.WEAR_WITH_TILE_COMPLICATION_AND_WATCHFACE,
+      )) {
+      val preparedProject = projectRule.prepareTestProject(testProject = testProject, name = testProject.name)
+      preparedProject.open { project ->
+        val runManager = RunManager.getInstance(project)
+        val appFacet = project.getAndroidFacets().single { it.configuration.isAppProject }
+        runManager.removeExistingRunConfigurations()
+
+        runBlocking { AndroidRunConfigurations.instance.createSmartModeRunConfigurations(project) }
+        val expectedSmartConfigs = runManager.allConfigurationsList.map { it.type.id to it.name }
+        when (testProject) {
+          AndroidCoreTestProject.WEAR_WITH_TILE_COMPLICATION_AND_WATCHFACE -> {
+            assertThat(runManager.getConfigurationsList(AndroidTileConfigurationType())).hasSize(1)
+            assertThat(runManager.getConfigurationsList(AndroidWatchFaceConfigurationType())).hasSize(1)
+            assertThat(runManager.getConfigurationsList(AndroidComplicationConfigurationType())).hasSize(1)
+            assertThat(expectedSmartConfigs).hasSize(3)
+          }
+          AndroidCoreTestProject.WEAR_DECLARATIVE_WATCHFACE -> {
+            assertThat(runManager.getConfigurationsList(AndroidDeclarativeWatchFaceConfigurationType())).hasSize(1)
+            assertThat(expectedSmartConfigs).hasSize(1)
+          }
+          else -> {
+            assertThat(expectedSmartConfigs).isEmpty()
+          }
+        }
+
+        runManager.removeExistingRunConfigurations()
+        val dumbTask = DumbModeTestUtils.startEternalDumbModeTask(project)
+        val smartConfigsScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val smartConfigsJob =
+          try {
+            val job =
+              smartConfigsScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                AndroidRunConfigurations.instance.createSmartModeRunConfigurations(project)
+              }
+            // Checking whether watch feature is required (and extracting wear components) queries
+            // AndroidManifestIndex via smartReadAction, suspending until smart mode.
+            assertThat(job.isCompleted).isFalse()
+
+            // Calling extractWearComponents directly in dumb mode (bypassing smartReadAction) cannot extract any components.
+            val dumbModeComponents =
+              try {
+                runReadAction { AndroidRunConfigurations.instance.extractWearComponents(appFacet) }
+              } catch (_: IndexNotReadyException) {
+                emptyList()
+              }
+            assertThat(dumbModeComponents).isEmpty()
+
+            runInEdtAndWait { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+            assertThat(runManager.allConfigurationsList).isEmpty()
+            job
+          } finally {
+            DumbModeTestUtils.endEternalDumbModeTaskAndWaitForSmartMode(project, dumbTask)
+          }
+
+        runBlocking { withTimeout(10_000) { smartConfigsJob.join() } }
+        smartConfigsScope.cancel()
+        runInEdtAndWait { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+        assertThat(runManager.allConfigurationsList.map { it.type.id to it.name }).containsExactlyElementsIn(expectedSmartConfigs)
+      }
     }
   }
 
@@ -493,7 +660,10 @@ class AndroidRunConfigurationsTest {
     runInEdtAndWait { FileDocumentManager.getInstance().saveAllDocuments() }
   }
 
-  private fun RunManager.removeExistingRunConfigurations() = allConfigurationsList.forEach { removeConfiguration(findSettings(it)) }
+  private fun RunManager.removeExistingRunConfigurations() {
+    runInEdtAndWait { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+    allConfigurationsList.forEach { removeConfiguration(findSettings(it)) }
+  }
 
   private inline fun <reified T : ConfigurationType> RunManager.addWearConfigurationWithComponentName(name: String, componentName: String) =
     createConfiguration(name, T::class.java).also { settings ->

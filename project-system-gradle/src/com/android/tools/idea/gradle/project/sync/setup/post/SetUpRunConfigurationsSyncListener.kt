@@ -17,26 +17,13 @@ package com.android.tools.idea.gradle.project.sync.setup.post
 
 import com.android.tools.idea.project.AndroidRunConfigurationsManager
 import com.android.tools.idea.projectsystem.ProjectSystemSyncManager
-import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
-import com.intellij.util.concurrency.AppExecutorUtil
-import java.util.concurrent.Callable
 
 class SetUpRunConfigurationsSyncListener(private val project: Project) : ProjectSystemSyncManager.AndroidModelsUpdatedListener {
   override fun androidModelsUpdated() {
     if (project.isDisposed) return
-    // create any run configurations, even if indexing hasn't finished yet.
+    // Create non-smart-mode run configurations immediately (even if indexing hasn't finished yet)
+    // and schedule smart-mode run configurations to be created once indexing finishes.
     AndroidRunConfigurationsManager.getInstance(project).createProjectRunConfigurations()
-
-    // Once indexing is finished, potentially create more run configurations.
-    ReadAction.nonBlocking(
-        Callable {
-          if (project.isDisposed) return@Callable
-          AndroidRunConfigurationsManager.getInstance(project).createProjectRunConfigurations()
-        }
-      )
-      .inSmartMode(project)
-      .coalesceBy(this)
-      .submit(AppExecutorUtil.getAppExecutorService())
   }
 }

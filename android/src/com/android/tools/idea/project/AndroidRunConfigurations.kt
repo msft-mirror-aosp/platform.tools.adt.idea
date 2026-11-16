@@ -53,6 +53,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.android.dom.manifest.Manifest
 import org.jetbrains.android.facet.AndroidFacet
+import org.jetbrains.annotations.VisibleForTesting
 
 internal val wearConfigurationProducers =
   listOf(
@@ -64,52 +65,55 @@ internal val wearConfigurationProducers =
 
 class AndroidRunConfigurations {
 
-  suspend fun createRunConfigurations(project: Project) {
+  fun createNonSmartModeRunConfigurations(project: Project) {
+    val appFacets = project.getAndroidFacets().filter { it.configuration.isAppProject }
+    if (appFacets.isEmpty()) return
+
+    // Whether the watch feature is required is only known once AndroidManifestIndex can be queried in
+    // smart mode, so it is not computed here. Facets with a default launcher activity get an Android
+    // run configuration either way, so create those now and leave the rest to
+    // createSmartModeRunConfigurations.
+    appFacets.filter { !hasAndroidRunConfiguration(it) && hasDefaultLauncherActivity(it) }.forEach { addAndroidRunConfiguration(it) }
+  }
+
+  suspend fun createSmartModeRunConfigurations(
+    project: Project,
+    isWatchFeatureRequired: (AndroidFacet) -> Boolean = LaunchUtils::isWatchFeatureRequired,
+  ) {
     val appFacets = project.getAndroidFacets().filter { it.configuration.isAppProject }
     if (appFacets.isEmpty()) return
 
     val watchFeatureRequiredByFacet = HashMap<AndroidFacet, Boolean>(appFacets.size)
-    fun isWatchFeatureRequired(facet: AndroidFacet): Boolean =
-      watchFeatureRequiredByFacet.getOrPut(facet) { LaunchUtils.isWatchFeatureRequired(facet) }
+    suspend fun isWatchFeatureRequiredCached(facet: AndroidFacet): Boolean =
+      watchFeatureRequiredByFacet.getOrPut(facet) {
+        smartReadAction(project) { isWatchFeatureRequired(facet) }
+      }
 
-    createAndroidRunConfigurations(appFacets, ::isWatchFeatureRequired)
-    createDeclarativeWatchFaceConfigurations(appFacets, ::isWatchFeatureRequired)
-    // create the Android run and declarative watch face configurations first as
-    // we limit the number of wear configurations based on the existing number of configurations.
-    createWearConfigurations(project, appFacets, ::isWatchFeatureRequired)
+    // Create the Android run and declarative watch face configurations first as we limit the number
+    // of wear configurations based on the existing number of configurations.
+
+    // Facets with a default launcher activity were already handled by createNonSmartModeRunConfigurations.
+    // Don't create Android run configurations for Wear apps without one, as the user can launch Wear
+    // surfaces from the gutter.
+    appFacets
+      .filter { !hasAndroidRunConfiguration(it) && !hasDefaultLauncherActivity(it) && !isWatchFeatureRequiredCached(it) }
+      .forEach { addAndroidRunConfiguration(it) }
+    createDeclarativeWatchFaceConfigurations(appFacets) { isWatchFeatureRequiredCached(it) }
+    createWearConfigurations(project, appFacets) { isWatchFeatureRequiredCached(it) }
   }
 
-  private fun createAndroidRunConfigurations(
-    appFacets: List<AndroidFacet>,
-    isWatchFeatureRequired: (AndroidFacet) -> Boolean,
-  ) {
-    appFacets.forEach { createAndroidRunConfiguration(it, isWatchFeatureRequired) }
-  }
-
-  private fun createAndroidRunConfiguration(
-    facet: AndroidFacet,
-    isWatchFeatureRequired: (AndroidFacet) -> Boolean,
-  ) {
+  private fun hasAndroidRunConfiguration(facet: AndroidFacet): Boolean {
     // Android run configuration should always be created with the holder module
     val module = facet.module
     val configurationFactory = AndroidRunConfigurationType.getInstance().factory
-    val configurations = RunManager.getInstance(module.project).getConfigurationsList(configurationFactory.type)
-    for (configuration in configurations) {
-      if (configuration is AndroidRunConfiguration && configuration.configurationModule.module == module) {
-        // There is already a run configuration for this module.
-        return
-      }
+    return RunManager.getInstance(module.project).getConfigurationsList(configurationFactory.type).any { configuration ->
+      configuration is AndroidRunConfiguration && configuration.configurationModule.module == module
     }
-    if (isWatchFeatureRequired(facet) && !hasDefaultLauncherActivity(facet)) {
-      // Don't create Wear Apps Configurations, as the user can launch Wear Surfaces from the gutter
-      return
-    }
-    addAndroidRunConfiguration(facet)
   }
 
-  private fun createDeclarativeWatchFaceConfigurations(
+  private suspend fun createDeclarativeWatchFaceConfigurations(
     appFacets: List<AndroidFacet>,
-    isWatchFeatureRequired: (AndroidFacet) -> Boolean,
+    isWatchFeatureRequired: suspend (AndroidFacet) -> Boolean,
   ) {
     if (!StudioFlags.WEAR_DECLARATIVE_WATCH_FACE_RUN_CONFIGURATION.get()) {
       return
@@ -124,9 +128,9 @@ class AndroidRunConfigurations {
    * The run configuration is only added if there are no existing run configurations based on the [facet]'s module. If an existing
    * declarative watch face run configuration already exists for the module, we don't want to create duplicates.
    */
-  private fun createDeclarativeWatchFaceConfiguration(
+  private suspend fun createDeclarativeWatchFaceConfiguration(
     facet: AndroidFacet,
-    isWatchFeatureRequired: (AndroidFacet) -> Boolean,
+    isWatchFeatureRequired: suspend (AndroidFacet) -> Boolean,
   ) {
     if (!isWatchFeatureRequired(facet)) {
       return
@@ -214,7 +218,7 @@ class AndroidRunConfigurations {
   private suspend fun createWearConfigurations(
     project: Project,
     appFacets: List<AndroidFacet>,
-    isWatchFeatureRequired: (AndroidFacet) -> Boolean,
+    isWatchFeatureRequired: suspend (AndroidFacet) -> Boolean,
   ) {
     if (!StudioFlags.WEAR_RUN_CONFIGS_AUTOCREATE_ENABLED.get()) {
       return
@@ -316,39 +320,42 @@ class AndroidRunConfigurations {
 
   private suspend fun extractWearComponents(module: Module): List<WearComponent> {
     val facet = module.androidFacet ?: return emptyList()
-    return smartReadAction(project = module.project) {
-      val overrides = facet.getModuleSystem().getManifestOverrides()
-      val packageName = facet.getModuleSystem().getPackageName()
-      val psiFacade = JavaPsiFacade.getInstance(module.project)
-      val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(facet.getProductionAndroidModule())
+    return smartReadAction(project = module.project) { extractWearComponents(facet) }
+  }
 
-      val servicePsiClasses =
-        AndroidManifestIndex.getDataForMergedManifestContributors(facet)
-          .map { manifest ->
-            ProgressManager.checkCanceled()
-            manifest.services.mapNotNull {
-              val name = it.name ?: return@mapNotNull null
-              val resolvedName = overrides.resolvePlaceholders(name)
-              val qualifiedName =
-                when {
-                  packageName == null -> resolvedName
-                  resolvedName.startsWith('.') -> packageName + resolvedName
-                  resolvedName.contains('.') -> resolvedName
-                  else -> "$packageName.$resolvedName"
-                }
-              psiFacade.findClass(qualifiedName, scope)
-            }
+  @VisibleForTesting
+  fun extractWearComponents(facet: AndroidFacet): List<WearComponent> {
+    val overrides = facet.getModuleSystem().getManifestOverrides()
+    val packageName = facet.getModuleSystem().getPackageName()
+    val psiFacade = JavaPsiFacade.getInstance(facet.module.project)
+    val scope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(facet.getProductionAndroidModule())
+
+    val servicePsiClasses =
+      AndroidManifestIndex.getDataForMergedManifestContributors(facet)
+        .map { manifest ->
+          ProgressManager.checkCanceled()
+          manifest.services.mapNotNull {
+            val name = it.name ?: return@mapNotNull null
+            val resolvedName = overrides.resolvePlaceholders(name)
+            val qualifiedName =
+              when {
+                packageName == null -> resolvedName
+                resolvedName.startsWith('.') -> packageName + resolvedName
+                resolvedName.contains('.') -> resolvedName
+                else -> "$packageName.$resolvedName"
+              }
+            psiFacade.findClass(qualifiedName, scope)
           }
-          .toList()
-          .flatten()
-          .toSet()
+        }
+        .toList()
+        .flatten()
+        .toSet()
 
-      servicePsiClasses.mapNotNull { psiClass ->
-        ProgressManager.checkCanceled()
-        val qualifiedName = psiClass.qualifiedName ?: return@mapNotNull null
-        val configurationFactory = wearConfigurationFactory(psiClass) ?: return@mapNotNull null
-        WearComponent(qualifiedName, configurationFactory)
-      }
+    return servicePsiClasses.mapNotNull { psiClass ->
+      ProgressManager.checkCanceled()
+      val qualifiedName = psiClass.qualifiedName ?: return@mapNotNull null
+      val configurationFactory = wearConfigurationFactory(psiClass) ?: return@mapNotNull null
+      WearComponent(qualifiedName, configurationFactory)
     }
   }
 
@@ -364,7 +371,7 @@ class AndroidRunConfigurations {
       .toSet()
   }
 
-  private data class WearComponent(val name: String, val configurationFactory: ConfigurationFactory)
+  @VisibleForTesting data class WearComponent(val name: String, val configurationFactory: ConfigurationFactory)
 
   companion object {
     @JvmStatic

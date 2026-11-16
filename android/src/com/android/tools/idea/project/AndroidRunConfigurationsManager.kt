@@ -18,6 +18,7 @@ package com.android.tools.idea.project
 import com.android.tools.idea.concurrency.coroutineScope
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.waitForSmartMode
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.util.concurrency.ThreadingAssertions
 import kotlinx.coroutines.Job
@@ -36,7 +37,15 @@ class AndroidRunConfigurationsManager(private val project: Project) {
       .launch {
         mutex.withLock {
           withBackgroundProgress(project, "Setting up run configurations...") {
-            AndroidRunConfigurations.instance.createRunConfigurations(project)
+            AndroidRunConfigurations.instance.createNonSmartModeRunConfigurations(project)
+          }
+        }
+        // Wait for smart mode without holding the mutex, so indexing doesn't delay the
+        // non-smart-mode pass of later calls or show a progress indicator while indexing.
+        project.waitForSmartMode()
+        mutex.withLock {
+          withBackgroundProgress(project, "Setting up run configurations...") {
+            AndroidRunConfigurations.instance.createSmartModeRunConfigurations(project)
           }
         }
       }
