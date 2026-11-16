@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.util.regex.Pattern;
 
 public final class AswbPaths {
+  /// Keep this consistent with aswb/templates/postinst.channel.template and prerm.template
   private static final Pattern VERSIONED_HOME_DIR = Pattern.compile("(android-studio-with-blaze-[^-]+)-.+");
 
   private AswbPaths() {
