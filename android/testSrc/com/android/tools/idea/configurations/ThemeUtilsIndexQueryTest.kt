@@ -18,8 +18,11 @@ package com.android.tools.idea.configurations
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.util.androidFacet
 import com.google.common.truth.Truth
+import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.DumbModeTestUtils
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import org.intellij.lang.annotations.Language
 import org.jetbrains.android.facet.AndroidFacet
 import org.junit.Before
@@ -79,5 +82,51 @@ class ThemeUtilsIndexQueryTest {
         Truth.assertThat(setOf("@style/AppTheme")).containsAllIn(facet.module.getAllActivityThemeNames())
       }
     }
+  }
+
+  private fun createConfiguration() =
+    ConfigurationManager.getOrCreateInstance(facet.module)
+      .getConfiguration(
+        projectRule.fixture
+          .addFileToProject("res/layout/layout.xml", "<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"/>")
+          .virtualFile
+      )
+
+  /** Regression test for b/585187652: a theme computed while the manifest index was not ready must not be cached. */
+  @Test
+  fun testDefaultThemeComputedBeforeManifestIndexIsReadyIsNotCached() {
+    val configuration = createConfiguration()
+    val indexReady = AtomicBoolean(false)
+    val computedThemes = ArrayDeque(listOf("@style/FallbackTheme", "@style/AppTheme"))
+    val computeCount = AtomicInteger()
+    val provider =
+      StudioThemeInfoProvider(facet.module, { indexReady.get() }) {
+        computeCount.incrementAndGet()
+        // AndroidManifestIndex becomes ready while the theme is being computed; no tracker changes.
+        indexReady.set(true)
+        computedThemes.removeFirst()
+      }
+
+    assertThat(provider.getDefaultTheme(configuration)).isEqualTo("@style/FallbackTheme")
+    assertThat(provider.getDefaultTheme(configuration)).isEqualTo("@style/AppTheme")
+    // Ready before and after: now cached (a third computation would throw NoSuchElementException).
+    assertThat(provider.getDefaultTheme(configuration)).isEqualTo("@style/AppTheme")
+    assertThat(computeCount.get()).isEqualTo(2)
+  }
+
+  @Test
+  fun testDefaultThemeComputedInDumbModeIsNotCached() {
+    val configuration = createConfiguration()
+    val computeCount = AtomicInteger()
+    val provider =
+      StudioThemeInfoProvider(facet.module, { it.isMainManifestIndexReady() }) {
+        computeCount.incrementAndGet()
+        "@style/FallbackTheme"
+      }
+    DumbModeTestUtils.runInDumbModeSynchronously(projectRule.project) {
+      provider.getDefaultTheme(configuration)
+      provider.getDefaultTheme(configuration)
+    }
+    assertThat(computeCount.get()).isEqualTo(2)
   }
 }

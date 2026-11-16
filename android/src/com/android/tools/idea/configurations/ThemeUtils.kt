@@ -34,11 +34,13 @@ import com.android.tools.idea.model.queryActivitiesFromManifestIndex
 import com.android.tools.idea.model.queryApplicationThemeFromManifestIndex
 import com.android.tools.idea.model.queryIsMainManifestIndexReady
 import com.android.tools.idea.projectsystem.ProjectSyncModificationTracker
+import com.android.tools.idea.projectsystem.sourceProviders
 import com.android.tools.idea.run.activity.DefaultActivityLocator
 import com.android.tools.idea.util.uiSafeRunReadActionInSmartMode
 import com.android.tools.module.AndroidModuleInfo
 import com.android.utils.cache.ChangeTracker
 import com.android.utils.cache.ChangeTrackerCachedValue
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.diagnostic.thisLogger
@@ -62,6 +64,11 @@ typealias ThemeStyleFilter = (ConfiguredThemeEditorStyle) -> Boolean
  * indexes have been cleaned.
  */
 private class MainManifestIndexNotReadyException : Exception()
+
+/** Carries a fallback theme computed while the project was dumb or the manifest index was not ready, so it is not cached. */
+private class UnreadyManifestIndexThemeException(val theme: String) : Exception() {
+  override fun fillInStackTrace(): Throwable = this
+}
 
 /** Try to get application theme from [AndroidManifestIndex]. */
 fun Module.getAppThemeName(): String? {
@@ -150,7 +157,15 @@ fun Module.getDeviceDefaultTheme(renderingTarget: IAndroidTarget?, screenSize: S
 }
 
 /** Studio-specific implementation of [ThemeInfoProvider]. */
-class StudioThemeInfoProvider(private val module: Module) : ThemeInfoProvider {
+class StudioThemeInfoProvider
+@VisibleForTesting
+internal constructor(
+  private val module: Module,
+  private val isManifestIndexReady: (Module) -> Boolean,
+  private val computeDefaultTheme: (Configuration) -> String,
+) : ThemeInfoProvider {
+  constructor(module: Module) : this(module, { it.isMainManifestIndexReady() }, { computeDefaultThemeForConfiguration(it) })
+
   private val cachedDefaultThemesLock = ReentrantLock()
   private val cachedDefaultThemes = WeakHashMap<Configuration, ChangeTrackerCachedValue<String>>()
   override val appThemeName: String?
@@ -173,7 +188,6 @@ class StudioThemeInfoProvider(private val module: Module) : ThemeInfoProvider {
       Logger.getInstance(StudioThemeInfoProvider::class.java).warn("getDefaultTheme should not be called in the dispatch thread")
     }
     val module = ConfigurationManager.getFromConfiguration(configuration).module
-
     val modificationTracker = MergedManifestModificationTracker.getInstance(module)
     val dumbServiceTracker = DumbService.getInstance(module.project)
 
@@ -181,19 +195,54 @@ class StudioThemeInfoProvider(private val module: Module) : ThemeInfoProvider {
       cachedDefaultThemes.getOrPut(configuration) { ChangeTrackerCachedValue.softReference() }
     }
     val weakConfig = WeakReference(configuration)
-    return runBlocking {
-      ChangeTrackerCachedValue.get(
-        defaultThemeCache,
-        { computeDefaultThemeForConfiguration(configuration) },
-        ChangeTracker(
-          { weakConfig.get()?.modificationCount ?: 0 },
-          { modificationTracker.modificationCount },
-          { dumbServiceTracker.modificationTracker.modificationCount },
-          { ProjectSyncModificationTracker.getInstance(module.project).modificationCount },
-        ),
-      )
+    return try {
+      runBlocking {
+        ChangeTrackerCachedValue.get(
+          defaultThemeCache,
+          {
+            val dumbCountBefore = dumbServiceTracker.modificationTracker.modificationCount
+            val indexReadyBefore = isManifestIndexReady(module)
+            val theme = computeDefaultTheme(configuration)
+            if (
+              !indexReadyBefore ||
+                dumbServiceTracker.modificationTracker.modificationCount != dumbCountBefore ||
+                !isManifestIndexReady(module)
+            ) {
+              throw UnreadyManifestIndexThemeException(theme)
+            }
+            theme
+          },
+          ChangeTracker(
+            { weakConfig.get()?.modificationCount ?: 0 },
+            { modificationTracker.modificationCount },
+            { dumbServiceTracker.modificationTracker.modificationCount },
+            { ProjectSyncModificationTracker.getInstance(module.project).modificationCount },
+          ),
+        )
+      }
+    } catch (e: UnreadyManifestIndexThemeException) {
+      e.theme
     }
   }
+}
+
+internal fun Module.isMainManifestIndexReady(): Boolean {
+  if (DumbService.isDumb(project)) return false
+  val facet = AndroidFacet.getInstance(this) ?: return true
+  return ApplicationManager.getApplication()
+    .runReadAction(
+      Computable {
+        if (DumbService.isDumb(project)) return@Computable false
+        if (facet.sourceProviders.mainManifestFile == null) return@Computable true
+        SlowOperations.knownIssue("b/448322683").use {
+          try {
+            facet.queryIsMainManifestIndexReady()
+          } catch (_: IndexNotReadyException) {
+            false
+          }
+        }
+      }
+    )
 }
 
 fun getDeviceDefaultTheme(

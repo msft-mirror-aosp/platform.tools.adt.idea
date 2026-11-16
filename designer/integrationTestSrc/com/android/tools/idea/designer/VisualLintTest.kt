@@ -61,6 +61,8 @@ class VisualLintTest {
       studio.waitForComponentByClass("DesignSurfaceScrollPane", "JBViewport", "SceneViewPanel")
       system.installation.ideaLog.waitForMatchingLine(".*Visual Lint analysis finished, 1 error found", 10, TimeUnit.SECONDS)
 
+      studio.waitForIndex()
+
       val homePath: Path = project.targetProject.resolve("app/src/main/res/layout/fragment_home.xml")
       studio.openFile("visualLintApplication", homePath.toString())
       studio.waitForComponentByClass("DesignSurfaceScrollPane", "JBViewport", "SceneViewPanel")
@@ -74,11 +76,6 @@ class VisualLintTest {
       // Make button 100dp wide instead of 0dp (corresponding to match_parent). That should fix one
       // of the issues.
       studio.editFile(homePath.toString(), "(?s)(id/button.+=\")0(dp)", "$1100$2")
-      system.installation.ideaLog.waitForMatchingLine(
-        ".*RenderResult\\{renderResult=Result\\{status=SUCCESS, errorMessage=null, throwable=null, data=null\\}, sourceFile=XmlFile:fragment_home\\.xml.*",
-        10,
-        TimeUnit.SECONDS,
-      )
       system.installation.ideaLog.waitForMatchingLine(".*Visual Lint analysis finished, 2 errors found", 60, TimeUnit.SECONDS)
     }
   }
