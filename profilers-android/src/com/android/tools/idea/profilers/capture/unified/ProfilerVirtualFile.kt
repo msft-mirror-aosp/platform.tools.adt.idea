@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.profilers.capture.unified
 
-import com.android.tools.profilers.taskbased.common.icons.TaskIconUtils
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerKeys
@@ -25,6 +24,7 @@ import com.intellij.openapi.vfs.VirtualFileSystem
 import com.intellij.openapi.vfs.ex.dummy.DummyFileSystem
 import java.io.InputStream
 import java.io.OutputStream
+import javax.swing.Icon
 
 /**
  * An in-memory [VirtualFile] representing an active or completed Live Profiler Task in the main editor area.
@@ -37,8 +37,14 @@ import java.io.OutputStream
  * @property taskType The type of profiler task being performed (e.g. [ProfilerTaskType.LIVE_VIEW],
  *   [ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS]).
  * @property taskName The human-readable title of the task displayed on the editor tab.
+ * @property taskIcon The icon of the task displayed on the editor tab.
  */
-class ProfilerVirtualFile(val sessionId: Long, val taskType: ProfilerTaskType, private val taskName: String) : VirtualFile() {
+class ProfilerVirtualFile(
+  val sessionId: Long,
+  val taskType: ProfilerTaskType,
+  private val taskName: String,
+  private val taskIcon: Icon,
+) : VirtualFile() {
 
   init {
     // Live tasks share a single profiler UI, so this file can be shown in only one editor at a time. This hides the editor tab actions
@@ -88,6 +94,6 @@ class ProfilerVirtualFile(val sessionId: Long, val taskType: ProfilerTaskType, p
 
       override fun getDescription() = "Profiler Capture"
 
-      override fun getIcon() = TaskIconUtils.getTaskIcon(taskType)
+      override fun getIcon() = taskIcon
     }
 }

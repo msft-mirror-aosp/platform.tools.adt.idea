@@ -828,6 +828,28 @@ public final class StudioIcons {
       /** 44x44 */ public static final @NotNull Icon ISSUE = load("studio/icons/profiler/sidebar/issue.svg", 192685632, 2);
     }
 
+    public static final class TasksV2Large {
+      /** 28x28 */ public static final @NotNull Icon CALLSTACK_SAMPLE_LARGE = load("studio/icons/profiler/tasks-v2-large/callstack-sample-large.svg", -714391366, 2);
+      /** 28x28 */ public static final @NotNull Icon FIND_MEMORY_LEAKS_LARGE = load("studio/icons/profiler/tasks-v2-large/find-memory-leaks-large.svg", 583206820, 2);
+      /** 28x28 */ public static final @NotNull Icon HEAP_DUMP_LARGE = load("studio/icons/profiler/tasks-v2-large/heap-dump-large.svg", 92409698, 2);
+      /** 28x28 */ public static final @NotNull Icon JAVA_KOTLIN_ALLOCATIONS_LARGE = load("studio/icons/profiler/tasks-v2-large/java-kotlin-allocations-large.svg", -937996960, 2);
+      /** 28x28 */ public static final @NotNull Icon JAVA_KOTLIN_METHOD_TRACE_LARGE = load("studio/icons/profiler/tasks-v2-large/java-kotlin-method-trace-large.svg", 735979038, 2);
+      /** 28x28 */ public static final @NotNull Icon LIVE_VIEW_LARGE = load("studio/icons/profiler/tasks-v2-large/live-view-large.svg", 2143232537, 2);
+      /** 28x28 */ public static final @NotNull Icon NATIVE_ALLOCATIONS_LARGE = load("studio/icons/profiler/tasks-v2-large/native-allocations-large.svg", 1377678158, 2);
+      /** 28x28 */ public static final @NotNull Icon SYSTEM_TRACE_LARGE = load("studio/icons/profiler/tasks-v2-large/system-trace-large.svg", -58558402, 2);
+    }
+
+    public static final class TasksV2 {
+      /** 16x16 */ public static final @NotNull Icon CALLSTACK_SAMPLE = load("studio/icons/profiler/tasks-v2/callstack-sample.svg", -1084386247, 2);
+      /** 16x16 */ public static final @NotNull Icon FIND_MEMORY_LEAKS = load("studio/icons/profiler/tasks-v2/find-memory-leaks.svg", 1814502890, 2);
+      /** 16x16 */ public static final @NotNull Icon HEAP_DUMP = load("studio/icons/profiler/tasks-v2/heap-dump.svg", -1717212691, 2);
+      /** 16x16 */ public static final @NotNull Icon JAVA_KOTLIN_ALLOCATIONS = load("studio/icons/profiler/tasks-v2/java-kotlin-allocations.svg", -2043962255, 2);
+      /** 16x16 */ public static final @NotNull Icon JAVA_KOTLIN_METHOD_TRACE = load("studio/icons/profiler/tasks-v2/java-kotlin-method-trace.svg", -1410880163, 2);
+      /** 16x16 */ public static final @NotNull Icon LIVE_VIEW = load("studio/icons/profiler/tasks-v2/live-view.svg", -956101584, 2);
+      /** 16x16 */ public static final @NotNull Icon NATIVE_ALLOCATIONS = load("studio/icons/profiler/tasks-v2/native-allocations.svg", -1359392548, 2);
+      /** 16x16 */ public static final @NotNull Icon SYSTEM_TRACE = load("studio/icons/profiler/tasks-v2/system-trace.svg", -771653404, 2);
+    }
+
     public static final class Tasks {
       /** 16x16 */ public static final @NotNull Icon APP_STARTUP_INSIGHTS = load("studio/icons/profiler/tasks/app-startup-insights.svg", 1292851434, 2);
       /** 16x16 */ public static final @NotNull Icon CALLSTACK_SAMPLE = load("studio/icons/profiler/tasks/callstack-sample.svg", -531894320, 2);

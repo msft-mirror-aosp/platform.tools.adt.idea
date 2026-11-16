@@ -268,6 +268,7 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     val isLegacyAllocations = taskArgs is LegacyJavaKotlinAllocationsTaskArgs
     val isLiveTaskInEditor =
       ProfilerInEditorUtils.isLiveTaskInEditorEnabled(profilers.ideServices.featureConfig, taskType, isLegacyAllocations)
+    val isHomeTabV2Enabled = profilers.ideServices.featureConfig.isProfilerHomeTabV2Enabled
 
     isTaskTabClosing = false
 
@@ -284,8 +285,9 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
       val enterSuccessful = taskHandler.enter(taskArgs)
       if (isLiveTaskInEditor && enterSuccessful) {
         if (existingFile == null || existingFile.sessionId != currentSessionId) {
-          val taskTabTitle = StringUtils.getTaskTabTitle(taskType, profilers.ideServices.featureConfig.isProfilerHomeTabV2Enabled)
-          liveTaskVirtualFile = ProfilerVirtualFile(currentSessionId, taskType, taskTabTitle)
+          val taskTabTitle = StringUtils.getTaskTabTitle(taskType, isHomeTabV2Enabled)
+          val taskIcon = TaskIconUtils.getTaskIcon(taskType, isHomeTabV2Enabled)
+          liveTaskVirtualFile = ProfilerVirtualFile(currentSessionId, taskType, taskTabTitle, taskIcon)
         }
         liveTaskVirtualFile?.let { virtualFile ->
           invokeLater {
@@ -298,9 +300,9 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
 
     if (!isLiveTaskInEditor) {
       val taskTab = findTaskTab()
-      val taskTabTitle = StringUtils.getTaskTabTitle(taskType, profilers.ideServices.featureConfig.isProfilerHomeTabV2Enabled)
+      val taskTabTitle = StringUtils.getTaskTabTitle(taskType, isHomeTabV2Enabled)
 
-      val taskIcon = TaskIconUtils.getTaskIcon(taskType)
+      val taskIcon = TaskIconUtils.getTaskIcon(taskType, isHomeTabV2Enabled)
       val createdTaskTab =
         if (taskTab != null) {
           taskTab.displayName = taskTabTitle

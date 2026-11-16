@@ -3944,47 +3944,98 @@ object StudioIconsCompose {
           "/studio/icons/profiler/tasks-v2/callstack-sample.svg",
           "/studio/icons/profiler/tasks-v2/callstack-sample.svg",
           StudioIconsCompose.javaClass,
-        ) // 28x28
+        ) // 16x16
       val FindMemoryLeaks: IntelliJIconKey =
         IntelliJIconKey(
           "/studio/icons/profiler/tasks-v2/find-memory-leaks.svg",
           "/studio/icons/profiler/tasks-v2/find-memory-leaks.svg",
           StudioIconsCompose.javaClass,
-        ) // 28x28
+        ) // 16x16
       val HeapDump: IntelliJIconKey =
         IntelliJIconKey(
           "/studio/icons/profiler/tasks-v2/heap-dump.svg",
           "/studio/icons/profiler/tasks-v2/heap-dump.svg",
           StudioIconsCompose.javaClass,
-        ) // 28x28
+        ) // 16x16
       val JavaKotlinAllocations: IntelliJIconKey =
         IntelliJIconKey(
           "/studio/icons/profiler/tasks-v2/java-kotlin-allocations.svg",
           "/studio/icons/profiler/tasks-v2/java-kotlin-allocations.svg",
           StudioIconsCompose.javaClass,
-        ) // 28x28
+        ) // 16x16
       val JavaKotlinMethodTrace: IntelliJIconKey =
         IntelliJIconKey(
           "/studio/icons/profiler/tasks-v2/java-kotlin-method-trace.svg",
           "/studio/icons/profiler/tasks-v2/java-kotlin-method-trace.svg",
           StudioIconsCompose.javaClass,
-        ) // 28x28
+        ) // 16x16
       val LiveView: IntelliJIconKey =
         IntelliJIconKey(
           "/studio/icons/profiler/tasks-v2/live-view.svg",
           "/studio/icons/profiler/tasks-v2/live-view.svg",
           StudioIconsCompose.javaClass,
-        ) // 28x28
+        ) // 16x16
       val NativeAllocations: IntelliJIconKey =
         IntelliJIconKey(
           "/studio/icons/profiler/tasks-v2/native-allocations.svg",
           "/studio/icons/profiler/tasks-v2/native-allocations.svg",
           StudioIconsCompose.javaClass,
-        ) // 28x28
+        ) // 16x16
       val SystemTrace: IntelliJIconKey =
         IntelliJIconKey(
           "/studio/icons/profiler/tasks-v2/system-trace.svg",
           "/studio/icons/profiler/tasks-v2/system-trace.svg",
+          StudioIconsCompose.javaClass,
+        ) // 16x16
+    }
+
+    object Tasksv2large {
+      val CallstackSampleLarge: IntelliJIconKey =
+        IntelliJIconKey(
+          "/studio/icons/profiler/tasks-v2-large/callstack-sample-large.svg",
+          "/studio/icons/profiler/tasks-v2-large/callstack-sample-large.svg",
+          StudioIconsCompose.javaClass,
+        ) // 28x28
+      val FindMemoryLeaksLarge: IntelliJIconKey =
+        IntelliJIconKey(
+          "/studio/icons/profiler/tasks-v2-large/find-memory-leaks-large.svg",
+          "/studio/icons/profiler/tasks-v2-large/find-memory-leaks-large.svg",
+          StudioIconsCompose.javaClass,
+        ) // 28x28
+      val HeapDumpLarge: IntelliJIconKey =
+        IntelliJIconKey(
+          "/studio/icons/profiler/tasks-v2-large/heap-dump-large.svg",
+          "/studio/icons/profiler/tasks-v2-large/heap-dump-large.svg",
+          StudioIconsCompose.javaClass,
+        ) // 28x28
+      val JavaKotlinAllocationsLarge: IntelliJIconKey =
+        IntelliJIconKey(
+          "/studio/icons/profiler/tasks-v2-large/java-kotlin-allocations-large.svg",
+          "/studio/icons/profiler/tasks-v2-large/java-kotlin-allocations-large.svg",
+          StudioIconsCompose.javaClass,
+        ) // 28x28
+      val JavaKotlinMethodTraceLarge: IntelliJIconKey =
+        IntelliJIconKey(
+          "/studio/icons/profiler/tasks-v2-large/java-kotlin-method-trace-large.svg",
+          "/studio/icons/profiler/tasks-v2-large/java-kotlin-method-trace-large.svg",
+          StudioIconsCompose.javaClass,
+        ) // 28x28
+      val LiveViewLarge: IntelliJIconKey =
+        IntelliJIconKey(
+          "/studio/icons/profiler/tasks-v2-large/live-view-large.svg",
+          "/studio/icons/profiler/tasks-v2-large/live-view-large.svg",
+          StudioIconsCompose.javaClass,
+        ) // 28x28
+      val NativeAllocationsLarge: IntelliJIconKey =
+        IntelliJIconKey(
+          "/studio/icons/profiler/tasks-v2-large/native-allocations-large.svg",
+          "/studio/icons/profiler/tasks-v2-large/native-allocations-large.svg",
+          StudioIconsCompose.javaClass,
+        ) // 28x28
+      val SystemTraceLarge: IntelliJIconKey =
+        IntelliJIconKey(
+          "/studio/icons/profiler/tasks-v2-large/system-trace-large.svg",
+          "/studio/icons/profiler/tasks-v2-large/system-trace-large.svg",
           StudioIconsCompose.javaClass,
         ) // 28x28
     }

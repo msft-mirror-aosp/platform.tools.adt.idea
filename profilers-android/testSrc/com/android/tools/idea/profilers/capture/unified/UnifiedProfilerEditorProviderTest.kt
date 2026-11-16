@@ -30,6 +30,7 @@ import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.ui.EmptyIcon
 import java.nio.file.Files
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createTempDirectory
@@ -52,7 +53,12 @@ class UnifiedProfilerEditorProviderTest {
   @Test
   fun accept_profilerVirtualFile_returnsTrue() {
     val liveVirtualFile =
-      ProfilerVirtualFile(sessionId = 1L, taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, taskName = "Java/Kotlin Allocations")
+      ProfilerVirtualFile(
+        sessionId = 1L,
+        taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
+        taskName = "Java/Kotlin Allocations",
+        taskIcon = EmptyIcon.ICON_16,
+      )
 
     assertThat(provider.accept(projectRule.project, liveVirtualFile)).isTrue()
   }
@@ -60,7 +66,12 @@ class UnifiedProfilerEditorProviderTest {
   @Test
   fun createEditor_profilerVirtualFile_createsUnifiedProfilerFileEditor() {
     val liveVirtualFile =
-      ProfilerVirtualFile(sessionId = 1L, taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, taskName = "Java/Kotlin Allocations")
+      ProfilerVirtualFile(
+        sessionId = 1L,
+        taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
+        taskName = "Java/Kotlin Allocations",
+        taskIcon = EmptyIcon.ICON_16,
+      )
 
     val editor = provider.createEditor(projectRule.project, liveVirtualFile)
     assertThat(editor).isInstanceOf(UnifiedProfilerFileEditor::class.java)

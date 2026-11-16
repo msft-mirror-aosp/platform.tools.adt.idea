@@ -38,6 +38,7 @@ import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.ui.content.ContentManager
+import com.intellij.util.ui.EmptyIcon
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import java.awt.Dimension
@@ -95,7 +96,12 @@ class UnifiedProfilerFileEditorTest {
   @Test
   fun `tab disposed without reopen notifies tab closed after transition debounce delay`() {
     val virtualFile =
-      ProfilerVirtualFile(sessionId = 42L, taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, taskName = "Java/Kotlin Allocations")
+      ProfilerVirtualFile(
+        sessionId = 42L,
+        taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
+        taskName = "Java/Kotlin Allocations",
+        taskIcon = EmptyIcon.ICON_16,
+      )
 
     whenever(mockFileEditorManager.getAllEditors(virtualFile)).thenReturn(FileEditor.EMPTY_ARRAY)
     val editor = UnifiedProfilerFileEditor(project, virtualFile)
@@ -113,7 +119,12 @@ class UnifiedProfilerFileEditorTest {
   @Test
   fun `tab disposed and reopened within transition debounce delay does not notify tab closed`() {
     val virtualFile =
-      ProfilerVirtualFile(sessionId = 42L, taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, taskName = "Java/Kotlin Allocations")
+      ProfilerVirtualFile(
+        sessionId = 42L,
+        taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
+        taskName = "Java/Kotlin Allocations",
+        taskIcon = EmptyIcon.ICON_16,
+      )
 
     val editor1 = UnifiedProfilerFileEditor(project, virtualFile)
     val editor2 = UnifiedProfilerFileEditor(project, virtualFile)
@@ -135,7 +146,12 @@ class UnifiedProfilerFileEditorTest {
   fun `editor component is a min-width scroll pane whose minimum width does not depend on the profiler UI`() {
     whenever(mockProfilerToolWindow.profilersPanel).thenReturn(JPanel().apply { minimumSize = Dimension(5000, 10) })
     val virtualFile =
-      ProfilerVirtualFile(sessionId = 42L, taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, taskName = "Java/Kotlin Allocations")
+      ProfilerVirtualFile(
+        sessionId = 42L,
+        taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
+        taskName = "Java/Kotlin Allocations",
+        taskIcon = EmptyIcon.ICON_16,
+      )
     whenever(mockFileEditorManager.getAllEditors(virtualFile)).thenReturn(FileEditor.EMPTY_ARRAY)
     val editor = UnifiedProfilerFileEditor(project, virtualFile)
     Disposer.register(disposableRule.disposable, editor)

@@ -21,6 +21,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.fileEditor.FileEditorManagerKeys
 import com.intellij.openapi.vfs.ex.dummy.DummyFileSystem
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.util.ui.EmptyIcon
 import org.junit.Rule
 import org.junit.Test
 
@@ -30,8 +31,14 @@ class ProfilerVirtualFileTest {
 
   @Test
   fun virtualFile_returnsExpectedPropertiesAndIcon() {
+    val taskIcon = TaskIconUtils.getTaskIcon(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, isProfilerHomeTabV2Enabled = true)
     val virtualFile =
-      ProfilerVirtualFile(sessionId = 12345L, taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, taskName = "Java/Kotlin Allocations")
+      ProfilerVirtualFile(
+        sessionId = 12345L,
+        taskType = ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
+        taskName = "Java/Kotlin Allocations",
+        taskIcon = taskIcon,
+      )
 
     assertThat(virtualFile.sessionId).isEqualTo(12345L)
     assertThat(virtualFile.taskType).isEqualTo(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS)
@@ -43,12 +50,13 @@ class ProfilerVirtualFileTest {
     val fileType = virtualFile.fileType
     assertThat(fileType.isMyFileType(virtualFile)).isTrue()
     assertThat(fileType.name).isEqualTo("ProfilerCapture")
-    assertThat(fileType.icon).isEqualTo(TaskIconUtils.getTaskIcon(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS))
+    assertThat(fileType.icon).isSameAs(taskIcon)
   }
 
   @Test
   fun virtualFile_forbidsTabSplit() {
-    val virtualFile = ProfilerVirtualFile(sessionId = 12345L, taskType = ProfilerTaskType.LIVE_VIEW, taskName = "Live View")
+    val virtualFile =
+      ProfilerVirtualFile(sessionId = 12345L, taskType = ProfilerTaskType.LIVE_VIEW, taskName = "Live View", taskIcon = EmptyIcon.ICON_16)
 
     // Live tasks share a single profiler UI, so the platform must hide the editor tab actions that would show the file twice.
     assertThat(virtualFile.getUserData(FileEditorManagerKeys.FORBID_TAB_SPLIT)).isTrue()
