@@ -335,7 +335,9 @@ private fun buildJarArtifactToSourceSetMapFromPlatformModels(
             sourceSet.artifacts.map {
               it to
                 GradleSourceSetProjectPath(
-                  PathUtil.toSystemIndependentName(buildModel.rootProject.projectDirectory.path),
+                  // Use buildIdentifier.rootDir rather than rootProject.projectDirectory so it matches GradleProjectPathSyncExtension
+                  // even when rootProject.projectDir is customized or the build is symlinked.
+                  PathUtil.toSystemIndependentName(buildModel.buildIdentifier.rootDir.path),
                   projectModel.path,
                   IdeModuleSourceSetImpl.wellKnownOrCreate(sourceSet.name),
                 )

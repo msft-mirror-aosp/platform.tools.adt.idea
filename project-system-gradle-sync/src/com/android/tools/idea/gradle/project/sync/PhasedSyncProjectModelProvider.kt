@@ -346,13 +346,11 @@ private fun verifyIncompatibleAgpVersionsAreNotUsedOrFailSync(
 ) {
   // Fail Sync if we do not use the same AGP version across all the android projects.
   if (cachedModels.versions.values.map { it.agp }.distinct().size > 1) {
-    val buildIdMap =
-      buildBuildPathMap(controller, buildModels).entries.associate { (buildPath, buildId) ->
-        BuildId(buildId.asFile.canonicalFile) to buildPath
-      }
+    val buildIdMap = buildBuildPathMap(controller, buildModels).entries.associate { (buildPath, buildId) -> buildId to buildPath }
     val agpVersionsAndGradleBuilds =
       cachedModels.versions.map { (gradleProject, versions) ->
-        val buildId = BuildId(gradleProject.projectIdentifier.buildIdentifier.rootDir.canonicalFile)
+        // Both buildIdMap (via buildBuildPathMap) and gradleProject use Gradle's BuildIdentifier.rootDir directly.
+        val buildId = BuildId(gradleProject.projectIdentifier.buildIdentifier.rootDir)
         val buildPath = buildIdMap[buildId] ?: error("Build not found: $buildId \n available builds $buildIdMap")
         versions.agp to buildPath
       }

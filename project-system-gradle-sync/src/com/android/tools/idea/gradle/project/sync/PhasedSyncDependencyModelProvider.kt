@@ -252,12 +252,22 @@ private fun buildAndroidProjectPathResolver(
   return AndroidProjectPathResolver { buildId, projectPath -> projectIdentifierToResolvedProjectPathMap[buildId to projectPath] }
 }
 
-/** Map from the Gradle path (composite aware, supports nested builds) to the Gradle build root directory. */
+/**
+ * Map from the Gradle path (composite aware, supports nested builds) to the Gradle build root directory.
+ *
+ * Uses [GradleBuild.getBuildIdentifier]'s root directory rather than [BuildMap]'s value (`rootProject.projectDir`), because starting with
+ * Gradle 7.4 `buildIdentifier.rootDir` is `settingsDir` and can differ from `rootProject.projectDir` when `settings.gradle` customizes
+ * `rootProject.projectDir` (or when a build is symlinked, since `projectDir` is canonicalized while `rootDir` may not be).
+ */
 internal fun buildBuildPathMap(controller: BuildController, allBuilds: Collection<GradleBuild>): Map<String, BuildId> =
   allBuilds
-    .mapNotNull { buildModel -> controller.findModel(buildModel.rootProject, BuildMap::class.java) }
-    .flatMap { it.buildIdMap.entries }
-    .associate { it.key to BuildId(it.value) }
+    .flatMap { buildModel ->
+      val buildId = BuildId(buildModel.buildIdentifier.rootDir)
+      controller.findModel(buildModel.rootProject, BuildMap::class.java)?.buildIdMap?.keys.orEmpty().map { buildPath ->
+        buildPath to buildId
+      }
+    }
+    .toMap()
 
 /** Used to refer to Android projects and resolve variant names for them. */
 private data class ResolvedAndroidProjectPathImpl(

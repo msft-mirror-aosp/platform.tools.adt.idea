@@ -16,7 +16,6 @@
 package com.android.tools.idea.gradle.project.sync
 
 import com.android.ide.gradle.model.GradlePluginModel
-import com.android.ide.gradle.model.composites.BuildMap
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeDebugInfo
 import com.android.tools.idea.gradle.model.impl.IdeBuildImpl
@@ -201,7 +200,7 @@ private fun buildModelsAndMap(buildModel: GradleBuild, controller: BuildControll
   return BuildModelsAndMap(buildModels, buildMap)
 }
 
-private fun buildCompositeBuildMap(
+internal fun buildCompositeBuildMap(
   controller: BuildController,
   buildModel: GradleBuild,
   buildModels: Set<GradleBuild>,
@@ -209,11 +208,9 @@ private fun buildCompositeBuildMap(
   val gradleSupportsDirectTaskInvocationInComposites = checkGradleVersionIsAtLeast(controller, buildModel, GradleVersion.version("6.8"))
   return IdeCompositeBuildMapImpl(
     builds =
-      listOf(IdeBuildImpl(":", buildModel.buildIdentifier.rootDir)) +
-        buildModels
-          .mapNotNull { build -> controller.findModel(build.rootProject, BuildMap::class.java) }
-          .flatMap { buildNames -> buildNames.buildIdMap.entries.map { IdeBuildImpl(it.key, it.value) } }
-          .distinct(),
+      (listOf(IdeBuildImpl(":", buildModel.buildIdentifier.rootDir)) +
+          buildBuildPathMap(controller, buildModels).entries.map { (buildPath, buildId) -> IdeBuildImpl(buildPath, buildId.asFile) })
+        .distinct(),
     gradleSupportsDirectTaskInvocation = gradleSupportsDirectTaskInvocationInComposites,
   )
 }
