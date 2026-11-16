@@ -19,10 +19,17 @@ import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
 import com.google.common.truth.Truth
+import com.intellij.ide.DataManager
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.TestActionEvent.createTestEvent
+import org.jetbrains.android.refactoring.MigrateToDefaultTargetSdkToCompileSdkIfUnsetAction
 import org.jetbrains.android.refactoring.MigrateToDefaultTargetSdkToCompileSdkIfUnsetHandler
 import org.junit.Rule
 import org.junit.Test
@@ -65,5 +72,51 @@ class MigrateToDefaultTargetSdkToCompileSdkIfUnsetTest {
     Truth.assertThat(VfsUtil.loadText(libBuildGradle)).doesNotContain("targetSdkVersion")
 
     Truth.assertThat(VfsUtil.loadText(gradleProperties)).doesNotContain("android.sdk.defaultTargetSdkToCompileSdkIfUnset")
+  }
+
+  @Test
+  fun testRefactoringViaActionWithUncommittedBuildFileEdits() {
+    projectRule.loadProject(
+      TestProjectPaths.PROJECT_WITH_APP_AND_LIB_WITHOUT_TARGET_SDK,
+      agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST,
+    )
+
+    val project = projectRule.project
+    val appBuildGradle = project.baseDir.findChild("app")!!.findChild("build.gradle")!!
+    val libBuildGradle = project.baseDir.findChild("lib")!!.findChild("build.gradle")!!
+    val gradleProperties = project.baseDir.findChild("gradle.properties")!!
+
+    val action = MigrateToDefaultTargetSdkToCompileSdkIfUnsetAction()
+    lateinit var event: AnActionEvent
+    ApplicationManager.getApplication().invokeAndWait {
+      projectRule.fixture.openFileInEditor(gradleProperties)
+      projectRule.fixture.openFileInEditor(appBuildGradle)
+      projectRule.fixture.openFileInEditor(libBuildGradle)
+
+      WriteCommandAction.runWriteCommandAction(project) {
+        val appDocument = FileDocumentManager.getInstance().getDocument(appBuildGradle)!!
+        appDocument.insertString(appDocument.textLength, "\n// Uncommitted edit\n")
+      }
+      val appDocument = FileDocumentManager.getInstance().getDocument(appBuildGradle)!!
+      Truth.assertThat(PsiDocumentManager.getInstance(project).isCommitted(appDocument)).isFalse()
+
+      val dataContext = DataManager.getInstance().getDataContext(projectRule.fixture.editor.component)
+      event = createTestEvent(action, dataContext)
+    }
+
+    ApplicationManager.getApplication().runReadAction { action.update(event) }
+    Truth.assertThat(event.presentation.isVisible).isTrue()
+    Truth.assertThat(event.presentation.isEnabled).isTrue()
+
+    ApplicationManager.getApplication().invokeAndWait { action.actionPerformed(event) }
+
+    val updatedAppBuildGradle = VfsUtil.loadText(appBuildGradle)
+    Truth.assertThat(updatedAppBuildGradle).contains("targetSdkVersion '21'")
+    Truth.assertThat(updatedAppBuildGradle).contains("// Uncommitted edit")
+    Truth.assertThat(VfsUtil.loadText(libBuildGradle)).doesNotContain("targetSdkVersion")
+    Truth.assertThat(VfsUtil.loadText(gradleProperties)).doesNotContain("android.sdk.defaultTargetSdkToCompileSdkIfUnset")
+
+    ApplicationManager.getApplication().runReadAction { action.update(event) }
+    Truth.assertThat(event.presentation.isEnabled).isFalse()
   }
 }

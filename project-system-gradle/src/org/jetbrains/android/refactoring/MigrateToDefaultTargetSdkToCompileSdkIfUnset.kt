@@ -18,6 +18,7 @@ package org.jetbrains.android.refactoring
 import com.android.annotations.concurrency.UiThread
 import com.android.ide.common.repository.AgpVersion
 import com.android.sdklib.AndroidVersion
+import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.model.android.android
 import com.android.tools.idea.gradle.plugin.AndroidPluginInfo
@@ -36,7 +37,6 @@ import com.intellij.openapi.command.undo.UndoManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.module.Module
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
@@ -129,7 +129,7 @@ private constructor(
 ) : BaseRefactoringProcessor(project) {
 
   val uuid = UUID.randomUUID().toString()
-  val projectBuildModel = ProjectBuildModel.get(myProject)
+  @Volatile private var projectBuildModel: ProjectBuildModel? = null
 
   companion object {
     private val DEFAULT_TARGET_SDK_TO_COMPILE_SDK_IF_UNSET_ENABLE_BY_DEFAULT = AgpVersion.parse("9.0.0-alpha01")
@@ -160,18 +160,20 @@ private constructor(
     progressIndicator?.isIndeterminate = true
     progressIndicator?.text = AndroidBundle.message("android.refactoring.migrateto.defaulttargetsdktocompilesdkifunset.progress.findusages")
 
+    var buildModel: ProjectBuildModel? = null
     val usages: List<UsageInfo> = facetsToMigrate.mapNotNull { facet ->
       val gradleAndroidModel: GradleAndroidModel? = GradleAndroidModel.get(facet)
 
       if (gradleAndroidModel?.selectedVariant?.targetSdkVersion == null && gradleAndroidModel?.selectedVariant?.minSdkVersion != null) {
-
-        projectBuildModel.getModuleBuildModel(facet.module)?.let { buildModel ->
-          buildModel.psiFile?.let { MigrateUsageInfo(it, projectBuildModel, facet.module, gradleAndroidModel.minSdkVersion) }
+        val projectModel = buildModel ?: ProjectBuildModel.get(myProject).also { buildModel = it }
+        projectModel.getModuleBuildModel(facet.module)?.let { moduleBuildModel ->
+          moduleBuildModel.psiFile?.let { MigrateUsageInfo(it, moduleBuildModel, gradleAndroidModel.minSdkVersion) }
         }
       } else {
         null
       }
     }
+    projectBuildModel = buildModel
 
     progressIndicator?.text = null
 
@@ -215,7 +217,7 @@ private constructor(
   }
 
   override fun performPsiSpoilingRefactoring() {
-    projectBuildModel.applyChanges()
+    projectBuildModel?.applyChanges()
 
     val documentManager = PsiDocumentManager.getInstance(this.myProject)
 
@@ -253,10 +255,10 @@ private constructor(
     abstract fun doIt()
   }
 
-  class MigrateUsageInfo(element: PsiElement, val buildModel: ProjectBuildModel, val module: Module, val minSdk: AndroidVersion) :
+  class MigrateUsageInfo(element: PsiElement, val buildModel: GradleBuildModel, val minSdk: AndroidVersion) :
     MigratePropertiesUsageInfo(element) {
     override fun doIt() {
-      buildModel.getModuleBuildModel(module)?.android()?.defaultConfig()?.targetSdkVersion()?.setValue(minSdk.apiStringWithExtension)
+      buildModel.android().defaultConfig().targetSdkVersion().setValue(minSdk.apiStringWithExtension)
     }
   }
 }
