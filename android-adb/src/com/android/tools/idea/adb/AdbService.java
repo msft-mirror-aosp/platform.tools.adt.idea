@@ -44,6 +44,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.SystemInfoRt;
 import com.intellij.util.concurrency.SequentialTaskExecutor;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -193,9 +194,6 @@ public final class AdbService implements Disposable {
     AdbOptionsService.getInstance().removeListener(myAdbOptionsListener);
     try {
       mySequentialExecutor.submit(() -> {
-        // Cleanly shuts down `AndroidDebugBridge`.
-        // Note that we don't rely on `myImplementation.terminate()` here since it would
-        // also trigger `disconnectBridge()` / `stopAdb()` (which kills the ADB server process).
         myImplementation.dispose();
         mySequentialExecutor.shutdownNow();
       }).get(ADB_TERMINATE_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
@@ -379,11 +377,23 @@ public final class AdbService implements Disposable {
     }
 
     /**
-     * Cleanly shuts down {@link AndroidDebugBridge} without triggering {@link AndroidDebugBridge#disconnectBridge},
-     * so that the ADB server process is not stopped when Android Studio shuts down.
+     * Shuts down {@link AndroidDebugBridge} when Android Studio exits.
+     *
+     * <p>On macOS (when not in user-managed server mode), macOS 15+ revokes Local Network (mDNS)
+     * access from an orphaned {@code adb} server once Android Studio exits. Stop the {@code adb}
+     * server via {@link #terminate()} so the next session starts a fresh, unblocked server.
+     *
+     * <p>Otherwise (Windows, Linux, or manually managed servers), shut down
+     * {@link AndroidDebugBridge} without calling {@link AndroidDebugBridge#disconnectBridge},
+     * leaving the {@code adb} server running.
      */
     @WorkerThread
     public void dispose() {
+      // TODO(b/585049728): Revert stopping adb on macOS once the fix in adb ships and is widely adopted.
+      if (SystemInfoRt.isMac) {
+        LOG.info("Stopping ADB server on IDE shutdown");
+        terminate();
+      }
       LOG.info("Disposing ADB bridge");
       AndroidDebugBridge.terminate();
     }
