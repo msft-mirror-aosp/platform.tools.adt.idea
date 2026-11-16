@@ -79,6 +79,8 @@ constructor(surface: DesignSurface<LayoutlibSceneManager>, model: NlModel, priva
       super.requestRenderAndWait()
     }
 
+  override fun isRenderSessionUnavailable(): Boolean = isDisposed()
+
   override fun executeInRenderSessionAsync(block: Runnable, timeout: Long, timeUnit: TimeUnit): CompletableFuture<Void> {
     block.run()
     return CompletableFuture.completedFuture(null)

@@ -32,6 +32,7 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.UsefulTestCase.assertThrows
 import javax.swing.JComponent
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
@@ -276,12 +277,30 @@ class SupportedWearTileAnimationManagerTest {
     assertThat(values[10]).isEqualTo(255.0) // Start value (Red chanel of Red)
   }
 
-  private fun createManager(animation: ProtoAnimation) =
+  @Test
+  fun setupThrowsStateUnavailableWhenRenderSessionSkipsBlock(): Unit = runBlocking {
+    val animator = TestDynamicTypeAnimator()
+    animator.setFloatValues(0f, 100f)
+    val animation = ProtoAnimation(animator)
+    val manager = createManager(animation, executeInRenderSession = { _, _, _ -> })
+
+    try {
+      manager.setup()
+      fail("Expected WearTileAnimationStateUnavailableException")
+    } catch (_: WearTileAnimationStateUnavailableException) {} finally {
+      manager.destroy()
+    }
+  }
+
+  private fun createManager(
+    animation: ProtoAnimation,
+    executeInRenderSession: suspend (Boolean, Boolean, () -> Unit) -> Unit = { _, _, runnable -> runnable.invoke() },
+  ) =
     SupportedWearTileAnimationManager(
       animation,
       NoopAnimationTracker,
       getCurrentTime = { 0 }, // Simplified for testing,
-      { _, _, runnable -> runnable.invoke() },
+      executeInRenderSession,
       AnimationTabs(projectRule.project, projectRule.testRootDisposable),
       rootComponent,
       tabTitle,

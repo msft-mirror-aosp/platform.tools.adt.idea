@@ -25,10 +25,14 @@ import com.android.tools.idea.preview.animation.timeline.TimelineElement
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.executeInRenderSession
 import com.google.common.annotations.VisibleForTesting
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.CheckedDisposable
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.tabs.TabInfo
@@ -41,12 +45,16 @@ import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.SwingConstants
 import kotlin.math.max
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -101,8 +109,30 @@ abstract class AnimationPreview<T : AnimationManager>(
       parentDisposable = parentScope.scopeDisposable(),
     )
 
+  /**
+   * Owns [tabbedPane] (a `JBTabsImpl`), which must only be disposed on the EDT. It is intentionally not parented in the [Disposer] tree: a
+   * parent disposed off the EDT would dispose `JBTabsImpl` synchronously on that thread. Instead, [rootComponent] (when it is a
+   * [Disposable]) and [scope] completion are bridged to [disposeTabsOnEdt], which disposes it on the EDT. It is also never parented to the
+   * project, so repeated inspector open/close cycles do not accumulate disposables.
+   */
+  @VisibleForTesting val tabsDisposable: CheckedDisposable = Disposer.newCheckedDisposable("AnimationTabs")
+
   fun cancelScope() {
+    disposeTabsOnEdt()
     scope.cancel()
+  }
+
+  private fun disposeTabsOnEdt() {
+    if (tabsDisposable.isDisposed) return
+    val application = ApplicationManager.getApplication()
+    if (application == null || application.isDisposed || application.isDispatchThread) {
+      Disposer.dispose(tabsDisposable)
+    } else {
+      application.invokeLater(
+        { if (!tabsDisposable.isDisposed) Disposer.dispose(tabsDisposable) },
+        ModalityState.any(),
+      )
+    }
   }
 
   // ******************
@@ -115,7 +145,7 @@ abstract class AnimationPreview<T : AnimationManager>(
    * Tabs panel where each tab represents a single animation being inspected. First tab is a coordination tab. All tabs share the same
    * [Timeline], but have their own playback toolbar and from/to state combo boxes.
    */
-  @VisibleForTesting val tabbedPane = AnimationTabs(project, scope.scopeDisposable()).apply { addListener(TabChangeListener()) }
+  @VisibleForTesting val tabbedPane = AnimationTabs(project, tabsDisposable).apply { addListener(TabChangeListener()) }
   private val bottomPanel = BottomPanel(rootComponent)
 
   /** Loading panel displayed when the preview has no animations subscribed. */
@@ -135,6 +165,7 @@ abstract class AnimationPreview<T : AnimationManager>(
    * List of [AnimationManager], so all animation cards that are displayed in inspector. Please keep it immutable to avoid
    * [ConcurrentModificationException] as multiple threads can access and modify [animations] at the same time.
    */
+  @Volatile
   var animations: List<T> = emptyList()
     private set
 
@@ -269,6 +300,18 @@ abstract class AnimationPreview<T : AnimationManager>(
   }
 
   init {
+    (rootComponent as? Disposable)?.let { parent ->
+      val parentBridge = Disposable { disposeTabsOnEdt() }
+      if (Disposer.tryRegister(parent, parentBridge)) {
+        // Detach the bridge once the tabs are gone so that long-lived surfaces do not accumulate bridges.
+        Disposer.register(tabsDisposable) { Disposer.dispose(parentBridge) }
+      } else {
+        disposeTabsOnEdt()
+      }
+    }
+    if (!Disposer.tryRegister(scope.scopeDisposable(), Disposable { disposeTabsOnEdt() })) {
+      disposeTabsOnEdt()
+    }
     showNoAnimationsPanel()
     tabbedPane.addListener(TabChangeListener())
     scope.launch { maxDurationPerIteration.collect { updateTimelineMaximum() } }
@@ -336,13 +379,32 @@ abstract class AnimationPreview<T : AnimationManager>(
   }
 
   /** Remove all tabs from [tabbedPane], replace it with [noAnimationsPanel], and clears the cached animations. */
-  open fun invalidatePanel(): Job = scope.launch {
-    /**
-     * Calling [removeAnimationManager] for all animations will properly remove the cards from AllTabPanel, animationsMap, and tabs from
-     * tabbedPane. It will also show the noAnimationsPanel when removing all tabs.
-     */
-    val toRemove = animations.toList()
-    toRemove.forEach { removeAnimationManager(it) }
+  open fun invalidatePanel(): Job = scope.launch { removeAllAnimationManagers() }
+
+  /**
+   * Destroys and removes all [AnimationManager] instances without querying [updateMaxDuration] per item, resets [maxDurationPerIteration]
+   * to [DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS], and refreshes timeline elements once.
+   */
+  protected suspend fun removeAllAnimationManagers() {
+    val hadAnimations =
+      withContext(Dispatchers.EDT) {
+        if (animations.isEmpty()) {
+          return@withContext false
+        }
+        animations.toList().forEach { animationManager ->
+          animationManager.destroy()
+          coordinationTab.removeCard(animationManager.card)
+          removeAnimation(animationManager)
+        }
+        tabbedPane.removeAllTabs()
+        // There are no more tabs. Replace the TabbedPane with the placeholder panel.
+        showNoAnimationsPanel()
+        true
+      }
+    maxDurationPerIteration.value = DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS
+    if (hadAnimations) {
+      updateTimelineElements()
+    }
   }
 
   protected suspend fun removeAnimationManager(animationManager: T) {
@@ -361,31 +423,48 @@ abstract class AnimationPreview<T : AnimationManager>(
         tabbedPane.select(tabbedPane.getTabAt(0), false)
       }
     }
-    updateMaxDuration()
+    if (animations.isNotEmpty()) {
+      updateMaxDuration()
+    } else {
+      maxDurationPerIteration.value = DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS
+    }
     updateTimelineElements()
   }
 
-  /** Adds an [AnimationManager] card to [coordinationTab]. */
-  protected suspend fun addAnimationManager(animationTab: T) {
-    withContext(Dispatchers.EDT) {
-      val isAddingFirstTab = animations.isEmpty()
-      addAnimation(animationTab)
-      coordinationTab.addCard(animationTab.card)
+  /** Adds an [AnimationManager] card to [coordinationTab] if [shouldAdd] returns true on the EDT. */
+  protected suspend fun addAnimationManager(animationTab: T, shouldAdd: () -> Boolean = { true }): Boolean {
+    val added =
+      withContext(Dispatchers.EDT) {
+        if (!shouldAdd()) {
+          return@withContext false
+        }
+        val isAddingFirstTab = animations.isEmpty()
+        addAnimation(animationTab)
+        coordinationTab.addCard(animationTab.card)
 
-      if (isAddingFirstTab) {
-        // There are no tabs, and we're about to add one. Replace the placeholder panel with the
-        // TabbedPane.
-        hideNoAnimationPanel()
-        tabbedPane.addTab(TabInfo(coordinationTab).apply { setText("${message("animation.inspector.tab.all.title")}  ") }, 0)
-        coordinationTab.addTimeline(timeline)
+        if (isAddingFirstTab) {
+          // There are no tabs, and we're about to add one. Replace the placeholder panel with the
+          // TabbedPane.
+          hideNoAnimationPanel()
+          tabbedPane.addTab(TabInfo(coordinationTab).apply { setText("${message("animation.inspector.tab.all.title")}  ") }, 0)
+          coordinationTab.addTimeline(timeline)
+        }
+        true
       }
+    if (!added) {
+      return false
     }
     updateMaxDuration()
     updateTimelineElements()
+    return true
   }
 
   /**
    * Execute [function] in render session.
+   *
+   * Returns without running [function] when the render session is unavailable, when the RenderTask was disposed, or when a render action is
+   * cancelled (e.g. evicted) while [scope] is still active. Callers that require [function] to run (for example to initialize state) must
+   * verify its side effects.
    *
    * @param longTimeout is true when long timeout should be used to execute [function]
    * @param requestAnimationRender is true when extra animation render should be done after executing [function]
@@ -395,8 +474,40 @@ abstract class AnimationPreview<T : AnimationManager>(
     requestAnimationRender: Boolean = false,
     function: () -> Unit,
   ) {
-    sceneManagerProvider()?.executeInRenderSession(longTimeout) { function() }
-    if (requestAnimationRender) scope.launch { renderAnimation() }
+    if (!scope.isActive) return
+    for (attempt in 0..1) {
+      val sceneManager = sceneManagerProvider()?.takeUnless { it.isRenderSessionUnavailable() } ?: return
+      try {
+        sceneManager.executeInRenderSession(longTimeout) { function() }
+        if (requestAnimationRender && scope.isActive) scope.launch { renderAnimation() }
+        return
+      } catch (e: CancellationException) {
+        currentCoroutineContext().ensureActive()
+        if (!scope.isActive) throw e
+        logger.debug("Skipping cancelled render session action while AnimationPreview scope is active", e)
+        return
+      } catch (e: IllegalStateException) {
+        if (
+          attempt == 0 &&
+            scope.isActive &&
+            e.isRenderTaskDisposedException() &&
+            sceneManagerProvider()?.isRenderSessionUnavailable() == false
+        ) {
+          logger.debug("Retrying render session action after stale RenderTask disposal", e)
+          continue
+        }
+        if (
+          !scope.isActive ||
+            sceneManager.isRenderSessionUnavailable() ||
+            e.isRenderTaskDisposedException() ||
+            e.isRenderSessionUnavailableException()
+        ) {
+          logger.debug("Skipping render session action because RenderTask or RenderSession is unavailable", e)
+          return
+        }
+        throw e
+      }
+    }
   }
 
   @UiThread
@@ -419,3 +530,13 @@ abstract class AnimationPreview<T : AnimationManager>(
     }
   }
 }
+
+// Matches exceptions returned via RenderTask's immediateFailedFuture (before await() stack recovery)
+// when a RenderTask is disposed concurrently with an in-flight render session action.
+private fun IllegalStateException.isRenderTaskDisposedException(): Boolean =
+  message == "RenderTask was already disposed" && stackTrace.firstOrNull()?.className == "com.android.tools.rendering.RenderTask"
+
+// Matches exceptions returned via RenderTask's immediateFailedFuture (before await() stack recovery)
+// when no RenderSession is currently attached to a live RenderTask.
+private fun IllegalStateException.isRenderSessionUnavailableException(): Boolean =
+  message == "No RenderSession available" && stackTrace.firstOrNull()?.className == "com.android.tools.rendering.RenderTask"

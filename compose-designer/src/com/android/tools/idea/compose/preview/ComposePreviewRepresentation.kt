@@ -1653,9 +1653,9 @@ constructor(
         currentAnimationPreview?.let {
           withContext(Dispatchers.EDT) { it.cancelScope() }
           it.tracker.closeAnimationInspector()
+          ComposeAnimationSubscriber.clearHandler(it)
         }
         currentAnimationPreview = null
-        ComposeAnimationSubscriber.setHandler(null)
         requestVisibilityAndNotificationsUpdate()
         invalidate()
       }

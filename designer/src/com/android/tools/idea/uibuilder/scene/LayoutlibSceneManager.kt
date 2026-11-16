@@ -126,6 +126,9 @@ open class LayoutlibSceneManager(
   open val renderResult: RenderResult?
     get() = layoutlibSceneRenderer.renderResult
 
+  /** Returns true if this scene manager is disposed or has no live [RenderTask] (when [renderTask] is `null` or disposed). */
+  open fun isRenderSessionUnavailable(): Boolean = isDisposed() || layoutlibSceneRenderer.renderTask?.isDisposed != false
+
   /** The quality used in the latest render. */
   val lastRenderQuality: Float
     get() = layoutlibSceneRenderer.lastRenderQuality

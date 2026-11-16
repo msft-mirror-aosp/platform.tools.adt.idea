@@ -371,4 +371,30 @@ class LayoutlibSceneManagerTest : SceneTest() {
       Disposer.dispose(focusModel)
     }
   }
+
+  fun testIsRenderSessionUnavailable() {
+    val testModel =
+      model(
+          FD_RES_LAYOUT,
+          "render_session_unavailable.xml",
+          component(LINEAR_LAYOUT).withBounds(0, 0, 100, 100).matchParentWidth().matchParentHeight(),
+        )
+        .build()
+    val sceneManager = LayoutlibSceneManager(testModel, myLayoutlibSceneManager.designSurface)
+    try {
+      // Before rendering, renderTask is null so the render session is unavailable.
+      assertTrue(sceneManager.isRenderSessionUnavailable())
+
+      // After rendering, the live RenderTask makes the render session available.
+      runBlocking { sceneManager.requestRenderAndWait() }
+      assertFalse(sceneManager.isRenderSessionUnavailable())
+
+      // Once the scene manager is disposed, the render session is unavailable again.
+      Disposer.dispose(sceneManager)
+      assertTrue(sceneManager.isRenderSessionUnavailable())
+    } finally {
+      Disposer.dispose(sceneManager)
+      Disposer.dispose(testModel)
+    }
+  }
 }

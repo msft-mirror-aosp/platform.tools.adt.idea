@@ -28,6 +28,8 @@ import com.android.tools.idea.compose.preview.animation.managers.ComposeAnimatio
 import com.android.tools.idea.concurrency.createChildScope
 import com.android.tools.idea.preview.animation.AllTabPanel
 import com.android.tools.idea.preview.animation.AnimationCard
+import com.android.tools.idea.preview.animation.AnimationPreview
+import com.android.tools.idea.preview.animation.DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS
 import com.android.tools.idea.preview.animation.LabelCard
 import com.android.tools.idea.preview.animation.SupportedAnimationManager
 import com.android.tools.idea.preview.animation.TestUtils.findAllCards
@@ -36,11 +38,14 @@ import com.android.tools.idea.preview.animation.TimelinePanel
 import com.android.tools.idea.preview.animation.UnsupportedAnimationManager
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneRenderConfiguration
+import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.ToggleAction
 import com.intellij.openapi.actionSystem.impl.ActionToolbarImpl
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.observable.util.whenDisposed
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.assertInstanceOf
 import com.intellij.testFramework.runInEdtAndGet
@@ -52,12 +57,21 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 import javax.swing.JComponent
+import javax.swing.JPanel
 import javax.swing.JSlider
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -66,11 +80,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.objectweb.asm.ClassWriter
+import org.objectweb.asm.Opcodes
 
 class ComposeAnimationPreviewTest : AnimationPreviewTests() {
 
@@ -542,20 +562,740 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       }
     }
 
-    animationPreview.addAnimation(createComposeAnimation("1", ComposeAnimationType.TRANSITION_ANIMATION)).join()
-    runCurrent()
-    val animationManager = animationPreview.animations.first() as SupportedAnimationManager
+    try {
+      animationPreview.addAnimation(createComposeAnimation("1", ComposeAnimationType.TRANSITION_ANIMATION)).join()
+      runCurrent()
+      val animationManager = animationPreview.animations.first() as SupportedAnimationManager
 
-    /** We want to check what after syncing states - new render request was called. */
-    val previousCalls = calls.get()
-    executeCallbacksAfterRender.set(false)
-    doubleRender.set(false)
-    animationManager.syncAnimationWithState()
-    runCurrent()
+      /** We want to check what after syncing states - new render request was called. */
+      val previousCalls = calls.get()
+      executeCallbacksAfterRender.set(false)
+      doubleRender.set(false)
+      animationManager.syncAnimationWithState()
+      runCurrent()
+      advanceUntilIdle()
+      delayUntilCondition(100, 5.seconds) { calls.get() > previousCalls }
+      assertTrue(executeCallbacksAfterRender.get())
+      assertTrue(doubleRender.get())
+    } finally {
+      cancelAndJoinPreview(animationPreview)
+    }
+  }
+
+  @Test
+  fun executeInRenderSessionSkipsWhenRenderTaskDisposed() = runTest {
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(true)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+      }
+    val preview = runInEdtAndGet {
+      ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
+        it.animationClock = AnimationClock(TestClock())
+      }
+    }
+
+    try {
+      preview.addAnimation(createComposeAnimation("1", ComposeAnimationType.TRANSITION_ANIMATION)).join()
+      advanceUntilIdle()
+      verify(sceneManager, never()).executeInRenderSessionAsync(any(), any(), any())
+    } finally {
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun executeInRenderSessionIgnoresRenderTaskDisposedException() = runTest {
+    val renderCalls = AtomicInteger(0)
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    val disposedException =
+      IllegalStateException("RenderTask was already disposed").apply {
+        stackTrace = arrayOf(StackTraceElement("com.android.tools.rendering.RenderTask", "renderInner", "RenderTask.java", 1164))
+      }
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(false)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+        whenever(this.requestRenderAndWait()).then { renderCalls.incrementAndGet() }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).thenReturn(CompletableFuture.failedFuture(disposedException))
+      }
+    val preview = runInEdtAndGet {
+      object :
+        AnimationPreview<ComposeAnimationManager>(
+          backgroundScope,
+          surface.project,
+          { sceneManager },
+          surface,
+          NoopComposeAnimationTracker,
+        ) {
+        override suspend fun setClockTime(newValue: Int, longTimeout: Boolean) {}
+
+        override suspend fun updateMaxDuration(longTimeout: Boolean) {}
+
+        suspend fun runInRenderSessionForTest(requestAnimationRender: Boolean = false, block: () -> Unit) {
+          executeInRenderSession(requestAnimationRender = requestAnimationRender, function = block)
+        }
+      }
+    }
+
+    try {
+      preview.runInRenderSessionForTest(requestAnimationRender = true) {}
+      advanceUntilIdle()
+      assertEquals(0, renderCalls.get())
+    } finally {
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun executeInRenderSessionPropagatesCallbackIllegalStateException() = runTest {
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(false)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).thenAnswer { invocation ->
+          val runnable = invocation.getArgument<Runnable>(0)
+          CompletableFuture<Void>().apply {
+            try {
+              runnable.run()
+              complete(null)
+            } catch (t: Throwable) {
+              completeExceptionally(t)
+            }
+          }
+        }
+      }
+    val preview = runInEdtAndGet {
+      object :
+        AnimationPreview<ComposeAnimationManager>(
+          backgroundScope,
+          surface.project,
+          { sceneManager },
+          surface,
+          NoopComposeAnimationTracker,
+        ) {
+        override suspend fun setClockTime(newValue: Int, longTimeout: Boolean) {}
+
+        override suspend fun updateMaxDuration(longTimeout: Boolean) {}
+
+        suspend fun runInRenderSessionForTest(block: () -> Unit) {
+          executeInRenderSession(function = block)
+        }
+      }
+    }
+
+    try {
+      try {
+        preview.runInRenderSessionForTest { throw IllegalStateException("Callback failure") }
+        fail("Expected callback IllegalStateException to be propagated")
+      } catch (e: IllegalStateException) {
+        assertEquals("Callback failure", e.message)
+      }
+    } finally {
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun executeInRenderSessionRethrowsCancellationException() = runTest {
+    val childScope = backgroundScope.createChildScope()
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(false)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).thenAnswer {
+          childScope.cancel()
+          CompletableFuture.failedFuture<Void>(CancellationException("Render cancelled"))
+        }
+      }
+    val preview = runInEdtAndGet {
+      object :
+        AnimationPreview<ComposeAnimationManager>(
+          childScope,
+          surface.project,
+          { sceneManager },
+          surface,
+          NoopComposeAnimationTracker,
+        ) {
+        override suspend fun setClockTime(newValue: Int, longTimeout: Boolean) {}
+
+        override suspend fun updateMaxDuration(longTimeout: Boolean) {}
+
+        suspend fun runInRenderSessionForTest(block: () -> Unit) {
+          executeInRenderSession(function = block)
+        }
+      }
+    }
+
+    try {
+      try {
+        preview.runInRenderSessionForTest {}
+        fail("Expected CancellationException to be rethrown")
+      } catch (_: CancellationException) {
+        // Expected even when scope is already cancelled.
+      }
+    } finally {
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun executeInRenderSessionIgnoresForeignCancellationWhenScopeActive() = runTest {
+    val childScope = backgroundScope.createChildScope()
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(false)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).thenAnswer {
+          CompletableFuture.failedFuture<Void>(CancellationException("evicted"))
+        }
+      }
+    val preview = runInEdtAndGet {
+      object :
+        AnimationPreview<ComposeAnimationManager>(
+          childScope,
+          surface.project,
+          { sceneManager },
+          surface,
+          NoopComposeAnimationTracker,
+        ) {
+        override suspend fun setClockTime(newValue: Int, longTimeout: Boolean) {}
+
+        override suspend fun updateMaxDuration(longTimeout: Boolean) {}
+
+        suspend fun runInRenderSessionForTest(block: () -> Unit) {
+          executeInRenderSession(function = block)
+        }
+      }
+    }
+
+    try {
+      preview.runInRenderSessionForTest {}
+      assertTrue(currentCoroutineContext().isActive)
+      assertTrue(preview.scope.isActive)
+    } finally {
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun executeInRenderSessionRetriesOnceWhenNewRenderTaskIsLive() = runTest {
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    val disposedException =
+      IllegalStateException("RenderTask was already disposed").apply {
+        stackTrace = arrayOf(StackTraceElement("com.android.tools.rendering.RenderTask", "runAsyncAction", "RenderTask.java", 1511))
+      }
+    val attemptCount = AtomicInteger(0)
+    val callbackRuns = AtomicInteger(0)
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(false)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).thenAnswer { invocation ->
+          val attempt = attemptCount.incrementAndGet()
+          if (attempt == 1) {
+            CompletableFuture.failedFuture<Void>(disposedException)
+          } else {
+            invocation.getArgument<Runnable>(0).run()
+            CompletableFuture.completedFuture<Void>(null)
+          }
+        }
+      }
+    val preview = runInEdtAndGet {
+      object :
+        AnimationPreview<ComposeAnimationManager>(
+          backgroundScope,
+          surface.project,
+          { sceneManager },
+          surface,
+          NoopComposeAnimationTracker,
+        ) {
+        override suspend fun setClockTime(newValue: Int, longTimeout: Boolean) {}
+
+        override suspend fun updateMaxDuration(longTimeout: Boolean) {}
+
+        suspend fun runInRenderSessionForTest(block: () -> Unit) {
+          executeInRenderSession(function = block)
+        }
+      }
+    }
+
+    try {
+      preview.runInRenderSessionForTest { callbackRuns.incrementAndGet() }
+      assertEquals(1, callbackRuns.get())
+      verify(sceneManager, times(2)).executeInRenderSessionAsync(any(), any(), any())
+    } finally {
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun tabbedPaneIsDisposedOnEdtWhenScopeCancelled() = runTest {
+    val scope1 = backgroundScope.createChildScope()
+    val preview1 = runInEdtAndGet { createAnimationPreview(scope1) }
+    var disposedOnEdtFromCancelScope: Boolean? = null
+    Disposer.register(preview1.tabsDisposable) { disposedOnEdtFromCancelScope = ApplicationManager.getApplication().isDispatchThread }
+
+    withContext(Dispatchers.Default) { preview1.cancelScope() }
     advanceUntilIdle()
-    delayUntilCondition(100, 5.seconds) { calls.get() > previousCalls }
-    assertTrue(executeCallbacksAfterRender.get())
-    assertTrue(doubleRender.get())
+    withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+    preview1.scope.coroutineContext[Job]?.join()
+    assertEquals(true, disposedOnEdtFromCancelScope)
+    assertTrue(preview1.tabsDisposable.isDisposed)
+
+    val scope2 = backgroundScope.createChildScope()
+    val preview2 = runInEdtAndGet { createAnimationPreview(scope2) }
+    var disposedOnEdtFromScopeCancel: Boolean? = null
+    Disposer.register(preview2.tabsDisposable) { disposedOnEdtFromScopeCancel = ApplicationManager.getApplication().isDispatchThread }
+
+    withContext(Dispatchers.Default) {
+      scope2.cancel()
+      scope2.coroutineContext.job.join()
+    }
+    advanceUntilIdle()
+    withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+    preview2.scope.coroutineContext[Job]?.join()
+    assertEquals(true, disposedOnEdtFromScopeCancel)
+    assertTrue(preview2.tabsDisposable.isDisposed)
+  }
+
+  @Test
+  fun tabsAreDisposedOnEdtWhenRootComponentIsDisposedOffEdt() = runTest {
+    val rootComponent =
+      object : JPanel(), Disposable {
+        override fun dispose() {}
+      }
+    Disposer.register(projectRule.testRootDisposable, rootComponent)
+    val scope = backgroundScope.createChildScope()
+    val preview = runInEdtAndGet {
+      ComposeAnimationPreview(
+        scope,
+        surface.project,
+        NoopComposeAnimationTracker,
+        { surface.model?.let { surface.getSceneManager(it) } },
+        rootComponent,
+      )
+    }
+    var disposedOnEdt: Boolean? = null
+    Disposer.register(preview.tabsDisposable) { disposedOnEdt = ApplicationManager.getApplication().isDispatchThread }
+
+    try {
+      withContext(Dispatchers.Default) { Disposer.dispose(rootComponent) }
+      advanceUntilIdle()
+      withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+      assertEquals(true, disposedOnEdt)
+      assertTrue(preview.tabsDisposable.isDisposed)
+    } finally {
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun removeLastAnimationResetsMaxDurationWithoutRenderSession() = runTest {
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(false)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).thenAnswer { invocation ->
+          invocation.getArgument<Runnable>(0).run()
+          CompletableFuture.completedFuture<Void>(null)
+        }
+      }
+    val clockWithCustomDuration = ConfigurableDurationClock(2500L)
+    val preview = runInEdtAndGet {
+      ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
+        it.animationClock = AnimationClock(clockWithCustomDuration)
+      }
+    }
+    try {
+      val animation = createComposeAnimation("1", ComposeAnimationType.TRANSITION_ANIMATION)
+      preview.addAnimation(animation).join()
+      advanceUntilIdle()
+      assertEquals(2500L, preview.maxDurationPerIteration.value)
+
+      Mockito.clearInvocations(sceneManager)
+      preview.removeAnimation(animation).join()
+      advanceUntilIdle()
+
+      assertTrue(preview.animations.isEmpty())
+      assertEquals(DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS, preview.maxDurationPerIteration.value)
+      verify(sceneManager, never()).executeInRenderSessionAsync(any(), any(), any())
+    } finally {
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun updateMaxDurationSkipsStaleResultAfterClearOrClockSwap() = runTest {
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    var delayedMode = false
+    var pendingRunnable: Runnable? = null
+    var pendingFuture: CompletableFuture<Void>? = null
+    var renderSessionStarted: CompletableDeferred<Unit>? = null
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(false)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).thenAnswer { invocation ->
+          val runnable = invocation.getArgument<Runnable>(0)
+          if (delayedMode) {
+            pendingRunnable = runnable
+            CompletableFuture<Void>().also {
+              pendingFuture = it
+              renderSessionStarted?.complete(Unit)
+            }
+          } else {
+            runnable.run()
+            CompletableFuture.completedFuture<Void>(null)
+          }
+        }
+      }
+
+    val clockA = ConfigurableDurationClock(9999L)
+    val clockB = ConfigurableDurationClock(3500L)
+    val preview = runInEdtAndGet {
+      ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
+        it.animationClock = AnimationClock(clockA)
+      }
+    }
+    try {
+      // 1. Clearing all animations while updateMaxDuration is in flight must not overwrite the reset max duration.
+      val anim1 = createComposeAnimation("1", ComposeAnimationType.TRANSITION_ANIMATION)
+      val anim2 = createComposeAnimation("2", ComposeAnimationType.TRANSITION_ANIMATION)
+      preview.addAnimation(anim1).join()
+      preview.addAnimation(anim2).join()
+      advanceUntilIdle()
+      assertEquals(9999L, preview.maxDurationPerIteration.value)
+
+      renderSessionStarted = CompletableDeferred()
+      delayedMode = true
+      val clearRaceJob = launch { preview.removeAnimation(anim1).join() }
+      renderSessionStarted.await()
+
+      delayedMode = false
+      preview.removeAllAnimations().join()
+      assertEquals(DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS, preview.maxDurationPerIteration.value)
+
+      pendingRunnable?.run()
+      pendingFuture?.complete(null)
+      clearRaceJob.join()
+      assertEquals(DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS, preview.maxDurationPerIteration.value)
+
+      // 2. Swapping animationClock while updateMaxDuration is in flight must not overwrite the new clock's max duration.
+      val anim3 = createComposeAnimation("3", ComposeAnimationType.TRANSITION_ANIMATION)
+      val anim4 = createComposeAnimation("4", ComposeAnimationType.TRANSITION_ANIMATION)
+      preview.addAnimation(anim3).join()
+      preview.addAnimation(anim4).join()
+      advanceUntilIdle()
+      assertEquals(9999L, preview.maxDurationPerIteration.value)
+
+      renderSessionStarted = CompletableDeferred()
+      delayedMode = true
+      val swapRaceJob = launch { preview.removeAnimation(anim3).join() }
+      renderSessionStarted.await()
+
+      delayedMode = false
+      preview.animationClock = AnimationClock(clockB)
+      preview.maxDurationPerIteration.value = 3500L
+
+      pendingRunnable?.run()
+      pendingFuture?.complete(null)
+      swapRaceJob.join()
+      assertEquals(3500L, preview.maxDurationPerIteration.value)
+    } finally {
+      pendingFuture?.complete(null)
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun addAnimationSkipsStaleOrDisposedClockWithoutAddingTab() = runTest {
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    var delayedMode = false
+    var pendingRunnable: Runnable? = null
+    var pendingFuture: CompletableFuture<Void>? = null
+    var renderSessionStarted: CompletableDeferred<Unit>? = null
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(false)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).thenAnswer { invocation ->
+          val runnable = invocation.getArgument<Runnable>(0)
+          if (delayedMode) {
+            pendingRunnable = runnable
+            CompletableFuture<Void>().also {
+              pendingFuture = it
+              renderSessionStarted?.complete(Unit)
+            }
+          } else {
+            runnable.run()
+            CompletableFuture.completedFuture<Void>(null)
+          }
+        }
+      }
+
+    val disposedClock =
+      loadRemappedClassInModuleClassLoader(TestClock::class.java, "test.remapped.DisposedPreviewClock", disposed = true).first
+    val liveClockA = loadRemappedClassInModuleClassLoader(TestClock::class.java, "test.remapped.LivePreviewClockA").first
+    val liveClockB = loadRemappedClassInModuleClassLoader(TestClock::class.java, "test.remapped.LivePreviewClockB").first
+
+    val preview = runInEdtAndGet {
+      ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
+        it.animationClock = AnimationClock(disposedClock)
+      }
+    }
+    try {
+      // 1. Disposed clock upfront -> addAnimation skips without creating a tab or card.
+      val anim1 = createComposeAnimation("Anim1", ComposeAnimationType.TRANSITION_ANIMATION)
+      preview.addAnimation(anim1).join()
+      advanceUntilIdle()
+      assertTrue(preview.animations.isEmpty())
+      assertEquals(0, preview.animationPreviewCardsCount())
+
+      // 2. Clock swapped while tab.setup() is in flight -> stale tab is discarded and destroyed, and anim2 can be re-added on the new
+      // clock.
+      preview.animationClock = AnimationClock(liveClockA)
+      renderSessionStarted = CompletableDeferred()
+      delayedMode = true
+      val anim2 = createComposeAnimation("Anim2", ComposeAnimationType.TRANSITION_ANIMATION)
+      val staleAddJob = launch { preview.addAnimation(anim2).join() }
+      renderSessionStarted.await()
+
+      delayedMode = false
+      preview.animationClock = AnimationClock(liveClockB)
+      pendingRunnable?.run()
+      pendingFuture?.complete(null)
+      staleAddJob.join()
+      advanceUntilIdle()
+      assertTrue(preview.animations.isEmpty())
+      assertEquals(0, preview.animationPreviewCardsCount())
+
+      preview.addAnimation(anim2).join()
+      advanceUntilIdle()
+      assertEquals(1, preview.animations.size)
+      assertEquals(1, preview.animationPreviewCardsCount())
+    } finally {
+      pendingFuture?.complete(null)
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun addAnimationIgnoresDisposedModuleClassLoaderInGetCurrentState() = runTest {
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(false)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).thenAnswer { invocation ->
+          invocation.getArgument<Runnable>(0).run()
+          CompletableFuture.completedFuture<Void>(null)
+        }
+      }
+
+    // Equivalent to: class BrokenTransitionObject { fun getCurrentState(): test.missing.MissingStateType? = null }
+    val objectClassName = "test.generated.BrokenTransitionObject"
+    val writer = ClassWriter(0)
+    writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, objectClassName.replace('.', '/'), null, "java/lang/Object", null)
+    writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null).apply {
+      visitCode()
+      visitVarInsn(Opcodes.ALOAD, 0)
+      visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false)
+      visitInsn(Opcodes.RETURN)
+      visitMaxs(1, 1)
+      visitEnd()
+    }
+    writer.visitMethod(Opcodes.ACC_PUBLIC, "getCurrentState", "()Ltest/missing/MissingStateType;", null, null).apply {
+      visitCode()
+      visitInsn(Opcodes.ACONST_NULL)
+      visitInsn(Opcodes.ARETURN)
+      visitMaxs(1, 1)
+      visitEnd()
+    }
+    writer.visitEnd()
+
+    lateinit var loader: FakeModuleClassLoader
+    loader =
+      FakeModuleClassLoader(
+        javaClass.classLoader,
+        mapOf(objectClassName to writer.toByteArray()),
+        onFindClass = { fqcn -> if (fqcn == "test.missing.MissingStateType") loader.disposed = true },
+      )
+    val brokenAnimationObject = loader.loadClass(objectClassName).getDeclaredConstructor().newInstance()
+    val animation =
+      object : ComposeAnimation {
+        override val animationObject: Any = brokenAnimationObject
+        override val type = ComposeAnimationType.TRANSITION_ANIMATION
+        override val states = setOf("StateA", "StateB")
+        override val label = "BrokenTransition"
+      }
+
+    val preview = runInEdtAndGet {
+      ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
+        it.animationClock = AnimationClock(TestClock())
+      }
+    }
+    try {
+      preview.addAnimation(animation).join()
+      advanceUntilIdle()
+      assertTrue(loader.disposed)
+      assertEquals(1, preview.animations.size)
+      assertEquals(1, preview.animationPreviewCardsCount())
+      assertEquals("BrokenTransition", preview.getAnimationTitleAt(0))
+    } finally {
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun addAnimationDoesNotAddTabWhenClockSwappedBeforeEdtAdd() = runTest {
+    val configuration =
+      mock<LayoutlibSceneRenderConfiguration>().apply {
+        whenever(this.executeCallbacksAfterRender).thenReturn(AtomicBoolean(false))
+        whenever(this.doubleRender).thenReturn(AtomicBoolean(false))
+      }
+    var delayedMode = false
+    var pendingRunnable: Runnable? = null
+    var pendingFuture: CompletableFuture<Void>? = null
+    var renderSessionStarted: CompletableDeferred<Unit>? = null
+    lateinit var preview: ComposeAnimationPreview
+    val sceneManager =
+      mock<LayoutlibSceneManager>().apply {
+        whenever(this.isRenderSessionUnavailable()).thenReturn(false)
+        whenever(this.sceneRenderConfiguration).then { configuration }
+        whenever(this.executeInRenderSessionAsync(any(), any(), any())).thenAnswer { invocation ->
+          val runnable = invocation.getArgument<Runnable>(0)
+          if (delayedMode && !preview.hasNoAnimationsForTests()) {
+            pendingRunnable = runnable
+            CompletableFuture<Void>().also {
+              pendingFuture = it
+              renderSessionStarted?.complete(Unit)
+            }
+          } else {
+            runnable.run()
+            CompletableFuture.completedFuture<Void>(null)
+          }
+        }
+      }
+
+    preview = runInEdtAndGet {
+      ComposeAnimationPreview(backgroundScope, surface.project, NoopComposeAnimationTracker, { sceneManager }, surface).also {
+        it.animationClock = AnimationClock(ConfigurableDurationClock(1000L))
+      }
+    }
+    withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+    advanceUntilIdle()
+    try {
+      // 1. Clock swap before addAnimationManager runs on EDT -> shouldAdd returns false, tab is destroyed, no card is added.
+      renderSessionStarted = CompletableDeferred()
+      delayedMode = true
+      val anim1 = createComposeAnimation("SwapBeforeEdtAdd", ComposeAnimationType.TRANSITION_ANIMATION)
+      val addJob1 = launch { preview.addAnimation(anim1).join() }
+      renderSessionStarted.await()
+
+      delayedMode = false
+      preview.animationClock = AnimationClock(ConfigurableDurationClock(2000L))
+      pendingRunnable?.run()
+      pendingFuture?.complete(null)
+      addJob1.join()
+      advanceUntilIdle()
+      assertTrue(preview.animations.isEmpty())
+      assertTrue(preview.hasNoAnimationsForTests())
+      assertEquals(0, preview.animationPreviewCardsCount())
+
+      // 2. Unsubscription (removeAnimation) before addAnimationManager runs on EDT -> shouldAdd returns false, tab is destroyed.
+      renderSessionStarted = CompletableDeferred()
+      delayedMode = true
+      val anim2 = createComposeAnimation("RemoveBeforeEdtAdd", ComposeAnimationType.TRANSITION_ANIMATION)
+      val addJob2 = launch { preview.addAnimation(anim2).join() }
+      renderSessionStarted.await()
+
+      delayedMode = false
+      preview.removeAnimation(anim2).join()
+      pendingRunnable?.run()
+      pendingFuture?.complete(null)
+      addJob2.join()
+      advanceUntilIdle()
+      assertTrue(preview.animations.isEmpty())
+      assertTrue(preview.hasNoAnimationsForTests())
+      assertEquals(0, preview.animationPreviewCardsCount())
+    } finally {
+      pendingFuture?.complete(null)
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  @Test
+  fun addAnimationWithoutClockSkipsClockBasedAnimationAndAllowsRetry() = runTest {
+    val preview = runInEdtAndGet { createAnimationPreview(backgroundScope.createChildScope()).apply { animationClock = null } }
+    try {
+      val animation = createComposeAnimation("t", ComposeAnimationType.TRANSITION_ANIMATION)
+      preview.addAnimation(animation).join()
+      advanceUntilIdle()
+      withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+      assertTrue(preview.animations.isEmpty())
+      assertTrue(preview.hasNoAnimationsForTests())
+
+      preview.animationClock = AnimationClock(TestClock())
+      preview.addAnimation(animation).join()
+      advanceUntilIdle()
+      withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+      assertEquals(1, preview.animations.size)
+    } finally {
+      cancelAndJoinPreview(preview)
+    }
+  }
+
+  private suspend fun TestScope.cancelAndJoinPreview(preview: AnimationPreview<*>) {
+    withContext(Dispatchers.EDT) { preview.cancelScope() }
+    advanceUntilIdle()
+    withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+    preview.scope.coroutineContext[Job]?.join()
   }
 
   private fun ComposeAnimationPreview.getAnimationTitleAt(index: Int): String = findAllCards(this.component)[index].findLabel().text

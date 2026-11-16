@@ -35,7 +35,6 @@ import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import javax.swing.JComponent
-import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -58,7 +57,7 @@ class ComposeAnimationPreview(
   /**
    * Wrapper of the `PreviewAnimationClock` that animations inspected in this panel are subscribed to. Null when there are no animations.
    */
-  override var animationClock: AnimationClock? = null
+  @Volatile override var animationClock: AnimationClock? = null
 
   /**
    * Set clock time
@@ -67,12 +66,14 @@ class ComposeAnimationPreview(
    * @param longTimeout set true to use a long timeout.
    */
   override suspend fun setClockTime(newValue: Int, longTimeout: Boolean) {
-    animationClock?.apply {
-      val clockTimeMs = newValue.toLong()
-      val animationsToUpdate = animations.filterIsInstance<ComposeSupportedAnimationManager>()
+    val clock = animationClock ?: return
+    if (clock.isDisposed) return
+    val clockTimeMs = newValue.toLong()
+    val animationsToUpdate = animations.filterIsInstance<ComposeSupportedAnimationManager>()
 
-      executeInRenderSession(longTimeout = longTimeout, requestAnimationRender = true) {
-        setClockTimes(
+    executeInRenderSession(longTimeout = longTimeout, requestAnimationRender = true) {
+      if (!clock.isDisposed && clock == animationClock) {
+        clock.setClockTimes(
           animationsToUpdate.associate {
             val newTime = if (it.frozenState.value.isFrozen) it.frozenState.value.frozenAt.toLong() else clockTimeMs
             it.animation to newTime
@@ -92,45 +93,76 @@ class ComposeAnimationPreview(
    *
    * If this animation was already added, removes old [ComposeAnimationManager] first. Repaints panel.
    */
-  override fun addAnimation(animation: ComposeAnimation) =
-    scope.launch {
-      if (synchronized(subscribedAnimationsLock) { subscribedAnimations.add(animation) }) {
-        val tab = withContext(Dispatchers.EDT) { createAnimationManager(animation) }
-        tab.setup()
-        /**
-         * [ComposeAnimationManager.setup] can take a while, by the time we want to call [addAnimationManager] it might not be needed
-         * anymore. Example:
-         * * [addAnimation] is called and [animation] is added to [subscribedAnimations] list
-         * * [ComposeAnimationManager.setup] is taking a while
-         * * in meantime [removeAnimation] is called and [animation] is removed from [subscribedAnimations]
-         * * [ComposeAnimationManager.setup] is finished
-         * * [addAnimationManager] will not be called as this [animation] should not be added anymore
-         */
-        if (synchronized(subscribedAnimationsLock) { subscribedAnimations.contains(animation) }) {
-          addAnimationManager(tab)
+  override fun addAnimation(animation: ComposeAnimation) = scope.launch {
+    val clock = animationClock
+    if (clock?.isDisposed == true) {
+      return@launch
+    }
+    if (synchronized(subscribedAnimationsLock) { subscribedAnimations.add(animation) }) {
+      val tab =
+        withContext(Dispatchers.EDT) {
+          if (clock?.isDisposed == true || animationClock != clock) {
+            return@withContext null
+          }
+          createAnimationManager(animation, clock)
         }
+      if (tab == null) {
+        synchronized(subscribedAnimationsLock) { subscribedAnimations.remove(animation) }
+        return@launch
+      }
+      tab.setup()
+      /**
+       * [ComposeAnimationManager.setup] can take a while, by the time we want to call [addAnimationManager] it might not be needed anymore.
+       * Example:
+       * * [addAnimation] is called and [animation] is added to [subscribedAnimations] list
+       * * [ComposeAnimationManager.setup] is taking a while
+       * * in meantime [removeAnimation] is called and [animation] is removed from [subscribedAnimations]
+       * * [ComposeAnimationManager.setup] is finished
+       * * [addAnimationManager] will not be called as this [animation] should not be added anymore
+       */
+      val added =
+        addAnimationManager(tab) {
+          clock?.isDisposed != true &&
+            animationClock == clock &&
+            synchronized(subscribedAnimationsLock) { subscribedAnimations.contains(animation) }
+        }
+      if (!added) {
+        synchronized(subscribedAnimationsLock) { subscribedAnimations.remove(animation) }
+        tab.destroy()
       }
     }
+  }
 
   override suspend fun updateMaxDuration(longTimeout: Boolean) {
     val clock = animationClock ?: return
+    if (clock.isDisposed) return
 
-    executeInRenderSession(longTimeout) { maxDurationPerIteration.value = clock.getMaxDurationMsPerIteration() }
+    var resolvedMaxDuration: Long? = null
+    executeInRenderSession(longTimeout) {
+      if (!clock.isDisposed && clock == animationClock && animations.isNotEmpty()) {
+        resolvedMaxDuration = clock.getMaxDurationMsPerIteration()
+      }
+    }
+    val maxDuration = resolvedMaxDuration ?: return
+    if (clock == animationClock && animations.isNotEmpty()) {
+      maxDurationPerIteration.value = maxDuration
+    }
   }
 
   /**
-   * Creates an [ComposeAnimationManager] corresponding to the given [animation]. Note: this method does not add the tab to [tabbedPane].
-   * For that, [addAnimationManager] should be used.
+   * Creates a [ComposeAnimationManager] corresponding to the given [animation]. Returns null when [animation] requires a clock and [clock]
+   * is null. Note: this method does not add the tab to [tabbedPane]. For that, [addAnimationManager] should be used.
    */
   @UiThread
-  private fun createAnimationManager(animation: ComposeAnimation): ComposeAnimationManager =
+  private fun createAnimationManager(animation: ComposeAnimation, clock: AnimationClock?): ComposeAnimationManager? =
     when (animation.type) {
-      ComposeAnimationType.ANIMATED_VISIBILITY ->
+      ComposeAnimationType.ANIMATED_VISIBILITY -> {
+        val requiredClock = clock ?: return null
         AnimatedVisibilityAnimationManager(
           animation,
           tabNames.createName(animation),
           tracker,
-          animationClock!!,
+          requiredClock,
           maxDurationPerIteration,
           getCurrentTime = { clockControl.currentValue() },
           ::executeInRenderSession,
@@ -145,10 +177,12 @@ class ComposeAnimationPreview(
           },
           scope,
         )
+      }
       ComposeAnimationType.TRANSITION_ANIMATION,
       ComposeAnimationType.ANIMATE_X_AS_STATE,
       ComposeAnimationType.ANIMATED_CONTENT,
       ComposeAnimationType.INFINITE_TRANSITION -> {
+        val requiredClock = clock ?: return null
         val states = animation.states
         val currentState = animation.getCurrentState()
         val unit = ComposeUnit.parseStateUnit(currentState)
@@ -164,7 +198,7 @@ class ComposeAnimationPreview(
           animation,
           tabNames.createName(animation),
           tracker,
-          animationClock!!,
+          requiredClock,
           maxDurationPerIteration,
           getCurrentTime = { clockControl.currentValue() },
           ::executeInRenderSession,
@@ -190,36 +224,34 @@ class ComposeAnimationPreview(
     }
 
   /** Removes the [ComposeAnimationManager] card and tab corresponding to the given [animation] from [tabbedPane]. */
-  override fun removeAnimation(animation: ComposeAnimation) =
-    scope.launch {
-      synchronized(subscribedAnimationsLock) { subscribedAnimations.remove(animation) }
-      animations.find { it.animation == animation }?.let { removeAnimationManager(it) }
-    }
+  override fun removeAnimation(animation: ComposeAnimation) = scope.launch {
+    synchronized(subscribedAnimationsLock) { subscribedAnimations.remove(animation) }
+    animations.find { it.animation == animation }?.let { removeAnimationManager(it) }
+  }
 
-  override fun removeAllAnimations(): Job =
-    scope.launch {
-      synchronized(subscribedAnimationsLock) { subscribedAnimations.clear() }
-      val animationsToRemove = animations.toImmutableList()
-      animationsToRemove.forEach { removeAnimationManager(it) }
-    }
+  override fun removeAllAnimations(): Job = scope.launch {
+    synchronized(subscribedAnimationsLock) { subscribedAnimations.clear() }
+    removeAllAnimationManagers()
+  }
 
-  override fun invalidatePanel() =
-    scope.launch {
-      super.invalidatePanel().join()
-      tabNames.clear()
-    }
+  override fun invalidatePanel() = scope.launch {
+    super.invalidatePanel().join()
+    tabNames.clear()
+  }
 }
 
 private fun ComposeAnimation.getCurrentState() =
   when (type) {
     ComposeAnimationType.TRANSITION_ANIMATION ->
-      animationObject::class
-        .java
-        .methods
-        .singleOrNull { it.name == "getCurrentState" }
-        ?.let {
-          it.isAccessible = true
-          it.invoke(animationObject)
-        } ?: states.firstOrNull()
+      invokeWithClassLoaderGuard(animationObject.javaClass.classLoader, states.firstOrNull(), "ComposeAnimation.getCurrentState") {
+        animationObject::class
+          .java
+          .methods
+          .singleOrNull { it.name == "getCurrentState" }
+          ?.let {
+            it.isAccessible = true
+            it.invoke(animationObject)
+          } ?: states.firstOrNull()
+      }
     else -> states.firstOrNull()
   }

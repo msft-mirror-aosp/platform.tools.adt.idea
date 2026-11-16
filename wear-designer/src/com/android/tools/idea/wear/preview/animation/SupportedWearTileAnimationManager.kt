@@ -97,6 +97,8 @@ class SupportedWearTileAnimationManager(
 
   override suspend fun setupInitialAnimationState() {
     executeInRenderSession(true, false) { animationState = animation.createStateManager(tracker) }
+    // executeInRenderSession can skip the block (e.g. the RenderTask was disposed by a refresh), leaving animationState unset.
+    if (!::animationState.isInitialized) throw WearTileAnimationStateUnavailableException()
   }
 
   override suspend fun syncAnimationWithState() {
@@ -135,3 +137,7 @@ private fun ProtoAnimation.getAnimationUnit(): AnimationUnit.Unit<*> {
     else -> AnimationUnit.UnitUnknown(value)
   } ?: AnimationUnit.UnitUnknown(value)
 }
+
+/** Thrown from [SupportedWearTileAnimationManager.setup] when the render session was unavailable to create the animation state. */
+internal class WearTileAnimationStateUnavailableException :
+  RuntimeException("Render session unavailable while creating the animation state")

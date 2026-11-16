@@ -16,11 +16,11 @@
 package com.android.tools.idea.compose.preview.animation.managers
 
 import androidx.compose.animation.tooling.ComposeAnimation
-import androidx.compose.animation.tooling.TransitionInfo
 import com.android.tools.idea.compose.preview.animation.AnimationClock
 import com.android.tools.idea.compose.preview.animation.ComposeAnimationTracker
 import com.android.tools.idea.compose.preview.animation.ComposeUnit
 import com.android.tools.idea.compose.preview.animation.getAnimatedProperties
+import com.android.tools.idea.compose.preview.animation.getTransitions
 import com.android.tools.idea.preview.animation.AnimatedProperty
 import com.android.tools.idea.preview.animation.AnimationTabs
 import com.android.tools.idea.preview.animation.AnimationUnit
@@ -77,8 +77,7 @@ abstract class ComposeSupportedAnimationManager(
     val clockTimeMsStep = max(1, maxDurationPerIteration.value / DEFAULT_CURVE_POINTS_NUMBER)
 
     try {
-      val composeTransitions =
-        animationClock.getTransitionsFunction.invoke(animationClock.clock, animation, clockTimeMsStep) as List<TransitionInfo>
+      val composeTransitions = animationClock.getTransitions(animation, clockTimeMsStep)
       for ((index, composeTransition) in composeTransitions.withIndex()) {
         val builder =
           AnimatedProperty.Builder()

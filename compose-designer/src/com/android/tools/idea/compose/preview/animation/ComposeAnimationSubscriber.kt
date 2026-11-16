@@ -16,6 +16,7 @@
 package com.android.tools.idea.compose.preview.animation
 
 import androidx.compose.animation.tooling.ComposeAnimation
+import com.android.annotations.concurrency.GuardedBy
 import com.google.common.util.concurrent.MoreExecutors
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
@@ -23,6 +24,8 @@ import com.intellij.util.concurrency.AppExecutorUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -32,11 +35,38 @@ import org.jetbrains.annotations.TestOnly
  */
 object ComposeAnimationSubscriber {
   private val LOG = Logger.getInstance(ComposeAnimationSubscriber::class.java)
-  private var animationHandler: ComposeAnimationHandler? = null
+  @Volatile private var animationHandler: ComposeAnimationHandler? = null
+  @GuardedBy("handlerLock") private var handlerGeneration: Long = 0
+  private val handlerLock = Any()
+  private val subscriptionMutex = Mutex()
 
   suspend fun setHandler(handler: ComposeAnimationHandler?) {
-    animationHandler?.removeAllAnimations()?.join()
-    animationHandler = handler
+    val previousHandler =
+      synchronized(handlerLock) {
+        handlerGeneration++
+        val prev = animationHandler
+        animationHandler = handler
+        prev
+      }
+    previousHandler?.removeAllAnimations()?.join()
+  }
+
+  /**
+   * Clears the active handler only if it is still [expected], avoiding racing with a newly opened inspector's [setHandler]. Always drains
+   * [expected]'s animations even if a newer handler has already replaced it.
+   */
+  suspend fun clearHandler(expected: ComposeAnimationHandler) {
+    val cleared =
+      synchronized(handlerLock) {
+        if (animationHandler !== expected) return@synchronized false
+        handlerGeneration++
+        animationHandler = null
+        true
+      }
+    expected.removeAllAnimations().join()
+    if (cleared) {
+      LOG.debug("Cleared active animation handler")
+    }
   }
 
   private val onSubscribedUnsubscribedExecutor =
@@ -57,32 +87,57 @@ object ComposeAnimationSubscriber {
   }
 
   /** Sets the panel clock and creates the corresponding tab in the [ComposeAnimationPreview]. */
+  @TestOnly
   suspend fun onAnimationSubscribed(clock: Any?, animation: ComposeAnimation) {
-    if (clock == null) return
-    val handler = animationHandler ?: return
-    if (handler.animationClock == null) {
-      handler.animationClock = AnimationClock(clock)
-    }
+    onAnimationSubscribedInternal(clock, animation, expectedGeneration = null)
+  }
 
-    // Handle the case where the clock has changed while the inspector is open. That might happen
-    // when we were still processing a
-    // subscription from a previous inspector when the new inspector was open. In this case, we
-    // should unsubscribe all the previously
-    // subscribed animations, as they were tracked by the previous clock.
-    handler.animationClock?.let {
-      if (it.clock != clock) {
-        // Make a copy of the list to prevent ConcurrentModificationException
-        handler.removeAllAnimations().join()
-        // After unsubscribing the old animations, update the clock
-        handler.animationClock = AnimationClock(clock)
+  private suspend fun onAnimationSubscribedInternal(clock: Any?, animation: ComposeAnimation, expectedGeneration: Long?) {
+    if (clock == null) return
+    subscriptionMutex.withLock {
+      val handler =
+        synchronized(handlerLock) {
+          if (expectedGeneration != null && handlerGeneration != expectedGeneration) return@withLock
+          animationHandler
+        } ?: return@withLock
+      val newClock = AnimationClock(clock)
+      if (newClock.isDisposed) {
+        LOG.debug("Ignoring animation subscription for disposed ModuleClassLoader")
+        return@withLock
       }
+      if (handler.animationClock == null) {
+        handler.animationClock = newClock
+      }
+
+      // Handle the case where the clock has changed while the inspector is open. That might happen
+      // when we were still processing a subscription from a previous inspector when the new inspector
+      // was open. Update the clock BEFORE removing old animations so teardown/timeline updates do not
+      // invoke reflection against the previous disposed clock.
+      handler.animationClock?.let {
+        if (it.clock != clock) {
+          handler.animationClock = newClock
+          handler.removeAllAnimations().join()
+        }
+      }
+      handler.addAnimation(animation).join()
     }
-    handler.addAnimation(animation).join()
   }
 
   /** Removes the animation from the corresponding tab in the [ComposeAnimationPreview]. */
+  @TestOnly
   suspend fun onAnimationUnsubscribed(animation: ComposeAnimation) {
-    animationHandler?.removeAnimation(animation)?.join()
+    onAnimationUnsubscribedInternal(animation, expectedGeneration = null)
+  }
+
+  private suspend fun onAnimationUnsubscribedInternal(animation: ComposeAnimation, expectedGeneration: Long?) {
+    subscriptionMutex.withLock {
+      val handler =
+        synchronized(handlerLock) {
+          if (expectedGeneration != null && handlerGeneration != expectedGeneration) return@withLock
+          animationHandler
+        }
+      handler?.removeAnimation(animation)?.join()
+    }
   }
 
   @TestOnly fun getHandlerForTests() = animationHandler
@@ -93,7 +148,11 @@ object ComposeAnimationSubscriber {
     if (LOG.isDebugEnabled) {
       LOG.debug("Animation subscribed: $animation")
     }
-    createScope().launch { (animation as? ComposeAnimation)?.let { onAnimationSubscribed(clock, it) } }
+    val generation = synchronized(handlerLock) { handlerGeneration }
+    createScope().launch {
+      if (synchronized(handlerLock) { handlerGeneration } != generation) return@launch
+      (animation as? ComposeAnimation)?.let { onAnimationSubscribedInternal(clock, it, generation) }
+    }
   }
 
   @JvmStatic
@@ -103,6 +162,10 @@ object ComposeAnimationSubscriber {
       LOG.debug("Animation unsubscribed: $animation")
     }
     if (animation == null) return
-    createScope().launch { (animation as? ComposeAnimation)?.let { onAnimationUnsubscribed(it) } }
+    val generation = synchronized(handlerLock) { handlerGeneration }
+    createScope().launch {
+      if (synchronized(handlerLock) { handlerGeneration } != generation) return@launch
+      (animation as? ComposeAnimation)?.let { onAnimationUnsubscribedInternal(it, generation) }
+    }
   }
 }

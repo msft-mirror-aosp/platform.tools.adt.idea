@@ -103,7 +103,13 @@ class WearTileAnimationPreview(
       .filter { it.isTerminal }
       .forEach {
         val tab = withContext(Dispatchers.EDT) { createAnimationManager(it) }
-        tab.setup()
+        try {
+          tab.setup()
+        } catch (_: WearTileAnimationStateUnavailableException) {
+          // The render session went away while setting up (e.g. a refresh); the next render re-triggers updateAllAnimations.
+          tab.destroy()
+          return@forEach
+        }
         withContext(Dispatchers.EDT) { addAnimationManager(tab) }
       }
     updateMaxDuration(true)
