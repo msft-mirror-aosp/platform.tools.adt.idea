@@ -116,13 +116,17 @@ class ResourceFileTrafficLightRendererContributor : TrafficLightRendererContribu
     // Use this customized renderer only for resource files, returning null means that the default
     // renderer will be used.
     return ReadAction.compute<TrafficLightRenderer?, RuntimeException> {
-      file?.let {
-        if (isInResourceSubdirectory(it)) {
-          ResourceFileTrafficLightRender(it, editor)
-        } else {
-          null
-        }
+      if (editor.isDisposed || file == null || !file.isValid) return@compute null
+      val project = file.project
+      if (project.isDisposed) return@compute null
+      val originalFile = file.originalFile
+      if (!originalFile.isValid) return@compute null
+      if (!generateSequence(originalFile.virtualFile) { it.parent }.all { it.isValid }) {
+        return@compute null
       }
+      if (!isInResourceSubdirectory(file)) return@compute null
+      if (editor.isDisposed || project.isDisposed) return@compute null
+      ResourceFileTrafficLightRender(file, editor)
     }
   }
 }

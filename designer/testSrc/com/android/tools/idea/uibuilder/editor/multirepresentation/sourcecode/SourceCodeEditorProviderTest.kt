@@ -26,17 +26,21 @@ import com.android.tools.idea.uibuilder.editor.multirepresentation.TestPreviewRe
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TestPreviewRepresentationProvider
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.google.common.truth.Truth.assertThat
+import com.intellij.codeInsight.daemon.impl.TrafficLightRenderer
 import com.intellij.mock.MockVirtualFile
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
+import com.intellij.openapi.application.impl.NonBlockingReadActionImpl
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.components.serviceAsync
+import com.intellij.openapi.editor.impl.EditorMarkupModelImpl
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
+import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.progress.ProgressManager
@@ -46,13 +50,17 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.JDOMUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.UsefulTestCase.assertContainsElements
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import junit.framework.TestCase
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jdom.Element
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.junit.Assert.assertEquals
@@ -97,6 +105,42 @@ class SourceCodeEditorProviderTest(private val asyncMode: EditorCreationMode) {
           provider.createFileEditor(project, file, document, editorScope)
         }
     }.also { Disposer.register(projectRule.testRootDisposable, it) }
+  }
+
+  private suspend fun <T> withEditor(
+    editorProvider: SourceCodeEditorProvider,
+    project: Project,
+    file: VirtualFile,
+    block: suspend (FileEditor) -> T,
+  ): T {
+    val editor = buildEditor(editorProvider, project, file)
+    try {
+      return block(editor)
+    } finally {
+      disposeEditorAndWait(editorProvider, editor)
+    }
+  }
+
+  private suspend fun disposeEditorAndWait(editorProvider: SourceCodeEditorProvider, editor: FileEditor) {
+    try {
+      val textEditor = editor as? TextEditor
+      val markupModel = textEditor?.editor?.markupModel as? EditorMarkupModelImpl
+      if (markupModel != null) {
+        withTimeoutOrNull(5.seconds) {
+          delayUntilCondition(delayPerIterationMs = 50) {
+            withContext(Dispatchers.EDT) {
+              !markupModel.isErrorStripeVisible || textEditor.editor.isDisposed || markupModel.errorStripeRenderer is TrafficLightRenderer
+            }
+          }
+        }
+      }
+    } finally {
+      withContext(Dispatchers.EDT + NonCancellable) {
+        editorProvider.disposeEditor(editor)
+        NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
+        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+      }
+    }
   }
 
   @Before
@@ -159,11 +203,9 @@ class SourceCodeEditorProviderTest(private val asyncMode: EditorCreationMode) {
   fun testCreatableForKotlinFile(): Unit = runBlocking {
     val file = fixture.addFileToProject("src/Preview.kt", "")
 
-    val editor = buildEditor(provider, file.project, file.virtualFile)
-
-    TestCase.assertNotNull(editor)
-
-    withContext(Dispatchers.EDT) { provider.disposeEditor(editor) }
+    withEditor(provider, file.project, file.virtualFile) { editor ->
+      TestCase.assertNotNull(editor)
+    }
   }
 
   @Test
@@ -180,30 +222,32 @@ class SourceCodeEditorProviderTest(private val asyncMode: EditorCreationMode) {
           TestPreviewRepresentationProvider("Representation2", true, representationWithState),
         )
       )
-    val editor = buildEditor(serializationProvider, file.project, file.virtualFile) as TextEditorWithMultiRepresentationPreview<*>
-    // Wait for the initializations
-    editor.preview.onInit()
-    withContext(Dispatchers.EDT) {
-      // Editor are not selected in unit testing. Force the preview activation so it loads the
-      // state.
-      editor.preview.onActivate()
-      val rootElement = Element("root")
-      serializationProvider.writeState(editor.getState(FileEditorStateLevel.FULL), fixture.project, rootElement)
-      assertTrue(JDOMUtil.writeElement(rootElement, "\n").isNotBlank())
-      val state =
-        serializationProvider.readState(rootElement, fixture.project, file.virtualFile)
-          as SourceCodeEditorWithMultiRepresentationPreviewState
+    withEditor(serializationProvider, file.project, file.virtualFile) { fileEditor ->
+      val editor = fileEditor as TextEditorWithMultiRepresentationPreview<*>
+      // Wait for the initializations
+      editor.preview.onInit()
+      withContext(Dispatchers.EDT) {
+        // Editor are not selected in unit testing. Force the preview activation so it loads the
+        // state.
+        editor.preview.onActivate()
+        val rootElement = Element("root")
+        serializationProvider.writeState(editor.getState(FileEditorStateLevel.FULL), fixture.project, rootElement)
+        assertTrue(JDOMUtil.writeElement(rootElement, "\n").isNotBlank())
+        val state =
+          serializationProvider.readState(rootElement, fixture.project, file.virtualFile)
+            as SourceCodeEditorWithMultiRepresentationPreviewState
 
-      assertContainsElements(state.previewState.representations.map { it.key }, "Representation1", "Representation2")
-      val settings = state.previewState.representations.single { it.key == "Representation2" }.settings
-      assertEquals(
-        """
-        key1 -> value1
-        key2 -> value2
-        """
-          .trimIndent(),
-        settings.map { "${it.key} -> ${it.value}" }.joinToString("\n"),
-      )
+        assertContainsElements(state.previewState.representations.map { it.key }, "Representation1", "Representation2")
+        val settings = state.previewState.representations.single { it.key == "Representation2" }.settings
+        assertEquals(
+          """
+          key1 -> value1
+          key2 -> value2
+          """
+            .trimIndent(),
+          settings.map { "${it.key} -> ${it.value}" }.joinToString("\n"),
+        )
+      }
     }
   }
 
@@ -212,46 +256,53 @@ class SourceCodeEditorProviderTest(private val asyncMode: EditorCreationMode) {
     val file = fixture.addFileToProject("src/Preview.kt", "")
     val representation = TestPreviewRepresentationProvider("Representation1", false)
     val sourceCodeProvider = SourceCodeEditorProvider.forTesting(listOf(representation))
-    val editor = buildEditor(sourceCodeProvider, file.project, file.virtualFile)
-    val preview = (editor as TextEditorWithMultiRepresentationPreview<*>).preview
+    withEditor(sourceCodeProvider, file.project, file.virtualFile) { editor ->
+      val preview = (editor as TextEditorWithMultiRepresentationPreview<*>).preview
 
-    preview.onInit()
+      preview.onInit()
 
-    assertThat(preview.representationNames).isEmpty()
-    representation.isAccept = true
-    assertThat(preview.representationNames).isEmpty()
+      assertThat(preview.representationNames).isEmpty()
+      representation.isAccept = true
+      assertThat(preview.representationNames).isEmpty()
 
-    // Now trigger smart mode. Representations should update
-    DumbModeTestUtils.runInDumbModeSynchronously(projectRule.project) {}
-    DumbService.getInstance(projectRule.project).waitForSmartMode()
+      // Now trigger smart mode. Representations should update
+      DumbModeTestUtils.runInDumbModeSynchronously(projectRule.project) {}
+      DumbService.getInstance(projectRule.project).waitForSmartMode()
 
-    // The representations update can be scheduled at some point in the future after the smart
-    // mode switch so we wait for them to update.
-    delayUntilCondition(delayPerIterationMs = 250) { preview.representationNames.singleOrNull() == "Representation1" }
+      // The representations update can be scheduled at some point in the future after the smart
+      // mode switch so we wait for them to update.
+      delayUntilCondition(delayPerIterationMs = 250) { preview.representationNames.singleOrNull() == "Representation1" }
+    }
   }
 
   @Test
   fun testUpdatesRepresentationWithProjectAlreadyInSmartMode(): Unit = runBlocking {
     val file = fixture.addFileToProject("src/Preview.kt", "")
+    val representation = TestPreviewRepresentationProvider("Representation1", false)
+    val sourceCodeProvider = SourceCodeEditorProvider.forTesting(listOf(representation))
+    var editor: FileEditor? = null
     var preview: MultiRepresentationPreview? = null
-    // We run the initialization of the test in dumb mode to ensure that the right logic triggers
-    // in SourceCodeEditor after the project goes into smart mode.
-    DumbModeTestUtils.runInDumbModeSynchronously(projectRule.project) {
-      val representation = TestPreviewRepresentationProvider("Representation1", false)
-      val sourceCodeProvider = SourceCodeEditorProvider.forTesting(listOf(representation))
-      ApplicationManager.getApplication().invokeAndWait {
-        val editor =
-          sourceCodeProvider.createEditor(file.project, file.virtualFile).also { Disposer.register(fixture.testRootDisposable, it) }
-        preview = (editor as TextEditorWithMultiRepresentationPreview<*>).preview
+    try {
+      // We run the initialization of the test in dumb mode to ensure that the right logic triggers
+      // in SourceCodeEditor after the project goes into smart mode.
+      DumbModeTestUtils.runInDumbModeSynchronously(projectRule.project) {
+        ApplicationManager.getApplication().invokeAndWait {
+          val createdEditor =
+            sourceCodeProvider.createEditor(file.project, file.virtualFile).also { Disposer.register(fixture.testRootDisposable, it) }
+          editor = createdEditor
+          preview = (createdEditor as TextEditorWithMultiRepresentationPreview<*>).preview
+        }
+        runBlocking { preview!!.onInit() }
+        assertThat(preview!!.representationNames).isEmpty()
+        representation.isAccept = true
       }
-      runBlocking { preview!!.onInit() }
-      assertThat(preview!!.representationNames).isEmpty()
-      representation.isAccept = true
-    }
 
-    // Now the project will go into smart mode, and we wait to see if the representations update
-    // accordingly.
-    delayUntilCondition(delayPerIterationMs = 250) { preview!!.representationNames.singleOrNull() == "Representation1" }
+      // Now the project will go into smart mode, and we wait to see if the representations update
+      // accordingly.
+      delayUntilCondition(delayPerIterationMs = 250) { preview!!.representationNames.singleOrNull() == "Representation1" }
+    } finally {
+      editor?.let { disposeEditorAndWait(sourceCodeProvider, it) }
+    }
   }
 
   // Regression test for b/232045613
@@ -293,9 +344,7 @@ class SourceCodeEditorProviderTest(private val asyncMode: EditorCreationMode) {
 
     withContext(Dispatchers.EDT) { runWriteActionAndWait { document!!.setText("class Foo") } }
 
-    val editor = buildEditor(provider, file.project, file.virtualFile)
-    TestCase.assertNotNull(editor)
-    withContext(Dispatchers.EDT) { provider.disposeEditor(editor) }
+    withEditor(provider, file.project, file.virtualFile) { editor -> TestCase.assertNotNull(editor) }
   }
 
   // Regression test for b/553120510
@@ -306,24 +355,30 @@ class SourceCodeEditorProviderTest(private val asyncMode: EditorCreationMode) {
     val file = fixture.addFileToProject("src/Preview.kt", "")
     val document = readAction { FileDocumentManager.getInstance().getDocument(file.virtualFile) }
 
-    withContext(Dispatchers.EDT) {
-      runWriteActionAndWait { document!!.setText("class Foo") }
-      ProgressManager.getInstance()
-        .runProcessWithProgressSynchronously(
-          {
-            val modalContext = ModalityState.defaultModalityState().asContextElement()
-            runBlocking(modalContext) {
-              val editor = provider.createFileEditor(file.project, file.virtualFile, document, editorScope)
-              TestCase.assertNotNull(editor)
-              withContext(Dispatchers.EDT + modalContext) {
-                provider.disposeEditor(editor)
+    var editor: FileEditor? = null
+    try {
+      withContext(Dispatchers.EDT) {
+        runWriteActionAndWait { document!!.setText("class Foo") }
+        ProgressManager.getInstance()
+          .runProcessWithProgressSynchronously(
+            {
+              val modalContext = ModalityState.defaultModalityState().asContextElement()
+              runBlocking(modalContext) {
+                val createdEditor =
+                  provider.createFileEditor(file.project, file.virtualFile, document, editorScope).also {
+                    Disposer.register(projectRule.testRootDisposable, it)
+                  }
+                editor = createdEditor
+                TestCase.assertNotNull(createdEditor)
               }
-            }
-          },
-          "Opening file",
-          false,
-          file.project,
-        )
+            },
+            "Opening file",
+            false,
+            file.project,
+          )
+      }
+    } finally {
+      editor?.let { disposeEditorAndWait(provider, it) }
     }
   }
 
