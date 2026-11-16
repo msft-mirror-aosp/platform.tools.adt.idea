@@ -2525,6 +2525,11 @@ public final class StudioFlags {
                     "Enable New Project Agent's Planner UI",
                     "Enables the 'New Project Agent' Planner UI.");
 
+  public static final Flag<Boolean> GEMINI_NEW_PROJECT_AGENT_ACP =
+    new BooleanFlag(STUDIOBOT, "new.project.agent.acp",
+                    "Enable New Project Agent on ACP agents",
+                    "Lets the 'New Project Agent' run on ACP agents (such as Claude or Antigravity) instead of only the built-in agent.");
+
   public static final Flag<Boolean> STUDIOBOT_AGENT_V2_TELEMETRY_ENABLED =
     new BooleanFlag(STUDIOBOT, "agent.v2.telemetry.enabled",
                     "Enable agent V2 telemetry",
