@@ -28,7 +28,7 @@ import org.jetbrains.kotlin.util.capitalizeDecapitalize.capitalizeAsciiOnly
 
 // This Gradle version is exclusively used for the Sync Comparison Benchmarks and gets updated
 // frequently. Please do not use for other purposes
-const val GRADLE_SNAPSHOT_VERSION = "9.10.0-20261108003312+0000"
+const val GRADLE_SNAPSHOT_VERSION = "9.10.0-20261116003216+0000"
 // For available versions:
 // https://maven.pkg.jetbrains.space/kotlin/p/kotlin/dev/org/jetbrains/kotlin/kotlin-compiler/maven-metadata.xml
 const val KOTLIN_SNAPSHOT_VERSION = "2.5.20-dev-4715"
