@@ -108,6 +108,7 @@ private constructor(
   val coroutineScope: CoroutineScope,
   val visualLintDispatcher: CoroutineDispatcher,
   val visualLintAnalyzerDispatcher: CoroutineDispatcher,
+  private val renderResultFactory: (NlModel, Boolean) -> CompletableFuture<RenderResult> = ::createRenderResult,
 ) : Disposable {
 
   constructor(
@@ -133,12 +134,14 @@ private constructor(
       coroutineScope: CoroutineScope,
       visualLintDispatcher: CoroutineDispatcher,
       visualLintAnalyzerDispatcher: CoroutineDispatcher,
+      renderResultFactory: (NlModel, Boolean) -> CompletableFuture<RenderResult> = ::createRenderResult,
     ): VisualLintService {
       return VisualLintService(
           project = project,
           coroutineScope = coroutineScope,
           visualLintDispatcher = visualLintDispatcher,
           visualLintAnalyzerDispatcher = visualLintAnalyzerDispatcher,
+          renderResultFactory = renderResultFactory,
         )
         .apply { Disposer.register(parentDisposable, this) }
     }
@@ -371,7 +374,7 @@ private constructor(
           for (model in modelsToAnalyze) {
             if (baseModel.modificationCount != modelModCountBefore) return@withTimeout false
             val runAtfChecks = AtfAnalyzer.shouldRun(project, true)
-            val renderFuture = createRenderResult(model, runAtfChecks)
+            val renderFuture = renderResultFactory(model, runAtfChecks)
             val result =
               try {
                 renderFuture.await()
@@ -380,7 +383,9 @@ private constructor(
                 // an active job via Logger.shouldRethrow.
                 val cause = if (t is ExecutionException || t is CompletionException) t.cause ?: t else t
                 if (cause is CancellationException) {
-                  renderFuture.cancel(false)
+                  if (!renderFuture.cancel(false)) {
+                    renderFuture.whenComplete { res, _ -> res?.dispose() }
+                  }
                   if (!currentCoroutineContext().isActive) throw t // This job was cancelled or withTimeout fired.
                   return@withTimeout false // Only the render was cancelled: this attempt is incomplete.
                 }
@@ -392,17 +397,22 @@ private constructor(
               Disposer.dispose(model)
               continue
             }
-            if (result.renderResult.exception is CancellationException || baseModel.modificationCount != modelModCountBefore) {
-              // F1: inflate() turns a cancelled/evicted render into an error RenderResult; analyzing it would publish a partial count.
-              return@withTimeout false
-            }
-            withContext(visualLintAnalyzerDispatcher) {
-              try {
-                updateHierarchy(result, model)
-                analyzeAfterModelUpdate(issueProvider, result, model, visualLintBaseConfigIssues, true)
-              } finally {
+            try {
+              if (result.renderResult.exception is CancellationException || baseModel.modificationCount != modelModCountBefore) {
+                // F1: inflate() turns a cancelled/evicted render into an error RenderResult; analyzing it would publish a partial count.
                 Disposer.dispose(model)
+                return@withTimeout false
               }
+              withContext(visualLintAnalyzerDispatcher) {
+                try {
+                  updateHierarchy(result, model)
+                  analyzeAfterModelUpdate(issueProvider, result, model, visualLintBaseConfigIssues, true)
+                } finally {
+                  Disposer.dispose(model)
+                }
+              }
+            } finally {
+              result.dispose()
             }
           }
           true
@@ -511,14 +521,30 @@ private constructor(
 }
 
 /** Inflates a model, then returns the completable future with render result. */
-fun createRenderResult(model: NlModel, runAtfChecks: Boolean): CompletableFuture<RenderResult> {
+fun createRenderResult(model: NlModel, runAtfChecks: Boolean): CompletableFuture<RenderResult> =
+  createRenderResult(model, runAtfChecks, RenderTask::inflate)
+
+@TestOnly
+internal fun createRenderResult(
+  model: NlModel,
+  runAtfChecks: Boolean,
+  inflateTask: (RenderTask) -> CompletableFuture<RenderResult?>,
+): CompletableFuture<RenderResult> {
   val renderService = StudioRenderService.getInstance(model.project)
   val logger = renderService.createHtmlLogger(model.project)
   val buildDisposable = Disposer.newCheckedDisposable("VisualLintRenderTaskBuilder")
   val taskDisposed = AtomicBoolean(false)
+  val resultDisposed = AtomicBoolean(false)
+  val cancelled = AtomicBoolean(false)
+  val inflateFutureRef = AtomicReference<CompletableFuture<RenderResult?>?>(null)
   fun disposeOnce(task: RenderTask) {
     if (taskDisposed.compareAndSet(false, true)) {
       task.disposeAsync()
+    }
+  }
+  fun disposeResultOnce(result: RenderResult?) {
+    if (result != null && resultDisposed.compareAndSet(false, true)) {
+      result.dispose()
     }
   }
 
@@ -543,7 +569,12 @@ fun createRenderResult(model: NlModel, runAtfChecks: Boolean): CompletableFuture
     }
 
     // TODO: Potentially save this task for future?
-    return@thenCompose newTask.inflate().whenComplete { result, inflateException ->
+    val inflateFuture = inflateTask(newTask)
+    inflateFutureRef.set(inflateFuture)
+    if (cancelled.get()) {
+      inflateFuture.whenComplete { res, _ -> disposeResultOnce(res) }
+    }
+    return@thenCompose inflateFuture.whenComplete { result, inflateException ->
       val exception: Throwable? = inflateException ?: result?.renderResult?.exception
       disposeOnce(newTask)
       if (exception != null || result == null) {
@@ -555,6 +586,8 @@ fun createRenderResult(model: NlModel, runAtfChecks: Boolean): CompletableFuture
   renderResultFuture.whenComplete { _, throwable ->
     Disposer.dispose(buildDisposable)
     if (throwable is CancellationException || renderResultFuture.isCancelled) {
+      cancelled.set(true)
+      inflateFutureRef.get()?.whenComplete { res, _ -> disposeResultOnce(res) }
       renderTaskFuture.thenAccept { task -> task?.let(::disposeOnce) }
     }
   }

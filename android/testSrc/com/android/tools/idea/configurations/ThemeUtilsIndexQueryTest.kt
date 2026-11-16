@@ -15,12 +15,19 @@
  */
 package com.android.tools.idea.configurations
 
+import com.android.tools.configurations.DefaultThemeProvider
+import com.android.tools.idea.model.MergedManifestModificationTracker
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.util.androidFacet
 import com.google.common.truth.Truth
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.DumbModeTestUtils
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import org.intellij.lang.annotations.Language
@@ -128,5 +135,38 @@ class ThemeUtilsIndexQueryTest {
       provider.getDefaultTheme(configuration)
     }
     assertThat(computeCount.get()).isEqualTo(2)
+  }
+
+  /**
+   * Regression test for b/585187652: [DefaultThemeProvider.computeDefaultThemeForConfiguration] on a background thread without a
+   * pre-existing read lock must wait for smart mode rather than acquiring a read lock first and immediately falling back to the framework
+   * default theme when dumb mode is active.
+   */
+  @Test
+  fun testComputeDefaultThemeWaitsForSmartMode() {
+    val configuration = createConfiguration()
+    // Pre-warm target and resource repositories so findPostSplashTheme does not mask a non-waiting manifest theme fallback.
+    configuration.target
+    configuration.resourceResolver
+
+    val startedLatch = CountDownLatch(1)
+    var future: Future<String>? = null
+    try {
+      DumbModeTestUtils.runInDumbModeSynchronously(projectRule.project) {
+        MergedManifestModificationTracker.getInstance(facet.module).manifestChanged()
+        val submitted =
+          AppExecutorUtil.getAppExecutorService().submit<String> {
+            startedLatch.countDown()
+            DefaultThemeProvider.computeDefaultThemeForConfiguration(configuration)
+          }
+        future = submitted
+        assertThat(startedLatch.await(10, TimeUnit.SECONDS)).isTrue()
+        assertThat(runCatching { submitted.get(100, TimeUnit.MILLISECONDS) }.exceptionOrNull()).isInstanceOf(TimeoutException::class.java)
+      }
+
+      assertThat(future!!.get(10, TimeUnit.SECONDS)).isEqualTo("@style/AppTheme")
+    } finally {
+      future?.cancel(true)
+    }
   }
 }

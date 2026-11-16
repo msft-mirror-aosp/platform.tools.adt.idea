@@ -20,7 +20,6 @@ import com.android.ide.common.rendering.api.ResourceNamespace
 import com.android.ide.common.rendering.api.ResourceReference
 import com.android.resources.ResourceUrl
 import com.android.tools.environment.Logger
-import com.intellij.openapi.application.runReadAction
 
 /** [ResourceReference] to the postSplashScreenTheme. */
 private val postSplashAttrReference = ResourceReference.attr(ResourceNamespace.RES_AUTO, "postSplashScreenTheme")
@@ -85,7 +84,7 @@ object DefaultThemeProvider {
 
     // Returns an app theme if possible
     val manifestTheme =
-      runReadAction { themeInfo.appThemeName }
+      themeInfo.appThemeName
         // Look up the default/fallback theme to use for this project (which depends on the screen size when no particular
         // theme is specified in the manifest).
         ?: themeInfo.getDeviceDefaultTheme(configuration.target, configuration.screenSize, configuration.cachedDevice)

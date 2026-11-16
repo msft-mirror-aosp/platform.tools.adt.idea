@@ -31,17 +31,22 @@ import com.android.tools.idea.uibuilder.scene.NlModelHierarchyUpdater
 import com.android.tools.idea.uibuilder.type.LayoutFileType
 import com.android.tools.rendering.RenderAsyncActionExecutor.RenderingTopic
 import com.android.tools.rendering.RenderExecutor
+import com.android.tools.rendering.RenderResult
 import com.android.tools.rendering.RenderService
 import com.android.tools.rendering.RenderTask
 import com.android.tools.rendering.tracking.notDisposedRenderTasks
 import com.android.tools.visuallint.VisualLintErrorType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.util.concurrency.AppExecutorUtil
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -722,6 +727,121 @@ class VisualLintServiceTest {
       } finally {
         serviceScope.cancel()
       }
+    }
+  }
+
+  @OptIn(ExperimentalCoroutinesApi::class)
+  @Test
+  fun backgroundAnalysisDisposesTemporaryRenderResults() = runBlocking {
+    projectRule.load("projects/visualLintApplication")
+
+    val inflatedResults = CopyOnWriteArrayList<RenderResult>()
+    val hadNonEmptyRootViewsOnInflate = CopyOnWriteArrayList<Boolean>()
+    val serviceScope = CoroutineScope(SupervisorJob())
+    try {
+      val visualLintService =
+        VisualLintService.getInstanceForTest(
+          project = projectRule.project,
+          parentDisposable = projectRule.fixture.testRootDisposable,
+          coroutineScope = serviceScope,
+          visualLintDispatcher = Dispatchers.Default.limitedParallelism(1),
+          visualLintAnalyzerDispatcher = Dispatchers.Default.limitedParallelism(1),
+          renderResultFactory = { model, runAtfChecks ->
+            val raw = createRenderResult(model, runAtfChecks)
+            raw
+              .thenApply { result ->
+                if (result != null) {
+                  hadNonEmptyRootViewsOnInflate.add(result.rootViews.isNotEmpty())
+                  inflatedResults.add(result)
+                }
+                result
+              }
+              .also { chained ->
+                chained.whenComplete { _, ex ->
+                  if (ex is java.util.concurrent.CancellationException || chained.isCancelled) {
+                    raw.cancel(false)
+                  }
+                }
+              }
+          },
+        )
+
+      val module = projectRule.getModule("app")
+      val facet = AndroidFacet.getInstance(module)!!
+      val dashboardLayout = projectRule.project.baseDir.findFileByRelativePath("app/src/main/res/layout/fragment_dashboard.xml")!!
+      val nlModel =
+        SyncNlModel.create(
+          projectRule.fixture.testRootDisposable,
+          NlComponentRegistrar,
+          AndroidBuildTargetReference.gradleOnly(facet),
+          dashboardLayout,
+        )
+
+      withTimeout(60.seconds) {
+        visualLintService
+          .runVisualLintAnalysis(
+            projectRule.fixture.testRootDisposable,
+            ViewVisualLintIssueProvider(projectRule.fixture.testRootDisposable),
+            listOf(nlModel),
+            emptyMap(),
+          )
+          .join()
+      }
+
+      assertEquals(2, visualLintService.issueModel.issues.size)
+      assertTrue(inflatedResults.isNotEmpty())
+      assertTrue(hadNonEmptyRootViewsOnInflate.all { it })
+      inflatedResults.forEach { assertTrue(it.rootViews.isEmpty()) }
+    } finally {
+      serviceScope.cancel()
+    }
+  }
+
+  @Test
+  fun createRenderResultCancellationDisposesLateInflateResult() {
+    projectRule.load("projects/visualLintApplication")
+    val module = projectRule.getModule("app")
+    val facet = AndroidFacet.getInstance(module)!!
+    val dashboardLayout = projectRule.project.baseDir.findFileByRelativePath("app/src/main/res/layout/fragment_dashboard.xml")!!
+    val nlModel =
+      SyncNlModel.create(
+        projectRule.fixture.testRootDisposable,
+        NlComponentRegistrar,
+        AndroidBuildTargetReference.gradleOnly(facet),
+        dashboardLayout,
+      )
+
+    val inflateStarted = CountDownLatch(1)
+    val controlledInflate = CompletableFuture<RenderResult?>()
+    val realInflateHolder = CompletableFuture<CompletableFuture<RenderResult?>>()
+    val future =
+      createRenderResult(nlModel, false) { task ->
+        realInflateHolder.complete(task.inflate())
+        inflateStarted.countDown()
+        controlledInflate
+      }
+
+    var realResult: RenderResult? = null
+    try {
+      assertTrue(inflateStarted.await(30, TimeUnit.SECONDS))
+      realResult = realInflateHolder.get(30, TimeUnit.SECONDS).get(30, TimeUnit.SECONDS)!!
+      assertTrue(realResult.rootViews.isNotEmpty())
+
+      assertTrue(future.cancel(false))
+      controlledInflate.complete(realResult)
+      runBlocking {
+        withTimeout(5.seconds) {
+          while (realResult.rootViews.isNotEmpty()) {
+            delay(10)
+          }
+        }
+      }
+      assertTrue(realResult.rootViews.isEmpty())
+    } finally {
+      controlledInflate.cancel(false)
+      realResult?.dispose()
+      AppExecutorUtil.getAppExecutorService().submit {}.get(30, TimeUnit.SECONDS)
+      RenderService.getRenderAsyncActionExecutor().runAsyncAction {}.get(30, TimeUnit.SECONDS)
     }
   }
 }
