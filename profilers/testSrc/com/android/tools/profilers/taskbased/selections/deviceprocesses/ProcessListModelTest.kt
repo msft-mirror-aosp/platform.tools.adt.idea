@@ -53,7 +53,6 @@ class ProcessListModelTest {
     myProfilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer)
     myManager = myProfilers.sessionsManager
     processListModel = ProcessListModel(myProfilers)
-    ideProfilerServices.enableTaskBasedUx(true)
   }
 
   @Test

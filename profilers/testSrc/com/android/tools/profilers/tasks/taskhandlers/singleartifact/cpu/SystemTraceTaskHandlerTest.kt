@@ -61,8 +61,8 @@ import perfetto.protos.PerfettoConfig
 @RunWith(Parameterized::class)
 class SystemTraceTaskHandlerTest(private val myExposureLevel: ExposureLevel) {
   private val myTimer = FakeTimer()
-  private val ideProfilerServices = FakeIdeProfilerServices().apply { enableTaskBasedUx(true) }
-  private val myTransportService = FakeTransportService(myTimer, false, ideProfilerServices.featureConfig.isTaskBasedUxEnabled)
+  private val ideProfilerServices = FakeIdeProfilerServices()
+  private val myTransportService = FakeTransportService(myTimer, false)
 
   @get:Rule var myGrpcChannel = FakeGrpcChannel("SystemTraceTaskHandlerTestChannel", myTransportService)
 

@@ -72,7 +72,6 @@ class TaskHomeTabModelTest {
     taskHomeTabModel = TaskHomeTabModel(myProfilers)
     val taskHandlers = ProfilerTaskHandlerFactory.createTaskHandlers(myProfilers.sessionsManager)
     taskHandlers.forEach { (type, handler) -> myProfilers.addTaskHandler(type, handler) }
-    ideProfilerServices.enableTaskBasedUx(true)
   }
 
   @Test

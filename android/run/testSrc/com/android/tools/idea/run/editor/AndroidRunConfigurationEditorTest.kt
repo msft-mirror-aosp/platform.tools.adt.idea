@@ -17,8 +17,6 @@ package com.android.tools.idea.run.editor
 
 import com.android.tools.idea.backup.BackupManager
 import com.android.tools.idea.backup.testing.FakeBackupManager
-import com.android.tools.idea.execution.common.debug.AndroidDebuggerContext
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType.PROJECT_TYPE_DYNAMIC_FEATURE
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType.PROJECT_TYPE_LIBRARY
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType.PROJECT_TYPE_TEST
@@ -27,7 +25,6 @@ import com.android.tools.idea.projectsystem.gradle.getHolderModule
 import com.android.tools.idea.projectsystem.gradle.getMainModule
 import com.android.tools.idea.run.AndroidRunConfiguration
 import com.android.tools.idea.run.AndroidRunConfigurationType
-import com.android.tools.idea.run.ConfigurationSpecificEditor
 import com.android.tools.idea.run.configuration.AndroidComplicationConfiguration
 import com.android.tools.idea.run.configuration.AndroidComplicationConfigurationType
 import com.android.tools.idea.run.configuration.AndroidTileConfigurationType
@@ -35,7 +32,6 @@ import com.android.tools.idea.run.configuration.AndroidWatchFaceConfigurationTyp
 import com.android.tools.idea.run.configuration.AndroidWearConfiguration
 import com.android.tools.idea.run.configuration.editors.AndroidComplicationConfigurationEditor
 import com.android.tools.idea.run.configuration.editors.AndroidWearConfigurationEditor
-import com.android.tools.idea.run.deployment.DeviceAndSnapshotComboBoxTargetProvider
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestRunConfiguration
 import com.android.tools.idea.testartifacts.instrumented.AndroidTestRunConfigurationType
 import com.android.tools.idea.testing.AndroidModuleModelBuilder
@@ -54,19 +50,14 @@ import com.intellij.execution.ui.ConfigurationModuleSelector
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.options.SettingsEditor
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.registerOrReplaceServiceInstance
-import javax.swing.JLabel
-import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 
 @RunsInEdt
 class AndroidRunConfigurationEditorTest {
@@ -87,12 +78,6 @@ class AndroidRunConfigurationEditorTest {
   @Before
   fun setUp() {
     projectRule.project.registerOrReplaceServiceInstance(BackupManager::class.java, FakeBackupManager(), disposableRule.disposable)
-  }
-
-  @After
-  fun tearDown() {
-    // Need to clear any override we use inside tests here.
-    StudioFlags.PROFILER_TASK_BASED_UX.clearOverride()
   }
 
   @Test
@@ -148,20 +133,6 @@ class AndroidRunConfigurationEditorTest {
     assertThat(availableModules).containsExactly(module(":app").getHolderModule())
   }
 
-  @Test
-  fun testProfilingTabAvailable() {
-    StudioFlags.PROFILER_TASK_BASED_UX.override(false)
-    // Profiling tab available
-    assertThat(getProfilingTabIndex()).isNotEqualTo(-1)
-  }
-
-  @Test
-  fun testProfilingTabNotAvailable() {
-    StudioFlags.PROFILER_TASK_BASED_UX.override(true)
-    // Profiling tab not available
-    assertThat(getProfilingTabIndex()).isEqualTo(-1)
-  }
-
   private inline fun <reified R> createConfiguration(configurationTypeClass: Class<out ConfigurationType>): R {
     val configurationType = findConfigurationType(configurationTypeClass)
     val configurationFactory = configurationType.configurationFactories.single()
@@ -178,33 +149,5 @@ class AndroidRunConfigurationEditorTest {
     val editor = configurationEditor as E
     Disposer.register(projectRule.testRootDisposable, editor)
     return ModuleManager.getInstance(projectRule.project).modules.filter { selector(editor).isModuleAccepted(it) }
-  }
-
-  private fun getProfilingTabIndex(): Int {
-    val provider: DeployTargetProvider = DeviceAndSnapshotComboBoxTargetProvider.getInstance()
-    var androidRunConfigurationEditor = getAndroidRunConfigurationEditor(provider, projectRule.project)
-    return androidRunConfigurationEditor.myTabbedPane.indexOfTab("Profiling")
-  }
-
-  fun getTargetProviders(provider: DeployTargetProvider): List<DeployTargetProvider> {
-    return listOf(provider)
-  }
-
-  fun getAndroidRunConfigurationEditor(
-    provider: DeployTargetProvider,
-    project: Project,
-  ): AndroidRunConfigurationEditor<AndroidTestRunConfiguration> {
-    val androidDebuggerContext = mock<AndroidDebuggerContext>()
-    val providers: List<DeployTargetProvider> = getTargetProviders(provider)
-    val configuration = mock<AndroidTestRunConfiguration>()
-    whenever(configuration.androidDebuggerContext).thenReturn(androidDebuggerContext)
-    whenever(configuration.applicableDeployTargetProviders).thenReturn(providers)
-    whenever(configuration.profilerState).thenReturn(ProfilerState())
-
-    @Suppress("unchecked_cast") val configurationSpecificEditor = mock<ConfigurationSpecificEditor<AndroidTestRunConfiguration>>()
-
-    whenever(configurationSpecificEditor.component).thenReturn(JLabel())
-
-    return AndroidRunConfigurationEditor(project, { false }, configuration, true, false, { configurationSpecificEditor })
   }
 }

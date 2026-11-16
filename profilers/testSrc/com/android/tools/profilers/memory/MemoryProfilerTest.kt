@@ -38,6 +38,7 @@ import com.android.tools.profilers.ProfilersTestData
 import com.android.tools.profilers.ProfilersTestData.DEFAULT_AGENT_ATTACHED_RESPONSE
 import com.android.tools.profilers.ProfilersTestData.DEFAULT_AGENT_UNATTACHABLE_RESPONSE
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.Utils
 import com.android.tools.profilers.perfetto.config.PerfettoTraceConfigBuilders
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.taskhandlers.singleartifact.LiveTaskHandler
@@ -83,7 +84,6 @@ class MemoryProfilerTest {
 
   @Test
   fun taskBasedUxNotLiveAllocationTracking() {
-    myIdeProfilerServices.enableTaskBasedUx(true)
     setupODeviceAndProcessForTaskBasedUx(Common.ProfilerTaskType.LIVE_VIEW, true)
     myStudioProfiler.addTaskHandler(ProfilerTaskType.LIVE_VIEW, LiveTaskHandler(myStudioProfiler.sessionsManager))
 
@@ -106,40 +106,11 @@ class MemoryProfilerTest {
     assertThat(lastCommand.type).isEqualTo(Commands.Command.CommandType.STOP_ALLOC_TRACKING)
   }
 
-  @Test
-  fun nonTaskBasedUxLiveAllocationTracking() {
-    (myTransportService.getRegisteredCommand(Commands.Command.CommandType.START_ALLOC_TRACKING) as MemoryAllocTracking).trackStatus =
-      Memory.TrackStatus.newBuilder().setStatus(Memory.TrackStatus.Status.SUCCESS).build()
-    myIdeProfilerServices.enableTaskBasedUx(false)
-    setupODeviceAndProcess()
-
-    val allocTrackingHandler =
-      myTransportService.getRegisteredCommand(Commands.Command.CommandType.START_ALLOC_TRACKING) as MemoryAllocTracking
-    // Wait for the session starting with agent
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    assertThat(myStudioProfiler.isAgentAttached).isTrue()
-
-    var lastCommand = allocTrackingHandler.lastCommand
-    // Last command is Stop Alloc Tracking
-    assertThat(lastCommand.type).isEqualTo(Commands.Command.CommandType.STOP_ALLOC_TRACKING)
-
-    val allocationStage = spy(AllocationStage.makeLiveStage(myStudioProfiler, FakeCaptureObjectLoader()))
-    allocationStage.liveAllocationSamplingMode = BaseStreamingMemoryProfilerStage.LiveAllocationSamplingMode.SAMPLED
-    doReturn(false).whenever(allocationStage).isAgentAttached // make delayed allocation tracking
-    // Set stage as AllocationStage
-    myStudioProfiler.stage = allocationStage
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS) // wait for the start allocation tracking
-    lastCommand = allocTrackingHandler.lastCommand
-    // Check if last ran command is start allocation tracking, there is no delay since it's not task based ux
-    assertThat(lastCommand.type).isEqualTo(Commands.Command.CommandType.START_ALLOC_TRACKING)
-  }
-
   /** After the agent is already attached by prior tasks, the user starts a J/K Allocation task */
   @Test
   fun taskBasedUxLiveAllocationTrackingNoDelayedStart() {
     (myTransportService.getRegisteredCommand(Commands.Command.CommandType.START_ALLOC_TRACKING) as MemoryAllocTracking).trackStatus =
       Memory.TrackStatus.newBuilder().setStatus(Memory.TrackStatus.Status.SUCCESS).build()
-    myIdeProfilerServices.enableTaskBasedUx(true)
     myStudioProfiler.addTaskHandler(
       ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
       JavaKotlinAllocationsTaskHandler(myStudioProfiler.sessionsManager),
@@ -177,7 +148,6 @@ class MemoryProfilerTest {
   fun taskBasedUxLiveAllocationTrackingDelayedStart() {
     (myTransportService.getRegisteredCommand(Commands.Command.CommandType.START_ALLOC_TRACKING) as MemoryAllocTracking).trackStatus =
       Memory.TrackStatus.newBuilder().setStatus(Memory.TrackStatus.Status.SUCCESS).build()
-    myIdeProfilerServices.enableTaskBasedUx(true)
     myStudioProfiler.addTaskHandler(
       ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS,
       JavaKotlinAllocationsTaskHandler(myStudioProfiler.sessionsManager),
@@ -220,8 +190,9 @@ class MemoryProfilerTest {
 
   @Test
   fun testAllocationTrackingWhenAgentUnAttached() {
-    myIdeProfilerServices.enableTaskBasedUx(false)
-
+    // Selecting a session launches the current task, so make it a Live View task.
+    Utils.ensureLiveTaskHandler(myStudioProfiler)
+    myStudioProfiler.sessionsManager.currentTaskType = ProfilerTaskType.LIVE_VIEW
     val session =
       Common.Session.newBuilder().setSessionId(2).setStartTimestamp(FakeTimer.ONE_SECOND_IN_NS).setEndTimestamp(Long.MAX_VALUE).build()
     // Setting to Long.Max_Value so the session is still active
@@ -257,8 +228,6 @@ class MemoryProfilerTest {
 
   @Test
   fun testLiveAllocationTrackingStoppedAndNotStartedOnAgentAttach() {
-    myIdeProfilerServices.enableTaskBasedUx(false)
-
     setupODeviceAndProcess()
     // Verify start and stop allocation tracking commands are handled by the same handler.
     val allocTrackingHandler =
@@ -282,8 +251,6 @@ class MemoryProfilerTest {
 
   @Test
   fun liveAllocationTrackingDidNotStartIfAgentIsNotAttached() {
-    myIdeProfilerServices.enableTaskBasedUx(false)
-
     setupODeviceAndProcess()
 
     myTransportService.setAgentStatus(DEFAULT_AGENT_ATTACHED_RESPONSE)
@@ -492,7 +459,9 @@ class MemoryProfilerTest {
     myTransportService.addDevice(device)
     myTransportService.addProcess(device, process)
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    myStudioProfiler.setProcess(device, process)
+    // Starts a new session that gets selected on the next tick.
+    Utils.ensureLiveTaskHandler(myStudioProfiler)
+    myStudioProfiler.setProcess(device, process, Common.ProfilerTaskType.LIVE_VIEW, false)
   }
 
   private fun setupODeviceAndProcessForTaskBasedUx(taskType: Common.ProfilerTaskType, isStartupTask: Boolean) {

@@ -50,7 +50,6 @@ class TaskSupportUtilsTest {
     myProfilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer)
     myManager = myProfilers.sessionsManager
     pastRecordingsTabModel = PastRecordingsTabModel(myProfilers)
-    ideProfilerServices.enableTaskBasedUx(true)
   }
 
   @Test

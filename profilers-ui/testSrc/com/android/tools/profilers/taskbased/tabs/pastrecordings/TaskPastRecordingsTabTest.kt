@@ -73,7 +73,6 @@ class TaskPastRecordingsTabTest {
     myProfilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer)
     myManager = myProfilers.sessionsManager
     pastRecordingsTabModel = PastRecordingsTabModel(myProfilers)
-    ideProfilerServices.enableTaskBasedUx(true)
     val taskHandlers = ProfilerTaskHandlerFactory.createTaskHandlers(myManager)
     taskHandlers.forEach { myProfilers.addTaskHandler(it.key, it.value) }
     assertThat(pastRecordingsTabModel.recordingListModel.recordingList.value).isEmpty()

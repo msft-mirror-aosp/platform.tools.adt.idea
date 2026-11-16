@@ -41,6 +41,7 @@ import com.android.tools.profilers.ProfilerClient;
 import com.android.tools.profilers.SessionProfilersView;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.StudioProfilersView;
+import com.android.tools.profilers.Utils;
 import com.google.common.truth.Truth;
 import com.intellij.testFramework.ApplicationRule;
 import com.intellij.testFramework.DisposableRule;
@@ -92,17 +93,12 @@ public class EventMonitorViewTest {
 
   @Before
   public void setUp() {
-    // The Task-Based UX flag will be disabled for the call to setPreferredProcess, then re-enabled. This is because the setPreferredProcess
-    // method changes behavior based on the flag's value, and some of the tests depend on the behavior with the flag turned off.
-    myProfilerServices.enableTaskBasedUx(false);
     myProfilers = new StudioProfilers(new ProfilerClient(myGrpcChannel.getChannel()), myProfilerServices, myTimer);
     myProfilers.setPreferredProcess(FAKE_DEVICE_NAME, FAKE_PROCESS_NAME, null);
     myTimer.tick(TimeUnit.SECONDS.toNanos(1));
-    myProfilerServices.enableTaskBasedUx(true);
+    // Sessions are not started automatically, so explicitly start one with the fake process.
+    Utils.startSessionOnFakeProcess(myProfilers, myTimer);
 
-    // StudioProfilersView initialization needs to happen after the tick, as during setDevice/setProcess the StudioMonitorStage is
-    // constructed. If the StudioMonitorStageView is constructed as well, grpc exceptions will be thrown due to lack of various services
-    // in the channel, and the tick loop would not complete properly to set the process and agent status.
     StudioProfilersView profilerView = new SessionProfilersView(myProfilers, new FakeIdeProfilerComponents(), myDisposableRule.getDisposable());
     myMonitorView = new EventMonitorView(profilerView, new EventMonitor(myProfilers));
 

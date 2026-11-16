@@ -49,15 +49,14 @@ class RecordingScreenModelTest {
   @Before
   fun setup() {
     ideProfilerServices = FakeIdeProfilerServices()
-    ideProfilerServices.enableTaskBasedUx(true)
     myProfilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer)
     myManager = myProfilers.sessionsManager
     val taskHandlers = ProfilerTaskHandlerFactory.createTaskHandlers(myManager)
     taskHandlers.forEach { myProfilers.addTaskHandler(it.key, it.value) }
     cpuProfilerStage = CpuProfilerStage(myProfilers)
-    cpuRecordingScreenModel = cpuProfilerStage.recordingScreenModel!!
+    cpuRecordingScreenModel = cpuProfilerStage.recordingScreenModel
     memoryProfilerStage = MainMemoryProfilerStage(myProfilers)
-    memoryRecordingScreenModel = memoryProfilerStage.recordingScreenModel!!
+    memoryRecordingScreenModel = memoryProfilerStage.recordingScreenModel
   }
 
   @Test

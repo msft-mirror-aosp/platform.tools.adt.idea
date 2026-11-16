@@ -120,7 +120,6 @@ class IntellijProfilerServicesTest {
   @After
   fun after() {
     StudioFlags.PROFILER_TRACEBOX.clearOverride()
-    StudioFlags.PROFILER_TASK_BASED_UX.clearOverride()
     StudioFlags.PROFILER_LEAKCANARY.clearOverride()
     StudioFlags.PROFILER_SYSTEM_TRACE_IN_EDITOR.clearOverride()
     StudioFlags.PROFILER_METHOD_TRACE_IN_EDITOR.clearOverride()
@@ -196,8 +195,7 @@ class IntellijProfilerServicesTest {
   }
 
   @Test
-  fun testGetNativeMemorySamplingRateForCurrentConfigForTaskBased() {
-    StudioFlags.PROFILER_TASK_BASED_UX.override(true)
+  fun testGetNativeMemorySamplingRateForCurrentConfig() {
     project = Mockito.spy(MockProjectEx(disposableRule.disposable))
     mockProjectAttributes(project)
     val intellijProfilerServicesNow = IntellijProfilerServices(project, Mockito.mock(SymbolFilesLocator::class.java))

@@ -62,7 +62,6 @@ class ProcessListTest {
     myProfilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer)
     myManager = myProfilers.sessionsManager
     processListModel = ProcessListModel(myProfilers)
-    ideProfilerServices.enableTaskBasedUx(true)
   }
 
   @Ignore("b/309566948")

@@ -168,7 +168,6 @@ profiler.perfetto.agent.tools=PREVIEW
 profiler.perfetto.ai.trace.analysis=COMPLETE:2026
 profiler.perfetto.query.generation=COMPLETE:2026
 profiler.system.trace.in.editor=COMPLETE:2026
-profiler.task.based.ux=COMPLETE:2024
 profiler.use.traceprocessor.for.hprof=COMPLETE:2026
 project.tool.window.default.project.view=COMPLETE:2025
 project.tool.window.gradle.files.in.module=COMPLETE:2025

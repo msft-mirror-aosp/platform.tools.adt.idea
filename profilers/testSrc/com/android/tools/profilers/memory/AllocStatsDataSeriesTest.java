@@ -15,8 +15,6 @@
  */
 package com.android.tools.profilers.memory;
 
-import static com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_DEVICE_NAME;
-import static com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_PROCESS_NAME;
 import static com.android.tools.profilers.ProfilersTestData.DEFAULT_AGENT_ATTACHED_RESPONSE;
 import static org.junit.Assert.assertEquals;
 
@@ -30,6 +28,7 @@ import com.android.tools.profiler.proto.Memory.MemoryAllocStatsData;
 import com.android.tools.profilers.FakeIdeProfilerServices;
 import com.android.tools.profilers.ProfilerClient;
 import com.android.tools.profilers.StudioProfilers;
+import com.android.tools.profilers.Utils;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
@@ -45,13 +44,10 @@ public final class AllocStatsDataSeriesTest {
 
   @Test
   public void testGetDataForXRange() {
-    myIdeProfilerServices.enableTaskBasedUx(false);
-
     myTransportService.setAgentStatus(DEFAULT_AGENT_ATTACHED_RESPONSE);
     StudioProfilers studioProfilers =
       new StudioProfilers(new ProfilerClient(myGrpcChannel.getChannel()), myIdeProfilerServices, myTimer);
-    studioProfilers.setPreferredProcess(FAKE_DEVICE_NAME, FAKE_PROCESS_NAME, null);
-    myTimer.tick(TimeUnit.SECONDS.toNanos(1));
+    Utils.startSessionOnFakeProcess(studioProfilers, myTimer);
 
     MemoryAllocStatsData stats1 = MemoryAllocStatsData.newBuilder().setJavaAllocationCount(1000).setJavaFreeCount(2000).build();
     MemoryAllocStatsData stats2 = MemoryAllocStatsData.newBuilder().setJavaAllocationCount(1500).setJavaFreeCount(2500).build();

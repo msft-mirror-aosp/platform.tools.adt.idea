@@ -46,8 +46,8 @@ import org.mockito.kotlin.spy
 
 class LiveTaskHandlerTest {
   private val myTimer = FakeTimer()
-  private val ideProfilerServices = FakeIdeProfilerServices().apply { enableTaskBasedUx(true) }
-  private val myTransportService = FakeTransportService(myTimer, false, ideProfilerServices.featureConfig.isTaskBasedUxEnabled)
+  private val ideProfilerServices = FakeIdeProfilerServices()
+  private val myTransportService = FakeTransportService(myTimer, false)
 
   @get:Rule var myGrpcChannel = FakeGrpcChannel("LiveTaskHandlerTestChannel", myTransportService)
 
@@ -57,7 +57,6 @@ class LiveTaskHandlerTest {
 
   @Before
   fun setup() {
-    ideProfilerServices.enableTaskBasedUx(true)
     myProfilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer)
     myManager = myProfilers.sessionsManager
     liveTaskHandler = LiveTaskHandler(myManager)

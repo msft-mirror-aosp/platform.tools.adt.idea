@@ -51,7 +51,7 @@ class OptionsPanelTest {
     val panel = OptionsPanel()
     val provider = BoolBindingProvider()
     val walker = TreeWalker(panel)
-    panel.setOption(provider, false, false)
+    panel.setOption(provider, false)
     val checkBoxList = walker.descendants().filterIsInstance(JBCheckBox::class.java)
     assertThat(checkBoxList).hasSize(2)
     assertThat(checkBoxList[0].text).isEqualTo("Name1")
@@ -60,7 +60,7 @@ class OptionsPanelTest {
     checkBoxList[0].isSelected = !checkBoxList[0].isSelected
     assertThat(checkBoxList[0].isSelected).isEqualTo(provider.boolTestOne)
     // Test readonly
-    panel.setOption(provider, true, false)
+    panel.setOption(provider, true)
     val readOnlyCheckboxes = walker.descendants().filterIsInstance(JBCheckBox::class.java)
     assertThat(readOnlyCheckboxes).hasSize(2)
     assertThat(readOnlyCheckboxes[0].isEnabled).isEqualTo(false)
@@ -68,24 +68,24 @@ class OptionsPanelTest {
   }
 
   @Test
-  fun taskBasedUxHasHeader() {
+  fun hasHeader() {
     val panel = OptionsPanel()
     val provider = BoolBindingProvider()
     val walker = TreeWalker(panel)
-    panel.setOption(provider, false, true)
+    panel.setOption(provider, false)
     val headerLabel = walker.descendants().filterIsInstance(JLabel::class.java).filter { ((it.text)) == "testName" }
-    // Header is present in taskBasedUx
+    // The name property is displayed as a header
     assertThat(headerLabel.size).isEqualTo(1)
   }
 
   @Test
-  fun taskBasedUxHasNoHeaderIfNameIsNotThereInProvider() {
+  fun hasNoHeaderIfNameIsNotThereInProvider() {
     val panel = OptionsPanel()
     val provider = IntBindingProvider()
     val walker = TreeWalker(panel)
-    panel.setOption(provider, false, true)
+    panel.setOption(provider, false)
     val headerLabel = walker.descendants().filterIsInstance(JLabel::class.java).filter { ((it.text)) == "testName" }
-    // Header not present in taskBasedUx since it doesn't have name property
+    // Header not present since the provider doesn't have a name property
     assertThat(headerLabel.size).isEqualTo(0)
   }
 
@@ -94,20 +94,19 @@ class OptionsPanelTest {
     val panel = OptionsPanel()
     val provider = IntBindingProvider()
     val walker = TreeWalker(panel)
-    panel.setOption(provider, false, false)
+    panel.setOption(provider, false)
     val labels = walker.descendants().filterIsInstance(JLabel::class.java)
-    assertThat(labels).hasSize(4) // Group, Name,  Description, Unit
+    assertThat(labels).hasSize(3) // Name, Description, Unit
     assertThat(labels[0].text).isEqualTo("Desc")
-    assertThat(labels[1].text).isEqualTo("Int")
-    assertThat(labels[2].text).isEqualTo("Name1")
-    assertThat(labels[3].text).isEqualTo("Unit")
+    assertThat(labels[1].text).isEqualTo("Name1")
+    assertThat(labels[2].text).isEqualTo("Unit")
     val spinners = walker.descendants().filterIsInstance(JSpinner::class.java)
     assertThat(spinners).hasSize(1)
     assertThat(spinners[0].value).isEqualTo(provider.intTestOne)
     spinners[0].value = 200
     assertThat(spinners[0].value).isEqualTo(provider.intTestOne)
     // Test readonly
-    panel.setOption(provider, true, false)
+    panel.setOption(provider, true)
     val readOnlySpinner = walker.descendants().filterIsInstance(JSpinner::class.java)
     assertThat(readOnlySpinner).hasSize(1)
     assertThat(readOnlySpinner[0].isEnabled).isEqualTo(false)
@@ -117,7 +116,7 @@ class OptionsPanelTest {
   fun intBinderInvalidInputTest() {
     val panel = OptionsPanel()
     val provider = IntBindingProvider()
-    panel.setOption(provider, false, false)
+    panel.setOption(provider, false)
 
     val walker = TreeWalker(panel)
     val spinner = walker.descendants().filterIsInstance(JSpinner::class.java).first()
@@ -137,7 +136,7 @@ class OptionsPanelTest {
   fun intBinderClearAndFocusLostTest() {
     val panel = OptionsPanel()
     val provider = IntBindingProvider()
-    panel.setOption(provider, false, false)
+    panel.setOption(provider, false)
 
     val walker = TreeWalker(panel)
     val spinner = walker.descendants().filterIsInstance(JSpinner::class.java).first()
@@ -167,29 +166,20 @@ class OptionsPanelTest {
     val panel = OptionsPanel()
     val provider = StringBindingProvider()
     val walker = TreeWalker(panel)
-    panel.setOption(provider, false, false)
+    panel.setOption(provider, false)
+    // Group names are not displayed
     val labels = walker.descendants().filterIsInstance(JLabel::class.java)
-    assertThat(labels).hasSize(3) // Name Group Description
+    assertThat(labels).hasSize(2) // Name, Description
     val fields = walker.descendants().filterIsInstance(JBTextField::class.java)
     assertThat(fields).hasSize(1)
     assertThat(fields[0].text).isEqualTo(provider.stringTestOne)
     FakeUi(fields[0]).keyboard.pressAndRelease(0)
     assertThat(fields[0].text).isEqualTo(provider.stringTestOne)
     // Test readonly
-    panel.setOption(provider, true, false)
+    panel.setOption(provider, true)
     val readOnlyFields = walker.descendants().filterIsInstance(JBTextField::class.java)
     assertThat(readOnlyFields).hasSize(1)
     assertThat(readOnlyFields[0].isEnabled).isEqualTo(false)
-
-    // Test taskBaseUx has no groupName but has other fields
-    panel.setOption(provider, false, true)
-    val labels1 = walker.descendants().filterIsInstance(JLabel::class.java)
-    assertThat(labels1).hasSize(2)
-    val fields1 = walker.descendants().filterIsInstance(JBTextField::class.java)
-    assertThat(fields1).hasSize(1)
-    assertThat(fields1[0].text).isEqualTo(provider.stringTestOne)
-    FakeUi(fields1[0]).keyboard.pressAndRelease(0)
-    assertThat(fields1[0].text).isEqualTo(provider.stringTestOne)
   }
 
   @Test
@@ -197,8 +187,8 @@ class OptionsPanelTest {
     val panel = OptionsPanel()
     val provider = StringBindingProvider()
     val walker = TreeWalker(panel)
-    panel.setOption(provider, false, false)
-    panel.setOption(null, false, false)
+    panel.setOption(provider, false)
+    panel.setOption(null, false)
     assertThat(walker.descendants()).hasSize(1) // Root panel
   }
 
@@ -207,13 +197,12 @@ class OptionsPanelTest {
     val panel = OptionsPanel()
     val provider = SliderBindingProvider()
     val walker = TreeWalker(panel)
-    panel.setOption(provider, false, false)
+    panel.setOption(provider, false)
     val labels = walker.descendants().filterIsInstance(JLabel::class.java)
-    assertThat(labels).hasSize(4) // Group, Name,  Description, Unit
+    assertThat(labels).hasSize(3) // Name, Description, Unit
     assertThat(labels[0].text).isEqualTo("Desc")
-    assertThat(labels[1].text).isEqualTo("Slider")
-    assertThat(labels[2].text).isEqualTo("Name1")
-    assertThat(labels[3].text).isEqualTo("100 Unit")
+    assertThat(labels[1].text).isEqualTo("Name1")
+    assertThat(labels[2].text).isEqualTo("100 Unit")
     var slider = walker.descendants().filterIsInstance(JSlider::class.java)[0]
     assertThat(slider.minimum).isEqualTo(0)
     assertThat(slider.maximum).isEqualTo(100)
@@ -222,7 +211,7 @@ class OptionsPanelTest {
     assertThat(slider.value).isEqualTo(provider.sliderTest)
     assertThat(slider.isEnabled).isEqualTo(true)
     // Test readonly
-    panel.setOption(provider, true, false)
+    panel.setOption(provider, true)
     slider = walker.descendants().filterIsInstance(JSlider::class.java)[0]
     assertThat(slider.isEnabled).isEqualTo(false)
   }
@@ -232,9 +221,9 @@ class OptionsPanelTest {
     val panel = OptionsPanel()
     val provider = UnknownBindingProvider()
     val walker = TreeWalker(panel)
-    panel.setOption(provider, false, false)
+    panel.setOption(provider, false)
     val labels = walker.descendants().filterIsInstance(JLabel::class.java)
-    assertThat(labels).hasSize(1) // Group, Name,  Description, Unit
+    assertThat(labels).hasSize(1)
     assertThat(labels[0].text).isEqualTo("Unknown return type (${BoolBindingProvider::class.java.name}) for property \"other\"")
   }
 
@@ -243,7 +232,7 @@ class OptionsPanelTest {
     val panel = OptionsPanel()
     val provider = BoolBindingProvider()
     val walker = TreeWalker(panel)
-    panel.setOption(provider, false, false)
+    panel.setOption(provider, false)
 
     val descriptionLabels = walker.descendants().filterIsInstance(JLabel::class.java).filter { it.text == "Desc" }
     assertThat(descriptionLabels).isNotEmpty()
@@ -258,7 +247,7 @@ class OptionsPanelTest {
     val panel = OptionsPanel()
     val provider = IntDropdownValuesProvider()
     val walker = TreeWalker(panel)
-    panel.setOption(provider, false, false)
+    panel.setOption(provider, false)
     val comboBox = walker.descendants().filterIsInstance(com.intellij.openapi.ui.ComboBox::class.java).first()
     assertThat(comboBox.itemCount).isEqualTo(4)
     assertThat(comboBox.getItemAt(0).toString()).isEqualTo("1")

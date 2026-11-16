@@ -116,11 +116,6 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
   private boolean myShouldProceedYesNoDialog = false;
   private boolean myShouldProceedOkCancelDialog = true;
 
-  /**
-   * Whether the task-based UX should be visible.
-   */
-  private boolean myTaskBasedUxEnabled = true;
-
   private boolean myLeakCanaryStudioBotEnabled = true;
 
   /**
@@ -356,11 +351,6 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
       @Override
       public PowerProfilerDisplayMode getSystemTracePowerProfilerDisplayMode() {
         return mySystemTracePowerProfilerDisplayMode;
-      }
-
-      @Override
-      public boolean isTaskBasedUxEnabled() {
-        return myTaskBasedUxEnabled;
       }
 
       @Override
@@ -676,10 +666,6 @@ public class FakeIdeProfilerServices implements IdeProfilerServices {
 
   public void setSystemTracePowerProfilerDisplayMode(PowerProfilerDisplayMode mode) {
     mySystemTracePowerProfilerDisplayMode = mode;
-  }
-
-  public void enableTaskBasedUx(boolean enabled) {
-    myTaskBasedUxEnabled = enabled;
   }
 
   public void enableLeakCanary(boolean enabled) {

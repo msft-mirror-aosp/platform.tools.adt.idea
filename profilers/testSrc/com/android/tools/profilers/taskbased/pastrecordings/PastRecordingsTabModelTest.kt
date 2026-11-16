@@ -56,7 +56,6 @@ class PastRecordingsTabModelTest {
     myManager = myProfilers.sessionsManager
     pastRecordingsTabModel = PastRecordingsTabModel(myProfilers)
     setupTaskHandlers(myProfilers)
-    ideProfilerServices.enableTaskBasedUx(true)
   }
 
   private fun setupTaskHandlers(profilers: StudioProfilers) {

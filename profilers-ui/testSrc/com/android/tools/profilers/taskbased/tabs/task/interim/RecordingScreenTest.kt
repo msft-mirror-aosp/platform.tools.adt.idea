@@ -66,7 +66,6 @@ class RecordingScreenTest {
   @Before
   fun setup() {
     ideProfilerServices = FakeIdeProfilerServices()
-    ideProfilerServices.enableTaskBasedUx(true)
     myProfilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer)
     myManager = myProfilers.sessionsManager
     myProfilers.addTaskHandler(ProfilerTaskType.SYSTEM_TRACE, SystemTraceTaskHandler(myManager, false))
@@ -80,7 +79,7 @@ class RecordingScreenTest {
       StudioTestTheme(darkMode = false) {
         setupRecording(isStoppable = true)
         val stage = CpuProfilerStage(myProfilers)
-        val recordingScreenModel = stage.recordingScreenModel!!
+        val recordingScreenModel = stage.recordingScreenModel
         // Enable the stop button by starting a fake recording to simulate an ongoing recording.
         startFakeRecording(stage.recordingModel)
         RecordingScreen(recordingScreenModel)
@@ -95,7 +94,7 @@ class RecordingScreenTest {
       StudioTestTheme(darkMode = true) {
         setupRecording(isStoppable = true)
         val stage = CpuProfilerStage(myProfilers)
-        val recordingScreenModel = stage.recordingScreenModel!!
+        val recordingScreenModel = stage.recordingScreenModel
         // Enable the stop button by starting a fake recording to simulate an ongoing recording.
         startFakeRecording(stage.recordingModel)
         RecordingScreen(recordingScreenModel)
@@ -109,7 +108,7 @@ class RecordingScreenTest {
     standaloneSingleWindowApplication(title = "Testing Recording Screen in Light Theme") {
       StudioTestTheme(darkMode = false) {
         setupRecording(isStoppable = false)
-        val recordingScreenModel = MainMemoryProfilerStage(myProfilers).recordingScreenModel!!
+        val recordingScreenModel = MainMemoryProfilerStage(myProfilers).recordingScreenModel
         RecordingScreen(recordingScreenModel)
       }
     }
@@ -121,7 +120,7 @@ class RecordingScreenTest {
     standaloneSingleWindowApplication(title = "Testing Recording Screen in Dark Theme") {
       StudioTestTheme(darkMode = true) {
         setupRecording(isStoppable = false)
-        val recordingScreenModel = MainMemoryProfilerStage(myProfilers).recordingScreenModel!!
+        val recordingScreenModel = MainMemoryProfilerStage(myProfilers).recordingScreenModel
         RecordingScreen(recordingScreenModel)
       }
     }
@@ -132,7 +131,7 @@ class RecordingScreenTest {
     val stage = CpuProfilerStage(myProfilers)
     composeTestRule.setContent {
       setupRecording(isStoppable = true)
-      val recordingScreenModel = stage.recordingScreenModel!!
+      val recordingScreenModel = stage.recordingScreenModel
       RecordingScreen(recordingScreenModel)
     }
 
@@ -148,7 +147,7 @@ class RecordingScreenTest {
   fun `test non stoppable (memory) recording screen`() {
     composeTestRule.setContent {
       setupRecording(isStoppable = false)
-      val recordingScreenModel = MainMemoryProfilerStage(myProfilers).recordingScreenModel!!
+      val recordingScreenModel = MainMemoryProfilerStage(myProfilers).recordingScreenModel
       RecordingScreen(recordingScreenModel)
     }
 
@@ -159,7 +158,7 @@ class RecordingScreenTest {
   @Test
   fun `test clicking stop button disables button and enters stopping state`() {
     val stage = CpuProfilerStage(myProfilers)
-    val recordingScreenModel = stage.recordingScreenModel!!
+    val recordingScreenModel = stage.recordingScreenModel
     composeTestRule.setContent {
       setupRecording(isStoppable = false)
       RecordingScreen(recordingScreenModel)
@@ -192,7 +191,7 @@ class RecordingScreenTest {
   @Test
   fun `recording failed state shows error message`() {
     val stage = CpuProfilerStage(myProfilers)
-    val recordingScreenModel = stage.recordingScreenModel!!
+    val recordingScreenModel = stage.recordingScreenModel
     recordingScreenModel.setRecordingFailed()
 
     composeTestRule.setContent {

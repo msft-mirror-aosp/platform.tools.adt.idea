@@ -72,7 +72,6 @@ class TaskGridTest {
     myProfilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer)
     myManager = myProfilers.sessionsManager
     taskGridModel = TaskGridModel(myProfilers)
-    ideProfilerServices.enableTaskBasedUx(true)
     ideProfilerServices.enableLeakCanary(true)
     val taskHandlers = ProfilerTaskHandlerFactory.createTaskHandlers(myManager)
     taskHandlers.forEach { myProfilers.addTaskHandler(it.key, it.value) }

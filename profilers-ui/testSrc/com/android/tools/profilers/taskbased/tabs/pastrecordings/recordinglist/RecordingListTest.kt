@@ -68,7 +68,6 @@ class RecordingListTest {
     val taskHandlers = ProfilerTaskHandlerFactory.createTaskHandlers(myManager)
     taskHandlers.forEach { myProfilers.addTaskHandler(it.key, it.value) }
     recordingListModel = RecordingListModel(myProfilers, taskHandlers, {}) { openProfilerTaskCount++ }
-    ideProfilerServices.enableTaskBasedUx(true)
   }
 
   @Ignore("b/309566948")

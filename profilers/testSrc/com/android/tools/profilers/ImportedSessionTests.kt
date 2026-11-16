@@ -35,10 +35,7 @@ import org.junit.runners.Parameterized
 import org.junit.runners.Parameterized.Parameters
 
 @RunWith(Parameterized::class)
-class ImportedSessionTests(
-  private val isTaskBasedUxEnabled: Boolean,
-  private val sessionType: Common.SessionData.SessionStarted.SessionType,
-) {
+class ImportedSessionTests(private val sessionType: Common.SessionData.SessionStarted.SessionType) {
 
   private val myTimer = FakeTimer()
   private val myTransportService = FakeTransportService(myTimer, false)
@@ -72,18 +69,14 @@ class ImportedSessionTests(
     @Parameters
     fun data(): Collection<Array<Any>> {
       return listOf(
-        arrayOf(true, Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE),
-        arrayOf(false, Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE),
-        arrayOf(true, Common.SessionData.SessionStarted.SessionType.MEMORY_CAPTURE),
-        arrayOf(false, Common.SessionData.SessionStarted.SessionType.MEMORY_CAPTURE),
+        arrayOf(Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE),
+        arrayOf(Common.SessionData.SessionStarted.SessionType.MEMORY_CAPTURE),
       )
     }
   }
 
   @Test
   fun testImportSessionListenerBehavesCorrectly() {
-    ideProfilerServices.enableTaskBasedUx(isTaskBasedUxEnabled)
-
     val trace = CpuProfilerTestUtils.getTraceFile("art_streaming.trace")
     myTransportService.addFile("1", trace.absolutePath)
 
@@ -98,26 +91,16 @@ class ImportedSessionTests(
     Truth.assertThat(myManager.sessionArtifacts.size).isEqualTo(1)
     val cpuTraceSessionItem = myManager.sessionArtifacts[0] as SessionItem
 
-    if (isTaskBasedUxEnabled && sessionType == Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE) {
+    if (sessionType == Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE) {
       Truth.assertThat(cpuTraceSessionItem.sessionMetaData.type).isEqualTo(Common.SessionMetaData.SessionType.CPU_CAPTURE)
-      // The CPU_CAPTURE session change listener triggers a setting of the CpuCaptureStage. Thus, we test to make sure it did not enter
+      // There is no CPU_CAPTURE session change listener that would set the CpuCaptureStage. Thus, we test to make sure it did not enter
       // that stage.
       Truth.assertThat(myProfilers.stage).isNotInstanceOf(CpuCaptureStage::class.java)
-    } else if (!isTaskBasedUxEnabled && sessionType == Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE) {
-      Truth.assertThat(cpuTraceSessionItem.sessionMetaData.type).isEqualTo(Common.SessionMetaData.SessionType.CPU_CAPTURE)
-      // The CPU_CAPTURE session change listener triggers a setting of the CpuCaptureStage. Thus, we test to make sure it did enter
-      // that stage.
-      Truth.assertThat(myProfilers.stage).isInstanceOf(CpuCaptureStage::class.java)
-    } else if (isTaskBasedUxEnabled && sessionType == Common.SessionData.SessionStarted.SessionType.MEMORY_CAPTURE) {
+    } else if (sessionType == Common.SessionData.SessionStarted.SessionType.MEMORY_CAPTURE) {
       Truth.assertThat(cpuTraceSessionItem.sessionMetaData.type).isEqualTo(Common.SessionMetaData.SessionType.MEMORY_CAPTURE)
-      // The MEMORY_CAPTURE session change listener triggers a setting of the MainMemoryProfilerStage. Thus, we test to make sure it did not
-      // enter that stage.
+      // There is no MEMORY_CAPTURE session change listener that would set the MainMemoryProfilerStage. Thus, we test to make sure it did
+      // not enter that stage.
       Truth.assertThat(myProfilers.stage).isNotInstanceOf(MainMemoryProfilerStage::class.java)
-    } else if (!isTaskBasedUxEnabled && sessionType == Common.SessionData.SessionStarted.SessionType.MEMORY_CAPTURE) {
-      Truth.assertThat(cpuTraceSessionItem.sessionMetaData.type).isEqualTo(Common.SessionMetaData.SessionType.MEMORY_CAPTURE)
-      // The MEMORY_CAPTURE session change listener triggers a setting of the MainMemoryProfilerStage. Thus, we test to make sure it did
-      // enter that stage.
-      Truth.assertThat(myProfilers.stage).isInstanceOf(MainMemoryProfilerStage::class.java)
     }
   }
 }

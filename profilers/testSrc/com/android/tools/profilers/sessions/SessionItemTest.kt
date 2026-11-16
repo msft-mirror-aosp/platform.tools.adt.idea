@@ -23,16 +23,12 @@ import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Memory.HeapDumpInfo
 import com.android.tools.profiler.proto.Trace
 import com.android.tools.profilers.FakeIdeProfilerServices
-import com.android.tools.profilers.NullMonitorStage
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.ProfilersTestData
 import com.android.tools.profilers.SessionArtifactUtils
-import com.android.tools.profilers.StudioMonitorStage
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.Utils.debuggableProcess
-import com.android.tools.profilers.Utils.newProcess
 import com.android.tools.profilers.Utils.onlineDevice
-import com.android.tools.profilers.memory.MainMemoryProfilerStage
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.taskhandlers.ProfilerTaskHandlerFactory
 import com.google.common.truth.Truth
@@ -58,70 +54,7 @@ class SessionItemTest {
   }
 
   @Test
-  fun testNavigateToStudioMonitorStage() {
-    myIdeServices.enableTaskBasedUx(false)
-
-    Truth.assertThat(myProfilers.stageClass).isEqualTo(NullMonitorStage::class.java)
-
-    val sessionsManager = myProfilers.sessionsManager
-    val device = onlineDevice { deviceId = NEW_DEVICE_ID }
-    val process = newProcess {
-      deviceId = NEW_DEVICE_ID
-      pid = 10
-    }
-    sessionsManager.beginSession(device.deviceId, device, process)
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    Truth.assertThat(myProfilers.stageClass).isEqualTo(StudioMonitorStage::class.java)
-
-    // Navigate to a random stage, and make sure selecting the session item will go back to StudioMonitorStage.
-    myProfilers.stage = MainMemoryProfilerStage(myProfilers)
-    Truth.assertThat(myProfilers.stageClass).isEqualTo(MainMemoryProfilerStage::class.java)
-    val sessionItem = sessionsManager.sessionArtifacts[0] as SessionItem
-    sessionItem.onSelect()
-    Truth.assertThat(myProfilers.stageClass).isEqualTo(StudioMonitorStage::class.java)
-  }
-
-  @Test
-  fun testAvoidRedundantNavigationToMonitorStage() {
-    myIdeServices.enableTaskBasedUx(false)
-
-    Truth.assertThat(myProfilers.stageClass).isEqualTo(NullMonitorStage::class.java)
-
-    val sessionsManager = myProfilers.sessionsManager
-    val device = onlineDevice { deviceId = NEW_DEVICE_ID }
-    val process = newProcess {
-      deviceId = NEW_DEVICE_ID
-      pid = 10
-    }
-    sessionsManager.beginSession(device.deviceId, device, process)
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    Truth.assertThat(myProfilers.stageClass).isEqualTo(StudioMonitorStage::class.java)
-
-    val stage = myProfilers.stage
-    val sessionItem = sessionsManager.sessionArtifacts[0] as SessionItem
-    sessionItem.onSelect()
-    Truth.assertThat(myProfilers.stage).isEqualTo(stage)
-  }
-
-  @Test
-  fun testNonFullSessionNavigation() {
-    myIdeServices.enableTaskBasedUx(false)
-
-    Truth.assertThat(myProfilers.stageClass).isEqualTo(NullMonitorStage::class.java)
-
-    generateMemoryCaptureEvents()
-    Truth.assertThat(myProfilers.stageClass).isEqualTo(MainMemoryProfilerStage::class.java)
-    val sessionsManager = myProfilers.sessionsManager
-    Truth.assertThat(sessionsManager.sessionArtifacts.size).isEqualTo(1)
-    val sessionItem = sessionsManager.sessionArtifacts[0] as SessionItem
-    sessionItem.onSelect()
-    // Selecting a memory capture session should not navigate to StudioMonitorStage
-    Truth.assertThat(myProfilers.stageClass).isEqualTo(MainMemoryProfilerStage::class.java)
-  }
-
-  @Test
   fun testImportedHprofSessionName() {
-    myIdeServices.enableTaskBasedUx(false)
     val device = onlineDevice { deviceId = NEW_DEVICE_ID }
     val process = debuggableProcess {
       deviceId = NEW_DEVICE_ID

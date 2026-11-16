@@ -25,6 +25,7 @@ import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.Utils
 import com.google.common.truth.Truth.assertThat
 import javax.swing.JPanel
 import org.junit.Before
@@ -45,11 +46,12 @@ class CpuProfilerContextMenuInstallerTest {
   @Before
   fun setUp() {
     val profilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideServices, timer)
-    ideServices.enableTaskBasedUx(false)
     profilers.setPreferredProcess(FAKE_DEVICE_NAME, FAKE_PROCESS_NAME, null)
 
     // One second must be enough for new devices (and processes) to be picked up
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    // Sessions are not started automatically, so explicitly start one with the fake process.
+    Utils.startSessionOnFakeProcess(profilers, timer)
 
     stage = CpuProfilerStage(profilers)
     stage.studioProfilers.stage = stage

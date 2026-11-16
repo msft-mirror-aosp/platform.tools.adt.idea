@@ -143,14 +143,6 @@ public abstract class StageView<T extends Stage> extends AspectObserver {
     return getStage().getTimeline() instanceof StreamingTimeline;
   }
 
-  /**
-   * @return whether user can navigate to other stages from here. Useful for toggling the stage navigation controls (e.g. Go Back button,
-   * profiler dropdown list).
-   */
-  public boolean supportsStageNavigation() {
-    return getStage().getStudioProfilers().getSession().getPid() != 0;
-  }
-
   protected void tooltipChanged() {
     if (myActiveTooltipView != null) {
       myActiveTooltipView.dispose();

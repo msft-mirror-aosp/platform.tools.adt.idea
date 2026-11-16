@@ -26,6 +26,7 @@ import com.android.tools.idea.transport.faketransport.FakeTransportService;
 import com.android.tools.idea.transport.faketransport.TransportServiceTestImpl;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Transport;
+import com.android.tools.profilers.sessions.SessionItem;
 import com.android.tools.profilers.sessions.SessionsManager;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.testFramework.ApplicationRule;
@@ -33,6 +34,8 @@ import com.intellij.testFramework.ServiceContainerUtil;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Before;
 import org.junit.Rule;
@@ -59,15 +62,13 @@ public final class HeapDumpImportTest extends MemoryProfilerTestBase {
 
   @Before
   public void setup() {
-    super.setupBase();
+    // MemoryProfilerTestBase#setupBase is already run as a @Before method of the base class.
     ServiceContainerUtil.registerServiceInstance(ApplicationManager.getApplication(), TransportService.class,
                                                  new TransportServiceTestImpl(myTransportService));
   }
 
   @Test
   public void testLoadHeapDumpFromFile() throws Exception {
-    myIdeProfilerServices.enableTaskBasedUx(false);
-
     SessionsManager sessionsManager = myProfilers.getSessionsManager();
 
     // Create a temp file
@@ -77,9 +78,8 @@ public final class HeapDumpImportTest extends MemoryProfilerTestBase {
     // Import heap dump from file
     assertThat(sessionsManager.importSessionFromFile(file)).isTrue();
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    assertThat(myProfilers.getStage()).isInstanceOf(MemoryCaptureStage.class);
 
-    Common.Session session = sessionsManager.getSelectedSession();
+    Common.Session session = getImportedSession(sessionsManager);
     long dumpTime = session.getStartTimestamp();
     Transport.BytesRequest request = Transport.BytesRequest.newBuilder()
       .setStreamId(session.getStreamId())
@@ -92,8 +92,6 @@ public final class HeapDumpImportTest extends MemoryProfilerTestBase {
 
   @Test
   public void testLoadHeapDumpFromProfFile() throws Exception {
-    myIdeProfilerServices.enableTaskBasedUx(false);
-
     SessionsManager sessionsManager = myProfilers.getSessionsManager();
 
     // Create a temp file
@@ -103,9 +101,8 @@ public final class HeapDumpImportTest extends MemoryProfilerTestBase {
     // Import heap dump from file
     assertThat(sessionsManager.importSessionFromFile(file)).isTrue();
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    assertThat(myProfilers.getStage()).isInstanceOf(MemoryCaptureStage.class);
 
-    Common.Session session = sessionsManager.getSelectedSession();
+    Common.Session session = getImportedSession(sessionsManager);
     long dumpTime = session.getStartTimestamp();
     Transport.BytesRequest request = Transport.BytesRequest.newBuilder()
       .setStreamId(session.getStreamId())
@@ -114,5 +111,14 @@ public final class HeapDumpImportTest extends MemoryProfilerTestBase {
     Transport.FileResponse response = myProfilers.getClient().getTransportClient().getFile(request);
     ByteString fileContents = ByteString.copyFrom(Files.readAllBytes(new File(response.getFilePath()).toPath()));
     assertThat(fileContents).isEqualTo(ByteString.copyFrom(data, Charset.defaultCharset()));
+  }
+
+  @NotNull
+  private static Common.Session getImportedSession(@NotNull SessionsManager sessionsManager) {
+    List<SessionItem> importedSessions = sessionsManager.getSessionIdToSessionItems().values().stream()
+      .filter(item -> item.getSessionMetaData().getType() == Common.SessionMetaData.SessionType.MEMORY_CAPTURE)
+      .collect(Collectors.toList());
+    assertThat(importedSessions).hasSize(1);
+    return importedSessions.get(0).getSession();
   }
 }

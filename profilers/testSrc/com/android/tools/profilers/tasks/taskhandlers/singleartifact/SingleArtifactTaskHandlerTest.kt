@@ -37,8 +37,8 @@ import org.mockito.kotlin.whenever
 class SingleArtifactTaskHandlerTest {
 
   private val myTimer = FakeTimer()
-  private val ideProfilerServices = FakeIdeProfilerServices().apply { enableTaskBasedUx(true) }
-  private val myTransportService = FakeTransportService(myTimer, false, ideProfilerServices.featureConfig.isTaskBasedUxEnabled)
+  private val ideProfilerServices = FakeIdeProfilerServices()
+  private val myTransportService = FakeTransportService(myTimer, false)
 
   @get:Rule var myGrpcChannel = FakeGrpcChannel("SingleArtifactTaskHandlerTestChannel", myTransportService)
 

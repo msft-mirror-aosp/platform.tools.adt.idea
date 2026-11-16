@@ -25,7 +25,6 @@ public interface FeatureConfig {
   boolean isMemoryCSVExportEnabled();
   boolean isPerformanceMonitoringEnabled();
   boolean isTestingModeEnabled();
-  boolean isTaskBasedUxEnabled();
   boolean isTraceboxEnabled();
   boolean isLeakCanaryEnabled();
   boolean isLeakCanaryStudioBotEnabled();

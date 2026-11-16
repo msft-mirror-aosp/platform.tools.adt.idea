@@ -56,13 +56,11 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
 
   @Before
   fun setUp() {
-    // The Task-Based UX flag will be disabled for the call to setPreferredProcess, then re-enabled. This is because the setPreferredProcess
-    // method changes behavior based on the flag's value, and some of the tests depend on the behavior with the flag turned off.
-    ideProfilerServices.enableTaskBasedUx(false)
     studioProfilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
     studioProfilers.setPreferredProcess(FakeTransportService.FAKE_DEVICE_NAME, FakeTransportService.FAKE_PROCESS_NAME, null)
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    ideProfilerServices.enableTaskBasedUx(true)
+    // Sessions are not started automatically, so explicitly start one with the fake process.
+    Utils.startSessionOnFakeProcess(studioProfilers, timer)
 
     val fakeIdeProfilerComponents: IdeProfilerComponents = FakeIdeProfilerComponents()
     fakeStudioProfilersView = FakeStudioProfilersView(studioProfilers, fakeIdeProfilerComponents)
@@ -93,8 +91,6 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
 
   @Test
   fun testGoLiveButtonStates() {
-    ideProfilerServices.enableTaskBasedUx(false)
-
     // Check that go live is initially enabled and toggled
     val liveButton = stageWithToolbarView.goLiveButton
     val contextMenuItems = ProfilerContextMenu.createIfAbsent(stageComponent).contextMenuItems
@@ -178,28 +174,7 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
   }
 
   @Test
-  fun testTimelineButtonEnableStatesTaskBasedUx() {
-    ideProfilerServices.enableTaskBasedUx(true)
-
-    val zoomInButton = stageWithToolbarView.zoomInButton
-    val zoomOutButton = stageWithToolbarView.zoomOutButton
-    val resetButton = stageWithToolbarView.resetZoomButton
-    val frameSelectionButton = stageWithToolbarView.zoomToSelectionButton
-    val liveButton = stageWithToolbarView.goLiveButton
-
-    // Controls should be enabled regardless of agent for TaskBasedUx
-    Truth.assertThat(studioProfilers.sessionsManager.isSessionAlive).isTrue()
-    Truth.assertThat(zoomInButton.isEnabled).isTrue()
-    Truth.assertThat(zoomOutButton.isEnabled).isTrue()
-    Truth.assertThat(resetButton.isEnabled).isTrue()
-    Truth.assertThat(frameSelectionButton.isEnabled).isFalse() // Frame selection button is dependent on selection being available.
-    Truth.assertThat(liveButton.isEnabled).isTrue()
-  }
-
-  @Test
   fun testTimelineButtonEnableStates() {
-    ideProfilerServices.enableTaskBasedUx(false)
-
     val zoomInButton = stageWithToolbarView.zoomInButton
     val zoomOutButton = stageWithToolbarView.zoomOutButton
     val resetButton = stageWithToolbarView.resetZoomButton
@@ -230,16 +205,20 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
     Truth.assertThat(frameSelectionButton.isEnabled).isTrue()
     Truth.assertThat(liveButton.isEnabled).isFalse()
 
-    // Starting a session that is waiting for an agent to initialize should have all controls disabled.
+    // Clearing the selection should disable the frame selection control.
+    studioProfilers.timeline.selectionRange.clear()
+    Truth.assertThat(frameSelectionButton.isEnabled).isFalse()
+
+    // Starting a session that is waiting for an agent to initialize should not disable the controls.
     startSessionWithNewDeviceAndProcess()
     updateAgentStatus(NEW_PROCESS_ID, ProfilersTestData.DEFAULT_AGENT_UNSPECIFIED_RESPONSE)
-    Truth.assertThat(zoomInButton.isEnabled).isFalse()
-    Truth.assertThat(zoomOutButton.isEnabled).isFalse()
-    Truth.assertThat(resetButton.isEnabled).isFalse()
+    Truth.assertThat(zoomInButton.isEnabled).isTrue()
+    Truth.assertThat(zoomOutButton.isEnabled).isTrue()
+    Truth.assertThat(resetButton.isEnabled).isTrue()
     Truth.assertThat(frameSelectionButton.isEnabled).isFalse()
-    Truth.assertThat(liveButton.isEnabled).isFalse()
+    Truth.assertThat(liveButton.isEnabled).isTrue()
 
-    // Controls should be enabled after agent is attached.
+    // Controls should remain enabled after agent is attached.
     updateAgentStatus(NEW_PROCESS_ID, ProfilersTestData.DEFAULT_AGENT_ATTACHED_RESPONSE)
     Truth.assertThat(zoomInButton.isEnabled).isTrue()
     Truth.assertThat(zoomOutButton.isEnabled).isTrue()
@@ -257,46 +236,14 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
   }
 
   @Test
-  fun testLoadingPanelWhileWaitingForPreferredProcess() {
-    ideProfilerServices.enableTaskBasedUx(false)
-
-    Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
-    Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
-
-    // Sets a preferred process, the UI should wait and show the loading panel.
-    endSession()
-    updatePreferredProcess(FakeTransportService.FAKE_DEVICE_NAME)
-    Truth.assertThat(studioProfilers.autoProfilingEnabled).isTrue()
-    Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isFalse()
-    Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isTrue()
-    val process =
-      Common.Process.newBuilder()
-        .setPid(NEW_PROCESS_ID)
-        .setDeviceId(FakeTransportService.FAKE_DEVICE_ID)
-        .setState(Common.Process.State.ALIVE)
-        .setName(FAKE_PROCESS_2)
-        .setExposureLevel(if (isTestingProfileable) Common.Process.ExposureLevel.PROFILEABLE else Common.Process.ExposureLevel.DEBUGGABLE)
-        .build()
-    startSession(FakeTransportService.FAKE_DEVICE, process)
-    if (isTestingProfileable) {
-      updateAgentStatus(NEW_PROCESS_ID, ProfilersTestData.DEFAULT_AGENT_ATTACHED_RESPONSE)
-    }
-
-    // Preferred process is found, session begins and the loading stops.
-    Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
-    Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
-  }
-
-  @Test
-  fun testLoadingPanelDoesNotShowWhileWaitingForPreferredProcessInTaskBasedUX() {
-    ideProfilerServices.enableTaskBasedUx(true)
+  fun testLoadingPanelDoesNotShowWhileWaitingForPreferredProcess() {
     Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
     Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
 
     // Sets a preferred process, the UI should NOT wait and show the loading panel.
     endSession()
     updatePreferredProcess(FakeTransportService.FAKE_DEVICE_NAME)
-    // Auto profiling is disabled in the Task-Based UX, and thus prevents the loading state from occurring on preferred process change.
+    // Auto profiling is disabled, and thus prevents the loading state from occurring on preferred process change.
     Truth.assertThat(studioProfilers.autoProfilingEnabled).isFalse()
     Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
     Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
@@ -304,8 +251,6 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
 
   @Test
   fun testLoadingPanelWhileWaitingForAgentAttach() {
-    ideProfilerServices.enableTaskBasedUx(false)
-
     Assume.assumeFalse(isTestingProfileable) // hardcoded `FAKE_DEVICE` is different than one used for the profileable test
     Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
     Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
@@ -326,72 +271,6 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
     updateAgentStatus(NEW_PROCESS_ID, ProfilersTestData.DEFAULT_AGENT_ATTACHED_RESPONSE)
 
     // Attach status is detected, loading should stop.
-    Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
-    Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
-  }
-
-  @Test
-  fun testLoadingPanelDoesNotShowWhileWaitingForAgentAttachInTaskBasedUX() {
-    ideProfilerServices.enableTaskBasedUx(true)
-    Assume.assumeFalse(isTestingProfileable) // hardcoded `FAKE_DEVICE` is different than one used for the profileable test
-    Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
-    Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
-    val process =
-      Common.Process.newBuilder()
-        .setPid(NEW_PROCESS_ID)
-        .setDeviceId(FakeTransportService.FAKE_DEVICE_ID)
-        .setState(Common.Process.State.ALIVE)
-        .setName(FAKE_PROCESS_2)
-        .setExposureLevel(Common.Process.ExposureLevel.DEBUGGABLE)
-        .build()
-    startSession(FakeTransportService.FAKE_DEVICE, process)
-    updateAgentStatus(NEW_PROCESS_ID, ProfilersTestData.DEFAULT_AGENT_UNSPECIFIED_RESPONSE)
-
-    // Agent is detached, the UI should NOT wait and NOT show the loading panel.
-    Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
-    Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
-  }
-
-  @Test
-  fun testNullStageIfDeviceIsUnsupported() {
-    ideProfilerServices.enableTaskBasedUx(false)
-
-    Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
-    Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
-
-    // Disconnect the current device and connect to an unsupported device.
-    val deadDevice = FakeTransportService.FAKE_DEVICE.toBuilder().setState(Common.Device.State.DISCONNECTED).build()
-    val device =
-      Common.Device.newBuilder()
-        .setDeviceId(999)
-        .setSerial(UNSUPPORTED_DEVICE_NAME)
-        .setApiLevel(AndroidVersion.VersionCodes.KITKAT)
-        .setFeatureLevel(AndroidVersion.VersionCodes.KITKAT)
-        .setModel(UNSUPPORTED_DEVICE_NAME)
-        .setState(Common.Device.State.ONLINE)
-        .setUnsupportedReason(UNSUPPORTED_REASON)
-        .build()
-    val process =
-      Common.Process.newBuilder()
-        .setPid(NEW_PROCESS_ID)
-        .setDeviceId(device.deviceId)
-        .setState(Common.Process.State.ALIVE)
-        .setName(FAKE_PROCESS_2)
-        .setExposureLevel(if (isTestingProfileable) Common.Process.ExposureLevel.PROFILEABLE else Common.Process.ExposureLevel.DEBUGGABLE)
-        .build()
-    service.updateDevice(FakeTransportService.FAKE_DEVICE, deadDevice)
-
-    // Set the preferred device to the unsupported one. Loading screen will be displayed.
-    endSession()
-    updatePreferredProcess(UNSUPPORTED_DEVICE_NAME)
-    Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isFalse()
-    Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isTrue()
-
-    // Preferred device is found. Loading stops and null stage should be displayed with the unsupported reason.
-    service.addDevice(device)
-    service.addProcess(device, process)
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    studioProfilers.setProcess(device, process)
     Truth.assertThat(stageWithToolbarView.stageViewComponent.isVisible).isTrue()
     Truth.assertThat(stageWithToolbarView.stageLoadingComponent.isVisible).isFalse()
   }
@@ -442,8 +321,7 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
   private fun updateProcess(device: Common.Device, process: Common.Process) {
     service.addProcess(device, process)
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    studioProfilers.setProcess(device, process)
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    Utils.startSession(studioProfilers, timer, device, process)
   }
 
   private fun updateAgentStatus(pid: Int, agentData: AgentData) {
@@ -490,8 +368,6 @@ class StageWithToolbarViewTest(private val isTestingProfileable: Boolean) {
     private const val NEW_DEVICE_ID = 1
     private const val NEW_PROCESS_ID = 2
     private const val FAKE_PROCESS_2 = "FakeProcess2"
-    private const val UNSUPPORTED_DEVICE_NAME = "UnsupportedDevice"
-    private const val UNSUPPORTED_REASON = "This device is unsupported"
 
     @JvmStatic @Parameterized.Parameters fun isTestingProfileable() = listOf(false, true)
   }

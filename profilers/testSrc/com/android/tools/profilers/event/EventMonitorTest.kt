@@ -31,6 +31,8 @@ import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.ProfilersTestData.DEFAULT_AGENT_ATTACHED_RESPONSE
 import com.android.tools.profilers.ProfilersTestData.DEFAULT_AGENT_UNATTACHABLE_RESPONSE
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.Utils
+import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.google.common.truth.Truth.assertThat
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
@@ -52,13 +54,14 @@ class EventMonitorTest {
   fun setUp() {
     ideProfilerServices = FakeIdeProfilerServices()
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
+    // Selecting a session launches the current task, so make it a Live View task.
+    Utils.ensureLiveTaskHandler(profilers)
+    profilers.sessionsManager.currentTaskType = ProfilerTaskType.LIVE_VIEW
     monitor = EventMonitor(profilers)
   }
 
   @Test
   fun monitorEnabledOnAgentAttachedInLiveSession() {
-    ideProfilerServices.enableTaskBasedUx(false)
-
     assertThat(monitor.isEnabled).isFalse() // Monitor is not enabled on start.
 
     val session =
@@ -94,8 +97,6 @@ class EventMonitorTest {
 
   @Test
   fun monitorEnabledInFinishedSession() {
-    ideProfilerServices.enableTaskBasedUx(false)
-
     assertThat(monitor.isEnabled).isFalse() // Monitor is not enabled on start.
 
     // Create a finished session (end timestamp is not Long.MAX_VALUE).
@@ -123,8 +124,6 @@ class EventMonitorTest {
 
   @Test
   fun monitorEnabledChangedOnAgentAttachableInLiveSession() {
-    ideProfilerServices.enableTaskBasedUx(false)
-
     assertThat(monitor.isEnabled).isFalse()
 
     val session =

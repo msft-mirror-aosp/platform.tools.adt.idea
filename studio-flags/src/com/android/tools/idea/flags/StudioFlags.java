@@ -360,10 +360,6 @@ public final class StudioFlags {
     "When set to DELTA, shows the power rails in a delta view and battery counters in their raw view (cumulative counters).",
     PowerProfilerDisplayMode.DELTA);
 
-  public static final Flag<Boolean> PROFILER_TASK_BASED_UX = new BooleanFlag(
-    PROFILER, "task.based.ux", "Task-based UX",
-    "Enables a simpler profilers UX, with tabs for specific tasks which an app developer usually performs (e.g. Reduce jank)");
-
   public static final Flag<Boolean> PROFILER_LEAKCANARY = new BooleanFlag(
     PROFILER, "leakcanary", "LeakCanary",
     "Enables the integration of leakCanary and display of leaks");

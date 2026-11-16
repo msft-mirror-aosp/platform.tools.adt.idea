@@ -53,6 +53,7 @@ import com.android.tools.idea.transport.TransportServiceUtils;
 import com.android.tools.profilers.FakeIdeProfilerServices;
 import com.android.tools.profilers.RecordingOption;
 import com.android.tools.profilers.StudioProfilers;
+import com.android.tools.profilers.Utils;
 import com.android.tools.profilers.memory.adapters.CaptureObject;
 import com.android.tools.profilers.memory.adapters.FakeCaptureObject;
 import com.android.tools.profilers.memory.adapters.FakeInstanceObject;
@@ -571,8 +572,6 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
 
   @Test
   public void implicitSelectionOfNativeAllocationArtifactProtoIsMadePostRecording() {
-    myIdeProfilerServices.enableTaskBasedUx(false);
-
     StudioProfilers profiler = new StudioProfilers(
       new ProfilerClient(myGrpcChannel.getChannel()),
       myIdeProfilerServices,
@@ -580,12 +579,13 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     );
 
     SessionsManager manager = profiler.getSessionsManager();
+    Utils.ensureLiveTaskHandler(profiler);
     Common.Device device = Common.Device.newBuilder().setDeviceId(1).setState(Common.Device.State.ONLINE).build();
     Common.Process process1 = Common.Process.newBuilder().setPid(10).setState(Common.Process.State.ALIVE).build();
 
     long session1Timestamp = 1L;
     myTimer.setCurrentTimeNs(session1Timestamp);
-    manager.beginSession(1, device, process1);
+    manager.beginSession(1, device, process1, Common.ProfilerTaskType.LIVE_VIEW, false);
     manager.update();
     manager.endCurrentSession();
     manager.update();
@@ -700,6 +700,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
 
   @Test
   public void testSelectLatestCaptureDisabled() {
+    assumePreO(true);
     myStage.enableSelectLatestCapture(false, null);
     myMockLoader.setReturnImmediateFuture(true);
     assertThat(myStage.getCaptureSelection().getSelectedCapture()).isNull();
@@ -916,8 +917,6 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
 
   @Test
   public void testNativeRecordingStopsWhenSessionDies() {
-    myIdeProfilerServices.enableTaskBasedUx(false);
-
     assertThat(myStage.isTrackingAllocations()).isFalse();
     assertThat(((FakeFeatureTracker)myIdeProfilerServices.getFeatureTracker()).isTrackRecordAllocationsCalled()).isFalse();
     // Validate we enable tracking allocations
@@ -956,7 +955,6 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
   @Test
   public void selectingHeapDumpGoesToSeparateStage_inEditorEnabled() throws Exception {
     myIdeProfilerServices.setHeapDumpTraceInEditorEnabled(true);
-    myIdeProfilerServices.enableTaskBasedUx(true);
     // An ART HPROF, as recorded for a debuggable app, is not a Perfetto trace, so it opens as recorded even with heap dump
     // deobfuscation on and an R8 mapping available.
     myIdeProfilerServices.enableDeobfuscationForHeapDumps(true);
@@ -991,7 +989,6 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
   @Test
   public void selectingHeapDump_inEditorEnabled_failure() throws Exception {
     myIdeProfilerServices.setHeapDumpTraceInEditorEnabled(true);
-    myIdeProfilerServices.enableTaskBasedUx(true);
     long startTimeNs = TimeUnit.MICROSECONDS.toNanos(6);
     long endTimeNs = TimeUnit.MICROSECONDS.toNanos(8);
     HeapDumpInfo info = HeapDumpInfo.newBuilder()
@@ -1027,7 +1024,6 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
   @Test
   public void selectingFinishedHeapGraphOpensInEditor() throws Exception {
     myIdeProfilerServices.setHeapDumpTraceInEditorEnabled(true);
-    myIdeProfilerServices.enableTaskBasedUx(true);
     // A finished heap graph recording, as the daemon reports it, and its trace file in the byte cache.
     Common.Session session = myProfilers.getSession();
     long startTimeNs = myTimer.getCurrentTimeNs();
@@ -1095,7 +1091,6 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
                                                              @NotNull MainMemoryProfilerStage stage,
                                                              @NotNull ByteString rawTraceBytes) throws Exception {
     myIdeProfilerServices.setNativeAllocationsTraceInEditorEnabled(true);
-    myIdeProfilerServices.enableTaskBasedUx(true);
     long startTimeUs = 10;
     long endTimeUs = 15;
     long startTimeNs = TimeUnit.MICROSECONDS.toNanos(startTimeUs);
@@ -1303,11 +1298,10 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     assertThat(myIdeProfilerServices.getOpenedFile()).isEqualTo(files.captureFile());
   }
 
-  /** Records a Perfetto heap graph of {@code appName} and opens it in the editor, with the in-editor and task-based UX flags on. */
+  /** Records a Perfetto heap graph of {@code appName} and opens it in the editor, with the in-editor flag on. */
   @NotNull
   private CaptureFiles selectJavaHeapGraphCaptureInEditor(@NotNull String appName, @NotNull ByteString rawTraceBytes) throws Exception {
     myIdeProfilerServices.setHeapDumpTraceInEditorEnabled(true);
-    myIdeProfilerServices.enableTaskBasedUx(true);
     Common.Session session = ProfilersTestData.SESSION_DATA;
     long startTimeUs = 10;
     long endTimeUs = 15;
@@ -1418,7 +1412,6 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
   @Test
   public void selectingLegacyAllocations_inEditorEnabled_failure() throws Exception {
     myIdeProfilerServices.setJavaKotlinAllocationsLegacyTraceInEditorEnabled(true);
-    myIdeProfilerServices.enableTaskBasedUx(true);
     long startTimeUs = 5;
     long endTimeUs = 10;
     long startTimeNs = TimeUnit.MICROSECONDS.toNanos(startTimeUs);
@@ -1615,6 +1608,9 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myStage.startJavaKotlinAllocationCapture();
     assertThat(myStage.getRecordingOptionsModel().getSelectedOption()).isEqualTo(
       myStage.lazyJavaKotlinAllocationsRecordingOption.getValue());
+    // The recording happens in the AllocationStage, which needs a live allocation sampling mode to start its live data timeline.
+    assertThat(myProfilers.getStage()).isInstanceOf(AllocationStage.class);
+    ((AllocationStage)myProfilers.getStage()).setLiveAllocationSamplingMode(MainMemoryProfilerStage.LiveAllocationSamplingMode.SAMPLED);
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
     assertThat(myStage.getRecordingOptionsModel().isRecording()).isTrue();
     // Force the tracking allocations boolean flag to be true to simulate successful start.
@@ -1647,11 +1643,6 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
   public void testStartNativeAllocationTrackingFailureResetsState() {
     assumeQAndAbove();
 
-    /**
-     * Need to re-initialize stage with task based UX enabled.
-     * This is because {@link #setupBase()} creates stage with task based UX disabled (see b/459619773)
-     */
-    myStage = new MainMemoryProfilerStage(myProfilers, new FakeCaptureObjectLoader());
     Throwable thrown = assertThrows(Throwable.class, () -> MemoryProfilerTestUtils.nativeAllocationTrackingHelper(
       myStage,
       myTimer,

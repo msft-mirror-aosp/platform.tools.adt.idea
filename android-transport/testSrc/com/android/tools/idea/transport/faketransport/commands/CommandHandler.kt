@@ -25,16 +25,16 @@ import com.android.tools.profiler.proto.Common
  * expected to update the state of a previously generated event the command should find the proper event group and add the new event to that
  * group accordingly.
  */
-abstract class CommandHandler(val timer: FakeTimer, private val isTaskBasedUxEnabled: Boolean = false) {
+abstract class CommandHandler(val timer: FakeTimer) {
   /**
    * Each command shall implement handle command. This method is expected to modify the events list passed in. The set of events passed in
    * will already be filtered to a specific stream so each command does not need to handle this.
    */
   abstract fun handleCommand(command: Command, events: MutableList<Common.Event>)
 
-  /** Populates the fake transport events with a session ended event if Task-Based UX is enabled. */
+  /** Populates the fake transport events with a session ended event if the command requests it, like the real daemon does. */
   fun addSessionEndedEvent(command: Command, events: MutableList<Common.Event>) {
-    if (isTaskBasedUxEnabled) {
+    if (command.shouldEndSession) {
       events.add(
         Common.Event.newBuilder()
           .apply {

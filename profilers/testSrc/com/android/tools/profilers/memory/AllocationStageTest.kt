@@ -3,15 +3,13 @@ package com.android.tools.profilers.memory
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
-import com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_DEVICE_NAME
-import com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_PROCESS_NAME
 import com.android.tools.idea.transport.faketransport.commands.MemoryAllocTracking
 import com.android.tools.profiler.proto.Commands
 import com.android.tools.profiler.proto.Memory
-import com.android.tools.profiler.proto.Memory.AllocationsInfo
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.Utils
 import com.android.tools.profilers.WithFakeTimer
 import com.android.tools.profilers.memory.BaseStreamingMemoryProfilerStage.LiveAllocationSamplingMode.FULL
 import com.android.tools.profilers.memory.BaseStreamingMemoryProfilerStage.LiveAllocationSamplingMode.SAMPLED
@@ -41,12 +39,8 @@ class AllocationStageTest(private val isLive: Boolean) : WithFakeTimer {
   @Before
   fun setup() {
     ideProfilerServices = FakeIdeProfilerServices()
-    // The Task-Based UX flag will be disabled for the call to setPreferredProcess, then re-enabled. This is because the setPreferredProcess
-    // method changes behavior based on the flag's value, and some of the tests depend on the behavior with the flag turned off.
-    ideProfilerServices.enableTaskBasedUx(false)
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, timer)
-    profilers.setPreferredProcess(FAKE_DEVICE_NAME, FAKE_PROCESS_NAME, null)
-    ideProfilerServices.enableTaskBasedUx(true)
+    Utils.startSessionOnFakeProcess(profilers, timer)
     mockLoader = FakeCaptureObjectLoader()
     stage =
       if (isLive) spy(AllocationStage.makeLiveStage(profilers, mockLoader))
@@ -73,7 +67,6 @@ class AllocationStageTest(private val isLive: Boolean) : WithFakeTimer {
     }
     // Mark agent attached as false
     whenever(stage.isAgentAttached).thenReturn(false)
-    ideProfilerServices.enableTaskBasedUx(true)
 
     // Wait for the 'update' of the studio profiler to be done
     timer.tick(FakeTimer.ONE_SECOND_IN_NS)
@@ -87,27 +80,6 @@ class AllocationStageTest(private val isLive: Boolean) : WithFakeTimer {
     stage.stopTrackingDueToUnattachableAgent()
     assertTrue { stage.hasEndedTracking }
     assertTrue { stage.hasAgentError }
-  }
-
-  @Test
-  fun `agent not attached still tracking in nonTaskBasedUx`() {
-    ideProfilerServices.enableTaskBasedUx(false)
-
-    assumeTrue(isLive)
-    (transportService.getRegisteredCommand(Commands.Command.CommandType.START_ALLOC_TRACKING) as MemoryAllocTracking).apply {
-      trackStatus = Memory.TrackStatus.newBuilder().setStatus(Memory.TrackStatus.Status.SUCCESS).build()
-    }
-    // Mark agent attached as false
-    whenever(stage.isAgentAttached).thenReturn(false)
-    ideProfilerServices.enableTaskBasedUx(false)
-
-    // Wait for the 'update' of the studio profiler to be done
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    stage.liveAllocationSamplingMode = SAMPLED
-    profilers.stage = stage
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
-    // Verify if allocation started for non taskBasedUx even-though agent is not started
-    assertTrue { stage.hasStartedTracking }
   }
 
   @Test
@@ -130,19 +102,10 @@ class AllocationStageTest(private val isLive: Boolean) : WithFakeTimer {
   }
 
   @Test
-  fun `implicit selection of allocation artifact proto is made post recording`() {
-    ideProfilerServices.enableTaskBasedUx(false)
-    setupDeviceAndStage()
-    // Capture a Java/Kotlin Allocation Trace
-    MemoryProfilerTestUtils.startTrackingHelper(stage.parentStage, transportService, timer, 0, Memory.TrackStatus.Status.SUCCESS, false)
-    MemoryProfilerTestUtils.stopTrackingHelper(stage.parentStage, transportService, timer, 0, Memory.TrackStatus.Status.SUCCESS, false)
-
-    // Make sure the resulting artifact's proto is of AllocationsInfo type
-    assertThat(profilers.sessionsManager.selectedArtifactProto).isInstanceOf(AllocationsInfo::class.java)
-  }
-
-  @Test
   fun `selected range expands over time until stopped`() {
+    // The agent is attached, so the live stage starts tracking on enter. Make that succeed, otherwise the session is ended.
+    (transportService.getRegisteredCommand(Commands.Command.CommandType.START_ALLOC_TRACKING) as MemoryAllocTracking).trackStatus =
+      Memory.TrackStatus.newBuilder().setStatus(Memory.TrackStatus.Status.SUCCESS).build()
     setupDeviceAndStage()
     assumeTrue(isLive)
     val (lo1, hi1) = tickOneSecThen(::getSelectedRange)

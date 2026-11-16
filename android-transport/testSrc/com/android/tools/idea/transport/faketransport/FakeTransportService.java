@@ -103,7 +103,6 @@ public class FakeTransportService extends TransportServiceGrpc.TransportServiceI
   private Transport.SetTaskDbRequest myLastSetTaskDbRequest;
   @Nullable
   private Transport.UnsetTaskDbRequest myLastUnsetTaskDbRequest;
-  private final boolean myIsTaskBasedUxEnabled;
 
   public FakeTransportService(@NotNull FakeTimer timer) {
     this(timer, true);
@@ -113,26 +112,17 @@ public class FakeTransportService extends TransportServiceGrpc.TransportServiceI
    * Creates a fake profiler service. If connected is true there will be a device with a process already present.
    */
   public FakeTransportService(@NotNull FakeTimer timer, boolean connected) {
-    this(timer, connected, AndroidVersion.VersionCodes.O, Common.Process.ExposureLevel.DEBUGGABLE, false);
-  }
-
-  public FakeTransportService(@NotNull FakeTimer timer, boolean connected, boolean isTaskBasedUXEnabled) {
-    this(timer, connected, AndroidVersion.VersionCodes.O, Common.Process.ExposureLevel.DEBUGGABLE, isTaskBasedUXEnabled);
+    this(timer, connected, AndroidVersion.VersionCodes.O, Common.Process.ExposureLevel.DEBUGGABLE);
   }
 
   public FakeTransportService(@NotNull FakeTimer timer, boolean connected, int featureLevel) {
-    this(timer, connected, featureLevel, Common.Process.ExposureLevel.DEBUGGABLE, false);
-  }
-
-  public FakeTransportService(@NotNull FakeTimer timer, boolean connected, int featureLevel, Common.Process.ExposureLevel exposureLevel) {
-    this(timer, connected, featureLevel, exposureLevel, false);
+    this(timer, connected, featureLevel, Common.Process.ExposureLevel.DEBUGGABLE);
   }
 
   public FakeTransportService(@NotNull FakeTimer timer,
                               boolean connected,
                               int featureLevel,
-                              Common.Process.ExposureLevel exposureLevel,
-                              boolean isTaskBasedUxEnabled) {
+                              Common.Process.ExposureLevel exposureLevel) {
     myDevices = new HashMap<>();
     myProcesses = MultiMap.create();
     myCache = new HashMap<>();
@@ -141,7 +131,6 @@ public class FakeTransportService extends TransportServiceGrpc.TransportServiceI
     myEventPositionMarkMap = new HashMap<>();
     myStreamServerMap = new HashMap<>();
     myTimer = timer;
-    myIsTaskBasedUxEnabled = isTaskBasedUxEnabled;
     Common.Device device = featureLevel == FAKE_DEVICE.getFeatureLevel()
                            ? FAKE_DEVICE
                            : FAKE_DEVICE.toBuilder().setFeatureLevel(featureLevel).build();
@@ -163,12 +152,12 @@ public class FakeTransportService extends TransportServiceGrpc.TransportServiceI
     setCommandHandler(Command.CommandType.END_SESSION, new EndSession(myTimer));
     setCommandHandler(Command.CommandType.DISCOVER_PROFILEABLE, new DiscoverProfileable(myTimer));
     setCommandHandler(Command.CommandType.START_TRACE, new StartTrace(myTimer));
-    setCommandHandler(Command.CommandType.STOP_TRACE, new StopTrace(myTimer, myIsTaskBasedUxEnabled));
-    MemoryAllocTracking allocTrackingHandler = new MemoryAllocTracking(myTimer, myIsTaskBasedUxEnabled);
+    setCommandHandler(Command.CommandType.STOP_TRACE, new StopTrace(myTimer));
+    MemoryAllocTracking allocTrackingHandler = new MemoryAllocTracking(myTimer);
     setCommandHandler(Command.CommandType.START_ALLOC_TRACKING, allocTrackingHandler);
     setCommandHandler(Command.CommandType.STOP_ALLOC_TRACKING, allocTrackingHandler);
     setCommandHandler(Command.CommandType.MEMORY_ALLOC_SAMPLING, new MemoryAllocSampling(myTimer));
-    setCommandHandler(Command.CommandType.HEAP_DUMP, new HeapDump(myTimer, myIsTaskBasedUxEnabled));
+    setCommandHandler(Command.CommandType.HEAP_DUMP, new HeapDump(myTimer));
     setCommandHandler(Command.CommandType.GET_CPU_CORE_CONFIG, new GetCpuCoreConfig(myTimer));
   }
 

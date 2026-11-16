@@ -82,7 +82,6 @@ class TaskHomeTabTest {
     myProfilers = StudioProfilers(ProfilerClient(myGrpcChannel.channel), ideProfilerServices, myTimer)
     myManager = myProfilers.sessionsManager
     taskHomeTabModel = myProfilers.taskHomeTabModel
-    ideProfilerServices.enableTaskBasedUx(true)
     val taskHandlers = ProfilerTaskHandlerFactory.createTaskHandlers(myManager)
     taskHandlers.forEach { myProfilers.addTaskHandler(it.key, it.value) }
     assertThat(taskHomeTabModel.processListModel.deviceToProcesses.value).isEmpty()

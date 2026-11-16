@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.profilers.actions
 
+import com.android.sdklib.AndroidVersion
 import com.android.tools.adtui.model.FakeTimer
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.profilers.AndroidProfilerToolWindow
@@ -29,6 +30,7 @@ import com.android.tools.profiler.proto.Trace
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.Utils
 import com.android.tools.profilers.cpu.CpuProfilerStage
 import com.android.tools.profilers.cpu.config.PerfettoSystemTraceConfiguration
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration
@@ -58,7 +60,7 @@ class ProfilerCpuActionsTest {
 
   private val timer = FakeTimer()
   private val ideServices = FakeIdeProfilerServices()
-  private val transportService = FakeTransportService(timer, true, com.android.sdklib.AndroidVersion.VersionCodes.P)
+  private val transportService = FakeTransportService(timer, true, AndroidVersion.VersionCodes.P)
 
   @get:Rule val grpcChannel = FakeGrpcChannel("ProfilerCpuActionsTestChannel", transportService)
 
@@ -77,7 +79,6 @@ class ProfilerCpuActionsTest {
     whenever(mockToolWindowManager.getToolWindow(AndroidProfilerToolWindowFactory.ID)).thenReturn(mockToolWindow)
     project.registerService(ToolWindowManager::class.java, mockToolWindowManager)
 
-    ideServices.enableTaskBasedUx(false)
     ideServices.addCustomProfilingConfiguration(
       CpuProfilerConfig.Technology.SYSTEM_TRACE.getName(),
       ProfilingConfiguration.TraceType.PERFETTO,
@@ -88,8 +89,7 @@ class ProfilerCpuActionsTest {
     stopTrace.stopStatus = Trace.TraceStopStatus.newBuilder().setStatus(Trace.TraceStopStatus.Status.SUCCESS).build()
 
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideServices, timer)
-    profilers.setPreferredProcess(FakeTransportService.FAKE_DEVICE_NAME, FakeTransportService.FAKE_PROCESS_NAME, null)
-    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    Utils.startSessionOnFakeProcess(profilers, timer)
     mockProfilerToolWindow = mock(AndroidProfilerToolWindow::class.java)
     whenever(mockProfilerToolWindow.profilers).thenReturn(profilers)
     AndroidProfilerToolWindowFactory.PROJECT_PROFILER_MAP[project] = mockProfilerToolWindow

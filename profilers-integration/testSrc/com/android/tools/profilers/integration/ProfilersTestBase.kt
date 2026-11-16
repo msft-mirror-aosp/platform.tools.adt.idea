@@ -93,8 +93,7 @@ open class ProfilersTestBase {
   @JvmField @Rule var watcher = MemoryDashboardNameProviderWatcher()
 
   protected fun taskBasedProfiling(deployApp: Boolean, testFunction: ((studio: AndroidStudio, adb: Adb) -> Unit)) {
-    // Enabling profiler task-based ux and verbose logs behind the flag.
-    system.installation.addVmOption("-Dprofiler.task.based.ux=true")
+    // Enabling profiler verbose logs behind the flag.
     system.installation.addVmOption("-Dprofiler.testing.mode=true")
     // Enabling LeakCanary task for LeakCanaryTaskTest
     system.installation.addVmOption("-Dprofiler.leakcanary=true")
@@ -133,13 +132,8 @@ open class ProfilersTestBase {
     }
   }
 
-  protected fun profileAppUsingApk(enableTaskBasedProfiling: Boolean, testFunction: (studio: AndroidStudio, adb: Adb) -> Unit) {
+  protected fun profileAppUsingApk(testFunction: (studio: AndroidStudio, adb: Adb) -> Unit) {
     system.installation.addVmOption("-Dprofiler.testing.mode=true")
-    if (enableTaskBasedProfiling) {
-      system.installation.addVmOption("-Dprofiler.task.based.ux=true")
-    } else {
-      system.installation.addVmOption("-Dprofiler.task.based.ux=false")
-    }
     // Running an APK directly means that Android Studio won't try setting up the JDK table, and
     // even if it did, it would do so with the latest API level. Both of those issues would cause
     // failures in this test, so we force auto-creation at the API level that we expect.

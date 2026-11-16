@@ -20,31 +20,21 @@ import static com.android.tools.idea.transport.faketransport.FakeTransportServic
 import static com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_PROCESS_NAME;
 import static com.android.tools.profilers.ProfilersTestData.DEFAULT_AGENT_ATTACHED_RESPONSE;
 import static com.google.common.truth.Truth.assertThat;
-import static org.junit.Assume.assumeFalse;
 
 import com.android.sdklib.AndroidVersion;
-import com.android.tools.adtui.TreeWalker;
-import com.android.tools.adtui.chart.linechart.LineChart;
 import com.android.tools.adtui.model.FakeTimer;
 import com.android.tools.adtui.swing.FakeUi;
 import com.android.tools.idea.transport.faketransport.FakeGrpcServer;
 import com.android.tools.idea.transport.faketransport.FakeTransportService;
 import com.android.tools.profiler.proto.Common;
-import com.android.tools.profilers.cpu.CpuMonitorTooltip;
-import com.android.tools.profilers.cpu.CpuProfilerStage;
-import com.android.tools.profilers.memory.MainMemoryProfilerStage;
-import com.android.tools.profilers.memory.MemoryMonitorTooltip;
 import com.android.tools.profilers.sessions.SessionsView;
-import com.google.common.truth.Truth;
 import com.intellij.openapi.ui.ThreeComponentsSplitter;
 import com.intellij.testFramework.ApplicationRule;
 import com.intellij.testFramework.DisposableRule;
 import com.intellij.testFramework.EdtRule;
 import com.intellij.testFramework.RunsInEdt;
-import java.awt.Point;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.swing.JComponent;
 import org.junit.Before;
 import org.junit.Rule;
@@ -55,11 +45,6 @@ import org.junit.runners.Parameterized;
 @RunsInEdt
 @RunWith(Parameterized.class)
 public class SessionProfilersViewTest {
-
-  private static final Common.Session SESSION_O = Common.Session.newBuilder().setSessionId(2).setStartTimestamp(FakeTimer.ONE_SECOND_IN_NS)
-    .setEndTimestamp(FakeTimer.ONE_SECOND_IN_NS * 2).setPid(1).build();
-  private static final Common.SessionMetaData SESSION_O_METADATA = Common.SessionMetaData.newBuilder().setSessionId(2).setJvmtiEnabled(true)
-    .setSessionName("App Device").setType(Common.SessionMetaData.SessionType.FULL).setStartTimestampEpochMs(1).build();
 
   private final FakeTimer myTimer = new FakeTimer();
   private final FakeTransportService myService;
@@ -118,83 +103,6 @@ public class SessionProfilersViewTest {
     myProfilers.setStage(stage);
     myProfilers.stop();
     // Make sure no exceptions
-  }
-
-  @Test
-  public void testMonitorExpansion() {
-    myProfilerServices.enableTaskBasedUx(false);
-
-    assumeFalse(myIsTestingProfileable);
-
-    myService.addSession(SESSION_O, SESSION_O_METADATA);
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    myProfilers.getSessionsManager().setSession(SESSION_O);
-    myUi.layout();
-
-    assertThat(myProfilers.getStage()).isInstanceOf(StudioMonitorStage.class);
-
-    List<Point> points = new TreeWalker(myView.getComponent()).descendantStream()
-      .filter(d -> d instanceof LineChart)
-      .map(c -> myUi.getPosition(c))
-      .collect(Collectors.toList());
-
-    // Test that we have the expected number of monitors
-    assertThat(points.size()).isEqualTo(2);
-
-    // Test the first monitor goes to cpu profiler
-    myUi.mouse.click(points.get(0).x + 1, points.get(0).y + 1);
-    assertThat(myProfilers.getStage()).isInstanceOf(CpuProfilerStage.class);
-    myProfilers.setMonitoringStage();
-
-    myUi.layout();
-    // Test the second monitor goes to memory profiler
-    myUi.mouse.click(points.get(1).x + 1, points.get(1).y + 1);
-    assertThat(myProfilers.getStage()).isInstanceOf(MainMemoryProfilerStage.class);
-    myProfilers.setMonitoringStage();
-  }
-
-  @Test
-  public void testMonitorTooltip() {
-    myProfilerServices.enableTaskBasedUx(false);
-
-    assumeFalse(myIsTestingProfileable);
-
-    myService.addSession(SESSION_O, SESSION_O_METADATA);
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
-    myProfilers.getSessionsManager().setSession(SESSION_O);
-    myUi.layout();
-
-    assertThat(myProfilers.getStage()).isInstanceOf(StudioMonitorStage.class);
-    StudioMonitorStage stage = (StudioMonitorStage)myProfilers.getStage();
-
-    List<Point> points = new TreeWalker(myView.getComponent()).descendantStream()
-      .filter(d -> d instanceof LineChart)
-      .map(c -> myUi.getPosition(c))
-      .collect(Collectors.toList());
-
-    // Test that we have the expected number of monitors
-    assertThat(points.size()).isEqualTo(2);
-
-    // cpu monitor tooltip
-    myUi.mouse.moveTo(points.get(0).x + 1, points.get(0).y + 1);
-    assertThat(stage.getTooltip()).isInstanceOf(CpuMonitorTooltip.class);
-    ProfilerMonitor cpuMonitor = ((CpuMonitorTooltip)stage.getTooltip()).getMonitor();
-    stage.getMonitors().forEach(
-      monitor -> Truth.assertWithMessage("Only the CPU Monitor should be focused.")
-        .that(monitor.isFocused()).isEqualTo(monitor == cpuMonitor));
-
-    // memory monitor tooltip
-    myUi.mouse.moveTo(points.get(1).x + 1, points.get(1).y + 1);
-    assertThat(stage.getTooltip()).isInstanceOf(MemoryMonitorTooltip.class);
-    ProfilerMonitor memoryMonitor = ((MemoryMonitorTooltip)stage.getTooltip()).getMonitor();
-    stage.getMonitors().forEach(
-      monitor -> Truth.assertWithMessage("Only the Memory Monitor should be focused.")
-        .that(monitor.isFocused()).isEqualTo(monitor == memoryMonitor));
-
-    // no tooltip
-    myUi.mouse.moveTo(0, 0);
-    assertThat(stage.getTooltip()).isNull();
-    stage.getMonitors().forEach(monitor -> Truth.assertWithMessage("No monitor should be focused.").that(monitor.isFocused()).isFalse());
   }
 
   @Test

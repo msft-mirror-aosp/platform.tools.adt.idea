@@ -15,9 +15,7 @@
  */
 package com.android.tools.profilers.cpu;
 
-import static com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_DEVICE_NAME;
 import static com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_PROCESS;
-import static com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_PROCESS_NAME;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.android.sdklib.AndroidVersion;
@@ -37,6 +35,7 @@ import com.android.tools.profilers.ProfilerClient;
 import com.android.tools.profilers.ProfilersTestData;
 import com.android.tools.profilers.StudioMonitorStage;
 import com.android.tools.profilers.StudioProfilers;
+import com.android.tools.profilers.Utils;
 import com.android.tools.profilers.cpu.CpuProfilerStage.CaptureState;
 import com.android.tools.profilers.cpu.config.ArtInstrumentedConfiguration;
 import com.android.tools.profilers.cpu.config.PerfettoSystemTraceConfiguration;
@@ -82,11 +81,8 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
   @Before
   public void setUp() {
-    myServices.enableTaskBasedUx(false);
     StudioProfilers profilers = new StudioProfilers(new ProfilerClient(myGrpcChannel.getChannel()), myServices, myTimer);
-    // One second must be enough for new devices (and processes) to be picked up
-    profilers.setPreferredProcess(FAKE_DEVICE_NAME, FAKE_PROCESS_NAME, null);
-    myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
+    Utils.startSessionOnFakeProcess(profilers, myTimer);
     myStage = new CpuProfilerStage(profilers);
     myStage.getStudioProfilers().setStage(myStage);
     ProfilersTestData.populateThreadData(myTransportService, ProfilersTestData.SESSION_DATA.getStreamId());
@@ -131,28 +127,10 @@ public final class CpuProfilerStageTest extends AspectObserver {
   }
 
   @Test
-  public void recordingPanelHasDefaultConfigurations() {
-    assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
-    // Start a capture using INSTRUMENTED mode
-    List<ProfilingConfiguration> defaultConfigurations = myStage.getProfilerConfigModel().getDefaultProfilingConfigurations();
-    assertThat(myStage.getRecordingModel().getBuiltInOptions()).hasSize(defaultConfigurations.size());
-    for (int i = 0; i < defaultConfigurations.size(); i++) {
-      assertThat(myStage.getRecordingModel().getBuiltInOptions().get(i).getTitle()).isEqualTo(defaultConfigurations.get(i).getName());
-    }
-  }
-
-  @Test
   public void recordingPanelHasTaskConfigurations() {
-    myServices.enableTaskBasedUx(true);
-    StudioProfilers profilers = new StudioProfilers(new ProfilerClient(myGrpcChannel.getChannel()), myServices, myTimer);
-    profilers.setPreferredProcess(FAKE_DEVICE_NAME, FAKE_PROCESS_NAME, null);
-    myStage = new CpuProfilerStage(profilers);
-    myStage.getStudioProfilers().setStage(myStage);
     assertThat(myStage.getCaptureState()).isEqualTo(CpuProfilerStage.CaptureState.IDLE);
-    // Get task configurations (configurations for task-based ux).
     List<ProfilingConfiguration> taskProfilingConfigurations = myStage.getProfilerConfigModel().getTaskProfilingConfigurations();
     // Check if recording options size is equal to size of task configurations.
-    // 'builtInOptionList' contains task configurations when task-based ux is enabled and default configurations when disabled.
     assertThat(myStage.getRecordingModel().getBuiltInOptions()).hasSize(taskProfilingConfigurations.size());
     for (int i = 0; i < taskProfilingConfigurations.size(); i++) {
       assertThat(myStage.getRecordingModel().getBuiltInOptions().get(i).getTitle()).isEqualTo(taskProfilingConfigurations.get(i).getName());
@@ -655,6 +633,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
     // Enter CpuProfilerStage again.
     StudioProfilers profilers = new StudioProfilers(new ProfilerClient(myGrpcChannel.getChannel()), myServices, myTimer);
+    Utils.ensureLiveTaskHandler(profilers);
     CpuProfilerStage newStage = new CpuProfilerStage(profilers);
     newStage.getStudioProfilers().setStage(newStage);
     // Trigger an update to kick off the InProgressTraceHandler which syncs the capture state and configuration.
@@ -676,6 +655,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
     // Enter CpuProfilerStage again.
     StudioProfilers profilers = new StudioProfilers(new ProfilerClient(myGrpcChannel.getChannel()), myServices, myTimer);
+    Utils.ensureLiveTaskHandler(profilers);
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS);
     CpuProfilerStage newStage = new CpuProfilerStage(profilers);
     newStage.getStudioProfilers().setStage(newStage);
@@ -875,12 +855,6 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
   @Test
   public void startCapturingFailureEndsSessionAndSetsFailedState() throws InterruptedException {
-    // A new stage is needed because the one in setUp is created with Task-Based UX disabled,
-    // so its recordingScreenModel is null.
-    myServices.enableTaskBasedUx(true);
-    myStage = new CpuProfilerStage(myStage.getStudioProfilers());
-    myStage.getStudioProfilers().setStage(myStage);
-
     SessionsManager sessionsManager = myStage.getStudioProfilers().getSessionsManager();
     assertThat(sessionsManager.getProfilingSession()).isNotEqualTo(Common.Session.getDefaultInstance());
 
@@ -1016,7 +990,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
     myTransportService.addProcess(device, process);
 
     myTimer.tick(FakeTimer.ONE_SECOND_IN_NS); // One second must be enough for new device to be picked up
-    myStage.getStudioProfilers().setProcess(device, process);
+    Utils.startSession(myStage.getStudioProfilers(), myTimer, device, process);
     // Setting the device will change the stage. We need to go back to CpuProfilerStage
     myStage.getStudioProfilers().setStage(myStage);
   }

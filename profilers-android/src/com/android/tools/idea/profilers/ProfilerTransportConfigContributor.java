@@ -104,8 +104,7 @@ public class ProfilerTransportConfigContributor implements TransportConfigContri
     configBuilder
       .setCommon(
         configBuilder.getCommonBuilder()
-          .setProfilerUnifiedPipeline(true)
-          .setProfilerTaskBasedUx(StudioFlags.PROFILER_TASK_BASED_UX.get()))
+          .setProfilerUnifiedPipeline(true))
       .setCpu(
         Transport.DaemonConfig.CpuConfig.newBuilder()
           .setArtStopTimeoutSec(CpuProfilerStage.CPU_ART_STOP_TIMEOUT_SEC)
@@ -122,8 +121,7 @@ public class ProfilerTransportConfigContributor implements TransportConfigContri
     configBuilder
       .setCommon(
         configBuilder.getCommonBuilder()
-          .setProfilerUnifiedPipeline(true)
-          .setProfilerTaskBasedUx(StudioFlags.PROFILER_TASK_BASED_UX.get()))
+          .setProfilerUnifiedPipeline(true))
       .setMem(
         Agent.AgentConfig.MemoryConfig.newBuilder()
           .setMaxStackDepth(LIVE_ALLOCATION_STACK_DEPTH)

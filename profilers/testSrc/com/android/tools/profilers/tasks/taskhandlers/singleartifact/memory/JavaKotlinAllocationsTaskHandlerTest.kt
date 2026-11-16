@@ -55,8 +55,8 @@ import org.junit.Test
 
 class JavaKotlinAllocationsTaskHandlerTest {
   private val myTimer = FakeTimer()
-  private val ideProfilerServices = FakeIdeProfilerServices().apply { enableTaskBasedUx(true) }
-  private val myTransportService = FakeTransportService(myTimer, false, ideProfilerServices.featureConfig.isTaskBasedUxEnabled)
+  private val ideProfilerServices = FakeIdeProfilerServices()
+  private val myTransportService = FakeTransportService(myTimer, false)
 
   @get:Rule var myGrpcChannel = FakeGrpcChannel("JavaKotlinAllocationsTaskHandlerTestChannel", myTransportService)
 
@@ -171,7 +171,6 @@ class JavaKotlinAllocationsTaskHandlerTest {
 
   @Test
   fun testNonLegacyStopTaskSuccessfullyTerminatesTasksSession() {
-    ideProfilerServices.enableTaskBasedUx(true)
     TaskHandlerTestUtils.startSession(
       ExposureLevel.DEBUGGABLE,
       AndroidVersion.VersionCodes.O,
@@ -218,7 +217,6 @@ class JavaKotlinAllocationsTaskHandlerTest {
 
   @Test
   fun testLegacyStopTaskSuccessfullyTerminatesTasksSession() {
-    ideProfilerServices.enableTaskBasedUx(true)
     TaskHandlerTestUtils.startSession(
       ExposureLevel.DEBUGGABLE,
       AndroidVersion.VersionCodes.N,

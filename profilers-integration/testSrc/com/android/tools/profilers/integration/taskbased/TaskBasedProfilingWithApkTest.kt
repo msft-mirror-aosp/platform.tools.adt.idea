@@ -45,7 +45,6 @@ class TaskBasedProfilingWithApkTest : ProfilersTestBase() {
   fun test() {
     system.installation.addVmOption("-Dprofiler.system.trace.in.editor=false")
     profileAppUsingApk(
-      enableTaskBasedProfiling = true,
       testFunction = { studio, adb ->
         // Invoking profiler tool window using ProfileAction
         // Which follows the code path of invoking the profiler button.
@@ -83,7 +82,7 @@ class TaskBasedProfilingWithApkTest : ProfilersTestBase() {
         verifyIdeaLog(".*PROFILER\\:\\s+CPU\\s+capture\\s+contains\\s+system\\s+trace\\s+data\$", 600)
         // Verify if UI panel is displayed.
         studio.waitForComponentByClass("CpuAnalysisSummaryTab", "FullTraceSummaryDetailsView")
-      },
+      }
     )
   }
 }

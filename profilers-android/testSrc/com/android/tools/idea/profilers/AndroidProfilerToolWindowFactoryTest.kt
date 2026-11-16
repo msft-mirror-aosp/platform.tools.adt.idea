@@ -34,7 +34,6 @@ import java.util.concurrent.TimeUnit
 import javax.swing.JPanel
 import kotlin.test.fail
 import org.junit.After
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -47,15 +46,8 @@ class AndroidProfilerToolWindowFactoryTest {
   private val project
     get() = projectRule.project
 
-  @Before
-  fun setup() {
-    // This test suite assumes the Task-Based UX is enabled unless otherwise specified.
-    StudioFlags.PROFILER_TASK_BASED_UX.override(true)
-  }
-
   @After
   fun cleanup() {
-    StudioFlags.PROFILER_TASK_BASED_UX.clearOverride()
     StudioFlags.PROFILER_LIVE_TELEMETRY_IN_EDITOR.clearOverride()
   }
 

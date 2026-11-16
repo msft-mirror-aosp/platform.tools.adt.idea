@@ -27,7 +27,6 @@ class TaskBasedProfilingWithApkInEditorTest : ProfilersTestBase() {
   fun test() {
     system.installation.addVmOption("-Dprofiler.system.trace.in.editor=true")
     profileAppUsingApk(
-      enableTaskBasedProfiling = true,
       testFunction = { studio, adb ->
         profileAction(studio)
         waitForAppToBeDeployed(adb, ".*Hello Minimal World!.*")
@@ -56,7 +55,7 @@ class TaskBasedProfilingWithApkInEditorTest : ProfilersTestBase() {
 
         // Wait for the actual Perfetto View or Trace Component
         studio.waitForComponentByClass("PerfettoView")
-      },
+      }
     )
   }
 }

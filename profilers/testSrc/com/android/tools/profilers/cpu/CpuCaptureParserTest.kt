@@ -672,7 +672,6 @@ class CpuCaptureParserTest {
     val services = myProfilers.ideServices as FakeIdeProfilerServices
     val fakeFeatureTracker = services.featureTracker as FakeFeatureTracker
     val parser = CpuCaptureParser(myProfilers.ideServices)
-    services.enableTaskBasedUx(false)
     CpuCaptureParser.clearPreviouslyLoadedCaptures()
 
     parser.parseForTest(CpuProfilerTestUtils.getTraceFile("valid_trace.trace")).get()
@@ -685,7 +684,6 @@ class CpuCaptureParserTest {
     val services = myProfilers.ideServices as FakeIdeProfilerServices
     val fakeFeatureTracker = services.featureTracker as FakeFeatureTracker
     val parser = CpuCaptureParser(myProfilers.ideServices)
-    services.enableTaskBasedUx(false)
     CpuCaptureParser.clearPreviouslyLoadedCaptures()
 
     parser
@@ -707,7 +705,6 @@ class CpuCaptureParserTest {
     val services = myProfilers.ideServices as FakeIdeProfilerServices
     val fakeFeatureTracker = services.featureTracker as FakeFeatureTracker
     val parser = CpuCaptureParser(myProfilers.ideServices)
-    services.enableTaskBasedUx(false)
     CpuCaptureParser.clearPreviouslyLoadedCaptures()
 
     parser
