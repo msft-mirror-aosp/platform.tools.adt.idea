@@ -116,9 +116,8 @@ public final class HprofSessionArtifact extends MemorySessionArtifact<HeapDumpIn
   private static boolean shouldSkipArtifact(@NotNull StudioProfilers profilers,
                                             @NotNull Common.Session session,
                                             @NotNull Common.SessionMetaData sessionMetaData) {
-    boolean isTaskBasedUxEnabled = profilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
     boolean isUnifiedEditorEnabled = profilers.getIdeServices().getFeatureConfig().isHeapDumpTraceInEditorEnabled();
-    return isTaskBasedUxEnabled && isUnifiedEditorEnabled &&
+    return isUnifiedEditorEnabled &&
            sessionMetaData.getType() == Common.SessionMetaData.SessionType.FULL &&
            !SessionsManager.isSessionImported(session);
   }

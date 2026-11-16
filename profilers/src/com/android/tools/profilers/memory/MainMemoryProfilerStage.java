@@ -114,7 +114,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
   @NotNull
   private final Runnable myStopAction;
 
-  @Nullable
+  @NotNull
   private final RecordingScreenModel<MainMemoryProfilerStage> myRecordingScreenModel;
 
   @VisibleForTesting
@@ -237,12 +237,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
 
     myRecordingOptionsModel = new RecordingOptionsModel();
     myStopAction = stopAction;
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      myRecordingScreenModel = new RecordingScreenModel<>(this);
-    }
-    else {
-      myRecordingScreenModel = null;
-    }
+    myRecordingScreenModel = new RecordingScreenModel<>(this);
   }
 
   private final TransportListenerTracker myListenerTracker;
@@ -296,9 +291,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     updateNativeAllocationTrackingStatus();
 
     // Register recording screen model updatable so timer can update on tick.
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled() && myRecordingScreenModel != null) {
-      getStudioProfilers().getUpdater().register(myRecordingScreenModel);
-    }
+    getStudioProfilers().getUpdater().register(myRecordingScreenModel);
   }
 
   @Override
@@ -307,9 +300,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     enableSelectLatestCapture(false, null);
     selectCaptureDuration(null, null);
     // Deregister recording screen model updatable so timer does not continue in background.
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled() && myRecordingScreenModel != null) {
-      getStudioProfilers().getUpdater().unregister(myRecordingScreenModel);
-    }
+    getStudioProfilers().getUpdater().unregister(myRecordingScreenModel);
     myListenerTracker.onExit();
   }
 
@@ -342,14 +333,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       LogUtils.log(getClass(), "Heap dump capture has finished");
     }
     selectCaptureDuration(captureToSelect.value, loadJoiner);
-  }
-
-  /**
-   * Set the start time for pending capture object imported from hprof file.
-   */
-  public void setPendingCaptureStartTimeGuarded(long pendingCaptureStartTime) {
-    assert myIsMemoryCaptureOnly;
-    super.setPendingCaptureStartTime(pendingCaptureStartTime);
   }
 
   public void startHeapDumpCapture() {
@@ -462,11 +445,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       .setType(Commands.Command.CommandType.STOP_TRACE)
       .setStopTrace(Trace.StopTrace.newBuilder()
                       .setProfilerType(Trace.ProfilerType.MEMORY)
-                      .setConfiguration(configuration));
-
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      stopCommandBuilder.setShouldEndSession(true);
-    }
+                      .setConfiguration(configuration))
+      .setShouldEndSession(true);
 
     executeTraceCommand(stopCommandBuilder.build(), true, traceStatus -> {
       if (traceStatus.hasTraceStopStatus()) {
@@ -476,9 +456,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       else {
         onInvalidStatus.run();
         // unknown/undefined trace status event found
-        if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-          myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(Trace.TraceStopStatus.getDefaultInstance(), null, null));
-        }
+        myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(Trace.TraceStopStatus.getDefaultInstance(), null, null));
         getLogger().error("Invalid trace status event received.");
       }
     });
@@ -540,10 +518,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         getTimeline().setStreaming(true);
         break;
       case FAILURE:
-        if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-          myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(status, null, null));
-          cleanupFailedCapture();
-        }
+        myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(status, null, null));
+        cleanupFailedCapture();
         getLogger().error("Failure with error code " + status.getErrorCode());
         break;
       case UNSPECIFIED:
@@ -572,10 +548,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         break;
       default:
         getLogger().error(status.getErrorMessage());
-        if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-          cleanupFailedCapture();
-          myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(status, null, null));
-        }
+        cleanupFailedCapture();
+        myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(status, null, null));
         break;
     }
   }
@@ -601,11 +575,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       .setStreamId(getSessionData().getStreamId())
       .setPid(getSessionData().getPid())
       .setSessionId(getSessionData().getSessionId())
-      .setType(Commands.Command.CommandType.HEAP_DUMP);
-
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      dumpCommandBuilder.setShouldEndSession(true);
-    }
+      .setType(Commands.Command.CommandType.HEAP_DUMP)
+      .setShouldEndSession(true);
 
     Commands.Command dumpCommand = dumpCommandBuilder.build();
     CompletableFuture.runAsync(() -> {
@@ -758,10 +729,8 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       case NOT_PROFILING:
       case FAILURE_UNKNOWN:
       case UNRECOGNIZED:
-        if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-          cleanupFailedCapture();
-          myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(null, null, status));
-        }
+        cleanupFailedCapture();
+        myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(null, null, status));
         break;
     }
   }
@@ -789,16 +758,14 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
           setTrackingAllocations(false);
           break;
         default:
-          if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-            cleanupFailedCapture();
-            if (enable) {
-              // Start task failure
-              myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(null, status, null));
-            }
-            else {
-              // Stop task failure
-              myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(null, status, null));
-            }
+          cleanupFailedCapture();
+          if (enable) {
+            // Start task failure
+            myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(null, status, null));
+          }
+          else {
+            // Stop task failure
+            myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(null, status, null));
           }
           break;
       }
@@ -846,7 +813,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     return myStopAction;
   }
 
-  @Nullable
+  @NotNull
   @Override
   public RecordingScreenModel<MainMemoryProfilerStage> getRecordingScreenModel() {
     return myRecordingScreenModel;
@@ -865,7 +832,6 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
              (HeapDumpCaptureObject.class.isAssignableFrom(durationData.getCaptureObjectType()) ||
               NativeAllocationSampleCaptureObject.class.isAssignableFrom(durationData.getCaptureObjectType()) ||
               LegacyAllocationCaptureObject.class.isAssignableFrom(durationData.getCaptureObjectType()))) {
-      boolean isTaskBasedUxEnabled = profilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
       boolean isUnifiedEditorEnabled = false;
       if (HeapDumpCaptureObject.class.isAssignableFrom(durationData.getCaptureObjectType())) {
         isUnifiedEditorEnabled = profilers.getIdeServices().getFeatureConfig().isHeapDumpTraceInEditorEnabled();
@@ -877,7 +843,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         isUnifiedEditorEnabled = profilers.getIdeServices().getFeatureConfig().isJavaKotlinAllocationsLegacyTraceInEditorEnabled();
       }
 
-      if (isTaskBasedUxEnabled && isUnifiedEditorEnabled) {
+      if (isUnifiedEditorEnabled) {
         if (!getCaptureSelection().selectCaptureEntry(durationData.getCaptureEntry())) {
           return;
         }
@@ -1044,9 +1010,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
       getStudioProfilers().getSessionsManager().endCurrentSession();
     }
 
-    if (myRecordingScreenModel != null) {
-      myRecordingScreenModel.setRecordingFailed();
-    }
+    myRecordingScreenModel.setRecordingFailed();
 
     myRecordingOptionsModel.setFinished();
     myNativeAllocationTracking = false;

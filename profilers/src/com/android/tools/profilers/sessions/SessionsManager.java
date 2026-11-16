@@ -364,30 +364,22 @@ public class SessionsManager extends AspectModel<SessionAspect> {
    * Determines whether each session being processed in updateSessionItemsByGroup should be selected or not.
    */
   private boolean shouldAutoSelectSession(boolean newSessionFound, boolean sessionNewlyEnded, Common.Session session) {
-    // If Task-Based UX is disabled, then if either a new session was found, or an existing one has completed, selection of the processed
-    // session should be made.
-    boolean shouldSetSession = newSessionFound || sessionNewlyEnded;
-
-    // If Task-Based UX is enabled, then there are two specific instances where selection of the session should be made:
+    // There are two specific instances where selection of the session should be made:
     // (1) A new session was found, and it is ongoing.
     // (2) An existing session was found, it has completed, and it is the currently selected session with a matching task type.
     // Both cases (1) and (2) require that there be a non-UNSPECIFIED `currentTaskType` set and that the session was not imported.
     //
     // Note: A newly found and complete session is not auto-selected to prevent Studio from auto-selecting a task recording after soft
     // restarting Studio. Also, an ending session that is no longer the selected session should not hijack selection.
-    boolean isTaskBasedUXEnabled = myProfilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
-    if (isTaskBasedUXEnabled) {
-      Common.SessionMetaData metaData = getSessionMetaData(session.getSessionId());
-      boolean taskTypeMatches = metaData != null &&
-                                TaskTypeMappingUtils.convertTaskType(metaData.getTaskType()) == myCurrentTaskType;
-      boolean isCurrentSessionEnding = !newSessionFound && sessionNewlyEnded &&
-                                       mySelectedSession.getSessionId() == session.getSessionId() &&
-                                       taskTypeMatches;
-      shouldSetSession = !isSessionImported(session) &&
-                         myCurrentTaskType != ProfilerTaskType.UNSPECIFIED &&
-                         ((newSessionFound && !sessionNewlyEnded) || isCurrentSessionEnding);
-    }
-    return shouldSetSession;
+    Common.SessionMetaData metaData = getSessionMetaData(session.getSessionId());
+    boolean taskTypeMatches = metaData != null &&
+                              TaskTypeMappingUtils.convertTaskType(metaData.getTaskType()) == myCurrentTaskType;
+    boolean isCurrentSessionEnding = !newSessionFound && sessionNewlyEnded &&
+                                     mySelectedSession.getSessionId() == session.getSessionId() &&
+                                     taskTypeMatches;
+    return !isSessionImported(session) &&
+           myCurrentTaskType != ProfilerTaskType.UNSPECIFIED &&
+           ((newSessionFound && !sessionNewlyEnded) || isCurrentSessionEnding);
   }
 
   /**
@@ -645,18 +637,12 @@ public class SessionsManager extends AspectModel<SessionAspect> {
   public void deleteSession(@NotNull Common.Session session) {
     assert mySessionItems.containsKey(session.getSessionId()) && mySessionItems.get(session.getSessionId()).getSession().equals(session);
 
-    // Selected session can change after we stop profiling so caching the value first.
-    boolean sessionIsSelectedSession = mySelectedSession.equals(session);
     if (myProfilingSession.equals(session)) {
       // Route to StudioProfiler to set a null device + process, which will stop the session properly.
       myProfilers.setProcess(null, null);
     }
 
-    // When deleting a currently selected session, set the session back to default so the profilers will go to the null stage.
-    // In the Task-Based UX, however, the selected session/task remains selected even if it is deleted.
-    if (sessionIsSelectedSession && !myProfilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      setSessionInternal(Common.Session.getDefaultInstance());
-    }
+    // Note: The selected session/task remains selected even if it is deleted.
 
     Transport.DeleteEventsRequest deleteRequest = Transport.DeleteEventsRequest.newBuilder()
       .setStreamId(session.getStreamId())

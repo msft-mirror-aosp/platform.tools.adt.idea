@@ -751,22 +751,9 @@ public class IntellijProfilerServices implements IdeProfilerServices, Disposable
 
   @Override
   public int getNativeAllocationsMemorySamplingRate() {
-
-    if (getFeatureConfig().isTaskBasedUxEnabled()) {
-      // For task based UX, get native memory sampling rate from task configurations.
-      CpuProfilerConfigsState configsState = CpuProfilerConfigsState.getInstance(myProject);
-      return configsState.getNativeAllocationsConfigForTaskConfig().getSamplingRateBytes();
-    }
-
-    RunManager runManager = RunManager.getInstance(myProject);
-    if (runManager != null) {
-      RunnerAndConfigurationSettings configurationSettings = runManager.getSelectedConfiguration();
-      if (configurationSettings != null && configurationSettings.getConfiguration() instanceof AndroidRunConfigurationBase) {
-        AndroidRunConfigurationBase runConfig = (AndroidRunConfigurationBase)configurationSettings.getConfiguration();
-        return runConfig.getProfilerState().NATIVE_MEMORY_SAMPLE_RATE_BYTES;
-      }
-    }
-    return ProfilerState.DEFAULT_NATIVE_MEMORY_SAMPLE_RATE_BYTES;
+    // Get native memory sampling rate from task configurations.
+    CpuProfilerConfigsState configsState = CpuProfilerConfigsState.getInstance(myProject);
+    return configsState.getNativeAllocationsConfigForTaskConfig().getSamplingRateBytes();
   }
 
   @Override

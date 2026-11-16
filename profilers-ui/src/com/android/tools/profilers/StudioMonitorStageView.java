@@ -170,9 +170,4 @@ public class StudioMonitorStageView extends StageView<StudioMonitorStage> {
   public JComponent getToolbar() {
     return LiveStageView.Companion.getMessage(getStage().getStudioProfilers());
   }
-
-  @Override
-  public boolean needsProcessSelection() {
-    return true;
-  }
 }

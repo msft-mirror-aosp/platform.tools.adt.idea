@@ -106,9 +106,8 @@ public class HeapProfdSessionArtifact extends MemorySessionArtifact<Trace.TraceI
   private static boolean shouldSkipArtifact(@NotNull StudioProfilers profilers,
                                             @NotNull Common.Session session,
                                             @NotNull Common.SessionMetaData sessionMetaData) {
-    boolean isTaskBasedUxEnabled = profilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
     boolean isNativeAllocationsEditorEnabled = profilers.getIdeServices().getFeatureConfig().isNativeAllocationsTraceInEditorEnabled();
-    return isTaskBasedUxEnabled && isNativeAllocationsEditorEnabled &&
+    return isNativeAllocationsEditorEnabled &&
            sessionMetaData.getType() == Common.SessionMetaData.SessionType.FULL &&
            !SessionsManager.isSessionImported(session);
   }

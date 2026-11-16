@@ -42,7 +42,6 @@ import com.android.tools.profiler.proto.Transport.GetEventGroupsRequest;
 import com.android.tools.profiler.proto.Transport.GetEventGroupsResponse;
 import com.android.tools.profiler.proto.Transport.TimeRequest;
 import com.android.tools.profiler.proto.Transport.TimeResponse;
-import com.android.tools.profilers.cpu.CpuCaptureMetadata;
 import com.android.tools.profilers.cpu.CpuProfiler;
 import com.android.tools.profilers.cpu.CpuProfilerStage;
 import com.android.tools.profilers.memory.MainMemoryProfilerStage;
@@ -392,29 +391,15 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     });
 
     registerSessionChangeListener(Common.SessionMetaData.SessionType.FULL, () -> {
-      if (!ideServices.getFeatureConfig().isTaskBasedUxEnabled()) {
-        setStage(new StudioMonitorStage(this));
-      }
       if (SessionsManager.isSessionAlive(mySelectedSession)) {
         // The session is live - move the timeline to the current time.
         TimeResponse timeResponse = myClient.getTransportClient().getCurrentTime(
           TimeRequest.newBuilder().setStreamId(mySelectedSession.getStreamId()).build());
 
         myTimeline.reset(mySelectedSession.getStartTimestamp(), timeResponse.getTimestampNs());
-        boolean isTaskBasedUXEnabled = getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
 
-        if (isTaskBasedUXEnabled) {
-          if (startupProfilingStarted()) {
-            getTaskHomeTabModel().resetSelectionStateAndClearStartupTaskConfigs();
-          }
-        }
-        else {
-          if (startupCpuProfilingStarted()) {
-            setStage(new CpuProfilerStage(this, CpuCaptureMetadata.CpuProfilerEntryPoint.STARTUP_PROFILING));
-          }
-          else if (startupMemoryProfilingStarted()) {
-            setStage(new MainMemoryProfilerStage(this));
-          }
+        if (startupProfilingStarted()) {
+          getTaskHomeTabModel().resetSelectionStateAndClearStartupTaskConfigs();
         }
       }
       else {
@@ -514,12 +499,6 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
       processFilter
     );
 
-    // Checks whether we can switch immediately if the device is already there.
-    if (!getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      myIdeServices.getFeatureTracker().trackAutoProfilingRequested();
-      setAutoProfilingEnabled(true);
-    }
-
     changed(ProfilerAspect.PREFERRED_PROCESS);
 
     if (processNameChanged) {
@@ -553,7 +532,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   public void setAutoProfilingEnabled(boolean enabled) {
     myAutoProfilingEnabled = enabled;
 
-    if (enabled && getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
+    if (enabled) {
       getLogger().warn("Auto profiling should not be enabled or used when the Task-Based UX is enabled.");
     }
     // Do nothing. Let update() take care of which process should be selected.
@@ -685,7 +664,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     }
     myRefreshDevicesAndPreferredProcessName = 0;
 
-    if (getIdeServices().getFeatureConfig().isTaskBasedUxEnabled() && myPreferredProcessNameFetcher != null) {
+    if (myPreferredProcessNameFetcher != null) {
       String preferredProcessName = myPreferredProcessNameFetcher.invoke();
       setPreferredProcessName(preferredProcessName);
     }
@@ -713,29 +692,21 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
 
       if (!newProcesses.equals(myProcesses)) {
         myProcesses = newProcesses;
-        // The following call to setProcess will start a session on profiler start and on process selection change, but Task-Based UX does
-        // not auto start a session on profiler start or on process change. Thus, we disable the call to setProcess if the Task-Based UX
-        // is enabled.
-        boolean isTaskBasedUXEnabled = getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
-        if (!isTaskBasedUXEnabled) {
-          setProcess(findPreferredDevice(), null);
-        } else {
-          syncSelectedProcessState();
-        }
+        // Task-Based UX does not auto start a session on profiler start or on process change. Instead, we only keep the state of the
+        // currently selected process in sync.
+        syncSelectedProcessState();
 
-        if (isTaskBasedUXEnabled) {
-          TaskHomeTabModel.SelectionStateOnTaskEnter selectionStateOnTaskEnter = getTaskHomeTabModel().getSelectionStateOnTaskEnter();
-          if (selectionStateOnTaskEnter != null) {
-            boolean isProfilingFromProcessStart =
+        TaskHomeTabModel.SelectionStateOnTaskEnter selectionStateOnTaskEnter = getTaskHomeTabModel().getSelectionStateOnTaskEnter();
+        if (selectionStateOnTaskEnter != null) {
+          boolean isProfilingFromProcessStart =
             selectionStateOnTaskEnter.getProfilingProcessStartingPoint() == TaskHomeTabModel.ProfilingProcessStartingPoint.PROCESS_START;
-            ProfilerTaskType selectedTaskType = selectionStateOnTaskEnter.getSelectedStartupTaskType();
-            // The check for a non-null preferred device makes sure the preferred device is alive and detected. It is imperative for startup
-            // scenarios, although this condition may be true in non-startup scenarios too. It's worth noting that repeated calls to
-            // setProcess with the same parameters are harmless, as setProcess prevents starting a session/task with the same device and
-            // process combination when facilitating a startup task.
-            if (findPreferredDevice() != null && isProfilingFromProcessStart && selectedTaskType != ProfilerTaskType.UNSPECIFIED) {
-              setProcess(findPreferredDevice(), null, TaskTypeMappingUtils.convertTaskType(selectedTaskType), true);
-            }
+          ProfilerTaskType selectedTaskType = selectionStateOnTaskEnter.getSelectedStartupTaskType();
+          // The check for a non-null preferred device makes sure the preferred device is alive and detected. It is imperative for startup
+          // scenarios, although this condition may be true in non-startup scenarios too. It's worth noting that repeated calls to
+          // setProcess with the same parameters are harmless, as setProcess prevents starting a session/task with the same device and
+          // process combination when facilitating a startup task.
+          if (findPreferredDevice() != null && isProfilingFromProcessStart && selectedTaskType != ProfilerTaskType.UNSPECIFIED) {
+            setProcess(findPreferredDevice(), null, TaskTypeMappingUtils.convertTaskType(selectedTaskType), true);
           }
         }
 
@@ -790,7 +761,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     Set<Common.Device> onlineDevices = filterOnlineDevices(devices);
 
     // We have a preferred device, try not to select anything else.
-    if ((getIdeServices().getFeatureConfig().isTaskBasedUxEnabled() || myAutoProfilingEnabled) && myPreference.deviceName != null) {
+    if (myPreference.deviceName != null) {
       for (Common.Device device : onlineDevices) {
         if (myPreference.deviceName.equals(buildDeviceName(device))) {
           return device;
@@ -870,18 +841,16 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
       setAutoProfilingEnabled(false);
     }
 
-    boolean isTaskBasedUXEnabled = getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
-
     // Update the process state to latest but continue in the same session
     // if it is just an exposure level change due to JVMTI agent attach
-    if (isTaskBasedUXEnabled && isAgentAttachUpdate(myProcess, process)) {
+    if (isAgentAttachUpdate(myProcess, process)) {
       updateProcessState(process);
       return;
     }
 
-    // If the process changes OR the process was set in via a non-startup task initiation in the Task-Based UX, we end the current session
-    // and begin a new one. In regard to startup tasks, a change in process to end the current session and begin a new one.
-    if (!Objects.equals(process, myProcess) || (!isStartupTask && isTaskBasedUXEnabled)) {
+    // If the process changes OR the process was set in via a non-startup task initiation, we end the current session and begin a new one.
+    // In regard to startup tasks, a change in process to end the current session and begin a new one.
+    if (!Objects.equals(process, myProcess) || !isStartupTask) {
       // First make sure to end the previous session.
       mySessionsManager.endCurrentSession();
       updateProcessState(process);
@@ -889,7 +858,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
       if (myProcess != null && myProcess.getState() == Common.Process.State.ALIVE) {
         mySessionsManager.beginSession(myDeviceToStreamIds.get(myDevice), myDevice, myProcess, taskType, isStartupTask);
 
-        if (isStartupTask && isTaskBasedUXEnabled) {
+        if (isStartupTask) {
           getTaskHomeTabModel().resetSelectionStateAndClearStartupTaskConfigs();
         }
       }
@@ -939,9 +908,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
   }
 
   public void bringSelectedEditorToFront() {
-    if (getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      myUnifiedTraceOpener.openUnifiedTrace(mySelectedSession, mySessionsManager.getSessionIdToSessionItems());
-    }
+    myUnifiedTraceOpener.openUnifiedTrace(mySelectedSession, mySessionsManager.getSessionIdToSessionItems());
   }
 
   private void selectedSessionChanged() {
@@ -966,15 +933,14 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
 
     // Set the stage base on session type
     Common.SessionMetaData.SessionType sessionType = mySessionsManager.getSelectedSessionMetaData().getType();
-    assert mySessionChangeListener.containsKey(sessionType);
 
-    // Disable the CPU_CAPTURE and MEMORY_CAPTURE session type change listener if the Task-Based UX is enabled. This prevents the automatic
-    // entering of the CpuCaptureStage or MainMemoryProfilerStage respectively. Prevention of entering these stages also prevents the
-    // parsing + insertion of a fake CPU_TRACE or MEMORY_TRACE event. This is done as, with the Task-Based UX enabled, the insertion of the
-    // CPU_TRACE or MEMORY_TRACE event will be done at import-time rather than when their respective stage is set.
-    if (!getIdeServices().getFeatureConfig().isTaskBasedUxEnabled() ||
-        !sessionType.equals(Common.SessionMetaData.SessionType.CPU_CAPTURE) &&
+    // There are no session change listeners for CPU_CAPTURE and MEMORY_CAPTURE session types. This prevents the automatic entering of the
+    // CpuCaptureStage or MainMemoryProfilerStage respectively. Prevention of entering these stages also prevents the parsing + insertion of
+    // a fake CPU_TRACE or MEMORY_TRACE event. This is done as the insertion of the CPU_TRACE or MEMORY_TRACE event is done at import-time
+    // rather than when their respective stage is set.
+    if (!sessionType.equals(Common.SessionMetaData.SessionType.CPU_CAPTURE) &&
         !sessionType.equals(Common.SessionMetaData.SessionType.MEMORY_CAPTURE)) {
+      assert mySessionChangeListener.containsKey(sessionType);
       mySessionChangeListener.get(sessionType).run();
     }
 
@@ -988,35 +954,33 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     // Additionally, it is worth noting that the placement of launching the task after running the session change listener and firing the
     // ProfilerAspect.AGENT aspect is done purposefully; these two synchronous operations serve as setup for the tasks to record new data
     // or load past recording (non-imported) data successfully.
-    if (getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      ProfilerTaskType selectedTaskType = mySessionsManager.getCurrentTaskType();
-      Map<Long, SessionItem> sessionIdToSessionItems = mySessionsManager.getSessionIdToSessionItems();
+    ProfilerTaskType selectedTaskType = mySessionsManager.getCurrentTaskType();
+    Map<Long, SessionItem> sessionIdToSessionItems = mySessionsManager.getSessionIdToSessionItems();
 
-      boolean isStartupTask = mySessionsManager.isCurrentTaskStartup();
+    boolean isStartupTask = mySessionsManager.isCurrentTaskStartup();
 
-      // Regardless if the startup task is launched successfully, all state related to performing a startup task is reset to prevent usage
-      // of this outdated state by external deployment methods (anything besides clicking the "Start profiler task" button).
-      if (isStartupTask) {
-        myTaskHomeTabModel.resetSelectionStateAndClearStartupTaskConfigs();
-      }
-
-      boolean isLeakCanaryTask = selectedTaskType == ProfilerTaskType.LEAKCANARY;
-      // If the task is not LeakCanary, check if startup profiling has started successfully.
-      boolean hasStartupProfilingFailed = !isLeakCanaryTask && !startupProfilingStarted();
-
-      if (isStartupTask && hasStartupProfilingFailed && mySessionsManager.isSessionAlive()) {
-        mySessionsManager.endSelectedSession();
-        myIdeServices.showNotification(TaskNotifications.STARTUP_TASK_FAILURE);
-        return;
-      }
-      // Delegate the trace file opening check to the helper class
-      // If it returns true, the file was opened successfully, so we return early.
-      if (myUnifiedTraceOpener.openUnifiedTrace(mySelectedSession, sessionIdToSessionItems)) {
-        return;
-      }
-      ProfilerTaskLauncher.launchProfilerTask(selectedTaskType, isStartupTask, getTaskHandlers(), getSession(), sessionIdToSessionItems,
-                                              myCreateTaskTab, myIdeServices);
+    // Regardless if the startup task is launched successfully, all state related to performing a startup task is reset to prevent usage
+    // of this outdated state by external deployment methods (anything besides clicking the "Start profiler task" button).
+    if (isStartupTask) {
+      myTaskHomeTabModel.resetSelectionStateAndClearStartupTaskConfigs();
     }
+
+    boolean isLeakCanaryTask = selectedTaskType == ProfilerTaskType.LEAKCANARY;
+    // If the task is not LeakCanary, check if startup profiling has started successfully.
+    boolean hasStartupProfilingFailed = !isLeakCanaryTask && !startupProfilingStarted();
+
+    if (isStartupTask && hasStartupProfilingFailed && mySessionsManager.isSessionAlive()) {
+      mySessionsManager.endSelectedSession();
+      myIdeServices.showNotification(TaskNotifications.STARTUP_TASK_FAILURE);
+      return;
+    }
+    // Delegate the trace file opening check to the helper class
+    // If it returns true, the file was opened successfully, so we return early.
+    if (myUnifiedTraceOpener.openUnifiedTrace(mySelectedSession, sessionIdToSessionItems)) {
+      return;
+    }
+    ProfilerTaskLauncher.launchProfilerTask(selectedTaskType, isStartupTask, getTaskHandlers(), getSession(), sessionIdToSessionItems,
+                                            myCreateTaskTab, myIdeServices);
   }
 
   private void profilingSessionChanged() {
@@ -1085,7 +1049,7 @@ public class StudioProfilers extends AspectModel<ProfilerAspect> implements Upda
     }
 
     // Prefer the project's app if available.
-    if ((getIdeServices().getFeatureConfig().isTaskBasedUxEnabled() || myAutoProfilingEnabled) && myPreference.processName != null) {
+    if (myPreference.processName != null) {
       for (Common.Process process : processes) {
         if (process.getName().equals(myPreference.processName) &&
             process.getState() == Common.Process.State.ALIVE &&

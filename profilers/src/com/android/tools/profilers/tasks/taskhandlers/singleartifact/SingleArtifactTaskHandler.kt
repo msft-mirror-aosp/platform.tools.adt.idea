@@ -94,7 +94,7 @@ abstract class SingleArtifactTaskHandler<T : TaskStage>(sessionsManager: Session
 
   override fun canStop(): Boolean {
     return when (val currentStage = stage) {
-      is InterimStage -> currentStage.recordingScreenModel?.canRecordingStop?.value ?: false
+      is InterimStage -> currentStage.recordingScreenModel.canRecordingStop.value
       is LeakCanaryModel -> currentStage.isRecording.value
       else -> false
     }

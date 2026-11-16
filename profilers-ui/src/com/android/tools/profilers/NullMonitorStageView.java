@@ -38,9 +38,4 @@ public class NullMonitorStageView extends StageView<NullMonitorStage> {
   public JComponent getToolbar() {
     return new JPanel();
   }
-
-  @Override
-  public boolean needsProcessSelection() {
-    return true;
-  }
 }

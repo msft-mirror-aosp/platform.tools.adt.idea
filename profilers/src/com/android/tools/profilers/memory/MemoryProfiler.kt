@@ -75,16 +75,6 @@ class MemoryProfiler(private val profilers: StudioProfilers) : StudioProfiler {
       sessionsManager.registerImportHandler("alloc", Consumer(::importLegacyAllocations))
       sessionsManager.registerImportHandler("heapprofd", Consumer(::importHeapprofd))
       sessionsManager.registerImportHandler("asdb") { file -> ImportedSessionUtils.importAsdbTask(profilers, file) }
-      this.profilers.registerSessionChangeListener(Common.SessionMetaData.SessionType.MEMORY_CAPTURE) {
-        val stage = MainMemoryProfilerStage(this.profilers)
-        this.profilers.stage = stage
-        stage.setPendingCaptureStartTimeGuarded(this.profilers.session.startTimestamp)
-        this.profilers.timeline.apply {
-          reset(this@MemoryProfiler.profilers.session.startTimestamp, this@MemoryProfiler.profilers.session.endTimestamp)
-          viewRange.set(dataRange)
-          setIsPaused(true)
-        }
-      }
     }
   }
 
@@ -124,8 +114,7 @@ class MemoryProfiler(private val profilers: StudioProfilers) : StudioProfiler {
       else ->
         try {
           if (
-            profilers.ideServices.featureConfig.isTaskBasedUxEnabled &&
-              profilers.sessionsManager.isSessionAlive &&
+            profilers.sessionsManager.isSessionAlive &&
               profilers.sessionsManager.currentTaskType == ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS &&
               profilers.stage is AllocationStage &&
               !(profilers.stage as AllocationStage).hasStartedTracking
@@ -302,12 +291,12 @@ class MemoryProfiler(private val profilers: StudioProfilers) : StudioProfiler {
 
     /**
      * Whether a Heap Dump of a process at [supportLevel] is recorded as a Perfetto heap graph, if the device has at least
-     * [JAVA_HEAP_GRAPH_MIN_API]. Profileable processes can only be dumped this way, as `am dumpheap` needs a debuggable process. Task-Based
-     * UX only, and behind a flag.
+     * [JAVA_HEAP_GRAPH_MIN_API]. Profileable processes can only be dumped this way, as `am dumpheap` needs a debuggable process. Behind a
+     * flag.
      */
     @JvmStatic
     fun recordsHeapDumpAsJavaHeapGraph(supportLevel: SupportLevel, featureConfig: FeatureConfig) =
-      supportLevel == SupportLevel.PROFILEABLE && featureConfig.isTaskBasedUxEnabled && featureConfig.isRecordPerfettoHeapDumpEnabled
+      supportLevel == SupportLevel.PROFILEABLE && featureConfig.isRecordPerfettoHeapDumpEnabled
 
     /** Returns true if [info] describes a Perfetto heap graph rather than a Native Allocations (heapprofd) recording. */
     private fun isJavaHeapGraphTrace(info: TraceInfo): Boolean =
@@ -424,8 +413,6 @@ class MemoryProfiler(private val profilers: StudioProfilers) : StudioProfiler {
                           " track allocations log, if end session is true; isSessionAlive = " +
                           profilers.sessionsManager.isSessionAlive.toString()
                       )
-                    }
-                    if (profilers.ideServices.featureConfig.isTaskBasedUxEnabled && endSession) {
                       shouldEndSession = true
                     }
                     setStopAllocTracking(Memory.StopAllocTracking.newBuilder().setRequestTime(timeNs))

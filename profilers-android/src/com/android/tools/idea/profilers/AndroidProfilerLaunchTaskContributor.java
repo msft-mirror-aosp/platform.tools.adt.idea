@@ -109,13 +109,11 @@ public final class AndroidProfilerLaunchTaskContributor implements AndroidLaunch
       String agentArgs = fileManager.configureStartupAgent(applicationId, STARTUP_AGENT_CONFIG_NAME, executor.getId());
       String startupProfilingResult = startStartupProfiling(profilerState, applicationId, project, client, device, profilerDevice);
 
-      // In the Task-Based UX, a startup configuration should only be used once after explicitly starting a task via the profiler UI. Thus,
+      // A startup configuration should only be used once after explicitly starting a task via the profiler UI. Thus,
       // after consumption of the startup configuration, the config is reset to avoid re-use. If not reset and the user sets a startup
       // configuration by starting a startup task then invokes one of the Profile with low overhead/complete data actions from the main
       // toolbar, a startup task will begin again.
-      if (StudioFlags.PROFILER_TASK_BASED_UX.get()) {
-        profilerState.disableStartupProfiling();
-      }
+      profilerState.disableStartupProfiling();
 
       return String.format("%s %s", agentArgs, startupProfilingResult);
     } catch (InterruptedException | TimeoutException e) {

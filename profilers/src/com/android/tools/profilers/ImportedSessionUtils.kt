@@ -89,25 +89,6 @@ object ImportedSessionUtils {
   }
 
   /**
-   * This method takes in a file imported by the user, and generates only a fake session to recreate the imported data in the Profiler. The
-   * child artifact is expected to be inserted later on if this method is used.
-   */
-  @JvmStatic
-  fun importFile(sessionsManager: SessionsManager, file: File, sessionType: SessionStarted.SessionType) {
-    withFileImportedOnce(sessionsManager, file) { startTimestampsEpochMs, startTime, endTime ->
-      val copiedFile = copyToTemp(file)
-      sessionsManager.createImportedSession(
-        file.name,
-        sessionType,
-        startTime,
-        endTime,
-        startTimestampsEpochMs,
-        mapOf(startTime.toString() to copiedFile.absolutePath),
-      )
-    }
-  }
-
-  /**
    * This helper method creates an event used to mock the start event of a CPU or memory capture. This is the event that is inserted into a
    * fake session to wrap the imported data.
    */
@@ -135,15 +116,11 @@ object ImportedSessionUtils {
     val sessionEndTimeNs = timestampsNs.second
     val profilers = sessionsManager.studioProfilers
     when {
-      // If the session of the file has already been imported, the session representing the imported file is selected. In Task-Based UX, in
-      // addition to being selected, the session/recording is also opened in the task tab.
+      // If the session of the file has already been imported, the session representing the imported file is selected and the
+      // session/recording is opened in the task tab.
       sessionsManager.sessionIdToSessionItems.containsKey(sessionStartTimeNs) -> {
-        if (profilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-          val session = sessionsManager.sessionIdToSessionItems[sessionStartTimeNs]!!
-          profilers.pastRecordingsTabModel.recordingListModel.openRecording(session)
-        } else {
-          sessionsManager.setSessionById(sessionStartTimeNs)
-        }
+        val session = sessionsManager.sessionIdToSessionItems[sessionStartTimeNs]!!
+        profilers.pastRecordingsTabModel.recordingListModel.openRecording(session)
       }
 
       else -> handle(startTimestampEpochNs, sessionStartTimeNs, sessionEndTimeNs)
@@ -169,15 +146,10 @@ object ImportedSessionUtils {
       return
     }
 
-    // If a session with this start time already exists, just select it.
+    // If a session with this start time already exists, just open it.
     if (sessionsManager.sessionIdToSessionItems.containsKey(sessionStartTimeNs)) {
-      if (sessionsManager.studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-        val session = sessionsManager.sessionIdToSessionItems[sessionStartTimeNs]!!
-        sessionsManager.studioProfilers.pastRecordingsTabModel.recordingListModel.openRecording(session)
-      } else {
-        sessionsManager.setSessionById(sessionStartTimeNs)
-      }
-
+      val session = sessionsManager.sessionIdToSessionItems[sessionStartTimeNs]!!
+      sessionsManager.studioProfilers.pastRecordingsTabModel.recordingListModel.openRecording(session)
       return
     }
 

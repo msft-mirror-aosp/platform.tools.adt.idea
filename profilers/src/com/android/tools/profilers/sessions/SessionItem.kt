@@ -21,7 +21,6 @@ import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Common.AgentData
 import com.android.tools.profiler.proto.Common.SessionMetaData
 import com.android.tools.profilers.ProfilerAspect
-import com.android.tools.profilers.StudioMonitorStage
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.tasks.TaskSupportUtils
@@ -87,15 +86,6 @@ class SessionItem(override val profilers: StudioProfilers, initialSession: Commo
   override fun doSelect() {
     // Navigate to the new session
     profilers.sessionsManager.setSession(activeSession)
-    if (sessionMetaData.type == SessionMetaData.SessionType.FULL && !profilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-      val targetStageClass = StudioMonitorStage(profilers)
-      if (
-        profilers.stageClass != targetStageClass::class.java ||
-          profilers.sessionsManager.selectedSession != profilers.sessionsManager.profilingSession
-      ) {
-        profilers.stage = targetStageClass
-      }
-    }
     profilers.ideServices.featureTracker.trackSessionArtifactSelected(this, profilers.sessionsManager.isSessionAlive)
   }
 

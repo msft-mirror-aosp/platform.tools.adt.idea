@@ -35,9 +35,7 @@ class MemoryCaptureStage(
 ) : BaseMemoryProfilerStage(profilers, context, loader) {
 
   override fun onEnter() {
-    if (context.ideProfilerServices.featureConfig.isTaskBasedUxEnabled) {
-      myTaskTracker = TaskTracker.createTaskTracker(studioProfilers, context)
-    }
+    myTaskTracker = TaskTracker.createTaskTracker(studioProfilers, context)
     context.ideProfilerServices.featureTracker.trackEnterStage(stageType)
     loader.start()
     doSelectCaptureDuration(durationData, joiner)

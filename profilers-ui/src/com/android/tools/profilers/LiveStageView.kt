@@ -21,7 +21,6 @@ import com.android.tools.adtui.TooltipView
 import com.android.tools.adtui.flat.FlatSeparator
 import com.android.tools.adtui.model.Range
 import com.android.tools.adtui.model.ViewBinder
-import com.android.tools.adtui.stdui.CommonButton
 import com.android.tools.adtui.stdui.TimelineScrollbar
 import com.android.tools.profilers.cpu.LiveCpuUsageModel
 import com.android.tools.profilers.cpu.LiveCpuUsageView
@@ -35,7 +34,6 @@ import com.android.tools.profilers.memory.LiveMemoryFootprintView
 import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedUxStrings
 import com.android.tools.profilers.taskbased.task.interim.RecordingScreenModel
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
-import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import icons.StudioIcons
@@ -186,18 +184,12 @@ class LiveStageView(profilersView: StudioProfilersView, liveStage: LiveStage) : 
 
   private fun createStopRecordingButton(): JButton {
     val button =
-      if (profilersView.studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-          JButton(TaskBasedUxStrings.ACTION_BAR_STOP_RECORDING).apply {
-            putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
-            font = font.deriveFont(font.style)
-          }
-        } else {
-          CommonButton(StudioIcons.Profiler.Toolbar.STOP_RECORDING).apply { disabledIcon = IconLoader.getDisabledIcon(icon) }
-        }
-        .apply {
-          toolTipText = Companion.stopRecordingTooltip
-          addActionListener { onStopRecordingClick() }
-        }
+      JButton(TaskBasedUxStrings.ACTION_BAR_STOP_RECORDING).apply {
+        putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
+        font = font.deriveFont(font.style)
+        toolTipText = Companion.stopRecordingTooltip
+        addActionListener { onStopRecordingClick() }
+      }
     button.isVisible = isLiveRecordingOngoing
     return button
   }

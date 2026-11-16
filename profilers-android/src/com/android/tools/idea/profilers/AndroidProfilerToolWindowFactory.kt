@@ -16,7 +16,6 @@
 package com.android.tools.idea.profilers
 
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.profilers.taskbased.home.OpenHomeTabListener
 import com.android.tools.profilers.taskbased.pastrecordings.OpenPastRecordingsTabListener
 import com.android.tools.profilers.taskbased.task.CreateProfilerTaskTabListener
@@ -29,7 +28,6 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener
-import com.intellij.ui.content.ContentFactory
 import icons.StudioIcons
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
@@ -40,110 +38,89 @@ import org.jetbrains.annotations.VisibleForTesting
 class AndroidProfilerToolWindowFactory : DumbAware, ToolWindowFactory {
 
   override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-    if (StudioFlags.PROFILER_TASK_BASED_UX.get()) {
+    // Create the profiler window.
+    val profilerToolWindow = createProfilerToolWindow(project, toolWindow)
 
-      // Create the profiler window.
-      val profilerToolWindow = createProfilerToolWindow(project, toolWindow)
+    // Create the home tab.
+    profilerToolWindow.openHomeTab()
+    profilerToolWindow.openPastRecordingsTab()
+    // Reselect the home tab as the default open tab.
+    profilerToolWindow.openHomeTab()
+    toolWindow.isAvailable = true
 
-      // Create the home tab.
-      profilerToolWindow.openHomeTab()
-      profilerToolWindow.openPastRecordingsTab()
-      // Reselect the home tab as the default open tab.
-      profilerToolWindow.openHomeTab()
-      toolWindow.isAvailable = true
-
-      // If the window is re-opened after all tabs were manually closed, re-create the home tab.
-      project.messageBus
-        .connect(toolWindow.disposable)
-        .subscribe(
-          ToolWindowManagerListener.TOPIC,
-          object : ToolWindowManagerListener {
-            override fun toolWindowShown(shownToolWindow: ToolWindow) {
-              if (toolWindow === shownToolWindow && toolWindow.isVisible && toolWindow.contentManager.isEmpty) {
-                profilerToolWindow.openHomeTab()
-                profilerToolWindow.openPastRecordingsTab()
-                // Reselect the home tab as the default open tab.
-                profilerToolWindow.openHomeTab()
-              }
-            }
-          },
-        )
-
-      // Listen for events requesting that a task tab be created.
-      project.messageBus
-        .connect(toolWindow.disposable)
-        .subscribe(
-          CreateProfilerTaskTabListener.TOPIC,
-          CreateProfilerTaskTabListener { taskType, args ->
-            AndroidCoroutineScope(toolWindow.disposable).launch {
-              withContext(Dispatchers.EDT) {
-                profilerToolWindow.createTaskTab(taskType, args)
-                toolWindow.activate(null)
-              }
-            }
-          },
-        )
-
-      // Listen for events requesting that a task tab be opened.
-      project.messageBus
-        .connect(toolWindow.disposable)
-        .subscribe(
-          OpenProfilerTaskTabListener.TOPIC,
-          OpenProfilerTaskTabListener {
-            AndroidCoroutineScope(toolWindow.disposable).launch {
-              withContext(Dispatchers.EDT) {
-                if (profilerToolWindow.openTaskTab()) {
-                  toolWindow.activate(null)
-                }
-              }
-            }
-          },
-        )
-
-      // Listen for events requesting that the home tab be opened.
-      project.messageBus
-        .connect(toolWindow.disposable)
-        .subscribe(
-          OpenHomeTabListener.TOPIC,
-          OpenHomeTabListener {
-            AndroidCoroutineScope(toolWindow.disposable).launch {
-              withContext(Dispatchers.EDT) {
-                profilerToolWindow.openHomeTab()
-                toolWindow.activate(null)
-              }
-            }
-          },
-        )
-
-      // Listen for events requesting that the past recordings tab be opened.
-      project.messageBus
-        .connect(toolWindow.disposable)
-        .subscribe(
-          OpenPastRecordingsTabListener.TOPIC,
-          OpenPastRecordingsTabListener {
-            AndroidCoroutineScope(toolWindow.disposable).launch {
-              withContext(Dispatchers.EDT) {
-                profilerToolWindow.openPastRecordingsTab()
-                toolWindow.activate(null)
-              }
-            }
-          },
-        )
-
-      return
-    }
-
+    // If the window is re-opened after all tabs were manually closed, re-create the home tab.
     project.messageBus
       .connect(toolWindow.disposable)
       .subscribe(
         ToolWindowManagerListener.TOPIC,
         object : ToolWindowManagerListener {
-          override fun stateChanged(toolWindowManager: ToolWindowManager) {
-            // We need to query the tool window again, because it might have been unregistered when closing the project.
-            val window = toolWindowManager.getToolWindow(ID) ?: return
-            val profilerToolWindow = getProfilerToolWindow(project)
-            if (window.isVisible && profilerToolWindow == null) {
-              createContent(project, window)
+          override fun toolWindowShown(shownToolWindow: ToolWindow) {
+            if (toolWindow === shownToolWindow && toolWindow.isVisible && toolWindow.contentManager.isEmpty) {
+              profilerToolWindow.openHomeTab()
+              profilerToolWindow.openPastRecordingsTab()
+              // Reselect the home tab as the default open tab.
+              profilerToolWindow.openHomeTab()
+            }
+          }
+        },
+      )
+
+    // Listen for events requesting that a task tab be created.
+    project.messageBus
+      .connect(toolWindow.disposable)
+      .subscribe(
+        CreateProfilerTaskTabListener.TOPIC,
+        CreateProfilerTaskTabListener { taskType, args ->
+          AndroidCoroutineScope(toolWindow.disposable).launch {
+            withContext(Dispatchers.EDT) {
+              profilerToolWindow.createTaskTab(taskType, args)
+              toolWindow.activate(null)
+            }
+          }
+        },
+      )
+
+    // Listen for events requesting that a task tab be opened.
+    project.messageBus
+      .connect(toolWindow.disposable)
+      .subscribe(
+        OpenProfilerTaskTabListener.TOPIC,
+        OpenProfilerTaskTabListener {
+          AndroidCoroutineScope(toolWindow.disposable).launch {
+            withContext(Dispatchers.EDT) {
+              if (profilerToolWindow.openTaskTab()) {
+                toolWindow.activate(null)
+              }
+            }
+          }
+        },
+      )
+
+    // Listen for events requesting that the home tab be opened.
+    project.messageBus
+      .connect(toolWindow.disposable)
+      .subscribe(
+        OpenHomeTabListener.TOPIC,
+        OpenHomeTabListener {
+          AndroidCoroutineScope(toolWindow.disposable).launch {
+            withContext(Dispatchers.EDT) {
+              profilerToolWindow.openHomeTab()
+              toolWindow.activate(null)
+            }
+          }
+        },
+      )
+
+    // Listen for events requesting that the past recordings tab be opened.
+    project.messageBus
+      .connect(toolWindow.disposable)
+      .subscribe(
+        OpenPastRecordingsTabListener.TOPIC,
+        OpenPastRecordingsTabListener {
+          AndroidCoroutineScope(toolWindow.disposable).launch {
+            withContext(Dispatchers.EDT) {
+              profilerToolWindow.openPastRecordingsTab()
+              toolWindow.activate(null)
             }
           }
         },
@@ -160,17 +137,6 @@ class AndroidProfilerToolWindowFactory : DumbAware, ToolWindowFactory {
     const val ID = "Android Profiler"
     private const val PROFILER_TOOL_WINDOW_TITLE = "Profiler"
     @VisibleForTesting @JvmField val PROJECT_PROFILER_MAP: MutableMap<Project, AndroidProfilerToolWindow> = ConcurrentHashMap()
-
-    private fun createContent(project: Project, toolWindow: ToolWindow) {
-      val view = createProfilerToolWindow(project, toolWindow)
-      val contentFactory = ContentFactory.getInstance()
-      val content = contentFactory.createContent(view.profilersPanel, "", false)
-      content.isCloseable = false
-      toolWindow.contentManager.addContent(content)
-
-      // Forcibly synchronize the Tool Window to a visible state. Otherwise, the Tool Window may not auto-hide correctly.
-      toolWindow.show(null)
-    }
 
     private fun createProfilerToolWindow(project: Project, toolWindow: ToolWindow): AndroidProfilerToolWindow {
       val wrapper = ToolWindowWrapperImpl(project, toolWindow)

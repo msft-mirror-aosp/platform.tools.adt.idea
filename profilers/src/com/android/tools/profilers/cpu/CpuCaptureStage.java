@@ -35,9 +35,7 @@ import com.android.tools.adtui.model.trackgroup.TrackGroupModel;
 import com.android.tools.adtui.model.trackgroup.TrackModel;
 import com.android.tools.adtui.model.updater.Updater;
 import com.android.tools.idea.flags.enums.PowerProfilerDisplayMode;
-import com.android.tools.idea.transport.EventStreamServer;
 import com.android.tools.profiler.perfetto.proto.TraceProcessor;
-import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profilers.IdeProfilerServices;
 import com.android.tools.profilers.LogUtils;
@@ -47,7 +45,6 @@ import com.android.tools.profilers.ProfilerContext;
 import com.android.tools.profilers.ProfilerTrackRendererType;
 import com.android.tools.profilers.Stage;
 import com.android.tools.profilers.StudioProfilers;
-import com.android.tools.profilers.TraceConfigOptionsUtils;
 import com.android.tools.profilers.analytics.FeatureTracker;
 import com.android.tools.profilers.cpu.analysis.AndroidFrameTimelineAnalysisModel;
 import com.android.tools.profilers.cpu.analysis.CpuAnalysisModel;
@@ -88,7 +85,6 @@ import com.android.tools.profilers.event.UserEventDataSeries;
 import com.android.tools.profilers.event.UserEventTooltip;
 import com.android.tools.profilers.perfetto.config.PerfettoTraceConfigBuilders;
 import com.android.tools.profilers.perfetto.traceprocessor.TraceProcessorModelKt;
-import com.android.tools.profilers.sessions.SessionsManager;
 import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.android.tools.profilers.tasks.analytics.TaskFinishedState;
 import com.android.tools.profilers.tasks.analytics.TaskTracker;
@@ -103,7 +99,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -263,36 +258,7 @@ public class CpuCaptureStage extends Stage<Timeline> {
 
       @Override
       public void reportParsedTrace(@NotNull CpuCapture capture) {
-        if (SessionsManager.isSessionImported(profilers.getSession()) &&
-            !profilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-          // For an imported traces we need to insert a CPU_TRACE event into the database. This is used by the Sessions' panel to display the
-          // correct trace type associated with the imported file. In the Task Based UX, however, a CPU_TRACE event is inserted at import-time,
-          // so we do not need to insert another event here.
-          Trace.TraceInfo.Builder importedTraceInfo = Trace.TraceInfo.newBuilder()
-          // Use session ID as trace ID for imported traces.
-            .setTraceId(profilers.getSession().getSessionId())
-            .setFromTimestamp(TimeUnit.MICROSECONDS.toNanos((long)capture.getRange().getMin()))
-            .setToTimestamp(TimeUnit.MICROSECONDS.toNanos((long)capture.getRange().getMax()));
-
-          Trace.TraceConfiguration.Builder config = Trace.TraceConfiguration.newBuilder();
-          TraceConfigOptionsUtils.addDefaultTraceOptions(config, capture.getType());
-          importedTraceInfo.setConfiguration(config);
-
-          // TODO(b/141560550): add test when we can mock TransportService#registerStreamServer.
-          EventStreamServer streamServer =
-            profilers.getSessionsManager().getEventStreamServer(profilers.getSession().getStreamId());
-          if (streamServer != null) {
-            streamServer.getEventDeque().offer(
-              Common.Event.newBuilder()
-                .setGroupId(importedTraceInfo.getTraceId())
-                .setTimestamp(importedTraceInfo.getToTimestamp())
-                .setIsEnded(true)
-                .setKind(Common.Event.Kind.CPU_TRACE)
-                .setTraceData(
-                  Trace.TraceData.newBuilder().setTraceEnded(Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(importedTraceInfo)))
-                .build());
-          }
-        }
+        // No-op: for imported traces, a CPU_TRACE event is inserted at import-time, so we do not need to insert another event here.
       }
     };
   }
@@ -427,9 +393,7 @@ public class CpuCaptureStage extends Stage<Timeline> {
 
   @Override
   public void onEnter() {
-    if (myContext.getIdeProfilerServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      myTaskTracker = TaskTracker.createTaskTracker(getStudioProfilers(), myContext);
-    }
+    myTaskTracker = TaskTracker.createTaskTracker(getStudioProfilers(), myContext);
     myContext.getUpdater().register(myCpuCaptureHandler);
     myContext.getIdeProfilerServices().getFeatureTracker().trackEnterStage(getStageType());
 
@@ -443,9 +407,7 @@ public class CpuCaptureStage extends Stage<Timeline> {
           myCapture = capture;
           onCaptureParsed(capture);
           setState();
-          if (myContext.getIdeProfilerServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-            myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED);
-          }
+          myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED);
         }
       }
       catch (Exception ex) {

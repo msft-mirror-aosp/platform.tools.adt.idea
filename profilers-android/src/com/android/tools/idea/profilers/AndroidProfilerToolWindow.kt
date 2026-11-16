@@ -17,7 +17,6 @@ package com.android.tools.idea.profilers
 
 import com.android.ddmlib.IDevice
 import com.android.tools.adtui.model.AspectObserver
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.model.StudioAndroidModuleInfo
 import com.android.tools.idea.profilers.capture.unified.ProfilerVirtualFile
 import com.android.tools.idea.run.AndroidRunConfiguration
@@ -52,8 +51,6 @@ import com.intellij.openapi.application.invokeLater
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent
 import com.intellij.openapi.fileEditor.FileEditorManagerListener
-import com.intellij.openapi.module.Module
-import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.StartupManager
 import com.intellij.openapi.util.Disposer
@@ -140,26 +137,22 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
       // Create and store the task handlers in a map.
       initializeTaskHandlers()
 
-      if (ideProfilerServices.featureConfig.isTaskBasedUxEnabled) {
-        // Initialize the two static/un-closable tabs: home and past recordings tabs.
-        homeTab = StudioProfilersHomeTab(profilers, ideProfilerComponents)
-        homePanel = JPanel(BorderLayout())
-        homePanel.removeAll()
-        homePanel.add(homeTab.view.panel)
-        homePanel.revalidate()
-        homePanel.repaint()
-        pastRecordingsTab = StudioProfilersPastRecordingsTab(profilers, ideProfilerComponents)
-        pastRecordingsPanel = JPanel(BorderLayout())
-        pastRecordingsPanel.removeAll()
-        pastRecordingsPanel.add(pastRecordingsTab.view.panel)
-        pastRecordingsPanel.revalidate()
-        pastRecordingsPanel.repaint()
-        registerEditorTabFocusListener()
-      }
+      // Initialize the two static/un-closable tabs: home and past recordings tabs.
+      homeTab = StudioProfilersHomeTab(profilers, ideProfilerComponents)
+      homePanel = JPanel(BorderLayout())
+      homePanel.removeAll()
+      homePanel.add(homeTab.view.panel)
+      homePanel.revalidate()
+      homePanel.repaint()
+      pastRecordingsTab = StudioProfilersPastRecordingsTab(profilers, ideProfilerComponents)
+      pastRecordingsPanel = JPanel(BorderLayout())
+      pastRecordingsPanel.removeAll()
+      pastRecordingsPanel.add(pastRecordingsTab.view.panel)
+      pastRecordingsPanel.revalidate()
+      pastRecordingsPanel.repaint()
+      registerEditorTabFocusListener()
       // The Profiler tab is initialized here with the home tab so that the view bindings will be ready in the case the user imports a file
-      // from a fresh/un-opened Profiler tool window state. While entering a stage from an uninitialized Profiler state after importing is
-      // not a possible flow in the Task-Based UX, the initialization of the Profiler tab logic is used for both the Sessions-based Profiler
-      // tab and the Task-Based UX Profiler tab, so it must be called in a place that accommodates both tabs.
+      // from a fresh/un-opened Profiler tool window state.
       initializeProfilerTab()
 
       ideProfilerServices.featureTracker.trackProfilerToolWindowCreated()
@@ -231,9 +224,7 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
   }
 
   private fun initializeProfilerTab() {
-    profilersTab =
-      if (ideProfilerServices.featureConfig.isTaskBasedUxEnabled) StudioProfilersTaskTab(profilers, window, ideProfilerComponents, project)
-      else StudioProfilersSessionTab(profilers, window, ideProfilerComponents, project)
+    profilersTab = StudioProfilersTaskTab(profilers, window, ideProfilerComponents, project)
     Disposer.register(this, profilersTab)
 
     profilersPanel = JPanel(BorderLayout())
@@ -562,34 +553,13 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
     }
 
     private fun getPreferredProcessName(project: Project): String? {
-      if (StudioFlags.PROFILER_TASK_BASED_UX.get()) {
-        // There can only be up to one Android app module per selected configuration as the call to getModules can only return up to one
-        // module per AndroidRunConfiguration.
-        return (RunManager.getInstance(project).selectedConfiguration?.configuration as? AndroidRunConfiguration)
-          ?.modules
-          ?.map { StudioAndroidModuleInfo.getInstance(it) }
-          ?.map { it?.packageName }
-          ?.firstOrNull()
-      } else {
-        for (module in ModuleManager.getInstance(project).modules) {
-          val moduleName = getModuleName(module)
-          if (moduleName != null) {
-            return moduleName
-          }
-        }
-        return null
-      }
-    }
-
-    private fun getModuleName(module: Module): String? {
-      val moduleInfo = StudioAndroidModuleInfo.getInstance(module)
-      if (moduleInfo != null) {
-        val pkg = moduleInfo.packageName
-        if (pkg != null) {
-          return pkg
-        }
-      }
-      return null
+      // There can only be up to one Android app module per selected configuration as the call to getModules can only return up to one
+      // module per AndroidRunConfiguration.
+      return (RunManager.getInstance(project).selectedConfiguration?.configuration as? AndroidRunConfiguration)
+        ?.modules
+        ?.map { StudioAndroidModuleInfo.getInstance(it) }
+        ?.map { it?.packageName }
+        ?.firstOrNull()
     }
   }
 }

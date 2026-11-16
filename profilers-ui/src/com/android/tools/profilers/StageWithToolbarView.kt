@@ -59,7 +59,6 @@ class StageWithToolbarView(
   private val stageCenterComponent: JPanel = JPanel(stageCenterCardLayout)
   private val stageLoadingPanel: LoadingPanel
   private lateinit var toolbar: JPanel
-  private lateinit var stageNavigationToolbar: StageNavigationToolbar
   private lateinit var goLiveToolbar: JPanel
   private lateinit var customStageToolbar: JPanel
 
@@ -122,11 +121,6 @@ class StageWithToolbarView(
     toolbar = JPanel(BorderLayout())
     toolbar.border = DEFAULT_BOTTOM_BORDER
     toolbar.preferredSize = Dimension(0, ProfilerLayout.TOOLBAR_HEIGHT)
-
-    stageNavigationToolbar = StageNavigationToolbar(studioProfilers)
-    if (!studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-      toolbar.add(stageNavigationToolbar, BorderLayout.WEST)
-    }
 
     timelineNavigationToolbar = JPanel(ProfilerLayout.createToolbarLayout())
     // The timeline controls are reused across tasks and move between toolbars, e.g. into the Live Telemetry toolbar. Transparent panels
@@ -205,20 +199,9 @@ class StageWithToolbarView(
   private fun toggleTimelineButtons() {
     val isAlive = studioProfilers.sessionsManager.isSessionAlive
     if (isAlive) {
-      val agentData = studioProfilers.agentData
-      // Should wait for JVMTI agent status in Session-based and not Task-based because in Session-based there is a spinner animation until
-      // agent attaches.
-      val waitForAgent = agentData.status == AgentData.Status.UNSPECIFIED && !studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled
-      if (waitForAgent) {
-        // Disable all controls if the agent is still initialization/attaching.
-        timelineZoomToolbar.setButtonsEnabled(false)
-        goLiveButton.isEnabled = false
-        goLiveButton.isSelected = false
-      } else {
-        timelineZoomToolbar.setButtonsEnabled(true)
-        goLiveButton.isEnabled = true
-        goLiveButton.isSelected = true
-      }
+      timelineZoomToolbar.setButtonsEnabled(true)
+      goLiveButton.isEnabled = true
+      goLiveButton.isSelected = true
     } else {
       val isValidSession = Common.Session.getDefaultInstance() != studioProfilers.sessionsManager.selectedSession
       timelineZoomToolbar.setButtonsEnabled(isValidSession)
@@ -255,12 +238,10 @@ class StageWithToolbarView(
     customStageToolbar.removeAll()
     val currentStageView = stageView
 
-    if (studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-      if (currentStageView is LiveStageView) {
-        currentStageView.addLeftToolbarComponent(timelineNavigationToolbar)
-      } else {
-        toolbar.add(timelineNavigationToolbar, BorderLayout.EAST)
-      }
+    if (currentStageView is LiveStageView) {
+      currentStageView.addLeftToolbarComponent(timelineNavigationToolbar)
+    } else {
+      toolbar.add(timelineNavigationToolbar, BorderLayout.EAST)
     }
     customStageToolbar.add(stageView!!.toolbar, BorderLayout.CENTER)
     customStageToolbar.revalidate()
@@ -268,10 +249,6 @@ class StageWithToolbarView(
     toolbar.isVisible = stageView!!.isToolbarVisible
     goLiveToolbar.isVisible = stageView!!.supportsStreaming()
 
-    val topLevel = stageView!!.needsProcessSelection()
-    if (!studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-      stageNavigationToolbar.isVisible = !topLevel && stageView!!.supportsStageNavigation()
-    }
     timelineNavigationToolbar.isVisible = stage.isInteractingWithTimeline
   }
 

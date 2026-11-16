@@ -15,7 +15,6 @@
  */
 package com.android.tools.profilers.cpu;
 
-import static com.android.tools.profilers.ImportedSessionUtils.importFile;
 import static com.android.tools.profilers.ImportedSessionUtils.importFileWithArtifactEvent;
 import static com.android.tools.profilers.ImportedSessionUtils.makeEndedEvent;
 import static com.android.tools.profilers.cpu.CpuCaptureParserUtil.getFileTraceType;
@@ -33,7 +32,6 @@ import com.android.tools.profilers.ProfilerMonitor;
 import com.android.tools.profilers.StudioProfiler;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.TraceConfigOptionsUtils;
-import com.android.tools.profilers.cpu.config.ImportedConfiguration;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
 import com.android.tools.profilers.cpu.systemtrace.AtraceExporter;
 import com.android.tools.profilers.sessions.SessionsManager;
@@ -65,42 +63,12 @@ public class CpuProfiler implements StudioProfiler {
     this.profilers = profilers;
 
     if (!profilers.isOffline()) {
-      registerImportedSessionListener();
       registerTraceImportHandler();
     }
   }
 
-  private void onImportSessionSelected() {
-    assert !profilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
-    long traceId = profilers.getSession().getStartTimestamp();
-    profilers.getIdeServices().runAsync(
-      () -> {
-        ImportedConfiguration config = new ImportedConfiguration();
-        CpuCaptureMetadata metadata = new CpuCaptureMetadata(config);
-        metadata.setCpuProfilerEntryPoint(CpuCaptureMetadata.CpuProfilerEntryPoint.UNKNOWN);
-        return CpuCaptureStage.create(profilers, config, metadata, traceId);
-      },
-      captureStage -> {
-        if (captureStage != null) {
-          profilers.getIdeServices().getMainExecutor().execute(() -> profilers.setStage(captureStage));
-        }
-        else {
-          profilers.getIdeServices().showNotification(CpuProfilerNotifications.IMPORT_TRACE_PARSING_FAILURE);
-        }
-      }
-    );
-  }
-
   private static Logger getLogger() {
     return Logger.getInstance(CpuProfiler.class);
-  }
-
-  /**
-   * Registers a listener that will switch to the {@link CpuCaptureStage} when the {@link Common.Session} selected is a
-   * {@link Common.SessionMetaData.SessionType#CPU_CAPTURE}.
-   */
-  private void registerImportedSessionListener() {
-    profilers.registerSessionChangeListener(Common.SessionMetaData.SessionType.CPU_CAPTURE, this::onImportSessionSelected);
   }
 
   /**
@@ -116,36 +84,29 @@ public class CpuProfiler implements StudioProfiler {
   }
 
   private void loadCapture(File file) throws IllegalStateException {
-    boolean isTaskBasedUxEnabled = profilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled();
-
     TraceType traceType = getFileTraceType(file, TraceType.UNSPECIFIED);
-    if (isTaskBasedUxEnabled) {
-      if (traceType == null || traceType == TraceType.UNSPECIFIED) {
-        throw new IllegalStateException("Cannot import trace with type:\n" + traceType);
-      }
-
-      Function2<Long, Long, Common.Event> makeEvent = (start, end) -> {
-        Trace.TraceInfo.Builder importedTraceInfo = Trace.TraceInfo.newBuilder()
-          .setTraceId(start)
-          .setFromTimestamp(start)
-          .setToTimestamp(end);
-
-        Trace.TraceConfiguration.Builder config = Trace.TraceConfiguration.newBuilder();
-        TraceConfigOptionsUtils.addDefaultTraceOptions(config, traceType);
-        importedTraceInfo.setConfiguration(config);
-
-        return makeEndedEvent(start, end, Common.Event.Kind.CPU_TRACE, builder -> {
-          builder.setTraceData(
-            Trace.TraceData.newBuilder().setTraceEnded(Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(importedTraceInfo)));
-          return Unit.INSTANCE;
-        });
-      };
-
-      importFileWithArtifactEvent(profilers.getSessionsManager(), file, Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE, makeEvent);
+    if (traceType == null || traceType == TraceType.UNSPECIFIED) {
+      throw new IllegalStateException("Cannot import trace with type:\n" + traceType);
     }
-    else {
-      importFile(profilers.getSessionsManager(), file, Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE);
-    }
+
+    Function2<Long, Long, Common.Event> makeEvent = (start, end) -> {
+      Trace.TraceInfo.Builder importedTraceInfo = Trace.TraceInfo.newBuilder()
+        .setTraceId(start)
+        .setFromTimestamp(start)
+        .setToTimestamp(end);
+
+      Trace.TraceConfiguration.Builder config = Trace.TraceConfiguration.newBuilder();
+      TraceConfigOptionsUtils.addDefaultTraceOptions(config, traceType);
+      importedTraceInfo.setConfiguration(config);
+
+      return makeEndedEvent(start, end, Common.Event.Kind.CPU_TRACE, builder -> {
+        builder.setTraceData(
+          Trace.TraceData.newBuilder().setTraceEnded(Trace.TraceData.TraceEnded.newBuilder().setTraceInfo(importedTraceInfo)));
+        return Unit.INSTANCE;
+      });
+    };
+
+    importFileWithArtifactEvent(profilers.getSessionsManager(), file, Common.SessionData.SessionStarted.SessionType.CPU_CAPTURE, makeEvent);
 
     profilers.getIdeServices().getFeatureTracker().trackCreateSession(Common.SessionMetaData.SessionType.CPU_CAPTURE,
                                                                       SessionsManager.SessionCreationSource.MANUAL);
@@ -378,11 +339,8 @@ public class CpuProfiler implements StudioProfiler {
       .setStopTrace(Trace.StopTrace.newBuilder()
                       .setProfilerType(Trace.ProfilerType.CPU)
                       .setConfiguration(configuration)
-                      .setNeedTraceResponse(statusResponseHandler != null));
-
-    if (profilers.getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      stopCommandBuilder.setShouldEndSession(true);
-    }
+                      .setNeedTraceResponse(statusResponseHandler != null))
+      .setShouldEndSession(true);
 
     Commands.Command stopCommand = stopCommandBuilder.build();
 

@@ -25,7 +25,6 @@ import com.android.ddmlib.TimeoutException;
 import com.android.sdklib.AndroidVersion;
 import com.android.tools.analytics.CommonMetricsData;
 import com.android.tools.analytics.UsageTracker;
-import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.profilers.profilingconfig.CpuProfilerConfigConverter;
 import com.android.tools.idea.run.profiler.CpuProfilerConfig;
 import com.android.tools.idea.stats.AnonymizerUtil;
@@ -271,9 +270,6 @@ public final class StudioFeatureTracker implements FeatureTracker {
       FailingPoint.TASK_PROCESSING, TaskFailedMetadata.FailingPoint.TASK_PROCESSING
     );
 
-  @NotNull
-  private AndroidProfilerEvent.Stage myCurrStage = AndroidProfilerEvent.Stage.UNKNOWN_STAGE;
-
   @Override
   public void trackPreTransportDaemonStarts(@NotNull Common.Device transportDevice) {
     newTracker(AndroidProfilerEvent.Type.PRE_TRANSPORT_DAEMON_STARTS).setDevice(transportDevice).track();
@@ -297,7 +293,6 @@ public final class StudioFeatureTracker implements FeatureTracker {
 
   @Override
   public void trackEnterStage(AndroidProfilerEvent.Stage stageType) {
-    myCurrStage = stageType;
     track(AndroidProfilerEvent.Type.STAGE_ENTERED);
   }
 
@@ -965,7 +960,7 @@ public final class StudioFeatureTracker implements FeatureTracker {
    */
   @NotNull
   private Tracker newTracker(AndroidProfilerEvent.Type eventType) {
-    return new Tracker(myTrackingProject, eventType, myCurrStage);
+    return new Tracker(myTrackingProject, eventType);
   }
 
   /**
@@ -979,7 +974,6 @@ public final class StudioFeatureTracker implements FeatureTracker {
 
   private static final class Tracker {
     @NotNull private final AndroidProfilerEvent.Type myEventType;
-    @NotNull private final AndroidProfilerEvent.Stage myCurrStage;
     @NotNull private final Project myTrackingProject;
     @Nullable private Common.Device myDevice;
     @Nullable private com.android.tools.profilers.cpu.CpuCaptureMetadata myCpuCaptureMetadata;
@@ -1014,10 +1008,8 @@ public final class StudioFeatureTracker implements FeatureTracker {
     private AndroidProfilerEvent.MemoryHeap myMemoryHeap = AndroidProfilerEvent.MemoryHeap.UNKNOWN_HEAP;
 
     public Tracker(@NotNull Project trackingProject,
-                   @NotNull AndroidProfilerEvent.Type eventType,
-                   @NotNull AndroidProfilerEvent.Stage stage) {
+                   @NotNull AndroidProfilerEvent.Type eventType) {
       myEventType = eventType;
-      myCurrStage = stage;
       myTrackingProject = trackingProject;
     }
 
@@ -1166,12 +1158,8 @@ public final class StudioFeatureTracker implements FeatureTracker {
     }
 
     public void track() {
+      // The current stage is not useful to know and thus will not be set.
       AndroidProfilerEvent.Builder profilerEvent = AndroidProfilerEvent.newBuilder().setType(myEventType);
-
-      // In the Task-Based UX, the current stage is not useful to know and thus will not be set.
-      if (!StudioFlags.PROFILER_TASK_BASED_UX.get()) {
-        profilerEvent.setStage(myCurrStage);
-      }
 
       populateCpuCaptureMetadata(profilerEvent);
       populateFilterMetadata(profilerEvent);

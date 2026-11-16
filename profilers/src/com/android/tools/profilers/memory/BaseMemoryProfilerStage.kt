@@ -96,7 +96,6 @@ abstract class BaseMemoryProfilerStage(
 
     updateCaptureOnSelection = true
 
-    val isTaskBasedUxEnabled = context.ideProfilerServices.featureConfig.isTaskBasedUxEnabled
     val queryRange = timeline.selectionRange
     val load = Runnable {
       // This might be scheduled to run later when this stage has been exited, so need to check
@@ -114,31 +113,25 @@ abstract class BaseMemoryProfilerStage(
               // allocations tracks completion within the AllocationStage class itself instead of here.
               val isJavaKotlinAllocationsTask = studioProfilers.sessionsManager.currentTaskType == ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS
               val isLegacy = !MemoryDataProvider.getIsLiveAllocationTrackingSupported(studioProfilers)
-              if ((!isJavaKotlinAllocationsTask || isLegacy) && isTaskBasedUxEnabled) {
+              if (!isJavaKotlinAllocationsTask || isLegacy) {
                 myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED)
               }
             } else {
               // Capture loading failed.
               // TODO: loading has somehow failed - we need to inform users about the error status.
               doSelectCaptureDuration(null, null)
-              if (isTaskBasedUxEnabled) {
-                myTaskTracker.trackProcessingTaskFailed(TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
-              }
+              myTaskTracker.trackProcessingTaskFailed(TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
             }
             // Triggers the aspect to inform listeners that the heap content/filter has changed.
             captureSelection.refreshSelectedHeap()
           } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
             doSelectCaptureDuration(null, null)
-            if (isTaskBasedUxEnabled) {
-              myTaskTracker.trackProcessingTaskFailed(TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
-            }
+            myTaskTracker.trackProcessingTaskFailed(TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
           } catch (exception: ExecutionException) {
             doSelectCaptureDuration(null, null)
             logger.error(exception)
-            if (isTaskBasedUxEnabled) {
-              myTaskTracker.trackProcessingTaskFailed(TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
-            }
+            myTaskTracker.trackProcessingTaskFailed(TaskProcessingFailedMetadata(cpuCaptureMetadata = null))
           } catch (_: CancellationException) {
             // No-op: a previous load-capture task is canceled due to another capture being selected and loaded.
           }

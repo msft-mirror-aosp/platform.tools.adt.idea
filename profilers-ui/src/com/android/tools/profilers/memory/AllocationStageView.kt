@@ -27,7 +27,6 @@ import com.android.tools.profilers.taskbased.common.constants.strings.TaskBasedU
 import com.android.tools.profilers.taskbased.task.interim.RecordingScreenModel
 import com.google.common.annotations.VisibleForTesting
 import com.intellij.ide.ui.laf.darcula.ui.DarculaButtonUI
-import com.intellij.openapi.util.IconLoader
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.components.JBLabel
@@ -75,25 +74,15 @@ class AllocationStageView(profilersView: StudioProfilersView, stage: AllocationS
 
   @VisibleForTesting
   val stopButton =
-    if (profilersView.studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-        JButton(TaskBasedUxStrings.ACTION_BAR_STOP_RECORDING).apply {
-          putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
-          font = font.deriveFont(font.style)
-        }
-      } else {
-        CommonButton(StudioIcons.Profiler.Toolbar.STOP_RECORDING).apply { disabledIcon = IconLoader.getDisabledIcon(icon) }
+    JButton(TaskBasedUxStrings.ACTION_BAR_STOP_RECORDING).apply {
+      putClientProperty(DarculaButtonUI.DEFAULT_STYLE_KEY, true)
+      font = font.deriveFont(font.style)
+      toolTipText = "Stop recording Java / Kotlin allocations"
+      addActionListener {
+        stage.stopTask.invoke()
+        hideLiveButtons()
       }
-      .apply {
-        toolTipText = "Stop recording Java / Kotlin allocations"
-        addActionListener {
-          if (getStage().studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-            stage.stopTask.invoke()
-          } else {
-            stage.stopTracking()
-          }
-          hideLiveButtons()
-        }
-      }
+    }
 
   @VisibleForTesting
   val forceGcButton = garbageCollectionComponent.makeGarbageCollectionButton(stage.memoryDataProvider, profilersView.studioProfilers)

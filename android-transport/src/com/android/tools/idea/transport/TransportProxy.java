@@ -16,7 +16,6 @@
 package com.android.tools.idea.transport;
 
 import com.android.ddmlib.IDevice;
-import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.protobuf.ByteString;
 import com.android.tools.profiler.proto.Commands;
 import com.android.tools.profiler.proto.Common;
@@ -47,14 +46,12 @@ public class TransportProxy {
     }
 
     /**
-     * Populates event queue with a session ended event if Task-Based UX is enabled.
+     * Populates event queue with a session ended event.
      */
     default void addSessionEndedEvent(BlockingDeque<Common.Event> eventQueue, long timestamp, int pid, long groupId) {
-      if (StudioFlags.PROFILER_TASK_BASED_UX.get()) {
-        eventQueue.offer(
-          Common.Event.newBuilder().setTimestamp(timestamp).setPid(pid).setGroupId(groupId).setKind(Common.Event.Kind.SESSION)
-            .setIsEnded(true).build());
-      }
+      eventQueue.offer(
+        Common.Event.newBuilder().setTimestamp(timestamp).setPid(pid).setGroupId(groupId).setKind(Common.Event.Kind.SESSION)
+          .setIsEnded(true).build());
     }
   }
 

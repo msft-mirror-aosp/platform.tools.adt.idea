@@ -15,10 +15,8 @@
  */
 package com.android.tools.idea.profilers
 
-import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.StudioProfilersView
-import com.android.tools.profilers.sessions.SessionsManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.MessageType
 import com.intellij.openapi.wm.ToolWindowManager
@@ -29,7 +27,6 @@ class AndroidProfilerWindowManagerListener
 constructor(private val project: Project, private val profilers: StudioProfilers, private val profilersView: StudioProfilersView) :
   ToolWindowManagerListener {
   private var isProfilingActiveBalloonShown = false
-  private var wasWindowExpanded = false
 
   // Tracks the tasks already attempted to be stopped, helping prevent multiple prompts to stop the task. The issue can occur when
   // stateChanged is invoked in-between stopping the current task and the current task being updated as being terminated.
@@ -45,23 +42,16 @@ constructor(private val project: Project, private val profilers: StudioProfilers
     // We need to query the tool window again, because it might have been unregistered when closing the project.
     val window = toolWindowManager.getToolWindow(AndroidProfilerToolWindowFactory.ID) ?: return
 
-    val isTaskBasedUxEnabled = profilers.ideServices.featureConfig.isTaskBasedUxEnabled
-
-    // In the Task-Based UX, determining if there is an ongoing task/recording is done via inspection of the selected session, rather than
-    // the profiling session used in Session-Based UX.
-    val hasAliveSession =
-      if (isTaskBasedUxEnabled) profilers.sessionsManager.isSessionAlive
-      else SessionsManager.isSessionAlive(profilers.sessionsManager.profilingSession)
+    // Determining if there is an ongoing task/recording is done via inspection of the selected session.
+    val hasAliveSession = profilers.sessionsManager.isSessionAlive
 
     val isWindowTabHidden = !window.isShowStripeButton // Profiler window is removed from the toolbar.
     val isWindowExpanded = window.isVisible // Profiler window is expanded.
-    val windowVisibilityChanged = isWindowExpanded != wasWindowExpanded
-    wasWindowExpanded = isWindowExpanded
 
     if (isWindowTabHidden) {
       // If the task has already been attempted to be stopped, do not prompt the user again.
       val taskID = profilers.sessionsManager.selectedSession.sessionId
-      if (isTaskBasedUxEnabled && endedTaskIDs.contains(taskID)) {
+      if (endedTaskIDs.contains(taskID)) {
         return
       }
 
@@ -70,8 +60,8 @@ constructor(private val project: Project, private val profilers: StudioProfilers
         val confirm =
           hidePrompt ||
             profilersView.ideProfilerComponents.createUiMessageHandler().displayOkCancelMessage(
-              "Confirm Stop ${if (isTaskBasedUxEnabled) "Task" else "Profiling"}",
-              "Hiding the window will stop the current ${if (isTaskBasedUxEnabled) "ongoing task" else "profiling session"}. Are you sure?",
+              "Confirm Stop Task",
+              "Hiding the window will stop the current ongoing task. Are you sure?",
               "Yes",
               "Cancel",
               null,
@@ -84,38 +74,21 @@ constructor(private val project: Project, private val profilers: StudioProfilers
           return
         }
       }
-      if (isTaskBasedUxEnabled) {
-        profilers.currentTaskHandler?.let {
-          it.stopTask()
-          endedTaskIDs.add(taskID)
-        }
-      } else {
-        profilers.stop()
+      profilers.currentTaskHandler?.let {
+        it.stopTask()
+        endedTaskIDs.add(taskID)
       }
       return
     }
 
     if (isWindowExpanded) {
       isProfilingActiveBalloonShown = false
-      // Preferred process is fetched and set in another way in Task-Based UX, so this doesn't apply for Task-Based UX.
-      if (windowVisibilityChanged && !isTaskBasedUxEnabled) {
-        val processInfo = project.getUserData(AndroidProfilerToolWindow.LAST_RUN_APP_INFO)
-        if (processInfo != null && Common.Session.getDefaultInstance() == profilers.session) {
-          profilers.setPreferredProcess(processInfo.deviceName, processInfo.processName) { p: Common.Process? ->
-            processInfo.processFilter.invoke(p!!)
-          }
-        }
-      }
     } else {
       profilers.autoProfilingEnabled = false
       if (hasAliveSession && !isProfilingActiveBalloonShown) {
         // Only shown the balloon if we detect the window is hidden for the first time.
         isProfilingActiveBalloonShown = true
-        val messageHtml =
-          if (isTaskBasedUxEnabled) "A task is running in the background.<br>To end the task, open the profiler and click the stop button."
-          else
-            "A profiler session is running in the background.<br>To end the session, open the profiler and click the stop button in " +
-              "the Sessions pane."
+        val messageHtml = "A task is running in the background.<br>To end the task, open the profiler and click the stop button."
         ToolWindowManager.getInstance(project).notifyByBalloon(AndroidProfilerToolWindowFactory.ID, MessageType.INFO, messageHtml)
       }
     }

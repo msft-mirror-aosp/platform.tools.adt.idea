@@ -541,11 +541,6 @@ public class CpuCaptureParser {
         LOGGER.warn("Unable to parse capture", throwable);
         myServices.showNotification(CpuProfilerNotifications.getCaptureParseFailure(status));
 
-        // More granular preprocess failures are logged by preprocessors. Skip logging here.
-        if (status == CpuCaptureMetadata.CaptureStatus.PREPROCESS_FAILURE && !myServices.getFeatureConfig().isTaskBasedUxEnabled()) {
-          return;
-        }
-
         if (status == CpuCaptureMetadata.CaptureStatus.USER_ABORTED_PARSING) {
           myTaskTracker.trackTaskFinished(TaskFinishedState.USER_CANCELLED);
         }
@@ -561,13 +556,10 @@ public class CpuCaptureParser {
                      ? capture.getType() // get info from capture
                      : metadata.getProfilingConfiguration().getTraceType(); // best effort to get info
           var isSuccess = capture != null;
-          if (myServices.getFeatureConfig().isTaskBasedUxEnabled()) {
-            if (!isSuccess) {
-              myTaskTracker.trackProcessingTaskFailed(new TaskProcessingFailedMetadata(metadata));
-            }
+          if (!isSuccess) {
+            myTaskTracker.trackProcessingTaskFailed(new TaskProcessingFailedMetadata(metadata));
           }
-          // Always track import trace regardless of whether Task-Based UX is enabled or not,
-          // because imported legacy traces still use this parser.
+          // Always track import trace, because imported legacy traces still use this parser.
           var importMetadata = createCpuImportTraceMetadata(type, isSuccess, metadata.getHasComposeTracingNodes());
           myServices.getFeatureTracker().trackImportTrace(importMetadata);
         }

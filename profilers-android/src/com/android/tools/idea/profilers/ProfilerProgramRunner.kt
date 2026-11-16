@@ -18,7 +18,6 @@ package com.android.tools.idea.profilers
 import com.android.sdklib.AndroidVersion.VersionCodes
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AndroidConfigurationProgramRunner
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.profilers.analytics.StudioFeatureTracker
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.projectsystem.getTokenOrNull
@@ -154,10 +153,8 @@ class ProfilerProgramRunner : AndroidConfigurationProgramRunner() {
 
     // Reset user's selection stored on task enter (e.g. startup tasks being enabled) as the task execution has been canceled and thus the
     // state is invalid.
-    if (StudioFlags.PROFILER_TASK_BASED_UX.get()) {
-      val taskHomeTabModel = AndroidProfilerToolWindowFactory.getProfilerToolWindow(environment.project)?.profilers?.taskHomeTabModel
-      taskHomeTabModel?.resetSelectionStateAndClearStartupTaskConfigs()
-    }
+    val taskHomeTabModel = AndroidProfilerToolWindowFactory.getProfilerToolWindow(environment.project)?.profilers?.taskHomeTabModel
+    taskHomeTabModel?.resetSelectionStateAndClearStartupTaskConfigs()
     // Cancel the profiling session.
     return resolvedPromise()
   }

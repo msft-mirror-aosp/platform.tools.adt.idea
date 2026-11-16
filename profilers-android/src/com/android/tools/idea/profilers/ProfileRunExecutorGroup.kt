@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.profilers
 
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.projectsystem.getProjectSystem
 import com.android.tools.idea.run.profiler.AbstractProfilerExecutorGroup
 import com.android.tools.idea.run.profiler.ProfilingMode
@@ -37,18 +36,10 @@ class ProfileRunExecutorGroup : AbstractProfilerExecutorGroup<ProfileRunExecutor
   class ProfilerSetting(profilingMode: ProfilingMode) : AbstractProfilerSetting(profilingMode) {
     override val actionName: String
       get() =
-        if (StudioFlags.PROFILER_TASK_BASED_UX.get()) {
-          when (profilingMode) {
-            ProfilingMode.PROFILEABLE -> PROFILE_WITH_LOW_OVERHEAD_ACTION_NAME
-            ProfilingMode.DEBUGGABLE -> PROFILE_WITH_COMPLETE_DATA_ACTION_NAME
-            else -> "Profiler: Run"
-          }
-        } else {
-          when (profilingMode) {
-            ProfilingMode.PROFILEABLE -> "Profile with low overhead (profileable)"
-            ProfilingMode.DEBUGGABLE -> "Profile with complete data (debuggable)"
-            else -> "Profile"
-          }
+        when (profilingMode) {
+          ProfilingMode.PROFILEABLE -> PROFILE_WITH_LOW_OVERHEAD_ACTION_NAME
+          ProfilingMode.DEBUGGABLE -> PROFILE_WITH_COMPLETE_DATA_ACTION_NAME
+          else -> "Profiler: Run"
         }
 
     override val icon: Icon
@@ -69,18 +60,10 @@ class ProfileRunExecutorGroup : AbstractProfilerExecutorGroup<ProfileRunExecutor
     }
 
     override fun getStartActionText(configurationName: String) =
-      if (StudioFlags.PROFILER_TASK_BASED_UX.get()) {
-        when (profilingMode) {
-          ProfilingMode.PROFILEABLE -> "Profiler: Run '$configurationName' as profileable (low overhead)"
-          ProfilingMode.DEBUGGABLE -> "Profiler: Run '$configurationName' as debuggable (complete data)"
-          else -> "Profiler: Run '$configurationName'"
-        }
-      } else {
-        when (profilingMode) {
-          ProfilingMode.PROFILEABLE -> "Profile '$configurationName' with low overhead (profileable)"
-          ProfilingMode.DEBUGGABLE -> "Profile '$configurationName' with complete data (debuggable)"
-          else -> "Profile '$configurationName'"
-        }
+      when (profilingMode) {
+        ProfilingMode.PROFILEABLE -> "Profiler: Run '$configurationName' as profileable (low overhead)"
+        ProfilingMode.DEBUGGABLE -> "Profiler: Run '$configurationName' as debuggable (complete data)"
+        else -> "Profiler: Run '$configurationName'"
       }
   }
 

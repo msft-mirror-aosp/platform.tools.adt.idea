@@ -66,7 +66,6 @@ class OptionsPanel : JComponent() {
   val binders = mutableMapOf<Class<*>, OptionsBinder>()
   private val groups = mutableMapOf<String, JPanel>()
   private var isReadOnly = true
-  private var isTaskBasedUx = false
   private var option: OptionsProvider? = null
 
   init {
@@ -77,10 +76,9 @@ class OptionsPanel : JComponent() {
     binders[String::class.java] = StringBinder()
   }
 
-  fun setOption(newOption: OptionsProvider?, readOnly: Boolean, taskBasedUx: Boolean) {
+  fun setOption(newOption: OptionsProvider?, readOnly: Boolean) {
     option = newOption
     isReadOnly = readOnly
-    isTaskBasedUx = taskBasedUx
     updateOptionProvider()
   }
 
@@ -209,10 +207,10 @@ class OptionsPanel : JComponent() {
   }
 
   private fun buildHeader(propertyInfo: PropertyInfo?) {
-    // For task-based ux, in edit config dialog the name of the task is not displayed as a field but
+    // In the edit config dialog the name of the task is not displayed as a field but
     // rather as a header. So, if there
     // isn't a name property, then there won't be a header.
-    if (!isTaskBasedUx || propertyInfo == null) {
+    if (propertyInfo == null) {
       return
     }
     val name = propertyInfo.value.toString()
@@ -242,9 +240,10 @@ class OptionsPanel : JComponent() {
         continue
       }
 
-      val groupPanel = buildOrGetGroup(property.group)
+      val groupPanel = buildOrGetGroup()
 
-      if (!(isTaskBasedUx && property.methodName == "name")) {
+      // The name property is displayed as a header (see buildHeader), not as a field.
+      if (property.methodName != "name") {
         val component = buildComponent(property)
 
         // Apply indentation if the property metadata specifies it
@@ -277,25 +276,9 @@ class OptionsPanel : JComponent() {
     }
   }
 
-  private fun buildOrGetGroup(group: String): JPanel {
-    if (group == DEFAULT_GROUP || isTaskBasedUx) {
-      // No group name for TaskBasedUx
-      return groups.computeIfAbsent(DEFAULT_GROUP) { JPanel(VerticalFlowLayout()) }
-    }
-    return groups.computeIfAbsent(group) {
-      JPanel(VerticalFlowLayout()).apply {
-        add(
-          JPanel(TabularLayout("Fit,10px,*", "*,*")).apply {
-            border = JBUI.Borders.emptyTop(12)
-            add(JLabel(group), TabularLayout.Constraint(0, 0))
-            add(
-              JPanel(TabularLayout("*", "*,*")).apply { add(JSeparator(), TabularLayout.Constraint(1, 0)) },
-              TabularLayout.Constraint(0, 2),
-            )
-          }
-        )
-      }
-    }
+  private fun buildOrGetGroup(): JPanel {
+    // Group names are not displayed; all properties are placed in a single default group.
+    return groups.computeIfAbsent(DEFAULT_GROUP) { JPanel(VerticalFlowLayout()) }
   }
 
   private fun buildComponent(data: PropertyInfo): JComponent {

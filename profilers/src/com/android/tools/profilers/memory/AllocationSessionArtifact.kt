@@ -78,11 +78,9 @@ class AllocationSessionArtifact(
       val rangeUs = Range(session.startTimestamp.nanosToMicros().toDouble(), session.endTimestamp.nanosToMicros().toDouble())
       return getAllocationInfosForSession(profilers.client, session, rangeUs).mapNotNull { info ->
         if (info.legacy) {
-          val isTaskBasedUxEnabled = profilers.ideServices.featureConfig.isTaskBasedUxEnabled
           val isUnifiedEditorEnabled = profilers.ideServices.featureConfig.isJavaKotlinAllocationsLegacyTraceInEditorEnabled
           if (
-            isTaskBasedUxEnabled &&
-              isUnifiedEditorEnabled &&
+            isUnifiedEditorEnabled &&
               sessionMetadata.type == Common.SessionMetaData.SessionType.FULL &&
               !SessionsManager.isSessionImported(session)
           ) {

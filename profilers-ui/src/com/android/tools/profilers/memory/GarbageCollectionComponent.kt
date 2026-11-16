@@ -16,13 +16,11 @@
 package com.android.tools.profilers.memory
 
 import com.android.tools.adtui.chart.linechart.DurationDataRenderer
-import com.android.tools.adtui.stdui.CommonButton
 import com.android.tools.adtui.stdui.DefaultContextMenuItem
 import com.android.tools.profilers.ProfilerLayout
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.SupportLevel
 import com.android.tools.profilers.memory.adapters.MemoryDataProvider
-import com.intellij.openapi.util.IconLoader
 import com.intellij.ui.JBColor
 import com.intellij.util.ui.JBUI
 import icons.StudioIcons
@@ -34,16 +32,10 @@ import javax.swing.KeyStroke
 class GarbageCollectionComponent {
   fun makeGarbageCollectionButton(memoryDataProvider: MemoryDataProvider, studioProfilers: StudioProfilers): JButton {
     val myForceGarbageCollectionButton =
-      if (studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-        JButton(FORCE_GC_TEXT).apply {
-          toolTipText = FORCE_GARBAGE_COLLECTION
-          // Strip FontUIResource so DarculaButtonUI doesn't forcefully make it bold
-          font = font.deriveFont(font.style)
-        }
-      } else {
-        CommonButton(StudioIcons.Profiler.Toolbar.FORCE_GARBAGE_COLLECTION).apply {
-          disabledIcon = IconLoader.getDisabledIcon(icon)
-        }
+      JButton(FORCE_GC_TEXT).apply {
+        toolTipText = FORCE_GARBAGE_COLLECTION
+        // Strip FontUIResource so DarculaButtonUI doesn't forcefully make it bold
+        font = font.deriveFont(font.style)
       }
     myForceGarbageCollectionButton.addActionListener {
       memoryDataProvider.forceGarbageCollection()

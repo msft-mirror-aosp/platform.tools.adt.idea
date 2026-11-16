@@ -140,7 +140,7 @@ public class IntellijProfilerComponents implements IdeProfilerComponents {
                                                                                    deviceLevel,
                                                                                    model,
                                                                                    dialogCallback,
-                                                                                   myFeatureTracker, ideProfilerServices);
+                                                                                   ideProfilerServices);
     dialog.show();
   }
 

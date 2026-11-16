@@ -16,14 +16,11 @@
 package com.android.tools.idea.run.editor;
 
 import com.android.tools.idea.execution.common.debug.AndroidDebuggerContext;
-import com.android.tools.idea.flags.StudioFlags;
 import com.android.tools.idea.run.AndroidRunConfigurationBase;
 import com.android.tools.idea.run.AndroidRunConfigurationModule;
 import com.android.tools.idea.run.ConfigurationSpecificEditor;
-import com.android.tools.idea.run.ValidationError;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicate;
-import com.google.common.collect.Ordering;
 import com.intellij.application.options.ModulesComboBox;
 import com.intellij.execution.configurations.JavaRunConfigurationModule;
 import com.intellij.execution.ui.ConfigurationModuleSelector;
@@ -79,7 +76,6 @@ public class AndroidRunConfigurationEditor<T extends AndroidRunConfigurationBase
   private ConfigurationSpecificEditor<T> myConfigurationSpecificEditor;
 
   private AndroidDebuggerPanel myAndroidDebuggerPanel;
-  private final AndroidProfilersPanel myAndroidProfilersPanel;
 
   public AndroidRunConfigurationEditor(Project project,
                                        Predicate<Module> moduleValidator,
@@ -129,33 +125,13 @@ public class AndroidRunConfigurationEditor<T extends AndroidRunConfigurationBase
       myTabbedPane.add("Debugger", myAndroidDebuggerPanel.getComponent());
     }
 
-    myAndroidProfilersPanel = new AndroidProfilersPanel(project, config.getProfilerState());
-    if (!StudioFlags.PROFILER_TASK_BASED_UX.get()) {
-      myTabbedPane.add("Profiling", myAndroidProfilersPanel.getComponent());
-    }
-
     myConfigurationSpecificEditor = configurationSpecificEditorFactory.apply(myModuleSelector);
     Disposer.register(this, myConfigurationSpecificEditor);
     myConfigurationSpecificPanel.add(myConfigurationSpecificEditor.getComponent());
 
     myShowLogcatCheckBox.setVisible(showLogcatCheckbox);
 
-    checkValidationResults(config.validate(null, this::fireEditorStateChanged));
-  }
-
-  /**
-   * Allows the editor UI to response based on any validation errors.
-   * The {@link ValidationError.Category} with the most severe errors should be responded to first.
-   */
-  private void checkValidationResults(@NotNull List<ValidationError> errors) {
-    if (errors.isEmpty()) {
-      return;
-    }
-
-    ValidationError topError = Ordering.natural().max(errors);
-    if (ValidationError.Category.PROFILER.equals(topError.getCategory())) {
-      myTabbedPane.setSelectedComponent(myAndroidProfilersPanel.getComponent());
-    }
+    config.validate(null, this::fireEditorStateChanged);
   }
 
   @Override
@@ -186,7 +162,6 @@ public class AndroidRunConfigurationEditor<T extends AndroidRunConfigurationBase
     if (myAndroidDebuggerPanel != null) {
       myAndroidDebuggerPanel.resetFrom(configuration.getAndroidDebuggerContext());
     }
-    myAndroidProfilersPanel.resetFrom(configuration.getProfilerState());
   }
 
   @Override
@@ -205,7 +180,6 @@ public class AndroidRunConfigurationEditor<T extends AndroidRunConfigurationBase
     if (myAndroidDebuggerPanel != null) {
       myAndroidDebuggerPanel.applyTo(configuration.getAndroidDebuggerContext());
     }
-    myAndroidProfilersPanel.applyTo(configuration.getProfilerState());
   }
 
   @Override

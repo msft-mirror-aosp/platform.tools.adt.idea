@@ -121,9 +121,7 @@ private constructor(
       studioProfilers.sessionsManager.setTaskDb(sessionData)
       timeline.viewRange.set(minTrackingTimeUs, maxTrackingTimeUs)
       timeline.selectionRange.set(minTrackingTimeUs, maxTrackingTimeUs)
-      if (studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-        myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED)
-      }
+      myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED)
     } else {
       startTracking()
     }
@@ -160,11 +158,9 @@ private constructor(
   fun stopTrackingDueToUnattachableAgent() {
     stopTracking()
     hasAgentError = true
-    if (studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-      myTaskTracker.trackStartTaskFailed(
-        TaskStartFailedMetadata(allocationTrackStatus = TrackStatus.newBuilder().setStatus(TrackStatus.Status.AGENT_UNATTACHABLE).build())
-      )
-    }
+    myTaskTracker.trackStartTaskFailed(
+      TaskStartFailedMetadata(allocationTrackStatus = TrackStatus.newBuilder().setStatus(TrackStatus.Status.AGENT_UNATTACHABLE).build())
+    )
     aspect.changed(MemoryProfilerAspect.LIVE_ALLOCATION_STATUS)
     cleanupFailedCapture()
   }
@@ -175,9 +171,8 @@ private constructor(
       return
     }
 
-    // In the regular session based, there is slim to no chance of agent being Unspecified when J/K Allocation stage is entered.
-    // This is because session is created way before we come to the J/K allocation stage.
-    if (studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled && !isAgentAttached) return
+    // The agent may not be attached yet when the J/K Allocation stage is entered, as the session may have just been created.
+    if (!isAgentAttached) return
 
     // Agent is expected to get attached before startTracking. Agent changed event will also trigger this code path in case of tracking
     // not started yet.
@@ -216,9 +211,7 @@ private constructor(
             }
             // At this point, allocation tracking has been stopped by the user, indicating that the task is complete.
             else {
-              if (studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled) {
-                myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED)
-              }
+              myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED)
               logger.info("PROFILER: Java/Kotlin Allocations capture stop succeeded")
             }
           }
@@ -227,23 +220,18 @@ private constructor(
             // Still in progress or not enabled yet. Not enabled yet usually happens in stage exit.
           }
           else -> {
-            val isTaskBasedUxEnabled = studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled
             // TrackStatus.Status.UNSPECIFIED, TrackStatus.Status.NOT_PROFILING,
             // TrackStatus.Status.FAILURE_UNKNOWN, TrackStatus.Status.UNRECOGNIZED, status is null
             // All these cases denotes there is failure.
             if (enable) {
               // start task failure
-              if (isTaskBasedUxEnabled) {
-                myTaskTracker.trackStartTaskFailed(TaskStartFailedMetadata(allocationTrackStatus = status))
-              }
+              myTaskTracker.trackStartTaskFailed(TaskStartFailedMetadata(allocationTrackStatus = status))
               logger.info("PROFILER: Java/Kotlin Allocations capture start failed")
             } else {
               // stop task failure
-              if (isTaskBasedUxEnabled) {
-                myTaskTracker.trackStopTaskFailed(
-                  TaskStopFailedMetadata(allocationTrackStatus = status, traceStopStatus = null, cpuCaptureMetadata = null)
-                )
-              }
+              myTaskTracker.trackStopTaskFailed(
+                TaskStopFailedMetadata(allocationTrackStatus = status, traceStopStatus = null, cpuCaptureMetadata = null)
+              )
               logger.info("PROFILER: Java/Kotlin Allocations capture stop failed")
             }
 
@@ -266,7 +254,7 @@ private constructor(
   }
 
   private fun cleanupFailedCapture() {
-    if (studioProfilers.ideServices.featureConfig.isTaskBasedUxEnabled && studioProfilers.sessionsManager.isSessionAlive) {
+    if (studioProfilers.sessionsManager.isSessionAlive) {
       studioProfilers.sessionsManager.endCurrentSession()
     }
   }

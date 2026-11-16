@@ -141,7 +141,7 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
   @NotNull
   private final Runnable myStopAction;
 
-  @Nullable
+  @NotNull
   private final RecordingScreenModel<CpuProfilerStage> myRecordingScreenModel;
 
   @Nullable
@@ -187,12 +187,7 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
     myEntryPoint = entryPoint;
 
     myStopAction = stopAction;
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      myRecordingScreenModel = new RecordingScreenModel<>(this);
-    }
-    else {
-      myRecordingScreenModel = null;
-    }
+    myRecordingScreenModel = new RecordingScreenModel<>(this);
 
     List<Trace.TraceInfo> existingCompletedTraceInfoList =
       CpuProfiler.getTraceInfoFromSession(getStudioProfilers().getClient(), mySession).stream()
@@ -271,7 +266,7 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
     return myStopAction;
   }
 
-  @Nullable
+  @NotNull
   @Override
   public RecordingScreenModel<CpuProfilerStage> getRecordingScreenModel() {
     return myRecordingScreenModel;
@@ -289,9 +284,7 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
     getStudioProfilers().getUpdater().register((ClampedAxisComponentModel)getCpuUsageAxis());
     getStudioProfilers().getUpdater().register((ClampedAxisComponentModel)getThreadCountAxis());
     // Register recording screen model updatable so timer can update on tick.
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled() && myRecordingScreenModel != null) {
-      getStudioProfilers().getUpdater().register(myRecordingScreenModel);
-    }
+    getStudioProfilers().getUpdater().register(myRecordingScreenModel);
 
     getStudioProfilers().getIdeServices().getFeatureTracker().trackEnterStage(getStageType());
 
@@ -312,9 +305,7 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
     getStudioProfilers().getUpdater().unregister((ClampedAxisComponentModel)getCpuUsageAxis());
     getStudioProfilers().getUpdater().unregister((ClampedAxisComponentModel)getThreadCountAxis());
     // Deregister recording screen model updatable so timer does not continue in background.
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled() && myRecordingScreenModel != null) {
-      getStudioProfilers().getUpdater().unregister(myRecordingScreenModel);
-    }
+    getStudioProfilers().getUpdater().unregister(myRecordingScreenModel);
 
     getRangeSelectionModel().clearListeners();
     getUpdatableManager().releaseAll();
@@ -398,9 +389,7 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
 
       cleanupFailedCapture();
 
-      if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-        myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(status, null, null));
-      }
+      myTaskTracker.trackStartTaskFailed(new TaskStartFailedMetadata(status, null, null));
     }
   }
 
@@ -454,9 +443,7 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
     getLogger().warn("Unable to stop tracing: " + status.getStatus() +" error code " + status.getErrorCode());
     getStudioProfilers().getIdeServices().showNotification(CpuProfilerNotifications.getCaptureStopFailure(status.getStatus().toString()));
 
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(null, null, captureMetadata));
-    }
+    myTaskTracker.trackStopTaskFailed(new TaskStopFailedMetadata(null, null, captureMetadata));
   }
 
   private void goToCaptureStage(long traceId) {
@@ -481,12 +468,9 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
             getStudioProfilers().getIdeServices().getMainExecutor().execute(() -> {
               if (captureFile != null && captureFile.exists() && captureFile.length() > 0) {
                 getStudioProfilers().getIdeServices().openTraceFile(captureFile);
-                // When Task-Based UX is enabled and the trace opens in the Editor, it bypasses
-                // the legacy CpuCaptureStage (where task completion is usually tracked).
+                // When the trace opens in the Editor, it bypasses the legacy CpuCaptureStage (where task completion is usually tracked).
                 // Therefore, we must log trackTaskFinished here for live recordings.
-                if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-                  myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED);
-                }
+                myTaskTracker.trackTaskFinished(TaskFinishedState.COMPLETED);
               } else {
                 getStudioProfilers().getIdeServices().showNotification(CpuProfilerNotifications.PARSING_FAILURE);
                 cleanupFailedCapture();
@@ -656,14 +640,7 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
   }
 
   private void setupRecordingOptions() {
-    List<ProfilingConfiguration> configurations;
-    // Add task configs if task-based ux flag is enabled, and default configs if disabled.
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      configurations = myProfilerConfigModel.getTaskProfilingConfigurations();
-    }
-    else {
-      configurations = myProfilerConfigModel.getDefaultProfilingConfigurations();
-    }
+    List<ProfilingConfiguration> configurations = myProfilerConfigModel.getTaskProfilingConfigurations();
 
     for (ProfilingConfiguration configuration : configurations) {
       ProfilingTechnology tech = ProfilingTechnology.fromConfig(configuration);
@@ -686,15 +663,11 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
    * allowing a new, clean session to be started.
    */
   private void cleanupFailedCapture() {
-    if (getStudioProfilers().getIdeServices().getFeatureConfig().isTaskBasedUxEnabled()) {
-      if (getStudioProfilers().getSessionsManager().isSessionAlive()) {
-        getStudioProfilers().getSessionsManager().endCurrentSession();
-      }
-
-      if (myRecordingScreenModel != null) {
-        myRecordingScreenModel.setRecordingFailed();
-      }
+    if (getStudioProfilers().getSessionsManager().isSessionAlive()) {
+      getStudioProfilers().getSessionsManager().endCurrentSession();
     }
+
+    myRecordingScreenModel.setRecordingFailed();
 
     myRecordingOptionsModel.setFinished();
 
