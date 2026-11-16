@@ -18,28 +18,47 @@ package com.android.tools.idea
 import com.android.prefs.AndroidLocationsSingleton
 import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.tools.idea.material.icons.MaterialVdIcons
+import com.android.tools.idea.material.icons.MaterialVdIconsLoader
+import com.android.tools.idea.material.icons.common.BundledIconsUrlProvider
+import com.android.tools.idea.material.icons.common.BundledMetadataUrlProvider
 import com.android.tools.idea.material.icons.common.MaterialIconsMetadataUrlProvider
 import com.android.tools.idea.material.icons.common.MaterialIconsUrlProvider
+import com.android.tools.idea.material.icons.metadata.MaterialIconsMetadata
+import com.android.tools.idea.material.icons.metadata.MaterialIconsMetadataDownloadCacheService
+import com.android.tools.idea.material.icons.utils.MaterialIconsUtils.getIconFileNameWithoutExtension
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.testFramework.ApplicationRule
+import com.intellij.util.download.DownloadableFileService
+import com.intellij.util.download.FileDownloader
+import com.intellij.util.download.impl.DownloadableFileDescriptionImpl
 import java.io.File
+import java.io.IOException
 import java.net.URL
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.intellij.lang.annotations.Language
 import org.junit.After
 import org.junit.Before
 import org.junit.ClassRule
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 
 private const val TEST_PATH = "images/material/icons/"
@@ -163,6 +182,32 @@ class MaterialVdIconsProviderTest {
     Truth.assertThat(materialIcons.getAllIcons("Style 1")).isEmpty()
     Truth.assertThat(materialIcons.getAllIcons("Style 2")).isEmpty()
   }
+
+  @Test
+  fun testBundledProvidersResolveMetadataAndIcon() {
+    val bundledMetadataUrl = BundledMetadataUrlProvider().getMetadataUrl()
+    Truth.assertThat(bundledMetadataUrl).isNotNull()
+    val metadata = MaterialIconsMetadata.parse(checkNotNull(bundledMetadataUrl)).getOrThrow()
+    Truth.assertThat(metadata.families).isNotEmpty()
+    Truth.assertThat(metadata.icons).isNotEmpty()
+
+    val style = metadata.families.first()
+    val iconMetadata = metadata.icons.first { style !in it.unsupportedFamilies }
+    val expectedFileName = "${getIconFileNameWithoutExtension(iconName = iconMetadata.name, styleName = style)}.xml"
+    val bundledIconsProvider = BundledIconsUrlProvider()
+    val iconUrl =
+      bundledIconsProvider.getIconUrl(
+        style = style,
+        iconName = iconMetadata.name,
+        iconFileName = expectedFileName,
+      )
+    Truth.assertThat(iconUrl).isNotNull()
+    val vdIcon =
+      MaterialVdIconsLoader(metadata, bundledIconsProvider)
+        .loadVdIcon(styleName = style, iconName = iconMetadata.name, fileName = expectedFileName)
+    Truth.assertThat(vdIcon).isNotNull()
+    Truth.assertThat(checkNotNull(vdIcon).name).isEqualTo(expectedFileName)
+  }
 }
 
 private class MaterialIconsMetadataTestUrlProvider : MaterialIconsMetadataUrlProvider {
@@ -224,10 +269,14 @@ class MaterialVdIconsProviderTestWithSdk {
 
   @get:Rule val rule = AndroidProjectRule.inMemory()
 
+  private lateinit var disposable: Disposable
   private lateinit var testSdkDirectory: File
+  private lateinit var mockAndroidSdks: AndroidSdks
+  private var activeJob: Job? = null
 
   @Before
   fun setup() {
+    disposable = Disposer.newDisposable(rule.testRootDisposable)
     val testDirectory = FileUtil.createTempDirectory(javaClass.simpleName, null)
     testSdkDirectory = testDirectory.resolve("FakeSdk").apply { mkdir() }
     val testMaterialIconsSdkDirectory = testSdkDirectory.resolve("icons").resolve("material").apply { mkdirs() }
@@ -240,7 +289,31 @@ class MaterialVdIconsProviderTestWithSdk {
       .writeText(SIMPLE_VD)
 
     val sdkHandler = AndroidSdkHandler.getInstance(AndroidLocationsSingleton, testSdkDirectory.toPath())
-    whenever(rule.mockService(AndroidSdks::class.java).tryToChooseSdkHandler()).thenReturn(sdkHandler)
+    mockAndroidSdks = rule.mockService(AndroidSdks::class.java)
+    whenever(mockAndroidSdks.tryToChooseSdkHandler()).thenReturn(sdkHandler)
+
+    val mockDownloadableFileService = rule.mockService(DownloadableFileService::class.java)
+    val mockDownloader = Mockito.mock(FileDownloader::class.java)
+    whenever(mockDownloader.download(Mockito.any())).thenThrow(IOException("Offline in test"))
+    whenever(mockDownloadableFileService.createDownloader(Mockito.any(), Mockito.any())).thenReturn(mockDownloader)
+    whenever(mockDownloadableFileService.createFileDescription(Mockito.any(), Mockito.any()))
+      .thenReturn(DownloadableFileDescriptionImpl("https://example.com/icons", "icons_metadata_temp", "txt"))
+
+    rule.replaceService(
+      MaterialIconsMetadataDownloadCacheService::class.java,
+      MaterialIconsMetadataDownloadCacheService(),
+    )
+  }
+
+  @After
+  fun teardown() {
+    try {
+      runBlocking { withTimeout(TIMEOUT_UNIT.toMillis(WAIT_TIMEOUT_SECONDS)) { activeJob?.cancelAndJoin() } }
+    } finally {
+      if (::disposable.isInitialized) {
+        Disposer.dispose(disposable)
+      }
+    }
   }
 
   @Test
@@ -251,13 +324,15 @@ class MaterialVdIconsProviderTestWithSdk {
       materialIcons = icons
       latch.countDown()
     }
-    MaterialVdIconsProvider.loadMaterialVdIcons(
-      uiCallback,
-      rule.fixture.projectDisposable,
-      null, // Use the 'real' URL providers
-      null,
-    )
+    activeJob =
+      MaterialVdIconsProvider.loadMaterialVdIconsForTestOnly(
+        uiCallback,
+        disposable,
+        null, // Use the 'real' URL providers
+        null,
+      )
     assertTrue(latch.await(WAIT_TIMEOUT_SECONDS, TIMEOUT_UNIT))
+    runBlocking { withTimeout(TIMEOUT_UNIT.toMillis(WAIT_TIMEOUT_SECONDS)) { checkNotNull(activeJob).join() } }
     Truth.assertThat(materialIcons.styles).containsExactly("Style 1")
     val icons = materialIcons.getAllIcons("Style 1")
     Truth.assertThat(icons.map { it.name }).containsExactly("style1_my_sdk_icon_24.xml")
@@ -269,23 +344,80 @@ class MaterialVdIconsProviderTestWithSdk {
     testMaterialIconsSdkDirectory.resolve("icons_metadata.txt").writeText("corrupt content")
 
     val latch = CountDownLatch(1)
-    var materialIcons = MaterialVdIcons.EMPTY
-    var finished = false
+    val materialIcons = AtomicReference(MaterialVdIcons.EMPTY)
+    val finished = AtomicBoolean(false)
     val uiCallback: (MaterialVdIcons, MaterialVdIconsProvider.Status) -> Unit = { icons, status ->
-      materialIcons = icons
+      materialIcons.set(icons)
       if (status == MaterialVdIconsProvider.Status.FINISHED) {
-        finished = true
+        finished.set(true)
         latch.countDown()
       }
     }
-    MaterialVdIconsProvider.loadMaterialVdIcons(
-      uiCallback,
-      rule.fixture.projectDisposable,
-      null,
-      null,
-    )
-    assertTrue(latch.await(WAIT_TIMEOUT_SECONDS, TIMEOUT_UNIT))
-    assertTrue(finished)
-    Truth.assertThat(materialIcons.styles).isNotEmpty()
+    activeJob =
+      MaterialVdIconsProvider.loadMaterialVdIconsForTestOnly(
+        refreshUiCallback = uiCallback,
+        parentDisposable = disposable,
+        metadataUrlProvider = null,
+        iconsUrlProvider = null,
+        bundledMetadataUrlProvider = ::MaterialIconsMetadataTestUrlProvider,
+        bundledIconsUrlProvider = ::MaterialIconsTestUrlProvider,
+      )
+    Truth.assertThat(latch.await(WAIT_TIMEOUT_SECONDS, TIMEOUT_UNIT)).isTrue()
+    runBlocking { withTimeout(TIMEOUT_UNIT.toMillis(WAIT_TIMEOUT_SECONDS)) { checkNotNull(activeJob).join() } }
+    Truth.assertThat(finished.get()).isTrue()
+    Truth.assertThat(materialIcons.get().styles).containsExactly("Style 1", "Style 2")
+    Truth.assertThat(materialIcons.get().getAllIcons("Style 1").map { it.name })
+      .containsExactly("style1_my_icon_1_24.xml", "style1_my_icon_2_24.xml")
+  }
+
+  @Test
+  fun testDownloadCacheServiceFallsBackToBundledOnCorruptSdkMetadata() {
+    val testMaterialIconsSdkDirectory = testSdkDirectory.resolve("icons").resolve("material")
+    testMaterialIconsSdkDirectory.resolve("icons_metadata.txt").writeText("corrupt content")
+
+    val cacheService = ApplicationManager.getApplication().getService(MaterialIconsMetadataDownloadCacheService::class.java)
+    val metadata = cacheService.getMetadata().get(WAIT_TIMEOUT_SECONDS, TIMEOUT_UNIT)
+    Truth.assertThat(metadata.families).isNotEmpty()
+    Truth.assertThat(metadata.icons).isNotEmpty()
+  }
+
+  @Test
+  fun testDownloadCacheServiceFallsBackWhenCachedUrlDeletedAndSdkEmpty() {
+    val cacheService = ApplicationManager.getApplication().getService(MaterialIconsMetadataDownloadCacheService::class.java)
+    val initialMetadata = cacheService.getMetadata(::MaterialIconsMetadataTestUrlProvider).get(WAIT_TIMEOUT_SECONDS, TIMEOUT_UNIT)
+    Truth.assertThat(initialMetadata.families).asList().containsExactly("Style 1")
+
+    Truth.assertThat(testSdkDirectory.resolve("icons").resolve("material").resolve("icons_metadata.txt").delete()).isTrue()
+    val emptySdkDirectory = FileUtil.createTempDirectory("${javaClass.simpleName}EmptySdk", null).resolve("FakeSdk")
+    emptySdkDirectory.resolve("icons").resolve("material").apply { mkdirs() }.resolve("icons_metadata.txt").writeText("")
+    val emptySdkHandler = AndroidSdkHandler.getInstance(AndroidLocationsSingleton, emptySdkDirectory.toPath())
+    whenever(mockAndroidSdks.tryToChooseSdkHandler()).thenReturn(emptySdkHandler)
+
+    val fallbackMetadata = cacheService.getMetadata(::MaterialIconsMetadataTestUrlProvider).get(WAIT_TIMEOUT_SECONDS, TIMEOUT_UNIT)
+    Truth.assertThat(fallbackMetadata.families).asList().containsExactly("Style 1", "Style 2")
+  }
+
+  @Test
+  fun testDownloadCacheServicePreservesCauseWhenBundledMetadataUrlMissing() {
+    val testMaterialIconsSdkDirectory = testSdkDirectory.resolve("icons").resolve("material")
+    testMaterialIconsSdkDirectory.resolve("icons_metadata.txt").writeText("corrupt content")
+
+    val cacheService = ApplicationManager.getApplication().getService(MaterialIconsMetadataDownloadCacheService::class.java)
+    val thrown =
+      runCatching {
+        cacheService
+          .getMetadata {
+            object : MaterialIconsMetadataUrlProvider {
+              override fun getMetadataUrl(): URL? = null
+            }
+          }
+          .get(WAIT_TIMEOUT_SECONDS, TIMEOUT_UNIT)
+      }
+        .exceptionOrNull()
+    Truth.assertThat(thrown).isInstanceOf(ExecutionException::class.java)
+    val cause = checkNotNull(thrown?.cause)
+    Truth.assertThat(cause).isInstanceOf(IllegalStateException::class.java)
+    Truth.assertThat(cause).hasMessageThat().isEqualTo("Bundled metadata URL not found")
+    Truth.assertThat(cause.cause).isNotNull()
   }
 }

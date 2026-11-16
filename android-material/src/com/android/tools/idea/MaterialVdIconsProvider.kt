@@ -43,10 +43,14 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.progress.getCancellable
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.TestOnly
 
 private val LOG = Logger.getInstance(MaterialVdIconsProvider::class.java)
 
@@ -81,34 +85,84 @@ class MaterialVdIconsProvider {
       iconsUrlProvider: MaterialIconsUrlProvider? = null,
       @UiThread onNewIconsAvailable: () -> Unit = {},
     ) {
-      var resolvedIconsUrlProvider = iconsUrlProvider
-      var metadataParseResult =
-        (metadataUrlProvider ?: getMetadataUrlProvider()).getMetadataUrl()?.let {
-          MaterialIconsMetadata.parse(it)
-        }
+      loadMaterialVdIconsImpl(
+        refreshUiCallback = refreshUiCallback,
+        parentDisposable = parentDisposable,
+        metadataUrlProvider = metadataUrlProvider,
+        iconsUrlProvider = iconsUrlProvider,
+        onNewIconsAvailable = onNewIconsAvailable,
+        bundledMetadataUrlProvider = ::BundledMetadataUrlProvider,
+        bundledIconsUrlProvider = ::BundledIconsUrlProvider,
+      )
+    }
 
-      // If the default SDK metadata failed or produced no families, fall back to bundled metadata and icons
-      if (metadataUrlProvider == null && metadataParseResult?.getOrNull()?.families.isNullOrEmpty()) {
+    @TestOnly
+    internal fun loadMaterialVdIconsForTestOnly(
+      @UiThread refreshUiCallback: (MaterialVdIcons, Status) -> Unit,
+      parentDisposable: Disposable,
+      metadataUrlProvider: MaterialIconsMetadataUrlProvider? = null,
+      iconsUrlProvider: MaterialIconsUrlProvider? = null,
+      @UiThread onNewIconsAvailable: () -> Unit = {},
+      bundledMetadataUrlProvider: () -> MaterialIconsMetadataUrlProvider = ::BundledMetadataUrlProvider,
+      bundledIconsUrlProvider: () -> MaterialIconsUrlProvider = ::BundledIconsUrlProvider,
+    ): Job? =
+      loadMaterialVdIconsImpl(
+        refreshUiCallback = refreshUiCallback,
+        parentDisposable = parentDisposable,
+        metadataUrlProvider = metadataUrlProvider,
+        iconsUrlProvider = iconsUrlProvider,
+        onNewIconsAvailable = onNewIconsAvailable,
+        bundledMetadataUrlProvider = bundledMetadataUrlProvider,
+        bundledIconsUrlProvider = bundledIconsUrlProvider,
+      )
+
+    private fun loadMaterialVdIconsImpl(
+      @UiThread refreshUiCallback: (MaterialVdIcons, Status) -> Unit,
+      parentDisposable: Disposable,
+      metadataUrlProvider: MaterialIconsMetadataUrlProvider?,
+      iconsUrlProvider: MaterialIconsUrlProvider?,
+      @UiThread onNewIconsAvailable: () -> Unit,
+      bundledMetadataUrlProvider: () -> MaterialIconsMetadataUrlProvider,
+      bundledIconsUrlProvider: () -> MaterialIconsUrlProvider,
+    ): Job? {
+      var resolvedIconsUrlProvider = iconsUrlProvider
+      val initialMetadataProvider = metadataUrlProvider ?: getMetadataUrlProvider(bundledMetadataUrlProvider)
+      var metadataParseResult = initialMetadataProvider.getMetadataUrl()?.let { MaterialIconsMetadata.parse(it) }
+
+      // If the default SDK metadata failed or produced no families, fall back to bundled metadata
+      // and icons
+      if (
+        metadataUrlProvider == null &&
+          initialMetadataProvider is SdkMetadataUrlProvider &&
+          metadataParseResult?.getOrNull()?.families.isNullOrEmpty()
+      ) {
         if (metadataParseResult?.isFailure == true) {
-          LOG.warn("Failed to load metadata from SDK path, falling back to bundled metadata.", metadataParseResult.exceptionOrNull())
+          LOG.warn(
+            "Failed to load metadata from SDK path, falling back to bundled metadata.",
+            metadataParseResult.exceptionOrNull(),
+          )
         }
-        val bundledUrl = BundledMetadataUrlProvider().getMetadataUrl()
+        val bundledUrl = bundledMetadataUrlProvider().getMetadataUrl()
         if (bundledUrl != null) {
           metadataParseResult = MaterialIconsMetadata.parse(bundledUrl)
-          resolvedIconsUrlProvider = iconsUrlProvider ?: BundledIconsUrlProvider()
+          resolvedIconsUrlProvider = iconsUrlProvider ?: bundledIconsUrlProvider()
         }
       }
 
       val metadata = metadataParseResult?.getOrNull()
       if (metadata == null || metadata.families.isEmpty()) {
-        LOG.warn("Empty or missing metadata for material icons.", metadataParseResult?.exceptionOrNull())
+        LOG.warn(
+          "Empty or missing metadata for material icons.",
+          metadataParseResult?.exceptionOrNull(),
+        )
         refreshUiCallback(MaterialVdIcons.EMPTY, Status.FINISHED)
-        return
+        return null
       }
 
-      loadMaterialVdIcons(
+      return loadMaterialVdIcons(
         metadata,
-        resolvedIconsUrlProvider ?: getIconsUrlProvider(),
+        resolvedIconsUrlProvider ?: getIconsUrlProvider(bundledIconsUrlProvider),
+        bundledMetadataUrlProvider,
         refreshUiCallback,
         onNewIconsAvailable,
         parentDisposable,
@@ -120,10 +174,11 @@ class MaterialVdIconsProvider {
 private fun loadMaterialVdIcons(
   metadata: MaterialIconsMetadata,
   iconsUrlProvider: MaterialIconsUrlProvider,
+  bundledMetadataUrlProvider: () -> MaterialIconsMetadataUrlProvider,
   @UiThread refreshUiCallback: (MaterialVdIcons, Status) -> Unit,
   @UiThread onNewIconsAvailable: () -> Unit,
   parentDisposable: Disposable,
-) {
+): Job {
   val iconsLoader = MaterialVdIconsLoader(metadata, iconsUrlProvider)
   val backgroundExecutor =
     AppExecutorUtil.createBoundedApplicationPoolExecutor(
@@ -133,7 +188,7 @@ private fun loadMaterialVdIcons(
       parentDisposable,
     )
   val backgroundDispatcher = backgroundExecutor.asCoroutineDispatcher()
-  AndroidCoroutineScope(parentDisposable).launch {
+  return AndroidCoroutineScope(parentDisposable).launch {
     var icons = MaterialVdIcons.EMPTY
     metadata.families.forEachIndexed { index, style ->
       val status = if (index == metadata.families.lastIndex) Status.FINISHED else Status.LOADING
@@ -147,13 +202,15 @@ private fun loadMaterialVdIcons(
             LOG.warn("No icons loaded for style=$style.")
           }
         } catch (t: Throwable) {
-          if (t is ProcessCanceledException || t is CancellationException) throw t
+          rethrowIfCancellation(t)
           LOG.error("Error loading icons.", t)
         }
       }
 
       // Invoke the ui-callback with the loaded icons and current status value.
-      withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) { refreshUiCallback(icons, status) }
+      withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
+        refreshUiCallback(icons, status)
+      }
     }
 
     var iconsUpdated = false
@@ -161,33 +218,48 @@ private fun loadMaterialVdIcons(
       try {
         // When finished loading, copy icons to the Android/Sdk directory.
         copyBundledIcons(metadata, icons)
+        ensureActive()
 
         // Then, download the most recent metadata file and any new icons.
-        iconsUpdated = updateMetadataAndIcons(metadata, iconsUrlProvider)
+        iconsUpdated = updateMetadataAndIcons(metadata, iconsUrlProvider, bundledMetadataUrlProvider)
       } catch (t: Throwable) {
-        if (t is ProcessCanceledException || t is CancellationException) throw t
+        rethrowIfCancellation(t)
         LOG.error("Error updating icons.", t)
       }
     }
     if (iconsUpdated) {
-      withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) { onNewIconsAvailable() }
+      withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) {
+        onNewIconsAvailable()
+      }
     }
   }
 }
 
-private fun getMetadataUrlProvider(): MaterialIconsMetadataUrlProvider {
-  return if (hasMetadataFileInSdkPath()) {
-    SdkMetadataUrlProvider()
-  } else {
-    BundledMetadataUrlProvider()
+private fun CoroutineScope.rethrowIfCancellation(t: Throwable) {
+  if (t is ProcessCanceledException || t is CancellationException) {
+    Thread.interrupted()
+    throw t
+  }
+  val threadInterrupted = Thread.interrupted()
+  coroutineContext.ensureActive()
+  if (t is InterruptedException || threadInterrupted) {
+    throw CancellationException("Interrupted while processing material icons").initCause(t)
   }
 }
 
-private fun getIconsUrlProvider(): MaterialIconsUrlProvider {
+private fun getMetadataUrlProvider(bundledMetadataUrlProvider: () -> MaterialIconsMetadataUrlProvider): MaterialIconsMetadataUrlProvider {
+  return if (hasMetadataFileInSdkPath()) {
+    SdkMetadataUrlProvider()
+  } else {
+    bundledMetadataUrlProvider()
+  }
+}
+
+private fun getIconsUrlProvider(bundledIconsUrlProvider: () -> MaterialIconsUrlProvider): MaterialIconsUrlProvider {
   return if (hasMetadataFileInSdkPath()) {
     SdkMaterialIconsUrlProvider()
   } else {
-    BundledIconsUrlProvider()
+    bundledIconsUrlProvider()
   }
 }
 
@@ -203,14 +275,21 @@ private fun copyBundledIcons(metadata: MaterialIconsMetadata, loadedIcons: Mater
 
 /** Returns true if any icons were updated. */
 @WorkerThread
-private fun updateMetadataAndIcons(existingMetadata: MaterialIconsMetadata, iconsUrlProvider: MaterialIconsUrlProvider): Boolean {
+private fun updateMetadataAndIcons(
+  existingMetadata: MaterialIconsMetadata,
+  iconsUrlProvider: MaterialIconsUrlProvider,
+  bundledMetadataUrlProvider: () -> MaterialIconsMetadataUrlProvider,
+): Boolean {
   val targetPath = getIconsSdkTargetPath()
   if (targetPath == null) {
     LOG.warn("No Android Sdk folder, can't download any material icons.")
     return false
   }
   val newMetadata =
-    ApplicationManager.getApplication().getService(MaterialIconsMetadataDownloadCacheService::class.java).getMetadata().getCancellable()
+    ApplicationManager.getApplication()
+      .getService(MaterialIconsMetadataDownloadCacheService::class.java)
+      .getMetadata(bundledMetadataUrlProvider)
+      .getCancellable()
 
   return updateIconsAtDir(existingMetadata, newMetadata, targetPath.toPath(), iconsUrlProvider)
 }
