@@ -27,17 +27,28 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.TransactionGuard
 import com.intellij.openapi.application.TransactionGuardImpl
+import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.platform.ide.progress.ModalTaskOwner
+import com.intellij.platform.ide.progress.TaskCancellation
+import com.intellij.platform.ide.progress.TaskSupport
+import com.intellij.testFramework.registerOrReplaceServiceInstance
 import java.awt.EventQueue
+import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import javax.swing.JList
 import javax.swing.SwingUtilities
 import junit.framework.TestCase.assertEquals
+import kotlinx.coroutines.CoroutineScope
 import org.junit.After
+import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -161,6 +172,109 @@ class UnsignedApkQuickFixTest {
       }
     assertThat(updatedSigningConfig).contains("debug")
     assertThat(buildFileText).contains("signingConfigs.debug")
+  }
+
+  @Suppress("UnstableApiUsage")
+  @Test
+  fun applyFixHandlesModalProgressCancellationAndNullBuildModel() {
+    projectRule.load(TestProjectPaths.SIMPLE_APPLICATION)
+
+    val project = projectRule.project
+    val module = projectRule.fixture.module
+    val app = ApplicationManager.getApplication()
+    val buildFile =
+      ReadAction.compute<VirtualFile, RuntimeException> {
+        ProjectBuildModel.get(project).getModuleBuildModel(module)!!.virtualFile
+      }
+    val originalBuildFileText = ReadAction.compute<String, RuntimeException> { VfsUtilCore.loadText(buildFile) }
+
+    val syncResults = CopyOnWriteArrayList<ProjectSystemSyncManager.SyncResult>()
+    val callbackInvocations = AtomicInteger(0)
+    project.messageBus
+      .connect(projectRule.fixture.testRootDisposable)
+      .subscribe(PROJECT_SYSTEM_SYNC_TOPIC, ProjectSystemSyncManager.SyncResultListener { syncResults.add(it) })
+
+    val realTaskSupport = app.service<TaskSupport>()
+    var cancelTitle: String? = null
+    app.registerOrReplaceServiceInstance(
+      TaskSupport::class.java,
+      object : TaskSupport by realTaskSupport {
+        override fun <T> runWithModalProgressBlockingInternal(
+          owner: ModalTaskOwner,
+          title: String,
+          cancellation: TaskCancellation,
+          action: suspend CoroutineScope.() -> T,
+        ): T {
+          val effectiveAction: suspend CoroutineScope.() -> T =
+            if (title == cancelTitle) {
+              { throw ProcessCanceledException() }
+            } else {
+              action
+            }
+          return realTaskSupport.runWithModalProgressBlockingInternal(owner, title, cancellation, effectiveAction)
+        }
+      },
+      projectRule.fixture.testRootDisposable,
+    )
+
+    val selectorInvocations = AtomicInteger(0)
+    val runOnLockFreeEdt = { block: () -> Unit ->
+      SwingUtilities.invokeAndWait {
+        (TransactionGuard.getInstance() as TransactionGuardImpl).performUserActivity { block() }
+      }
+    }
+
+    // 1. Cancelling during "Loading Signing Configurations..." returns cleanly without opening the selector.
+    cancelTitle = "Loading Signing Configurations..."
+    runOnLockFreeEdt {
+      val fix =
+        UnsignedApkQuickFix(module, "release", { callbackInvocations.incrementAndGet() }) {
+          selectorInvocations.incrementAndGet()
+          throw AssertionError("Selector should not be invoked when loading is cancelled")
+        }
+      quickFix = fix
+      fix.applyFix(DataContext.EMPTY_CONTEXT)
+    }
+    assertThat(selectorInvocations.get()).isEqualTo(0)
+    assertThat(syncResults).isEmpty()
+    assertThat(callbackInvocations.get()).isEqualTo(0)
+    assertThat(ReadAction.compute<String, RuntimeException> { VfsUtilCore.loadText(buildFile) }).isEqualTo(originalBuildFileText)
+
+    // 2. Cancelling during "Applying Signing Configuration..." returns cleanly without modifying build file or syncing.
+    cancelTitle = "Applying Signing Configuration..."
+    runOnLockFreeEdt {
+      val fix =
+        UnsignedApkQuickFix(module, "release", { callbackInvocations.incrementAndGet() }) { signingConfigs ->
+          selectorInvocations.incrementAndGet()
+          assertThat(signingConfigs).containsExactly("debug")
+          object : SigningConfigSelector {
+            override fun showAndGet() = true
+
+            override fun selectedConfig() = "debug"
+          }
+        }
+      quickFix = fix
+      fix.applyFix(DataContext.EMPTY_CONTEXT)
+    }
+    assertThat(selectorInvocations.get()).isEqualTo(1)
+    assertThat(syncResults).isEmpty()
+    assertThat(callbackInvocations.get()).isEqualTo(0)
+    assertThat(ReadAction.compute<String, RuntimeException> { VfsUtilCore.loadText(buildFile) }).isEqualTo(originalBuildFileText)
+
+    // 3. A genuinely missing Gradle build model still throws IllegalStateException rather than being treated as cancellation.
+    cancelTitle = null
+    WriteAction.runAndWait<IOException> { buildFile.delete(this) }
+    runOnLockFreeEdt {
+      val fix =
+        UnsignedApkQuickFix(module, "release", { callbackInvocations.incrementAndGet() }) {
+          throw AssertionError("Selector should not be invoked when build model is null")
+        }
+      quickFix = fix
+      val error = assertThrows(IllegalStateException::class.java) { fix.applyFix(DataContext.EMPTY_CONTEXT) }
+      assertThat(error).hasMessageThat().isEqualTo("Gradle build model should not be null for module: ${module.name}.")
+    }
+    assertThat(syncResults).isEmpty()
+    assertThat(callbackInvocations.get()).isEqualTo(0)
   }
 
   @Test

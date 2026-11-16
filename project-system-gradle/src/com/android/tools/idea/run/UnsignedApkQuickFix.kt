@@ -45,6 +45,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import java.awt.BorderLayout
 import java.awt.FlowLayout
+import java.util.concurrent.CancellationException
 import java.util.function.Consumer
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -87,10 +88,10 @@ constructor(
       computeInBackgroundReadAction(project, "Loading Signing Configurations...") {
         val buildModel =
           GradleModelProvider.getInstance().getProjectModel(project).getModuleBuildModel(module)
-            ?: return@computeInBackgroundReadAction null
+            ?: throw IllegalStateException("Gradle build model should not be null for module: ${module.name}.")
         val configNames = buildModel.android().signingConfigs().map { it.name() }
         Triple(buildModel, configNames, buildModel.modificationStamps())
-      } ?: throw IllegalStateException("Gradle build model should not be null for module: ${module.name}.")
+      } ?: return
 
     val signingConfigSelector = makeSigningConfigSelector(signingConfigNames)
     if (!signingConfigSelector.showAndGet()) return
@@ -204,9 +205,13 @@ class SigningConfigSelectorDialog(signingConfigs: Collection<String>) : DialogWr
 
 private const val DIALOG_TITLE = "Select Signing Config"
 
-private fun <T> computeInBackgroundReadAction(project: Project, title: String, action: () -> T): T {
+private fun <T> computeInBackgroundReadAction(project: Project, title: String, action: () -> T): T? {
   return if (ApplicationManager.getApplication().isDispatchThread) {
-    runWithModalProgressBlocking(project, title) { readAction(action) }
+    try {
+      runWithModalProgressBlocking(project, title) { readAction(action) }
+    } catch (_: CancellationException) {
+      null
+    }
   } else {
     ReadAction.compute<T, RuntimeException>(action)
   }
