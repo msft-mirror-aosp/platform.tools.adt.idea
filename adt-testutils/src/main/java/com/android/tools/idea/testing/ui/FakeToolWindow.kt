@@ -49,6 +49,7 @@ import java.awt.Component
 import java.awt.Container
 import java.awt.Dimension
 import java.beans.PropertyChangeSupport
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -417,6 +418,16 @@ class FakeContentManager : ToolWindowHeadlessManagerImpl.MockContentManager() {
       field = Component::class.java.getDeclaredField("objectLock")
       field.isAccessible = true
       field.set(mockDecorator, Any())
+      // The mock's constructor is not executed, so the AppContext has to be set explicitly. Without it JComponent.revalidate,
+      // which is called by ActionToolbarImpl when updating toolbars located inside the decorator, throws an NPE.
+      field = Component::class.java.getDeclaredField("appContext")
+      field.isAccessible = true
+      field.set(mockDecorator, Class.forName("sun.awt.AppContext").getMethod("getAppContext").invoke(null))
+      // Field initializers are not executed for the mock either. This field is used by JComponent.revalidate when it is called
+      // on a thread other than the EDT.
+      field = JComponent::class.java.getDeclaredField("revalidateRunnableScheduled")
+      field.isAccessible = true
+      field.set(mockDecorator, AtomicBoolean(false))
       field = InternalDecoratorImpl::class.java.getDeclaredField("contentUi")
       field.isAccessible = true
       field.set(mockDecorator, mock<ToolWindowContentUi>())
