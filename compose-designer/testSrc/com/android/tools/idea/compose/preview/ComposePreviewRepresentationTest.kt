@@ -938,11 +938,13 @@ class ComposePreviewRepresentationTest {
 
       // Simulate the initial surface resize from attaching the bottom panel, then verify manual zoom is preserved across subsequent resizes
       val designSurfaceZoomController = mainSurface.zoomController as DesignSurfaceZoomController
-      designSurfaceZoomController.notifyDesignSurfaceResized(width = 500, height = 500, isShowing = true)
-      designSurfaceZoomController.setScale(2.0)
-      assertThat(designSurfaceZoomController.scale).isEqualTo(2.0)
-      designSurfaceZoomController.notifyDesignSurfaceResized(width = 600, height = 600, isShowing = true)
-      assertThat(designSurfaceZoomController.scale).isEqualTo(2.0)
+      withContext(Dispatchers.EDT) {
+        designSurfaceZoomController.notifyDesignSurfaceResized(width = 500, height = 500, isShowing = true)
+        designSurfaceZoomController.setScale(2.0)
+        assertThat(designSurfaceZoomController.scale).isEqualTo(2.0)
+        designSurfaceZoomController.notifyDesignSurfaceResized(width = 600, height = 600, isShowing = true)
+        assertThat(designSurfaceZoomController.scale).isEqualTo(2.0)
+      }
     }
   }
 
