@@ -35,6 +35,7 @@ import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profiler.proto.Transport;
 import com.android.tools.profiler.proto.Transport.TimeRequest;
 import com.android.tools.profiler.proto.Transport.TimeResponse;
+import com.android.tools.profilers.FeatureConfig;
 import com.android.tools.profilers.IdeProfilerServices;
 import com.android.tools.profilers.InterimStage;
 import com.android.tools.profilers.LogUtils;
@@ -44,6 +45,7 @@ import com.android.tools.profilers.RecordingOption;
 import com.android.tools.profilers.RecordingOptionsModel;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.SupportLevel;
+import com.android.tools.profilers.TraceDeobfuscator;
 import com.android.tools.profilers.cpu.CpuCapture;
 import com.android.tools.profilers.memory.adapters.CaptureObject;
 import com.android.tools.profilers.memory.adapters.HeapDumpCaptureObject;
@@ -60,10 +62,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -896,10 +896,10 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
             if (!response.getFilePath().isEmpty()) {
               File originalFile = new File(response.getFilePath());
               File processedFile = originalFile;
-              if (capture instanceof NativeAllocationSampleCaptureObject &&
-                  profilers.getIdeServices().getFeatureConfig().isDeobfuscationForNativeAllocationsEnabled()) {
-                processedFile = deobfuscateNativeAllocationTrace(
-                  originalFile, ((NativeAllocationSampleCaptureObject)capture).getAppName(), deviceSerial);
+              TraceDeobfuscation deobfuscation = getTraceDeobfuscation(capture);
+              if (deobfuscation != null) {
+                processedFile = TraceDeobfuscator.deobfuscate(profilers.getIdeServices(), originalFile, deobfuscation.appName(),
+                                                              deviceSerial, deobfuscation.withNativeSymbols());
               }
               file = ProfilerCaptureFileUtils.renameToTargetFile(processedFile, traceFileName);
               if (file == null) {
@@ -951,40 +951,21 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
     }
   }
 
-  @NotNull
-  private File deobfuscateNativeAllocationTrace(@NotNull File originalFile,
-                                                @NotNull String appName,
-                                                @NotNull String deviceSerial) {
-    if (originalFile.length() == 0) {
-      return originalFile;
-    }
-    List<String> symbolDirs = getStudioProfilers().getIdeServices().getNativeSymbolsDirectories();
-    Map<String, String> proguardMaps = resolveProguardMapForApp(appName, deviceSerial);
-    if (symbolDirs.isEmpty() && proguardMaps.isEmpty()) {
-      return originalFile;
-    }
-    File bundledFile = getStudioProfilers().getIdeServices().symbolizeAndDeobfuscateTrace(originalFile, symbolDirs, proguardMaps);
-    return bundledFile != null ? bundledFile : originalFile;
-  }
+  /** Whose R8 mapping a recorded trace needs, and whether it also needs native symbols. */
+  private record TraceDeobfuscation(@NotNull String appName, boolean withNativeSymbols) {}
 
   /**
-   * Resolves the Proguard/R8 mapping file for the given process name. The prefix before ':' is
-   * used as the package name, so lookups for custom (global) process names or apps not deployed by
-   * Android Studio with minification enabled will miss and return an empty map.
+   * Returns what {@code capture}'s trace needs added before it opens, or null if it opens as recorded. To deobfuscate another kind of
+   * capture, add a case here.
    */
-  @NotNull
-  private Map<String, String> resolveProguardMapForApp(@NotNull String appName, @NotNull String deviceSerial) {
-    String packageName = appName.split(":", 2)[0];
-    if (!packageName.isEmpty() && !deviceSerial.isEmpty()) {
-      String mappingPath =
-        getStudioProfilers().getIdeServices().getProguardMappingForApp(deviceSerial, packageName);
-      if (mappingPath != null) {
-        return Collections.singletonMap(packageName, mappingPath);
-      }
-      getLogger().info(
-        "Skipping R8 deobfuscation for " + packageName + " on device '" + deviceSerial + "': no Studio-deployed obfuscated mapping found.");
+  @Nullable
+  private TraceDeobfuscation getTraceDeobfuscation(@NotNull CaptureObject capture) {
+    FeatureConfig featureConfig = getStudioProfilers().getIdeServices().getFeatureConfig();
+    if (capture instanceof NativeAllocationSampleCaptureObject nativeAllocations &&
+        featureConfig.isDeobfuscationForNativeAllocationsEnabled()) {
+      return new TraceDeobfuscation(nativeAllocations.getAppName(), true);
     }
-    return Collections.emptyMap();
+    return null;
   }
 
   @NotNull
