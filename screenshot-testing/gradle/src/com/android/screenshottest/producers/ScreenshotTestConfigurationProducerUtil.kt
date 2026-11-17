@@ -53,8 +53,9 @@ private fun String.capitalize(): String = replaceFirstChar {
   if (it.isLowerCase()) it.titlecase(Locale.US) else it.toString()
 }
 
-/** Returns the test suites of this model that run Compose Preview screenshot tests. */
-private fun GradleAndroidModel.getScreenshotTestSuites(): List<IdeTestSuite> = testSuites.filter { it.isScreenshotTestSuite() }
+/** Returns the test suites of this model that run Compose Preview screenshot tests and target the selected variant. */
+private fun GradleAndroidModel.getScreenshotTestSuites(): List<IdeTestSuite> =
+  testSuites.filter { it.isScreenshotTestSuite() && selectedVariantName in it.targetedVariants }
 
 /**
  * Returns the test suites in [screenshotSuites] that [virtualFile] in [module] belongs to: the test suite of [module] if it is a test suite
@@ -86,7 +87,7 @@ private fun findMatchingScreenshotTestSuites(
  * Checks if the given location belongs to screenshot test source set. It verifies if the virtual file associated with the location either
  * - is contained within the screenshot test or generated screenshot test source roots, or
  * - contains the screenshot test or generated screenshot test source sets, or
- * - belongs to a screenshot test suite.
+ * - belongs to a screenshot test suite of the selected variant.
  *
  * Without the legacy screenshot plugin, screenshot tests can only run through screenshot test suites, so this returns `false` if the module
  * has neither (see [getScreenshotTestTaskNames]).
@@ -132,7 +133,7 @@ fun isLegacyScreenshotPluginApplied(module: Module): Boolean {
  *
  * @param context The configuration context.
  * @return A list of Strings containing the screenshot test task name(s), or `null` if required information is missing or, without the
- *   legacy screenshot plugin, if the model has no screenshot test suite.
+ *   legacy screenshot plugin, if the model has no screenshot test suite for the selected variant.
  */
 fun getScreenshotTestTaskNames(context: ConfigurationContext): List<String>? {
   val myModule = AndroidUtils.getAndroidModule(context) ?: return null

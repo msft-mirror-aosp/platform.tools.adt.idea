@@ -997,8 +997,19 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
   fun testNoConfigurationWithoutLegacyPluginAndScreenshotTestSuites() {
     setModuleTasks(emptyList(), hasComposeScreenshotPlugin = false)
     setScreenshotTestSuites(emptyList())
-    val project = projectRule.project
+    assertNoScreenshotTestConfiguration()
+  }
 
+  @Test
+  fun testNoConfigurationForScreenshotTestSuiteOfOtherVariant() {
+    setModuleTasks(emptyList(), hasComposeScreenshotPlugin = false)
+    // The selected variant is debug, so the screenshot test suite has no task to run.
+    setScreenshotTestSuites(listOf(createScreenshotTestSuite().copy(targetedVariants = listOf("release"))))
+    assertNoScreenshotTestConfiguration()
+  }
+
+  private fun assertNoScreenshotTestConfiguration() {
+    val project = projectRule.project
     Assert.assertNull(createAndroidGradleTestConfigurationFromClass(project, "com.example.application.MyScreenshotTest"))
     Assert.assertNull(createAndroidGradleTestConfigurationFromMethod(project, "com.example.application.MyScreenshotTest", "PreviewMethod"))
     for (directory in listOf("app", "app/src", "app/src/screenshotTest/java", "app/src/screenshotTest/java/com/example")) {
