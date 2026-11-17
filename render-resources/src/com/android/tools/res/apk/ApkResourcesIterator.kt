@@ -24,12 +24,17 @@ import com.google.devrel.gmscore.tools.apk.arsc.ResourceIdentifier
 import com.google.devrel.gmscore.tools.apk.arsc.ResourceTableChunk
 import java.util.zip.ZipFile
 
-internal fun forEveryResource(apkPath: String, processor: ResourceEntryProcessor) {
+internal fun forEveryResource(
+  apkPath: String,
+  onPackages: (Set<Int>) -> Unit = {},
+  processor: ResourceEntryProcessor,
+) {
   ZipFile(apkPath).use { zipFile ->
     val zipEntry = zipFile.getEntry("resources.arsc") ?: return@use
     val resourceFile = ResourceFile.fromInputStream(zipFile.getInputStream(zipEntry))
     (resourceFile.chunks.firstOrNull() as? ResourceTableChunk)?.let { resourceTable ->
       val stringPool = resourceTable.stringPool
+      onPackages(resourceTable.packages.mapTo(HashSet()) { it.id })
       for (pkg in resourceTable.packages) {
         for (typeSpec in pkg.typeSpecChunks) {
           val resType = ResourceType.fromXmlTagName(typeSpec.typeName)!!

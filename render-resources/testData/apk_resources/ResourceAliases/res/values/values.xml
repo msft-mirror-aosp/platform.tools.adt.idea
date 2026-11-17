@@ -30,4 +30,35 @@
   </plurals>
   <item name="aliasPlurals" type="plurals">@plurals/basePlurals</item>
   <item name="emptyPlurals" type="plurals" />
+
+  <!-- Framework references (0x01xxxxxx) for testing unresolved external-package fallbacks. -->
+  <item name="frameworkAliasAttr" type="attr">@android:attr/textColor</item>
+  <item name="frameworkAliasStyle" type="style">@android:style/TextAppearance</item>
+  <item name="frameworkAliasString" type="string">@android:string/ok</item>
+
+  <array name="frameworkRefArray">
+    <item>@android:string/ok</item>
+    <item>@android:string/cancel</item>
+  </array>
+
+  <plurals name="frameworkRefPlurals">
+    <item quantity="one">@android:string/ok</item>
+    <item quantity="other">@android:string/cancel</item>
+  </plurals>
+
+  <style name="ParentWithTextColor">
+    <item name="android:textColor">#FF112233</item>
+    <item name="android:textColorHint">#FF445566</item>
+  </style>
+  <style name="ChildWithFrameworkItems" parent="ParentWithTextColor">
+    <item name="android:textColor">@android:color/white</item>
+    <item name="android:textColorHint">?android:attr/textColorPrimary</item>
+    <item name="android:enabled">true</item>
+    <item name="android:textColorLink">#FF778899</item>
+  </style>
+
+  <style name="Dotted" />
+  <style name="Dotted.FrameworkParent" parent="@android:style/TextAppearance">
+    <item name="android:textColorLink">#FF778899</item>
+  </style>
 </resources>

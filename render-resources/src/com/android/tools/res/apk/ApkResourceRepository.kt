@@ -31,6 +31,7 @@ import com.android.ide.common.resources.ResourceVisitor
 import com.android.ide.common.resources.SingleNamespaceResourceRepository
 import com.android.resources.ResourceType
 import com.android.tools.apk.analyzer.BinaryXmlParser
+import com.android.tools.environment.Logger
 import com.android.tools.res.CacheableResourceRepository
 import com.google.common.collect.ArrayListMultimap
 import com.google.common.collect.ListMultimap
@@ -46,14 +47,35 @@ class ApkResourceRepository(apkPath: String, private val resourceIdResolver: (In
   private val resourceMap = EnumMap<ResourceType, ListMultimap<String, ResourceItem>>(ResourceType::class.java)
 
   init {
-    forEveryResource(apkPath) { stringPool, resType, folderConfig, _, typeChunkEntry ->
+    val unresolvedSamples = mutableListOf<String>()
+    var unresolvedCount = 0
+    val onUnresolved: (ResourceReference, Int) -> Unit = { resRef, resId ->
+      unresolvedCount++
+      if (unresolvedSamples.size < MAX_UNRESOLVED_SAMPLES) {
+        val hexId = Integer.toHexString(resId).padStart(8, '0')
+        unresolvedSamples.add("0x$hexId in ${resRef.resourceUrl}")
+      }
+    }
+    var declaredPackageIds: Set<Int> = emptySet()
+    forEveryResource(apkPath, onPackages = { declaredPackageIds = it }) { stringPool, resType, folderConfig, _, typeChunkEntry ->
       val name = typeChunkEntry.key()
       val resRef = ResourceReference(ResourceNamespace.RES_AUTO, resType, name)
-      val resValue = typeChunkEntry.createResValue(resRef, apkPath, stringPool) { resId -> resourceIdResolver.invoke(resId) }
+      val resValue =
+        typeChunkEntry.createResValue(resRef, apkPath, stringPool, declaredPackageIds, onUnresolved) { resId ->
+          resourceIdResolver.invoke(resId)
+        }
 
       val resourceItem = ApkResourceItem(resRef, folderConfig, resValue)
 
       resourceMap.computeIfAbsent(resType) { ArrayListMultimap.create() }.put(name, resourceItem)
+    }
+    if (unresolvedCount > 0) {
+      val suffix = if (unresolvedCount > unresolvedSamples.size) ", ..." else ""
+      Logger.getInstance(ApkResourceRepository::class.java)
+        .warn(
+          "Could not resolve $unresolvedCount resource reference(s) while loading $apkPath " +
+            "(${unresolvedSamples.joinToString(", ")}$suffix); skipped or substituted fallback values."
+        )
     }
   }
 
@@ -101,6 +123,8 @@ private const val ATTR_MANY = 0x01000009
 private val PLURALS_NAMES =
   mapOf(ATTR_OTHER to "other", ATTR_ZERO to "zero", ATTR_ONE to "one", ATTR_TWO to "two", ATTR_FEW to "few", ATTR_MANY to "many")
 
+private const val MAX_UNRESOLVED_SAMPLES = 10
+
 /**
  * Converts a binary resource table entry into a [ResourceValue].
  *
@@ -114,16 +138,33 @@ private val PLURALS_NAMES =
  * Simple entries are represented as a plain [ResourceValueImpl] whose value is the (reference) value of the entry, regardless of the
  * resource type. This matches the runtime behavior of the framework (AssetManager2 treats such entries as values, not bags, and follows
  * alias references during reference resolution). See [createSimpleResValue] for the exceptions to this rule.
+ *
+ * References to package IDs not in [declaredPackageIds] can remain unresolvable by [resLookUp] even with an up-to-date Layoutlib:
+ * * Private framework IDs (`@*android:...`, `0x01xxxxxx`) that shift across platform builds (not pinned in `public.xml`) or are stripped
+ *   from `com.android.internal.R` by AAPT.
+ * * Shared or OEM library packages (`0x02..0x7e`) referenced by the APK but not packaged inside its `resources.arsc`.
+ * * Newer `compileSdk` public framework IDs when running against an older bundled Layoutlib.
+ *
+ * Note that shifted private framework IDs colliding with an existing ID in `layoutlib.jar` will still resolve to the wrong resource rather
+ * than hitting this fallback.
+ *
+ * When such an external ID cannot be resolved, [onUnresolved] is invoked and the entry degrades without aborting loading of the repository:
+ * unresolved style parents fall back to `""` (avoiding dot-in-name parent inference), style items with an unresolved attribute key or value
+ * are skipped (preserving parent style/theme inheritance), array and plural items degrade to `@null` (preserving array index alignment),
+ * and simple entries degrade per [createSimpleResValue]. Unresolved IDs whose package ID is in [declaredPackageIds] still throw so a
+ * misconfigured [resLookUp] (for example, omitting `loadApkResources`) fails fast.
  */
 internal fun TypeChunk.Entry.createResValue(
   resRef: ResourceReference,
   apkPath: String,
   stringPool: StringPoolChunk,
+  declaredPackageIds: Set<Int> = emptySet(),
+  onUnresolved: (ResourceReference, Int) -> Unit = { _, _ -> },
   resLookUp: (Int) -> ResourceReference?,
 ): ResourceValue {
   if (!this.isComplex) {
     val binResVal = this.value() ?: throw IllegalArgumentException("Unexpected null value for ${resRef.resourceType}")
-    return createSimpleResValue(resRef, binResVal, apkPath, stringPool, resLookUp)
+    return createSimpleResValue(resRef, binResVal, apkPath, stringPool, declaredPackageIds, onUnresolved, resLookUp)
   }
   return when (resRef.resourceType) {
     // Following logic in frameworks/base/tools/aapt2/format/binary/ResEntryWriter.cpp
@@ -136,17 +177,42 @@ internal fun TypeChunk.Entry.createResValue(
       attrValue
     }
     ResourceType.STYLE -> {
+      val parentId = this.parentEntry()
       val parentStyle =
-        if (this.parentEntry() != 0) {
-          resLookUp(this.parentEntry())?.getQualifiedName()
+        if (parentId != 0) {
+          val resolvedParent = resLookUp(parentId)?.qualifiedName
+          if (resolvedParent != null) {
+            resolvedParent
+          } else if (isExternalResourceId(parentId, declaredPackageIds)) {
+            onUnresolved(resRef, parentId)
+            ""
+          } else {
+            throw UnresolvedResourceIdException(parentId)
+          }
         } else {
           ""
         }
       val styleValue = StyleResourceValueImpl(resRef, parentStyle, null)
       this.values().forEach { (i, v) ->
-        val itemName = resLookUp(i)?.qualifiedName ?: "$i"
-        val itemVal = formatVal(v, stringPool, resLookUp)
-        styleValue.addItem(StyleItemResourceValueImpl(resRef.namespace, itemName, itemVal, null))
+        val attrRef = resLookUp(i)
+        if (attrRef == null) {
+          if (isExternalResourceId(i, declaredPackageIds)) {
+            onUnresolved(resRef, i)
+            return@forEach
+          }
+          throw UnresolvedResourceIdException(i)
+        }
+        val itemVal =
+          try {
+            formatVal(v, stringPool, resLookUp)
+          } catch (e: UnresolvedResourceIdException) {
+            if (isExternalResourceId(e.resId, declaredPackageIds)) {
+              onUnresolved(resRef, e.resId)
+              return@forEach
+            }
+            throw e
+          }
+        styleValue.addItem(StyleItemResourceValueImpl(resRef.namespace, attrRef.qualifiedName, itemVal, null))
       }
       styleValue
     }
@@ -154,15 +220,15 @@ internal fun TypeChunk.Entry.createResValue(
       val pluralsValue = PluralsResourceValueImpl(resRef, null, null)
       this.values().forEach { (i, v) ->
         val itemQuantity = PLURALS_NAMES[i] ?: throw IllegalArgumentException("Unknown quantity $i for plural")
-        val itemVal = formatVal(v, stringPool, resLookUp)
+        val itemVal = formatValOrFallback(resRef, v, stringPool, declaredPackageIds, onUnresolved, resLookUp)
         pluralsValue.addPlural(itemQuantity, itemVal)
       }
       pluralsValue
     }
     ResourceType.ARRAY -> {
       val arrayValue = ArrayResourceValueImpl(resRef, null)
-      this.values().forEach { (i, v) ->
-        val itemVal = formatVal(v, stringPool, resLookUp)
+      this.values().forEach { (_, v) ->
+        val itemVal = formatValOrFallback(resRef, v, stringPool, declaredPackageIds, onUnresolved, resLookUp)
         arrayValue.addElement(itemVal)
       }
       arrayValue
@@ -178,14 +244,17 @@ internal fun TypeChunk.Entry.createResValue(
  *   [StyleResourceValueImpl] without parent and items. On a device, both such an entry and an empty `<style>` contribute nothing when used
  *   as a style or a theme, while callers resolving style resource ids (e.g. layoutlib's `Resources.Theme.applyStyle`) expect a
  *   [com.android.ide.common.rendering.api.StyleResourceValue] and would fail on a plain `@null` value.
- * * An [ResourceType.ATTR] alias to a resource that can not be resolved (e.g. a framework attribute unknown to [resLookUp], or a resource
- *   of another package) is represented as an empty [AttrResourceValueImpl] instead of failing the loading of the whole repository.
+ * * An unresolved reference to a package ID not in [declaredPackageIds] falls back without failing the loading of the whole repository:
+ *   [ResourceType.ATTR] degrades to an empty [AttrResourceValueImpl], [ResourceType.STYLE] degrades to an empty [StyleResourceValueImpl],
+ *   and all other types degrade to `@null`. Unresolved references within [declaredPackageIds] still throw.
  */
 private fun createSimpleResValue(
   resRef: ResourceReference,
   binResVal: BinaryResourceValue,
   apkPath: String,
   stringPool: StringPoolChunk,
+  declaredPackageIds: Set<Int>,
+  onUnresolved: (ResourceReference, Int) -> Unit,
   resLookUp: (Int) -> ResourceReference?,
 ): ResourceValue {
   if (resRef.resourceType == ResourceType.STYLE && binResVal.isNullOrEmpty()) {
@@ -195,8 +264,13 @@ private fun createSimpleResValue(
     try {
       formatVal(binResVal, stringPool, resLookUp)
     } catch (e: UnresolvedResourceIdException) {
-      if (resRef.resourceType == ResourceType.ATTR) return AttrResourceValueImpl(resRef, null)
-      throw e
+      if (!isExternalResourceId(e.resId, declaredPackageIds)) throw e
+      onUnresolved(resRef, e.resId)
+      return when (resRef.resourceType) {
+        ResourceType.ATTR -> AttrResourceValueImpl(resRef, null)
+        ResourceType.STYLE -> StyleResourceValueImpl(resRef, "", null)
+        else -> ResourceValueImpl(resRef, "@null")
+      }
     }
   return ResourceValueImpl(resRef, convertToApkRefIfNeeded(value, resRef.resourceType, apkPath))
 }
@@ -210,7 +284,25 @@ private fun BinaryResourceValue.isNullOrEmpty(): Boolean =
     else -> false
   }
 
-private class UnresolvedResourceIdException(resId: Int) : IllegalArgumentException("Could not resolve resource id $resId")
+private fun isExternalResourceId(resId: Int, declaredPackageIds: Set<Int>): Boolean = (resId ushr 24) !in declaredPackageIds
+
+private class UnresolvedResourceIdException(val resId: Int) : IllegalArgumentException("Could not resolve resource id $resId")
+
+private fun formatValOrFallback(
+  resRef: ResourceReference,
+  binResVal: BinaryResourceValue,
+  stringPool: StringPoolChunk,
+  declaredPackageIds: Set<Int>,
+  onUnresolved: (ResourceReference, Int) -> Unit,
+  resLookUp: (Int) -> ResourceReference?,
+): String =
+  try {
+    formatVal(binResVal, stringPool, resLookUp)
+  } catch (e: UnresolvedResourceIdException) {
+    if (!isExternalResourceId(e.resId, declaredPackageIds)) throw e
+    onUnresolved(resRef, e.resId)
+    "@null"
+  }
 
 private fun formatVal(binResVal: BinaryResourceValue, stringPool: StringPoolChunk, resLookUp: (Int) -> ResourceReference?): String {
   return BinaryXmlParser.formatValue(binResVal, stringPool) { resId ->
