@@ -135,8 +135,6 @@ public abstract class AbstractDeployTask {
     AdbSession adbSession = AdbLibService.getSession(myProject);
     AdbClient adb = new AdbClient(deviceHolder, logger, adbSession);
 
-    AdbHelper.setAbbExecAllowed(StudioFlags.DDMLIB_ABB_EXEC_INSTALL_ENABLE.get());
-
     AdbInstaller.Mode adbInstallerMode = AdbInstaller.Mode.DAEMON;
     Installer installer = new AdbInstaller(
       LocalInstallerPathManager.getLocalInstaller(), adb, metrics.getDeployMetrics(), logger, adbInstallerMode
