@@ -27,6 +27,7 @@ import com.android.sdklib.SystemImageTags
 import com.android.sdklib.deviceprovisioner.AbstractAvdScanner
 import com.android.sdklib.deviceprovisioner.AvdDeviceError
 import com.android.sdklib.deviceprovisioner.DeviceAction
+import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProvisioner
@@ -72,6 +73,7 @@ import javax.swing.Icon
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
+import kotlin.test.assertFailsWith
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancel
@@ -266,16 +268,35 @@ class StudioLocalEmulatorProvisionerPluginTest {
 
     yieldUntil { provisioner.devices.value.size == 1 }
 
-    val handle = provisioner.devices.value[0]
-    val activationAction = handle.activationAction!!
+    val handle = provisioner.devices.value[0] as StudioLocalEmulatorDeviceHandle
+    val activationAction = handle.activationAction
 
     activationAction.presentation.first { it.enabled }
+    assertThat(activationAction.presentation.value.detail).isNull()
 
     avdManager.avds[0] = avdManager.makeAvdInfo(1, avdStatus = AvdStatus.ERROR_IMAGE_MISSING)
     plugin.refreshDevices()
 
-    // The action should become disabled.
-    yieldUntil { activationAction.presentation.value.enabled == false }
+    // The action should become disabled with the error message as detail.
+    yieldUntil { !activationAction.presentation.value.enabled }
+    assertThat(activationAction.presentation.value.detail).isEqualTo("System image missing in configuration")
+
+    val errorException = assertFailsWith<DeviceActionException> { handle.activate() }
+    assertThat(errorException.message).isEqualTo("Unable to launch Fake Device 1: System image missing in configuration")
+
+    // Restore OK status and start the AVD; activation should be disabled with no detail.
+    val okAvdInfo = avdManager.makeAvdInfo(1, avdStatus = AvdStatus.OK)
+    avdManager.avds[0] = okAvdInfo
+    plugin.refreshDevices()
+    yieldUntil { activationAction.presentation.value.enabled }
+    assertThat(activationAction.presentation.value.detail).isNull()
+
+    avdManager.startAvd(okAvdInfo, QuickBoot)
+    yieldUntil { !activationAction.presentation.value.enabled }
+    assertThat(activationAction.presentation.value.detail).isNull()
+
+    val runningException = assertFailsWith<DeviceActionException> { handle.activate() }
+    assertThat(runningException.message).isEqualTo("Unable to launch Fake Device 1.")
   }
 
   @Test

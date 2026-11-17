@@ -285,6 +285,11 @@ class StudioLocalEmulatorDeviceHandle(
     forceLaunchInToolWindow: Boolean,
     bootMode: BootMode?,
   ) {
+    val activationPresentation = activationAction.presentation.value
+    if (!activationPresentation.enabled) {
+      val reason = activationPresentation.detail?.let { ": $it" } ?: "."
+      throw DeviceActionException("Unable to launch ${state.properties.title}$reason")
+    }
     val effectiveProject = project ?: this.project
     val resolvedBootMode = bootMode ?: BootMode.fromProperties(avdInfo.properties)
     val action: suspend () -> Unit = {
@@ -731,9 +736,16 @@ class StudioLocalEmulatorDeviceHandle(
 
   private fun DeviceAction.Presentation.enabledIfStopped() = enabledIf { it.isStopped() }
 
-  private fun DeviceAction.Presentation.enabledIfActivatable() = enabledIf {
-    it.isStopped() && it.error?.severity != DeviceError.Severity.ERROR
-  }
+  private fun DeviceAction.Presentation.enabledIfActivatable() =
+    stateFlow
+      .map { state ->
+        when {
+          !state.isStopped() -> this.copy(enabled = false)
+          state.error?.severity == DeviceError.Severity.ERROR -> this.copy(enabled = false, detail = state.error?.message)
+          else -> this.copy(enabled = true)
+        }
+      }
+      .stateIn(scope, SharingStarted.Eagerly, this)
 }
 
 /** How a system image install in each phase is described on the device it belongs to. */
