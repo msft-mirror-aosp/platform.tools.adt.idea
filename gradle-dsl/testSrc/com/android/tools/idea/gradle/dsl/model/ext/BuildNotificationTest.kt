@@ -22,11 +22,14 @@ import com.android.tools.idea.gradle.dsl.TestFileNameImpl.BUILD_NOTIFICATION_NO_
 import com.android.tools.idea.gradle.dsl.TestFileNameImpl.BUILD_NOTIFICATION_NO_PROPERTY_PLACEMENT_NOTIFICATION_EXPECTED
 import com.android.tools.idea.gradle.dsl.TestFileNameImpl.BUILD_NOTIFICATION_PROPERTY_PLACEMENT_NOTIFICATION
 import com.android.tools.idea.gradle.dsl.api.BuildModelNotification.NotificationType.INCOMPLETE_PARSE
+import com.android.tools.idea.gradle.dsl.api.BuildModelNotification.NotificationType.INVALID_EXPRESSION
+import com.android.tools.idea.gradle.dsl.api.ext.RawText
 import com.android.tools.idea.gradle.dsl.api.ext.ReferenceTo
 import com.android.tools.idea.gradle.dsl.model.GradleFileModelTestCase
 import com.android.tools.idea.gradle.dsl.model.notifications.PropertyPlacementNotification
 import org.hamcrest.CoreMatchers.equalTo
 import org.hamcrest.MatcherAssert.assertThat
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class BuildNotificationTest : GradleFileModelTestCase() {
@@ -123,5 +126,22 @@ class BuildNotificationTest : GradleFileModelTestCase() {
     verifyFileContents(myBuildFile, BUILD_NOTIFICATION_NO_PROPERTY_PLACEMENT_NOTIFICATION_EXPECTED)
 
     assertNull(buildModel.notifications[myBuildFile.path])
+  }
+
+  @Test
+  fun testInvalidExpressionNotification() {
+    // Only the Groovy parser raises this notification: the Kotlin parser's createLiteral never throws.
+    assumeTrue("relies on Groovy rejecting text that is not an expression", isGroovy)
+    writeToBuildFile(BUILD_NOTIFICATION_NO_PROPERTY_PLACEMENT_NOTIFICATION)
+    val buildModel = gradleBuildModel
+
+    buildModel.ext().findProperty("hello").setValue(RawText("", ""))
+
+    val notifications = buildModel.notifications[myBuildFile.path]!!
+    assertSize(1, notifications)
+    val notification = notifications[0]
+    assertFalse(notification.isCorrectionAvailable)
+    assertThat(notification.type, equalTo(INVALID_EXPRESSION))
+    assertThat(notification.toString(), equalTo("Found errors:\n\tincorrect expression = ''\n\n"))
   }
 }
