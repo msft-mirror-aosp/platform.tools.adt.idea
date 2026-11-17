@@ -45,6 +45,8 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType;
 import com.android.tools.profilers.cpu.config.SimpleperfConfiguration;
 import com.android.tools.profilers.sessions.SessionsManager;
 import com.android.tools.profilers.tasks.analytics.TaskTracker;
+import com.android.tools.profilers.utils.ProfilerHashUtils;
+import com.intellij.openapi.util.io.FileUtil;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -54,6 +56,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -87,6 +90,18 @@ public final class CpuProfilerStageTest extends AspectObserver {
     myStage = new CpuProfilerStage(profilers);
     myStage.getStudioProfilers().setStage(myStage);
     ProfilersTestData.populateThreadData(myTransportService, ProfilersTestData.SESSION_DATA.getStreamId());
+  }
+
+  /** Deletes the recording that the test opened in the editor, and its metadata file, from the shared temp directory. */
+  @After
+  public void deleteOpenedFile() {
+    File openedFile = myServices.getOpenedFile();
+    if (openedFile != null) {
+      String metadataFileName =
+        FileUtil.getNameWithoutExtension(openedFile) + "-" + ProfilerHashUtils.hashTracePath(openedFile) + ".metadata";
+      FileUtil.delete(openedFile);
+      FileUtil.delete(new File(FileUtil.getTempDirectory(), metadataFileName));
+    }
   }
 
   @Test
