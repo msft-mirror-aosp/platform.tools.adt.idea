@@ -22,6 +22,7 @@ import com.android.tools.profilers.ProfilerCaptureFileUtils;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.sessions.SessionArtifact;
 import com.android.tools.profilers.sessions.SessionsManager;
+import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.util.containers.ContainerUtil;
@@ -77,7 +78,7 @@ public class HeapProfdSessionArtifact extends MemorySessionArtifact<Trace.TraceI
   @NotNull
   @Override
   public String getExportableName() {
-    return MemoryProfiler.generateCaptureFileName();
+    return ProfilerCaptureFileUtils.getExportFileName(ProfilerTaskType.NATIVE_ALLOCATIONS);
   }
 
   @NotNull

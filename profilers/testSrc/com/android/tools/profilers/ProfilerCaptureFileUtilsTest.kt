@@ -15,11 +15,17 @@
  */
 package com.android.tools.profilers
 
+import com.android.tools.profiler.proto.Common
+import com.android.tools.profiler.proto.Trace
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.io.FileUtil
 import java.io.File
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.util.concurrent.TimeUnit
 import org.junit.Before
 import org.junit.Test
+import perfetto.protos.PerfettoConfig
 
 class ProfilerCaptureFileUtilsTest {
 
@@ -49,19 +55,53 @@ class ProfilerCaptureFileUtilsTest {
   }
 
   @Test
-  fun testGetTraceFile() {
-    val tempDir = FileUtil.getTempDirectory()
-    val expectedFile = File(tempDir, "capture_98765.trace")
-    val resultFile = ProfilerCaptureFileUtils.getTraceFile(98765L)
-    assertThat(resultFile.absolutePath).isEqualTo(expectedFile.absolutePath)
-  }
-
-  @Test
   fun testGetCaptureFile() {
     val tempDir = FileUtil.getTempDirectory()
     val expectedFile = File(tempDir, "memory_test_capture.hprof")
     val resultFile = ProfilerCaptureFileUtils.getCaptureFile("memory_test_capture.hprof")
 
     assertThat(resultFile.absolutePath).isEqualTo(expectedFile.absolutePath)
+  }
+
+  @Test
+  fun recordingStartIsTheSessionStartWhenTheCaptureOffsetIsOutOfRange() {
+    val beforeSession = SESSION.startTimestamp - TimeUnit.SECONDS.toNanos(1)
+    val twoDaysIn = SESSION.startTimestamp + TimeUnit.DAYS.toNanos(2)
+
+    assertThat(ProfilerCaptureFileUtils.getRecordingStartEpochMs(SESSION, SESSION_METADATA, beforeSession))
+      .isEqualTo(SESSION_START_EPOCH_MS)
+    assertThat(ProfilerCaptureFileUtils.getRecordingStartEpochMs(SESSION, SESSION_METADATA, twoDaysIn)).isEqualTo(SESSION_START_EPOCH_MS)
+  }
+
+  @Test
+  fun recordingStartIsTheCaptureTimestampWhenTheSessionStartIsUnknown() {
+    val captureStartNs = TimeUnit.SECONDS.toNanos(5)
+
+    assertThat(ProfilerCaptureFileUtils.getRecordingStartEpochMs(SESSION, null, captureStartNs)).isEqualTo(5_000)
+    assertThat(ProfilerCaptureFileUtils.getRecordingStartEpochMs(SESSION, Common.SessionMetaData.getDefaultInstance(), captureStartNs))
+      .isEqualTo(5_000)
+  }
+
+  @Test
+  fun cpuRecordingFileIsNamedAfterItsTaskAndStartTime() {
+    val systemTrace =
+      Trace.TraceInfo.newBuilder()
+        .setFromTimestamp(SESSION.startTimestamp + TimeUnit.SECONDS.toNanos(3))
+        .setConfiguration(Trace.TraceConfiguration.newBuilder().setPerfettoOptions(PerfettoConfig.TraceConfig.getDefaultInstance()))
+        .build()
+
+    // The trace started 3 seconds into the session, at 14:15:56.
+    assertThat(ProfilerCaptureFileUtils.getCpuRecordingFile(SESSION, SESSION_METADATA, systemTrace))
+      .isEqualTo(ProfilerCaptureFileUtils.getCaptureFile("system-trace-20261116T141556.trace"))
+  }
+
+  private companion object {
+    /** The session starts on 16 Nov 2026 at 14:15:53 in the system time zone, so the expected names don't depend on where the test runs. */
+    val SESSION_START_EPOCH_MS = LocalDateTime.of(2026, 11, 16, 14, 15, 53).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+
+    val SESSION: Common.Session = Common.Session.newBuilder().setSessionId(1).setStartTimestamp(TimeUnit.SECONDS.toNanos(100)).build()
+
+    val SESSION_METADATA: Common.SessionMetaData =
+      Common.SessionMetaData.newBuilder().setSessionId(1).setStartTimestampEpochMs(SESSION_START_EPOCH_MS).build()
   }
 }

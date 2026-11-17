@@ -21,14 +21,14 @@ import com.android.tools.profiler.proto.Common.SessionMetaData
 import com.android.tools.profiler.proto.LeakCanary
 import com.android.tools.profiler.proto.Transport
 import com.android.tools.profilers.ExportableArtifact
+import com.android.tools.profilers.ProfilerCaptureFileUtils
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.sessions.SessionArtifact
+import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.intellij.openapi.diagnostic.Logger
 import java.io.File
 import java.io.IOException
 import java.io.OutputStream
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 class LeakCanarySessionArtifact(
   override val profilers: StudioProfilers,
@@ -51,7 +51,7 @@ class LeakCanarySessionArtifact(
     get() = !isOngoing
 
   override val exportableName: String
-    get() = "leakcanary-${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"))}"
+    get() = ProfilerCaptureFileUtils.getExportFileName(ProfilerTaskType.LEAKCANARY)
 
   override val exportExtension: String
     get() = "asdb"

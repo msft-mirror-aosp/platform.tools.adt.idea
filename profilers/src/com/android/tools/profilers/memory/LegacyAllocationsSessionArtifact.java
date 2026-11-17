@@ -22,8 +22,10 @@ import com.android.tools.adtui.model.formatter.TimeFormatter;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Memory;
 import com.android.tools.profilers.ExportableArtifact;
+import com.android.tools.profilers.ProfilerCaptureFileUtils;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.sessions.SessionArtifact;
+import com.android.tools.profilers.tasks.ProfilerTaskType;
 import java.io.OutputStream;
 import java.util.concurrent.TimeUnit;
 import org.jetbrains.annotations.NotNull;
@@ -142,7 +144,7 @@ public class LegacyAllocationsSessionArtifact implements SessionArtifact<Memory.
   @NotNull
   @Override
   public String getExportableName() {
-    return MemoryProfiler.generateCaptureFileName();
+    return ProfilerCaptureFileUtils.getExportFileName(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS);
   }
 
   @NotNull

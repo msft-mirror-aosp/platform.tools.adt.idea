@@ -18,6 +18,7 @@ package com.android.tools.profilers
 import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.ProfilerTaskMetadataProto
+import com.android.tools.profiler.proto.Trace
 import com.android.tools.profiler.proto.Transport
 import com.android.tools.profilers.cpu.CpuCaptureParserUtil
 import com.android.tools.profilers.cpu.TraceMerger
@@ -26,12 +27,27 @@ import com.android.tools.profilers.cpu.config.ProfilingConfiguration.TraceType
 import com.android.tools.profilers.sessions.SessionsManager
 import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.android.tools.profilers.utils.ProfilerHashUtils
+import com.google.common.annotations.VisibleForTesting
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.io.FileUtil
 import java.io.File
 import java.io.IOException
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 object ProfilerCaptureFileUtils {
+  /** Extension of the files that CPU recordings (System Trace, Java/Kotlin Method Recording and Callstack Sample) are saved to. */
+  private const val CPU_RECORDING_EXTENSION = "trace"
+
+  /** Format of the times in recording file names, e.g. `20261116T141553`. */
+  private val FILE_NAME_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss", Locale.ROOT)
+
+  /** Longest time between the start of a session and a capture in it that is trusted when working out when the capture started. */
+  private val MAX_CAPTURE_OFFSET_MS = TimeUnit.DAYS.toMillis(1)
+
   /**
    * Renames a temporary capture file to an identifiable file within the system's temporary directory.
    *
@@ -72,13 +88,91 @@ object ProfilerCaptureFileUtils {
   }
 
   @JvmStatic
-  fun getTraceFile(traceId: Long): File {
-    return File(FileUtil.getTempDirectory(), "capture_$traceId.trace")
-  }
-
-  @JvmStatic
   fun getCaptureFile(traceFileName: String): File {
     return File(FileUtil.getTempDirectory(), traceFileName)
+  }
+
+  /**
+   * Returns the task part of recording file names: a short form of the task's name in the Home tab V2, e.g. `heap-dump` for a Heap Dump and
+   * `method-trace` for a Java/Kotlin Method Recording.
+   */
+  private fun getTaskFileNamePrefix(taskType: ProfilerTaskType): String =
+    when (taskType) {
+      ProfilerTaskType.SYSTEM_TRACE -> "system-trace"
+      ProfilerTaskType.LIVE_VIEW -> "live-telemetry"
+      ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING -> "method-trace"
+      ProfilerTaskType.CALLSTACK_SAMPLE -> "stack-sampling"
+      ProfilerTaskType.HEAP_DUMP -> "heap-dump"
+      ProfilerTaskType.LEAKCANARY -> "leakcanary"
+      ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS -> "jk-allocations"
+      ProfilerTaskType.NATIVE_ALLOCATIONS -> "native-allocations"
+      ProfilerTaskType.UNSPECIFIED -> "recording"
+    }
+
+  /** Formats [epochMs] as a local time for file names, e.g. `20261116T141553`. */
+  private fun formatFileNameTime(epochMs: Long): String =
+    FILE_NAME_TIME_FORMATTER.format(Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()))
+
+  /**
+   * Returns the name of the file that a recording of [taskType], which started at [recordingStartEpochMs], is saved to so it can open in
+   * the editor. For example, `heap-dump-20261116T141553.hprof`.
+   */
+  @VisibleForTesting
+  internal fun getRecordingFileName(taskType: ProfilerTaskType, recordingStartEpochMs: Long, extension: String): String =
+    "${getTaskFileNamePrefix(taskType)}-${formatFileNameTime(recordingStartEpochMs)}.$extension"
+
+  /**
+   * Returns the name of the file that a capture of [taskType] in [session] is saved to so it can open in the editor. For example,
+   * `heap-dump-20261116T141553.hprof`.
+   *
+   * @param captureStartNs when the capture started, in the device time of [session]
+   */
+  @JvmStatic
+  fun getRecordingFileName(
+    session: Common.Session,
+    sessionMetaData: Common.SessionMetaData?,
+    taskType: ProfilerTaskType,
+    captureStartNs: Long,
+    extension: String,
+  ): String = getRecordingFileName(taskType, getRecordingStartEpochMs(session, sessionMetaData, captureStartNs), extension)
+
+  /**
+   * Returns the file that the CPU recording described by [traceInfo], a System Trace, Java/Kotlin Method Recording or Callstack Sample, is
+   * saved to so it can open in the editor. For example, `system-trace-20261116T141553.trace`.
+   */
+  @JvmStatic
+  fun getCpuRecordingFile(session: Common.Session, sessionMetaData: Common.SessionMetaData?, traceInfo: Trace.TraceInfo): File {
+    val taskType = TraceType.from(traceInfo.configuration).toTaskType()
+    return getCaptureFile(getRecordingFileName(session, sessionMetaData, taskType, traceInfo.fromTimestamp, CPU_RECORDING_EXTENSION))
+  }
+
+  /**
+   * Returns the name, without the extension, that the export dialog suggests for a recording of [taskType]. For example,
+   * `heap-dump-20261116T144522`, where the time is when the recording is exported ([exportEpochMs]).
+   */
+  @JvmStatic
+  @JvmOverloads
+  fun getExportFileName(taskType: ProfilerTaskType, exportEpochMs: Long = System.currentTimeMillis()): String =
+    "${getTaskFileNamePrefix(taskType)}-${formatFileNameTime(exportEpochMs)}"
+
+  /**
+   * Returns when a capture that started at [captureStartNs], in the device time of [session], started in wall-clock time: when the session
+   * started ([Common.SessionMetaData.getStartTimestampEpochMs]), plus how far into the session the capture started.
+   *
+   * The offset is only trusted from zero to a day. A capture can start before its session, e.g. a startup recording, whose tracing begins
+   * before the session does, and an offset of more than a day most likely means the two timestamps come from different clocks; either way,
+   * the capture is dated by the start of the session. Sessions normally record when they started; if one didn't, the capture's device
+   * timestamp is converted to milliseconds and used instead, which gives a date in 1970. In every case the result is the same each time
+   * it's worked out for a capture, so its saved file can be found again by name.
+   */
+  @VisibleForTesting
+  internal fun getRecordingStartEpochMs(session: Common.Session, sessionMetaData: Common.SessionMetaData?, captureStartNs: Long): Long {
+    val sessionStartEpochMs = sessionMetaData?.startTimestampEpochMs ?: 0L
+    if (sessionStartEpochMs <= 0L) {
+      return TimeUnit.NANOSECONDS.toMillis(captureStartNs).coerceAtLeast(0L)
+    }
+    val offsetMs = TimeUnit.NANOSECONDS.toMillis(captureStartNs - session.startTimestamp)
+    return if (offsetMs in 0..MAX_CAPTURE_OFFSET_MS) sessionStartEpochMs + offsetMs else sessionStartEpochMs
   }
 
   @JvmStatic
@@ -107,10 +201,16 @@ object ProfilerCaptureFileUtils {
     return captureFile
   }
 
+  /**
+   * Fetches the file of the CPU recording described by [traceInfo], a System Trace, Java/Kotlin Method Recording or Callstack Sample, and
+   * moves it into the temp directory under the name from [getCpuRecordingFile], so it can open in the editor. If a non-empty file with that
+   * name is already there, returns it as is. Returns null if the recording's file can't be fetched or moved.
+   */
   @JvmStatic
-  fun getAndRenameCapture(profilers: StudioProfilers, session: Common.Session, traceId: Long): File? {
-    val captureFile = getCaptureAsFile(profilers, traceId) ?: return null
-    val finalFile = renameToTargetFile(captureFile, getTraceFile(traceId).name) ?: return null
+  fun getAndRenameCapture(profilers: StudioProfilers, session: Common.Session, traceInfo: Trace.TraceInfo): File? {
+    val captureFile = getCaptureAsFile(profilers, traceInfo.traceId) ?: return null
+    val targetFile = getCpuRecordingFile(session, profilers.sessionsManager.getSessionMetaData(session.sessionId), traceInfo)
+    val finalFile = renameToTargetFile(captureFile, targetFile.name) ?: return null
     writeMetadataToFile(profilers, session, finalFile)
 
     // TRACING 2.0: Check if this was a Tracing 2.0 CPU session, and if so, wait for and Zip the Compose traces.

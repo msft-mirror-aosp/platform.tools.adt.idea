@@ -476,7 +476,8 @@ CpuProfilerStage extends StreamingStage implements InterimStage {
           boolean openInEditor = ProfilerInEditorUtils.isEditorEnabled(getStudioProfilers().getIdeServices().getFeatureConfig(), taskType);
 
           if (openInEditor) {
-            File captureFile = ProfilerCaptureFileUtils.getAndRenameCapture(getStudioProfilers(), getStudioProfilers().getSession(), traceId);
+            File captureFile =
+              ProfilerCaptureFileUtils.getAndRenameCapture(getStudioProfilers(), getStudioProfilers().getSession(), traceInfo);
             getStudioProfilers().getIdeServices().getMainExecutor().execute(() -> {
               if (captureFile != null && captureFile.exists() && captureFile.length() > 0) {
                 getStudioProfilers().getIdeServices().openTraceFile(captureFile);

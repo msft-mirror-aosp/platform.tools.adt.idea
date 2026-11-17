@@ -544,6 +544,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
     assertThat(myStage.getStudioProfilers().getStage().getClass()).isAssignableTo(CpuProfilerStage.class);
     assertThat(myServices.getOpenedFile()).isNotNull();
+    assertThat(myServices.getOpenedFile().getName()).matches("method-trace-\\d{8}T\\d{6}\\.trace");
     assertThat(myServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING);
   }
 
@@ -557,6 +558,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
     assertThat(myStage.getStudioProfilers().getStage().getClass()).isAssignableTo(CpuProfilerStage.class);
     assertThat(myServices.getOpenedFile()).isNotNull();
+    assertThat(myServices.getOpenedFile().getName()).matches("stack-sampling-\\d{8}T\\d{6}\\.trace");
     assertThat(myServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.CALLSTACK_SAMPLE);
   }
 
@@ -570,6 +572,7 @@ public final class CpuProfilerStageTest extends AspectObserver {
 
     assertThat(myStage.getStudioProfilers().getStage().getClass()).isAssignableTo(CpuProfilerStage.class);
     assertThat(myServices.getOpenedFile()).isNotNull();
+    assertThat(myServices.getOpenedFile().getName()).matches("system-trace-\\d{8}T\\d{6}\\.trace");
     assertThat(myServices.getClosedTaskTab()).isEqualTo(com.android.tools.profilers.tasks.ProfilerTaskType.SYSTEM_TRACE);
   }
 

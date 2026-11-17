@@ -13,12 +13,11 @@ import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Transport
 import com.android.tools.profilers.sessions.SessionArtifact
 import com.android.tools.profilers.sessions.SessionsManager
+import com.android.tools.profilers.tasks.ProfilerTaskType
 import com.intellij.openapi.diagnostic.Logger
 import java.io.File
 import java.io.IOException
 import java.io.OutputStream
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 /** An artifact for a Live View session, which is exportable. */
 class LiveViewSessionArtifact(
@@ -44,7 +43,7 @@ class LiveViewSessionArtifact(
     get() = !isOngoing
 
   override val exportableName: String
-    get() = "live-view-${LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss"))}"
+    get() = ProfilerCaptureFileUtils.getExportFileName(ProfilerTaskType.LIVE_VIEW)
 
   override val exportExtension: String
     get() = "asdb"

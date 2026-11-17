@@ -885,7 +885,10 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
         profilers.getIdeServices().getPoolExecutor().execute(() -> {
           CaptureObject capture = durationData.getCaptureEntry().getCaptureObject();
           String extension = capture.getExportableExtension() != null ? capture.getExportableExtension() : "alloc";
-          String traceFileName = "capture_" + capture.getStartTimeNs() + "." + extension;
+          Common.Session session = profilers.getSession();
+          String traceFileName = ProfilerCaptureFileUtils.getRecordingFileName(
+            session, profilers.getSessionsManager().getSessionMetaData(session.getSessionId()), getMemoryTaskType(capture),
+            capture.getStartTimeNs(), extension);
           File file = ProfilerCaptureFileUtils.getCaptureFile(traceFileName);
           if (!file.exists()) {
             Transport.BytesRequest request = Transport.BytesRequest.newBuilder()
@@ -940,15 +943,25 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
   }
 
   private void closeMemoryTaskTab(@NotNull CaptureObject capture) {
+    ProfilerTaskType taskType = getMemoryTaskType(capture);
+    if (taskType != ProfilerTaskType.UNSPECIFIED) {
+      getStudioProfilers().getIdeServices().closeTaskTab(taskType);
+    }
+  }
+
+  /** Returns the task that records {@code capture}: Heap Dump, Native Allocations or the legacy Java/Kotlin Allocations. */
+  @NotNull
+  private static ProfilerTaskType getMemoryTaskType(@NotNull CaptureObject capture) {
     if (capture instanceof HeapDumpCaptureObject) {
-      getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.HEAP_DUMP);
+      return ProfilerTaskType.HEAP_DUMP;
     }
     else if (capture instanceof NativeAllocationSampleCaptureObject) {
-      getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.NATIVE_ALLOCATIONS);
+      return ProfilerTaskType.NATIVE_ALLOCATIONS;
     }
     else if (capture instanceof LegacyAllocationCaptureObject) {
-      getStudioProfilers().getIdeServices().closeTaskTab(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS);
+      return ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS;
     }
+    return ProfilerTaskType.UNSPECIFIED;
   }
 
   /** Whose R8 mapping a recorded trace needs, and whether it also needs native symbols. */

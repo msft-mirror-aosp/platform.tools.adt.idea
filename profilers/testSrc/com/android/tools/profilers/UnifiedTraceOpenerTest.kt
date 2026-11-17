@@ -20,17 +20,23 @@ import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Memory.HeapDumpInfo
+import com.android.tools.profiler.proto.Trace
+import com.android.tools.profilers.cpu.CpuCaptureSessionArtifact
 import com.android.tools.profilers.memory.HprofSessionArtifact
+import com.android.tools.profilers.sessions.SessionArtifact
 import com.android.tools.profilers.sessions.SessionItem
 import com.android.tools.profilers.tasks.ProfilerTaskType
+import com.android.tools.profilers.tasks.TaskTypeMappingUtils
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.util.io.FileUtil
 import java.io.File
+import java.util.concurrent.TimeUnit
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import perfetto.protos.PerfettoConfig
 
 class UnifiedTraceOpenerTest {
 
@@ -44,8 +50,13 @@ class UnifiedTraceOpenerTest {
   private lateinit var profilers: StudioProfilers
   private lateinit var opener: UnifiedTraceOpener
 
-  /** Capture files live in the shared temp directory, so keep the name unique to this test and delete it afterwards. */
+  /**
+   * Saved recordings live in the shared temp directory and are named after the second the recording started, so start the session now to
+   * avoid other files' names. Each test writes its file itself and deletes it afterwards.
+   */
   private val startTime = System.nanoTime()
+  private val sessionStartEpochMs = System.currentTimeMillis()
+  private val session = Common.Session.newBuilder().setSessionId(SESSION_ID).setStreamId(1).setStartTimestamp(startTime).build()
   private val cacheFiles = mutableListOf<File>()
 
   @Before
@@ -62,35 +73,72 @@ class UnifiedTraceOpenerTest {
 
   @Test
   fun testCachedCaptureIsOpenedWithTheFormatItWasImportedAs() {
+    val cachedFileName =
+      ProfilerCaptureFileUtils.getRecordingFileName(ProfilerTaskType.HEAP_DUMP, sessionStartEpochMs, "perfetto-java-heap-dump")
     val cached =
-      File(FileUtil.getTempDirectory(), "capture_$startTime.perfetto-java-heap-dump").also {
+      File(FileUtil.getTempDirectory(), cachedFileName).also {
         it.writeText("capture")
         cacheFiles.add(it)
       }
     // Serve a different file from the daemon, which is what gets opened if the cached capture is looked up under the wrong name.
     transportService.addFile(startTime.toString(), daemonFiles.newFile("from-daemon").absolutePath)
 
-    val opened = opener.openUnifiedTrace(SESSION, recordingOf(heapDumpArtifact("dump.perfetto-java-heap-dump")))
+    val opened = opener.openUnifiedTrace(session, recordingOf(ProfilerTaskType.HEAP_DUMP, heapDumpArtifact("dump.perfetto-java-heap-dump")))
 
     assertThat(opened).isTrue()
     assertThat(services.openedFile).isEqualTo(cached)
   }
 
+  @Test
+  fun testSavedSystemTraceIsFoundAgainByName() {
+    val traceStartNs = startTime + TimeUnit.SECONDS.toNanos(3)
+    val savedFileName = ProfilerCaptureFileUtils.getRecordingFileName(ProfilerTaskType.SYSTEM_TRACE, sessionStartEpochMs + 3_000, "trace")
+    val saved =
+      File(FileUtil.getTempDirectory(), savedFileName).also {
+        it.writeText("trace")
+        cacheFiles.add(it)
+      }
+    // Serve a different file from the daemon, which is what gets opened if the saved recording is looked up under the wrong name.
+    transportService.addFile(traceStartNs.toString(), daemonFiles.newFile("from-daemon").absolutePath)
+
+    val opened = opener.openUnifiedTrace(session, recordingOf(ProfilerTaskType.SYSTEM_TRACE, systemTraceArtifact(traceStartNs)))
+
+    assertThat(opened).isTrue()
+    assertThat(services.openedFile).isEqualTo(saved)
+  }
+
   private fun heapDumpArtifact(sessionName: String) =
     HprofSessionArtifact(
       profilers,
-      SESSION,
+      session,
       Common.SessionMetaData.newBuilder().setSessionName(sessionName).build(),
       HeapDumpInfo.newBuilder().setStartTime(startTime).setEndTime(startTime + 1).build(),
     )
 
-  private fun recordingOf(artifact: HprofSessionArtifact): Map<Long, SessionItem> =
-    mapOf(
-      SESSION_ID to SessionArtifactUtils.createSessionItem(profilers, SESSION, SESSION_ID, ProfilerTaskType.HEAP_DUMP, listOf(artifact))
+  private fun systemTraceArtifact(traceStartNs: Long) =
+    CpuCaptureSessionArtifact(
+      profilers,
+      session,
+      Common.SessionMetaData.getDefaultInstance(),
+      Trace.TraceInfo.newBuilder()
+        .setTraceId(traceStartNs)
+        .setFromTimestamp(traceStartNs)
+        .setToTimestamp(traceStartNs + 1)
+        .setConfiguration(Trace.TraceConfiguration.newBuilder().setPerfettoOptions(PerfettoConfig.TraceConfig.getDefaultInstance()))
+        .build(),
     )
+
+  private fun recordingOf(taskType: ProfilerTaskType, artifact: SessionArtifact<*>): Map<Long, SessionItem> {
+    val metadata =
+      Common.SessionMetaData.newBuilder()
+        .setSessionId(SESSION_ID)
+        .setTaskType(TaskTypeMappingUtils.convertTaskType(taskType))
+        .setStartTimestampEpochMs(sessionStartEpochMs)
+        .build()
+    return mapOf(SESSION_ID to SessionItem(profilers, session, metadata).apply { setChildArtifacts(listOf(artifact)) })
+  }
 
   companion object {
     private const val SESSION_ID = 1L
-    private val SESSION: Common.Session = Common.Session.newBuilder().setSessionId(SESSION_ID).setStreamId(1).build()
   }
 }

@@ -27,6 +27,7 @@ import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Trace;
 import com.android.tools.profiler.proto.Trace.TraceInfo;
 import com.android.tools.profiler.proto.Transport;
+import com.android.tools.profilers.ProfilerCaptureFileUtils;
 import com.android.tools.profilers.ProfilerClient;
 import com.android.tools.profilers.ProfilerMonitor;
 import com.android.tools.profilers.StudioProfiler;
@@ -39,14 +40,11 @@ import com.android.tools.profilers.sessions.SessionsManager;
 import com.android.tools.profilers.transporteventutils.TransportUtils;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.io.FileUtil;
-import com.intellij.openapi.util.text.StringUtil;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -215,14 +213,12 @@ public class CpuProfiler implements StudioProfiler {
   }
 
   /**
-   * Generate a default name for a trace to be exported. The name suggested is based on the current timestamp and the capture type.
+   * Generates the default name for a trace to be exported, from the task that records it and the current time, e.g.
+   * {@code system-trace-20261116T144522}.
    */
   @NotNull
   public static String generateCaptureFileName(@NotNull TraceType profilerType) {
-    StringBuilder traceName = new StringBuilder(String.format("cpu-%s-", StringUtil.toLowerCase(profilerType.name())));
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
-    traceName.append(LocalDateTime.now().format(formatter));
-    return traceName.toString();
+    return ProfilerCaptureFileUtils.getExportFileName(profilerType.toTaskType());
   }
 
   /**

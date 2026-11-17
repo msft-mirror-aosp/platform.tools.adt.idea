@@ -971,7 +971,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     File dummyFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy heap dump content"));
     myFilesToCleanUp.add(dummyFile);
     myTransportService.addFile(Long.toString(info.getStartTime()), dummyFile.getAbsolutePath());
-    myFilesToCleanUp.add(ProfilerCaptureFileUtils.getCaptureFile("capture_" + info.getStartTime() + ".hprof"));
+    myFilesToCleanUp.add(getRecordingFile(myProfilers, ProfilerTaskType.HEAP_DUMP, info.getStartTime(), "hprof"));
 
     myStage.selectCaptureDuration(dataList.getFirst().value, null);
 
@@ -1006,7 +1006,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myFilesToCleanUp.add(dummyFile);
     myTransportService.addFile(Long.toString(info.getStartTime()), dummyFile.getAbsolutePath());
 
-    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".hprof");
+    File captureFile = getRecordingFile(myProfilers, ProfilerTaskType.HEAP_DUMP, startTimeNs, "hprof");
     FileUtil.delete(captureFile);
     myFilesToCleanUp.add(captureFile);
 
@@ -1042,7 +1042,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     File rawFile = TransportServiceUtils.createTempFile("dummy", "trace", ByteString.copyFromUtf8("dummy heap graph content"));
     myFilesToCleanUp.add(rawFile);
     myTransportService.addFile(Long.toString(startTimeNs), rawFile.getAbsolutePath());
-    String captureFileName = "capture_" + startTimeNs + ".perfetto-java-heap-dump";
+    String captureFileName = getRecordingFile(myProfilers, ProfilerTaskType.HEAP_DUMP, startTimeNs, "perfetto-java-heap-dump").getName();
     myFilesToCleanUp.add(ProfilerCaptureFileUtils.getCaptureFile(captureFileName));
 
     AspectObserver observer = new AspectObserver();
@@ -1056,7 +1056,19 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
 
     assertThat(heapDumpFinished[0]).isTrue();
     assertThat(myIdeProfilerServices.getOpenedFile().getName()).isEqualTo(captureFileName);
+    assertThat(myIdeProfilerServices.getOpenedFile().getName()).matches("heap-dump-\\d{8}T\\d{6}\\.perfetto-java-heap-dump");
     assertThat(myIdeProfilerServices.getClosedTaskTab()).isEqualTo(ProfilerTaskType.HEAP_DUMP);
+  }
+
+  /** Returns the file that a capture of {@code taskType} in the session of {@code profilers} is saved to, so it can open in the editor. */
+  @NotNull
+  private static File getRecordingFile(@NotNull StudioProfilers profilers,
+                                       @NotNull ProfilerTaskType taskType,
+                                       long captureStartNs,
+                                       @NotNull String extension) {
+    Common.Session session = profilers.getSession();
+    return ProfilerCaptureFileUtils.getCaptureFile(ProfilerCaptureFileUtils.getRecordingFileName(
+      session, profilers.getSessionsManager().getSessionMetaData(session.getSessionId()), taskType, captureStartNs, extension));
   }
 
   /** Enables the in-editor and task-based UX flags; callers set deobfuscation flags themselves. */
@@ -1108,7 +1120,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myFilesToCleanUp.add(rawFile);
     myTransportService.addFile(Long.toString(info.getFromTimestamp()), rawFile.getAbsolutePath());
 
-    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".heapprofd");
+    File captureFile = getRecordingFile(stage.getStudioProfilers(), ProfilerTaskType.NATIVE_ALLOCATIONS, startTimeNs, "heapprofd");
     FileUtil.delete(captureFile);
     myFilesToCleanUp.add(captureFile);
 
@@ -1326,7 +1338,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myFilesToCleanUp.add(dummyFile);
     myTransportService.addFile(Long.toString(info.getStartTime()), dummyFile.getAbsolutePath());
 
-    File captureFile = ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + ".alloc");
+    File captureFile = getRecordingFile(myProfilers, ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, startTimeNs, "alloc");
     FileUtil.delete(captureFile);
     myFilesToCleanUp.add(captureFile);
 

@@ -20,11 +20,13 @@ import static com.android.tools.profilers.memory.MemoryProfiler.saveHeapDumpToFi
 import com.android.tools.adtui.model.Range;
 import com.android.tools.profiler.proto.Common;
 import com.android.tools.profiler.proto.Memory.HeapDumpInfo;
+import com.android.tools.profilers.ProfilerCaptureFileUtils;
 import com.android.tools.profilers.ProfilerFormat;
 import com.android.tools.profilers.StudioProfilers;
 import com.android.tools.profilers.memory.adapters.CaptureObject;
 import com.android.tools.profilers.sessions.SessionArtifact;
 import com.android.tools.profilers.sessions.SessionsManager;
+import com.android.tools.profilers.tasks.ProfilerTaskType;
 import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.util.containers.ContainerUtil;
 import java.io.OutputStream;
@@ -80,7 +82,7 @@ public final class HprofSessionArtifact extends MemorySessionArtifact<HeapDumpIn
   @NotNull
   @Override
   public String getExportableName() {
-    return MemoryProfiler.generateCaptureFileName();
+    return ProfilerCaptureFileUtils.getExportFileName(ProfilerTaskType.HEAP_DUMP);
   }
 
   @NotNull

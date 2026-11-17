@@ -203,9 +203,10 @@ public class CpuCaptureStage extends Stage<Timeline> {
     File captureFile;
 
     boolean openInEditor = ProfilerInEditorUtils.isEditorEnabled(profilers.getIdeServices().getFeatureConfig(), configuration.getTraceType().toTaskType());
+    Trace.TraceInfo traceInfo = CpuProfiler.getTraceInfoFromId(profilers, traceId);
 
-    if (openInEditor) {
-      captureFile = ProfilerCaptureFileUtils.getAndRenameCapture(profilers, profilers.getSession(), traceId);
+    if (openInEditor && !Trace.TraceInfo.getDefaultInstance().equals(traceInfo)) {
+      captureFile = ProfilerCaptureFileUtils.getAndRenameCapture(profilers, profilers.getSession(), traceInfo);
     } else {
       captureFile = ProfilerCaptureFileUtils.getCaptureAsFile(profilers, traceId);
     }
@@ -214,7 +215,7 @@ public class CpuCaptureStage extends Stage<Timeline> {
       return null;
     }
 
-    String captureProcessNameHint = CpuProfiler.getTraceInfoFromId(profilers, traceId).getConfiguration().getAppName();
+    String captureProcessNameHint = traceInfo.getConfiguration().getAppName();
     return new CpuCaptureStage(profilers, configuration, captureMetadata, captureFile, traceId, captureProcessNameHint,
                                profilers.getSession().getPid());
   }

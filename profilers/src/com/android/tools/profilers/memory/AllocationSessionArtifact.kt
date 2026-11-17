@@ -20,10 +20,12 @@ import com.android.tools.adtui.model.formatter.TimeFormatter
 import com.android.tools.profiler.proto.Common
 import com.android.tools.profiler.proto.Memory
 import com.android.tools.profilers.ExportableArtifact
+import com.android.tools.profilers.ProfilerCaptureFileUtils
 import com.android.tools.profilers.StudioProfilers
 import com.android.tools.profilers.memory.MemoryProfiler.Companion.getAllocationInfosForSession
 import com.android.tools.profilers.sessions.SessionArtifact
 import com.android.tools.profilers.sessions.SessionsManager
+import com.android.tools.profilers.tasks.ProfilerTaskType
 import java.io.OutputStream
 import java.util.concurrent.TimeUnit
 
@@ -52,7 +54,7 @@ class AllocationSessionArtifact(
   override val canExport = !isOngoing
 
   override val exportableName: String
-    get() = MemoryProfiler.generateCaptureFileName()
+    get() = ProfilerCaptureFileUtils.getExportFileName(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS)
 
   override val exportExtension = "asdb"
 

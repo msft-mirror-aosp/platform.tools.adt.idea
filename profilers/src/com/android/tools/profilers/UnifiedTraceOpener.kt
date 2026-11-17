@@ -85,8 +85,9 @@ class UnifiedTraceOpener(private val profilers: StudioProfilers) {
         currentTaskType == ProfilerTaskType.JAVA_KOTLIN_METHOD_RECORDING
 
     if (isCpuTrace) {
-      val traceId = artifacts.firstNotNullOfOrNull { (it as? CpuCaptureSessionArtifact)?.artifactProto?.traceId } ?: return false
-      val opened = openTrace(session, traceId, ProfilerCaptureFileUtils.getTraceFile(traceId))
+      val traceInfo = artifacts.firstNotNullOfOrNull { (it as? CpuCaptureSessionArtifact)?.artifactProto } ?: return false
+      val savedFile = ProfilerCaptureFileUtils.getCpuRecordingFile(session, sessionItem.sessionMetaData, traceInfo)
+      val opened = openTrace(session, traceInfo.traceId, savedFile)
       if (opened) {
         // Traces opened directly in the Editor bypass the legacy capture parsers where task metrics
         // are normally fired. We fire trackTaskEntered and trackTaskFinished here to ensure parity.
@@ -110,14 +111,18 @@ class UnifiedTraceOpener(private val profilers: StudioProfilers) {
       .firstNotNullOfOrNull {
         when (it) {
           // A heap dump is not always an ART HPROF, so ask the artifact rather than assuming the extension.
-          is HprofSessionArtifact -> Pair(it.artifactProto.startTime, it.exportExtension)
-          is LegacyAllocationsSessionArtifact -> Pair(it.artifactProto.startTime, "alloc")
-          is HeapProfdSessionArtifact -> Pair(it.artifactProto.fromTimestamp, "heapprofd")
+          is HprofSessionArtifact -> Triple(ProfilerTaskType.HEAP_DUMP, it.artifactProto.startTime, it.exportExtension)
+          is LegacyAllocationsSessionArtifact -> Triple(ProfilerTaskType.JAVA_KOTLIN_ALLOCATIONS, it.artifactProto.startTime, "alloc")
+          is HeapProfdSessionArtifact -> Triple(ProfilerTaskType.NATIVE_ALLOCATIONS, it.artifactProto.fromTimestamp, "heapprofd")
           else -> null
         }
       }
-      ?.let { (startTime, extension) ->
-        val opened = openTrace(session, startTime, ProfilerCaptureFileUtils.getCaptureFile("capture_$startTime.$extension"))
+      ?.let { (taskType, startTime, extension) ->
+        val savedFile =
+          ProfilerCaptureFileUtils.getCaptureFile(
+            ProfilerCaptureFileUtils.getRecordingFileName(session, sessionItem.sessionMetaData, taskType, startTime, extension)
+          )
+        val opened = openTrace(session, startTime, savedFile)
         if (opened) {
           // Traces opened directly in the Editor bypass the legacy capture parsers where task metrics
           // are normally fired. We fire trackTaskEntered and trackTaskFinished here to ensure parity.
