@@ -57,6 +57,7 @@ import org.jetbrains.plugins.gradle.service.project.ProjectResolverContext
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncExtension
 import org.jetbrains.plugins.gradle.service.syncAction.GradleSyncPhase
 import org.jetbrains.plugins.gradle.util.GradleConstants
+import org.junit.Assume.assumeFalse
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -89,6 +90,8 @@ class WorkspaceModelChangesPerPhaseSnapshotTest(val testProject: TestProject) : 
 
   @Test
   fun wsmChangedEventsForResync() {
+    // TODO(b/586570841): Re-enable once GradleAndroidModelEntity no longer flakily changes on re-sync of KOTLIN_KAPT.
+    assumeFalse("Flaky for KOTLIN_KAPT, see b/586570841", testProject == TestProject.KOTLIN_KAPT)
     val workspaceModelChangeEvents = mutableListOf<Pair<Change, GradleSyncPhase?>>()
     projectRule.openTestProject(testProject) { project ->
       setUpPhaseAndWorkspaceModelListener(project.messageBus.connect(), workspaceModelChangeEvents)
