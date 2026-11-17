@@ -19,6 +19,7 @@ import com.android.tools.idea.concurrency.AndroidCoroutinesAware
 import com.android.tools.idea.concurrency.scopeDisposable
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.insertText
+import com.android.tools.idea.uibuilder.editor.closeProjectEditorsAndWaitForTrafficLight
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.invokeAndWaitIfNeeded
 import com.intellij.openapi.command.WriteCommandAction
@@ -77,9 +78,10 @@ class MultiRepresentationPreviewTest {
   }
 
   @After
-  fun tearDown() {
+  fun tearDown(): Unit = runBlocking {
     // MultiRepresentationPreview keeps a reference to a project, so it should get disposed before.
-    Disposer.dispose(multiPreview)
+    val additionalDisposals = if (::multiPreview.isInitialized) listOf({ Disposer.dispose(multiPreview) }) else emptyList()
+    closeProjectEditorsAndWaitForTrafficLight(project, additionalDisposals)
   }
 
   private class UpdatableMultiRepresentationPreview(psiFile: PsiFile, editor: Editor, providers: List<PreviewRepresentationProvider>) :

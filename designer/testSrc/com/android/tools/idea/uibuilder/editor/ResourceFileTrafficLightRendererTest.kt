@@ -19,16 +19,12 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.codeInsight.daemon.impl.TrafficLightRenderer
 import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.impl.NonBlockingReadActionImpl
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.editor.Editor
-import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
-import com.intellij.testFramework.PlatformTestUtil
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.Rule
@@ -55,19 +51,17 @@ class ResourceFileTrafficLightRendererTest {
   fun createRendererReturnsCustomRendererForResourceFile(): Unit = runBlocking {
     projectRule.fixture.addFileToProject("AndroidManifest.xml", "<manifest/>")
     val file = projectRule.fixture.addFileToProject("res/layout/my_layout.xml", "<LinearLayout/>")
-    val editor = openEditorInEdt(file)
 
     var renderer: TrafficLightRenderer? = null
     try {
+      val editor = openEditorInEdt(file)
       renderer = withContext(Dispatchers.Default) { contributor.createRenderer(editor, file) }
       assertThat(renderer).isInstanceOf(ResourceFileTrafficLightRender::class.java)
     } finally {
-      withContext(Dispatchers.EDT + NonCancellable) {
-        renderer?.let { Disposer.dispose(it) }
-        FileEditorManager.getInstance(projectRule.project).closeFile(file.virtualFile)
-        NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
-        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-      }
+      closeProjectEditorsAndWaitForTrafficLight(
+        projectRule.project,
+        listOfNotNull(renderer?.let { r -> { Disposer.dispose(r) } }),
+      )
     }
   }
 

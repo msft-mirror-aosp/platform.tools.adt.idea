@@ -15,26 +15,47 @@
  */
 package com.android.tools.idea.uibuilder.editor.multirepresentation.sourcecode
 
+import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.uibuilder.editor.closeProjectEditorsAndWaitForTrafficLight
+import com.android.tools.idea.uibuilder.editor.disposeEditorAndWaitForTrafficLight
+import com.android.tools.idea.uibuilder.editor.hasActiveErrorStripeJobs
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TestPreviewRepresentationProvider
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.google.common.truth.Truth.assertThat
+import com.intellij.codeInsight.daemon.impl.ErrorStripeUpdateManager
+import com.intellij.codeInsight.daemon.impl.TrafficLightRenderer
+import com.intellij.codeInsight.daemon.impl.TrafficLightRendererContributor
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys
 import com.intellij.openapi.application.EDT
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.ex.EditorMarkupModel
+import com.intellij.openapi.extensions.ExtensionPointName
+import com.intellij.openapi.extensions.LoadingOrder
+import com.intellij.openapi.fileEditor.FileEditor
+import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.PsiFile
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.common.waitUntil
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import java.awt.event.HierarchyEvent
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Rule
 import org.junit.Test
@@ -44,6 +65,26 @@ class SourceCodeEditorWithMultiRepresentationPreviewTest {
   private val fixture: CodeInsightTestFixture
     get() = projectRule.fixture
 
+  private val createdEditors = CopyOnWriteArrayList<Pair<SourceCodeEditorProvider, FileEditor>>()
+
+  private fun <T : FileEditor> registerEditor(editorProvider: SourceCodeEditorProvider, editor: T): T = editor.also {
+    createdEditors.add(editorProvider to it)
+    Disposer.register(projectRule.testRootDisposable, it)
+  }
+
+  private suspend fun disposeTrackedEditor(editorProvider: SourceCodeEditorProvider, editor: FileEditor) {
+    createdEditors.removeIf { (provider, candidate) -> provider === editorProvider && candidate === editor }
+    disposeEditorAndWaitForTrafficLight(projectRule.project, editor) { editorProvider.disposeEditor(editor) }
+  }
+
+  @After
+  fun tearDown(): Unit = runBlocking {
+    val remaining = createdEditors.toList()
+    createdEditors.clear()
+    val additionalDisposals = remaining.map { (provider, editor) -> { provider.disposeEditor(editor) } }
+    closeProjectEditorsAndWaitForTrafficLight(projectRule.project, additionalDisposals)
+  }
+
   // Regression test for b/254613979
   @Test
   fun testNavigationMovesToSplitMode() = runBlocking {
@@ -51,9 +92,10 @@ class SourceCodeEditorWithMultiRepresentationPreviewTest {
     val editorProvider = SourceCodeEditorProvider.forTesting(listOf(TestPreviewRepresentationProvider("Representation1", true)))
     val editor =
       withContext(Dispatchers.EDT) {
-        (editorProvider.createEditor(file.project, file.virtualFile) as TextEditorWithMultiRepresentationPreview<*>).also {
-          Disposer.register(projectRule.testRootDisposable, it)
-        }
+        registerEditor(
+          editorProvider,
+          editorProvider.createEditor(file.project, file.virtualFile) as TextEditorWithMultiRepresentationPreview<*>,
+        )
       }
     withContext(Dispatchers.EDT) { fixture.openFileInEditor(file.virtualFile) }
     editor.selectNotify()
@@ -93,9 +135,10 @@ class SourceCodeEditorWithMultiRepresentationPreviewTest {
     val editorProvider = SourceCodeEditorProvider.forTesting(listOf(TestPreviewRepresentationProvider("Representation1", true)))
     val editor =
       withContext(Dispatchers.EDT) {
-        (editorProvider.createEditor(file.project, file.virtualFile) as TextEditorWithMultiRepresentationPreview<*>).also {
-          Disposer.register(projectRule.testRootDisposable, it)
-        }
+        registerEditor(
+          editorProvider,
+          editorProvider.createEditor(file.project, file.virtualFile) as TextEditorWithMultiRepresentationPreview<*>,
+        )
       }
     withContext(Dispatchers.EDT) { fixture.openFileInEditor(file.virtualFile) }
     editor.selectNotify()
@@ -104,7 +147,7 @@ class SourceCodeEditorWithMultiRepresentationPreviewTest {
     waitUntil { editor.preview.representationNames.isNotEmpty() }
 
     assertThat(editor.getToolbarComponentForTests()).isNotNull()
-    withContext(Dispatchers.EDT) { Disposer.dispose(editor) }
+    disposeTrackedEditor(editorProvider, editor)
     assertThat(editor.getToolbarComponentForTests()).isNull()
   }
 
@@ -115,9 +158,10 @@ class SourceCodeEditorWithMultiRepresentationPreviewTest {
     val editorProvider = SourceCodeEditorProvider.forTesting(listOf(TestPreviewRepresentationProvider("Representation1", true)))
     val editor =
       withContext(Dispatchers.EDT) {
-        (editorProvider.createEditor(file.project, file.virtualFile) as TextEditorWithMultiRepresentationPreview<*>).also {
-          Disposer.register(projectRule.testRootDisposable, it)
-        }
+        registerEditor(
+          editorProvider,
+          editorProvider.createEditor(file.project, file.virtualFile) as TextEditorWithMultiRepresentationPreview<*>,
+        )
       }
     // The editor is waiting for its first activation
     assertFalse(editor.hasBeenActivatedForTest())
@@ -140,9 +184,10 @@ class SourceCodeEditorWithMultiRepresentationPreviewTest {
     val editorProvider = SourceCodeEditorProvider.forTesting(listOf(TestPreviewRepresentationProvider("Representation1", true)))
     val editor =
       withContext(Dispatchers.EDT) {
-        (editorProvider.createEditor(file.project, file.virtualFile) as TextEditorWithMultiRepresentationPreview<*>).also {
-          Disposer.register(projectRule.testRootDisposable, it)
-        }
+        registerEditor(
+          editorProvider,
+          editorProvider.createEditor(file.project, file.virtualFile) as TextEditorWithMultiRepresentationPreview<*>,
+        )
       }
     // Simulate startup where selectNotify is called before FileEditorManager.selectedFiles is populated
     editor.selectNotify()
@@ -169,19 +214,81 @@ class SourceCodeEditorWithMultiRepresentationPreviewTest {
   }
 
   @Test
-  fun testSetStateCommitsDocument() = runTest {
+  fun testSetStateCommitsDocument() = runBlocking {
     val file = fixture.addFileToProject("src/Preview.kt", "")
     val editorProvider = SourceCodeEditorProvider.forTesting(listOf(TestPreviewRepresentationProvider("Representation1", true)))
     val psiDocumentManager = PsiDocumentManager.getInstance(projectRule.project)
-    withContext(Dispatchers.EDT) {
-      fixture.openFileInEditor(file.virtualFile)
-      fixture.type("some text")
-      assertFalse(psiDocumentManager.isCommitted(fixture.editor.document))
-      // Modify document and open the editor in the same EDT block to check for the implicit commit
-      (editorProvider.createFileEditor(file.project, file.virtualFile, fixture.editor.document, backgroundScope)
-          as TextEditorWithMultiRepresentationPreview<*>)
-        .also { Disposer.register(projectRule.testRootDisposable, it) }
-      assertTrue(psiDocumentManager.isCommitted(fixture.editor.document))
+    val editorScope = AndroidCoroutineScope(projectRule.testRootDisposable)
+    var createdEditor: TextEditorWithMultiRepresentationPreview<*>? = null
+    try {
+      withContext(Dispatchers.EDT) {
+        fixture.openFileInEditor(file.virtualFile)
+        fixture.type("some text")
+        assertFalse(psiDocumentManager.isCommitted(fixture.editor.document))
+        // Modify document and open the editor in the same EDT block to check for the implicit commit
+        createdEditor =
+          registerEditor(
+            editorProvider,
+            editorProvider.createFileEditor(file.project, file.virtualFile, fixture.editor.document, editorScope)
+              as TextEditorWithMultiRepresentationPreview<*>,
+          )
+        assertTrue(psiDocumentManager.isCommitted(fixture.editor.document))
+      }
+    } finally {
+      createdEditor?.let { disposeTrackedEditor(editorProvider, it) }
+    }
+  }
+
+  @Test
+  fun testCloseProjectEditorsWaitsForInFlightErrorStripeJob() = runBlocking {
+    val enteredLatch = CountDownLatch(1)
+    val releaseLatch = CountDownLatch(1)
+    val intercepted = AtomicBoolean(false)
+    val disposable = Disposer.newDisposable(projectRule.testRootDisposable)
+    try {
+      ExtensionPointName.create<TrafficLightRendererContributor>("com.intellij.trafficLightRendererContributor")
+        .point
+        .registerExtension(
+          object : TrafficLightRendererContributor {
+            override fun createRenderer(editor: Editor, psiFile: PsiFile?): TrafficLightRenderer? {
+              if (editor.project === projectRule.project && intercepted.compareAndSet(false, true)) {
+                enteredLatch.countDown()
+                assertTrue(releaseLatch.await(5, TimeUnit.SECONDS))
+              }
+              return null
+            }
+          },
+          LoadingOrder.FIRST,
+          disposable,
+        )
+
+      val file = fixture.addFileToProject("src/Preview.kt", "")
+      val editor =
+        withContext(Dispatchers.EDT) {
+          fixture.openFileInEditor(file.virtualFile)
+          val ed = fixture.editor
+          (ed.markupModel as EditorMarkupModel).isErrorStripeVisible = true
+          ErrorStripeUpdateManager.getInstance(projectRule.project).launchRepaintErrorStripePanel(ed, file)
+          ed
+        }
+      assertTrue(enteredLatch.await(5, TimeUnit.SECONDS), "Expected createRenderer to be invoked")
+      assertTrue(hasActiveErrorStripeJobs(projectRule.project))
+
+      val closeJob = async(Dispatchers.IO) { closeProjectEditorsAndWaitForTrafficLight(projectRule.project) }
+      withContext(Dispatchers.IO) {
+        waitUntil("Expected closeAllFiles to dispose editor before awaiting ErrorStripeUpdateManager") { editor.isDisposed }
+        assertThat(withTimeoutOrNull(300.milliseconds) { closeJob.join() }).isNull()
+      }
+      assertFalse("Expected closeProjectEditorsAndWaitForTrafficLight to wait while createRenderer is in flight", closeJob.isCompleted)
+
+      releaseLatch.countDown()
+      closeJob.await()
+      assertTrue(editor.isDisposed)
+      assertFalse(hasActiveErrorStripeJobs(projectRule.project))
+      assertThat(FileEditorManager.getInstance(projectRule.project).openFiles).isEmpty()
+    } finally {
+      releaseLatch.countDown()
+      Disposer.dispose(disposable)
     }
   }
 }

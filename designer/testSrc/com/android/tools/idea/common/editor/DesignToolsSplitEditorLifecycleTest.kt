@@ -19,6 +19,7 @@ import com.android.tools.idea.concurrency.coroutineScope
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.uibuilder.editor.DesignFilesPreviewEditor
 import com.android.tools.idea.uibuilder.editor.DesignFilesPreviewEditorProvider
+import com.android.tools.idea.uibuilder.editor.closeProjectEditorsAndWaitForTrafficLight
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -38,6 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -50,6 +52,11 @@ import org.mockito.kotlin.whenever
 @RunsInEdt
 class DesignToolsSplitEditorLifecycleTest {
   @get:Rule val projectRule = AndroidProjectRule.inMemory()
+
+  @After
+  fun tearDown(): Unit = runBlocking {
+    closeProjectEditorsAndWaitForTrafficLight(projectRule.project)
+  }
 
   @Suppress("UnstableApiUsage")
   @Test

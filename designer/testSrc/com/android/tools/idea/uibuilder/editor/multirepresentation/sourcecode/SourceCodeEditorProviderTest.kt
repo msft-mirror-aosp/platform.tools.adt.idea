@@ -20,27 +20,24 @@ import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.concurrency.AndroidCoroutineScope
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.Facets
+import com.android.tools.idea.uibuilder.editor.disposeEditorAndWaitForTrafficLight
 import com.android.tools.idea.uibuilder.editor.multirepresentation.MultiRepresentationPreview
 import com.android.tools.idea.uibuilder.editor.multirepresentation.PreviewRepresentationState
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TestPreviewRepresentation
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TestPreviewRepresentationProvider
 import com.android.tools.idea.uibuilder.editor.multirepresentation.TextEditorWithMultiRepresentationPreview
 import com.google.common.truth.Truth.assertThat
-import com.intellij.codeInsight.daemon.impl.TrafficLightRenderer
 import com.intellij.mock.MockVirtualFile
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
-import com.intellij.openapi.application.impl.NonBlockingReadActionImpl
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.components.serviceAsync
-import com.intellij.openapi.editor.impl.EditorMarkupModelImpl
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorStateLevel
-import com.intellij.openapi.fileEditor.TextEditor
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.PlainTextFileType
 import com.intellij.openapi.progress.ProgressManager
@@ -50,17 +47,13 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.JDOMUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.DumbModeTestUtils
-import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.UsefulTestCase.assertContainsElements
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import junit.framework.TestCase
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import org.jdom.Element
 import org.jetbrains.kotlin.idea.KotlinFileType
 import org.junit.Assert.assertEquals
@@ -122,25 +115,7 @@ class SourceCodeEditorProviderTest(private val asyncMode: EditorCreationMode) {
   }
 
   private suspend fun disposeEditorAndWait(editorProvider: SourceCodeEditorProvider, editor: FileEditor) {
-    try {
-      val textEditor = editor as? TextEditor
-      val markupModel = textEditor?.editor?.markupModel as? EditorMarkupModelImpl
-      if (markupModel != null) {
-        withTimeoutOrNull(5.seconds) {
-          delayUntilCondition(delayPerIterationMs = 50) {
-            withContext(Dispatchers.EDT) {
-              !markupModel.isErrorStripeVisible || textEditor.editor.isDisposed || markupModel.errorStripeRenderer is TrafficLightRenderer
-            }
-          }
-        }
-      }
-    } finally {
-      withContext(Dispatchers.EDT + NonCancellable) {
-        editorProvider.disposeEditor(editor)
-        NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
-        PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
-      }
-    }
+    disposeEditorAndWaitForTrafficLight(projectRule.project, editor) { editorProvider.disposeEditor(editor) }
   }
 
   @Before

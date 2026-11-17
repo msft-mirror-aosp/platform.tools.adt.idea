@@ -27,6 +27,7 @@ import com.android.tools.idea.testing.loadNewFile
 import com.android.tools.idea.uibuilder.actions.DrawableBackgroundMenuAction
 import com.android.tools.idea.uibuilder.actions.DrawableBackgroundType
 import com.android.tools.idea.uibuilder.actions.DrawableScreenViewProvider
+import com.android.tools.idea.uibuilder.editor.closeProjectEditorsAndWaitForTrafficLight
 import com.android.tools.idea.uibuilder.scene.LayoutlibSceneManager
 import com.android.tools.idea.uibuilder.surface.NlDesignSurface
 import com.android.tools.idea.util.androidFacet
@@ -40,6 +41,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.jetbrains.concurrency.await
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -50,6 +52,11 @@ class DrawableBackgroundMenuActionTest {
   @get:Rule val projectRule = AndroidProjectRule.inMemory()
   private val project: Project
     get() = projectRule.project
+
+  @After
+  fun tearDown(): Unit = runBlocking {
+    closeProjectEditorsAndWaitForTrafficLight(project)
+  }
 
   @Test
   fun `switch options`() = runBlocking {

@@ -42,6 +42,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.xml.XmlFile
 import com.intellij.testFramework.PlatformTestUtil
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.swing.JViewport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -59,10 +60,20 @@ class NlEditorProviderTest {
   @get:Rule val projectRule = AndroidProjectRule.withSdk()
 
   private val provider = NlEditorProvider()
+  private val createdEditors = CopyOnWriteArrayList<DesignToolsSplitEditor>()
 
   @After
-  fun tearDown() {
-    DesignerTypeRegistrar.clearRegisteredTypes()
+  fun tearDown(): Unit = runBlocking {
+    val remaining = createdEditors.toList()
+    createdEditors.clear()
+    try {
+      closeProjectEditorsAndWaitForTrafficLight(
+        projectRule.project,
+        remaining.map { editor -> { provider.disposeEditor(editor) } },
+      )
+    } finally {
+      DesignerTypeRegistrar.clearRegisteredTypes()
+    }
   }
 
   @Test
@@ -112,6 +123,7 @@ class NlEditorProviderTest {
 
     val editor = provider.createFileEditor(projectRule.project, file.virtualFile, null, this) as DesignToolsSplitEditor
     Disposer.register(projectRule.testRootDisposable, editor)
+    createdEditors.add(editor)
 
     withContext(Dispatchers.EDT) {
       editor.selectSplitMode(userExplicitlyTriggered = false)
@@ -182,6 +194,7 @@ class NlEditorProviderTest {
 
     val editor = provider.createFileEditor(projectRule.project, file.virtualFile, null, this) as DesignToolsSplitEditor
     Disposer.register(projectRule.testRootDisposable, editor)
+    createdEditors.add(editor)
 
     withContext(Dispatchers.EDT) {
       // Simulate EditorComposite laying out the split editor while it starts in Design mode.
@@ -255,6 +268,7 @@ class NlEditorProviderTest {
 
     val editor = provider.createFileEditor(projectRule.project, file.virtualFile, null, this) as DesignToolsSplitEditor
     Disposer.register(projectRule.testRootDisposable, editor)
+    createdEditors.add(editor)
 
     withContext(Dispatchers.EDT) {
       // Verify mode switching
