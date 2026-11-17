@@ -34,6 +34,7 @@ import com.intellij.platform.ide.progress.withBackgroundProgress
 import com.intellij.platform.util.progress.reportRawProgress
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 
@@ -44,7 +45,7 @@ constructor(
   private val cancellable: Boolean,
   private val title: String,
   private val project: Project?,
-  private val coroutineScope: CoroutineScope = StudioProgressRunnerService.getInstance().coroutineScope + Dispatchers.Default,
+  private val coroutineScope: CoroutineScope = StudioProgressRunnerService.getInstance().coroutineScope + Dispatchers.IO,
 ) : ProgressRunner {
   /** Runs the task on [coroutineScope] with a background progress indicator. */
   @AnyThread
@@ -85,8 +86,11 @@ constructor(
 /** Service for providing a CoroutineScope to StudioProgressRunner. */
 @Service(Service.Level.APP)
 class StudioProgressRunnerService(val coroutineScope: CoroutineScope) {
+  /** Launches [action] asynchronously on [Dispatchers.IO] within this service's [coroutineScope]. */
+  @AnyThread fun runOnIo(action: Runnable): Job = coroutineScope.launch(Dispatchers.IO) { action.run() }
+
   companion object {
-    fun getInstance(): StudioProgressRunnerService = service<StudioProgressRunnerService>()
+    @JvmStatic fun getInstance(): StudioProgressRunnerService = service<StudioProgressRunnerService>()
   }
 }
 

@@ -19,6 +19,7 @@ import com.android.tools.idea.concurrency.pumpEventsAndWaitForFuture
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.fixtures.BareTestFixtureTestCase
 import com.intellij.testFramework.runInEdtAndWait
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -76,20 +77,46 @@ class StudioProgressRunnerTest : BareTestFixtureTestCase() {
     val runner = StudioProgressRunner(false, "test", null)
     val lock = Semaphore(1)
     lock.acquire()
+    val finished = CompletableFuture<Unit>()
 
     val coroutineScope = CoroutineScope(EmptyCoroutineContext)
     coroutineScope.launch {
       runner.runAsyncWithProgress { _ ->
-        assertFalse(ApplicationManager.getApplication().isDispatchThread)
         try {
+          val app = ApplicationManager.getApplication()
+          assertFalse(app.isDispatchThread)
+          assertFalse(app.isWriteAccessAllowed)
           lock.acquire()
-        } catch (_: InterruptedException) {
-          fail()
+          finished.complete(Unit)
+        } catch (t: Throwable) {
+          finished.completeExceptionally(t)
         }
       }
     }
     lock.release()
+    pumpEventsAndWaitForFuture(finished, 10, TimeUnit.SECONDS)
     coroutineScope.cancel()
+  }
+
+  @Test
+  fun testRunOnIoFromWriteActionRunsOffEdtWithoutLocks() {
+    val finished = CompletableFuture<Unit>()
+    val app = ApplicationManager.getApplication()
+
+    app.runWriteAction {
+      StudioProgressRunnerService.getInstance().runOnIo {
+        try {
+          assertFalse(app.isDispatchThread)
+          assertFalse(app.isWriteAccessAllowed)
+          assertFalse(app.holdsReadLock())
+          finished.complete(Unit)
+        } catch (t: Throwable) {
+          finished.completeExceptionally(t)
+        }
+      }
+    }
+
+    pumpEventsAndWaitForFuture(finished, 10, TimeUnit.SECONDS)
   }
 
   @Test

@@ -19,7 +19,10 @@ import static com.android.tools.idea.sdk.SdksCleanupUtil.updateSdkIfNeeded;
 
 import com.android.repository.api.PackageOperation;
 import com.android.repository.api.ProgressIndicator;
+import com.android.tools.idea.progress.StudioProgressRunnerService;
 import com.android.tools.idea.sdk.AndroidSdks;
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.progress.PerformInBackgroundOption;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.projectRoots.Sdk;
@@ -54,13 +57,23 @@ public class VfsInstallListener implements PackageOperation.StatusChangeListener
     }
     // Note that this must be done asynchronously, and must be done separately from the refresh above:
     // The above refresh may note that jar files are added or deleted, which then kicks off an asynchronous
-    // refresh of jar-rooted filesystems. We queue a dummy refresh to run afterward, with our desired logic
-    // as the finishRunnable.
+    // refresh of jar-rooted filesystems. We queue a dummy refresh as an ordering barrier, then dispatch SDK
+    // cleanup onto a background I/O thread because RefreshQueue runs finishRunnable on the EDT under the
+    // write lock.
     RefreshQueue.getInstance().refresh(true, false, () -> {
-      AndroidSdks androidSdks = AndroidSdks.getInstance();
-      for (Sdk sdk : androidSdks.getAllAndroidSdks()) {
-        updateSdkIfNeeded(sdk, androidSdks);
+      Application application = ApplicationManager.getApplication();
+      if (application == null || application.isDisposed()) {
+        return;
       }
+      StudioProgressRunnerService.getInstance().runOnIo(() -> {
+        AndroidSdks androidSdks = AndroidSdks.getInstance();
+        for (Sdk sdk : androidSdks.getAllAndroidSdks()) {
+          if (application.isDisposed()) {
+            return;
+          }
+          updateSdkIfNeeded(sdk, androidSdks);
+        }
+      });
     });
   }
 }
