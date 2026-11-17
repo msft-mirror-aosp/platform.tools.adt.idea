@@ -578,6 +578,63 @@ class GradleVersionCatalogLibrariesTest : GradleFileModelTestCase() {
     )
   }
 
+  @Test
+  fun testGetOptionalSectionsWhenAbsentWithoutModifyingModel() {
+    writeToBuildFile("")
+    writeToVersionCatalogFile("")
+
+    val emptyCatalog = projectBuildModel.versionCatalogsModel.getVersionCatalogModel("libs")!!
+    assertFalse(emptyCatalog.isModified)
+    assertNull(emptyCatalog.getLibraries())
+    assertNull(emptyCatalog.getPlugins())
+    assertNull(emptyCatalog.getVersions())
+    assertNull(emptyCatalog.getBundles())
+    assertFalse(emptyCatalog.isModified)
+  }
+
+  @Test
+  fun testGetOptionalSectionsWhenPresentWithoutModifyingModel() {
+    writeToBuildFile("")
+    writeToVersionCatalogFile(
+      """
+      [versions]
+      agp = "8.2.0"
+      [libraries]
+      guava = "com.google.guava:guava:31.1-jre"
+      [bundles]
+      common = ["guava"]
+      [plugins]
+      androidApplication = { id = "com.android.application", version.ref = "agp" }
+      """
+        .trimIndent()
+    )
+
+    val populatedCatalog = projectBuildModel.versionCatalogsModel.getVersionCatalogModel("libs")!!
+    assertFalse(populatedCatalog.isModified)
+
+    val libraries = populatedCatalog.getLibraries()
+    assertNotNull(libraries)
+    assertSize(1, libraries!!.properties)
+    assertThat(libraries.properties[0].name, equalTo("guava"))
+
+    val plugins = populatedCatalog.getPlugins()
+    assertNotNull(plugins)
+    assertSize(1, plugins!!.properties)
+    assertThat(plugins.properties[0].name, equalTo("androidApplication"))
+
+    val versions = populatedCatalog.getVersions()
+    assertNotNull(versions)
+    assertSize(1, versions!!.properties)
+    assertThat(versions.properties[0].name, equalTo("agp"))
+
+    val bundles = populatedCatalog.getBundles()
+    assertNotNull(bundles)
+    assertSize(1, bundles!!.properties)
+    assertThat(bundles.properties[0].name, equalTo("common"))
+
+    assertFalse(populatedCatalog.isModified)
+  }
+
   fun doCatalogTest(initialCatalog: String, catalogToCompare: String, change: (GradleVersionCatalogModel) -> Unit) {
     writeToBuildFile("")
     writeToVersionCatalogFile(initialCatalog)

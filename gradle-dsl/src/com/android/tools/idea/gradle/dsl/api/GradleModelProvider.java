@@ -58,4 +58,9 @@ public abstract class GradleModelProvider {
 
   @NotNull
   public abstract GradleVersionCatalogsModel getCachedVersionCatalogsModel(@NotNull Module module);
+
+  @Nullable
+  public abstract GradleVersionCatalogModel getCachedVersionCatalogModel(@NotNull VirtualFile catalogFile,
+                                                                         @NotNull Project project,
+                                                                         @NotNull String catalogName);
 }

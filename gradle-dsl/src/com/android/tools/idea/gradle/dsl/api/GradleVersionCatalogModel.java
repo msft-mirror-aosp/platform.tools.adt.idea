@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.dsl.api.catalog.GradleVersionCatalogVersion
 import com.android.tools.idea.gradle.dsl.api.catalog.GradleVersionCatalogLibraries;
 import com.android.tools.idea.gradle.dsl.api.ext.ExtModel;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Version Catalog Model covers one version catalog.
@@ -31,6 +32,12 @@ public interface GradleVersionCatalogModel extends GradleFileModel {
 
   @NotNull
   ExtModel libraries();
+
+  /**
+   * Returns the {@code [libraries]} table model if present in the catalog file, or {@code null} if absent without modifying the file.
+   */
+  @Nullable
+  ExtModel getLibraries();
 
   /**
    * New API. Returns designated high level library Declaration model
@@ -47,11 +54,29 @@ public interface GradleVersionCatalogModel extends GradleFileModel {
   @NotNull
   ExtModel plugins();
 
+  /**
+   * Returns the {@code [plugins]} table model if present in the catalog file, or {@code null} if absent without modifying the file.
+   */
+  @Nullable
+  ExtModel getPlugins();
+
   @NotNull
   ExtModel versions();
 
+  /**
+   * Returns the {@code [versions]} table model if present in the catalog file, or {@code null} if absent without modifying the file.
+   */
+  @Nullable
+  ExtModel getVersions();
+
   @NotNull
   ExtModel bundles();
+
+  /**
+   * Returns the {@code [bundles]} table model if present in the catalog file, or {@code null} if absent without modifying the file.
+   */
+  @Nullable
+  ExtModel getBundles();
 
   @NotNull
   String catalogName();

@@ -19,6 +19,7 @@ import com.android.sdklib.SdkVersionInfo
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.GradleModelProvider
 import com.android.tools.idea.gradle.dsl.api.GradleSettingsModel
+import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogModel
 import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogsModel
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
@@ -329,6 +330,15 @@ class ConfigureBaselineProfilesModuleStepLockFreeEdtTest {
 
     override fun getCachedVersionCatalogsModel(module: Module): GradleVersionCatalogsModel =
       forbidEdt("getCachedVersionCatalogsModel") { delegate.getCachedVersionCatalogsModel(module) }
+
+    override fun getCachedVersionCatalogModel(
+      catalogFile: VirtualFile,
+      project: Project,
+      catalogName: String,
+    ): GradleVersionCatalogModel? =
+      forbidEdt("getCachedVersionCatalogModel") {
+        delegate.getCachedVersionCatalogModel(catalogFile, project, catalogName)
+      }
   }
 
   companion object {

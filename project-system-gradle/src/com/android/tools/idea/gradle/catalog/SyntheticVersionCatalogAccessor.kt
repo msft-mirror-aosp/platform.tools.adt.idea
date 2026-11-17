@@ -38,17 +38,20 @@ class SyntheticVersionCatalogAccessor(
 
   private val libraries: Array<PsiMethod> =
     SyntheticAccessorBuilder(project, scope, className, Kind.LIBRARY)
-      .buildMethods(this, model.libraries().properties.let(::assembleTree), "")
+      .buildMethods(this, model.getLibraries()?.properties.orEmpty().let(::assembleTree), "")
       .toTypedArray()
 
   private val plugins: PsiMethod =
-    SyntheticAccessorBuilder(project, scope, className, Kind.PLUGIN).buildEnclosingMethod(this, model.plugins().properties, "plugins")
+    SyntheticAccessorBuilder(project, scope, className, Kind.PLUGIN)
+      .buildEnclosingMethod(this, model.getPlugins()?.properties.orEmpty(), "plugins")
 
   private val versions: PsiMethod =
-    SyntheticAccessorBuilder(project, scope, className, Kind.VERSION).buildEnclosingMethod(this, model.versions().properties, "versions")
+    SyntheticAccessorBuilder(project, scope, className, Kind.VERSION)
+      .buildEnclosingMethod(this, model.getVersions()?.properties.orEmpty(), "versions")
 
   private val bundles: PsiMethod =
-    SyntheticAccessorBuilder(project, scope, className, Kind.BUNDLE).buildEnclosingMethod(this, model.bundles().properties, "bundles")
+    SyntheticAccessorBuilder(project, scope, className, Kind.BUNDLE)
+      .buildEnclosingMethod(this, model.getBundles()?.properties.orEmpty(), "bundles")
 
   private val className = "LibrariesFor${StringUtil.capitalize(className)}"
 

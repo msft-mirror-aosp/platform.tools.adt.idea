@@ -21,10 +21,12 @@ import static com.android.tools.idea.gradle.dsl.model.GradleModelFactory.createG
 import com.android.tools.idea.gradle.dsl.api.GradleBuildModel;
 import com.android.tools.idea.gradle.dsl.api.GradleModelProvider;
 import com.android.tools.idea.gradle.dsl.api.GradleSettingsModel;
+import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogModel;
 import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogsModel;
 import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel;
 import com.android.tools.idea.gradle.dsl.model.BuildModelContext;
 import com.android.tools.idea.gradle.dsl.model.GradleSettingsModelImpl;
+import com.android.tools.idea.gradle.dsl.model.GradleVersionCatalogModelImpl;
 import com.android.tools.idea.gradle.dsl.model.GradleVersionCatalogsModelImpl;
 import com.android.tools.idea.gradle.dsl.model.ProjectBuildModelImpl;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleSettingsFile;
@@ -42,6 +44,8 @@ import com.intellij.openapi.util.ModificationTracker;
 import com.intellij.openapi.util.UserDataHolder;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiManager;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
 import java.io.File;
@@ -49,6 +53,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import org.gradle.util.GradleVersion;
 import org.jetbrains.annotations.NotNull;
@@ -150,6 +156,32 @@ public final class GradleModelSource extends GradleModelProvider {
         model,
         dependencies.toArray()
       );
+    });
+  }
+
+  @Override
+  public @Nullable GradleVersionCatalogModel getCachedVersionCatalogModel(@NotNull VirtualFile catalogFile,
+                                                                          @NotNull Project project,
+                                                                          @NotNull String catalogName) {
+    if (!catalogFile.isValid()) {
+      return null;
+    }
+    PsiFile psiFile = PsiManager.getInstance(project).findFile(catalogFile);
+    if (psiFile != null && psiFile.getVirtualFile() != null) {
+      ConcurrentMap<String, GradleVersionCatalogFile> byName = getCachedCatalogFilesByName(psiFile);
+      if (byName != null) {
+        GradleVersionCatalogFile file =
+          byName.computeIfAbsent(catalogName, name -> createContext(project).getOrCreateVersionCatalogFile(catalogFile, name));
+        return new GradleVersionCatalogModelImpl(file);
+      }
+    }
+    return new GradleVersionCatalogModelImpl(createContext(project).getOrCreateVersionCatalogFile(catalogFile, catalogName));
+  }
+
+  private static @Nullable ConcurrentMap<String, GradleVersionCatalogFile> getCachedCatalogFilesByName(@NotNull PsiFile psiFile) {
+    return CachedValuesManager.getCachedValue(psiFile, () -> {
+      VirtualFile vf = psiFile.getVirtualFile();
+      return vf == null ? null : CachedValueProvider.Result.create(new ConcurrentHashMap<>(), psiFile, vf);
     });
   }
 

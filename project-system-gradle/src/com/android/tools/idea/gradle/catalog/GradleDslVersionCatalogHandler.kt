@@ -44,7 +44,8 @@ class GradleDslVersionCatalogHandler : GradleVersionCatalogHandler {
     }
     // fall back to sync data
     val syncCatalogFile = getVersionCatalogFiles(module)[catalogName] ?: return null
-    val syncCatalogModel = versionCatalogsModel.getVersionCatalogModel(syncCatalogFile, catalogName) ?: return null
+    val syncCatalogModel =
+      GradleModelSource.getInstance().getCachedVersionCatalogModel(syncCatalogFile, project, catalogName) ?: return null
     return SyntheticVersionCatalogAccessor.create(project, scope, syncCatalogModel, catalogName)
   }
 

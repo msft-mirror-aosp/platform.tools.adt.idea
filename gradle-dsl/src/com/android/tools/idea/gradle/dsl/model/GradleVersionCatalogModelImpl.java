@@ -30,6 +30,7 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslExpressionMap;
 import com.android.tools.idea.gradle.dsl.parser.files.GradleVersionCatalogFile;
 import com.android.tools.idea.gradle.dsl.parser.semantics.PropertiesElementDescription;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class GradleVersionCatalogModelImpl extends GradleFileModelImpl implements GradleVersionCatalogModel {
   private final String catalogName;
@@ -53,10 +54,29 @@ public class GradleVersionCatalogModelImpl extends GradleFileModelImpl implement
                             GradleVersionCatalogPropertyModel::new);
   }
 
+  @Nullable
+  private ExtModel getByName(@NotNull String sectionName) {
+    GradleDslExpressionMap element = catalogFile.getPropertyElement(
+      new PropertiesElementDescription<>(sectionName, GradleDslExpressionMap.class, GradleDslExpressionMap::new)
+    );
+    if (element == null) {
+      return null;
+    }
+    return new ExtModelImpl(element,
+                            GradleVersionCatalogPropertyModel::new,
+                            GradleVersionCatalogPropertyModel::new);
+  }
+
   @NotNull
   @Override
   public ExtModel libraries() {
     return extractByName("libraries");
+  }
+
+  @Nullable
+  @Override
+  public ExtModel getLibraries() {
+    return getByName("libraries");
   }
 
   @NotNull
@@ -86,16 +106,34 @@ public class GradleVersionCatalogModelImpl extends GradleFileModelImpl implement
     return extractByName("plugins");
   }
 
+  @Nullable
+  @Override
+  public ExtModel getPlugins() {
+    return getByName("plugins");
+  }
+
   @NotNull
   @Override
   public ExtModel versions() {
     return extractByName("versions");
   }
 
+  @Nullable
+  @Override
+  public ExtModel getVersions() {
+    return getByName("versions");
+  }
+
   @NotNull
   @Override
   public ExtModel bundles() {
     return extractByName("bundles");
+  }
+
+  @Nullable
+  @Override
+  public ExtModel getBundles() {
+    return getByName("bundles");
   }
 
   @NotNull
