@@ -18,6 +18,7 @@ package com.android.ide.gradle.model.dependencies
 import java.io.Serializable
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Dependency
+import org.gradle.api.artifacts.ExternalModuleDependency
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.tooling.provider.model.ToolingModelBuilder
 import org.gradle.util.GradleVersion
@@ -27,6 +28,7 @@ class DeclaredDependenciesModelBuilder : ToolingModelBuilder {
 
   override fun buildAll(modelName: String, project: Project): Any {
     val configurationsToCoordinates = mutableMapOf<String, MutableList<Coordinates>>()
+    val externalModulesConfigurationsToCoordinates = mutableMapOf<String, MutableList<Coordinates>>()
     val projectToConfigurations = mutableMapOf<String, MutableSet<String>>()
 
     fun ProjectDependency.computePath(): String =
@@ -55,6 +57,12 @@ class DeclaredDependenciesModelBuilder : ToolingModelBuilder {
               configsSet.add(configuration.name)
             }
           }
+          // Collect coordinates for external module dependencies across all configurations (including variant-, flavor-, kapt-, and
+          // test-specific configurations) so cross-build dependency resolution can match included-build projects. Filtering to
+          // CONFIGURATIONS_OF_INTEREST is performed when converting to IdeDeclaredDependencies on the IDE side.
+          is ExternalModuleDependency -> {
+            externalModulesConfigurationsToCoordinates.getOrPut(configuration.name) { mutableListOf() }.add(dependency.coordinates())
+          }
           else ->
             if (CONFIGURATIONS_OF_INTEREST.contains(configuration.name)) {
               configurationsToCoordinates.getOrPut(configuration.name) { mutableListOf() }.add(dependency.coordinates())
@@ -62,7 +70,7 @@ class DeclaredDependenciesModelBuilder : ToolingModelBuilder {
         }
       }
     }
-    return DeclaredDependenciesImpl(configurationsToCoordinates, projectToConfigurations)
+    return DeclaredDependenciesImpl(configurationsToCoordinates, projectToConfigurations, externalModulesConfigurationsToCoordinates)
   }
 
   private val ProjectDependency.dependencyProject: Project
@@ -83,6 +91,7 @@ class DeclaredDependenciesModelBuilder : ToolingModelBuilder {
 interface DeclaredDependencies {
   val configurationsToCoordinates: Map<String, List<Coordinates>>
   val allOutgoingProjectsDependenciesToConfigurations: Map<String, Set<String>>
+  val allOutgoingExternalModuleDependencies: Map<String, List<Coordinates>>
 }
 
 interface Coordinates {
@@ -94,6 +103,7 @@ interface Coordinates {
 data class DeclaredDependenciesImpl(
   override val configurationsToCoordinates: Map<String, List<Coordinates>>,
   override val allOutgoingProjectsDependenciesToConfigurations: Map<String, Set<String>>,
+  override val allOutgoingExternalModuleDependencies: Map<String, List<Coordinates>>,
 ) : DeclaredDependencies, Serializable
 
 data class CoordinatesImpl(override val group: String?, override val name: String, override val version: String?) :

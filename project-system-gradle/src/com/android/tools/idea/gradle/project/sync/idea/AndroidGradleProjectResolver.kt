@@ -19,6 +19,7 @@ import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.artifacts.AdditionalClassifierArtifactsModel
 import com.android.ide.gradle.model.dependencies.Coordinates
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
+import com.android.ide.gradle.model.dependencies.DeclaredDependenciesModelBuilder
 import com.android.repository.Revision
 import com.android.tools.idea.IdeInfo
 import com.android.tools.idea.concurrency.coroutineScope
@@ -86,7 +87,6 @@ import com.android.tools.idea.projectsystem.gradle.findModule
 import com.android.tools.idea.sdk.IdeSdks
 import com.android.utils.appendCapitalized
 import com.android.utils.findGradleSettingsFile
-import com.google.common.annotations.VisibleForTesting
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent.GradleSyncFailure
 import com.intellij.execution.configurations.SimpleJavaParameters
 import com.intellij.externalSystem.JavaModuleData
@@ -138,6 +138,7 @@ import org.gradle.tooling.model.build.BuildEnvironment
 import org.gradle.tooling.model.idea.IdeaModule
 import org.gradle.tooling.model.idea.IdeaProject
 import org.gradle.util.GradleVersion
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.kotlin.android.configure.patchFromMppModel
 import org.jetbrains.kotlin.idea.gradleTooling.KotlinMPPGradleModel
 import org.jetbrains.kotlin.idea.gradleTooling.model.kapt.KaptGradleModel
@@ -887,10 +888,23 @@ class AndroidGradleProjectResolver @NonInjectable @VisibleForTesting internal co
 
     private fun Coordinates.toIdeCoordinates(): IdeCoordinatesImpl = IdeCoordinatesImpl(group, name, version)
 
-    internal fun DeclaredDependencies?.toIdeDeclaredDependencies(): IdeDeclaredDependenciesImpl =
-      IdeDeclaredDependenciesImpl(
-        this?.configurationsToCoordinates?.map { e -> e.key to e.value.map { it.toIdeCoordinates() } }?.toMap() ?: emptyMap()
-      )
+    @VisibleForTesting
+    fun DeclaredDependencies?.toIdeDeclaredDependencies(): IdeDeclaredDependenciesImpl {
+      if (this == null) return IdeDeclaredDependenciesImpl(emptyMap())
+      val mergedCoordinates = mutableMapOf<String, MutableList<IdeCoordinatesImpl>>()
+      // External module dependencies are collected across all configurations for cross-build resolution; restrict to
+      // CONFIGURATIONS_OF_INTEREST when building IdeDeclaredDependencies.
+      allOutgoingExternalModuleDependencies
+        .filterKeys { DeclaredDependenciesModelBuilder.CONFIGURATIONS_OF_INTEREST.contains(it) }
+        .forEach { (config, coordinates) ->
+          mergedCoordinates.getOrPut(config) { mutableListOf() }.addAll(coordinates.map { it.toIdeCoordinates() })
+        }
+      // Include fallback non-external dependencies (already restricted to CONFIGURATIONS_OF_INTEREST by DeclaredDependenciesModelBuilder).
+      configurationsToCoordinates.forEach { (config, coordinates) ->
+        mergedCoordinates.getOrPut(config) { mutableListOf() }.addAll(coordinates.map { it.toIdeCoordinates() })
+      }
+      return IdeDeclaredDependenciesImpl(mergedCoordinates)
+    }
 
     private fun createGradleAndroidModel(
       moduleName: String,
