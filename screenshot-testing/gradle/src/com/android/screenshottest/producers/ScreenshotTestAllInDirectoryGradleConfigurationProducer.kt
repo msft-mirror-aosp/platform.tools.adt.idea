@@ -110,9 +110,10 @@ class ScreenshotTestAllInDirectoryGradleConfigurationProducer : AllInDirectoryGr
     if (!myModule.getModuleSystem().isDebuggable) return false
 
     val project = context.project ?: return false
+    val taskNames = getScreenshotTestTaskNames(context) ?: return false
     configuration.settings.externalProjectPath = project.basePath
     sourceElementRef.set(location.psiElement)
-    configuration.settings.taskNames = getScreenshotTestTaskNames(context)!!
+    configuration.settings.taskNames = taskNames
     configuration.name = suggestConfigurationName(context, location.psiElement, emptyList())
     return true
   }

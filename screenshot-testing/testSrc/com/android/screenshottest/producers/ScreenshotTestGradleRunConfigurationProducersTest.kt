@@ -555,16 +555,30 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
         project.getPsiElement(TestConfigurationTestingUtil.Method("com.example.application.MyScreenshotTest", "PreviewMethod"))
       }
     val packageElement = TestConfigurationTestingUtil.getPsiElement(project, "app/src/screenshotTest/java/com/example", true)
+    val classElement =
+      with(TestConfigurationTestingUtil) {
+        project.getPsiElement(TestConfigurationTestingUtil.Class("com.example.application.MyScreenshotTest"))
+      }
+    val directoryElement = TestConfigurationTestingUtil.getPsiElement(project, "app/src", true)
 
     val methodConfigFromContext =
       TestConfigurationTestingUtil.createContext(project, methodElement).configurationsFromContext!!.first() as ConfigurationFromContextImpl
     val packageConfigFromContext =
       TestConfigurationTestingUtil.createContext(project, packageElement).configurationsFromContext!!.first()
         as ConfigurationFromContextImpl
+    val classConfigFromContext =
+      TestConfigurationTestingUtil.createContext(project, classElement).configurationsFromContext!!.first() as ConfigurationFromContextImpl
+    val directoryConfigFromContext =
+      TestConfigurationTestingUtil.createContext(project, directoryElement).configurationsFromContext!!.first {
+        it.configuration.name.contains("Screenshot")
+      } as ConfigurationFromContextImpl
 
     assertThat(methodConfigFromContext.configurationProducer).isInstanceOf(ScreenshotTestMethodGradleConfigurationProducer::class.java)
     assertThat(packageConfigFromContext.configurationProducer)
       .isInstanceOf(ScreenshotTestAllInPackageGradleConfigurationProducer::class.java)
+    assertThat(classConfigFromContext.configurationProducer).isInstanceOf(ScreenshotTestClassGradleConfigurationProducer::class.java)
+    assertThat(directoryConfigFromContext.configurationProducer)
+      .isInstanceOf(ScreenshotTestAllInDirectoryGradleConfigurationProducer::class.java)
 
     // Drop ExternalSystem Gradle project data while GradleAndroidModel remains in WorkspaceModel,
     // so getScreenshotTestTaskNames() returns null when doIsConfigurationFromContext runs.
@@ -581,6 +595,22 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
         packageConfigFromContext.configurationProducer.isConfigurationFromContext(
           packageConfigFromContext.configuration as GradleRunConfiguration,
           TestConfigurationTestingUtil.createContext(project, packageElement),
+        )
+      )
+      .isFalse()
+    val classConfiguration = classConfigFromContext.configuration as GradleRunConfiguration
+    classConfiguration.settings.taskNames = emptyList()
+    assertThat(
+        classConfigFromContext.configurationProducer.isConfigurationFromContext(
+          classConfiguration,
+          TestConfigurationTestingUtil.createContext(project, classElement),
+        )
+      )
+      .isFalse()
+    assertThat(
+        directoryConfigFromContext.configurationProducer.isConfigurationFromContext(
+          directoryConfigFromContext.configuration as GradleRunConfiguration,
+          TestConfigurationTestingUtil.createContext(project, directoryElement),
         )
       )
       .isFalse()

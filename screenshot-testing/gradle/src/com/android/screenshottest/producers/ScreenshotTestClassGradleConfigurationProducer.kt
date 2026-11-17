@@ -74,7 +74,7 @@ class ScreenshotTestClassGradleConfigurationProducer : TestClassGradleConfigurat
       getPsiParentsOfType(location.psiElement, PsiClass::class.java, false).firstOrNull()
         ?: getPsiParentsOfType(location.psiElement, KtClassOrObject::class.java, false).firstOrNull()?.toLightClass()
     if (psiClass != null && isClassDeclarationWithPreviewTestAnnotatedMethods(psiClass, visitedAnnotation)) {
-      expectedTasks = taskNamesWithFilter(context, listOfNotNull(psiClass.qualifiedName))
+      expectedTasks = taskNamesWithFilter(context, listOfNotNull(psiClass.qualifiedName)) ?: return false
     } else {
       val containingFile = location.psiElement as? PsiClassOwner ?: location.psiElement.containingFile as? PsiClassOwner
       if (containingFile != null) {
@@ -100,7 +100,7 @@ class ScreenshotTestClassGradleConfigurationProducer : TestClassGradleConfigurat
         if (qualifiedNames.isEmpty()) {
           return false
         }
-        expectedTasks = taskNamesWithFilter(context, qualifiedNames.toList())
+        expectedTasks = taskNamesWithFilter(context, qualifiedNames.toList()) ?: return false
       } else {
         return false
       }
@@ -163,10 +163,11 @@ class ScreenshotTestClassGradleConfigurationProducer : TestClassGradleConfigurat
       getPsiParentsOfType(location.psiElement, PsiClass::class.java, false).firstOrNull()
         ?: getPsiParentsOfType(location.psiElement, KtClassOrObject::class.java, false).firstOrNull()?.toLightClass()
     if (psiClass != null && isClassDeclarationWithPreviewTestAnnotatedMethods(psiClass, visitedAnnotation)) {
+      val taskNames = taskNamesWithFilter(context, listOfNotNull(psiClass.qualifiedName)) ?: return false
       sourceElementRef.set(psiClass)
       configuration.settings.externalProjectPath = project.basePath
       configuration.name = suggestConfigurationName(context, psiClass, emptyList())
-      configuration.settings.taskNames = taskNamesWithFilter(context, listOfNotNull(psiClass.qualifiedName))
+      configuration.settings.taskNames = taskNames
       return true
     }
 
@@ -201,13 +202,15 @@ class ScreenshotTestClassGradleConfigurationProducer : TestClassGradleConfigurat
         return false
       }
 
+      val taskNames = taskNamesWithFilter(context, qualifiedNames.toList()) ?: return false
+
       // A representative PsiElement is required by the base producer.
       val representativeElement = containingFile.classes.firstOrNull() ?: containingFile
       sourceElementRef.set(representativeElement)
 
       configuration.settings.externalProjectPath = project.basePath
       configuration.name = "Screenshot Tests in ${containingFile.name}"
-      configuration.settings.taskNames = taskNamesWithFilter(context, qualifiedNames.toList())
+      configuration.settings.taskNames = taskNames
       return true
     }
 
@@ -217,8 +220,8 @@ class ScreenshotTestClassGradleConfigurationProducer : TestClassGradleConfigurat
   private fun taskNamesWithFilter(
     context: ConfigurationContext,
     qualifiedNames: List<String>,
-  ): List<String> {
-    val baseTasks = getScreenshotTestTaskNames(context) ?: return emptyList()
+  ): List<String>? {
+    val baseTasks = getScreenshotTestTaskNames(context) ?: return null
     val testFilters = qualifiedNames.flatMap { listOf("--tests", "\"$it\"") }
     return baseTasks + testFilters
   }
