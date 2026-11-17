@@ -17,6 +17,7 @@ package com.android.tools.idea.layoutinspector.properties.backstack
 
 import com.android.tools.idea.layoutinspector.LayoutInspector
 import com.android.tools.idea.layoutinspector.model
+import com.android.tools.idea.layoutinspector.model.InspectorModel
 import com.android.tools.idea.layoutinspector.model.ROOT
 import com.android.tools.idea.layoutinspector.model.SelectionOrigin
 import com.android.tools.idea.layoutinspector.model.VIEW1
@@ -619,5 +620,119 @@ class BackStackPanelModelTest {
       )
 
     assertThat(BackStackPanelModel.formatBackStackEntry(navEntryWrappingSearchRoute)).isEqualTo("SearchRoute(key=shoes, filter=2)")
+  }
+
+  @Test
+  fun testAttachPropertiesListenerRefreshesFromCurrentPropertiesTable() {
+    // Select the view first so the selection change does not clear the properties table assigned afterwards
+    val inspectorModel = model(disposableRule.disposable) { view(ROOT) { view(VIEW1) } }
+    val layoutInspector: LayoutInspector = mock()
+    whenever(layoutInspector.inspectorModel).thenReturn(inspectorModel)
+    val propertiesModel =
+      InspectorPropertiesModel(disposableRule.disposable).apply {
+        this.layoutInspector = layoutInspector
+      }
+    inspectorModel.setSelection(inspectorModel[VIEW1], SelectionOrigin.INTERNAL)
+    propertiesModel.properties = createBackStackPropertiesTable(inspectorModel, listOf("Home"))
+
+    // Start from an empty back stack so only a refresh can populate it
+    val panelModel = BackStackPanelModel(propertiesModel)
+    var modelChangedNotified = false
+    panelModel.addListener { modelChangedNotified = true }
+
+    // Attach while the listener is already registered and verify the back stack is read from the table
+    panelModel.attachPropertiesListener()
+
+    assertThat(panelModel.backStackList).containsExactly("Home")
+    assertThat(modelChangedNotified).isTrue()
+  }
+
+  @Test
+  fun testBackStackRefreshesOnReattachingPropertiesListener() {
+    // Select the view first so the selection change does not clear the properties table assigned afterwards
+    val inspectorModel = model(disposableRule.disposable) { view(ROOT) { view(VIEW1) } }
+    val layoutInspector: LayoutInspector = mock()
+    whenever(layoutInspector.inspectorModel).thenReturn(inspectorModel)
+    val propertiesModel =
+      InspectorPropertiesModel(disposableRule.disposable).apply {
+        this.layoutInspector = layoutInspector
+      }
+    inspectorModel.setSelection(inspectorModel[VIEW1], SelectionOrigin.INTERNAL)
+    propertiesModel.properties = createBackStackPropertiesTable(inspectorModel, listOf("Home"))
+
+    // Start from an empty back stack so only a refresh can populate it
+    val panelModel = BackStackPanelModel(propertiesModel)
+    assertThat(panelModel.backStackList).isEmpty()
+
+    // Detach the properties listener and update the underlying properties table while detached
+    panelModel.detachPropertiesListener()
+    propertiesModel.properties = createBackStackPropertiesTable(inspectorModel, listOf("Home", "Detail"))
+    assertThat(panelModel.backStackList).isEmpty()
+
+    // Re-attach the listener and verify the model refreshes from the latest properties table
+    var modelChangedNotified = false
+    panelModel.addListener { modelChangedNotified = true }
+    panelModel.attachPropertiesListener()
+
+    assertThat(panelModel.backStackList).containsExactly("Home", "Detail").inOrder()
+    assertThat(modelChangedNotified).isTrue()
+  }
+
+  @Test
+  fun testAttachPropertiesListenerWithoutBackingModelPreservesInitialList() {
+    // Verify attaching without a backing propertiesModel preserves initialBackStackList
+    val standalonePanelModel = BackStackPanelModel(initialBackStackList = listOf("Home", "Detail"))
+
+    standalonePanelModel.attachPropertiesListener()
+
+    assertThat(standalonePanelModel.backStackList).containsExactly("Home", "Detail").inOrder()
+  }
+
+  @Test
+  fun testAttachPropertiesListenerAfterDisposeDoesNotUpdateBackStack() {
+    // Select the view first so the selection change does not clear the properties table assigned afterwards
+    val inspectorModel = model(disposableRule.disposable) { view(ROOT) { view(VIEW1) } }
+    val layoutInspector: LayoutInspector = mock()
+    whenever(layoutInspector.inspectorModel).thenReturn(inspectorModel)
+    val propertiesModel =
+      InspectorPropertiesModel(disposableRule.disposable).apply {
+        this.layoutInspector = layoutInspector
+      }
+    inspectorModel.setSelection(inspectorModel[VIEW1], SelectionOrigin.INTERNAL)
+    propertiesModel.properties = createBackStackPropertiesTable(inspectorModel, listOf("Home", "Detail"))
+
+    val panelModel = BackStackPanelModel(propertiesModel, listOf("Home", "Detail"))
+    panelModel.dispose()
+
+    // Change the properties table after dispose and verify attaching does not read it
+    propertiesModel.properties = createBackStackPropertiesTable(inspectorModel, listOf("Settings"))
+    panelModel.attachPropertiesListener()
+
+    assertThat(panelModel.backStackList).containsExactly("Home", "Detail").inOrder()
+  }
+
+  private fun createBackStackPropertiesTable(
+    inspectorModel: InspectorModel,
+    routes: List<String>,
+  ): PropertiesTable<InspectorPropertyItem> {
+    val entries = routes.mapIndexed { routeIndex, routeName ->
+      ParameterItem("$routeIndex", PropertyType.STRING, routeName, PropertySection.PARAMETERS, VIEW1, inspectorModel, VIEW1, routeIndex)
+    }
+    val backStackGroup =
+      ParameterGroupItem(
+        name = "backStack",
+        type = PropertyType.ITERABLE,
+        value = "List[${routes.size}]",
+        section = PropertySection.PARAMETERS,
+        viewId = VIEW1,
+        lookup = inspectorModel,
+        rootId = VIEW1,
+        index = 0,
+        reference = null,
+        children = entries.toMutableList(),
+      )
+    val propertyTable = HashBasedTable.create<String, String, InspectorPropertyItem>()
+    propertyTable.put("parameter", "backStack", backStackGroup)
+    return PropertiesTable.create(propertyTable)
   }
 }

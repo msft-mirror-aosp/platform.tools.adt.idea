@@ -38,6 +38,7 @@ import com.intellij.ide.IdeTooltipManager
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.DisposableRule
+import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.runInEdtAndWait
 import com.intellij.ui.HintHint
 import com.intellij.ui.components.JBLabel
@@ -212,6 +213,66 @@ class BackStackPanelTest {
       // No HTML view: the text is painted as is, without interpreting tags or entities
       assertThat(label.getClientProperty(BasicHTML.propertyKey)).isNull()
     }
+  }
+
+  @Test
+  fun testBackStackPanelRefreshesWhenReaddedToHierarchy() = runInEdtAndWait {
+    // Render the panel initially attached to the Swing hierarchy with a single Home route
+    val fixture = createUi(listOf("Home"))
+    assertThat(fixture.list.renderedLabels()).containsExactly(listOf("Home", "Current"))
+
+    // Remove the panel from its parent container to trigger removeNotify and detach its properties listener
+    val parentContainer = fixture.panel.parent
+    parentContainer.remove(fixture.panel)
+
+    // Update the underlying properties table while the panel is detached from the component hierarchy
+    fixture.updateBackStack(listOf("Home", "Detail", "Checkout(orderId=99)"), refresh = false)
+    assertThat(fixture.panel.backStackList).containsExactly("Home")
+
+    // Re-add the panel to its parent container to trigger addNotify and verify it displays the latest routes
+    parentContainer.add(fixture.panel, BorderLayout.CENTER)
+    fixture.ui.layout()
+
+    assertThat(fixture.panel.backStackList).containsExactly("Home", "Detail", "Checkout(orderId=99)").inOrder()
+    assertThat(fixture.list.renderedLabels())
+      .containsExactly(listOf("Checkout(orderId=99)", "Current"), listOf("Detail"), listOf("Home"))
+      .inOrder()
+  }
+
+  @Test
+  fun testPropertiesEventsAreDeliveredOnlyWhileInHierarchy() = runInEdtAndWait {
+    val fixture = createUi(listOf("Home"))
+    val ancestorContainer = fixture.panel.parent
+    // Flush the properties events queued while the fixture was created
+    PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+    assertThat(fixture.panel.backStackList).containsExactly("Home")
+
+    // Remove the panel from its parent container to unregister its properties listener
+    ancestorContainer.remove(fixture.panel)
+
+    // Changing the selection empties the properties table and fires a properties event through invokeLater
+    fixture.inspectorModel.setSelection(null, SelectionOrigin.COMPONENT_TREE)
+    PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+
+    // The panel did not receive the event, so it still shows the old route
+    assertThat(fixture.panel.backStackList).containsExactly("Home")
+
+    // Re-add the panel and verify it picks up the empty properties table
+    ancestorContainer.add(fixture.panel, BorderLayout.CENTER)
+    fixture.ui.layout()
+
+    assertThat(fixture.panel.backStackList).isEmpty()
+
+    // Select the NavDisplay again and show new routes on the re-added panel
+    fixture.inspectorModel.setSelection(fixture.inspectorModel[VIEW1], SelectionOrigin.COMPONENT_TREE)
+    PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+    fixture.setBackStack(listOf("Home", "Detail"))
+
+    // Fire a real properties event and verify the re-registered listener receives it
+    fixture.inspectorModel.setSelection(null, SelectionOrigin.COMPONENT_TREE)
+    PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue()
+
+    assertThat(fixture.panel.backStackList).isEmpty()
   }
 
   @Test
@@ -612,8 +673,7 @@ class BackStackPanelTest {
 
   /** A visible [BackStackPanel] between two buttons, backed by the properties of a selected NavDisplay, with a fake focus manager. */
   private inner class Fixture(backStack: List<String>, width: Int, height: Int) {
-    private val inspectorModel =
-      model(disposableRule.disposable) { view(ROOT) { view(VIEW1, qualifiedName = "androidx.navigation3.NavDisplay") } }
+    val inspectorModel = model(disposableRule.disposable) { view(ROOT) { view(VIEW1, qualifiedName = "androidx.navigation3.NavDisplay") } }
     private val layoutInspector: LayoutInspector = mock<LayoutInspector>().also { whenever(it.inspectorModel).thenReturn(inspectorModel) }
     private val propertiesModel =
       InspectorPropertiesModel(disposableRule.disposable).apply { layoutInspector = this@Fixture.layoutInspector }
@@ -667,7 +727,7 @@ class BackStackPanelTest {
       ui.layout()
     }
 
-    private fun updateBackStack(routes: List<String>) {
+    fun updateBackStack(routes: List<String>, refresh: Boolean = true) {
       val entries = routes.mapIndexed { index, route ->
         ParameterItem("$index", PropertyType.STRING, route, PropertySection.PARAMETERS, VIEW1, inspectorModel, VIEW1, index)
       }
@@ -687,8 +747,10 @@ class BackStackPanelTest {
       val table = HashBasedTable.create<String, String, InspectorPropertyItem>()
       table.put("parameter", "backStack", backStack)
       propertiesModel.properties = PropertiesTable.create(table)
-      panel.updateBackStackForTesting()
-      assertThat(panel.backStackList).isEqualTo(routes)
+      if (refresh) {
+        panel.updateBackStackForTesting()
+        assertThat(panel.backStackList).isEqualTo(routes)
+      }
     }
 
     fun pressKey(keyCode: Int, shift: Boolean = false, ctrl: Boolean = false) {

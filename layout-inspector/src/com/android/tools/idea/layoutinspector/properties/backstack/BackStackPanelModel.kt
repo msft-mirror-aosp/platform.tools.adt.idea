@@ -112,9 +112,15 @@ class BackStackPanelModel(
     updateBackStackFromModel()
   }
 
+  /**
+   * Registers the properties listener and refreshes the back stack, since property updates are missed while the panel is detached from the
+   * Swing hierarchy.
+   */
   fun attachPropertiesListener() {
-    propertiesModel?.removeListener(propertiesListener)
-    propertiesModel?.addListener(propertiesListener)
+    val activePropertiesModel = propertiesModel ?: return
+    activePropertiesModel.removeListener(propertiesListener)
+    activePropertiesModel.addListener(propertiesListener)
+    updateBackStackFromModel()
   }
 
   fun detachPropertiesListener() {
