@@ -257,7 +257,7 @@ private val jbModelDumpers =
     },
     SpecializedDumper(property = KotlinMPPGradleModel::kotlinGradlePluginVersion) { _, kgpVersion ->
       head(propertyName)
-      nest { prop("versionString", kgpVersion.versionString.replaceKotlinVersionForTests()) }
+      nest { prop("versionString", kgpVersion.versionString.replaceBuiltInKotlinVersion().replaceKotlinVersionForTests()) }
     },
   )
 

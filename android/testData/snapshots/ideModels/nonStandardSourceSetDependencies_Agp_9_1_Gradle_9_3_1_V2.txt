@@ -2276,7 +2276,7 @@ MODULE                        : NonStandardSourceSetDependencies.common
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : 2.2.10
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -3799,7 +3799,7 @@ MODULE                        : NonStandardSourceSetDependencies.feature-b
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : 2.2.10
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         - kotlinImportingDiagnostics  : OrphanSourceSetsImportingDiagnostic
             kotlinSourceSet               : commonTest (KotlinSourceSetImpl)
                 actualPlatforms               : KotlinPlatformContainerImpl
@@ -4065,7 +4065,7 @@ MODULE                        : NonStandardSourceSetDependencies.kmp-java.sample
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : 2.2.10
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)

@@ -2115,7 +2115,7 @@ MODULE                        : Kotlin_Multiplatform.kmpFirstLib
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : 2.2.10
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         - targets                     : android (KotlinTargetImpl)
             - compilations                : deviceTest (KotlinCompilationImpl)
                 - allSourceSets               : commonTest (KotlinSourceSetImpl)
@@ -2383,7 +2383,7 @@ MODULE                        : Kotlin_Multiplatform.kmpJvmOnly
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : 2.2.10
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         - targets                     : jvm (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -2716,7 +2716,7 @@ MODULE                        : Kotlin_Multiplatform.kmpSecondLib
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : 2.2.10
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         - targets                     : android (KotlinTargetImpl)
             - compilations                : main (KotlinCompilationImpl)
                 - allSourceSets               : commonMain (KotlinSourceSetImpl)
@@ -3201,7 +3201,7 @@ MODULE                        : build-logic.lib-foo
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : 2.2.10
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         - targets                     : android (KotlinTargetImpl)
             - compilations                : deviceTest (KotlinCompilationImpl)
                 - allSourceSets               : androidDeviceTest (KotlinSourceSetImpl)

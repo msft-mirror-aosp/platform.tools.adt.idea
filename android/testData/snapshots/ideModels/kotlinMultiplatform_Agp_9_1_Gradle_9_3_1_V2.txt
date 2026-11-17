@@ -2147,7 +2147,7 @@ MODULE                        : kotlinMultiPlatform.module2
         extraFeatures                 : ExtraFeaturesImpl
             isHMPPEnabled                 : true
         kotlinGradlePluginVersion
-            versionString                 : 2.2.10
+            versionString                 : <AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION>
         - targets                     : android (KotlinTargetImpl)
             - compilations                : debug (KotlinCompilationImpl)
                 - allSourceSets               : androidMain (KotlinSourceSetImpl)
