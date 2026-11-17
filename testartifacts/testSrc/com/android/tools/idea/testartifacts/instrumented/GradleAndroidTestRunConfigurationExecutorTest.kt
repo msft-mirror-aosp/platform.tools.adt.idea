@@ -25,14 +25,25 @@ import com.android.tools.idea.execution.common.stats.RunStatsService
 import com.android.tools.idea.gradle.project.sync.snapshots.LightGradleTestProjects
 import com.android.tools.idea.run.DefaultStudioProgramRunner
 import com.android.tools.idea.run.FakeAndroidDevice
+import com.android.tools.idea.testartifacts.instrumented.testsuite.view.AndroidTestSuiteView
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.Executor
 import com.intellij.execution.RunManager
 import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.execution.filters.OpenFileHyperlinkInfo
+import com.intellij.execution.impl.EditorHyperlinkSupport
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.execution.ui.ConsoleViewContentType
+import com.intellij.openapi.application.impl.NonBlockingReadActionImpl
 import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Computable
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.testFramework.runInEdtAndWait
+import com.intellij.util.ui.UIUtil
+import java.io.File
+import javax.swing.event.AncestorEvent
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -197,5 +208,55 @@ class GradleAndroidTestRunConfigurationExecutorTest {
         eq(""),
         any(),
       )
+  }
+
+  @Test
+  fun run_installsSafeGradleRawOutputFiltersOnEdtBeforeOutput() {
+    val buildFile = File(projectRule.project.basePath!!, "app/build.gradle")
+    val buildVf = checkNotNull(LocalFileSystem.getInstance().refreshAndFindFileByIoFile(buildFile))
+
+    val env = getEnv(DefaultRunExecutor.getRunExecutorInstance())
+    val androidTestRunConfiguration = env.runProfile as AndroidTestRunConfiguration
+    androidTestRunConfiguration.TESTING_TYPE = AndroidTestRunConfiguration.TEST_ALL_IN_MODULE
+    val executor =
+      object : GradleAndroidTestRunConfigurationExecutor(env, FakeAndroidDevice.forDevices(listOf(device))) {
+        override fun gradleConnectedAndroidTestInvoker() = mockGradleConnectedAndroidTestInvoker
+      }
+
+    val descriptor =
+      ProgressManager.getInstance().runProcess(Computable { executor.run(EmptyProgressIndicator()) }, EmptyProgressIndicator())
+    val suiteView = descriptor.executionConsole as AndroidTestSuiteView
+    val rawConsole = suiteView.myDetailsView.rawTestLogConsoleView
+
+    runInEdtAndWait {
+      rawConsole.ancestorListeners.forEach {
+        it.ancestorAdded(AncestorEvent(rawConsole, AncestorEvent.ANCESTOR_ADDED, rawConsole, rawConsole.parent))
+      }
+      suiteView.print(
+        "Build file '${buildFile.absolutePath}' line: 1\n" +
+          "e: ${buildFile.absolutePath}:1:1: Compilation error\n" +
+          "Build file '\\\\10.0.0.2\\share\\build.gradle' line: 1\n",
+        ConsoleViewContentType.ERROR_OUTPUT,
+      )
+      NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
+      UIUtil.dispatchAllInvocationEvents()
+      rawConsole.waitAllRequests()
+      NonBlockingReadActionImpl.waitForAsyncTaskCompletion()
+      UIUtil.dispatchAllInvocationEvents()
+
+      val hyperlinks = checkNotNull(rawConsole.getHyperlinks())
+      hyperlinks.waitForPendingFilters(5_000)
+
+      // Line 0 is the "Launching ..." message printed by printLaunchTaskStartedMessage before runGradleTask.
+      val buildLinks = hyperlinks.findAllHyperlinksOnLine(1)
+      assertThat(buildLinks).hasSize(1)
+      assertThat((EditorHyperlinkSupport.getHyperlinkInfo(buildLinks.single()) as OpenFileHyperlinkInfo).virtualFile).isEqualTo(buildVf)
+
+      val sourceLinks = hyperlinks.findAllHyperlinksOnLine(2)
+      assertThat(sourceLinks).hasSize(1)
+      assertThat((EditorHyperlinkSupport.getHyperlinkInfo(sourceLinks.single()) as OpenFileHyperlinkInfo).virtualFile).isEqualTo(buildVf)
+
+      assertThat(hyperlinks.findAllHyperlinksOnLine(3)).isEmpty()
+    }
   }
 }

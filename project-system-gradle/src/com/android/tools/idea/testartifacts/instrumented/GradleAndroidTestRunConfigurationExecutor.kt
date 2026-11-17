@@ -143,6 +143,7 @@ open class GradleAndroidTestRunConfigurationExecutor(env: ExecutionEnvironment, 
   private suspend fun createAndroidTestSuiteView() =
     withContext(Dispatchers.EDT) {
       AndroidTestSuiteView(project, project, configuration.configurationModule.androidTestModule, env.executor.toolWindowId, configuration)
+        .apply { createGradleRawOutputFilters(project).forEach(::addMessageFilter) }
     }
 
   private fun printLaunchTaskStartedMessage(consoleView: AndroidTestSuiteView) {

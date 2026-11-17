@@ -26,13 +26,17 @@ import com.intellij.execution.filters.OpenFileHyperlinkInfo
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import org.apache.commons.lang3.RandomStringUtils
 import org.junit.Before
 import org.junit.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 
 class GenericFileFilterTest {
@@ -52,6 +56,45 @@ class GenericFileFilterTest {
   @Test
   fun `lonely slashes are not highlighted`() =
     getFilterResultAndCheckHighlightPositions("hello / world, hello \\ world", listOf(), false).checkFileLinks()
+
+  @Test
+  fun `UNC paths are ignored without querying VFS`() {
+    Truth.assertThat(filter.applyFilter("//10.0.0.2/share~1/evil.txt:10:5\n", 31)).isNull()
+    Truth.assertThat(filter.applyFilter("\\\\10.0.0.2\\share\\evil.txt:10:5\n", 31)).isNull()
+
+    verifyNoInteractions(localFileSystem)
+  }
+
+  @Test
+  fun `Windows 8_3 short names and uncached drive roots are ignored without querying VFS`() {
+    val driveRootLookupCount = AtomicInteger(0)
+    val windowsFilter =
+      GenericFileFilter(
+        project,
+        localFileSystem,
+        isWindows = true,
+        cachedWindowsDriveRootsProvider = {
+          driveRootLookupCount.incrementAndGet()
+          setOf('C')
+        },
+      )
+    whenever(localFileSystem.findFileByPathIfCached(eq("/Z"))).thenReturn(null)
+
+    Truth.assertThat(windowsFilter.applyFilter("C:\\EVIL~1\\build.gradle:10:5\n", 28)).isNull()
+    Truth.assertThat(windowsFilter.applyFilter("C:/Users/JANE~1/App.kt:1:1\n", 27)).isNull()
+    Truth.assertThat(windowsFilter.applyFilter("Z:\\share\\App.kt:1:1\n", 20)).isNull()
+    Truth.assertThat(windowsFilter.applyFilter("Z:/share/App.kt:1:1\n", 20)).isNull()
+    Truth.assertThat(windowsFilter.applyFilter("/Z:/share/App.kt:1:1\n", 21)).isNull()
+
+    verify(localFileSystem, never()).findFileByPathIfCached(ArgumentMatchers.contains("~"))
+    verify(localFileSystem, never()).findFileByPathIfCached(ArgumentMatchers.contains("Z:"))
+
+    driveRootLookupCount.set(0)
+    val cachedResult = windowsFilter.applyFilter("C:\\Users\\dev\\sub\\dir\\App.kt:1:1\n", 32)
+    Truth.assertThat(cachedResult).isNotNull()
+    listOf(cachedResult!!).checkFileLinks("C:\\Users\\dev\\sub\\dir\\App.kt")
+    Truth.assertThat(driveRootLookupCount.get()).isEqualTo(1)
+  }
 
   @Test
   fun `short names are highlighted`() =

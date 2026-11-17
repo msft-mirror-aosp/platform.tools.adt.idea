@@ -18,8 +18,12 @@ package com.android.tools.idea.gradle.project.build.output
 import com.intellij.execution.filters.ConsoleFilterProvider
 import com.intellij.execution.filters.Filter
 import com.intellij.execution.filters.OpenFileHyperlinkInfo
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.SystemInfo
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.newvfs.ManagingFS
 
 enum class ParsingState {
   NORMAL,
@@ -32,7 +36,14 @@ enum class ParsingState {
  * output, sync output, run test output, built-in terminal emulator, etc. Therefore, we manually parse the string instead of using regex for
  * maximum performance.
  */
-class GenericFileFilter(private val project: Project, private val localFileSystem: LocalFileSystem) : Filter {
+class GenericFileFilter
+@JvmOverloads
+constructor(
+  private val project: Project,
+  private val localFileSystem: LocalFileSystem,
+  private val isWindows: Boolean = SystemInfo.isWindows,
+  private val cachedWindowsDriveRootsProvider: () -> Set<Char> = { getCachedWindowsDriveRoots(localFileSystem) },
+) : Filter {
   companion object {
     /**
      * Max filename considered during parsing. Do not confuse with file path, which may contain several file names separated by '/' or '\'.
@@ -52,6 +63,7 @@ class GenericFileFilter(private val project: Project, private val localFileSyste
   override fun applyFilter(line: String, entireLength: Int): Filter.Result? {
     val indexOffset = entireLength - line.length
     val items = mutableListOf<Filter.ResultItem>()
+    val cachedWindowsDriveRoots by lazy(LazyThreadSafetyMode.NONE) { cachedWindowsDriveRootsProvider() }
     var state = ParsingState.NORMAL
     var pathStartIndex = -1
     var lastPathSegmentStart = -1
@@ -87,9 +99,15 @@ class GenericFileFilter(private val project: Project, private val localFileSyste
       if (pathEndIndex - pathStartIndex < PATH_MIN) return null
 
       val path = line.substring(pathStartIndex, pathEndIndex)
-      if (path == "/") {
-        // Ignore single slashes, as these are probably referring to something
-        // other than the file system root (e.g. progress indicators like "[10 / 1,000]").
+      if (
+        path == "/" ||
+          path.startsWith("//") ||
+          path.startsWith("\\\\") ||
+          hasUnsafeWindowsVfsLookup(path, isWindows) { cachedWindowsDriveRoots }
+      ) {
+        // Ignore single slashes (e.g. progress indicators like "[10 / 1,000]"), UNC paths
+        // ("//server/share" or "\\server\share"), and on Windows 8.3 short names or uncached
+        // drive roots so VFS lookup never triggers synchronous host or SMB stats.
         return null
       }
       val file =
@@ -227,6 +245,44 @@ private fun String.takeWhileFromIndex(index: Int, predicate: (Char) -> Boolean):
     }
   }
   return null
+}
+
+internal fun getCachedWindowsDriveRoots(localFileSystem: LocalFileSystem): Set<Char> {
+  val app = ApplicationManager.getApplication() ?: return ('A'..'Z').toSet()
+  if (localFileSystem !== LocalFileSystem.getInstance()) {
+    return ('A'..'Z').toSet()
+  }
+  val managingFs = app.getServiceIfCreated(ManagingFS::class.java) ?: return emptySet()
+  return managingFs
+    .getRoots(localFileSystem)
+    .mapNotNull { root ->
+      val path = root.path
+      if (path.length >= 2 && path[1] == ':') path[0].uppercaseChar() else null
+    }
+    .toSet()
+}
+
+internal fun extractWindowsDriveLetter(path: String): Char? {
+  val start = if (path.startsWith("/") && !path.startsWith("//")) 1 else 0
+  if (path.length >= start + 2 && path[start].uppercaseChar() in 'A'..'Z' && path[start + 1] == ':') {
+    return path[start].uppercaseChar()
+  }
+  return null
+}
+
+internal fun hasUnsafeWindowsVfsLookup(
+  path: String,
+  isWindows: Boolean,
+  cachedWindowsDriveRootsProvider: () -> Set<Char>,
+): Boolean {
+  if (!isWindows) {
+    return false
+  }
+  if (FileUtil.containsWindowsShortName(path)) {
+    return true
+  }
+  val driveLetter = extractWindowsDriveLetter(path)
+  return driveLetter != null && driveLetter !in cachedWindowsDriveRootsProvider()
 }
 
 class GenericFileFilterProvider : ConsoleFilterProvider {
