@@ -21,6 +21,7 @@ import com.android.tools.analytics.LoggedUsage
 import com.android.tools.analytics.TestUsageTracker
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.idea.gradle.project.sync.internal.KOTLIN_VERSION_FOR_TESTS
+import com.android.tools.idea.testing.AgpVersionSoftwareEnvironment
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.ModelVersion
 import com.android.tools.idea.testing.getBuiltInKotlinVersion
@@ -37,6 +38,7 @@ data class GradleSyncLoggedEventsTestDef(
   val namePrefix: String,
   override val testProject: TemplateBasedTestProject,
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
+  override val softwareEnvironment: AgpVersionSoftwareEnvironment = agpVersion,
   val verify: GradleSyncLoggedEventsTestDef.(events: List<LoggedUsage>) -> Unit = {},
 ) : SyncedProjectTestDef {
 
@@ -46,7 +48,11 @@ data class GradleSyncLoggedEventsTestDef(
   override fun toString(): String = name
 
   override fun withAgpVersion(agpVersion: AgpVersionSoftwareEnvironmentDescriptor): SyncedProjectTestDef {
-    return copy(agpVersion = agpVersion)
+    return copy(agpVersion = agpVersion, softwareEnvironment = agpVersion)
+  }
+
+  override fun withSoftwareEnvironment(softwareEnvironment: AgpVersionSoftwareEnvironment): SyncedProjectTestDef {
+    return copy(softwareEnvironment = softwareEnvironment)
   }
 
   private val testUsageTracker = TestUsageTracker(VirtualTimeScheduler())
@@ -224,7 +230,7 @@ data class GradleSyncLoggedEventsTestDef(
         kotlinKaptVersionsTestDef(TestProject.KOTLIN_KAPT),
         GradleSyncLoggedEventsTestDef(namePrefix = "kotlin_versions", testProject = TestProject.SIMPLE_APPLICATION_VERSION_CATALOG) { events
           ->
-          assertThat(events.dumpKotlinVersions(agpVersion.getBuiltInKotlinVersion()))
+          assertThat(events.dumpKotlinVersions(softwareEnvironment.getBuiltInKotlinVersion()))
             .isEqualTo(
               """
               |kotlin version: KOTLIN_VERSION_FOR_TESTS
@@ -236,7 +242,7 @@ data class GradleSyncLoggedEventsTestDef(
 
     fun kotlinKaptVersionsTestDef(testProject: TemplateBasedTestProject): GradleSyncLoggedEventsTestDef =
       GradleSyncLoggedEventsTestDef(namePrefix = "kotlin_versions", testProject = testProject) { events ->
-        assertThat(events.dumpKotlinVersions(agpVersion.getBuiltInKotlinVersion() ?: agpVersion.kotlinVersion))
+        assertThat(events.dumpKotlinVersions(softwareEnvironment.getBuiltInKotlinVersion() ?: softwareEnvironment.kotlinVersion))
           .isEqualTo(
             """
             |kotlin version: KOTLIN_VERSION_FOR_TESTS

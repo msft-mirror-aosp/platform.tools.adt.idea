@@ -212,6 +212,7 @@ class SnapshotContext(
   projectName: String,
   agpVersion: AgpVersionSoftwareEnvironmentDescriptor,
   override val snapshotDirectoryWorkspaceRelativePath: String,
+  override val kgpSnapshotSuffix: SnapshotSuffix? = null,
 ) : SnapshotComparisonTest {
 
   private val name: String =
@@ -287,10 +288,11 @@ private fun AgpVersionSoftwareEnvironmentDescriptor.gradleSuffix(): String {
   return gradleVersion?.let { "Gradle_${it}_" }.orEmpty()
 }
 
-/** Returns the built-in Kotlin version associated with the AGP version. */
-fun AgpVersionSoftwareEnvironmentDescriptor.getBuiltInKotlinVersion(): String? {
+/** Returns the built-in Kotlin version associated with the AGP software environment. */
+fun AgpVersionSoftwareEnvironment.getBuiltInKotlinVersion(): String? {
+  val version = agpVersion
   return when {
-    agpVersion == null -> AGP_BUILT_IN_KOTLIN_VERSION
-    else -> AgpVersion.parse(agpVersion).getKotlinVersion()
+    version == null -> if (explicitKotlinGradlePlugin) kotlinVersion ?: AGP_BUILT_IN_KOTLIN_VERSION else AGP_BUILT_IN_KOTLIN_VERSION
+    else -> AgpVersion.parse(version).getKotlinVersion()
   }
 }

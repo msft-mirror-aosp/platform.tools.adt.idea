@@ -25,6 +25,7 @@ import com.android.tools.idea.testing.AndroidGradleTests
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.SnapshotComparisonTest
 import com.android.tools.idea.testing.SnapshotContext
+import com.android.tools.idea.testing.SnapshotSuffix
 import com.android.tools.idea.testing.TestProjectToSnapshotPaths
 import com.android.tools.idea.testing.assertIsEqualToSnapshot
 import com.android.tools.idea.testing.dumpSourceProviders
@@ -48,6 +49,7 @@ import org.junit.rules.TestName
 data class SourceProvidersTestDef(
   override val testProject: TemplateBasedTestProject,
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AGP_CURRENT,
+  val kgpSnapshotSuffix: SnapshotSuffix? = null,
 ) : SyncedProjectTestDef {
   override val name: String = testProject.projectName
 
@@ -63,7 +65,13 @@ data class SourceProvidersTestDef(
 
   override fun runTest(root: File, project: Project) {
     val text = project.dumpSourceProviders()
-    val snapshotContext = SnapshotContext(testProject.projectName, agpVersion, "tools/adt/idea/android/testData/snapshots/sourceProviders")
+    val snapshotContext =
+      SnapshotContext(
+        testProject.projectName,
+        agpVersion,
+        "tools/adt/idea/android/testData/snapshots/sourceProviders",
+        kgpSnapshotSuffix = kgpSnapshotSuffix,
+      )
     snapshotContext.assertIsEqualToSnapshot(text)
   }
 

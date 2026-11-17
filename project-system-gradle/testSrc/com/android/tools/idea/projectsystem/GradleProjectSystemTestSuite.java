@@ -43,6 +43,16 @@ public class GradleProjectSystemTestSuite extends IdeaTestSuiteBase {
       linkIntoOfflineMavenRepo("tools/base/build-system/integration-test/kotlin_gradle_plugin_prebuilts.manifest");
       linkIntoOfflineMavenRepo("tools/base/build-system/gradle-runtime-maven.manifest");
     }
+    Path minKgpPrebuilts =
+      TestUtils.getWorkspaceRoot().resolve("tools/base/build-system/integration-test/kotlin_gradle_plugin_minimum_prebuilts.manifest");
+    if (Files.exists(minKgpPrebuilts)) {
+      linkIntoOfflineMavenRepo("tools/base/build-system/integration-test/kotlin_gradle_plugin_minimum_prebuilts.manifest");
+    }
+    Path multiKgpTestDeps =
+      TestUtils.getWorkspaceRoot().resolve("tools/adt/idea/project-system-gradle/multi_kgp_test_deps.manifest");
+    if (Files.exists(multiKgpTestDeps)) {
+      linkIntoOfflineMavenRepo("tools/adt/idea/project-system-gradle/multi_kgp_test_deps.manifest");
+    }
 
     Path dataBindingSupportFile = TestUtils.getWorkspaceRoot().resolve("tools/data-binding/data_binding_runtime.zip");
     if (Files.exists(dataBindingSupportFile)) {

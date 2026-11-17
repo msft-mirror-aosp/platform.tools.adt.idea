@@ -30,7 +30,9 @@ import com.android.tools.idea.testing.JavaModuleModelBuilder
 import com.android.tools.idea.testing.ModuleModelBuilder
 import com.android.tools.idea.testing.SnapshotComparisonTest
 import com.android.tools.idea.testing.SnapshotContext
+import com.android.tools.idea.testing.SnapshotSuffix
 import com.android.tools.idea.testing.assertIsEqualToSnapshot
+import com.android.tools.idea.testing.assertIsEqualToUpdatedSnapshot
 import com.android.tools.idea.testing.getAndMaybeUpdateSnapshot
 import com.android.tools.idea.testing.saveAndDump
 import com.google.common.truth.Truth.assertThat
@@ -58,6 +60,8 @@ data class ProjectStructureSnapshotTestDef(
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AGP_CURRENT,
   private val roots: Map<String, File> = emptyMap(),
   private val compatibleWith: Set<AgpVersionSoftwareEnvironmentDescriptor> = setOf(AGP_CURRENT),
+  val kgpSnapshotSuffix: SnapshotSuffix? = null,
+  val updateExpectedSnapshot: ((String) -> String)? = null,
 ) : SyncedProjectTestDef {
 
   override val name: String = testProject.projectName
@@ -74,7 +78,23 @@ data class ProjectStructureSnapshotTestDef(
 
   override fun runTest(root: File, project: Project) {
     val text = project.saveAndDump(additionalRoots = roots.mapValues { root.resolve(it.value) }, ignoreModuleFileAndType = true)
-    SnapshotContext(testProject.projectName, agpVersion, PROJECT_STRUCTURE_SNAPSHOT_DIR).assertIsEqualToSnapshot(text)
+    val snapshotContext =
+      SnapshotContext(
+        testProject.projectName,
+        agpVersion,
+        PROJECT_STRUCTURE_SNAPSHOT_DIR,
+        kgpSnapshotSuffix = kgpSnapshotSuffix,
+      )
+    val expectedUpdater = updateExpectedSnapshot
+    if (expectedUpdater != null) {
+      snapshotContext.assertIsEqualToUpdatedSnapshot(
+        text,
+        snapshotOnSaveUpdater = { it },
+        snapshotOnCompareUpdater = expectedUpdater,
+      )
+    } else {
+      snapshotContext.assertIsEqualToSnapshot(text)
+    }
   }
 
   companion object {

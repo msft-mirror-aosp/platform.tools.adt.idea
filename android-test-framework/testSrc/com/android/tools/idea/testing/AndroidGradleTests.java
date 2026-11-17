@@ -262,6 +262,7 @@ public class AndroidGradleTests {
     int majorVersion = Integer.parseInt(agpEnvironment.getAgpVersion().substring(0, firstSeparator)) + 23;
     String toolsBaseVersion = majorVersion + agpEnvironment.getAgpVersion().substring(firstSeparator);
     boolean builtInKotlin = (builtInKotlinEnabled != null) ? builtInKotlinEnabled : getBuiltInKotlinEnabled(path, agpEnvironment);
+    boolean explicitKotlinGradlePlugin = agpEnvironment.getExplicitKotlinGradlePlugin();
     // Kotlin Multiplatform projects keep their explicit Kotlin Gradle plugin (see migrateBuildFileToBuiltInKotlin). This is decided
     // once for the whole project, including included builds such as build-logic, because Gradle loads a single KGP per classloader.
     boolean keepKotlinGradlePlugin = (keepKotlinGradlePluginEnabled != null)
@@ -321,7 +322,14 @@ public class AndroidGradleTests {
         contents = updateMinSdkVersionOnlyIfGreaterThanExisting(contents, "minSdkVersion *[(=]? *(\\d+)");
         contents = updateMinSdkVersionOnlyIfGreaterThanExisting(contents, "minSdk *= *(\\d+)");
         contents = updateLocalRepositories(contents, localRepositories);
-        contents = migrateBuildFileToBuiltInKotlin(contents, agpEnvironment.getAgpVersion(), builtInKotlin, keepKotlinGradlePlugin);
+        contents = migrateBuildFileToBuiltInKotlin(
+          contents,
+          agpEnvironment.getAgpVersion(),
+          agpEnvironment.getKotlinVersion(),
+          builtInKotlin,
+          keepKotlinGradlePlugin,
+          explicitKotlinGradlePlugin
+        );
 
         if (ndkVersion != null) {
           contents = contents.replace(NDK_VERSION_PLACEHOLDER, String.format("ndkVersion=\"%s\"", ndkVersion));
@@ -357,6 +365,17 @@ public class AndroidGradleTests {
         contents = updateMinSdkVersionOnlyIfGreaterThanExisting(contents, "minSdkVersion[ (](\\d+)");
         contents = updateMinSdkVersionOnlyIfGreaterThanExisting(contents, "minSdk *= *(\\d+)");
         contents = updateLocalRepositories(contents, localRepositories);
+        if (builtInKotlin && explicitKotlinGradlePlugin && !contents.contains("org.jetbrains.kotlin:kotlin-gradle-plugin")
+            && contents.contains("com.android.tools.build:gradle:")) {
+          // As in migrateBuildFileToBuiltInKotlin, gradle-kotlin is added next to the Kotlin Gradle plugin unless it is already present.
+          String gradleKotlinLine = contents.contains("com.android.tools.build:gradle-kotlin")
+                                    ? ""
+                                    : "\n$1classpath(\"com.android.tools.build:gradle-kotlin:" + agpEnvironment.getAgpVersion() + "\")";
+          contents = contents.replaceFirst(
+            "([ \\t]*)(classpath\\(['\"]com\\.android\\.tools\\.build:gradle:.+['\"]\\))",
+            "$1$2\n$1classpath(\"org.jetbrains.kotlin:kotlin-gradle-plugin:" + agpEnvironment.getKotlinVersion() + "\")" + gradleKotlinLine
+          );
+        }
 
         if (ndkVersion != null) {
           contents = contents.replace(NDK_VERSION_PLACEHOLDER, String.format("ndkVersion=\"%s\"", ndkVersion));
@@ -641,16 +660,18 @@ public class AndroidGradleTests {
   @NotNull
   private static String migrateBuildFileToBuiltInKotlin(@NotNull String contents,
                                                         @NotNull String agpVersion,
+                                                        @NotNull String kotlinVersion,
                                                         boolean builtInKotlin,
-                                                        boolean keepKotlinGradlePlugin) {
+                                                        boolean keepKotlinGradlePlugin,
+                                                        boolean explicitKotlinGradlePlugin) {
     if (!builtInKotlin) return contents;
 
     // Top level gradle build file
     if (contents.contains("org.jetbrains.kotlin:kotlin-gradle-plugin")) {
-      if (keepKotlinGradlePlugin) {
-        // Kotlin Multiplatform projects keep the explicit KGP so that they run on the Kotlin version of the test environment
-        // (KOTLIN_VERSION_FOR_TESTS for AGP_LATEST) instead of the older KGP that AGP depends on. Android modules in the same
-        // build use it too. gradle-kotlin is still added next to it as it provides plugins such as com.android.legacy-kapt.
+      if (keepKotlinGradlePlugin || explicitKotlinGradlePlugin) {
+        // Kotlin Multiplatform projects (and explicit multi-KGP layer tests) keep the explicit KGP so that they run on the Kotlin
+        // version of the test environment instead of the default KGP that AGP depends on. Android modules in the same build use it
+        // too. gradle-kotlin is still added next to it as it provides plugins such as com.android.legacy-kapt.
         if (!contents.contains("com.android.tools.build:gradle-kotlin")) {
           contents = contents.replaceFirst("([ \\t]*)(classpath\\s+['\"]org.jetbrains.kotlin:kotlin-gradle-plugin:.+['\"])",
                                            "$1$2\n$1classpath 'com.android.tools.build:gradle-kotlin:" + agpVersion + "'");
@@ -662,6 +683,15 @@ public class AndroidGradleTests {
         contents = contents.replaceAll("classpath\\s+['\"]org.jetbrains.kotlin:kotlin-gradle-plugin:.+['\"]",
                                        "classpath 'com.android.tools.build:gradle-kotlin:" + agpVersion + "'\n");
       }
+    }
+    else if (explicitKotlinGradlePlugin && contents.contains("com.android.tools.build:gradle:")) {
+      String gradleKotlinLine = contents.contains("com.android.tools.build:gradle-kotlin")
+                                ? ""
+                                : "\n$1classpath 'com.android.tools.build:gradle-kotlin:" + agpVersion + "'";
+      contents = contents.replaceFirst(
+        "([ \\t]*)(classpath\\s+['\"]com\\.android\\.tools\\.build:gradle:.+['\"])",
+        "$1$2\n$1classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:" + kotlinVersion + "'" + gradleKotlinLine
+      );
     }
 
     if (contents.contains("com.android.") || contents.contains("android {") || contents.contains("kotlin-android")) {

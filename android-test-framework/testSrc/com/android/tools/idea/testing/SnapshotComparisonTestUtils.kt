@@ -26,6 +26,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.io.path.writeText
+import org.jetbrains.annotations.VisibleForTesting
 
 /**
  * See implementing classes for usage examples.
@@ -49,9 +50,13 @@ interface SnapshotComparisonTest {
   /** A testData subdirectory name where to look for snapshots. */
   val snapshotDirectoryWorkspaceRelativePath: String
 
+  /** Optional KGP layer snapshot suffix (`KGP_MIN`, `KGP_DEFAULT`, or `KGP_LATEST`) scoped to this snapshot context. */
+  val kgpSnapshotSuffix: SnapshotSuffix?
+    get() = null
+
   /** The list of file name suffixes applicable to the currently running test. */
   val snapshotSuffixes: List<String>
-    get() = SnapshotSuffix.snapshotSuffixesApplicable()
+    get() = SnapshotSuffix.snapshotSuffixesApplicable(kgpSnapshotSuffix)
 
   /** Assumed to be matched by [UsefulTestCase.getName]. */
   fun getName(): String
@@ -59,21 +64,78 @@ interface SnapshotComparisonTest {
 
 /** Snapshot filename suffixes ordered by matching priority, where [BASELINE] must be last. */
 enum class SnapshotSuffix(val suffix: String) {
+  KGP_MIN_PHASED("_kgp_min_phased") {
+    override val ownerKgpSuffix: SnapshotSuffix
+      get() = KGP_MIN
+
+    override fun isEnabled(kgpSnapshotSuffix: SnapshotSuffix?): Boolean =
+      kgpSnapshotSuffix == KGP_MIN && StudioFlags.PHASED_SYNC_ENABLED.get()
+
+    override fun fallbackSuffixes(): List<SnapshotSuffix> = listOf(KGP_MIN, PHASED, BASELINE)
+  },
+  KGP_MIN("_kgp_min") {
+    override val ownerKgpSuffix: SnapshotSuffix
+      get() = KGP_MIN
+
+    override fun isEnabled(kgpSnapshotSuffix: SnapshotSuffix?): Boolean = kgpSnapshotSuffix == this
+  },
+  KGP_DEFAULT_PHASED("_kgp_default_phased") {
+    override val ownerKgpSuffix: SnapshotSuffix
+      get() = KGP_DEFAULT
+
+    override fun isEnabled(kgpSnapshotSuffix: SnapshotSuffix?): Boolean =
+      kgpSnapshotSuffix == KGP_DEFAULT && StudioFlags.PHASED_SYNC_ENABLED.get()
+
+    override fun fallbackSuffixes(): List<SnapshotSuffix> = listOf(KGP_DEFAULT, PHASED, BASELINE)
+  },
+  KGP_DEFAULT("_kgp_default") {
+    override val ownerKgpSuffix: SnapshotSuffix
+      get() = KGP_DEFAULT
+
+    override fun isEnabled(kgpSnapshotSuffix: SnapshotSuffix?): Boolean = kgpSnapshotSuffix == this
+  },
+  KGP_LATEST_PHASED("_kgp_latest_phased") {
+    override val ownerKgpSuffix: SnapshotSuffix
+      get() = KGP_LATEST
+
+    override fun isEnabled(kgpSnapshotSuffix: SnapshotSuffix?): Boolean =
+      kgpSnapshotSuffix == KGP_LATEST && StudioFlags.PHASED_SYNC_ENABLED.get()
+
+    override fun fallbackSuffixes(): List<SnapshotSuffix> = listOf(KGP_LATEST, PHASED, BASELINE)
+  },
+  KGP_LATEST("_kgp_latest") {
+    override val ownerKgpSuffix: SnapshotSuffix
+      get() = KGP_LATEST
+
+    override fun isEnabled(kgpSnapshotSuffix: SnapshotSuffix?): Boolean = kgpSnapshotSuffix == this
+  },
   PHASED("_phased") {
-    override val isEnabled
-      get() = StudioFlags.PHASED_SYNC_ENABLED.get()
+    override fun isEnabled(kgpSnapshotSuffix: SnapshotSuffix?): Boolean = StudioFlags.PHASED_SYNC_ENABLED.get()
   },
   BASELINE("") {
-    override val isEnabled
-      get() = true
+    override fun isEnabled(kgpSnapshotSuffix: SnapshotSuffix?): Boolean = true
+
+    override fun fallbackSuffixes(): List<SnapshotSuffix> = emptyList()
   };
 
-  abstract val isEnabled: Boolean
+  open val ownerKgpSuffix: SnapshotSuffix?
+    get() = null
+
+  abstract fun isEnabled(kgpSnapshotSuffix: SnapshotSuffix? = null): Boolean
+
+  open fun fallbackSuffixes(): List<SnapshotSuffix> = listOf(BASELINE)
 
   companion object {
     fun nonBaselineSnapshots() = entries.filter { it != BASELINE }
 
-    fun snapshotSuffixesApplicable() = entries.filter { it.isEnabled }.map { it.suffix }
+    fun snapshotSuffixesApplicable(kgpSnapshotSuffix: SnapshotSuffix? = null): List<String> {
+      require(
+        kgpSnapshotSuffix == null || kgpSnapshotSuffix == KGP_MIN || kgpSnapshotSuffix == KGP_DEFAULT || kgpSnapshotSuffix == KGP_LATEST
+      ) {
+        "Only KGP_MIN, KGP_DEFAULT, KGP_LATEST, or null are valid KGP snapshot suffixes, got $kgpSnapshotSuffix"
+      }
+      return entries.filter { it.isEnabled(kgpSnapshotSuffix) }.map { it.suffix }
+    }
   }
 }
 
@@ -117,7 +179,7 @@ private fun SnapshotComparisonTest.assertDuplicatedSnapshotsTextContext() =
 fun SnapshotComparisonTest.assertIsEqualToSnapshot(text: String, snapshotTestSuffix: String = "") {
   val (fullSnapshotName, expectedText) = getAndMaybeUpdateSnapshot(snapshotTestSuffix, text)
   assertInSnapshotTextContext().that(text).named("Snapshot comparison for $fullSnapshotName").isEqualTo(expectedText)
-  assertNoDuplicatedSnapshots()
+  assertNoDuplicatedSnapshots(snapshotTestSuffix)
 }
 
 fun SnapshotComparisonTest.assertIsEqualToUpdatedSnapshot(
@@ -137,27 +199,46 @@ fun SnapshotComparisonTest.assertIsEqualToUpdatedSnapshot(
     .that(text)
     .named("Snapshot comparison for $fullSnapshotName")
     .isEqualTo(snapshotOnCompareUpdater(expectedText))
-  assertNoDuplicatedSnapshots()
+  assertNoDuplicatedSnapshots(snapshotTestSuffix, snapshotOnCompareUpdater)
 }
 
-fun SnapshotComparisonTest.assertNoDuplicatedSnapshots() {
+fun SnapshotComparisonTest.assertNoDuplicatedSnapshots(
+  snapshotTestSuffix: String = "",
+  snapshotOnCompareUpdater: (String) -> String = { it },
+) {
   val sanitizedTestName = sanitizeFileName(UsefulTestCase.getTestName(getName(), true))
   val duplicates = mutableListOf<File>()
+  val isUpdateMode = System.getProperty(updateSnapshotsJvmProperty) != null
+  val activeKgpSuffix = kgpSnapshotSuffix
 
-  val baseline = getCandidateSnapshotFile(sanitizedTestName, SnapshotSuffix.BASELINE.suffix)
+  val baseline = getCandidateSnapshotFile(sanitizedTestName, "${SnapshotSuffix.BASELINE.suffix}$snapshotTestSuffix")
+  if (isUpdateMode && activeKgpSuffix != null && !baseline.exists()) return
   val baselineContent = baseline.readText()
-  SnapshotSuffix.nonBaselineSnapshots().forEach {
-    val snapshotFile = getCandidateSnapshotFile(sanitizedTestName, it.suffix)
+  SnapshotSuffix.nonBaselineSnapshots().forEach { suffix ->
+    val snapshotFile = getCandidateSnapshotFile(sanitizedTestName, "${suffix.suffix}$snapshotTestSuffix")
     if (snapshotFile.exists()) {
-      val content = snapshotFile.readText()
-      if (content == baselineContent) {
+      val fallbackEntry =
+        suffix
+          .fallbackSuffixes()
+          .map { it to getCandidateSnapshotFile(sanitizedTestName, "${it.suffix}$snapshotTestSuffix") }
+          .firstOrNull { (_, file) -> file.exists() }
+      val fallbackSuffix = fallbackEntry?.first ?: SnapshotSuffix.BASELINE
+      val fallbackContent = fallbackEntry?.second?.readText() ?: baselineContent
+      val snapshotContent = snapshotFile.readText()
+      val isRawDuplicate = snapshotContent == fallbackContent
+      val isLayerTokenDuplicate =
+        activeKgpSuffix != null &&
+          suffix.ownerKgpSuffix == activeKgpSuffix &&
+          fallbackSuffix.ownerKgpSuffix != activeKgpSuffix &&
+          snapshotContent.trimIndent() == snapshotOnCompareUpdater(fallbackContent.trimIndent())
+      if (isRawDuplicate || isLayerTokenDuplicate) {
         duplicates.add(snapshotFile)
       }
     }
   }
 
   if (duplicates.isNotEmpty()) {
-    if (System.getProperty(updateSnapshotsJvmProperty) != null) {
+    if (isUpdateMode) {
       duplicates.forEach {
         println("Delete duplicated snapshot file: ${it.absolutePath}")
         it.delete()
@@ -203,17 +284,46 @@ fun SnapshotComparisonTest.getAndMaybeUpdateSnapshot(
   val effectiveExpectedText = snapshotOnCompareUpdater(expectedText)
 
   if (System.getProperty(updateSnapshotsJvmProperty) != null) {
-    if (!snapshotFile.isFile || effectiveExpectedText != text) {
-      println("Writing to: ${snapshotFile.absolutePath}")
-      snapshotFile.parentFile?.mkdirs()
-      snapshotFile.writeText(textToStore)
-      return snapshotFile.name to textToStore.trimIndent()
+    val activeKgpSuffix = kgpSnapshotSuffix
+    if (activeKgpSuffix == null) {
+      if (!snapshotFile.isFile || effectiveExpectedText != text) {
+        println("Writing to: ${snapshotFile.absolutePath}")
+        snapshotFile.parentFile?.mkdirs()
+        snapshotFile.writeText(textToStore)
+        return snapshotFile.name to textToStore.trimIndent()
+      }
+      return snapshotFile.name to expectedText
     }
-    return snapshotFile.name to expectedText
+
+    val (targetFile, fallbackEntry) = resolveKgpLayerUpdateTarget(sanitizedTestName, snapshotTestSuffix, activeKgpSuffix)
+    if (fallbackEntry != null) {
+      val (fallbackSuffix, fallbackFile) = fallbackEntry
+      val rawFallbackText = fallbackFile.readText().trimIndent()
+      // A fallback owned by this layer is in stored form, as is the text to store. Any other fallback is first rewritten to the form of
+      // the actual text.
+      val matchesFallback =
+        if (fallbackSuffix.ownerKgpSuffix == activeKgpSuffix) {
+          rawFallbackText == textToStore.trimIndent()
+        } else {
+          snapshotOnCompareUpdater(rawFallbackText) == text
+        }
+      if (matchesFallback) {
+        if (targetFile != fallbackFile && targetFile.exists()) {
+          println("Delete duplicated snapshot file: ${targetFile.absolutePath}")
+          targetFile.delete()
+        }
+        return fallbackFile.name to rawFallbackText
+      }
+    }
+    println("Writing to: ${targetFile.absolutePath}")
+    targetFile.parentFile?.mkdirs()
+    targetFile.writeText(textToStore)
+    return targetFile.name to textToStore.trimIndent()
   } else if (TestUtils.runningFromBazel()) {
     // Populate additional test output if the file needs updating
     if (!snapshotFile.isFile || effectiveExpectedText != text) {
-      val workspaceRelativePath = TestUtils.getWorkspaceRoot().relativize(snapshotFile.toPath())
+      val outputTarget = resolveBazelOutputSnapshotFile(sanitizedTestName, snapshotTestSuffix, snapshotFile)
+      val workspaceRelativePath = TestUtils.getWorkspaceRoot().relativize(outputTarget.toPath())
       println("Writing updated snapshot file to bazel additional test output.\n" + "    $workspaceRelativePath")
       TestUtils.getTestOutputDir().resolve(workspaceRelativePath).run {
         Files.createDirectories(parent)
@@ -222,6 +332,67 @@ fun SnapshotComparisonTest.getAndMaybeUpdateSnapshot(
     }
   }
   return snapshotFile.name to expectedText
+}
+
+/**
+ * Selects the destination path inside Bazel's `outputs.zip` when a snapshot comparison differs.
+ *
+ * When no KGP layer suffix is active (`kgpSnapshotSuffix == null`), returns [snapshotFile] (the first existing candidate, else baseline).
+ * When a KGP layer suffix is active, returns the layer file that `-DUPDATE_TEST_SNAPSHOTS` would write: the layer's `_phased` file when
+ * Phased Sync is enabled and that file or the baseline `_phased` file exists, else the layer's non-phased file.
+ */
+@VisibleForTesting
+fun SnapshotComparisonTest.resolveBazelOutputSnapshotFile(
+  sanitizedTestName: String,
+  snapshotTestSuffix: String,
+  snapshotFile: File,
+): File {
+  val activeKgpSuffix = kgpSnapshotSuffix ?: return snapshotFile
+  val targetSuffix = kgpLayerTargetSuffix(sanitizedTestName, snapshotTestSuffix, activeKgpSuffix)
+  return getCandidateSnapshotFile(sanitizedTestName, "${targetSuffix.suffix}$snapshotTestSuffix")
+}
+
+/**
+ * Selects the target layer file and first existing fallback candidate for `-DUPDATE_TEST_SNAPSHOTS` when [activeKgpSuffix] is set.
+ *
+ * Targets the layer's `_phased` file when Phased Sync is enabled and that file or the baseline `_phased` file exists, else the layer's
+ * non-phased file, paired with the highest-priority existing fallback candidate after it.
+ */
+private fun SnapshotComparisonTest.resolveKgpLayerUpdateTarget(
+  sanitizedTestName: String,
+  snapshotTestSuffix: String,
+  activeKgpSuffix: SnapshotSuffix,
+): Pair<File, Pair<SnapshotSuffix, File>?> {
+  val applicableEntries =
+    SnapshotSuffix.entries
+      .filter { it.isEnabled(activeKgpSuffix) }
+      .map { it to getCandidateSnapshotFile(sanitizedTestName, "${it.suffix}$snapshotTestSuffix") }
+  val targetSuffix = kgpLayerTargetSuffix(sanitizedTestName, snapshotTestSuffix, activeKgpSuffix)
+  val targetIndex = applicableEntries.indexOfFirst { it.first == targetSuffix }
+  val fallbackEntry = applicableEntries.drop(targetIndex + 1).firstOrNull { (_, file) -> file.exists() }
+  return applicableEntries[targetIndex].second to fallbackEntry
+}
+
+/**
+ * Selects the suffix of the file in which the layer [activeKgpSuffix] stores a snapshot that differs from its fallback candidates.
+ *
+ * With Phased Sync enabled, this is the layer's `_phased` suffix when that layer file or the baseline `_phased` file already exists, and
+ * the layer's non-phased suffix otherwise. A baseline `_phased` file means that Phased Sync and full sync produce different snapshots for
+ * the project, so the layer's Phased Sync snapshot must not go into the non-phased layer file, which the full sync run reads and writes.
+ * Without a baseline `_phased` file, a `_phased` layer file is never created automatically. With Phased Sync disabled, this is always the
+ * layer's non-phased suffix.
+ */
+private fun SnapshotComparisonTest.kgpLayerTargetSuffix(
+  sanitizedTestName: String,
+  snapshotTestSuffix: String,
+  activeKgpSuffix: SnapshotSuffix,
+): SnapshotSuffix {
+  val phasedLayerSuffix =
+    SnapshotSuffix.entries.firstOrNull { it != activeKgpSuffix && it.ownerKgpSuffix == activeKgpSuffix && it.isEnabled(activeKgpSuffix) }
+  if (phasedLayerSuffix == null) return activeKgpSuffix
+  val phasedCandidateFiles =
+    listOf(phasedLayerSuffix, SnapshotSuffix.PHASED).map { getCandidateSnapshotFile(sanitizedTestName, "${it.suffix}$snapshotTestSuffix") }
+  return if (phasedCandidateFiles.any { it.exists() }) phasedLayerSuffix else activeKgpSuffix
 }
 
 private fun SnapshotComparisonTest.getCandidateSnapshotFiles(project: String, additionalSuffix: String): List<File> {

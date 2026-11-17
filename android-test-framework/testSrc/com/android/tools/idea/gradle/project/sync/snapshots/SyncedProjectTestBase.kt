@@ -20,6 +20,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
 import com.android.tools.idea.stats.ReportProjectSizeTask
 import com.android.tools.idea.testing.AgpIntegrationTestDefinition
+import com.android.tools.idea.testing.AgpVersionSoftwareEnvironment
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
@@ -75,6 +76,12 @@ interface SyncedProjectTestDef : AgpIntegrationTestDefinition {
   /** Verified any data captured by listeners registered in [setup]. */
   fun verifyAfterClosing(root: File) = Unit
 
+  /** The resolved/custom software environment used to prepare the project (defaults to [agpVersion]). */
+  val softwareEnvironment: AgpVersionSoftwareEnvironment
+    get() = agpVersion
+
+  fun withSoftwareEnvironment(softwareEnvironment: AgpVersionSoftwareEnvironment): SyncedProjectTestDef = this
+
   override fun withAgpVersion(agpVersion: AgpVersionSoftwareEnvironmentDescriptor): SyncedProjectTestDef
 }
 
@@ -91,6 +98,9 @@ abstract class SyncedProjectTestBase<TestProject : TestProjectDefinition>(
    * methods for all declared projects. See [SyncedProjectTestSelfCheckBase] and its implementations.
    */
   val selfTest: Boolean = false,
+
+  /** Optional custom software environment (e.g. overriding KGP version or JDK) while preserving [agpVersion] compatibility checks. */
+  val softwareEnvironment: AgpVersionSoftwareEnvironment = agpVersion,
 ) {
   @get:Rule val projectRule: IntegrationTestEnvironmentRule = AndroidProjectRule.withIntegrationTestEnvironment()
 
@@ -115,7 +125,7 @@ abstract class SyncedProjectTestBase<TestProject : TestProjectDefinition>(
       StudioFlags.GRADLE_SYNC_USE_V2_MODEL.override(false)
     }
     try {
-      val preparedProject = projectRule.prepareTestProject(testProject, agpVersion = agpVersion)
+      val preparedProject = projectRule.prepareTestProject(testProject, agpVersion = softwareEnvironment)
 
       aggregateAndThrowIfAny {
         tests.forEach { runCatchingAndRecord { it.setup(projectRule.testRootDisposable) } }
@@ -144,7 +154,7 @@ abstract class SyncedProjectTestBase<TestProject : TestProjectDefinition>(
   protected open fun setupAdditionalEnvironment() = Unit
 
   private fun transformTest(testProject: SyncedProjectTestDef): SyncedProjectTestDef {
-    return testProject.withAgpVersion(agpVersion)
+    return testProject.withAgpVersion(agpVersion).withSoftwareEnvironment(softwareEnvironment)
   }
 }
 

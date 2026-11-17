@@ -54,6 +54,13 @@ interface AgpVersionSoftwareEnvironment {
   val modelVersion: ModelVersion
 
   /**
+   * Whether to keep or inject an explicit `org.jetbrains.kotlin:kotlin-gradle-plugin` dependency on root buildscript classpaths even when
+   * built-in Kotlin is enabled (for example, to pin KGP to `MINIMUM` or upgrade to `LATEST`).
+   */
+  val explicitKotlinGradlePlugin: Boolean
+    get() = false
+
+  /**
    * Comparator for the interface rather than only the Descriptor enum, because some tests depend on compatibility with various AGP versions
    */
   operator fun compareTo(other: AgpVersionSoftwareEnvironment): Int {
@@ -90,6 +97,8 @@ interface ResolvedAgpVersionSoftwareEnvironment : AgpVersionSoftwareEnvironment 
 
   /** The target sdk version to use in this test. */
   override val targetSdk: String
+
+  override val explicitKotlinGradlePlugin: Boolean
 }
 
 data class CustomAgpVersionSoftwareEnvironment(
@@ -100,16 +109,58 @@ data class CustomAgpVersionSoftwareEnvironment(
   override val compileSdk: String,
   override val targetSdk: String? = null,
   override val modelVersion: ModelVersion = ModelVersion.V2,
+  override val explicitKotlinGradlePlugin: Boolean = false,
 ) : AgpVersionSoftwareEnvironment
 
 fun AgpVersionSoftwareEnvironment.withJdk(jdkVersion: JavaSdkVersion?): CustomAgpVersionSoftwareEnvironment =
-  CustomAgpVersionSoftwareEnvironment(agpVersion, gradleVersion, jdkVersion, kotlinVersion, compileSdk, targetSdk, modelVersion)
+  CustomAgpVersionSoftwareEnvironment(
+    agpVersion,
+    gradleVersion,
+    jdkVersion,
+    kotlinVersion,
+    compileSdk,
+    targetSdk,
+    modelVersion,
+    explicitKotlinGradlePlugin,
+  )
 
 fun AgpVersionSoftwareEnvironment.withGradle(gradleVersion: String?): CustomAgpVersionSoftwareEnvironment =
-  CustomAgpVersionSoftwareEnvironment(agpVersion, gradleVersion, jdkVersion, kotlinVersion, compileSdk, targetSdk, modelVersion)
+  CustomAgpVersionSoftwareEnvironment(
+    agpVersion,
+    gradleVersion,
+    jdkVersion,
+    kotlinVersion,
+    compileSdk,
+    targetSdk,
+    modelVersion,
+    explicitKotlinGradlePlugin,
+  )
 
 fun AgpVersionSoftwareEnvironment.withKotlin(kotlinVersion: String?): CustomAgpVersionSoftwareEnvironment =
-  CustomAgpVersionSoftwareEnvironment(agpVersion, gradleVersion, jdkVersion, kotlinVersion, compileSdk, targetSdk, modelVersion)
+  CustomAgpVersionSoftwareEnvironment(
+    agpVersion,
+    gradleVersion,
+    jdkVersion,
+    kotlinVersion,
+    compileSdk,
+    targetSdk,
+    modelVersion,
+    explicitKotlinGradlePlugin,
+  )
+
+fun AgpVersionSoftwareEnvironment.withExplicitKotlinGradlePlugin(
+  explicitKotlinGradlePlugin: Boolean = true
+): CustomAgpVersionSoftwareEnvironment =
+  CustomAgpVersionSoftwareEnvironment(
+    agpVersion,
+    gradleVersion,
+    jdkVersion,
+    kotlinVersion,
+    compileSdk,
+    targetSdk,
+    modelVersion,
+    explicitKotlinGradlePlugin,
+  )
 
 fun AgpVersionSoftwareEnvironment.withCompileSdk(compileSdk: AndroidVersion): CustomAgpVersionSoftwareEnvironment {
   val sdkString =
@@ -127,6 +178,7 @@ fun AgpVersionSoftwareEnvironment.withCompileSdk(compileSdk: AndroidVersion): Cu
     sdkString,
     targetSdk,
     modelVersion,
+    explicitKotlinGradlePlugin,
   )
 }
 
@@ -134,7 +186,16 @@ fun AgpVersionSoftwareEnvironment.withCompileSdk(compileSdk: AndroidApiLevel): C
   withCompileSdk(AndroidVersion(compileSdk))
 
 fun AgpVersionSoftwareEnvironment.withTargetSdk(targetSdk: AndroidMajorVersion): CustomAgpVersionSoftwareEnvironment =
-  CustomAgpVersionSoftwareEnvironment(agpVersion, gradleVersion, jdkVersion, kotlinVersion, compileSdk, targetSdk.apiString, modelVersion)
+  CustomAgpVersionSoftwareEnvironment(
+    agpVersion,
+    gradleVersion,
+    jdkVersion,
+    kotlinVersion,
+    compileSdk,
+    targetSdk.apiString,
+    modelVersion,
+    explicitKotlinGradlePlugin,
+  )
 
 fun AgpVersionSoftwareEnvironment.withTargetSdk(targetSdk: AndroidApiLevel): CustomAgpVersionSoftwareEnvironment =
   withTargetSdk(AndroidVersion(targetSdk).majorVersion)
@@ -151,6 +212,7 @@ fun AgpVersionSoftwareEnvironment.resolve(sdk: Sdk? = null): ResolvedAgpVersionS
   val compileSdk: String = compileSdk
   val targetSdk: String = targetSdk ?: compileSdk
   val modelVersion: ModelVersion = modelVersion
+  val explicitKotlinGradlePlugin: Boolean = explicitKotlinGradlePlugin
 
   val ideSdksJdk = sdk ?: IdeSdks.getInstance().jdk ?: error("IdeSdks.jdk is null")
   val resolvedJdkVersion = jdkVersion ?: ideSdksJdk.getJdkVersion() ?: error("Cannot obtain the JDK version of $ideSdksJdk")
@@ -163,6 +225,7 @@ fun AgpVersionSoftwareEnvironment.resolve(sdk: Sdk? = null): ResolvedAgpVersionS
     override val compileSdk: String = compileSdk
     override val targetSdk: String = targetSdk
     override val modelVersion: ModelVersion = modelVersion
+    override val explicitKotlinGradlePlugin: Boolean = explicitKotlinGradlePlugin
   }
 }
 

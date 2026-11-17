@@ -25,6 +25,7 @@ import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Co
 import com.android.tools.idea.testing.ProjectViewSettings
 import com.android.tools.idea.testing.SnapshotComparisonTest
 import com.android.tools.idea.testing.SnapshotContext
+import com.android.tools.idea.testing.SnapshotSuffix
 import com.android.tools.idea.testing.assertIsEqualToSnapshot
 import com.android.tools.idea.testing.dumpAndroidProjectView
 import com.intellij.openapi.project.Project
@@ -46,6 +47,7 @@ data class AndroidProjectViewSnapshotComparisonTestDef(
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AGP_CURRENT,
   val compatibleWith: Set<AgpVersionSoftwareEnvironmentDescriptor> = setOf(AGP_CURRENT),
   private val projectViewSettings: ProjectViewSettings = ProjectViewSettings(),
+  val kgpSnapshotSuffix: SnapshotSuffix? = null,
 ) : SyncedProjectTestDef {
   override val name: String = testProject.projectName
 
@@ -66,7 +68,12 @@ data class AndroidProjectViewSnapshotComparisonTestDef(
       if (projectViewSettings.flattenPackages) append("_flatten")
     }
     val snapshotContext =
-      SnapshotContext(testProject.projectName + suffix, agpVersion, "tools/adt/idea/android/testData/snapshots/projectViews")
+      SnapshotContext(
+        testProject.projectName + suffix,
+        agpVersion,
+        "tools/adt/idea/android/testData/snapshots/projectViews",
+        kgpSnapshotSuffix = kgpSnapshotSuffix,
+      )
     snapshotContext.assertIsEqualToSnapshot(text)
   }
 

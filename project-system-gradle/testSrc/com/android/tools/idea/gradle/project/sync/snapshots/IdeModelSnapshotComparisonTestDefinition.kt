@@ -22,7 +22,9 @@ import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.AG
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
 import com.android.tools.idea.testing.ModelVersion
 import com.android.tools.idea.testing.SnapshotContext
+import com.android.tools.idea.testing.SnapshotSuffix
 import com.android.tools.idea.testing.assertIsEqualToSnapshot
+import com.android.tools.idea.testing.assertIsEqualToUpdatedSnapshot
 import com.android.tools.idea.testing.nameProperties
 import com.android.tools.idea.testing.saveAndDump
 import com.intellij.openapi.project.Project
@@ -45,6 +47,8 @@ data class IdeModelSnapshotComparisonTestDefinition(
   val v1toV2PropertiesToSkip: Set<String> = emptySet(),
   val isCompatibleWith: (AgpVersionSoftwareEnvironmentDescriptor) -> Boolean = { it >= AGP_70 },
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AGP_CURRENT,
+  val kgpSnapshotSuffix: SnapshotSuffix? = null,
+  val updateExpectedSnapshot: ((String) -> String)? = null,
 ) : SyncedProjectTestDef {
 
   companion object {
@@ -146,7 +150,8 @@ data class IdeModelSnapshotComparisonTestDefinition(
   }
 
   override fun runTest(root: File, project: Project) {
-    val v2snapshots = SnapshotContext(testProject.projectName, agpVersion, IDE_MODEL_SNAPSHOT_DIR)
+    val v2snapshots =
+      SnapshotContext(testProject.projectName, agpVersion, IDE_MODEL_SNAPSHOT_DIR, kgpSnapshotSuffix = kgpSnapshotSuffix)
     val dump =
       project.saveAndDump(mapOf("ROOT" to root), ignoreModuleFileAndType = true) { project, projectDumper ->
         projectDumper.dumpAndroidIdeModel(
@@ -159,7 +164,12 @@ data class IdeModelSnapshotComparisonTestDefinition(
           },
         )
       }
-    v2snapshots.assertIsEqualToSnapshot(dump)
+    val expectedUpdater = updateExpectedSnapshot
+    if (expectedUpdater != null) {
+      v2snapshots.assertIsEqualToUpdatedSnapshot(dump, snapshotOnSaveUpdater = { it }, snapshotOnCompareUpdater = expectedUpdater)
+    } else {
+      v2snapshots.assertIsEqualToSnapshot(dump)
+    }
   }
 
   override fun withAgpVersion(agpVersion: AgpVersionSoftwareEnvironmentDescriptor): SyncedProjectTestDef {

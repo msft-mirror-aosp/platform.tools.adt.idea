@@ -2,7 +2,12 @@ load("//tools/adt/idea/adt-testutils:old-agp-test.bzl", "generate_old_agp_tests_
 load("//tools/adt/idea/old-agp-tests:agp_versions.bzl", "AGP_7_4")
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:maven.bzl", "maven_repository")
-load("//tools/base/build-system/integration-test:common-dependencies.bzl", "BUILT_IN_KOTLIN_VERSION", "KGP_VERSION_FOR_TESTS")
+load(
+    "//tools/base/build-system/integration-test:common-dependencies.bzl",
+    "BUILT_IN_KOTLIN_VERSION",
+    "KGP_VERSION_FOR_TESTS",
+    "MINIMUM_BUILT_IN_KOTLIN_VERSION",
+)
 
 # managed by go/iml_to_build
 iml_module(
@@ -437,10 +442,12 @@ iml_module(
             ],
             "shard_count": 5,
             "data": [
+                ":multi_kgp_test_deps",
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
                 "//tools/base/build-system:gradle-distrib",
                 "//tools/base/build-system:gradle-runtime-maven",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_minimum_prebuilts",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
                 "//tools/data-binding:data_binding_runtime.zip",
                 "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
@@ -460,10 +467,12 @@ iml_module(
             ],
             "shard_count": 5,
             "data": [
+                ":multi_kgp_test_deps",
                 "//tools/base/build-system:android_gradle_plugin.zip",
                 "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
                 "//tools/base/build-system:gradle-distrib",
                 "//tools/base/build-system:gradle-runtime-maven",
+                "//tools/base/build-system/integration-test:kotlin_gradle_plugin_minimum_prebuilts",
                 "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
                 "//tools/data-binding:data_binding_runtime.zip",
                 "//prebuilts/studio/jdk/jdk11:jdk_runtime_files",
@@ -953,5 +962,15 @@ maven_repository(
         "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.6.4",
         "@maven//:org.mockito.mockito-core_5.12.0",
         "@maven//:xmlpull.xmlpull_1.1.3.1",
+    ],
+)
+
+maven_repository(
+    name = "multi_kgp_test_deps",
+    # keep sorted: for buildifier
+    artifacts = [
+        "@maven//:org.jetbrains.kotlin.kapt.org.jetbrains.kotlin.kapt.gradle.plugin_" + BUILT_IN_KOTLIN_VERSION,
+        "@maven//:org.jetbrains.kotlin.kotlin-klib-commonizer-embeddable_" + MINIMUM_BUILT_IN_KOTLIN_VERSION,
+        "@maven//:org.jetbrains.kotlin.kotlin-scripting-compiler-embeddable_" + MINIMUM_BUILT_IN_KOTLIN_VERSION,
     ],
 )
