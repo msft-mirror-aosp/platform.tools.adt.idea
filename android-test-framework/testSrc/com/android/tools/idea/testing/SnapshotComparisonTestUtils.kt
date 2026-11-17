@@ -126,7 +126,13 @@ fun SnapshotComparisonTest.assertIsEqualToUpdatedSnapshot(
   snapshotOnSaveUpdater: (String) -> String,
   snapshotOnCompareUpdater: (String) -> String,
 ) {
-  val (fullSnapshotName, expectedText) = getAndMaybeUpdateSnapshot(snapshotTestSuffix, text, snapshotOnSaveUpdater = snapshotOnSaveUpdater)
+  val (fullSnapshotName, expectedText) =
+    getAndMaybeUpdateSnapshot(
+      snapshotTestSuffix,
+      text,
+      snapshotOnSaveUpdater = snapshotOnSaveUpdater,
+      snapshotOnCompareUpdater = snapshotOnCompareUpdater,
+    )
   assertInSnapshotTextContext()
     .that(text)
     .named("Snapshot comparison for $fullSnapshotName")
@@ -156,6 +162,7 @@ fun SnapshotComparisonTest.assertNoDuplicatedSnapshots() {
         println("Delete duplicated snapshot file: ${it.absolutePath}")
         it.delete()
       }
+      return
     }
     assertDuplicatedSnapshotsTextContext().that(duplicates).named("Duplicated snapshots of ${baseline.name}").isEmpty()
   }
@@ -183,6 +190,7 @@ fun SnapshotComparisonTest.getAndMaybeUpdateSnapshot(
   text: String,
   doNotUpdate: Boolean = false,
   snapshotOnSaveUpdater: (String) -> String = { it },
+  snapshotOnCompareUpdater: (String) -> String = { it },
 ): Pair<String, String> {
   val sanitizedTestName = sanitizeFileName(UsefulTestCase.getTestName(getName(), true))
   val (expectedText, snapshotFile) = getExpectedTextAndFileFor(sanitizedTestName, snapshotTestSuffix)
@@ -192,15 +200,19 @@ fun SnapshotComparisonTest.getAndMaybeUpdateSnapshot(
   }
 
   val textToStore = snapshotOnSaveUpdater(text)
+  val effectiveExpectedText = snapshotOnCompareUpdater(expectedText)
 
   if (System.getProperty(updateSnapshotsJvmProperty) != null) {
-    snapshotFile.run {
-      println("Writing to: ${this.absolutePath}")
-      writeText(textToStore)
+    if (!snapshotFile.isFile || effectiveExpectedText != text) {
+      println("Writing to: ${snapshotFile.absolutePath}")
+      snapshotFile.parentFile?.mkdirs()
+      snapshotFile.writeText(textToStore)
+      return snapshotFile.name to textToStore.trimIndent()
     }
+    return snapshotFile.name to expectedText
   } else if (TestUtils.runningFromBazel()) {
     // Populate additional test output if the file needs updating
-    if (!snapshotFile.isFile || expectedText != text) {
+    if (!snapshotFile.isFile || effectiveExpectedText != text) {
       val workspaceRelativePath = TestUtils.getWorkspaceRoot().relativize(snapshotFile.toPath())
       println("Writing updated snapshot file to bazel additional test output.\n" + "    $workspaceRelativePath")
       TestUtils.getTestOutputDir().resolve(workspaceRelativePath).run {
