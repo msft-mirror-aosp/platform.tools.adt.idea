@@ -716,6 +716,12 @@ public final class StudioFlags {
     "Enable Coroutine Debugger",
     "Enables the Coroutine Debugger, that shows up as a panel in the debugger when debugging an app that uses coroutines");
 
+  public static final Flag<Boolean> CREATION_STACK_TRACES_ENABLE = new BooleanFlag(
+    RUNDEBUG,
+    "creation.stack.traces.enable",
+    "Enable Creation Stack Traces",
+    "Enables the coroutines creation stack traces");
+
   public static final Flag<Boolean> DDMLIB_ABB_EXEC_INSTALL_ENABLE = new BooleanFlag(
     RUNDEBUG,
     "ddmlib.abb.exec.install.enable",

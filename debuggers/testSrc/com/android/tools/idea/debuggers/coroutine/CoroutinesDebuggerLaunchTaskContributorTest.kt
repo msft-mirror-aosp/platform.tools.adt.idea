@@ -24,9 +24,10 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.Executor
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
-import com.intellij.testFramework.registerServiceInstance
+import com.intellij.testFramework.replaceService
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -37,14 +38,23 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
 private const val EXPECTED_AM_START_OPTIONS = "--attach-agent /data/data/com.test.application/code_cache/coroutine_debugger_agent.so"
+private const val EXPECTED_AM_START_OPTIONS_WITH_CREATION_STACK_TRACES = "$EXPECTED_AM_START_OPTIONS=--enable-creation-stack-traces"
 
 @RunWith(JUnit4::class)
 class CoroutinesDebuggerLaunchTaskContributorTest {
   private val projectRule = ProjectRule()
+  private val disposableRule = DisposableRule()
   private val project
     get() = projectRule.project
 
-  @get:Rule val rule = RuleChain(projectRule, FlagRule(StudioFlags.COROUTINE_DEBUGGER_ENABLE, false))
+  @get:Rule
+  val rule =
+    RuleChain(
+      projectRule,
+      disposableRule,
+      FlagRule(StudioFlags.COROUTINE_DEBUGGER_ENABLE, false),
+      FlagRule(StudioFlags.CREATION_STACK_TRACES_ENABLE, false),
+    )
 
   private val configuration = mock<AndroidRunConfigurationBase>()
   private val contributor = CoroutineDebuggerLaunchTaskContributor()
@@ -62,28 +72,43 @@ class CoroutinesDebuggerLaunchTaskContributorTest {
   }
 
   @Test
-  fun testNoAmOptionsIfFlagIsDisabled() {
+  fun testNoAmOptionsIfFlagsDisabled() {
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
+
+    assertThat(getAmStartOptions()).isEmpty()
+  }
+
+  @Test
+  fun testNoAmOptionsWithDefaultSettings() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+
     assertThat(getAmStartOptions()).isEmpty()
   }
 
   @Test
   fun testNoAmOptionsIfNotDebuggable() {
     StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
 
     assertThat(getAmStartOptions(DefaultRunExecutor.getRunExecutorInstance())).isEmpty()
   }
 
   @Test
-  fun testNoAmOptionsIfSettingsNotEnabled() {
-    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
-    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(false)
+  fun testNoAmOptionsIfNotDebuggable_creationStackTraces() {
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
 
-    assertThat(getAmStartOptions()).isEmpty()
+    assertThat(getAmStartOptions(DefaultRunExecutor.getRunExecutorInstance())).isEmpty()
   }
 
   @Test
   fun testNoAmOptionsOnAPI28AndLower() {
     StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
 
     for (api in
       listOf(AndroidVersion.VersionCodes.P, AndroidVersion.VersionCodes.O, AndroidVersion.VersionCodes.N, AndroidVersion.VersionCodes.M)) {
@@ -94,30 +119,101 @@ class CoroutinesDebuggerLaunchTaskContributorTest {
   }
 
   @Test
-  fun testAmOptionsIsCorrect() {
+  fun testAmOptions_coroutineDebuggerEnabled() {
     StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
 
     assertThat(getAmStartOptions()).isEqualTo(EXPECTED_AM_START_OPTIONS)
   }
 
   @Test
-  fun testLaunchEventIsTracked() {
+  fun testAmOptions_coroutineDebuggerEnabled_creationStackTracesFlagDisabled() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
+
+    assertThat(getAmStartOptions()).isEqualTo(EXPECTED_AM_START_OPTIONS)
+  }
+
+  @Test
+  fun testAmOptions_coroutineDebuggerEnabled_creationStackTracesDisabledInSettings() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+
+    assertThat(getAmStartOptions()).isEqualTo(EXPECTED_AM_START_OPTIONS)
+  }
+
+  @Test
+  fun testAmOptions_creationStackTracesEnabled() {
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
+
+    assertThat(getAmStartOptions()).isEqualTo(EXPECTED_AM_START_OPTIONS_WITH_CREATION_STACK_TRACES)
+  }
+
+  @Test
+  fun testAmOptions_creationStackTracesEnabled_coroutineDebuggerDisabledInSettings() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
+
+    assertThat(getAmStartOptions()).isEqualTo(EXPECTED_AM_START_OPTIONS_WITH_CREATION_STACK_TRACES)
+  }
+
+  @Test
+  fun testAmOptions_creationStackTracesEnabled_coroutineDebuggerFlagDisabled() {
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
+
+    assertThat(getAmStartOptions()).isEqualTo(EXPECTED_AM_START_OPTIONS_WITH_CREATION_STACK_TRACES)
+  }
+
+  @Test
+  fun testAmOptions_bothFeaturesEnabled() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
+
+    assertThat(getAmStartOptions()).isEqualTo(EXPECTED_AM_START_OPTIONS_WITH_CREATION_STACK_TRACES)
+  }
+
+  @Test
+  fun testLaunchEventIsTracked_defaultSettings() {
     val fakeTracker = FakeCoroutineDebuggerAnalyticsTracker()
-    project.registerServiceInstance(CoroutineDebuggerAnalyticsTracker::class.java, fakeTracker)
+    project.replaceService(CoroutineDebuggerAnalyticsTracker::class.java, fakeTracker, disposableRule.disposable)
     StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
 
-    getAmStartOptions()
-
-    assertThat(fakeTracker.trackLaunchEventCalled).isTrue()
-    assertThat(fakeTracker.launchEventIsDisabledInSettings).isFalse()
-
-    fakeTracker.reset()
-    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(false)
-
-    getAmStartOptions()
+    assertThat(getAmStartOptions()).isEmpty()
 
     assertThat(fakeTracker.trackLaunchEventCalled).isTrue()
     assertThat(fakeTracker.launchEventIsDisabledInSettings).isTrue()
+  }
+
+  @Test
+  fun testLaunchEventIsTracked_enabledInSettings() {
+    val fakeTracker = FakeCoroutineDebuggerAnalyticsTracker()
+    project.replaceService(CoroutineDebuggerAnalyticsTracker::class.java, fakeTracker, disposableRule.disposable)
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+
+    assertThat(getAmStartOptions()).isNotEmpty()
+
+    assertThat(fakeTracker.trackLaunchEventCalled).isTrue()
+    assertThat(fakeTracker.launchEventIsDisabledInSettings).isFalse()
+  }
+
+  @Test
+  fun testLaunchEventIsNotTracked_creationStackTracesOnly() {
+    val fakeTracker = FakeCoroutineDebuggerAnalyticsTracker()
+    project.replaceService(CoroutineDebuggerAnalyticsTracker::class.java, fakeTracker, disposableRule.disposable)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
+
+    assertThat(getAmStartOptions()).isNotEmpty()
+    assertThat(fakeTracker.trackLaunchEventCalled).isFalse()
   }
 
   private fun getAmStartOptions(executor: Executor = DefaultDebugExecutor.getDebugExecutorInstance()) =

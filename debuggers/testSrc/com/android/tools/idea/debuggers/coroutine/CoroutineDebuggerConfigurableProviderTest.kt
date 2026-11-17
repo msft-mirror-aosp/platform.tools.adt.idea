@@ -35,7 +35,14 @@ import org.junit.runners.JUnit4
 @RunWith(JUnit4::class)
 @RunsInEdt
 class CoroutineDebuggerConfigurableProviderTest {
-  @get:Rule val rule = RuleChain(ApplicationRule(), EdtRule(), FlagRule(StudioFlags.COROUTINE_DEBUGGER_ENABLE, false))
+  @get:Rule
+  val rule =
+    RuleChain(
+      ApplicationRule(),
+      EdtRule(),
+      FlagRule(StudioFlags.COROUTINE_DEBUGGER_ENABLE, false),
+      FlagRule(StudioFlags.CREATION_STACK_TRACES_ENABLE, false),
+    )
 
   @After
   fun tearDown() {
@@ -43,7 +50,7 @@ class CoroutineDebuggerConfigurableProviderTest {
   }
 
   @Test
-  fun testProviderIsDisabledWithFeatureFlag() {
+  fun testProviderReturnsNothingWhenFlagsDisabled() {
     assertThat(getProvider().getConfigurables(DebuggerSettingsCategory.GENERAL)).isEmpty()
   }
 
@@ -58,26 +65,147 @@ class CoroutineDebuggerConfigurableProviderTest {
   }
 
   @Test
-  fun testConfigurableCanResetAndApplySettings() {
-    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
-    val configurable = getConfigurable()
-    val coroutineDebuggerCheckBox = getCheckBoxes(configurable).single()
+  fun testProviderReturnsCreationStackTracesConfigurable() {
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
 
-    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isTrue()
+    val configurable = getConfigurable()
+
+    assertThat(getCheckBoxes(configurable).map { it.text }).containsExactly("Enable coroutine creation stack traces")
+  }
+
+  @Test
+  fun testProviderReturnsBothCheckBoxes() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+
+    val configurable = getConfigurable()
+
+    assertThat(getCheckBoxes(configurable).map { it.text })
+      .containsExactly("Enable coroutine debugger", "Enable coroutine creation stack traces")
+      .inOrder()
+  }
+
+  @Test
+  fun testProviderReturnsNothingForNonGeneralCategory() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+
+    for (category in DebuggerSettingsCategory.entries.filter { it != DebuggerSettingsCategory.GENERAL }) {
+      assertThat(getProvider().getConfigurables(category)).isEmpty()
+    }
+  }
+
+  @Test
+  fun testSettingsAreDisabledByDefault() {
+    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isFalse()
+    assertThat(CoroutineDebuggerSettings.isCreationStackTracesEnabled()).isFalse()
+  }
+
+  @Test
+  fun testSettingsResetRestoresDefaults() {
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
+
+    CoroutineDebuggerSettings.reset()
+
+    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isFalse()
+    assertThat(CoroutineDebuggerSettings.isCreationStackTracesEnabled()).isFalse()
+  }
+
+  @Test
+  fun testConfigurableResetWithDefaultSettings_checkBoxesUnselected() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    val configurable = getConfigurable()
+    val (coroutineDebuggerCheckBox, creationStackTracesCheckBox) = getCheckBoxes(configurable)
+    // Select the checkboxes so that reset() is observable.
+    coroutineDebuggerCheckBox.isSelected = true
+    creationStackTracesCheckBox.isSelected = true
+
+    configurable.reset()
+
     assertThat(coroutineDebuggerCheckBox.isSelected).isFalse()
+    assertThat(creationStackTracesCheckBox.isSelected).isFalse()
+    assertThat(configurable.isModified).isFalse()
+  }
+
+  @Test
+  fun testConfigurableResetWithEnabledSettings_checkBoxesSelected() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
+    val configurable = getConfigurable()
+    val (coroutineDebuggerCheckBox, creationStackTracesCheckBox) = getCheckBoxes(configurable)
 
     configurable.reset()
 
     assertThat(coroutineDebuggerCheckBox.isSelected).isTrue()
+    assertThat(creationStackTracesCheckBox.isSelected).isTrue()
     assertThat(configurable.isModified).isFalse()
+  }
+
+  @Test
+  fun testConfigurableCanEnableAndDisableSettings() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    val configurable = getConfigurable()
+    val (coroutineDebuggerCheckBox, creationStackTracesCheckBox) = getCheckBoxes(configurable)
+    configurable.reset()
+
+    coroutineDebuggerCheckBox.isSelected = true
+    assertThat(configurable.isModified).isTrue()
+    configurable.apply()
+    assertThat(configurable.isModified).isFalse()
+    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isTrue()
+    assertThat(CoroutineDebuggerSettings.isCreationStackTracesEnabled()).isFalse()
+
+    creationStackTracesCheckBox.isSelected = true
+    assertThat(configurable.isModified).isTrue()
+    configurable.apply()
+    assertThat(configurable.isModified).isFalse()
+    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isTrue()
+    assertThat(CoroutineDebuggerSettings.isCreationStackTracesEnabled()).isTrue()
 
     coroutineDebuggerCheckBox.isSelected = false
+    creationStackTracesCheckBox.isSelected = false
     assertThat(configurable.isModified).isTrue()
-    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isTrue()
-
     configurable.apply()
     assertThat(configurable.isModified).isFalse()
     assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isFalse()
+    assertThat(CoroutineDebuggerSettings.isCreationStackTracesEnabled()).isFalse()
+  }
+
+  @Test
+  fun testConfigurableIgnoresHiddenCreationStackTracesCheckBox() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCreationStackTracesEnabled(true)
+    val configurable = getConfigurable()
+    val coroutineDebuggerCheckBox = getCheckBoxes(configurable).single()
+    configurable.reset()
+    assertThat(configurable.isModified).isFalse()
+
+    coroutineDebuggerCheckBox.isSelected = true
+    configurable.apply()
+
+    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isTrue()
+    assertThat(CoroutineDebuggerSettings.isCreationStackTracesEnabled()).isTrue()
+  }
+
+  @Test
+  fun testConfigurableIgnoresHiddenCoroutineDebuggerCheckBox() {
+    StudioFlags.CREATION_STACK_TRACES_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+    val configurable = getConfigurable()
+    val creationStackTracesCheckBox = getCheckBoxes(configurable).single()
+    configurable.reset()
+    assertThat(configurable.isModified).isFalse()
+
+    creationStackTracesCheckBox.isSelected = true
+    configurable.apply()
+
+    assertThat(CoroutineDebuggerSettings.isCreationStackTracesEnabled()).isTrue()
+    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isTrue()
   }
 
   private fun getConfigurable(): Configurable = getProvider().getConfigurables(DebuggerSettingsCategory.GENERAL).single()

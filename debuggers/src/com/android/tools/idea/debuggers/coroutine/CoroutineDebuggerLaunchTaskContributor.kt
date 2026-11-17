@@ -18,6 +18,7 @@ package com.android.tools.idea.debuggers.coroutine
 import com.android.ddmlib.IDevice
 import com.android.sdklib.AndroidVersion
 import com.android.tools.deployer.Sites
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.flags.StudioFlags.COROUTINE_DEBUGGER_ENABLE
 import com.android.tools.idea.run.AndroidLaunchTaskContributor
 import com.android.tools.idea.run.AndroidRunConfigurationBase
@@ -27,13 +28,31 @@ import com.intellij.execution.executors.DefaultDebugExecutor
 /** Responsible for setting the am start options to start the coroutine debugger agent. */
 class CoroutineDebuggerLaunchTaskContributor : AndroidLaunchTaskContributor {
 
+  /**
+   * Returns the Activity Manager Start Options for attaching the Coroutine Debugger Agent
+   *
+   * The agent is responsible for enabling 2 features:
+   * 1. Coroutine Debugger Panel
+   * 2. Creation Stack Traces
+   *
+   * The Coroutine Debugger Panel is gated by [StudioFlags.COROUTINE_DEBUGGER_ENABLE] and by a global setting
+   * [CoroutineDebuggerSettings.isCoroutineDebuggerEnabled]
+   *
+   * The Creation Stack Traces feature is gated by [StudioFlags.CREATION_STACK_TRACES_ENABLE] and by a global setting
+   * [CoroutineDebuggerSettings.isCreationStackTracesEnabled]
+   *
+   * The 2 features are controlled independently, but both depend on the agent installing the coroutine debug probes
+   * (`DebugProbesImpl.install` and redirecting the stdlib `DebugProbesKt` to it). Without the probes installed,
+   * `DebugProbesImpl.enableCreationStackTraces` has no effect. As a result, the agent is attached if either feature is enabled.
+   */
   override fun getAmStartOptions(
     applicationId: String,
     configuration: AndroidRunConfigurationBase,
     device: IDevice,
     executor: Executor,
   ): String {
-    if (!COROUTINE_DEBUGGER_ENABLE.get()) {
+    val creationStackTracesFlagEnabled = StudioFlags.CREATION_STACK_TRACES_ENABLE.get()
+    if (!COROUTINE_DEBUGGER_ENABLE.get() && !creationStackTracesFlagEnabled) {
       return ""
     }
 
@@ -51,15 +70,28 @@ class CoroutineDebuggerLaunchTaskContributor : AndroidLaunchTaskContributor {
     }
 
     val isCoroutineDebuggerEnabledInSettings = CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()
+    val coroutineDebuggerEnabled = COROUTINE_DEBUGGER_ENABLE.get() && isCoroutineDebuggerEnabledInSettings
+    val creationStackTracesEnabled = creationStackTracesFlagEnabled && CoroutineDebuggerSettings.isCreationStackTracesEnabled()
 
-    CoroutineDebuggerAnalyticsTracker.getInstance(configuration.project).trackLaunchEvent(!isCoroutineDebuggerEnabledInSettings)
+    // Analytics only apply to the Coroutine Debugger Panel. Launches where the agent is attached solely for Creation Stack
+    // Traces are not tracked yet.
+    if (COROUTINE_DEBUGGER_ENABLE.get()) {
+      CoroutineDebuggerAnalyticsTracker.getInstance(configuration.project).trackLaunchEvent(!isCoroutineDebuggerEnabledInSettings)
+    }
 
-    // coroutine debugger can be disabled from studio settings
-    if (!isCoroutineDebuggerEnabledInSettings) {
+    // both features can be disabled from studio settings
+    if (!coroutineDebuggerEnabled && !creationStackTracesEnabled) {
       return ""
     }
 
     val appCodeCache = Sites.appCodeCache(applicationId)
-    return "--attach-agent ${appCodeCache}coroutine_debugger_agent.so"
+    return buildString {
+      append("--attach-agent ")
+      append(appCodeCache)
+      append("coroutine_debugger_agent.so")
+      if (creationStackTracesEnabled) {
+        append("=--enable-creation-stack-traces")
+      }
+    }
   }
 }

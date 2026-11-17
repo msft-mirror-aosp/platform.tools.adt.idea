@@ -15,15 +15,16 @@
  */
 package com.android.tools.idea.debuggers.coroutine
 
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.flags.StudioFlags.COROUTINE_DEBUGGER_ENABLE
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurableUi
 import com.intellij.openapi.options.SimpleConfigurable
 import com.intellij.ui.components.JBCheckBox
+import com.intellij.ui.components.panels.VerticalLayout
 import com.intellij.xdebugger.settings.DebuggerConfigurableProvider
 import com.intellij.xdebugger.settings.DebuggerSettingsCategory
-import java.awt.BorderLayout
 import java.util.function.Supplier
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -34,7 +35,7 @@ private const val DISPLAY_NAME = "Coroutine Debugger"
 /** Class used by Intellij to get preferences for the Debugger section. */
 class CoroutineDebuggerConfigurableProvider : DebuggerConfigurableProvider() {
   override fun getConfigurables(category: DebuggerSettingsCategory): List<Configurable> {
-    if (!COROUTINE_DEBUGGER_ENABLE.get()) {
+    if (!COROUTINE_DEBUGGER_ENABLE.get() && !StudioFlags.CREATION_STACK_TRACES_ENABLE.get()) {
       return emptyList()
     }
 
@@ -50,26 +51,45 @@ class CoroutineDebuggerConfigurableProvider : DebuggerConfigurableProvider() {
 
 /** Creates and manages the UI shown in the Intellij preferences for the debugger section. */
 private class CoroutineDebuggerConfigurableUi : ConfigurableUi<CoroutineDebuggerSettings> {
-  private val coroutineDebuggerEnabledText = "Enable coroutine debugger"
-  private val coroutineDebuggerEnabledCheckbox = JBCheckBox(coroutineDebuggerEnabledText)
+  private val coroutineDebuggerEnabledCheckbox = JBCheckBox("Enable coroutine debugger")
+  private val creationStackTracesEnabledCheckbox = JBCheckBox("Enable coroutine creation stack traces")
 
-  private val component: JComponent
+  // Read the flags once so that the UI and the settings it touches stay consistent for the lifetime of this instance.
+  private val showCoroutineDebugger = COROUTINE_DEBUGGER_ENABLE.get()
+  private val showCreationStackTraces = StudioFlags.CREATION_STACK_TRACES_ENABLE.get()
+
+  private val component: JComponent = JPanel(VerticalLayout(0))
 
   init {
-    component = JPanel(BorderLayout())
-    component.add(coroutineDebuggerEnabledCheckbox, BorderLayout.LINE_START)
+    if (showCoroutineDebugger) {
+      component.add(coroutineDebuggerEnabledCheckbox)
+    }
+    if (showCreationStackTraces) {
+      component.add(creationStackTracesEnabledCheckbox)
+    }
   }
 
   override fun reset(settings: CoroutineDebuggerSettings) {
-    coroutineDebuggerEnabledCheckbox.isSelected = settings.isCoroutineDebuggerEnabled()
+    if (showCoroutineDebugger) {
+      coroutineDebuggerEnabledCheckbox.isSelected = settings.isCoroutineDebuggerEnabled()
+    }
+    if (showCreationStackTraces) {
+      creationStackTracesEnabledCheckbox.isSelected = settings.isCreationStackTracesEnabled()
+    }
   }
 
   override fun isModified(settings: CoroutineDebuggerSettings): Boolean {
-    return coroutineDebuggerEnabledCheckbox.isSelected != settings.isCoroutineDebuggerEnabled()
+    return (showCoroutineDebugger && coroutineDebuggerEnabledCheckbox.isSelected != settings.isCoroutineDebuggerEnabled()) ||
+      (showCreationStackTraces && creationStackTracesEnabledCheckbox.isSelected != settings.isCreationStackTracesEnabled())
   }
 
   override fun apply(settings: CoroutineDebuggerSettings) {
-    settings.setCoroutineDebuggerEnabled(coroutineDebuggerEnabledCheckbox.isSelected)
+    if (showCoroutineDebugger) {
+      settings.setCoroutineDebuggerEnabled(coroutineDebuggerEnabledCheckbox.isSelected)
+    }
+    if (showCreationStackTraces) {
+      settings.setCreationStackTracesEnabled(creationStackTracesEnabledCheckbox.isSelected)
+    }
   }
 
   override fun getComponent(): JComponent {
@@ -79,8 +99,10 @@ private class CoroutineDebuggerConfigurableUi : ConfigurableUi<CoroutineDebugger
 
 /** Object used to access and set the preferences for the coroutine debugger. */
 object CoroutineDebuggerSettings {
-  private const val COROUTINE_DEBUGGER_ENABLED_DEFAULT = true
+  private const val COROUTINE_DEBUGGER_ENABLED_DEFAULT = false
   private const val COROUTINE_DEBUGGER_ENABLED = "coroutine.debugger.enabled"
+  private const val CREATION_STACK_TRACES_ENABLED_DEFAULT = false
+  private const val CREATION_STACK_TRACES_ENABLED = "coroutine.debugger.creation.stack.traces.enabled"
 
   fun setCoroutineDebuggerEnabled(enabled: Boolean) {
     PropertiesComponent.getInstance().setValue(COROUTINE_DEBUGGER_ENABLED, enabled, COROUTINE_DEBUGGER_ENABLED_DEFAULT)
@@ -90,7 +112,16 @@ object CoroutineDebuggerSettings {
     return PropertiesComponent.getInstance().getBoolean(COROUTINE_DEBUGGER_ENABLED, COROUTINE_DEBUGGER_ENABLED_DEFAULT)
   }
 
+  fun setCreationStackTracesEnabled(enabled: Boolean) {
+    PropertiesComponent.getInstance().setValue(CREATION_STACK_TRACES_ENABLED, enabled, CREATION_STACK_TRACES_ENABLED_DEFAULT)
+  }
+
+  fun isCreationStackTracesEnabled(): Boolean {
+    return PropertiesComponent.getInstance().getBoolean(CREATION_STACK_TRACES_ENABLED, CREATION_STACK_TRACES_ENABLED_DEFAULT)
+  }
+
   fun reset() {
     PropertiesComponent.getInstance().unsetValue(COROUTINE_DEBUGGER_ENABLED)
+    PropertiesComponent.getInstance().unsetValue(CREATION_STACK_TRACES_ENABLED)
   }
 }

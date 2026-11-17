@@ -154,7 +154,7 @@ public abstract class AbstractDeployTask {
       .setAllowAssumeVerified(myAllowAssumeVerified)
       .setUseStructuralRedefinition(true)
       .setUseVariableReinitialization(true)
-      .setFastRestartOnSwapFail(getFastRerunOnSwapFailure()).enableCoroutineDebugger(StudioFlags.COROUTINE_DEBUGGER_ENABLE.get())
+      .setFastRestartOnSwapFail(getFastRerunOnSwapFailure()).enableCoroutineDebugger(StudioFlags.COROUTINE_DEBUGGER_ENABLE.get() || StudioFlags.CREATION_STACK_TRACES_ENABLE.get())
       .setMaxDeltaInstallPatchSize(StudioFlags.DELTA_INSTALL_CUSTOM_MAX_PATCH_SIZE.get())
       .build();
     Deployer deployer =
