@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.tools.adtui.swing.PortableUiFontRule
 import com.google.common.truth.Truth.assertThat
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
@@ -26,6 +27,8 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.ListTableModel
 import java.awt.Dimension
 import java.awt.Font
+import javax.swing.RowSorter
+import javax.swing.SortOrder
 import javax.swing.UIManager
 import javax.swing.plaf.FontUIResource
 import org.junit.Rule
@@ -165,6 +168,77 @@ class ExtendedControlsTableTest {
       assertThat(rewrappedLines.joinToString(" ")).isEqualTo(message)
     } finally {
       UIManager.put("Label.font", originalLabelFont)
+    }
+  }
+
+  @Test
+  fun testSortOrderPersistenceAndNonSortableColumnFallback() {
+    val storageKey = "com.android.tools.idea.streaming.emulator.dialogs.ExtendedControlsTableTest.sort.order"
+    val properties = PropertiesComponent.getInstance()
+    properties.unsetValue(storageKey)
+    try {
+      fun createSortableModel(): ListTableModel<String> {
+        val sortableColumn =
+          object : ColumnInfo<String, String>("Sortable") {
+            override fun valueOf(item: String): String = item
+
+            override fun getComparator(): Comparator<String> = naturalOrder()
+          }
+        val nonSortableColumn =
+          object : ColumnInfo<String, String>("NonSortable") {
+            override fun valueOf(item: String): String = item
+          }
+        return ListTableModel(sortableColumn, nonSortableColumn)
+      }
+
+      val table1 = ExtendedControlsTable(createSortableModel(), "sortableTable", sortOrderStorageKey = storageKey)
+      assertThat(table1.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(0, SortOrder.ASCENDING))
+
+      table1.rowSorter.toggleSortOrder(0)
+      assertThat(table1.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(0, SortOrder.DESCENDING))
+      assertThat(properties.getValue(storageKey)).isEqualTo("0:DESCENDING")
+
+      val table2 = ExtendedControlsTable(createSortableModel(), "sortableTable", sortOrderStorageKey = storageKey)
+      assertThat(table2.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(0, SortOrder.DESCENDING))
+
+      // Persisted index pointing to a non-sortable column falls back to the model's default sort key.
+      properties.setValue(storageKey, "1:ASCENDING")
+      val table3 = ExtendedControlsTable(createSortableModel(), "sortableTable", sortOrderStorageKey = storageKey)
+      assertThat(table3.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(0, SortOrder.ASCENDING))
+
+      // Replacing a 1-column non-sortable model with a 3-column sortable model via setModel / setModelAndUpdateColumns restores and tracks
+      // the new sorter without failing against the previous model/sorter.
+      fun createThreeColumnSortableModel(): ListTableModel<String> {
+        fun sortableCol(name: String) =
+          object : ColumnInfo<String, String>(name) {
+            override fun valueOf(item: String): String = item
+
+            override fun getComparator(): Comparator<String> = naturalOrder()
+          }
+        return ListTableModel(sortableCol("Col0"), sortableCol("Col1"), sortableCol("Col2"))
+      }
+
+      val singleNonSortableCol =
+        object : ColumnInfo<String, String>("Only") {
+          override fun valueOf(item: String): String = item
+        }
+      properties.setValue(storageKey, "2:DESCENDING")
+      val table4 = ExtendedControlsTable(ListTableModel<String>(singleNonSortableCol), "sortableTable", sortOrderStorageKey = storageKey)
+      assertThat(table4.rowSorter).isNull()
+
+      table4.setModel(createThreeColumnSortableModel())
+      assertThat(table4.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(2, SortOrder.DESCENDING))
+      table4.rowSorter.toggleSortOrder(1)
+      assertThat(properties.getValue(storageKey)).isEqualTo("1:ASCENDING")
+
+      val table5 = ExtendedControlsTable(ListTableModel<String>(singleNonSortableCol), "sortableTable", sortOrderStorageKey = storageKey)
+      properties.setValue(storageKey, "2:ASCENDING")
+      table5.setModelAndUpdateColumns(createThreeColumnSortableModel())
+      assertThat(table5.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(2, SortOrder.ASCENDING))
+      table5.rowSorter.toggleSortOrder(2)
+      assertThat(properties.getValue(storageKey)).isEqualTo("2:DESCENDING")
+    } finally {
+      properties.unsetValue(storageKey)
     }
   }
 

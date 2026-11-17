@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.adblib.DeviceSelector
 import com.android.adblib.testing.FakeAdbDeviceServices
+import com.android.emulation.control.incubating.VehiclePropStatus
 import com.android.emulation.control.incubating.VehiclePropValue
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeUi
@@ -45,7 +46,9 @@ import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.V
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleOilLevel
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleProperty
 import com.google.common.truth.Truth.assertThat
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.ui.ComboBox
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.PlatformTestUtil
 import com.intellij.testFramework.ProjectRule
@@ -65,13 +68,18 @@ import java.awt.event.KeyEvent.VK_KP_UP
 import java.awt.event.KeyEvent.VK_UP
 import java.nio.file.Files
 import java.nio.file.Path
+import java.text.Collator
 import javax.swing.JButton
 import javax.swing.JLabel
 import javax.swing.JSlider
+import javax.swing.RowSorter
+import javax.swing.SortOrder
 import javax.swing.SwingUtilities
 import kotlin.math.abs
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
@@ -96,6 +104,16 @@ class CarDataDialogTest {
 
   private val adb: FakeAdbDeviceServices
     get() = AdbLibService.getSession(projectRule.project).deviceServices as FakeAdbDeviceServices
+
+  @Before
+  fun setUp() {
+    PropertiesComponent.getInstance().unsetValue(VhalPropertiesTab.SORT_ORDER_STORAGE_KEY)
+  }
+
+  @After
+  fun tearDown() {
+    PropertiesComponent.getInstance().unsetValue(VhalPropertiesTab.SORT_ORDER_STORAGE_KEY)
+  }
 
   private fun createAndStartAutomotiveEmulator(customizeAvd: (Path) -> Unit = {}): Pair<FakeEmulator, EmulatorController> {
     val testAvdFolder = FakeEmulator.createAutomotiveAvd(emulatorRule.avdRoot)
@@ -308,7 +326,7 @@ class CarDataDialogTest {
         fakeEmulator.getVehicleProperty(VehicleProperty.PARKING_BRAKE_ON)?.getInt32Values(0) == 0
     }
 
-    // Verify live streaming updates originating on the guest device update UI controls.
+    // Verify live-streaming updates originating on the guest device update UI controls.
     fakeEmulator.setVehiclePropertyOnDevice(
       VehiclePropValue.newBuilder().setProp(VehicleProperty.GEAR_SELECTION).addInt32Values(VehicleGear.GEAR_REVERSE).build()
     )
@@ -460,7 +478,7 @@ class CarDataDialogTest {
     searchField.text = "Target temperature set"
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     assertThat(table.rowCount).isEqualTo(2)
-    val row1RightIndex = table.items.indexOfFirst { it.areaId == VehicleAreaSeat.ROW_1_RIGHT }
+    val row1RightIndex = (0 until table.rowCount).indexOfFirst { table.getRow(it).areaId == VehicleAreaSeat.ROW_1_RIGHT }
     table.selectionModel.setSelectionInterval(row1RightIndex, row1RightIndex)
     PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
     assertThat(areaField.text).isEqualTo("Seat: Row 1 R")
@@ -639,5 +657,145 @@ class CarDataDialogTest {
 
     ui.clickOn(ui.getComponent<JButton> { it.text == "Close" })
     assertThat(dialog.isShowing).isFalse()
+  }
+
+  @Test
+  fun testVhalPropertiesTableSortingAndPersistence() {
+    val (fakeEmulator, emulatorController) = createAndStartAutomotiveEmulator()
+    // Add properties with 2-digit and 10-digit IDs so numeric vs lexicographic ID sorting is distinguishable.
+    fakeEmulator.setVehiclePropertyOnDevice(
+      VehiclePropValue.newBuilder().setProp(99).setStatus(VehiclePropStatus.AVAILABLE).addInt32Values(1).build()
+    )
+    fakeEmulator.setVehiclePropertyOnDevice(
+      VehiclePropValue.newBuilder().setProp(1_000_000_000).setStatus(VehiclePropStatus.AVAILABLE).addInt32Values(2).build()
+    )
+
+    val dialog1 = CarDataDialog(emulatorController).show(projectRule.project)
+    val ui1 = FakeUi(dialog1.rootPane)
+    ui1.getComponent<JBTabbedPane> { it.name == "carDataTabbedPane" }.selectedIndex = 1
+    ui1.layoutAndDispatchEvents()
+
+    @Suppress("UNCHECKED_CAST") val table1 = ui1.getComponent<TableView<VhalPropertyEntry>> { it.name == "vhalPropertiesTable" }
+    val propNameField1 = ui1.getComponent<JBTextField> { it.name == "vhalPropertyNameField" }
+
+    waitForCondition(5.seconds) {
+      table1.items.any { it.propId == 99 } &&
+        table1.items.any { it.propId == 1_000_000_000 } &&
+        table1.items.any { it.propId == VehicleProperty.INFO_MAKE }
+    }
+    ui1.layoutAndDispatchEvents()
+
+    // Default sort order is Property ascending, with multi-area tie-breaking by areaId and view row 0 selected.
+    assertThat(table1.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(0, SortOrder.ASCENDING))
+    assertThat(table1.selectedRow).isEqualTo(0)
+    assertThat(propNameField1.text).isEqualTo(table1.getRow(0).label)
+    val defaultOrderKeys = (0 until table1.rowCount).map { table1.getRow(it).key }
+    val hvacAreasInDefaultOrder =
+      (0 until table1.rowCount).map { table1.getRow(it) }.filter { it.propId == VehicleProperty.HVAC_TEMPERATURE_SET }.map { it.areaId }
+    assertThat(hvacAreasInDefaultOrder).containsExactly(VehicleAreaSeat.ROW_1_LEFT, VehicleAreaSeat.ROW_1_RIGHT).inOrder()
+
+    // Select "Manufacturer" and verify selection is preserved across column header clicks.
+    val makeViewRow = (0 until table1.rowCount).indexOfFirst { table1.getRow(it).propId == VehicleProperty.INFO_MAKE }
+    table1.selectionModel.setSelectionInterval(makeViewRow, makeViewRow)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(propNameField1.text).isEqualTo("Manufacturer")
+
+    // Click Property header -> descending, then click again -> ascending.
+    clickTableHeader(ui1, table1, 0)
+    assertThat(table1.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(0, SortOrder.DESCENDING))
+    assertThat((0 until table1.rowCount).map { table1.getRow(it).key }).isEqualTo(defaultOrderKeys.asReversed())
+    assertThat(table1.selectedObject?.propId).isEqualTo(VehicleProperty.INFO_MAKE)
+    assertThat(propNameField1.text).isEqualTo("Manufacturer")
+
+    clickTableHeader(ui1, table1, 0)
+    assertThat(table1.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(0, SortOrder.ASCENDING))
+    assertThat((0 until table1.rowCount).map { table1.getRow(it).key }).isEqualTo(defaultOrderKeys)
+
+    // Click Area header -> ascending ("Door: Row 1 L" < "Global" < "Seat: Row 1 L" < "Seat: Row 1 R"), then click again -> descending.
+    val sampleAreas = setOf("Door: Row 1 L", "Global", "Seat: Row 1 L", "Seat: Row 1 R")
+    clickTableHeader(ui1, table1, 1)
+    assertThat(table1.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(1, SortOrder.ASCENDING))
+    val areaAscList = (0 until table1.rowCount).map { table1.getRow(it).areaText }
+    for ((a, b) in areaAscList.zipWithNext()) {
+      assertThat(Collator.getInstance().compare(a, b)).isAtMost(0)
+    }
+    assertThat(areaAscList.distinct().filter { it in sampleAreas })
+      .containsExactly("Door: Row 1 L", "Global", "Seat: Row 1 L", "Seat: Row 1 R")
+      .inOrder()
+    assertThat(table1.selectedObject?.propId).isEqualTo(VehicleProperty.INFO_MAKE)
+
+    clickTableHeader(ui1, table1, 1)
+    assertThat(table1.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(1, SortOrder.DESCENDING))
+    val areaDescList = (0 until table1.rowCount).map { table1.getRow(it).areaText }
+    for ((a, b) in areaDescList.zipWithNext()) {
+      assertThat(Collator.getInstance().compare(a, b)).isAtLeast(0)
+    }
+    assertThat(areaDescList.distinct().filter { it in sampleAreas })
+      .containsExactly("Seat: Row 1 R", "Seat: Row 1 L", "Global", "Door: Row 1 L")
+      .inOrder()
+
+    // Click ID header -> numeric ascending (99 first, 1000000000 last), then click again -> numeric descending.
+    clickTableHeader(ui1, table1, 2)
+    assertThat(table1.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(2, SortOrder.ASCENDING))
+    val idAscEntries = (0 until table1.rowCount).map { table1.getRow(it) }
+    assertThat(idAscEntries.first().propId).isEqualTo(99)
+    assertThat(idAscEntries.last().propId).isEqualTo(1_000_000_000)
+    for ((a, b) in idAscEntries.zipWithNext()) {
+      assertThat(a.propId < b.propId || (a.propId == b.propId && a.areaId <= b.areaId)).isTrue()
+    }
+
+    clickTableHeader(ui1, table1, 2)
+    assertThat(table1.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(2, SortOrder.DESCENDING))
+    val idDescEntries = (0 until table1.rowCount).map { table1.getRow(it) }
+    assertThat(idDescEntries.first().propId).isEqualTo(1_000_000_000)
+    assertThat(idDescEntries.last().propId).isEqualTo(99)
+    for ((a, b) in idDescEntries.zipWithNext()) {
+      assertThat(a.propId > b.propId || (a.propId == b.propId && a.areaId >= b.areaId)).isTrue()
+    }
+
+    dialog1.close(DialogWrapper.CLOSE_EXIT_CODE)
+
+    // Verify sort order is stored in application-level PropertiesComponent and restored when opening a new dialog.
+    val properties = PropertiesComponent.getInstance()
+    assertThat(properties.getValue(VhalPropertiesTab.SORT_ORDER_STORAGE_KEY)).isEqualTo("2:DESCENDING")
+
+    val dialog2 = CarDataDialog(emulatorController).show(projectRule.project)
+    val ui2 = FakeUi(dialog2.rootPane)
+    ui2.getComponent<JBTabbedPane> { it.name == "carDataTabbedPane" }.selectedIndex = 1
+    ui2.layoutAndDispatchEvents()
+
+    @Suppress("UNCHECKED_CAST") val table2 = ui2.getComponent<TableView<VhalPropertyEntry>> { it.name == "vhalPropertiesTable" }
+    val propIdField2 = ui2.getComponent<JBTextField> { it.name == "vhalPropertyIdField" }
+    waitForCondition(5.seconds) { table2.items.any { it.propId == 1_000_000_000 } }
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+
+    assertThat(table2.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(2, SortOrder.DESCENDING))
+    val restoredEntries = (0 until table2.rowCount).map { table2.getRow(it) }
+    assertThat(restoredEntries.first().propId).isEqualTo(1_000_000_000)
+    assertThat(restoredEntries.last().propId).isEqualTo(99)
+    for ((a, b) in restoredEntries.zipWithNext()) {
+      assertThat(a.propId > b.propId || (a.propId == b.propId && a.areaId >= b.areaId)).isTrue()
+    }
+    // Initial selection is the first visible row under the restored sort order.
+    assertThat(table2.selectedRow).isEqualTo(0)
+    assertThat(propIdField2.text).isEqualTo("1000000000")
+
+    dialog2.close(DialogWrapper.CLOSE_EXIT_CODE)
+
+    // Corrupted persisted sort value falls back cleanly to Property ascending.
+    properties.setValue(VhalPropertiesTab.SORT_ORDER_STORAGE_KEY, "99:INVALID")
+    val dialog3 = CarDataDialog(emulatorController).show(projectRule.project)
+    val ui3 = FakeUi(dialog3.rootPane)
+    ui3.getComponent<JBTabbedPane> { it.name == "carDataTabbedPane" }.selectedIndex = 1
+    ui3.layoutAndDispatchEvents()
+    @Suppress("UNCHECKED_CAST") val table3 = ui3.getComponent<TableView<VhalPropertyEntry>> { it.name == "vhalPropertiesTable" }
+    assertThat(table3.rowSorter.sortKeys).containsExactly(RowSorter.SortKey(0, SortOrder.ASCENDING))
+    dialog3.close(DialogWrapper.CLOSE_EXIT_CODE)
+  }
+
+  private fun clickTableHeader(ui: FakeUi, table: TableView<*>, column: Int) {
+    val header = table.tableHeader
+    val rect = header.getHeaderRect(column)
+    ui.mouse.click(ui.getPosition(header).x + rect.centerX.toInt(), ui.getPosition(header).y + rect.centerY.toInt())
   }
 }

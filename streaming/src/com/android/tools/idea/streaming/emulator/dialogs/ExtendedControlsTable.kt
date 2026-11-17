@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.streaming.emulator.dialogs
 
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.util.NlsContexts
 import com.intellij.ui.TableUtil
 import com.intellij.ui.scale.JBUIScale
@@ -24,9 +25,14 @@ import java.awt.Component
 import java.awt.FontMetrics
 import java.text.BreakIterator
 import javax.swing.ListSelectionModel
+import javax.swing.RowSorter
+import javax.swing.SortOrder
+import javax.swing.event.RowSorterEvent
 import javax.swing.event.TableModelEvent
 import javax.swing.table.JTableHeader
 import javax.swing.table.TableCellRenderer
+import javax.swing.table.TableModel
+import org.jetbrains.annotations.NonNls
 
 /**
  * Studio-styled [TableView] for extended controls dialogs that sizes non-initial columns to fit their header/data and gives the remaining
@@ -36,11 +42,13 @@ internal class ExtendedControlsTable<T>(
   tableModel: ListTableModel<T>,
   tableName: String,
   private val emptyTextMessage: @NlsContexts.StatusText String? = null,
+  private val sortOrderStorageKey: @NonNls String? = null,
 ) : TableView<T>(tableModel) {
 
   private var preferredColumnWidths: IntArray? = null
   private var lastTableWidth: Int = 0
   private var lastEmptyTextWidth: Int = 0
+  private var trackedSorter: RowSorter<*>? = null
 
   init {
     name = tableName
@@ -51,11 +59,24 @@ internal class ExtendedControlsTable<T>(
     getTableHeader().reorderingAllowed = false
     setAutoResizeMode(AUTO_RESIZE_ALL_COLUMNS)
     selectionModel.selectionMode = ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
+    if (sortOrderStorageKey != null) {
+      applyAndTrackSortOrder(sortOrderStorageKey)
+    }
+  }
 
-    addPropertyChangeListener { event ->
-      if (event.propertyName == "model") {
-        preferredColumnWidths = null
-      }
+  override fun setModel(dataModel: TableModel) {
+    super.setModel(dataModel)
+    preferredColumnWidths = null
+    if (sortOrderStorageKey != null) {
+      applyAndTrackSortOrder(sortOrderStorageKey)
+    }
+  }
+
+  override fun setModelAndUpdateColumns(model: ListTableModel<T>) {
+    super.setModelAndUpdateColumns(model)
+    preferredColumnWidths = null
+    if (sortOrderStorageKey != null) {
+      applyAndTrackSortOrder(sortOrderStorageKey)
     }
   }
 
@@ -181,6 +202,36 @@ internal class ExtendedControlsTable<T>(
       dataWidth = dataWidth.coerceAtLeast(c.preferredSize.width + intercellSpacing.width)
     }
     return dataWidth
+  }
+
+  private fun applyAndTrackSortOrder(storageKey: String) {
+    val sorter = rowSorter ?: return
+    getPersistedSortKey(storageKey)?.let { sorter.sortKeys = listOf(it) }
+    if (trackedSorter !== sorter) {
+      trackedSorter = sorter
+      sorter.addRowSorterListener { event ->
+        if (event.type == RowSorterEvent.Type.SORT_ORDER_CHANGED && rowSorter === sorter) {
+          saveSortOrderToStorage(storageKey)
+        }
+      }
+    }
+  }
+
+  private fun getPersistedSortKey(storageKey: String): RowSorter.SortKey? {
+    val raw = PropertiesComponent.getInstance().getValue(storageKey) ?: return null
+    val parts = raw.split(':', limit = 2)
+    if (parts.size != 2) return null
+    val column = parts[0].toIntOrNull() ?: return null
+    if (column !in 0 until listTableModel.columnCount || !listTableModel.columnInfos[column].isSortable) return null
+    val order = SortOrder.entries.firstOrNull { it.name == parts[1] } ?: return null
+    if (order == SortOrder.UNSORTED) return null
+    return RowSorter.SortKey(column, order)
+  }
+
+  private fun saveSortOrderToStorage(storageKey: String) {
+    val sortKey = rowSorter?.sortKeys?.firstOrNull() ?: return
+    if (sortKey.sortOrder == SortOrder.UNSORTED) return
+    PropertiesComponent.getInstance().setValue(storageKey, "${sortKey.column}:${sortKey.sortOrder.name}")
   }
 
   companion object {

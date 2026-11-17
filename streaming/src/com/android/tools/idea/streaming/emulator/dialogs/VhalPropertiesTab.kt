@@ -51,13 +51,14 @@ import java.awt.event.ItemEvent
 import java.awt.event.KeyAdapter
 import java.awt.event.KeyEvent
 import java.awt.event.MouseEvent
-import java.util.Locale
+import java.text.Collator
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JPanel
 import javax.swing.JScrollPane
 import javax.swing.ListSelectionModel
 import javax.swing.event.DocumentEvent
+import org.jetbrains.annotations.NonNls
 import org.jetbrains.annotations.VisibleForTesting
 
 /**
@@ -97,7 +98,7 @@ internal class VhalPropertiesTab(private val owner: CarDataDialog) {
 
   private val tableModel = VhalPropertiesTableModel()
   private val propertiesTable =
-    ExtendedControlsTable(tableModel, "vhalPropertiesTable", message("car.data.dialog.empty.properties")).apply {
+    ExtendedControlsTable(tableModel, "vhalPropertiesTable", message("car.data.dialog.empty.properties"), SORT_ORDER_STORAGE_KEY).apply {
       selectionModel.selectionMode = ListSelectionModel.SINGLE_SELECTION
       selectionModel.addListSelectionListener { event ->
         if (!event.valueIsAdjusting && !isUpdatingSelection) {
@@ -486,22 +487,19 @@ internal class VhalPropertiesTab(private val owner: CarDataDialog) {
 
   private fun rebuildTablePreservingSelection() {
     val previousKey = propertiesTable.selectedObject?.key
-    val sortedFiltered =
-      entriesByKey.values
-        .filter(::matchesCurrentFilter)
-        .sortedWith(compareBy({ it.label.lowercase(Locale.ROOT) }, { it.areaId }, { it.propId }))
-        .toMutableList()
+    val filtered = entriesByKey.values.filter(::matchesCurrentFilter).toMutableList()
 
     isUpdatingSelection = true
     try {
-      tableModel.items = sortedFiltered
-      val indexToSelect =
+      tableModel.items = filtered
+      val modelIndexToSelect =
         when {
-          sortedFiltered.isEmpty() -> -1
-          previousKey != null -> sortedFiltered.indexOfFirst { it.key == previousKey }.takeIf { it >= 0 } ?: 0
-          else -> 0
+          propertiesTable.rowCount == 0 -> -1
+          previousKey != null ->
+            filtered.indexOfFirst { it.key == previousKey }.takeIf { it >= 0 } ?: propertiesTable.convertRowIndexToModel(0)
+          else -> propertiesTable.convertRowIndexToModel(0)
         }
-      propertiesTable.selectModelRow(indexToSelect)
+      propertiesTable.selectModelRow(modelIndexToSelect)
     } finally {
       isUpdatingSelection = false
     }
@@ -856,29 +854,47 @@ internal class VhalPropertiesTab(private val owner: CarDataDialog) {
   }
 
   /** Table model for VHAL property rows. */
-  private class VhalPropertiesTableModel : ListTableModel<VhalPropertyEntry>() {
-    private val propertyColumn =
-      object : TextColumnInfo<VhalPropertyEntry>(message("car.data.dialog.column.property")) {
-        override fun valueOf(item: VhalPropertyEntry): String = item.label
-      }
+  private class VhalPropertiesTableModel : ListTableModel<VhalPropertyEntry>(PROPERTY_COLUMN, AREA_COLUMN, ID_COLUMN) {
 
-    private val areaColumn =
-      object : TextColumnInfo<VhalPropertyEntry>(message("car.data.dialog.column.area")) {
-        override fun valueOf(item: VhalPropertyEntry): String = item.areaText
-      }
+    companion object {
+      private val collator = Collator.getInstance()
 
-    private val idColumn =
-      object : TextColumnInfo<VhalPropertyEntry>(message("car.data.dialog.column.id")) {
-        override fun valueOf(item: VhalPropertyEntry): String = item.propId.toString()
-      }
+      private val PROPERTY_COLUMN =
+        object : TextColumnInfo<VhalPropertyEntry>(message("car.data.dialog.column.property")) {
+          private val comparator =
+            compareBy(collator, VhalPropertyEntry::label).thenBy(VhalPropertyEntry::areaId).thenBy(VhalPropertyEntry::propId)
 
-    init {
-      columnInfos = arrayOf(propertyColumn, areaColumn, idColumn)
-      isSortable = false
+          override fun valueOf(item: VhalPropertyEntry): String = item.label
+
+          override fun getComparator(): Comparator<VhalPropertyEntry> = comparator
+        }
+
+      private val AREA_COLUMN =
+        object : TextColumnInfo<VhalPropertyEntry>(message("car.data.dialog.column.area")) {
+          private val comparator =
+            compareBy(collator, VhalPropertyEntry::areaText)
+              .thenBy(collator, VhalPropertyEntry::label)
+              .thenBy(VhalPropertyEntry::areaId)
+              .thenBy(VhalPropertyEntry::propId)
+
+          override fun valueOf(item: VhalPropertyEntry): String = item.areaText
+
+          override fun getComparator(): Comparator<VhalPropertyEntry> = comparator
+        }
+
+      private val ID_COLUMN =
+        object : TextColumnInfo<VhalPropertyEntry>(message("car.data.dialog.column.id")) {
+          private val comparator = compareBy(VhalPropertyEntry::propId).thenBy(VhalPropertyEntry::areaId)
+
+          override fun valueOf(item: VhalPropertyEntry): String = item.propId.toString()
+
+          override fun getComparator(): Comparator<VhalPropertyEntry> = comparator
+        }
     }
   }
 
   companion object {
+    @NonNls @VisibleForTesting const val SORT_ORDER_STORAGE_KEY = "com.android.tools.idea.streaming.emulator.vhal.properties.sort.order"
     private const val TAB_INSET = 8
     private const val SPLITTER_GAP = 6
     private const val SPLITTER_PROPORTION = 0.56f

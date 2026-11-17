@@ -60,9 +60,6 @@ import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JLabel
 import javax.swing.JPanel
-import javax.swing.RowSorter
-import javax.swing.SortOrder
-import javax.swing.event.RowSorterEvent
 import javax.xml.parsers.ParserConfigurationException
 import kotlin.math.min
 import kotlin.math.roundToLong
@@ -120,33 +117,41 @@ internal data class SavedRouteItem(
 }
 
 /** Table model for saved routes. */
-internal class SavedRoutesTableModel :
-  ListTableModel<SavedRouteItem>(
-    arrayOf(
+private class SavedRoutesTableModel : ListTableModel<SavedRouteItem>(NAME_COLUMN, POINTS_COLUMN, DURATION_COLUMN) {
+
+  companion object {
+    private val collator = Collator.getInstance()
+
+    private val NAME_COLUMN =
       object : TextColumnInfo<SavedRouteItem>(message("location.dialog.column.name")) {
+        private val comparator = compareBy(collator, SavedRouteItem::name)
+
         override fun valueOf(item: SavedRouteItem): String = item.name
 
         override fun getCellTooltipText(item: SavedRouteItem): String = item.description
 
-        override fun getComparator(): Comparator<SavedRouteItem> = compareBy(Collator.getInstance(), SavedRouteItem::name)
-      },
+        override fun getComparator(): Comparator<SavedRouteItem> = comparator
+      }
+
+    private val POINTS_COLUMN =
       object : TextColumnInfo<SavedRouteItem>(message("location.dialog.column.points")) {
+        private val comparator = compareBy<SavedRouteItem> { it.points.size }.thenBy(collator, SavedRouteItem::name)
+
         override fun valueOf(item: SavedRouteItem): String = item.points.size.toString()
 
-        override fun getComparator(): Comparator<SavedRouteItem> =
-          compareBy<SavedRouteItem> { it.points.size }.thenBy(Collator.getInstance(), SavedRouteItem::name)
-      },
+        override fun getComparator(): Comparator<SavedRouteItem> = comparator
+      }
+
+    private val DURATION_COLUMN =
       object : TextColumnInfo<SavedRouteItem>(message("location.dialog.column.duration")) {
+        private val comparator = compareBy(SavedRouteItem::durationSeconds).thenBy(collator, SavedRouteItem::name)
+
         override fun valueOf(item: SavedRouteItem): String = GeoMath.formatDuration(item.durationSeconds)
 
-        override fun getComparator(): Comparator<SavedRouteItem> =
-          compareBy(SavedRouteItem::durationSeconds).thenBy(Collator.getInstance(), SavedRouteItem::name)
-      },
-    ),
-    mutableListOf(),
-    0,
-    SortOrder.ASCENDING,
-  )
+        override fun getComparator(): Comparator<SavedRouteItem> = comparator
+      }
+  }
+}
 
 /**
  * Extended controls dialog for importing and playing back GPX and KML GPS routes on an emulator without requiring any external Maps API.
@@ -180,7 +185,7 @@ internal class LocationDialog(emulator: EmulatorController) :
 
   private val routesTableModel = SavedRoutesTableModel()
   private val routesTable =
-    ExtendedControlsTable(routesTableModel, "savedRoutesTable", message("location.dialog.empty.routes")).apply {
+    ExtendedControlsTable(routesTableModel, "savedRoutesTable", message("location.dialog.empty.routes"), SORT_ORDER_STORAGE_KEY).apply {
       accessibleContext.accessibleName = message("location.dialog.saved.routes.label")
     }
 
@@ -216,12 +221,6 @@ internal class LocationDialog(emulator: EmulatorController) :
     routesTable.selectionModel.addListSelectionListener { event ->
       if (!event.valueIsAdjusting && !isUpdatingUi && !isPlaying) {
         onSelectedRouteChanged()
-      }
-    }
-
-    routesTable.rowSorter?.addRowSorterListener { event ->
-      if (event.type == RowSorterEvent.Type.SORT_ORDER_CHANGED && !isUpdatingUi) {
-        saveSortOrderToStorage()
       }
     }
 
@@ -343,7 +342,6 @@ internal class LocationDialog(emulator: EmulatorController) :
 
     var initialIndex = -1
     updateUi {
-      routesTable.rowSorter?.sortKeys = listOf(getPersistedSortKey())
       routesTableModel.items = savedRoutes.toList()
       initialIndex = getInitialSelectedRouteModelIndex()
       if (initialIndex >= 0) {
@@ -773,24 +771,6 @@ internal class LocationDialog(emulator: EmulatorController) :
     val raw = PropertiesComponent.getInstance().getValue(SELECTED_ROUTE_STORAGE_KEY) ?: return defaultIndex
     val index = raw.toIntOrNull() ?: return defaultIndex
     return if (index < 0) -1 else if (index >= savedRoutes.size) defaultIndex else index
-  }
-
-  private fun getPersistedSortKey(): RowSorter.SortKey {
-    val defaultKey = RowSorter.SortKey(0, SortOrder.ASCENDING)
-    val raw = PropertiesComponent.getInstance().getValue(SORT_ORDER_STORAGE_KEY) ?: return defaultKey
-    val parts = raw.split(':', limit = 2)
-    if (parts.size != 2) return defaultKey
-    val column = parts[0].toIntOrNull() ?: return defaultKey
-    if (column !in 0 until routesTableModel.columnCount) return defaultKey
-    val order = SortOrder.entries.firstOrNull { it.name == parts[1] } ?: return defaultKey
-    if (order == SortOrder.UNSORTED) return defaultKey
-    return RowSorter.SortKey(column, order)
-  }
-
-  private fun saveSortOrderToStorage() {
-    val sortKey = routesTable.rowSorter?.sortKeys?.firstOrNull() ?: return
-    if (sortKey.sortOrder == SortOrder.UNSORTED) return
-    PropertiesComponent.getInstance().setValue(SORT_ORDER_STORAGE_KEY, "${sortKey.column}:${sortKey.sortOrder.name}")
   }
 
   private fun saveSelectedRouteToStorage(selected: SavedRouteItem?) {
