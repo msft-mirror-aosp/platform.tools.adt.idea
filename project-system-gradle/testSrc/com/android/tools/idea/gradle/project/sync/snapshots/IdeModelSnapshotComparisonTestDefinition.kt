@@ -40,7 +40,7 @@ import java.io.File
  * "//tools/adt/idea/android:intellij.android.core.tests_tests__all --test_filter=IdeV2ModelSnapshotComparisonTest".
  */
 data class IdeModelSnapshotComparisonTestDefinition(
-  override val testProject: TestProject,
+  override val testProject: TemplateBasedTestProject,
   val skipV1toV2Comparison: Boolean = false,
   val v1toV2PropertiesToSkip: Set<String> = emptySet(),
   val isCompatibleWith: (AgpVersionSoftwareEnvironmentDescriptor) -> Boolean = { it >= AGP_70 },

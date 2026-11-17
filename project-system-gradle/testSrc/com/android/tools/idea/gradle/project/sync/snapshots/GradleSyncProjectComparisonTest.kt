@@ -54,7 +54,7 @@ import org.junit.rules.TestName
  * "//tools/adt/idea/android:intellij.android.core.tests_tests__gradle.project.sync.snapshots".
  */
 data class ProjectStructureSnapshotTestDef(
-  override val testProject: TestProject,
+  override val testProject: TemplateBasedTestProject,
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AGP_CURRENT,
   private val roots: Map<String, File> = emptyMap(),
   private val compatibleWith: Set<AgpVersionSoftwareEnvironmentDescriptor> = setOf(AGP_CURRENT),

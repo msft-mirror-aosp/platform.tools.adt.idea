@@ -35,7 +35,7 @@ import java.util.Locale
 
 data class GradleSyncLoggedEventsTestDef(
   val namePrefix: String,
-  override val testProject: TestProject,
+  override val testProject: TemplateBasedTestProject,
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
   val verify: GradleSyncLoggedEventsTestDef.(events: List<LoggedUsage>) -> Unit = {},
 ) : SyncedProjectTestDef {
@@ -221,16 +221,7 @@ data class GradleSyncLoggedEventsTestDef(
                 .filterExpectedPhases(agpVersion)
             )
         },
-        GradleSyncLoggedEventsTestDef(namePrefix = "kotlin_versions", testProject = TestProject.KOTLIN_KAPT) { events ->
-          assertThat(events.dumpKotlinVersions(agpVersion.getBuiltInKotlinVersion() ?: agpVersion.kotlinVersion))
-            .isEqualTo(
-              """
-              |kotlin version: KOTLIN_VERSION_FOR_TESTS
-              |core-ktx version: 1.0.1
-              """
-                .trimMargin()
-            )
-        },
+        kotlinKaptVersionsTestDef(TestProject.KOTLIN_KAPT),
         GradleSyncLoggedEventsTestDef(namePrefix = "kotlin_versions", testProject = TestProject.SIMPLE_APPLICATION_VERSION_CATALOG) { events
           ->
           assertThat(events.dumpKotlinVersions(agpVersion.getBuiltInKotlinVersion()))
@@ -242,6 +233,18 @@ data class GradleSyncLoggedEventsTestDef(
             )
         },
       )
+
+    fun kotlinKaptVersionsTestDef(testProject: TemplateBasedTestProject): GradleSyncLoggedEventsTestDef =
+      GradleSyncLoggedEventsTestDef(namePrefix = "kotlin_versions", testProject = testProject) { events ->
+        assertThat(events.dumpKotlinVersions(agpVersion.getBuiltInKotlinVersion() ?: agpVersion.kotlinVersion))
+          .isEqualTo(
+            """
+            |kotlin version: KOTLIN_VERSION_FOR_TESTS
+            |core-ktx version: 1.0.1
+            """
+              .trimMargin()
+          )
+      }
 
     private fun List<LoggedUsage>.dumpGradleSyncEvents() = dumpEvents(filterBy = { hasGradleSyncStats() })
 

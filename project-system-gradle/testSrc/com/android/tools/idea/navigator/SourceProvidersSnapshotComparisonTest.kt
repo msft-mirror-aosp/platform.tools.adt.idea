@@ -17,6 +17,7 @@ package com.android.tools.idea.navigator
 
 import com.android.testutils.TestUtils
 import com.android.tools.idea.gradle.project.sync.snapshots.SyncedProjectTestDef
+import com.android.tools.idea.gradle.project.sync.snapshots.TemplateBasedTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
@@ -45,7 +46,7 @@ import org.junit.rules.TestName
  * "//tools/adt/idea/android:intellij.android.core.tests_tests ---test_filter=SourceProvidersSnapshotComparisonTest".
  */
 data class SourceProvidersTestDef(
-  override val testProject: TestProject,
+  override val testProject: TemplateBasedTestProject,
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AGP_CURRENT,
 ) : SyncedProjectTestDef {
   override val name: String = testProject.projectName

@@ -18,6 +18,7 @@
 package com.android.tools.idea.navigator
 
 import com.android.tools.idea.gradle.project.sync.snapshots.SyncedProjectTestDef
+import com.android.tools.idea.gradle.project.sync.snapshots.TemplateBasedTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor
 import com.android.tools.idea.testing.AgpVersionSoftwareEnvironmentDescriptor.Companion.AGP_CURRENT
@@ -41,7 +42,7 @@ import java.io.File
  * "//tools/adt/idea/android:intellij.android.core.tests_tests__navigator.AndroidGradleProjectViewSnapshotComparisonTest".
  */
 data class AndroidProjectViewSnapshotComparisonTestDef(
-  override val testProject: TestProject,
+  override val testProject: TemplateBasedTestProject,
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AGP_CURRENT,
   val compatibleWith: Set<AgpVersionSoftwareEnvironmentDescriptor> = setOf(AGP_CURRENT),
   private val projectViewSettings: ProjectViewSettings = ProjectViewSettings(),

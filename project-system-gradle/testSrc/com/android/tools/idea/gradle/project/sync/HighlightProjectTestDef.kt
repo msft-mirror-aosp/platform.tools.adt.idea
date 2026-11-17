@@ -20,6 +20,7 @@ import com.android.tools.idea.gradle.model.impl.IdeModuleSourceSetImpl.Companion
 import com.android.tools.idea.gradle.model.impl.IdeModuleWellKnownSourceSet
 import com.android.tools.idea.gradle.project.sync.snapshots.PreparedTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.SyncedProjectTestDef
+import com.android.tools.idea.gradle.project.sync.snapshots.TemplateBasedTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProject
 import com.android.tools.idea.projectsystem.AndroidProjectRootUtil
 import com.android.tools.idea.projectsystem.TestArtifactSearchScopes
@@ -43,7 +44,7 @@ import org.jetbrains.android.augment.ResourceLightField
 import org.jetbrains.plugins.gradle.service.execution.GradleRunConfiguration
 
 data class HighlightProjectTestDef(
-  override val testProject: TestProject,
+  override val testProject: TemplateBasedTestProject,
   val checkHighlighting: (JavaCodeInsightTestFixture) -> Unit = { fixture -> fixture.checkHighlighting() },
   override val agpVersion: AgpVersionSoftwareEnvironmentDescriptor = AgpVersionSoftwareEnvironmentDescriptor.AGP_CURRENT,
   val modulesAndFiles: Map<GradleSourceSetProjectPath, List<String>>,
@@ -116,23 +117,7 @@ data class HighlightProjectTestDef(
                 listOf("src/androidTest/java/com/example/app/ExampleInstrumentedTest.kt")
             ),
         ),
-        HighlightProjectTestDef(
-          TestProject.ANDROID_KOTLIN_MULTIPLATFORM,
-          modulesAndFiles =
-            mapOf(
-              GradleSourceSetProjectPath("/", ":kmpFirstLib", wellKnownOrCreate("androidDeviceTest")) to
-                listOf("src/androidDeviceTest/kotlin/com/example/kmpfirstlib/test/KmpAndroidFirstLibActivityTest.kt")
-            ),
-        ),
-        HighlightProjectTestDef(
-          TestProject.ANDROID_KOTLIN_MULTIPLATFORM,
-          checkHighlighting = ::validateRClassResolutionInKmpAndroid,
-          modulesAndFiles =
-            mapOf(
-              GradleSourceSetProjectPath("/", ":kmpFirstLib", wellKnownOrCreate("androidDeviceTest")) to
-                listOf("src/androidDeviceTest/kotlin/com/example/kmpfirstlib/test/KmpAndroidFirstLibActivityTest.kt")
-            ),
-        ),
+        *androidKotlinMultiplatformTests(TestProject.ANDROID_KOTLIN_MULTIPLATFORM).toTypedArray(),
         HighlightProjectTestDef(
           TestProject.ANDROID_KOTLIN_MULTIPLATFORM_VARIANT_API_RES,
           checkHighlighting = ::validateNoUnresolvedReferences,
@@ -147,6 +132,27 @@ data class HighlightProjectTestDef(
           checkHighlighting = ::validateTestSuites,
           modulesAndFiles =
             mapOf(GradleSourceSetProjectPath("/", ":app", wellKnownOrCreate("second")) to listOf("src/second/kotlin/SomeTest.kt")),
+        ),
+      )
+
+    fun androidKotlinMultiplatformTests(testProject: TemplateBasedTestProject): List<HighlightProjectTestDef> =
+      listOf(
+        HighlightProjectTestDef(
+          testProject,
+          modulesAndFiles =
+            mapOf(
+              GradleSourceSetProjectPath("/", ":kmpFirstLib", wellKnownOrCreate("androidDeviceTest")) to
+                listOf("src/androidDeviceTest/kotlin/com/example/kmpfirstlib/test/KmpAndroidFirstLibActivityTest.kt")
+            ),
+        ),
+        HighlightProjectTestDef(
+          testProject,
+          checkHighlighting = ::validateRClassResolutionInKmpAndroid,
+          modulesAndFiles =
+            mapOf(
+              GradleSourceSetProjectPath("/", ":kmpFirstLib", wellKnownOrCreate("androidDeviceTest")) to
+                listOf("src/androidDeviceTest/kotlin/com/example/kmpfirstlib/test/KmpAndroidFirstLibActivityTest.kt")
+            ),
         ),
       )
 
