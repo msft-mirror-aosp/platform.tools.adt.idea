@@ -273,7 +273,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
         e.throwIfCancellation()
         grpcException = e
       }
-      // TODO: Remove ADB workaround once CarService.receiveCarEvents works in the emulator (b/580106156).
+      // TODO: Remove ADB workaround once CarService.receiveCarEvents works in the emulator (b/586611106).
       if (!grpcEventsReceived) {
         fetchVhalPropertiesViaAdb(grpcException)
       }

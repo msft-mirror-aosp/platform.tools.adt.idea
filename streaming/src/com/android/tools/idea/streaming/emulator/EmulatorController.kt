@@ -1506,7 +1506,7 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
   }
 
   /** Streams car events from the Vehicle HAL. */
-  // TODO: Remove the onSubscribed parameter and try/finally in the body of the method once b/580106156 is fixed.
+  // TODO: Remove the onSubscribed parameter and try/finally in the body of the method once b/586611106 is fixed.
   fun receiveCarEvents(onSubscribed: suspend () -> Unit = {}): Flow<CarEvent> = callbackFlow {
     val cancelable = receiveCarEvents(FlowStreamObserver(this))
     try {
