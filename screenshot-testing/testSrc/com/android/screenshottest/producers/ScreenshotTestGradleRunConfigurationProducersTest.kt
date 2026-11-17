@@ -48,6 +48,7 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.execution.PsiLocation
 import com.intellij.execution.actions.ConfigurationFromContextImpl
 import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.externalSystem.service.project.manage.ExternalProjectsManagerImpl
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VfsUtil.findFileByIoFile
@@ -64,6 +65,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.jetbrains.android.facet.AndroidFacet
 import org.jetbrains.plugins.gradle.service.execution.GradleRunConfiguration
+import org.jetbrains.plugins.gradle.util.GradleConstants
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Rule
@@ -543,6 +545,45 @@ class ScreenshotTestGradleRunConfigurationProducersTest {
 
     // This should not cause NPE.
     TestConfigurationTestingUtil.createContext(project, psiFile).configuration
+  }
+
+  @Test
+  fun isConfigurationFromContextReturnsFalseWhenGradleDataIsMissing() {
+    val project = projectRule.project
+    val methodElement =
+      with(TestConfigurationTestingUtil) {
+        project.getPsiElement(TestConfigurationTestingUtil.Method("com.example.application.MyScreenshotTest", "PreviewMethod"))
+      }
+    val packageElement = TestConfigurationTestingUtil.getPsiElement(project, "app/src/screenshotTest/java/com/example", true)
+
+    val methodConfigFromContext =
+      TestConfigurationTestingUtil.createContext(project, methodElement).configurationsFromContext!!.first() as ConfigurationFromContextImpl
+    val packageConfigFromContext =
+      TestConfigurationTestingUtil.createContext(project, packageElement).configurationsFromContext!!.first()
+        as ConfigurationFromContextImpl
+
+    assertThat(methodConfigFromContext.configurationProducer).isInstanceOf(ScreenshotTestMethodGradleConfigurationProducer::class.java)
+    assertThat(packageConfigFromContext.configurationProducer)
+      .isInstanceOf(ScreenshotTestAllInPackageGradleConfigurationProducer::class.java)
+
+    // Drop ExternalSystem Gradle project data while GradleAndroidModel remains in WorkspaceModel,
+    // so getScreenshotTestTaskNames() returns null when doIsConfigurationFromContext runs.
+    ExternalProjectsManagerImpl.getInstance(project).forgetExternalProjectData(GradleConstants.SYSTEM_ID, project.basePath!!)
+
+    assertThat(
+        methodConfigFromContext.configurationProducer.isConfigurationFromContext(
+          methodConfigFromContext.configuration as GradleRunConfiguration,
+          TestConfigurationTestingUtil.createContext(project, methodElement),
+        )
+      )
+      .isFalse()
+    assertThat(
+        packageConfigFromContext.configurationProducer.isConfigurationFromContext(
+          packageConfigFromContext.configuration as GradleRunConfiguration,
+          TestConfigurationTestingUtil.createContext(project, packageElement),
+        )
+      )
+      .isFalse()
   }
 
   private fun createProjectStructureForTest() {

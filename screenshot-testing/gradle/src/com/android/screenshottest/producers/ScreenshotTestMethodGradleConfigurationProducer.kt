@@ -70,8 +70,8 @@ class ScreenshotTestMethodGradleConfigurationProducer : TestMethodGradleConfigur
     if (!androidModule.getModuleSystem().isDebuggable) return false
     if (!isMethodDeclarationPreviewTestAnnotated(psiMethod, visitedAnnotations)) return false
 
-    val configurationTaskNames = configuration.settings.taskNames
-    return configurationTaskNames == taskNamesWithFilter(context, psiMethod)
+    val expectedTaskNames = taskNamesWithFilter(context, psiMethod) ?: return false
+    return configuration.settings.taskNames == expectedTaskNames
   }
 
   override fun getAllTestsTaskToRun(
@@ -127,10 +127,11 @@ class ScreenshotTestMethodGradleConfigurationProducer : TestMethodGradleConfigur
 
     if (psiMethod != null) {
       if (!isMethodDeclarationPreviewTestAnnotated(psiMethod, visitedAnnotations)) return false
+      val taskNames = taskNamesWithFilter(context, psiMethod) ?: return false
       sourceElementRef.set(psiMethod)
       configuration.settings.externalProjectPath = project.basePath
       configuration.name = suggestConfigurationName(context, psiMethod, emptyList())
-      configuration.settings.taskNames = taskNamesWithFilter(context, psiMethod)
+      configuration.settings.taskNames = taskNames
       configuration.isDebugServerProcess = false
       configuration.isDebugAllEnabled = false
 
@@ -142,9 +143,10 @@ class ScreenshotTestMethodGradleConfigurationProducer : TestMethodGradleConfigur
   private fun taskNamesWithFilter(
     context: ConfigurationContext,
     psiMethod: PsiMethod,
-  ): List<String> {
-    val className = psiMethod.containingClass?.qualifiedName ?: return emptyList()
+  ): List<String>? {
+    val className = psiMethod.containingClass?.qualifiedName ?: return null
     val methodName = psiMethod.name
-    return getScreenshotTestTaskNames(context)!! + "--tests" + "\"$className.$methodName\""
+    val baseTasks = getScreenshotTestTaskNames(context) ?: return null
+    return baseTasks + "--tests" + "\"$className.$methodName\""
   }
 }

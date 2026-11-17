@@ -58,8 +58,8 @@ class ScreenshotTestAllInPackageGradleConfigurationProducer : AllInPackageGradle
     // TODO: Enable screenshot tests for release variants as well.
     if (!androidModule.getModuleSystem().isDebuggable) return false
 
-    val configurationTaskNames = configuration.settings.taskNames
-    return configurationTaskNames == taskNamesWithFilter(context, psiPackage)
+    val expectedTaskNames = taskNamesWithFilter(context, psiPackage) ?: return false
+    return configuration.settings.taskNames == expectedTaskNames
   }
 
   override fun getAllTestsTaskToRun(
@@ -112,9 +112,10 @@ class ScreenshotTestAllInPackageGradleConfigurationProducer : AllInPackageGradle
     val project = context.project ?: return false
     val packageName = psiPackage.qualifiedName
     if (packageName.isEmpty()) return false
+    val taskNames = taskNamesWithFilter(context, psiPackage) ?: return false
     sourceElementRef.set(psiPackage)
     configuration.settings.externalProjectPath = project.basePath
-    configuration.settings.taskNames = taskNamesWithFilter(context, psiPackage)
+    configuration.settings.taskNames = taskNames
     configuration.name = suggestConfigurationName(context, psiPackage, emptyList())
     return true
   }
@@ -122,7 +123,8 @@ class ScreenshotTestAllInPackageGradleConfigurationProducer : AllInPackageGradle
   private fun taskNamesWithFilter(
     context: ConfigurationContext,
     psiPackage: PsiPackage,
-  ): List<String> {
-    return getScreenshotTestTaskNames(context)!! + "--tests" + "\"${psiPackage.qualifiedName}.*\""
+  ): List<String>? {
+    val baseTasks = getScreenshotTestTaskNames(context) ?: return null
+    return baseTasks + "--tests" + "\"${psiPackage.qualifiedName}.*\""
   }
 }
