@@ -16,12 +16,6 @@
 package com.android.tools.idea.npw.module
 
 import com.android.sdklib.SdkVersionInfo
-import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
-import com.android.tools.idea.gradle.dsl.api.GradleModelProvider
-import com.android.tools.idea.gradle.dsl.api.GradleSettingsModel
-import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogModel
-import com.android.tools.idea.gradle.dsl.api.GradleVersionCatalogsModel
-import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil
 import com.android.tools.idea.npw.NewProjectWizardTestUtils.getAgpVersion
 import com.android.tools.idea.npw.baselineprofiles.ConfigureBaselineProfilesModuleStep
@@ -31,10 +25,6 @@ import com.android.tools.idea.npw.model.ProjectSyncInvoker
 import com.android.tools.idea.npw.platform.AndroidVersionsInfo
 import com.android.tools.idea.observable.BatchInvoker
 import com.android.tools.idea.testing.AndroidGradleProjectRule
-import com.android.tools.idea.testing.AndroidModuleModelBuilder
-import com.android.tools.idea.testing.AndroidProjectBuilder
-import com.android.tools.idea.testing.AndroidProjectRule
-import com.android.tools.idea.testing.JavaModuleModelBuilder
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.testing.findAppModule
 import com.android.tools.idea.testing.findModule
@@ -46,10 +36,12 @@ import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
-import com.intellij.openapi.module.Module
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.StandardFileSystems
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import java.awt.EventQueue
@@ -216,21 +208,7 @@ class ConfigureBaselineProfilesModuleStepTest {
 
 class ConfigureBaselineProfilesModuleStepLockFreeEdtTest {
 
-  @get:Rule
-  val projectRule =
-    AndroidProjectRule.withAndroidModels(
-      JavaModuleModelBuilder.rootModuleBuilder,
-      AndroidModuleModelBuilder(
-        ":lowSdkApp",
-        "debug",
-        AndroidProjectBuilder(applicationIdFor = { "com.example.lowsdk" }, minSdk = { LOW_MIN_SDK }),
-      ),
-      AndroidModuleModelBuilder(
-        ":highSdkApp",
-        "debug",
-        AndroidProjectBuilder(applicationIdFor = { "com.example.highsdk" }, minSdk = { HIGH_MIN_SDK }),
-      ),
-    )
+  @get:Rule val projectRule = AndroidGradleProjectRule(agpVersionSoftwareEnvironment = getAgpVersion())
 
   private lateinit var disposable: Disposable
 
@@ -247,15 +225,34 @@ class ConfigureBaselineProfilesModuleStepLockFreeEdtTest {
   }
 
   @Test
-  fun stepEntryAndTargetModuleSelectionWorkOnLockFreeEdtWithoutGradleDslParsing() {
-    projectRule.replaceService(
-      GradleModelProvider::class.java,
-      EdtFailingGradleModelProvider(GradleModelProvider.getInstance()),
+  fun stepEntryAndTargetModuleSelectionUpdatePropertiesFromSyncedModels() {
+    projectRule.loadProject(
+      TestProjectPaths.APP_WITH_WEAR_AND_TV_AND_AUTOMOTIVE,
+      agpVersion = getAgpVersion(),
     )
 
     val project = projectRule.project
-    val lowSdkModule = project.findModule("lowSdkApp")
-    val highSdkModule = project.findModule("highSdkApp")
+    val appModule = project.findAppModule()
+    val tvModule = project.findModule("tvApp")
+    val wearModule = project.findModule("wearApp")
+    val automotiveModule = project.findModule("automotiveApp")
+
+    val root = StandardFileSystems.local().findFileByPath(project.basePath!!)!!
+    val appBuildGradle = root.findFileByRelativePath("app/build.gradle.kts")!!
+    val appDocument = runInEdtAndGet {
+      projectRule.fixture.openFileInEditor(appBuildGradle)
+      val doc = FileDocumentManager.getInstance().getDocument(appBuildGradle)!!
+      val originalText = doc.text
+      val updatedText = Regex("minSdk\\s*=\\s*\\d+").replace(originalText, "minSdk = 30")
+      assertThat(updatedText).isNotEqualTo(originalText)
+      WriteCommandAction.runWriteCommandAction(project) {
+        doc.setText(updatedText)
+        PsiDocumentManager.getInstance(project).commitDocument(doc)
+      }
+      assertThat(PsiDocumentManager.getInstance(project).isCommitted(doc)).isTrue()
+      assertThat(FileDocumentManager.getInstance().isDocumentUnsaved(doc)).isTrue()
+      doc
+    }
 
     val (step, model) =
       runInEdtAndGet {
@@ -266,8 +263,9 @@ class ConfigureBaselineProfilesModuleStepLockFreeEdtTest {
             projectSyncInvoker = AddBaselineProfilesModuleTest.emptyProjectSyncInvoker,
           )
         Disposer.register(disposable, newModel)
-        ConfigureBaselineProfilesModuleStep(model = newModel, disposable = disposable).also { Disposer.register(disposable, it) } to
-          newModel
+        ConfigureBaselineProfilesModuleStep(model = newModel, disposable = disposable).also {
+          Disposer.register(disposable, it)
+        } to newModel
       }
 
     // Ensure the test thread is not the EDT so SwingUtilities.invokeAndWait dispatches on lock-free Swing EDT.
@@ -279,70 +277,53 @@ class ConfigureBaselineProfilesModuleStepLockFreeEdtTest {
       assertThat(app.isReadAccessAllowed).isFalse()
       assertThat(app.isWriteIntentLockAcquired).isFalse()
 
-      model.targetModule.value = lowSdkModule
+      // Entering the wizard selects the mobile app module (synced minSdk = 24, ignoring unsynced minSdk = 30 edit).
       val wizard = ModelWizard.Builder().addStep(step).build()
       Disposer.register(disposable, wizard)
+      assertThat(model.targetModule.value).isEqualTo(appModule)
       assertThat(model.androidSdkInfo.value.minApiLevel).isEqualTo(SdkVersionInfo.LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION)
+      assertThat(step.useGmdCheck.isEnabled).isTrue()
+      assertThat(model.useGmd.get()).isFalse()
 
-      step.targetModuleCombo.selectedItem = highSdkModule
+      step.useGmdCheck.isSelected = true
+      assertThat(model.useGmd.get()).isTrue()
+
+      // Switching to tvApp (synced minSdk = 21 < 24) clamps minApiLevel to 24 and disables GMD.
+      step.targetModuleCombo.selectedItem = tvModule
       assertThat(app.isReadAccessAllowed).isFalse()
       assertThat(app.isWriteIntentLockAcquired).isFalse()
-      assertThat(model.targetModule.value).isEqualTo(highSdkModule)
-      assertThat(model.androidSdkInfo.value.minApiLevel).isEqualTo(HIGH_MIN_SDK)
-
-      step.targetModuleCombo.selectedItem = lowSdkModule
-      assertThat(model.targetModule.value).isEqualTo(lowSdkModule)
+      assertThat(model.targetModule.value).isEqualTo(tvModule)
       assertThat(model.androidSdkInfo.value.minApiLevel).isEqualTo(SdkVersionInfo.LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION)
+      assertThat(step.useGmdCheck.isEnabled).isFalse()
+      assertThat(step.useGmdCheck.isSelected).isFalse()
+      assertThat(model.useGmd.get()).isFalse()
+
+      // Switching to wearApp (synced minSdk = 25 > 24) updates minApiLevel to 25 and keeps GMD disabled.
+      step.targetModuleCombo.selectedItem = wearModule
+      assertThat(model.targetModule.value).isEqualTo(wearModule)
+      assertThat(model.androidSdkInfo.value.minApiLevel).isEqualTo(25)
+      assertThat(step.useGmdCheck.isEnabled).isFalse()
+      assertThat(model.useGmd.get()).isFalse()
+
+      // Switching to automotiveApp (synced minSdk = 28 > 24) updates minApiLevel to 28 and keeps GMD disabled.
+      step.targetModuleCombo.selectedItem = automotiveModule
+      assertThat(model.targetModule.value).isEqualTo(automotiveModule)
+      assertThat(model.androidSdkInfo.value.minApiLevel).isEqualTo(28)
+      assertThat(step.useGmdCheck.isEnabled).isFalse()
+      assertThat(model.useGmd.get()).isFalse()
+
+      // Switching back to app re-enables GMD and still uses synced minSdk = 24 rather than the unsynced edit.
+      step.targetModuleCombo.selectedItem = appModule
+      assertThat(model.targetModule.value).isEqualTo(appModule)
+      assertThat(model.androidSdkInfo.value.minApiLevel).isEqualTo(SdkVersionInfo.LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION)
+      assertThat(step.useGmdCheck.isEnabled).isTrue()
+      assertThat(model.useGmd.get()).isFalse()
     }
-  }
 
-  private class EdtFailingGradleModelProvider(private val delegate: GradleModelProvider) : GradleModelProvider() {
-    private fun <T> forbidEdt(method: String, call: () -> T): T {
-      if (EventQueue.isDispatchThread()) {
-        throw AssertionError("GradleModelProvider.$method must not be called on the EDT")
-      }
-      return call()
+    runInEdtAndWait {
+      assertThat(PsiDocumentManager.getInstance(project).isCommitted(appDocument)).isTrue()
+      assertThat(FileDocumentManager.getInstance().isDocumentUnsaved(appDocument)).isTrue()
+      assertThat(PsiDocumentManager.getInstance(project).getPsiFile(appDocument)!!.text).contains("minSdk = 30")
     }
-
-    override fun getProjectModel(project: Project): ProjectBuildModel = forbidEdt("getProjectModel") { delegate.getProjectModel(project) }
-
-    override fun getProjectModel(hostProject: Project, compositeRoot: String): ProjectBuildModel? =
-      forbidEdt("getProjectModel") { delegate.getProjectModel(hostProject, compositeRoot) }
-
-    override fun getBuildModel(project: Project): GradleBuildModel? = forbidEdt("getBuildModel") { delegate.getBuildModel(project) }
-
-    override fun getBuildModel(module: Module): GradleBuildModel? = forbidEdt("getBuildModel") { delegate.getBuildModel(module) }
-
-    override fun parseBuildFile(file: VirtualFile, project: Project): GradleBuildModel =
-      forbidEdt("parseBuildFile") { delegate.parseBuildFile(file, project) }
-
-    override fun parseBuildFile(file: VirtualFile, project: Project, moduleName: String): GradleBuildModel =
-      forbidEdt("parseBuildFile") { delegate.parseBuildFile(file, project, moduleName) }
-
-    override fun getSettingsModel(project: Project): GradleSettingsModel? =
-      forbidEdt("getSettingsModel") { delegate.getSettingsModel(project) }
-
-    override fun getSettingsModel(settingsFile: VirtualFile, hostProject: Project): GradleSettingsModel =
-      forbidEdt("getSettingsModel") { delegate.getSettingsModel(settingsFile, hostProject) }
-
-    override fun getSettingsModel(hostProject: Project, compositeRoot: String): GradleSettingsModel? =
-      forbidEdt("getSettingsModel") { delegate.getSettingsModel(hostProject, compositeRoot) }
-
-    override fun getCachedVersionCatalogsModel(module: Module): GradleVersionCatalogsModel =
-      forbidEdt("getCachedVersionCatalogsModel") { delegate.getCachedVersionCatalogsModel(module) }
-
-    override fun getCachedVersionCatalogModel(
-      catalogFile: VirtualFile,
-      project: Project,
-      catalogName: String,
-    ): GradleVersionCatalogModel? =
-      forbidEdt("getCachedVersionCatalogModel") {
-        delegate.getCachedVersionCatalogModel(catalogFile, project, catalogName)
-      }
-  }
-
-  companion object {
-    private const val LOW_MIN_SDK = SdkVersionInfo.LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION - 4
-    private const val HIGH_MIN_SDK = SdkVersionInfo.LOWEST_PROFILE_GUIDED_OPTIMIZATIONS_SDK_VERSION + 2
   }
 }
