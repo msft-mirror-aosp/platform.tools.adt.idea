@@ -58,6 +58,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.jetbrains.annotations.NotNull;
@@ -99,7 +100,8 @@ public class SessionsManager extends AspectModel<SessionAspect> {
   @NotNull public Map<Long, SessionItem> mySessionItems;
 
   /**
-   * A map of Session's Id -> {@link Common.SessionMetaData}
+   * A map of Session's Id -> {@link Common.SessionMetaData}. Background threads read it, e.g. to write the metadata file of a recording
+   * that opens in the editor, while the main thread adds sessions, so it's a {@link ConcurrentHashMap}.
    */
   @VisibleForTesting
   @NotNull public Map<Long, Common.SessionMetaData> mySessionMetaDatas;
@@ -156,7 +158,7 @@ public class SessionsManager extends AspectModel<SessionAspect> {
     myProfilers = profilers;
     mySelectedSession = myProfilingSession = Common.Session.getDefaultInstance();
     mySessionItems = new HashMap<>();
-    mySessionMetaDatas = new HashMap<>();
+    mySessionMetaDatas = new ConcurrentHashMap<>();
     // Always return the SessionMetaData default instance for a Session default instance.
     mySessionMetaDatas.put(Common.Session.getDefaultInstance().getSessionId(), Common.SessionMetaData.getDefaultInstance());
     mySessionArtifacts = new ArrayList<>();
