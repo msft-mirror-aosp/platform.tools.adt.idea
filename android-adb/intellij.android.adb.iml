@@ -43,7 +43,6 @@
     <orderEntry type="module" module-name="intellij.android.artwork" />
     <orderEntry type="module" module-name="android.sdktools.sdklib" />
     <orderEntry type="library" name="studio-plugin-com.intellij.platform.images" level="project" />
-    <orderEntry type="module" module-name="android.sdktools.pixelprobe" />
     <orderEntry type="module" module-name="android.sdktools.device-provisioner" />
     <orderEntry type="module" module-name="android.sdktools.process-monitor" />
     <orderEntry type="module" module-name="android.sdktools.adblib.tools" />
@@ -52,7 +51,6 @@
     <orderEntry type="module" module-name="android.sdktools.jdwpscache" />
     <orderEntry type="module" module-name="analytics-tracker" />
     <orderEntry type="library" name="studio-analytics-proto" level="project" />
-    <orderEntry type="library" name="libadblib-tools-proto" level="project" />
     <orderEntry type="module" module-name="analytics" />
     <orderEntry type="module" module-name="android.sdktools.sdk-common" />
     <orderEntry type="module" module-name="analytics-shared" />
