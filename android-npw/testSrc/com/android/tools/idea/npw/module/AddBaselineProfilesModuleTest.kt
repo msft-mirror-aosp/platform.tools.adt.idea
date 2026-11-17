@@ -40,11 +40,12 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.vfs.StandardFileSystems
+import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.runInEdtAndGet
 import com.intellij.testFramework.runInEdtAndWait
 import java.awt.EventQueue
+import java.io.File
 import javax.swing.SwingUtilities
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -237,8 +238,7 @@ class ConfigureBaselineProfilesModuleStepLockFreeEdtTest {
     val wearModule = project.findModule("wearApp")
     val automotiveModule = project.findModule("automotiveApp")
 
-    val root = StandardFileSystems.local().findFileByPath(project.basePath!!)!!
-    val appBuildGradle = root.findFileByRelativePath("app/build.gradle.kts")!!
+    val appBuildGradle = VfsUtil.findFileByIoFile(File(project.basePath!!, "app/build.gradle.kts"), false)!!
     val appDocument = runInEdtAndGet {
       projectRule.fixture.openFileInEditor(appBuildGradle)
       val doc = FileDocumentManager.getInstance().getDocument(appBuildGradle)!!
