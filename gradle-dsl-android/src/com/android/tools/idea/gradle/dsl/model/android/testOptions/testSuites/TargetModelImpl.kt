@@ -16,20 +16,11 @@
 package com.android.tools.idea.gradle.dsl.model.android.testOptions.testSuites
 
 import com.android.tools.idea.gradle.dsl.api.android.testOptions.testSuites.TargetModel
-import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.dsl.model.GradleDslBlockModel
-import com.android.tools.idea.gradle.dsl.model.android.testOptions.testSuites.TestSuiteModelImpl.Companion.TARGET_VARIANTS
 import com.android.tools.idea.gradle.dsl.parser.android.testOptions.testSuites.TargetDslElement
 
 class TargetModelImpl(dslElement: TargetDslElement) : GradleDslBlockModel(dslElement), TargetModel {
   override fun name(): String {
     return myDslElement.name
-  }
-
-  override fun addVariant(variant: String): ResolvedPropertyModel {
-    val model = getModelForProperty(TARGET_VARIANTS)
-    val newVariant = model.addListValue()!!
-    newVariant.setValue(variant)
-    return model
   }
 }
