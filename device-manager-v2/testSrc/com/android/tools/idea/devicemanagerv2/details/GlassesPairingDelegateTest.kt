@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.devicemanagerv2.details
 
+import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProperties
@@ -26,11 +27,16 @@ import com.android.tools.idea.deviceprovisioner.GlassesInteractivePairableDevice
 import com.android.tools.idea.flags.StudioFlags
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.TestDialog
+import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.ApplicationRule
 import java.awt.Component
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -119,6 +125,21 @@ class GlassesPairingDelegateTest {
 
     delegate.showPairDeviceWizard(parentComponent, handle)
     verify(handle).pairGlasses(parentComponent, project)
+  }
+
+  @Test
+  fun removeDevice_whenUnpairThrowsDeviceActionException_showsSingleErrorDialog(): Unit = runBlocking {
+    val glasses = createMockGlassesHandle(pairedPhoneId = DeviceId("Fake", false, "phone1"))
+    val phone = createMockPhoneHandle()
+    whenever(glasses.unpairGlasses(parentComponent)).thenAnswer { throw DeviceActionException("Failed to stop glasses") }
+    val shownMessages = CopyOnWriteArrayList<String>()
+    val prevDialog = TestDialogManager.setTestDialog(TestDialog { msg -> shownMessages.add(msg).let { Messages.OK } })
+    try {
+      GlassesPairingDelegate(null, emptyFlow()).removeDevice(parentComponent, glasses, phone)
+      assertThat(shownMessages).containsExactly("Failed to stop glasses")
+    } finally {
+      TestDialogManager.setTestDialog(prevDialog)
+    }
   }
 
   @Test

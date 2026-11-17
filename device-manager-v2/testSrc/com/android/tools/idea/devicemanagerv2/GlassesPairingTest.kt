@@ -16,6 +16,7 @@
 package com.android.tools.idea.devicemanagerv2
 
 import com.android.flags.junit.FlagRule
+import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProperties
@@ -29,15 +30,27 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.TestDialog
+import com.intellij.openapi.ui.TestDialogManager
 import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.TestActionEvent
 import icons.StudioIcons
 import java.awt.Component
 import java.nio.file.Path
+import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.job
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -52,7 +65,8 @@ class GlassesPairingTest {
     val delegate: FakeDeviceHandle,
     var pairGlassesEnabled: Boolean = true,
     var unpairGlassesEnabled: Boolean = true,
-  ) : GlassesInteractivePairableDeviceHandle, com.android.sdklib.deviceprovisioner.DeviceHandle by delegate {
+    private val onUnpair: suspend () -> Unit = {},
+  ) : GlassesInteractivePairableDeviceHandle, DeviceHandle by delegate {
 
     override fun isPairGlassesEnabled(): Boolean = pairGlassesEnabled
 
@@ -62,7 +76,7 @@ class GlassesPairingTest {
 
     override fun isUnpairGlassesEnabled(): Boolean = unpairGlassesEnabled
 
-    override suspend fun unpairGlasses(parent: Component?) {}
+    override suspend fun unpairGlasses(parent: Component?) = onUnpair()
   }
 
   private suspend fun createTestEvent(
@@ -309,5 +323,48 @@ class GlassesPairingTest {
     val phonePairings = result[phoneHandle.id.toString()]!!
     assertThat(phonePairings).hasSize(1)
     assertThat(phonePairings[0].id).isEqualTo(glassesHandle.id.toString())
+  }
+
+  @Test
+  fun testUnpairGlassesAction_whenUnpairThrowsDeviceActionException_showsSingleErrorDialog(): Unit = runBlocking {
+    val actionScope = CoroutineScope(SupervisorJob())
+    val shownMessages = CopyOnWriteArrayList<String>()
+    val dialogShown = CompletableDeferred<Unit>()
+    val prevDialog =
+      TestDialogManager.setTestDialog(
+        TestDialog { msg ->
+          shownMessages.add(msg)
+          dialogShown.complete(Unit)
+          Messages.OK
+        }
+      )
+    try {
+      val fakeHandle =
+        FakeDeviceHandle(
+          scope = actionScope,
+          initialProperties =
+            DeviceProperties.buildForTest {
+              model = "Glasses"
+              deviceType = DeviceType.AI_GLASSES
+              pairedPhoneId = DeviceId("Phone", false, "phone1")
+              icon = StudioIcons.DeviceExplorer.VIRTUAL_DEVICE_PHONE
+            },
+        )
+      val throwingGlasses =
+        FakeGlassesInteractivePairableDeviceHandle(delegate = fakeHandle, pairGlassesEnabled = false) {
+          throw DeviceActionException("Failed to wipe glasses userdata")
+        }
+      val unpairAction = UnpairGlassesAction()
+      val event = TestActionEvent.createTestEvent(unpairAction, SimpleDataContext.getSimpleContext(DEVICE_HANDLE_KEY, throwingGlasses))
+      unpairAction.actionPerformed(event)
+      withTimeout(5.seconds) {
+        dialogShown.await()
+        actionScope.coroutineContext.job.children.toList().joinAll()
+      }
+      assertThat(shownMessages).containsExactly("Failed to wipe glasses userdata")
+    } finally {
+      actionScope.cancel()
+      TestDialogManager.setTestDialog(prevDialog)
+    }
   }
 }
