@@ -19,6 +19,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
@@ -27,6 +30,7 @@ import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.ide.CopyPasteManager
 import java.awt.datatransfer.DataFlavor
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -75,5 +79,107 @@ class GeneratedCodeSectionTest {
     showSection = false
     composeTestRule.waitForIdle()
     assertTrue(activeViewer.editor.isDisposed)
+  }
+
+  @Test
+  fun copyButtonShowsFeedbackPreservesWidthAndRevertsAfterDelay() {
+    composeTestRule.setContent {
+      Column {
+        GeneratedCodeSection(project = projectRule.project, renderEditor = false, generatedCode = { "initialCode()" })
+      }
+    }
+
+    composeTestRule.waitForIdle()
+    val copyLabel = message("gradient.editor.code.copy")
+    val copiedLabel = message("gradient.editor.code.copied")
+
+    val copyNode = composeTestRule.onNodeWithText(copyLabel).assertIsDisplayed()
+    composeTestRule.onNodeWithText(copiedLabel).assertDoesNotExist()
+    val initialSemantics = copyNode.fetchSemanticsNode()
+    assertFalse(SemanticsProperties.LiveRegion in initialSemantics.config)
+    val initialWidth = initialSemantics.size.width
+
+    copyNode.performClick()
+    composeTestRule.waitForIdle()
+
+    val copied = CopyPasteManager.getInstance().getContents<String>(DataFlavor.stringFlavor)
+    assertEquals("initialCode()", copied)
+
+    val copiedNode = composeTestRule.onNodeWithText(copiedLabel).assertIsDisplayed()
+    composeTestRule.onNodeWithText(copyLabel).assertDoesNotExist()
+    val copiedSemantics = copiedNode.fetchSemanticsNode()
+    assertEquals(LiveRegionMode.Polite, copiedSemantics.config[SemanticsProperties.LiveRegion])
+    assertEquals(initialWidth, copiedSemantics.size.width)
+
+    composeTestRule.mainClock.advanceTimeBy(COPY_FEEDBACK_DURATION.inWholeMilliseconds - 100)
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText(copiedLabel).assertIsDisplayed()
+
+    composeTestRule.mainClock.advanceTimeBy(200)
+    composeTestRule.waitForIdle()
+    val revertedNode = composeTestRule.onNodeWithText(copyLabel).assertIsDisplayed()
+    composeTestRule.onNodeWithText(copiedLabel).assertDoesNotExist()
+    assertFalse(SemanticsProperties.LiveRegion in revertedNode.fetchSemanticsNode().config)
+  }
+
+  @Test
+  fun copyButtonRepeatedClickRestartsTimer() {
+    composeTestRule.setContent {
+      Column {
+        GeneratedCodeSection(project = projectRule.project, renderEditor = false, generatedCode = { "initialCode()" })
+      }
+    }
+
+    composeTestRule.waitForIdle()
+    val copyLabel = message("gradient.editor.code.copy")
+    val copiedLabel = message("gradient.editor.code.copied")
+
+    composeTestRule.onNodeWithText(copyLabel).performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule.mainClock.advanceTimeBy(1_000L)
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText(copiedLabel).assertIsDisplayed()
+
+    // Clicking again before the confirmation window elapses restarts the timer.
+    composeTestRule.onNodeWithText(copiedLabel).performClick()
+    composeTestRule.waitForIdle()
+    composeTestRule.mainClock.advanceTimeBy(1_000L)
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText(copiedLabel).assertIsDisplayed()
+
+    composeTestRule.mainClock.advanceTimeBy(600L)
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText(copyLabel).assertIsDisplayed()
+    composeTestRule.onNodeWithText(copiedLabel).assertDoesNotExist()
+  }
+
+  @Test
+  fun copyButtonResetsFeedbackWhenGeneratedCodeChanges() {
+    var code by mutableStateOf("firstCode()")
+
+    composeTestRule.setContent {
+      Column {
+        GeneratedCodeSection(project = projectRule.project, renderEditor = false, generatedCode = { code })
+      }
+    }
+
+    composeTestRule.waitForIdle()
+    val copyLabel = message("gradient.editor.code.copy")
+    val copiedLabel = message("gradient.editor.code.copied")
+
+    composeTestRule.onNodeWithText(copyLabel).performClick()
+    composeTestRule.waitForIdle()
+    assertEquals("firstCode()", CopyPasteManager.getInstance().getContents<String>(DataFlavor.stringFlavor))
+    composeTestRule.onNodeWithText(copiedLabel).assertIsDisplayed()
+
+    code = "secondCode()"
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText(copyLabel).assertIsDisplayed()
+    composeTestRule.onNodeWithText(copiedLabel).assertDoesNotExist()
+
+    composeTestRule.onNodeWithText(copyLabel).performClick()
+    composeTestRule.waitForIdle()
+    assertEquals("secondCode()", CopyPasteManager.getInstance().getContents<String>(DataFlavor.stringFlavor))
+    composeTestRule.onNodeWithText(copiedLabel).assertIsDisplayed()
   }
 }

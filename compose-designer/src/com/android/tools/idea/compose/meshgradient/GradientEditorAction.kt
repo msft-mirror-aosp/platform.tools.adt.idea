@@ -19,6 +19,7 @@ import com.android.tools.adtui.compose.StudioComposePanel
 import com.android.tools.idea.compose.preview.message
 import com.android.tools.idea.flags.StudioFlags
 import com.google.common.annotations.VisibleForTesting
+import com.intellij.CommonBundle
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -29,6 +30,7 @@ import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import javax.swing.Action
 import javax.swing.JComponent
 import javax.swing.JPanel
 
@@ -62,6 +64,7 @@ internal class GradientEditorPlaygroundDialog(private val project: Project) : Di
 
   init {
     title = message("gradient.editor.title")
+    setCancelButtonText(CommonBundle.getCloseButtonText())
     init()
   }
 
@@ -81,4 +84,8 @@ internal class GradientEditorPlaygroundDialog(private val project: Project) : Di
     mainPanel.add(panel, BorderLayout.CENTER)
     return mainPanel
   }
+
+  override fun createActions(): Array<Action> = arrayOf(cancelAction)
+
+  @VisibleForTesting internal fun dialogActions(): Array<Action> = createActions()
 }

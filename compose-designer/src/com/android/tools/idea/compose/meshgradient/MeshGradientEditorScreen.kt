@@ -67,11 +67,14 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -104,7 +107,10 @@ import java.awt.datatransfer.StringSelection
 import javax.swing.ScrollPaneConstants
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.CheckboxRow
@@ -119,6 +125,12 @@ import org.jetbrains.kotlin.idea.KotlinLanguage
 
 /** Delay between the last change to the generated code and the code viewer update, so drags don't re-highlight every frame. */
 internal val CODE_UPDATE_DEBOUNCE = 100.milliseconds
+
+/** Duration for which the copy button shows its "Copied" confirmation before reverting. */
+@VisibleForTesting internal val COPY_FEEDBACK_DURATION = 1500.milliseconds
+
+private val COPY_BUTTON_ICON_SIZE = 16.dp
+private val COPY_BUTTON_ICON_SPACING = 4.dp
 
 /** Maximum width of the popup listing the palette colors that can be applied to a vertex. */
 private val VERTEX_COLOR_POPUP_MAX_WIDTH = 200.dp
@@ -179,13 +191,81 @@ internal fun ColumnScope.GeneratedCodeSection(
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Text(message("gradient.editor.code.title"), style = JewelTheme.typography.h4TextStyle, fontWeight = FontWeight.SemiBold)
-    OutlinedButton(onClick = { CopyPasteManager.getInstance().setContents(StringSelection(currentGeneratedCode())) }) {
-      Text(message("gradient.editor.code.copy"))
-    }
+    CopyCodeButton(currentGeneratedCode)
   }
 
   if (renderEditor) {
     key(codeViewer) { SwingPanel(factory = { codeViewer.editor.component }, modifier = Modifier.fillMaxWidth().weight(1f)) }
+  }
+}
+
+/** Token for a single click of [CopyCodeButton]; uses reference equality so repeated clicks of identical code restart the timer. */
+private class CopyConfirmation(val code: String)
+
+@Composable
+private fun CopyCodeButton(generatedCode: () -> String) {
+  val currentGeneratedCode by rememberUpdatedState(generatedCode)
+  var copyConfirmation by remember { mutableStateOf<CopyConfirmation?>(null) }
+  val copied = copyConfirmation != null
+
+  LaunchedEffect(copyConfirmation) {
+    val confirmation = copyConfirmation ?: return@LaunchedEffect
+    val codeChangeJob = launch {
+      snapshotFlow { currentGeneratedCode() }.first { it != confirmation.code }
+      if (copyConfirmation === confirmation) {
+        copyConfirmation = null
+      }
+    }
+    delay(COPY_FEEDBACK_DURATION)
+    codeChangeJob.cancel()
+    if (copyConfirmation === confirmation) {
+      copyConfirmation = null
+    }
+  }
+
+  val copyLabel = message("gradient.editor.code.copy")
+  val copiedLabel = message("gradient.editor.code.copied")
+  val textMeasurer = rememberTextMeasurer()
+  val density = LocalDensity.current
+  val textStyle = JewelTheme.defaultTextStyle
+  val minContentWidth =
+    remember(textMeasurer, density, textStyle, copyLabel, copiedLabel) {
+      with(density) {
+        val copyWidthPx = textMeasurer.measure(copyLabel, style = textStyle, maxLines = 1).size.width
+        val copiedWidthPx =
+          COPY_BUTTON_ICON_SIZE.roundToPx() +
+            COPY_BUTTON_ICON_SPACING.roundToPx() +
+            textMeasurer.measure(copiedLabel, style = textStyle, maxLines = 1).size.width
+        maxOf(copyWidthPx, copiedWidthPx).toDp()
+      }
+    }
+
+  OutlinedButton(
+    onClick = {
+      val code = currentGeneratedCode()
+      CopyPasteManager.getInstance().setContents(StringSelection(code))
+      copyConfirmation = CopyConfirmation(code)
+    },
+    modifier = Modifier.semantics { if (copied) liveRegion = LiveRegionMode.Polite },
+  ) {
+    Box(modifier = Modifier.widthIn(min = minContentWidth), contentAlignment = Alignment.Center) {
+      if (copied) {
+        Row(
+          horizontalArrangement = Arrangement.spacedBy(COPY_BUTTON_ICON_SPACING),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Icon(
+            key = AllIconsKeys.Actions.Checked,
+            iconClass = AllIconsKeys::class.java,
+            contentDescription = null,
+            modifier = Modifier.size(COPY_BUTTON_ICON_SIZE),
+          )
+          Text(copiedLabel, maxLines = 1)
+        }
+      } else {
+        Text(copyLabel, maxLines = 1)
+      }
+    }
   }
 }
 

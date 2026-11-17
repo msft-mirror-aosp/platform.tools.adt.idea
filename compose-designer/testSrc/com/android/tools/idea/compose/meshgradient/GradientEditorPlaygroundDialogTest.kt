@@ -17,9 +17,11 @@ package com.android.tools.idea.compose.meshgradient
 
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.onEdt
+import com.intellij.CommonBundle
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.dsl.listCellRenderer.KotlinUIDslRendererComponent
+import javax.swing.Action
 import javax.swing.JLabel
 import javax.swing.JList
 import org.junit.Assert.assertEquals
@@ -50,6 +52,12 @@ class GradientEditorPlaygroundDialogTest {
     dialog.typeSelector.item = GradientType.RADIAL
 
     assertEquals(GradientType.RADIAL, dialog.state.currentType)
+  }
+
+  @Test
+  fun dialogShowsOnlyCloseAction() = withPlaygroundDialog { dialog ->
+    val actionNames = dialog.dialogActions().map { it.getValue(Action.NAME) }
+    assertEquals(listOf(CommonBundle.getCloseButtonText()), actionNames)
   }
 
   private fun withPlaygroundDialog(block: (GradientEditorPlaygroundDialog) -> Unit) {
