@@ -73,15 +73,18 @@ import com.android.tools.sdk.AndroidTargetData;
 import com.android.utils.Base128InputStream;
 import com.android.utils.SdkUtils;
 import com.android.utils.TraceUtils;
-import com.google.common.base.Suppliers;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Maps;
+import com.intellij.concurrency.ThreadContext;
 import com.intellij.ide.highlighter.XmlFileType;
+import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.diagnostic.ControlFlowException;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
@@ -91,6 +94,7 @@ import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.util.ProgressIndicatorUtils;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.io.FileUtil;
 import com.intellij.openapi.util.text.StringUtil;
@@ -119,6 +123,7 @@ import com.intellij.psi.xml.XmlProcessingInstruction;
 import com.intellij.psi.xml.XmlTag;
 import com.intellij.psi.xml.XmlText;
 import com.intellij.serviceContainer.AlreadyDisposedException;
+import com.intellij.util.concurrency.AppExecutorUtil;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -137,11 +142,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import org.jetbrains.android.facet.AndroidFacet;
 import org.jetbrains.android.sdk.AndroidPlatforms;
 import org.jetbrains.annotations.Contract;
@@ -2344,6 +2352,9 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
         // Cache file does not exist.
       }
       catch (ProcessCanceledException e) {
+        // Remove incomplete data.
+        mySources.clear();
+        myFileResources.clear();
         throw e;
       }
       catch (Throwable e) {
@@ -2614,45 +2625,185 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
 
   /**
    * Runnable for an initialization method, which can be called multiple times but will only
-   * execute once. A lock is used, such that a second call made while a first call is still
-   * running will block until the first call is complete.
+   * execute once. Concurrent callers wait in a cancellable polling loop rather than blocking on an
+   * intrinsic monitor, and callers holding a background read lock offload execution so blocking
+   * file I/O never runs under a read lock.
    */
   @VisibleForTesting
   static class RunOnceInitializer implements Runnable {
-    private final Supplier<Void> myInitializer;
+    private final Runnable myInitializer;
+    private final Object myStateLock = new Object();
 
-    public RunOnceInitializer(Runnable initializer) {
-      myInitializer = Suppliers.memoize(() -> {
-        initializer.run();
-        return null;
-      });
+    @GuardedBy("myStateLock")
+    @Nullable
+    private InFlightExecution myInFlight;
+
+    private volatile boolean myIsInitialized = false;
+
+    private static final class InFlightExecution {
+      final CompletableFuture<Void> future = new CompletableFuture<>();
+      final boolean offloaded;
+      @Nullable volatile Thread ownerThread;
+      @Nullable volatile Throwable failure;
+
+      InFlightExecution(boolean offloaded, @Nullable Thread ownerThread) {
+        this.offloaded = offloaded;
+        this.ownerThread = ownerThread;
+      }
+    }
+
+    public RunOnceInitializer(@NotNull Runnable initializer) {
+      myInitializer = initializer;
     }
 
     @Override
     public void run() {
-      myInitializer.get();
+      while (!myIsInitialized) {
+        Application app = ApplicationManager.getApplication();
+        boolean shouldOffload = app != null && app.isReadAccessAllowed() && !app.isDispatchThread();
+        Thread currentThread = Thread.currentThread();
+        InFlightExecution execution;
+        boolean startedExecution = false;
+
+        synchronized (myStateLock) {
+          if (myIsInitialized) {
+            return;
+          }
+          if (myInFlight == null) {
+            execution = new InFlightExecution(shouldOffload, shouldOffload ? null : currentThread);
+            myInFlight = execution;
+            startedExecution = true;
+          }
+          else {
+            if (myInFlight.ownerThread == currentThread) {
+              throw new IllegalStateException("Reentrant RunOnceInitializer execution");
+            }
+            execution = myInFlight;
+          }
+        }
+
+        if (startedExecution) {
+          if (!shouldOffload) {
+            Throwable failure = runAndComplete(execution);
+            if (failure != null) {
+              Throwables.throwIfUnchecked(failure);
+              throw new RuntimeException(failure);
+            }
+            return;
+          }
+
+          try {
+            //noinspection UnstableApiUsage
+            ThreadContext.resetThreadContext(() -> {
+              AppExecutorUtil.getAppExecutorService().execute(() -> {
+                Throwable failure = runAndComplete(execution);
+                if (failure != null
+                    && !(failure instanceof CancellationException)
+                    && !(failure instanceof ControlFlowException)) {
+                  LOG.warn("Failed to run ResourceFolderRepository initializer", failure);
+                }
+              });
+              return null;
+            });
+          }
+          catch (Throwable t) {
+            execution.failure = t;
+            synchronized (myStateLock) {
+              if (myInFlight == execution) {
+                myInFlight = null;
+              }
+            }
+            execution.future.completeExceptionally(t);
+            Throwables.throwIfUnchecked(t);
+            throw new RuntimeException(t);
+          }
+        }
+
+        if (awaitOrRetry(execution)) {
+          return;
+        }
+      }
+    }
+
+    @Nullable
+    private Throwable runAndComplete(@NotNull InFlightExecution execution) {
+      execution.ownerThread = Thread.currentThread();
+      Throwable failure = null;
+      try {
+        myInitializer.run();
+      }
+      catch (Throwable t) {
+        failure = t;
+      }
+      finally {
+        execution.ownerThread = null;
+      }
+      if (failure != null) {
+        execution.failure = failure;
+      }
+      synchronized (myStateLock) {
+        if (failure == null) {
+          myIsInitialized = true;
+        }
+        if (myInFlight == execution) {
+          myInFlight = null;
+        }
+      }
+      if (failure == null) {
+        execution.future.complete(null);
+      }
+      else {
+        execution.future.completeExceptionally(failure);
+      }
+      return failure;
+    }
+
+    private static boolean awaitOrRetry(@NotNull InFlightExecution execution) {
+      try {
+        ProgressIndicatorUtils.awaitWithCheckCanceled(execution.future);
+        return true;
+      }
+      catch (CancellationException e) {
+        if (e != execution.failure && e.getCause() instanceof InterruptedException) {
+          throw e;
+        }
+        Throwable starterFailure = execution.failure;
+        if (starterFailure instanceof AlreadyDisposedException disposed) {
+          throw disposed;
+        }
+        if (!execution.offloaded && starterFailure instanceof CancellationException) {
+          ProgressIndicatorUtils.checkCancelledEvenWithPCEDisabled(
+              ProgressManager.getInstance().getProgressIndicator());
+          return false;
+        }
+        throw e;
+      }
+      catch (RuntimeException e) {
+        if (e.getCause() instanceof ExecutionException && execution.failure != null) {
+          Throwables.throwIfUnchecked(execution.failure);
+          throw new RuntimeException(execution.failure);
+        }
+        throw e;
+      }
     }
   }
 
   /**
    * Runnable for an initialization method, which can be called multiple times but will only
    * execute once. A lock is used, such that a second call made while a first call is still
-   * running will block until the first call is complete. The read lock is obtained around
-   * (outside) this initializer's "local" lock in order to avoid deadlock, since some external
-   * callers already hold the read lock.
+   * running will wait in a cancellable loop until the first call is complete. The read lock is
+   * obtained around (outside) this initializer's "local" lock in order to avoid deadlock, since
+   * some external callers already hold the read lock.
    */
   @VisibleForTesting
   static class RunOnceWithReadLockInitializer implements Runnable {
-    private final Supplier<Void> myInitializer;
+    private final Runnable myInitializer;
+    private final ReentrantLock myLock = new ReentrantLock();
 
     private volatile boolean myIsInitialized = false;
 
-    public RunOnceWithReadLockInitializer(Runnable initializer) {
-      myInitializer = Suppliers.memoize(() -> {
-        initializer.run();
-        myIsInitialized = true;
-        return null;
-      });
+    public RunOnceWithReadLockInitializer(@NotNull Runnable initializer) {
+      myInitializer = initializer;
     }
 
     @Override
@@ -2665,7 +2816,20 @@ public final class ResourceFolderRepository extends LocalResourceRepository<Virt
       // In some cases, callers higher up the stack already have a read lock when this code
       // executed. Obtaining the read lock here in those cases is a no-op. But doing so before
       // obtaining the initialization lock ensures there is no deadlock.
-      ReadAction.nonBlocking(myInitializer::get).executeSynchronously();
+      ReadAction.nonBlocking(this::runUnderReadLock).executeSynchronously();
+    }
+
+    private void runUnderReadLock() {
+      ProgressIndicatorUtils.awaitWithCheckCanceled(myLock);
+      try {
+        if (!myIsInitialized) {
+          myInitializer.run();
+          myIsInitialized = true;
+        }
+      }
+      finally {
+        myLock.unlock();
+      }
     }
   }
 
