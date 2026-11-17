@@ -36,6 +36,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.utils.editor.saveToDisk
 import com.intellij.util.ui.UIUtil
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertNotEquals
 import org.mockito.kotlin.whenever
@@ -386,7 +387,7 @@ class LayoutlibSceneManagerTest : SceneTest() {
       assertTrue(sceneManager.isRenderSessionUnavailable())
 
       // After rendering, the live RenderTask makes the render session available.
-      runBlocking { sceneManager.requestRenderAndWait() }
+      runBlocking(Dispatchers.Default) { sceneManager.requestRenderAndWait() }
       assertFalse(sceneManager.isRenderSessionUnavailable())
 
       // Once the scene manager is disposed, the render session is unavailable again.
