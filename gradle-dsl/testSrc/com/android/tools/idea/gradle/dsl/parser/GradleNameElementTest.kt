@@ -18,6 +18,10 @@ package com.android.tools.idea.gradle.dsl.parser
 import com.android.tools.idea.gradle.dsl.parser.elements.GradleNameElement
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.UsefulTestCase
+import java.util.concurrent.Callable
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class GradleNameElementTest : UsefulTestCase() {
   // These tests check that we have correctly implemented the isomorphism between a list of unescaped strings and a single string with
@@ -158,5 +162,97 @@ class GradleNameElementTest : UsefulTestCase() {
 
   fun testUnescapeEscapedEscapedBackslash() {
     assertThat(GradleNameElement.unescape("""ab\\\\de""")).isEqualTo("""ab\\de""")
+  }
+
+  fun testCreateAndRename() {
+    val element = GradleNameElement.create("foo.bar")
+    assertThat(element.isFake).isFalse()
+    assertThat(element.isEmpty).isFalse()
+    assertThat(element.isQualified).isFalse()
+    assertThat(element.name()).isEqualTo("foo.bar")
+    assertThat(element.fullName()).isEqualTo("""foo\.bar""")
+    assertThat(element.fullNameParts()).containsExactly("foo.bar").inOrder()
+    assertThat(element.qualifyingParts()).isEmpty()
+    assertThat(element.localName).isEqualTo("""foo\.bar""")
+    assertThat(element.originalName).isEqualTo("""foo\.bar""")
+
+    element.rename(listOf("ext", "my.prop"))
+    assertThat(element.isQualified).isTrue()
+    assertThat(element.name()).isEqualTo("my.prop")
+    assertThat(element.fullName()).isEqualTo("""ext.my\.prop""")
+    assertThat(element.fullNameParts()).containsExactly("ext", "my.prop").inOrder()
+    assertThat(element.qualifyingParts()).containsExactly("ext").inOrder()
+    assertThat(element.originalName).isEqualTo("""foo\.bar""")
+
+    element.rename("renamed")
+    assertThat(element.isQualified).isFalse()
+    assertThat(element.name()).isEqualTo("renamed")
+    assertThat(element.fullName()).isEqualTo("renamed")
+  }
+
+  fun testFakeCopyAndEmpty() {
+    val empty = GradleNameElement.empty()
+    assertThat(empty.isEmpty).isTrue()
+    assertThat(empty.isFake).isFalse()
+    assertThat(empty.name()).isEmpty()
+    assertThat(empty.fullName()).isEmpty()
+    assertThat(empty.fullNameParts()).isEmpty()
+    assertThat(empty.localName).isNull()
+
+    val fake = GradleNameElement.fake("android.defaultConfig.minSdk")
+    assertThat(fake.isFake).isTrue()
+    assertThat(fake.isEmpty).isFalse()
+    assertThat(fake.isQualified).isTrue()
+    assertThat(fake.localName).isNull()
+    assertThat(fake.name()).isEqualTo("minSdk")
+    assertThat(fake.fullName()).isEqualTo("android.defaultConfig.minSdk")
+    assertThat(fake.fullNameParts()).containsExactly("android", "defaultConfig", "minSdk").inOrder()
+    assertThat(fake.qualifyingParts()).containsExactly("android", "defaultConfig").inOrder()
+
+    val copy = GradleNameElement.copy(fake)
+    assertThat(copy.isFake).isTrue()
+    assertThat(copy.fullNameParts()).containsExactly("android", "defaultConfig", "minSdk").inOrder()
+    copy.rename("targetSdk")
+    assertThat(copy.isFake).isTrue()
+    assertThat(copy.name()).isEqualTo("targetSdk")
+    assertThat(fake.name()).isEqualTo("minSdk")
+  }
+
+  fun testConcurrentReads() {
+    val localElement = GradleNameElement.create("androidx-core-ktx")
+    val fakeElement = GradleNameElement.fake("versions.agp")
+    val renamedElement = GradleNameElement.create("initial").apply { rename(listOf("libraries", "junit.jupiter")) }
+
+    val threadCount = 8
+    val barrier = CyclicBarrier(threadCount)
+    val executor = Executors.newFixedThreadPool(threadCount)
+    try {
+      val tasks =
+        (0 until threadCount).map {
+          Callable {
+            barrier.await(10, TimeUnit.SECONDS)
+            repeat(2000) {
+              assertThat(localElement.isEmpty).isFalse()
+              assertThat(localElement.name()).isEqualTo("androidx-core-ktx")
+              assertThat(localElement.fullName()).isEqualTo("androidx-core-ktx")
+
+              assertThat(fakeElement.isEmpty).isFalse()
+              assertThat(fakeElement.name()).isEqualTo("agp")
+              assertThat(fakeElement.fullName()).isEqualTo("versions.agp")
+
+              assertThat(renamedElement.name()).isEqualTo("junit.jupiter")
+              assertThat(renamedElement.fullNameParts()).containsExactly("libraries", "junit.jupiter").inOrder()
+              assertThat(renamedElement.qualifyingParts()).containsExactly("libraries").inOrder()
+            }
+          }
+        }
+      val futures = executor.invokeAll(tasks, 30, TimeUnit.SECONDS)
+      for (future in futures) {
+        assertThat(future.isCancelled).isFalse()
+        future.get()
+      }
+    } finally {
+      executor.shutdownNow()
+    }
   }
 }

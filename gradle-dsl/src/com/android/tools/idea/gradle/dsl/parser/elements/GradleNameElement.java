@@ -58,8 +58,6 @@ public class GradleNameElement {
   @Nullable
   private String myFakeName; // Used for names that do not require a file element.
   @Nullable
-  private String myName = null; // Cached version of the final name (to be reset on any change of the above fields).
-  @Nullable
   private String myOriginalName; // used to detect name changes in checkForModifiedName
 
   /**
@@ -202,7 +200,6 @@ public class GradleNameElement {
     else {
       myFakeName = newName;
     }
-    myName = null;
   }
 
   public void rename(@NotNull String newName) {
@@ -255,17 +252,7 @@ public class GradleNameElement {
 
   @Nullable
   private String findName() {
-    if (myName != null) return myName;
-    String name = null;
-    if (myLocalName != null) {
-      name = myLocalName;
-    }
-    if (name == null && myFakeName != null) {
-      name = myFakeName;
-    }
-
-    myName = name;
-    return name;
+    return myLocalName != null ? myLocalName : myFakeName;
   }
 
   @NotNull
@@ -345,6 +332,5 @@ public class GradleNameElement {
       myLocalName = converter.psiToName(myNameElement);
     }
     myOriginalName = myLocalName;
-    myName = null;
   }
 }
