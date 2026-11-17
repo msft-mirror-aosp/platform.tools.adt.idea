@@ -42,7 +42,6 @@ import com.android.sdklib.repository.AndroidSdkHandler
 import com.android.sdklib.util.ProcessHandleProvider
 import com.android.tools.idea.avdmanager.AccelerationErrorSolution.SolutionCode
 import com.android.tools.idea.avdmanager.AvdManagerConnection.Companion.NULL_CONNECTION
-import com.android.tools.idea.avdmanager.DeviceSkinUpdater.updateSkin
 import com.android.tools.idea.avdmanager.emulatorcommand.EmulatorCommandBuilder
 import com.android.tools.idea.deviceprovisioner.ActivatableDeviceHandle
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
@@ -199,13 +198,13 @@ constructor(
       if (project != null) {
         IJ_LOG.warn("No DeviceHandle found for AVD ${avd.dataFolderPath}; not waiting for boot to complete.")
       }
+      checkAvdPreLaunch(project, avd)
       startAvdProcess(project, avd, forceLaunchInToolWindow, bootMode)
     }
   }
 
   /**
-   * Starts the AVD process directly for the given [deviceHandle], after running checks and possibly resolving some errors, and waits for it
-   * to finish booting.
+   * Starts the AVD process directly for the given [deviceHandle] and waits for it to finish booting.
    *
    * This is the lower-level implementation used by StudioLocalEmulatorDeviceHandle.
    *
@@ -287,16 +286,26 @@ constructor(
       (it.state.properties as? LocalEmulatorProperties)?.avdPath == avd.dataFolderPath
     } as? ActivatableDeviceHandle
 
-  /** Starts the AVD process, after running checks and possibly resolving some errors. */
-  protected open suspend fun startAvdProcess(
-    project: Project?,
-    avd: AvdInfo,
-    forceLaunchInToolWindow: Boolean = false,
-    bootMode: BootMode = BootMode.fromProperties(avd.properties),
-  ): ProcessHandler {
+  /**
+   * Updates the device skin and checks for acceleration and emulator version errors, prompting the user to resolve them if needed.
+   *
+   * @throws DeviceActionException if the AVD cannot be launched
+   * @throws DeviceActionCanceledException if the AVD cannot be launched and the user declines a fix
+   */
+  open suspend fun checkAvdPreLaunch(project: Project?, avd: AvdInfo) {
     avdManager ?: throw DeviceActionException("No Android SDK Found")
     checkNotNull(sdkHandler)
 
+    withContext(Dispatchers.Default) {
+      updateSkin(sdkHandler, avd)
+
+      while (!checkAcceleration(sdkHandler, project, avd) || !checkQemuNext(project, avd)) {
+        // Repeat until all checks return true. If a fix is applied, the check still returns false, and the loop is restarted from the top.
+      }
+    }
+  }
+
+  private fun updateSkin(sdkHandler: AndroidSdkHandler, avd: AvdInfo) {
     val skinPath = avd.properties[SKIN_PATH]
     if (skinPath != null) {
       var skin = sdkHandler.toCompatiblePath(skinPath)
@@ -306,45 +315,48 @@ constructor(
         skin = skin.subpath(1, skin.nameCount)
       }
 
-      updateSkin(skin)
-    }
-
-    return withContext(Dispatchers.Default) {
-      val code = checkAcceleration(sdkHandler)
-      continueToStartAvdIfAccelerationErrorIsNotBlocking(code, project, avd, forceLaunchInToolWindow, bootMode)
+      DeviceSkinUpdater.updateSkin(skin)
     }
   }
 
-  private suspend fun continueToStartAvdIfAccelerationErrorIsNotBlocking(
-    code: AccelerationErrorCode,
+  /**
+   * Runs emulator-check and determines if we can continue based on the error code.
+   *
+   * @return true if all checks passed; false if a change was made and we need to retry the checks
+   * @throws DeviceActionException if we cannot continue (no fix available)
+   */
+  private suspend fun checkAcceleration(
+    sdkHandler: AndroidSdkHandler,
     project: Project?,
     avd: AvdInfo,
-    forceLaunchInToolWindow: Boolean,
-    bootMode: BootMode,
-  ): ProcessHandler {
+  ): Boolean {
+    val code = checkAcceleration(sdkHandler)
     if (!code.problem.isEmpty()) {
       IJ_LOG.warn(String.format("Launching %s: %s: %s", avd.name, code, code.problem))
     }
     when (code) {
       AccelerationErrorCode.ALREADY_INSTALLED,
-      AccelerationErrorCode.WHPX_RECOMMENDED -> return continueToStartAvd(project, avd, forceLaunchInToolWindow, bootMode)
+      AccelerationErrorCode.WHPX_RECOMMENDED -> return true
       AccelerationErrorCode.PLATFORM_TOOLS_UPDATE_ADVISED,
       AccelerationErrorCode.SYSTEM_IMAGE_UPDATE_ADVISED ->
         // Launch the virtual device with possibly degraded performance even if there are updates
-        // noinspection DuplicateBranchesInSwitch
-        return continueToStartAvd(project, avd, forceLaunchInToolWindow, bootMode)
+        return true
       AccelerationErrorCode.EMULATOR_UPDATE_REQUIRED,
       AccelerationErrorCode.QEMU_NEXT_REQUIRED,
-      AccelerationErrorCode.NO_EMULATOR_INSTALLED -> return handleAccelerationError(project, avd, forceLaunchInToolWindow, bootMode, code)
+      AccelerationErrorCode.NO_EMULATOR_INSTALLED -> {
+        handleAccelerationError(project, code)
+        return false
+      }
       else -> {
-        val abi = Abi.getEnum(avd.abiType) ?: return continueToStartAvd(project, avd, forceLaunchInToolWindow, bootMode)
+        val abi = Abi.getEnum(avd.abiType) ?: return true
 
         if (abi == Abi.X86 || abi == Abi.X86_64) {
-          return handleAccelerationError(project, avd, forceLaunchInToolWindow, bootMode, code)
+          handleAccelerationError(project, code)
+          return false
         }
 
         // Let ARM and MIPS virtual devices launch without hardware acceleration
-        return continueToStartAvd(project, avd, forceLaunchInToolWindow, bootMode)
+        return true
       }
     }
   }
@@ -352,62 +364,68 @@ constructor(
   private fun isQemuNextRequired(avd: AvdInfo) =
     QemuNext.isRequired() && avd.androidVersion.androidApiLevel.majorVersion >= 37 && avd.deviceType() == DeviceType.HANDHELD
 
-  private suspend fun continueToStartAvd(
-    project: Project?,
-    avd: AvdInfo,
-    forceLaunchInToolWindow: Boolean,
-    bootMode: BootMode,
-  ): ProcessHandler {
-    // Check AVD-specific error conditions
+  /**
+   * Checks if we have qemu-next available, if required.
+   *
+   * @return true if all checks passed; false if a change was made and we need to retry the checks
+   * @throws DeviceActionException if we cannot continue (no fix available)
+   */
+  private suspend fun checkQemuNext(project: Project?, avd: AvdInfo): Boolean {
     if (isQemuNextRequired(avd)) {
       if (sdkHandler?.getEmulatorPackage(REPO_LOG, requireLatestEmulator = true) == null) {
-        return handleAccelerationError(
-          project,
-          avd,
-          forceLaunchInToolWindow,
-          bootMode,
-          AccelerationErrorCode.QEMU_NEXT_REQUIRED,
-        )
+        handleAccelerationError(project, AccelerationErrorCode.QEMU_NEXT_REQUIRED)
+        return false
       }
     }
-
-    var avd = avd
-    val emulator = emulator
-    if (emulator == null) {
-      IJ_LOG.error("No emulator binary found!")
-      throw DeviceActionException("No emulator installed")
-    }
-
-    val emulatorBinary = emulator.emulatorBinary
-    if (emulatorBinary == null) {
-      IJ_LOG.error("No emulator binary found!")
-      throw DeviceActionException("No emulator binary found")
-    }
-
-    val avdManager = checkNotNull(avdManager)
-    avd = avdManager.reloadAvd(avd) // Reload the AVD in case it was modified externally.
-    val avdName = avd.displayName
-
-    val pid = avdManager.getPid(avd)
-    if (pid != 0L) {
-      if (ProcessHandleProvider.getProcessHandle(pid)?.isAlive == true) {
-        // TODO: Bring the running emulator's window to the front.
-        throw AvdIsAlreadyRunningException(avd.displayName, pid)
-      } else {
-        avdManager.deleteLockFiles(avd)
-      }
-    }
-
-    val commandLine = newEmulatorCommand(project, emulatorBinary, avd, forceLaunchInToolWindow, bootMode)
-    val runner = EmulatorRunner(commandLine, avd)
-
-    return try {
-      runner.start()
-    } catch (e: ExecutionException) {
-      IJ_LOG.error("Error launching emulator", e)
-      throw DeviceActionException(String.format("Error launching emulator %1\$s", avdName), e)
-    }
+    return true
   }
+
+  /** Starts the AVD process. */
+  protected open suspend fun startAvdProcess(
+    project: Project?,
+    avd: AvdInfo,
+    forceLaunchInToolWindow: Boolean = false,
+    bootMode: BootMode = BootMode.fromProperties(avd.properties),
+  ): ProcessHandler =
+    withContext(Dispatchers.Default) {
+      val avdManager = avdManager ?: throw DeviceActionException("No Android SDK Found")
+      checkNotNull(sdkHandler)
+
+      val emulator = emulator
+      if (emulator == null) {
+        IJ_LOG.error("No emulator binary found!")
+        throw DeviceActionException("No emulator installed")
+      }
+
+      val emulatorBinary = emulator.emulatorBinary
+      if (emulatorBinary == null) {
+        IJ_LOG.error("No emulator binary found!")
+        throw DeviceActionException("No emulator binary found")
+      }
+
+      val reloadedAvd = avdManager.reloadAvd(avd) // Reload the AVD in case it was modified externally.
+      val avdName = reloadedAvd.displayName
+
+      val pid = avdManager.getPid(reloadedAvd)
+      if (pid != 0L) {
+        if (ProcessHandleProvider.getProcessHandle(pid)?.isAlive == true) {
+          // TODO: Bring the running emulator's window to the front.
+          throw AvdIsAlreadyRunningException(reloadedAvd.displayName, pid)
+        } else {
+          avdManager.deleteLockFiles(reloadedAvd)
+        }
+      }
+
+      val commandLine = newEmulatorCommand(project, emulatorBinary, reloadedAvd, forceLaunchInToolWindow, bootMode)
+      val runner = EmulatorRunner(commandLine, reloadedAvd)
+
+      try {
+        runner.start()
+      } catch (e: ExecutionException) {
+        IJ_LOG.error("Error launching emulator", e)
+        throw DeviceActionException(String.format("Error launching emulator %1\$s", avdName), e)
+      }
+    }
 
   protected open fun newEmulatorCommand(
     project: Project?,
@@ -445,11 +463,8 @@ constructor(
 
   private suspend fun handleAccelerationError(
     project: Project?,
-    info: AvdInfo,
-    launchInToolWindow: Boolean,
-    bootMode: BootMode,
     code: AccelerationErrorCode,
-  ): ProcessHandler {
+  ) {
     if (code.solution == SolutionCode.NONE) {
       throw DeviceActionException("${code.problem}\n\n${code.solutionMessage}\n")
     }
@@ -459,7 +474,7 @@ constructor(
       throw DeviceActionCanceledException("Could not start AVD")
     }
 
-    return tryFixingAccelerationError(project, info, launchInToolWindow, bootMode, code)
+    tryFixingAccelerationError(project, code)
   }
 
   private suspend fun showAccelerationErrorDialog(code: AccelerationErrorCode, project: Project?): Int =
@@ -484,11 +499,8 @@ constructor(
 
   private suspend fun tryFixingAccelerationError(
     project: Project?,
-    avd: AvdInfo,
-    launchInToolWindow: Boolean,
-    bootMode: BootMode,
     code: AccelerationErrorCode,
-  ): ProcessHandler {
+  ) {
     val changeWasMade = CompletableDeferred<Boolean>()
 
     ApplicationManager.getApplication()
@@ -496,9 +508,7 @@ constructor(
         AccelerationErrorSolution.getActionForFix(code, project, { changeWasMade.complete(true) }, { changeWasMade.complete(false) })
       )
 
-    if (changeWasMade.await()) {
-      return startAvdProcess(project, avd, launchInToolWindow, bootMode)
-    } else {
+    if (!changeWasMade.await()) {
       throw DeviceActionCanceledException("Retry after fixing problem by hand")
     }
   }

@@ -292,6 +292,7 @@ class StudioLocalEmulatorDeviceHandle(
     }
     val effectiveProject = project ?: this.project
     val resolvedBootMode = bootMode ?: BootMode.fromProperties(avdInfo.properties)
+    avdManagerConnection.checkAvdPreLaunch(effectiveProject, avdInfo)
     val action: suspend () -> Unit = {
       startAvd(effectiveProject, avdInfo, forceLaunchInToolWindow, resolvedBootMode)
     }

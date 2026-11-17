@@ -543,8 +543,10 @@ class StudioLocalEmulatorProvisionerPluginTest {
     val activationJob = launch { glassesHandle.activate(projectRule.project, forceLaunchInToolWindow = true, bootMode = ColdBoot) }
     yieldUntil {
       runCatching {
+        verify(mockConnection).checkAvdPreLaunch(projectRule.project, glassesInfo)
         verify(mockConnection)
           .startAvd(projectRule.project, baseGlassesHandle, glassesInfo, forceLaunchInToolWindow = true, bootMode = ColdBoot)
+        verify(mockConnection).checkAvdPreLaunch(projectRule.project, phoneInfo)
         verify(mockConnection).startAvd(projectRule.project, basePhoneHandle, phoneInfo, forceLaunchInToolWindow = true)
       }
         .isSuccess && glassesHandle.state.isTransitioning && phoneHandle.state.isTransitioning
