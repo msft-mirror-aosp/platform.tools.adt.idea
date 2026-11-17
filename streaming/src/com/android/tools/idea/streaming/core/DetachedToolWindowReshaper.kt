@@ -88,8 +88,7 @@ internal class DetachedToolWindowReshaper(displayView: ZoomablePanel) : ToolWind
         desiredSize.width,
         originalToolbarHeight,
         originalToolbarBounds,
-        canResizeToolWindowWidth = true,
-        canResizeToolWindowHeight = true,
+        ResizeCapabilities.UNRESTRICTED,
       )
 
     if (desiredSize.width == availableWidth && desiredSize.height == availableHeight) {
@@ -106,8 +105,7 @@ internal class DetachedToolWindowReshaper(displayView: ZoomablePanel) : ToolWind
         desiredSize = desiredSize,
         toolbarHeightDelta = toolbarHeightDelta,
         isDetached = true,
-        canResizeToolWindowWidth = true,
-        canResizeToolWindowHeight = true,
+        capabilities = ResizeCapabilities.UNRESTRICTED,
       )
     }
 

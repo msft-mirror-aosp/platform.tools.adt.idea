@@ -54,6 +54,7 @@ import javax.swing.Icon
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.SwingConstants
+import javax.swing.event.EventListenerList
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlinx.coroutines.CancellationException
@@ -201,18 +202,24 @@ internal constructor(
     if (type == ToolWindowType.WINDOWED || type == ToolWindowType.FLOATING) {
       return
     }
-    val minWidth = (decorator.minimumSize?.width ?: 0).coerceAtLeast(1)
-    val newWidth = (decorator.width + value).coerceAtLeast(minWidth)
-    decorator.size = Dimension(newWidth, decorator.height)
+    val target = decorator.parent as? Splitter ?: decorator
+    val minWidth = (target.minimumSize?.width ?: 0).coerceAtLeast(1)
+    val maxWidth = (if (target.isMaximumSizeSet) target.maximumSize.width else Int.MAX_VALUE).coerceAtLeast(minWidth)
+    val newWidth = (target.width + value).coerceIn(minWidth, maxWidth)
+    target.size = Dimension(newWidth, target.height)
+    target.validate()
   }
 
   override fun stretchHeight(value: Int) {
     if (type == ToolWindowType.WINDOWED || type == ToolWindowType.FLOATING) {
       return
     }
-    val minHeight = (decorator.minimumSize?.height ?: 0).coerceAtLeast(1)
-    val newHeight = (decorator.height + value).coerceAtLeast(minHeight)
-    decorator.size = Dimension(decorator.width, newHeight)
+    val target = decorator.parent as? Splitter ?: decorator
+    val minHeight = (target.minimumSize?.height ?: 0).coerceAtLeast(1)
+    val maxHeight = (if (target.isMaximumSizeSet) target.maximumSize.height else Int.MAX_VALUE).coerceAtLeast(minHeight)
+    val newHeight = (target.height + value).coerceIn(minHeight, maxHeight)
+    target.size = Dimension(target.width, newHeight)
+    target.validate()
   }
 
   override fun getIcon(): Icon = icon
@@ -428,6 +435,9 @@ class FakeContentManager : ToolWindowHeadlessManagerImpl.MockContentManager() {
       field = JComponent::class.java.getDeclaredField("revalidateRunnableScheduled")
       field.isAccessible = true
       field.set(mockDecorator, AtomicBoolean(false))
+      field = JComponent::class.java.getDeclaredField("listenerList")
+      field.isAccessible = true
+      field.set(mockDecorator, EventListenerList())
       field = InternalDecoratorImpl::class.java.getDeclaredField("contentUi")
       field.isAccessible = true
       field.set(mockDecorator, mock<ToolWindowContentUi>())
