@@ -25,6 +25,7 @@ import com.android.tools.idea.gradle.project.sync.snapshots.SyncedProjectTestBas
 import com.android.tools.idea.gradle.project.sync.snapshots.SyncedProjectTestDef
 import com.android.tools.idea.gradle.project.sync.snapshots.TemplateBasedTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.patchAndroidKotlinMultiplatformJdk
+import com.android.tools.idea.gradle.project.sync.snapshots.replaceContent
 import com.android.tools.idea.gradle.util.AGP_BUILT_IN_KOTLIN_VERSION
 import com.android.tools.idea.gradle.util.AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION
 import com.android.tools.idea.navigator.AndroidProjectViewSnapshotComparisonTestDef
@@ -53,6 +54,9 @@ import org.jetbrains.android.AndroidTestBase
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
+
+// TODO(b/483083119): Replace with TestUtils.KSP_VERSION_FOR_TESTS once ag/43713407 lands.
+private const val KSP_VERSION = "2.3.10"
 
 private fun JavaSdkVersion.featureString(): String = maxLanguageLevel.toJavaVersion().toFeatureString()
 
@@ -153,6 +157,58 @@ enum class MultiKgpTestProject(
     builtInKotlinEnabled = false,
     patch = { projectRoot ->
       projectRoot.resolve("gradle.properties").appendText("\nandroid.builtInKotlin=false\nandroid.newDsl=false\n")
+    },
+  ),
+  APP_WITH_BUILD_FEATURES_KSP_AND_SCREENSHOT_TEST(
+    TestProjectToSnapshotPaths.APP_WITH_BUILD_FEATURES_ENABLED,
+    testName = "kspAndScreenshotTest",
+    patch = { projectRoot ->
+      projectRoot.resolve("build.gradle").replaceContent { content ->
+        content.replace(
+          "classpath \"org.jetbrains.kotlin:compose-compiler-gradle-plugin:\$kotlin_version\"",
+          """
+          classpath "org.jetbrains.kotlin:compose-compiler-gradle-plugin:${'$'}kotlin_version"
+                  classpath "com.google.devtools.ksp:symbol-processing-gradle-plugin:$KSP_VERSION"
+          """
+            .trimIndent(),
+        )
+      }
+      projectRoot.resolve("app/build.gradle").replaceContent { content ->
+        content
+          .replace(
+            "apply plugin: 'org.jetbrains.kotlin.plugin.compose'",
+            "apply plugin: 'org.jetbrains.kotlin.plugin.compose'\napply plugin: 'com.google.devtools.ksp'",
+          )
+          .replace(
+            "buildTypes {",
+            "experimentalProperties[\"android.experimental.enableScreenshotTest\"] = true\n    buildTypes {",
+          )
+      }
+      // Both experimentalProperties and gradle.properties are required: defaultConfigData registers the screenshotTest
+      // sourceSet from BooleanOption.ENABLE_SCREENSHOT_TEST at plugin-apply time (VariantManager.createTestComponents).
+      projectRoot.resolve("gradle.properties").appendText("\nandroid.experimental.enableScreenshotTest=true\n")
+      projectRoot.resolve("app/src/main/java/google/simpleapplication/SampleScreen.kt").apply {
+        parentFile.mkdirs()
+        writeText(
+          """
+          package google.simpleapplication
+
+          class SampleScreen
+          """
+            .trimIndent() + "\n"
+        )
+      }
+      projectRoot.resolve("app/src/screenshotTest/kotlin/google/simpleapplication/SampleScreenshotTest.kt").apply {
+        parentFile.mkdirs()
+        writeText(
+          """
+          package google.simpleapplication
+
+          class SampleScreenshotTest
+          """
+            .trimIndent() + "\n"
+        )
+      }
     },
   );
 

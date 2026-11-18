@@ -965,10 +965,18 @@ maven_repository(
     ],
 )
 
+# TODO(b/483083119): Load KSP_VERSION_FOR_TESTS from common-dependencies.bzl once ag/43713407 lands.
+_KSP_VERSION = "2.3.10"
+
 maven_repository(
     name = "multi_kgp_test_deps",
     # keep sorted: for buildifier
     artifacts = [
+        "@maven//:com.google.devtools.ksp.com.google.devtools.ksp.gradle.plugin_" + _KSP_VERSION,
+        "@maven//:com.google.devtools.ksp.symbol-processing-aa-embeddable_" + _KSP_VERSION,
+        "@maven//:com.google.devtools.ksp.symbol-processing-api_" + _KSP_VERSION,
+        "@maven//:com.google.devtools.ksp.symbol-processing-common-deps_" + _KSP_VERSION,
+        "@maven//:com.google.devtools.ksp.symbol-processing-gradle-plugin_" + _KSP_VERSION,
         "@maven//:org.jetbrains.kotlin.kapt.org.jetbrains.kotlin.kapt.gradle.plugin_" + BUILT_IN_KOTLIN_VERSION,
         "@maven//:org.jetbrains.kotlin.kotlin-klib-commonizer-embeddable_" + MINIMUM_BUILT_IN_KOTLIN_VERSION,
         "@maven//:org.jetbrains.kotlin.kotlin-scripting-compiler-embeddable_" + MINIMUM_BUILT_IN_KOTLIN_VERSION,
