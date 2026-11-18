@@ -69,7 +69,13 @@ fun AgpVersion.getKotlinVersion(): String? {
   }
 }
 
-/** The minimum Kotlin Gradle plugin version that AGP @ HEAD supports. */
+/**
+ * The minimum Kotlin Gradle plugin version that AGP @ HEAD supports.
+ *
+ * When raising this constant above "2.2.10", also add an explicit Gradle version threshold in
+ * `GradlePluginsRefactoringProcessor.kotlin-gradle-plugin-compatibility-info` so that the current
+ * AGP retains the new minimum once `VERSION_FOR_DEV` advances to the next AGP minor release.
+ */
 const val AGP_MINIMUM_BUILT_IN_KOTLIN_VERSION = "2.2.10"
 
 /** The default Kotlin Gradle plugin version that AGP @ HEAD recommends using. */

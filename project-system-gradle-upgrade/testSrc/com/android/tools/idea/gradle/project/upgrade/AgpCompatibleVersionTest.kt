@@ -4,8 +4,8 @@ import com.android.SdkConstants
 import com.android.Version
 import com.android.ide.common.repository.AgpVersion
 import com.android.tools.idea.gradle.util.CompatibleGradleVersion.Companion.AGP_MAJOR_MINOR_TO_GRADLE_MAP
+import com.android.tools.idea.gradle.util.CompatibleGradleVersion.Companion.VERSION_FOR_DEV
 import com.android.tools.idea.gradle.util.CompatibleGradleVersion.Companion.getCompatibleGradleVersion
-import com.android.tools.idea.gradle.util.CompatibleGradleVersion.VERSION_FOR_DEV
 import com.google.common.truth.Expect
 import com.intellij.testFramework.LightPlatformTestCase
 import org.gradle.util.GradleVersion
@@ -23,43 +23,30 @@ class AgpCompatibleVersionTest : LightPlatformTestCase() {
     val currentMajorMinor = AgpVersion.parse(Version.ANDROID_GRADLE_PLUGIN_VERSION).let { AgpVersion(it.major, it.minor) }
     expect.that(AGP_MAJOR_MINOR_TO_GRADLE_MAP).containsKey(currentMajorMinor)
     expect.that(AGP_MAJOR_MINOR_TO_GRADLE_MAP.values.filter { it == VERSION_FOR_DEV }).hasSize(1)
+
+    // Threshold comparisons in GradlePluginsRefactoringProcessor require AGP_MAJOR_MINOR_TO_GRADLE_MAP
+    // to be strictly increasing in AGP version and monotonically non-decreasing in CompatibleGradleVersion.
+    val entries = AGP_MAJOR_MINOR_TO_GRADLE_MAP.entries.toList()
+    for (i in 1 until entries.size) {
+      expect.that(entries[i].key).isGreaterThan(entries[i - 1].key)
+      expect.that(entries[i].value).isAtLeast(entries[i - 1].value)
+    }
   }
 
   @Test
   fun testCompatibleVersions() {
+    // Expected values come from AGP_COMPATIBLE_GRADLE_VERSIONS in tools/base/common/release_version.bzl,
+    // so this test needs no update when AGP is bumped.
     val data =
-      mapOf(
-        /**
-         * This test intentionally does not use the symbolic constant SdkConstants.GRADLE_MINIMUM_VERSION, because any change to that should
-         * involve a careful look at the compatibility tables used by [getCompatibleGradleVersion] (which failing this test and reading this
-         * comment should encourage the brave maintainer to do. Changes to GRADLE_LATEST_VERSION are both less likely to be disruptive and
-         * more likely to be noticed quickly.
-         */
-        "7.2" to GradleVersion.version("7.3.3"),
-        "7.3" to GradleVersion.version("7.4"),
-        "7.4" to GradleVersion.version("7.5"),
-        "8.0" to GradleVersion.version("8.0"),
-        "8.1" to GradleVersion.version("8.0"),
-        "8.2" to GradleVersion.version("8.2"),
-        "8.3" to GradleVersion.version("8.4"),
-        "8.4" to GradleVersion.version("8.6"),
-        "8.5" to GradleVersion.version("8.7"),
-        "8.6" to GradleVersion.version("8.7"),
-        "8.7" to GradleVersion.version("8.9"),
-        "8.8" to GradleVersion.version("8.10.2"),
-        "8.9" to GradleVersion.version("8.11.1"),
-        "8.10" to GradleVersion.version("8.11.1"),
-        "8.11" to GradleVersion.version("8.13"),
-        "8.12" to GradleVersion.version("8.13"),
-        "8.13" to GradleVersion.version("8.13"),
-        "9.0" to GradleVersion.version("9.1.0"),
-        "9.1" to GradleVersion.version("9.3.1"),
-        "9.2" to GradleVersion.version("9.4.1"),
-        "9.3" to GradleVersion.version("9.5.0"),
-        "9.4" to GradleVersion.version("9.6.0"),
-        "9.5" to GradleVersion.version("9.6.0"),
-        "9.6" to GradleVersion.version(SdkConstants.GRADLE_LATEST_VERSION),
-      )
+      Version.AGP_COMPATIBLE_GRADLE_VERSIONS
+        .filterKeys { AgpVersion.parse("$it.0") >= AgpVersion.parse(SdkConstants.GRADLE_PLUGIN_MINIMUM_FORCED_UPGRADE_VERSION) }
+        .mapValues { (agpBase, gradleVersion) ->
+          if (agpBase == Version.DEV_AGP_MAJOR_MINOR) {
+            GradleVersion.version(SdkConstants.GRADLE_LATEST_VERSION)
+          } else {
+            GradleVersion.version(gradleVersion)
+          }
+        }
     fun String.toBetaVersionString() =
       when (this) {
         "3.1" -> "$this.0-beta2"
