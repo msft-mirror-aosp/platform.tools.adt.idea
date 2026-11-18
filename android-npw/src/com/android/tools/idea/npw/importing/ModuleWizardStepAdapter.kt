@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.npw.importing
 
-import com.android.tools.idea.gradle.project.ModuleImporter
+import com.android.tools.idea.gradle.project.importer.ModuleImporter
 import com.android.tools.idea.observable.core.BoolProperty
 import com.android.tools.idea.observable.core.BoolValueProperty
 import com.android.tools.idea.observable.core.ObservableBool

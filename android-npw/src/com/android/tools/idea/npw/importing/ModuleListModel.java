@@ -18,10 +18,10 @@ package com.android.tools.idea.npw.importing;
 import static com.android.tools.idea.gradle.util.GradleProjectSystemUtil.getModuleDefaultPath;
 import static com.android.tools.idea.projectsystem.gradle.GradleProjectPathKt.getGradleIdentityPath;
 
+import com.android.tools.idea.gradle.project.importer.ModuleToImport;
 import com.android.tools.idea.gradle.util.GradleProjectSystemUtil;
 import com.android.tools.idea.util.FormatUtil;
 import com.google.common.annotations.VisibleForTesting;
-import com.android.tools.idea.gradle.project.ModuleToImport;
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.base.Objects;

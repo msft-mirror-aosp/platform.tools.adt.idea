@@ -21,7 +21,7 @@ import static com.android.tools.idea.npw.importing.ModuleListModel.ModuleValidat
 import static com.android.tools.idea.npw.importing.ModuleListModel.ModuleValidationState.OK;
 import static com.android.tools.idea.npw.importing.ModuleListModel.ModuleValidationState.REQUIRED;
 
-import com.android.tools.idea.gradle.project.ModuleToImport;
+import com.android.tools.idea.gradle.project.importer.ModuleToImport;
 import com.android.tools.idea.npw.importing.ModuleListModel;
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;

@@ -15,7 +15,7 @@
  */
 package com.android.tools.idea.npw.importing;
 
-import com.android.tools.idea.gradle.project.ModuleToImport;
+import com.android.tools.idea.gradle.project.importer.ModuleToImport;
 import com.google.common.base.Objects;
 import com.google.common.base.Predicates;
 import com.google.common.collect.*;

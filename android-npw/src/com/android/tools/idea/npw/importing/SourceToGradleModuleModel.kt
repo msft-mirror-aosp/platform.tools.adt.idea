@@ -17,7 +17,7 @@ package com.android.tools.idea.npw.importing
 
 import com.android.tools.analytics.UsageTracker
 import com.android.tools.analytics.withProjectId
-import com.android.tools.idea.gradle.project.ModuleImporter
+import com.android.tools.idea.gradle.project.importer.ModuleImporter
 import com.android.tools.idea.npw.model.ProjectSyncInvoker
 import com.android.tools.idea.observable.core.StringValueProperty
 import com.android.tools.idea.wizard.model.WizardModel
