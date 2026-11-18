@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.debuggers.coroutine
 
+import com.android.tools.idea.flags.StudioFlags.COROUTINE_DEBUGGER_ENABLE
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.options.ConfigurableUi
@@ -33,7 +34,7 @@ private const val DISPLAY_NAME = "Coroutine Debugger"
 /** Class used by Intellij to get preferences for the Debugger section. */
 class CoroutineDebuggerConfigurableProvider : DebuggerConfigurableProvider() {
   override fun getConfigurables(category: DebuggerSettingsCategory): List<Configurable> {
-    if (!FlagController.isCoroutineDebuggerEnabled) {
+    if (!COROUTINE_DEBUGGER_ENABLE.get()) {
       return emptyList()
     }
 

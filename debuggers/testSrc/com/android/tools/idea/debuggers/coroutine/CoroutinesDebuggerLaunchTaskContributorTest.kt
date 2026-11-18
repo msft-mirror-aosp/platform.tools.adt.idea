@@ -16,138 +16,110 @@
 package com.android.tools.idea.debuggers.coroutine
 
 import com.android.ddmlib.IDevice
+import com.android.flags.junit.FlagRule
 import com.android.sdklib.AndroidVersion
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.run.AndroidRunConfigurationBase
+import com.google.common.truth.Truth.assertThat
+import com.intellij.execution.Executor
 import com.intellij.execution.executors.DefaultDebugExecutor
 import com.intellij.execution.executors.DefaultRunExecutor
-import com.intellij.testFramework.LightPlatformTestCase
+import com.intellij.testFramework.ProjectRule
+import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.registerServiceInstance
+import org.junit.After
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.JUnit4
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
-class CoroutinesDebuggerLaunchTaskContributorTest : LightPlatformTestCase() {
+private const val EXPECTED_AM_START_OPTIONS = "--attach-agent /data/data/com.test.application/code_cache/coroutine_debugger_agent.so"
+
+@RunWith(JUnit4::class)
+class CoroutinesDebuggerLaunchTaskContributorTest {
+  private val projectRule = ProjectRule()
+  private val project
+    get() = projectRule.project
+
+  @get:Rule val rule = RuleChain(projectRule, FlagRule(StudioFlags.COROUTINE_DEBUGGER_ENABLE, false))
 
   private val configuration = mock<AndroidRunConfigurationBase>()
+  private val contributor = CoroutineDebuggerLaunchTaskContributor()
+  private val device = mock<IDevice>()
 
-  override fun setUp() {
-    super.setUp()
+  @Before
+  fun setUp() {
     whenever(configuration.project).thenReturn(project)
+    whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.Q, 0))
   }
 
-  fun testNoAmOptionsIfFlagIsDisabled() {
-    val contributor = CoroutineDebuggerLaunchTaskContributor()
-    val device = mock<IDevice>()
-
-    runWithFlagState(false) {
-      val amStartOptions =
-        contributor.getAmStartOptions("com.test.application", configuration, device, DefaultRunExecutor.getRunExecutorInstance())
-      assertEmpty(amStartOptions)
-    }
-  }
-
-  fun testNoAmOptionsIfNotDebuggable() {
-    val contributor = CoroutineDebuggerLaunchTaskContributor()
-    val device = mock<IDevice>()
-
-    runWithFlagState(true) {
-      val amStartOptions =
-        contributor.getAmStartOptions("com.test.application", configuration, device, DefaultRunExecutor.getRunExecutorInstance())
-      assertEmpty(amStartOptions)
-    }
-  }
-
-  fun testNoAmOptionsIfSettingsNotEnabled() {
-    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(false)
-    val contributor = CoroutineDebuggerLaunchTaskContributor()
-    val device = mock<IDevice>()
-
-    whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.Q))
-
-    runWithFlagState(true) {
-      val amStartOptions =
-        contributor.getAmStartOptions("com.test.application", configuration, device, DefaultDebugExecutor.getDebugExecutorInstance())
-      assertEquals("", amStartOptions)
-    }
-
+  @After
+  fun tearDown() {
     CoroutineDebuggerSettings.reset()
   }
 
+  @Test
+  fun testNoAmOptionsIfFlagIsDisabled() {
+    assertThat(getAmStartOptions()).isEmpty()
+  }
+
+  @Test
+  fun testNoAmOptionsIfNotDebuggable() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+
+    assertThat(getAmStartOptions(DefaultRunExecutor.getRunExecutorInstance())).isEmpty()
+  }
+
+  @Test
+  fun testNoAmOptionsIfSettingsNotEnabled() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(false)
+
+    assertThat(getAmStartOptions()).isEmpty()
+  }
+
+  @Test
   fun testNoAmOptionsOnAPI28AndLower() {
-    val contributor = CoroutineDebuggerLaunchTaskContributor()
-    val device = mock<IDevice>()
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
 
-    whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.P))
+    for (api in
+      listOf(AndroidVersion.VersionCodes.P, AndroidVersion.VersionCodes.O, AndroidVersion.VersionCodes.N, AndroidVersion.VersionCodes.M)) {
+      whenever(device.version).thenReturn(AndroidVersion(api, 0))
 
-    runWithFlagState(true) {
-      val amStartOptions =
-        contributor.getAmStartOptions("com.test.application", configuration, device, DefaultDebugExecutor.getDebugExecutorInstance())
-      assertEquals("", amStartOptions)
-    }
-
-    whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.O))
-
-    runWithFlagState(true) {
-      val amStartOptions =
-        contributor.getAmStartOptions("com.test.application", configuration, device, DefaultDebugExecutor.getDebugExecutorInstance())
-      assertEquals("", amStartOptions)
-    }
-
-    whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.N))
-
-    runWithFlagState(true) {
-      val amStartOptions =
-        contributor.getAmStartOptions("com.test.application", configuration, device, DefaultDebugExecutor.getDebugExecutorInstance())
-      assertEquals("", amStartOptions)
-    }
-
-    whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.M))
-
-    runWithFlagState(true) {
-      val amStartOptions =
-        contributor.getAmStartOptions("com.test.application", configuration, device, DefaultDebugExecutor.getDebugExecutorInstance())
-      assertEquals("", amStartOptions)
+      assertThat(getAmStartOptions()).isEmpty()
     }
   }
 
+  @Test
   fun testAmOptionsIsCorrect() {
-    val contributor = CoroutineDebuggerLaunchTaskContributor()
-    val device = mock<IDevice>()
-    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
 
-    whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.Q))
-
-    runWithFlagState(true) {
-      val amStartOptions =
-        contributor.getAmStartOptions("com.test.application", configuration, device, DefaultDebugExecutor.getDebugExecutorInstance())
-      assertEquals("--attach-agent /data/data/com.test.application/code_cache/coroutine_debugger_agent.so", amStartOptions)
-    }
+    assertThat(getAmStartOptions()).isEqualTo(EXPECTED_AM_START_OPTIONS)
   }
 
+  @Test
   fun testLaunchEventIsTracked() {
     val fakeTracker = FakeCoroutineDebuggerAnalyticsTracker()
     project.registerServiceInstance(CoroutineDebuggerAnalyticsTracker::class.java, fakeTracker)
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
 
-    val contributor = CoroutineDebuggerLaunchTaskContributor()
-    val device = mock<IDevice>()
+    getAmStartOptions()
 
-    whenever(device.version).thenReturn(AndroidVersion(AndroidVersion.VersionCodes.Q))
-
-    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
-
-    runWithFlagState(true) {
-      contributor.getAmStartOptions("com.test.application", configuration, device, DefaultDebugExecutor.getDebugExecutorInstance())
-
-      assertTrue(fakeTracker.trackLaunchEventCalled)
-      assertFalse(fakeTracker.launchEventIsDisabledInSettings)
-    }
+    assertThat(fakeTracker.trackLaunchEventCalled).isTrue()
+    assertThat(fakeTracker.launchEventIsDisabledInSettings).isFalse()
 
     fakeTracker.reset()
     CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(false)
-    runWithFlagState(true) {
-      contributor.getAmStartOptions("com.test.application", configuration, device, DefaultDebugExecutor.getDebugExecutorInstance())
 
-      assertTrue(fakeTracker.trackLaunchEventCalled)
-      assertTrue(fakeTracker.launchEventIsDisabledInSettings)
-    }
+    getAmStartOptions()
+
+    assertThat(fakeTracker.trackLaunchEventCalled).isTrue()
+    assertThat(fakeTracker.launchEventIsDisabledInSettings).isTrue()
   }
+
+  private fun getAmStartOptions(executor: Executor = DefaultDebugExecutor.getDebugExecutorInstance()) =
+    contributor.getAmStartOptions("com.test.application", configuration, device, executor)
 }

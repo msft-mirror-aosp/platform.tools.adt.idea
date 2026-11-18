@@ -16,6 +16,7 @@
 package com.android.tools.idea.debuggers.coroutine
 
 import com.android.tools.idea.execution.common.processhandler.AndroidRemoteDebugProcessHandler
+import com.android.tools.idea.flags.StudioFlags.COROUTINE_DEBUGGER_ENABLE
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
@@ -28,7 +29,7 @@ import org.jetbrains.kotlin.idea.debugger.coroutine.DebuggerConnection
 /** Class responsible for setting up the coroutine debugger panel */
 class CoroutineDebuggerProjectActivity : ProjectActivity {
   override suspend fun execute(project: Project) {
-    if (!FlagController.isCoroutineDebuggerEnabled) {
+    if (!COROUTINE_DEBUGGER_ENABLE.get()) {
       return
     }
     val connection = project.messageBus.connect(project.service<ProjectDisposableScope>())

@@ -18,6 +18,7 @@ package com.android.tools.idea.debuggers.coroutine
 import com.android.ddmlib.IDevice
 import com.android.sdklib.AndroidVersion
 import com.android.tools.deployer.Sites
+import com.android.tools.idea.flags.StudioFlags.COROUTINE_DEBUGGER_ENABLE
 import com.android.tools.idea.run.AndroidLaunchTaskContributor
 import com.android.tools.idea.run.AndroidRunConfigurationBase
 import com.intellij.execution.Executor
@@ -32,7 +33,7 @@ class CoroutineDebuggerLaunchTaskContributor : AndroidLaunchTaskContributor {
     device: IDevice,
     executor: Executor,
   ): String {
-    if (!FlagController.isCoroutineDebuggerEnabled) {
+    if (!COROUTINE_DEBUGGER_ENABLE.get()) {
       return ""
     }
 

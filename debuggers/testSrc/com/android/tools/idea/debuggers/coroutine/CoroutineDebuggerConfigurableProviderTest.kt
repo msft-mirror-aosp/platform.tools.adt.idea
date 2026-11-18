@@ -15,71 +15,77 @@
  */
 package com.android.tools.idea.debuggers.coroutine
 
-import com.intellij.testFramework.LightPlatformTestCase
+import com.android.flags.junit.FlagRule
+import com.android.tools.idea.flags.StudioFlags
+import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.options.Configurable
+import com.intellij.testFramework.ApplicationRule
+import com.intellij.testFramework.EdtRule
+import com.intellij.testFramework.RuleChain
+import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.xdebugger.settings.DebuggerConfigurableProvider
 import com.intellij.xdebugger.settings.DebuggerSettingsCategory
+import org.junit.After
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.JUnit4
 
-class CoroutineDebuggerConfigurableProviderTest : LightPlatformTestCase() {
+@RunWith(JUnit4::class)
+@RunsInEdt
+class CoroutineDebuggerConfigurableProviderTest {
+  @get:Rule val rule = RuleChain(ApplicationRule(), EdtRule(), FlagRule(StudioFlags.COROUTINE_DEBUGGER_ENABLE, false))
 
-  override fun tearDown() {
-    // reset to default value
-    CoroutineDebuggerSettings.setCoroutineDebuggerEnabled(true)
-
-    super.tearDown()
+  @After
+  fun tearDown() {
+    CoroutineDebuggerSettings.reset()
   }
 
-  fun testProviderIsRegistered() {
-    val provider = getProvider()
-    assertNotNull(provider)
+  @Test
+  fun testProviderIsDisabledWithFeatureFlag() {
+    assertThat(getProvider().getConfigurables(DebuggerSettingsCategory.GENERAL)).isEmpty()
   }
 
-  fun testProviderIsDisabledWithFeatureFlag() =
-    runWithFlagState(false) {
-      val provider = getProvider()
-      val configurables = provider.getConfigurables(DebuggerSettingsCategory.GENERAL)
+  @Test
+  fun testProviderReturnsCoroutineConfigurable() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
 
-      assertEmpty(configurables)
-    }
+    val configurable = getConfigurable()
 
-  fun testProviderReturnsCoroutineConfigurable() =
-    runWithFlagState(true) {
-      val provider = getProvider()
-      val configurables = provider.getConfigurables(DebuggerSettingsCategory.GENERAL)
+    assertThat(configurable.displayName).isEqualTo("Coroutine Debugger")
+    assertThat(getCheckBoxes(configurable).map { it.text }).containsExactly("Enable coroutine debugger")
+  }
 
-      assertSize(1, configurables)
+  @Test
+  fun testConfigurableCanResetAndApplySettings() {
+    StudioFlags.COROUTINE_DEBUGGER_ENABLE.override(true)
+    val configurable = getConfigurable()
+    val coroutineDebuggerCheckBox = getCheckBoxes(configurable).single()
 
-      val configurable = configurables.first()
-      val component = configurable.createComponent()!!
+    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isTrue()
+    assertThat(coroutineDebuggerCheckBox.isSelected).isFalse()
 
-      assertEquals("Coroutine Debugger", configurable.displayName)
-      assertEquals(1, component.componentCount)
-      assertTrue(component.getComponent(0) is JBCheckBox)
-    }
+    configurable.reset()
 
-  fun testConfigurableCanResetAndApplySettings() =
-    runWithFlagState(true) {
-      val provider = getProvider()
-      val configurable = provider.getConfigurables(DebuggerSettingsCategory.GENERAL).first()
-      val coroutineDebuggerEnabledCheckBox = configurable.createComponent()!!.getComponent(0) as JBCheckBox
+    assertThat(coroutineDebuggerCheckBox.isSelected).isTrue()
+    assertThat(configurable.isModified).isFalse()
 
-      assertTrue(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled())
-      assertFalse(coroutineDebuggerEnabledCheckBox.isSelected)
+    coroutineDebuggerCheckBox.isSelected = false
+    assertThat(configurable.isModified).isTrue()
+    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isTrue()
 
-      configurable.reset()
+    configurable.apply()
+    assertThat(configurable.isModified).isFalse()
+    assertThat(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled()).isFalse()
+  }
 
-      assertTrue(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled())
-      assertTrue(coroutineDebuggerEnabledCheckBox.isSelected)
+  private fun getConfigurable(): Configurable = getProvider().getConfigurables(DebuggerSettingsCategory.GENERAL).single()
 
-      coroutineDebuggerEnabledCheckBox.isSelected = false
-      assertTrue(configurable.isModified)
-      assertTrue(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled())
+  private fun getCheckBoxes(configurable: Configurable): List<JBCheckBox> =
+    configurable.createComponent()!!.components.filterIsInstance<JBCheckBox>()
 
-      configurable.apply()
-      assertFalse(configurable.isModified)
-      assertFalse(CoroutineDebuggerSettings.isCoroutineDebuggerEnabled())
-    }
-
+  // first() throws if the provider isn't registered, so every test also verifies registration.
   private fun getProvider(): CoroutineDebuggerConfigurableProvider {
     return DebuggerConfigurableProvider.EXTENSION_POINT.extensionList.filterIsInstance<CoroutineDebuggerConfigurableProvider>().first()
   }
