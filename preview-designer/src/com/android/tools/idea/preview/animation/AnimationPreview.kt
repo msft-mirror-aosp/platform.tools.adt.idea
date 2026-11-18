@@ -105,9 +105,10 @@ abstract class AnimationPreview<T : AnimationManager>(
             showErrorPanel(message("animation.inspector.error.panel.message"))
             logger.error("Error in Animation Inspector", throwable)
           }
-        },
-      parentDisposable = parentScope.scopeDisposable(),
+        }
     )
+
+  private val scopeDisposable: Disposable = scope.scopeDisposable()
 
   /**
    * Owns [tabbedPane] (a `JBTabsImpl`), which must only be disposed on the EDT. It is intentionally not parented in the [Disposer] tree: a
@@ -150,13 +151,13 @@ abstract class AnimationPreview<T : AnimationManager>(
 
   /** Loading panel displayed when the preview has no animations subscribed. */
   private val noAnimationsPanel =
-    JBLoadingPanel(BorderLayout(), scope.scopeDisposable()).apply {
+    JBLoadingPanel(BorderLayout(), scopeDisposable).apply {
       name = "Loading Animations Panel"
       setLoadingText(message("animation.inspector.loading.animations.panel.message"))
     }
 
   /** A special tab that displays an overview of all the animations being inspected. */
-  @VisibleForTesting val coordinationTab = AllTabPanel(scope.scopeDisposable())
+  @VisibleForTesting val coordinationTab = AllTabPanel(scopeDisposable)
 
   // ************************
   // Properties: State Management
@@ -198,7 +199,7 @@ abstract class AnimationPreview<T : AnimationManager>(
 
   /** Provides buttons and controls for playing, pausing, and adjusting the playback speed of the animation. */
   protected val playbackControls =
-    PlaybackControls(clockControl, tracker, rootComponent, scope.scopeDisposable()).apply { coordinationTab.addPlayback(createToolbar()) }
+    PlaybackControls(clockControl, tracker, rootComponent, scopeDisposable).apply { coordinationTab.addPlayback(createToolbar()) }
 
   // ************************
   // Protected Methods: Animation Control
@@ -255,7 +256,11 @@ abstract class AnimationPreview<T : AnimationManager>(
           }
         }
       }
-    elements.forEach { Disposer.tryRegister(scope.scopeDisposable(), it) }
+    elements.forEach {
+      if (!Disposer.tryRegister(scopeDisposable, it)) {
+        Disposer.dispose(it)
+      }
+    }
     return elements
   }
 
@@ -309,9 +314,7 @@ abstract class AnimationPreview<T : AnimationManager>(
         disposeTabsOnEdt()
       }
     }
-    if (!Disposer.tryRegister(scope.scopeDisposable(), Disposable { disposeTabsOnEdt() })) {
-      disposeTabsOnEdt()
-    }
+    scope.coroutineContext.job.invokeOnCompletion { disposeTabsOnEdt() }
     showNoAnimationsPanel()
     tabbedPane.addListener(TabChangeListener())
     scope.launch { maxDurationPerIteration.collect { updateTimelineMaximum() } }

@@ -183,24 +183,28 @@ class ComposeAnimationTypeTests(private val animationType: ComposeAnimationType)
 
     val animationPreview = createAnimationPreview(backgroundScope)
 
-    setupAndCheckToolbar(animationPreview, animationType, setOf("one", "two"), clock) { _, ui ->
-      // Two calls from AnimationManager.setup
-      runCurrent()
-      waitForCondition(10.seconds) { numberOfCalls == 1 }
+    try {
+      setupAndCheckToolbar(animationPreview, animationType, setOf("one", "two"), clock) { _, ui ->
+        // Two calls from AnimationManager.setup
+        runCurrent()
+        waitForCondition(10.seconds) { numberOfCalls == 1 }
 
-      val sliders = TreeWalker(ui.root).descendantStream().filter { it is JSlider }.collect(Collectors.toList())
-      assertEquals(1, sliders.size)
-      // Change time
-      val timelineSlider = sliders[0] as JSlider
-      timelineSlider.value = 100
-      runCurrent()
-      waitForCondition(10.seconds) { numberOfCalls == 2 }
-      assertEquals(2, numberOfCalls)
-      // Change time again.
-      timelineSlider.value = 200
-      runCurrent()
-      waitForCondition(10.seconds) { numberOfCalls == 3 }
-      assertEquals(3, numberOfCalls)
+        val sliders = TreeWalker(ui.root).descendantStream().filter { it is JSlider }.collect(Collectors.toList())
+        assertEquals(1, sliders.size)
+        // Change time
+        val timelineSlider = sliders[0] as JSlider
+        timelineSlider.value = 100
+        runCurrent()
+        waitForCondition(10.seconds) { numberOfCalls == 2 }
+        assertEquals(2, numberOfCalls)
+        // Change time again.
+        timelineSlider.value = 200
+        runCurrent()
+        waitForCondition(10.seconds) { numberOfCalls == 3 }
+        assertEquals(3, numberOfCalls)
+      }
+    } finally {
+      cancelAndJoinPreviews(animationPreview)
     }
   }
 

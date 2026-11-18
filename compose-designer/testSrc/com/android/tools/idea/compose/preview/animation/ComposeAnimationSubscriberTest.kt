@@ -40,6 +40,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -64,83 +65,114 @@ class ComposeAnimationSubscriberTest : AnimationPreviewTests() {
   @Test
   fun subscribeAndUnsubscribe() = runTest {
     val animationPreview = createAnimationPreview(backgroundScope)
+    try {
+      ComposeAnimationSubscriber.setHandler(animationPreview)
 
-    ComposeAnimationSubscriber.setHandler(animationPreview)
+      val animation = createComposeAnimation()
+      advanceUntilIdle()
+      assertTrue(animationPreview.hasNoAnimationsForTests())
 
-    val animation = createComposeAnimation()
-    advanceUntilIdle()
-    assertTrue(animationPreview.hasNoAnimationsForTests())
+      ComposeAnimationSubscriber.onAnimationSubscribed(TestClock(), animation)
+      advanceUntilIdle()
+      assertFalse(animationPreview.hasNoAnimationsForTests())
 
-    ComposeAnimationSubscriber.onAnimationSubscribed(TestClock(), animation)
-    advanceUntilIdle()
-    assertFalse(animationPreview.hasNoAnimationsForTests())
+      val otherAnimation = createComposeAnimation()
+      ComposeAnimationSubscriber.onAnimationUnsubscribed(otherAnimation)
+      advanceUntilIdle()
+      assertFalse(animationPreview.hasNoAnimationsForTests())
 
-    val otherAnimation = createComposeAnimation()
-    ComposeAnimationSubscriber.onAnimationUnsubscribed(otherAnimation)
-    advanceUntilIdle()
-    assertFalse(animationPreview.hasNoAnimationsForTests())
-
-    ComposeAnimationSubscriber.onAnimationUnsubscribed(animation)
-    advanceUntilIdle()
-    assertTrue(animationPreview.hasNoAnimationsForTests())
-    ComposeAnimationSubscriber.setHandler(null)
+      ComposeAnimationSubscriber.onAnimationUnsubscribed(animation)
+      advanceUntilIdle()
+      assertTrue(animationPreview.hasNoAnimationsForTests())
+    } finally {
+      withContext(NonCancellable) {
+        try {
+          ComposeAnimationSubscriber.setHandler(null)
+        } finally {
+          cancelAndJoinPreviews(animationPreview)
+        }
+      }
+    }
   }
 
   @Test
   fun setNullHandlerClearsSubscriptions() = runTest {
     val animationPreview = createAnimationPreview(backgroundScope)
-    ComposeAnimationSubscriber.setHandler(animationPreview)
+    try {
+      ComposeAnimationSubscriber.setHandler(animationPreview)
 
-    ComposeAnimationSubscriber.onAnimationSubscribed(TestClock(), createComposeAnimation())
-    advanceUntilIdle()
-    assertFalse(animationPreview.hasNoAnimationsForTests())
+      ComposeAnimationSubscriber.onAnimationSubscribed(TestClock(), createComposeAnimation())
+      advanceUntilIdle()
+      assertFalse(animationPreview.hasNoAnimationsForTests())
 
-    ComposeAnimationSubscriber.setHandler(null)
-    advanceUntilIdle()
-    assertTrue(animationPreview.hasNoAnimationsForTests())
+      ComposeAnimationSubscriber.setHandler(null)
+      advanceUntilIdle()
+      assertTrue(animationPreview.hasNoAnimationsForTests())
+    } finally {
+      withContext(NonCancellable) {
+        try {
+          ComposeAnimationSubscriber.setHandler(null)
+        } finally {
+          cancelAndJoinPreviews(animationPreview)
+        }
+      }
+    }
   }
 
   @Test
   fun subscriptionNewClockClearsPreviousClockAnimations() = runTest {
     val animationPreview = createAnimationPreview(backgroundScope)
-    ComposeAnimationSubscriber.setScopeForTests(backgroundScope)
-    ComposeAnimationSubscriber.setHandler(animationPreview)
-    advanceUntilIdle()
-    assertNull(animationPreview.tabbedPane.parent)
-    assertEquals(0, animationPreview.animations.size)
+    try {
+      ComposeAnimationSubscriber.setScopeForTests(backgroundScope)
+      ComposeAnimationSubscriber.setHandler(animationPreview)
+      advanceUntilIdle()
+      assertNull(animationPreview.tabbedPane.parent)
+      assertEquals(0, animationPreview.animations.size)
 
-    val clock = TestClock()
-    ComposeAnimationSubscriber.onAnimationSubscribed(clock, createComposeAnimation())
-    advanceUntilIdle()
-    assertNotNull(animationPreview.tabbedPane.parent)
-    assertEquals(1, animationPreview.animations.size)
+      val clock = TestClock()
+      ComposeAnimationSubscriber.onAnimationSubscribed(clock, createComposeAnimation())
+      advanceUntilIdle()
+      assertNotNull(animationPreview.tabbedPane.parent)
+      assertEquals(1, animationPreview.animations.size)
 
-    val anotherClock = TestClock()
-    ComposeAnimationSubscriber.onAnimationSubscribed(anotherClock, createComposeAnimation())
-    advanceUntilIdle()
-    assertEquals(1, animationPreview.animations.size)
+      val anotherClock = TestClock()
+      ComposeAnimationSubscriber.onAnimationSubscribed(anotherClock, createComposeAnimation())
+      advanceUntilIdle()
+      assertEquals(1, animationPreview.animations.size)
 
-    ComposeAnimationSubscriber.onAnimationSubscribed(anotherClock, createComposeAnimation())
-    advanceUntilIdle()
-    assertEquals(2, animationPreview.animations.size)
-    ComposeAnimationSubscriber.setHandler(null)
-    ComposeAnimationSubscriber.setScopeForTests(null)
+      ComposeAnimationSubscriber.onAnimationSubscribed(anotherClock, createComposeAnimation())
+      advanceUntilIdle()
+      assertEquals(2, animationPreview.animations.size)
+    } finally {
+      withContext(NonCancellable) {
+        try {
+          ComposeAnimationSubscriber.setHandler(null)
+        } finally {
+          try {
+            ComposeAnimationSubscriber.setScopeForTests(null)
+          } finally {
+            cancelAndJoinPreviews(animationPreview)
+          }
+        }
+      }
+    }
   }
 
   @Test
   @Throws(IOException::class, ClassNotFoundException::class)
   fun classLoaderRedirectsSubscriptionToAnimationManager() = runTest {
     val animationPreview = createAnimationPreview(scope = backgroundScope).apply { this.component.size = Dimension(400, 400) }
-    val ui =
-      withContext(Dispatchers.EDT) {
-        FakeUi(animationPreview.component).apply {
-          layoutAndDispatchEvents()
-          updateToolbarsIfNecessary()
-        }
-      }
-    ComposeAnimationSubscriber.setScopeForTests(scope = backgroundScope)
-    ComposeAnimationSubscriber.setHandler(animationPreview)
+    var ui: FakeUi? = null
     try {
+      ui =
+        withContext(Dispatchers.EDT) {
+          FakeUi(animationPreview.component).apply {
+            layoutAndDispatchEvents()
+            updateToolbarsIfNecessary()
+          }
+        }
+      ComposeAnimationSubscriber.setScopeForTests(scope = backgroundScope)
+      ComposeAnimationSubscriber.setHandler(animationPreview)
       class PreviewAnimationClockClassLoader :
         DelegatingClassLoader(
           this.javaClass.classLoader,
@@ -175,13 +207,25 @@ class ComposeAnimationSubscriberTest : AnimationPreviewTests() {
       assertTrue(animationPreview.hasNoAnimationsForTests())
     } finally {
       // Clean up
-      animationPreview.cancelScope()
-      ComposeAnimationSubscriber.setHandler(null)
-      runCurrent()
-      ComposeAnimationSubscriber.setScopeForTests(null)
-      withContext(Dispatchers.EDT) {
-        ui.layoutAndDispatchEvents()
-        ui.updateToolbarsIfNecessary()
+      withContext(NonCancellable) {
+        try {
+          ComposeAnimationSubscriber.setHandler(null)
+        } finally {
+          try {
+            ComposeAnimationSubscriber.setScopeForTests(null)
+          } finally {
+            try {
+              ui?.let {
+                withContext(Dispatchers.EDT) {
+                  it.layoutAndDispatchEvents()
+                  it.updateToolbarsIfNecessary()
+                }
+              }
+            } finally {
+              cancelAndJoinPreviews(animationPreview)
+            }
+          }
+        }
       }
     }
   }
@@ -228,8 +272,13 @@ class ComposeAnimationSubscriberTest : AnimationPreviewTests() {
       assertEquals(1, clockBMaxDurationCalls.get())
       assertEquals(1, preview.animations.size)
     } finally {
-      ComposeAnimationSubscriber.setHandler(null)
-      withContext(Dispatchers.EDT) { preview.cancelScope() }
+      withContext(NonCancellable) {
+        try {
+          ComposeAnimationSubscriber.setHandler(null)
+        } finally {
+          cancelAndJoinPreviews(preview)
+        }
+      }
     }
   }
 
@@ -247,8 +296,13 @@ class ComposeAnimationSubscriberTest : AnimationPreviewTests() {
       assertNull(preview.animationClock)
       assertTrue(preview.hasNoAnimationsForTests())
     } finally {
-      ComposeAnimationSubscriber.setHandler(null)
-      withContext(Dispatchers.EDT) { preview.cancelScope() }
+      withContext(NonCancellable) {
+        try {
+          ComposeAnimationSubscriber.setHandler(null)
+        } finally {
+          cancelAndJoinPreviews(preview)
+        }
+      }
     }
   }
 
@@ -256,8 +310,8 @@ class ComposeAnimationSubscriberTest : AnimationPreviewTests() {
   fun staleQueuedCallbacksAreDroppedAfterSetHandler() = runTest {
     val preview1 = createAnimationPreview(backgroundScope)
     val preview2 = createAnimationPreview(backgroundScope)
-    ComposeAnimationSubscriber.setScopeForTests(backgroundScope)
     try {
+      ComposeAnimationSubscriber.setScopeForTests(backgroundScope)
       ComposeAnimationSubscriber.setHandler(preview1)
 
       val staleSubscribeAnimation = createComposeAnimation("stale-sub")
@@ -292,11 +346,16 @@ class ComposeAnimationSubscriberTest : AnimationPreviewTests() {
       advanceUntilIdle()
       assertTrue(removedAnimations.isEmpty())
     } finally {
-      ComposeAnimationSubscriber.setHandler(null)
-      ComposeAnimationSubscriber.setScopeForTests(null)
-      withContext(Dispatchers.EDT) {
-        preview1.cancelScope()
-        preview2.cancelScope()
+      withContext(NonCancellable) {
+        try {
+          ComposeAnimationSubscriber.setHandler(null)
+        } finally {
+          try {
+            ComposeAnimationSubscriber.setScopeForTests(null)
+          } finally {
+            cancelAndJoinPreviews(preview1, preview2)
+          }
+        }
       }
     }
   }
@@ -349,8 +408,13 @@ class ComposeAnimationSubscriberTest : AnimationPreviewTests() {
       assertEquals(listOf("removeAll", "add(b1)", "add(b2)"), events)
       assertSame(clockB, fakeHandler.animationClock?.clock)
     } finally {
-      allowRemoveAllToFinish.complete(Unit)
-      ComposeAnimationSubscriber.setHandler(null)
+      withContext(NonCancellable) {
+        try {
+          allowRemoveAllToFinish.complete(Unit)
+        } finally {
+          ComposeAnimationSubscriber.setHandler(null)
+        }
+      }
     }
   }
 
@@ -358,8 +422,8 @@ class ComposeAnimationSubscriberTest : AnimationPreviewTests() {
   fun clearHandlerDoesNotClearNewerHandler() = runTest {
     val preview1 = createAnimationPreview(backgroundScope)
     val preview2 = createAnimationPreview(backgroundScope)
-    ComposeAnimationSubscriber.setScopeForTests(backgroundScope)
     try {
+      ComposeAnimationSubscriber.setScopeForTests(backgroundScope)
       ComposeAnimationSubscriber.setHandler(preview1)
       ComposeAnimationSubscriber.setHandler(preview2)
 
@@ -373,11 +437,16 @@ class ComposeAnimationSubscriberTest : AnimationPreviewTests() {
       delayUntilCondition(10, 5.seconds) { !preview2.hasNoAnimationsForTests() && preview2.animations.isNotEmpty() }
       assertFalse(preview2.hasNoAnimationsForTests())
     } finally {
-      ComposeAnimationSubscriber.setHandler(null)
-      ComposeAnimationSubscriber.setScopeForTests(null)
-      withContext(Dispatchers.EDT) {
-        preview1.cancelScope()
-        preview2.cancelScope()
+      withContext(NonCancellable) {
+        try {
+          ComposeAnimationSubscriber.setHandler(null)
+        } finally {
+          try {
+            ComposeAnimationSubscriber.setScopeForTests(null)
+          } finally {
+            cancelAndJoinPreviews(preview1, preview2)
+          }
+        }
       }
     }
   }

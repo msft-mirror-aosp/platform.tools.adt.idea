@@ -71,12 +71,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -460,27 +460,30 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
   fun addAndRemoveAllAnimations() = runTest {
     val scope = backgroundScope.createChildScope()
     val animationPreview = createAnimationPreview(scope)
+    try {
+      val job1 = animationPreview.addAnimation(createComposeAnimation("1"))
+      val job2 = animationPreview.addAnimation(createComposeAnimation("2"))
+      joinAll(job1, job2)
+      animationPreview.removeAllAnimations().join()
+      runCurrent()
+      advanceUntilIdle()
+      assertEquals(0, animationPreview.animations.size)
 
-    val job1 = animationPreview.addAnimation(createComposeAnimation("1"))
-    val job2 = animationPreview.addAnimation(createComposeAnimation("2"))
-    joinAll(job1, job2)
-    animationPreview.removeAllAnimations().join()
-    runCurrent()
-    advanceUntilIdle()
-    assertEquals(0, animationPreview.animations.size)
-
-    val job3 = animationPreview.addAnimation(createComposeAnimation("3"))
-    val job4 = animationPreview.addAnimation(createComposeAnimation("4"))
-    joinAll(job3, job4)
-    runCurrent()
-    advanceUntilIdle()
-    assertEquals(2, animationPreview.animations.size)
-    assertEquals(listOf("3", "4"), animationPreview.animations.map { it.animation.label })
-    withContext(Dispatchers.EDT) {
-      scope.cancel()
-      val ui = FakeUi(animationPreview.component)
-      ui.layoutAndDispatchEvents()
-      ui.updateToolbarsIfNecessary()
+      val job3 = animationPreview.addAnimation(createComposeAnimation("3"))
+      val job4 = animationPreview.addAnimation(createComposeAnimation("4"))
+      joinAll(job3, job4)
+      runCurrent()
+      advanceUntilIdle()
+      assertEquals(2, animationPreview.animations.size)
+      assertEquals(listOf("3", "4"), animationPreview.animations.map { it.animation.label })
+      withContext(Dispatchers.EDT) {
+        scope.cancel()
+        val ui = FakeUi(animationPreview.component)
+        ui.layoutAndDispatchEvents()
+        ui.updateToolbarsIfNecessary()
+      }
+    } finally {
+      cancelAndJoinPreviews(animationPreview)
     }
   }
 
@@ -489,20 +492,23 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
   fun addAndRemoveAnimation() = runTest {
     val scope = backgroundScope.createChildScope()
     val animationPreview = createAnimationPreview(scope)
-
-    val animation = createComposeAnimation("1")
-    animationPreview.addAnimation(animation)
-    animationPreview.removeAnimation(animation)
-    animationPreview.addAnimation(createComposeAnimation("2")).join()
-    runCurrent()
-    advanceUntilIdle()
-    assertEquals(1, animationPreview.animations.size)
-    assertEquals("2", animationPreview.animations.first().animation.label)
-    withContext(Dispatchers.EDT) {
-      scope.cancel()
-      val ui = FakeUi(animationPreview.component)
-      ui.layoutAndDispatchEvents()
-      ui.updateToolbarsIfNecessary()
+    try {
+      val animation = createComposeAnimation("1")
+      animationPreview.addAnimation(animation)
+      animationPreview.removeAnimation(animation)
+      animationPreview.addAnimation(createComposeAnimation("2")).join()
+      runCurrent()
+      advanceUntilIdle()
+      assertEquals(1, animationPreview.animations.size)
+      assertEquals("2", animationPreview.animations.first().animation.label)
+      withContext(Dispatchers.EDT) {
+        scope.cancel()
+        val ui = FakeUi(animationPreview.component)
+        ui.layoutAndDispatchEvents()
+        ui.updateToolbarsIfNecessary()
+      }
+    } finally {
+      cancelAndJoinPreviews(animationPreview)
     }
   }
 
@@ -511,30 +517,34 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
   fun childrenAreDisposed() = runTest {
     val scope = backgroundScope.createChildScope()
     val animationPreview = createAnimationPreview(scope).apply { this.component.size = Dimension(200, 200) }
-    animationPreview.addAnimation(createComposeAnimation("1")).join()
-    animationPreview.addAnimation(createComposeAnimation("2")).join()
-    animationPreview.addAnimation(createComposeAnimation("3")).join()
+    try {
+      animationPreview.addAnimation(createComposeAnimation("1")).join()
+      animationPreview.addAnimation(createComposeAnimation("2")).join()
+      animationPreview.addAnimation(createComposeAnimation("3")).join()
 
-    val ui =
-      withContext(Dispatchers.EDT) {
-        val ui = FakeUi(animationPreview.component)
-        ui.layoutAndDispatchEvents()
-        ui.updateToolbarsIfNecessary()
-        ui
+      val ui =
+        withContext(Dispatchers.EDT) {
+          val ui = FakeUi(animationPreview.component)
+          ui.layoutAndDispatchEvents()
+          ui.updateToolbarsIfNecessary()
+          ui
+        }
+
+      var disposeCount = 0
+
+      animationPreview.component.findDescendant<AllTabPanel>()!!.let { it.whenDisposed { disposeCount++ } }
+      animationPreview.component.findDescendant<TimelinePanel>()!!.let {
+        it.sliderUI.elements.forEach { element -> element.whenDisposed { disposeCount++ } }
       }
-
-    var disposeCount = 0
-
-    animationPreview.component.findDescendant<AllTabPanel>()!!.let { it.whenDisposed { disposeCount++ } }
-    animationPreview.component.findDescendant<TimelinePanel>()!!.let {
-      it.sliderUI.elements.forEach { element -> element.whenDisposed { disposeCount++ } }
+      scope.cancel()
+      withContext(Dispatchers.EDT) { ui.layoutAndDispatchEvents() }
+      runCurrent()
+      advanceUntilIdle()
+      // One AllTabPanel's dispose call and three TimelinePanel's dispose calls.
+      assertEquals(4, disposeCount)
+    } finally {
+      cancelAndJoinPreviews(animationPreview)
     }
-    scope.cancel()
-    withContext(Dispatchers.EDT) { ui.layoutAndDispatchEvents() }
-    runCurrent()
-    advanceUntilIdle()
-    // One AllTabPanel's dispose call and three TimelinePanel's dispose calls.
-    assertEquals(4, disposeCount)
   }
 
   @OptIn(ExperimentalCoroutinesApi::class)
@@ -578,7 +588,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       assertTrue(executeCallbacksAfterRender.get())
       assertTrue(doubleRender.get())
     } finally {
-      cancelAndJoinPreview(animationPreview)
+      cancelAndJoinPreviews(animationPreview)
     }
   }
 
@@ -605,7 +615,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       advanceUntilIdle()
       verify(sceneManager, never()).executeInRenderSessionAsync(any(), any(), any())
     } finally {
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -652,7 +662,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       advanceUntilIdle()
       assertEquals(0, renderCalls.get())
     } finally {
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -706,7 +716,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
         assertEquals("Callback failure", e.message)
       }
     } finally {
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -754,7 +764,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
         // Expected even when scope is already cancelled.
       }
     } finally {
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -798,7 +808,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       assertTrue(currentCoroutineContext().isActive)
       assertTrue(preview.scope.isActive)
     } finally {
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -853,7 +863,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       assertEquals(1, callbackRuns.get())
       verify(sceneManager, times(2)).executeInRenderSessionAsync(any(), any(), any())
     } finally {
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -914,7 +924,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       assertEquals(true, disposedOnEdt)
       assertTrue(preview.tabsDisposable.isDisposed)
     } finally {
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -954,7 +964,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       assertEquals(DEFAULT_ANIMATION_PREVIEW_MAX_DURATION_MS, preview.maxDurationPerIteration.value)
       verify(sceneManager, never()).executeInRenderSessionAsync(any(), any(), any())
     } finally {
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -1041,7 +1051,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       assertEquals(3500L, preview.maxDurationPerIteration.value)
     } finally {
       pendingFuture?.complete(null)
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -1117,7 +1127,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       assertEquals(1, preview.animationPreviewCardsCount())
     } finally {
       pendingFuture?.complete(null)
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -1188,7 +1198,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       assertEquals(1, preview.animationPreviewCardsCount())
       assertEquals("BrokenTransition", preview.getAnimationTitleAt(0))
     } finally {
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -1266,7 +1276,7 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       assertEquals(0, preview.animationPreviewCardsCount())
     } finally {
       pendingFuture?.complete(null)
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
@@ -1287,15 +1297,65 @@ class ComposeAnimationPreviewTest : AnimationPreviewTests() {
       withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
       assertEquals(1, preview.animations.size)
     } finally {
-      cancelAndJoinPreview(preview)
+      cancelAndJoinPreviews(preview)
     }
   }
 
-  private suspend fun TestScope.cancelAndJoinPreview(preview: AnimationPreview<*>) {
-    withContext(Dispatchers.EDT) { preview.cancelScope() }
-    advanceUntilIdle()
-    withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
-    preview.scope.coroutineContext[Job]?.join()
+  @Test
+  fun cancelPreviewDisposesTabsAndPriorTimelineElementsWhileParentScopeRemainsActive() = runTest {
+    val parentScope = backgroundScope.createChildScope()
+    val preview = createAnimationPreview(parentScope).apply { component.size = Dimension(200, 200) }
+    try {
+      val anim1 = createComposeAnimation("1", ComposeAnimationType.TRANSITION_ANIMATION)
+      val anim2 = createComposeAnimation("2", ComposeAnimationType.TRANSITION_ANIMATION)
+
+      preview.addAnimation(anim1).join()
+      advanceUntilIdle()
+      withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+
+      val timeline = preview.component.findDescendant<TimelinePanel>()!!
+      val firstElements = timeline.sliderUI.elements.toList()
+      assertEquals(1, firstElements.size)
+
+      preview.addAnimation(anim2).join()
+      advanceUntilIdle()
+      withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+
+      firstElements.forEach { assertTrue(Disposer.isDisposed(it)) }
+      val secondElements = timeline.sliderUI.elements.toList()
+      assertEquals(2, secondElements.size)
+
+      withContext(Dispatchers.EDT) {
+        (preview.animations.first().card as AnimationCard).openInTabListeners.forEach { it() }
+      }
+      advanceUntilIdle()
+      withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+
+      secondElements.forEach { assertTrue(Disposer.isDisposed(it)) }
+      val singleTabElements = timeline.sliderUI.elements.toList()
+      assertEquals(1, singleTabElements.size)
+
+      withContext(Dispatchers.EDT) { preview.tabbedPane.select(preview.tabbedPane.getTabAt(0), false) }
+      advanceUntilIdle()
+      withContext(Dispatchers.EDT) { PlatformTestUtil.dispatchAllInvocationEventsInIdeEventQueue() }
+
+      singleTabElements.forEach { assertTrue(Disposer.isDisposed(it)) }
+      val finalElements = timeline.sliderUI.elements.toList()
+      assertEquals(2, finalElements.size)
+      finalElements.forEach { assertFalse(Disposer.isDisposed(it)) }
+
+      cancelAndJoinPreviews(preview)
+      assertTrue(parentScope.isActive)
+      assertTrue(preview.tabsDisposable.isDisposed)
+      assertTrue(Disposer.isDisposed(preview.coordinationTab))
+      finalElements.forEach { assertTrue(Disposer.isDisposed(it)) }
+    } finally {
+      try {
+        cancelAndJoinPreviews(preview)
+      } finally {
+        parentScope.cancel()
+      }
+    }
   }
 
   private fun ComposeAnimationPreview.getAnimationTitleAt(index: Int): String = findAllCards(this.component)[index].findLabel().text

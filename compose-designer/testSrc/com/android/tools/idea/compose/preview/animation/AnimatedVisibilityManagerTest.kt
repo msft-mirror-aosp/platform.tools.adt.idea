@@ -91,21 +91,25 @@ class AnimatedVisibilityManagerTest : AnimationPreviewTests() {
 
     val animationPreview = createAnimationPreview(backgroundScope)
 
-    setupAndCheckToolbar(animationPreview, clock) { _, ui ->
-      runCurrent()
-      advanceUntilIdle()
-      waitForCondition(60.seconds) { numberOfCalls == 1 }
-      val sliders = TreeWalker(ui.root).descendantStream().filter { it is JSlider }.collect(Collectors.toList())
-      assertEquals(1, sliders.size)
-      val timelineSlider = sliders[0] as JSlider
-      // Change time again.
-      timelineSlider.value = 100
-      ui.updateToolbarsIfNecessary()
-      ui.layoutAndDispatchEvents()
-      runCurrent()
-      advanceUntilIdle()
-      waitForCondition(10.seconds) { numberOfCalls == 2 }
-      assertEquals(2, numberOfCalls)
+    try {
+      setupAndCheckToolbar(animationPreview, clock) { _, ui ->
+        runCurrent()
+        advanceUntilIdle()
+        waitForCondition(60.seconds) { numberOfCalls == 1 }
+        val sliders = TreeWalker(ui.root).descendantStream().filter { it is JSlider }.collect(Collectors.toList())
+        assertEquals(1, sliders.size)
+        val timelineSlider = sliders[0] as JSlider
+        // Change time again.
+        timelineSlider.value = 100
+        ui.updateToolbarsIfNecessary()
+        ui.layoutAndDispatchEvents()
+        runCurrent()
+        advanceUntilIdle()
+        waitForCondition(10.seconds) { numberOfCalls == 2 }
+        assertEquals(2, numberOfCalls)
+      }
+    } finally {
+      cancelAndJoinPreviews(animationPreview)
     }
   }
 
