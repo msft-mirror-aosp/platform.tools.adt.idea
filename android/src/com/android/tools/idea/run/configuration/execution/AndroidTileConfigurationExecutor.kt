@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.run.configuration.execution
 
-import com.android.adblib.ConnectedDevice
 import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.MultiLineReceiver
@@ -64,7 +63,7 @@ class AndroidTileConfigurationExecutor(
   @WorkerThread
   override fun launch(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: App,
     console: ConsoleView,
     isDebug: Boolean,
@@ -83,7 +82,7 @@ class AndroidTileConfigurationExecutor(
 
     // TODO(b/226550406): Only add this sleep for older versions where the race condition exists.
     Thread.sleep(Duration.ofSeconds(2).toMillis())
-    val tileIndex = setWatchTile(app, mode, indicator, console, device, connectedDevice)
+    val tileIndex = setWatchTile(app, mode, indicator, console, deviceHolder)
     val showTileCommand = SHOW_TILE_COMMAND + tileIndex!!
     val showTileReceiver = CommandResultReceiverV1()
     device.executeShellCommand(showTileCommand, console, showTileReceiver.asIShellOutputReceiver(), indicator = indicator)
@@ -95,15 +94,13 @@ class AndroidTileConfigurationExecutor(
     mode: AppComponent.Mode,
     indicator: ProgressIndicator?,
     console: ConsoleView,
-    device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
   ): Int? {
     val outputReceiver = RecordOutputReceiver { indicator?.isCanceled == true }
     val consoleReceiver = ConsoleOutputReceiver({ indicator?.isCanceled == true }, console)
     val indexReceiver = AddTileCommandResultReceiver { indicator?.isCanceled == true }
     val receiver = MultiReceiver(outputReceiver, consoleReceiver, indexReceiver)
     try {
-      val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
       getActivator(app)
         .activate(tileLaunchOptions.componentType, tileLaunchOptions.componentName!!, mode, receiver.asDeployerReceiver(), deviceHolder)
     } catch (ex: DeployerException) {

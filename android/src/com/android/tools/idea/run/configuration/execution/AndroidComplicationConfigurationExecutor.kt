@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.run.configuration.execution
 
-import com.android.adblib.ConnectedDevice
 import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.common.DeployerException
@@ -66,7 +65,7 @@ class AndroidComplicationConfigurationExecutor(
   @WorkerThread
   override fun launch(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: App,
     console: ConsoleView,
     isDebug: Boolean,
@@ -91,20 +90,20 @@ class AndroidComplicationConfigurationExecutor(
 
     ProgressManager.checkCanceled()
 
-    installWatchApp(device, connectedDevice, console, indicator)
+    installWatchApp(device, deviceHolder, console, indicator)
 
     if (isDebug) {
       // There is a bug in complication that right after the app with complication was installed, which is for configurations every time, if
       // you try immediately launch it for debug it fails with error, work around is launch and immediately stop before launching for debug.
       complicationLaunchOptions.chosenSlots.first().let { slot ->
-        setComplicationOnWatchFace(app, slot, AppComponent.Mode.RUN, indicator, device, connectedDevice)
+        setComplicationOnWatchFace(app, slot, AppComponent.Mode.RUN, indicator, deviceHolder)
       }
       getStopCallback(console, applicationContext.applicationId, false).invoke(device)
     }
 
     indicator.text = "Setting up complication..."
     complicationLaunchOptions.chosenSlots.forEach { slot ->
-      setComplicationOnWatchFace(app, slot, mode, indicator, device, connectedDevice)
+      setComplicationOnWatchFace(app, slot, mode, indicator, deviceHolder)
     }
     showWatchFace(device, console, indicator)
   }
@@ -114,8 +113,7 @@ class AndroidComplicationConfigurationExecutor(
     slot: ChosenSlot,
     mode: AppComponent.Mode,
     indicator: ProgressIndicator?,
-    device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
   ) {
     if (slot.type == null) {
       throw ExecutionException("Slot type is not specified for slot(id: ${slot.id}).")
@@ -123,7 +121,6 @@ class AndroidComplicationConfigurationExecutor(
     val receiver = RecordOutputReceiver { indicator?.isCanceled == true }
 
     val watchFaceInfo = "${complicationLaunchOptions.watchFaceInfo.appId} ${complicationLaunchOptions.watchFaceInfo.watchFaceFQName}"
-    val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
     try {
       getActivator(app)
         .activate(
@@ -148,7 +145,7 @@ class AndroidComplicationConfigurationExecutor(
     }
   }
 
-  private fun installWatchApp(device: IDevice, connectedDevice: ConnectedDevice?, console: ConsoleView, indicator: ProgressIndicator): App {
+  private fun installWatchApp(device: IDevice, deviceHolder: DeviceHolder, console: ConsoleView, indicator: ProgressIndicator): App {
     val watchFaceInfo = complicationLaunchOptions.watchFaceInfo
 
     val apkInfo = ApkInfo(File(watchFaceInfo.apk), watchFaceInfo.appId)
@@ -157,7 +154,7 @@ class AndroidComplicationConfigurationExecutor(
     val containsMakeBeforeRun = configuration.beforeRunTasks.any { it.isEnabled }
 
     return applicationDeployer
-      .fullDeploy(device, connectedDevice, apkInfo, appRunSettings.deployOptions, containsMakeBeforeRun, indicator, null)
+      .fullDeploy(device, deviceHolder, apkInfo, appRunSettings.deployOptions, containsMakeBeforeRun, indicator, null)
       .app
   }
 

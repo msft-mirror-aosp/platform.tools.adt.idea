@@ -23,6 +23,7 @@ import com.android.fakeadbserver.ShellProtocolType
 import com.android.fakeadbserver.services.ShellCommandOutput
 import com.android.fakeadbserver.services.StatusWriter
 import com.android.fakeadbserver.shellcommandhandlers.SimpleShellHandler
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.deployer.model.component.WearWidget.ShellCommand.GET_PROTOLAYOUT_RENDERER_VERSION
 import com.android.tools.idea.execution.common.AppRunSettings
 import com.android.tools.idea.execution.common.DeployOptions
@@ -97,7 +98,10 @@ class AndroidWearWidgetConfigurationExecutorTest : AndroidConfigurationExecutorB
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
     val executor = createExecutor(device)
 
-    val exception = assertThrows(ExecutionException::class.java) { executor.launch(device, null, mock(), mock(), isDebug = false, mock()) }
+    val exception =
+      assertThrows(ExecutionException::class.java) {
+        executor.launch(device, DeviceHolder(device.serialNumber, null), mock(), mock(), isDebug = false, mock())
+      }
 
     assertThat(exception.message).contains("Protolayout renderer was not found on the device.")
     assertThat(exception.message).contains("Wear Widgets require version 1.6.1 or higher")
@@ -119,7 +123,10 @@ class AndroidWearWidgetConfigurationExecutorTest : AndroidConfigurationExecutorB
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
     val executor = createExecutor(device)
 
-    val exception = assertThrows(ExecutionException::class.java) { executor.launch(device, null, mock(), mock(), isDebug = false, mock()) }
+    val exception =
+      assertThrows(ExecutionException::class.java) {
+        executor.launch(device, DeviceHolder(device.serialNumber, null), mock(), mock(), isDebug = false, mock())
+      }
 
     assertThat(exception.message).contains("The Protolayout renderer version on the device (1.6.0) is too low.")
     assertThat(exception.message).contains("Wear Widgets require version 1.6.1 or higher")

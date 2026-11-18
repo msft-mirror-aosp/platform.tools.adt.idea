@@ -16,7 +16,6 @@
 
 package com.android.tools.idea.run.tasks
 
-import com.android.adblib.ConnectedDevice
 import com.android.adblib.DeviceInfo
 import com.android.adblib.DeviceList
 import com.android.adblib.DevicePropertyNames
@@ -30,6 +29,7 @@ import com.android.sdklib.AndroidVersion
 import com.android.tools.deployer.Deployer
 import com.android.tools.deployer.common.ApkVerifierTracker
 import com.android.tools.deployer.common.Canceller
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.deployer.common.InstallOptions
 import com.android.tools.deployer.model.App
 import com.android.tools.idea.run.ApkInfo
@@ -76,103 +76,103 @@ class DeployTaskTest {
 
   @Test
   fun testDeploy() {
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.BASE)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.BASE)
     val expectedOptions = InstallOptions.builder().setAllowDebuggable().build()
 
     val deployTask = makeDeployTaskForTesting()
-    deployTask.perform(device, connectedDevice, deployer, mock(ApkInfo::class.java), canceller)
+    deployTask.perform(device, deviceHolder, deployer, mock(ApkInfo::class.java), canceller)
     verify(deployer, atLeast(1)).install(any(), eq(expectedOptions), any())
   }
 
   @Test
   fun testDeployWithUserPmOptions() {
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.BASE)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.BASE)
     val expectedOptions = InstallOptions.builder().setAllowDebuggable().setUserInstallOptions("-v").build()
 
     val deployTask = makeDeployTaskForTesting(userInstallOptions = "-v")
-    deployTask.perform(device, connectedDevice, deployer, mock(ApkInfo::class.java), canceller)
+    deployTask.perform(device, deviceHolder, deployer, mock(ApkInfo::class.java), canceller)
     verify(deployer, atLeast(1)).install(any(), eq(expectedOptions), any())
   }
 
   @Test
   fun testDeployEmbedded() {
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.BASE, embedded = true)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.BASE, embedded = true)
     val expectedOptions = InstallOptions.builder().setAllowDebuggable().setGrantAllPermissions().build()
 
     val deployTask = makeDeployTaskForTesting()
-    deployTask.perform(device, connectedDevice, deployer, mock(ApkInfo::class.java), canceller)
+    deployTask.perform(device, deviceHolder, deployer, mock(ApkInfo::class.java), canceller)
     verify(deployer, atLeast(1)).install(any(), eq(expectedOptions), any())
   }
 
   @Test
   fun testDeployEmbeddedWithUserPmOptions() {
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.BASE, embedded = true)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.BASE, embedded = true)
     val expectedOptions = InstallOptions.builder().setAllowDebuggable().setGrantAllPermissions().setUserInstallOptions("-v").build()
 
     val deployTask = makeDeployTaskForTesting(userInstallOptions = "-v")
-    deployTask.perform(device, connectedDevice, deployer, mock(ApkInfo::class.java), canceller)
+    deployTask.perform(device, deviceHolder, deployer, mock(ApkInfo::class.java), canceller)
     verify(deployer, atLeast(1)).install(any(), eq(expectedOptions), any())
   }
 
   @Test
   fun testDeployApi28() {
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.P)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.P)
     val expectedOptions = InstallOptions.builder().setAllowDebuggable().setInstallFullApk().setDontKill().build()
 
     val deployTask = makeDeployTaskForTesting()
-    deployTask.perform(device, connectedDevice, deployer, mock(ApkInfo::class.java), canceller)
+    deployTask.perform(device, deviceHolder, deployer, mock(ApkInfo::class.java), canceller)
     verify(deployer, atLeast(1)).install(any(), eq(expectedOptions), any())
   }
 
   @Test
   @Ignore("b/389067070")
   fun testDeployApi33() {
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.TIRAMISU)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.TIRAMISU)
     val expectedOptions = InstallOptions.builder().setAllowDebuggable().setInstallFullApk().build()
 
     val deployTask = makeDeployTaskForTesting()
-    deployTask.perform(device, connectedDevice, deployer, mock(ApkInfo::class.java), canceller)
+    deployTask.perform(device, deviceHolder, deployer, mock(ApkInfo::class.java), canceller)
     verify(deployer, atLeast(1)).install(any(), eq(expectedOptions), any())
     verify(device, never()).forceStop(any())
   }
 
   @Test
   fun testDeployApi28WithUserPmOptions() {
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.P)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.P)
     val expectedOptions =
       InstallOptions.builder().setAllowDebuggable().setInstallFullApk().setDontKill().setUserInstallOptions("-v").build()
 
     val deployTask = makeDeployTaskForTesting(userInstallOptions = "-v")
-    deployTask.perform(device, connectedDevice, deployer, mock(ApkInfo::class.java), canceller)
+    deployTask.perform(device, deviceHolder, deployer, mock(ApkInfo::class.java), canceller)
     verify(deployer, atLeast(1)).install(any(), eq(expectedOptions), any())
   }
 
   @Test
   fun testDeployToCurrentUserOnly() {
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.P)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.P)
     val expectedOptions =
       InstallOptions.builder().setAllowDebuggable().setInstallOnUser(InstallOptions.CURRENT_USER).setInstallFullApk().setDontKill().build()
 
     val deployTask = makeDeployTaskForTesting(installOnAllUsers = false)
-    deployTask.perform(device, connectedDevice, deployer, mock(ApkInfo::class.java), canceller)
+    deployTask.perform(device, deviceHolder, deployer, mock(ApkInfo::class.java), canceller)
     verify(deployer, atLeast(1)).install(any(), eq(expectedOptions), any())
   }
 
   @Test
   fun testDeployPostInstallForceStopPreN() {
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.BASE)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.BASE)
 
     val deployTask = makeDeployTaskForTesting()
-    deployTask.perform(device, connectedDevice, deployer, mock(ApkInfo::class.java), canceller)
+    deployTask.perform(device, deviceHolder, deployer, mock(ApkInfo::class.java), canceller)
     verify(device, never()).forceStop(any())
   }
 
   @Test
   fun testDeployPostInstallForceStopPostN() {
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.N)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.N)
 
     val deployTask = makeDeployTaskForTesting()
-    deployTask.perform(device, connectedDevice, deployer, mock(ApkInfo::class.java), canceller)
+    deployTask.perform(device, deviceHolder, deployer, mock(ApkInfo::class.java), canceller)
     verify(device, times(1)).forceStop(any())
   }
 
@@ -181,8 +181,8 @@ class DeployTaskTest {
     val expectedOptions =
       InstallOptions.builder().setAllowDebuggable().setGrantAllPermissions().setForceQueryable().setInstallFullApk().setDontKill().build()
 
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.R)
-    deployApkWithRequiredInstallOptions(device, connectedDevice)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.R)
+    deployApkWithRequiredInstallOptions(device, deviceHolder)
 
     verify(deployer).install(any(), eq(expectedOptions), any())
     verify(device, times(1)).forceStop(any())
@@ -192,8 +192,8 @@ class DeployTaskTest {
   fun testDeployApkWithRequiredInstallOptionsOnApi29() {
     val expectedOptions = InstallOptions.builder().setAllowDebuggable().setGrantAllPermissions().setInstallFullApk().setDontKill().build()
 
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.Q)
-    deployApkWithRequiredInstallOptions(device, connectedDevice)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.Q)
+    deployApkWithRequiredInstallOptions(device, deviceHolder)
 
     verify(deployer).install(any(), eq(expectedOptions), any())
   }
@@ -202,29 +202,28 @@ class DeployTaskTest {
   fun testDeployApkWithRequiredInstallOptionsOnApi22() {
     val expectedOptions = InstallOptions.builder().setAllowDebuggable().build()
 
-    val (device, connectedDevice) = setupDevice(AndroidVersion.VersionCodes.LOLLIPOP_MR1)
-    deployApkWithRequiredInstallOptions(device, connectedDevice)
+    val (device, deviceHolder) = setupDevice(AndroidVersion.VersionCodes.LOLLIPOP_MR1)
+    deployApkWithRequiredInstallOptions(device, deviceHolder)
 
     verify(deployer).install(any(), eq(expectedOptions), any())
     verify(device, never()).forceStop(any())
   }
 
-  private fun deployApkWithRequiredInstallOptions(device: IDevice, connectedDevice: ConnectedDevice) {
+  private fun deployApkWithRequiredInstallOptions(device: IDevice, deviceHolder: DeviceHolder) {
     val mockApkInfo = mock(ApkInfo::class.java)
     whenever(mockApkInfo.requiredInstallOptions)
       .thenReturn(setOf(ApkInfo.AppInstallOption.FORCE_QUERYABLE, ApkInfo.AppInstallOption.GRANT_ALL_PERMISSIONS))
 
     val deployTask = makeDeployTaskForTesting(listOf(mockApkInfo))
-    deployTask.perform(device, connectedDevice, deployer, mockApkInfo, canceller)
+    deployTask.perform(device, deviceHolder, deployer, mockApkInfo, canceller)
   }
 
   private fun setupDevice(
     apiLevel: Int,
     embedded: Boolean = false,
-  ): Pair<IDevice, ConnectedDevice> {
+  ): Pair<IDevice, DeviceHolder> {
     val serialNumber = "1234"
     val device = mock(IDevice::class.java)
-    whenever(device.serialNumber).thenReturn(serialNumber)
     whenever(device.supportsFeature(IDevice.HardwareFeature.EMBEDDED)).thenReturn(embedded)
     whenever(device.version).thenReturn(AndroidVersion(apiLevel))
 
@@ -240,7 +239,7 @@ class DeployTaskTest {
       DeviceSelector.fromSerialNumber(serialNumber),
       properties,
     )
-    return Pair(device, connectedDevice)
+    return Pair(device, DeviceHolder(connectedDevice))
   }
 
   private fun makeDeployTaskForTesting(

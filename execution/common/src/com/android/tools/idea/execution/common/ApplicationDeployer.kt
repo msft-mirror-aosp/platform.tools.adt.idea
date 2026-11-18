@@ -15,11 +15,11 @@
  */
 package com.android.tools.idea.execution.common
 
-import com.android.adblib.ConnectedDevice
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.Deployer
 import com.android.tools.deployer.DeployerApplicationTerminator
 import com.android.tools.deployer.common.DeployerException
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.idea.run.ApkInfo
 import com.intellij.openapi.progress.ProgressIndicator
 
@@ -28,7 +28,7 @@ interface ApplicationDeployer {
   @Throws(DeployerException::class)
   fun fullDeploy(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: ApkInfo,
     deployOptions: DeployOptions,
     hasMakeBeforeRun: Boolean,
@@ -39,7 +39,7 @@ interface ApplicationDeployer {
   @Throws(DeployerException::class)
   fun applyChangesDeploy(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: ApkInfo,
     deployOptions: DeployOptions,
     hasMakeBeforeRun: Boolean,
@@ -49,7 +49,7 @@ interface ApplicationDeployer {
   @Throws(DeployerException::class)
   fun applyCodeChangesDeploy(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: ApkInfo,
     deployOptions: DeployOptions,
     hasMakeBeforeRun: Boolean,

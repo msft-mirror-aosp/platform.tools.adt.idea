@@ -18,6 +18,7 @@ package com.android.tools.idea.run.activity.launch
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.IShellOutputReceiver
 import com.android.tools.analytics.UsageTrackerRule
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.idea.execution.common.assertTaskPresentedInStats
 import com.android.tools.idea.execution.common.stats.RunStats
 import com.android.tools.idea.run.configuration.execution.createApp
@@ -43,7 +44,8 @@ class DeepLinkLaunchTest {
 
     val app = createApp("com.example.myapplication", emptyList(), ArrayList(setOf("com.example.myapplication.MainActivity")))
     val stats = RunStats(projectRule.project)
-    state.launch(device, null, app, { emptyList() }, false, "", EmptyTestConsoleView(), stats)
+    // DeepLinkLaunch.State doesn't use the DeviceHolder, so it doesn't need a ConnectedDevice.
+    state.launch(device, DeviceHolder("1234", null), app, { emptyList() }, false, "", EmptyTestConsoleView(), stats)
 
     stats.success()
     assertTaskPresentedInStats(usageTrackerRule.usages, "LAUNCH_DEEP_LINK")

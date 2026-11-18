@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.run.activity.launch
 
-import com.android.adblib.ConnectedDevice
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.Activator
 import com.android.tools.deployer.common.DeviceHolder
@@ -50,7 +49,7 @@ abstract class LaunchOptionState {
   @Throws(ExecutionException::class)
   fun launch(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: App,
     apkProvider: ApkProvider,
     isDebug: Boolean,
@@ -58,13 +57,13 @@ abstract class LaunchOptionState {
     console: ConsoleView,
     stats: RunStats,
   ): Boolean {
-    return stats.track(id) { doLaunch(device, connectedDevice, app, apkProvider, isDebug, extraFlags, console) }
+    return stats.track(id) { doLaunch(device, deviceHolder, app, apkProvider, isDebug, extraFlags, console) }
   }
 
   @Throws(ExecutionException::class)
   protected abstract fun doLaunch(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: App,
     apkProvider: ApkProvider,
     isDebug: Boolean,
@@ -83,7 +82,7 @@ abstract class ActivityLaunchOptionState : ComponentLaunchOptions, LaunchOptionS
 
   override fun doLaunch(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: App,
     apkProvider: ApkProvider,
     isDebug: Boolean,
@@ -95,7 +94,6 @@ abstract class ActivityLaunchOptionState : ComponentLaunchOptions, LaunchOptionS
     val activityQualifiedName = getQualifiedActivityName(device, apkProvider, app.appId)
     val receiver = AndroidBackgroundTaskReceiver(console)
     val activator = Activator(app, ConsoleLogger(logger, console))
-    val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
     activator.activate(componentType, activityQualifiedName, extraFlags, mode, receiver.asDeployerReceiver(), deviceHolder)
     val matcher = activityDoesNotExistPattern.matcher(receiver.output.joinToString())
     if (matcher.find()) {

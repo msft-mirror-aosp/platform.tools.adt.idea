@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.run
 
-import com.android.adblib.ConnectedDevice
 import com.android.adblib.testingutils.CloseablesRule
 import com.android.ddmlib.AndroidDebugBridge
 import com.android.ddmlib.IDevice
@@ -30,6 +29,7 @@ import com.android.tools.analytics.UsageTrackerRule
 import com.android.tools.deployer.Deployer
 import com.android.tools.deployer.DeployerApplicationTerminator
 import com.android.tools.deployer.common.DeployerException
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.idea.backup.BackupManager
 import com.android.tools.idea.backup.BackupManager.Source.RUN_CONFIG
 import com.android.tools.idea.backup.testing.FakeBackupManager
@@ -573,7 +573,7 @@ class AndroidRunConfigurationExecutorTest {
           object : ApplicationDeployer {
             override fun fullDeploy(
               device: IDevice,
-              connectedDevice: ConnectedDevice?,
+              deviceHolder: DeviceHolder,
               app: ApkInfo,
               deployOptions: DeployOptions,
               hasMakeBeforeRun: Boolean,
@@ -585,7 +585,7 @@ class AndroidRunConfigurationExecutorTest {
 
             override fun applyChangesDeploy(
               device: IDevice,
-              connectedDevice: ConnectedDevice?,
+              deviceHolder: DeviceHolder,
               app: ApkInfo,
               deployOptions: DeployOptions,
               hasMakeBeforeRun: Boolean,
@@ -596,7 +596,7 @@ class AndroidRunConfigurationExecutorTest {
 
             override fun applyCodeChangesDeploy(
               device: IDevice,
-              connectedDevice: ConnectedDevice?,
+              deviceHolder: DeviceHolder,
               app: ApkInfo,
               deployOptions: DeployOptions,
               hasMakeBeforeRun: Boolean,
@@ -786,7 +786,7 @@ class AndroidRunConfigurationExecutorTest {
     object : ApplicationDeployer {
       override fun fullDeploy(
         deviceToInstall: IDevice,
-        connectedDevice: ConnectedDevice?,
+        deviceHolder: DeviceHolder,
         app: ApkInfo,
         deployOptions: DeployOptions,
         hasMakeBeforeRun: Boolean,
@@ -804,7 +804,7 @@ class AndroidRunConfigurationExecutorTest {
 
       override fun applyChangesDeploy(
         deviceToInstall: IDevice,
-        connectedDevice: ConnectedDevice?,
+        deviceHolder: DeviceHolder,
         app: ApkInfo,
         deployOptions: DeployOptions,
         hasMakeBeforeRun: Boolean,
@@ -821,7 +821,7 @@ class AndroidRunConfigurationExecutorTest {
 
       override fun applyCodeChangesDeploy(
         deviceToInstall: IDevice,
-        connectedDevice: ConnectedDevice?,
+        deviceHolder: DeviceHolder,
         app: ApkInfo,
         deployOptions: DeployOptions,
         hasMakeBeforeRun: Boolean,

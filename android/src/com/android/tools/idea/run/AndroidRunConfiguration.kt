@@ -15,9 +15,9 @@
  */
 package com.android.tools.idea.run
 
-import com.android.adblib.ConnectedDevice
 import com.android.ddmlib.IDevice
 import com.android.sdklib.AndroidVersion
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.deployer.model.App
 import com.android.tools.deployer.model.component.ComponentType
 import com.android.tools.idea.backup.BackupManager
@@ -242,7 +242,7 @@ open class AndroidRunConfiguration(internal val project: Project, factory: Confi
   open fun launch(
     app: App,
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     facet: AndroidFacet,
     contributorsAmStartOptions: String,
     isDebug: Boolean,
@@ -261,7 +261,7 @@ open class AndroidRunConfiguration(internal val project: Project, factory: Confi
       extraFlags += (if (extraFlags.isEmpty()) "" else " ") + "--splashscreen-show-icon"
     }
     val startActivityFlagsProvider = DefaultStartActivityFlagsProvider(project, isDebug, extraFlags)
-    return state.launch(device, connectedDevice, app, apkProvider, isDebug, startActivityFlagsProvider.getFlags(device), consoleView, stats)
+    return state.launch(device, deviceHolder, app, apkProvider, isDebug, startActivityFlagsProvider.getFlags(device), consoleView, stats)
   }
 
   /**

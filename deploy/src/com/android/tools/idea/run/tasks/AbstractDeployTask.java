@@ -18,7 +18,6 @@ package com.android.tools.idea.run.tasks;
 
 
 import com.android.adblib.AdbSession;
-import com.android.adblib.ConnectedDevice;
 import com.android.ddmlib.AdbHelper;
 import com.android.ddmlib.IDevice;
 import com.android.ide.common.build.BaselineProfileDetails;
@@ -75,7 +74,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public abstract class AbstractDeployTask {
 
@@ -114,7 +112,7 @@ public abstract class AbstractDeployTask {
   }
 
   public List<Deployer.Result> run(@NotNull IDevice device,
-                                   @Nullable ConnectedDevice connectedDevice,
+                                   @NotNull DeviceHolder deviceHolder,
                                    ProgressIndicator indicator)
             throws DeployerException {
     Canceller canceller = new Canceller() {
@@ -135,7 +133,6 @@ public abstract class AbstractDeployTask {
     long wallClockStartMs = System.currentTimeMillis();
 
     AdbSession adbSession = AdbLibService.getSession(myProject);
-    DeviceHolder deviceHolder = new DeviceHolder(device.getSerialNumber(), connectedDevice);
     AdbClient adb = new AdbClient(deviceHolder, logger, adbSession);
 
     AdbHelper.setAbbExecAllowed(StudioFlags.DDMLIB_ABB_EXEC_INSTALL_ENABLE.get());
@@ -168,7 +165,7 @@ public abstract class AbstractDeployTask {
     List<String> idsSkippedInstall = new ArrayList<>();
     List<Deployer.Result> results = new ArrayList<>();
     for (ApkInfo apkInfo : myPackages) {
-      Deployer.Result result = perform(device, connectedDevice, deployer, apkInfo, canceller);
+      Deployer.Result result = perform(device, deviceHolder, deployer, apkInfo, canceller);
 
       if (result.skippedInstall) {
         idsSkippedInstall.add(apkInfo.getApplicationId());
@@ -203,7 +200,7 @@ public abstract class AbstractDeployTask {
 
   protected abstract String getDescription();
 
-  abstract protected Deployer.Result perform(IDevice device, @Nullable ConnectedDevice connectedDevice, Deployer deployer, @NotNull ApkInfo apkInfo, @NotNull Canceller canceller)
+  abstract protected Deployer.Result perform(IDevice device, @NotNull DeviceHolder deviceHolder, Deployer deployer, @NotNull ApkInfo apkInfo, @NotNull Canceller canceller)
     throws DeployerException;
 
   @NotNull

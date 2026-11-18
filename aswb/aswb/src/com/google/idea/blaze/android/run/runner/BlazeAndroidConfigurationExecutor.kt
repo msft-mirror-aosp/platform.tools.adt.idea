@@ -15,17 +15,16 @@
  */
 package com.google.idea.blaze.android.run.runner
 
-import com.android.adblib.ConnectedDevice
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.common.ApkVerifierTracker
 import com.android.tools.deployer.common.DeviceHolder
-import com.android.tools.idea.adblib.toConnectedDevice
 import com.android.tools.idea.editors.liveedit.LiveEditService
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AndroidSessionInfo
 import com.android.tools.idea.execution.common.ApplicationTerminator
 import com.android.tools.idea.execution.common.DeployOptions
 import com.android.tools.idea.execution.common.clearAppStorage
+import com.android.tools.idea.execution.common.deploy.toDeviceHolder
 import com.android.tools.idea.execution.common.getProcessHandlersForDevices
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
 import com.android.tools.idea.execution.common.stats.RunStats
@@ -52,7 +51,6 @@ import com.intellij.execution.runners.ExecutionEnvironment
 import com.intellij.execution.ui.ConsoleView
 import com.intellij.execution.ui.RunContentDescriptor
 import com.intellij.openapi.application.EDT
-import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.runBlockingCancellable
 import java.text.SimpleDateFormat
@@ -78,7 +76,6 @@ class BlazeAndroidConfigurationExecutor(
 
   val project = env.project
   override val configuration = env.runProfile as RunConfiguration
-  private val LOG = Logger.getInstance(this::class.java)
 
   override fun run(indicator: ProgressIndicator): RunContentDescriptor = runBlockingCancellable {
     val applicationId = applicationContext.applicationId
@@ -108,7 +105,7 @@ class BlazeAndroidConfigurationExecutor(
     createRunContentDescriptor(processHandler, console, env)
   }
 
-  private suspend fun getTasks(device: IDevice, isDebug: Boolean): List<BlazeLaunchTask> {
+  private fun getTasks(device: IDevice, deviceHolder: DeviceHolder, isDebug: Boolean): List<BlazeLaunchTask> {
     return buildList {
       val launchTasks = this
       val packageName = runContext.applicationProjectContext.applicationId
@@ -124,11 +121,6 @@ class BlazeAndroidConfigurationExecutor(
 
       if (launchOptions.isDeploy) {
         val userIdFlags = UserIdHelper.getFlagsFromUserId(userId)
-        val connectedDevice = device.toConnectedDevice(project)
-        if (connectedDevice == null) {
-          LOG.warn("ConnectedDevice lookup for serial ${device.serialNumber} failed to find a device")
-        }
-        val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
         val skipVerification = ApkVerifierTracker.getSkipVerificationInstallationFlag(deviceHolder, packageName)
         val pmInstallOption = if (skipVerification != null) "$userIdFlags $skipVerification" else userIdFlags
         val deployOptions =
@@ -187,12 +179,9 @@ class BlazeAndroidConfigurationExecutor(
             }
 
             LaunchUtils.initiateDismissKeyguard(device)
-            val connectedDevice = device.toConnectedDevice(project)
-            if (connectedDevice == null) {
-              LOG.warn("ConnectedDevice lookup for serial ${device.serialNumber} failed to find a device")
-            }
-            val launchContext = BlazeLaunchContext(env, device, connectedDevice, console, processHandler, indicator, applicationContext)
-            getTasks(device, isDebug).forEach { it.run(launchContext) }
+            val deviceHolder = device.toDeviceHolder(project)
+            val launchContext = BlazeLaunchContext(env, device, deviceHolder, console, processHandler, indicator, applicationContext)
+            getTasks(device, deviceHolder, isDebug).forEach { it.run(launchContext) }
             LiveEditHelper()
               .invokeLiveEdit(
                 liveEditService,
@@ -278,7 +267,7 @@ interface BlazeLaunchTask {
 class BlazeLaunchContext(
   val env: ExecutionEnvironment,
   val device: IDevice,
-  val connectedDevice: ConnectedDevice? = null,
+  val deviceHolder: DeviceHolder,
   val consoleView: ConsoleView,
   val processHandler: ProcessHandler,
   val progressIndicator: ProgressIndicator,

@@ -15,18 +15,17 @@
  */
 package com.android.tools.idea.run.tasks;
 
-import com.android.adblib.ConnectedDevice;
 import com.android.ddmlib.IDevice;
 import com.android.tools.deployer.Deployer;
 import com.android.tools.deployer.common.Canceller;
 import com.android.tools.deployer.common.DeployerException;
+import com.android.tools.deployer.common.DeviceHolder;
 import com.android.tools.idea.run.ApkInfo;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import java.util.Collection;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class ApplyChangesTask extends AbstractDeployTask {
 
@@ -56,7 +55,7 @@ public class ApplyChangesTask extends AbstractDeployTask {
 
   @Override
   protected Deployer.Result perform(IDevice device,
-                                    @Nullable ConnectedDevice connectedDevice,
+                                    @NotNull DeviceHolder deviceHolder,
                                     Deployer deployer,
                                     @NotNull ApkInfo apkInfo,
                                     @NotNull Canceller canceller) throws DeployerException {

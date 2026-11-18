@@ -10,8 +10,8 @@ import com.android.testutils.VirtualTimeScheduler
 import com.android.tools.adblib.testutils.FakeAdbServerAdbLibRule
 import com.android.tools.analytics.TestUsageTracker
 import com.android.tools.analytics.UsageTracker
-import com.android.tools.idea.adblib.toConnectedDevice
 import com.android.tools.idea.execution.common.DeployOptions
+import com.android.tools.idea.execution.common.deploy.toDeviceHolder
 import com.android.tools.idea.execution.common.stats.RunStatsService
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.run.ApkInfo
@@ -65,7 +65,7 @@ class ApplicationDeployerImplTest {
       hostConnectionType = DeviceState.HostConnectionType.USB,
     )
     val device = AndroidDebugBridge.getBridge()!!.devices.single()
-    val connectedDevice = device.toConnectedDevice(projectRule.project)
+    val deviceHolder = device.toDeviceHolder(projectRule.project)
 
     val runStat = RunStatsService.get(projectRule.project).create()
 
@@ -77,7 +77,7 @@ class ApplicationDeployerImplTest {
     val apkInfo = ApkInfo(apk.toFile(), "com.example.myapplication")
 
     val deployOptions = DeployOptions(emptyList(), "", true, true, false)
-    deployer.fullDeploy(device, connectedDevice, apkInfo, deployOptions, true, EmptyProgressIndicator(), null)
+    deployer.fullDeploy(device, deviceHolder, apkInfo, deployOptions, true, EmptyProgressIndicator(), null)
 
     runStat.success()
 

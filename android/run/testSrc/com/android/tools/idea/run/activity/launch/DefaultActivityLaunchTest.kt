@@ -20,6 +20,7 @@ import com.android.adblib.DeviceSelector
 import com.android.adblib.serialNumber
 import com.android.adblib.testing.FakeAdbSession
 import com.android.ddmlib.IDevice
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.deployer.model.App
 import com.android.tools.idea.execution.common.AndroidExecutionException
 import com.android.tools.idea.execution.common.stats.RunStats
@@ -41,7 +42,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.whenever
 
 @RunsInEdt
 class DefaultActivityLaunchTest {
@@ -56,17 +56,18 @@ class DefaultActivityLaunchTest {
   lateinit var stats: RunStats
   lateinit var fakeSession: FakeAdbSession
   lateinit var connectedDevice: ConnectedDevice
+  lateinit var deviceHolder: DeviceHolder
 
   @Before
   fun setUp() {
     myFixture.testDataPath = AndroidTestBase.getTestDataPath()
     fakeSession = FakeAdbSession()
     connectedDevice = fakeSession.createConnectedDevice("1234", 31)
+    deviceHolder = DeviceHolder(connectedDevice)
     // apkWithDefaultActivity.apk contains simple project with basic activity `com.example.myapplication.MainActivity`.
     apk = "${myFixture.testDataPath}/configurations/activity/apkWithDefaultActivity.apk"
     state = DefaultActivityLaunch.State()
     device = mock<IDevice>()
-    whenever(device.serialNumber).thenReturn("1234")
     app = createApp("com.example.myapplication", emptyList(), ArrayList(setOf("com.example.myapplication.MainActivity")))
     stats = RunStats(myFixture.project)
   }
@@ -84,7 +85,7 @@ class DefaultActivityLaunchTest {
     fakeSession.deviceServices.configureShellCommand(DeviceSelector.fromSerialNumber(connectedDevice.serialNumber), command, "")
 
     // Act
-    state.launch(device, connectedDevice, app, TestApksProvider(apk, "com.example.myapplication"), false, "", EmptyTestConsoleView(), stats)
+    state.launch(device, deviceHolder, app, TestApksProvider(apk, "com.example.myapplication"), false, "", EmptyTestConsoleView(), stats)
 
     // Assert
     assertContentEquals(listOf(command), fakeSession.deviceServices.shellRequests.map { it.command })
@@ -106,7 +107,7 @@ class DefaultActivityLaunchTest {
       )
 
     // Act
-    state.launch(device, connectedDevice, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats)
+    state.launch(device, deviceHolder, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats)
 
     // Assert
     assertContentEquals(listOf(command), fakeSession.deviceServices.shellRequests.map { it.command })
@@ -126,7 +127,7 @@ class DefaultActivityLaunchTest {
     // Act
     val exception =
       assertFailsWith<IllegalStateException> {
-        state.launch(device, connectedDevice, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats)
+        state.launch(device, deviceHolder, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats)
       }
 
     // Assert
@@ -147,7 +148,7 @@ class DefaultActivityLaunchTest {
     // Act
     val exception =
       assertFailsWith<IllegalStateException> {
-        state.launch(device, connectedDevice, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats)
+        state.launch(device, deviceHolder, app, multiApkProvider, false, "", EmptyTestConsoleView(), stats)
       }
 
     // Assert
@@ -171,7 +172,7 @@ Projects:
     // Act
     val exception =
       assertFailsWith<AndroidExecutionException> {
-        state.launch(device, connectedDevice, app, emptyApkProvider, false, "", EmptyTestConsoleView(), stats)
+        state.launch(device, deviceHolder, app, emptyApkProvider, false, "", EmptyTestConsoleView(), stats)
       }
 
     // Assert

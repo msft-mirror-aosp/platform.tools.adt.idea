@@ -15,19 +15,19 @@
  */
 package com.android.tools.idea.run.configuration.execution
 
-import com.android.adblib.ConnectedDevice
 import com.android.ddmlib.IDevice
 import com.android.ddmlib.MultiReceiver
 import com.android.tools.deployer.common.DeployerException
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.deployer.model.App
 import com.android.tools.deployer.model.component.ComponentType
 import com.android.tools.deployer.model.component.WatchFace
 import com.android.tools.deployer.modelv1.component.CommandResultReceiverV1
-import com.android.tools.idea.adblib.toConnectedDevice
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AndroidSessionInfo
 import com.android.tools.idea.execution.common.ApplicationDeployer
 import com.android.tools.idea.execution.common.DeployOptions
+import com.android.tools.idea.execution.common.deploy.toDeviceHolder
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
 import com.android.tools.idea.execution.common.stats.RunStats
 import com.android.tools.idea.run.ApkProvider
@@ -94,7 +94,7 @@ class AndroidDeclarativeWatchFaceConfigurationExecutor(
     val console = createConsole()
     val processHandler = AndroidProcessHandler(applicationId, getStopWatchFaceCallback(console, isDebug = false))
 
-    val onDevice: (IDevice, ConnectedDevice?) -> Unit = { device, connectedDevice ->
+    val onDevice: (IDevice, DeviceHolder) -> Unit = { device, deviceHolder ->
       LOG.info("Launching on device ${device.name}")
 
       val result =
@@ -104,7 +104,7 @@ class AndroidDeclarativeWatchFaceConfigurationExecutor(
           val containsMakeBeforeRun = configuration.beforeRunTasks.any { it.isEnabled }
           applicationDeployer.fullDeploy(
             device,
-            connectedDevice,
+            deviceHolder,
             app,
             deployOptions,
             containsMakeBeforeRun,
@@ -124,17 +124,7 @@ class AndroidDeclarativeWatchFaceConfigurationExecutor(
         .showLogcat(environment.project, device, WATCH_FACE_RUNTIME_APPLICATION_ID)
     }
 
-    devices
-      .map { device ->
-        async {
-          val connectedDevice = device.toConnectedDevice(environment.project)
-          if (connectedDevice == null) {
-            LOG.warn("ConnectedDevice lookup for serial ${device.serialNumber} failed to find a device")
-          }
-          onDevice(device, connectedDevice)
-        }
-      }
-      .joinAll()
+    devices.map { device -> async { onDevice(device, device.toDeviceHolder(environment.project)) } }.joinAll()
 
     AndroidSessionInfo.create(processHandler, devices, applicationId)
     createRunContentDescriptor(processHandler, console, environment)

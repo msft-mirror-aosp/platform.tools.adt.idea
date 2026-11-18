@@ -33,6 +33,7 @@ import com.android.adblib.testing.FakeAdbSession;
 import com.android.ddmlib.IDevice;
 import com.android.sdklib.AndroidVersion;
 import com.android.testutils.TestUtils;
+import com.android.tools.deployer.common.DeviceHolder;
 import com.android.tools.deployer.model.App;
 import com.android.tools.idea.execution.common.stats.RunStats;
 import com.android.tools.idea.run.activity.launch.DeepLinkLaunch;
@@ -161,14 +162,13 @@ public class AndroidRunConfigurationTest {
 
     ConsoleView consolePrinter = Mockito.mock(ConsoleView.class);
     IDevice device = Mockito.mock(IDevice.class);
-    when(device.getSerialNumber()).thenReturn(deviceSerial);
     when(device.getVersion()).thenReturn(new AndroidVersion(AndroidVersion.VersionCodes.S_V2));
 
     final App app =
       createApp("com.example.mypackage", Collections.emptyList(), Collections.singletonList("com.example.mypackage.MyActivity"));
     myRunConfiguration.launch(app,
                               device,
-                              connectedDevice,
+                              new DeviceHolder(connectedDevice),
                               getAndroidFacet(myProjectRule.getModule()),
                               "--start-profiler file",
                               false,
@@ -191,13 +191,12 @@ public class AndroidRunConfigurationTest {
 
     ConsoleView consolePrinter = Mockito.mock(ConsoleView.class);
     IDevice device = Mockito.mock(IDevice.class);
-    when(device.getSerialNumber()).thenReturn(deviceSerial1);
     when(device.getVersion()).thenReturn(new AndroidVersion(AndroidVersion.VersionCodes.S_V2));
     final App app =
       createApp("com.example.mypackage", Collections.emptyList(), Collections.singletonList("com.example.mypackage.MyActivity"));
     myRunConfiguration.launch(app,
                               device,
-                              connectedDevice1,
+                              new DeviceHolder(connectedDevice1),
                               getAndroidFacet(myProjectRule.getModule()),
                               "",
                               false,
@@ -211,11 +210,10 @@ public class AndroidRunConfigurationTest {
     String command2 = "am start -n com.example.mypackage/com.example.mypackage.MyActivity " +
         "-a android.intent.action.MAIN -c android.intent.category.LAUNCHER --splashscreen-show-icon";
     fakeSession.getDeviceServices().configureShellCommand(deviceSelector2, command2, "", "", 0);
-    when(device.getSerialNumber()).thenReturn(deviceSerial2);
     when(device.getVersion()).thenReturn(new AndroidVersion(AndroidVersion.VersionCodes.TIRAMISU));
     myRunConfiguration.launch(app,
                               device,
-                              connectedDevice2,
+                              new DeviceHolder(connectedDevice2),
                               getAndroidFacet(myProjectRule.getModule()),
                               "",
                               false,
@@ -279,10 +277,10 @@ public class AndroidRunConfigurationTest {
 
     myRunConfiguration.setLaunchUrl(link);
 
-    // Note that connectedDevice below is null because `DeepLinkLaunch.State` doesn't use ConnectedDevice.
+    // Note that the DeviceHolder below has no ConnectedDevice because `DeepLinkLaunch.State` doesn't use it.
     myRunConfiguration.launch(app,
                               device,
-                              /* connectedDevice=*/ null,
+                              new DeviceHolder("1234", null),
                               getAndroidFacet(myProjectRule.getModule()),
                               extraFlags,
                               false,

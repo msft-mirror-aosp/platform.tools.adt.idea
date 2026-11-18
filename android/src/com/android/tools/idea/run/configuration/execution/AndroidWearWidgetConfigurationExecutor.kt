@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.run.configuration.execution
 
-import com.android.adblib.ConnectedDevice
 import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.CollectingOutputReceiver
 import com.android.ddmlib.IDevice
@@ -76,7 +75,7 @@ class AndroidWearWidgetConfigurationExecutor(
   @WorkerThread
   override fun launch(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: App,
     console: ConsoleView,
     isDebug: Boolean,
@@ -104,7 +103,7 @@ class AndroidWearWidgetConfigurationExecutor(
       console.printlnError(AndroidBundle.message("android.run.configuration.debug.surface.warn"))
     }
 
-    val widgetIndex = setWearWidget(app, mode, indicator, console, device, connectedDevice)
+    val widgetIndex = setWearWidget(app, mode, indicator, console, deviceHolder)
     val showWidgetCommand = SHOW_WEAR_WIDGET_COMMAND + widgetIndex
     val showWidgetReceiver = CommandResultReceiverV1()
     device.executeShellCommand(showWidgetCommand, console, showWidgetReceiver.asIShellOutputReceiver(), indicator = indicator)
@@ -116,14 +115,12 @@ class AndroidWearWidgetConfigurationExecutor(
     mode: AppComponent.Mode,
     indicator: ProgressIndicator?,
     console: ConsoleView,
-    device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
   ): Int {
     val outputReceiver = RecordOutputReceiver { indicator?.isCanceled == true }
     val consoleReceiver = ConsoleOutputReceiver({ indicator?.isCanceled == true }, console)
     val indexReceiver = AddWidgetCommandResultReceiver { indicator?.isCanceled == true }
     val receiver = MultiReceiver(outputReceiver, consoleReceiver, indexReceiver)
-    val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
     try {
       getActivator(app)
         .activate(

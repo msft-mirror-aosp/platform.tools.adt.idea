@@ -15,18 +15,18 @@
  */
 package com.android.tools.idea.run.configuration.execution
 
-import com.android.adblib.ConnectedDevice
 import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.Activator
 import com.android.tools.deployer.common.DeployerException
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.deployer.model.App
-import com.android.tools.idea.adblib.toConnectedDevice
 import com.android.tools.idea.execution.common.AndroidConfigurationExecutor
 import com.android.tools.idea.execution.common.AndroidSessionInfo
 import com.android.tools.idea.execution.common.AppRunSettings
 import com.android.tools.idea.execution.common.ApplicationDeployer
 import com.android.tools.idea.execution.common.ApplicationTerminator
+import com.android.tools.idea.execution.common.deploy.toDeviceHolder
 import com.android.tools.idea.execution.common.processhandler.AndroidProcessHandler
 import com.android.tools.idea.execution.common.stats.RunStats
 import com.android.tools.idea.log.LogWrapper
@@ -79,7 +79,7 @@ abstract class AndroidConfigurationExecutorBase(
     val processHandler = AndroidProcessHandler(applicationId, getStopCallback(console, applicationId, false))
     val terminator = ProcessHandlerApplicationTerminator(indicator, devices, applicationId)
 
-    val onDevice: (IDevice, ConnectedDevice?) -> Unit = { device, connectedDevice ->
+    val onDevice: (IDevice, DeviceHolder) -> Unit = { device, deviceHolder ->
       LOG.info("Launching on device ${device.name}")
 
       try {
@@ -89,14 +89,14 @@ abstract class AndroidConfigurationExecutorBase(
         val result =
           applicationDeployer.fullDeploy(
             device,
-            connectedDevice,
+            deviceHolder,
             app,
             appRunSettings.deployOptions,
             containsMakeBeforeRun,
             indicator,
             terminator,
           )
-        launch(device, connectedDevice, result.app, console, false, indicator)
+        launch(device, deviceHolder, result.app, console, false, indicator)
       } catch (e: DeployerException) {
         throw ExecutionException("Failed to install app '$applicationId'. ${e.details.orEmpty()}", e)
       } catch (e: ExecutionException) {
@@ -106,17 +106,7 @@ abstract class AndroidConfigurationExecutorBase(
       processHandler.addTargetDevice(device)
     }
 
-    devices
-      .map { device ->
-        async {
-          val connectedDevice = device.toConnectedDevice(environment.project)
-          if (connectedDevice == null) {
-            LOG.warn("ConnectedDevice lookup for serial ${device.serialNumber} failed to find a device")
-          }
-          onDevice(device, connectedDevice)
-        }
-      }
-      .joinAll()
+    devices.map { device -> async { onDevice(device, device.toDeviceHolder(environment.project)) } }.joinAll()
 
     AndroidSessionInfo.create(processHandler, devices, applicationId)
     createRunContentDescriptor(processHandler, console, environment)
@@ -139,16 +129,13 @@ abstract class AndroidConfigurationExecutorBase(
     val containsMakeBeforeRun = configuration.beforeRunTasks.any { it.isEnabled }
 
     val terminator = ProcessHandlerApplicationTerminator(indicator, devices, applicationId)
-    val connectedDevice = device.toConnectedDevice(environment.project)
-    if (connectedDevice == null) {
-      LOG.warn("ConnectedDevice lookup for serial ${device.serialNumber} failed to find a device")
-    }
+    val deviceHolder = device.toDeviceHolder(environment.project)
     try {
       indicator.text = "Installing app..."
       val deployResult =
         applicationDeployer.fullDeploy(
           device,
-          connectedDevice,
+          deviceHolder,
           app,
           appRunSettings.deployOptions,
           containsMakeBeforeRun,
@@ -159,7 +146,7 @@ abstract class AndroidConfigurationExecutorBase(
       val runContentDescriptorDeferred =
         async(Dispatchers.Default) { startDebugSession(device, applicationContext, console, indicator).runContentDescriptor }
       indicator.text = "Launching..."
-      launch(device, connectedDevice, deployResult.app, console, true, indicator)
+      launch(device, deviceHolder, deployResult.app, console, true, indicator)
       runContentDescriptorDeferred.await()
     } catch (e: DeployerException) {
       throw ExecutionException("Failed to install app '$applicationId'. ${e.details.orEmpty()}", e)
@@ -187,7 +174,7 @@ abstract class AndroidConfigurationExecutorBase(
   @Throws(ExecutionException::class)
   abstract fun launch(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: App,
     console: ConsoleView,
     isDebug: Boolean,

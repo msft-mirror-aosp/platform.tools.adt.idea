@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.run.configuration.execution
 
-import com.android.adblib.ConnectedDevice
 import com.android.annotations.concurrency.WorkerThread
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.common.DeployerException
@@ -55,7 +54,7 @@ class AndroidWatchFaceConfigurationExecutor(
   @WorkerThread
   override fun launch(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: App,
     console: ConsoleView,
     isDebug: Boolean,
@@ -66,22 +65,15 @@ class AndroidWatchFaceConfigurationExecutor(
     if (version < WATCH_FACE_MIN_DEBUG_SURFACE_VERSION) {
       throw SurfaceVersionException(WATCH_FACE_MIN_DEBUG_SURFACE_VERSION, version, device.isEmulator)
     }
-    setWatchFace(app, mode, indicator, device, connectedDevice)
+    setWatchFace(app, mode, indicator, deviceHolder)
     showWatchFace(device, console, indicator)
   }
 
-  private fun setWatchFace(
-    app: App,
-    mode: AppComponent.Mode,
-    indicator: ProgressIndicator,
-    device: IDevice,
-    connectedDevice: ConnectedDevice?,
-  ) {
+  private fun setWatchFace(app: App, mode: AppComponent.Mode, indicator: ProgressIndicator, deviceHolder: DeviceHolder) {
     indicator.checkCanceled()
     indicator.text = "Launching the watch face"
 
     val outputReceiver = RecordOutputReceiver { indicator.isCanceled == true }
-    val deviceHolder = DeviceHolder(device.serialNumber, connectedDevice)
     try {
       getActivator(app)
         .activate(

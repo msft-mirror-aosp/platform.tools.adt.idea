@@ -22,13 +22,13 @@ import static com.intellij.testFramework.UsefulTestCase.assertEmpty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 import com.android.adblib.ConnectedDevice;
 import com.android.adblib.DeviceSelector;
 import com.android.adblib.testing.FakeAdbSession;
 import com.android.ddmlib.IDevice;
+import com.android.tools.deployer.common.DeviceHolder;
 import com.android.tools.deployer.model.App;
 import com.android.tools.idea.execution.common.stats.RunStats;
 import com.android.tools.idea.run.ValidationError;
@@ -99,11 +99,10 @@ public class SpecificActivityLaunchTest {
     SpecificActivityLaunch.State state = new SpecificActivityLaunch.State();
     state.ACTIVITY_CLASS = "com.example.app.MyActivity";
     IDevice device = mock(IDevice.class);
-    when(device.getSerialNumber()).thenReturn(deviceSerial);
     App app =
         createApp("com.example.app", Collections.emptyList(), new ArrayList<>(Collections.singleton("com.example.app.MyActivity")));
 
-    state.launch(device, connectedDevice, app, new NoApksProvider(), false, "", new EmptyTestConsoleView(), new RunStats(myProjectRule.getProject()));
+    state.launch(device, new DeviceHolder(connectedDevice), app, new NoApksProvider(), false, "", new EmptyTestConsoleView(), new RunStats(myProjectRule.getProject()));
     assertEquals(List.of(command), fakeSession.getDeviceServices().getShellRequests().stream().map(r -> r.getCommand()).toList());
   }
 }

@@ -15,10 +15,10 @@
  */
 package com.android.tools.idea.run.configuration.execution
 
-import com.android.adblib.ConnectedDevice
 import com.android.ddmlib.IDevice
 import com.android.tools.deployer.Deployer
 import com.android.tools.deployer.DeployerApplicationTerminator
+import com.android.tools.deployer.common.DeviceHolder
 import com.android.tools.idea.deploy.DeploymentConfiguration
 import com.android.tools.idea.execution.common.ApplicationDeployer
 import com.android.tools.idea.execution.common.DeployOptions
@@ -44,7 +44,7 @@ class ApplicationDeployerImpl(private val project: Project, private val stats: R
 
   override fun fullDeploy(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: ApkInfo,
     deployOptions: DeployOptions,
     hasMakeBeforeRun: Boolean,
@@ -66,12 +66,12 @@ class ApplicationDeployerImpl(private val project: Project, private val stats: R
         deployOptions.allowAssumeVerified,
         hasMakeBeforeRun,
       )
-    return runDeployTask(app, deployTask, device, connectedDevice, indicator)
+    return runDeployTask(app, deployTask, device, deviceHolder, indicator)
   }
 
   override fun applyChangesDeploy(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: ApkInfo,
     deployOptions: DeployOptions,
     hasMakeBeforeRun: Boolean,
@@ -90,12 +90,12 @@ class ApplicationDeployerImpl(private val project: Project, private val stats: R
         hasMakeBeforeRun,
       )
 
-    return runDeployTask(app, deployTask, device, connectedDevice, indicator)
+    return runDeployTask(app, deployTask, device, deviceHolder, indicator)
   }
 
   override fun applyCodeChangesDeploy(
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     app: ApkInfo,
     deployOptions: DeployOptions,
     hasMakeBeforeRun: Boolean,
@@ -114,7 +114,7 @@ class ApplicationDeployerImpl(private val project: Project, private val stats: R
         hasMakeBeforeRun,
       )
 
-    return runDeployTask(app, deployTask, device, connectedDevice, indicator)
+    return runDeployTask(app, deployTask, device, deviceHolder, indicator)
   }
 
   private fun filterDisabledFeatures(apkInfo: ApkInfo, disabledFeatures: List<String>): ApkInfo {
@@ -130,7 +130,7 @@ class ApplicationDeployerImpl(private val project: Project, private val stats: R
     app: ApkInfo,
     deployTask: AbstractDeployTask,
     device: IDevice,
-    connectedDevice: ConnectedDevice?,
+    deviceHolder: DeviceHolder,
     indicator: ProgressIndicator,
   ): Deployer.Result {
     val result =
@@ -154,7 +154,7 @@ class ApplicationDeployerImpl(private val project: Project, private val stats: R
           }
         }
 
-        deployTask.run(device, connectedDevice, indicator).single() // use single(), because we have 1 apkInfo as input.
+        deployTask.run(device, deviceHolder, indicator).single() // use single(), because we have 1 apkInfo as input.
       }
     stats.addAllLaunchTaskDetail(deployTask.subTaskDetails)
     return result
