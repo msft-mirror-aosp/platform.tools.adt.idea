@@ -2371,6 +2371,7 @@ internal fun IntegrationTestEnvironment.prepareGradleProject(
   name: String,
   ndkVersion: String?,
   syncReady: Boolean = true,
+  builtInKotlinEnabled: Boolean? = null,
 ): File {
   val projectPath = nameToPath(name)
   if (projectPath.exists()) throw IllegalArgumentException("Additional projects cannot be opened under the test name: $name")
@@ -2381,6 +2382,7 @@ internal fun IntegrationTestEnvironment.prepareGradleProject(
       resolvedAgpVersion,
       ndkVersion,
       syncReady,
+      builtInKotlinEnabled,
       *additionalRepositories.toTypedArray(),
     )
   }

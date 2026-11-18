@@ -931,9 +931,20 @@ public class AndroidGradleTests {
                                                  @Nullable String ndkVersion,
                                                  boolean syncReady,
                                                  File... localRepos) throws IOException {
+    defaultPatchPreparedProject(projectRoot, agpVersion, ndkVersion, syncReady, null, localRepos);
+  }
+
+  public static void defaultPatchPreparedProject(@NotNull File projectRoot,
+                                                 @NotNull ResolvedAgpVersionSoftwareEnvironment agpVersion,
+                                                 @Nullable String ndkVersion,
+                                                 boolean syncReady,
+                                                 @Nullable Boolean builtInKotlinEnabled,
+                                                 File... localRepos) throws IOException {
     preCreateDotGradle(projectRoot);
     // Update dependencies to latest, and possibly repository URL too if android.mavenRepoUrl is set
-    internalUpdateToolingVersionsAndPaths(projectRoot, true, agpVersion, ndkVersion, Lists.newArrayList(localRepos), syncReady, null, null);
+    internalUpdateToolingVersionsAndPaths(
+      projectRoot, true, agpVersion, ndkVersion, Lists.newArrayList(localRepos), syncReady, builtInKotlinEnabled, null
+    );
   }
 
 

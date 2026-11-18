@@ -79,6 +79,13 @@ interface TemplateBasedTestProject : TestProjectDefinition {
     get() = true
 
   /**
+   * Explicit override for built-in Kotlin migration during project preparation, or `null` to use the default for the AGP version and
+   * `gradle.properties`.
+   */
+  val builtInKotlinEnabled: Boolean?
+    get() = null
+
+  /**
    * Additional setup logic required for this test project. Returns a function that should be used to undo any configuration changes made by
    * the setup logic.
    *
@@ -141,6 +148,7 @@ interface TemplateBasedTestProject : TestProjectDefinition {
         name,
         ndkVersion = ndkVersion,
         syncReady,
+        builtInKotlinEnabled = builtInKotlinEnabled,
       )
     if (autoMigratePackageAttribute && agpVersion >= AgpVersionSoftwareEnvironmentDescriptor.AGP_80) {
       migratePackageAttribute(root)
@@ -230,6 +238,9 @@ fun TemplateBasedTestProject.withAdditionalPatch(
       override val autoMigratePackageAttribute: Boolean
         get() = this@withAdditionalPatch.autoMigratePackageAttribute
 
+      override val builtInKotlinEnabled: Boolean?
+        get() = this@withAdditionalPatch.builtInKotlinEnabled
+
       override val setup: () -> () -> Unit
         get() = this@withAdditionalPatch.setup
 
@@ -282,6 +293,9 @@ fun TemplateBasedTestProject.withAdditionalExpectedSyncIssues(additionalSyncIssu
 
       override val autoMigratePackageAttribute: Boolean
         get() = this@withAdditionalExpectedSyncIssues.autoMigratePackageAttribute
+
+      override val builtInKotlinEnabled: Boolean?
+        get() = this@withAdditionalExpectedSyncIssues.builtInKotlinEnabled
 
       override val setup: () -> () -> Unit
         get() = this@withAdditionalExpectedSyncIssues.setup

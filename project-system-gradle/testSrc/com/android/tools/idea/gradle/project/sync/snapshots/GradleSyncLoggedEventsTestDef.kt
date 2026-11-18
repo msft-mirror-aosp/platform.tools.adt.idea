@@ -242,7 +242,13 @@ data class GradleSyncLoggedEventsTestDef(
 
     fun kotlinKaptVersionsTestDef(testProject: TemplateBasedTestProject): GradleSyncLoggedEventsTestDef =
       GradleSyncLoggedEventsTestDef(namePrefix = "kotlin_versions", testProject = testProject) { events ->
-        assertThat(events.dumpKotlinVersions(softwareEnvironment.getBuiltInKotlinVersion() ?: softwareEnvironment.kotlinVersion))
+        val expectedKotlin =
+          if (testProject.builtInKotlinEnabled == false) {
+            softwareEnvironment.kotlinVersion
+          } else {
+            softwareEnvironment.getBuiltInKotlinVersion() ?: softwareEnvironment.kotlinVersion
+          }
+        assertThat(events.dumpKotlinVersions(expectedKotlin))
           .isEqualTo(
             """
             |kotlin version: KOTLIN_VERSION_FOR_TESTS

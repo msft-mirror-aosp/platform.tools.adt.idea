@@ -129,6 +129,7 @@ enum class MultiKgpTestProject(
   val baselineLayer: StudioKgpTestLayer = StudioKgpTestLayer.DEFAULT,
   override val isCompatibleWith: (AgpVersionSoftwareEnvironmentDescriptor) -> Boolean = { it == AGP_CURRENT },
   override val autoMigratePackageAttribute: Boolean = true,
+  override val builtInKotlinEnabled: Boolean? = null,
   override val setup: () -> () -> Unit = { {} },
   override val patch: (AgpVersionSoftwareEnvironment.(projectRoot: File) -> Unit)? = null,
   override val expectedSyncIssues: Set<Int> = emptySet(),
@@ -145,7 +146,15 @@ enum class MultiKgpTestProject(
       projectRoot.toVirtualFile()?.let { VfsUtilCore.processFilesRecursively(it) { true } }
     },
   ),
-  KOTLIN_KAPT(TestProjectToSnapshotPaths.KOTLIN_KAPT);
+  KOTLIN_KAPT(TestProjectToSnapshotPaths.KOTLIN_KAPT),
+  KOTLIN_KAPT_LEGACY(
+    TestProjectToSnapshotPaths.KOTLIN_KAPT,
+    testName = "legacyKotlin",
+    builtInKotlinEnabled = false,
+    patch = { projectRoot ->
+      projectRoot.resolve("gradle.properties").appendText("\nandroid.builtInKotlin=false\nandroid.newDsl=false\n")
+    },
+  );
 
   override fun getTestDataDirectoryWorkspaceRelativePath(): String = "tools/adt/idea/android/testData/snapshots"
 
@@ -205,7 +214,7 @@ class MultiKgpSyncedProjectTest(
       } else {
         null
       },
-      if (testProject == MultiKgpTestProject.KOTLIN_KAPT) {
+      if (testProject == MultiKgpTestProject.KOTLIN_KAPT || testProject == MultiKgpTestProject.KOTLIN_KAPT_LEGACY) {
         GradleSyncLoggedEventsTestDef.kotlinKaptVersionsTestDef(testProject)
       } else {
         null
