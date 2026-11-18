@@ -29,6 +29,7 @@ import com.android.tools.idea.npw.template.WizardPluginPromotionTemplateProvider
 import com.android.tools.idea.npw.templateengine.WizardConstants
 import com.android.tools.idea.npw.templateengine.api.ExternalTemplateSpec
 import com.android.tools.idea.npw.templateengine.api.TemplateEngineProjectWizardContributor
+import com.android.tools.idea.npw.templateengine.services.BUNDLED_TEMPLATES_ZIP_WORKSPACE_PATH
 import com.android.tools.idea.npw.templateengine.services.TemplateEngineProjectParameters
 import com.android.tools.idea.npw.templateengine.services.TemplateRegistryService
 import com.android.tools.idea.npw.templateengine.services.buildExplicitArguments
@@ -72,7 +73,7 @@ class TemplateEngineProjectWizardTest {
     ThreadLeakTracker.longRunningThreadCreated(ApplicationManager.getApplication(), "Reference Cleaner")
     originalNewTemplateEngineFlag = StudioFlags.NPW_NEW_TEMPLATE_ENGINE.get()
     StudioFlags.NPW_NEW_TEMPLATE_ENGINE.override(true)
-    val zipFile = TestUtils.resolveWorkspacePath("tools/vendor/google/android-cli/create/templates/android-project-templates.zip")
+    val zipFile = TestUtils.resolveWorkspacePath(BUNDLED_TEMPLATES_ZIP_WORKSPACE_PATH)
     val testRegistry = TemplateRegistryService.createForTest(zipPathProvider = { zipFile })
     ApplicationManager.getApplication().replaceService(TemplateRegistryService::class.java, testRegistry, disposable)
   }

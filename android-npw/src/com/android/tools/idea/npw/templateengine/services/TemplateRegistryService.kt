@@ -184,6 +184,10 @@ constructor(private val coroutineScope: CoroutineScope, private val zipPathProvi
 
 data class ExternalTemplate(val definition: TemplateDefinition, val contributorId: String, val contributorPriority: Int)
 
+/** Workspace relative path of the bundled templates package built by Bazel, used when running from sources and in tests. */
+const val BUNDLED_TEMPLATES_ZIP_WORKSPACE_PATH =
+  "tools/adt/idea/android-npw/src/com/android/tools/idea/npw/templateengine/templates/android-project-templates.zip"
+
 private fun getDefaultZipPath(): Path {
   // 1. Check bundled plugin resources first
   val plugin = PluginManagerCore.getPlugin(PluginId.getId("org.jetbrains.android"))
@@ -197,9 +201,7 @@ private fun getDefaultZipPath(): Path {
 
   // 2. Check Bazel output when running from sources (IntelliJ dev run or Bazel tests)
   if (StudioPathManager.isRunningFromSources()) {
-    val devZip =
-      Paths.get(StudioPathManager.getBinariesRoot())
-        .resolve("tools/vendor/google/android-cli/create/templates/android-project-templates.zip")
+    val devZip = Paths.get(StudioPathManager.getBinariesRoot()).resolve(BUNDLED_TEMPLATES_ZIP_WORKSPACE_PATH)
     if (Files.exists(devZip)) {
       return devZip
     }

@@ -5,9 +5,9 @@ load("//tools/base/build-system/integration-test:common-dependencies.bzl", "BUIL
 
 studio_data(
     name = "android-project-templates-bundle",
-    files = ["//tools/vendor/google/android-cli/create/templates:android-project-templates"],
+    files = ["//tools/adt/idea/android-npw/src/com/android/tools/idea/npw/templateengine/templates:android-project-templates"],
     mappings = {
-        "tools/vendor/google/android-cli/create/templates/android-project-templates.zip": "templates/android-project-templates.zip",
+        "tools/adt/idea/android-npw/src/com/android/tools/idea/npw/templateengine/templates/android-project-templates.zip": "templates/android-project-templates.zip",
     },
     visibility = ["//visibility:public"],
 )
@@ -166,6 +166,7 @@ iml_module(
         "//prebuilts/studio/sdk:build-tools/latest",
         "//prebuilts/studio/sdk:platform-tools",
         "//prebuilts/studio/sdk:platforms/android-35",
+        "//tools/adt/idea/android-npw/src/com/android/tools/idea/npw/templateengine/templates:android-project-templates",
         "//tools/adt/idea/android/testData",
         "//tools/base/build-system:android_gradle_plugin.zip",
         "//tools/base/build-system:android_gradle_plugin_runtime_dependencies",
@@ -173,7 +174,6 @@ iml_module(
         "//tools/base/build-system:gradle-distrib-8.0",
         "//tools/base/build-system:gradle-runtime-maven",
         "//tools/base/build-system/integration-test:kotlin_gradle_plugin_prebuilts",
-        "//tools/vendor/google/android-cli/create/templates:android-project-templates",
     ],
     # do not sort: must match IML order
     test_deps = [
