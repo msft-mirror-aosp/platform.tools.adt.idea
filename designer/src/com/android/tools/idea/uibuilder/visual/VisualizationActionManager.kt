@@ -39,7 +39,8 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.icons.RgbImageFilterSupplier
 import icons.StudioIcons
 import java.awt.Color
-import java.awt.event.MouseEvent
+import java.awt.Component
+import java.awt.Point
 import java.awt.image.RGBImageFilter
 import java.util.function.Supplier
 import javax.swing.BoxLayout
@@ -86,7 +87,7 @@ class VisualizationActionManager(surface: NlDesignSurface, private val visualiza
 
   override fun registerActionsShortcuts(component: JComponent) = Unit
 
-  override fun getPopupMenuActions(leafComponent: NlComponent?, mouseEvent: MouseEvent): DefaultActionGroup {
+  override fun getPopupMenuActions(leafComponent: NlComponent?, source: Component, point: Point): DefaultActionGroup {
     val group = DefaultActionGroup()
     group.add(zoomInAction)
     group.add(zoomOutAction)

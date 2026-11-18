@@ -44,7 +44,8 @@ import com.android.tools.idea.uibuilder.surface.NavigationHandler
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.Separator
-import java.awt.event.MouseEvent
+import java.awt.Component
+import java.awt.Point
 import javax.swing.SwingUtilities
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
@@ -70,11 +71,11 @@ internal class PreviewSurfaceActionManager(
       )
     }
 
-  override fun getPopupMenuActions(leafComponent: NlComponent?, mouseEvent: MouseEvent): DefaultActionGroup {
+  override fun getPopupMenuActions(leafComponent: NlComponent?, source: Component, point: Point): DefaultActionGroup {
     // Copy Image
     val actionGroup = DefaultActionGroup().apply { add(copyResultImageAction) }
 
-    val convertedPoint = SwingUtilities.convertPoint(mouseEvent.component, mouseEvent.point, surface.interactionPane)
+    val convertedPoint = SwingUtilities.convertPoint(source, point, surface.interactionPane)
 
     // Zoom to Selection
     actionGroup.add(ZoomToSelectionAction(convertedPoint.x, convertedPoint.y, ::subComponentProvider))

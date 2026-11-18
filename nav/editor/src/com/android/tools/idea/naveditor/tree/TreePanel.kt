@@ -34,7 +34,7 @@ import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.application.ApplicationManager
 import icons.StudioIcons
-import java.awt.event.MouseEvent
+import java.awt.Point
 import javax.swing.Icon
 import javax.swing.JComponent
 
@@ -107,14 +107,7 @@ class TreePanel : ToolContent<DesignSurface<*>> {
 
   private fun showContextMenu(x: Int, y: Int) {
     val node = componentTreeSelectionModel.currentSelection.singleOrNull() as NlComponent? ?: return
-    val actions =
-      designSurface
-        ?.actionManager
-        ?.getPopupMenuActions(
-          node,
-          // TODO(b/432214528): Pass the real mouse event here
-          MouseEvent(componentTree, MouseEvent.MOUSE_CLICKED, 0, 0, x, y, 1, true),
-        ) ?: return
+    val actions = designSurface?.actionManager?.getPopupMenuActions(node, componentTree, Point(x, y)) ?: return
     // TODO (b/151315668): extract the hardcoded value "NavEditor".
     showPopup(designSurface, componentTree, x, y, actions, "NavEditor")
   }

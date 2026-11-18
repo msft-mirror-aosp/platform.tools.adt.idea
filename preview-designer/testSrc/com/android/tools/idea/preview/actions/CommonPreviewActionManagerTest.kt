@@ -38,6 +38,8 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.application.runInEdt
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.TestActionEvent.createTestEvent
+import java.awt.Point
+import javax.swing.JPanel
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
@@ -228,7 +230,7 @@ class CommonPreviewActionManagerTest {
       SimpleDataContext.builder().add(CommonDataKeys.PROJECT, projectRule.project).add(PreviewModeManager.KEY, modeManager).build()
     val testEvent = createTestEvent(dataContext)
 
-    val popupMenuActions = actionManager.getPopupMenuActions(null, mock())
+    val popupMenuActions = actionManager.getPopupMenuActions(null, JPanel(), Point())
     val actions = popupMenuActions.getChildren(testEvent)
 
     assertEquals(2, actions.size)
@@ -246,7 +248,7 @@ class CommonPreviewActionManagerTest {
     val dataContext =
       SimpleDataContext.builder().add(CommonDataKeys.PROJECT, projectRule.project).add(PreviewModeManager.KEY, modeManager).build()
     val testEvent = createTestEvent(dataContext)
-    val popupMenuActions = actionManager.getPopupMenuActions(null, mock())
+    val popupMenuActions = actionManager.getPopupMenuActions(null, JPanel(), Point())
     val actions = popupMenuActions.getChildren(testEvent)
 
     assertEquals(2, actions.size)

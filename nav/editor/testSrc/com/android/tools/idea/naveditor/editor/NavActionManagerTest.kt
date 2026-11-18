@@ -65,7 +65,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.xml.XmlFile
-import java.awt.event.MouseEvent
+import java.awt.Point
 import org.jetbrains.android.resourceManagers.LocalResourceManager
 import org.mockito.kotlin.whenever
 
@@ -156,7 +156,7 @@ class NavActionManagerTest : NavTestCase() {
     val fragment1 = model.treeReader.find("fragment1")!!
     val actionManager = NavActionManager(surface)
     surface.selectionModel.setSelection(listOf(fragment1))
-    var menuGroup = actionManager.getPopupMenuActions(fragment1, mouseEvent())
+    var menuGroup = actionManager.getPopupMenuActions(fragment1, surface, Point())
 
     var items = menuGroup.getChildren(null)
 
@@ -193,14 +193,14 @@ class NavActionManagerTest : NavTestCase() {
 
     val fragment2 = model.treeReader.find("fragment2")!!
     surface.selectionModel.setSelection(listOf(fragment2))
-    menuGroup = actionManager.getPopupMenuActions(fragment2, mouseEvent())
+    menuGroup = actionManager.getPopupMenuActions(fragment2, surface, Point())
     items = menuGroup.getChildren(null)
     validateItem(items[0], ActivateComponentAction::class.java, "Edit", true)
     validateItem(items[4], StartDestinationAction::class.java, "Set as Start Destination", false)
 
     val fragment3 = model.treeReader.find("fragment3")!!
     surface.selectionModel.setSelection(listOf(fragment3))
-    menuGroup = actionManager.getPopupMenuActions(fragment3, mouseEvent())
+    menuGroup = actionManager.getPopupMenuActions(fragment3, surface, Point())
     items = menuGroup.getChildren(null)
     validateItem(items[0], ActivateComponentAction::class.java, "Edit", true)
     validateItem(items[4], StartDestinationAction::class.java, "Set as Start Destination", true)
@@ -214,7 +214,7 @@ class NavActionManagerTest : NavTestCase() {
     // Select the activity to enable Cut and Copy
     surface.selectionModel.setSelection(listOf(activity))
     val actionManager = NavActionManager(surface)
-    val menuGroup = actionManager.getPopupMenuActions(activity, mouseEvent())
+    val menuGroup = actionManager.getPopupMenuActions(activity, surface, Point())
 
     val items = menuGroup.getChildren(null)
 
@@ -248,7 +248,7 @@ class NavActionManagerTest : NavTestCase() {
     val subflow = model.treeReader.find("subflow")!!
     val actionManager = NavActionManager(surface)
     surface.selectionModel.setSelection(listOf(subflow))
-    val menuGroup = actionManager.getPopupMenuActions(subflow, mouseEvent())
+    val menuGroup = actionManager.getPopupMenuActions(subflow, surface, Point())
 
     val items = menuGroup.getChildren(null)
 
@@ -289,7 +289,7 @@ class NavActionManagerTest : NavTestCase() {
     val nav = model.treeReader.find("nav")!!
     val actionManager = NavActionManager(surface)
     surface.selectionModel.setSelection(listOf(nav))
-    val menuGroup = actionManager.getPopupMenuActions(nav, mouseEvent())
+    val menuGroup = actionManager.getPopupMenuActions(nav, surface, Point())
 
     val items = menuGroup.getChildren(null)
 
@@ -323,7 +323,7 @@ class NavActionManagerTest : NavTestCase() {
     surface.currentNavigation = subnav
     val actionManager = NavActionManager(surface)
     surface.selectionModel.setSelection(listOf(subnav))
-    val menuGroup = actionManager.getPopupMenuActions(subnav, mouseEvent())
+    val menuGroup = actionManager.getPopupMenuActions(subnav, surface, Point())
 
     val items = menuGroup.getChildren(null)
 
@@ -352,7 +352,7 @@ class NavActionManagerTest : NavTestCase() {
     val actionManager = NavActionManager(surface)
     val fragment1 = model.treeReader.find("fragment1")!!
     surface.selectionModel.setSelection(listOf(fragment1, model.treeReader.find("fragment2")!!))
-    val menuGroup = actionManager.getPopupMenuActions(fragment1, mouseEvent())
+    val menuGroup = actionManager.getPopupMenuActions(fragment1, surface, Point())
     val items = menuGroup.getChildren(null)
 
     assertEquals(6, items.size)
@@ -380,7 +380,7 @@ class NavActionManagerTest : NavTestCase() {
     val actionManager = NavActionManager(surface)
     val action1 = model.treeReader.find("action1")!!
     surface.selectionModel.setSelection(listOf(action1))
-    val menuGroup = actionManager.getPopupMenuActions(action1, mouseEvent())
+    val menuGroup = actionManager.getPopupMenuActions(action1, surface, Point())
     val items = menuGroup.getChildren(null)
 
     assertEquals(6, items.size)
@@ -417,6 +417,4 @@ class NavActionManagerTest : NavTestCase() {
       assertEquals(enabled, event.presentation.isEnabled)
     }
   }
-
-  private fun mouseEvent() = MouseEvent(surface, MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, 1, true)
 }

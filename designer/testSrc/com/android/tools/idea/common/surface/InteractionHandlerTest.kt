@@ -32,6 +32,7 @@ import com.google.common.collect.ImmutableList
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import java.awt.Component
 import java.awt.Dimension
 import java.awt.Point
 import java.awt.Rectangle
@@ -63,7 +64,8 @@ class InteractionHandlerTest {
       object : ActionManager<DesignSurface<SceneManager>>(it) {
         override fun registerActionsShortcuts(component: JComponent) = Unit
 
-        override fun getPopupMenuActions(leafComponent: NlComponent?, mouseEvent: MouseEvent): DefaultActionGroup = DefaultActionGroup()
+        override fun getPopupMenuActions(leafComponent: NlComponent?, source: Component, point: Point): DefaultActionGroup =
+          DefaultActionGroup()
 
         override fun getToolbarActions(selection: MutableList<NlComponent>): DefaultActionGroup = DefaultActionGroup()
       }

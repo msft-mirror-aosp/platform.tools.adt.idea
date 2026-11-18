@@ -40,7 +40,7 @@ import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.ExtensionTestUtil
 import com.intellij.testFramework.TestActionEvent.createTestEvent
-import java.awt.event.MouseEvent
+import java.awt.Point
 import javax.swing.JPanel
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -86,9 +86,7 @@ class PreviewSurfaceActionManagerTest {
     val mouseSource = JPanel().apply { bounds = java.awt.Rectangle(10, 20, 100, 200) }
     interactionPane.add(mouseSource)
     whenever(surface.interactionPane).thenReturn(interactionPane)
-    val mouseEvent = MouseEvent(mouseSource, 0, 0L, 0, 123, 456, 1, true)
-
-    val actions = actionManager.getPopupMenuActions(null, mouseEvent)
+    val actions = actionManager.getPopupMenuActions(null, mouseSource, Point(123, 456))
     val zoomAction = actions.getChildren(null).filterIsInstance<ZoomToSelectionAction>().single()
 
     // Check that the point has been converted to the interactionPane coordinates
@@ -108,7 +106,7 @@ class PreviewSurfaceActionManagerTest {
       projectRule.testRootDisposable,
     )
 
-    val menuGroup = actionManager.getPopupMenuActions(null, fakeMouseEvent)
+    val menuGroup = actionManager.getPopupMenuActions(null, JPanel(), Point())
 
     val actions = menuGroup.getChildren(null)
     assertThat(actions.size).isEqualTo(EXPECTED_NUMBER_OF_ACTIONS)
@@ -315,8 +313,6 @@ class PreviewSurfaceActionManagerTest {
       UsageTracker.cleanAfterTesting()
     }
   }
-
-  private val fakeMouseEvent = MouseEvent(JPanel(), 0, 0L, 0, 0, 0, 1, true)
 }
 
 private data class Status(

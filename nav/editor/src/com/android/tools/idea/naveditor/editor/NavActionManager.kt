@@ -54,8 +54,9 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.openapi.client.ClientSystemInfo
+import java.awt.Component
+import java.awt.Point
 import java.awt.event.KeyEvent
-import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.KeyStroke
 
@@ -96,7 +97,7 @@ open class NavActionManager(surface: NavDesignSurface) : ActionManager<NavDesign
     addToNewGraphAction.registerCustomShortcutSet(KeyEvent.VK_G, AdtUiUtils.getActionMask(), focusablePane)
   }
 
-  override fun getPopupMenuActions(leafComponent: NlComponent?, mouseEvent: MouseEvent): DefaultActionGroup {
+  override fun getPopupMenuActions(leafComponent: NlComponent?, source: Component, point: Point): DefaultActionGroup {
     val group = DefaultActionGroup()
 
     if (leafComponent == null) {

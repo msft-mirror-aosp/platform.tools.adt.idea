@@ -138,7 +138,7 @@ class NavigatingInteractionHandler(
         ?.filterIsInstance<SceneViewPeerPanel>()
         ?.firstOrNull { it.sceneView == sceneView }
         ?.let { targetComponent = it }
-      val actions = surface.actionManager.getPopupMenuActions(component, mouseEvent)
+      val actions = surface.actionManager.getPopupMenuActions(component, mouseEvent.component ?: surface, mouseEvent.point)
       popUpComponent = surface.showPopup(mouseEvent, actions, "Preview", targetComponent)
     } else {
       surface.selectionModel.clear()

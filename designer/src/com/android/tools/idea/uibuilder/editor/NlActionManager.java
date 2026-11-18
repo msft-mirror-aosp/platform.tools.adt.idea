@@ -70,8 +70,9 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.ui.components.panels.VerticalLayout;
 import com.intellij.util.IncorrectOperationException;
 import com.intellij.util.ui.JBUI;
+import java.awt.Component;
+import java.awt.Point;
 import java.awt.event.KeyEvent;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.Icon;
@@ -202,7 +203,7 @@ public class NlActionManager extends ActionManager<DesignSurface<LayoutlibSceneM
 
   @Override
   @NotNull
-  public DefaultActionGroup getPopupMenuActions(@Nullable NlComponent leafComponent, @NotNull MouseEvent mouseEvent) {
+  public DefaultActionGroup getPopupMenuActions(@Nullable NlComponent leafComponent, @NotNull Component source, @NotNull Point point) {
     DefaultActionGroup group = new DefaultActionGroup();
 
     SceneView screenView = mySurface.getFocusedSceneView();

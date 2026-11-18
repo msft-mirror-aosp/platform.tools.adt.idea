@@ -28,7 +28,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.psi.PsiFile
 import com.intellij.testFramework.RunsInEdt
-import java.awt.event.MouseEvent
+import java.awt.Point
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -58,7 +58,7 @@ class VisualizationActionManagerTest {
 
   @Test
   fun testPopupMenuActions() {
-    val popupMenuGroup = actionManager.getPopupMenuActions(null, MouseEvent(surface, MouseEvent.MOUSE_CLICKED, 0, 0, 0, 0, 1, true))
+    val popupMenuGroup = actionManager.getPopupMenuActions(null, surface, Point())
     val actions = popupMenuGroup.getChildren(ActionManager.getInstance())
     assertTrue(actions[0] is ZoomInAction)
     assertTrue(actions[1] is ZoomOutAction)

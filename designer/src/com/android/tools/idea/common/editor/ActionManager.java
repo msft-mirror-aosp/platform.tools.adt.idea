@@ -28,7 +28,8 @@ import com.android.tools.rendering.RenderResult;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.KeyboardShortcut;
-import java.awt.event.MouseEvent;
+import java.awt.Component;
+import java.awt.Point;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -107,10 +108,15 @@ public abstract class ActionManager<S extends DesignSurface<?>> {
    * Creates the actions for the pop-up menu (a.k.a. context menu) for the given {@link NlComponent}.
    *
    * @param leafComponent The target component for the pop-up menu (e.g. The right-clicked component)
-   * @param mouseEvent    The mouse event that triggered the pop-up menu.
+   * @param source        The Swing component the pop-up menu was requested on. This is not always the design surface: the menu can
+   *                      also be requested from another view of the same components, such as the component tree.
+   * @param point         The location the pop-up menu was requested at, in the coordinates of {@code source}. It can lie outside the
+   *                      design surface when {@code source} is another view.
    */
   @NotNull
-  public abstract DefaultActionGroup getPopupMenuActions(@Nullable NlComponent leafComponent, @NotNull MouseEvent mouseEvent);
+  public abstract DefaultActionGroup getPopupMenuActions(@Nullable NlComponent leafComponent,
+                                                         @NotNull Component source,
+                                                         @NotNull Point point);
 
   /**
    * Creates the actions for the given {@link NlComponent}s.
