@@ -86,13 +86,13 @@ internal class CameraDialog(emulator: EmulatorController) :
 
   private val animationStateChannel =
     createStateChannel(
-      getState = EmulatorController::getAnimationState,
+      getState = EmulatorController::getVirtualSceneAnimationState,
       onStateLoaded = { state ->
         animationsEnabled = state.tvOn
         animationsInitialized = true
         updateUi()
       },
-      setState = EmulatorController::setAnimationState,
+      setState = EmulatorController::setVirtualSceneAnimationState,
     )
 
   init {

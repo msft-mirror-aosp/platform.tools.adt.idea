@@ -19,7 +19,7 @@ import com.android.annotations.concurrency.AnyThread
 import com.android.annotations.concurrency.GuardedBy
 import com.android.annotations.concurrency.Slow
 import com.android.emulation.control.incubating.ActiveCalls
-import com.android.emulation.control.incubating.AnimationState
+import com.android.emulation.control.incubating.AnimationState as VirtualSceneAnimationState
 import com.android.emulation.control.incubating.Call
 import com.android.emulation.control.incubating.CarEvent
 import com.android.emulation.control.incubating.CarServiceGrpc
@@ -30,6 +30,8 @@ import com.android.emulation.control.incubating.Poster
 import com.android.emulation.control.incubating.PosterList
 import com.android.emulation.control.incubating.SmsMessage
 import com.android.emulation.control.incubating.VirtualSceneServiceGrpc
+import com.android.emulator.control.AnimationState
+import com.android.emulator.control.AnimationStateTarget
 import com.android.emulator.control.AudioPacket
 import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraList
@@ -53,6 +55,7 @@ import com.android.emulator.control.PhysicalModelValue
 import com.android.emulator.control.Posture.PostureValue
 import com.android.emulator.control.RotationRadian
 import com.android.emulator.control.SensorValue
+import com.android.emulator.control.SetAnimationStateRequest
 import com.android.emulator.control.SnapshotFilter
 import com.android.emulator.control.SnapshotList
 import com.android.emulator.control.SnapshotPackage
@@ -122,6 +125,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.jetbrains.annotations.TestOnly
@@ -888,6 +892,63 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
     return observer.getResult()
   }
 
+  /** Sets the playback state for a virtual scene. */
+  private fun setAnimationState(request: SetAnimationStateRequest, streamObserver: StreamObserver<Empty>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("setAnimationState(${shortDebugString(request)})")
+    }
+    emulatorControllerStub.setAnimationState(
+      request,
+      DelegatingStreamObserver(streamObserver, EmulatorControllerGrpc.getSetAnimationStateMethod()),
+    )
+  }
+
+  /** Sets the playback state for a virtual scene. */
+  suspend fun setAnimationState(request: SetAnimationStateRequest) {
+    val observer = SuspendingStreamObserver<Empty>()
+    setAnimationState(request, observer)
+    observer.getResult()
+  }
+
+  /** Retrieves the current playback state for a virtual scene. */
+  private fun getAnimationState(target: AnimationStateTarget, streamObserver: StreamObserver<AnimationState>) {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("getAnimationState(${shortDebugString(target)})")
+    }
+    emulatorControllerStub.getAnimationState(
+      target,
+      DelegatingStreamObserver(streamObserver, EmulatorControllerGrpc.getGetAnimationStateMethod()),
+    )
+  }
+
+  /** Retrieves the current playback state for a virtual scene. */
+  suspend fun getAnimationState(target: AnimationStateTarget = AnimationStateTarget.getDefaultInstance()): AnimationState {
+    val observer = SuspendingStreamObserver<AnimationState>()
+    getAnimationState(target, observer)
+    return observer.getResult()
+  }
+
+  /** Streams playback state updates for a virtual scene. */
+  private fun streamAnimationState(target: AnimationStateTarget, streamObserver: StreamObserver<AnimationState>): Cancelable {
+    if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
+      log.info("streamAnimationState(${shortDebugString(target)})")
+    }
+    val method = EmulatorControllerGrpc.getStreamAnimationStateMethod()
+    val call = emulatorControllerStub.channel.newCall(method, emulatorControllerStub.callOptions)
+    ClientCalls.asyncServerStreamingCall(call, target, DelegatingStreamObserver(streamObserver, method))
+    return CancelableClientCall(call)
+  }
+
+  /**
+   * Streams playback state updates for a virtual scene. The returned flow is conflated, so a slow collector always sees the most recent
+   * state and never an outdated one.
+   */
+  fun streamAnimationState(target: AnimationStateTarget = AnimationStateTarget.getDefaultInstance()): Flow<AnimationState> = callbackFlow {
+    val cancelable = streamAnimationState(target, FlowStreamObserver(this))
+    awaitClose { cancelable.cancel() }
+  }
+    .conflate()
+
   /** Sets the battery state of the emulator. */
   private fun setBattery(batteryState: BatteryState, streamObserver: StreamObserver<Empty>) {
     if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
@@ -1420,9 +1481,12 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
    * @param animationState the new animation state
    * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
    */
-  private fun setAnimationState(animationState: AnimationState, streamObserver: StreamObserver<AnimationState>) {
+  private fun setVirtualSceneAnimationState(
+    animationState: VirtualSceneAnimationState,
+    streamObserver: StreamObserver<VirtualSceneAnimationState>,
+  ) {
     if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
-      log.info("setAnimationState(${shortDebugString(animationState)})")
+      log.info("setVirtualSceneAnimationState(${shortDebugString(animationState)})")
     }
     virtualSceneStub.setAnimationState(
       animationState,
@@ -1435,9 +1499,9 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
    *
    * @param animationState the new animation state
    */
-  suspend fun setAnimationState(animationState: AnimationState): AnimationState {
-    val observer = SuspendingStreamObserver<AnimationState>()
-    setAnimationState(animationState, observer)
+  suspend fun setVirtualSceneAnimationState(animationState: VirtualSceneAnimationState): VirtualSceneAnimationState {
+    val observer = SuspendingStreamObserver<VirtualSceneAnimationState>()
+    setVirtualSceneAnimationState(animationState, observer)
     return observer.getResult()
   }
 
@@ -1446,9 +1510,9 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
    *
    * @param streamObserver a stream observer to observe the response stream (which contains only 1 message in this case)
    */
-  private fun getAnimationState(streamObserver: StreamObserver<AnimationState>) {
+  private fun getVirtualSceneAnimationState(streamObserver: StreamObserver<VirtualSceneAnimationState>) {
     if (EMBEDDED_EMULATOR_TRACE_GRPC_CALLS.get()) {
-      log.info("getAnimationState()")
+      log.info("getVirtualSceneAnimationState()")
     }
     virtualSceneStub.getAnimationState(
       EMPTY_PROTO,
@@ -1457,9 +1521,9 @@ class EmulatorController(val emulatorId: EmulatorId, parentDisposable: Disposabl
   }
 
   /** Gets the current animation state of the virtual scene. */
-  suspend fun getAnimationState(): AnimationState {
-    val observer = SuspendingStreamObserver<AnimationState>()
-    getAnimationState(observer)
+  suspend fun getVirtualSceneAnimationState(): VirtualSceneAnimationState {
+    val observer = SuspendingStreamObserver<VirtualSceneAnimationState>()
+    getVirtualSceneAnimationState(observer)
     return observer.getResult()
   }
 
