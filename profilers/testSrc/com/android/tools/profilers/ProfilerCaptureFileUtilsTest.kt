@@ -40,27 +40,17 @@ class ProfilerCaptureFileUtilsTest {
     val sourceFile = File(tempDir, "temp_capture_123.tmp")
     sourceFile.writeText("test trace content")
 
-    val targetName = "test_target_trace.trace"
-    val resultFile = ProfilerCaptureFileUtils.renameToTargetFile(sourceFile, targetName)
+    // The target's folder doesn't exist yet.
+    val targetDir = File(tempDir, "capture_123")
+    val targetFile = File(targetDir, "test_target_trace.trace")
+    val resultFile = ProfilerCaptureFileUtils.renameToTargetFile(sourceFile, targetFile)
 
-    assertThat(resultFile).isNotNull()
-    assertThat(resultFile!!.name).isEqualTo(targetName)
-    assertThat(resultFile.parentFile.absolutePath).isEqualTo(File(tempDir).absolutePath)
-    assertThat(resultFile.exists()).isTrue()
-    assertThat(resultFile.readText()).isEqualTo("test trace content")
+    assertThat(resultFile).isEqualTo(targetFile)
+    assertThat(targetFile.readText()).isEqualTo("test trace content")
     assertThat(sourceFile.exists()).isFalse()
 
     // Cleanup
-    resultFile.delete()
-  }
-
-  @Test
-  fun testGetCaptureFile() {
-    val tempDir = FileUtil.getTempDirectory()
-    val expectedFile = File(tempDir, "memory_test_capture.hprof")
-    val resultFile = ProfilerCaptureFileUtils.getCaptureFile("memory_test_capture.hprof")
-
-    assertThat(resultFile.absolutePath).isEqualTo(expectedFile.absolutePath)
+    FileUtil.delete(targetDir)
   }
 
   @Test
@@ -84,15 +74,18 @@ class ProfilerCaptureFileUtilsTest {
 
   @Test
   fun cpuRecordingFileIsNamedAfterItsTaskAndStartTime() {
-    val systemTrace =
-      Trace.TraceInfo.newBuilder()
-        .setFromTimestamp(SESSION.startTimestamp + TimeUnit.SECONDS.toNanos(3))
-        .setConfiguration(Trace.TraceConfiguration.newBuilder().setPerfettoOptions(PerfettoConfig.TraceConfig.getDefaultInstance()))
-        .build()
+    // The trace started 3 seconds into the session, at 14:15:56, and is saved in a folder named after its ID.
+    assertThat(ProfilerCaptureFileUtils.getCpuRecordingFile(SESSION, SESSION_METADATA, SYSTEM_TRACE))
+      .isEqualTo(File(File(FileUtil.getTempDirectory(), "capture_42"), "system-trace-20261116T141556.trace"))
+  }
 
-    // The trace started 3 seconds into the session, at 14:15:56.
-    assertThat(ProfilerCaptureFileUtils.getCpuRecordingFile(SESSION, SESSION_METADATA, systemTrace))
-      .isEqualTo(ProfilerCaptureFileUtils.getCaptureFile("system-trace-20261116T141556.trace"))
+  @Test
+  fun capturesOfTheSameTaskInTheSameSecondAreSavedToDifferentFiles() {
+    val first = ProfilerCaptureFileUtils.getCpuRecordingFile(SESSION, SESSION_METADATA, SYSTEM_TRACE)
+    val second = ProfilerCaptureFileUtils.getCpuRecordingFile(SESSION, SESSION_METADATA, SYSTEM_TRACE.toBuilder().setTraceId(43).build())
+
+    assertThat(second.name).isEqualTo(first.name)
+    assertThat(second).isNotEqualTo(first)
   }
 
   private companion object {
@@ -103,5 +96,13 @@ class ProfilerCaptureFileUtilsTest {
 
     val SESSION_METADATA: Common.SessionMetaData =
       Common.SessionMetaData.newBuilder().setSessionId(1).setStartTimestampEpochMs(SESSION_START_EPOCH_MS).build()
+
+    /** A System Trace with ID 42 that started 3 seconds into [SESSION]. */
+    val SYSTEM_TRACE: Trace.TraceInfo =
+      Trace.TraceInfo.newBuilder()
+        .setTraceId(42)
+        .setFromTimestamp(SESSION.startTimestamp + TimeUnit.SECONDS.toNanos(3))
+        .setConfiguration(Trace.TraceConfiguration.newBuilder().setPerfettoOptions(PerfettoConfig.TraceConfig.getDefaultInstance()))
+        .build()
   }
 }

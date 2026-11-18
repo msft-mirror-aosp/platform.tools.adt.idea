@@ -51,13 +51,13 @@ class UnifiedTraceOpenerTest {
   private lateinit var opener: UnifiedTraceOpener
 
   /**
-   * Saved recordings live in the shared temp directory and are named after the second the recording started, so start the session now to
-   * avoid other files' names. Each test writes its file itself and deletes it afterwards.
+   * Saved recordings live in the shared temp directory, each in a folder named after its ID, so use IDs from now to avoid other folders.
+   * Each test writes its file itself and deletes its folder afterwards.
    */
   private val startTime = System.nanoTime()
   private val sessionStartEpochMs = System.currentTimeMillis()
   private val session = Common.Session.newBuilder().setSessionId(SESSION_ID).setStreamId(1).setStartTimestamp(startTime).build()
-  private val cacheFiles = mutableListOf<File>()
+  private val savedRecordingFolders = mutableListOf<File>()
 
   @Before
   fun setup() {
@@ -68,18 +68,14 @@ class UnifiedTraceOpenerTest {
 
   @After
   fun tearDown() {
-    cacheFiles.forEach { it.delete() }
+    savedRecordingFolders.forEach { FileUtil.delete(it) }
   }
 
   @Test
   fun testCachedCaptureIsOpenedWithTheFormatItWasImportedAs() {
     val cachedFileName =
       ProfilerCaptureFileUtils.getRecordingFileName(ProfilerTaskType.HEAP_DUMP, sessionStartEpochMs, "perfetto-java-heap-dump")
-    val cached =
-      File(FileUtil.getTempDirectory(), cachedFileName).also {
-        it.writeText("capture")
-        cacheFiles.add(it)
-      }
+    val cached = saveRecording(startTime, cachedFileName)
     // Serve a different file from the daemon, which is what gets opened if the cached capture is looked up under the wrong name.
     transportService.addFile(startTime.toString(), daemonFiles.newFile("from-daemon").absolutePath)
 
@@ -92,19 +88,26 @@ class UnifiedTraceOpenerTest {
   @Test
   fun testSavedSystemTraceIsFoundAgainByName() {
     val traceStartNs = startTime + TimeUnit.SECONDS.toNanos(3)
+    // CPU recordings are saved in a folder named after their trace ID, so make it differ from when the trace started.
+    val traceId = traceStartNs + 1
     val savedFileName = ProfilerCaptureFileUtils.getRecordingFileName(ProfilerTaskType.SYSTEM_TRACE, sessionStartEpochMs + 3_000, "trace")
-    val saved =
-      File(FileUtil.getTempDirectory(), savedFileName).also {
-        it.writeText("trace")
-        cacheFiles.add(it)
-      }
+    val saved = saveRecording(traceId, savedFileName)
     // Serve a different file from the daemon, which is what gets opened if the saved recording is looked up under the wrong name.
-    transportService.addFile(traceStartNs.toString(), daemonFiles.newFile("from-daemon").absolutePath)
+    transportService.addFile(traceId.toString(), daemonFiles.newFile("from-daemon").absolutePath)
 
-    val opened = opener.openUnifiedTrace(session, recordingOf(ProfilerTaskType.SYSTEM_TRACE, systemTraceArtifact(traceStartNs)))
+    val opened = opener.openUnifiedTrace(session, recordingOf(ProfilerTaskType.SYSTEM_TRACE, systemTraceArtifact(traceId, traceStartNs)))
 
     assertThat(opened).isTrue()
     assertThat(services.openedFile).isEqualTo(saved)
+  }
+
+  /** Writes a recording saved for the editor, as `capture_<captureId>/<fileName>` in the temp directory. */
+  private fun saveRecording(captureId: Long, fileName: String): File {
+    val folder = File(FileUtil.getTempDirectory(), "capture_$captureId").also { savedRecordingFolders.add(it) }
+    return File(folder, fileName).also {
+      it.parentFile.mkdirs()
+      it.writeText("recording")
+    }
   }
 
   private fun heapDumpArtifact(sessionName: String) =
@@ -115,13 +118,13 @@ class UnifiedTraceOpenerTest {
       HeapDumpInfo.newBuilder().setStartTime(startTime).setEndTime(startTime + 1).build(),
     )
 
-  private fun systemTraceArtifact(traceStartNs: Long) =
+  private fun systemTraceArtifact(traceId: Long, traceStartNs: Long) =
     CpuCaptureSessionArtifact(
       profilers,
       session,
       Common.SessionMetaData.getDefaultInstance(),
       Trace.TraceInfo.newBuilder()
-        .setTraceId(traceStartNs)
+        .setTraceId(traceId)
         .setFromTimestamp(traceStartNs)
         .setToTimestamp(traceStartNs + 1)
         .setConfiguration(Trace.TraceConfiguration.newBuilder().setPerfettoOptions(PerfettoConfig.TraceConfig.getDefaultInstance()))

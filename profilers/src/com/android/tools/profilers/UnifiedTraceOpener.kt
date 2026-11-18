@@ -118,10 +118,9 @@ class UnifiedTraceOpener(private val profilers: StudioProfilers) {
         }
       }
       ?.let { (taskType, startTime, extension) ->
+        // A memory recording's start time is also the ID of its file in the transport pipeline.
         val savedFile =
-          ProfilerCaptureFileUtils.getCaptureFile(
-            ProfilerCaptureFileUtils.getRecordingFileName(session, sessionItem.sessionMetaData, taskType, startTime, extension)
-          )
+          ProfilerCaptureFileUtils.getRecordingFile(session, sessionItem.sessionMetaData, taskType, startTime, extension, startTime)
         val opened = openTrace(session, startTime, savedFile)
         if (opened) {
           // Traces opened directly in the Editor bypass the legacy capture parsers where task metrics

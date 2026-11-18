@@ -52,7 +52,6 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.util.ui.JBEmptyBorder
 import java.awt.BorderLayout
@@ -106,8 +105,8 @@ object OfflineProfilerSessionFactory {
       val offlineMetadata =
         try {
           val hash = ProfilerHashUtils.hashTracePath(localFile)
-          val tempDir = FileUtil.getTempDirectory()
-          val cacheFile = File(tempDir, "${file.nameWithoutExtension}-$hash.metadata")
+          // The metadata file sits next to the trace file, in the same folder.
+          val cacheFile = File(localFile.absoluteFile.parentFile, "${file.nameWithoutExtension}-$hash.metadata")
           if (cacheFile.exists()) {
             cacheFile.inputStream().use { input -> ProfilerTaskMetadata.parseFrom(input) }
           } else {

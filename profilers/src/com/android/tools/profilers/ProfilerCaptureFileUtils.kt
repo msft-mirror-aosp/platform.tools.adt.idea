@@ -49,47 +49,40 @@ object ProfilerCaptureFileUtils {
   private val MAX_CAPTURE_OFFSET_MS = TimeUnit.DAYS.toMillis(1)
 
   /**
-   * Renames a temporary capture file to an identifiable file within the system's temporary directory.
-   *
-   * This is used when a capture is created and needs to be saved with a specific name so it can be easily identified and opened by the
-   * editor.
+   * Moves a temporary capture file to [targetFile], creating its folder if needed, so it can be easily identified and opened by the editor.
    *
    * @param captureFile the source temporary file
-   * @param targetFileName the desired name for the file
-   * @return the renamed [File] if successful, or null otherwise
+   * @param targetFile where to move it. If a non-empty file is already there, it's returned as is.
+   * @return the moved [File] if successful, or null otherwise
    */
   @JvmStatic
-  fun renameToTargetFile(captureFile: File, targetFileName: String): File? {
+  fun renameToTargetFile(captureFile: File, targetFile: File): File? {
     if (!captureFile.exists() || captureFile.length() == 0L) {
       return null
     }
 
-    // Use the system temp directory as the destination folder for the permanent file.
-    val outputDir = File(FileUtil.getTempDirectory())
-    val traceFile = File(outputDir, targetFileName)
-
-    if (captureFile.absolutePath == traceFile.absolutePath) {
-      return traceFile
+    if (captureFile.absolutePath == targetFile.absolutePath) {
+      return targetFile
     }
 
-    if (traceFile.exists() && traceFile.length() > 0L) {
-      return traceFile
+    if (targetFile.exists() && targetFile.length() > 0L) {
+      return targetFile
     }
 
-    if (traceFile.exists()) {
-      traceFile.delete()
+    if (targetFile.exists()) {
+      targetFile.delete()
     }
 
-    // Try to rename the capture file to the target file.
-    if (captureFile.renameTo(traceFile)) {
-      return traceFile
+    // Try to rename the capture file to the target file, and don't leave behind a folder created for it if that fails.
+    val folder = targetFile.parentFile
+    val createdFolder = folder?.mkdirs() == true
+    if (captureFile.renameTo(targetFile)) {
+      return targetFile
+    }
+    if (createdFolder) {
+      folder?.delete()
     }
     return null
-  }
-
-  @JvmStatic
-  fun getCaptureFile(traceFileName: String): File {
-    return File(FileUtil.getTempDirectory(), traceFileName)
   }
 
   /**
@@ -122,28 +115,37 @@ object ProfilerCaptureFileUtils {
     "${getTaskFileNamePrefix(taskType)}-${formatFileNameTime(recordingStartEpochMs)}.$extension"
 
   /**
-   * Returns the name of the file that a capture of [taskType] in [session] is saved to so it can open in the editor. For example,
-   * `heap-dump-20261116T141553.hprof`.
+   * Returns the file that a capture of [taskType] in [session] is saved to so it can open in the editor, e.g.
+   * `capture_123456789/heap-dump-20261116T141553.hprof` in the temp directory. Each capture gets its own folder, so captures of the same
+   * task that start in the same second don't share a file, and the file's name, which the editor tab and Past Recordings show, stays
+   * readable.
    *
    * @param captureStartNs when the capture started, in the device time of [session]
+   * @param captureId the ID of the capture's file in the transport pipeline, which names its folder: the trace ID of a CPU recording, or
+   *   the start time of a memory recording
    */
   @JvmStatic
-  fun getRecordingFileName(
+  fun getRecordingFile(
     session: Common.Session,
     sessionMetaData: Common.SessionMetaData?,
     taskType: ProfilerTaskType,
     captureStartNs: Long,
     extension: String,
-  ): String = getRecordingFileName(taskType, getRecordingStartEpochMs(session, sessionMetaData, captureStartNs), extension)
+    captureId: Long,
+  ): File {
+    val fileName = getRecordingFileName(taskType, getRecordingStartEpochMs(session, sessionMetaData, captureStartNs), extension)
+    return File(File(FileUtil.getTempDirectory(), "capture_$captureId"), fileName)
+  }
 
   /**
    * Returns the file that the CPU recording described by [traceInfo], a System Trace, Java/Kotlin Method Recording or Callstack Sample, is
-   * saved to so it can open in the editor. For example, `system-trace-20261116T141553.trace`.
+   * saved to so it can open in the editor, in a folder named after its trace ID. For example,
+   * `capture_123456789/system-trace-20261116T141553.trace`.
    */
   @JvmStatic
   fun getCpuRecordingFile(session: Common.Session, sessionMetaData: Common.SessionMetaData?, traceInfo: Trace.TraceInfo): File {
     val taskType = TraceType.from(traceInfo.configuration).toTaskType()
-    return getCaptureFile(getRecordingFileName(session, sessionMetaData, taskType, traceInfo.fromTimestamp, CPU_RECORDING_EXTENSION))
+    return getRecordingFile(session, sessionMetaData, taskType, traceInfo.fromTimestamp, CPU_RECORDING_EXTENSION, traceInfo.traceId)
   }
 
   /**
@@ -203,14 +205,14 @@ object ProfilerCaptureFileUtils {
 
   /**
    * Fetches the file of the CPU recording described by [traceInfo], a System Trace, Java/Kotlin Method Recording or Callstack Sample, and
-   * moves it into the temp directory under the name from [getCpuRecordingFile], so it can open in the editor. If a non-empty file with that
-   * name is already there, returns it as is. Returns null if the recording's file can't be fetched or moved.
+   * moves it to the file from [getCpuRecordingFile], so it can open in the editor. If a non-empty file is already there, returns it as is.
+   * Returns null if the recording's file can't be fetched or moved.
    */
   @JvmStatic
   fun getAndRenameCapture(profilers: StudioProfilers, session: Common.Session, traceInfo: Trace.TraceInfo): File? {
     val captureFile = getCaptureAsFile(profilers, traceInfo.traceId) ?: return null
     val targetFile = getCpuRecordingFile(session, profilers.sessionsManager.getSessionMetaData(session.sessionId), traceInfo)
-    val finalFile = renameToTargetFile(captureFile, targetFile.name) ?: return null
+    val finalFile = renameToTargetFile(captureFile, targetFile) ?: return null
     writeMetadataToFile(profilers, session, finalFile)
 
     // TRACING 2.0: Check if this was a Tracing 2.0 CPU session, and if so, wait for and Zip the Compose traces.
@@ -223,17 +225,20 @@ object ProfilerCaptureFileUtils {
   }
 
   /**
-   * Writes a sidecar file containing serialized task metadata alongside the trace file. This metadata is used by standalone editors to
-   * reconstruct telemetry dashboards accurately safely.
+   * Writes a sidecar file containing serialized task metadata alongside the trace file, in the same folder. This metadata is used by
+   * standalone editors to reconstruct telemetry dashboards accurately safely.
    */
   @JvmStatic
   fun writeMetadataToFile(profilers: StudioProfilers, session: Common.Session, file: File) {
+    // A recording that didn't arrive can't be opened, so there's nothing to describe, and its folder may not exist.
+    if (!file.isFile || file.length() == 0L) {
+      return
+    }
     val sessionsManager = profilers.sessionsManager
     val metadata = sessionsManager.getSessionMetaData(session.sessionId) ?: return
     try {
       val hash = ProfilerHashUtils.hashTracePath(file)
-      val tempDir = FileUtil.getTempDirectory()
-      val metadataFile = File(tempDir, "${file.nameWithoutExtension}-$hash.metadata")
+      val metadataFile = File(file.absoluteFile.parentFile, "${file.nameWithoutExtension}-$hash.metadata")
       if (!metadataFile.exists()) {
         val taskMetadata =
           ProfilerTaskMetadataProto.ProfilerTaskMetadata.newBuilder()

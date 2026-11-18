@@ -882,17 +882,19 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
           return;
         }
         String deviceSerial = getSelectedDeviceSerial();
+        // Read the session here, so the saved file's name, its transport request and its metadata all use the same one.
+        Common.Session session = profilers.getSession();
         profilers.getIdeServices().getPoolExecutor().execute(() -> {
           CaptureObject capture = durationData.getCaptureEntry().getCaptureObject();
           String extension = capture.getExportableExtension() != null ? capture.getExportableExtension() : "alloc";
-          Common.Session session = profilers.getSession();
-          String traceFileName = ProfilerCaptureFileUtils.getRecordingFileName(
+          // The capture's start time is also the ID of its file in the transport pipeline.
+          File recordingFile = ProfilerCaptureFileUtils.getRecordingFile(
             session, profilers.getSessionsManager().getSessionMetaData(session.getSessionId()), getMemoryTaskType(capture),
-            capture.getStartTimeNs(), extension);
-          File file = ProfilerCaptureFileUtils.getCaptureFile(traceFileName);
+            capture.getStartTimeNs(), extension, capture.getStartTimeNs());
+          File file = recordingFile;
           if (!file.exists()) {
             Transport.BytesRequest request = Transport.BytesRequest.newBuilder()
-              .setStreamId(profilers.getSession().getStreamId())
+              .setStreamId(session.getStreamId())
               .setId(String.valueOf(capture.getStartTimeNs()))
               .build();
             Transport.FileResponse response = profilers.getClient().getTransportClient().getFile(request);
@@ -904,7 +906,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
                 processedFile = TraceDeobfuscator.deobfuscate(profilers.getIdeServices(), originalFile, deobfuscation.appName(),
                                                               deviceSerial, deobfuscation.withNativeSymbols());
               }
-              file = ProfilerCaptureFileUtils.renameToTargetFile(processedFile, traceFileName);
+              file = ProfilerCaptureFileUtils.renameToTargetFile(processedFile, recordingFile);
               if (file == null) {
                 file = processedFile;
               }
@@ -915,7 +917,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
               }
             }
           }
-          ProfilerCaptureFileUtils.writeMetadataToFile(profilers, profilers.getSession(), file);
+          ProfilerCaptureFileUtils.writeMetadataToFile(profilers, session, file);
           final File traceFile = file;
           profilers.getIdeServices().getMainExecutor().execute(() -> {
             if (traceFile != null && traceFile.exists() && traceFile.length() > 0) {
@@ -924,7 +926,7 @@ public class MainMemoryProfilerStage extends BaseStreamingMemoryProfilerStage im
             else {
               // Shared by every recording opened in the editor, so name the file rather than the task.
               getLogger().warn(traceFile == null || !traceFile.exists()
-                               ? "No file arrived from the device for " + traceFileName
+                               ? "No file arrived from the device for " + recordingFile
                                : "The file from the device is empty: " + traceFile);
               profilers.getIdeServices().showNotification(MemoryProfilerNotifications.getCaptureFailure(capture));
               cleanupFailedCapture();
