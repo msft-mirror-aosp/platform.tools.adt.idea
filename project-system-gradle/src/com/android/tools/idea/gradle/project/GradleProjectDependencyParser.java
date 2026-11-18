@@ -22,13 +22,14 @@ import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel;
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel;
 import com.android.tools.idea.gradle.dsl.api.dependencies.ModuleDependencyModel;
 import com.google.common.base.Function;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
 import com.google.common.collect.Sets;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -37,32 +38,30 @@ import org.jetbrains.annotations.NotNull;
 public class GradleProjectDependencyParser {
   @NotNull
   public static Function<VirtualFile, Iterable<String>> newInstance(@NotNull final Project project) {
-    return CacheBuilder.newBuilder().build(new CacheLoader<VirtualFile, Iterable<String>>() {
-      @Override
-      public Iterable<String> load(@NotNull VirtualFile key) throws Exception {
-        return parse(key, project);
-      }
-    });
+    Map<VirtualFile, Iterable<String>> cache = new ConcurrentHashMap<>();
+    return key -> cache.computeIfAbsent(key, k -> parse(k, project));
   }
 
   @NotNull
   private static Set<String> parse(@NotNull VirtualFile moduleRoot, @NotNull Project project) {
-    VirtualFile buildFile = findGradleBuildFile(moduleRoot);
-    if (buildFile == null) {
-      return Collections.emptySet();
-    }
-    else {
-      Set<String> result = Sets.newHashSet();
-      ProjectBuildModel projectModel = ProjectBuildModel.getOrLog(project);
-      if (projectModel != null) {
-        GradleBuildModel buildModel = projectModel.getModuleBuildModel(buildFile);
-        DependenciesModel dependenciesModel = buildModel.dependencies();
-        for (ModuleDependencyModel dependency : dependenciesModel.modules()) {
-          String modulePath = dependency.path().forceString();
-          result.add(modulePath);
-        }
+    return ReadAction.compute(() -> {
+      VirtualFile buildFile = findGradleBuildFile(moduleRoot);
+      if (buildFile == null) {
+        return Collections.emptySet();
       }
-      return result;
-    }
+      else {
+        Set<String> result = Sets.newHashSet();
+        ProjectBuildModel projectModel = ProjectBuildModel.getOrLog(project);
+        if (projectModel != null) {
+          GradleBuildModel buildModel = projectModel.getModuleBuildModel(buildFile);
+          DependenciesModel dependenciesModel = buildModel.dependencies();
+          for (ModuleDependencyModel dependency : dependenciesModel.modules()) {
+            String modulePath = dependency.path().forceString();
+            result.add(modulePath);
+          }
+        }
+        return result;
+      }
+    });
   }
 }

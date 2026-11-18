@@ -23,8 +23,16 @@ import com.android.tools.idea.testing.AndroidGradleProjectRule
 import com.android.tools.idea.testing.TestProjectPaths
 import com.android.tools.idea.wizard.model.ModelWizard
 import com.google.common.truth.Truth.assertThat
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.TransactionGuard
+import com.intellij.openapi.application.TransactionGuardImpl
+import com.intellij.openapi.application.impl.NonBlockingReadActionImpl
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VfsUtil
+import com.intellij.util.ui.UIUtil
+import java.awt.EventQueue
 import java.io.File
+import javax.swing.SwingUtilities
 import org.jetbrains.android.AndroidTestBase
 import org.jetbrains.android.util.AndroidBundle.message
 import org.junit.Before
@@ -33,13 +41,15 @@ import org.junit.Test
 import org.mockito.kotlin.mock
 
 class SourceToGradleModuleStepTest {
+  private lateinit var model: SourceToGradleModuleModel
   private lateinit var page: SourceToGradleModuleStep
 
   @get:Rule val projectRule = AndroidGradleProjectRule(agpVersionSoftwareEnvironment = getAgpVersion())
 
   @Before
   fun setup() {
-    page = SourceToGradleModuleStep(SourceToGradleModuleModel(projectRule.project, DefaultProjectSyncInvoker()))
+    model = SourceToGradleModuleModel(projectRule.project, DefaultProjectSyncInvoker())
+    page = SourceToGradleModuleStep(model)
     page.onWizardStarting(mock<ModelWizard.Facade>())
     Disposer.register(projectRule.fixture.testRootDisposable, page)
   }
@@ -96,5 +106,70 @@ class SourceToGradleModuleStepTest {
     projectRule.loadProject(TestProjectPaths.IMPORTING)
     val path = projectRule.project.basePath!!
     assertThat(page.checkPath(path).message).isEqualTo(message("android.wizard.module.import.source.browse.taken.location"))
+  }
+
+  @Test
+  fun testSourceLocationValidationMultiModuleFromEdt() {
+    val modulesTable = UIUtil.findComponentOfType(page.component, ModulesTable::class.java)!!
+    val rootDir = File(AndroidTestBase.getTestDataPath(), TestProjectPaths.IMPORTING)
+    SwingUtilities.invokeAndWait {
+      (TransactionGuard.getInstance() as TransactionGuardImpl).performUserActivity {
+        val app = ApplicationManager.getApplication()
+        assertThat(EventQueue.isDispatchThread()).isTrue()
+        assertThat(app.isReadAccessAllowed).isFalse()
+        assertThat(app.isWriteIntentLockAcquired).isFalse()
+
+        model.sourceLocation.set(rootDir.path)
+        assertThat(page.canGoForward().get()).isFalse()
+      }
+    }
+
+    SwingUtilities.invokeAndWait { NonBlockingReadActionImpl.waitForAsyncTaskCompletion() }
+
+    assertThat(page.canGoForward().get()).isTrue()
+    assertThat(modulesTable.selectedModulesMap)
+      .containsExactly(
+        ":unused",
+        VfsUtil.findFileByIoFile(File(rootDir, "unused"), false),
+        ":simple",
+        VfsUtil.findFileByIoFile(File(rootDir, "simple"), false),
+        ":nested",
+        VfsUtil.findFileByIoFile(File(rootDir, "nested"), false),
+        ":nested:sourcemodule",
+        VfsUtil.findFileByIoFile(File(rootDir, "nested/sourcemodule"), false),
+        ":withdependency",
+        VfsUtil.findFileByIoFile(File(rootDir, "withdependency"), false),
+        ":withmultipledependencies",
+        VfsUtil.findFileByIoFile(File(rootDir, "withmultipledependencies"), false),
+      )
+  }
+
+  @Test
+  fun testSourceLocationValidationLeafModuleWithDependenciesFromEdt() {
+    val modulesTable = UIUtil.findComponentOfType(page.component, ModulesTable::class.java)!!
+    val dependentRootDir = File(AndroidTestBase.getTestDataPath(), TestProjectPaths.DEPENDENT_MODULES)
+    val leafModuleDir = File(dependentRootDir, "app")
+    SwingUtilities.invokeAndWait {
+      (TransactionGuard.getInstance() as TransactionGuardImpl).performUserActivity {
+        val app = ApplicationManager.getApplication()
+        assertThat(EventQueue.isDispatchThread()).isTrue()
+        assertThat(app.isReadAccessAllowed).isFalse()
+        assertThat(app.isWriteIntentLockAcquired).isFalse()
+
+        model.sourceLocation.set(leafModuleDir.path)
+        assertThat(page.canGoForward().get()).isFalse()
+      }
+    }
+
+    SwingUtilities.invokeAndWait { NonBlockingReadActionImpl.waitForAsyncTaskCompletion() }
+
+    assertThat(page.canGoForward().get()).isTrue()
+    assertThat(modulesTable.selectedModulesMap)
+      .containsExactly(
+        ":app",
+        VfsUtil.findFileByIoFile(File(dependentRootDir, "app"), false),
+        ":lib",
+        VfsUtil.findFileByIoFile(File(dependentRootDir, "lib"), false),
+      )
   }
 }

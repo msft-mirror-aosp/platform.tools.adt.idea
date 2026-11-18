@@ -45,6 +45,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.intellij.ide.util.projectWizard.ModuleWizardStep;
 import com.intellij.ide.util.projectWizard.WizardContext;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectUtil;
@@ -109,7 +110,8 @@ public final class GradleModuleImporter extends ModuleImporter {
 
   @Override
   public boolean canImport(@NotNull VirtualFile importSource) {
-    return GradleProjects.canImportAsGradleProject(importSource) && (myIsWizard || findModules(importSource).size() == 1);
+    return ReadAction.compute(
+      () -> GradleProjects.canImportAsGradleProject(importSource) && (myIsWizard || findModules(importSource).size() == 1));
   }
 
   @Override
@@ -133,14 +135,16 @@ public final class GradleModuleImporter extends ModuleImporter {
    */
   @NotNull
   public static Set<ModuleToImport> getRelatedProjects(@NotNull VirtualFile sourceProject, @NotNull Project destinationProject) {
-    VirtualFile settingsGradle = sourceProject.findFileByRelativePath(SdkConstants.FN_SETTINGS_GRADLE);
-    if (settingsGradle != null) {
-      return buildModulesSet(getSubProjects(settingsGradle, destinationProject),
-                             GradleProjectDependencyParser.newInstance(destinationProject));
-    }
-    else {
-      return getRequiredProjects(sourceProject, destinationProject);
-    }
+    return ReadAction.compute(() -> {
+      VirtualFile settingsGradle = sourceProject.findFileByRelativePath(SdkConstants.FN_SETTINGS_GRADLE);
+      if (settingsGradle != null) {
+        return buildModulesSet(getSubProjects(settingsGradle, destinationProject),
+                               GradleProjectDependencyParser.newInstance(destinationProject));
+      }
+      else {
+        return getRequiredProjects(sourceProject, destinationProject);
+      }
+    });
   }
 
   /**
@@ -177,7 +181,8 @@ public final class GradleModuleImporter extends ModuleImporter {
       VirtualFile location = entry.getValue();
       Supplier<Iterable<String>> dependencyComputer;
       if (location != null) {
-        dependencyComputer = Suppliers.compose(parser, Suppliers.ofInstance(location));
+        Iterable<String> dependencies = parser.apply(location);
+        dependencyComputer = Suppliers.ofInstance(dependencies != null ? dependencies : ImmutableSet.of());
       }
       else {
         dependencyComputer = Suppliers.ofInstance(ImmutableSet.of());
@@ -189,20 +194,22 @@ public final class GradleModuleImporter extends ModuleImporter {
 
   @NotNull
   public static Map<String, VirtualFile> getSubProjects(@NotNull final VirtualFile settingsGradle, Project destinationProject) {
-    GradleSettingsModel gradleSettingsModel = GradleSettingsModel.get(settingsGradle, destinationProject);
-    Iterable<String> paths = gradleSettingsModel.modulePaths();
-    Map<String, File> allProjects = new LinkedHashMap<>();
-    for (String path : paths) {
-      // Exclude the root path.
-      if (path.equals(":")) {
-        continue;
+    return ReadAction.compute(() -> {
+      GradleSettingsModel gradleSettingsModel = GradleSettingsModel.get(settingsGradle, destinationProject);
+      Iterable<String> paths = gradleSettingsModel.modulePaths();
+      Map<String, File> allProjects = new LinkedHashMap<>();
+      for (String path : paths) {
+        // Exclude the root path.
+        if (path.equals(":")) {
+          continue;
+        }
+        File projectFile = gradleSettingsModel.moduleDirectory(path);
+        if (projectFile != null) {
+          allProjects.put(path, projectFile);
+        }
       }
-      File projectFile = gradleSettingsModel.moduleDirectory(path);
-      if (projectFile != null) {
-        allProjects.put(path, projectFile);
-      }
-    }
-    return Maps.transformValues(allProjects, new ResolvePath(virtualToIoFile(settingsGradle.getParent())));
+      return Maps.transformValues(allProjects, new ResolvePath(virtualToIoFile(settingsGradle.getParent())));
+    });
   }
 
   /**
