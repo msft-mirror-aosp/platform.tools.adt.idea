@@ -45,7 +45,6 @@ import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.utils.NullLogger
 import com.google.common.truth.Truth.assertThat
 import com.intellij.credentialStore.Credentials
-import com.intellij.execution.process.ProcessHandler
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.ProjectRule
@@ -53,9 +52,11 @@ import com.intellij.testFramework.replaceService
 import com.intellij.util.net.ProxyConfiguration
 import com.intellij.util.net.ProxyConfiguration.ProxyProtocol
 import com.intellij.util.net.ProxyCredentialStore
+import java.io.InputStream
 import java.io.OutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -63,6 +64,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -252,9 +254,9 @@ class AvdManagerConnectionTest {
   @Test
   fun testStartAvdWaitsForBoot() = runBlocking {
     val avd = avdManager.createAvd(avdFolder, name, systemImage, null, null, null, null, null, null, false, false, false)
-    val processHandler = FakeEmulatorProcessHandler()
+    val process = FakeEmulatorProcess()
     deviceProvisionerRule.deviceProvisionerPlugin.explicitBoot = true
-    val connection = createTestConnectionWithProcessHandler(processHandler)
+    val connection = createTestConnectionWithProcess(process)
     val handle = addFakeDevice(avd, connection)
 
     val startDeferred = async { connection.startAvd(project, avd) }
@@ -274,13 +276,13 @@ class AvdManagerConnectionTest {
   @Test
   fun testStartAvdCrash() = runBlocking {
     val avd = avdManager.createAvd(avdFolder, name, systemImage, null, null, null, null, null, null, false, false, false)
-    val processHandler = FakeEmulatorProcessHandler()
-    val connection = createTestConnectionWithProcessHandler(processHandler)
+    val process = FakeEmulatorProcess()
+    val connection = createTestConnectionWithProcess(process)
     val handle = addFakeDevice(avd, connection)
 
     launch {
       handle.stateFlow.first { it.isTransitioning }
-      processHandler.terminate(1)
+      process.terminate(1)
     }
 
     try {
@@ -294,13 +296,13 @@ class AvdManagerConnectionTest {
   @Test
   fun testStartAvdClosedByUser() = runBlocking {
     val avd = avdManager.createAvd(avdFolder, name, systemImage, null, null, null, null, null, null, false, false, false)
-    val processHandler = FakeEmulatorProcessHandler()
-    val connection = createTestConnectionWithProcessHandler(processHandler)
+    val process = FakeEmulatorProcess()
+    val connection = createTestConnectionWithProcess(process)
     val handle = addFakeDevice(avd, connection)
 
     launch {
       handle.stateFlow.first { it.isTransitioning }
-      processHandler.terminate(0)
+      process.terminate(0)
     }
 
     try {
@@ -315,9 +317,9 @@ class AvdManagerConnectionTest {
   @Test
   fun testStartAvdDelegatesToActivatableDeviceHandle() = runBlocking {
     val avd = avdManager.createAvd(avdFolder, name, systemImage, null, null, null, null, null, null, false, false, false)
-    val processHandler = FakeEmulatorProcessHandler()
+    val process = FakeEmulatorProcess()
     deviceProvisionerRule.deviceProvisionerPlugin.explicitBoot = true
-    val connection = createTestConnectionWithProcessHandler(processHandler)
+    val connection = createTestConnectionWithProcess(process)
     val handle = addFakeDevice(avd, connection)
 
     val startDeferred = async { connection.startAvd(project, avd, forceLaunchInToolWindow = true, bootMode = ColdBoot) }
@@ -335,9 +337,9 @@ class AvdManagerConnectionTest {
   @Test
   fun testStartAvdDisconnectedWhileBooting() = runBlocking {
     val avd = avdManager.createAvd(avdFolder, name, systemImage, null, null, null, null, null, null, false, false, false)
-    val processHandler = FakeEmulatorProcessHandler()
+    val process = FakeEmulatorProcess()
     deviceProvisionerRule.deviceProvisionerPlugin.explicitBoot = true
-    val connection = createTestConnectionWithProcessHandler(processHandler)
+    val connection = createTestConnectionWithProcess(process)
     val handle = addFakeDevice(avd, connection)
 
     launch {
@@ -387,7 +389,6 @@ class AvdManagerConnectionTest {
     var activatedBootMode: BootMode? = null
 
     override suspend fun activate(project: Project?, forceLaunchInToolWindow: Boolean, bootMode: BootMode?) {
-      val self = this
       activatedWithToolWindow = forceLaunchInToolWindow
       activatedBootMode = bootMode
       baseHandle.stateFlow.update { (it as? DeviceState.Disconnected)?.copy(isTransitioning = true, status = "Starting up") ?: it }
@@ -395,7 +396,14 @@ class AvdManagerConnectionTest {
       val activationResult = CompletableDeferred<Unit>()
       val startJob = scope.launch {
         try {
-          connection.startAvd(project, self, avd, forceLaunchInToolWindow, bootMode ?: BootMode.fromProperties(avd.properties))
+          val process =
+            connection.startAvdProcess(project, avd, forceLaunchInToolWindow, bootMode ?: BootMode.fromProperties(avd.properties))
+          val exitCode = process.onExit().await().exitValue()
+          if (exitCode == 0) {
+            throw DeviceActionCanceledException("The emulator process for AVD ${state.properties.title} was closed.")
+          } else {
+            throw DeviceActionException("The emulator process for AVD ${state.properties.title} has terminated.")
+          }
         } catch (e: Throwable) {
           baseHandle.stateFlow.update { (it as? DeviceState.Disconnected)?.copy(isTransitioning = false, status = "Offline") ?: it }
           activationResult.completeExceptionally(e)
@@ -430,35 +438,43 @@ class AvdManagerConnectionTest {
     }
   }
 
-  private fun createTestConnectionWithProcessHandler(processHandler: FakeEmulatorProcessHandler): AvdManagerConnection =
+  private fun createTestConnectionWithProcess(process: FakeEmulatorProcess): AvdManagerConnection =
     object : AvdManagerConnection(AndroidSdkHandler(sdkRoot, prefsRoot), avdManager, Dispatchers.Unconfined) {
       override suspend fun startAvdProcess(
         project: Project?,
         avd: AvdInfo,
         forceLaunchInToolWindow: Boolean,
         bootMode: BootMode,
-      ): ProcessHandler {
-        processHandler.startNotify()
-        return processHandler
-      }
+      ): Process = process
     }
 
-  private class FakeEmulatorProcessHandler : ProcessHandler() {
-    override fun destroyProcessImpl() {
-      notifyProcessTerminated(0)
+  private class FakeEmulatorProcess : Process() {
+    private val exitFuture = CompletableFuture<Process>()
+    private var exitCode = 0
+
+    fun terminate(code: Int) {
+      exitCode = code
+      exitFuture.complete(this)
     }
 
-    override fun detachProcessImpl() {
-      notifyProcessDetached()
+    override fun onExit(): CompletableFuture<Process> = exitFuture
+
+    override fun exitValue(): Int {
+      if (!exitFuture.isDone) throw IllegalThreadStateException("Process has not exited")
+      return exitCode
     }
 
-    override fun detachIsDefault(): Boolean = false
-
-    override fun getProcessInput(): OutputStream? = null
-
-    fun terminate(exitCode: Int) {
-      notifyProcessTerminated(exitCode)
+    override fun destroy() {
+      terminate(0)
     }
+
+    override fun waitFor(): Int = exitFuture.get().exitValue()
+
+    override fun getOutputStream(): OutputStream = OutputStream.nullOutputStream()
+
+    override fun getInputStream(): InputStream = InputStream.nullInputStream()
+
+    override fun getErrorStream(): InputStream = InputStream.nullInputStream()
   }
 
   private fun createFile(dir: Path, relativePath: String) {

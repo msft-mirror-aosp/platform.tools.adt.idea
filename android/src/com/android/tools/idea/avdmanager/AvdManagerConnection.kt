@@ -23,7 +23,6 @@ import com.android.repository.api.RepoPackage
 import com.android.sdklib.SystemImageTags
 import com.android.sdklib.deviceprovisioner.DeviceActionCanceledException
 import com.android.sdklib.deviceprovisioner.DeviceActionException
-import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
 import com.android.sdklib.deviceprovisioner.awaitReady
@@ -55,9 +54,6 @@ import com.android.utils.PathUtils
 import com.intellij.credentialStore.isFulfilled
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.process.ProcessEvent
-import com.intellij.execution.process.ProcessHandler
-import com.intellij.execution.process.ProcessListener
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
@@ -69,9 +65,6 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.wm.ToolWindowManager
-import com.intellij.platform.ide.progress.withBackgroundProgress
-import com.intellij.platform.util.progress.reportProgressScope
-import com.intellij.platform.util.progress.withProgressText
 import com.intellij.util.net.ProxyConfiguration
 import com.intellij.util.net.ProxyConfiguration.StaticProxyConfiguration
 import com.intellij.util.net.ProxyCredentialStore
@@ -88,10 +81,6 @@ import kotlin.time.Duration.Companion.minutes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -203,84 +192,6 @@ constructor(
     }
   }
 
-  /**
-   * Starts the AVD process directly for the given [deviceHandle] and waits for it to finish booting.
-   *
-   * This is the lower-level implementation used by StudioLocalEmulatorDeviceHandle.
-   *
-   * @throws DeviceActionException if the emulator crashes or the device fails to come online
-   * @throws DeviceActionCanceledException if the emulator terminates normally before coming online (presumably terminated by the user)
-   */
-  open suspend fun startAvd(
-    project: Project?,
-    deviceHandle: DeviceHandle,
-    avd: AvdInfo,
-    forceLaunchInToolWindow: Boolean = false,
-    bootMode: BootMode = BootMode.fromProperties(avd.properties),
-  ) {
-    val processHandler = startAvdProcess(project, avd, forceLaunchInToolWindow, bootMode)
-    if (project != null) {
-      awaitAvdBoot(project, deviceHandle, processHandler)
-    }
-  }
-
-  /** Show a progress indicator and wait for the device to either boot or terminate, or timeout after 5 minutes if neither happens. */
-  private suspend fun awaitAvdBoot(project: Project, deviceHandle: DeviceHandle, processHandler: ProcessHandler) {
-    // Launch each monitor in parallel, and cancel the others via scopeContext when one happens.
-    coroutineScope {
-      val scopeContext = coroutineContext
-      // Show fake progress indicator
-      launch {
-        withBackgroundProgress(project, "Launching emulator") {
-          reportProgressScope(80) { reporter ->
-            withProgressText("Starting AVD...") {
-              repeat(80) {
-                reporter.itemStep { delay(100) }
-              }
-            }
-          }
-        }
-      }
-      // Wait for boot
-      launch {
-        deviceHandle.awaitReady()
-        scopeContext.cancelChildren()
-      }
-      // Wait for termination
-      launch {
-        if (processHandler.awaitTermination() == 0) {
-          throw DeviceActionCanceledException("The emulator process for AVD ${deviceHandle.state.properties.title} was closed.")
-        } else {
-          throw DeviceActionException("The emulator process for AVD ${deviceHandle.state.properties.title} has terminated.")
-        }
-      }
-      // Wait for timeout
-      launch {
-        delay(5.minutes)
-        val msg = "Timed out after 5 minutes waiting for emulator to come online."
-        IJ_LOG.warn(msg)
-        throw DeviceActionException(msg)
-      }
-    }
-  }
-
-  private suspend fun ProcessHandler.awaitTermination(): Int {
-    val result = CompletableDeferred<Int>()
-    val listener =
-      object : ProcessListener {
-        override fun processTerminated(event: ProcessEvent) {
-          result.complete(event.exitCode)
-        }
-      }
-    addProcessListener(listener)
-    try {
-      exitCode?.let { result.complete(it) }
-      return result.await()
-    } finally {
-      removeProcessListener(listener)
-    }
-  }
-
   private fun Project.findDeviceHandle(avd: AvdInfo): ActivatableDeviceHandle? =
     service<DeviceProvisionerService>().deviceProvisioner.devices.value.find {
       (it.state.properties as? LocalEmulatorProperties)?.avdPath == avd.dataFolderPath
@@ -381,12 +292,12 @@ constructor(
   }
 
   /** Starts the AVD process. */
-  protected open suspend fun startAvdProcess(
+  open suspend fun startAvdProcess(
     project: Project?,
     avd: AvdInfo,
     forceLaunchInToolWindow: Boolean = false,
     bootMode: BootMode = BootMode.fromProperties(avd.properties),
-  ): ProcessHandler =
+  ): Process =
     withContext(Dispatchers.Default) {
       val avdManager = avdManager ?: throw DeviceActionException("No Android SDK Found")
       checkNotNull(sdkHandler)
@@ -420,7 +331,7 @@ constructor(
       val runner = EmulatorRunner(commandLine, reloadedAvd)
 
       try {
-        runner.start()
+        runner.start().process
       } catch (e: ExecutionException) {
         IJ_LOG.error("Error launching emulator", e)
         throw DeviceActionException(String.format("Error launching emulator %1\$s", avdName), e)

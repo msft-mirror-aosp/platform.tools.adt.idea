@@ -18,6 +18,7 @@ package com.android.tools.idea.avd
 import com.android.adblib.ConnectedDevice
 import com.android.adblib.tools.aiglasses.AiGlassesPairing
 import com.android.adblib.tools.aiglasses.ShellCommandException
+import com.android.adblib.utils.createChildScope
 import com.android.sdklib.deviceprovisioner.ActivationAction
 import com.android.sdklib.deviceprovisioner.AvdDeviceError
 import com.android.sdklib.deviceprovisioner.AvdScanner
@@ -92,6 +93,9 @@ import com.intellij.openapi.ui.DoNotAskOption
 import com.intellij.openapi.ui.MessageDialogBuilder
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.WindowManager
+import com.intellij.platform.ide.progress.withBackgroundProgress
+import com.intellij.platform.util.progress.reportProgressScope
+import com.intellij.platform.util.progress.withProgressText
 import com.intellij.ui.EditorNotificationPanel
 import icons.StudioIcons
 import java.awt.Component
@@ -103,7 +107,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -293,15 +299,39 @@ class StudioLocalEmulatorDeviceHandle(
     val effectiveProject = project ?: this.project
     val resolvedBootMode = bootMode ?: BootMode.fromProperties(avdInfo.properties)
     avdManagerConnection.checkAvdPreLaunch(effectiveProject, avdInfo)
-    val action: suspend () -> Unit = {
-      startAvd(effectiveProject, avdInfo, forceLaunchInToolWindow, resolvedBootMode)
+
+    // Create a scope that can outlive this method, but will terminate when either launch is aborted, completed, or the progress completes.
+    val launchProgressScope = effectiveProject?.let { scope.createChildScope() }
+    suspend fun activateSelf() {
+      try {
+        launchProgressScope?.launch {
+          withBackgroundProgress(effectiveProject, "Launching emulator") {
+            reportProgressScope(80) { reporter ->
+              withProgressText("Starting ${state.properties.title}...") {
+                repeat(80) { reporter.itemStep { delay(100) } }
+              }
+            }
+          }
+          launchProgressScope.cancel()
+        }
+        baseDeviceHandle.activate {
+          startAvd(effectiveProject, avdInfo, forceLaunchInToolWindow, resolvedBootMode)
+        }
+        launchProgressScope?.launch {
+          baseDeviceHandle.stateFlow.first { !it.isTransitioning || it.isReady || it.status == "Shutting down" }
+          launchProgressScope.cancel()
+        }
+      } catch (t: Throwable) {
+        launchProgressScope?.cancel()
+        throw t
+      }
     }
 
     // If we have a companion phone, launch it in parallel when we launch.
     val companionHandle = state.properties.pairedPhoneId?.let { phoneId -> deviceHandleFlow.value.find { it.id == phoneId } }
     if (companionHandle != null && companionHandle.activationAction.presentation.value.enabled) {
       coroutineScope {
-        launch { baseDeviceHandle.activate(action) }
+        launch { activateSelf() }
         launch {
           runCatchingDeviceActionException(effectiveProject, companionHandle.state.properties.title) {
             companionHandle.activate(effectiveProject, forceLaunchInToolWindow)
@@ -309,7 +339,7 @@ class StudioLocalEmulatorDeviceHandle(
         }
       }
     } else {
-      baseDeviceHandle.activate(action)
+      activateSelf()
     }
 
     if (state.properties.deviceType == DeviceType.AI_GLASSES && state.properties.pairedPhoneId == null) {
@@ -344,11 +374,11 @@ class StudioLocalEmulatorDeviceHandle(
     avdInfo: AvdInfo,
     forceLaunchInToolWindow: Boolean,
     bootMode: BootMode,
-  ): Unit =
+  ): Process =
     // Note: the original DeviceManager does this in UI thread, but this may call
     // @Slow methods so switch
     withContext(Dispatchers.Default) {
-      avdManagerConnection.startAvd(project, baseDeviceHandle, avdInfo, forceLaunchInToolWindow, bootMode)
+      avdManagerConnection.startAvdProcess(project, avdInfo, forceLaunchInToolWindow, bootMode)
     }
 
   override val activationAction =

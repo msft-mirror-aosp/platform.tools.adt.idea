@@ -15,7 +15,6 @@
  */
 package com.android.tools.idea.streaming.emulator
 
-import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.internal.avd.AvdInfo
 import com.android.sdklib.internal.avd.BootMode
@@ -157,24 +156,10 @@ class FakeEmulatorRule : TestRule {
     }
 
     override suspend fun startAvd(project: Project?, avd: AvdInfo, forceLaunchInToolWindow: Boolean, bootMode: BootMode) {
-      startEmulator(avd, forceLaunchInToolWindow, startPairedPhone = true)
-    }
-
-    override suspend fun startAvd(
-      project: Project?,
-      deviceHandle: DeviceHandle,
-      avd: AvdInfo,
-      forceLaunchInToolWindow: Boolean,
-      bootMode: BootMode,
-    ) {
-      startEmulator(avd, forceLaunchInToolWindow, startPairedPhone = false)
-    }
-
-    private fun startEmulator(avd: AvdInfo, forceLaunchInToolWindow: Boolean, startPairedPhone: Boolean) {
       val emulator =
         emulators.firstOrNull { it.avdFolder == avd.dataFolderPath } ?: throw IllegalArgumentException("Unknown AVD: ${avd.id}")
       emulator.start(standalone = !forceLaunchInToolWindow)
-      if (startPairedPhone && emulator.deviceType == DeviceType.AI_GLASSES) {
+      if (emulator.deviceType == DeviceType.AI_GLASSES) {
         val paired = emulator.pairedDevice
         if (paired != null && !paired.isRunning) {
           paired.start(standalone = !forceLaunchInToolWindow)

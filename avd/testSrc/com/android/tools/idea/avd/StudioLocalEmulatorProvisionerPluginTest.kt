@@ -535,19 +535,15 @@ class StudioLocalEmulatorProvisionerPluginTest {
     val mockConnection = mock<AvdManagerConnection>()
     AvdManagerConnection.setConnectionFactory { _, _ -> mockConnection }
 
-    val basePhoneHandle = plugin.basePlugin.devices.value.first { it.id == phoneHandle.id }
-    val baseGlassesHandle = plugin.basePlugin.devices.value.first { it.id == glassesHandle.id }
-
-    // Note that activation will not actually complete because we don't implement the fake ADB connection, so just verify that startAvd was
-    // called.
+    // Note that activation will not actually complete because we don't implement the fake ADB connection, so just verify that
+    // startAvdProcess was called.
     val activationJob = launch { glassesHandle.activate(projectRule.project, forceLaunchInToolWindow = true, bootMode = ColdBoot) }
     yieldUntil {
       runCatching {
         verify(mockConnection).checkAvdPreLaunch(projectRule.project, glassesInfo)
-        verify(mockConnection)
-          .startAvd(projectRule.project, baseGlassesHandle, glassesInfo, forceLaunchInToolWindow = true, bootMode = ColdBoot)
+        verify(mockConnection).startAvdProcess(projectRule.project, glassesInfo, forceLaunchInToolWindow = true, bootMode = ColdBoot)
         verify(mockConnection).checkAvdPreLaunch(projectRule.project, phoneInfo)
-        verify(mockConnection).startAvd(projectRule.project, basePhoneHandle, phoneInfo, forceLaunchInToolWindow = true)
+        verify(mockConnection).startAvdProcess(projectRule.project, phoneInfo, forceLaunchInToolWindow = true)
       }
         .isSuccess && glassesHandle.state.isTransitioning && phoneHandle.state.isTransitioning
     }

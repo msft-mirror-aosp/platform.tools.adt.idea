@@ -40,7 +40,7 @@ public class EmulatorRunner {
   private final GeneralCommandLine myCommandLine;
   private final AvdInfo myAvdInfo;
 
-  private ProcessHandler myProcessHandler;
+  private EmulatorProcessHandler myProcessHandler;
   private final List<ProcessListener> myExtraListeners = new ArrayList<>();
 
   public EmulatorRunner(@NotNull GeneralCommandLine commandLine, @Nullable AvdInfo avdInfo) {
@@ -66,7 +66,7 @@ public class EmulatorRunner {
     UsageTracker.log(event);
   }
 
-  public ProcessHandler start() throws ExecutionException {
+  public EmulatorProcessHandler start() throws ExecutionException {
     Process process = myCommandLine.createProcess();
     myProcessHandler = new EmulatorProcessHandler(process, myCommandLine.getCommandLineString(), myAvdInfo);
     myExtraListeners.forEach(myProcessHandler::addProcessListener);
