@@ -38,7 +38,6 @@ import com.android.tools.idea.wizard.model.ModelWizard.Facade;
 import com.android.tools.idea.wizard.model.ModelWizardStep;
 import com.android.tools.idea.wizard.model.SkippableWizardStep;
 import com.android.tools.idea.wizard.ui.WizardUtils;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import com.intellij.ide.util.projectWizard.ModuleWizardStep;
@@ -228,19 +227,6 @@ public final class SourceToGradleModuleStep extends SkippableWizardStep<SourceTo
     updateForwardStatus(myHasValidPath);
   }
 
-  @NotNull
-  @VisibleForTesting
-  Validator.Result updateForwardStatus(@NotNull String path) {
-    resetValidationState();
-    if (Strings.isNullOrEmpty(path)) {
-      // Don't validate default empty input: jetbrains.github.io/ui/principles/validation_errors/#23
-      return Validator.Result.OK;
-    }
-    PathValidationResult validationResult = evaluatePath(path);
-    applyValidationResult(validationResult);
-    return validationResult.result();
-  }
-
   private void updateModuleValidation() {
     myModulesPanel.setModules(getModel().getProject(), myVFile, myModules);
     myModulesScroller.setVisible(myModulesPanel.getComponentCount() > 0);
@@ -257,16 +243,6 @@ public final class SourceToGradleModuleStep extends SkippableWizardStep<SourceTo
   private void updateForwardStatus(boolean hasValidPath) {
     // Validation of import location can be superseded by lack of modules selected for import
     myCanGoForward.set(hasValidPath && myModulesPanel.canImport() && !myModulesPanel.getSelectedModules().isEmpty());
-  }
-
-  @NotNull
-  @VisibleForTesting
-  Validator.Result checkPath(@NotNull String path) {
-    PathValidationResult validationResult = evaluatePath(path);
-    myVFile = validationResult.vFile();
-    myImporter = validationResult.importer();
-    myModules = validationResult.modules();
-    return validationResult.result();
   }
 
   @NotNull
