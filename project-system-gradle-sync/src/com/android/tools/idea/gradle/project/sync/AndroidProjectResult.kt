@@ -21,6 +21,7 @@ import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
+import com.android.ide.gradle.model.builder.ProjectMavenCoordinates
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
@@ -46,6 +47,7 @@ sealed class AndroidProjectResult {
     val androidProjectV2: com.android.builder.model.v2.models.AndroidProject? = null,
     val androidDsl: AndroidDsl,
     val declaredDependencies: DeclaredDependencies? = null,
+    val mavenCoordinates: ProjectMavenCoordinates? = null,
   ) : AndroidProjectResult() {
     override fun createVariantFetcher(): IdeVariantFetcher =
       v2VariantFetcher(
@@ -78,6 +80,7 @@ sealed class AndroidProjectResult {
       runtimeClasspathBehaviour: RuntimeClasspathBehaviour,
       additionalArtifactsInModel: Boolean,
       declaredDependencies: DeclaredDependencies? = null,
+      mavenCoordinates: ProjectMavenCoordinates? = null,
     ): ModelResult<V2Project> {
       val basicVariants: List<BasicVariant> = basicAndroidProject.variants.toList()
       val defaultVariantName: String? =
@@ -133,6 +136,7 @@ sealed class AndroidProjectResult {
           androidProjectV2 = androidProject,
           androidDsl = androidDsl,
           declaredDependencies = declaredDependencies,
+          mavenCoordinates = mavenCoordinates,
         )
       }
     }

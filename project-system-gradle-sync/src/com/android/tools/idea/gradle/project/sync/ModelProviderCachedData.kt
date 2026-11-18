@@ -95,5 +95,6 @@ internal data class CachedAndroidProjectData(
   val selectedVariantName: String,
   val ideAndroidProject: IdeAndroidProject,
   val shouldSkipRuntimeClassPathForLibraries: Boolean,
+  /** Unique module IDs ([Modules.createUniqueModuleId]) of all outgoing project dependencies across same-build and cross-build edges. */
   val allOutgoingProjectDependencies: List<String>,
 )

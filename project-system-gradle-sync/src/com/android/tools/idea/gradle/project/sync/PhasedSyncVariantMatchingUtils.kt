@@ -25,8 +25,10 @@ import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.AndroidProject
 import com.android.builder.model.v2.models.BasicAndroidProject
 import com.android.builder.model.v2.models.Versions
+import com.android.ide.common.gradle.Module as ExternalModule
 import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
+import com.android.ide.gradle.model.builder.ProjectMavenCoordinates
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeBasicVariantName
 import com.android.tools.idea.gradle.model.IdeSyncIssue
@@ -35,6 +37,8 @@ import com.android.tools.idea.gradle.model.IdeSyncIssue.Companion.TYPE_GENERIC
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeBasicVariantNameImpl
 import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
+import com.intellij.openapi.util.io.FileUtil
+import java.io.File
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.forEach
@@ -61,8 +65,12 @@ class AndroidProjectDataMappingNode(
   var selectedVariantName: String?,
   val legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
   val moduleId: String,
+  val mavenCoordinates: ProjectMavenCoordinates? = null,
   var isSeen: Boolean = false,
 ) {
+  /** All the outgoing project dependencies (`producerModuleId -> configurations`), populated across same-build and cross-build edges. */
+  internal lateinit var allOutgoingProjectDependencies: Map<String, Set<String>>
+
   // Only instantiate these if we need to use attributes resolution disambiguation logic.
   val productFlavorsByDimensionAndName: Map<Pair<String, String>, ProductFlavor> by
     lazy(LazyThreadSafetyMode.PUBLICATION) { androidDsl.productFlavors.associateBy { (it.dimension ?: "") to it.name } }
@@ -86,7 +94,95 @@ data class AndroidProjectData(
   var selectedVariantName: String,
   val shouldSkipRuntimeClassPathForLibraries: Boolean,
   val legacyAndroidGradlePluginProperties: LegacyAndroidGradlePluginProperties?,
+  val mavenCoordinates: ProjectMavenCoordinates? = null,
 )
+
+/**
+ * Builds a lookup map of ([ExternalModule]) to matching [BasicGradleProject]s across all builds, or empty map if there is a single Build.
+ *
+ * `version` is intentionally excluded from the key because Gradle composite build auto-substitution matches on `(group, name)` regardless
+ * of version.
+ */
+internal fun buildCoordinatesToProjectsMap(
+  projectsToMavenCoordinates: Collection<Pair<BasicGradleProject, ProjectMavenCoordinates?>>
+): Map<ExternalModule, List<BasicGradleProject>> {
+  // Cross-build coordinate matching only applies when there are multiple builds in the composite.
+  val firstRootDir = projectsToMavenCoordinates.firstOrNull()?.first?.projectIdentifier?.buildIdentifier?.rootDir ?: return emptyMap()
+  if (projectsToMavenCoordinates.all { FileUtil.filesEqual(it.first.projectIdentifier.buildIdentifier.rootDir, firstRootDir) }) {
+    return emptyMap()
+  }
+  val coordinatesToProjects = mutableMapOf<ExternalModule, MutableList<BasicGradleProject>>()
+  projectsToMavenCoordinates.forEach { (gradleProject, coordinates) ->
+    if (coordinates != null) {
+      coordinatesToProjects.getOrPut(ExternalModule(coordinates.group, coordinates.name)) { mutableListOf() }.add(gradleProject)
+    }
+  }
+  return coordinatesToProjects
+}
+
+/**
+ * Process and merge all outgoing project dependencies for a consumer project into a unified map of `(producerModuleId -> configurations)`.
+ * - **Same-build dependencies**: Resolved from [DeclaredDependencies.allOutgoingProjectsDependenciesToConfigurations] using the Gradle
+ *   project path within [consumerBuildRootDir].
+ * - **Cross-build dependencies**: Resolved from [DeclaredDependencies.allOutgoingExternalModuleDependencies] by matching Maven `(group,
+ *   name)` against [coordinatesToProjects], restricted to target projects in other builds (`targetBuildRootDir != consumerBuildRootDir`).
+ *
+ * @param consumerBuildRootDir The build root directory (`buildIdentifier.rootDir`) of the consuming project.
+ * @param declaredDependencies The [DeclaredDependencies] collected for the consuming project.
+ * @param coordinatesToProjects Map built by [buildCoordinatesToProjectsMap] for cross-build coordinate resolution.
+ * @return Map from each target project's unique `moduleId` ([Modules.createUniqueModuleId]) to the set of consumer configuration names
+ *   declaring that dependency.
+ */
+internal fun processAllOutgoingProjectDependencies(
+  consumerBuildRootDir: File,
+  declaredDependencies: DeclaredDependencies?,
+  coordinatesToProjects: Map<ExternalModule, List<BasicGradleProject>>,
+): Map<String, Set<String>> {
+  // If the current project doesn't have dependencies, then we don't need to process its dependencies.
+  if (declaredDependencies == null) return emptyMap()
+  val mergedProjectsDependencies = mutableMapOf<String, MutableSet<String>>()
+
+  // 1. Same-build project dependencies (by Gradle path).
+  declaredDependencies.allOutgoingProjectsDependenciesToConfigurations.forEach { (dependencyPath, configurations) ->
+    val producerModuleId = Modules.createUniqueModuleId(consumerBuildRootDir, dependencyPath)
+    mergedProjectsDependencies.getOrPut(producerModuleId) { mutableSetOf() }.addAll(configurations)
+  }
+
+  // 2. Cross-build composite dependencies (by Maven group and artifact name across other builds).
+  if (coordinatesToProjects.isNotEmpty()) {
+    declaredDependencies.allOutgoingExternalModuleDependencies.forEach { (configurationName, coordinatesList) ->
+      coordinatesList.forEach { coordinates ->
+        // Gradle parses group-less notation (e.g. ":my-lib:1.0") with group == null and normalizes null -> "" during substitution.
+        val group = coordinates.group.orEmpty()
+        coordinatesToProjects[ExternalModule(group, coordinates.name)]?.forEach { targetProject ->
+          // TODO(b/467047467): Verify in a test how Gradle handles same-build external coordinates in composite builds.
+          if (!FileUtil.filesEqual(targetProject.projectIdentifier.buildIdentifier.rootDir, consumerBuildRootDir)) {
+            mergedProjectsDependencies.getOrPut(targetProject.moduleId()) { mutableSetOf() }.add(configurationName)
+          }
+        }
+      }
+    }
+  }
+
+  return mergedProjectsDependencies
+}
+
+/**
+ * Computes and stores [AndroidProjectDataMappingNode.allOutgoingProjectDependencies] for every node in [projectsNodes] so the resolved
+ * dependency edges can be reused across sorting, variant propagation and caching.
+ */
+private fun populateAllOutgoingProjectDependencies(projectsNodes: List<Pair<BasicGradleProject, AndroidProjectDataMappingNode>>) {
+  val coordinatesToProjects =
+    buildCoordinatesToProjectsMap(projectsNodes.map { (gradleProject, node) -> gradleProject to node.mavenCoordinates })
+  projectsNodes.forEach { (gradleProject, node) ->
+    node.allOutgoingProjectDependencies =
+      processAllOutgoingProjectDependencies(
+        consumerBuildRootDir = gradleProject.projectIdentifier.buildIdentifier.rootDir,
+        declaredDependencies = node.declaredDependencies,
+        coordinatesToProjects = coordinatesToProjects,
+      )
+  }
+}
 
 /** Encapsulates the state of variant resolution across all projects during a sync phase. */
 class VariantResolutionContext {
@@ -144,12 +240,14 @@ fun setupProjectsVariantsAndConsume(
         selectedVariantName = androidData.selectedVariantName,
         legacyAndroidGradlePluginProperties = androidData.legacyAndroidGradlePluginProperties,
         moduleId = gradleProject.moduleId(),
+        mavenCoordinates = androidData.mavenCoordinates,
       )
   }
 
   // Now sort the projects based on their priority criteria (projectType + number of incoming dependencies).
   val projectsWithPriority = sortProjectsByPriority(projectNodesRegistry, syncOptions)
   val resultsForVariants = resolveVariantsCore(projectsWithPriority, variantsResolutionIssues)
+  val nodesByProject = projectNodesRegistry.toMap()
 
   projectsData.forEach { (gradleProject, androidProjectContext) ->
     // Update the selected variant for this project if there were no exceptions thrown: this is important because this data is
@@ -164,7 +262,7 @@ fun setupProjectsVariantsAndConsume(
       androidProjectContext.modelVersions,
       androidProjectContext.ideAndroidProject,
       androidProjectContext.shouldSkipRuntimeClassPathForLibraries,
-      androidProjectContext.declaredDependencies.allOutgoingProjectsDependenciesToConfigurations.keys.toList(),
+      nodesByProject[gradleProject]?.allOutgoingProjectDependencies?.keys?.toList().orEmpty(),
     )
   }
 }
@@ -215,6 +313,7 @@ fun resolveVariantsForRegularSync(
         selectedVariantName = variant,
         legacyAndroidGradlePluginProperties = module.legacyAndroidGradlePluginProperties,
         moduleId = gradleProject.moduleId(),
+        mavenCoordinates = module.mavenCoordinates,
       )
   }
 
@@ -299,6 +398,7 @@ fun sortProjectsByPriority(
   projectsNodes: List<Pair<BasicGradleProject, AndroidProjectDataMappingNode>>,
   syncOptions: SyncActionOptions,
 ): Map<Int, List<Pair<BasicGradleProject, AndroidProjectDataMappingNode>>> {
+  populateAllOutgoingProjectDependencies(projectsNodes)
   val projectNodesByGradlePaths = projectsNodes.associateBy { it.second.moduleId }
 
   // 1. Build the mapping of each project to the # of incoming dependencies.
@@ -308,9 +408,8 @@ fun sortProjectsByPriority(
   val queue = ArrayDeque<String>()
 
   val dependenciesByModuleIds = mutableMapOf<String, MutableList<String>>()
-  projectsNodes.forEach { (gradleProject, node) ->
-    node.declaredDependencies?.allOutgoingProjectsDependenciesToConfigurations?.forEach { (dependencyProject, _) ->
-      val producerModuleId = Modules.createUniqueModuleId(gradleProject.projectIdentifier.buildIdentifier.rootDir, dependencyProject)
+  projectsNodes.forEach { (_, node) ->
+    node.allOutgoingProjectDependencies.keys.forEach { producerModuleId ->
       val dependencyNode = projectNodesByGradlePaths[producerModuleId]?.second ?: return@forEach
       // Only ignore edges targeting an APP module to prevent Graph Inversion.
       // This preserves dependencies on libraries (e.g. Test -> SharedLib) while ensuring Apps resolve first.
@@ -739,7 +838,7 @@ private fun setUpExpectedVariantForDependantProjects(
   variantResolutionContext: VariantResolutionContext,
   currentProjectPriority: Int,
 ) {
-  val declaredDependencies = androidProjectContext.declaredDependencies ?: return
+  if (androidProjectContext.allOutgoingProjectDependencies.isEmpty()) return
 
   // Calculate the requirement to propagate once for all outgoing dependencies.
   val currentRequirement =
@@ -751,19 +850,23 @@ private fun setUpExpectedVariantForDependantProjects(
       currentProjectPriority,
     )
 
-  // Now we set the expectations for projects dependencies.
+  // Now we set the expectations for project dependencies (both same-build paths and cross-build composite coordinates).
   val currentProjectActiveConfigurations = getActiveConfigurationNames(androidProjectContext, variantToSync)
-  declaredDependencies.allOutgoingProjectsDependenciesToConfigurations.forEach { (dependency, configurations) ->
-    // Check if the projectDependency configuration is "interesting". i.e. needs the projects variants to be synced.
+  val consumerBuildRootDir = gradleProject.projectIdentifier.buildIdentifier.rootDir
+  val sameBuildDynamicFeatureIds =
+    androidProjectContext.androidProject
+      ?.dynamicFeatures
+      ?.mapTo(mutableSetOf()) { Modules.createUniqueModuleId(consumerBuildRootDir, it) }
+      .orEmpty()
+
+  androidProjectContext.allOutgoingProjectDependencies.forEach { (dependencyId, configurations) ->
+    // Check if the dependency configuration is "interesting". i.e. needs the target project's variants to be synced.
     val isInterestingConfig =
       if (currentProjectActiveConfigurations.isNotEmpty()) {
         configurations.any { currentProjectActiveConfigurations.contains(it) }
       } else false
 
-    if (isInterestingConfig || androidProjectContext.androidProject?.dynamicFeatures?.contains(dependency) == true) {
-      // The outgoing project dependencies represent those within the same Build, so we can use the given Gradle project's build ID for the
-      // dependencies.
-      val dependencyId = Modules.createUniqueModuleId(gradleProject.projectIdentifier.buildIdentifier.rootDir.path, dependency)
+    if (isInterestingConfig || sameBuildDynamicFeatureIds.contains(dependencyId)) {
       val existingVariantRequirement = variantResolutionContext.projectVariantRequirements[dependencyId]
       // Higher priority consumer overrides existing variant expectation.
       if (existingVariantRequirement == null || currentProjectPriority < existingVariantRequirement.priority) {

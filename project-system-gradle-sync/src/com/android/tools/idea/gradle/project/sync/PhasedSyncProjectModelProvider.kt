@@ -28,6 +28,7 @@ import com.android.builder.model.v2.models.ndk.NativeModule
 import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.LegacyV1AgpVersionModel
+import com.android.ide.gradle.model.builder.ProjectMavenCoordinates
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
@@ -193,6 +194,7 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
                       syncOptions.flags.studioFlagSkipRuntimeClasspathForLibraries &&
                         shouldSkipRuntimeClasspathForLibraries(androidProject.flags, gradlePropertiesModel),
                       legacyAndroidGradlePluginProperties,
+                      controller.findModel(gradleProject, ProjectMavenCoordinates::class.java),
                     )
                 }
                   .onFailure { exceptionsPerProject += gradleProject to it }
@@ -260,7 +262,8 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
           data.modelVersions,
           data.ideAndroidProject,
           data.shouldSkipRuntimeClassPathForLibraries,
-          data.declaredDependencies.allOutgoingProjectsDependenciesToConfigurations.keys.toList(),
+          // Outgoing project dependencies are only used to skip library runtime classpaths during SingleVariantSyncActionOptions.
+          emptyList(),
         )
       }
     }

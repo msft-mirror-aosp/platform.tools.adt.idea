@@ -59,23 +59,16 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
     val unresolvedDependenciesPerProject = mutableMapOf<BasicGradleProject, List<IdeUnresolvedDependency>>()
     val buildPathMap = buildBuildPathMap(controller, buildModels)
     val internedModels = InternedModels(buildModels.first().buildIdentifier.rootDir)
+    // Build a set of module IDs across all builds that have inbound dependencies from any Android project.
+    // This is used as an optimization when determining whether to skip library runtime classpaths.
+    val hasInboundDependencyByModuleId = cachedData.data.values.flatMapTo(mutableSetOf()) { it.allOutgoingProjectDependencies }
+    val allProjects = buildModels.flatMap { it.projects }
+    val ideAndroidProjectMap = allProjects.mapNotNull { cachedData.data[it]?.let { data -> it to data.ideAndroidProject } }.toMap()
+    val androidProjectPathResolver = buildAndroidProjectPathResolver(allProjects, ideAndroidProjectMap)
 
     val result =
       controller.run(
         buildModels.flatMap { buildModel ->
-          // For each build, build a map per-project to indicate whether it has inbound dependencies
-          // This is used as an optimization when determining whether to skip library runtime classpaths
-          val hasInboundDependencyByPath = mutableSetOf<String>()
-          buildModel.projects.forEach {
-            cachedData.data[it]?.allOutgoingProjectDependencies.orEmpty().forEach { gradleProjectPath ->
-              hasInboundDependencyByPath.add(gradleProjectPath)
-            }
-          }
-
-          val allProjects = buildModels.flatMap { it.projects }
-          val ideAndroidProjectMap = allProjects.mapNotNull { cachedData.data[it]?.let { data -> it to data.ideAndroidProject } }.toMap()
-          val androidProjectPathResolver = buildAndroidProjectPathResolver(allProjects, ideAndroidProjectMap)
-
           buildModel.projects.flatMap { gradleProject ->
             val data = cachedData.data[gradleProject] ?: return@flatMap emptyList()
             val ideAndroidProject = data.ideAndroidProject
@@ -94,7 +87,7 @@ class PhasedSyncDependencyModelProvider(val syncOptions: SyncActionOptions, val 
                       variantName = variantToFetch.name,
                     ) {
                       when {
-                        !hasInboundDependencyByPath.contains(gradleProject.path) ->
+                        !hasInboundDependencyByModuleId.contains(gradleProject.moduleId()) ->
                           it.buildAllRuntimeClasspaths(syncOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport)
                         syncOptions is SingleVariantSyncActionOptions &&
                           data.shouldSkipRuntimeClassPathForLibraries &&

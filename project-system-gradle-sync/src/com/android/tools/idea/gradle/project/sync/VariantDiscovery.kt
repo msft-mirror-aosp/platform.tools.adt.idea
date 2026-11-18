@@ -57,6 +57,7 @@ internal class VariantDiscovery(
   private val buildInfo: BuildInfo,
   private val internedModels: InternedModels,
   private val androidProjectPathResolver: AndroidProjectPathResolver,
+  private val hasKotlinMultiPlatform: Boolean = androidModulesById.values.any { it.hasKotlinMultiPlatform },
 ) {
 
   // In all variant sync we sync all the variants available,
@@ -66,10 +67,16 @@ internal class VariantDiscovery(
   private val inputModules = androidModulesById.values
   private val moduleFetchResults = Collections.synchronizedMap(HashMap<FetchedVariant, FetchedVariantResult>())
 
-  private val hasInboundDependencyByPath: Set<String> by lazy {
+  private val hasInboundDependencyByModuleId: Set<String> by lazy {
+    val coordinatesToProjects = buildCoordinatesToProjectsMap(inputModules.map { it.gradleProject to it.mavenCoordinates })
     inputModules
       .flatMap { module ->
-        module.declaredDependencies?.allOutgoingProjectsDependenciesToConfigurations?.keys.orEmpty()
+        processAllOutgoingProjectDependencies(
+            consumerBuildRootDir = module.gradleProject.projectIdentifier.buildIdentifier.rootDir,
+            declaredDependencies = module.declaredDependencies,
+            coordinatesToProjects = coordinatesToProjects,
+          )
+          .keys
       }
       .toSet()
   }
@@ -133,11 +140,13 @@ internal class VariantDiscovery(
   fun discoverVariantsAndSync(shouldUseProjectGraph: Boolean) {
     if (inputModules.isEmpty()) return
 
-    // Run the new resolution for V2 projects.
+    // Run the new resolution for V2 projects (including composite builds via ProjectMavenCoordinates).
+    // KMP must be checked across all modules in the build (including non-Android JavaModules for new KMP for ex) to avoid missed
+    // transitive dependencies to Android libraries.
     val useNewResolution =
       syncOptions.flags.studioFlagUsedPhasedSyncVariantResolution &&
         syncOptions.flags.studioFlagPhasedSyncDependencyResolutionEnabled &&
-        buildInfo.buildIdMap.keys.size == 1 &&
+        !hasKotlinMultiPlatform &&
         inputModules.all {
           it is AndroidModule.V2 && it.nativeModelVersion == AndroidModule.NativeModelVersion.None && !it.hasKotlinMultiPlatform
         }
@@ -336,7 +345,7 @@ internal class VariantDiscovery(
           module.id,
           selectedVariantName,
           selectedAbi,
-          isRoot = !hasInboundDependencyByPath.contains(module.gradleProject.path),
+          isRoot = !hasInboundDependencyByModuleId.contains(module.id),
         )
       }
     }

@@ -18,6 +18,7 @@ package com.android.tools.idea.gradle.project.sync
 import com.android.builder.model.v2.dsl.BuildType
 import com.android.builder.model.v2.dsl.ProductFlavor
 import com.android.builder.model.v2.ide.BasicVariant
+import com.android.builder.model.v2.ide.ProjectInfo
 import com.android.builder.model.v2.ide.ProjectType
 import com.android.builder.model.v2.ide.SourceProvider
 import com.android.builder.model.v2.ide.SourceSetContainer
@@ -27,24 +28,39 @@ import com.android.builder.model.v2.ide.Variant
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.AndroidProject
 import com.android.builder.model.v2.models.BasicAndroidProject
+import com.android.builder.model.v2.models.ProjectGraph
 import com.android.builder.model.v2.models.ProjectSyncIssues
 import com.android.builder.model.v2.models.Versions
 import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.GradlePluginModel
+import com.android.ide.gradle.model.builder.ProjectMavenCoordinates
+import com.android.ide.gradle.model.builder.ProjectMavenCoordinatesImpl
+import com.android.ide.gradle.model.dependencies.Coordinates
+import com.android.ide.gradle.model.dependencies.CoordinatesImpl
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.ide.gradle.model.impl.LegacyAndroidGradlePluginPropertiesImpl
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeSyncIssue
+import com.android.tools.idea.gradle.model.impl.BuildFolderPaths
 import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
+import com.android.tools.idea.gradle.model.impl.IdeBuildImpl
+import com.android.tools.idea.gradle.model.impl.IdeCompositeBuildMapImpl
+import com.android.tools.idea.gradle.model.impl.IdeDependenciesCoreDirect
+import com.android.tools.idea.gradle.model.impl.IdeMultiVariantDataImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.google.common.truth.Truth.assertThat
 import java.io.File
+import java.lang.reflect.Proxy
 import kotlin.test.assertFailsWith
+import org.gradle.api.Action
+import org.gradle.tooling.BuildAction
 import org.gradle.tooling.BuildController
 import org.gradle.tooling.model.BuildIdentifier
+import org.gradle.tooling.model.Model
 import org.gradle.tooling.model.ProjectIdentifier
 import org.gradle.tooling.model.gradle.BasicGradleProject
+import org.gradle.tooling.model.gradle.GradleBuild
 import org.jetbrains.plugins.gradle.model.GradleTaskModel
 import org.jetbrains.plugins.gradle.model.ProjectImportModelProvider.GradleModelConsumer
 import org.junit.Before
@@ -1369,9 +1385,672 @@ class PhasedSyncVariantNameResolutionTest {
     assertThat(libBBatch).isGreaterThan(libABatch)
   }
 
+  @Test
+  fun `composite build propagates variants across builds via Maven coordinates with fallbacks and missingDimensionStrategy`() {
+    val rootDir = File("/root")
+    val includedDir = File("/included1")
+    val projects =
+      listOf(
+        ProjectSetup(
+          moduleId = ":app",
+          buildRootDir = rootDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+          dependencies = emptyList(),
+          externalDependencies = mapOf("implementation" to listOf(CoordinatesImpl("com.included1", "lib", "1.0"))),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.root", "app", "1.0"),
+          defaultVariant = "freeRelease",
+          variants = listOf("freeDebug", "freeRelease", "paidDebug", "paidRelease"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release", matchingFallbacks = listOf("qa"))),
+          productFlavors = listOf(TestProductFlavor("free", "tier"), TestProductFlavor("paid", "tier")),
+          missingDimensionStrategy = mapOf("env" to listOf("staging")),
+        ),
+        ProjectSetup(
+          moduleId = ":lib",
+          buildRootDir = includedDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.included1", "lib", "1.0"),
+          defaultVariant = "paidProdDebug",
+          variants = listOf("freeStagingDebug", "freeStagingQa", "paidProdDebug", "paidProdQa"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("qa")),
+          productFlavors =
+            listOf(
+              TestProductFlavor("free", "tier"),
+              TestProductFlavor("paid", "tier"),
+              TestProductFlavor("staging", "env"),
+              TestProductFlavor("prod", "env"),
+            ),
+        ),
+      )
+
+    setCompositeSwitchVariantRequest(rootDir, ":app", "freeRelease")
+    val (selectedVariants, _) = sortCompositeProjectsAndGetSelectedVariants(projects)
+
+    assertThat(selectedVariants[Modules.createUniqueModuleId(rootDir, ":app")]).isEqualTo("freeRelease")
+    assertThat(selectedVariants[Modules.createUniqueModuleId(includedDir, ":lib")]).isEqualTo("freeStagingQa")
+  }
+
+  @Test
+  fun `composite build multi-hop chain sorts topologically and propagates across included builds`() {
+    val rootDir = File("/root")
+    val included1Dir = File("/included1")
+    val included2Dir = File("/included2")
+    val projects =
+      listOf(
+        ProjectSetup(
+          moduleId = ":app",
+          buildRootDir = rootDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+          dependencies = emptyList(),
+          externalDependencies = mapOf("implementation" to listOf(CoordinatesImpl("com.included1", "lib", "1.0"))),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.root", "app", "1.0"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+        ProjectSetup(
+          moduleId = ":lib",
+          buildRootDir = included1Dir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          // Versionless coordinate (common in composite builds) while target has version "2.5.0".
+          externalDependencies = mapOf("api" to listOf(CoordinatesImpl("com.included2", "lib", null))),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.included1", "lib", "1.0"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+          mainConfigs = setOf("implementation", "api"),
+        ),
+        ProjectSetup(
+          moduleId = ":lib",
+          buildRootDir = included2Dir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.included2", "lib", "2.5.0"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+      )
+
+    setCompositeSwitchVariantRequest(rootDir, ":app", "release")
+    val nodes = projects.map { project ->
+      val params = createMocksForProject(project)
+      params.basicGradleProject to
+        AndroidProjectDataMappingNode(
+          modelVersions = params.modelVersions,
+          basicAndroidProject = params.basicAndroidProject,
+          androidProject = params.androidProject,
+          androidDsl = params.androidDsl,
+          declaredDependencies = params.declaredDependencies,
+          selectedVariantName = project.defaultVariant,
+          legacyAndroidGradlePluginProperties = params.legacyAndroidGradlePluginPropertiesImpl,
+          moduleId = params.basicGradleProject.moduleId(),
+          mavenCoordinates = project.mavenCoordinates,
+        )
+    }
+
+    val sortedBatches = sortProjectsByPriority(nodes, syncOptions)
+    assertThat(sortedBatches[0]!!.map { it.second.moduleId }).containsExactly(Modules.createUniqueModuleId(rootDir, ":app"))
+    assertThat(sortedBatches[1]!!.map { it.second.moduleId }).containsExactly(Modules.createUniqueModuleId(included1Dir, ":lib"))
+    assertThat(sortedBatches[2]!!.map { it.second.moduleId }).containsExactly(Modules.createUniqueModuleId(included2Dir, ":lib"))
+
+    val (selectedVariants, cachedModels) = sortCompositeProjectsAndGetSelectedVariants(projects)
+    val rootAppId = Modules.createUniqueModuleId(rootDir, ":app")
+    val included1LibId = Modules.createUniqueModuleId(included1Dir, ":lib")
+    val included2LibId = Modules.createUniqueModuleId(included2Dir, ":lib")
+
+    assertThat(selectedVariants[rootAppId]).isEqualTo("release")
+    assertThat(selectedVariants[included1LibId]).isEqualTo("release")
+    assertThat(selectedVariants[included2LibId]).isEqualTo("release")
+
+    // Verify CachedAndroidProjectData records resolved outgoing moduleIds across builds for inbound-dependency tracking.
+    val outgoingByModuleId = cachedModels.data.entries.associate { (proj, data) -> proj.moduleId() to data.allOutgoingProjectDependencies }
+    assertThat(outgoingByModuleId[rootAppId]).containsExactly(included1LibId)
+    assertThat(outgoingByModuleId[included1LibId]).containsExactly(included2LibId)
+    assertThat(outgoingByModuleId[included2LibId]).isEmpty()
+  }
+
+  @Test
+  fun `composite build merges same-build path consumers and cross-build coordinate consumers by priority`() {
+    val rootDir = File("/root")
+    val includedDir = File("/included")
+    val projects =
+      listOf(
+        ProjectSetup(
+          moduleId = ":app",
+          buildRootDir = rootDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+          dependencies = emptyList(),
+          externalDependencies = mapOf("implementation" to listOf(CoordinatesImpl("com.included", "lib", "1.0"))),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.root", "app", "1.0"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+        ProjectSetup(
+          moduleId = ":app",
+          buildRootDir = includedDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+          // Same-build project dependency on :lib inside /included.
+          dependencies = listOf(":lib"),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.included", "app", "unspecified"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+        ProjectSetup(
+          moduleId = ":lib",
+          buildRootDir = includedDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.included", "lib", "unspecified"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+      )
+
+    // 1. Switch root :app (Priority 0) to release -> beats included :app (Priority 1, debug) on included :lib.
+    setCompositeSwitchVariantRequest(rootDir, ":app", "release")
+    val (selectedWhenRootSwitched, _) = sortCompositeProjectsAndGetSelectedVariants(projects)
+    assertThat(selectedWhenRootSwitched[Modules.createUniqueModuleId(rootDir, ":app")]).isEqualTo("release")
+    assertThat(selectedWhenRootSwitched[Modules.createUniqueModuleId(includedDir, ":app")]).isEqualTo("debug")
+    assertThat(selectedWhenRootSwitched[Modules.createUniqueModuleId(includedDir, ":lib")]).isEqualTo("release")
+
+    // 2. Switch included :lib directly (Priority 0) to release while both apps default to debug -> stays release.
+    setCompositeSwitchVariantRequest(includedDir, ":lib", "release")
+    val (selectedWhenIncludedLibSwitched, _) = sortCompositeProjectsAndGetSelectedVariants(projects)
+    assertThat(selectedWhenIncludedLibSwitched[Modules.createUniqueModuleId(includedDir, ":lib")]).isEqualTo("release")
+    assertThat(selectedWhenIncludedLibSwitched[Modules.createUniqueModuleId(rootDir, ":app")]).isEqualTo("debug")
+    assertThat(selectedWhenIncludedLibSwitched[Modules.createUniqueModuleId(includedDir, ":app")]).isEqualTo("debug")
+  }
+
+  @Test
+  fun `composite build matches cross-build projects sharing same group and ignores same-build coordinate matches`() {
+    val rootDir = File("/root")
+    val includedDir = File("/included")
+    val projects =
+      listOf(
+        ProjectSetup(
+          moduleId = ":app",
+          buildRootDir = rootDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+          dependencies = emptyList(),
+          // Declares external Maven coordinates rather than project(":sibling-lib").
+          externalDependencies =
+            mapOf(
+              "implementation" to
+                listOf(
+                  CoordinatesImpl("com.mycorp", "shared-lib", "1.0"),
+                  CoordinatesImpl("com.mycorp", "sibling-lib", "1.0"),
+                )
+            ),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.mycorp", "app", "1.0"),
+          defaultVariant = "release",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+        ProjectSetup(
+          moduleId = ":sibling-lib",
+          buildRootDir = rootDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.mycorp", "sibling-lib", "1.0"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+        ProjectSetup(
+          moduleId = ":shared-lib",
+          buildRootDir = includedDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          // Shares the exact same group ("com.mycorp") as root :app, but lives in a different build.
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.mycorp", "shared-lib", "1.0"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+      )
+
+    setCompositeSwitchVariantRequest(rootDir, ":app", "release")
+    val (selectedVariants, _) = sortCompositeProjectsAndGetSelectedVariants(projects)
+
+    // Included build's :shared-lib matches (producerBuildRoot != consumerBuildRoot, even with same group).
+    assertThat(selectedVariants[Modules.createUniqueModuleId(includedDir, ":shared-lib")]).isEqualTo("release")
+    // Same-build :sibling-lib does NOT match external Maven coordinates (must use project(":sibling-lib") for same-build).
+    assertThat(selectedVariants[Modules.createUniqueModuleId(rootDir, ":sibling-lib")]).isEqualTo("debug")
+  }
+
+  @Test
+  fun `composite build only propagates cross-build coordinates from active configurations`() {
+    val rootDir = File("/root")
+    val includedDir = File("/included")
+    val projects =
+      listOf(
+        ProjectSetup(
+          moduleId = ":app",
+          buildRootDir = rootDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+          dependencies = emptyList(),
+          externalDependencies =
+            mapOf(
+              "implementation" to listOf(CoordinatesImpl("com.included", "common-lib", "1.0")),
+              "releaseImplementation" to listOf(CoordinatesImpl("com.included", "release-only-lib", "1.0")),
+            ),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.root", "app", "1.0"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+          buildTypeConfigs = mapOf("debug" to setOf("implementation"), "release" to setOf("implementation")),
+        ),
+        ProjectSetup(
+          moduleId = ":common-lib",
+          buildRootDir = includedDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.included", "common-lib", "1.0"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+        ProjectSetup(
+          moduleId = ":release-only-lib",
+          buildRootDir = includedDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("com.included", "release-only-lib", "1.0"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+      )
+
+    // When :app is on debug, releaseImplementation is inactive so :release-only-lib stays on debug.
+    setCompositeSwitchVariantRequest(rootDir, ":app", "debug")
+    val (debugSelected, _) = sortCompositeProjectsAndGetSelectedVariants(projects)
+    assertThat(debugSelected[Modules.createUniqueModuleId(includedDir, ":common-lib")]).isEqualTo("debug")
+    assertThat(debugSelected[Modules.createUniqueModuleId(includedDir, ":release-only-lib")]).isEqualTo("debug")
+
+    // When :app switches to release, releaseImplementation becomes active and propagates release to :release-only-lib.
+    setCompositeSwitchVariantRequest(rootDir, ":app", "release")
+    val (releaseSelected, _) = sortCompositeProjectsAndGetSelectedVariants(projects)
+    assertThat(releaseSelected[Modules.createUniqueModuleId(includedDir, ":common-lib")]).isEqualTo("release")
+    assertThat(releaseSelected[Modules.createUniqueModuleId(includedDir, ":release-only-lib")]).isEqualTo("release")
+  }
+
+  @Test
+  fun `composite build matches empty-group root project coordinates and ignores unmatched external coordinates`() {
+    val rootDir = File("/root")
+    val includedDir = File("/included")
+    val unreferencedIncludedDir = File("/unreferencedIncluded")
+    val projects =
+      listOf(
+        ProjectSetup(
+          moduleId = ":app",
+          buildRootDir = rootDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+          dependencies = emptyList(),
+          externalDependencies =
+            mapOf(
+              "implementation" to
+                listOf(
+                  // Gradle parses ":includedRoot:1.0" with group == null and normalizes null -> "" when matching ungrouped root projects.
+                  CoordinatesImpl(null, "includedRoot", "1.0"),
+                  CoordinatesImpl("androidx.core", "core-ktx", "1.12.0"),
+                )
+            ),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("", "root", "unspecified"),
+          defaultVariant = "release",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+        ProjectSetup(
+          moduleId = ":",
+          buildRootDir = includedDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("", "includedRoot", "unspecified"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+        ProjectSetup(
+          moduleId = ":",
+          buildRootDir = unreferencedIncludedDir,
+          projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+          dependencies = emptyList(),
+          mavenCoordinates = ProjectMavenCoordinatesImpl("", "otherRoot", "unspecified"),
+          defaultVariant = "debug",
+          variants = listOf("debug", "release"),
+          buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+        ),
+      )
+
+    setCompositeSwitchVariantRequest(rootDir, ":app", "release")
+    val (selectedVariants, _) = sortCompositeProjectsAndGetSelectedVariants(projects)
+
+    assertThat(selectedVariants[Modules.createUniqueModuleId(rootDir, ":app")]).isEqualTo("release")
+    assertThat(selectedVariants[Modules.createUniqueModuleId(includedDir, ":")]).isEqualTo("release")
+    assertThat(selectedVariants[Modules.createUniqueModuleId(unreferencedIncludedDir, ":")]).isEqualTo("debug")
+  }
+
+  @Test
+  fun `resolveVariantsForRegularSync resolves cross-build composite dependencies via AndroidModule mavenCoordinates`() {
+    val rootDir = File("/root")
+    val includedDir = File("/included")
+    val appSetup =
+      ProjectSetup(
+        moduleId = ":app",
+        buildRootDir = rootDir,
+        projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+        dependencies = emptyList(),
+        externalDependencies = mapOf("implementation" to listOf(CoordinatesImpl("com.included", "lib", "1.0"))),
+        mavenCoordinates = ProjectMavenCoordinatesImpl("com.root", "app", "1.0"),
+        defaultVariant = "release",
+        variants = listOf("debug", "release"),
+        buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+      )
+    val libSetup =
+      ProjectSetup(
+        moduleId = ":lib",
+        buildRootDir = includedDir,
+        projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+        dependencies = emptyList(),
+        mavenCoordinates = ProjectMavenCoordinatesImpl("com.included", "lib", "1.0"),
+        defaultVariant = "debug",
+        variants = listOf("debug", "release"),
+        buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+      )
+
+    val projectsData =
+      listOf(appSetup, libSetup).map { setup ->
+        val params = createMocksForProject(setup)
+        val module =
+          AndroidModule.V2(
+            modelVersions = params.modelVersions,
+            buildPathMap = emptyMap(),
+            gradleProject = params.basicGradleProject,
+            androidProject = params.ideAndroidProject,
+            allVariantNames = setup.variants.toSet(),
+            defaultVariantName = setup.defaultVariant,
+            variantFetcher = { _, _, _, _ -> error("Not used") },
+            androidVariantResolver = Mockito.mock(AndroidVariantResolver::class.java),
+            nativeModule = null,
+            legacyAndroidGradlePluginProperties = params.legacyAndroidGradlePluginPropertiesImpl,
+            basicAndroidProject = params.basicAndroidProject,
+            androidProjectV2 = params.androidProject,
+            androidDsl = params.androidDsl,
+            declaredDependencies = params.declaredDependencies,
+            mavenCoordinates = setup.mavenCoordinates,
+          )
+        params.basicGradleProject to (module as AndroidModule to setup.defaultVariant)
+      }
+
+    setCompositeSwitchVariantRequest(rootDir, ":app", "release")
+    val syncIssues = mutableMapOf<BasicGradleProject, Throwable>()
+    val batches = resolveVariantsForRegularSync(projectsData, syncOptions, syncIssues)
+
+    assertThat(syncIssues).isEmpty()
+    val resolvedByModuleId = batches.values.flatten().associate { (module, variant) -> module.id to variant }
+    assertThat(resolvedByModuleId)
+      .containsExactly(
+        Modules.createUniqueModuleId(rootDir, ":app"),
+        "release",
+        Modules.createUniqueModuleId(includedDir, ":lib"),
+        "release",
+      )
+  }
+
+  @Test
+  fun `VariantDiscovery skips new resolution when a non-Android module in the build has Kotlin Multiplatform`() {
+    val rootDir = File("/root")
+    // Simulate :app -> :kmpFirstLib (non-Android JavaModule with com.android.kotlin.multiplatform.library) -> :androidLib,
+    // where :androidLib defaults to typeoneModeoneDebug in isolation, while Gradle's ProjectGraph resolves it to typeoneModetwoDebug.
+    val appSetup =
+      ProjectSetup(
+        moduleId = ":app",
+        buildRootDir = rootDir,
+        projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+        dependencies = listOf(":kmpFirstLib"),
+        defaultVariant = "debug",
+        variants = listOf("debug"),
+        buildTypes = listOf(TestAndroidBuildType("debug")),
+      )
+    val androidLibSetup =
+      ProjectSetup(
+        moduleId = ":androidLib",
+        buildRootDir = rootDir,
+        projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+        dependencies = emptyList(),
+        defaultVariant = "typeoneModeoneDebug",
+        variants = listOf("typeoneModeoneDebug", "typeoneModetwoDebug"),
+        buildTypes = listOf(TestAndroidBuildType("debug")),
+      )
+
+    fun runVariantDiscovery(nonAndroidModuleHasKmp: Boolean): Map<String, String> {
+      val appParams = createMocksForProject(appSetup)
+      val libParams = createMocksForProject(androidLibSetup)
+      whenever(appParams.ideAndroidProject.projectType).thenReturn(IdeAndroidProjectType.PROJECT_TYPE_APP)
+      whenever(libParams.ideAndroidProject.projectType).thenReturn(IdeAndroidProjectType.PROJECT_TYPE_LIBRARY)
+      whenever(appParams.ideAndroidProject.multiVariantData).thenReturn(Mockito.mock(IdeMultiVariantDataImpl::class.java))
+      whenever(libParams.ideAndroidProject.multiVariantData).thenReturn(Mockito.mock(IdeMultiVariantDataImpl::class.java))
+      whenever(appParams.ideAndroidProject.flavorDimensions).thenReturn(emptyList())
+      whenever(libParams.ideAndroidProject.flavorDimensions).thenReturn(listOf("type", "mode"))
+
+      val buildPathMap = mapOf(":" to BuildId(rootDir))
+      val variantFetcher: IdeVariantFetcher = { _, _, _, config ->
+        ModelResult.create {
+          val mainArtifact = Mockito.mock(IdeAndroidArtifactCoreImpl::class.java)
+          whenever(mainArtifact.unresolvedDependencies).thenReturn(emptyList())
+          whenever(mainArtifact.compileClasspathCore).thenReturn(IdeDependenciesCoreDirect(emptyList()))
+          val ideVariant = Mockito.mock(IdeVariantCoreImpl::class.java)
+          whenever(ideVariant.name).thenReturn(config.variant)
+          whenever(ideVariant.mainArtifact).thenReturn(mainArtifact)
+          whenever(ideVariant.deviceTestArtifacts).thenReturn(emptyList())
+          whenever(ideVariant.testFixturesArtifact).thenReturn(null)
+          whenever(ideVariant.hostTestArtifacts).thenReturn(emptyList())
+          IdeVariantWithPostProcessor(ideVariant)
+        }
+      }
+
+      val appModule =
+        AndroidModule.V2(
+          modelVersions = appParams.modelVersions,
+          buildPathMap = buildPathMap,
+          gradleProject = appParams.basicGradleProject,
+          androidProject = appParams.ideAndroidProject,
+          allVariantNames = appSetup.variants.toSet(),
+          defaultVariantName = appSetup.defaultVariant,
+          variantFetcher = variantFetcher,
+          androidVariantResolver = Mockito.mock(AndroidVariantResolver::class.java),
+          nativeModule = null,
+          legacyAndroidGradlePluginProperties = appParams.legacyAndroidGradlePluginPropertiesImpl,
+          basicAndroidProject = appParams.basicAndroidProject,
+          androidProjectV2 = appParams.androidProject,
+          androidDsl = appParams.androidDsl,
+          declaredDependencies = appParams.declaredDependencies,
+          hasKotlinMultiPlatform = false,
+        )
+      val androidLibModule =
+        AndroidModule.V2(
+          modelVersions = libParams.modelVersions,
+          buildPathMap = buildPathMap,
+          gradleProject = libParams.basicGradleProject,
+          androidProject = libParams.ideAndroidProject,
+          allVariantNames = androidLibSetup.variants.toSet(),
+          defaultVariantName = androidLibSetup.defaultVariant,
+          variantFetcher = variantFetcher,
+          androidVariantResolver = Mockito.mock(AndroidVariantResolver::class.java),
+          nativeModule = null,
+          legacyAndroidGradlePluginProperties = libParams.legacyAndroidGradlePluginPropertiesImpl,
+          basicAndroidProject = libParams.basicAndroidProject,
+          androidProjectV2 = libParams.androidProject,
+          androidDsl = libParams.androidDsl,
+          declaredDependencies = libParams.declaredDependencies,
+          hasKotlinMultiPlatform = false,
+        )
+
+      val kmpGradleProject = Mockito.mock(BasicGradleProject::class.java)
+      val kmpProjectId = Mockito.mock(ProjectIdentifier::class.java)
+      val buildId = Mockito.mock(BuildIdentifier::class.java)
+      whenever(buildId.rootDir).thenReturn(rootDir)
+      whenever(kmpProjectId.buildIdentifier).thenReturn(buildId)
+      whenever(kmpProjectId.projectPath).thenReturn(":kmpFirstLib")
+      whenever(kmpGradleProject.path).thenReturn(":kmpFirstLib")
+      whenever(kmpGradleProject.projectIdentifier).thenReturn(kmpProjectId)
+
+      val kmpPluginModel = Mockito.mock(GradlePluginModel::class.java)
+      whenever(kmpPluginModel.hasKotlinMultiPlatform()).thenReturn(nonAndroidModuleHasKmp)
+
+      val libProjectInfo = Mockito.mock(ProjectInfo::class.java)
+      whenever(libProjectInfo.projectPath).thenReturn(":androidLib")
+      whenever(libProjectInfo.buildId).thenReturn(":")
+      val appProjectGraph = Mockito.mock(ProjectGraph::class.java)
+      whenever(appProjectGraph.resolvedVariantsWithProjectInfo).thenReturn(mapOf(libProjectInfo to "typeoneModetwoDebug"))
+
+      val models =
+        mapOf<Pair<Model, Class<*>>, Any?>(
+          (kmpGradleProject to GradlePluginModel::class.java) to kmpPluginModel,
+          (appParams.basicGradleProject to ProjectGraph::class.java) to appProjectGraph,
+        )
+      val controller =
+        Proxy.newProxyInstance(BuildController::class.java.classLoader, arrayOf(BuildController::class.java)) { proxy, method, args ->
+          when (method.name) {
+            "run" -> {
+              @Suppress("UNCHECKED_CAST") val actions = args[0] as Collection<BuildAction<Any?>>
+              actions.map { it.execute(proxy as BuildController) }
+            }
+            "findModel" -> {
+              val target = args[0] as Model
+              val modelType = args[1] as Class<*>
+              if (args.size == 4) {
+                val paramType = args[2] as Class<*>
+                @Suppress("UNCHECKED_CAST") val action = args[3] as Action<Any>
+                action.execute(Mockito.mock(paramType))
+              }
+              models[target to modelType]
+            }
+            else -> throw UnsupportedOperationException("Unexpected BuildController call: ${method.name}")
+          }
+        } as BuildController
+
+      val flags =
+        GradleSyncStudioFlags(
+          modelConsumerVersion = ModelConsumerVersion(1, 0, "test"),
+          studioLatestKnownAgpVersion = "9.0.0",
+          studioFlagParallelSyncEnabled = false,
+          studioFlagParallelSyncPrefetchVariantsEnabled = false,
+          studioFlagUseV2BuilderModels = true,
+          studioFlagDisableForcedUpgrades = false,
+          studioFlagSyncStatsOutputDirectory = "",
+          studioHprofOutputDirectory = "",
+          studioHeapAnalysisOutputDirectory = "",
+          studioHeapAnalysisLightweightMode = false,
+          studioFlagMultiVariantAdditionalArtifactSupport = false,
+          studioFlagSkipRuntimeClasspathForLibraries = false,
+          studioFlagBuildRuntimeClasspathForLibraryUnitTests = false,
+          studioFlagBuildRuntimeClasspathForLibraryScreenshotTests = false,
+          studioFlagSupportFutureAgpVersions = false,
+          studioFlagFetchKotlinModelsInParallel = false,
+          studioFlagUsedPhasedSyncVariantResolution = true,
+          studioFlagPhasedSyncDependencyResolutionEnabled = true,
+        )
+      val discoverySyncOptions =
+        SingleVariantSyncActionOptions(
+          flags = flags,
+          syncTestMode = SyncTestMode.PRODUCTION,
+          selectedVariants = SelectedVariants(emptyMap()),
+          switchVariantRequest = null,
+          additionalClassifierArtifactsAction = AdditionalClassifierArtifactsActionOptions(emptyList()),
+        )
+      val gradleBuild = Mockito.mock(GradleBuild::class.java)
+      val buildInfo =
+        BuildInfo(
+          listOf(gradleBuild),
+          IdeCompositeBuildMapImpl(builds = listOf(IdeBuildImpl(":", rootDir)), gradleSupportsDirectTaskInvocation = true),
+          BuildFolderPaths(),
+        )
+      val internedModels = InternedModels(rootDir)
+      val actionRunner = SyncActionRunner.create(controller, SyncCounters(), parallelActionsSupported = false)
+      val nonAndroidModule =
+        actionRunner
+          .runActions(listOf(BasicNonAndroidIncompleteGradleModule(kmpGradleProject, ":").getGradleModuleAction(internedModels, buildInfo)))
+          .single()
+
+      val allModules: List<GradleModule> = listOf(appModule, nonAndroidModule, androidLibModule)
+      val androidModulesById = allModules.filterIsInstance<AndroidModule>().associateBy { it.id }
+      val byProjectPath =
+        androidModulesById.values.associateBy {
+          BuildId(it.gradleProject.projectIdentifier.buildIdentifier.rootDir) to it.gradleProject.path
+        }
+
+      VariantDiscovery(
+          actionRunner = actionRunner,
+          androidModulesById = androidModulesById,
+          syncOptions = discoverySyncOptions,
+          buildInfo = buildInfo,
+          internedModels = internedModels,
+          androidProjectPathResolver = { bId, path -> byProjectPath[bId to path] },
+          hasKotlinMultiPlatform = allModules.any { it.hasKotlinMultiPlatform },
+        )
+        .discoverVariantsAndSync(shouldUseProjectGraph = true)
+
+      return androidModulesById.values.associate { it.gradleProject.path to it.syncedVariant!!.name }
+    }
+
+    // With a KMP non-Android module in the build, VariantDiscovery falls back to ProjectGraph traversal and selects typeoneModetwoDebug.
+    assertThat(runVariantDiscovery(nonAndroidModuleHasKmp = true)).containsExactly(":app", "debug", ":androidLib", "typeoneModetwoDebug")
+
+    // Without KMP in the build, VariantDiscovery uses the new resolution path (where :androidLib has no Android consumers).
+    assertThat(runVariantDiscovery(nonAndroidModuleHasKmp = false)).containsExactly(":app", "debug", ":androidLib", "typeoneModeoneDebug")
+  }
+
   private fun setSwitchVariantRequest(moduleId: String, variantName: String) {
     whenever(switchVariantRequest.moduleId).thenReturn(":" + moduleId)
     whenever(switchVariantRequest.variantName).thenReturn(variantName)
+  }
+
+  private fun setCompositeSwitchVariantRequest(buildRootDir: File, projectPath: String, variantName: String) {
+    whenever(switchVariantRequest.moduleId).thenReturn(Modules.createUniqueModuleId(buildRootDir, projectPath))
+    whenever(switchVariantRequest.variantName).thenReturn(variantName)
+  }
+
+  private fun sortCompositeProjectsAndGetSelectedVariants(
+    projectsSetups: List<ProjectSetup>
+  ): Pair<Map<String, String>, ModelProviderCachedData> {
+    val projectDataList = projectsSetups.map { projectSetup ->
+      val projectParamsMock = createMocksForProject(projectSetup)
+      val androidProjectData =
+        AndroidProjectData(
+          versions = Mockito.mock(Versions::class.java),
+          modelVersions = projectParamsMock.modelVersions,
+          basicAndroidProject = projectParamsMock.basicAndroidProject,
+          androidProject = projectParamsMock.androidProject,
+          androidDsl = projectParamsMock.androidDsl,
+          declaredDependencies = projectParamsMock.declaredDependencies,
+          gradlePluginModel = Mockito.mock(GradlePluginModel::class.java),
+          gradleTaskModel = Mockito.mock(GradleTaskModel::class.java),
+          ideAndroidProject =
+            Mockito.mock(IdeAndroidProjectImpl::class.java).apply { whenever(projectType).thenReturn(projectSetup.projectType) },
+          selectedVariantName =
+            switchVariantRequest.takeIf { it.moduleId == projectParamsMock.basicGradleProject.moduleId() }?.variantName
+              ?: projectSetup.defaultVariant,
+          shouldSkipRuntimeClassPathForLibraries = false,
+          legacyAndroidGradlePluginProperties = projectParamsMock.legacyAndroidGradlePluginPropertiesImpl,
+          mavenCoordinates = projectSetup.mavenCoordinates,
+        )
+      projectParamsMock.basicGradleProject to androidProjectData
+    }
+
+    val cachedModels = ModelProviderCachedData()
+    val variantsResolutionIssues = mutableMapOf<BasicGradleProject, Throwable>()
+    setupProjectsVariantsAndConsume(projectDataList, syncOptions, modelConsumer, cachedModels, variantsResolutionIssues)
+
+    variantsResolutionIssues.values.firstOrNull()?.let { throw it }
+
+    return projectDataList.associate { it.first.moduleId() to it.second.selectedVariantName } to cachedModels
   }
 
   private fun verifyThatSwitchingAppVariantMatchesEachProjectAccordingToItsAttributes(projects: List<ProjectSetup>) {
@@ -1478,7 +2157,14 @@ class PhasedSyncVariantNameResolutionTest {
     val buildInfo = Mockito.mock(BuildInfo::class.java).apply { whenever(buildIdMap).thenReturn(mapOf(BuildId(File("")) to ":")) }
     val actionRunner = SyncActionRunner.create(controller, SyncCounters(), parallelActionsSupported = false)
 
-    VariantDiscovery(actionRunner, modules.associateBy { it.id }, syncOptions, buildInfo, InternedModels(File(""))) { _, _ -> null }
+    VariantDiscovery(
+        actionRunner,
+        modules.associateBy { it.id },
+        syncOptions,
+        buildInfo,
+        InternedModels(File("")),
+        androidProjectPathResolver = { _, _ -> null },
+      )
       .discoverVariantsAndSync(shouldUseProjectGraph = false)
     actionRunner.runActions(modules.mapNotNull { it.getFetchSyncIssuesAction() })
 
@@ -1675,7 +2361,8 @@ class PhasedSyncVariantNameResolutionTest {
     whenever(gradleProject.path).thenReturn(project.moduleId)
     whenever(gradleProject.projectIdentifier).thenReturn(projectIdentifier)
     whenever(projectIdentifier.buildIdentifier).thenReturn(buildIdentifier)
-    whenever(buildIdentifier.rootDir).thenReturn(File(""))
+    whenever(projectIdentifier.projectPath).thenReturn(project.moduleId)
+    whenever(buildIdentifier.rootDir).thenReturn(project.buildRootDir)
     whenever(basicAndroidProject.variants).thenReturn(variants)
     whenever(basicAndroidProject.projectType)
       .thenReturn(
@@ -1691,6 +2378,7 @@ class PhasedSyncVariantNameResolutionTest {
     whenever(androidDsl.flavorDimensions).thenReturn(dimensions)
     whenever(declaredDependencies.allOutgoingProjectsDependenciesToConfigurations)
       .thenReturn(project.dependenciesToConfigurations ?: project.dependencies.associateWith { setOf("implementation") })
+    whenever(declaredDependencies.allOutgoingExternalModuleDependencies).thenReturn(project.externalDependencies)
 
     return Parameters(
       gradleProject,
@@ -1718,6 +2406,9 @@ class PhasedSyncVariantNameResolutionTest {
     val mainConfigs: Set<String> = setOf("implementation"),
     val buildTypeConfigs: Map<String, Set<String>> = emptyMap(),
     val productFlavorConfigs: Map<String, Set<String>> = emptyMap(),
+    val buildRootDir: File = File(""),
+    val mavenCoordinates: ProjectMavenCoordinates? = null,
+    val externalDependencies: Map<String, List<Coordinates>> = emptyMap(),
   )
 
   private data class TestAndroidBuildType(val name: String, val matchingFallbacks: List<String> = emptyList())

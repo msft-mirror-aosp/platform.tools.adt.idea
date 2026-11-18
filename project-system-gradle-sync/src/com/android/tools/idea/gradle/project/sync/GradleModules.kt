@@ -23,6 +23,7 @@ import com.android.ide.gradle.model.ArtifactIdentifier
 import com.android.ide.gradle.model.ArtifactIdentifierImpl
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.ide.gradle.model.artifacts.AdditionalClassifierArtifactsModel
+import com.android.ide.gradle.model.builder.ProjectMavenCoordinates
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
 import com.android.tools.idea.gradle.model.IdeArtifactLibrary
@@ -128,6 +129,7 @@ constructor(
   val basicAndroidProject: BasicAndroidProject? = null,
   val androidProjectV2: AndroidProjectV2? = null,
   val declaredDependencies: DeclaredDependencies?,
+  val mavenCoordinates: ProjectMavenCoordinates? = null,
   hasKotlinMultiPlatform: Boolean = false,
 ) : GradleModule(gradleProject, hasKotlinMultiPlatform), ResolvedAndroidProjectPath {
   val projectType: IdeAndroidProjectType
@@ -183,6 +185,7 @@ constructor(
     androidProjectV2: AndroidProjectV2? = null,
     androidDsl: AndroidDsl,
     declaredDependencies: DeclaredDependencies? = null,
+    mavenCoordinates: ProjectMavenCoordinates? = null,
     hasKotlinMultiPlatform: Boolean = false,
   ) :
     AndroidModule(
@@ -200,6 +203,7 @@ constructor(
       basicAndroidProject = basicAndroidProject,
       androidProjectV2 = androidProjectV2,
       declaredDependencies = declaredDependencies,
+      mavenCoordinates = mavenCoordinates,
       hasKotlinMultiPlatform = hasKotlinMultiPlatform,
     ) {
     override fun getFetchSyncIssuesAction(): ActionToRun<Unit> {

@@ -57,7 +57,15 @@ internal class SyncProjectActionWorker(
 
     syncCounters.variantAndDependencyResolutionPhase {
       val variantDiscovery =
-        VariantDiscovery(actionRunner, androidModulesById, syncOptions, buildInfo, internedModels, ::resolveAndroidProjectPath)
+        VariantDiscovery(
+          actionRunner,
+          androidModulesById,
+          syncOptions,
+          buildInfo,
+          internedModels,
+          ::resolveAndroidProjectPath,
+          hasKotlinMultiPlatform = modules.any { it.hasKotlinMultiPlatform },
+        )
       when (syncOptions) {
         is SingleVariantSyncActionOptions -> {
           // This section is for Single Variant Sync specific models if we have reached here we should have already requested

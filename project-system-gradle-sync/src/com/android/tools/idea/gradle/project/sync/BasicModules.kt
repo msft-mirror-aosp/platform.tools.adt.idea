@@ -24,6 +24,7 @@ import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.GradlePropertiesModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginPropertiesModelParameters
+import com.android.ide.gradle.model.builder.ProjectMavenCoordinates
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.project.sync.AndroidProjectResult.Companion.RuntimeClasspathBehaviour
 import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.ignoreExceptionsAndGet
@@ -230,6 +231,7 @@ internal class BasicV2AndroidModuleGradleProject(
             ?: error("Cannot get GradlePropertiesModel (V2) for project '$gradleProject'")
 
         val declaredDependencies = controller.findModel(gradleProject, DeclaredDependencies::class.java)
+        val mavenCoordinates = controller.findModel(gradleProject, ProjectMavenCoordinates::class.java)
         val hasKotlinMultiPlatform = controller.findModel(gradleProject, GradlePluginModel::class.java)?.hasKotlinMultiPlatform() == true
 
         val modelCache = modelCacheV2Impl(internedModels, modelVersions, syncActionOptions.syncTestMode)
@@ -256,6 +258,7 @@ internal class BasicV2AndroidModuleGradleProject(
               ),
             additionalArtifactsInModel = syncActionOptions.flags.studioFlagMultiVariantAdditionalArtifactSupport,
             declaredDependencies = declaredDependencies,
+            mavenCoordinates = mavenCoordinates,
           )
 
         return androidProjectResult
@@ -353,6 +356,7 @@ private fun createAndroidModuleV2(
     androidProjectV2 = androidProjectResult.androidProjectV2,
     androidDsl = androidProjectResult.androidDsl,
     declaredDependencies = androidProjectResult.declaredDependencies,
+    mavenCoordinates = androidProjectResult.mavenCoordinates,
     hasKotlinMultiPlatform = hasKotlinMultiPlatform,
   )
 }
