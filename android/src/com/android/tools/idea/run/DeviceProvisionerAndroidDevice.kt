@@ -44,6 +44,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.guava.asListenableFuture
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
@@ -181,11 +182,14 @@ class DeviceHandleAndroidDevice(
   fun bootFromSnapshot(snapshot: Snapshot): Deferred<IDevice> = boot { activate { deviceHandle.bootSnapshotAction?.activate(snapshot) } }
 
   private suspend fun activate(action: suspend () -> Unit): IDevice {
-    if (deviceHandle.state.connectedDevice == null) {
-      action()
-    }
+    // Wait for the device to finish booting or terminating before we invoke the action
     val deviceState =
-      withTimeoutOrNull(activationTimeout) { deviceHandle.awaitReady() } ?: throw IllegalStateException("Device did not start")
+      withTimeoutOrNull(activationTimeout) {
+        if (deviceHandle.stateFlow.first { !it.isTransitioning }.connectedDevice == null) {
+          action()
+        }
+        deviceHandle.awaitReady()
+      } ?: throw IllegalStateException("Device did not start")
     return ddmlibDeviceLookup.findDdmlibDeviceWithTimeout(deviceState.connectedDevice)
   }
 

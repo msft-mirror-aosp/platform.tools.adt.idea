@@ -18,12 +18,16 @@ package com.android.tools.idea.run
 import com.android.adblib.ddmlibcompatibility.testutils.InitAndroidDebugBridgeRule
 import com.android.adblib.ddmlibcompatibility.testutils.UseAdbLibAndroidDebugBridgeRule
 import com.android.ddmlib.AndroidDebugBridge
+import com.android.sdklib.deviceprovisioner.DeviceState.Connected
+import com.android.sdklib.deviceprovisioner.DeviceState.Disconnected
 import com.android.sdklib.deviceprovisioner.testing.DeviceProvisionerRule
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.Uninterruptibles
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -79,5 +83,33 @@ class DeviceProvisionerAndroidDeviceTest {
     assertThat(device.isRunning).isTrue()
     assertThat(device.serial).isEqualTo("DeviceProvisionerAndroidDevice pluginId=FakeAdb identifier=serial=abcd")
     runBlocking { assertThat(device.launchedDevice.await()).isEqualTo(iDevice) }
+  }
+
+  @Test
+  fun bootDefault_whileStopping() {
+    val handle = deviceProvisionerRule.deviceProvisionerPlugin.newDevice("abcd")
+    deviceProvisionerRule.deviceProvisionerPlugin.addDevice(handle)
+
+    val device = DeviceHandleAndroidDevice(bridge.asDdmlibDeviceLookup(), handle, handle.state)
+    // Simulate a device that is currently shutting down (Disconnected with isTransitioning = true)
+    handle.stateFlow.update { Disconnected(it.properties, isTransitioning = true, status = "Stopping") }
+
+    val futureDevice = device.bootDefault()
+
+    // While stopping, it should wait for the transition to complete before activating
+    assertThat(runCatching { runBlocking { withTimeout(1.seconds) { futureDevice.await() } } }.exceptionOrNull())
+      .isInstanceOf(TimeoutCancellationException::class.java)
+    assertThat(handle.fakeAdbDevice).isNull()
+
+    // Finish shutting down; bootDefault should now activate it
+    handle.stateFlow.update { Disconnected(it.properties, isTransitioning = false, status = "Offline") }
+    runBlocking { withTimeout(5.seconds) { handle.stateFlow.first { it is Connected } } }
+
+    handle.finishBoot()
+
+    val iDevice = checkNotNull(runBlocking { withTimeoutOrNull(5.seconds) { futureDevice.await() } })
+    assertThat(iDevice).isSameAs(device.ddmlibDevice)
+    assertThat(iDevice.serialNumber).isEqualTo("abcd")
+    assertThat(device.isRunning).isTrue()
   }
 }
