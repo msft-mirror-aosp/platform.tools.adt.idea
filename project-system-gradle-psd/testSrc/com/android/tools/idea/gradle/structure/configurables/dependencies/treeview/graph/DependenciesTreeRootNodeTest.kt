@@ -17,17 +17,23 @@ package com.android.tools.idea.gradle.structure.configurables.dependencies.treev
 
 import com.android.tools.idea.gradle.project.sync.snapshots.AndroidCoreTestProject
 import com.android.tools.idea.gradle.project.sync.snapshots.TestProjectDefinition.Companion.prepareTestProject
+import com.android.tools.idea.gradle.structure.configurables.dependencies.treeview.AbstractDependencyNode
 import com.android.tools.idea.gradle.structure.configurables.ui.PsUISettings
 import com.android.tools.idea.gradle.structure.configurables.ui.testStructure
+import com.android.tools.idea.gradle.structure.model.PsDeclaredDependency
 import com.android.tools.idea.gradle.structure.model.android.psTestWithProject
 import com.android.tools.idea.gradle.util.AGP_BUILT_IN_KOTLIN_VERSION
 import com.android.tools.idea.testing.AndroidProjectRule
 import com.android.tools.idea.testing.IntegrationTestEnvironmentRule
+import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.ui.treeStructure.SimpleNode
+import java.util.Optional
 import org.hamcrest.CoreMatchers
 import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.mock
 
 @RunsInEdt
 class DependenciesTreeRootNodeTest {
@@ -108,6 +114,34 @@ class DependenciesTreeRootNodeTest {
       val treeStructure = node.testStructure({ !it.name.startsWith("appcompat-v7") })
       // Note: If fails see a nice diff by clicking <Click to see difference> in the IDEA output window.
       Assert.assertThat(treeStructure.toString(), CoreMatchers.equalTo(expectedProjectStructure))
+    }
+  }
+
+  @Test
+  fun testFindDeclaredDependencyNode() {
+    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_DEPENDENCY)
+    projectRule.psTestWithProject(preparedProject) {
+      val treeStructure = DependenciesTreeStructure(DependenciesTreeRootNode(project, PsUISettings()))
+      val dependency =
+        project.findModuleByName("mainModule")!!.dependencies.findLibraryDependencies("com.android.support", "appcompat-v7").single()
+
+      // The matching node comes after several non-matching ones (modules and other libraries).
+      val node = treeStructure.findDeclaredDependencyNode(dependency).get() as AbstractDependencyNode<*, *>
+
+      assertThat(node.name).isEqualTo("com.android.support:appcompat-v7")
+      assertThat(node.models).contains(dependency)
+    }
+  }
+
+  @Test
+  fun testFindDeclaredDependencyNodeReturnsEmptyForDependencyNotInTree() {
+    val preparedProject = projectRule.prepareTestProject(AndroidCoreTestProject.PSD_DEPENDENCY)
+    projectRule.psTestWithProject(preparedProject) {
+      val treeStructure = DependenciesTreeStructure(DependenciesTreeRootNode(project, PsUISettings()))
+      // Nodes are matched by identity, so a dependency object that is not part of this project matches no node.
+      val unknownDependency = mock<PsDeclaredDependency>()
+
+      assertThat(treeStructure.findDeclaredDependencyNode(unknownDependency)).isEqualTo(Optional.empty<SimpleNode>())
     }
   }
 }
