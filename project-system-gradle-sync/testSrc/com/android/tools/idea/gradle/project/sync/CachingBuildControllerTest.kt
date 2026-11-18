@@ -26,6 +26,7 @@ import com.android.ide.gradle.model.AdditionalClassifierArtifactsModelParameter
 import com.android.ide.gradle.model.ArtifactIdentifierImpl
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginPropertiesModelParameters
+import com.android.ide.gradle.model.LegacyV1AgpVersionModel
 import com.android.ide.gradle.model.artifacts.AdditionalClassifierArtifactsModel
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.google.common.truth.Truth.assertThat
@@ -36,6 +37,7 @@ import org.gradle.tooling.BuildController
 import org.gradle.tooling.model.BuildIdentifier
 import org.gradle.tooling.model.BuildModel
 import org.gradle.tooling.model.DomainObjectSet
+import org.gradle.tooling.model.GradleProject
 import org.gradle.tooling.model.ProjectIdentifier
 import org.gradle.tooling.model.gradle.BasicGradleProject
 import org.gradle.tooling.model.gradle.GradleBuild
@@ -382,8 +384,9 @@ class CachingBuildControllerTest {
   }
 
   @Test
-  fun `composite single-variant sync is skipped by phased sync model providers`() {
+  fun `composite single-variant sync runs through phased sync model providers`() {
     val options = syncOptions(statsDir = "")
+    gradle.nullModels += setOf(Versions::class.java, LegacyV1AgpVersionModel::class.java, GradleProject::class.java)
     val builds =
       mutableListOf(
         gradleBuild(buildRootDir = File("/root"), projects = listOf(app)),
@@ -394,8 +397,8 @@ class CachingBuildControllerTest {
     PhasedSyncDependencyModelProvider(options, cachedModels).populateModels(gradle.controller(), builds, NoOpConsumer)
     PhasedSyncAdditionalModelProvider(options, cachedModels).populateModels(gradle.controller(), builds, NoOpConsumer)
 
-    assertThat(cachedModels.shouldRunLegacyModelProviders).isTrue()
-    assertThat(gradle.requests).isEmpty()
+    assertThat(cachedModels.shouldRunLegacyModelProviders).isFalse()
+    assertThat(gradle.requests).isNotEmpty()
   }
 
   interface UnknownParameter {
@@ -432,8 +435,11 @@ class CachingBuildControllerTest {
     val projectIdentifier = Mockito.mock(ProjectIdentifier::class.java)
     whenever(projectIdentifier.buildIdentifier).thenReturn(buildIdentifier)
     whenever(projectIdentifier.projectPath).thenReturn(projectPath)
+    val emptyChildren = Mockito.mock(DomainObjectSet::class.java) as DomainObjectSet<BasicGradleProject>
+    whenever(emptyChildren.iterator()).thenAnswer { emptyList<BasicGradleProject>().iterator() }
     val gradleProject = Mockito.mock(BasicGradleProject::class.java)
     whenever(gradleProject.projectIdentifier).thenReturn(projectIdentifier)
+    whenever(gradleProject.children).thenReturn(emptyChildren)
     return gradleProject
   }
 
@@ -445,6 +451,7 @@ class CachingBuildControllerTest {
     val gradleBuild = Mockito.mock(GradleBuild::class.java)
     whenever(gradleBuild.buildIdentifier).thenReturn(buildIdentifier)
     whenever(gradleBuild.projects).thenReturn(domainProjects)
+    whenever(gradleBuild.rootProject).thenReturn(projects.first())
     return gradleBuild
   }
 

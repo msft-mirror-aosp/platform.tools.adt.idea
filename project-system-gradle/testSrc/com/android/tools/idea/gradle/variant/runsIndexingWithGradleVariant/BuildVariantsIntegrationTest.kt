@@ -17,6 +17,7 @@ package com.android.tools.idea.gradle.variant.runsIndexingWithGradleVariant
 
 import com.android.SdkConstants
 import com.android.testutils.AssumeUtil.assumeNotWindows
+import com.android.tools.idea.gradle.model.IdeSyncIssue
 import com.android.tools.idea.gradle.project.facet.ndk.NdkFacet
 import com.android.tools.idea.gradle.project.model.GradleAndroidModel
 import com.android.tools.idea.gradle.project.model.NdkModuleModel
@@ -412,10 +413,153 @@ class BuildVariantsIntegrationTest {
   fun testSwitchVariantsInCompositeBuildProject() {
     val preparedProject = projectRule.prepareTestProject(TestProject.COMPOSITE_BUILD)
     preparedProject.open { project ->
+      expect.consistentConfigurationOf(project)
+      expect.thatModuleVariantIs(project, ":app", "debug")
+      expect.thatModuleVariantIs(project, ":lib", "debug")
+      expect.thatModuleVariantIs(project, ":includedLib1:app", "debug")
+      expect.thatModuleVariantIs(project, ":includedLib1:lib", "debug")
+      expect.thatModuleVariantIs(project, ":TestCompositeLib3:app", "debug")
+      expect.thatModuleVariantIs(project, ":TestCompositeLib3:lib", "debug")
+
+      // Switching root :app to release propagates across same-build (:lib), cross-build (:includedLib1:lib),
+      // and second cross-build (:TestCompositeLib3:lib), overriding lower-priority app consumers in included builds.
+      switchVariant(project, ":app", "release")
+      expect.consistentConfigurationOf(project)
+      expect.thatModuleVariantIs(project, ":app", "release")
+      expect.thatModuleVariantIs(project, ":lib", "release")
+      expect.thatModuleVariantIs(project, ":includedLib1:app", "debug")
+      expect.thatModuleVariantIs(project, ":includedLib1:lib", "release")
+      expect.thatModuleVariantIs(project, ":TestCompositeLib3:app", "debug")
+      expect.thatModuleVariantIs(project, ":TestCompositeLib3:lib", "release")
+
+      // Switch root :app back to debug, then switch an included-build app (:includedLib1:app) directly to release.
+      switchVariant(project, ":app", "debug")
+      expect.consistentConfigurationOf(project)
+      expect.thatModuleVariantIs(project, ":includedLib1:lib", "debug")
+      expect.thatModuleVariantIs(project, ":TestCompositeLib3:lib", "debug")
+
+      switchVariant(project, ":includedLib1:app", "release")
+      expect.consistentConfigurationOf(project)
+      expect.thatModuleVariantIs(project, ":app", "debug")
+      expect.thatModuleVariantIs(project, ":lib", "debug")
+      expect.thatModuleVariantIs(project, ":includedLib1:app", "release")
+      expect.thatModuleVariantIs(project, ":includedLib1:lib", "release")
+      expect.thatModuleVariantIs(project, ":TestCompositeLib3:app", "debug")
+      expect.thatModuleVariantIs(project, ":TestCompositeLib3:lib", "release")
+    }
+  }
+
+  @Test
+  fun testSwitchVariantsInCompositeBuildWithFlavorsAndVariantSpecificConfig() {
+    val preparedProject = projectRule.prepareTestProject(TestProject.COMPOSITE_BUILD)
+    val root = preparedProject.root
+    // Configure flavors with matchingFallbacks on root :app and variant-specific dependency (releaseImplementation) on composite3:lib.
+    val rootAppBuildFile = root.resolve("app/build.gradle")
+    rootAppBuildFile.writeText(
+      rootAppBuildFile
+        .readText()
+        .replace(
+          "buildTypes {",
+          """
+          flavorDimensions "tier"
+          productFlavors {
+              free {
+                  dimension "tier"
+                  matchingFallbacks = ["demo"]
+              }
+              paid {
+                  dimension "tier"
+                  matchingFallbacks = ["full"]
+              }
+          }
+          buildTypes {
+          """
+            .trimIndent(),
+        )
+        .replace(
+          "implementation 'com.test.composite1:lib:1.0'",
+          """
+          implementation 'com.test.composite1:lib:1.0'
+          releaseImplementation 'com.test.composite3:lib:1.0'
+          """
+            .trimIndent(),
+        )
+    )
+    // Configure matching dimension ("demo" / "full") on includedLib1:lib and remove its direct edge to composite3:lib so composite3:lib is
+    // driven only by root :app's releaseImplementation vs TestCompositeLib3:app's default debug.
+    val includedLib1BuildFile = root.resolve("TestCompositeLib1/lib/build.gradle")
+    includedLib1BuildFile.writeText(
+      includedLib1BuildFile
+        .readText()
+        .replace(
+          "buildTypes {",
+          """
+          flavorDimensions "tier"
+          productFlavors {
+              demo { dimension "tier" }
+              full { dimension "tier" }
+          }
+          buildTypes {
+          """
+            .trimIndent(),
+        )
+        .replace("implementation 'com.test.composite3:lib:1.0'", "")
+    )
+    val includedApp1BuildFile = root.resolve("TestCompositeLib1/app/build.gradle")
+    includedApp1BuildFile.writeText(
+      includedApp1BuildFile
+        .readText()
+        .replace(
+          "defaultConfig {",
+          """
+          defaultConfig {
+              missingDimensionStrategy "tier", "demo"
+          """
+            .trimIndent(),
+        )
+        .replace("implementation 'com.test.composite3:lib:1.0'", "")
+    )
+    VfsUtil.markDirtyAndRefresh(false, true, true, root)
+
+    preparedProject.open { project ->
+      expect.consistentConfigurationOf(project)
+      expect.thatModuleVariantIs(project, ":app", "freeDebug")
+      expect.thatModuleVariantIs(project, ":includedLib1:lib", "demoDebug")
+      expect.thatModuleVariantIs(project, ":TestCompositeLib3:lib", "debug")
+
+      switchVariant(project, ":app", "paidRelease")
+      expect.consistentConfigurationOf(project)
+      expect.thatModuleVariantIs(project, ":app", "paidRelease")
+      expect.thatModuleVariantIs(project, ":includedLib1:lib", "fullRelease")
+      expect.thatModuleVariantIs(project, ":TestCompositeLib3:lib", "release")
+    }
+  }
+
+  @Test
+  fun testSwitchVariantsInCompositeBuildIgnoresSameBuildExternalCoordinates() {
+    val preparedProject = projectRule.prepareTestProject(TestProject.COMPOSITE_BUILD)
+    val root = preparedProject.root
+
+    // Root build's :lib declares group = 'com.test.composite', version = '1.0'. Replace project(':lib') in :app with
+    // 'com.test.composite:lib:1.0': Gradle does not substitute same-build external coordinates with same-build :lib, so switching :app to
+    // release must keep :lib on debug while still propagating release to cross-build :includedLib1:lib.
+    val rootAppBuildFile = root.resolve("app/build.gradle")
+    rootAppBuildFile.writeText(
+      rootAppBuildFile.readText().replace("implementation project(':lib')", "implementation 'com.test.composite:lib:1.0'")
+    )
+    VfsUtil.markDirtyAndRefresh(false, true, true, root)
+
+    preparedProject.open(updateOptions = { it.copy(expectedSyncIssues = setOf(IdeSyncIssue.TYPE_UNRESOLVED_DEPENDENCY)) }) { project ->
+      expect.consistentConfigurationOf(project)
+      expect.thatModuleVariantIs(project, ":app", "debug")
+      expect.thatModuleVariantIs(project, ":lib", "debug")
+      expect.thatModuleVariantIs(project, ":includedLib1:lib", "debug")
+
       switchVariant(project, ":app", "release")
       expect.consistentConfigurationOf(project)
       expect.thatModuleVariantIs(project, ":app", "release")
       expect.thatModuleVariantIs(project, ":includedLib1:lib", "release")
+      expect.thatModuleVariantIs(project, ":lib", "debug")
     }
   }
 

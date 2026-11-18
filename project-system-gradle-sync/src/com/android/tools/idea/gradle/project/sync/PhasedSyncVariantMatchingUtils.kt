@@ -155,7 +155,7 @@ internal fun processAllOutgoingProjectDependencies(
         // Gradle parses group-less notation (e.g. ":my-lib:1.0") with group == null and normalizes null -> "" during substitution.
         val group = coordinates.group.orEmpty()
         coordinatesToProjects[ExternalModule(group, coordinates.name)]?.forEach { targetProject ->
-          // TODO(b/467047467): Verify in a test how Gradle handles same-build external coordinates in composite builds.
+          // Gradle composite substitution never substitutes external coordinates with a subproject from the same build.
           if (!FileUtil.filesEqual(targetProject.projectIdentifier.buildIdentifier.rootDir, consumerBuildRootDir)) {
             mergedProjectsDependencies.getOrPut(targetProject.moduleId()) { mutableSetOf() }.add(configurationName)
           }

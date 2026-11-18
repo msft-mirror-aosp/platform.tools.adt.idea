@@ -67,12 +67,6 @@ class PhasedSyncProjectModelProvider(val syncOptions: SyncActionOptions, val cac
   ) {
     recordCheckpointData(MeasurementCheckpoint.ANDROID_STARTED, syncOptions)
     // No need to worry about BuildSrc here for Gradle < 8.0 as JetBrains itself disabled PhasedSync for BuildSrc projects.
-    val containsMultipleBuilds = buildModels.size > 1 || buildModels.any { build -> build.includedBuilds.isNotEmpty() }
-    if (containsMultipleBuilds && syncOptions is SingleVariantSyncActionOptions) {
-      // TODO(b/384022658): Variant resolution for Phased sync doesn't work across composite builds yet, so skip phased sync on
-      //  single-variant composite builds rather than populating SOURCE_SET_MODEL_PHASE with an unresolved variant.
-      return
-    }
     // Cache the requested models so that the model providers running after this one don't need to request them again.
     @Suppress("NAME_SHADOWING") val controller = controller.toCachingController(cachedModels)
     // Synchronized because the nested actions below add to it in parallel.

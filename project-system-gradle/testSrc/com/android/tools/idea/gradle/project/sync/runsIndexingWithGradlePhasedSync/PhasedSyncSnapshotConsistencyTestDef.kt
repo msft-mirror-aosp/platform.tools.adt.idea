@@ -112,10 +112,6 @@ data class PhasedSyncSnapshotConsistencyTestDef(
   companion object {
     val testsNotSupportingPhasedSyncIntermediateChecks =
       setOf(
-        TestProject.APP_WITH_BUILDSRC,
-        TestProject.APP_WITH_BUILDSRC_AND_SETTINGS_PLUGIN,
-        TestProject.COMPOSITE_BUILD,
-        TestProject.BUILDSRC_WITH_COMPOSITE,
         TestProject.KOTLIN_MULTIPLATFORM,
         TestProject.KOTLIN_MULTIPLATFORM_WITHJS,
         TestProject.KOTLIN_MULTIPLATFORM_IOS,
