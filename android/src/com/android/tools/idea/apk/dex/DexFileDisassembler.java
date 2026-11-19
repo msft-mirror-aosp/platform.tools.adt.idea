@@ -21,7 +21,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.ide.PooledThreadExecutor;
 import com.android.tools.smali.baksmali.BaksmaliOptions;
 import com.android.tools.smali.dexlib2.dexbacked.DexBackedDexFile;
-import com.android.tools.smali.dexlib2.iface.DexFile;
 
 import java.io.File;
 import java.util.concurrent.ExecutionException;
@@ -37,10 +36,6 @@ public class DexFileDisassembler {
     ListeningExecutorService executor = listeningDecorator(PooledThreadExecutor.INSTANCE);
     Future<DexBackedDexFile> dexFileFuture = executor.submit(() -> getDexFile(dexFile.toPath()));
     DexBackedDexFile dexBackedDexFile = dexFileFuture.get();
-    return disassemble(dexBackedDexFile, outputFolder);
-  }
-
-  private static boolean disassemble(@NotNull DexFile dexFile, @NotNull File outputFolderPath) {
-    return disassembleDexFile(dexFile, outputFolderPath, getCPUCoresCount(), new BaksmaliOptions());
+    return disassembleDexFile(dexBackedDexFile, outputFolder, getCPUCoresCount(), new BaksmaliOptions());
   }
 }
