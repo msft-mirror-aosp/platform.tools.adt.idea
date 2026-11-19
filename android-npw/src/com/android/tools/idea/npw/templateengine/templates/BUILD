@@ -18,11 +18,7 @@ pkg_files(
     name = "template_files",
     srcs = glob(
         ["**"],
-        allow_empty = True,
-        exclude = [
-            "BUILD",
-            "OWNERS",
-        ],
+        exclude = ["BUILD", "OWNERS"],
     ),
     strip_prefix = strip_prefix.from_pkg(),
 )
