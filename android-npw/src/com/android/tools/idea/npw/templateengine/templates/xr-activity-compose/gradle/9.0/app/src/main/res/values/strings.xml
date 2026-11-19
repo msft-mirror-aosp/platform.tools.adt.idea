@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">My Application</string>
+    <string name="hello_android_xr">Hello Android XR.</string>
+    <string name="switch_to_home_space">Switch to Home Space</string>
+    <string name="switch_to_full_space">Switch to Full Space</string>
+</resources>
