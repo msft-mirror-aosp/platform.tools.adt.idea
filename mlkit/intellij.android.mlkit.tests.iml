@@ -39,5 +39,6 @@
     <orderEntry type="module" module-name="intellij.android.observable" scope="TEST" />
     <orderEntry type="library" name="kotlin-test" level="project" scope="TEST" />
     <orderEntry type="module" module-name="intellij.android.adt.ui.tests" scope="TEST" />
+    <orderEntry type="module" module-name="intellij.android.gradle.dsl.testutils" scope="TEST" />
   </component>
 </module>

@@ -27,6 +27,7 @@ import com.android.tools.idea.projectsystem.ProjectSystemUtil;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.Key;
@@ -70,9 +71,22 @@ public class MissingDependenciesNotificationProvider implements EditorNotificati
         List<WellKnownMavenArtifactId> depsToAdd = MlUtils.getMissingRequiredDependencies(module);
         String message = createAddDependencyMessage(depsToAdd);
         if (Messages.OK == Messages.showOkCancelDialog(project, message, "Add Ml Model Binding Dependencies", Messages.getErrorIcon())) {
+          List<Dependency> dependencies =
+              depsToAdd.stream().map(it -> Dependency.parse(it.toString())).toList();
           GradleDependencyManager manager = GradleDependencyManager.getInstance(project);
-          manager.addDependencies(module, depsToAdd.stream().map(it -> Dependency.parse(it.toString())).toList());
-          ProjectSystemUtil.getSyncManager(module.getProject()).requestSyncProject(ProjectSystemSyncManager.SyncReason.PROJECT_MODIFIED);
+          Boolean added =
+              ProgressManager.getInstance()
+                  .runProcessWithProgressSynchronously(
+                      () -> {
+                        return manager.addDependencies(module, dependencies);
+                      },
+                      "Adding Dependencies",
+                      false,
+                      project);
+          if (Boolean.TRUE.equals(added)) {
+            ProjectSystemUtil.getSyncManager(module.getProject())
+                .requestSyncProject(ProjectSystemSyncManager.SyncReason.PROJECT_MODIFIED);
+          }
         }
       });
       panel.createActionLabel("Hide notification", () -> {
