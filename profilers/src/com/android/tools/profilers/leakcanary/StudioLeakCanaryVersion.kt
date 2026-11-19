@@ -23,7 +23,7 @@ import com.intellij.openapi.diagnostic.Logger
  * The lowest studio-leakcanary version that has everything Android Studio needs. It must always be a stable version. Raise it only after
  * that version is on GMaven.
  */
-const val MIN_STUDIO_LEAKCANARY_VERSION = "1.0.0"
+const val MIN_STUDIO_LEAKCANARY_VERSION = "1.1.0"
 
 /** studio-leakcanary versions before 1.1.0 don't send their version, so an empty version means this one. */
 private const val VERSION_WHEN_NOT_SENT = "1.0.0"
