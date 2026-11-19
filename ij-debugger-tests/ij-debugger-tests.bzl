@@ -38,6 +38,8 @@ def debugger_test(
         test_dep,
         "//tools/adt/idea/ij-debugger-tests/lib:bazel-runner",
         "@tools_idea//:main_test_lib",
+        "@tools_idea//java/java-impl/testFramework:testFramework",
+        "@tools_idea//plugins/gradle/plugin:plugin",
     ] + [it.replace("@community/", "@tools_idea/").replace("@lib/", "@tools_idea_lib/") for it in TEST_FRAMEWORK_DEPS]
 
     test_jar = test_dep.removeprefix("@tools_idea/").replace(":", "/") + ".jar"
