@@ -30,6 +30,8 @@ const val SUBSET_200_NAME = "200Modules"
 const val SUBSET_500_NAME = "500Modules"
 const val SUBSET_1000_NAME = "1000Modules"
 const val SUBSET_2000_NAME = "2000Modules"
+const val SUBSET_2000_PHASED_SYNC_OFF_LARGE_MACHINE_NAME = "2000Modules_PhasedSyncOffLargeMachine"
+
 const val SUBSET_4200_NAME = "4200Modules"
 const val SUBSET_KMP_2000_NAME = "2000KmpModules"
 const val MULTI_APP_100_NAME = "100Apps_1300Modules"

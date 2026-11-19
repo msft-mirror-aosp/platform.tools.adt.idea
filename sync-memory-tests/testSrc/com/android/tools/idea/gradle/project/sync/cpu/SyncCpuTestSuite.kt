@@ -38,6 +38,7 @@ import com.android.tools.idea.gradle.project.sync.SUBSET_2000_GRADLE_LATEST_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_ISOLATED_PROJECTS_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_KOTLIN_LATEST_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_NAME
+import com.android.tools.idea.gradle.project.sync.SUBSET_2000_PHASED_SYNC_OFF_LARGE_MACHINE_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_PHASED_SYNC_OFF_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_STANDARD_MACHINE_NAME
 import com.android.tools.idea.gradle.project.sync.SUBSET_2000_WITH_DEPENDENCY_RESOLUTION_PHASE_NAME
@@ -87,6 +88,20 @@ class Benchmark2000KotlinMultiplatformCpuTest {
 class Benchmark2000CpuTest {
   @get:Rule val benchmarkProjectSetupRule = createCpuBenchmarkTestRule(SUBSET_2000_NAME, STANDARD_2000)
   // Mac runs on continuous studio-mac postsubmit (runs_per_test=1), which is too noisy for regression alerts.
+  @get:Rule val measureSyncExecutionTimeRule = MeasureSyncExecutionTimeRule(syncCount = 5, enableAnalyzers = !SystemInfo.isMac)
+  @get:Rule val daemonIdleTimeoutRule = DaemonIdleTimeoutRule(7.minutes)
+
+  @Test fun testCpu() = runTest(benchmarkProjectSetupRule, measureSyncExecutionTimeRule)
+}
+
+class Benchmark2000CpuPhasedSyncOffLargeMachineTest {
+  @get:Rule
+  val benchmarkProjectSetupRule =
+    createCpuBenchmarkTestRule(
+      SUBSET_2000_PHASED_SYNC_OFF_LARGE_MACHINE_NAME,
+      STANDARD_2000,
+      configurePhasedSyncFlagsRule = ConfigurePhasedSyncFlagsRule(phasedSyncEnabled = false),
+    ) // Mac runs on continuous studio-mac postsubmit (runs_per_test=1), which is too noisy for regression alerts.
   @get:Rule val measureSyncExecutionTimeRule = MeasureSyncExecutionTimeRule(syncCount = 5, enableAnalyzers = !SystemInfo.isMac)
   @get:Rule val daemonIdleTimeoutRule = DaemonIdleTimeoutRule(7.minutes)
 

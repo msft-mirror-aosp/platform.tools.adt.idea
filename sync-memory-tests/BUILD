@@ -44,6 +44,16 @@ iml_module(
                 "perfgate-release",
             ],
         },
+        "Benchmark2000CpuPhasedSyncOffLargeMachine": {
+            "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000CpuPhasedSyncOffLargeMachineTest",
+            "exec_properties": LARGE_MACHINE,
+            "additional_jvm_args": ["-Xmx6g"],
+            "tags": [
+                "noci:studio-win",
+                "noci:studio-linux",
+                "ci:perfgate-linux",
+            ],
+        },
         # Named to match the --runs_per_test regex for Benchmark2000Cpu in perfgate_linux.sh / perfgate_win.cmd.
         "Benchmark2000CpuIsolatedProjects": {
             "test_filter": "com.android.tools.idea.gradle.project.sync.cpu.Benchmark2000IsolatedProjectsCpuTest",
