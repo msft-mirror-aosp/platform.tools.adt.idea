@@ -204,6 +204,20 @@ class ProgressSliderTest {
     assertThat(resetAfterCancelImage.getRGB(resetAfterCancelImage.width - JBUI.scale(40), centerY)).isNotEqualTo(expectedPlayedRgb)
     ui.mouse.release()
 
+    // Losing visibility mid-drag also terminates the active drag and clears valueIsAdjusting.
+    slider.value = 0
+    ui.mouse.press(startX, centerY)
+    ui.mouse.dragTo(endX, centerY)
+    assertThat(slider.valueIsAdjusting).isTrue()
+    panel.isVisible = false
+    assertThat(slider.valueIsAdjusting).isFalse()
+    panel.isVisible = true
+    slider.value = 0
+    ui.mouse.dragTo(panel.width / 2, centerY)
+    assertThat(slider.valueIsAdjusting).isFalse()
+    assertThat(slider.value).isEqualTo(0)
+    ui.mouse.release()
+
     // No text baseline (-1), so Kotlin UI DSL vertically center-aligns the slider with adjacent labels.
     assertThat(slider.getBaseline(slider.width, slider.height)).isEqualTo(-1)
     lateinit var rowSlider: ProgressSlider

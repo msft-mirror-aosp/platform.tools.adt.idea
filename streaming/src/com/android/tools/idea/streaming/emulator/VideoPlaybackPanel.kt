@@ -15,13 +15,23 @@
  */
 package com.android.tools.idea.streaming.emulator
 
+import com.android.annotations.concurrency.AnyThread
 import com.android.emulator.control.AnimationState
 import com.android.emulator.control.AnimationState.State.STATE_PAUSED
 import com.android.emulator.control.AnimationState.State.STATE_PLAYING
 import com.android.emulator.control.SetAnimationStateRequest
 import com.android.tools.idea.concurrency.createCoroutineScope
+import com.android.tools.idea.io.grpc.Status
+import com.android.tools.idea.io.grpc.StatusRuntimeException
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.PROJECTION_RECTANGLE_PROPERTY
 import com.android.tools.idea.streaming.core.ProgressSlider
+import com.android.tools.idea.streaming.core.anyVisibleChildContains
+import com.android.tools.idea.streaming.core.containsFocus
+import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionState
+import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionStateListener
+import com.android.tools.idea.streaming.emulator.actions.EnvironmentTracker
+import com.android.tools.idea.streaming.emulator.actions.isVideo
 import com.android.tools.idea.streaming.emulator.dialogs.IconButton
 import com.android.tools.idea.streaming.emulator.dialogs.SensorSessionPlayer.Companion.SLIDER_MAX
 import com.android.tools.idea.streaming.emulator.dialogs.SensorSessionPlayer.Companion.formatTimeProgress
@@ -37,6 +47,7 @@ import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.text.HtmlChunk
+import com.intellij.openapi.wm.IdeGlassPane
 import com.intellij.openapi.wm.impl.IdeBackgroundUtil
 import com.intellij.ui.ClientProperty
 import com.intellij.ui.ColorUtil
@@ -46,32 +57,63 @@ import com.intellij.ui.dsl.builder.AlignX
 import com.intellij.ui.dsl.builder.LabelPosition
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
+import com.intellij.util.ui.AbstractLayoutManager
 import com.intellij.util.ui.GraphicsUtil
 import com.intellij.util.ui.JBInsets
 import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil
 import com.intellij.util.ui.components.BorderLayoutPanel
 import java.awt.Color
+import java.awt.Component
+import java.awt.Container
 import java.awt.Cursor
+import java.awt.Dimension
 import java.awt.EventQueue
 import java.awt.Graphics
 import java.awt.Graphics2D
+import java.awt.HeadlessException
+import java.awt.IllegalComponentStateException
+import java.awt.MouseInfo
+import java.awt.Point
 import java.awt.Rectangle
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
+import java.awt.event.FocusAdapter
+import java.awt.event.FocusEvent
+import java.awt.event.HierarchyEvent
+import java.awt.event.InputEvent
 import java.awt.event.ItemEvent
+import java.awt.event.KeyEvent
 import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.awt.geom.RoundRectangle2D
+import java.beans.PropertyChangeListener
 import java.util.Locale
 import javax.swing.DefaultComboBoxModel
 import javax.swing.Icon
+import javax.swing.JPanel
+import javax.swing.JViewport
+import javax.swing.SwingUtilities
+import javax.swing.event.ChangeListener
 import javax.swing.event.PopupMenuEvent
 import javax.swing.event.PopupMenuListener
 import kotlin.math.abs
+import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.VisibleForTesting
@@ -98,6 +140,582 @@ internal data class VideoPlaybackSpeed(val multiplier: Float) {
     /** Returns the preset matching [multiplier], or a speed that is not one of the presets if there is no matching preset. */
     fun fromMultiplier(multiplier: Float): VideoPlaybackSpeed =
       PRESETS.firstOrNull { abs(it.multiplier - multiplier) < 0.005f } ?: VideoPlaybackSpeed(multiplier)
+  }
+}
+
+/**
+ * Transparent overlay container placed over [EmulatorView] that shows [VideoPlaybackPanel] at the bottom of the rendered environment area
+ * when the current AI Glasses environment is a video and the mouse hovers over that bottom area.
+ */
+internal class VideoPlaybackOverlay(
+  private val displayPanel: EmulatorDisplayPanel,
+  private val emulator: EmulatorController,
+) : JPanel(), ConnectionStateListener, Disposable {
+
+  private val displayView: EmulatorView
+    get() = displayPanel.displayView
+
+  val playbackPanel = VideoPlaybackPanel(emulator, this)
+
+  /** Called when the playback panel is shown or hidden. The argument is true if the panel has become visible. */
+  var onPlaybackPanelVisibilityChanged: ((Boolean) -> Unit)? = null
+
+  private val coroutineScope = createCoroutineScope()
+  private var environmentJob: Job? = null
+  /** Identifies the current animation state stream. Changing the value restarts the stream. */
+  private val streamGeneration = MutableStateFlow(0)
+  private var visibilityDisposable: Disposable? = null
+  private var listeningToMouseEvents = false
+  @Volatile private var isDisposed = false
+
+  /** The "scene.mode" value of the current environment if it is a video, or null otherwise. */
+  private var videoSceneMode: String? = null
+  private val isVideoEnvironment
+    get() = videoSceneMode != null
+
+  private var mouseInsideHoverArea = false
+  /**
+   * True while the panel is shown for a limited time after a video started playing, the display view gained focus, or the Space key was
+   * pressed.
+   */
+  private var shownTemporarily = false
+  /** True if the panel has to be shown for a limited time as soon as the video becomes visible to the user. */
+  private var temporaryVisibilityPending = false
+  /** True if the panel should be shown temporarily as soon as animation state becomes known for the current video environment. */
+  private var showOnAnimationStart = false
+  private var visibilityUpdateScheduled = false
+  private var temporaryVisibilityJob: Job? = null
+  private var spaceKeyPressed = false
+  /** The timestamp of the last Space key release event, or a negative number if the key has not been released yet. */
+  private var spaceKeyReleaseTime = -1L
+
+  /**
+   * For how long the panel stays visible after a video started playing, the display view gained focus, or the Space key was pressed. The
+   * panel is not shown on these occasions if the duration is not positive.
+   */
+  @VisibleForTesting var temporaryVisibilityDuration: Duration = 3.seconds
+  @VisibleForTesting var focusRequester: (Component) -> Boolean = Component::requestFocusInWindow
+  private var lastMousePoint: Point? = null
+  private var mouseOutsideWindow = false
+  private var suppressHoverUntilMouseMoves = false
+  private var suppressedHoverPoint: Point? = null
+  private var returningFocusToDisplayView = false
+
+  private val displayComponentListener =
+    object : ComponentAdapter() {
+      override fun componentResized(event: ComponentEvent) {
+        revalidate()
+        repaint()
+      }
+
+      override fun componentMoved(event: ComponentEvent) {
+        revalidate()
+        repaint()
+      }
+    }
+
+  private val projectionChangeListener = PropertyChangeListener {
+    revalidate()
+    repaint()
+    // The projection rectangle changes while the display view is being painted. Don't change visibility of components during painting.
+    EventQueue.invokeLater {
+      if (!isDisposed) {
+        showTemporarilyIfPending()
+      }
+    }
+  }
+
+  private val viewportChangeListener = ChangeListener {
+    revalidate()
+    repaint()
+  }
+
+  private val displayFocusListener =
+    object : FocusAdapter() {
+      override fun focusGained(event: FocusEvent) {
+        spaceKeyPressed = false
+        // Don't show the panel again when the focus returns from the panel that is being hidden.
+        val previousFocusOwner = event.oppositeComponent
+        val fromPlaybackPanel =
+          returningFocusToDisplayView || (previousFocusOwner != null && SwingUtilities.isDescendingFrom(previousFocusOwner, playbackPanel))
+        returningFocusToDisplayView = false
+        if (!fromPlaybackPanel) {
+          showTemporarily()
+        }
+      }
+    }
+
+  init {
+    Disposer.register(displayPanel, this)
+    name = "videoPlaybackOverlay"
+    isOpaque = false
+    isFocusable = false
+    layout = OverlayLayout()
+
+    playbackPanel.onStateChanged = ::onPlaybackStateChanged
+    playbackPanel.onChangesSent = ::restartAnimationStateStream
+    add(playbackPanel)
+
+    displayView.addComponentListener(displayComponentListener)
+    displayView.addPropertyChangeListener(PROJECTION_RECTANGLE_PROPERTY, projectionChangeListener)
+    (displayView.parent as? JViewport)?.addChangeListener(viewportChangeListener)
+    displayView.addFocusListener(displayFocusListener)
+    displayView.keyEventInterceptor = ::handleKeyEvent
+
+    addHierarchyListener { event ->
+      if (event.changeFlags.toInt() and (HierarchyEvent.SHOWING_CHANGED or HierarchyEvent.DISPLAYABILITY_CHANGED) != 0) {
+        onShowingChanged()
+      }
+    }
+
+    emulator.addConnectionStateListener(this, this)
+  }
+
+  override fun contains(x: Int, y: Int): Boolean = anyVisibleChildContains(x, y)
+
+  @AnyThread
+  override fun connectionStateChanged(emulator: EmulatorController, connectionState: ConnectionState) {
+    UIUtil.invokeLaterIfNeeded {
+      if (isDisposed) return@invokeLaterIfNeeded
+      when (connectionState) {
+        ConnectionState.CONNECTED -> startEnvironmentTrackingIfNeeded()
+        ConnectionState.DISCONNECTED -> stopEnvironmentTracking()
+        else -> {}
+      }
+    }
+  }
+
+  private fun startEnvironmentTrackingIfNeeded() {
+    if (environmentJob != null) return
+    val environmentTracker = EnvironmentTracker.forEmulator(emulator) ?: return
+    environmentJob =
+      coroutineScope.launch(Dispatchers.EDT) {
+        environmentTracker.environmentFlow
+          .map { environment -> environment?.takeIf { it.isVideo() }?.environmentMap?.get("scene.mode") }
+          .distinctUntilChanged()
+          .collectLatest { sceneMode ->
+            setVideoEnvironment(sceneMode)
+            if (sceneMode != null) {
+              // The stream is restarted every time streamGeneration changes.
+              streamGeneration.collectLatest { generation -> streamAnimationState(generation) }
+            }
+          }
+      }
+  }
+
+  private suspend fun streamAnimationState(generation: Int) {
+    var restartDelay = INITIAL_STREAM_RESTART_DELAY
+    while (true) {
+      var streamError: Throwable? = null
+      emulator
+        .streamAnimationState()
+        // Only the failures of the stream itself are handled here. They are logged by EmulatorController.
+        // Exceptions thrown while processing a received state are not caught.
+        .catch { streamError = it }
+        .collect { state ->
+          restartDelay = INITIAL_STREAM_RESTART_DELAY
+          // Ignore the states that were still in transit when the stream was restarted.
+          if (generation == streamGeneration.value) {
+            playbackPanel.updateAnimationState(state)
+          }
+        }
+      currentCoroutineContext().ensureActive()
+      val error = streamError
+      if (error is EmulatorController.RetryException) {
+        continue
+      }
+      if (generation == streamGeneration.value) {
+        // The stream has ended, so the playback state is not known anymore.
+        playbackPanel.reset()
+      }
+      if (error is StatusRuntimeException && error.status.code == Status.Code.UNIMPLEMENTED) {
+        return // The emulator doesn't support animation state streaming.
+      }
+      // Restart the stream after a delay.
+      delay(restartDelay)
+      restartDelay = (restartDelay * 2).coerceAtMost(MAX_STREAM_RESTART_DELAY)
+    }
+  }
+
+  /**
+   * Cancels the animation state stream and starts a new one. The states arriving through the new stream are guaranteed to be produced after
+   * this method was called, which is not true for the states that are still in transit through the old stream.
+   */
+  private fun restartAnimationStateStream() {
+    streamGeneration.value++
+  }
+
+  private fun stopEnvironmentTracking() {
+    environmentJob?.cancel()
+    environmentJob = null
+    setVideoEnvironment(null)
+  }
+
+  /** Sets the "scene.mode" value of the current video environment, or null if the current environment is not a video. */
+  private fun setVideoEnvironment(sceneMode: String?) {
+    val previousSceneMode = videoSceneMode
+    if (sceneMode == previousSceneMode) return
+    if (previousSceneMode != null) {
+      // The previous video is gone. Its state and the pending user changes don't apply to whatever replaced it.
+      playbackPanel.reset()
+    }
+    showOnAnimationStart = sceneMode != null
+    videoSceneMode = sceneMode
+    cancelTemporaryVisibility()
+    updatePanelVisibility()
+  }
+
+  /**
+   * Returns the location of the mouse pointer in the coordinate space of this component, or null if it is not available. Unlike
+   * [com.android.tools.idea.streaming.core.mouseLocation], doesn't depend on [contains], which is false while the playback panel is hidden.
+   */
+  private fun pointerLocation(): Point? {
+    if (!isShowing) {
+      return null
+    }
+    val pointerInfo =
+      try {
+        MouseInfo.getPointerInfo()
+      } catch (_: HeadlessException) {
+        null
+      } ?: return null
+    val location = pointerInfo.location
+    SwingUtilities.convertPointFromScreen(location, this)
+    return location
+  }
+
+  private fun onShowingChanged() {
+    if (isShowing) {
+      if (isDisposed) return
+      val disposable =
+        visibilityDisposable ?: Disposer.newDisposable(this, "VideoPlaybackOverlay.visibility").also { visibilityDisposable = it }
+      setUpMouseListener(disposable)
+      showTemporarilyIfPending()
+    } else {
+      visibilityDisposable?.let(Disposer::dispose)
+      visibilityDisposable = null
+      listeningToMouseEvents = false
+      lastMousePoint = null
+      mouseOutsideWindow = false
+      suppressHoverUntilMouseMoves = false
+      suppressedHoverPoint = null
+      mouseInsideHoverArea = false
+      cancelTemporaryVisibility(clearPending = false)
+      if (!isDisposed) {
+        updatePanelVisibility()
+      }
+    }
+  }
+
+  private fun onPlaybackStateChanged() {
+    if (isDisposed) return
+    if (showOnAnimationStart && playbackPanel.hasAnimation) {
+      showOnAnimationStart = false
+      // A video started playing because of an environment change or the emulator startup.
+      showTemporarily()
+    }
+    updatePanelVisibility()
+  }
+
+  /**
+   * Shows the playback panel for [temporaryVisibilityDuration] if the current environment is a video. The location of the panel is
+   * determined by the location of the environment image, so if the image is not visible to the user yet, the panel is shown when it becomes
+   * visible.
+   */
+  private fun showTemporarily() {
+    if (!isVideoEnvironment || !playbackPanel.hasAnimation || !temporaryVisibilityDuration.isPositive()) {
+      return
+    }
+    if (!isShowing || computePanelBounds().isEmpty) {
+      temporaryVisibilityPending = true
+      return
+    }
+    temporaryVisibilityPending = false
+    temporaryVisibilityJob?.cancel()
+    shownTemporarily = true
+    temporaryVisibilityJob =
+      coroutineScope.launch(Dispatchers.EDT) {
+        delay(temporaryVisibilityDuration)
+        shownTemporarily = false
+        temporaryVisibilityJob = null
+        updatePanelVisibility()
+      }
+    updatePanelVisibility()
+  }
+
+  private fun showTemporarilyIfPending() {
+    if (temporaryVisibilityPending) {
+      showTemporarily()
+    }
+  }
+
+  private fun cancelTemporaryVisibility(clearPending: Boolean = true) {
+    temporaryVisibilityJob?.cancel()
+    temporaryVisibilityJob = null
+    shownTemporarily = false
+    if (clearPending) {
+      temporaryVisibilityPending = false
+    }
+  }
+
+  /**
+   * Handles key events of the display view. The Space key without modifiers toggles between playing and paused states and shows the
+   * playback panel for a limited time. Returns true if the event was handled.
+   */
+  private fun handleKeyEvent(event: KeyEvent): Boolean {
+    val isSpace = if (event.id == KeyEvent.KEY_TYPED) event.keyChar == ' ' else event.keyCode == KeyEvent.VK_SPACE
+    if (!isSpace) {
+      return false
+    }
+    if (event.id == KeyEvent.KEY_RELEASED) {
+      // The release is processed regardless of the modifiers and the playback state so that it always matches the preceding press.
+      val wasPressed = spaceKeyPressed
+      spaceKeyPressed = false
+      spaceKeyReleaseTime = event.`when`
+      return wasPressed
+    }
+    if (!isVideoEnvironment || !playbackPanel.hasAnimation || event.modifiersEx and MODIFIER_MASK != 0) {
+      return false
+    }
+    if (event.id == KeyEvent.KEY_PRESSED) {
+      // Auto-repeat is ignored. On Windows and macOS a key that is held down produces a sequence of press events without release
+      // events. On Linux it produces pairs of release and press events, where the two events of a pair have the same timestamp.
+      val autoRepeat =
+        spaceKeyPressed || (spaceKeyReleaseTime >= 0 && event.`when` - spaceKeyReleaseTime in 0..AUTO_REPEAT_RELEASE_PRESS_INTERVAL_MILLIS)
+      spaceKeyPressed = true
+      if (!autoRepeat) {
+        playbackPanel.togglePlayback()
+        showTemporarily()
+      }
+    }
+    return true
+  }
+
+  private fun setUpMouseListener(disposable: Disposable) {
+    if (listeningToMouseEvents) return
+    val glass = rootPane?.glassPane as? IdeGlassPane ?: return
+    val mouseListener =
+      object : MouseAdapter() {
+        override fun mouseEntered(event: MouseEvent) = controlVisibility(event)
+
+        override fun mouseExited(event: MouseEvent) = onMouseExited()
+
+        override fun mouseMoved(event: MouseEvent) = controlVisibility(event)
+
+        override fun mouseDragged(event: MouseEvent) = controlVisibility(event)
+
+        override fun mouseReleased(event: MouseEvent) = controlVisibility(event)
+      }
+    glass.addMousePreprocessor(mouseListener, disposable)
+    glass.addMouseMotionPreprocessor(mouseListener, disposable)
+    listeningToMouseEvents = true
+  }
+
+  /** Hides the playback panel immediately, for example when the user expands the zoom toolbar while the panel is shown. */
+  fun hidePlaybackPanel() {
+    if (isDisposed) return
+    cancelTemporaryVisibility()
+    if (!playbackPanel.isVisible && !mouseInsideHoverArea) return
+    mouseInsideHoverArea = false
+    suppressHoverUntilMouseMoves = true
+    suppressedHoverPoint = lastMousePoint ?: pointerLocation()
+    playbackPanel.cancelInteraction()
+    updatePanelVisibility()
+  }
+
+  private fun controlVisibility(event: MouseEvent) {
+    mouseOutsideWindow = false
+    val point = toOverlayPoint(event)
+    if (
+      suppressHoverUntilMouseMoves &&
+        (event.id == MouseEvent.MOUSE_MOVED || event.id == MouseEvent.MOUSE_DRAGGED) &&
+        point != suppressedHoverPoint
+    ) {
+      suppressHoverUntilMouseMoves = false
+      suppressedHoverPoint = null
+    }
+    lastMousePoint = point
+    if (!isVideoEnvironment || !playbackPanel.hasAnimation) {
+      return
+    }
+    updatePanelVisibility()
+  }
+
+  private fun onMouseExited() {
+    lastMousePoint = null
+    suppressHoverUntilMouseMoves = false
+    suppressedHoverPoint = null
+    mouseOutsideWindow = !playbackPanel.isInteracting
+    if (!isVideoEnvironment || !playbackPanel.hasAnimation) {
+      mouseInsideHoverArea = false
+      return
+    }
+    updatePanelVisibility()
+  }
+
+  private fun toOverlayPoint(event: MouseEvent): Point? {
+    val source = event.component ?: return null
+    val thisRootPane = SwingUtilities.getRootPane(this)
+    if (thisRootPane != null && SwingUtilities.getRootPane(source) === thisRootPane) {
+      return SwingUtilities.convertPoint(source, event.point, this)
+    }
+    if (!isShowing || !source.isShowing) {
+      return null
+    }
+    return try {
+      val overlayOnScreen = locationOnScreen
+      Point(event.xOnScreen - overlayOnScreen.x, event.yOnScreen - overlayOnScreen.y)
+    } catch (_: IllegalComponentStateException) {
+      null
+    }
+  }
+
+  private fun currentHoverBounds(): Rectangle = if (!playbackPanel.bounds.isEmpty) playbackPanel.bounds else computePanelBounds()
+
+  /**
+   * Returns true if [point] lies inside the zoom toolbar or a margin equal to half of its smaller dimension on each side. Hovering inside
+   * this area does not activate the playback panel.
+   */
+  private fun isInZoomToolbarNonActivationArea(point: Point): Boolean {
+    val toolbarBounds = displayPanel.getZoomToolbarBoundsIn(this)
+    if (toolbarBounds.isEmpty) {
+      return false
+    }
+    val margin = (min(toolbarBounds.width, toolbarBounds.height) / 2.0).roundToInt()
+    toolbarBounds.grow(margin, margin)
+    return toolbarBounds.contains(point)
+  }
+
+  private fun updatePanelVisibility() {
+    if (isDisposed) return
+    val bounds = currentHoverBounds()
+    if (
+      isShowing &&
+        isVideoEnvironment &&
+        playbackPanel.hasAnimation &&
+        !mouseOutsideWindow &&
+        !suppressHoverUntilMouseMoves &&
+        !bounds.isEmpty
+    ) {
+      val currentMouse = lastMousePoint ?: pointerLocation()
+      if (currentMouse != null && bounds.contains(currentMouse)) {
+        if (mouseInsideHoverArea || !isInZoomToolbarNonActivationArea(currentMouse)) {
+          mouseInsideHoverArea = true
+        } else if (shownTemporarily || playbackPanel.isInteracting) {
+          // If showing the panel collapses an expanded zoom toolbar underneath a stationary cursor, don't let the collapsed bounds
+          // hover-activate the panel later unless the mouse actually moves.
+          suppressHoverUntilMouseMoves = true
+          suppressedHoverPoint = currentMouse
+        }
+      } else {
+        mouseInsideHoverArea = false
+      }
+    } else {
+      mouseInsideHoverArea = false
+    }
+    val shouldShow =
+      isShowing &&
+        isVideoEnvironment &&
+        playbackPanel.hasAnimation &&
+        (mouseInsideHoverArea || shownTemporarily || playbackPanel.isInteracting) &&
+        !bounds.isEmpty
+    if (!shouldShow) {
+      playbackPanel.cancelInteraction()
+    }
+    if (playbackPanel.isVisible != shouldShow) {
+      val returnFocusToDisplayView = !shouldShow && isShowing && playbackPanel.containsFocus()
+      returningFocusToDisplayView = returnFocusToDisplayView
+      playbackPanel.isVisible = shouldShow
+      if (returnFocusToDisplayView) {
+        if (focusRequester(displayView)) {
+          EventQueue.invokeLater { returningFocusToDisplayView = false }
+        } else {
+          returningFocusToDisplayView = false
+        }
+      }
+      onPlaybackPanelVisibilityChanged?.invoke(shouldShow)
+      revalidate()
+      repaint()
+    }
+  }
+
+  private fun computePanelBounds(): Rectangle {
+    if (displayView.parent == null || displayView.width <= 0 || displayView.height <= 0 || width <= 0 || height <= 0) {
+      return Rectangle()
+    }
+    val visibleRect = displayView.visibleRect
+    if (visibleRect.isEmpty) {
+      return Rectangle()
+    }
+    // The panel is aligned with the environment image. Until the image is rendered, there is nothing to align the panel with.
+    val projPhysical = displayView.projectionRectangle
+    if (projPhysical == null || projPhysical.isEmpty) {
+      return Rectangle()
+    }
+    val scale = displayView.screenScalingFactor
+    val x0 = (projPhysical.x / scale).roundToInt()
+    val y0 = (projPhysical.y / scale).roundToInt()
+    val x1 = ((projPhysical.x + projPhysical.width) / scale).roundToInt()
+    val y1 = ((projPhysical.y + projPhysical.height) / scale).roundToInt()
+    val targetInView = Rectangle(x0, y0, x1 - x0, y1 - y0).intersection(visibleRect)
+    if (targetInView.width <= 0 || targetInView.height <= 0) {
+      return Rectangle()
+    }
+    val envRect = SwingUtilities.convertRectangle(displayView, targetInView, this).intersection(Rectangle(0, 0, width, height))
+    if (envRect.width <= 0 || envRect.height <= 0) {
+      return Rectangle()
+    }
+    val prefHeight = playbackPanel.preferredSize.height
+    val panelHeight = prefHeight.coerceAtMost(envRect.height)
+    return Rectangle(envRect.x, envRect.y + envRect.height - panelHeight, envRect.width, panelHeight)
+  }
+
+  override fun dispose() {
+    isDisposed = true
+    environmentJob?.cancel()
+    environmentJob = null
+    temporaryVisibilityJob?.cancel()
+    temporaryVisibilityJob = null
+    displayView.removeComponentListener(displayComponentListener)
+    displayView.removePropertyChangeListener(PROJECTION_RECTANGLE_PROPERTY, projectionChangeListener)
+    (displayView.parent as? JViewport)?.removeChangeListener(viewportChangeListener)
+    displayView.removeFocusListener(displayFocusListener)
+    displayView.keyEventInterceptor = null
+  }
+
+  private companion object {
+    val INITIAL_STREAM_RESTART_DELAY = 1.seconds
+    val MAX_STREAM_RESTART_DELAY = 30.seconds
+
+    /** A Space key press following a release within this interval is considered to be produced by auto-repeat. */
+    const val AUTO_REPEAT_RELEASE_PRESS_INTERVAL_MILLIS = 5L
+
+    const val MODIFIER_MASK =
+      InputEvent.SHIFT_DOWN_MASK or
+        InputEvent.CTRL_DOWN_MASK or
+        InputEvent.META_DOWN_MASK or
+        InputEvent.ALT_DOWN_MASK or
+        InputEvent.ALT_GRAPH_DOWN_MASK
+  }
+
+  private inner class OverlayLayout : AbstractLayoutManager() {
+    override fun preferredLayoutSize(parent: Container): Dimension = playbackPanel.preferredSize
+
+    override fun layoutContainer(parent: Container) {
+      val bounds = computePanelBounds()
+      val boundsChanged = playbackPanel.bounds != bounds
+      playbackPanel.bounds = bounds
+      if ((boundsChanged || (temporaryVisibilityPending && !bounds.isEmpty)) && !visibilityUpdateScheduled) {
+        visibilityUpdateScheduled = true
+        EventQueue.invokeLater {
+          visibilityUpdateScheduled = false
+          if (!isDisposed) {
+            showTemporarilyIfPending()
+            updatePanelVisibility()
+          }
+        }
+      }
+    }
   }
 }
 

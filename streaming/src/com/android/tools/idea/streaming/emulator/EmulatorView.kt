@@ -257,6 +257,12 @@ internal class EmulatorView(
 
   private var deviceScaleFactor: Double = 1.0
 
+  /**
+   * Gets a chance to handle key events before they are sent to the emulator. Returns true if the event was handled and should not be
+   * processed any further. Not called when hardware input is enabled.
+   */
+  internal var keyEventInterceptor: ((KeyEvent) -> Boolean)? = null
+
   @get:VisibleForTesting
   var frameTimestampMillis = 0L
     private set
@@ -1003,6 +1009,9 @@ internal class EmulatorView(
       if (isHardwareInputEnabled()) {
         return
       }
+      if (interceptKeyEvent(event)) {
+        return
+      }
 
       if (virtualSceneCameraController != null) {
         return
@@ -1030,6 +1039,9 @@ internal class EmulatorView(
         hardwareInput.forwardEvent(event)
         return
       }
+      if (interceptKeyEvent(event)) {
+        return
+      }
       if (xrInputController?.keyPressed(event) == true) {
         return
       }
@@ -1050,10 +1062,21 @@ internal class EmulatorView(
         hardwareInput.forwardEvent(event)
         return
       }
+      if (interceptKeyEvent(event)) {
+        return
+      }
       if (xrInputController?.keyReleased(event) == true) {
         return
       }
       virtualSceneCameraController?.keyReleased(event)
+    }
+
+    private fun interceptKeyEvent(event: KeyEvent): Boolean {
+      if (keyEventInterceptor?.invoke(event) == true) {
+        event.consume()
+        return true
+      }
+      return false
     }
 
     private fun hostKeyStrokeToEmulatorKeyStroke(hostKeyCode: Int, modifiers: Int): EmulatorKeyStroke? {

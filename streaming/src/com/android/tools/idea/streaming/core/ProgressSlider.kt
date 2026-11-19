@@ -26,6 +26,7 @@ import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.Graphics2D
 import java.awt.RenderingHints
+import java.awt.event.HierarchyEvent
 import java.awt.event.MouseEvent
 import java.awt.geom.Ellipse2D
 import java.awt.geom.RoundRectangle2D
@@ -45,6 +46,11 @@ internal class ProgressSlider(min: Int = 0, max: Int = 100, value: Int = 0) : JS
     paintTicks = false
     paintLabels = false
     putClientProperty(DslComponentProperty.VISUAL_PADDINGS, UnscaledGaps(FOCUS_RING_THICKNESS))
+    addHierarchyListener { event ->
+      if (event.changeFlags.toInt() and (HierarchyEvent.SHOWING_CHANGED or HierarchyEvent.DISPLAYABILITY_CHANGED) != 0 && !isShowing) {
+        cancelActiveDrag()
+      }
+    }
   }
 
   override fun isEnabled(): Boolean = super.isEnabled() || cancellingDrag
@@ -52,10 +58,7 @@ internal class ProgressSlider(min: Int = 0, max: Int = 100, value: Int = 0) : JS
   override fun setEnabled(enabled: Boolean) {
     super.setEnabled(enabled)
     if (!enabled) {
-      (ui as? ProgressSliderUI)?.cancelDrag()
-      if (valueIsAdjusting) {
-        valueIsAdjusting = false
-      }
+      cancelActiveDrag()
     }
   }
 
@@ -65,6 +68,13 @@ internal class ProgressSlider(min: Int = 0, max: Int = 100, value: Int = 0) : JS
       return
     }
     super.setValueIsAdjusting(b)
+  }
+
+  private fun cancelActiveDrag() {
+    (ui as? ProgressSliderUI)?.cancelDrag()
+    if (valueIsAdjusting) {
+      valueIsAdjusting = false
+    }
   }
 
   override fun updateUI() {

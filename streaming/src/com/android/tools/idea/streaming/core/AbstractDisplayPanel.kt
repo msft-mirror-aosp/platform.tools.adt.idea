@@ -46,6 +46,7 @@ import java.awt.Container
 import java.awt.Dimension
 import java.awt.Insets
 import java.awt.LayoutManager
+import java.awt.Rectangle
 import java.util.EventListener
 import javax.swing.JComponent
 import javax.swing.JLayeredPane
@@ -53,6 +54,7 @@ import javax.swing.JPanel
 import javax.swing.JScrollBar
 import javax.swing.JScrollPane
 import javax.swing.JViewport
+import javax.swing.SwingUtilities
 import javax.swing.border.Border
 import javax.swing.border.EmptyBorder
 import javax.swing.plaf.ScrollBarUI
@@ -64,6 +66,7 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
   BorderLayoutPanel(), UiDataProvider, Disposable {
 
   private val scrollPane: JScrollPane
+  private val layeredPane: JLayeredPane
   private val floatingToolbarLayerPane: JComponent
   protected val notificationLayerPane: JComponent
   private var zoomToolbar: FloatingToolbarContainer? = null
@@ -84,6 +87,28 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     set(value) {
       field = value
       zoomToolbar?.isVisible = value
+    }
+
+  private var expandZoomToolbarWhenUncollapsed = false
+  private var restoringZoomToolbar = false
+
+  protected var zoomToolbarCollapsed: Boolean = false
+    set(value) {
+      if (field == value) return
+      field = value
+      if (value) {
+        val toolbar = zoomToolbar
+        expandZoomToolbarWhenUncollapsed = toolbar?.isActive == true
+        toolbar?.triggerDeactivation()
+      } else if (expandZoomToolbarWhenUncollapsed) {
+        expandZoomToolbarWhenUncollapsed = false
+        restoringZoomToolbar = true
+        try {
+          zoomToolbar?.triggerActivation()
+        } finally {
+          restoringZoomToolbar = false
+        }
+      }
     }
 
   protected abstract val deviceType: DeviceType
@@ -137,7 +162,7 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
         focusable = true,
       )
 
-    val layeredPane =
+    layeredPane =
       JLayeredPane().apply {
         layout = LayeredPaneLayoutManager()
         isFocusable = true
@@ -155,6 +180,11 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     addToCenter(loadingPanel)
   }
 
+  protected fun addOverlayPane(pane: JComponent, layer: Int = JLayeredPane.PALETTE_LAYER - 1) {
+    layeredPane.setLayer(pane, layer)
+    layeredPane.add(pane, BorderLayout.CENTER)
+  }
+
   protected fun createFloatingToolbar() {
     val wasActive = (zoomToolbar ?: xrNavigationToolbar)?.isActive
     floatingToolbarLayerPane.removeAll()
@@ -167,10 +197,20 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     floatingToolbarLayerPane.layout = createFloatingToolbarLayerLayout(horizontal)
     when (deviceType) {
       DeviceType.XR_HEADSET -> createXrNavigationToolbar(horizontal, initiallyActive = wasActive ?: true)
-      else -> createZoomToolbar(horizontal, initiallyActive = wasActive ?: false)
+      else -> createZoomToolbar(horizontal, initiallyActive = (wasActive ?: false) && !zoomToolbarCollapsed)
     }
     floatingToolbarLayerPane.revalidate()
     floatingToolbarLayerPane.repaint()
+  }
+
+  protected open fun onZoomToolbarActivated() {}
+
+  internal fun getZoomToolbarBoundsIn(target: Component): Rectangle {
+    val toolbar = zoomToolbar ?: return Rectangle()
+    if (!toolbar.isShowing) return Rectangle()
+    val bounds = toolbar.visibleBounds
+    if (bounds.isEmpty) return Rectangle()
+    return SwingUtilities.convertRectangle(toolbar, bounds, target)
   }
 
   private fun createZoomToolbar(horizontal: Boolean, initiallyActive: Boolean) {
@@ -201,6 +241,11 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
           addToolbar("ZoomToolbar", zoomGroup)
           isVisible = zoomToolbarVisible
           setTargetComponent(displayView)
+          onActivationChanged = { active ->
+            if (active && !restoringZoomToolbar) {
+              onZoomToolbarActivated()
+            }
+          }
         }
     floatingToolbarLayerPane.add(toolbar, BorderLayout.SOUTH)
     zoomToolbar = toolbar

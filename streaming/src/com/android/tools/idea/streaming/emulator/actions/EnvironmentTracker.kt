@@ -121,3 +121,9 @@ internal fun Environment.getEnvironmentFile(): Path? {
     null
   }
 }
+
+/** Returns true if the environment mode is a video file. */
+internal fun Environment.isVideo(): Boolean {
+  val mode = environmentMap["scene.mode"] ?: return false
+  return mode == "videofile" || mode.startsWith("videofile:")
+}

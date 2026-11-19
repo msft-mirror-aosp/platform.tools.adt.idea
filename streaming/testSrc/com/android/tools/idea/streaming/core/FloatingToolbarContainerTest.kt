@@ -173,6 +173,7 @@ class FloatingToolbarContainerTest {
     assertThat(buttonWithoutOrientation.accessibleContext.accessibleName).isEqualTo("Collapse Toolbar")
     val tooltip1 = HelpTooltip.getTooltipFor(buttonWithoutOrientation)!!
     assertThat(tooltip1).isEqualTo(HelpTooltip().setTitle(HtmlChunk.text("Click to collapse the toolbar.")))
+    @Suppress("UnstableApiUsage")
     assertThat(tooltip1.createTipPanel().findAllDescendants<JLabel>().map { it.text }.toList())
       .containsExactly("<html><div>Click to collapse the toolbar.</div></html>")
     val pos1 = fakeUi.getPosition(buttonWithoutOrientation)
@@ -193,6 +194,7 @@ class FloatingToolbarContainerTest {
             )
           )
       )
+    @Suppress("UnstableApiUsage")
     assertThat(tooltip2.createTipPanel().findAllDescendants<JLabel>().map { it.text }.toList())
       .containsExactly("<html><div>Click to collapse the toolbar.<br/>Right-click to change the toolbar orientation.</div></html>")
     val pos2 = fakeUi.getPosition(buttonWithOrientation)
@@ -204,6 +206,41 @@ class FloatingToolbarContainerTest {
     fakeUi.updateToolbarsIfNecessary()
     assertThat(HelpTooltip.getTooltipFor(buttonWithoutOrientation)).isSameAs(tooltip1)
     assertThat(HelpTooltip.getTooltipFor(buttonWithOrientation)).isSameAs(tooltip2)
+  }
+
+  @Test
+  fun testOnActivationChangedDuringDeferredDeactivation() {
+    val events = mutableListOf<Boolean>()
+    val toolbar =
+      FloatingToolbarContainer(horizontal = false, inactiveAlpha = 0.5, collapsedStateSelector = { it.isSelected }).apply {
+        createTestToolbars()
+        onActivationChanged = { events.add(it) }
+      }
+    panel.add(toolbar, BorderLayout.EAST)
+    fakeUi.updateToolbarsIfNecessary()
+
+    // Triggering delayed deactivation while ActivationAnimator is still running fires onActivationChanged(false) only once,
+    // including after ActivationAnimator completes and starts DeactivationAnimator.
+    toolbar.triggerActivation()
+    toolbar.triggerDeactivation(delayMillis = 100, slow = true)
+    assertThat(toolbar.isActive).isFalse()
+    assertThat(events).containsExactly(true, false).inOrder()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(toolbar.isActive).isFalse()
+    assertThat(toolbar.activationFactor).isEqualTo(0.0)
+    assertThat(events).containsExactly(true, false).inOrder()
+
+    // Re-activating while pendingDeactivation is set and then deactivating again alternates notifications cleanly.
+    events.clear()
+    toolbar.triggerActivation()
+    toolbar.triggerDeactivation(delayMillis = 100, slow = true)
+    toolbar.triggerActivation()
+    assertThat(toolbar.isActive).isTrue()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(toolbar.activationFactor).isEqualTo(1.0)
+    toolbar.triggerDeactivation()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(events).containsExactly(true, false, true, false).inOrder()
   }
 
   private fun createHostPanel(): BorderLayoutPanel {

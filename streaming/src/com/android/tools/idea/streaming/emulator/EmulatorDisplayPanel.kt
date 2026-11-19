@@ -55,6 +55,13 @@ internal class EmulatorDisplayPanel(
   override val deviceType: DeviceType
     get() = displayView.emulator.emulatorConfig.deviceType
 
+  /** The "Display off" or "No display" indicator, if any. */
+  private var displayIndicator: DisplayIndicatorPopup? = null
+  /** True if the state of the display calls for showing [displayIndicator]. */
+  private var displayIndicatorNeeded = false
+  private var videoPlaybackOverlay: VideoPlaybackOverlay? = null
+  private var videoPlaybackPanelVisible = false
+
   init {
     displayView = EmulatorView(this, emulator, project, displayId, displaySize, deviceFrameVisible)
 
@@ -66,21 +73,45 @@ internal class EmulatorDisplayPanel(
     if (deviceType == DeviceType.AI_GLASSES && StudioFlags.EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR.get()) {
       if (emulator.emulatorConfig.displayWidth > 0 && emulator.emulatorConfig.displayHeight > 0) {
         val popup = DisplayIndicatorPopup("Display off").apply { isVisible = false }
+        displayIndicator = popup
         notificationLayerPane.add(popup)
         val coroutineScope = createCoroutineScope()
         val notificationTracker = NotificationTracker.forEmulator(emulator)
         coroutineScope.launch(Dispatchers.EDT) {
           notificationTracker.displayPowerModes.collect { modes ->
-            popup.isVisible = modes[displayId] == DisplayPowerModeNotification.PowerMode.OFF
+            displayIndicatorNeeded = modes[displayId] == DisplayPowerModeNotification.PowerMode.OFF
+            updateDisplayIndicatorVisibility()
           }
         }
       } else {
         val popup = DisplayIndicatorPopup("No display")
+        displayIndicator = popup
+        displayIndicatorNeeded = true
         notificationLayerPane.add(popup)
       }
     }
 
+    if (deviceType == DeviceType.AI_GLASSES && displayId == PRIMARY_DISPLAY_ID && StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.get()) {
+      val overlay = VideoPlaybackOverlay(this, emulator)
+      overlay.onPlaybackPanelVisibilityChanged = { visible ->
+        videoPlaybackPanelVisible = visible
+        zoomToolbarCollapsed = visible
+        updateDisplayIndicatorVisibility()
+      }
+      videoPlaybackOverlay = overlay
+      addOverlayPane(overlay)
+    }
+
     emulator.addConnectionStateListener(this)
+  }
+
+  override fun onZoomToolbarActivated() {
+    videoPlaybackOverlay?.hidePlaybackPanel()
+  }
+
+  /** Shows the display indicator when the state of the display calls for it, unless the video playback panel is shown. */
+  private fun updateDisplayIndicatorVisibility() {
+    displayIndicator?.isVisible = displayIndicatorNeeded && !videoPlaybackPanelVisible
   }
 
   @AnyThread

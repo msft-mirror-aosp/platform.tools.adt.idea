@@ -106,7 +106,7 @@ internal class FloatingToolbarContainer(
   private var listeningToMouseEvents = false
   private var activationAnimator: Animator? = null
   private var deactivationAnimator: Animator? = null
-  private var pendingDeactivation = false
+  private var pendingDeactivation: PendingDeactivation? = null
 
   private val awtListener = AWTEventListener { event ->
     val component = (event as HierarchyEvent).component
@@ -121,7 +121,31 @@ internal class FloatingToolbarContainer(
   }
 
   val isActive: Boolean
-    get() = (activationFactor > 0 || activationAnimator != null) && !pendingDeactivation && deactivationAnimator == null
+    get() = (activationFactor > 0 || activationAnimator != null) && pendingDeactivation == null && deactivationAnimator == null
+
+  var onActivationChanged: ((Boolean) -> Unit)? = null
+
+  /**
+   * Returns the bounding rectangle of the visible toolbars in this container's coordinate space, using the fully expanded bounds while
+   * [isActive] is true, or an empty [Rectangle] if none are visible.
+   */
+  val visibleBounds: Rectangle
+    get() {
+      val result = Rectangle()
+      if (!isVisible || width <= 0 || height <= 0 || computeSize(collapsed = false)[orientation] == 0) {
+        return result
+      }
+      forEachChildBounds(if (isActive) 1.0 else expansionFactor) { child, bounds ->
+        if (child.isVisible && !bounds.isEmpty) {
+          if (result.isEmpty) {
+            result.bounds = bounds
+          } else {
+            result.add(bounds)
+          }
+        }
+      }
+      return result
+    }
 
   /** Zero means inactive, one means active. */
   @VisibleForTesting
@@ -207,21 +231,34 @@ internal class FloatingToolbarContainer(
   }
 
   fun triggerActivation() {
-    pendingDeactivation = false
+    val wasActive = isActive
+    pendingDeactivation = null
     deactivationAnimator?.dispose()
     if (activationAnimator == null && activationFactor < 1.0) {
       activationAnimator = ActivationAnimator(ACTIVATION_ANIMATION_DURATION_MILLIS.scaled(1 - activationFactor)).apply { resume() }
     }
+    if (!wasActive && isActive) {
+      onActivationChanged?.invoke(true)
+    }
   }
 
   fun triggerDeactivation(delayMillis: Int = 0, slow: Boolean = false) {
+    val wasActive = isActive
+    if (delayMillis == 0 && !slow) {
+      pendingDeactivation = null
+      activationAnimator?.dispose()
+    }
     if (activationAnimator == null) {
+      pendingDeactivation = null
       if (activationFactor > 0.0 && deactivationAnimator == null) {
-        val duration = if (slow) COLLAPSE_ANIMATION_DURATION_SLOW_MILLIS else COLLAPSE_ANIMATION_DURATION_MILLIS
+        val duration = if (slow) COLLAPSE_ANIMATION_DURATION_SLOW_MILLIS else COLLAPSE_ANIMATION_DURATION_MILLIS.scaled(activationFactor)
         deactivationAnimator = DeactivationAnimator(delayMillis, duration).apply { resume() }
       }
     } else {
-      pendingDeactivation = true
+      pendingDeactivation = PendingDeactivation(delayMillis, slow)
+    }
+    if (wasActive && !isActive) {
+      onActivationChanged?.invoke(false)
     }
   }
 
@@ -279,6 +316,7 @@ internal class FloatingToolbarContainer(
         setUpMouseListener(disposable)
       }
     } else {
+      pendingDeactivation = null
       activationAnimator?.dispose()
       deactivationAnimator?.dispose()
       visibilityDisposable?.let { Disposer.dispose(it) }
@@ -286,6 +324,8 @@ internal class FloatingToolbarContainer(
       listeningToMouseEvents = false
     }
   }
+
+  private data class PendingDeactivation(val delayMillis: Int, val slow: Boolean)
 
   @MagicConstant(intValues = [HORIZONTAL.toLong(), VERTICAL.toLong()]) private annotation class Orientation
 
@@ -299,6 +339,7 @@ internal class FloatingToolbarContainer(
     }
 
     override fun paintCycleEnd() {
+      if (isDisposed) return
       activationFactor = 1.0
       dispose()
     }
@@ -306,9 +347,8 @@ internal class FloatingToolbarContainer(
     override fun dispose() {
       super.dispose()
       activationAnimator = null
-      if (pendingDeactivation) {
-        pendingDeactivation = false
-        triggerDeactivation(COLLAPSE_DELAY_MILLIS, slow = true)
+      pendingDeactivation?.let {
+        triggerDeactivation(it.delayMillis, it.slow)
       }
     }
   }
@@ -327,6 +367,7 @@ internal class FloatingToolbarContainer(
     }
 
     override fun paintCycleEnd() {
+      if (isDisposed) return
       activationFactor = 0.0
       dispose()
     }
@@ -363,7 +404,6 @@ internal class FloatingToolbarContainer(
       }
     }
     private val buttonSelectionListener = PropertyChangeListener { event ->
-      @Suppress("UnstableApiUsage")
       if (event.propertyName == SELECTED_KEY.toString()) {
         revalidate()
       }
@@ -434,7 +474,7 @@ internal class FloatingToolbarContainer(
       }
     }
 
-    override fun getMaximumSize(): Dimension = toolbar.component.getPreferredSize() + insets
+    override fun getMaximumSize(): Dimension = toolbar.component.preferredSize + insets
 
     private fun isVisibleWhenCollapsed(): Boolean {
       val selector = collapsedStateSelector ?: return false
@@ -496,6 +536,50 @@ internal class FloatingToolbarContainer(
     class Extent(val offset: Int, val size: Int)
   }
 
+  private inline fun forEachChildBounds(factor: Double, action: (Component, Rectangle) -> Unit) {
+    val expandedSize = computeSize(collapsed = false)
+    val collapsedSize = computeSize(collapsed = true)
+    val insets = insets
+    val rect = Rectangle(insets.left, insets.top, width - insets.left - insets.right, height - insets.top - insets.bottom)
+    var expansion = (expandedSize[orientation] - collapsedSize[orientation]).scaled(factor)
+    val offset = Dimension()
+    offset[orientation] = rect.size[orientation] - collapsedSize[orientation] - expansion
+    var pendingSpacer = false
+    for (child in components) {
+      if (pendingSpacer) {
+        val spacerLength = min(expansion, SPACER_SIZE)
+        expansion -= spacerLength
+        offset.increment(orientation, spacerLength)
+      }
+      val childSize = child.preferredSize
+      val minChildLength = child.preferredSize(collapsed = true)[orientation]
+      val childExpansion = min(expansion, childSize[orientation] - minChildLength)
+      childSize[orientation] = minChildLength + childExpansion
+      action(child, Rectangle(offset.width, offset.height, childSize.width, childSize.height))
+      expansion -= childExpansion
+      offset.increment(orientation, childSize[orientation])
+      if (childSize[orientation] != 0) {
+        pendingSpacer = true
+      }
+    }
+  }
+
+  private fun computeSize(collapsed: Boolean): Dimension {
+    val size = Dimension()
+    var pendingSpacer = false
+    for (child in components) {
+      val childSize = child.preferredSize(collapsed)
+      if (childSize[orientation] != 0 && (size[orientation] > 0 || child.containsActionButtonsOtherThanCollapser())) {
+        if (pendingSpacer) {
+          size.increment(orientation, SPACER_SIZE)
+        }
+        size.combine(orientation, childSize)
+        pendingSpacer = true
+      }
+    }
+    return size
+  }
+
   private inner class Layout : AbstractLayoutManager() {
 
     override fun preferredLayoutSize(container: Container): Dimension {
@@ -505,47 +589,7 @@ internal class FloatingToolbarContainer(
 
     override fun layoutContainer(container: Container) {
       require(container == this@FloatingToolbarContainer)
-      val expandedSize = computeSize(collapsed = false)
-      val collapsedSize = computeSize(collapsed = true)
-      val insets = insets
-      val rect = Rectangle(insets.left, insets.top, width - insets.left - insets.right, height - insets.top - insets.bottom)
-      var expansion = (expandedSize[orientation] - collapsedSize[orientation]).scaled(expansionFactor)
-      val offset = Dimension()
-      offset[orientation] = rect.size[orientation] - collapsedSize[orientation] - expansion
-      var pendingSpacer = false
-      for (child in container.components) {
-        if (pendingSpacer) {
-          val spacerLength = min(expansion, SPACER_SIZE)
-          expansion -= spacerLength
-          offset.increment(orientation, spacerLength)
-        }
-        val childSize = child.preferredSize
-        val minChildLength = child.preferredSize(collapsed = true)[orientation]
-        val childExpansion = min(expansion, childSize[orientation] - minChildLength)
-        childSize[orientation] = minChildLength + childExpansion
-        child.setBounds(offset.width, offset.height, childSize.width, childSize.height)
-        expansion -= childExpansion
-        offset.increment(orientation, childSize[orientation])
-        if (childSize[orientation] != 0) {
-          pendingSpacer = true
-        }
-      }
-    }
-
-    private fun computeSize(collapsed: Boolean): Dimension {
-      val size = Dimension()
-      var pendingSpacer = false
-      for (child in components) {
-        val childSize = child.preferredSize(collapsed)
-        if (childSize[orientation] != 0 && (size[orientation] > 0 || child.containsActionButtonsOtherThanCollapser())) {
-          if (pendingSpacer) {
-            size.increment(orientation, SPACER_SIZE)
-          }
-          size.combine(orientation, childSize)
-          pendingSpacer = true
-        }
-      }
-      return size
+      forEachChildBounds(expansionFactor) { child, bounds -> child.bounds = bounds }
     }
   }
 
@@ -681,7 +725,6 @@ internal class FloatingToolbarContainer(
 
     private fun Component.collapsedSize(): Dimension = (this as? ToolbarPanel)?.collapsedSize ?: ZERO_DIMENSION
 
-    @Suppress("UnstableApiUsage")
     private fun ActionToolbar.configureToolbar() {
       layoutStrategy = ToolbarLayoutStrategy.NOWRAP_STRATEGY
       minimumButtonSize = DEFAULT_MINIMUM_BUTTON_SIZE

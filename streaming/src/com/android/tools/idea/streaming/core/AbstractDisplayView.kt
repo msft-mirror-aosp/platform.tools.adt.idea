@@ -116,7 +116,13 @@ internal abstract class AbstractDisplayView(
   /** ID of the device shown in the view. */
   abstract val deviceId: StreamingDeviceId
   override var projectionRectangle: Rectangle? = null
-    protected set
+    protected set(value) {
+      if (field != value) {
+        val oldValue = field
+        field = value
+        firePropertyChange(PROJECTION_RECTANGLE_PROPERTY, oldValue, value)
+      }
+    }
 
   /** The difference between [displayOrientationQuadrants] and the orientation according to the internal Android data structures. */
   override var displayOrientationCorrectionQuadrants: Int = 0
@@ -643,3 +649,4 @@ internal fun buttonToMask(button: Int): Int {
 }
 
 internal const val BUTTON_MASK = BUTTON1_DOWN_MASK or BUTTON2_DOWN_MASK or BUTTON3_DOWN_MASK
+internal const val PROJECTION_RECTANGLE_PROPERTY = "projectionRectangle"
