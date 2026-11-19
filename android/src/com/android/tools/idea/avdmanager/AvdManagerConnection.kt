@@ -55,7 +55,6 @@ import com.intellij.credentialStore.isFulfilled
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.icons.AllIcons
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.application.asContextElement
@@ -408,17 +407,11 @@ constructor(
       )
     }
 
-  private suspend fun tryFixingAccelerationError(
-    project: Project?,
-    code: AccelerationErrorCode,
-  ) {
+  private suspend fun tryFixingAccelerationError(project: Project?, code: AccelerationErrorCode) {
     val changeWasMade = CompletableDeferred<Boolean>()
-
-    ApplicationManager.getApplication()
-      .invokeLater(
-        AccelerationErrorSolution.getActionForFix(code, project, { changeWasMade.complete(true) }, { changeWasMade.complete(false) })
-      )
-
+    withContext(uiContext) {
+      AccelerationErrorSolution.getActionForFix(code, project, { changeWasMade.complete(true) }, { changeWasMade.complete(false) }).run()
+    }
     if (!changeWasMade.await()) {
       throw DeviceActionCanceledException("Retry after fixing problem by hand")
     }

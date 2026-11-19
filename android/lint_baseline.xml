@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<issues format="6" by="lint 9.5.0-dev" type="baseline" client="" dependencies="true" name="" variant="all" version="9.5.0-dev">
+<issues format="6" by="lint 9.6.0-dev" type="baseline" client="" dependencies="true" name="" variant="all" version="9.6.0-dev">
 
     <issue
         id="JbUiStored"
@@ -406,17 +406,6 @@
             file="src/org/jetbrains/android/AndroidUsagesTargetProvider.java"
             line="67"
             column="83"/>
-    </issue>
-
-    <issue
-        id="WrongThread"
-        message="Argument must allow calling `run()` from `@UiThread`, but that call has an unsatisfiable thread requirement"
-        errorLine1="        AccelerationErrorSolution.getActionForFix(code, project, { changeWasMade.complete(true) }, { changeWasMade.complete(false) })"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/com/android/tools/idea/avdmanager/AvdManagerConnection.kt"
-            line="390"
-            column="9"/>
     </issue>
 
     <issue
