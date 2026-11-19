@@ -1,0 +1,23 @@
+platform: android
+type: application
+
+android:
+  namespace: com.example.myapplication.app
+  compileSdk:
+    version:
+      release:
+        apiLevel: 36
+  minSdk:
+    version:
+      release:
+        apiLevel: 24
+  targetSdk:
+    version:
+      release:
+        apiLevel: 36
+  applicationId: com.example.myapplication
+  dependencies:
+    module:
+      - //app-core
+  versionCode: 1
+  versionName: "1.0"

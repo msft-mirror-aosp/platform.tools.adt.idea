@@ -1,0 +1,19 @@
+project:
+  name: My Application
+
+modules:
+  - app
+  - app-core
+
+repositories:
+  - google
+  - mavenCentral
+
+lightbuild:
+  version: "0.0.30"
+
+build:
+  kotlin:
+    version: 2.3.20
+  java:
+    version: 17
