@@ -29,11 +29,11 @@ object StagingIcons {
 
   @JvmField val CAR_DATA: Icon = load("icons/car-data.svg", -2007900323, 2)
 
-  @JvmField val CAR_ROTARY: Icon = load("icons/car-rotary.svg", 2057395957, 2)
-
   @JvmField val CELLULAR: Icon = load("icons/cellular.svg", 206072347, 2)
 
   @JvmField val DEVICE_POSE: Icon = load("icons/device-pose.svg", 1721416520, 2)
+
+  @JvmField val DIRECTIONAL_PAD: Icon = load("icons/directional-pad.svg", 2001911113, 2)
 
   @JvmField val DISPLAYS: Icon = load("icons/displays.svg", -1197752924, 2)
 
@@ -78,6 +78,8 @@ object StagingIcons {
   @JvmField val REVERSE_LANDSCAPE: Icon = load("icons/reverse-landscape.svg", -239768764, 2)
 
   @JvmField val REVERSE_PORTRAIT: Icon = load("icons/reverse-portrait.svg", -1640749502, 2)
+
+  @JvmField val ROTARY_INPUT: Icon = load("icons/rotary-input.svg", -156491178, 2)
 
   @JvmField val SENSOR_REPLAY: Icon = load("icons/sensor-replay.svg", 2084088727, 2)
 

@@ -1,0 +1,23 @@
+<!--
+  - Copyright (C) 2026 The Android Open Source Project
+  -
+  - Licensed under the Apache License, Version 2.0 (the "License");
+  - you may not use this file except in compliance with the License.
+  - You may obtain a copy of the License at
+  -
+  -      http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Unless required by applicable law or agreed to in writing, software
+  - distributed under the License is distributed on an "AS IS" BASIS,
+  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  - See the License for the specific language governing permissions and
+  - limitations under the License.
+  -->
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M6.5 12.7C9.09574 12.7 11.2 10.5957 11.2 8C11.2 5.40426 9.09574 3.3 6.5 3.3C3.90426 3.3 1.8 5.40426 1.8 8C1.8 10.5957 3.90426 12.7 6.5 12.7ZM6.5 11.3C8.32254 11.3 9.8 9.82254 9.8 8C9.8 6.17746 8.32254 4.7 6.5 4.7C4.67746 4.7 3.2 6.17746 3.2 8C3.2 9.82254 4.67746 11.3 6.5 11.3Z" fill="#6C707E"/>
+  <rect x="4.6" y="1.5" width="3.8" height="2.2" rx="0.8" fill="#6C707E"/>
+  <rect x="4.6" y="12.3" width="3.8" height="2.2" rx="0.8" fill="#6C707E"/>
+  <rect x="11.8" y="6.2" width="1.8" height="3.6" rx="0.7" fill="#6C707E"/>
+  <path d="M11.3 5L12.7 3.2L14.1 5H11.3Z" fill="#6C707E"/>
+  <path d="M11.3 11L12.7 12.8L14.1 11H11.3Z" fill="#6C707E"/>
+</svg>

@@ -73,6 +73,8 @@ class EmulatorExtendedControlsActionGroupTest {
     val carRotaryActionId = "android.emulator.car.rotary"
     val googleAssistantActionId = "android.emulator.google.assistant"
     val keyboardActionId = "android.emulator.keyboard"
+    val rotaryInputActionId = "android.emulator.rotary.input"
+    val tvRemoteActionId = "android.emulator.tv.remote"
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(false, emulatorViewRule.disposable)
     val presentationDisabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -139,6 +141,14 @@ class EmulatorExtendedControlsActionGroupTest {
     val keyboardDisabled = updateAndGetActionPresentation(keyboardActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
     assertThat(keyboardDisabled.isVisible).isFalse()
     assertThat(keyboardDisabled.isEnabled).isFalse()
+
+    val rotaryInputDisabled = updateAndGetActionPresentation(rotaryInputActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(rotaryInputDisabled.isVisible).isFalse()
+    assertThat(rotaryInputDisabled.isEnabled).isFalse()
+
+    val tvRemoteDisabled = updateAndGetActionPresentation(tvRemoteActionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
+    assertThat(tvRemoteDisabled.isVisible).isFalse()
+    assertThat(tvRemoteDisabled.isEnabled).isFalse()
 
     StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, emulatorViewRule.disposable)
     val presentationEnabled = updateAndGetActionPresentation(actionId, view, emulatorViewRule.project, ActionPlaces.TOOLBAR)
@@ -327,7 +337,7 @@ class EmulatorExtendedControlsActionGroupTest {
     assertThat(group.isPopup).isTrue()
 
     val children = group.getChildren(actionManager)
-    assertThat(children).hasLength(15)
+    assertThat(children).hasLength(17)
     var index = 0
     val displaysAction = children[index++]
     assertThat(displaysAction.templatePresentation.text).isEqualTo("Displays")
@@ -383,11 +393,19 @@ class EmulatorExtendedControlsActionGroupTest {
 
     val carRotaryAction = children[index++]
     assertThat(carRotaryAction.templatePresentation.text).isEqualTo("Car Rotary")
-    assertThat(carRotaryAction.templatePresentation.icon).isEqualTo(StagingIcons.CAR_ROTARY)
+    assertThat(carRotaryAction.templatePresentation.icon).isEqualTo(StagingIcons.DIRECTIONAL_PAD)
 
     val googleAssistantAction = children[index++]
     assertThat(googleAssistantAction.templatePresentation.text).isEqualTo("Google Assistant")
     assertThat(googleAssistantAction.templatePresentation.icon).isEqualTo(StagingIcons.GOOGLE_ASSISTANT)
+
+    val rotaryInputAction = children[index++]
+    assertThat(rotaryInputAction.templatePresentation.text).isEqualTo("Rotary Input")
+    assertThat(rotaryInputAction.templatePresentation.icon).isEqualTo(StagingIcons.ROTARY_INPUT)
+
+    val tvRemoteAction = children[index++]
+    assertThat(tvRemoteAction.templatePresentation.text).isEqualTo("TV Remote")
+    assertThat(tvRemoteAction.templatePresentation.icon).isEqualTo(StagingIcons.DIRECTIONAL_PAD)
 
     executeAction(locationAction, view, emulatorViewRule.project, ActionPlaces.POPUP)
     val locationDlg = findModelessDialog<DialogWrapper>()!!

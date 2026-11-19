@@ -19,13 +19,17 @@ import com.android.emulator.control.InputEvent as InputEventMessage
 import com.android.emulator.control.WheelEvent
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.idea.streaming.core.getNormalizedScrollAmount
+import com.intellij.icons.AllIcons
 import com.intellij.ide.setToolTipText
+import com.intellij.openapi.ui.popup.IconButton
 import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.ui.IdeBorderFactory
+import com.intellij.ui.InplaceButton
 import com.intellij.ui.JBColor
 import com.intellij.ui.SideBorder
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.TimedDeadzone
 import java.awt.Color
 import java.awt.Cursor
 import java.awt.Dimension
@@ -48,7 +52,14 @@ import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 /** Panel simulating the rotary input control of a Wear OS watch. */
-internal class RotaryInputPanel(private val emulator: EmulatorController) : JPanel(null) {
+internal class RotaryInputPanel(private val emulator: EmulatorController, onClose: (() -> Unit)? = null) : JPanel(null) {
+
+  private val closeButton: InplaceButton? = onClose?.let { close ->
+    InplaceButton(IconButton("Close", AllIcons.Actions.Close, AllIcons.Actions.CloseHovered), { close() }, null, TimedDeadzone.NULL).also {
+      it.name = "Close"
+      add(it)
+    }
+  }
 
   /** Current rotation angle of the dial in degrees `[0, 360)`, where 0 puts the indicator dot at 9 o'clock (left). */
   private var dialAngle: Int = 0
@@ -113,6 +124,14 @@ internal class RotaryInputPanel(private val emulator: EmulatorController) : JPan
     val width = (REF_WIDTH * scale).roundToInt() + insets.left + insets.right
     val height = (REF_HEIGHT * scale).roundToInt() + insets.top + insets.bottom
     return Dimension(width, height)
+  }
+
+  override fun doLayout() {
+    closeButton?.let { button ->
+      val size = button.preferredSize
+      val margin = JBUI.scale(CLOSE_BUTTON_MARGIN)
+      button.setBounds(width - margin - size.width, margin + JBUI.scale(1), size.width, size.height)
+    }
   }
 
   override fun paintComponent(g: Graphics) {
@@ -222,6 +241,7 @@ internal class RotaryInputPanel(private val emulator: EmulatorController) : JPan
 
     private const val DEGREES_PER_WHEEL_CLICK = 15.0
     private const val ROTARY_DY_SCALING_FACTOR = 8
+    private const val CLOSE_BUTTON_MARGIN = 4
 
     private val WATCH_STRAP_COLOR = JBColor(0x1F1F20, 0x505050)
     private val WATCH_BODY_COLOR = JBColor(0x2D2D2D, 0x404040)

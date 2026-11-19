@@ -316,10 +316,16 @@
         <action id="android.emulator.sensor.replay" class="com.android.tools.idea.streaming.emulator.actions.EmulatorSensorReplayAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.SENSOR_REPLAY" text="Sensor Replay" description="Open sensor replay controls"/>
         <action id="android.emulator.car.rotary" class="com.android.tools.idea.streaming.emulator.actions.EmulatorCarRotaryAction"
-                icon="com.android.tools.idea.streaming.StagingIcons.CAR_ROTARY" text="Car Rotary" description="Open car rotary controls"/>
+                icon="com.android.tools.idea.streaming.StagingIcons.DIRECTIONAL_PAD" text="Car Rotary" description="Open car rotary controls"/>
         <action id="android.emulator.google.assistant" class="com.android.tools.idea.streaming.emulator.actions.EmulatorGoogleAssistantAction"
                 icon="com.android.tools.idea.streaming.StagingIcons.GOOGLE_ASSISTANT" text="Google Assistant"
                 description="Open Google Assistant controls"/>
+        <action id="android.emulator.rotary.input" class="com.android.tools.idea.streaming.emulator.actions.EmulatorRotaryInputAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.ROTARY_INPUT" text="Rotary Input"
+                description="Open rotary input controls"/>
+        <action id="android.emulator.tv.remote" class="com.android.tools.idea.streaming.emulator.actions.EmulatorTvRemoteAction"
+                icon="com.android.tools.idea.streaming.StagingIcons.DIRECTIONAL_PAD" text="TV Remote"
+                description="Open TV remote controls"/>
       </group>
     </group>
 

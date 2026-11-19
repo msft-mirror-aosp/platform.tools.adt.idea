@@ -29,6 +29,7 @@ import com.android.tools.idea.streaming.emulator.EmulatorView
 import com.android.tools.idea.ui.DISPLAY_INFO_PROVIDER_KEY
 import com.android.tools.idea.ui.DisplayInfoProvider
 import com.intellij.codeInsight.hint.HintUtil
+import com.intellij.ide.ActivityTracker
 import com.intellij.ide.ui.customization.CustomActionsSchema
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionManager
@@ -130,6 +131,9 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   /** Panels added by [addTopPanel] and [addBottomPanel]. They are hidden while the embedded Layout Inspector is active. */
   private val sidePanels = mutableListOf<JComponent>()
 
+  /** Side panels explicitly closed by the user. */
+  private val closedSidePanels = hashSetOf<JComponent>()
+
   private val displayPanelsMap = Int2ObjectRBTreeMap<T>()
   internal val displayPanels: Collection<T>
     get() = displayPanelsMap.values
@@ -177,8 +181,21 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   private fun updateSidePanelVisibility() {
     val visible = !isLayoutInspectorActive
     for (sidePanel in sidePanels) {
-      sidePanel.isVisible = visible
+      sidePanel.isVisible = visible && sidePanel !in closedSidePanels
     }
+  }
+
+  /** Shows or hides a side panel added by [addTopPanel] or [addBottomPanel], remembering the user-closed state. */
+  protected fun setSidePanelVisible(sidePanel: JComponent, visible: Boolean) {
+    if (visible) {
+      closedSidePanels.remove(sidePanel)
+    } else {
+      closedSidePanels.add(sidePanel)
+    }
+    sidePanel.isVisible = visible && !isLayoutInspectorActive
+    revalidate()
+    repaint()
+    ActivityTracker.getInstance().inc()
   }
 
   private fun updateToolbar() {

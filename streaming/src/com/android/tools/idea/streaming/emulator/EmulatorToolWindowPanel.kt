@@ -53,6 +53,7 @@ import com.android.tools.idea.ui.screenrecording.ScreenRecordingParameters
 import com.android.utils.HashCodes
 import com.intellij.execution.runners.ExecutionUtil
 import com.intellij.ide.ActivityTracker
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.DataSink
@@ -144,20 +145,52 @@ internal class EmulatorToolWindowPanel(
   private val connected
     get() = emulator.connectionState == ConnectionState.CONNECTED
 
+  private var bottomPanel: JComponent? = null
+  private var bottomPanelVisibilityProperty: String? = null
+
+  internal val isBottomPanelVisible: Boolean
+    get() = bottomPanel?.isVisible == true
+
   @get:TestOnly var lastUiState: EmulatorUiState? = null
 
   init {
     Disposer.register(disposableParent, this)
 
+    val closeable = StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.get()
     when (deviceType) {
       DeviceType.AI_GLASSES -> addTopPanel(EmulatorGlassesInputPanel(emulator, this))
-      DeviceType.TV -> addBottomPanel(TvRemotePanel(emulator, project, this))
-      DeviceType.WEAR -> addBottomPanel(RotaryInputPanel(emulator))
+      DeviceType.TV -> {
+        val panel = TvRemotePanel(emulator, project, this, onClose = if (closeable) ::closeBottomPanel else null)
+        addCloseableBottomPanel(panel, if (closeable) TV_REMOTE_VISIBLE_PROPERTY else null)
+      }
+      DeviceType.WEAR -> {
+        val panel = RotaryInputPanel(emulator, onClose = if (closeable) ::closeBottomPanel else null)
+        addCloseableBottomPanel(panel, if (closeable) ROTARY_INPUT_VISIBLE_PROPERTY else null)
+      }
       else -> {}
     }
 
     // Start Adb ready service for context menu actions.
     project.service<EmulatorAdbReadyService>()
+  }
+
+  private fun addCloseableBottomPanel(panel: JComponent, visibilityProperty: String?) {
+    bottomPanel = panel
+    bottomPanelVisibilityProperty = visibilityProperty
+    addBottomPanel(panel)
+    if (visibilityProperty != null && !PropertiesComponent.getInstance().getBoolean(visibilityProperty, true)) {
+      setSidePanelVisible(panel, false)
+    }
+  }
+
+  internal fun showBottomPanel() {
+    bottomPanelVisibilityProperty?.let { PropertiesComponent.getInstance().setValue(it, true, true) }
+    bottomPanel?.let { setSidePanelVisible(it, true) }
+  }
+
+  private fun closeBottomPanel() {
+    bottomPanelVisibilityProperty?.let { PropertiesComponent.getInstance().setValue(it, false, true) }
+    bottomPanel?.let { setSidePanelVisible(it, false) }
   }
 
   override fun setDeviceFrameVisible(visible: Boolean) {
@@ -296,6 +329,7 @@ internal class EmulatorToolWindowPanel(
     super.uiDataSnapshot(sink)
     sink[EMULATOR_CONTROLLER_KEY] = emulator
     sink[EMULATOR_VIEW_KEY] = primaryDisplayView
+    sink[EMULATOR_TOOL_WINDOW_PANEL_KEY] = this
     sink[NUMBER_OF_DISPLAYS_KEY] = displayPanels.size
     sink[ScreenRecordingParameters.DATA_KEY] = getScreenRecorderParameters()
   }
@@ -564,3 +598,6 @@ internal class EmulatorToolWindowPanel(
 }
 
 private fun DisplayConfiguration.toDisplayDescriptor(): DisplayDescriptor = DisplayDescriptor(display, Dimension(width, height))
+
+private const val TV_REMOTE_VISIBLE_PROPERTY = "com.android.tools.idea.streaming.tv.remote.visible"
+private const val ROTARY_INPUT_VISIBLE_PROPERTY = "com.android.tools.idea.streaming.rotary.input.visible"

@@ -21,18 +21,22 @@ import com.android.emulator.control.KeyboardEvent.KeyEventType
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.concurrency.createCoroutineScope
+import com.intellij.icons.AllIcons
 import com.intellij.ide.setToolTipText
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.popup.IconButton
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.ui.IdeBorderFactory
+import com.intellij.ui.InplaceButton
 import com.intellij.ui.JBColor
 import com.intellij.ui.SideBorder
 import com.intellij.ui.scale.JBUIScale
 import com.intellij.util.IconUtil
 import com.intellij.util.ui.JBUI
+import com.intellij.util.ui.TimedDeadzone
 import icons.StudioIcons
 import java.awt.Dimension
 import java.awt.Graphics
@@ -66,9 +70,16 @@ internal class TvRemotePanel(
   private val emulator: EmulatorController,
   private val project: Project,
   disposableParent: Disposable,
+  onClose: (() -> Unit)? = null,
 ) : JPanel(null), Disposable {
 
   private val coroutineScope = createCoroutineScope()
+  private val closeButton: InplaceButton? = onClose?.let { close ->
+    InplaceButton(IconButton("Close", AllIcons.Actions.Close, AllIcons.Actions.CloseHovered), { close() }, null, TimedDeadzone.NULL).also {
+      it.name = "Close"
+      add(it)
+    }
+  }
   private val buttons = mutableListOf<RemoteButton>()
 
   init {
@@ -238,6 +249,11 @@ internal class TvRemotePanel(
     for (button in buttons) {
       button.updateLayout(centerX, centerY, scale, maxScale)
     }
+    closeButton?.let { button ->
+      val size = button.preferredSize
+      val margin = JBUI.scale(CLOSE_BUTTON_MARGIN)
+      button.setBounds(width - margin - size.width, margin + JBUI.scale(1), size.width, size.height)
+    }
   }
 
   override fun dispose() {}
@@ -308,6 +324,7 @@ private const val DPAD_INNER_RADIUS = 48.0
 private const val DPAD_OUTER_RADIUS = 101.0
 private const val DPAD_GAP_HALF_WIDTH = 4.0
 private const val DPAD_CHEVRON_RADIUS = 74.5
+private const val CLOSE_BUTTON_MARGIN = 4
 
 private val BUTTON_NORMAL_COLOR = JBColor(0xE0E0E0, 0x546E7A)
 private val BUTTON_PRESSED_COLOR = JBColor(0xC7C7C7, 0x3D5059)

@@ -1322,6 +1322,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Open TV remote controls",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Open Translations Editor",
       "path": "ActionManager"
     },
@@ -1379,6 +1383,10 @@
     },
     {
       "hit": "Open recent test session",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Open rotary input controls",
       "path": "ActionManager"
     },
     {
@@ -1610,6 +1618,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Rotary Input",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Rotate Left",
       "path": "ActionManager"
     },
@@ -1759,6 +1771,10 @@
     },
     {
       "hit": "Sync Project with Gradle Files",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "TV Remote",
       "path": "ActionManager"
     },
     {

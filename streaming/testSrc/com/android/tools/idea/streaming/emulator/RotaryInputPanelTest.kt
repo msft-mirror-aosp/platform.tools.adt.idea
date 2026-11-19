@@ -18,18 +18,32 @@ package com.android.tools.idea.streaming.emulator
 import com.android.sdklib.AndroidVersion
 import com.android.testutils.GoldenImageRule
 import com.android.testutils.waitForCondition
+import com.android.tools.adtui.actions.executeAction
+import com.android.tools.adtui.actions.updateAndGetActionPresentation
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.IconLoaderRule
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
+import com.android.tools.idea.streaming.core.STREAMING_CONTENT_PANEL_KEY
 import com.android.tools.idea.testing.disposable
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.google.common.truth.Truth.assertThat
+import com.intellij.ide.util.PropertiesComponent
+import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.CustomizedDataContext
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.ui.InplaceButton
+import java.awt.BorderLayout
 import java.awt.Cursor
 import java.awt.Dimension
+import javax.swing.JPanel
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
@@ -81,6 +95,7 @@ class RotaryInputPanelTest {
 
     val rotaryInputPanel = ui.getComponent<RotaryInputPanel>()
     assertThat(rotaryInputPanel.toolTipText).isEqualTo("Use mouse, trackpad or mouse wheel to turn the rotary input")
+    assertThat(ui.findComponent<InplaceButton> { it.name == "Close" }).isNull()
     goldenImageRule.assertImageSimilar("RotaryInputPanel", ui.render(rotaryInputPanel))
 
     // Locate the center of the rotary dial in root UI coordinates.
@@ -129,6 +144,103 @@ class RotaryInputPanelTest {
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("wheel_event { dy: -40 }")
     ui.mouse.wheel(dialCenterX, dialCenterY, -1)
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("wheel_event { dy: 40 }")
+
+    panel.destroyContent()
+  }
+
+  @Test
+  fun testCloseAndReopenRotaryInputPanel() {
+    StudioFlags.EMBEDDED_EMULATOR_EXTENDED_CONTROLS_IN_STUDIO.overrideForTest(true, testRootDisposable)
+    Disposer.register(testRootDisposable) {
+      PropertiesComponent.getInstance().unsetValue("com.android.tools.idea.streaming.rotary.input.visible")
+    }
+    val avdFolder = FakeEmulator.createWatchAvd(emulatorRule.avdRoot, androidVersion = AndroidVersion(33, 0))
+    val emulator = emulatorRule.newEmulator(avdFolder)
+    emulator.start()
+    val emulatorController = getControllerOf(emulator)
+    waitForCondition(5.seconds) { emulatorController.connectionState == EmulatorController.ConnectionState.CONNECTED }
+
+    val panel = EmulatorToolWindowPanel(testRootDisposable, project, emulatorController)
+    panel.createContent(true)
+    panel.size = Dimension(400, 600)
+    val ui = FakeUi(panel, parentDisposable = testRootDisposable)
+    ui.layoutAndDispatchEvents()
+
+    val rotaryInputPanel = ui.getComponent<RotaryInputPanel>()
+    val closeButton = ui.getComponent<InplaceButton> { it.name == "Close" }
+    assertThat(rotaryInputPanel.isVisible).isTrue()
+    assertThat(closeButton.x).isGreaterThan(rotaryInputPanel.width / 2)
+    assertThat(closeButton.y).isLessThan(rotaryInputPanel.height / 2)
+
+    val view = panel.primaryDisplayView!!
+    // Action is hidden while the panel is visible.
+    val actionWhenVisible = updateAndGetActionPresentation("android.emulator.rotary.input", view, project, ActionPlaces.POPUP)
+    assertThat(actionWhenVisible.isVisible).isFalse()
+    assertThat(actionWhenVisible.isEnabled).isFalse()
+    // TV remote action is hidden on a Wear device.
+    val tvRemoteAction = updateAndGetActionPresentation("android.emulator.tv.remote", view, project, ActionPlaces.POPUP)
+    assertThat(tvRemoteAction.isVisible).isFalse()
+    assertThat(tvRemoteAction.isEnabled).isFalse()
+
+    // Click the close icon to close the panel.
+    ui.clickOn(closeButton)
+    ui.layoutAndDispatchEvents()
+    assertThat(rotaryInputPanel.isVisible).isFalse()
+
+    // A newly created panel preserves the closed visibility state.
+    val panel2 = EmulatorToolWindowPanel(testRootDisposable, project, emulatorController)
+    panel2.createContent(true)
+    panel2.size = Dimension(400, 600)
+    val ui2 = FakeUi(panel2, parentDisposable = testRootDisposable)
+    ui2.layoutAndDispatchEvents()
+    assertThat(ui2.getComponent<RotaryInputPanel>().isVisible).isFalse()
+    panel2.destroyContent()
+
+    // Action becomes visible and enabled when the panel is closed.
+    val actionWhenClosed = updateAndGetActionPresentation("android.emulator.rotary.input", view, project, ActionPlaces.POPUP)
+    assertThat(actionWhenClosed.isVisible).isTrue()
+    assertThat(actionWhenClosed.isEnabled).isTrue()
+
+    // Activating and deactivating Layout Inspector keeps the closed panel hidden, and hides the action while active.
+    val streamingContentPanel =
+      CustomizedDataContext.withSnapshot(DataContext.EMPTY_CONTEXT) { sink -> DataSink.uiDataSnapshot(sink, panel) }
+        .getData(STREAMING_CONTENT_PANEL_KEY)!!
+    val originalParent = streamingContentPanel.parent
+    val wrapper = JPanel(BorderLayout())
+    originalParent.remove(streamingContentPanel)
+    wrapper.add(streamingContentPanel, BorderLayout.CENTER)
+    originalParent.add(wrapper, BorderLayout.CENTER)
+    ui.layoutAndDispatchEvents()
+    assertThat(rotaryInputPanel.isVisible).isFalse()
+    val actionDuringLayoutInspector = updateAndGetActionPresentation("android.emulator.rotary.input", view, project, ActionPlaces.POPUP)
+    assertThat(actionDuringLayoutInspector.isVisible).isFalse()
+
+    originalParent.remove(wrapper)
+    originalParent.add(streamingContentPanel, BorderLayout.CENTER)
+    ui.layoutAndDispatchEvents()
+    assertThat(rotaryInputPanel.isVisible).isFalse()
+    val actionAfterLayoutInspector = updateAndGetActionPresentation("android.emulator.rotary.input", view, project, ActionPlaces.POPUP)
+    assertThat(actionAfterLayoutInspector.isVisible).isTrue()
+    assertThat(actionAfterLayoutInspector.isEnabled).isTrue()
+
+    // Execute the action to reopen the panel.
+    executeAction("android.emulator.rotary.input", view, project, ActionPlaces.POPUP)
+    ui.layoutAndDispatchEvents()
+    assertThat(rotaryInputPanel.isVisible).isTrue()
+
+    // Action is hidden again once the panel is visible.
+    val actionWhenReopened = updateAndGetActionPresentation("android.emulator.rotary.input", view, project, ActionPlaces.POPUP)
+    assertThat(actionWhenReopened.isVisible).isFalse()
+    assertThat(actionWhenReopened.isEnabled).isFalse()
+
+    // A newly created panel preserves the reopened visibility state.
+    val panel3 = EmulatorToolWindowPanel(testRootDisposable, project, emulatorController)
+    panel3.createContent(true)
+    panel3.size = Dimension(400, 600)
+    val ui3 = FakeUi(panel3, parentDisposable = testRootDisposable)
+    ui3.layoutAndDispatchEvents()
+    assertThat(ui3.getComponent<RotaryInputPanel>().isVisible).isTrue()
+    panel3.destroyContent()
 
     panel.destroyContent()
   }

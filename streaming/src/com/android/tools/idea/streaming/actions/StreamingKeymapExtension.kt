@@ -46,6 +46,8 @@ private const val CAR_DATA_ACTION_ID = "android.emulator.car.data"
 private const val SENSOR_REPLAY_ACTION_ID = "android.emulator.sensor.replay"
 private const val CAR_ROTARY_ACTION_ID = "android.emulator.car.rotary"
 private const val GOOGLE_ASSISTANT_ACTION_ID = "android.emulator.google.assistant"
+private const val ROTARY_INPUT_ACTION_ID = "android.emulator.rotary.input"
+private const val TV_REMOTE_ACTION_ID = "android.emulator.tv.remote"
 
 /** Adds the Settings -> Keymap > Running Devices section. */
 internal class StreamingKeymapExtension : KeymapExtension {
@@ -75,7 +77,9 @@ internal class StreamingKeymapExtension : KeymapExtension {
           id == CAR_DATA_ACTION_ID ||
           id == SENSOR_REPLAY_ACTION_ID ||
           id == CAR_ROTARY_ACTION_ID ||
-          id == GOOGLE_ASSISTANT_ACTION_ID
+          id == GOOGLE_ASSISTANT_ACTION_ID ||
+          id == ROTARY_INPUT_ACTION_ID ||
+          id == TV_REMOTE_ACTION_ID
       ) {
         continue
       }
