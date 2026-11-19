@@ -31,12 +31,14 @@ import com.android.sdklib.deviceprovisioner.DeviceActionException
 import com.android.sdklib.deviceprovisioner.DeviceHandle
 import com.android.sdklib.deviceprovisioner.DeviceId
 import com.android.sdklib.deviceprovisioner.DeviceProvisioner
+import com.android.sdklib.deviceprovisioner.DeviceState
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.sdklib.deviceprovisioner.FakeAvdManager
 import com.android.sdklib.deviceprovisioner.FakeAvdScanner
 import com.android.sdklib.deviceprovisioner.LocalEmulatorDeviceHandle
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProperties
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProvisionerPlugin
+import com.android.sdklib.deviceprovisioner.RunningAvd
 import com.android.sdklib.deviceprovisioner.makeAvdInfo
 import com.android.sdklib.deviceprovisioner.testContext
 import com.android.sdklib.internal.avd.AvdInfo
@@ -52,6 +54,7 @@ import com.android.tools.idea.avd.glassespairing.GlassesPairingResult
 import com.android.tools.idea.avd.glassespairing.GlassesPairingWizard
 import com.android.tools.idea.avd.glassespairing.WizardController
 import com.android.tools.idea.avdmanager.AvdManagerConnection
+import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerService
 import com.android.tools.idea.sdk.AndroidSdks
 import com.android.tools.idea.sdk.SdkDownloadState
@@ -69,6 +72,7 @@ import com.intellij.testFramework.runInEdtAndWait
 import icons.StudioIcons
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
 import javax.swing.Icon
 import kotlin.reflect.KClass
 import kotlin.reflect.full.isSubclassOf
@@ -731,6 +735,48 @@ class StudioLocalEmulatorProvisionerPluginTest {
     avdManager.stopAvd(avdInfo)
     yieldUntil { handle.isDuplicateEnabled() }
     assertThat(handle.isDuplicateEnabled()).isTrue()
+  }
+
+  @Test
+  fun runningAvdTrackerShutdownAndExit(): Unit = runBlockingWithTimeout {
+    avdManager.createAvd()
+    val avdInfo = avdManager.avds[0]
+    plugin.refreshDevices()
+    yieldUntil { provisioner.devices.value.size == 1 }
+
+    val handle = provisioner.devices.value[0] as StudioLocalEmulatorDeviceHandle
+    val onExitFuture = CompletableFuture<ProcessHandle>()
+    val processHandle =
+      mock<ProcessHandle>().apply {
+        whenever(onExit()).thenReturn(onExitFuture)
+        whenever(isAlive).thenAnswer { !onExitFuture.isDone }
+      }
+
+    try {
+      avdManager.startAvd(avdInfo, QuickBoot)
+      RunningAvdTracker.getInstance()
+        .started(avdInfo.dataFolderPath, processHandle, RunningAvd.RunType.EMBEDDED, isLaunchedByThisProcess = true)
+
+      yieldUntil { handle.state.isReady && handle.deactivationAction.presentation.value.enabled }
+
+      // Simulate Running Devices closing the emulator tab, which notifies RunningAvdTracker.shuttingDown().
+      RunningAvdTracker.getInstance().shuttingDown(avdInfo.dataFolderPath)
+
+      yieldUntil { handle.state.status == "Shutting down" }
+      assertThat(handle.state.isTransitioning).isTrue()
+      assertThat(handle.state.isReady).isFalse()
+      yieldUntil { !handle.deactivationAction.presentation.value.enabled }
+      assertThat(handle.activationAction.presentation.value.enabled).isFalse()
+
+      // Simulate process exit before ADB notices disconnection.
+      onExitFuture.complete(processHandle)
+
+      yieldUntil { handle.state is DeviceState.Disconnected && !handle.state.isTransitioning }
+      assertThat(handle.state.status).isEqualTo("Offline")
+      yieldUntil { handle.activationAction.presentation.value.enabled }
+    } finally {
+      onExitFuture.complete(processHandle)
+    }
   }
 
   /**

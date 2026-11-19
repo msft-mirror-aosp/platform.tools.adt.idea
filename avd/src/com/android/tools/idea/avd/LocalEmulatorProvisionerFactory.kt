@@ -21,13 +21,17 @@ import com.android.sdklib.deviceprovisioner.DeviceIcons
 import com.android.sdklib.deviceprovisioner.DeviceProvisionerPlugin
 import com.android.sdklib.deviceprovisioner.LocalEmulatorContext
 import com.android.sdklib.deviceprovisioner.LocalEmulatorProvisionerPlugin
+import com.android.sdklib.deviceprovisioner.RunningAvd
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.avdmanager.AvdScannerService
+import com.android.tools.idea.avdmanager.RunningAvdTracker
 import com.android.tools.idea.deviceprovisioner.DeviceProvisionerFactory
 import com.intellij.openapi.project.Project
 import icons.StudioIcons
+import java.nio.file.Path
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 
 /** Builds a LocalEmulatorProvisionerPlugin with its dependencies provided by Studio. */
 class LocalEmulatorProvisionerFactory : DeviceProvisionerFactory {
@@ -41,6 +45,7 @@ class LocalEmulatorProvisionerFactory : DeviceProvisionerFactory {
     adbSession: AdbSession,
     project: Project?,
     avdScanner: AvdScanner = AvdScannerService.instance,
+    runningAvdsFlow: Flow<Map<Path, RunningAvd>> = RunningAvdTracker.getInstance().runningAvdsFlow,
   ): DeviceProvisionerPlugin {
     val icons =
       DeviceIcons(
@@ -54,7 +59,13 @@ class LocalEmulatorProvisionerFactory : DeviceProvisionerFactory {
     return StudioLocalEmulatorProvisionerPlugin(
       scope = coroutineScope,
       basePlugin =
-        LocalEmulatorProvisionerPlugin(scope = coroutineScope, adbSession = adbSession, avdScanner = avdScanner, deviceIcons = icons),
+        LocalEmulatorProvisionerPlugin(
+          scope = coroutineScope,
+          adbSession = adbSession,
+          avdScanner = avdScanner,
+          deviceIcons = icons,
+          runningAvdsFlow = runningAvdsFlow,
+        ),
       context =
         LocalEmulatorContext(
           logger = adbSession.host.loggerFactory.createLogger(StudioLocalEmulatorProvisionerPlugin::class.java),
