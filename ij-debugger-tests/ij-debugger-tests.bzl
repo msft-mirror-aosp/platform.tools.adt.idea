@@ -76,6 +76,7 @@ def debugger_test(
             "//prebuilts/tools/common/m2:r8.jar",
             "//prebuilts/tools/linux-x86_64/art",
             "//prebuilts/tools/linux-x86_64/art:art_deps",
+            "//tools/base/debuggers/native/coroutine/agent:coroutine_debugger_agent.so",
         ]
         jvm_flags = jvm_flags + [
             "-Didea.platform.prefix=AndroidStudio",

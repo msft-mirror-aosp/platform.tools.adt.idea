@@ -53,18 +53,23 @@ import com.intellij.util.io.Compressor
 import com.intellij.util.io.awaitExit
 import com.intellij.util.io.delete
 import java.io.BufferedReader
+import java.io.File
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.net.URLClassLoader
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
+import java.util.zip.ZipFile
 import kotlin.LazyThreadSafetyMode.NONE
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
 import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.name
 import kotlin.io.path.notExists
 import kotlin.io.path.pathString
 import kotlinx.coroutines.CoroutineScope
@@ -73,6 +78,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import org.jetbrains.kotlin.android.debugger.AndroidDexerImpl
+import org.jetbrains.kotlin.idea.artifacts.TestKotlinArtifacts
 import org.jetbrains.kotlin.idea.debugger.core.DexBytecodeInspector
 import org.jetbrains.kotlin.idea.debugger.evaluate.classLoading.AndroidDexer
 import org.jetbrains.kotlin.idea.debugger.test.KotlinDescriptorTestCase
@@ -93,7 +99,19 @@ private const val ICU4J = "framework/core-icu4j-hostdex.jar"
 private const val ART = "bin/art"
 private const val JVMTI = "lib64/libopenjdkjvmti.so"
 private const val JDWP = "lib64/libjdwp.so"
+private const val COROUTINE_DEBUGGER_AGENT = "tools/base/debuggers/native/coroutine/agent/coroutine_debugger_agent.so"
+private const val ENABLE_CREATION_STACK_TRACES = "--enable-creation-stack-traces"
+private const val COROUTINES_CORE_1_3_8 = "kotlinx-coroutines-core-1.3.8.jar"
+private const val COROUTINES_CORE_1_6_4_LABEL = "@kotlin_test_deps//:kotlinx-coroutines-core-jvm-1.6.4.jar"
+private const val ATTACH_JAVA_AGENT_DIRECTIVE = "ATTACH_JAVA_AGENT_BY_LABEL:"
 
+/**
+ * Cache of dex jars, keyed by a hash of the input jar.
+ *
+ * The lifespan of a cache is intended to be a single `bazel test` invocation: ij-debugger-tests.bzl points it at a directory in the test's
+ * runtime sandbox, and the cache is deleted along with the runtime sandbox. Entries are therefore not versioned: a cache that is reused
+ * across invocations (e.g. one set with `-Dintellij.debugger.tests.dex.cache`) is not invalidated when the way dex jars are built changes.
+ */
 private val DEX_CACHE by lazy { getDexCache() }
 private val ROOT by lazy(NONE) { getStudioRoot() }
 private val D8_COMPILER by lazy(NONE) { loadD8Compiler() }
@@ -139,6 +157,33 @@ internal class ArtAttacher : VmAttacher {
     Disposer.dispose(disposable)
   }
 
+  /**
+   * Returns a temporary expected output file adjusted for ART and the upgraded `kotlinx-coroutines-core` library when needed.
+   *
+   * Returns `null` if the test does not use the upgraded coroutines agent or if no adjustments are needed, so the test falls back to the
+   * original expected output file.
+   */
+  override fun getExpectedOutputFile(testDataPath: String, testName: String): File? {
+    val testFile = File(testDataPath, "$testName.kt")
+    if (!testFile.exists()) {
+      return null
+    }
+    val testSource = testFile.readText()
+    if (!testSource.contains(ATTACH_JAVA_AGENT_DIRECTIVE) || !testSource.contains(COROUTINES_CORE_1_3_8)) {
+      return null
+    }
+    val original = listOf(".k2.out", ".out").map { File(testDataPath, "$testName$it") }.firstOrNull(File::exists) ?: return null
+    val originalText = original.readText()
+    val convertedText = convertArtOutput(convertCoroutines138To164Output(originalText))
+    if (convertedText == originalText) {
+      return null
+    }
+    return Files.createTempFile("$testName-", ".out").toFile().apply {
+      deleteOnExit()
+      writeText(convertedText)
+    }
+  }
+
   override fun attachVirtualMachine(
     testCase: KotlinDescriptorTestCase,
     javaParameters: JavaParameters,
@@ -172,13 +217,15 @@ internal class ArtAttacher : VmAttacher {
       testCase.setTimeout(timeout)
     }
     val mainClass = javaParameters.mainClass
-    val dexFiles = buildDexFiles(javaParameters.classPath.pathList)
+    val attachCoroutinesAgent = javaParameters.usesCoroutinesAgent()
+    val classPath = javaParameters.classPath.pathList.let { if (attachCoroutinesAgent) it.map(::upgradeCoroutinesCore) else it }
+    val dexFiles = buildDexFiles(classPath)
     testCase.project.putUserData(DexFinder.DEX_FILES_KEY, dexFiles)
 
     if (DEX_CACHE == null) {
       @Suppress("UnstableApiUsage") testCase.testRootDisposable.whenDisposed { dexFiles.forEach { it.delete() } }
     }
-    val command = buildCommandLine(dexFiles, mainClass)
+    val command = buildCommandLine(dexFiles, mainClass, attachCoroutinesAgent)
     val art =
       ProcessBuilder()
         .command(command)
@@ -242,44 +289,96 @@ internal class ArtAttacher : VmAttacher {
   private fun buildDexFromJar(jar: Path): Path {
     val fileName = "${jar.generateHash()}-dex.jar"
     return synchronized(this) {
-      val cached = DEX_CACHE?.resolve(fileName)
-      val path =
-        when {
-          cached == null -> Files.createTempFile(null, fileName)
-          cached.exists() -> {
-            return@synchronized cached
-          }
-
-          else -> cached
-        }
-      try {
-        D8_COMPILER.invoke(null, arrayOf("--output", path.pathString, "--min-api", "30", jar.pathString))
-      } catch (e: InvocationTargetException) {
-        throw e.cause ?: e
+      val cacheDir = DEX_CACHE
+      val cached = cacheDir?.resolve(fileName)
+      if (cached != null && cached.exists()) {
+        return@synchronized cached
       }
-      path
+      // Build into a temporary file (in the cache directory, so the move below stays on one file system) and only move it into the
+      // cache once it is complete. Otherwise, a failure would leave a partial entry that later calls would return.
+      val path = if (cacheDir != null) Files.createTempFile(cacheDir, null, fileName) else Files.createTempFile(null, fileName)
+      try {
+        try {
+          D8_COMPILER.invoke(null, arrayOf("--output", path.pathString, "--min-api", "30", jar.pathString))
+        } catch (e: InvocationTargetException) {
+          throw e.cause ?: e
+        }
+        copyVersionFiles(jar, path)
+        when (cached) {
+          null -> path
+          else -> Files.move(path, cached, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        }
+      } catch (e: Throwable) {
+        path.delete()
+        throw e
+      }
+    }
+  }
+
+  /**
+   * D8 only outputs `classes.dex`. Copy the `.version` files from `META-INF`, which are packaged into an APK by AGP, so that libraries can
+   * be identified by their version. For example, the coroutine debugger agent reads `META-INF/kotlinx_coroutines_core.version`.
+   */
+  private fun copyVersionFiles(jar: Path, dexJar: Path) {
+    val versionFiles =
+      ZipFile(jar.toFile()).use { zip ->
+        zip
+          .entries()
+          .asSequence()
+          .filter { !it.isDirectory && it.name.startsWith("META-INF/") && it.name.endsWith(".version") }
+          .associate { it.name to zip.getInputStream(it).use { input -> input.readBytes() } }
+      }
+    if (versionFiles.isEmpty()) {
+      return
+    }
+    FileSystems.newFileSystem(dexJar).use { fs ->
+      versionFiles.forEach { (name, bytes) ->
+        val target = fs.getPath(name)
+        target.parent?.createDirectories()
+        Files.write(target, bytes)
+      }
     }
   }
 
   /** Builds the command line to run the ART JVM */
-  private fun buildCommandLine(dexFiles: List<Path>, mainClass: String): List<String> {
+  private fun buildCommandLine(dexFiles: List<Path>, mainClass: String, attachCoroutinesAgent: Boolean): List<String> {
     val artDir = ROOT.resolve(ART_ROOT)
     val bootClasspath = listOf(artDir.resolve(LIB_ART), artDir.resolve(OJ), artDir.resolve(ICU4J)).joinToString(":") { it.pathString }
 
     val art = artDir.resolve(ART).pathString
     val jvmti = artDir.resolve(JVMTI).pathString
     val jdwp = artDir.resolve(JDWP).pathString
-    return listOf(
-      art,
-      "--64",
-      "-Xbootclasspath:$bootClasspath",
-      "-Xplugin:$jvmti",
-      "-agentpath:$jdwp=transport=dt_socket,server=y,suspend=y",
-      "-classpath",
-      dexFiles.joinToString(separator = ":") { it.pathString },
-      mainClass,
-    )
+    return buildList {
+      add(art)
+      add("--64")
+      add("-Xbootclasspath:$bootClasspath")
+      add("-Xplugin:$jvmti")
+      add("-agentpath:$jdwp=transport=dt_socket,server=y,suspend=y")
+      if (attachCoroutinesAgent) {
+        // ART does not support Java agents, so instead of the kotlinx-coroutines-debug agent, we attach the Studio coroutine
+        // debugger agent and have it enable coroutine creation stack traces.
+        add("-agentpath:${ROOT.resolve(COROUTINE_DEBUGGER_AGENT).pathString}=$ENABLE_CREATION_STACK_TRACES")
+      }
+      add("-classpath")
+      add(dexFiles.joinToString(separator = ":") { it.pathString })
+      add(mainClass)
+    }
   }
+}
+
+/** Returns true if the test requested a kotlinx-coroutines Java agent (`// ATTACH_JAVA_AGENT_BY_LABEL:`) */
+private fun JavaParameters.usesCoroutinesAgent() =
+  vmParametersList.list.any { it.startsWith("-javaagent:") && it.contains("kotlinx-coroutines") }
+
+/**
+ * The Studio coroutine debugger agent requires kotlinx-coroutines-core 1.6.0 or newer, but some tests use 1.3.8. Since the agent replaces
+ * the kotlinx-coroutines-debug Java agent on ART, replace kotlinx-coroutines-core 1.3.8 with 1.6.4.
+ */
+private fun upgradeCoroutinesCore(path: String): String {
+  if (Path.of(path).name != COROUTINES_CORE_1_3_8) {
+    return path
+  }
+  return TestKotlinArtifacts.getKotlinDepsByLabel(COROUTINES_CORE_1_6_4_LABEL).pathString
 }
 
 private fun getConfig(property: String, env: String): String? {
@@ -380,3 +479,61 @@ private fun logStdout(line: String) = logArt("stdout", line)
 private fun logStderr(line: String) = logArt("stderr", line)
 
 private fun logArt(type: String, line: String) = println("ART $type: $line")
+
+private val RUN_BLOCKING_DEFAULT_REGEX =
+  Regex(
+    "(\\tCreationCoroutineStackFrame runBlocking\\\$default:!LINE_NUMBER!, BuildersKt \\(kotlinx\\.coroutines\\)\\n(\\t\\t\\([^\\n]*\\)\\n))"
+  )
+
+/**
+ * Adjusts expected stack trace output recorded with `kotlinx-coroutines-core` 1.3.8 to match 1.6.4, which [ArtAttacher] substitutes so the
+ * Studio coroutine debugger agent can attach.
+ */
+private fun convertCoroutines138To164Output(content: String): String {
+  val withCoroutineContextLocals =
+    "\t\t(\$i\$a\$-withCoroutineContext-DispatchedTask\$run\$1, \$i\$f\$withCoroutineContext, context, continuation, " +
+      "countOrElement\$iv, delegate, exception, fatalException, job, oldValue\$iv, state, taskContext, this)"
+  val withContinuationContextLocals =
+    "\t\t(\$i\$a\$-withContinuationContext-DispatchedTask\$run\$2, \$i\$f\$withContinuationContext, context, context\$iv, continuation, " +
+      "countOrElement\$iv, delegate, exception, fatalException, job, oldValue\$iv, state, taskContext, this, undispatchedCompletion\$iv)"
+  val autoreleasePoolLocals =
+    "\t\t(\$i\$a\$-platformAutoreleasePool-EventLoopImplBase\$processNextEvent\$2, \$i\$f\$platformAutoreleasePool, delayed, task, this)"
+
+  return content
+    .replace(
+      "\tInlineStackFrame lambda 'withCoroutineContext' in 'run':!LINE_NUMBER!, DispatchedTask (kotlinx.coroutines)\n" +
+        "$withCoroutineContextLocals\n" +
+        "\tInlineStackFrame withCoroutineContext:!LINE_NUMBER!, DispatchedTask (kotlinx.coroutines)\n" +
+        "$withCoroutineContextLocals\n" +
+        "\tKotlinStackFrame run:!LINE_NUMBER!, DispatchedTask (kotlinx.coroutines)\n" +
+        withCoroutineContextLocals,
+      "\tInlineStackFrame lambda 'withContinuationContext' in 'run':!LINE_NUMBER!, DispatchedTask (kotlinx.coroutines)\n" +
+        "$withContinuationContextLocals\n" +
+        "\tInlineStackFrame withContinuationContext:!LINE_NUMBER!, DispatchedTask (kotlinx.coroutines)\n" +
+        "$withContinuationContextLocals\n" +
+        "\tKotlinStackFrame run:!LINE_NUMBER!, DispatchedTask (kotlinx.coroutines)\n" +
+        withContinuationContextLocals,
+    )
+    .replace(
+      "\tKotlinStackFrame processNextEvent:!LINE_NUMBER!, EventLoopImplBase (kotlinx.coroutines)\n\t\t(delayed, task, this)",
+      "\tInlineStackFrame lambda 'platformAutoreleasePool' in 'processNextEvent':!LINE_NUMBER!, EventLoopImplBase (kotlinx.coroutines)\n" +
+        "$autoreleasePoolLocals\n" +
+        "\tInlineStackFrame platformAutoreleasePool:!LINE_NUMBER!, EventLoopImplBase (kotlinx.coroutines)\n" +
+        "$autoreleasePoolLocals\n" +
+        "\tKotlinStackFrame processNextEvent:!LINE_NUMBER!, EventLoopImplBase (kotlinx.coroutines)\n" +
+        autoreleasePoolLocals,
+    )
+    .replace(RUN_BLOCKING_DEFAULT_REGEX) { match ->
+      val full = match.groupValues[1]
+      val locals = match.groupValues[2]
+      "\tCreationCoroutineStackFrame runBlocking\$default:!LINE_NUMBER!, BuildersKt__BuildersKt (kotlinx.coroutines)\n$locals$full"
+    }
+}
+
+// TODO(b/589751908): Remove once ART returns -1 instead of DEX PC for methods without line number debug info.
+/**
+ * Adjusts expected stack trace output for ART behavior where `StackTraceElement.getLineNumber()` returns a non-negative DEX PC (`0`)
+ * instead of `-1` for synthetic methods without line number debug info (such as Kotlin's `main(String[])` bridge).
+ */
+private fun convertArtOutput(content: String): String =
+  content.replace("\tCreationCoroutineStackFrame FRAME:main:-1, ", "\tCreationCoroutineStackFrame main:!LINE_NUMBER!, ")

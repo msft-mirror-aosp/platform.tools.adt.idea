@@ -9,11 +9,6 @@ _tests = [
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testAnonymousFun",  # b/575539285, b/578038532
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testDefaultLambdaParameter",  # b/578038532
     "K2IdeK2CodeBreakpointHighlightingTestGenerated.testMultiLineLambda",  # b/578123886
-    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceFolded",  # b/579461799
-    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceFoldedIDEA345945",  # b/579461799
-    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunStackTraceHidden",  # b/579461799
-    "K2IdeK2CodeContinuationStackTraceTestGenerated.testSuspendFunWithInner",  # b/579461799
-    "K2IdeK2CodeCoroutineDumpTestGenerated.testTwoDumps",  # b/579461799
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$MultipleBreakpoints$Uncategorized.testInlineStackTraceWithTryFinally",  # b/579461799 Android stack trace is actually the right one
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testFrameObject",  # b/581450939, b/578038532
     "K2IdeK2CodeKotlinEvaluateExpressionTestGenerated$SingleBreakpoint$Frame.testIdea352803",
@@ -79,12 +74,7 @@ _tests = [
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testStepOverConstructorWithValueClassParam",  # b/495501447
     "K2IdeK2CodeKotlinSteppingTestGenerated$StepOver$Uncategorized.testStopInNamelessFunInInlineCall",
     "K2IdeK2CodeKotlinVariablePrintingTestGenerated.testOptimisedVariablesInSuspendContexts",
-    "K2IdeK2CodeXCoroutinesStackTraceTestGenerated.testCoroutineSuspendFun",
-    "K2IdeK2CodeXCoroutinesStackTraceTestGenerated.testCoroutineSuspendFun136",
     "K2IdeK2CodeXCoroutinesStackTraceTestGenerated.testSuspendMain",
-    "K2IdeK2CoroutineViewJobHierarchyTestGenerated.testCoroutinesHierarchy2",
-    "K2IdeK2CoroutineViewJobHierarchyTestGenerated.testCoroutinesHierarchy3",
-    "K2IdeK2CoroutineViewJobHierarchyTestGenerated.testOneCoroutine",
 ]
 ART_K2_FAILING = [include_k2(test) for test in _tests]
 
