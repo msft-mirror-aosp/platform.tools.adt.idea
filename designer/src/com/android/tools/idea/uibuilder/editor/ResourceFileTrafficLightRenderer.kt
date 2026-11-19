@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.uibuilder.editor
 
+import com.android.resources.ResourceFolderType
 import com.android.tools.idea.common.error.IssuePanelService
 import com.android.tools.idea.common.error.IssueProviderListener
 import com.android.tools.idea.res.isInResourceSubdirectory
@@ -115,17 +116,26 @@ class ResourceFileTrafficLightRendererContributor : TrafficLightRendererContribu
   override fun createRenderer(editor: Editor, file: PsiFile?): TrafficLightRenderer? {
     // Use this customized renderer only for resource files, returning null means that the default
     // renderer will be used.
+    if (editor.isDisposed || file == null) return null
+    val isResourceFile =
+      ReadAction.nonBlocking<Boolean> {
+          if (editor.isDisposed || !file.isValid) return@nonBlocking false
+          val project = file.project
+          if (project.isDisposed) return@nonBlocking false
+          val originalFile = file.originalFile
+          if (!originalFile.isValid) return@nonBlocking false
+          val virtualFile = originalFile.virtualFile
+          if (!generateSequence(virtualFile) { it.parent }.all { it.isValid }) {
+            return@nonBlocking false
+          }
+          val containingDirName = virtualFile?.parent?.name ?: originalFile.containingDirectory?.name ?: return@nonBlocking false
+          if (ResourceFolderType.getFolderType(containingDirName) == null) return@nonBlocking false
+          isInResourceSubdirectory(file)
+        }
+        .executeSynchronously()
+    if (!isResourceFile) return null
     return ReadAction.compute<TrafficLightRenderer?, RuntimeException> {
-      if (editor.isDisposed || file == null || !file.isValid) return@compute null
-      val project = file.project
-      if (project.isDisposed) return@compute null
-      val originalFile = file.originalFile
-      if (!originalFile.isValid) return@compute null
-      if (!generateSequence(originalFile.virtualFile) { it.parent }.all { it.isValid }) {
-        return@compute null
-      }
-      if (!isInResourceSubdirectory(file)) return@compute null
-      if (editor.isDisposed || project.isDisposed) return@compute null
+      if (editor.isDisposed || !file.isValid || file.project.isDisposed) return@compute null
       ResourceFileTrafficLightRender(file, editor)
     }
   }

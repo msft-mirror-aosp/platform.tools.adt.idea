@@ -15,16 +15,26 @@
  */
 package com.android.tools.idea.uibuilder.editor
 
+import com.android.tools.idea.projectsystem.NamedIdeaSourceProvider
+import com.android.tools.idea.projectsystem.NamedIdeaSourceProviderBuilder
+import com.android.tools.idea.projectsystem.SourceProviderManager
 import com.android.tools.idea.testing.AndroidProjectRule
+import com.android.tools.idea.util.androidFacet
 import com.google.common.truth.Truth.assertThat
 import com.intellij.codeInsight.daemon.impl.TrafficLightRenderer
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.application.runWriteActionAndWait
 import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.junit.Rule
@@ -115,5 +125,111 @@ class ResourceFileTrafficLightRendererTest {
 
     val renderer = withContext(Dispatchers.Default) { contributor.createRenderer(mockEditor(), psiFile) }
     assertThat(renderer).isNull()
+  }
+
+  @Test
+  fun createRendererReturnsCustomRendererForQualifiedResourceSubdirectory(): Unit = runBlocking {
+    projectRule.fixture.addFileToProject("AndroidManifest.xml", "<manifest/>")
+    val file = projectRule.fixture.addFileToProject("res/layout-land/my_layout.xml", "<LinearLayout/>")
+
+    var renderer: TrafficLightRenderer? = null
+    try {
+      val editor = openEditorInEdt(file)
+      renderer = withContext(Dispatchers.Default) { contributor.createRenderer(editor, file) }
+      assertThat(renderer).isInstanceOf(ResourceFileTrafficLightRender::class.java)
+    } finally {
+      closeProjectEditorsAndWaitForTrafficLight(
+        projectRule.project,
+        listOfNotNull(renderer?.let { r -> { Disposer.dispose(r) } }),
+      )
+    }
+  }
+
+  @Test
+  fun createRendererSkipsResourceFolderResolutionForNonResourceFile(): Unit = runBlocking {
+    val file = projectRule.fixture.addFileToProject("src/Preview.kt", "")
+    val baseProvider = NamedIdeaSourceProviderBuilder.create("main", "AndroidManifest.xml").build()
+    val failingProvider =
+      object : NamedIdeaSourceProvider by baseProvider {
+        override val resDirectories: Iterable<VirtualFile>
+          get() = throw AssertionError("Should not resolve resDirectories for non-resource files")
+
+        override val resDirectoryUrls: Iterable<String>
+          get() = throw AssertionError("Should not access resDirectoryUrls for non-resource files")
+      }
+    SourceProviderManager.replaceForTest(projectRule.module.androidFacet!!, projectRule.testRootDisposable, failingProvider)
+
+    val renderer = withContext(Dispatchers.Default) { contributor.createRenderer(mockEditor(), file) }
+    assertThat(renderer).isNull()
+  }
+
+  @Test
+  fun createRendererReturnsNullForInvalidResourceSubdirectoryName(): Unit = runBlocking {
+    val file = projectRule.fixture.addFileToProject("res/not_a_resource_folder/foo.xml", "<root/>")
+    val baseProvider = NamedIdeaSourceProviderBuilder.create("main", "AndroidManifest.xml").build()
+    val failingProvider =
+      object : NamedIdeaSourceProvider by baseProvider {
+        override val resDirectories: Iterable<VirtualFile>
+          get() = throw AssertionError("Should not resolve resDirectories for invalid resource subfolder")
+
+        override val resDirectoryUrls: Iterable<String>
+          get() = throw AssertionError("Should not access resDirectoryUrls for invalid resource subfolder")
+      }
+    SourceProviderManager.replaceForTest(projectRule.module.androidFacet!!, projectRule.testRootDisposable, failingProvider)
+
+    val renderer = withContext(Dispatchers.Default) { contributor.createRenderer(mockEditor(), file) }
+    assertThat(renderer).isNull()
+  }
+
+  @Test
+  fun createRendererYieldsToPendingWriteAction(): Unit = runBlocking {
+    // Use a parent directory name matching a ResourceFolderType so the pre-filter passes and
+    // ResourceFolderManager is consulted inside the read action.
+    val file = projectRule.fixture.addFileToProject("src/com/example/layout/Fake.kt", "")
+    val enteredReadAction = CountDownLatch(1)
+    val attempts = AtomicInteger(0)
+    val writeActionCompleted = AtomicBoolean(false)
+
+    fun onLookup() {
+      if (attempts.incrementAndGet() == 1) {
+        enteredReadAction.countDown()
+        val deadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+        while (System.nanoTime() < deadlineNanos) {
+          ProgressManager.checkCanceled()
+          Thread.sleep(10)
+        }
+        throw AssertionError("Read action was not canceled when a write action became pending")
+      }
+    }
+
+    val baseProvider = NamedIdeaSourceProviderBuilder.create("main", "AndroidManifest.xml").build()
+    val blockingOnFirstAttemptProvider =
+      object : NamedIdeaSourceProvider by baseProvider {
+        override val resDirectories: Iterable<VirtualFile>
+          get() {
+            onLookup()
+            return emptyList()
+          }
+
+        override val resDirectoryUrls: Iterable<String>
+          get() {
+            onLookup()
+            return emptyList()
+          }
+      }
+    SourceProviderManager.replaceForTest(
+      projectRule.module.androidFacet!!,
+      projectRule.testRootDisposable,
+      blockingOnFirstAttemptProvider,
+    )
+
+    val rendererDeferred = async(Dispatchers.Default) { contributor.createRenderer(mockEditor(), file) }
+    assertThat(enteredReadAction.await(10, TimeUnit.SECONDS)).isTrue()
+
+    withContext(Dispatchers.EDT) { runWriteActionAndWait { writeActionCompleted.set(true) } }
+
+    assertThat(rendererDeferred.await()).isNull()
+    assertThat(writeActionCompleted.get()).isTrue()
+    assertThat(attempts.get()).isAtLeast(2)
   }
 }
