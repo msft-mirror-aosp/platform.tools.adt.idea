@@ -41,7 +41,11 @@ class ProdAndTestFlagsVerifier(val method: Method, val name: String) {
     // branch the test is running on. For example, it's possible that a flag is false in
     // the testing environment, true on the main branch (canary releases), but false on
     // release branches (for beta, RC, stable releases).
-    val KNOWN_POSSIBLE_DIVERGENCES = emptyMap<String, String>()
+    val KNOWN_POSSIBLE_DIVERGENCES =
+      mapOf(
+        // INTERNAL in feature_flags.txt: on for the main branch, off for release branches. Tests set it themselves.
+        "isLeakCanaryOccurrencesEnabled" to "b/550312588"
+      )
   }
 
   @Test

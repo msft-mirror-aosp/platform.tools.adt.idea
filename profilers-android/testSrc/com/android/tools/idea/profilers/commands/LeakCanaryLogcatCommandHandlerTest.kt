@@ -19,7 +19,6 @@ import com.android.ddmlib.IDevice
 import com.android.sdklib.AndroidVersion
 import com.android.testutils.TestUtils
 import com.android.tools.adtui.model.FakeTimer
-import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.io.grpc.ManagedChannel
 import com.android.tools.idea.io.grpc.inprocess.InProcessChannelBuilder
 import com.android.tools.idea.logcat.message.LogLevel
@@ -53,7 +52,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -113,13 +111,12 @@ class LeakCanaryLogcatCommandHandlerTest {
 
     transportServiceGrpc = spy(TransportServiceGrpc.newBlockingStub(channel))
     `when`(transportServiceGrpc.getCurrentTime(any())).thenReturn(Transport.TimeResponse.newBuilder().setTimestampNs(startTime).build())
-    handler = LeakCanaryLogcatCommandHandler(mockDevice, transportServiceGrpc, mockEventQueue)
+    handler = newHandler()
   }
 
-  @After
-  fun tearDown() {
-    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.clearOverride()
-  }
+  /** The occurrences flag is on by default, as in internal builds. */
+  private fun newHandler(occurrencesEnabled: Boolean = true) =
+    LeakCanaryLogcatCommandHandler(mockDevice, transportServiceGrpc, mockEventQueue) { occurrencesEnabled }
 
   @Test
   fun testHandleLogcatTracking() {
@@ -155,7 +152,6 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   @Test
   fun testLeakCanaryLogWithDifferentTag() = runTest {
-    handler = LeakCanaryLogcatCommandHandler(mockDevice, transportServiceGrpc, mockEventQueue)
     val startTaskData =
       Commands.StartLeakCanaryTaskData.newBuilder().setMode(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE).build()
     handler.execute(
@@ -191,7 +187,7 @@ class LeakCanaryLogcatCommandHandlerTest {
   @Test fun testLogcatWithMultipleLeaksMultiLinePerLogEntry() = testLogcatWithMultipleLeaks(false)
 
   private fun testLogcatWithMultipleLeaks(oneLinePerLogEntry: Boolean) = runTest {
-    handler = LeakCanaryLogcatCommandHandler(mockDevice, transportServiceGrpc, mockEventQueue)
+    handler = newHandler(occurrencesEnabled = false)
     val startTaskData =
       Commands.StartLeakCanaryTaskData.newBuilder().setMode(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE).build()
     handler.execute(
@@ -226,7 +222,7 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   @Test
   fun testLogcatWithCompleteLeakAfterInCompleteLeak() = runTest {
-    handler = LeakCanaryLogcatCommandHandler(mockDevice, transportServiceGrpc, mockEventQueue)
+    handler = newHandler(occurrencesEnabled = false)
     val startTaskData =
       Commands.StartLeakCanaryTaskData.newBuilder().setMode(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE).build()
     handler.execute(
@@ -271,7 +267,7 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   @Test
   fun testLogcatWithIncompleteLeak() = runTest {
-    handler = LeakCanaryLogcatCommandHandler(mockDevice, transportServiceGrpc, mockEventQueue)
+    handler = newHandler(occurrencesEnabled = false)
     val startTaskData =
       Commands.StartLeakCanaryTaskData.newBuilder().setMode(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE).build()
     handler.execute(
@@ -305,7 +301,6 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   @Test
   fun testLogcatWithShellInjection() = runTest {
-    handler = LeakCanaryLogcatCommandHandler(mockDevice, transportServiceGrpc, mockEventQueue)
     val startTaskData =
       Commands.StartLeakCanaryTaskData.newBuilder().setMode(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_DEVICE).build()
     handler.execute(
@@ -340,7 +335,7 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   @Test
   fun testFlagOnIgnoresLeakCanaryTagButKeepsManual() = runTest {
-    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(true)
+    handler = newHandler(occurrencesEnabled = true)
     startTask()
 
     // Count, progress, a complete trace and a partial trace, all with the LeakCanary tag.
@@ -358,7 +353,7 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   @Test
   fun testFlagOnKeepsManualPartialTrace() = runTest {
-    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(true)
+    handler = newHandler(occurrencesEnabled = true)
     startTask()
 
     waitUntilLogcatIsRead()
@@ -373,7 +368,7 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   @Test
   fun testFlagOffReadsCountFromLeakCanaryTag() = runTest {
-    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(false)
+    handler = newHandler(occurrencesEnabled = false)
     startTask()
 
     logWhenReady(appLog("LeakCanary", "Found 3 objects retained"))
@@ -387,7 +382,7 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   @Test
   fun testFlagOnReadsOnlyManualInOnHost() = runTest {
-    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(true)
+    handler = newHandler(occurrencesEnabled = true)
     startTask(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST)
 
     logWhenReady(appLog("LeakCanary", "Found 3 objects retained"))
@@ -404,7 +399,7 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   @Test
   fun testFlagOnKeepsManualPartialTraceInOnHost() = runTest {
-    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(true)
+    handler = newHandler(occurrencesEnabled = true)
     startTask(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST)
 
     waitUntilLogcatIsRead()
@@ -419,7 +414,7 @@ class LeakCanaryLogcatCommandHandlerTest {
 
   @Test
   fun testFlagOffDoesNotReadLogcatInOnHost() = runTest {
-    StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.override(false)
+    handler = newHandler(occurrencesEnabled = false)
     startTask(Commands.StartLeakCanaryTaskData.LeakCanaryMode.ON_HOST)
 
     // Logcat reading starts right away when it is used, so this short wait is enough to see that it didn't start.

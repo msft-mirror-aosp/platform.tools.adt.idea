@@ -47,10 +47,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 /** Handles LeakCanary logcat tracking commands, capturing and processing LeakCanary logs from a connected Android device. */
-class LeakCanaryLogcatCommandHandler(
+class LeakCanaryLogcatCommandHandler
+@JvmOverloads
+constructor(
   private val device: IDevice,
   private val transportStub: TransportServiceGrpc.TransportServiceBlockingStub,
   private val eventQueue: BlockingDeque<Common.Event>,
+  private val isOccurrencesEnabled: () -> Boolean = { StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.get() },
 ) : TransportProxy.ProxyCommandHandler {
 
   private val scopeJob = SupervisorJob()
@@ -107,7 +110,7 @@ class LeakCanaryLogcatCommandHandler(
 
     // In ON_DEVICE mode, the device generates logs that need to be parsed, so we actively read the logcat stream. With the occurrences
     // flag on, Logcat is also read in ON_HOST mode, for LeakCanary:Manual traces.
-    val occurrencesEnabled = StudioFlags.PROFILER_LEAKCANARY_OCCURRENCES.get()
+    val occurrencesEnabled = isOccurrencesEnabled()
     if (currentMode == LeakCanaryMode.ON_DEVICE || occurrencesEnabled) {
       resetTrackingState()
       readsOnlyManualTag = occurrencesEnabled
