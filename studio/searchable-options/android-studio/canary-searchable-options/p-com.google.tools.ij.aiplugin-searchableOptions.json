@@ -747,6 +747,9 @@
       "hit": "More"
     },
     {
+      "hit": "Open Antigravity"
+    },
+    {
       "hit": "OpenAI-compatible"
     },
     {
@@ -769,6 +772,9 @@
     },
     {
       "hit": "URL:"
+    },
+    {
+      "hit": "Upgrade now"
     },
     {
       "hit": "http://localhost:"
@@ -948,6 +954,10 @@
       "path": "Model Providers"
     },
     {
+      "hit": "Open Antigravity",
+      "path": "Model Providers"
+    },
+    {
       "hit": "OpenAI-compatible",
       "path": "Model Providers"
     },
@@ -977,6 +987,10 @@
     },
     {
       "hit": "URL:",
+      "path": "Model Providers"
+    },
+    {
+      "hit": "Upgrade now",
       "path": "Model Providers"
     },
     {
