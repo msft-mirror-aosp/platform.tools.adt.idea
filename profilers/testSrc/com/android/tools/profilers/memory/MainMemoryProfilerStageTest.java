@@ -1344,7 +1344,7 @@ public final class MainMemoryProfilerStageTest extends MemoryProfilerTestBase {
     myTransportService.addFile(Long.toString(info.getFromTimestamp()), rawFile.getAbsolutePath());
 
     File captureFile =
-      ProfilerCaptureFileUtils.getCaptureFile("capture_" + startTimeNs + "." + ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION);
+      getRecordingFile(myProfilers, ProfilerTaskType.HEAP_DUMP, startTimeNs, ProfilerFormat.Hprof.PERFETTO_HEAP_GRAPH_EXTENSION);
     FileUtil.delete(captureFile);
     myFilesToCleanUp.add(captureFile);
 
