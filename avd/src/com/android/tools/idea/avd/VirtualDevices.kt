@@ -36,10 +36,15 @@ internal class VirtualDevices(private val avdManager: AvdManager) {
       avdBuilder.environment =
         getDefaultEnvironmentFile()?.let { file ->
           val sceneMode =
-            if (StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.get() && EnvironmentFileAnalyzer.is360Image(file)) {
-              SceneMode.IMAGE_360
-            } else {
-              SceneMode.IMAGE_FILE
+            when {
+              StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.get() && EnvironmentFileAnalyzer.isVideoFile(file) ->
+                if (StudioFlags.EMBEDDED_EMULATOR_360_VIDEO_ENVIRONMENT.get() && EnvironmentFileAnalyzer.is360Video(file)) {
+                  SceneMode.VIDEO_360
+                } else {
+                  SceneMode.VIDEO_FILE
+                }
+              StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.get() && EnvironmentFileAnalyzer.is360Image(file) -> SceneMode.IMAGE_360
+              else -> SceneMode.IMAGE_FILE
             }
           Environment(file, sceneMode)
         }

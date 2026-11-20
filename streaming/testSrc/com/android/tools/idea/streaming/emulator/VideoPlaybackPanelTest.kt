@@ -25,8 +25,10 @@ import com.android.testutils.waitForCondition
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessDialogRule
+import com.android.tools.adtui.swing.HeadlessRootPaneContainer
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.createModalDialogAndInteractWithIt
+import com.android.tools.adtui.ui.NotificationHolderPanel
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.io.grpc.Status
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
@@ -42,6 +44,7 @@ import com.android.tools.idea.streaming.emulator.dialogs.IconButton
 import com.android.tools.idea.streaming.emulator.dialogs.SensorSessionPlayer.Companion.sliderValueToPosition
 import com.android.tools.idea.streaming.testutil.newEmulatorDisplayPanel
 import com.android.tools.idea.testing.flags.overrideForTest
+import com.android.tools.idea.testing.mockStatic
 import com.google.common.truth.Truth.assertThat
 import com.intellij.icons.AllIcons
 import com.intellij.ide.ActivityTracker
@@ -53,13 +56,16 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.dialog
 import java.awt.Color
 import java.awt.Dimension
 import java.awt.EventQueue
+import java.awt.MouseInfo
 import java.awt.Point
+import java.awt.PointerInfo
 import java.awt.event.FocusEvent
 import java.awt.event.InputEvent
 import java.awt.event.KeyEvent
@@ -87,6 +93,8 @@ import org.junit.Before
 import org.junit.ClassRule
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 /** Tests for [VideoPlaybackPanel] and [VideoPlaybackOverlay]. */
 @RunsInEdt
@@ -1494,6 +1502,146 @@ class VideoPlaybackPanelTest {
     val fakeUi = createFakeUi(displayPanel, Dimension(430, 360))
     assertThat(fakeUi.findComponent<VideoPlaybackOverlay>()).isNull()
     assertThat(fakeUi.findComponent<VideoPlaybackPanel>()).isNull()
+  }
+
+  @Test
+  fun test360VideoPlaybackAndHiddenDuringShiftCameraRotation() {
+    val mouseInfo = mockStatic<MouseInfo>(emulatorViewRule.disposable)
+    val pointerInfo = mock<PointerInfo>()
+    whenever(pointerInfo.location).thenReturn(Point(215, 180))
+    mouseInfo.`when`<PointerInfo> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
+
+    val displayPanel = createGlassesDisplayPanel { FakeEmulator.createDisplayGlassesAvd(it) }
+    val container = HeadlessRootPaneContainer(NotificationHolderPanel(displayPanel))
+    container.rootPane.size = Dimension(430, 360)
+    val fakeUi =
+      FakeUi(container.rootPane, parentDisposable = emulatorViewRule.disposable).apply {
+        layoutAndDispatchEvents()
+        getComponent<VideoPlaybackOverlay>().temporaryVisibilityDuration = Duration.ZERO
+      }
+    val displayView = displayPanel.displayView
+    val fakeEmulator = emulatorViewRule.getFakeEmulator(displayView)
+    waitForFirstFrame(displayPanel, fakeUi)
+
+    val focusManager = FakeKeyboardFocusManager(emulatorViewRule.disposable)
+    focusManager.focusOwner = displayView
+
+    setEnvironment(displayView.emulator, fakeEmulator, "video360:/tmp/sample360.mp4")
+
+    val overlay = fakeUi.getComponent<VideoPlaybackOverlay>()
+    val playbackPanel = fakeUi.getComponent<VideoPlaybackPanel>()
+    val playPauseButton = fakeUi.getComponent<IconButton> { it.name == "playPauseButton" }
+
+    // Pressing and releasing Shift while the panel is hidden with no mouse movement keeps it hidden.
+    fakeUi.mouse.moveTo(215, 180)
+    waitForCondition(2.seconds) { playPauseButton.isEnabled }
+    assertThat(playbackPanel.isVisible).isFalse()
+    fakeUi.keyboard.press(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isTrue()
+    assertThat(playbackPanel.isVisible).isFalse()
+    fakeUi.keyboard.release(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isFalse()
+    assertThat(playbackPanel.isVisible).isFalse()
+
+    // Hovering over the bottom area shows the playback panel for a 360-degree video; Shift does not steal mouse input while hovering the
+    // panel.
+    whenever(pointerInfo.location).thenReturn(Point(215, 345))
+    fakeUi.mouse.moveTo(215, 345)
+    fakeUi.layoutAndDispatchEvents()
+    waitForCondition(2.seconds) { playbackPanel.isVisible && playPauseButton.isEnabled }
+    assertThat(playPauseButton.icon).isEqualTo(AllIcons.Actions.Pause)
+    fakeUi.keyboard.press(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isFalse()
+    assertThat(playbackPanel.isVisible).isTrue()
+    fakeUi.keyboard.release(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+
+    // When the panel is shown temporarily with the cursor over the scene, holding Shift rotates the camera and hides the panel.
+    overlay.temporaryVisibilityDuration = 10.seconds
+    whenever(pointerInfo.location).thenReturn(Point(215, 180))
+    fakeUi.mouse.moveTo(215, 180)
+    fakeUi.keyboard.press(KeyEvent.VK_SPACE)
+    fakeUi.keyboard.release(KeyEvent.VK_SPACE)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(playbackPanel.isVisible).isTrue()
+
+    fakeUi.keyboard.press(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isTrue()
+    assertThat(playbackPanel.isVisible).isFalse()
+
+    // Moving the mouse into the bottom area while Shift is held does not show the playback panel.
+    whenever(pointerInfo.location).thenReturn(Point(220, 345))
+    fakeUi.mouse.moveTo(220, 345)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(playbackPanel.isVisible).isFalse()
+
+    // Releasing Shift keeps it suppressed until the mouse actually moves in normal mode.
+    fakeUi.keyboard.release(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isFalse()
+    assertThat(playbackPanel.isVisible).isFalse()
+
+    whenever(pointerInfo.location).thenReturn(Point(225, 345))
+    fakeUi.mouse.moveTo(225, 345)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(playbackPanel.isVisible).isTrue()
+
+    // Starting a 360-degree video while Shift is already held defers temporary visibility until Shift is released.
+    whenever(pointerInfo.location).thenReturn(Point(215, 180))
+    fakeUi.mouse.moveTo(215, 180)
+    setEnvironment(displayView.emulator, fakeEmulator, "image360:/tmp/photo360.jpg")
+    waitForCondition(2.seconds) { !playbackPanel.isVisible }
+    fakeUi.keyboard.press(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isTrue()
+
+    setEnvironment(displayView.emulator, fakeEmulator, "video360:/tmp/second360.mp4")
+    waitForCondition(2.seconds) { playPauseButton.isEnabled }
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isTrue()
+    assertThat(playbackPanel.isVisible).isFalse()
+
+    fakeUi.keyboard.release(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isFalse()
+    assertThat(playbackPanel.isVisible).isTrue()
+    assertThat(fakeUi.findComponent<EditorNotificationPanel>()?.text).isEqualTo("Hold Shift to rotate camera")
+
+    // If the cursor is inside playbackPanel.bounds when releasing Shift makes a deferred panel visible, the camera prompt must stay hidden.
+    setEnvironment(displayView.emulator, fakeEmulator, "image360:/tmp/photo360.jpg")
+    waitForCondition(2.seconds) { !playbackPanel.isVisible }
+    whenever(pointerInfo.location).thenReturn(Point(215, 345))
+    fakeUi.mouse.moveTo(215, 345)
+    fakeUi.keyboard.press(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isTrue()
+    assertThat(fakeUi.findComponent<EditorNotificationPanel>()?.text).isEqualTo("Rotate camera with mouse or arrow keys")
+
+    setEnvironment(displayView.emulator, fakeEmulator, "video360:/tmp/third360.mp4")
+    waitForCondition(2.seconds) { playPauseButton.isEnabled }
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isTrue()
+    assertThat(playbackPanel.isVisible).isFalse()
+
+    fakeUi.keyboard.release(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isFalse()
+    assertThat(playbackPanel.isVisible).isTrue()
+    assertThat(fakeUi.findComponent<EditorNotificationPanel>()).isNull()
+
+    // A non-360 videofile: environment does not activate virtual scene camera on Shift and keeps the panel visible.
+    setEnvironment(displayView.emulator, fakeEmulator, "videofile:/tmp/flat.mp4")
+    waitForCondition(2.seconds) { playbackPanel.isVisible && playPauseButton.isEnabled }
+    fakeUi.keyboard.press(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(displayView.isOperatingVirtualSceneCamera).isFalse()
+    assertThat(playbackPanel.isVisible).isTrue()
+    fakeUi.keyboard.release(KeyEvent.VK_SHIFT)
+    fakeUi.layoutAndDispatchEvents()
   }
 
   private fun createGlassesDisplayPanel(avdCreator: (Path) -> Path): EmulatorDisplayPanel =

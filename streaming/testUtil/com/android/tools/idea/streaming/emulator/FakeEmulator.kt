@@ -135,6 +135,7 @@ import com.android.tools.idea.protobuf.MessageOrBuilder
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
 import com.android.tools.idea.streaming.core.interpolate
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.PostureDescriptor
+import com.android.tools.idea.streaming.emulator.actions.isVideo
 import com.android.utils.FileUtils.copyDirectory
 import com.google.common.base.Predicates.alwaysTrue
 import com.google.common.util.concurrent.SettableFuture
@@ -1015,9 +1016,8 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       executor.execute {
         environment.clear()
         environment.putAll(request.environmentMap)
-        val mode = environment["scene.mode"]
         val newState =
-          if (mode == "videofile" || mode?.startsWith("videofile:") == true) {
+          if (request.isVideo()) {
             SceneAnimationState.newBuilder()
               .setState(SceneAnimationState.State.STATE_PLAYING)
               .setPlaybackSpeed(1f)

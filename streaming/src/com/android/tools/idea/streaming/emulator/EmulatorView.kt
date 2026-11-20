@@ -63,6 +63,7 @@ import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.DisplayMo
 import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionState
 import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionStateListener
 import com.android.tools.idea.streaming.emulator.actions.EnvironmentTracker
+import com.android.tools.idea.streaming.emulator.actions.is360
 import com.android.tools.idea.streaming.emulator.xr.EmulatorXrInputController
 import com.android.tools.idea.streaming.xr.AbstractXrInputController.Companion.INPUT_MODE_PROPERTY
 import com.android.tools.idea.streaming.xr.XrInputMode
@@ -263,6 +264,14 @@ internal class EmulatorView(
    */
   internal var keyEventInterceptor: ((KeyEvent) -> Boolean)? = null
 
+  /** True when the virtual scene camera is actively being controlled (e.g. while holding Shift). */
+  internal val isOperatingVirtualSceneCamera: Boolean
+    get() = virtualSceneCameraController != null
+
+  internal var canOperateVirtualSceneCamera: () -> Boolean = { true }
+
+  internal var onOperatingVirtualSceneCameraChanged: ((Boolean) -> Unit)? = null
+
   @get:VisibleForTesting
   var frameTimestampMillis = 0L
     private set
@@ -376,6 +385,7 @@ internal class EmulatorView(
 
   /** Last observed modifier state. */
   private var lastModifiers: Int = 0
+  private var cameraPromptUpdateGeneration: Int = 0
 
   private var virtualSceneCameraPrompt: String? = null
     set(value) {
@@ -393,18 +403,27 @@ internal class EmulatorView(
 
   private var clipboardSynchronizer: EmulatorClipboardSynchronizer? = null
 
-  private val sceneMode: String?
-    get() = EnvironmentTracker.forEmulator(emulator)?.environment?.environmentMap?.get("scene.mode")
-
   private fun updateCameraPromptAndMultiTouchFeedback(event: InputEvent) = updateCameraPromptAndMultiTouchFeedback(event.modifiersEx)
 
-  private fun updateCameraPromptAndMultiTouchFeedback(modifiers: Int = lastModifiers) {
+  internal fun updateCameraPromptAndMultiTouchFeedback(modifiers: Int = lastModifiers) {
     lastModifiers = modifiers
+    val generation = ++cameraPromptUpdateGeneration
 
-    val is360Environment = emulatorConfig.deviceType == DeviceType.AI_GLASSES && sceneMode?.startsWith("image360:") == true
-    val is3dEnvironment = emulatorConfig.deviceType == DeviceType.AI_GLASSES && sceneMode?.startsWith("mesh3d:") == true
+    val environment =
+      if (emulatorConfig.deviceType == DeviceType.AI_GLASSES) {
+        EnvironmentTracker.forEmulator(emulator)?.environmentFlow?.value
+      } else {
+        null
+      }
+    val is360Environment = environment?.is360() == true
+    val is3dEnvironment = environment?.environmentMap?.get("scene.mode")?.startsWith("mesh3d:") == true
     val cameraReadyToOperate =
-      (virtualSceneCameraActive || is360Environment || is3dEnvironment) && isFocusOwner && isMouseInside() && !isHardwareInputEnabled()
+      (virtualSceneCameraActive || is360Environment || is3dEnvironment) &&
+        isFocusOwner &&
+        isMouseInside() &&
+        !isHardwareInputEnabled() &&
+        canOperateVirtualSceneCamera()
+    val wasOperatingCamera = virtualSceneCameraController != null
     if (cameraReadyToOperate && modifiers and SHIFT_DOWN_MASK != 0) {
       if (virtualSceneCameraController == null) {
         virtualSceneCameraController =
@@ -413,6 +432,16 @@ internal class EmulatorView(
     } else {
       virtualSceneCameraController?.let { Disposer.dispose(it) }
       virtualSceneCameraController = null
+    }
+    val isOperatingCamera = virtualSceneCameraController != null
+    if (isOperatingCamera != wasOperatingCamera) {
+      onOperatingVirtualSceneCameraChanged?.invoke(isOperatingCamera)
+      if (generation != cameraPromptUpdateGeneration) {
+        // A re-entrant call (e.g., triggered by VideoPlaybackOverlay showing/hiding the playback panel) already updated
+        // virtualSceneCameraPrompt and multiTouchMode using the post-callback canOperateVirtualSceneCamera() state;
+        // return so we don't overwrite them using the stale cameraReadyToOperate value computed above.
+        return
+      }
     }
     virtualSceneCameraPrompt =
       when {

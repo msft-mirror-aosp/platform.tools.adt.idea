@@ -111,8 +111,9 @@ internal fun Environment.getEnvironmentFile(): Path? {
     when {
       mode.startsWith("imagefile:") -> mode.removePrefix("imagefile:")
       mode.startsWith("image360:") -> mode.removePrefix("image360:")
-      mode.startsWith("mesh3d:") -> mode.removePrefix("mesh3d:")
       mode.startsWith("videofile:") -> mode.removePrefix("videofile:")
+      mode.startsWith("video360:") -> mode.removePrefix("video360:")
+      mode.startsWith("mesh3d:") -> mode.removePrefix("mesh3d:")
       else -> return null
     }
   return try {
@@ -125,5 +126,11 @@ internal fun Environment.getEnvironmentFile(): Path? {
 /** Returns true if the environment mode is a video file. */
 internal fun Environment.isVideo(): Boolean {
   val mode = environmentMap["scene.mode"] ?: return false
-  return mode == "videofile" || mode.startsWith("videofile:")
+  return mode == "videofile" || mode.startsWith("videofile:") || mode == "video360" || mode.startsWith("video360:")
+}
+
+/** Returns true if the environment mode is a 360-degree photo or video. */
+internal fun Environment.is360(): Boolean {
+  val mode = environmentMap["scene.mode"] ?: return false
+  return mode == "image360" || mode.startsWith("image360:") || mode == "video360" || mode.startsWith("video360:")
 }

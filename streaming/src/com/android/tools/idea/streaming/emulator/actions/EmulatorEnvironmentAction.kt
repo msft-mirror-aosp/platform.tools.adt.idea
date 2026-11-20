@@ -19,6 +19,7 @@ import com.android.emulator.control.Environment
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.idea.avd.EnvironmentFileAnalyzer.is360Image
 import com.android.tools.idea.avd.EnvironmentFileAnalyzer.is360ImageCandidate
+import com.android.tools.idea.avd.EnvironmentFileAnalyzer.is360Video
 import com.android.tools.idea.avd.EnvironmentFileAnalyzer.is3dSceneFile
 import com.android.tools.idea.avd.EnvironmentFileAnalyzer.isVideoFile
 import com.android.tools.idea.avd.EnvironmentFileAnalyzer.isWavefrontObjFile
@@ -28,6 +29,7 @@ import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.core.htmlEscaped
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration
 import com.android.tools.idea.streaming.emulator.EmulatorController
+import com.android.utils.throwIfCancellation
 import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -44,6 +46,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import org.jetbrains.annotations.VisibleForTesting
 
 /** Changes environment of AI Glasses AVD. */
 internal sealed class EmulatorEnvironmentAction :
@@ -59,7 +62,8 @@ internal sealed class EmulatorEnvironmentAction :
     try {
       emulator.setEnvironment(environment)
       onEnvironmentSet(emulator, environment)
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+      e.throwIfCancellation()
       // Error is already logged.
     }
   }
@@ -87,7 +91,13 @@ internal sealed class EmulatorEnvironmentAction :
     val mode =
       when {
         is3dSceneFile(file) -> "mesh3d:$pathStr"
-        StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.get() && isVideoFile(file) -> "videofile:$pathStr"
+        StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.get() && isVideoFile(file) -> {
+          if (StudioFlags.EMBEDDED_EMULATOR_360_VIDEO_ENVIRONMENT.get() && withContext(Dispatchers.IO) { is360Video(file) }) {
+            "video360:$pathStr"
+          } else {
+            "videofile:$pathStr"
+          }
+        }
         StudioFlags.EMBEDDED_EMULATOR_360_IMAGE_ENVIRONMENT.get() && is360ImageWithConfirmation(file, project) -> "image360:$pathStr"
         else -> "imagefile:$pathStr"
       }
@@ -99,24 +109,8 @@ internal sealed class EmulatorEnvironmentAction :
     if (isXmp360) return true
 
     val recentFile = getRecentFile(file)
-
-    if (recentFile != null && recentFile.mode.isNotEmpty()) {
-      val currentTimestamp =
-        try {
-          withContext(Dispatchers.IO) { Files.getLastModifiedTime(file).toMillis() }
-        } catch (_: Exception) {
-          -1L
-        }
-      val currentSize =
-        try {
-          withContext(Dispatchers.IO) { Files.size(file) }
-        } catch (_: Exception) {
-          -1L
-        }
-
-      if (currentTimestamp != -1L && currentSize != -1L && currentTimestamp == recentFile.timestamp && currentSize == recentFile.size) {
-        return recentFile.mode == "image360"
-      }
+    if (recentFile != null && withContext(Dispatchers.IO) { recentFile.matchesFile(file) }) {
+      return recentFile.mode == "image360"
     }
 
     val isCandidate = withContext(Dispatchers.IO) { is360ImageCandidate(file) }
@@ -222,7 +216,11 @@ internal sealed class EmulatorEnvironmentAction :
     override fun doesMatchEnvironment(environment: Environment): Boolean {
       val mode = environment.environmentMap["scene.mode"] ?: return false
       val pathStr = toSystemIndependentName(filePath.toString())
-      return mode == "imagefile:$pathStr" || mode == "image360:$pathStr" || mode == "mesh3d:$pathStr" || mode == "videofile:$pathStr"
+      return mode == "imagefile:$pathStr" ||
+        mode == "image360:$pathStr" ||
+        mode == "videofile:$pathStr" ||
+        mode == "video360:$pathStr" ||
+        mode == "mesh3d:$pathStr"
     }
   }
 
@@ -281,22 +279,19 @@ internal sealed class EmulatorEnvironmentAction :
       }
     }
 
+    @VisibleForTesting
     fun addRecentFile(path: String) {
-      addRecentFile(Path.of(path), null)
+      val file = Path.of(path)
+      addRecentFile(file, mode = "")
     }
 
-    fun addRecentFile(file: Path, environment: Environment? = null) {
+    fun addRecentFile(file: Path, environment: Environment) {
+      val mode = environment.environmentMap["scene.mode"]?.substringBefore(':') ?: ""
+      addRecentFile(file, mode)
+    }
+
+    private fun addRecentFile(file: Path, mode: String) {
       val pathStr = toSystemIndependentName(file.toString())
-      val existing = getRecentFile(file)
-      val extractedMode = environment?.environmentMap?.get("scene.mode")?.substringBefore(':')
-      val mode =
-        when {
-          !extractedMode.isNullOrEmpty() -> extractedMode
-          is3dSceneFile(file) -> "mesh3d"
-          isVideoFile(file) -> "videofile"
-          existing != null && existing.mode.isNotEmpty() -> existing.mode
-          else -> ""
-        }
       val timestamp =
         try {
           Files.getLastModifiedTime(file).toMillis()
@@ -335,6 +330,16 @@ internal sealed class EmulatorEnvironmentAction :
 }
 
 internal data class RecentFile(val path: String, val timestamp: Long = 0L, val size: Long = 0L, val mode: String = "") {
+  fun matchesFile(file: Path): Boolean {
+    if (mode.isEmpty()) return false
+    return try {
+      Files.getLastModifiedTime(file).toMillis() == timestamp && Files.size(file) == size
+    } catch (e: Exception) {
+      e.throwIfCancellation()
+      false
+    }
+  }
+
   fun serialize(): String = "$path\t$timestamp\t$size\t$mode"
 
   companion object {
@@ -354,17 +359,18 @@ private fun composeHtmlText(title: String, typeLabel: String): String =
 private fun getEnvironmentMode(path: Path): String {
   return when {
     is3dSceneFile(path) -> "mesh3d"
-    isVideoFile(path) -> "videofile"
+    isVideoFile(path) -> if (StudioFlags.EMBEDDED_EMULATOR_360_VIDEO_ENVIRONMENT.get() && is360Video(path)) "video360" else "videofile"
     is360Image(path) -> "image360"
     else -> "imagefile"
   }
 }
 
 private fun getEnvironmentTypeLabel(path: Path): String {
-  val mode = EmulatorEnvironmentAction.getRecentFile(path)?.mode ?: getEnvironmentMode(path)
+  val mode = EmulatorEnvironmentAction.getRecentFile(path)?.takeIf { it.matchesFile(path) }?.mode ?: getEnvironmentMode(path)
 
   return when (mode) {
     "mesh3d" -> "3D scene"
+    "video360" -> if (StudioFlags.EMBEDDED_EMULATOR_360_VIDEO_ENVIRONMENT.get()) "360° video" else "video"
     "videofile" -> "video"
     "image360" -> "360° photo"
     else -> "photo"

@@ -132,7 +132,6 @@ import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeoutException
 import kotlin.math.absoluteValue
-import kotlin.test.assertFailsWith
 import kotlin.time.Duration.Companion.seconds
 import org.junit.After
 import org.junit.Before
@@ -970,7 +969,16 @@ class EmulatorViewTest {
   }
 
   @Test
-  fun testAudioGlassesCameraRotation360() {
+  fun testAudioGlassesCameraRotation360Image() {
+    checkAudioGlassesCameraRotation360("image360:/some/path/image.jpg")
+  }
+
+  @Test
+  fun testAudioGlassesCameraRotation360Video() {
+    checkAudioGlassesCameraRotation360("video360:/some/path/video.mp4")
+  }
+
+  private fun checkAudioGlassesCameraRotation360(sceneMode: String) {
     val container = createRootContainer { path -> FakeEmulator.createAudioGlassesAvd(path) }
     container.rootPane.size = Dimension(200, 300)
     fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
@@ -979,51 +987,36 @@ class EmulatorViewTest {
     focusManager.focusOwner = view
     waitForCondition(200, MILLISECONDS) { fakeUi.findComponent<EditorNotificationPanel>() == null }
 
-    // Set environment to a 360-degree image.
     val environmentTracker = EnvironmentTracker.forEmulator(view.emulator)!!
-    val env = Environment.newBuilder().putEnvironment("scene.mode", "image360:/some/path/image.jpg").build()
-    environmentTracker.environment = env
+    environmentTracker.environment = Environment.newBuilder().putEnvironment("scene.mode", sceneMode).build()
 
-    // Now, prompt should be "Hold Shift to rotate camera"
+    // Now, prompt should be "Hold Shift to rotate camera".
     waitForCondition(2.seconds) { fakeUi.findComponent<EditorNotificationPanel>()?.text == "Hold Shift to rotate camera" }
 
-    // Press Shift, prompt should change to "Rotate camera with mouse or arrow keys"
+    // Press Shift, prompt should change to "Rotate camera with mouse or arrow keys".
     fakeUi.keyboard.press(VK_SHIFT)
     waitForCondition(2.seconds) { fakeUi.findComponent<EditorNotificationPanel>()?.text == "Rotate camera with mouse or arrow keys" }
 
-    // Release Shift, prompt should revert
-    fakeUi.keyboard.release(VK_SHIFT)
-    waitForCondition(2.seconds) { fakeUi.findComponent<EditorNotificationPanel>()?.text == "Hold Shift to rotate camera" }
-  }
+    fakeEmulator.clearGrpcCallLog()
+    val callFilter =
+      FakeEmulator.DEFAULT_CALL_FILTER.or(
+        "android.emulation.control.EmulatorController/streamClipboard",
+        "android.emulation.control.EmulatorController/streamScreenshot",
+      )
 
-  @Test
-  fun testAudioGlassesCameraTranslation360Disabled() {
-    val container = createRootContainer { path -> FakeEmulator.createAudioGlassesAvd(path) }
-    container.rootPane.size = Dimension(200, 300)
-    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
-
-    focusManager.focusOwner = view
-    val environmentTracker = EnvironmentTracker.forEmulator(view.emulator)!!
-    val env = Environment.newBuilder().putEnvironment("scene.mode", "image360:/some/path/image.jpg").build()
-    environmentTracker.environment = env
-
-    // Hold Shift to enable camera controller.
-    fakeUi.keyboard.press(VK_SHIFT)
-    waitForCondition(2.seconds) { fakeUi.findComponent<EditorNotificationPanel>()?.text == "Rotate camera with mouse or arrow keys" }
-
-    // Try to move camera with WASDQE keys.
-    val keys = listOf(VK_W, VK_A, VK_S, VK_D, VK_Q, VK_E)
-    for (key in keys) {
+    // Camera translation keys must be ignored in 360-degree mode, while arrow-key rotation still works.
+    for (key in listOf(VK_W, VK_A, VK_S, VK_D, VK_Q, VK_E)) {
       fakeUi.keyboard.press(key)
-      // Check that no gRPC call was sent for translation.
-      val callFilter =
-        FakeEmulator.DEFAULT_CALL_FILTER.or(
-          "android.emulation.control.EmulatorController/streamClipboard",
-          "android.emulation.control.EmulatorController/streamScreenshot",
-        )
-      assertFailsWith<TimeoutException> { fakeEmulator.getNextGrpcCall(0.5.seconds, callFilter) }
       fakeUi.keyboard.release(key)
     }
+    fakeUi.keyboard.press(VK_LEFT)
+    fakeUi.keyboard.release(VK_LEFT)
+    val call = fakeEmulator.getNextGrpcCall(2.seconds, callFilter)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/rotateVirtualSceneCamera")
+
+    // Release Shift, prompt should revert.
+    fakeUi.keyboard.release(VK_SHIFT)
+    waitForCondition(2.seconds) { fakeUi.findComponent<EditorNotificationPanel>()?.text == "Hold Shift to rotate camera" }
   }
 
   @Test

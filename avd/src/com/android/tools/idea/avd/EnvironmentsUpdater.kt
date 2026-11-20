@@ -217,7 +217,7 @@ private fun readEnvironmentIniValues(environmentIni: Path): List<String> {
 }
 
 private fun extractPathString(value: String): String {
-  val prefixes = listOf("imagefile:", "image360:", "mesh3d:", "videofile:")
+  val prefixes = listOf("imagefile:", "image360:", "mesh3d:", "videofile:", "video360:")
   for (prefix in prefixes) {
     if (value.startsWith(prefix, ignoreCase = true)) {
       return value.substring(prefix.length)

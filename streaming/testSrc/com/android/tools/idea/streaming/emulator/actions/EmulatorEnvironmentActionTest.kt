@@ -56,6 +56,8 @@ import com.intellij.testFramework.TemporaryDirectory
 import com.intellij.testFramework.replaceService
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeoutException
@@ -64,6 +66,7 @@ import javax.imageio.ImageIO
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.test.assertFailsWith
+import kotlin.text.Charsets.US_ASCII
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -102,6 +105,7 @@ class EmulatorEnvironmentActionTest {
     StudioFlags.EMBEDDED_EMULATOR_CAMERA_ENVIRONMENT.overrideForTest(true, testRootDisposable)
     StudioFlags.EMBEDDED_EMULATOR_3D_SCENE_ENVIRONMENT.overrideForTest(true, testRootDisposable)
     StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.overrideForTest(true, testRootDisposable)
+    StudioFlags.EMBEDDED_EMULATOR_360_VIDEO_ENVIRONMENT.overrideForTest(true, testRootDisposable)
   }
 
   @Test
@@ -293,11 +297,165 @@ class EmulatorEnvironmentActionTest {
   fun testRecentCustomVideoEnvironment() {
     val filePath = "/tmp/recent_video.mp4"
     val action = EmulatorEnvironmentAction.RecentCustom(Path.of(filePath))
+    assertThat(action.templatePresentation.text).isEqualTo("<html>recent_video.mp4&ensp;<font color=\"gray\">video</font></html>")
     executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
 
     val call = emulator.getNextGrpcCall(2.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
     assertThat(shortDebugString(call.request)).isEqualTo("environment { key: \"scene.mode\" value: \"videofile:$filePath\" }")
+  }
+
+  @Test
+  fun testCustom360Mp4VideoEnvironment() {
+    val mp4Path = createMock360Mp4File("test_360.mp4")
+    val videoFile = mock<VirtualFile>()
+    whenever(videoFile.path).thenReturn(mp4Path.toString())
+    testRootDisposable.registerFakeFileChooserFactory(videoFile)
+
+    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"video360:${mp4Path.systemIndependentString}\" }")
+
+    waitForCondition(2.seconds) { EmulatorEnvironmentAction.getRecentFile(mp4Path) != null }
+    val recentEntry = EmulatorEnvironmentAction.getRecentFile(mp4Path)!!
+    assertThat(recentEntry.mode).isEqualTo("video360")
+  }
+
+  @Test
+  fun testCustom360WebmVideoEnvironment() {
+    val webmPath = createMock360WebmFile("test_360.webm")
+    val videoFile = mock<VirtualFile>()
+    whenever(videoFile.path).thenReturn(webmPath.toString())
+    testRootDisposable.registerFakeFileChooserFactory(videoFile)
+
+    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"video360:${webmPath.systemIndependentString}\" }")
+  }
+
+  @Test
+  fun testCustom360VideoEnvironment_360VideoFlagOff() {
+    StudioFlags.EMBEDDED_EMULATOR_360_VIDEO_ENVIRONMENT.overrideForTest(false, testRootDisposable)
+    val mp4Path = createMock360Mp4File("test_360_flag_off.mp4")
+    val videoFile = mock<VirtualFile>()
+    whenever(videoFile.path).thenReturn(mp4Path.toString())
+    testRootDisposable.registerFakeFileChooserFactory(videoFile)
+
+    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"videofile:${mp4Path.systemIndependentString}\" }")
+  }
+
+  @Test
+  fun testCustom360VideoEnvironment_videoFlagOff() {
+    StudioFlags.EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT.overrideForTest(false, testRootDisposable)
+    val mp4Path = createMock360Mp4File("test_video_flag_off.mp4")
+    val videoFile = mock<VirtualFile>()
+    whenever(videoFile.path).thenReturn(mp4Path.toString())
+    testRootDisposable.registerFakeFileChooserFactory(videoFile)
+
+    val action = ActionManager.getInstance().getAction("android.emulator.environment.custom")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"imagefile:${mp4Path.systemIndependentString}\" }")
+  }
+
+  @Test
+  fun testRecentCustom360VideoEnvironment_360VideoFlagOff() {
+    StudioFlags.EMBEDDED_EMULATOR_360_VIDEO_ENVIRONMENT.overrideForTest(false, testRootDisposable)
+    val mp4Path = createMock360Mp4File("recent_360_flag_off.mp4")
+    PropertiesComponent.getInstance().setValue("EmulatorEnvironmentAction.recentFiles", "")
+
+    val action = EmulatorEnvironmentAction.RecentCustom(mp4Path)
+    assertThat(action.templatePresentation.text).isEqualTo("<html>${mp4Path.fileName}&ensp;<font color=\"gray\">video</font></html>")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"videofile:${mp4Path.systemIndependentString}\" }")
+  }
+
+  @Test
+  fun testRecentCustom360VideoEnvironment() {
+    val mp4Path = createMock360Mp4File("recent_360.mp4")
+    PropertiesComponent.getInstance().setValue("EmulatorEnvironmentAction.recentFiles", "")
+
+    val action = EmulatorEnvironmentAction.RecentCustom(mp4Path)
+    assertThat(action.templatePresentation.text).isEqualTo("<html>${mp4Path.fileName}&ensp;<font color=\"gray\">360° video</font></html>")
+    executeAction(action, project = projectRule.project, extra = dataSnapshotProvider)
+
+    val call = emulator.getNextGrpcCall(2.seconds)
+    assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/setEnvironment")
+    assertThat(shortDebugString(call.request))
+      .isEqualTo("environment { key: \"scene.mode\" value: \"video360:${mp4Path.systemIndependentString}\" }")
+
+    val event = createTestEvent(project = projectRule.project, extra = dataSnapshotProvider)
+    waitForCondition(5.seconds) { Toggleable.isSelected(updateAndGetActionPresentation(action, event)) }
+
+    // Active 360 video environment should be excluded from Recent Custom Environments submenu.
+    val recentGroup = EmulatorRecentEnvironmentsActionGroup()
+    assertThat(recentGroup.getChildren(event)).isEmpty()
+  }
+
+  private fun createMock360Mp4File(fileName: String): Path {
+    fun box(type: String, vararg children: ByteArray): ByteArray {
+      val payloadSize = children.sumOf { it.size }
+      val buf = ByteBuffer.allocate(8 + payloadSize).order(ByteOrder.BIG_ENDIAN)
+      buf.putInt(8 + payloadSize)
+      buf.put(type.toByteArray(US_ASCII))
+      for (child in children) {
+        buf.put(child)
+      }
+      return buf.array()
+    }
+    val ftyp = box("ftyp", "isom\u0000\u0000\u0002\u0000isom".toByteArray(US_ASCII))
+    val hdlr =
+      box("hdlr", ByteBuffer.allocate(12).order(ByteOrder.BIG_ENDIAN).putInt(0).putInt(0).put("vide".toByteArray(US_ASCII)).array())
+    val sv3d = box("sv3d", box("proj", box("equi", ByteArray(20))))
+    val avc1 = box("avc1", ByteArray(78), sv3d)
+    val stsd = box("stsd", ByteBuffer.allocate(8).order(ByteOrder.BIG_ENDIAN).putInt(0).putInt(1).array(), avc1)
+    val moov = box("moov", box("trak", box("mdia", hdlr, box("minf", box("stbl", stsd)))))
+    val file = tempDirRule.newPath(fileName)
+    Files.write(file, ftyp + moov)
+    return file
+  }
+
+  private fun createMock360WebmFile(fileName: String): Path {
+    fun ebml(id: ByteArray, vararg payloads: ByteArray): ByteArray {
+      val size = payloads.sumOf { it.size }
+      val out = ByteArrayOutputStream()
+      out.write(id)
+      out.write(0x80 or size)
+      for (p in payloads) out.write(p)
+      return out.toByteArray()
+    }
+    val header =
+      ebml(byteArrayOf(0x1A, 0x45, 0xDF.toByte(), 0xA3.toByte()), ebml(byteArrayOf(0x42, 0x82.toByte()), "webm".toByteArray(US_ASCII)))
+    val projType = ebml(byteArrayOf(0x76, 0x71), byteArrayOf(1))
+    val proj = ebml(byteArrayOf(0x76, 0x70), projType)
+    val video = ebml(byteArrayOf(0xE0.toByte()), proj)
+    val track = ebml(byteArrayOf(0xAE.toByte()), video)
+    val tracks = ebml(byteArrayOf(0x16, 0x54, 0xAE.toByte(), 0x6B), track)
+    val segment = ebml(byteArrayOf(0x18, 0x53, 0x80.toByte(), 0x67), tracks)
+    val file = tempDirRule.newPath(fileName)
+    Files.write(file, header + segment)
+    return file
   }
 
   @Test
@@ -840,7 +998,7 @@ class EmulatorEnvironmentActionTest {
     stream.write((length shr 16) and 0xFF)
     stream.write((length shr 8) and 0xFF)
     stream.write(length and 0xFF)
-    stream.write(type.toByteArray(Charsets.US_ASCII))
+    stream.write(type.toByteArray(US_ASCII))
     stream.write(data)
     // CRC (dummy)
     stream.write(byteArrayOf(0, 0, 0, 0))

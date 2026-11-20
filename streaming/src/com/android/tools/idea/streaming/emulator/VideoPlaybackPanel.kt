@@ -261,6 +261,15 @@ internal class VideoPlaybackOverlay(
     (displayView.parent as? JViewport)?.addChangeListener(viewportChangeListener)
     displayView.addFocusListener(displayFocusListener)
     displayView.keyEventInterceptor = ::handleKeyEvent
+    displayView.canOperateVirtualSceneCamera = ::canOperateVirtualSceneCamera
+    displayView.onOperatingVirtualSceneCameraChanged = { operating ->
+      if (operating) {
+        hidePlaybackPanel()
+      } else {
+        showTemporarilyIfPending()
+        updatePanelVisibility()
+      }
+    }
 
     addHierarchyListener { event ->
       if (event.changeFlags.toInt() and (HierarchyEvent.SHOWING_CHANGED or HierarchyEvent.DISPLAYABILITY_CHANGED) != 0) {
@@ -415,6 +424,14 @@ internal class VideoPlaybackOverlay(
       showTemporarily()
     }
     updatePanelVisibility()
+    displayView.updateCameraPromptAndMultiTouchFeedback()
+  }
+
+  private fun canOperateVirtualSceneCamera(): Boolean {
+    if (playbackPanel.isInteracting) return false
+    if (!playbackPanel.isVisible) return true
+    val currentMouse = lastMousePoint ?: pointerLocation() ?: return true
+    return !playbackPanel.bounds.contains(currentMouse)
   }
 
   /**
@@ -426,7 +443,7 @@ internal class VideoPlaybackOverlay(
     if (!isVideoEnvironment || !playbackPanel.hasAnimation || !temporaryVisibilityDuration.isPositive()) {
       return
     }
-    if (!isShowing || computePanelBounds().isEmpty) {
+    if (!isShowing || displayView.isOperatingVirtualSceneCamera || computePanelBounds().isEmpty) {
       temporaryVisibilityPending = true
       return
     }
@@ -526,7 +543,10 @@ internal class VideoPlaybackOverlay(
   private fun controlVisibility(event: MouseEvent) {
     mouseOutsideWindow = false
     val point = toOverlayPoint(event)
-    if (
+    if (displayView.isOperatingVirtualSceneCamera) {
+      suppressHoverUntilMouseMoves = true
+      suppressedHoverPoint = point
+    } else if (
       suppressHoverUntilMouseMoves &&
         (event.id == MouseEvent.MOUSE_MOVED || event.id == MouseEvent.MOUSE_DRAGGED) &&
         point != suppressedHoverPoint
@@ -593,6 +613,7 @@ internal class VideoPlaybackOverlay(
       isShowing &&
         isVideoEnvironment &&
         playbackPanel.hasAnimation &&
+        !displayView.isOperatingVirtualSceneCamera &&
         !mouseOutsideWindow &&
         !suppressHoverUntilMouseMoves &&
         !bounds.isEmpty
@@ -634,6 +655,7 @@ internal class VideoPlaybackOverlay(
         }
       }
       onPlaybackPanelVisibilityChanged?.invoke(shouldShow)
+      displayView.updateCameraPromptAndMultiTouchFeedback()
       revalidate()
       repaint()
     }
@@ -681,6 +703,8 @@ internal class VideoPlaybackOverlay(
     (displayView.parent as? JViewport)?.removeChangeListener(viewportChangeListener)
     displayView.removeFocusListener(displayFocusListener)
     displayView.keyEventInterceptor = null
+    displayView.canOperateVirtualSceneCamera = { true }
+    displayView.onOperatingVirtualSceneCameraChanged = null
   }
 
   private companion object {

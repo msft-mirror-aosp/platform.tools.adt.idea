@@ -1328,6 +1328,9 @@ public final class StudioFlags {
   public static final Flag<Boolean> EMBEDDED_EMULATOR_VIDEO_ENVIRONMENT = new BooleanFlag(
     EMBEDDED_EMULATOR, "video.environment", "Enable Video Environment",
     "Enables video (.mp4, .webm) support for AI Glasses environments");
+  public static final Flag<Boolean> EMBEDDED_EMULATOR_360_VIDEO_ENVIRONMENT = new BooleanFlag(
+    EMBEDDED_EMULATOR, "360.video.environment", "Enable 360 Video Environment",
+    "Enables 360 video (.mp4, .webm) support for AI Glasses environments");
   public static final Flag<Boolean> EMBEDDED_EMULATOR_DISPLAY_OFF_INDICATOR = new BooleanFlag(
     EMBEDDED_EMULATOR, "display.off.indicator", "Enable Display Off Indicator",
     "Enables displaying \"Display off\" indicator for AI Glasses when display is turned off");
