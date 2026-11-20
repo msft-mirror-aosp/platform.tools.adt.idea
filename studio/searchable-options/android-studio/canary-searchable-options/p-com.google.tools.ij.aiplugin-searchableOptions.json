@@ -364,6 +364,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Browse, install and configure ACP agents",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Cancel Next Edit Prediction",
       "path": "ActionManager"
     },
@@ -437,6 +441,10 @@
     },
     {
       "hit": "Manage Agent Skills",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Manage Agents",
       "path": "ActionManager"
     },
     {
