@@ -205,6 +205,7 @@ import com.intellij.openapi.util.text.StringUtil
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.platform.backend.workspace.WorkspaceModelCache
 import com.intellij.platform.backend.workspace.workspaceModel
 import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import com.intellij.platform.workspace.jps.entities.ExternalSystemModuleOptionsEntity
@@ -2598,6 +2599,9 @@ private fun <T> openPreparedProject(
             // before we start tearing down resources.
             PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
             PlatformTestUtil.saveProject(project, true)
+            // Ensure any in-flight debounced WorkspaceModelCacheImpl save completes before closing
+            // the project (b/588049265).
+            WorkspaceModelCache.getInstance(project)?.saveCacheNow()
             Disposer.dispose(projectScopedDisposable)
             ProjectManagerEx.getInstanceEx().forceCloseProject(project)
             // Empty the event queue to ensure all disposal and listener unregistration tasks
