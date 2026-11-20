@@ -37,6 +37,8 @@ import com.android.emulation.control.incubating.VehiclePropConfig
 import com.android.emulation.control.incubating.VehiclePropStatus
 import com.android.emulation.control.incubating.VehiclePropValue
 import com.android.emulation.control.incubating.VirtualSceneServiceGrpc
+import com.android.emulator.control.AnimationState as SceneAnimationState
+import com.android.emulator.control.AnimationStateTarget
 import com.android.emulator.control.BatteryState
 import com.android.emulator.control.CameraList
 import com.android.emulator.control.CameraNotification
@@ -74,6 +76,7 @@ import com.android.emulator.control.Rotation.SkinRotation
 import com.android.emulator.control.RotationRadian
 import com.android.emulator.control.SensorValue
 import com.android.emulator.control.SensorValue.SensorType
+import com.android.emulator.control.SetAnimationStateRequest
 import com.android.emulator.control.SmsMessage
 import com.android.emulator.control.SnapshotDetails
 import com.android.emulator.control.SnapshotFilter
@@ -209,6 +212,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
   @Volatile private var screenshotStreamObserver: StreamObserver<Image>? = null
   @Volatile private var clipboardStreamObserver: StreamObserver<ClipData>? = null
   @Volatile private var notificationStreamObserver: StreamObserver<Notification>? = null
+  @Volatile private var animationStateStreamObserver: StreamObserver<SceneAnimationState>? = null
   @Volatile private var phoneEventStreamObserver: StreamObserver<PhoneEvent>? = null
   @Volatile private var carEventStreamObserver: StreamObserver<CarEvent>? = null
   @Volatile var carEventStreamEnabled: Boolean = true
@@ -238,6 +242,26 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       "table" to Poster.newBuilder().setName("table").setMinWidth(0.2f).setMaxWidth(1.0f).setScale(1.0f).build(),
     )
   @Volatile var animationState: AnimationState = AnimationState.newBuilder().setTvOn(true).build()
+  @Volatile
+  var environmentAnimationState: SceneAnimationState =
+    SceneAnimationState.newBuilder().setState(SceneAnimationState.State.STATE_UNKNOWN).build()
+    private set
+
+  fun updateEnvironmentAnimationState(state: SceneAnimationState) {
+    executor.execute {
+      environmentAnimationState = state
+      animationStateStreamObserver?.sendStreamingResponse(state)
+    }
+  }
+
+  /** Completes the current animation state stream, if any. */
+  fun endEnvironmentAnimationStateStream() {
+    executor.execute {
+      animationStateStreamObserver?.onCompleted()
+      animationStateStreamObserver = null
+    }
+  }
+
   @Volatile var deviceRotation: List<Float> = listOf(0f, 0f, 0f)
   @Volatile var devicePosition: List<Float> = listOf(0f, 0f, 0f)
   @Volatile var ambientTemperature: Float = 0f
@@ -495,6 +519,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
     screenshotStreamRequest = null
     clipboardStreamObserver = null
     notificationStreamObserver = null
+    animationStateStreamObserver = null
     phoneEventStreamObserver = null
     carEventStreamObserver = null
   }
@@ -990,6 +1015,20 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       executor.execute {
         environment.clear()
         environment.putAll(request.environmentMap)
+        val mode = environment["scene.mode"]
+        val newState =
+          if (mode == "videofile" || mode?.startsWith("videofile:") == true) {
+            SceneAnimationState.newBuilder()
+              .setState(SceneAnimationState.State.STATE_PLAYING)
+              .setPlaybackSpeed(1f)
+              .setPlaybackPositionMs(0L)
+              .setDurationMs(60_000L)
+              .build()
+          } else {
+            SceneAnimationState.newBuilder().setState(SceneAnimationState.State.STATE_UNKNOWN).build()
+          }
+        environmentAnimationState = newState
+        animationStateStreamObserver?.sendStreamingResponse(newState)
         sendEmptyResponse(responseObserver)
       }
     }
@@ -998,6 +1037,39 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
       executor.execute {
         val response = Environment.newBuilder().putAllEnvironment(environment).build()
         sendResponse(responseObserver, response)
+      }
+    }
+
+    override fun setAnimationState(request: SetAnimationStateRequest, responseObserver: StreamObserver<Empty>) {
+      executor.execute {
+        val builder = environmentAnimationState.toBuilder()
+        if (request.hasState()) {
+          val update = request.state
+          if (update.hasState()) {
+            builder.state = update.state
+          }
+          if (update.hasPlaybackSpeed()) {
+            builder.playbackSpeed = update.playbackSpeed
+          }
+          if (update.hasPlaybackPositionMs()) {
+            builder.playbackPositionMs = update.playbackPositionMs
+          }
+        }
+        val newState = builder.build()
+        environmentAnimationState = newState
+        animationStateStreamObserver?.sendStreamingResponse(newState)
+        sendEmptyResponse(responseObserver)
+      }
+    }
+
+    override fun getAnimationState(request: AnimationStateTarget, responseObserver: StreamObserver<SceneAnimationState>) {
+      executor.execute { sendResponse(responseObserver, environmentAnimationState) }
+    }
+
+    override fun streamAnimationState(request: AnimationStateTarget, responseObserver: StreamObserver<SceneAnimationState>) {
+      executor.execute {
+        animationStateStreamObserver = responseObserver
+        responseObserver.sendStreamingResponse(environmentAnimationState)
       }
     }
 
@@ -3435,6 +3507,7 @@ class FakeEmulator(val avdFolder: Path, val grpcPort: Int, val registrationDirec
         "android.emulation.control.EmulatorController/getXrOptions",
         "android.emulation.control.EmulatorController/getHostCameras",
         "android.emulation.control.EmulatorController/getEnvironment",
+        "android.emulation.control.EmulatorController/streamAnimationState",
       )
     val IGNORE_SCREENSHOT_CALL_FILTER = DEFAULT_CALL_FILTER.or("android.emulation.control.EmulatorController/streamScreenshot")
 

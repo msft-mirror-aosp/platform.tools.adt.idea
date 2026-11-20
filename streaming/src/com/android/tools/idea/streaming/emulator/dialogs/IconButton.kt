@@ -27,7 +27,7 @@ import javax.swing.JButton
 import org.jetbrains.annotations.Nls
 
 /** Square icon-only button used in extended controls dialogs. */
-internal class IconButton(icon: Icon, @Nls tooltip: String, action: () -> Unit) : JButton() {
+internal open class IconButton(icon: Icon, @Nls tooltip: String, action: () -> Unit) : JButton() {
   private val helpTooltip = HelpTooltip().setTitle(HtmlChunk.text(tooltip))
   var tooltipText: @Nls String? = tooltip
     private set
@@ -42,7 +42,7 @@ internal class IconButton(icon: Icon, @Nls tooltip: String, action: () -> Unit) 
     addActionListener { action() }
   }
 
-  override fun setToolTipText(text: String?) {
+  final override fun setToolTipText(text: String?) {
     tooltipText = text
     helpTooltip.setTitle(text?.let(HtmlChunk::text))
     helpTooltip.installOn(this)
@@ -54,20 +54,20 @@ internal class IconButton(icon: Icon, @Nls tooltip: String, action: () -> Unit) 
     helpTooltip.installOn(this)
   }
 
-  override fun setIcon(defaultIcon: Icon?) {
+  final override fun setIcon(defaultIcon: Icon?) {
     super.setIcon(defaultIcon)
     disabledIcon = defaultIcon?.let(IconLoader::getDisabledIcon)
   }
 
-  override fun updateUI() {
+  final override fun updateUI() {
     super.updateUI()
     disabledIcon = icon?.let(IconLoader::getDisabledIcon)
   }
 
-  override fun getPreferredSize(): Dimension {
+  final override fun getPreferredSize(): Dimension {
     val size = super.getPreferredSize()
     return Dimension(size.height, size.height)
   }
 
-  override fun getMinimumSize(): Dimension = preferredSize
+  final override fun getMinimumSize(): Dimension = preferredSize
 }
