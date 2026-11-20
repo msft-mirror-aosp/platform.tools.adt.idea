@@ -19,6 +19,7 @@ import com.android.emulator.control.SensorSession.SensorRecord
 import com.android.emulator.control.SensorSession.SessionMetadata
 import com.android.tools.idea.streaming.StreamingBundle.message
 import com.android.tools.idea.streaming.core.CloseDialogAction
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.core.ProgressSlider
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.dialogs.SensorSessionPlayer.Companion.SLIDER_MAX
@@ -111,7 +112,6 @@ internal class SensorReplayDialog(emulator: EmulatorController) :
   private val player =
     SensorSessionPlayer(
       scope = dialogScope,
-      uiContext = uiContext,
       dispatchRecord = ::dispatchSensorRecord,
       isSliderAdjusting = { ::playbackSlider.isInitialized && playbackSlider.valueIsAdjusting },
       onProgressChanged = ::onPlaybackProgressChanged,
@@ -172,7 +172,7 @@ internal class SensorReplayDialog(emulator: EmulatorController) :
           // TODO: Remove EmulatorConfig.systemImageDir once no longer used.
           VhalPropertyDictionary.loadFromDirectories(listOf(emulator.emulatorConfig.systemImageDir, emulator.emulatorId.avdFolder))
         }
-      withContext(uiContext) {
+      withContext(Dispatchers.EdtAnyModality) {
         dictionary = loaded
         selectedSession?.let(::updateSensorsPreview)
       }
@@ -248,7 +248,7 @@ internal class SensorReplayDialog(emulator: EmulatorController) :
     dialogScope.launch {
       for (path in pathsToRestore) {
         val shouldLoad =
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             path in getPersistedSensorFiles() && savedSessions.none { it.path == path }
           }
         if (!shouldLoad) continue
@@ -271,14 +271,14 @@ internal class SensorReplayDialog(emulator: EmulatorController) :
           }
 
         if (sessionItem == null) {
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             removePersistedSensorFiles(setOf(path))
           }
           continue
         }
 
         try {
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             val currentPersisted = getPersistedSensorFiles()
             if (path !in currentPersisted || savedSessions.any { it.path == path }) {
               sessionItem.close()
@@ -466,20 +466,20 @@ internal class SensorReplayDialog(emulator: EmulatorController) :
             sessionLoader(normalizedPath) { coroutineContext.ensureActive() }
           }
         } catch (_: EmptySensorSessionException) {
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             showError(message("sensor.replay.dialog.error.empty.file", fileName))
           }
           return@launch
         } catch (e: IOException) {
           thisLogger().warn("Unable to parse sensor file '$normalizedPath'", e)
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             showError(message("sensor.replay.dialog.error.invalid.file", fileName))
           }
           return@launch
         }
 
       try {
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           if (savedSessions.any { it.path == normalizedPath }) {
             sessionItem.close()
             showError(message("sensor.replay.dialog.error.duplicate.file", fileName))

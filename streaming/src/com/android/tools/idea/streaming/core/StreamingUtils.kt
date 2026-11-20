@@ -31,6 +31,9 @@ import com.intellij.openapi.actionSystem.ActionButtonComponent
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.AnActionHolder
+import com.intellij.openapi.application.EDT
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.util.NlsContexts
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
@@ -65,6 +68,7 @@ import javax.swing.JRootPane
 import javax.swing.SwingUtilities
 import javax.swing.event.HyperlinkEvent
 import javax.swing.event.HyperlinkListener
+import kotlin.coroutines.CoroutineContext
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log2
@@ -72,6 +76,11 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.round
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+
+/** The EDT coroutine context with [ModalityState.any], allowing execution while modal dialogs are open. */
+internal val Dispatchers.EdtAnyModality: CoroutineContext
+  get() = EDT + ModalityState.any().asContextElement()
 
 fun ByteBuffer.getUInt(): UInt = getInt().toUInt()
 

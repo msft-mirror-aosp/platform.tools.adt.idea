@@ -22,6 +22,7 @@ import com.android.tools.adtui.ImageUtils.scale
 import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.idea.protobuf.StringValue
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.utils.throwIfCancellation
 import com.intellij.icons.AllIcons
@@ -109,13 +110,13 @@ internal class CameraDialog(emulator: EmulatorController) :
               }
             }
           }
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           updateFromDecodedPosters(decodedPosters)
         }
       } catch (t: Throwable) {
         t.throwIfCancellation()
         // Error is already logged by EmulatorController.
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           postersInitialized = true
           updateUi()
           showError(message("camera.dialog.error.load.posters"))
@@ -250,7 +251,7 @@ internal class CameraDialog(emulator: EmulatorController) :
             emulator.callWithRetry { setPoster(poster) }
           } catch (e: Exception) {
             e.throwIfCancellation()
-            withContext(uiContext) {
+            withContext(Dispatchers.EdtAnyModality) {
               showError(e)
             }
           }
@@ -445,7 +446,7 @@ internal class CameraDialog(emulator: EmulatorController) :
       imageLoadJob?.cancel()
       imageLoadJob = coroutineScope.launch {
         val icon = withContext(Dispatchers.IO) { readPreviewIcon(path) }
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           if (icon == null) {
             showError(message("camera.dialog.error.invalid.image", path.fileName ?: path))
             return@withContext

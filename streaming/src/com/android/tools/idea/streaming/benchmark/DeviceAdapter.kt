@@ -21,12 +21,10 @@ import com.android.tools.adtui.util.scaled
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.streaming.benchmark.Benchmarker.Adapter
 import com.android.tools.idea.streaming.core.AbstractDisplayView
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.core.bottom
 import com.android.tools.idea.streaming.core.right
 import com.android.tools.idea.streaming.core.scaledUnbiased
-import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.project.Project
@@ -234,7 +232,7 @@ internal class DeviceAdapter(
 
     coroutineScope.launch {
       for (keyEventDispatch in keyEventDispatchChannel) {
-        withContext(Dispatchers.EDT + ModalityState.any().asContextElement()) { keyEventDispatch() }
+        withContext(Dispatchers.EdtAnyModality) { keyEventDispatch() }
         delay(KEY_EVENT_DELAY)
       }
     }

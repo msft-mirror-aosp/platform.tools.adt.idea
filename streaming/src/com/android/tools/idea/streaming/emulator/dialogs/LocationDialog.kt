@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.emulator.control.GpsState
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.core.ProgressSlider
 import com.android.tools.idea.streaming.core.formatErrorMessage
 import com.android.tools.idea.streaming.emulator.EmulatorController
@@ -227,7 +228,7 @@ internal class LocationDialog(emulator: EmulatorController) :
     if (OfflineWorldMap.loadedMapDataOrNull == null) {
       dialogScope.launch(Dispatchers.IO) {
         OfflineWorldMap.loadedMapData
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           routesMap.repaint()
         }
       }
@@ -440,7 +441,7 @@ internal class LocationDialog(emulator: EmulatorController) :
           return@launch
         }
 
-      withContext(uiContext) {
+      withContext(Dispatchers.EdtAnyModality) {
         if (fixes.isEmpty()) {
           showError(message("location.dialog.error.import.empty"))
           return@withContext
@@ -466,7 +467,7 @@ internal class LocationDialog(emulator: EmulatorController) :
   }
 
   private suspend fun showImportError(error: Exception) {
-    withContext(uiContext) {
+    withContext(Dispatchers.EdtAnyModality) {
       showError(message("location.dialog.error.import.failed", formatErrorMessage(error)))
     }
   }
@@ -614,7 +615,7 @@ internal class LocationDialog(emulator: EmulatorController) :
 
     lateinit var job: Job
     job =
-      dialogScope.launch(uiContext, start = CoroutineStart.LAZY) {
+      dialogScope.launch(Dispatchers.EdtAnyModality, start = CoroutineStart.LAZY) {
         var reachedDestination = false
         try {
           if (!totalDuration.isPositive()) {
@@ -658,7 +659,7 @@ internal class LocationDialog(emulator: EmulatorController) :
             }
           }
         } finally {
-          withContext(NonCancellable + uiContext) {
+          withContext(NonCancellable + Dispatchers.EdtAnyModality) {
             if (playbackJob === job) {
               playbackJob = null
               if (reachedDestination) {

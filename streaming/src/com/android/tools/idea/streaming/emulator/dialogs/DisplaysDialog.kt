@@ -21,6 +21,7 @@ import com.android.emulator.control.DisplayConfigurations
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.NotificationTracker
 import com.intellij.ide.ActivityTracker
@@ -52,6 +53,7 @@ import java.awt.event.MouseEvent
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JPanel
 import javax.swing.event.DocumentEvent
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /** Dialog for configuring emulator displays, providing functionality similar to the Displays page in extended controls. */
@@ -322,7 +324,7 @@ internal class DisplaysDialog(emulator: EmulatorController) :
   override fun createWrapper(project: Project?, parent: Component?): DialogWrapper {
     return super.createWrapper(project, parent).apply {
       val notificationTracker = NotificationTracker.forEmulator(emulator)
-      disposable.createCoroutineScope(uiContext).launch {
+      disposable.createCoroutineScope(Dispatchers.EdtAnyModality).launch {
         notificationTracker.displayConfigurations.collect { displayConfigs ->
           if (displayConfigs != null && !stateModified) {
             updateFromDisplayList(displayConfigs)

@@ -22,6 +22,7 @@ import com.android.adblib.shellAsLines
 import com.android.tools.idea.adblib.AdbLibApplicationService
 import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionState
 import com.android.utils.throwIfCancellation
@@ -75,6 +76,7 @@ import kotlin.math.sqrt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -216,11 +218,11 @@ internal class CarRotaryDialog(
         }
       }
       if (isRunning) {
-        withContext(uiContext) { setWarningVisible(false) }
+        withContext(Dispatchers.EdtAnyModality) { setWarningVisible(false) }
         return true
       }
       if (exitCode == 0) {
-        withContext(uiContext) { setWarningVisible(true) }
+        withContext(Dispatchers.EdtAnyModality) { setWarningVisible(true) }
       }
     } catch (t: Throwable) {
       t.throwIfCancellation()

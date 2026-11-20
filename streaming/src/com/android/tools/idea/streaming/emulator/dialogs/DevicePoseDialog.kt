@@ -28,6 +28,7 @@ import com.android.ide.common.util.Cancelable
 import com.android.tools.adtui.ImageUtils
 import com.android.tools.idea.streaming.StagingIcons
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.core.cleanNegativeZero
 import com.android.tools.idea.streaming.emulator.EmptyStreamObserver
 import com.android.tools.idea.streaming.emulator.EmulatorConfiguration.PostureDescriptor
@@ -64,6 +65,7 @@ import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -142,13 +144,13 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
             null
           }
         val postureProto = if (hasPostures) emulator.callWithRetry { getPhysicalModel(PhysicalType.POSTURE) } else null
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           applyInitialState(rotProto, posProto, foldProto, postureProto)
         }
         sensorRefreshChannel.trySend(Unit)
       } catch (e: Exception) {
         e.throwIfCancellation()
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           showError(e)
         }
       }
@@ -180,7 +182,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
           sensorRefreshChannel.trySend(Unit)
         } catch (e: Exception) {
           e.throwIfCancellation()
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             showError(e)
           }
         }
@@ -198,7 +200,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
           emulator.callWithRetry { setPhysicalModel(modelValue) }
         } catch (e: Exception) {
           e.throwIfCancellation()
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             showError(e)
           }
         }
@@ -214,7 +216,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
           if (dialogWrapper != null) {
             val postureProto = emulator.callWithRetry { getPhysicalModel(PhysicalType.POSTURE) }
             val posture = postureFromProto(postureProto)
-            withContext(uiContext) {
+            withContext(Dispatchers.EdtAnyModality) {
               if (version == foldVersion) {
                 appliedFoldVersion = version
                 if (posture != null) {
@@ -225,7 +227,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
           }
         } catch (e: Exception) {
           e.throwIfCancellation()
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             showError(e)
           }
         }
@@ -236,7 +238,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
       val postureJob = coroutineScope.launch {
         NotificationTracker.forEmulator(emulator).currentPosture.collect { posture ->
           if (posture != null) {
-            withContext(uiContext) {
+            withContext(Dispatchers.EdtAnyModality) {
               if (poseInitialized && appliedFoldVersion == foldVersion) {
                 applyEmulatorPosture(posture)
               }
@@ -314,7 +316,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
     val gyro = querySensor(SensorType.GYROSCOPE)
     val mag = querySensor(SensorType.MAGNETIC_FIELD)
     if (accel != null || gyro != null || mag != null) {
-      withContext(uiContext) {
+      withContext(Dispatchers.EdtAnyModality) {
         var changed = false
         if (accel != null) {
           val prevOrientation = deviceOrientation
@@ -394,7 +396,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
       val unrotated = ImageUtils.rotateByQuadrants(image, -imageFormat.rotation.rotationValue)
 
       if (pendingScreenshot.getAndSet(unrotated) == null) {
-        coroutineScope.launch(uiContext) {
+        coroutineScope.launch(Dispatchers.EdtAnyModality) {
           val latest = pendingScreenshot.getAndSet(null)
           if (screenshotReceiver == this@ScreenshotReceiver && latest != null) {
             screenImage = latest
@@ -406,7 +408,7 @@ internal class DevicePoseDialog(emulator: EmulatorController) :
 
     override fun onError(t: Throwable) {
       if (screenshotReceiver == this && t is EmulatorController.RetryException) {
-        coroutineScope.launch(uiContext) {
+        coroutineScope.launch(Dispatchers.EdtAnyModality) {
           if (screenshotReceiver == this@ScreenshotReceiver) {
             requestScreenshotFeed()
           }

@@ -23,6 +23,7 @@ import com.android.emulator.control.KeyboardEvent.KeyEventType
 import com.android.emulator.control.MicrophoneState
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionState
 import com.android.tools.idea.streaming.emulator.NotificationTracker
@@ -34,6 +35,7 @@ import com.intellij.openapi.util.text.HtmlChunk
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.dsl.builder.TopGap
 import com.intellij.ui.dsl.builder.panel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -61,7 +63,7 @@ internal class MicrophoneDialog(emulator: EmulatorController) :
     val notificationJob = coroutineScope.launch {
       NotificationTracker.forEmulator(emulator).microphoneInput.collect { enabled ->
         if (enabled != null) {
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             if (appliedMicrophoneStateVersion == microphoneStateVersion) {
               applyHostAudioInput(enabled)
             }
@@ -80,7 +82,7 @@ internal class MicrophoneDialog(emulator: EmulatorController) :
           e.throwIfCancellation()
           exception = e
         }
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           if (version == microphoneStateVersion) {
             appliedMicrophoneStateVersion = version
             if (exception != null) {

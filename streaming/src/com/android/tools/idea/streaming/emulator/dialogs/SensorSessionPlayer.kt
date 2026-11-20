@@ -19,6 +19,7 @@ import com.android.emulator.control.SensorSession.SensorRecord
 import com.android.emulator.control.SensorSession.SessionMetadata
 import com.android.tools.idea.io.grpc.StatusException
 import com.android.tools.idea.io.grpc.StatusRuntimeException
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.dialogs.SensorSessionAccumulator.Companion.formatDuration
 import com.android.tools.idea.streaming.emulator.dialogs.SensorSessionAccumulator.SensorRecordStore.Companion.mergeRecordIntoAggregate
@@ -26,7 +27,6 @@ import com.intellij.openapi.diagnostic.thisLogger
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.coroutines.CoroutineContext
 import kotlin.math.roundToInt
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -64,7 +64,6 @@ internal enum class SensorReplaySpeed(val multiplier: Float, private val display
 /** Manages playback timing, record batching, and seeking for [SensorReplayDialog]. */
 internal class SensorSessionPlayer(
   private val scope: CoroutineScope,
-  private val uiContext: CoroutineContext,
   private val dispatchRecord: suspend (SensorRecord, SessionMetadata) -> Unit,
   private val isSliderAdjusting: () -> Boolean,
   private val onProgressChanged: (position: Duration, duration: Duration, updateSliderValue: Boolean) -> Unit,
@@ -182,7 +181,7 @@ internal class SensorSessionPlayer(
           currentCoroutineContext().ensureActive()
           if (aggregated != null) {
             val isCurrentSeek =
-              withContext(uiContext) {
+              withContext(Dispatchers.EdtAnyModality) {
                 if (seekSequence == seq) {
                   onStateModified()
                   true
@@ -193,7 +192,7 @@ internal class SensorSessionPlayer(
             if (!isCurrentSeek) return@withLock
             dispatchRecord(aggregated, session.metadata)
           }
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             if (seekSequence == seq) {
               needsSeekAggregateOnPlay = false
             }
@@ -247,7 +246,7 @@ internal class SensorSessionPlayer(
               if (aggregated != null) {
                 dispatchRecord(aggregated, session.metadata)
               }
-              withContext(uiContext) {
+              withContext(Dispatchers.EdtAnyModality) {
                 if (playbackJob === job) {
                   needsSeekAggregateOnPlay = false
                 }
@@ -332,7 +331,7 @@ internal class SensorSessionPlayer(
         } catch (e: EmulatorController.RetryException) {
           finishPlaybackWithError(job, e.message)
         } finally {
-          withContext(NonCancellable + uiContext) {
+          withContext(NonCancellable + Dispatchers.EdtAnyModality) {
             if (playbackJob === job) {
               stopPlayback(resetPosition = true, cancelJob = false)
             }
@@ -348,11 +347,11 @@ internal class SensorSessionPlayer(
 
   private suspend fun showAsyncError(@Nls errorMessage: String?) {
     if (errorMessage == null) return
-    withContext(uiContext) { onError(errorMessage) }
+    withContext(Dispatchers.EdtAnyModality) { onError(errorMessage) }
   }
 
   private suspend fun finishPlaybackWithError(job: Job, @Nls errorMessage: String?) {
-    withContext(uiContext) {
+    withContext(Dispatchers.EdtAnyModality) {
       if (playbackJob === job) {
         stopPlayback(resetPosition = true, cancelJob = false)
       }
@@ -369,7 +368,7 @@ internal class SensorSessionPlayer(
   ) {
     pendingUiPosition.set(position)
     if (uiUpdateScheduled.compareAndSet(false, true)) {
-      scope.launch(uiContext) {
+      scope.launch(Dispatchers.EdtAnyModality) {
         try {
           while (playbackJob === job && !isSliderAdjusting()) {
             val pos = pendingUiPosition.get()

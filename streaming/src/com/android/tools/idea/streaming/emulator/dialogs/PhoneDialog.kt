@@ -20,6 +20,7 @@ import com.android.emulation.control.incubating.Call.CallState
 import com.android.emulation.control.incubating.SmsMessage
 import com.android.sdklib.deviceprovisioner.DeviceType
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.utils.throwIfCancellation
 import com.intellij.ide.util.PropertiesComponent
@@ -48,6 +49,7 @@ import javax.swing.JButton
 import javax.swing.JTextField
 import javax.swing.border.LineBorder
 import javax.swing.event.DocumentEvent
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.annotations.NonNls
@@ -76,7 +78,7 @@ internal class PhoneDialog(emulator: EmulatorController) :
     val phoneEventsJob = coroutineScope.launch {
       try {
         val activeCalls = emulator.callWithRetry(EmulatorController::listCalls)
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           callsInitialized = true
           if (activeCall.state == CallState.CALL_STATE_UNSPECIFIED && activeCalls.callsCount > 0) {
             activeCall = activeCalls.getCalls(0)
@@ -85,7 +87,7 @@ internal class PhoneDialog(emulator: EmulatorController) :
         }
       } catch (e: Exception) {
         e.throwIfCancellation()
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           showError(e)
         }
         return@launch
@@ -94,7 +96,7 @@ internal class PhoneDialog(emulator: EmulatorController) :
       try {
         emulator.receivePhoneEvents().collect { event ->
           if (event.hasActive() && event.active.callsCount == 0) {
-            withContext(uiContext) {
+            withContext(Dispatchers.EdtAnyModality) {
               if (activeCall.state != CallState.CALL_STATE_UNSPECIFIED) {
                 endCall()
               }

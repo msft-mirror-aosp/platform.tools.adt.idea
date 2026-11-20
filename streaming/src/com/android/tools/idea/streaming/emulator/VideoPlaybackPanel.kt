@@ -24,6 +24,7 @@ import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.io.grpc.Status
 import com.android.tools.idea.io.grpc.StatusRuntimeException
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.core.PROJECTION_RECTANGLE_PROPERTY
 import com.android.tools.idea.streaming.core.ProgressSlider
 import com.android.tools.idea.streaming.core.anyVisibleChildContains
@@ -42,8 +43,6 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.ui.laf.darcula.DarculaUIUtil
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.text.HtmlChunk
@@ -921,9 +920,8 @@ internal class VideoPlaybackPanel(
     updateControlsState()
 
     coroutineScope.launch {
-      val uiContext = Dispatchers.EDT + ModalityState.any().asContextElement()
       for (unit in sendTrigger) {
-        var next = withContext(uiContext) { takeQueuedRequest() }
+        var next = withContext(Dispatchers.EdtAnyModality) { takeQueuedRequest() }
         while (next != null) {
           var succeeded = false
           var retry = false
@@ -938,7 +936,7 @@ internal class VideoPlaybackPanel(
           }
           val sent = next
           next =
-            withContext(uiContext) {
+            withContext(Dispatchers.EdtAnyModality) {
               if (retry) {
                 val retryRequest = prepareRetry(sent) ?: takeQueuedRequest()
                 if (retryRequest == null) {

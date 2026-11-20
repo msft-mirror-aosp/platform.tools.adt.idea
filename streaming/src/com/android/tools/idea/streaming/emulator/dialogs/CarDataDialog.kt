@@ -33,6 +33,7 @@ import com.android.tools.idea.adblib.AdbLibService
 import com.android.tools.idea.protobuf.ByteString
 import com.android.tools.idea.protobuf.InvalidProtocolBufferException
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertiesTab.VhalPropertyKey
 import com.android.tools.idea.streaming.emulator.dialogs.VhalPropertyConstants.VehicleProperty
@@ -136,7 +137,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
               inFlightUpdateKey = null
               sentUpdatesQueue.remove(next)
             }
-            withContext(uiContext) {
+            withContext(Dispatchers.EdtAnyModality) {
               handleSetPropertyFailure(next, t.message)
             }
           } finally {
@@ -150,7 +151,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
 
     dialogScope.launch {
       val loaded = dictionaryDeferred.await()
-      withContext(uiContext) {
+      withContext(Dispatchers.EdtAnyModality) {
         dictionary = loaded
         vhalPropertiesTab.onDictionaryUpdated()
       }
@@ -183,7 +184,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
         emulator
           .receiveCarEvents(
             onSubscribed = {
-              withContext(uiContext) {
+              withContext(Dispatchers.EdtAnyModality) {
                 refreshVhalProperties(isInitialLoad = true)
               }
             }
@@ -196,7 +197,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
                 return@collect
               }
             grpcEventsReceived = true
-            withContext(uiContext) {
+            withContext(Dispatchers.EdtAnyModality) {
               processEmulatorMessage(emulatorMsg)
             }
           }
@@ -373,7 +374,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
     } catch (e: Exception) {
       e.throwIfCancellation()
       thisLogger().warn("Failed to query VHAL properties via ADB", e)
-      withContext(uiContext) {
+      withContext(Dispatchers.EdtAnyModality) {
         if (!grpcEventsReceived) {
           showError(grpcException ?: e)
         }
@@ -385,7 +386,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
     }
     if (lines.isEmpty()) {
       if (grpcException != null) {
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           if (!grpcEventsReceived) {
             showError(grpcException)
           }
@@ -396,7 +397,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
     val (configs, values) = parseAdbVhalDump(lines)
     if (configs.isEmpty() && values.isEmpty()) {
       if (grpcException != null) {
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           if (!grpcEventsReceived) {
             showError(grpcException)
           }
@@ -404,7 +405,7 @@ internal class CarDataDialog(emulator: EmulatorController) :
       }
       return
     }
-    withContext(uiContext) {
+    withContext(Dispatchers.EdtAnyModality) {
       if (!grpcEventsReceived) {
         if (configs.isNotEmpty()) {
           vhalPropertiesTab.setPropertyConfigs(configs)

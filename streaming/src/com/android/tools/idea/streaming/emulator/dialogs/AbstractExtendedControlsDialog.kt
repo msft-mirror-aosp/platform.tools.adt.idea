@@ -17,12 +17,10 @@ package com.android.tools.idea.streaming.emulator.dialogs
 
 import com.android.tools.idea.concurrency.createCoroutineScope
 import com.android.tools.idea.streaming.core.CloseDialogAction
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.core.formatErrorMessage
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.utils.throwIfCancellation
-import com.intellij.openapi.application.EDT
-import com.intellij.openapi.application.ModalityState
-import com.intellij.openapi.application.asContextElement
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.openapi.ui.DialogPanel
@@ -44,7 +42,6 @@ import com.intellij.ui.scale.JBUIScale
 import java.awt.Component
 import java.awt.event.ItemEvent
 import javax.swing.JTextField
-import kotlin.coroutines.CoroutineContext
 import kotlin.reflect.KMutableProperty0
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,9 +59,6 @@ internal abstract class AbstractExtendedControlsDialog(
   private val title: @NlsContexts.DialogTitle String,
 ) {
   protected val coroutineScope: CoroutineScope = emulator.createCoroutineScope()
-
-  protected val uiContext: CoroutineContext
-    get() = Dispatchers.EDT + ModalityState.any().asContextElement()
 
   protected var stateModified: Boolean = false
   protected var isUpdatingUi: Boolean = false
@@ -123,14 +117,14 @@ internal abstract class AbstractExtendedControlsDialog(
     val initialStateJob = coroutineScope.launch {
       try {
         val state = emulator.callWithRetry(getState)
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           if (!stateModified) {
             onStateLoaded(state)
           }
         }
       } catch (e: Exception) {
         e.throwIfCancellation()
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           showError(e)
         }
       }
@@ -146,7 +140,7 @@ internal abstract class AbstractExtendedControlsDialog(
           emulator.callWithRetry { setState(this, state) }
         } catch (e: Exception) {
           e.throwIfCancellation()
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             showError(e)
           }
         }
@@ -163,12 +157,12 @@ internal abstract class AbstractExtendedControlsDialog(
     coroutineScope.launch {
       try {
         val result = emulator.callWithRetry(action)
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           onSuccess(result)
         }
       } catch (e: Exception) {
         e.throwIfCancellation()
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           showError(e)
         }
       }

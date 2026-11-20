@@ -19,6 +19,7 @@ import com.android.emulator.control.ParameterValue
 import com.android.emulator.control.PhysicalModelValue
 import com.android.emulator.control.PhysicalModelValue.PhysicalType
 import com.android.tools.idea.streaming.StreamingBundle.message
+import com.android.tools.idea.streaming.core.EdtAnyModality
 import com.android.tools.idea.streaming.core.cleanNegativeZero
 import com.android.tools.idea.streaming.emulator.EmulatorController
 import com.android.utils.throwIfCancellation
@@ -43,6 +44,7 @@ import javax.swing.JTextField
 import javax.swing.SwingConstants
 import javax.swing.event.DocumentEvent
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.launch
@@ -443,13 +445,13 @@ internal class SensorsDialog(emulator: EmulatorController) :
     val initialStateJob = coroutineScope.launch {
       try {
         val modelValue = emulator.callWithRetry { getPhysicalModel(type) }
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           onStateLoaded(modelValue.value)
           updateUi()
         }
       } catch (e: Exception) {
         e.throwIfCancellation()
-        withContext(uiContext) {
+        withContext(Dispatchers.EdtAnyModality) {
           showError(e)
         }
       }
@@ -466,7 +468,7 @@ internal class SensorsDialog(emulator: EmulatorController) :
           emulator.callWithRetry { setPhysicalModel(modelValue) }
         } catch (e: Exception) {
           e.throwIfCancellation()
-          withContext(uiContext) {
+          withContext(Dispatchers.EdtAnyModality) {
             showError(e)
           }
         }
