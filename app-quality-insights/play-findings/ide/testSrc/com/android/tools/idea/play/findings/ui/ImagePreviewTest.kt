@@ -21,14 +21,16 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.android.testutils.retryUntilPassing
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
-import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.registerOrReplaceServiceInstance
 import com.intellij.testFramework.replaceService
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -51,7 +53,7 @@ import org.mockito.kotlin.whenever
 @RunsInEdt
 class ImagePreviewTest {
 
-  private val projectRule = ProjectRule()
+  private val projectRule = AndroidProjectRule.inMemory()
   private val disposableRule = DisposableRule()
   private val composeTestRule = createStudioComposeTestRule()
 
@@ -149,7 +151,7 @@ class ImagePreviewTest {
   @Test
   fun testClickScreenshotWithProject_opensInEditorAndReusesExistingTab() {
     val openedFiles = mutableListOf<VirtualFile>()
-    val fileEditorManager: FileEditorManager = mock()
+    val fileEditorManager: FileEditorManagerEx = mock()
     whenever(fileEditorManager.openFiles).thenAnswer { openedFiles.toTypedArray() }
     whenever(fileEditorManager.openFile(any(), eq(true))).thenAnswer { invocation ->
       val file = invocation.getArgument<VirtualFile>(0)
@@ -158,7 +160,7 @@ class ImagePreviewTest {
       }
       emptyArray<FileEditor>()
     }
-    projectRule.project.replaceService(
+    projectRule.project.registerOrReplaceServiceInstance(
       FileEditorManager::class.java,
       fileEditorManager,
       disposableRule.disposable,

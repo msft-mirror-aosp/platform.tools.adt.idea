@@ -25,8 +25,8 @@ import com.android.tools.idea.insights.ui.AppInsightsFilterSelector
 import com.android.tools.idea.insights.ui.ConnectionFilter
 import com.android.tools.idea.insights.ui.ConnectionPreference
 import com.android.tools.idea.play.findings.PlayFindingsInsightsProvider
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
-import com.intellij.testFramework.ProjectRule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -56,7 +56,7 @@ private const val FIREBASE_APP = "com.example.firebase"
 @OptIn(ExperimentalCoroutinesApi::class)
 class FindingsProjectLevelControllerTest {
 
-  @get:Rule val projectRule = ProjectRule()
+  @get:Rule val projectRule = AndroidProjectRule.inMemory()
 
   private lateinit var fakeClient: FindingsClient
   private lateinit var controllerScope: CoroutineScope

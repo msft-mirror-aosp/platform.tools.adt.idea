@@ -32,13 +32,13 @@ import com.android.tools.idea.gemini.LlmUserQueryPayload
 import com.android.tools.idea.play.findings.ui.FindingsAssetLoader
 import com.android.tools.idea.play.findings.ui.LoadedAsset
 import com.android.tools.idea.project.AndroidNotification
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.ExtensionTestUtil
-import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.replaceService
 import java.nio.file.Path
 import java.util.Collections
@@ -57,7 +57,7 @@ import org.mockito.kotlin.verify
 
 class FindingsAgentActionTest {
 
-  private val projectRule = ProjectRule()
+  private val projectRule = AndroidProjectRule.inMemory()
   private val disposableRule = DisposableRule()
 
   @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(disposableRule)

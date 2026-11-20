@@ -24,10 +24,10 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule.Companion.createStudioComposeTestRule
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
-import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import org.junit.Rule
 import org.junit.Test
@@ -36,7 +36,7 @@ import org.junit.rules.RuleChain
 @RunsInEdt
 class FindingStackTracePanelTest {
 
-  private val projectRule = ProjectRule()
+  private val projectRule = AndroidProjectRule.inMemory()
   private val disposableRule = DisposableRule()
   private val composeTestRule = createStudioComposeTestRule()
 

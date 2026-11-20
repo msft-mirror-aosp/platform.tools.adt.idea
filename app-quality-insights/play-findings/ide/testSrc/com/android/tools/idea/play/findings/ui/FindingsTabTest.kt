@@ -26,12 +26,12 @@ import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.ui.AppInsightsToolbar
 import com.android.tools.idea.insights.ui.actions.AppInsightsToggleAction
 import com.android.tools.idea.play.findings.PlayFindingsInsightsProvider
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
-import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.util.ui.UIUtil
@@ -53,7 +53,7 @@ import org.junit.rules.RuleChain
 @RunsInEdt
 class FindingsTabTest {
 
-  private val projectRule = ProjectRule()
+  private val projectRule = AndroidProjectRule.inMemory()
   private val disposableRule = DisposableRule()
 
   @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(EdtRule()).around(disposableRule)

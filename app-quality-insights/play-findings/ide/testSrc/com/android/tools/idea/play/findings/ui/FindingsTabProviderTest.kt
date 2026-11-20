@@ -25,10 +25,10 @@ import com.android.tools.idea.insights.Selection
 import com.android.tools.idea.insights.model.connection.Connection
 import com.android.tools.idea.insights.ui.AppInsightsTabPanel
 import com.android.tools.idea.play.findings.PlayFindingsInsightsProvider
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.testFramework.DisposableRule
-import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.replaceService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +43,7 @@ import org.mockito.kotlin.whenever
 
 class FindingsTabProviderTest {
 
-  private val projectRule = ProjectRule()
+  private val projectRule = AndroidProjectRule.inMemory()
   private val disposableRule = DisposableRule()
 
   @get:Rule val ruleChain: RuleChain = RuleChain.outerRule(projectRule).around(disposableRule)

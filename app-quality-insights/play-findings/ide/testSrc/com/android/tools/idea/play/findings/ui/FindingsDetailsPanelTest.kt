@@ -38,14 +38,16 @@ import com.android.tools.idea.findings.model.FindingOccurrence
 import com.android.tools.idea.findings.model.FindingSeverity
 import com.android.tools.idea.findings.model.StackTrace
 import com.android.tools.idea.findings.model.VisualEvidence
+import com.android.tools.idea.testing.AndroidProjectRule
 import com.google.common.truth.Truth.assertThat
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.ex.FileEditorManagerEx
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.DisposableRule
 import com.intellij.testFramework.EdtRule
-import com.intellij.testFramework.ProjectRule
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.registerOrReplaceServiceInstance
 import com.intellij.testFramework.replaceService
 import kotlin.time.Duration.Companion.seconds
 import org.junit.Rule
@@ -61,7 +63,7 @@ import org.mockito.kotlin.whenever
 @RunsInEdt
 class FindingsDetailsPanelTest {
 
-  private val projectRule = ProjectRule()
+  private val projectRule = AndroidProjectRule.inMemory()
   private val disposableRule = DisposableRule()
   private val composeTestRule = createStudioComposeTestRule()
 
@@ -186,10 +188,10 @@ class FindingsDetailsPanelTest {
   @Test
   fun testFindingWithScreenshotLoadsAndDisplaysImage() {
     replaceAssetLoader { mockImage }
-    val fileEditorManager: FileEditorManager = mock()
+    val fileEditorManager: FileEditorManagerEx = mock()
     whenever(fileEditorManager.openFiles).thenReturn(emptyArray())
     whenever(fileEditorManager.openFile(any(), eq(true))).thenReturn(emptyArray<FileEditor>())
-    projectRule.project.replaceService(
+    projectRule.project.registerOrReplaceServiceInstance(
       FileEditorManager::class.java,
       fileEditorManager,
       disposableRule.disposable,
