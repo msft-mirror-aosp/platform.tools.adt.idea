@@ -17,10 +17,14 @@ package com.android.tools.idea.gradle.project.sync.quickFixes
 
 import com.android.testutils.AssumeUtil
 import com.android.tools.idea.gradle.GradleFileModelTestCase
+import com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder
 import com.google.common.truth.Truth
 import com.intellij.openapi.vfs.readText
 import com.intellij.testFramework.RunsInEdt
+import org.gradle.util.GradleVersion
 import org.jetbrains.android.AndroidTestBase
+import org.jetbrains.kotlin.idea.gradleCodeInsightCommon.FOOJAY_RESOLVER_CONVENTION_NAME
+import org.jetbrains.plugins.gradle.frameworkSupport.settingsScript.getFoojayPluginVersion
 import org.junit.Before
 import org.junit.Test
 
@@ -85,6 +89,7 @@ class AddJavaToolchainRefactoringProcessorTest : GradleFileModelTestCase() {
 
   @Test
   fun addDefaultResolverPluginToSettings() {
+    GradleSyncStateHolder.getInstance(project).recordGradleVersion(GradleVersion.version("9.0"))
     writeToSettingsFile(TestFileName("JavaToolchain/settingsEmpty"))
     writeToBuildFile(TestFileName("JavaToolchain/appNoJavaBlock"))
 
@@ -92,6 +97,36 @@ class AddJavaToolchainRefactoringProcessorTest : GradleFileModelTestCase() {
     processor.run()
 
     verifyFileContents(settingsFile, TestFileName("JavaToolchain/settingsWithFooJayResolverConventionApplied"))
+  }
+
+  @Test
+  fun addDefaultResolverPluginToSettingsForGradle8() {
+    val gradleVersion = GradleVersion.version("8.13")
+    GradleSyncStateHolder.getInstance(project).recordGradleVersion(gradleVersion)
+    writeToSettingsFile(TestFileName("JavaToolchain/settingsEmpty"))
+    writeToBuildFile(TestFileName("JavaToolchain/appNoJavaBlock"))
+
+    val processor = AddJavaToolchainDefinition(project, project.basePath!!, 17, listOf(projectRule.module))
+    processor.run()
+
+    val expectedVersion = getFoojayPluginVersion(gradleVersion)
+    val expectedPluginLine =
+      if (isGroovy) "id '$FOOJAY_RESOLVER_CONVENTION_NAME' version '$expectedVersion'"
+      else "id(\"$FOOJAY_RESOLVER_CONVENTION_NAME\") version \"$expectedVersion\""
+    Truth.assertThat(settingsFile.readText()).contains(expectedPluginLine)
+  }
+
+  @Test
+  fun skipsResolverPluginWhenGradleVersionUnknown() {
+    Truth.assertThat(GradleSyncStateHolder.getInstance(project).lastSyncedGradleVersion).isNull()
+    writeToSettingsFile(TestFileName("JavaToolchain/settingsEmpty"))
+    writeToBuildFile(TestFileName("JavaToolchain/appNoJavaBlock"))
+
+    val processor = AddJavaToolchainDefinition(project, project.basePath!!, 17, listOf(projectRule.module))
+    processor.run()
+
+    verifyFileContents(buildFile, TestFileName("JavaToolchain/appToolchain17Defined"))
+    verifyFileContents(settingsFile, TestFileName("JavaToolchain/settingsEmpty"))
   }
 
   @Test
@@ -107,6 +142,7 @@ class AddJavaToolchainRefactoringProcessorTest : GradleFileModelTestCase() {
 
   @Test
   fun addDefaultResolverPluginToSettingsWhenProjectWithCatalog() {
+    GradleSyncStateHolder.getInstance(project).recordGradleVersion(GradleVersion.version("9.0"))
     writeToSettingsFile(TestFileName("JavaToolchain/settingsEmpty"))
     writeToBuildFile(TestFileName("JavaToolchain/appNoJavaBlock"))
     createCatalogFile("gradle/libs.versions.toml")

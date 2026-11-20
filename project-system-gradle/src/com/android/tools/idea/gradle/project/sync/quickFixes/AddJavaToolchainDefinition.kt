@@ -21,6 +21,7 @@ import com.android.tools.idea.gradle.dsl.api.ProjectBuildModel
 import com.android.tools.idea.gradle.dsl.api.ext.ResolvedPropertyModel
 import com.android.tools.idea.gradle.dsl.api.java.JavaLanguageVersionPropertyModel
 import com.android.tools.idea.gradle.project.sync.GradleSyncStateHolder
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.TextRange
@@ -90,24 +91,28 @@ class AddJavaToolchainDefinition(
       val pluginFound = settingsModel.plugins().plugins().any { plugin -> plugin.name().toString() == FOOJAY_RESOLVER_CONVENTION_NAME }
 
       if (!pluginFound) {
+        val gradleVersion = getGradleVersion()
+        if (gradleVersion == null) {
+          LOG.warn(
+            "Skipping $FOOJAY_RESOLVER_CONVENTION_NAME plugin insertion because the project's Gradle version could not be determined"
+          )
+          return null
+        }
         listOf(settingsModel.plugins(), settingsModel)
           .firstNotNullOfOrNull { it.psiElement }
-          ?.let { psiElement -> AddPluginUsageInfo(psiElement, settingsModel, getFoojayPluginVersion(getGradleVersion())) }
+          ?.let { psiElement -> AddPluginUsageInfo(psiElement, settingsModel, getFoojayPluginVersion(gradleVersion)) }
       } else null
     }
   }
 
-  private fun getGradleVersion(): GradleVersion {
+  private fun getGradleVersion(): GradleVersion? {
     val syncedVersion = GradleSyncStateHolder.getInstance(myProject).lastSyncedGradleVersion
     if (syncedVersion != null) return syncedVersion
 
-    val guessedGradleVersion = gradleRootPath?.let { path ->
+    return gradleRootPath?.let { path ->
       val settings = GradleSettings.getInstance(myProject).getLinkedProjectSettings(path)
       settings?.let { GradleInstallationManager.guessGradleVersion(it) }
     }
-    if (guessedGradleVersion != null) return guessedGradleVersion
-
-    return GradleVersion.current()
   }
 
   override fun performRefactoring(usages: Array<out UsageInfo>) {
@@ -160,5 +165,9 @@ class AddJavaToolchainDefinition(
     fun perform() {
       settingsModel.plugins().applyPlugin(FOOJAY_RESOLVER_CONVENTION_NAME, pluginVersion)
     }
+  }
+
+  companion object {
+    private val LOG = Logger.getInstance(AddJavaToolchainDefinition::class.java)
   }
 }
