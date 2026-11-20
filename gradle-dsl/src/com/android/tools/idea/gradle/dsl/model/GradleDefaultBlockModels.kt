@@ -20,7 +20,6 @@ import com.android.tools.idea.gradle.dsl.api.GradleBuildModel
 import com.android.tools.idea.gradle.dsl.api.configurations.ConfigurationsModel
 import com.android.tools.idea.gradle.dsl.api.dependencies.DependenciesModel
 import com.android.tools.idea.gradle.dsl.api.ext.ExtModel
-import com.android.tools.idea.gradle.dsl.api.java.JavaDeclarativeModel
 import com.android.tools.idea.gradle.dsl.api.java.JavaModel
 import com.android.tools.idea.gradle.dsl.api.kotlin.KotlinModel
 import com.android.tools.idea.gradle.dsl.api.repositories.RepositoriesModel
@@ -29,7 +28,6 @@ import com.android.tools.idea.gradle.dsl.model.build.BuildScriptModelImpl
 import com.android.tools.idea.gradle.dsl.model.configurations.ConfigurationsModelImpl
 import com.android.tools.idea.gradle.dsl.model.dependencies.ScriptDependenciesModelImpl
 import com.android.tools.idea.gradle.dsl.model.ext.ExtModelImpl
-import com.android.tools.idea.gradle.dsl.model.java.JavaDeclarativeModelImpl
 import com.android.tools.idea.gradle.dsl.model.java.JavaModelImpl
 import com.android.tools.idea.gradle.dsl.model.kotlin.KotlinModelImpl
 import com.android.tools.idea.gradle.dsl.model.repositories.RepositoriesModelImpl
@@ -43,7 +41,6 @@ import com.android.tools.idea.gradle.dsl.parser.elements.GradleDslElement
 import com.android.tools.idea.gradle.dsl.parser.elements.GradlePropertiesDslElement
 import com.android.tools.idea.gradle.dsl.parser.ext.ExtDslElement
 import com.android.tools.idea.gradle.dsl.parser.files.GradleBuildFile
-import com.android.tools.idea.gradle.dsl.parser.java.JavaDclElement
 import com.android.tools.idea.gradle.dsl.parser.java.JavaDslElement
 import com.android.tools.idea.gradle.dsl.parser.kotlin.KotlinDslElement
 import com.android.tools.idea.gradle.dsl.parser.plugins.PluginsDslElement
@@ -76,17 +73,6 @@ class GradleDefaultBlockModels : BlockModelProvider<GradleBuildModel, GradleBuil
         "subprojects" to SubProjectsDslElement.SUBPROJECTS,
         "plugins" to PluginsDslElement.PLUGINS,
       )
-
-    private fun declarativeJavaBuilder(file: GradleBuildFile): JavaDeclarativeModel {
-      file.getPropertyElement(JavaDclElement.JAVA_APPLICATION)?.let { element ->
-        return JavaDeclarativeModelImpl(element)
-      }
-      file.getPropertyElement(JavaDclElement.JAVA_LIBRARY)?.let { element ->
-        return JavaDeclarativeModelImpl(element)
-      }
-      // TODO throw exception for now but need to create add element mechanism
-      throw IllegalStateException("Cannot create java[Application|Library] dsl element")
-    }
 
     private val DEFAULT_ROOT_AVAILABLE_MODELS =
       listOf<BlockModelBuilder<*, GradleBuildFile>>(
