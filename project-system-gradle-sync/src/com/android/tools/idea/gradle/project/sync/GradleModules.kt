@@ -158,6 +158,7 @@ constructor(
   var kaptGradleModel: KaptGradleModel? = null
 
   var unresolvedDependencies: List<IdeUnresolvedDependency> = emptyList()
+  var variantResolutionSyncIssues: List<IdeSyncIssue> = emptyList()
 
   /**
    * Returns the list of all libraries this currently selected variant depends on (and temporarily maybe some libraries other variants
@@ -218,7 +219,7 @@ constructor(
                 type = if (it.name.isBlank()) IdeSyncIssue.TYPE_EXCEPTION else IdeSyncIssue.TYPE_UNRESOLVED_DEPENDENCY,
               )
             }
-          this.setSyncIssues(syncIssues + v2UnresolvedDependenciesIssues + legacyModelProblems)
+          this.setSyncIssues(syncIssues + v2UnresolvedDependenciesIssues + variantResolutionSyncIssues + legacyModelProblems)
         },
         fetchesV2Models = true,
         fetchesKotlinModels = false,

@@ -156,6 +156,10 @@ internal class VariantDiscovery(
           syncOptions,
           variantsResolutionIssues,
         )
+      val modulesByGradleProject = androidModulesData.keys.associateBy { it.gradleProject }
+      variantsResolutionIssues.forEach { (gradleProject, issue) ->
+        modulesByGradleProject[gradleProject]?.variantResolutionSyncIssues = listOf(issue.toIdeSyncIssue())
+      }
       // Fetch the successfully resolved modules in priority batches (consumers first, then libraries).
       selectedVariantsPerBatch.values.forEach { batch ->
         val fetchActions = batch.mapNotNull { (module, resolvedVariantName) ->

@@ -21,22 +21,27 @@ import com.android.builder.model.v2.ide.BasicVariant
 import com.android.builder.model.v2.ide.ProjectType
 import com.android.builder.model.v2.ide.SourceProvider
 import com.android.builder.model.v2.ide.SourceSetContainer
+import com.android.builder.model.v2.ide.SyncIssue
 import com.android.builder.model.v2.ide.TestedTargetVariant
 import com.android.builder.model.v2.ide.Variant
 import com.android.builder.model.v2.models.AndroidDsl
 import com.android.builder.model.v2.models.AndroidProject
 import com.android.builder.model.v2.models.BasicAndroidProject
+import com.android.builder.model.v2.models.ProjectSyncIssues
 import com.android.builder.model.v2.models.Versions
 import com.android.ide.common.repository.AgpVersion
 import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.ide.gradle.model.impl.LegacyAndroidGradlePluginPropertiesImpl
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
+import com.android.tools.idea.gradle.model.IdeSyncIssue
+import com.android.tools.idea.gradle.model.impl.IdeAndroidArtifactCoreImpl
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeVariantCoreImpl
 import com.google.common.truth.Truth.assertThat
 import java.io.File
 import kotlin.test.assertFailsWith
+import org.gradle.tooling.BuildController
 import org.gradle.tooling.model.BuildIdentifier
 import org.gradle.tooling.model.ProjectIdentifier
 import org.gradle.tooling.model.gradle.BasicGradleProject
@@ -1402,6 +1407,86 @@ class PhasedSyncVariantNameResolutionTest {
       .contains(
         "Variant Conflict: Unresolved variant \"release\".\n" + "Cause: Could not resolve ProductFlavors ambiguity for project: :lib2."
       )
+  }
+
+  @Test
+  fun `VariantDiscovery with new resolution collects variant resolution issues`() {
+    val modules =
+      listOf(
+          ProjectSetup(
+            moduleId = ":app",
+            projectType = IdeAndroidProjectType.PROJECT_TYPE_APP,
+            dependencies = listOf(":lib"),
+            defaultVariant = "release",
+            variants = listOf("debug", "release"),
+            buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+          ),
+          ProjectSetup(
+            moduleId = ":lib",
+            projectType = IdeAndroidProjectType.PROJECT_TYPE_LIBRARY,
+            dependencies = emptyList(),
+            defaultVariant = "freeDebug",
+            variants = listOf("freeDebug", "paidDebug", "freeRelease", "paidRelease"),
+            buildTypes = listOf(TestAndroidBuildType("debug"), TestAndroidBuildType("release")),
+            productFlavors = listOf(TestProductFlavor("free", "tier"), TestProductFlavor("paid", "tier")),
+          ),
+        )
+        .map { setup ->
+          val mocks = createMocksForProject(setup)
+          whenever(mocks.ideAndroidProject.projectType).thenReturn(setup.projectType)
+          AndroidModule.V2(
+            modelVersions = mocks.modelVersions,
+            buildPathMap = mapOf(":" to BuildId(File(""))),
+            gradleProject = mocks.basicGradleProject,
+            androidProject = mocks.ideAndroidProject,
+            allVariantNames = setup.variants.toSet(),
+            defaultVariantName = setup.defaultVariant,
+            variantFetcher = { _, _, _, config ->
+              val variant =
+                Mockito.mock(IdeVariantCoreImpl::class.java).apply {
+                  whenever(name).thenReturn(config.variant)
+                  whenever(mainArtifact).thenReturn(Mockito.mock(IdeAndroidArtifactCoreImpl::class.java))
+                }
+              ModelResult.create { IdeVariantWithPostProcessor(variant) }
+            },
+            androidVariantResolver = AndroidVariantResolver.NONE,
+            nativeModule = null,
+            legacyAndroidGradlePluginProperties = mocks.legacyAndroidGradlePluginPropertiesImpl,
+            basicAndroidProject = mocks.basicAndroidProject,
+            androidProjectV2 = mocks.androidProject,
+            androidDsl = mocks.androidDsl,
+            declaredDependencies = mocks.declaredDependencies,
+          )
+        }
+    val (appModule, libModule) = modules
+
+    val flags =
+      Mockito.mock(GradleSyncStudioFlags::class.java).apply {
+        whenever(studioFlagUsedPhasedSyncVariantResolution).thenReturn(true)
+        whenever(studioFlagPhasedSyncDependencyResolutionEnabled).thenReturn(true)
+      }
+    whenever(syncOptions.flags).thenReturn(flags)
+    whenever(syncOptions.selectedVariants).thenReturn(SelectedVariants(emptyMap()))
+    whenever(syncOptions.switchVariantRequest).thenReturn(null)
+
+    val agpIssue = Mockito.mock(SyncIssue::class.java).apply { whenever(message).thenReturn("AGP sync issue") }
+    val libSyncIssues = Mockito.mock(ProjectSyncIssues::class.java).apply { whenever(syncIssues).thenReturn(listOf(agpIssue)) }
+    val controller =
+      Mockito.mock(BuildController::class.java).apply {
+        whenever(findModel(libModule.gradleProject, ProjectSyncIssues::class.java)).thenReturn(libSyncIssues)
+      }
+    val buildInfo = Mockito.mock(BuildInfo::class.java).apply { whenever(buildIdMap).thenReturn(mapOf(BuildId(File("")) to ":")) }
+    val actionRunner = SyncActionRunner.create(controller, SyncCounters(), parallelActionsSupported = false)
+
+    VariantDiscovery(actionRunner, modules.associateBy { it.id }, syncOptions, buildInfo, InternedModels(File(""))) { _, _ -> null }
+      .discoverVariantsAndSync(shouldUseProjectGraph = false)
+    actionRunner.runActions(modules.mapNotNull { it.getFetchSyncIssuesAction() })
+
+    assertThat(appModule.projectSyncIssues).isEmpty()
+    assertThat(libModule.projectSyncIssues).hasSize(2)
+    assertThat(libModule.projectSyncIssues[0].message).isEqualTo("AGP sync issue")
+    assertThat(libModule.projectSyncIssues[1].severity).isEqualTo(IdeSyncIssue.SEVERITY_WARNING)
+    assertThat(libModule.projectSyncIssues[1].message).contains("Could not resolve ProductFlavors ambiguity for project: :lib.")
   }
 
   private fun sortProjectsAndGetSelectedVariants(projectsSetups: List<ProjectSetup>): Map<String, String> {

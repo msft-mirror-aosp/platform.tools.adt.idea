@@ -29,8 +29,12 @@ import com.android.ide.gradle.model.GradlePluginModel
 import com.android.ide.gradle.model.LegacyAndroidGradlePluginProperties
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeBasicVariantName
+import com.android.tools.idea.gradle.model.IdeSyncIssue
+import com.android.tools.idea.gradle.model.IdeSyncIssue.Companion.SEVERITY_WARNING
+import com.android.tools.idea.gradle.model.IdeSyncIssue.Companion.TYPE_GENERIC
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
 import com.android.tools.idea.gradle.model.impl.IdeBasicVariantNameImpl
+import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.forEach
@@ -254,6 +258,17 @@ private fun resolveVariantsCore(
   }
 
   return projectsAndVariant
+}
+
+internal fun Throwable.toIdeSyncIssue(): IdeSyncIssue {
+  val message = this.localizedMessage ?: this.toString()
+  return IdeSyncIssueImpl(
+    message = message,
+    data = message,
+    multiLineMessage = this.stackTraceAsMultiLineMessage(),
+    severity = SEVERITY_WARNING,
+    type = TYPE_GENERIC,
+  )
 }
 
 /**

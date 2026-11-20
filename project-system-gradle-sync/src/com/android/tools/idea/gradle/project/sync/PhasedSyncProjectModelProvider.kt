@@ -31,11 +31,7 @@ import com.android.ide.gradle.model.LegacyV1AgpVersionModel
 import com.android.ide.gradle.model.dependencies.DeclaredDependencies
 import com.android.tools.idea.gradle.model.IdeAndroidProject
 import com.android.tools.idea.gradle.model.IdeAndroidProjectType
-import com.android.tools.idea.gradle.model.IdeSyncIssue
-import com.android.tools.idea.gradle.model.IdeSyncIssue.Companion.SEVERITY_WARNING
-import com.android.tools.idea.gradle.model.IdeSyncIssue.Companion.TYPE_GENERIC
 import com.android.tools.idea.gradle.model.impl.IdeAndroidProjectImpl
-import com.android.tools.idea.gradle.model.impl.IdeSyncIssueImpl
 import com.android.tools.idea.gradle.project.sync.ModelResult.Companion.ignoreExceptionsAndGet
 import com.intellij.gradle.toolingExtension.modelAction.GradleModelFetchPhase
 import com.intellij.openapi.diagnostic.logger
@@ -356,16 +352,6 @@ private fun verifyIncompatibleAgpVersionsAreNotUsedOrFailSync(
       }
     throw AgpVersionsMismatch(agpVersionsAndGradleBuilds)
   }
-}
-
-private fun Throwable.toIdeSyncIssue(): IdeSyncIssue {
-  return IdeSyncIssueImpl(
-    message = this.localizedMessage,
-    data = this.localizedMessage,
-    multiLineMessage = this.stackTraceAsMultiLineMessage(),
-    severity = SEVERITY_WARNING,
-    type = TYPE_GENERIC,
-  )
 }
 
 private fun populateGradleProjectModel(
