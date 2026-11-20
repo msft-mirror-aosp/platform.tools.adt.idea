@@ -119,4 +119,41 @@ class MigrateToDefaultTargetSdkToCompileSdkIfUnsetTest {
     ApplicationManager.getApplication().runReadAction { action.update(event) }
     Truth.assertThat(event.presentation.isEnabled).isFalse()
   }
+
+  @Test
+  fun testRefactoringWhenTargetSdkAlreadySet() {
+    projectRule.loadProject(
+      TestProjectPaths.SIMPLE_APPLICATION,
+      agpVersion = AgpVersionSoftwareEnvironmentDescriptor.AGP_LATEST,
+    )
+
+    val project = projectRule.project
+    val appBuildGradle = project.baseDir.findChild("app")!!.findChild("build.gradle")!!
+    val gradleProperties = project.baseDir.findChild("gradle.properties")!!
+
+    val initialAppBuildGradle = VfsUtil.loadText(appBuildGradle)
+    Truth.assertThat(initialAppBuildGradle).contains("targetSdk")
+
+    ApplicationManager.getApplication().invokeAndWait {
+      projectRule.fixture.openFileInEditor(gradleProperties)
+      WriteCommandAction.runWriteCommandAction(project) {
+        val propertiesDocument = FileDocumentManager.getInstance().getDocument(gradleProperties)!!
+        propertiesDocument.insertString(
+          propertiesDocument.textLength,
+          "\nandroid.sdk.defaultTargetSdkToCompileSdkIfUnset=false\n",
+        )
+        PsiDocumentManager.getInstance(project).commitDocument(propertiesDocument)
+        FileDocumentManager.getInstance().saveDocument(propertiesDocument)
+      }
+    }
+
+    Truth.assertThat(VfsUtil.loadText(gradleProperties)).contains("android.sdk.defaultTargetSdkToCompileSdkIfUnset=false")
+
+    ApplicationManager.getApplication().invokeAndWait {
+      MigrateToDefaultTargetSdkToCompileSdkIfUnsetHandler().invoke(project, null, null, null)
+    }
+
+    Truth.assertThat(VfsUtil.loadText(gradleProperties)).doesNotContain("android.sdk.defaultTargetSdkToCompileSdkIfUnset")
+    Truth.assertThat(VfsUtil.loadText(appBuildGradle)).isEqualTo(initialAppBuildGradle)
+  }
 }

@@ -160,13 +160,12 @@ private constructor(
     progressIndicator?.isIndeterminate = true
     progressIndicator?.text = AndroidBundle.message("android.refactoring.migrateto.defaulttargetsdktocompilesdkifunset.progress.findusages")
 
-    var buildModel: ProjectBuildModel? = null
+    val buildModel = ProjectBuildModel.get(myProject)
     val usages: List<UsageInfo> = facetsToMigrate.mapNotNull { facet ->
       val gradleAndroidModel: GradleAndroidModel? = GradleAndroidModel.get(facet)
 
       if (gradleAndroidModel?.selectedVariant?.targetSdkVersion == null && gradleAndroidModel?.selectedVariant?.minSdkVersion != null) {
-        val projectModel = buildModel ?: ProjectBuildModel.get(myProject).also { buildModel = it }
-        projectModel.getModuleBuildModel(facet.module)?.let { moduleBuildModel ->
+        buildModel.getModuleBuildModel(facet.module)?.let { moduleBuildModel ->
           moduleBuildModel.psiFile?.let { MigrateUsageInfo(it, moduleBuildModel, gradleAndroidModel.minSdkVersion) }
         }
       } else {
@@ -217,7 +216,12 @@ private constructor(
   }
 
   override fun performPsiSpoilingRefactoring() {
-    projectBuildModel?.applyChanges()
+    val buildModel = projectBuildModel
+    if (buildModel != null) {
+      buildModel.applyChanges()
+    } else {
+      LOG.error("ProjectBuildModel was not initialized before performPsiSpoilingRefactoring")
+    }
 
     val documentManager = PsiDocumentManager.getInstance(this.myProject)
 
