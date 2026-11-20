@@ -252,13 +252,11 @@ class StageWithToolbarView(
   }
 
   private fun toggleStageLayout() {
-
-    // Show the loading screen if StudioProfilers is waiting for an agent to attach.
-    val agentData = studioProfilers.agentData
-    var loading = agentData.status == AgentData.Status.UNSPECIFIED && studioProfilers.sessionsManager.isSessionAlive
-
-    // Show the loading screen only if the device is supported.
-    loading = loading and (studioProfilers.device != null && studioProfilers.device!!.unsupportedReason.isEmpty())
+    // Show the loading screen if StudioProfilers is waiting for an agent to attach on a supported device.
+    val loading =
+      studioProfilers.agentData.status == AgentData.Status.UNSPECIFIED &&
+        studioProfilers.sessionsManager.isSessionAlive &&
+        studioProfilers.device?.unsupportedReason?.isEmpty() == true
 
     if (loading) {
       stageLoadingPanel.startLoading()

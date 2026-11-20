@@ -1113,7 +1113,6 @@ public final class StudioFeatureTracker implements FeatureTracker {
     }
 
     public void track() {
-      // The current stage is not useful to know and thus will not be set.
       AndroidProfilerEvent.Builder profilerEvent = AndroidProfilerEvent.newBuilder().setType(myEventType);
 
       populateCpuCaptureMetadata(profilerEvent);

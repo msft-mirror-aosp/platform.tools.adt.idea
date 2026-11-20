@@ -22,10 +22,13 @@ import com.android.tools.idea.transport.TransportService
 import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.idea.transport.faketransport.TransportServiceTestImpl
+import com.android.tools.profiler.proto.Common
 import com.android.tools.profilers.FakeIdeProfilerServices
+import com.android.tools.profilers.NullMonitorStage
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.ProfilersTestData
 import com.android.tools.profilers.StudioProfilers
+import com.android.tools.profilers.Utils
 import com.android.tools.profilers.cpu.analysis.CpuAnalysisTabModel.Type
 import com.android.tools.profilers.cpu.analysis.CpuFullTraceAnalysisModel
 import com.google.common.truth.Truth.assertThat
@@ -66,6 +69,25 @@ class CpuCaptureStageTest {
         SESSION_ID,
       )
     assertThat(stage.state).isEqualTo(CpuCaptureStage.State.PARSING)
+  }
+
+  @Test
+  fun parsingFailureGoesToNullStage() {
+    Utils.startSessionOnFakeProcess(profilers, timer)
+    profilers.sessionsManager.endCurrentSession()
+    timer.tick(FakeTimer.ONE_SECOND_IN_NS)
+    assertThat(profilers.session).isNotEqualTo(Common.Session.getDefaultInstance())
+
+    profilers.stage =
+      CpuCaptureStage.create(
+        profilers,
+        ProfilersTestData.DEFAULT_CONFIG,
+        CpuProfilerTestUtils.getTraceFile("corrupted_trace.trace"),
+        SESSION_ID,
+      )
+    assertThat(services.notification).isNotNull()
+    assertThat(profilers.stage).isInstanceOf(NullMonitorStage::class.java)
+    assertThat(profilers.session).isEqualTo(Common.Session.getDefaultInstance())
   }
 
   @Test

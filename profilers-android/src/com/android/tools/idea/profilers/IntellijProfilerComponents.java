@@ -26,7 +26,6 @@ import com.android.tools.profilers.IdeProfilerComponents;
 import com.android.tools.profilers.IdeProfilerServices;
 import com.android.tools.profilers.ImportDialog;
 import com.android.tools.profilers.UiMessageHandler;
-import com.android.tools.profilers.analytics.FeatureTracker;
 import com.android.tools.profilers.cpu.config.CpuProfilerConfigModel;
 import com.android.tools.profilers.cpu.config.ProfilingConfiguration;
 import com.android.tools.profilers.cpu.config.UnspecifiedConfiguration;
@@ -48,15 +47,9 @@ public class IntellijProfilerComponents implements IdeProfilerComponents {
 
   @NotNull private final Disposable myParentDisposable;
 
-  @NotNull private final FeatureTracker myFeatureTracker;
-
-  public IntellijProfilerComponents(
-    @NotNull Project project,
-    @NotNull Disposable parentDisposable,
-    @NotNull FeatureTracker featureTracker) {
+  public IntellijProfilerComponents(@NotNull Project project, @NotNull Disposable parentDisposable) {
     myProject = project;
     myParentDisposable = parentDisposable;
-    myFeatureTracker = featureTracker;
   }
 
   @NotNull

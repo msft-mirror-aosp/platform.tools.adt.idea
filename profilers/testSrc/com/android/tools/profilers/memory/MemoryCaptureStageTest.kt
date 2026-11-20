@@ -20,49 +20,34 @@ import com.android.tools.idea.transport.faketransport.FakeGrpcChannel
 import com.android.tools.idea.transport.faketransport.FakeTransportService
 import com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_DEVICE_NAME
 import com.android.tools.idea.transport.faketransport.FakeTransportService.FAKE_PROCESS_NAME
-import com.android.tools.profilers.FakeIdeProfilerComponents
 import com.android.tools.profilers.FakeIdeProfilerServices
 import com.android.tools.profilers.ProfilerClient
 import com.android.tools.profilers.StudioProfilers
-import com.android.tools.profilers.StudioProfilersView
-import com.android.tools.profilers.TaskProfilersView
 import com.android.tools.profilers.memory.adapters.CaptureObject
 import com.android.tools.profilers.memory.adapters.FakeCaptureObject
 import com.google.common.truth.Truth.assertThat
 import com.google.common.util.concurrent.MoreExecutors
-import com.intellij.testFramework.ApplicationRule
-import com.intellij.testFramework.DisposableRule
-import com.intellij.testFramework.EdtRule
-import com.intellij.testFramework.RunsInEdt
 import java.util.function.Supplier
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-@RunsInEdt
-class MemoryCaptureStageViewTest {
+class MemoryCaptureStageTest {
 
   private lateinit var profilers: StudioProfilers
   private lateinit var mockLoader: FakeCaptureObjectLoader
   private val myTimer = FakeTimer()
   private lateinit var ideProfilerServices: FakeIdeProfilerServices
-  private lateinit var profilersView: StudioProfilersView
 
   private val transportService = FakeTransportService(myTimer)
 
-  @get:Rule val appRule = ApplicationRule()
-
-  @get:Rule val disposableRule = DisposableRule()
-
-  @Rule @JvmField val grpcChannel = FakeGrpcChannel("MemoryProfilerStageViewTestChannel", transportService)
-  @get:Rule val myEdtRule = EdtRule()
+  @Rule @JvmField val grpcChannel = FakeGrpcChannel("MemoryCaptureStageTestChannel", transportService)
 
   @Before
   fun setupBase() {
     ideProfilerServices = FakeIdeProfilerServices()
     profilers = StudioProfilers(ProfilerClient(grpcChannel.channel), ideProfilerServices, myTimer)
     profilers.setPreferredProcess(FAKE_DEVICE_NAME, FAKE_PROCESS_NAME, null)
-    profilersView = TaskProfilersView(profilers, FakeIdeProfilerComponents(), disposableRule.disposable)
     mockLoader = FakeCaptureObjectLoader()
 
     // Advance the clock to make sure StudioProfilers has a chance to select device + process.

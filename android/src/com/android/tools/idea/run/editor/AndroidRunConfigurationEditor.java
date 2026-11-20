@@ -131,6 +131,7 @@ public class AndroidRunConfigurationEditor<T extends AndroidRunConfigurationBase
 
     myShowLogcatCheckBox.setVisible(showLogcatCheckbox);
 
+    // Called for its side effect of registering fireEditorStateChanged as the quick-fix callback (e.g., UnsignedApkQuickFix).
     config.validate(null, this::fireEditorStateChanged);
   }
 

@@ -157,7 +157,7 @@ class UnifiedProfilerFileEditor(private val project: Project, private val file: 
       file,
       component,
       this,
-      { ideServices -> IntellijProfilerComponents(project, this, ideServices.featureTracker) },
+      { IntellijProfilerComponents(project, this) },
     ) { session ->
       offlineProfilers = session.profilers
       profilersView = session.profilersView

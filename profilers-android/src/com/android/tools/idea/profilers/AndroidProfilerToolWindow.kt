@@ -132,7 +132,7 @@ class AndroidProfilerToolWindow(private val window: ToolWindowWrapper, private v
         }
       }
 
-      ideProfilerComponents = IntellijProfilerComponents(project, this, ideProfilerServices.featureTracker)
+      ideProfilerComponents = IntellijProfilerComponents(project, this)
 
       // Create and store the task handlers in a map.
       initializeTaskHandlers()

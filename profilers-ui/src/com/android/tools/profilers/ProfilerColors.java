@@ -229,8 +229,6 @@ public class ProfilerColors {
 
   public static final Color MEMORY_OBJECTS_CAPTURED = new JBColor(new Color(0x1B4D65), new Color(0xF6F6F6));
 
-  public static final Color MEMORY_HEAP_DUMP_BG = new JBColor(new Color(0xD8D8D8), new Color(0x9C9C9C));
-
   public static final Color MEMORY_ALLOC_BG = new JBColor(new Color(0xECF2FA), new Color(0x323940));
 
   public static final Color ENERGY_BACKGROUND = new JBColor(new Color(0xF1B876), new Color(0xFFDFA6));
@@ -252,18 +250,6 @@ public class ProfilerColors {
   public static final Color TOOLTIP_TEXT = JBColor.foreground();
 
   public static final Color TOOLTIP_LOW_CONTRAST = new JBColor(0x888888, 0x838485);
-
-  public static final Color USER_COUNTER_EVENT_NOT_STARTED = new JBColor(0xF1EBDA, 0xF1EBDA);
-
-  public static final Color USER_COUNTER_EVENT_NONE = new JBColor(0XE6ecf0, 0xe6ecf0);
-
-  public static final Color USER_COUNTER_EVENT_LIGHT = new JBColor(0xc6d4dc, 0xc6d4dc);
-
-  public static final Color USER_COUNTER_EVENT_MED = new JBColor(0xa6bcc9, 0xa6bcc9);
-
-  public static final Color USER_COUNTER_EVENT_DARK = new JBColor(0x7699ac, 0x7699ac);
-
-  public static final Color USER_COUNTER_EVENT_USAGE = new JBColor(0xa6bcc9, 0xa6bcc9);
 
   public static final Color VSYNC_BACKGROUND = new JBColor(0xEEEEEE, 0x111111);
 
