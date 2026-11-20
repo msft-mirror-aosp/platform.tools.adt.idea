@@ -37,6 +37,8 @@ object StagingIcons {
 
   @JvmField val DISPLAYS: Icon = load("icons/displays.svg", -1197752924, 2)
 
+  @JvmField val EXTENDED_CONTROLS: Icon = load("icons/extended-controls.svg", -250006000, 2)
+
   @JvmField val FINGERPRINT: Icon = load("icons/fingerprint.svg", -1916253604, 2)
 
   @JvmField val GOOGLE_ASSISTANT: Icon = load("icons/google-assistant.svg", -333299809, 2)
