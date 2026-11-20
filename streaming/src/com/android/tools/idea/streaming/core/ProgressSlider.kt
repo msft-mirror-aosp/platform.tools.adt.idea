@@ -15,6 +15,7 @@
  */
 package com.android.tools.idea.streaming.core
 
+import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.dsl.builder.DslComponentProperty
 import com.intellij.ui.dsl.gridLayout.UnscaledGaps
@@ -37,6 +38,8 @@ import javax.swing.plaf.basic.BasicSliderUI
 /** Horizontal [JSlider] with a filled circular thumb and a highlighted track segment to the left of the thumb. */
 internal class ProgressSlider(min: Int = 0, max: Int = 100, value: Int = 0) : JSlider(HORIZONTAL, min, max, value) {
 
+  private var cancellingDrag = false
+
   init {
     isOpaque = false
     paintTicks = false
@@ -44,11 +47,42 @@ internal class ProgressSlider(min: Int = 0, max: Int = 100, value: Int = 0) : JS
     putClientProperty(DslComponentProperty.VISUAL_PADDINGS, UnscaledGaps(FOCUS_RING_THICKNESS))
   }
 
+  override fun isEnabled(): Boolean = super.isEnabled() || cancellingDrag
+
+  override fun setEnabled(enabled: Boolean) {
+    super.setEnabled(enabled)
+    if (!enabled) {
+      (ui as? ProgressSliderUI)?.cancelDrag()
+      if (valueIsAdjusting) {
+        valueIsAdjusting = false
+      }
+    }
+  }
+
+  override fun setValueIsAdjusting(b: Boolean) {
+    cancellingDrag = false
+    if (!b && (ui as? ProgressSliderUI)?.cancelDrag() == true) {
+      return
+    }
+    super.setValueIsAdjusting(b)
+  }
+
   override fun updateUI() {
     setUI(ProgressSliderUI(this))
   }
 
-  private class ProgressSliderUI(slider: JSlider) : BasicSliderUI(slider) {
+  private class ProgressSliderUI(private val progressSlider: ProgressSlider) : BasicSliderUI(progressSlider) {
+
+    fun cancelDrag(): Boolean {
+      if (!isDragging) return false
+      progressSlider.cancellingDrag = true
+      try {
+        trackListener.mouseReleased(MouseEvent(slider, MouseEvent.MOUSE_RELEASED, 0L, 0, 0, 0, 1, false, MouseEvent.BUTTON1))
+      } finally {
+        progressSlider.cancellingDrag = false
+      }
+      return true
+    }
 
     override fun installDefaults(slider: JSlider) {
       LookAndFeel.installColorsAndFont(slider, "Slider.background", "Slider.foreground", "Slider.font")
@@ -176,7 +210,7 @@ internal class ProgressSlider(min: Int = 0, max: Int = 100, value: Int = 0) : JS
 
         if (slider.isEnabled && slider.hasFocus() && focusThickness > 0.0) {
           val ringRadius = thumbRadius + focusThickness / 2.0
-          g2d.paint = JBUI.CurrentTheme.Focus.focusColor()
+          g2d.paint = focusColor()
           g2d.stroke = BasicStroke(focusThickness.toFloat())
           g2d.draw(Ellipse2D.Double(centerX - ringRadius, centerY - ringRadius, ringRadius * 2.0, ringRadius * 2.0))
         }
@@ -198,11 +232,19 @@ internal class ProgressSlider(min: Int = 0, max: Int = 100, value: Int = 0) : JS
     private const val TRACK_THICKNESS = 4
     private const val FOCUSED_TRACK_THICKNESS = 6
 
-    private val TRACK_COLOR: Color = JBColor.namedColor("Slider.trackColor", JBColor(0xC9CCD6, 0x5A5D63))
-    private val DISABLED_TRACK_COLOR: Color = JBColor.namedColor("Component.disabledBorderColor", JBColor(0xDFE1E5, 0x43454A))
+    private val OPAQUE_BACKGROUND: Color = JBColor.lazy { ColorUtil.toAlpha(JBColor.PanelBackground, 255) }
+    private val TRACK_COLOR: Color = JBColor.lazy {
+      ColorUtil.alphaBlending(JBColor.namedColor("Slider.trackColor", JBColor(0xC9CCD6, 0x5A5D63)), OPAQUE_BACKGROUND)
+    }
+    private val DISABLED_TRACK_COLOR: Color = JBColor.lazy {
+      ColorUtil.alphaBlending(JBColor.namedColor("Component.disabledBorderColor", JBColor(0xDFE1E5, 0x43454A)), OPAQUE_BACKGROUND)
+    }
 
-    private fun activeColor(): Color = JBUI.CurrentTheme.DefaultTabs.underlineColor()
+    private fun activeColor(): Color = ColorUtil.alphaBlending(JBUI.CurrentTheme.DefaultTabs.underlineColor(), OPAQUE_BACKGROUND)
 
-    private fun disabledActiveColor(): Color = JBUI.CurrentTheme.DefaultTabs.inactiveUnderlineColor()
+    private fun disabledActiveColor(): Color =
+      ColorUtil.alphaBlending(JBUI.CurrentTheme.DefaultTabs.inactiveUnderlineColor(), OPAQUE_BACKGROUND)
+
+    private fun focusColor(): Color = ColorUtil.alphaBlending(JBUI.CurrentTheme.Focus.focusColor(), OPAQUE_BACKGROUND)
   }
 }

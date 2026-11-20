@@ -31,6 +31,7 @@ import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Dimension
 import javax.swing.JPanel
+import javax.swing.event.ChangeListener
 import org.junit.Rule
 import org.junit.Test
 
@@ -162,6 +163,46 @@ class ProgressSliderTest {
     assertThat(disabledImage.getRGB(centerX, centerY)).isEqualTo(disabledLeftRgb)
     assertThat(disabledImage.getRGB(centerX, centerY - JBUI.scale(5))).isEqualTo(disabledLeftRgb)
     assertThat(disabledImage.getRGB(centerX - JBUI.scale(7), centerY - JBUI.scale(7)) ushr 24).isEqualTo(0)
+
+    // Disabling mid-drag or clearing valueIsAdjusting mid-drag terminates the active drag and updates thumb geometry.
+    slider.isEnabled = true
+    slider.value = 0
+    var enabledDuringAdjustmentEnd: Boolean? = null
+    val dragCancelListener = ChangeListener {
+      if (!slider.valueIsAdjusting && enabledDuringAdjustmentEnd == null) {
+        enabledDuringAdjustmentEnd = slider.isEnabled
+      }
+    }
+    ui.mouse.press(startX, centerY)
+    ui.mouse.dragTo(endX, centerY)
+    assertThat(slider.valueIsAdjusting).isTrue()
+    slider.addChangeListener(dragCancelListener)
+    slider.isEnabled = false
+    slider.removeChangeListener(dragCancelListener)
+    assertThat(slider.valueIsAdjusting).isFalse()
+    assertThat(enabledDuringAdjustmentEnd).isFalse()
+    slider.value = 0
+    ui.mouse.release()
+    assertThat(slider.valueIsAdjusting).isFalse()
+
+    slider.isEnabled = true
+    slider.value = 500
+    val reenabledMidImage = ui.render()
+    assertThat(reenabledMidImage.getRGB(centerX, centerY)).isEqualTo(expectedPlayedRgb)
+    assertThat(reenabledMidImage.getRGB(reenabledMidImage.width - JBUI.scale(40), centerY)).isNotEqualTo(expectedPlayedRgb)
+
+    slider.value = 0
+    ui.mouse.press(startX, centerY)
+    ui.mouse.dragTo(endX, centerY)
+    assertThat(slider.valueIsAdjusting).isTrue()
+    slider.valueIsAdjusting = false
+    slider.value = 0
+    ui.mouse.dragTo(panel.width / 2, centerY)
+    assertThat(slider.valueIsAdjusting).isFalse()
+    assertThat(slider.value).isEqualTo(0)
+    val resetAfterCancelImage = ui.render()
+    assertThat(resetAfterCancelImage.getRGB(resetAfterCancelImage.width - JBUI.scale(40), centerY)).isNotEqualTo(expectedPlayedRgb)
+    ui.mouse.release()
 
     // No text baseline (-1), so Kotlin UI DSL vertically center-aligns the slider with adjacent labels.
     assertThat(slider.getBaseline(slider.width, slider.height)).isEqualTo(-1)
