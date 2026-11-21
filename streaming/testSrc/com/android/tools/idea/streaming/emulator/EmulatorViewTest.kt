@@ -19,18 +19,25 @@ import com.android.emulator.control.Environment
 import com.android.emulator.control.Posture.PostureValue
 import com.android.mockito.kotlin.whenever
 import com.android.testutils.GoldenImageRule
+import com.android.testutils.ImageDiffUtil
 import com.android.testutils.waitForCondition
 import com.android.tools.adtui.ImageUtils
 import com.android.tools.adtui.actions.executeAction
+import com.android.tools.adtui.common.AdtUiCursorType
+import com.android.tools.adtui.common.AdtUiCursorsProvider
+import com.android.tools.adtui.common.TestAdtUiCursorsProvider
+import com.android.tools.adtui.common.replaceAdtUiCursorWithPredefinedCursor
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
 import com.android.tools.adtui.swing.FakeMouse
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessRootPaneContainer
 import com.android.tools.adtui.swing.HiDpiRule
 import com.android.tools.adtui.swing.IconLoaderRule
+import com.android.tools.adtui.swing.popup.ActionPopupMenuRule
 import com.android.tools.adtui.swing.replaceKeyboardFocusManager
 import com.android.tools.adtui.ui.NotificationHolderPanel
 import com.android.tools.analytics.UsageTrackerRule
+import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
 import com.android.tools.idea.streaming.EmulatorSettings
 import com.android.tools.idea.streaming.core.AndroidInputEvent
@@ -42,8 +49,11 @@ import com.android.tools.idea.streaming.emulator.EmulatorController.ConnectionSt
 import com.android.tools.idea.streaming.emulator.FakeEmulator.Companion.IGNORE_SCREENSHOT_CALL_FILTER
 import com.android.tools.idea.streaming.emulator.FakeEmulator.GrpcCallRecord
 import com.android.tools.idea.streaming.emulator.actions.EnvironmentTracker
+import com.android.tools.idea.streaming.emulator.xr.EmulatorXrInputController
 import com.android.tools.idea.streaming.testutil.newEmulatorDisplayPanel
 import com.android.tools.idea.streaming.xr.TRANSLATION_STEP_SIZE
+import com.android.tools.idea.streaming.xr.XrInputMode
+import com.android.tools.idea.testing.flags.overrideForTest
 import com.android.tools.idea.testing.mockStatic
 import com.google.common.truth.Truth.assertThat
 import com.google.wireless.android.sdk.stats.AndroidStudioEvent
@@ -72,6 +82,7 @@ import com.intellij.openapi.actionSystem.IdeActions.ACTION_REDO
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_SELECT_ALL
 import com.intellij.openapi.actionSystem.IdeActions.ACTION_UNDO
 import com.intellij.openapi.actionSystem.KeyboardShortcut
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.keymap.KeymapManager
 import com.intellij.openapi.keymap.KeymapUtil
@@ -81,17 +92,24 @@ import com.intellij.testFramework.ApplicationRule
 import com.intellij.testFramework.EdtRule
 import com.intellij.testFramework.RuleChain
 import com.intellij.testFramework.RunsInEdt
+import com.intellij.testFramework.replaceService
 import com.intellij.ui.EditorNotificationPanel
+import java.awt.AWTEvent
 import java.awt.Component
+import java.awt.Cursor
 import java.awt.DefaultKeyboardFocusManager
 import java.awt.Dimension
 import java.awt.KeyboardFocusManager
 import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.PointerInfo
+import java.awt.Toolkit
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.StringSelection
 import java.awt.event.InputEvent.ALT_DOWN_MASK
+import java.awt.event.InputEvent.BUTTON1_DOWN_MASK
+import java.awt.event.InputEvent.BUTTON2_DOWN_MASK
+import java.awt.event.InputEvent.BUTTON3_DOWN_MASK
 import java.awt.event.InputEvent.CTRL_DOWN_MASK
 import java.awt.event.InputEvent.SHIFT_DOWN_MASK
 import java.awt.event.KeyEvent
@@ -126,11 +144,16 @@ import java.awt.event.KeyEvent.VK_SPACE
 import java.awt.event.KeyEvent.VK_TAB
 import java.awt.event.KeyEvent.VK_UP
 import java.awt.event.KeyEvent.VK_W
+import java.awt.event.MouseEvent
+import java.awt.event.WindowEvent
 import java.awt.geom.Rectangle2D
 import java.nio.file.Path
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import java.util.concurrent.TimeoutException
+import javax.swing.JButton
+import javax.swing.JViewport
+import javax.swing.SwingUtilities
 import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.seconds
 import org.junit.After
@@ -156,10 +179,19 @@ class EmulatorViewTest {
 
   private val emulatorViewRule = EmulatorViewRule()
   private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/EmulatorViewTest/golden")
+  private val actionPopupRule = ActionPopupMenuRule()
   private val hiDpiRule = HiDpiRule()
   @get:Rule
   val ruleChain =
-    RuleChain(ApplicationRule(), ClipboardSynchronizationDisablementRule(), emulatorViewRule, goldenImageRule, EdtRule(), hiDpiRule)
+    RuleChain(
+      ApplicationRule(),
+      ClipboardSynchronizationDisablementRule(),
+      emulatorViewRule,
+      goldenImageRule,
+      actionPopupRule,
+      EdtRule(),
+      hiDpiRule,
+    )
   @get:Rule val usageTrackerRule = UsageTrackerRule()
   private lateinit var view: EmulatorView
   private val fakeEmulator: FakeEmulator by lazy { emulatorViewRule.getFakeEmulator(view) }
@@ -353,6 +385,7 @@ class EmulatorViewTest {
 
   @Test
   fun testRightClick() {
+    StudioFlags.RUNNING_DEVICES_CONTEXT_MENU.overrideForTest(true, testRootDisposable)
     hiDpiRule.setRetinaMode()
     hiDpiRule.setSysScale(2.0f)
     fakeUi = FakeUi(createEmulatorDisplayPanel())
@@ -367,6 +400,19 @@ class EmulatorViewTest {
     assertThat(shortDebugString(inputEventCall.request)).isEqualTo("mouse_event { x: 83 y: 257 buttons: 2 }")
     fakeUi.mouse.release()
     assertThat(shortDebugString(inputEventCall.request)).isEqualTo("mouse_event { x: 83 y: 257 }")
+
+    // Simulate Windows right-click (isPopupTrigger = false on press, true on release) when context menu is enabled:
+    // the button-down sent on press must still be balanced by a button-up on release when the popup menu opens.
+    view.rightClicksAreSentToDevice = false
+    val pointInView = SwingUtilities.convertPoint(fakeUi.root, Point(40, 30), view)
+    val now = System.currentTimeMillis()
+    view.dispatchEvent(
+      MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON3_DOWN_MASK, pointInView.x, pointInView.y, 1, false, MouseEvent.BUTTON3)
+    )
+    assertThat(shortDebugString(inputEventCall.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 83 y: 257 buttons: 2 }")
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_RELEASED, now, 0, pointInView.x, pointInView.y, 1, true, MouseEvent.BUTTON3))
+    assertThat(shortDebugString(inputEventCall.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 83 y: 257 }")
+    assertThat(actionPopupRule.popup?.isVisible).isTrue()
   }
 
   @Test
@@ -566,12 +612,33 @@ class EmulatorViewTest {
     assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1166 y: 1014 buttons: 1 }")
     fakeUi.mouse.dragTo(180, 100)
     assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1439 y: 1014 }")
+
+    // Further drag steps outside or back inside the display do not emit duplicate releases or resurrect buttons: 1.
+    fakeUi.mouse.dragTo(190, 100)
+    fakeUi.mouse.dragTo(100, 100)
+    fakeUi.mouse.release()
+
+    // Events with no supported button (buttonToMask == 0) are ignored.
+    val now = System.currentTimeMillis()
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, 0, 100, 100, 1, false, MouseEvent.NOBUTTON))
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_RELEASED, now, 0, 100, 100, 1, false, MouseEvent.NOBUTTON))
+
+    // Verify no events were queued between the boundary release above and this hover move.
+    fakeUi.mouse.moveTo(110, 100)
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 841 y: 1014 }")
+
+    // Exiting EmulatorView directly while dragging also sends a clamped release event.
+    fakeUi.mouse.press(100, 100)
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 733 y: 1014 buttons: 1 }")
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_EXITED, now, BUTTON1_DOWN_MASK, 210, 100, 0, false, MouseEvent.NOBUTTON))
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1439 y: 1014 }")
+    fakeUi.mouse.release()
   }
 
   @Test
   fun testMultiTouch() {
     hiDpiRule.setRetinaMode()
-    fakeUi = FakeUi(createEmulatorDisplayPanel())
+    fakeUi = FakeUi(createEmulatorDisplayPanel(), testRootDisposable)
 
     fakeUi.root.size = Dimension(200, 300)
     fakeUi.layoutAndDispatchEvents()
@@ -579,7 +646,7 @@ class EmulatorViewTest {
 
     val mousePosition = Point(150, 75)
     val pointerInfo = mock<PointerInfo>()
-    whenever(pointerInfo.location).thenReturn(mousePosition)
+    whenever(pointerInfo.location).thenAnswer { Point(mousePosition) }
     mouseInfo.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
 
     fakeUi.keyboard.setFocus(view)
@@ -618,6 +685,317 @@ class EmulatorViewTest {
 
     fakeUi.keyboard.release(VK_CONTROL)
     assertAppearance("MultiTouch4")
+
+    // Releasing Ctrl mid-drag lifts the multi-touch pinch and continues dragging as a single pointer.
+    fakeUi.keyboard.press(VK_CONTROL)
+    fakeUi.mouse.press(mousePosition)
+    assertThat(shortDebugString(call.getNextRequest(1.seconds)))
+      .isEqualTo(
+        "touch_event { touches { x: 1058 y: 960 pressure: 1024 expiration: NEVER_EXPIRE }" +
+          " touches { x: 381 y: 1999 identifier: 1 pressure: 1024 expiration: NEVER_EXPIRE } }"
+      )
+    fakeUi.keyboard.release(VK_CONTROL)
+    assertThat(shortDebugString(call.getNextRequest(1.seconds)))
+      .isEqualTo(
+        "touch_event { touches { x: 1058 y: 960 expiration: NEVER_EXPIRE }" +
+          " touches { x: 381 y: 1999 identifier: 1 expiration: NEVER_EXPIRE } }"
+      )
+    mousePosition.x += 10
+    fakeUi.mouse.dragTo(mousePosition)
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 1")
+    fakeUi.mouse.release()
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).doesNotContain("buttons: 1")
+
+    // Exiting Pan mode refreshes pointer coordinates before evaluating multi-touch mode.
+    view.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame()
+    assertThat(view.isPannable).isTrue()
+    val cleanImage = ImageUtils.scale(fakeUi.render(), 0.5)
+
+    view.isPanning = true
+    // Pointer leaves the view during Pan mode while Ctrl is held; multi-touch must stay off on Pan exit.
+    mousePosition.setLocation(-500, -500)
+    fakeUi.keyboard.press(VK_CONTROL)
+    view.isPanning = false
+    mousePosition.setLocation(100, 150)
+    ImageDiffUtil.assertImageSimilar("NoMultiTouch", cleanImage, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+    fakeUi.keyboard.release(VK_CONTROL)
+
+    // Pointer outside the visible viewport (within scrolled view's virtual bounds) must not enter multi-touch on Pan exit.
+    view.isPanning = true
+    mousePosition.setLocation(100, 400)
+    fakeUi.keyboard.press(VK_CONTROL)
+    view.isPanning = false
+    mousePosition.setLocation(100, 150)
+    ImageDiffUtil.assertImageSimilar("NoOffViewportMultiTouch", cleanImage, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+    fakeUi.keyboard.release(VK_CONTROL)
+
+    // Pointer enters the view during Pan mode while Ctrl is held; multi-touch turns on immediately on Pan exit.
+    view.isPanning = true
+    mousePosition.setLocation(100, 150)
+    fakeUi.keyboard.press(VK_CONTROL)
+    // Releasing Ctrl while focus is on another component must not leave multi-touch stuck on when exiting Pan mode.
+    val otherComponent = JButton()
+    fakeUi.keyboard.setFocus(otherComponent)
+    fakeUi.keyboard.release(VK_CONTROL)
+    view.isPanning = false
+    ImageDiffUtil.assertImageSimilar("NoStaleMultiTouch", cleanImage, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+    fakeUi.keyboard.setFocus(view)
+    fakeUi.keyboard.press(VK_CONTROL)
+    fakeUi.mouse.moveTo(mousePosition)
+    val expectedMultiTouch = ImageUtils.scale(fakeUi.render(), 0.5)
+    assertThat(expectedMultiTouch.getRGB(0, 0, expectedMultiTouch.width, expectedMultiTouch.height, null, 0, expectedMultiTouch.width))
+      .isNotEqualTo(cleanImage.getRGB(0, 0, cleanImage.width, cleanImage.height, null, 0, cleanImage.width))
+    fakeUi.keyboard.release(VK_CONTROL)
+    mousePosition.setLocation(-500, -500)
+    view.isPanning = true
+    mousePosition.setLocation(100, 150)
+    fakeUi.keyboard.press(VK_CONTROL)
+    view.isPanning = false
+    ImageDiffUtil.assertImageSimilar("MultiTouchOnPanExit", expectedMultiTouch, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+
+    // Releasing Ctrl while another component has focus clears the active multi-touch overlay immediately without mouse movement.
+    fakeUi.keyboard.setFocus(otherComponent)
+    fakeUi.keyboard.release(VK_CONTROL)
+    ImageDiffUtil.assertImageSimilar("ClearedUnfocusedMultiTouch", cleanImage, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+
+    // Deactivating the window while another component has focus clears lastModifiers and active multi-touch overlay.
+    fakeUi.keyboard.press(VK_CONTROL)
+    view.isPanning = true
+    view.isPanning = false
+    ImageDiffUtil.assertImageSimilar("MultiTouchBeforeDeactivate", expectedMultiTouch, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+    val viewWindow = SwingUtilities.getWindowAncestor(view)
+    Toolkit.getDefaultToolkit().getAWTEventListeners(AWTEvent.WINDOW_EVENT_MASK).forEach {
+      it.eventDispatched(WindowEvent(viewWindow, WindowEvent.WINDOW_DEACTIVATED))
+    }
+    ImageDiffUtil.assertImageSimilar("ClearedOnWindowDeactivated", cleanImage, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+    fakeUi.keyboard.release(VK_CONTROL)
+
+    // Holding Ctrl in a different window must not enter multi-touch on environment/camera updates or Pan exit.
+    val otherWindowButton = JButton()
+    val otherWindowUi = FakeUi(otherWindowButton, parentDisposable = testRootDisposable)
+    otherWindowUi.keyboard.setFocus(otherWindowButton)
+    otherWindowUi.keyboard.press(VK_CONTROL)
+    view.updateCameraPromptAndMultiTouchFeedback()
+    ImageDiffUtil.assertImageSimilar("NoCrossWindowEnvMultiTouch", cleanImage, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+    view.isPanning = true
+    view.isPanning = false
+    ImageDiffUtil.assertImageSimilar("NoCrossWindowPanExitMultiTouch", cleanImage, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+    otherWindowUi.keyboard.release(VK_CONTROL)
+
+    // Another active window covering the pointer on screen must prevent entering multi-touch on Pan exit.
+    otherWindowUi.root.size = Dimension(300, 300)
+    otherWindowUi.layout()
+    focusManager.setActiveWindow(SwingUtilities.getWindowAncestor(otherWindowButton))
+    fakeUi.keyboard.setFocus(view)
+    fakeUi.keyboard.press(VK_CONTROL)
+    view.isPanning = true
+    view.isPanning = false
+    ImageDiffUtil.assertImageSimilar("NoActiveWindowOccludedMultiTouch", cleanImage, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+    focusManager.setActiveWindow(viewWindow)
+    view.isPanning = true
+    view.isPanning = false
+    ImageDiffUtil.assertImageSimilar("MultiTouchAfterUnoccluded", expectedMultiTouch, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+
+    // Non-primary mouse buttons are ignored in multi-touch mode and are not resurrected if Ctrl is released while held.
+    val viewPoint = SwingUtilities.convertPoint(fakeUi.root, mousePosition, view)
+    val now = System.currentTimeMillis()
+    view.dispatchEvent(
+      MouseEvent(
+        view,
+        MouseEvent.MOUSE_PRESSED,
+        now,
+        CTRL_DOWN_MASK or BUTTON2_DOWN_MASK,
+        viewPoint.x,
+        viewPoint.y,
+        1,
+        false,
+        MouseEvent.BUTTON2,
+      )
+    )
+    fakeUi.keyboard.release(VK_CONTROL)
+    view.dispatchEvent(
+      MouseEvent(
+        view,
+        MouseEvent.MOUSE_PRESSED,
+        now,
+        BUTTON1_DOWN_MASK or BUTTON2_DOWN_MASK,
+        viewPoint.x,
+        viewPoint.y,
+        1,
+        false,
+        MouseEvent.BUTTON1,
+      )
+    )
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 1")
+    view.dispatchEvent(
+      MouseEvent(view, MouseEvent.MOUSE_RELEASED, now, BUTTON2_DOWN_MASK, viewPoint.x, viewPoint.y, 1, false, MouseEvent.BUTTON1)
+    )
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).doesNotContain("buttons:")
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_RELEASED, now, 0, viewPoint.x, viewPoint.y, 1, false, MouseEvent.BUTTON2))
+    fakeUi.keyboard.press(VK_CONTROL)
+    fakeUi.mouse.press(mousePosition, FakeMouse.Button.MIDDLE)
+    view.isPanning = true
+    fakeUi.mouse.release()
+    view.isPanning = false
+
+    // Primary button multi-touch gesture is cleanly released when entering Pan mode.
+    fakeUi.mouse.press(mousePosition)
+    val pressInMultiTouch = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(pressInMultiTouch).contains("touch_event")
+    assertThat(pressInMultiTouch).contains("pressure: 1024")
+    view.isPanning = true
+    val releaseOnPanEntry = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(releaseOnPanEntry).contains("touch_event")
+    assertThat(releaseOnPanEntry).doesNotContain("pressure:")
+    fakeUi.mouse.release()
+    view.isPanning = false
+    fakeUi.keyboard.release(VK_CONTROL)
+
+    // Pressing Ctrl mid-BUTTON1-press without dragging and entering Pan mode cleanly releases BUTTON1 without an unmatched touch_event.
+    fakeUi.mouse.press(mousePosition)
+    val singlePress = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(singlePress).contains("mouse_event")
+    assertThat(singlePress).contains("buttons: 1")
+    fakeUi.keyboard.press(VK_CONTROL)
+    view.isPanning = true
+    val singleReleaseOnPanEntry = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(singleReleaseOnPanEntry).contains("mouse_event")
+    assertThat(singleReleaseOnPanEntry).doesNotContain("buttons:")
+    fakeUi.mouse.release()
+    view.isPanning = false
+    fakeUi.keyboard.release(VK_CONTROL)
+
+    // Pressing Ctrl mid-BUTTON1-drag activates multi-touch; entering Pan mode (or releasing BUTTON1 with Ctrl held) releases both streams.
+    fakeUi.mouse.press(mousePosition)
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 1")
+    fakeUi.keyboard.press(VK_CONTROL)
+    mousePosition.x += 5
+    fakeUi.mouse.dragTo(mousePosition)
+    val midDragTouch = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(midDragTouch).contains("touch_event")
+    assertThat(midDragTouch).contains("pressure: 1024")
+    view.isPanning = true
+    val panTouchRelease = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(panTouchRelease).contains("touch_event")
+    assertThat(panTouchRelease).doesNotContain("pressure:")
+    val panMouseRelease = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(panMouseRelease).contains("mouse_event")
+    assertThat(panMouseRelease).doesNotContain("buttons:")
+    fakeUi.mouse.release()
+    view.isPanning = false
+    fakeUi.keyboard.release(VK_CONTROL)
+    mousePosition.x -= 5
+    fakeUi.mouse.moveTo(mousePosition)
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).doesNotContain("buttons:")
+
+    fakeUi.mouse.press(mousePosition)
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 1")
+    fakeUi.keyboard.press(VK_CONTROL)
+    mousePosition.x += 5
+    fakeUi.mouse.dragTo(mousePosition)
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("pressure: 1024")
+    fakeUi.mouse.release()
+    val directTouchRelease = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(directTouchRelease).contains("touch_event")
+    assertThat(directTouchRelease).doesNotContain("pressure:")
+    val directMouseRelease = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(directMouseRelease).contains("mouse_event")
+    assertThat(directMouseRelease).doesNotContain("buttons:")
+    fakeUi.keyboard.release(VK_CONTROL)
+    mousePosition.x -= 5
+    fakeUi.mouse.moveTo(mousePosition)
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).doesNotContain("buttons:")
+
+    // Missed button releases are also synced on out-of-bounds mousePressed, mouseReleased with wasButtonDown == false,
+    // mouseDragged with remaining held button, and out-of-bounds mouseEntered for non-primary buttons (using prevMouseCoordinates).
+    view.dispatchEvent(
+      MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON1_DOWN_MASK, viewPoint.x, viewPoint.y, 1, false, MouseEvent.BUTTON1)
+    )
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 1")
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON1_DOWN_MASK, -10, -10, 1, false, MouseEvent.BUTTON1))
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).doesNotContain("buttons:")
+
+    view.dispatchEvent(
+      MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON1_DOWN_MASK, viewPoint.x, viewPoint.y, 1, false, MouseEvent.BUTTON1)
+    )
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 1")
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_RELEASED, now, 0, viewPoint.x, viewPoint.y, 1, false, MouseEvent.BUTTON2))
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).doesNotContain("buttons:")
+
+    view.dispatchEvent(
+      MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON1_DOWN_MASK, viewPoint.x, viewPoint.y, 1, false, MouseEvent.BUTTON1)
+    )
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 1")
+    view.dispatchEvent(
+      MouseEvent(
+        view,
+        MouseEvent.MOUSE_PRESSED,
+        now,
+        BUTTON1_DOWN_MASK or BUTTON2_DOWN_MASK,
+        viewPoint.x,
+        viewPoint.y,
+        1,
+        false,
+        MouseEvent.BUTTON2,
+      )
+    )
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 5")
+    view.dispatchEvent(
+      MouseEvent(view, MouseEvent.MOUSE_DRAGGED, now, BUTTON2_DOWN_MASK, viewPoint.x + 2, viewPoint.y, 0, false, MouseEvent.NOBUTTON)
+    )
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 4")
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 4")
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_ENTERED, now, 0, -10, -10, 0, false, MouseEvent.NOBUTTON))
+    val tertiaryReleaseAtPrevCoords = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(tertiaryReleaseAtPrevCoords).doesNotContain("buttons:")
+    assertThat(tertiaryReleaseAtPrevCoords).doesNotContain("x: 0 ")
+
+    // Missed BUTTON1 release during multi-touch drag: subsequent mouseMoved with Ctrl held releases the pinch, clears active-drag
+    // feedback back to hover intensity, and does not emit a duplicate release when Ctrl is later released.
+    fakeUi.keyboard.press(VK_CONTROL)
+    view.dispatchEvent(
+      MouseEvent(
+        view,
+        MouseEvent.MOUSE_PRESSED,
+        now,
+        CTRL_DOWN_MASK or BUTTON1_DOWN_MASK,
+        viewPoint.x,
+        viewPoint.y,
+        1,
+        false,
+        MouseEvent.BUTTON1,
+      )
+    )
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("pressure: 1024")
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_MOVED, now, CTRL_DOWN_MASK, viewPoint.x, viewPoint.y, 0, false))
+    val recoveredPinchRelease = shortDebugString(call.getNextRequest(1.seconds))
+    assertThat(recoveredPinchRelease).contains("touch_event")
+    assertThat(recoveredPinchRelease).doesNotContain("pressure:")
+    ImageDiffUtil.assertImageSimilar("HoverIntensityAfterMissedRelease", expectedMultiTouch, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+    fakeUi.keyboard.release(VK_CONTROL)
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_MOVED, now, 0, viewPoint.x, viewPoint.y, 0, false))
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).startsWith("mouse_event {")
+
+    // Missed BUTTON1 release during single-pointer drag: subsequent mouseEntered clears lastTouchCoordinates and releases BUTTON1,
+    // so pressing/releasing Ctrl afterward shows hover intensity and emits no spurious touch_event.
+    view.dispatchEvent(
+      MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON1_DOWN_MASK, viewPoint.x, viewPoint.y, 1, false, MouseEvent.BUTTON1)
+    )
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).contains("buttons: 1")
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_ENTERED, now, 0, viewPoint.x, viewPoint.y, 0, false))
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).doesNotContain("buttons:")
+    fakeUi.keyboard.press(VK_CONTROL)
+    ImageDiffUtil.assertImageSimilar(
+      "HoverIntensityAfterSingleMissedRelease",
+      expectedMultiTouch,
+      ImageUtils.scale(fakeUi.render(), 0.5),
+      0.0,
+    )
+    fakeUi.keyboard.release(VK_CONTROL)
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_MOVED, now, 0, viewPoint.x, viewPoint.y, 0, false))
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).startsWith("mouse_event {")
   }
 
   @Test
@@ -643,7 +1021,7 @@ class EmulatorViewTest {
   fun testSkinButtons() {
     hiDpiRule.setRetinaMode()
     val panel = createEmulatorDisplayPanel { path: Path -> FakeEmulator.createAvdWithSkinButtons(path) }
-    fakeUi = FakeUi(panel)
+    fakeUi = FakeUi(panel, testRootDisposable)
 
     // Check initial appearance.
     fakeUi.root.size = Dimension(110, 200)
@@ -657,6 +1035,66 @@ class EmulatorViewTest {
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { key: \"GoBack\" }")
     fakeUi.mouse.release()
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { eventType: keyup key: \"GoBack\" }")
+
+    // Zoom in (0.34x -> 0.5x) so scrollbars appear and the view becomes pannable.
+    view.zoom(ZoomType.IN)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame()
+    assertThat(view.isPannable).isTrue()
+
+    val pointerPos = Point(-500, -500)
+    val pointerInfo = mock<PointerInfo>()
+    whenever(pointerInfo.location).thenAnswer { Point(pointerPos) }
+    mouseInfo.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
+
+    view.isPanning = true
+    // Zoom in again (0.5x -> 1.0x) while in Pan mode with the pointer over the GoBack skin button:
+    // paintComponent must not highlight the skin button during Pan mode.
+    view.zoom(ZoomType.IN)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame()
+    val viewport = view.parent as JViewport
+    val buttonViewPos = Point((view.width * 95) / 585, (view.height * 964) / 1161)
+    view.scrollPosition = Point((buttonViewPos.x - 30).coerceAtLeast(0), (buttonViewPos.y - 100).coerceAtLeast(0))
+    fakeUi.layoutAndDispatchEvents()
+    val cleanPanRender = ImageUtils.scale(fakeUi.render(), 0.5)
+
+    val buttonPanelPos = Point(buttonViewPos.x - viewport.viewPosition.x, buttonViewPos.y - viewport.viewPosition.y)
+    pointerPos.location = buttonPanelPos
+    // Force a projectionRectangle update while in Pan mode with the pointer over GoBack.
+    view.zoom(ZoomType.OUT)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame()
+    view.zoom(ZoomType.IN)
+    fakeUi.layoutAndDispatchEvents()
+    view.scrollPosition = Point((buttonViewPos.x - 30).coerceAtLeast(0), (buttonViewPos.y - 100).coerceAtLeast(0))
+    fakeUi.layoutAndDispatchEvents()
+    val updatedButtonPanelPos = Point(buttonViewPos.x - viewport.viewPosition.x, buttonViewPos.y - viewport.viewPosition.y)
+    pointerPos.location = updatedButtonPanelPos
+    getStreamScreenshotCallAndWaitForFrame()
+    ImageDiffUtil.assertImageSimilar("UnhighlightedInPan", cleanPanRender, ImageUtils.scale(fakeUi.render(), 0.5), 0.0)
+
+    // Exiting Pan mode with the pointer unmoved restores skin button highlight immediately.
+    view.isPanning = false
+    val highlightedOnPanExit = ImageUtils.scale(fakeUi.render(), 0.5)
+    assertThat(
+        highlightedOnPanExit.getRGB(0, 0, highlightedOnPanExit.width, highlightedOnPanExit.height, null, 0, highlightedOnPanExit.width)
+      )
+      .isNotEqualTo(cleanPanRender.getRGB(0, 0, cleanPanRender.width, cleanPanRender.height, null, 0, cleanPanRender.width))
+    fakeUi.mouse.moveTo(updatedButtonPanelPos)
+    ImageDiffUtil.assertImageSimilar("HighlightedOnPanExit", ImageUtils.scale(fakeUi.render(), 0.5), highlightedOnPanExit, 0.0)
+    fakeUi.mouse.press(updatedButtonPanelPos)
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { key: \"GoBack\" }")
+    fakeUi.mouse.release()
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { eventType: keyup key: \"GoBack\" }")
+
+    // Entering Pan mode while holding a skin button releases the pressed skin button immediately.
+    fakeUi.mouse.press(updatedButtonPanelPos)
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { key: \"GoBack\" }")
+    view.isPanning = true
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { eventType: keyup key: \"GoBack\" }")
+    fakeUi.mouse.release()
+    view.isPanning = false
   }
 
   @Test
@@ -733,6 +1171,89 @@ class EmulatorViewTest {
     call = fakeEmulator.getNextGrpcCall(2.seconds)
     assertThat(call.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
     assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1109 y: 1989 buttons: 1 }")
+
+    // Releasing the mouse button (or syncing a missed release) while operating the camera must still send the button-up event.
+    fakeUi.keyboard.press(VK_SHIFT)
+    assertThat(view.isOperatingVirtualSceneCamera).isTrue()
+    fakeUi.mouse.release()
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1109 y: 1989 }")
+
+    val viewPoint = SwingUtilities.convertPoint(fakeUi.root, Point(135, 190), view)
+    val now = System.currentTimeMillis()
+    view.dispatchEvent(
+      MouseEvent(
+        view,
+        MouseEvent.MOUSE_PRESSED,
+        now,
+        SHIFT_DOWN_MASK or BUTTON1_DOWN_MASK,
+        viewPoint.x,
+        viewPoint.y,
+        1,
+        false,
+        MouseEvent.BUTTON1,
+      )
+    )
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1109 y: 1989 buttons: 1 }")
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_ENTERED, now, SHIFT_DOWN_MASK, viewPoint.x, viewPoint.y, 0, false))
+    assertThat(shortDebugString(call.getNextRequest(1.seconds))).isEqualTo("mouse_event { x: 1109 y: 1989 }")
+    fakeUi.keyboard.release(VK_SHIFT)
+  }
+
+  @Test
+  fun testDisconnectDuringPanModeDoesNotReactivateCamera() {
+    val container = createRootContainer()
+    container.rootPane.size = Dimension(200, 300)
+    fakeUi = FakeUi(container.rootPane, parentDisposable = testRootDisposable)
+
+    val pointerLocation = Point(100, 150)
+    val pointerInfo = mock<PointerInfo>()
+    whenever(pointerInfo.location).thenAnswer { Point(pointerLocation) }
+    mouseInfo.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
+
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame()
+    view.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame()
+    assertThat(view.isPannable).isTrue()
+
+    focusManager.focusOwner = view
+    fakeUi.keyboard.setFocus(view)
+    fakeEmulator.virtualSceneCameraActive = true
+    waitForCondition(2.seconds) { fakeUi.findComponent<EditorNotificationPanel>() != null }
+
+    // Exiting Pan mode after a size change defers the post-projectionRectangle pointer/camera refresh out of paintComponent
+    // so NotificationHolderPanel's child hierarchy is not mutated mid-paint.
+    view.isPanning = true
+    assertThat(fakeUi.findComponent<EditorNotificationPanel>()).isNull()
+    view.zoom(ZoomType.IN)
+    fakeUi.layoutAndDispatchEvents()
+    view.isPanning = false
+    assertThat(fakeUi.findComponent<EditorNotificationPanel>()).isNotNull()
+    pointerLocation.setLocation(-500, -500)
+    fakeUi.render()
+    assertThat(fakeUi.findComponent<EditorNotificationPanel>()).isNotNull()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(fakeUi.findComponent<EditorNotificationPanel>()).isNull()
+
+    // Restore camera prompt state before testing disconnect during Pan mode.
+    pointerLocation.setLocation(100, 150)
+    view.updateCameraPromptAndMultiTouchFeedback()
+    assertThat(fakeUi.findComponent<EditorNotificationPanel>()).isNotNull()
+
+    // Entering Pan mode hides the camera prompt; holding Shift and disconnecting must not re-show the prompt or start the controller.
+    view.isPanning = true
+    assertThat(view.isPanning).isTrue()
+    assertThat(fakeUi.findComponent<EditorNotificationPanel>()).isNull()
+    fakeUi.keyboard.press(VK_SHIFT)
+    fakeEmulator.stop()
+    waitForCondition(5.seconds) { !view.isConnected && view.displayRectangle == null }
+    fakeUi.layoutAndDispatchEvents()
+
+    assertThat(view.isPanning).isFalse()
+    assertThat(view.isOperatingVirtualSceneCamera).isFalse()
+    assertThat(fakeUi.findComponent<EditorNotificationPanel>()).isNull()
+    fakeUi.keyboard.release(VK_SHIFT)
   }
 
   @Test
@@ -1307,6 +1828,155 @@ class EmulatorViewTest {
     executeAction("android.streaming.zoom.fit.inner", view, project)
     fakeUi.layoutAndDispatchEvents()
     assertAppearance("DisplayGlasses5")
+  }
+
+  @Test
+  fun testXrCursorAfterMissedButtonRelease() {
+    ApplicationManager.getApplication().replaceService(AdtUiCursorsProvider::class.java, TestAdtUiCursorsProvider(), testRootDisposable)
+    val handCursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+    val handPressedCursor = Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+    val eyeCursor = Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR)
+    val eyePressedCursor = Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_HAND_INPUT, handCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_HAND_INPUT_PRESSED, handPressedCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_EYE_INPUT, eyeCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.XR_EYE_INPUT_PRESSED, eyePressedCursor)
+
+    val pointerInfo = mock<PointerInfo>()
+    whenever(pointerInfo.location).thenAnswer { Point(100, 100) }
+    mouseInfo.whenever<Any?> { MouseInfo.getPointerInfo() }.thenReturn(pointerInfo)
+
+    val panel = createEmulatorDisplayPanel { path -> FakeEmulator.createXrHeadsetAvd(path) }
+    fakeUi = FakeUi(panel, testRootDisposable)
+    fakeUi.root.size = Dimension(400, 400)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame()
+
+    val xrInputController = EmulatorXrInputController.getInstance(project, view.emulator)
+    val now = System.currentTimeMillis()
+    for ((inputMode, cursors) in
+      listOf(XrInputMode.HAND to (handCursor to handPressedCursor), XrInputMode.EYE to (eyeCursor to eyePressedCursor))) {
+      val (defaultCursor, pressedCursor) = cursors
+      xrInputController.inputMode = inputMode
+
+      // Missed BUTTON1 release followed by MOUSE_MOVED restores the unpressed XR cursor immediately.
+      view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON1_DOWN_MASK, 100, 100, 1, false, MouseEvent.BUTTON1))
+      assertThat(view.cursor).isEqualTo(pressedCursor)
+      view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_MOVED, now, 0, 110, 100, 0, false, MouseEvent.NOBUTTON))
+      assertThat(view.cursor).isEqualTo(defaultCursor)
+
+      // Missed BUTTON1 release followed by MOUSE_ENTERED restores the unpressed XR cursor immediately.
+      view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON1_DOWN_MASK, 110, 100, 1, false, MouseEvent.BUTTON1))
+      assertThat(view.cursor).isEqualTo(pressedCursor)
+      view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_ENTERED, now, 0, 120, 100, 0, false, MouseEvent.NOBUTTON))
+      assertThat(view.cursor).isEqualTo(defaultCursor)
+    }
+  }
+
+  @Test
+  fun testReleaseClampedWhenDisplayShiftsBeforeEnteringPanMode() {
+    fakeUi = FakeUi(createEmulatorDisplayPanel(), parentDisposable = testRootDisposable)
+    fakeUi.root.size = Dimension(1200, 300)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame()
+    view.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame()
+    fakeUi.render()
+    assertThat(view.isPannable).isTrue()
+
+    // Press primary button inside display, then widen the panel so projectionRectangle shifts right of the press coordinates.
+    val now = System.currentTimeMillis()
+    val pressX = (view.displayRectangle!!.centerX / view.screenScalingFactor).toInt()
+    val pressY = 150
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON1_DOWN_MASK, pressX, pressY, 1, false, MouseEvent.BUTTON1))
+    val inputCall = getNextGrpcCallIgnoringStreamScreenshot()
+    assertThat(inputCall.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
+    assertThat(shortDebugString(inputCall.getNextRequest(1.seconds))).contains("buttons: 1")
+
+    fakeUi.root.size = Dimension(5000, 300)
+    fakeUi.layoutAndDispatchEvents()
+    fakeUi.render()
+    assertThat(pressX * view.screenScalingFactor).isLessThan(view.displayRectangle!!.minX)
+
+    // Entering Pan mode clamps the release event into deviceDisplayRegion instead of dropping it.
+    view.isPanning = true
+    val mouseReleaseMsg = shortDebugString(inputCall.getNextRequest(1.seconds))
+    assertThat(mouseReleaseMsg).startsWith("mouse_event {")
+    assertThat(mouseReleaseMsg).doesNotContain("buttons:")
+
+    // Same for multi-touch drag terminated when entering Pan mode after projectionRectangle shifts.
+    view.isPanning = false
+    val pressX2 = (view.displayRectangle!!.centerX / view.screenScalingFactor).toInt()
+    fakeUi.keyboard.setFocus(view)
+    fakeUi.keyboard.press(VK_CONTROL)
+    view.dispatchEvent(
+      MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, CTRL_DOWN_MASK or BUTTON1_DOWN_MASK, pressX2, pressY, 1, false, MouseEvent.BUTTON1)
+    )
+    assertThat(shortDebugString(inputCall.getNextRequest(1.seconds))).contains("pressure: 1024")
+
+    fakeUi.root.size = Dimension(12000, 300)
+    fakeUi.layoutAndDispatchEvents()
+    fakeUi.render()
+    assertThat(pressX2 * view.screenScalingFactor).isLessThan(view.displayRectangle!!.minX)
+
+    view.isPanning = true
+    val touchReleaseMsg = shortDebugString(inputCall.getNextRequest(1.seconds))
+    assertThat(touchReleaseMsg).startsWith("touch_event {")
+    assertThat(touchReleaseMsg).doesNotContain("pressure:")
+    fakeUi.keyboard.release(VK_CONTROL)
+
+    // Non-primary button (BUTTON2, where lastTouchCoordinates is null) still sends release on Pan entry after setBounds clears
+    // mouseCoordinates.
+    view.isPanning = false
+    val pressX3 = (view.displayRectangle!!.centerX / view.screenScalingFactor).toInt()
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON2_DOWN_MASK, pressX3, pressY, 1, false, MouseEvent.BUTTON2))
+    assertThat(shortDebugString(inputCall.getNextRequest(1.seconds))).contains("buttons: 4")
+
+    fakeUi.root.size = Dimension(14000, 320)
+    fakeUi.layoutAndDispatchEvents()
+    fakeUi.render()
+
+    view.isPanning = true
+    val middleReleaseMsg = shortDebugString(inputCall.getNextRequest(1.seconds))
+    assertThat(middleReleaseMsg).startsWith("mouse_event {")
+    assertThat(middleReleaseMsg).doesNotContain("buttons:")
+
+    // In orientation 1, dragging onto the exact top boundary pixel of projectionRectangle after pressing BUTTON1 -> Ctrl hits the clamped
+    // drag fallback while insideTouchScreen is true, and must release both the touch_event pinch and the mouse_event button.
+    view.isPanning = false
+    fakeUi.root.size = Dimension(1200, 1200)
+    fakeUi.layoutAndDispatchEvents()
+    emulatorViewRule.executeAction("android.device.rotate.left", view)
+    assertThat(getNextGrpcCallIgnoringStreamScreenshot().methodName)
+      .isEqualTo("android.emulation.control.EmulatorController/setPhysicalModel")
+    getStreamScreenshotCallAndWaitForFrame()
+    fakeUi.render()
+    val rotatedRect = view.displayRectangle!!
+    val centerX = rotatedRect.centerX.toInt()
+    val centerY = rotatedRect.centerY.toInt()
+    val topBoundaryY = rotatedRect.minY.toInt()
+    assertThat(rotatedRect.contains(centerX.toDouble(), topBoundaryY.toDouble())).isTrue()
+
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_PRESSED, now, BUTTON1_DOWN_MASK, centerX, centerY, 1, false, MouseEvent.BUTTON1))
+    assertThat(shortDebugString(inputCall.getNextRequest(1.seconds))).contains("buttons: 1")
+    fakeUi.keyboard.setFocus(view)
+    fakeUi.keyboard.press(VK_CONTROL)
+    view.dispatchEvent(MouseEvent(view, MouseEvent.MOUSE_DRAGGED, now, CTRL_DOWN_MASK or BUTTON1_DOWN_MASK, centerX + 5, centerY, 0, false))
+    assertThat(shortDebugString(inputCall.getNextRequest(1.seconds))).contains("pressure: 1024")
+    view.dispatchEvent(
+      MouseEvent(view, MouseEvent.MOUSE_DRAGGED, now, CTRL_DOWN_MASK or BUTTON1_DOWN_MASK, centerX, topBoundaryY, 0, false)
+    )
+    val clampedDragTouchRelease = shortDebugString(inputCall.getNextRequest(1.seconds))
+    assertThat(clampedDragTouchRelease).startsWith("touch_event {")
+    assertThat(clampedDragTouchRelease).doesNotContain("pressure:")
+    val clampedDragMouseRelease = shortDebugString(inputCall.getNextRequest(1.seconds))
+    assertThat(clampedDragMouseRelease).startsWith("mouse_event {")
+    assertThat(clampedDragMouseRelease).doesNotContain("buttons:")
+    view.dispatchEvent(
+      MouseEvent(view, MouseEvent.MOUSE_RELEASED, now, CTRL_DOWN_MASK, centerX, topBoundaryY, 1, false, MouseEvent.BUTTON1)
+    )
+    fakeUi.keyboard.release(VK_CONTROL)
   }
 
   private fun createRootContainer(avdCreator: ((Path) -> Path)? = null): HeadlessRootPaneContainer =

@@ -55,6 +55,7 @@ import com.android.tools.idea.streaming.core.BUTTON_MASK
 import com.android.tools.idea.streaming.core.DetachedToolWindowReshaper
 import com.android.tools.idea.streaming.core.RUNNING_DEVICES_NOTIFICATION_GROUP
 import com.android.tools.idea.streaming.core.StreamingDeviceId
+import com.android.tools.idea.streaming.core.buttonToMask
 import com.android.tools.idea.streaming.core.isMouseInside
 import com.android.tools.idea.streaming.core.mouseLocation
 import com.android.tools.idea.streaming.core.scaledDown
@@ -348,7 +349,7 @@ internal class EmulatorView(
 
   private val mouseListener = MyMouseListener()
 
-  /** Last coordinates of the mouse pointer while the first button was pressed. Set to null when the first mouse button is released. */
+  /** Last coordinates of the mouse pointer while the first button is pressed inside the display, or null otherwise. */
   private var lastTouchCoordinates: Point? = null
 
   /** Last mouse coordinates of the mouse cursor if it is inside the view. */
@@ -359,6 +360,8 @@ internal class EmulatorView(
         highlightedSkinButtonKey = if (value == null) null else findSkinButtonContaining(value)
       }
     }
+
+  private var pendingPanExitPointerRefresh = false
 
   /** The key name of the highlighted skin button, if any. Changing this value controls the highlight shown to the user. */
   private var highlightedSkinButtonKey: String? = null
@@ -376,9 +379,17 @@ internal class EmulatorView(
   private var pressedSkinButtonKey: String? = null
     set(value) {
       if (field != value) {
-        field?.let { emulator.sendKeyEvent(it, eventType = KeyEventType.keyup) }
+        field?.let {
+          if (isConnected) {
+            emulator.sendKeyEvent(it, eventType = KeyEventType.keyup)
+          }
+        }
         field = value
-        value?.let { emulator.sendKeyEvent(it, eventType = KeyEventType.keydown) }
+        value?.let {
+          if (isConnected) {
+            emulator.sendKeyEvent(it, eventType = KeyEventType.keydown)
+          }
+        }
       }
     }
 
@@ -415,9 +426,11 @@ internal class EmulatorView(
     val is360Environment = environment?.is360() == true
     val is3dEnvironment = environment?.environmentMap?.get("scene.mode")?.startsWith("mesh3d:") == true
     val cameraReadyToOperate =
-      (virtualSceneCameraActive || is360Environment || is3dEnvironment) &&
+      isConnected &&
+        (virtualSceneCameraActive || is360Environment || is3dEnvironment) &&
         isFocusOwner &&
         isMouseInside() &&
+        !isPanning &&
         !isHardwareInputEnabled() &&
         canOperateVirtualSceneCamera()
     val wasOperatingCamera = virtualSceneCameraController != null
@@ -457,10 +470,13 @@ internal class EmulatorView(
       }
 
     multiTouchMode =
-      emulatorConfig.hasTouchScreen &&
-        mouseCoordinates != null &&
+      isConnected &&
+        emulatorConfig.hasTouchScreen &&
+        mouseCoordinates?.let(::isInsideDisplayAndMouseInputSupported) == true &&
         !(virtualSceneCameraActive || is360Environment || is3dEnvironment) &&
         modifiers and CTRL_DOWN_MASK != 0 &&
+        (mouseListener.currentButtons and NON_PRIMARY_BUTTON_MASK) == 0 &&
+        !isPanning &&
         !isHardwareInputEnabled() &&
         xrInputController == null
   }
@@ -471,7 +487,7 @@ internal class EmulatorView(
   private var virtualSceneCameraController: VirtualSceneCameraController? = null
   private val xrInputModeListener = PropertyChangeListener { event ->
     if (event.propertyName == INPUT_MODE_PROPERTY) {
-      if (mouseCoordinates == null) {
+      if (mouseCoordinates == null && !isPanning) {
         mouseCoordinates = mouseLocation()
       }
       updateCursor()
@@ -560,15 +576,17 @@ internal class EmulatorView(
   }
 
   override fun dispose() {
+    super.dispose()
     cancelScreenshotFeed()
     emulator.removeConnectionStateListener(this)
     streamingSessionTracker.streamingEnded()
     stats?.let { Disposer.dispose(it) } // The stats object has to be disposed last.
-    super.dispose()
   }
 
   override fun sendTypedText(text: String) {
-    emulator.sendTypedText(text)
+    if (isConnected) {
+      emulator.sendTypedText(text)
+    }
   }
 
   override fun canZoom(): Boolean = isConnected
@@ -637,11 +655,20 @@ internal class EmulatorView(
             }
         }
       }
-    } else if (connectionState == ConnectionState.DISCONNECTED) {
+    } else {
+      isPanning = false
+      pendingPanExitPointerRefresh = false
+      mouseCoordinates = null
+      pressedSkinButtonKey = null
+      mouseListener.cancelOngoingInput(sendRelease = false)
+      updateCameraPromptAndMultiTouchFeedback()
       stopClipboardSynchronization()
       environmentCollectionJob?.cancel()
       environmentCollectionJob = null
-      if (RunningAvdTracker.getInstance().runningAvds[emulator.emulatorId.avdFolder]?.isShuttingDown != true) {
+      if (
+        connectionState == ConnectionState.DISCONNECTED &&
+          RunningAvdTracker.getInstance().runningAvds[emulator.emulatorId.avdFolder]?.isShuttingDown != true
+      ) {
         frameNumber = 0u
         lastScreenshot = null
         lastActualSize = null
@@ -692,8 +719,20 @@ internal class EmulatorView(
     val displayRect = computeDisplayRectangle(skin)
     if (projectionRectangle != displayRect || frameNumber == 0u) {
       projectionRectangle = displayRect
-      if (mouseCoordinates == null) {
-        mouseCoordinates = mouseLocation()
+      if (!isPanning) {
+        if (pendingPanExitPointerRefresh) {
+          EventQueue.invokeLater {
+            if (!isDisposed && !isPanning && pendingPanExitPointerRefresh) {
+              pendingPanExitPointerRefresh = false
+              val location = mouseLocation()
+              mouseCoordinates = location
+              highlightedSkinButtonKey = location?.let(::findSkinButtonContaining)
+              updateCameraPromptAndMultiTouchFeedback()
+            }
+          }
+        } else if (mouseCoordinates == null) {
+          mouseCoordinates = mouseLocation()
+        }
       }
       updateCursor()
     }
@@ -945,6 +984,29 @@ internal class EmulatorView(
     updateCameraPromptAndMultiTouchFeedback(0)
   }
 
+  override fun onExternalModifiersChanged() {
+    if (
+      (multiTouchMode && (lastModifiers and CTRL_DOWN_MASK) == 0) ||
+        (virtualSceneCameraController != null && (lastModifiers and SHIFT_DOWN_MASK) == 0)
+    ) {
+      updateCameraPromptAndMultiTouchFeedback(lastModifiers)
+    }
+  }
+
+  override fun panningStateChanged(panning: Boolean) {
+    if (panning) {
+      pendingPanExitPointerRefresh = false
+      updateCameraPromptAndMultiTouchFeedback()
+      mouseListener.cancelOngoingInput(sendRelease = true)
+      mouseCoordinates = null
+      pressedSkinButtonKey = null
+    } else {
+      pendingPanExitPointerRefresh = isConnected
+      mouseCoordinates = if (isConnected) mouseLocation() else null
+      updateCameraPromptAndMultiTouchFeedback()
+    }
+  }
+
   @UiThread
   override fun settingsChanged(settings: EmulatorSettings) {
     if (!isConnected) {
@@ -973,7 +1035,7 @@ internal class EmulatorView(
 
   /** Returns the key name of the skin button containing [point], or null if not found. */
   private fun findSkinButtonContaining(point: Point): String? {
-    if (!deviceFrameVisible) {
+    if (!isConnected || !deviceFrameVisible || isPanning) {
       return null
     }
     val skin = lastScreenshot?.skinLayout ?: return null
@@ -1032,6 +1094,9 @@ internal class EmulatorView(
     }
 
     override fun keyTyped(event: KeyEvent) {
+      if (!isConnected) {
+        return
+      }
       if (isHardwareInputEnabled()) {
         return
       }
@@ -1168,30 +1233,52 @@ internal class EmulatorView(
   private inner class MyMouseListener : MouseAdapter() {
 
     var currentButtons = 0
-      private set
+      private set(value) {
+        field = value
+        if (value and BUTTON1_DOWN_MASK == 0) {
+          lastTouchCoordinates = null
+        }
+      }
 
+    private var lastMouseCoordinates: Point? = null
+    private var hasActiveMouseButtons = false
+    private var hasActiveMultiTouch = false
     private var accumulatedScrollX = 0.0
     private var accumulatedScrollY = 0.0
 
     override fun mousePressed(event: MouseEvent) {
+      if (isPanning) {
+        return
+      }
+      pendingPanExitPointerRefresh = false
       requestFocusInWindow()
+      val prevMouseCoordinates = lastMouseCoordinates
+      lastMouseCoordinates = event.point
       mouseCoordinates = event.point
       if (xrInputController?.mousePressed(event, deviceDisplaySize, deviceScaleFactor) == true) {
         updateCursor()
         return
       }
+      val buttonMask = buttonToMask(event.button)
+      syncButtons(event, prevMouseCoordinates, excludeMask = buttonMask)
       val insideTouchScreen = isInsideDisplayAndMouseInputSupported(event.point)
       if (handlePopup(event, insideTouchScreen)) {
         updateCursor()
         return
       }
       if (insideTouchScreen) {
-        if (event.button == BUTTON1) {
-          lastTouchCoordinates = Point(event.x, event.y)
+        if (buttonMask != 0 && (currentButtons and buttonMask) == 0) {
+          updateMultiTouchMode(event)
+          if (multiTouchMode && event.button != BUTTON1) {
+            updateCursor()
+            return
+          }
+          if (event.button == BUTTON1) {
+            lastTouchCoordinates = Point(event.x, event.y)
+          }
+          currentButtons = currentButtons or buttonMask
+          sendMouseEvent(event.x, event.y, currentButtons)
         }
-        updateMultiTouchMode(event)
-        currentButtons = event.modifiersEx and BUTTON_MASK
-        sendMouseEvent(event.x, event.y, currentButtons)
       } else if (event.button == BUTTON1 && highlightedSkinButtonKey != null) {
         pressedSkinButtonKey = highlightedSkinButtonKey
       }
@@ -1199,81 +1286,137 @@ internal class EmulatorView(
     }
 
     override fun mouseReleased(event: MouseEvent) {
+      if (isPanning) {
+        return
+      }
+      pendingPanExitPointerRefresh = false
+      val prevMouseCoordinates = lastMouseCoordinates
+      lastMouseCoordinates = event.point
       mouseCoordinates = event.point
       if (xrInputController?.mouseReleased(event, deviceDisplaySize, deviceScaleFactor) == true) {
         updateCursor()
         return
       }
-      val insideTouchScreen = isInsideDisplayAndMouseInputSupported(event.point)
-      if (handlePopup(event, insideTouchScreen)) {
-        updateCursor()
-        return
-      }
-      if (event.button == BUTTON1) {
-        lastTouchCoordinates = null
-      }
-      updateMultiTouchMode(event)
+      val buttonMask = buttonToMask(event.button)
+      val wasButtonDown = (currentButtons and buttonMask) != 0
       pressedSkinButtonKey = null
-      currentButtons = event.modifiersEx and BUTTON_MASK
-      sendMouseEvent(event.x, event.y, currentButtons)
+      if (wasButtonDown) {
+        currentButtons = currentButtons and buttonMask.inv()
+        releaseOrUpdateButtons(event.x, event.y, currentButtons)
+      }
+      syncButtons(event, prevMouseCoordinates)
+      val insideTouchScreen = isInsideDisplayAndMouseInputSupported(event.point)
+      handlePopup(event, insideTouchScreen)
+      updateMultiTouchMode(event)
       updateCursor()
     }
 
     override fun mouseEntered(event: MouseEvent) {
-      mouseCoordinates = event.point
-      updateCursor()
-      if (xrInputController?.mouseEntered(event, deviceDisplaySize, deviceScaleFactor) == true) {
+      if (isPanning) {
         return
       }
+      pendingPanExitPointerRefresh = false
+      val prevMouseCoordinates = lastMouseCoordinates
+      lastMouseCoordinates = event.point
+      mouseCoordinates = event.point
+      if (xrInputController?.mouseEntered(event, deviceDisplaySize, deviceScaleFactor) == true) {
+        updateCursor()
+        return
+      }
+      syncButtons(event, prevMouseCoordinates)
       updateMultiTouchMode(event)
+      updateCursor()
     }
 
     override fun mouseExited(event: MouseEvent) {
+      if (isPanning) {
+        return
+      }
+      pendingPanExitPointerRefresh = false
+      lastMouseCoordinates = null
       mouseCoordinates = null
-      updateCursor()
       if (xrInputController?.mouseExited(event, deviceDisplaySize, deviceScaleFactor) == true) {
+        updateCursor()
         return
       }
       if ((currentButtons and BUTTON_MASK) != 0) {
         // Moving over the edge of the display view will terminate the ongoing dragging.
-        sendMouseEvent(event.x, event.y, currentButtons)
-        currentButtons = currentButtons and BUTTON_MASK.inv()
+        currentButtons = 0
+        releaseOrUpdateButtons(event.x, event.y, 0)
       }
-      lastTouchCoordinates = null
       updateMultiTouchMode(event)
+      updateCursor()
     }
 
     override fun mouseDragged(event: MouseEvent) {
+      if (isPanning) {
+        return
+      }
+      pendingPanExitPointerRefresh = false
+      val prevMouseCoordinates = lastMouseCoordinates
+      lastMouseCoordinates = event.point
       mouseCoordinates = event.point
-      updateCursor()
       if (xrInputController?.mouseDragged(event, deviceDisplaySize, deviceScaleFactor) == true) {
+        updateCursor()
+        return
+      }
+      syncButtons(event, prevMouseCoordinates)
+      val insideTouchScreen = isInsideDisplayAndMouseInputSupported(event.point)
+      if ((currentButtons and BUTTON_MASK) != 0 && !insideTouchScreen) {
+        currentButtons = 0
+        releaseOrUpdateButtons(event.x, event.y, 0)
+        updateMultiTouchMode(event)
+        updateCursor()
         return
       }
       updateMultiTouchMode(event)
-      if (virtualSceneCameraController == null && (currentButtons and BUTTON_MASK) != 0) {
-        sendMouseEvent(event.x, event.y, currentButtons, drag = true)
+      if (virtualSceneCameraController == null && (currentButtons and BUTTON_MASK) != 0 && insideTouchScreen) {
+        if ((currentButtons and BUTTON1_DOWN_MASK) != 0) {
+          lastTouchCoordinates = Point(event.x, event.y)
+        }
+        if (!multiTouchMode || (currentButtons and BUTTON1_DOWN_MASK) != 0) {
+          sendMouseEvent(event.x, event.y, currentButtons, drag = true)
+        }
       }
+      updateCursor()
     }
 
     override fun mouseMoved(event: MouseEvent) {
-      mouseCoordinates = event.point
-      updateCursor()
-      if (xrInputController?.mouseMoved(event, deviceDisplaySize, deviceScaleFactor) == true) {
+      if (isPanning) {
         return
       }
+      pendingPanExitPointerRefresh = false
+      val prevMouseCoordinates = lastMouseCoordinates
+      lastMouseCoordinates = event.point
+      mouseCoordinates = event.point
+      if (xrInputController?.mouseMoved(event, deviceDisplaySize, deviceScaleFactor) == true) {
+        updateCursor()
+        return
+      }
+      val sentMouseEvent = syncButtons(event, prevMouseCoordinates)
       updateMultiTouchMode(event)
       if (
-        isInsideDisplayAndMouseInputSupported(event.point) &&
+        !sentMouseEvent &&
+          isInsideDisplayAndMouseInputSupported(event.point) &&
           virtualSceneCameraController == null &&
           !multiTouchMode &&
           (currentButtons and BUTTON_MASK) == 0
       ) {
         sendMouseEvent(event.x, event.y, currentButtons)
       }
+      updateCursor()
     }
 
     override fun mouseWheelMoved(event: MouseWheelEvent) {
+      if (isPanning) {
+        return
+      }
+      pendingPanExitPointerRefresh = false
+      lastMouseCoordinates = event.point
       mouseCoordinates = event.point
+      if (!isConnected) {
+        return
+      }
       if (xrInputController?.mouseWheelMoved(event, deviceDisplaySize, deviceScaleFactor) == true) {
         return
       }
@@ -1305,12 +1448,68 @@ internal class EmulatorView(
       }
     }
 
-    // Terminates ongoing dragging if any.
-    fun terminateDragging() {
-      lastTouchCoordinates?.let { sendMouseEvent(it.x, it.y, 0) }
+    /**
+     * Clears any bits in [currentButtons] that are no longer down in [event], releasing an interrupted gesture if needed. Returns true if a
+     * single-pointer mouse event was sent.
+     */
+    private fun syncButtons(event: MouseEvent, prevMouseCoordinates: Point?, excludeMask: Int = 0): Boolean {
+      val activeButtons = currentButtons and event.modifiersEx and BUTTON_MASK and excludeMask.inv()
+      if (activeButtons == currentButtons) {
+        return false
+      }
+      val releasePoint =
+        event.point.takeIf(::isInsideDisplayAndMouseInputSupported) ?: lastTouchCoordinates ?: prevMouseCoordinates ?: event.point
+      val hadActiveMouse = !multiTouchMode
+      currentButtons = activeButtons
+      releaseOrUpdateButtons(releasePoint.x, releasePoint.y, activeButtons)
+      return hadActiveMouse
     }
 
-    private fun sendMouseEvent(x: Int, y: Int, buttons: Int, drag: Boolean = false) {
+    private fun releaseOrUpdateButtons(x: Int, y: Int, activeButtons: Int) {
+      if (multiTouchMode) {
+        if ((activeButtons and BUTTON1_DOWN_MASK) == 0 && hasActiveMultiTouch) {
+          sendMouseEvent(x, y, activeButtons, clampToDisplay = true)
+        }
+        if (activeButtons == 0 && hasActiveMouseButtons) {
+          sendMouseEvent(x, y, 0, clampToDisplay = true, forceMouse = true)
+        }
+      } else {
+        sendMouseEvent(x, y, activeButtons, clampToDisplay = true)
+      }
+    }
+
+    // Terminates ongoing multi-touch dragging if any.
+    fun terminateDragging() {
+      if (isConnected && hasActiveMultiTouch) {
+        val point = lastTouchCoordinates ?: mouseCoordinates ?: lastMouseCoordinates ?: ZERO_POINT
+        sendMouseEvent(point.x, point.y, 0, clampToDisplay = true)
+        hasActiveMultiTouch = false
+      }
+    }
+
+    fun cancelOngoingInput(sendRelease: Boolean) {
+      val point = mouseCoordinates ?: lastTouchCoordinates ?: lastMouseCoordinates ?: ZERO_POINT
+      val shouldReleaseMouse = sendRelease && hasActiveMouseButtons
+      lastMouseCoordinates = null
+      currentButtons = 0
+      hasActiveMouseButtons = false
+      hasActiveMultiTouch = false
+      if (shouldReleaseMouse) {
+        sendMouseEvent(point.x, point.y, 0, clampToDisplay = true, forceMouse = true)
+      }
+    }
+
+    private fun sendMouseEvent(
+      x: Int,
+      y: Int,
+      buttons: Int,
+      drag: Boolean = false,
+      clampToDisplay: Boolean = drag,
+      forceMouse: Boolean = false,
+    ) {
+      if (!isConnected) {
+        return
+      }
       val displayRectangle = projectionRectangle ?: return
       // Mouse pointer coordinates compensated for the device display rotation.
       val normalizedX: Int
@@ -1360,17 +1559,37 @@ internal class EmulatorView(
 
       if (deviceDisplayRegion.contains(displayX, displayY)) {
         // Within the bounds of the device display.
-        sendMouseOrTouchEvent(displayX, displayY, buttons, deviceDisplayRegion)
-      } else if (drag) {
-        // Crossed the device display boundary while dragging.
-        lastTouchCoordinates = null
-        val adjustedX = displayX.coerceIn(deviceDisplayRegion.x, deviceDisplayRegion.width - 1)
-        val adjustedY = displayY.coerceIn(deviceDisplayRegion.y, deviceDisplayRegion.height - 1)
-        sendMouseOrTouchEvent(adjustedX, adjustedY, 0, deviceDisplayRegion)
+        sendMouseOrTouchEvent(displayX, displayY, buttons, deviceDisplayRegion, forceMouse)
+      } else if (clampToDisplay && deviceDisplayRegion.width > 0 && deviceDisplayRegion.height > 0) {
+        val adjustedX = displayX.coerceIn(deviceDisplayRegion.x, deviceDisplayRegion.x + deviceDisplayRegion.width - 1)
+        val adjustedY = displayY.coerceIn(deviceDisplayRegion.y, deviceDisplayRegion.y + deviceDisplayRegion.height - 1)
+        if (drag) {
+          currentButtons = 0
+          if (multiTouchMode && !forceMouse) {
+            if (hasActiveMultiTouch) {
+              sendMouseOrTouchEvent(adjustedX, adjustedY, 0, deviceDisplayRegion, forceMouse = false)
+            }
+            if (hasActiveMouseButtons) {
+              sendMouseOrTouchEvent(adjustedX, adjustedY, 0, deviceDisplayRegion, forceMouse = true)
+            }
+          } else {
+            sendMouseOrTouchEvent(adjustedX, adjustedY, 0, deviceDisplayRegion, forceMouse)
+          }
+        } else {
+          sendMouseOrTouchEvent(adjustedX, adjustedY, buttons, deviceDisplayRegion, forceMouse)
+        }
       }
     }
 
-    private fun sendMouseOrTouchEvent(displayX: Int, displayY: Int, buttons: Int, deviceDisplayRegion: Rectangle) {
+    private fun sendMouseOrTouchEvent(
+      displayX: Int,
+      displayY: Int,
+      buttons: Int,
+      deviceDisplayRegion: Rectangle,
+      forceMouse: Boolean = false,
+    ) {
+      val isMultiTouch = multiTouchMode && !forceMouse
+      val released = if (isMultiTouch) (buttons and BUTTON1_DOWN_MASK) == 0 else buttons == 0
       deviceInputListenerManager.notifyListenersOfTouchEvent(
         deviceSerialNumber,
         displayId,
@@ -1379,13 +1598,14 @@ internal class EmulatorView(
         displayOrientationQuadrants,
         displayX,
         displayY,
-        buttons == 0,
-        multiTouchMode,
+        released,
+        isMultiTouch,
       )
 
       val inputEvent = InputEventMessage.newBuilder()
-      if (multiTouchMode) {
-        val pressure = if (buttons == 0) 0 else PRESSURE_RANGE_MAX
+      if (isMultiTouch) {
+        hasActiveMultiTouch = !released
+        val pressure = if (released) 0 else PRESSURE_RANGE_MAX
         inputEvent.setTouchEvent(
           TouchEvent.newBuilder()
             .setDisplay(displayId)
@@ -1393,6 +1613,7 @@ internal class EmulatorView(
             .addTouches(createTouch(deviceDisplayRegion.width - 1 - displayX, deviceDisplayRegion.height - 1 - displayY, 1, pressure))
         )
       } else {
+        hasActiveMouseButtons = buttons != 0
         val mouseEvent =
           MouseEventMessage.newBuilder().setDisplay(displayId).setX(displayX).setY(displayY).setButtons(buttonsToAndroid(buttons))
         when (xrInputController?.inputMode) {
@@ -1436,7 +1657,8 @@ internal class EmulatorView(
     return cursorType?.let { AdtUiCursorsProvider.getInstance().getCursor(it) }
   }
 
-  private fun isInsideDisplayAndMouseInputSupported(point: Point): Boolean = deviceType != DeviceType.AI_GLASSES && isInsideDisplay(point)
+  private fun isInsideDisplayAndMouseInputSupported(point: Point): Boolean =
+    isConnected && deviceType != DeviceType.AI_GLASSES && isInsideDisplay(point)
 
   private fun isInsideDisplay(point: Point): Boolean =
     projectionRectangle?.contains(point.x * screenScalingFactor, point.y * screenScalingFactor) ?: false
@@ -1815,6 +2037,7 @@ private const val ANDROID_BUTTON_SECONDARY = 1 shl 1 // Right
 private const val ANDROID_BUTTON_TERTIARY = 1 shl 2 // Middle
 
 private const val CTRL_SHIFT_DOWN_MASK = CTRL_DOWN_MASK or SHIFT_DOWN_MASK
+private const val NON_PRIMARY_BUTTON_MASK = BUTTON2_DOWN_MASK or BUTTON3_DOWN_MASK
 
 private val STATS_LOG_INTERVAL_MILLIS = StudioFlags.EMBEDDED_EMULATOR_STATISTICS_INTERVAL_SECONDS.get().toLong() * 1000
 
