@@ -187,7 +187,10 @@ class HttpPlayPublishingClient(
         val googleError = parseGoogleApiError(content)
         val message = googleError?.message ?: e.message ?: "Unknown error"
         logger.warn("Play Publishing API error: $message", e)
-        throw PlayPublishingException(maybeCorrectExceptionMessage(message, googleError?.errors), e)
+        if (isNoAppListingError(message, googleError?.errors)) {
+          throw NoAppListingException(e)
+        }
+        throw PlayPublishingException(message, e)
       } catch (e: CancellationException) {
         throw e
       } catch (e: IOException) {
@@ -196,16 +199,9 @@ class HttpPlayPublishingClient(
       }
     }
 
-  private fun maybeCorrectExceptionMessage(message: String, errors: List<GoogleApiInnerError>?): String =
-    when {
-      message.contains(DRAFT_APP_DRAFT_RELEASE) -> {
-        NO_APP_LISTING_CORRECTION_MESSAGE
-      }
-      message.contains(FAILED_PRECONDITION) && (errors?.containsRestrictedTrackDebugInfo() == true) -> {
-        NO_APP_LISTING_CORRECTION_MESSAGE
-      }
-      else -> message
-    }
+  private fun isNoAppListingError(message: String, errors: List<GoogleApiInnerError>?): Boolean =
+    message.contains(DRAFT_APP_DRAFT_RELEASE) ||
+      (message.contains(FAILED_PRECONDITION) && errors?.containsRestrictedTrackDebugInfo() == true)
 
   private fun List<GoogleApiInnerError>.containsRestrictedTrackDebugInfo() = any { it.debugInfo?.contains(TRACK_RESTRICTED_REGEX) == true }
 

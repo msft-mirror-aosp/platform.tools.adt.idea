@@ -47,7 +47,7 @@ import com.android.tools.adtui.compose.WizardAction
 import com.android.tools.adtui.compose.WizardPageScope
 import com.android.tools.idea.publishing.AppPublishingService
 import com.android.tools.idea.publishing.play.PlayPublishingUsageTracker
-import com.android.tools.idea.publishing.play.client.NO_APP_LISTING_CORRECTION_MESSAGE
+import com.android.tools.idea.publishing.play.client.NoAppListingException
 import com.android.tools.idea.publishing.play.client.PlayPublishingClient
 import com.android.tools.idea.publishing.play.client.PlayPublishingException
 import com.android.tools.idea.publishing.play.client.playStoreLanguageNamesLower
@@ -92,6 +92,7 @@ private const val ALPHA_TRACK_NAME = "alpha"
 private const val BETA_TRACK_NAME = "beta"
 private const val PRODUCTION_TRACK_NAME = "production"
 private const val TEST_TRACK_REQUIREMENTS_DAC_URL = "https://developer.android.com/r/studio-ui/publish/test-track-requirements"
+private const val CREATE_STORE_LISTING_DAC_URL = "https://developer.android.com/r/studio-ui/publish/create-store-listing"
 
 private val trackNameMap =
   mapOf(
@@ -325,7 +326,7 @@ fun WizardPageScope.CreateReleasePage(releaseNotesDebounceMillis: Long = 500) {
               showUploadSuccessfulNotification(project, releaseName, selectedTrackId, appName, packageName)
             } catch (e: PlayPublishingException) {
               val message = e.message ?: "Unknown error"
-              showUploadFailedNotification(project, message)
+              showUploadFailedNotification(project, message, showCreateListingAction = e is NoAppListingException)
             } catch (e: CancellationException) {
               throw e
             } catch (e: Exception) {
@@ -366,11 +367,17 @@ private fun showUploadSuccessfulNotification(
   notification.notify(project)
 }
 
-private fun showUploadFailedNotification(project: Project, errorMessage: String) {
-  NotificationGroupManager.getInstance()
-    .getNotificationGroup("Play Publishing")
-    .createNotification("Publishing failed", errorMessage, NotificationType.ERROR)
-    .notify(project)
+private fun showUploadFailedNotification(project: Project, errorMessage: String, showCreateListingAction: Boolean = false) {
+  val notification =
+    NotificationGroupManager.getInstance()
+      .getNotificationGroup("Play Publishing")
+      .createNotification("Publishing failed", errorMessage, NotificationType.ERROR)
+
+  if (showCreateListingAction) {
+    notification.addAction(NotificationAction.createSimple("Learn more \u2197") { BrowserUtil.browse(CREATE_STORE_LISTING_DAC_URL) })
+  }
+
+  notification.notify(project)
 }
 
 /** Navigate to play console via the account chooser link. This will direct the user to the right */
@@ -484,7 +491,17 @@ private suspend fun createReleaseStep(
   trackType: TrackType,
   uploadTimeMs: Int,
 ) {
-  runPublishingStep(trackType, uploadTimeMs, mapException = { _ -> CreateReleaseResult.FAILED_TO_CREATE_RELEASE }) {
+  runPublishingStep(
+    trackType,
+    uploadTimeMs,
+    mapException = { e ->
+      if (e is NoAppListingException) {
+        CreateReleaseResult.FAILED_RELEASE_NOT_ALLOWED_ON_TRACK
+      } else {
+        CreateReleaseResult.FAILED_TO_CREATE_RELEASE
+      }
+    },
+  ) {
     PlayPublishingClient.getInstance().createRelease(packageName, editId, releaseName, tags, versionCode, selectedTrackId)
   }
 }
@@ -494,8 +511,7 @@ private suspend fun commitEditStep(packageName: String, editId: String, trackTyp
     trackType,
     uploadTimeMs,
     mapException = { e ->
-      val msg = e.message ?: ""
-      if (e is PlayPublishingException && msg.contains(NO_APP_LISTING_CORRECTION_MESSAGE)) {
+      if (e is NoAppListingException) {
         CreateReleaseResult.FAILED_RELEASE_NOT_ALLOWED_ON_TRACK
       } else {
         CreateReleaseResult.FAILED_TO_COMMIT_RELEASE

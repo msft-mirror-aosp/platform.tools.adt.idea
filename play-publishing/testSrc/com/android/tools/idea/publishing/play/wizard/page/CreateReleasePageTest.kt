@@ -29,6 +29,7 @@ import com.android.tools.adtui.compose.TestComposeWizard
 import com.android.tools.adtui.compose.utils.StudioComposeTestRule
 import com.android.tools.idea.publishing.AppPublishingService
 import com.android.tools.idea.publishing.play.client.FakePlayPublishingClient
+import com.android.tools.idea.publishing.play.client.NoAppListingException
 import com.android.tools.idea.publishing.play.client.PlayPublishingClient
 import com.android.tools.idea.publishing.play.client.PlayPublishingException
 import com.android.tools.idea.publishing.play.client.type.AppEdit
@@ -454,6 +455,78 @@ class CreateReleasePageTest {
     val notificationInfo = notificationRule.notifications.single()
     assertThat(notificationInfo.title).isEqualTo("Publishing failed")
     assertThat(notificationInfo.content).isEqualTo("Socket Closed")
+    assertThat(notificationInfo.actions).isEmpty()
+  }
+
+  @Test
+  fun testPublishActionNoAppListingFailureNotificationShowsLearnMoreLink() {
+    fakeClient.config =
+      FakePlayPublishingClient.Config(
+        insertEditCall = { AppEdit("editId123", "expiry") },
+        listEditTracksCall = { _, _ -> listOf(Track("internal"), Track("alpha")) },
+        uploadArtifactCall = { _, _, _ -> Bundle(1234, "", "") },
+        createReleaseCall = { _, _, _, _, _, _ -> },
+        commitEditCall = { _, _ -> throw NoAppListingException() },
+      )
+
+    val state = PlayPublishingWizardState(packageName = "com.example.app", bundlePath = "/some/path/app.aab")
+    state.releaseName = "My Release"
+    state.releaseNotes = "<en-US>These are some notes</en-US>"
+    createWizard(state)
+
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText("Internal Test Track").performClick()
+    composeTestRule.onNodeWithText("Alpha Track").performClick()
+    composeTestRule.onNodeWithText("Publish app").performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.waitUntil(5000) { notificationRule.notifications.isNotEmpty() }
+
+    val notificationInfo = notificationRule.notifications.single()
+    assertThat(notificationInfo.title).isEqualTo("Publishing failed")
+    assertThat(notificationInfo.content).isEqualTo(NoAppListingException().message)
+
+    val action = notificationInfo.actions.single()
+    assertThat(action.templateText).isEqualTo("Learn more \u2197")
+
+    Mockito.mockStatic(BrowserUtil::class.java).use { browserUtil ->
+      val browsedUrls = mutableListOf<String>()
+      browserUtil.whenever<Unit> { BrowserUtil.browse(anyString()) }.thenAnswer { browsedUrls.add(it.arguments[0] as String) }
+
+      val dummyNotification = Mockito.mock(Notification::class.java)
+      (action as NotificationAction).actionPerformed(TestActionEvent.createTestEvent(), dummyNotification)
+      assertThat(browsedUrls).containsExactly("https://developer.android.com/r/studio-ui/publish/create-store-listing")
+      Mockito.verify(dummyNotification, Mockito.never()).expire()
+    }
+  }
+
+  @Test
+  fun testPublishActionNoAppListingOnCreateReleaseShowsLearnMoreLink() {
+    fakeClient.config =
+      FakePlayPublishingClient.Config(
+        insertEditCall = { AppEdit("editId123", "expiry") },
+        listEditTracksCall = { _, _ -> listOf(Track("internal"), Track("alpha")) },
+        uploadArtifactCall = { _, _, _ -> Bundle(1234, "", "") },
+        createReleaseCall = { _, _, _, _, _, _ -> throw NoAppListingException() },
+      )
+
+    val state = PlayPublishingWizardState(packageName = "com.example.app", bundlePath = "/some/path/app.aab")
+    state.releaseName = "My Release"
+    state.releaseNotes = "<en-US>These are some notes</en-US>"
+    createWizard(state)
+
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText("Internal Test Track").performClick()
+    composeTestRule.onNodeWithText("Alpha Track").performClick()
+    composeTestRule.onNodeWithText("Publish app").performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.waitUntil(5000) { notificationRule.notifications.isNotEmpty() }
+
+    val notificationInfo = notificationRule.notifications.single()
+    assertThat(notificationInfo.title).isEqualTo("Publishing failed")
+    assertThat(notificationInfo.content).isEqualTo(NoAppListingException().message)
+    assertThat(notificationInfo.actions.single().templateText).isEqualTo("Learn more \u2197")
   }
 
   @Test

@@ -32,7 +32,7 @@ import com.android.tools.idea.publishing.AppPublishingService
 import com.android.tools.idea.publishing.AppPublishingSource
 import com.android.tools.idea.publishing.RegistrationState
 import com.android.tools.idea.publishing.play.client.FakePlayPublishingClient
-import com.android.tools.idea.publishing.play.client.NO_APP_LISTING_CORRECTION_MESSAGE
+import com.android.tools.idea.publishing.play.client.NoAppListingException
 import com.android.tools.idea.publishing.play.client.PlayPublishingClient
 import com.android.tools.idea.publishing.play.client.PlayPublishingException
 import com.android.tools.idea.publishing.play.client.type.App
@@ -316,14 +316,44 @@ class PlayPublishingUsageTrackerTest {
   }
 
   @Test
-  fun testPublishActionNoAppListingCorrectionMessageFailure() {
+  fun testPublishActionNoAppListingOnCreateReleaseFailure() {
+    fakeClient.config =
+      FakePlayPublishingClient.Config(
+        insertEditCall = { AppEdit("editId123", "expiry") },
+        listEditTracksCall = { _, _ -> listOf(Track("internal"), Track("alpha")) },
+        uploadArtifactCall = { _, _, _ -> Bundle(1234, "", "") },
+        createReleaseCall = { _, _, _, _, _, _ -> throw NoAppListingException() },
+      )
+
+    val state = PlayPublishingWizardState(packageName = "com.example.app", bundlePath = "/some/path/app.aab")
+    state.releaseName = "My Release"
+    state.releaseNotes = "<en-US>These are some notes</en-US>"
+    createCreateReleaseWizard(state)
+
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText("Internal Test Track").performClick()
+    composeTestRule.onNodeWithText("Alpha Track").performClick()
+    composeTestRule.onNodeWithText("Publish app").performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.waitUntil(5000) { notificationRule.notifications.isNotEmpty() }
+
+    val loggedEvents = getLoggedEvents()
+    assertThat(loggedEvents).hasSize(1)
+    val playPublishingEvent = loggedEvents[0].studioEvent.playPublishingEvent
+    assertThat(playPublishingEvent.createReleaseDetails.createReleaseResult)
+      .isEqualTo(CreateReleaseResult.FAILED_RELEASE_NOT_ALLOWED_ON_TRACK)
+  }
+
+  @Test
+  fun testPublishActionNoAppListingOnCommitEditFailure() {
     fakeClient.config =
       FakePlayPublishingClient.Config(
         insertEditCall = { AppEdit("editId123", "expiry") },
         listEditTracksCall = { _, _ -> listOf(Track("internal")) },
         uploadArtifactCall = { _, _, _ -> Bundle(1234, "", "") },
         createReleaseCall = { _, _, _, _, _, _ -> },
-        commitEditCall = { _, _ -> throw PlayPublishingException(NO_APP_LISTING_CORRECTION_MESSAGE) },
+        commitEditCall = { _, _ -> throw NoAppListingException() },
       )
 
     val state = PlayPublishingWizardState(packageName = "com.example.app", bundlePath = "/some/path/app.aab")
@@ -342,6 +372,61 @@ class PlayPublishingUsageTrackerTest {
     val playPublishingEvent = loggedEvents[0].studioEvent.playPublishingEvent
     assertThat(playPublishingEvent.createReleaseDetails.createReleaseResult)
       .isEqualTo(CreateReleaseResult.FAILED_RELEASE_NOT_ALLOWED_ON_TRACK)
+  }
+
+  @Test
+  fun testPublishActionGenericCreateReleaseFailure() {
+    fakeClient.config =
+      FakePlayPublishingClient.Config(
+        insertEditCall = { AppEdit("editId123", "expiry") },
+        listEditTracksCall = { _, _ -> listOf(Track("internal")) },
+        uploadArtifactCall = { _, _, _ -> Bundle(1234, "", "") },
+        createReleaseCall = { _, _, _, _, _, _ -> throw PlayPublishingException("Create release error") },
+      )
+
+    val state = PlayPublishingWizardState(packageName = "com.example.app", bundlePath = "/some/path/app.aab")
+    state.releaseName = "My Release"
+    state.releaseNotes = "<en-US>These are some notes</en-US>"
+    createCreateReleaseWizard(state)
+
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText("Publish app").performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.waitUntil(5000) { notificationRule.notifications.isNotEmpty() }
+
+    val loggedEvents = getLoggedEvents()
+    assertThat(loggedEvents).hasSize(1)
+    val playPublishingEvent = loggedEvents[0].studioEvent.playPublishingEvent
+    assertThat(playPublishingEvent.createReleaseDetails.createReleaseResult).isEqualTo(CreateReleaseResult.FAILED_TO_CREATE_RELEASE)
+  }
+
+  @Test
+  fun testPublishActionGenericCommitEditFailure() {
+    fakeClient.config =
+      FakePlayPublishingClient.Config(
+        insertEditCall = { AppEdit("editId123", "expiry") },
+        listEditTracksCall = { _, _ -> listOf(Track("internal")) },
+        uploadArtifactCall = { _, _, _ -> Bundle(1234, "", "") },
+        createReleaseCall = { _, _, _, _, _, _ -> },
+        commitEditCall = { _, _ -> throw PlayPublishingException("Commit edit error") },
+      )
+
+    val state = PlayPublishingWizardState(packageName = "com.example.app", bundlePath = "/some/path/app.aab")
+    state.releaseName = "My Release"
+    state.releaseNotes = "<en-US>These are some notes</en-US>"
+    createCreateReleaseWizard(state)
+
+    composeTestRule.waitForIdle()
+    composeTestRule.onNodeWithText("Publish app").performClick()
+    composeTestRule.waitForIdle()
+
+    composeTestRule.waitUntil(5000) { notificationRule.notifications.isNotEmpty() }
+
+    val loggedEvents = getLoggedEvents()
+    assertThat(loggedEvents).hasSize(1)
+    val playPublishingEvent = loggedEvents[0].studioEvent.playPublishingEvent
+    assertThat(playPublishingEvent.createReleaseDetails.createReleaseResult).isEqualTo(CreateReleaseResult.FAILED_TO_COMMIT_RELEASE)
   }
 
   @Test

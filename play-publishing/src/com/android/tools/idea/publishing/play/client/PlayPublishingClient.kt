@@ -53,7 +53,9 @@ interface PlayPublishingClient {
   }
 }
 
-internal const val NO_APP_LISTING_CORRECTION_MESSAGE =
+private const val NO_APP_LISTING_CORRECTION_MESSAGE =
   "No app listing is available for this app. Create one before publishing releases to non-Internal Test Tracks."
 
-class PlayPublishingException(message: String, cause: Throwable? = null) : Exception(message, cause)
+open class PlayPublishingException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
+class NoAppListingException(cause: Throwable? = null) : PlayPublishingException(NO_APP_LISTING_CORRECTION_MESSAGE, cause)

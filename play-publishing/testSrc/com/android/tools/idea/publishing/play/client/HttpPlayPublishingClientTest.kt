@@ -94,18 +94,19 @@ class HttpPlayPublishingClientTest {
 
     val exception = assertThrows(PlayPublishingException::class.java) { runBlocking { client.listApps() } }
 
+    assertThat(exception).isNotInstanceOf(NoAppListingException::class.java)
     assertThat(exception).hasMessageThat().isEqualTo("Bad request")
   }
 
   @Test
-  fun testListAppsHttpErrorDraftAppDraftReleaseThrowsPlayPublishingException() {
+  fun testListAppsHttpErrorDraftAppDraftReleaseThrowsNoAppListingException() {
     val client =
       createClient(
         statusCode = HttpStatusCode.BadRequest,
         content = GoogleApiErrorResponse(error = GoogleApiError(message = "Only releases with status draft may be created on draft app.")),
       )
 
-    val exception = assertThrows(PlayPublishingException::class.java) { runBlocking { client.listApps() } }
+    val exception = assertThrows(NoAppListingException::class.java) { runBlocking { client.listApps() } }
 
     assertThat(exception)
       .hasMessageThat()
@@ -113,7 +114,7 @@ class HttpPlayPublishingClientTest {
   }
 
   @Test
-  fun testListAppsHttpErrorFailedPreconditionTrackRestrictedThrowsPlayPublishingException() {
+  fun testListAppsHttpErrorFailedPreconditionTrackRestrictedThrowsNoAppListingException() {
     val client =
       createClient(
         statusCode = HttpStatusCode.BadRequest,
@@ -127,11 +128,46 @@ class HttpPlayPublishingClientTest {
           ),
       )
 
-    val exception = assertThrows(PlayPublishingException::class.java) { runBlocking { client.listApps() } }
+    val exception = assertThrows(NoAppListingException::class.java) { runBlocking { client.listApps() } }
 
     assertThat(exception)
       .hasMessageThat()
       .isEqualTo("No app listing is available for this app. Create one before publishing releases to non-Internal Test Tracks.")
+  }
+
+  @Test
+  fun testListAppsHttpErrorFailedPreconditionWithoutRestrictedTrackThrowsPlayPublishingException() {
+    val client =
+      createClient(
+        statusCode = HttpStatusCode.BadRequest,
+        content =
+          GoogleApiErrorResponse(
+            error =
+              GoogleApiError(
+                message = "Precondition check failed.",
+                errors = listOf(GoogleApiInnerError(debugInfo = "Some other precondition failure")),
+              )
+          ),
+      )
+
+    val exception = assertThrows(PlayPublishingException::class.java) { runBlocking { client.listApps() } }
+
+    assertThat(exception).isNotInstanceOf(NoAppListingException::class.java)
+    assertThat(exception).hasMessageThat().isEqualTo("Precondition check failed.")
+  }
+
+  @Test
+  fun testListAppsHttpErrorFailedPreconditionWithoutErrorsThrowsPlayPublishingException() {
+    val client =
+      createClient(
+        statusCode = HttpStatusCode.BadRequest,
+        content = GoogleApiErrorResponse(error = GoogleApiError(message = "Precondition check failed.")),
+      )
+
+    val exception = assertThrows(PlayPublishingException::class.java) { runBlocking { client.listApps() } }
+
+    assertThat(exception).isNotInstanceOf(NoAppListingException::class.java)
+    assertThat(exception).hasMessageThat().isEqualTo("Precondition check failed.")
   }
 
   @Test
