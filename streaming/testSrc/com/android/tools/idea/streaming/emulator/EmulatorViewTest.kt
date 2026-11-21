@@ -1036,6 +1036,12 @@ class EmulatorViewTest {
     fakeUi.mouse.release()
     assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { eventType: keyup key: \"GoBack\" }")
 
+    // Test a button whose logical coordinates fall inside the physical-pixel displayRect on HiDPI screens.
+    fakeUi.mouse.press(64, 166)
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { key: \"GoHome\" }")
+    fakeUi.mouse.release()
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).isEqualTo("key_event { eventType: keyup key: \"GoHome\" }")
+
     // Zoom in (0.34x -> 0.5x) so scrollbars appear and the view becomes pannable.
     view.zoom(ZoomType.IN)
     fakeUi.layoutAndDispatchEvents()

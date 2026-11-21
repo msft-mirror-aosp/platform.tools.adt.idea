@@ -1042,7 +1042,7 @@ internal class EmulatorView(
     val displayRect = projectionRectangle ?: return null
     val x = point.x.scaled(screenScalingFactor)
     val y = point.y.scaled(screenScalingFactor)
-    if (displayRect.contains(point)) {
+    if (displayRect.contains(x, y)) {
       return null
     }
     return skin.findSkinButtonContaining(x - displayRect.x, y - displayRect.y)?.keyName
