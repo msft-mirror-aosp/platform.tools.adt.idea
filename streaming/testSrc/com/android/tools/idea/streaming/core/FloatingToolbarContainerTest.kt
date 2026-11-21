@@ -16,6 +16,7 @@
 package com.android.tools.idea.streaming.core
 
 import com.android.testutils.GoldenImageRule
+import com.android.testutils.waitForCondition
 import com.android.tools.adtui.actions.executeAction
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.IconLoaderRule
@@ -26,6 +27,7 @@ import com.intellij.icons.AllIcons
 import com.intellij.ide.ActivityTracker
 import com.intellij.ide.HelpTooltip
 import com.intellij.openapi.actionSystem.ActionPlaces
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DefaultActionGroup
@@ -241,6 +243,85 @@ class FloatingToolbarContainerTest {
     toolbar.triggerDeactivation()
     fakeUi.layoutAndDispatchEvents()
     assertThat(events).containsExactly(true, false, true, false).inOrder()
+  }
+
+  @Test
+  fun testDynamicAuxiliaryToolbar() {
+    var auxVisible = false
+    var auxSelected = false
+    val auxAction =
+      object : ToggleAction("Pan", "Pan", AllIcons.Actions.MoveTo2) {
+        override fun update(event: AnActionEvent) {
+          super.update(event)
+          event.presentation.isEnabledAndVisible = auxVisible
+        }
+
+        override fun isSelected(event: AnActionEvent): Boolean = auxSelected
+
+        override fun setSelected(event: AnActionEvent, state: Boolean) {
+          auxSelected = state
+        }
+
+        override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+      }
+    val mainIndicator = TestAction("Indicator", AllIcons.General.FitContent)
+    val toolbar =
+      FloatingToolbarContainer(
+          horizontal = false,
+          inactiveAlpha = 0.8,
+          collapsedStateSelector = { it.action === mainIndicator || it.isSelected },
+          initiallyActive = false,
+        )
+        .apply {
+          addToolbar("AuxToolbar", DefaultActionGroup(auxAction))
+          addToolbar("MainToolbar", DefaultActionGroup(TestAction("Zoom In", AllIcons.General.Add), mainIndicator))
+        }
+    panel.add(toolbar, BorderLayout.EAST)
+    ActivityTracker.getInstance().inc()
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+
+    val auxPanel = toolbar.getComponent(0)
+    val mainPanel = toolbar.getComponent(1)
+
+    // When auxAction is not visible, auxPanel takes zero space even when expanded.
+    assertThat(auxPanel.height).isEqualTo(0)
+    toolbar.toggleActiveState()
+    waitForCondition(1.seconds) { toolbar.activationFactor == 1.0 }
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(auxPanel.height).isEqualTo(0)
+
+    // Make auxAction visible while unselected: visible when expanded with a gap above mainPanel, hidden when collapsed.
+    auxVisible = true
+    ActivityTracker.getInstance().inc()
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(auxPanel.height).isGreaterThan(0)
+    val expandedGap = mainPanel.y - (auxPanel.y + auxPanel.height)
+    assertThat(expandedGap).isGreaterThan(0)
+
+    toolbar.toggleActiveState()
+    waitForCondition(1.seconds) { toolbar.activationFactor == 0.0 }
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(auxPanel.height).isEqualTo(0)
+    assertThat(mainPanel.height).isGreaterThan(0)
+
+    // Select auxAction: remains visible when collapsed, separated from mainPanel by the same gap.
+    auxSelected = true
+    ActivityTracker.getInstance().inc()
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(auxPanel.height).isGreaterThan(0)
+    assertThat(mainPanel.y - (auxPanel.y + auxPanel.height)).isEqualTo(expandedGap)
+    assertThat(mainPanel.y + mainPanel.height).isEqualTo(toolbar.height)
+
+    // Deselect auxAction while collapsed: hides immediately.
+    val auxButton = fakeUi.getComponent<ActionButton> { it.action === auxAction }
+    val pos = fakeUi.getPosition(auxButton)
+    fakeUi.mouse.click(pos.x + auxButton.width / 2, pos.y + auxButton.height / 2)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(auxSelected).isFalse()
+    assertThat(auxPanel.height).isEqualTo(0)
   }
 
   private fun createHostPanel(): BorderLayoutPanel {
