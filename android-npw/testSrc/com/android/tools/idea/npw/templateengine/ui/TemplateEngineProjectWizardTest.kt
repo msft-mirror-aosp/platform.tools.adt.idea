@@ -133,7 +133,8 @@ class TemplateEngineProjectWizardTest {
             "applicationId" to "com.example.mynewproject",
             "namespace" to "com.example.mynewproject",
             "minSdk" to "24",
-            "compileSdk" to "36",
+            "compileSdk" to TemplateEngineTestUtils.COMPILE_SDK_FOR_TEMPLATE_TESTS.substringBefore('.'),
+            "compileSdkMinor" to TemplateEngineTestUtils.COMPILE_SDK_FOR_TEMPLATE_TESTS.substringAfter('.'),
           )
 
         val sdkPath = IdeSdks.getInstance().androidSdkPath?.absolutePath ?: ""
@@ -182,13 +183,13 @@ class TemplateEngineProjectWizardTest {
       StudioFlags.NPW_COMPILE_SDK_VERSION.override(AndroidApiLevel(36, 0))
       val argsMajorOnly = buildExplicitArguments(parameters)
       assertThat(argsMajorOnly[WizardConstants.KEY_COMPILE_SDK]).isEqualTo("36")
-      assertThat(argsMajorOnly[WizardConstants.KEY_COMPILE_SDK_MINOR]).isEqualTo("")
+      assertThat(argsMajorOnly[WizardConstants.KEY_COMPILE_SDK_MINOR]).isEqualTo("0")
 
       // Test with older version (e.g. 35)
       StudioFlags.NPW_COMPILE_SDK_VERSION.override(AndroidApiLevel(35, 0))
       val argsOlder = buildExplicitArguments(parameters)
       assertThat(argsOlder[WizardConstants.KEY_COMPILE_SDK]).isEqualTo("35")
-      assertThat(argsOlder[WizardConstants.KEY_COMPILE_SDK_MINOR]).isEqualTo("")
+      assertThat(argsOlder[WizardConstants.KEY_COMPILE_SDK_MINOR]).isEqualTo("0")
     } finally {
       StudioFlags.NPW_COMPILE_SDK_VERSION.override(originalFlagValue)
     }

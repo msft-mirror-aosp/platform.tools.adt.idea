@@ -23,10 +23,17 @@ import com.android.template.engine.TemplateFileEntry
 import com.android.template.engine.TemplateFileLoader
 import com.android.template.engine.TemplateMessageSink
 import com.android.template.engine.TemplateMetadata
+import com.android.tools.idea.testing.AndroidGradleTests
 import com.android.tools.idea.testing.ResolvedAgpVersionSoftwareEnvironment
 import java.io.File
 
 object TemplateEngineTestUtils {
+  /**
+   * The compile SDK used to build projects generated from the bundled templates. It must satisfy the `minCompileSdk` of the template's
+   * dependencies (e.g. the Compose BOM) and be available as `//prebuilts/studio/sdk:platforms/android-<version>` test data.
+   */
+  const val COMPILE_SDK_FOR_TEMPLATE_TESTS = "37.1"
+
   fun createTestTemplateMetadata(
     name: String = "Test Template",
     shortName: String = "test-template",
@@ -89,7 +96,7 @@ object TemplateEngineTestUtils {
       var content = appBuildGradle.readText()
       content = content.replace(Regex("""alias\(libs\.plugins\.kotlin\.serialization\)"""), "")
       content = content.replace(Regex("""kotlin\s*\{\s*jvmToolchain\(\s*17\s*\)\s*\}"""), "")
-      content = content.replace(Regex("""compileSdk(Version)?\s*(=\s*)?"?(android-)?\d+"?"""), "compileSdk = 36")
+      content = AndroidGradleTests.updateCompileSdkVersion(content, COMPILE_SDK_FOR_TEMPLATE_TESTS)
       appBuildGradle.writeText(content)
     }
 

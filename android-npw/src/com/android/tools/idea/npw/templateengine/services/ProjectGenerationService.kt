@@ -162,7 +162,9 @@ fun buildExplicitArguments(userParams: TemplateEngineProjectParameters): Map<Str
     WizardConstants.KEY_APPLICATION_ID to userParams.packageName,
     WizardConstants.KEY_NAMESPACE to userParams.packageName,
     WizardConstants.KEY_MIN_SDK to userParams.minSdk,
+    // Always pass the major and minor versions together so that the template's default minor version is never combined with a different
+    // major version.
     WizardConstants.KEY_COMPILE_SDK to apiLevel.majorVersion.toString(),
-    WizardConstants.KEY_COMPILE_SDK_MINOR to if (apiLevel.minorVersion > 0) apiLevel.minorVersion.toString() else "",
+    WizardConstants.KEY_COMPILE_SDK_MINOR to apiLevel.minorVersion.toString(),
   )
 }
