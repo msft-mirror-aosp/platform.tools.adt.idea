@@ -235,8 +235,14 @@ class FakeMouse internal constructor(private val fakeUi: FakeUi, private val key
 
   /** Scrolls the mouse unit [wheelRotation] clicks. Negative values mean scroll up / away, positive values mean scroll down / towards. */
   @JvmOverloads
-  fun wheel(x: Int, y: Int, wheelRotation: Int, preciseWheelRotation: Double = wheelRotation.toDouble()) {
-    dispatchMouseWheelEvent(x, y, wheelRotation, preciseWheelRotation)
+  fun wheel(
+    x: Int,
+    y: Int,
+    wheelRotation: Int,
+    preciseWheelRotation: Double = wheelRotation.toDouble(),
+    timestamp: Long = System.currentTimeMillis(),
+  ) {
+    dispatchMouseWheelEvent(x, y, wheelRotation, preciseWheelRotation, timestamp)
   }
 
   private fun dispatchMouseEvent(eventType: Int, x: Int, y: Int, button: Button, clickCount: Int, popupTrigger: Boolean, timestamp: Long) {
@@ -294,13 +300,13 @@ class FakeMouse internal constructor(private val fakeUi: FakeUi, private val key
     focus = if (eventType == MOUSE_EXITED) null else point.component
   }
 
-  private fun dispatchMouseWheelEvent(x: Int, y: Int, wheelRotation: Int, preciseWheelRotation: Double) {
+  private fun dispatchMouseWheelEvent(x: Int, y: Int, wheelRotation: Int, preciseWheelRotation: Double, timestamp: Long) {
     val point = fakeUi.targetMouseEvent(x, y) ?: return
     val event =
       MouseWheelEvent(
         point.component,
         MOUSE_WHEEL,
-        System.currentTimeMillis(),
+        timestamp,
         keyboard.toModifiersCode(),
         point.x,
         point.y,

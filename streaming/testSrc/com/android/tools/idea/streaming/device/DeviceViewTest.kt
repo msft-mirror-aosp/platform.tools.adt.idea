@@ -46,6 +46,7 @@ import com.android.tools.idea.streaming.core.ANDROID_SCROLL_ADJUSTMENT_FACTOR
 import com.android.tools.idea.streaming.core.AbstractDisplayView
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.core.DisplayType
+import com.android.tools.idea.streaming.core.StreamingLoadingPanel
 import com.android.tools.idea.streaming.core.ZoomType
 import com.android.tools.idea.streaming.core.extractText
 import com.android.tools.idea.streaming.core.mouseLocation
@@ -104,6 +105,7 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.testFramework.assertInstanceOf
 import com.intellij.testFramework.replaceService
 import com.intellij.util.ConcurrencyUtil
+import com.intellij.util.ui.UIUtil
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap
 import java.awt.AWTEvent
 import java.awt.Cursor
@@ -158,6 +160,7 @@ import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit.SECONDS
 import javax.swing.JButton
 import javax.swing.JEditorPane
+import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JViewport
 import javax.swing.SwingUtilities
@@ -714,6 +717,24 @@ internal class DeviceViewTest {
     assertThat(transparentOverlay.mouseLocation()).isNull()
 
     focusManager.setActiveWindow(viewWindow)
+
+    // StreamingLoadingPanel's mouse-transparent LoadingLayer must not occlude view.mouseLocation() after startDelayMs elapses,
+    // and hideLongRunningOperationIndicator() (stopLoading) must hide the LoadingLayer in headless/unit-test mode.
+    val loadingPanel = fakeUi.getComponent<StreamingLoadingPanel>()
+    view.showLongRunningOperationIndicator("Loading...")
+    waitForCondition(1.seconds) {
+      UIUtil.findComponentsOfType(loadingPanel, JLabel::class.java).any {
+        it.text == "Loading..." && it.parent?.parent?.parent?.isVisible == true
+      }
+    }
+    assertThat(view.mouseLocation()).isNotNull()
+    view.hideLongRunningOperationIndicator()
+    assertThat(
+        UIUtil.findComponentsOfType(loadingPanel, JLabel::class.java).any {
+          it.text == "Loading..." && it.parent?.parent?.parent?.isVisible == true
+        }
+      )
+      .isFalse()
 
     // Owned dialog/popup window covering the pointer on screen must prevent entering multi-touch on Pan exit.
     val ownedDialog = mock<Window>()

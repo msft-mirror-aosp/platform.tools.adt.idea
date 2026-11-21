@@ -37,20 +37,25 @@ import com.android.tools.adtui.common.TestAdtUiCursorsProvider
 import com.android.tools.adtui.common.replaceAdtUiCursorWithPredefinedCursor
 import com.android.tools.adtui.swing.DataManagerRule
 import com.android.tools.adtui.swing.FakeKeyboardFocusManager
+import com.android.tools.adtui.swing.FakeMouse
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.HeadlessRootPaneContainer
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.PortableUiFontRule
 import com.android.tools.adtui.swing.getDescendant
+import com.android.tools.adtui.swing.popup.ActionPopupMenuRule
 import com.android.tools.adtui.swing.popup.JBPopupRule
 import com.android.tools.idea.avdmanager.EmulatorLogListener
 import com.android.tools.idea.editors.liveedit.ui.LiveEditNotificationGroup
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.protobuf.TextFormat.shortDebugString
+import com.android.tools.idea.streaming.EmulatorSettings
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
+import com.android.tools.idea.streaming.actions.PanAction
 import com.android.tools.idea.streaming.actions.ToggleFloatingXrToolbarAction
 import com.android.tools.idea.streaming.actions.ZoomAction
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
+import com.android.tools.idea.streaming.core.FloatingToolbarContainer
 import com.android.tools.idea.streaming.core.STREAMING_CONTENT_PANEL_KEY
 import com.android.tools.idea.streaming.core.SplitPanel
 import com.android.tools.idea.streaming.core.ZoomType
@@ -96,6 +101,8 @@ import com.intellij.ui.LayeredIcon
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBUI
 import icons.StudioIcons
+import icons.StudioIcons.LayoutEditor.Toolbar.PAN_TOOL
+import icons.StudioIcons.LayoutEditor.Toolbar.PAN_TOOL_SELECTED
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Component
@@ -105,9 +112,11 @@ import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.PointerInfo
 import java.awt.event.FocusEvent
+import java.awt.event.InputEvent.BUTTON3_DOWN_MASK
 import java.awt.event.InputEvent.CTRL_DOWN_MASK
 import java.awt.event.InputEvent.SHIFT_DOWN_MASK
 import java.awt.event.KeyEvent.VK_A
+import java.awt.event.KeyEvent.VK_CONTROL
 import java.awt.event.KeyEvent.VK_D
 import java.awt.event.KeyEvent.VK_DOWN
 import java.awt.event.KeyEvent.VK_E
@@ -130,6 +139,7 @@ import java.util.concurrent.TimeoutException
 import javax.swing.JPanel
 import javax.swing.JSlider
 import javax.swing.JViewport
+import javax.swing.SwingUtilities
 import kotlin.test.fail
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -155,6 +165,7 @@ class EmulatorToolWindowPanelTest {
   private val emulatorRule = FakeEmulatorRule()
   private val goldenImageRule = GoldenImageRule("tools/adt/idea/streaming/testData/EmulatorToolWindowPanelTest/golden")
   private val popupRule = JBPopupRule()
+  private val actionPopupRule = ActionPopupMenuRule()
   @get:Rule
   val ruleChain =
     RuleChain(
@@ -166,6 +177,7 @@ class EmulatorToolWindowPanelTest {
       PortableUiFontRule(),
       goldenImageRule,
       popupRule,
+      actionPopupRule,
       EdtRule(),
     )
 
@@ -415,6 +427,9 @@ class EmulatorToolWindowPanelTest {
     fakeUi.layoutAndDispatchEvents()
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 600 height: 565")
+    assertThat(emulatorView.isPannable).isFalse()
+    emulatorView.isPanning = true
+    assertThat(emulatorView.isPanning).isFalse()
 
     // Check that the buttons not applicable to XR devices are hidden.
     assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Power" }).isNotNull()
@@ -538,6 +553,9 @@ class EmulatorToolWindowPanelTest {
     fakeUi.layoutAndDispatchEvents()
     val streamScreenshotCall = getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
     assertThat(shortDebugString(streamScreenshotCall.request)).isEqualTo("format: RGB888 width: 600 height: 565")
+    assertThat(emulatorView.isPannable).isFalse()
+    emulatorView.isPanning = true
+    assertThat(emulatorView.isPanning).isFalse()
 
     // Check that the buttons not applicable to XR devices are hidden.
     assertThat(fakeUi.findComponent<ActionButton> { it.action.templateText == "Power" }).isNotNull()
@@ -1596,6 +1614,169 @@ class EmulatorToolWindowPanelTest {
     notificationPanel = fakeUi.getComponent<EditorNotificationPanel>()
     assertThat(notificationPanel.text).isEqualTo("Crashed!")
     assertThat(notificationPanel.background).isEqualTo(JBUI.CurrentTheme.Banner.ERROR_BACKGROUND)
+  }
+
+  @Test
+  fun testPanMode() {
+    StudioFlags.RUNNING_DEVICES_CONTEXT_MENU.overrideForTest(true, testRootDisposable)
+    EmulatorSettings.getInstance()::contextMenuAdvertisementShown.override(true, testRootDisposable)
+    panel = createWindowPanelForPhone()
+    panel.createContent(true)
+    val emulatorView = panel.primaryDisplayView ?: fail()
+    // Before the first layout pass, isPannable must be false even though the emulator is already connected.
+    assertThat(emulatorView.isConnected).isTrue()
+    assertThat(emulatorView.isPannable).isFalse()
+
+    ApplicationManager.getApplication().replaceService(AdtUiCursorsProvider::class.java, TestAdtUiCursorsProvider(), testRootDisposable)
+    val grabCursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+    val grabbingCursor = Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.GRAB, grabCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.GRABBING, grabbingCursor)
+
+    var frameNumber = emulatorView.frameNumber
+    panel.size = Dimension(400, 600)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
+
+    // Initially no scrollbars are visible and Pan button is hidden.
+    assertThat(emulatorView.isPannable).isFalse()
+    fakeUi.expandFloatingToolbar()
+    fakeUi.updateToolbarsIfNecessary()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action is PanAction }).isNull()
+
+    // Zoom to actual size so scrollbars appear.
+    emulatorView.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    getStreamScreenshotCallAndWaitForFrame(panel, ++frameNumber)
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(emulatorView.isPannable).isTrue()
+
+    val zoomToolbar = fakeUi.getComponent<FloatingToolbarContainer>()
+    val panToolbarPanel = zoomToolbar.getComponent(0)
+    val zoomToolbarPanel = zoomToolbar.getComponent(1)
+    val panButton = fakeUi.getComponent<ActionButton> { it.action is PanAction }
+    assertThat(panButton.presentation.icon).isEqualTo(PAN_TOOL)
+    assertThat(zoomToolbarPanel.y - (panToolbarPanel.y + panToolbarPanel.height)).isGreaterThan(0)
+
+    // Enable Pan mode.
+    val buttonPos = fakeUi.getPosition(panButton)
+    fakeUi.mouse.click(buttonPos.x + panButton.width / 2, buttonPos.y + panButton.height / 2)
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(emulatorView.isPanning).isTrue()
+    assertThat(panButton.presentation.icon).isEqualTo(PAN_TOOL_SELECTED)
+    assertThat(panel.findComponentAt(200, 300)?.cursor).isEqualTo(grabCursor)
+
+    // Clear any prior non-screenshot gRPC calls before testing pan interactions.
+    emulator.clearGrpcCallLog()
+
+    // Drag to pan the viewport and use mouse wheel; verify no input events are sent to the emulator.
+    val viewport = emulatorView.parent as JViewport
+    val initialPosition = viewport.viewPosition
+    fakeUi.mouse.press(200, 300)
+    assertThat(panel.findComponentAt(200, 300)?.cursor).isEqualTo(grabbingCursor)
+    fakeUi.mouse.dragTo(150, 220)
+    assertThat(viewport.viewPosition).isEqualTo(Point(initialPosition.x + 50, initialPosition.y + 80))
+    fakeUi.mouse.release()
+    assertThat(panel.findComponentAt(150, 220)?.cursor).isEqualTo(grabCursor)
+
+    val posAfterDrag = viewport.viewPosition
+    fakeUi.mouse.wheel(150, 220, 3)
+    waitForCondition(1.seconds) { viewport.viewPosition.y > posAfterDrag.y }
+
+    // Right-clicking in Pan mode invokes the IDE context menu even when rightClicksAreSentToDevice is true.
+    emulatorView.rightClicksAreSentToDevice = true
+    fakeUi.mouse.rightClick(150, 220)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(actionPopupRule.lastPopupActions).isNotEmpty()
+    emulatorView.rightClicksAreSentToDevice = false
+
+    // Disable Pan mode and click inside display: the click should be the very first input event sent since clearGrpcCallLog().
+    val updatedButtonPos = fakeUi.getPosition(panButton)
+    fakeUi.mouse.click(updatedButtonPos.x + panButton.width / 2, updatedButtonPos.y + panButton.height / 2)
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(emulatorView.isPanning).isFalse()
+    assertThat(panel.findComponentAt(200, 300)?.cursor).isEqualTo(Cursor.getDefaultCursor())
+
+    fakeUi.mouse.press(200, 300)
+    val streamInputCall = getNextGrpcCallIgnoringStreamScreenshot()
+    assertThat(streamInputCall.methodName).isEqualTo("android.emulation.control.EmulatorController/streamInputEvent")
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).contains("buttons: 1")
+    fakeUi.mouse.release()
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).doesNotContain("buttons: 1")
+
+    // Windows-style right-click (popup trigger on release) clears BUTTON3 state so Ctrl multi-touch is not blocked afterward.
+    val rightClickViewPt = SwingUtilities.convertPoint(panel, Point(200, 300), emulatorView)
+    val rightClickTime = System.currentTimeMillis()
+    emulatorView.dispatchEvent(
+      MouseEvent(
+        emulatorView,
+        MouseEvent.MOUSE_PRESSED,
+        rightClickTime,
+        BUTTON3_DOWN_MASK,
+        rightClickViewPt.x,
+        rightClickViewPt.y,
+        1,
+        false,
+        MouseEvent.BUTTON3,
+      )
+    )
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).contains("buttons: 2")
+    emulatorView.dispatchEvent(
+      MouseEvent(
+        emulatorView,
+        MouseEvent.MOUSE_RELEASED,
+        rightClickTime,
+        0,
+        rightClickViewPt.x,
+        rightClickViewPt.y,
+        1,
+        true,
+        MouseEvent.BUTTON3,
+      )
+    )
+    val rightClickRelease = shortDebugString(streamInputCall.getNextRequest(1.seconds))
+    assertThat(rightClickRelease).startsWith("mouse_event {")
+    assertThat(rightClickRelease).doesNotContain("buttons:")
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(actionPopupRule.lastPopupActions).isNotEmpty()
+    fakeUi.keyboard.setFocus(emulatorView)
+    fakeUi.keyboard.press(VK_CONTROL)
+    fakeUi.mouse.press(200, 300)
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).contains("touch_event")
+    fakeUi.mouse.release()
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).doesNotContain("pressure:")
+    fakeUi.keyboard.release(VK_CONTROL)
+
+    // Entering Pan mode while holding middle mouse button releases the held button on the emulator.
+    fakeUi.mouse.press(200, 300, FakeMouse.Button.MIDDLE)
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).contains("buttons: 4")
+    emulatorView.isPanning = true
+    assertThat(shortDebugString(streamInputCall.getNextRequest(1.seconds))).doesNotContain("buttons:")
+    fakeUi.mouse.release()
+    emulatorView.isPanning = false
+
+    // Re-enable Pan mode and zoom to fit: Pan mode resets automatically.
+    emulatorView.isPanning = true
+    assertThat(emulatorView.isPanning).isTrue()
+    emulatorView.zoom(ZoomType.FIT)
+    fakeUi.layoutAndDispatchEvents()
+    fakeUi.updateToolbarsIfNecessary()
+    assertThat(emulatorView.isPannable).isFalse()
+    assertThat(emulatorView.isPanning).isFalse()
+
+    // Disconnecting from the emulator clears Pan mode.
+    emulatorView.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    emulatorView.isPanning = true
+    assertThat(emulatorView.isPanning).isTrue()
+    emulator.stop()
+    waitForCondition(5.seconds) { !emulatorView.isConnected && emulatorView.displayRectangle == null }
+    assertThat(emulatorView.isPanning).isFalse()
+
+    panel.destroyContent()
   }
 
   private fun createWindowPanelForPhone(): EmulatorToolWindowPanel {

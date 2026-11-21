@@ -783,6 +783,10 @@
       "path": "ActionManager"
     },
     {
+      "hit": "Click and drag to pan",
+      "path": "ActionManager"
+    },
+    {
       "hit": "Code",
       "path": "ActionManager"
     },
@@ -1436,6 +1440,10 @@
     },
     {
       "hit": "Palm",
+      "path": "ActionManager"
+    },
+    {
+      "hit": "Pan",
       "path": "ActionManager"
     },
     {

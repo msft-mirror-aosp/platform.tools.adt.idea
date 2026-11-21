@@ -140,6 +140,28 @@ class ToolWindowSizeOptimizerTest {
     doubleClickInView(ui, phoneView, contentX, contentY)
     assertThat(toolWindow.decorator.size).isEqualTo(Dimension(500, 500))
 
+    // Double-clicking in empty space while in Pan mode must be ignored and not resize the tool window.
+    phoneView.preferredSize = Dimension(200, 800)
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    assertThat(phoneView.isPannable).isTrue()
+    phoneView.isPanning = true
+    assertThat(phoneView.isPanning).isTrue()
+    val panEmptySpaceEvent =
+      MouseEvent(phoneView, MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(), 0, 2, phoneView.height / 2, 2, false, MouseEvent.BUTTON1)
+    phoneView.dispatchEvent(panEmptySpaceEvent)
+    assertThat(panEmptySpaceEvent.isConsumed).isFalse()
+    val panViewPos = ui.getPosition(phoneView)
+    assertThat(phoneView.panOverlay).isNotNull()
+    assertThat(SwingUtilities.getDeepestComponentAt(toolWindow.decorator, panViewPos.x + 2, panViewPos.y + phoneView.height / 2))
+      .isSameAs(phoneView.panOverlay)
+    doubleClickInView(ui, phoneView, 2, phoneView.height / 2)
+    assertThat(toolWindow.decorator.size).isEqualTo(Dimension(500, 500))
+    phoneView.resetZoom()
+    ui.layoutAndDispatchEvents()
+    renderAndGetFrameNumber(ui, phoneView)
+    assertThat(phoneView.isPanning).isFalse()
+
     // Docked RIGHT: shrink width to remove horizontal empty space.
     val emptySpaceEvent =
       MouseEvent(phoneView, MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(), 0, 2, phoneView.height / 2, 2, false, MouseEvent.BUTTON1)
@@ -2043,6 +2065,7 @@ class ToolWindowSizeOptimizerTest {
 
   private fun doubleClickInView(ui: FakeUi, view: AbstractDisplayView, x: Int, y: Int) {
     val pos = ui.getPosition(view)
+    assertThat(ui.root.contains(pos.x + x, pos.y + y)).isTrue()
     ui.mouse.doubleClick(pos.x + x, pos.y + y)
     ui.layoutAndDispatchEvents()
     renderAndGetFrameNumber(ui, view)

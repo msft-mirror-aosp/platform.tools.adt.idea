@@ -22,6 +22,11 @@ import com.android.testutils.waitForCondition
 import com.android.tools.adtui.actions.createTestEvent
 import com.android.tools.adtui.actions.executeAction
 import com.android.tools.adtui.actions.updateAndGetActionPresentation
+import com.android.tools.adtui.common.AdtUiCursorType
+import com.android.tools.adtui.common.AdtUiCursorsProvider
+import com.android.tools.adtui.common.TestAdtUiCursorsProvider
+import com.android.tools.adtui.common.replaceAdtUiCursorWithPredefinedCursor
+import com.android.tools.adtui.swing.FakeMouse
 import com.android.tools.adtui.swing.FakeUi
 import com.android.tools.adtui.swing.IconLoaderRule
 import com.android.tools.adtui.swing.PortableUiFontRule
@@ -29,8 +34,10 @@ import com.android.tools.adtui.swing.findDescendant
 import com.android.tools.adtui.swing.popup.ActionPopupMenuRule
 import com.android.tools.idea.flags.StudioFlags
 import com.android.tools.idea.streaming.DeviceMirroringSettings
+import com.android.tools.idea.streaming.EmulatorSettings
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
 import com.android.tools.idea.streaming.actions.HardwareInputStateStorage
+import com.android.tools.idea.streaming.actions.PanAction
 import com.android.tools.idea.streaming.actions.ToggleFloatingXrToolbarAction
 import com.android.tools.idea.streaming.core.ClipboardSynchronizationDisablementRule
 import com.android.tools.idea.streaming.core.DeviceDisplayListener
@@ -58,6 +65,7 @@ import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import com.intellij.ide.DataManager
 import com.intellij.ide.impl.HeadlessDataManager
+import com.intellij.ide.ui.UISettings
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
@@ -79,15 +87,20 @@ import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.LayeredIcon
 import com.intellij.ui.components.JBLabel
 import icons.StudioIcons
+import icons.StudioIcons.LayoutEditor.Toolbar.PAN_TOOL
+import icons.StudioIcons.LayoutEditor.Toolbar.PAN_TOOL_SELECTED
 import it.unimi.dsi.fastutil.bytes.ByteArrayList
 import java.awt.Component
+import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.Point
+import java.awt.event.InputEvent.BUTTON3_DOWN_MASK
 import java.awt.event.InputEvent.CTRL_DOWN_MASK
 import java.awt.event.InputEvent.SHIFT_DOWN_MASK
 import java.awt.event.KeyEvent
 import java.awt.event.KeyEvent.KEY_RELEASED
 import java.awt.event.KeyEvent.VK_A
+import java.awt.event.KeyEvent.VK_CONTROL
 import java.awt.event.KeyEvent.VK_D
 import java.awt.event.KeyEvent.VK_DOWN
 import java.awt.event.KeyEvent.VK_E
@@ -101,8 +114,12 @@ import java.awt.event.KeyEvent.VK_PAGE_UP
 import java.awt.event.KeyEvent.VK_Q
 import java.awt.event.KeyEvent.VK_RIGHT
 import java.awt.event.KeyEvent.VK_S
+import java.awt.event.KeyEvent.VK_SHIFT
 import java.awt.event.KeyEvent.VK_UP
 import java.awt.event.KeyEvent.VK_W
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
+import java.awt.event.MouseWheelEvent
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import javax.sound.sampled.AudioFormat
@@ -110,6 +127,8 @@ import javax.sound.sampled.Control
 import javax.sound.sampled.Line
 import javax.sound.sampled.LineListener
 import javax.sound.sampled.SourceDataLine
+import javax.swing.JComponent
+import javax.swing.JScrollPane
 import javax.swing.JViewport
 import javax.swing.SwingUtilities
 import kotlin.math.PI
@@ -168,7 +187,9 @@ class DeviceToolWindowPanelTest {
 
   @Before
   fun setUp() {
+    @Suppress("UnstableApiUsage")
     HeadlessDataManager.fallbackToProductionDataManager(testRootDisposable) // Necessary to properly update toolbar button states.
+    @Suppress("UnstableApiUsage")
     (DataManager.getInstance() as HeadlessDataManager).setTestDataProvider(TestDataProvider(project), testRootDisposable)
     val mockScreenRecordingCache = mock<ScreenRecordingSupportedCache>()
     whenever(mockScreenRecordingCache.isScreenRecordingSupported(any())).thenReturn(true)
@@ -208,12 +229,12 @@ class DeviceToolWindowPanelTest {
         Pair("Home", AKEYCODE_HOME),
         Pair("Overview", AKEYCODE_APP_SWITCH),
       )
-    for (case in pushButtonCases) {
-      val button = fakeUi.getComponent<ActionButton> { it.action.templateText == case.first }
+    for ((name, keycode) in pushButtonCases) {
+      val button = fakeUi.getComponent<ActionButton> { it.action.templateText == name }
       fakeUi.mousePressOn(button)
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, case.second, 0, PRIMARY_DISPLAY_ID))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, keycode, 0, PRIMARY_DISPLAY_ID))
       fakeUi.mouseRelease()
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0, PRIMARY_DISPLAY_ID))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, keycode, 0, PRIMARY_DISPLAY_ID))
     }
 
     // Check DevicePowerButtonAction invoked by a keyboard shortcut.
@@ -258,20 +279,20 @@ class DeviceToolWindowPanelTest {
     fakeUi.updateToolbarsIfNecessary()
     // Check push button actions.
     val pushButtonCases = listOf(Pair("Button 1", AKEYCODE_STEM_PRIMARY), Pair("Button 2", AKEYCODE_POWER), Pair("Back", AKEYCODE_BACK))
-    for (case in pushButtonCases) {
-      val button = fakeUi.getComponent<ActionButton> { it.action.templateText == case.first }
+    for ((name, keycode) in pushButtonCases) {
+      val button = fakeUi.getComponent<ActionButton> { it.action.templateText == name }
       fakeUi.mousePressOn(button)
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, case.second, 0, PRIMARY_DISPLAY_ID))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN, keycode, 0, PRIMARY_DISPLAY_ID))
       fakeUi.mouseRelease()
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, case.second, 0, PRIMARY_DISPLAY_ID))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_UP, keycode, 0, PRIMARY_DISPLAY_ID))
     }
 
     // Check keypress actions.
     val keypressCases = listOf(Pair("Palm", AKEYCODE_SLEEP))
-    for (case in keypressCases) {
-      val button = fakeUi.getComponent<ActionButton> { it.action.templateText == case.first }
+    for ((name, keycode) in keypressCases) {
+      val button = fakeUi.getComponent<ActionButton> { it.action.templateText == name }
       fakeUi.mouseClickOn(button)
-      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, case.second, 0, PRIMARY_DISPLAY_ID))
+      assertThat(getNextControlMessageAndWaitForFrame()).isEqualTo(KeyEventMessage(ACTION_DOWN_AND_UP, keycode, 0, PRIMARY_DISPLAY_ID))
     }
 
     // Check that the buttons not applicable to Wear OS 3 are hidden.
@@ -906,6 +927,373 @@ class DeviceToolWindowPanelTest {
     panel.removeNotification(notification)
     assertThat(SwingUtilities.isDescendingFrom(notification, panel)).isFalse()
     waitForCondition(2.seconds) { !agent.videoStreamActive }
+  }
+
+  @Test
+  fun testPanMode() {
+    StudioFlags.RUNNING_DEVICES_CONTEXT_MENU.overrideForTest(true, testRootDisposable)
+    EmulatorSettings.getInstance()::contextMenuAdvertisementShown.override(true, testRootDisposable)
+    @Suppress("UnstableApiUsage") UISettings.getInstance().state::animatedScrolling.override(false, testRootDisposable)
+    val toolbarState = FloatingToolbarState.getInstance()
+    toolbarState::zoomToolbarHorizontal.override(false, testRootDisposable)
+    ApplicationManager.getApplication().replaceService(AdtUiCursorsProvider::class.java, TestAdtUiCursorsProvider(), testRootDisposable)
+    val grabCursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+    val grabbingCursor = Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.GRAB, grabCursor)
+    replaceAdtUiCursorWithPredefinedCursor(AdtUiCursorType.GRABBING, grabbingCursor)
+
+    device = agentRule.connectDevice("Pixel 4", 30, Dimension(1080, 2280))
+    panel.createContent(false)
+    val deviceView = panel.primaryDisplayView!!
+    fakeUi.layoutAndDispatchEvents()
+    waitForCondition(10.seconds) { agent.isRunning && panel.isConnected }
+    waitForFrame()
+
+    // Initially the image fits in the window without scrollbars, so the Pan button is not shown.
+    assertThat(deviceView.isPannable).isFalse()
+    fakeUi.expandFloatingToolbar()
+    fakeUi.updateToolbarsIfNecessary()
+    assertThat(fakeUi.findComponent<ActionButton> { it.action is PanAction }).isNull()
+
+    // Zoom to actual size so both scrollbars become visible.
+    deviceView.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    fakeUi.render() // Update projectionRectangle for the new size.
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(deviceView.isPannable).isTrue()
+
+    val zoomToolbarVertical = fakeUi.getComponent<FloatingToolbarContainer>()
+    val panToolbarPanelVertical = zoomToolbarVertical.getComponent(0)
+    val zoomToolbarPanelVertical = zoomToolbarVertical.getComponent(1)
+    val panButtonVertical = fakeUi.getComponent<ActionButton> { it.action is PanAction }
+    assertThat(panButtonVertical.presentation.icon).isEqualTo(PAN_TOOL)
+    // Pan button is at the top of the vertical Zoom toolbar separated by a gap.
+    assertThat(zoomToolbarPanelVertical.y - (panToolbarPanelVertical.y + panToolbarPanelVertical.height)).isGreaterThan(0)
+
+    // When the Zoom toolbar is collapsed and Pan mode is off, the Pan button is hidden.
+    zoomToolbarVertical.toggleActiveState()
+    waitForCondition(1.seconds) { zoomToolbarVertical.activationFactor == 0.0 }
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(panToolbarPanelVertical.height).isEqualTo(0)
+
+    // Expand the Zoom toolbar and click the Pan button to enable Pan mode.
+    fakeUi.expandFloatingToolbar()
+    fakeUi.mouseClickOn(panButtonVertical)
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(deviceView.isPanning).isTrue()
+    assertThat(panButtonVertical.presentation.icon).isEqualTo(PAN_TOOL_SELECTED)
+
+    // When Pan mode is active, the Pan button stays visible even when the Zoom toolbar is collapsed.
+    zoomToolbarVertical.toggleActiveState()
+    waitForCondition(1.seconds) { zoomToolbarVertical.activationFactor == 0.0 }
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(panToolbarPanelVertical.height).isGreaterThan(0)
+    assertThat(zoomToolbarPanelVertical.y - (panToolbarPanelVertical.y + panToolbarPanelVertical.height)).isGreaterThan(0)
+
+    // Switch to horizontal toolbar orientation: Pan button is on the left of the Zoom toolbar separated by a gap.
+    toolbarState.zoomToolbarHorizontal = true
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+    val zoomToolbarHorizontal = fakeUi.getComponent<FloatingToolbarContainer>()
+    val panToolbarPanelHorizontal = zoomToolbarHorizontal.getComponent(0)
+    val zoomToolbarPanelHorizontal = zoomToolbarHorizontal.getComponent(1)
+    assertThat(panToolbarPanelHorizontal.width).isGreaterThan(0)
+    assertThat(zoomToolbarPanelHorizontal.x - (panToolbarPanelHorizontal.x + panToolbarPanelHorizontal.width)).isGreaterThan(0)
+
+    // Verify cursors and viewport dragging in Pan mode without sending events to the device.
+    val viewport = deviceView.parent as JViewport
+    val initialPosition = viewport.viewPosition
+    assertThat(panel.findComponentAt(100, 100)?.cursor).isEqualTo(grabCursor)
+
+    fakeUi.mouse.press(150, 150)
+    assertThat(panel.findComponentAt(150, 150)?.cursor).isEqualTo(grabbingCursor)
+    fakeUi.mouse.dragTo(110, 90)
+    assertThat(viewport.viewPosition).isEqualTo(Point(initialPosition.x + 40, initialPosition.y + 60))
+    fakeUi.mouse.release()
+    assertThat(panel.findComponentAt(110, 90)?.cursor).isEqualTo(grabCursor)
+
+    // Middle-button drag also pans the viewport.
+    val posAfterLeftDrag = viewport.viewPosition
+    fakeUi.mouse.press(110, 90, FakeMouse.Button.MIDDLE)
+    assertThat(panel.findComponentAt(110, 90)?.cursor).isEqualTo(grabbingCursor)
+    fakeUi.mouse.dragTo(130, 100)
+    assertThat(viewport.viewPosition).isEqualTo(Point(posAfterLeftDrag.x - 20, posAfterLeftDrag.y - 10))
+    fakeUi.mouse.release()
+    assertThat(panel.findComponentAt(130, 100)?.cursor).isEqualTo(grabCursor)
+
+    // Mouse wheel (vertical and Shift+horizontal) in Pan mode scrolls the viewport instead of sending scroll events to the device.
+    // Space event timestamps past JBScrollPane's 200ms axis-latching window (idea.latching.scrolling.time).
+    val now = System.currentTimeMillis()
+    val posAfterDrag = viewport.viewPosition
+    fakeUi.mouse.wheel(110, 90, 3, timestamp = now - 1000)
+    waitForCondition(1.seconds) { viewport.viewPosition.y > posAfterDrag.y }
+    val posAfterVerticalWheel = viewport.viewPosition
+    fakeUi.keyboard.press(VK_SHIFT)
+    fakeUi.mouse.wheel(110, 90, 3, timestamp = now - 500)
+    waitForCondition(1.seconds) { viewport.viewPosition.x > posAfterVerticalWheel.x }
+    fakeUi.keyboard.release(VK_SHIFT)
+
+    // Wheel scrolling or zooming mid-drag re-anchors cleanly without snapping back on subsequent drag events.
+    val posBeforeMidDrag = viewport.viewPosition
+    fakeUi.mouse.press(150, 180)
+    fakeUi.mouse.dragTo(140, 170)
+    assertThat(viewport.viewPosition).isEqualTo(Point(posBeforeMidDrag.x + 10, posBeforeMidDrag.y + 10))
+    val posBeforeMidDragWheel = viewport.viewPosition
+    fakeUi.mouse.wheel(140, 170, 3)
+    assertThat(viewport.viewPosition.y).isGreaterThan(posBeforeMidDragWheel.y)
+    val posAfterMidDragWheel = viewport.viewPosition
+    fakeUi.mouse.dragTo(135, 160)
+    assertThat(viewport.viewPosition).isEqualTo(Point(posAfterMidDragWheel.x + 5, posAfterMidDragWheel.y + 10))
+    deviceView.zoom(ZoomType.IN)
+    fakeUi.layoutAndDispatchEvents()
+    val posAfterMidDragZoom = viewport.viewPosition
+    fakeUi.mouse.dragTo(125, 145)
+    assertThat(viewport.viewPosition).isEqualTo(Point(posAfterMidDragZoom.x + 10, posAfterMidDragZoom.y + 15))
+    fakeUi.mouse.release()
+    deviceView.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    fakeUi.render()
+
+    // Vertical wheel scrolling mid-drag preserves clamped horizontal overshoot.
+    deviceView.scrollPosition = Point(0, 50)
+    fakeUi.mouse.press(100, 180)
+    fakeUi.mouse.dragTo(130, 180) // Overshoot past left edge by 30px (clamped to x = 0).
+    assertThat(viewport.viewPosition.x).isEqualTo(0)
+    val yBeforeEdgeWheel = viewport.viewPosition.y
+    fakeUi.mouse.wheel(130, 180, 3)
+    assertThat(viewport.viewPosition.y).isGreaterThan(yBeforeEdgeWheel)
+    fakeUi.mouse.dragTo(115, 180) // Still within the 30px overshoot, so x stays at 0.
+    assertThat(viewport.viewPosition.x).isEqualTo(0)
+    fakeUi.mouse.dragTo(90, 180) // 10px past original grab point (100), so x scrolls to 10.
+    assertThat(viewport.viewPosition.x).isEqualTo(10)
+    fakeUi.mouse.release()
+
+    // Child overlays added inside displayView (such as Embedded Layout Inspector) do not intercept Pan mode events or cursors.
+    var childOverlayEvents = 0
+    val childOverlay =
+      object : JComponent() {
+        init {
+          cursor = Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR)
+          val listener =
+            object : MouseAdapter() {
+              override fun mousePressed(event: MouseEvent) {
+                childOverlayEvents++
+              }
+
+              override fun mouseClicked(event: MouseEvent) {
+                childOverlayEvents++
+              }
+
+              override fun mouseDragged(event: MouseEvent) {
+                childOverlayEvents++
+              }
+
+              override fun mouseWheelMoved(event: MouseWheelEvent) {
+                childOverlayEvents++
+              }
+            }
+          addMouseListener(listener)
+          addMouseMotionListener(listener)
+          addMouseWheelListener(listener)
+        }
+      }
+    deviceView.add(childOverlay)
+    fakeUi.layoutAndDispatchEvents()
+    val posBeforeOverlayDrag = viewport.viewPosition
+    assertThat(panel.findComponentAt(110, 90)?.cursor).isEqualTo(grabCursor)
+    fakeUi.mouse.press(110, 90)
+    assertThat(panel.findComponentAt(110, 90)?.cursor).isEqualTo(grabbingCursor)
+    fakeUi.mouse.dragTo(100, 80)
+    assertThat(viewport.viewPosition).isEqualTo(Point(posBeforeOverlayDrag.x + 10, posBeforeOverlayDrag.y + 10))
+    fakeUi.mouse.release()
+    assertThat(panel.findComponentAt(100, 80)?.cursor).isEqualTo(grabCursor)
+    val posAfterOverlayDrag = viewport.viewPosition
+    fakeUi.mouse.wheel(100, 80, 2)
+    waitForCondition(1.seconds) { viewport.viewPosition.y > posAfterOverlayDrag.y }
+    assertThat(childOverlayEvents).isEqualTo(0)
+    deviceView.remove(childOverlay)
+    fakeUi.layoutAndDispatchEvents()
+
+    // Right-clicking in Pan mode invokes the IDE context menu even when rightClicksAreSentToDevice is true.
+    deviceView.rightClicksAreSentToDevice = true
+    fakeUi.mouse.rightClick(110, 90)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(popupRule.lastPopupActions).isNotEmpty()
+    deviceView.rightClicksAreSentToDevice = false
+
+    // Toggle Pan mode off by clicking the Pan button while collapsed.
+    val panButtonHorizontal = fakeUi.getComponent<ActionButton> { it.action is PanAction }
+    fakeUi.mouseClickOn(panButtonHorizontal)
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(deviceView.isPanning).isFalse()
+    assertThat(panToolbarPanelHorizontal.width).isEqualTo(0)
+    assertThat(panel.findComponentAt(110, 90)?.cursor).isEqualTo(Cursor.getDefaultCursor())
+
+    // Clicking on the display now sends hover + touch events to the device; no earlier pan mouse events were sent.
+    fakeUi.mouse.click(100, 100)
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_HOVER_ENTER)
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_HOVER_MOVE)
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_HOVER_EXIT)
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_DOWN)
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_UP)
+
+    // Windows-style right-click (popup trigger on release) clears BUTTON3 state so Ctrl multi-touch is not blocked afterward.
+    val rightClickViewPt = SwingUtilities.convertPoint(panel, Point(105, 105), deviceView)
+    val rightClickTime = System.currentTimeMillis()
+    deviceView.dispatchEvent(
+      MouseEvent(
+        deviceView,
+        MouseEvent.MOUSE_PRESSED,
+        rightClickTime,
+        BUTTON3_DOWN_MASK,
+        rightClickViewPt.x,
+        rightClickViewPt.y,
+        1,
+        false,
+        MouseEvent.BUTTON3,
+      )
+    )
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_DOWN)
+    deviceView.dispatchEvent(
+      MouseEvent(
+        deviceView,
+        MouseEvent.MOUSE_RELEASED,
+        rightClickTime,
+        0,
+        rightClickViewPt.x,
+        rightClickViewPt.y,
+        1,
+        true,
+        MouseEvent.BUTTON3,
+      )
+    )
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_UP)
+    PlatformTestUtil.dispatchAllEventsInIdeEventQueue()
+    assertThat(popupRule.lastPopupActions).isNotEmpty()
+    fakeUi.keyboard.setFocus(deviceView)
+    fakeUi.keyboard.press(VK_CONTROL)
+    fakeUi.mouse.press(105, 105)
+    val multiTouchAfterPopup = agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage
+    assertThat(multiTouchAfterPopup.action).isEqualTo(MotionEventMessage.ACTION_DOWN)
+    assertThat(multiTouchAfterPopup.pointers).hasSize(2)
+    fakeUi.mouse.release()
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_UP)
+    fakeUi.keyboard.release(VK_CONTROL)
+
+    // Entering Pan mode while hovering sends ACTION_HOVER_EXIT; entering while holding button 2 sends ACTION_UP.
+    fakeUi.mouse.moveTo(105, 105)
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_HOVER_ENTER)
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_HOVER_MOVE)
+    deviceView.isPanning = true
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_HOVER_EXIT)
+    deviceView.isPanning = false
+
+    fakeUi.mouse.press(105, 105, FakeMouse.Button.MIDDLE)
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_DOWN)
+    deviceView.isPanning = true
+    assertThat((agent.getNextControlMessage(2.seconds, filter = controlMessageFilter) as MotionEventMessage).action)
+      .isEqualTo(MotionEventMessage.ACTION_UP)
+    fakeUi.mouse.release()
+
+    // Hiding the Zoom toolbar clears Pan mode.
+    assertThat(deviceView.isPanning).isTrue()
+    panel.zoomToolbarVisible = false
+    assertThat(deviceView.isPanning).isFalse()
+    panel.zoomToolbarVisible = true
+
+    // Re-enable Pan mode, then zoom to fit: Pan mode automatically turns off and the Pan button disappears.
+    fakeUi.expandFloatingToolbar()
+    fakeUi.updateToolbarsIfNecessary()
+    fakeUi.mouseClickOn(fakeUi.getComponent<ActionButton> { it.action is PanAction })
+    assertThat(deviceView.isPanning).isTrue()
+
+    deviceView.zoom(ZoomType.FIT)
+    fakeUi.layoutAndDispatchEvents()
+    fakeUi.updateToolbarsIfNecessary()
+    assertThat(deviceView.isPannable).isFalse()
+    assertThat(deviceView.isPanning).isFalse()
+    assertThat(panel.findComponentAt(100, 100)?.cursor).isEqualTo(Cursor.getDefaultCursor())
+    assertThat(fakeUi.findComponent<ActionButton> { it.action is PanAction }).isNull()
+
+    // Switching from vertical-only to horizontal-only scrollbar in one layout pass keeps Pan mode active,
+    // while collapsing the scroll pane to empty bounds clears Pan mode even though scrollbars stay marked visible.
+    val savedPanelSize = panel.size
+    val scrollPane = viewport.parent as JScrollPane
+    panel.size = Dimension(1500, 600)
+    fakeUi.layoutAndDispatchEvents()
+    deviceView.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(scrollPane.verticalScrollBar.isVisible).isTrue()
+    assertThat(scrollPane.horizontalScrollBar.isVisible).isFalse()
+    deviceView.isPanning = true
+    assertThat(deviceView.isPanning).isTrue()
+
+    panel.size = Dimension(600, 3000)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(scrollPane.verticalScrollBar.isVisible).isFalse()
+    assertThat(scrollPane.horizontalScrollBar.isVisible).isTrue()
+    assertThat(deviceView.isPannable).isTrue()
+    assertThat(deviceView.isPanning).isTrue()
+
+    panel.size = Dimension(0, 0)
+    fakeUi.layoutAndDispatchEvents()
+    assertThat(scrollPane.width == 0 || scrollPane.height == 0).isTrue()
+    assertThat(deviceView.isPannable).isFalse()
+    assertThat(deviceView.isPanning).isFalse()
+
+    panel.size = savedPanelSize
+    fakeUi.layoutAndDispatchEvents()
+
+    // Panning works independently on a secondary display.
+    val secondaryDisplayId = 1
+    agent.addDisplay(secondaryDisplayId, Dimension(1080, 1920), DisplayType.EXTERNAL)
+    waitForCondition(2.seconds) { panel.findDisplayView(secondaryDisplayId) != null }
+    waitForFrame(displayId = secondaryDisplayId)
+    val secondaryView = panel.findDisplayView(secondaryDisplayId)!!
+    secondaryView.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    fakeUi.render()
+    fakeUi.updateToolbarsIfNecessary()
+    assertThat(secondaryView.isPannable).isTrue()
+    executeAction(PanAction.ACTION_ID, secondaryView, project)
+    assertThat(secondaryView.isPanning).isTrue()
+    assertThat(deviceView.isPanning).isFalse()
+    val secondaryViewport = secondaryView.parent as JViewport
+    val secondaryViewportPosInPanel = fakeUi.getPosition(secondaryViewport)
+    val secondaryInitialViewPos = secondaryViewport.viewPosition
+    val dragX = secondaryViewportPosInPanel.x + secondaryViewport.width / 2
+    val dragY = secondaryViewportPosInPanel.y + secondaryViewport.height / 2
+    fakeUi.mouse.drag(dragX, dragY, -25, -35)
+    assertThat(secondaryViewport.viewPosition).isEqualTo(Point(secondaryInitialViewPos.x + 25, secondaryInitialViewPos.y + 35))
+    agent.removeDisplay(secondaryDisplayId)
+    waitForCondition(2.seconds) { panel.findDisplayView(secondaryDisplayId) == null }
+
+    // Disconnecting the agent clears Pan mode.
+    deviceView.zoom(ZoomType.ACTUAL)
+    fakeUi.layoutAndDispatchEvents()
+    fakeUi.render()
+    deviceView.isPanning = true
+    assertThat(deviceView.isPanning).isTrue()
+    runBlocking { agent.stop() }
+    waitForCondition(2.seconds) { !panel.isConnected }
+    assertThat(deviceView.isPanning).isFalse()
+
+    panel.destroyContent()
   }
 
   private fun FakeUi.mousePressOn(component: Component) {

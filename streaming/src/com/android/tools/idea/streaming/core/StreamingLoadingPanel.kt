@@ -17,6 +17,7 @@ package com.android.tools.idea.streaming.core
 
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ui.LoadingDecorator
 import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.components.panels.ListLayout
@@ -28,6 +29,7 @@ import com.intellij.util.ui.JBUI
 import com.intellij.util.ui.UIUtil.findComponentOfType
 import java.awt.BorderLayout
 import java.awt.Graphics
+import java.awt.GraphicsEnvironment
 import java.awt.GridBagLayout
 import java.awt.LayoutManager
 import javax.swing.JLabel
@@ -44,9 +46,22 @@ class StreamingLoadingPanel(parentDisposable: Disposable) :
     super.startLoading()
   }
 
+  override fun stopLoading() {
+    super.stopLoading()
+    if (GraphicsEnvironment.isHeadless() || ApplicationManager.getApplication()?.isUnitTestMode == true) {
+      // LoadingDecorator sets fadeOutAnimator to null in headless and unit-test modes, so super.stopLoading()
+      // never sets LoadingLayer.isVisible = false once startDelayMs has elapsed.
+      hideLoadingLayer()
+    }
+  }
+
   /** Similar to [stopLoading] but without a fade-out animation. */
   fun stopLoadingInstantly() {
-    stopLoading()
+    super.stopLoading()
+    hideLoadingLayer()
+  }
+
+  private fun hideLoadingLayer() {
     findRoundedPanel()?.let {
       it.isVisible = false
       it.parent?.parent?.isVisible = false
@@ -66,7 +81,6 @@ class StreamingLoadingPanel(parentDisposable: Disposable) :
     LoadingDecorator(panel, parentDisposable, startDelayMs, false, AsyncProcessIcon.Big("Loading")) {
 
     override fun customizeLoadingLayer(parent: JPanel, text: JLabel, icon: AnimatedIcon): NonOpaquePanel {
-      @Suppress("UnstableApiUsage")
       val roundedPanel =
         RoundedPanel(ListLayout.horizontal(JLabel().iconTextGap * 3, vertGrow = ListLayout.GrowPolicy.GROW), 8).apply {
           border = JBEmptyBorder(8)

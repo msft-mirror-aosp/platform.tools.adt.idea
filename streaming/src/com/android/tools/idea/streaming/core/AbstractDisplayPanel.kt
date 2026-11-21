@@ -16,8 +16,10 @@
 package com.android.tools.idea.streaming.core
 
 import com.android.sdklib.deviceprovisioner.DeviceType
+import com.android.tools.adtui.PANNABLE_KEY
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.idea.streaming.actions.FloatingXrToolbarState
+import com.android.tools.idea.streaming.actions.PanAction
 import com.android.tools.idea.streaming.actions.ZoomLevelIndicator
 import com.android.tools.idea.ui.DISPLAY_ID_KEY
 import com.intellij.ide.ActivityTracker
@@ -67,16 +69,20 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
 
   private val scrollPane: JScrollPane
   private val layeredPane: JLayeredPane
+  private val panOverlay: JComponent
   private val floatingToolbarLayerPane: JComponent
   protected val notificationLayerPane: JComponent
   private var zoomToolbar: FloatingToolbarContainer? = null
   private var xrNavigationToolbar: FloatingToolbarContainer? = null
   protected val loadingPanel: StreamingLoadingPanel
+  private var inScrollPaneLayout = false
   private var _displayView: T? = null
   var displayView: T
     get() = _displayView ?: throw IllegalStateException("displayView is not initialized")
     protected set(view) {
+      _displayView?.panOverlay = null
       _displayView = view
+      view.panOverlay = panOverlay
       scrollPane.setViewportView(displayView)
     }
 
@@ -87,6 +93,9 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     set(value) {
       field = value
       zoomToolbar?.isVisible = value
+      if (!value) {
+        _displayView?.isPanning = false
+      }
     }
 
   private var expandZoomToolbarWhenUncollapsed = false
@@ -162,16 +171,20 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
         focusable = true,
       )
 
+    panOverlay = PanOverlay()
+
     layeredPane =
       JLayeredPane().apply {
         layout = LayeredPaneLayoutManager()
         isFocusable = true
         setLayer(notificationLayerPane, JLayeredPane.PALETTE_LAYER)
         setLayer(floatingToolbarLayerPane, JLayeredPane.PALETTE_LAYER)
+        setLayer(panOverlay, JLayeredPane.DEFAULT_LAYER + 1)
         setLayer(scrollPane, JLayeredPane.DEFAULT_LAYER)
 
         add(notificationLayerPane, BorderLayout.CENTER)
         add(floatingToolbarLayerPane, BorderLayout.CENTER)
+        add(panOverlay, BorderLayout.CENTER)
         add(scrollPane, BorderLayout.CENTER)
       }
 
@@ -215,6 +228,7 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
 
   private fun createZoomToolbar(horizontal: Boolean, initiallyActive: Boolean) {
     val actionManager = ActionManager.getInstance()
+    val panGroup = DefaultActionGroup(actionManager.getAction(PanAction.ACTION_ID))
     val zoomGroup =
       DefaultActionGroup().apply {
         add(actionManager.getAction("android.streaming.zoom.in"))
@@ -234,10 +248,11 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
       FloatingToolbarContainer(
           horizontal = horizontal,
           inactiveAlpha = 0.8,
-          collapsedStateSelector = { it.action is ZoomLevelIndicator },
+          collapsedStateSelector = { it.action is ZoomLevelIndicator || it.isSelected },
           initiallyActive = initiallyActive,
         )
         .apply {
+          addToolbar("PanToolbar", panGroup)
           addToolbar("ZoomToolbar", zoomGroup)
           isVisible = zoomToolbarVisible
           setTargetComponent(displayView)
@@ -305,6 +320,7 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     sink[DISPLAY_ID_KEY] = displayId
     sink[DISPLAY_VIEW_KEY] = displayView
     sink[ZOOMABLE_KEY] = displayView
+    sink[PANNABLE_KEY] = displayView
     (zoomToolbar ?: xrNavigationToolbar)?.let { floatingToolbar -> sink[FLOATING_TOOLBAR_KEY] = floatingToolbar }
   }
 
@@ -323,6 +339,37 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     }
 
     override fun contains(x: Int, y: Int): Boolean = anyVisibleChildContains(x, y)
+  }
+
+  /**
+   * Transparent overlay placed above [scrollPane] while [AbstractDisplayView.isPanning] is active so that child overlays added inside
+   * [displayView] (such as Embedded Layout Inspector) cannot intercept pan events or override the pan cursor. Passes through hits over
+   * visible scrollbars so they remain interactive.
+   */
+  private inner class PanOverlay : JComponent() {
+
+    init {
+      isOpaque = false
+      isFocusable = false
+      isVisible = false
+    }
+
+    override fun contains(x: Int, y: Int): Boolean {
+      if (!super.contains(x, y)) {
+        return false
+      }
+      val sx = x + this.x - scrollPane.x
+      val sy = y + this.y - scrollPane.y
+      val vBar = scrollPane.verticalScrollBar
+      if (vBar.isVisible && vBar.bounds.contains(sx, sy)) {
+        return false
+      }
+      val hBar = scrollPane.horizontalScrollBar
+      if (hBar.isVisible && hBar.bounds.contains(sx, sy)) {
+        return false
+      }
+      return scrollPane.viewport.bounds.contains(sx, sy)
+    }
   }
 
   private class LayeredPaneLayoutManager : LayoutManager {
@@ -350,7 +397,7 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     override fun removeLayoutComponent(comp: Component?) {}
   }
 
-  private class MyScrollPane : JBScrollPane(0) {
+  private inner class MyScrollPane : JBScrollPane(0) {
 
     init {
       setupCorners()
@@ -374,30 +421,63 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
       val oldHeight = this.height
       super.setBounds(x, y, width, height)
       val view = viewport.view
-      val viewPreferredSize = view.preferredSize
+      if (view != null) {
+        val viewPreferredSize = view.preferredSize
+        if (
+          (viewPreferredSize.width <= oldWidth &&
+            viewPreferredSize.height <= oldHeight &&
+            (viewPreferredSize.width >= width || viewPreferredSize.height >= height)) ||
+            ((viewPreferredSize.width >= oldWidth || viewPreferredSize.height >= oldHeight) &&
+              viewPreferredSize.width <= width &&
+              width < viewPreferredSize.width * 2 &&
+              viewPreferredSize.height <= height &&
+              height < viewPreferredSize.height * 2)
+        ) {
+          // The size of the scroll pane crossed the point where it matched the preferred size of the view.
+          // Reset the preferred size of the view so that it starts resizing with the scroll pane.
+          view.preferredSize = null
+        }
+      }
+      if ((oldWidth <= 0 || oldHeight <= 0) != (width <= 0 || height <= 0)) {
+        updatePanningAndToolbar()
+      }
+    }
+
+    override fun doLayout() {
+      val oldVsbVisible = verticalScrollBar.isVisible
+      val oldHsbVisible = horizontalScrollBar.isVisible
+      inScrollPaneLayout = true
+      try {
+        super.doLayout()
+      } finally {
+        inScrollPaneLayout = false
+      }
       if (
-        (viewPreferredSize.width <= oldWidth &&
-          viewPreferredSize.height <= oldHeight &&
-          (viewPreferredSize.width >= width || viewPreferredSize.height >= height)) ||
-          ((viewPreferredSize.width >= oldWidth || viewPreferredSize.height >= oldHeight) &&
-            viewPreferredSize.width <= width &&
-            width < viewPreferredSize.width * 2 &&
-            viewPreferredSize.height <= height &&
-            height < viewPreferredSize.height * 2)
+        oldVsbVisible != verticalScrollBar.isVisible ||
+          oldHsbVisible != horizontalScrollBar.isVisible ||
+          (_displayView?.isPanning == true && _displayView?.isPannable == false)
       ) {
-        // The size of the scroll pane crossed the point where it matched the preferred size of the view.
-        // Reset the preferred size of the view so that it starts resizing with the scroll pane.
-        view.preferredSize = null
+        updatePanningAndToolbar()
       }
     }
   }
 
-  private class MyScrollBar(@AdjustableOrientation orientation: Int) : JBScrollBar(orientation) {
+  private fun updatePanningAndToolbar() {
+    _displayView?.let { view ->
+      if (!view.isPannable) {
+        view.isPanning = false
+      }
+      ActivityTracker.getInstance().inc()
+    }
+  }
+
+  private inner class MyScrollBar(@AdjustableOrientation orientation: Int) : JBScrollBar(orientation) {
 
     private var persistentUI: ScrollBarUI? = null
 
     init {
       isOpaque = false
+      isVisible = false
     }
 
     override fun setUI(ui: ScrollBarUI) {
@@ -409,8 +489,12 @@ internal abstract class AbstractDisplayPanel<T : AbstractDisplayView>(disposable
     }
 
     override fun setVisible(isVisible: Boolean) {
+      val visibilityChanged = this.isVisible != isVisible
       super.setVisible(isVisible)
       isOpaque = isVisible
+      if (visibilityChanged && !inScrollPaneLayout) {
+        updatePanningAndToolbar()
+      }
     }
 
     override fun getUnitIncrement(direction: Int): Int = 5

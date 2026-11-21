@@ -39,6 +39,7 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.ToolWindowType
 import com.intellij.ui.ComponentUtil
+import com.intellij.ui.components.JBLoadingPanel
 import com.intellij.ui.dsl.builder.HyperlinkEventAction
 import com.intellij.ui.dsl.builder.MAX_LINE_LENGTH_WORD_WRAP
 import com.intellij.ui.dsl.builder.components.DslLabel
@@ -314,12 +315,14 @@ fun Component.mouseLocation(): Point? {
     if (!parent.contains(xInParent, yInParent)) {
       return null
     }
-    for (sibling in parent.components) {
-      if (sibling === child) {
-        break
-      }
-      if (sibling.isVisible && sibling.contains(xInParent - sibling.x, yInParent - sibling.y)) {
-        return null
+    if (parent.parent !is JBLoadingPanel) {
+      for (sibling in parent.components) {
+        if (sibling === child) {
+          break
+        }
+        if (sibling.isVisible && sibling.contains(xInParent - sibling.x, yInParent - sibling.y)) {
+          return null
+        }
       }
     }
     pointInChild = Point(xInParent, yInParent)

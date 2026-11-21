@@ -863,7 +863,7 @@ class VideoPlaybackPanelTest {
     }
 
     val zoomToolbar = fakeUi.getComponent<FloatingToolbarContainer>()
-    val toolbarPanel = zoomToolbar.getComponent(0)
+    val toolbarPanel = zoomToolbar.getComponent(1)
     waitForCondition(2.seconds) {
       ActivityTracker.getInstance().inc()
       fakeUi.updateToolbarsIfNecessary()
@@ -958,7 +958,7 @@ class VideoPlaybackPanelTest {
     }
 
     val zoomToolbar = fakeUi.getComponent<FloatingToolbarContainer>()
-    val toolbarPanel = zoomToolbar.getComponent(0)
+    val toolbarPanel = zoomToolbar.getComponent(1)
     waitForCondition(2.seconds) {
       ActivityTracker.getInstance().inc()
       fakeUi.updateToolbarsIfNecessary()
@@ -1044,7 +1044,7 @@ class VideoPlaybackPanelTest {
 
       fun waitForZoomToolbarLayout(): FloatingToolbarContainer {
         val toolbar = fakeUi.getComponent<FloatingToolbarContainer>()
-        val child = toolbar.getComponent(0)
+        val child = toolbar.getComponent(1)
         waitForCondition(2.seconds) {
           ActivityTracker.getInstance().inc()
           fakeUi.updateToolbarsIfNecessary()
@@ -1055,7 +1055,7 @@ class VideoPlaybackPanelTest {
       }
 
       val zoomToolbarVertical = waitForZoomToolbarLayout()
-      val toolbarPanelVertical = zoomToolbarVertical.getComponent(0)
+      val toolbarPanelVertical = zoomToolbarVertical.getComponent(1)
       val collapsedRect = SwingUtilities.convertRectangle(toolbarPanelVertical.parent, toolbarPanelVertical.bounds, displayPanel)
       val collapsedMargin = (min(collapsedRect.width, collapsedRect.height) / 2.0).roundToInt()
       val centerY = collapsedRect.centerY.toInt()
@@ -1147,7 +1147,7 @@ class VideoPlaybackPanelTest {
       waitForCondition(2.seconds) { zoomToolbarHorizontal.activationFactor == 1.0 }
       fakeUi.layoutAndDispatchEvents()
 
-      val toolbarPanelHorizontal = zoomToolbarHorizontal.getComponent(0)
+      val toolbarPanelHorizontal = zoomToolbarHorizontal.getComponent(1)
       val expandedHorizontalRect =
         SwingUtilities.convertRectangle(toolbarPanelHorizontal.parent, toolbarPanelHorizontal.bounds, displayPanel)
       assertThat(expandedHorizontalRect.width).isGreaterThan(expandedHorizontalRect.height)

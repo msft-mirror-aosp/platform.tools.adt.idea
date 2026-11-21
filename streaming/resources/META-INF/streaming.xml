@@ -329,6 +329,9 @@
       </group>
     </group>
 
+    <action id="android.streaming.pan" class="com.android.tools.idea.streaming.actions.PanAction"
+            icon="StudioIcons.LayoutEditor.Toolbar.PAN_TOOL" text="Pan" description="Click and drag to pan"/>
+
     <group id="android.streaming.zoom">
       <action id="android.streaming.zoom.in"
           icon="AllIcons.General.Add"

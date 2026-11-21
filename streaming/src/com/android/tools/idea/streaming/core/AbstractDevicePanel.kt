@@ -16,6 +16,7 @@
 package com.android.tools.idea.streaming.core
 
 import com.android.sdklib.deviceprovisioner.DeviceType
+import com.android.tools.adtui.PANNABLE_KEY
 import com.android.tools.adtui.common.primaryPanelBackground
 import com.android.tools.adtui.device.SkinDefinition
 import com.android.tools.adtui.ui.NotificationHolderPanel
@@ -319,6 +320,7 @@ internal abstract class AbstractDevicePanel<T : AbstractDisplayPanel<*>>(
   override fun uiDataSnapshot(sink: DataSink) {
     sink[DISPLAY_VIEW_KEY] = primaryDisplayView
     sink[ZOOMABLE_KEY] = primaryDisplayView
+    sink[PANNABLE_KEY] = primaryDisplayView
     sink[SERIAL_NUMBER_KEY] = id.serialNumber
     sink[DEVICE_TYPE_KEY] = primaryDisplayView?.deviceType
     sink[STREAMING_CONTENT_PANEL_KEY] = centerPanel
