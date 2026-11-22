@@ -76,6 +76,7 @@ iml_module(
         "@intellij//:intellij.platform.externalSystem.impl",
         "@intellij//:intellij.platform.externalSystem",
     ],
+    test_shard_count = 4,
     test_srcs = ["testSrc"],
     test_timeout = "long",
     visibility = ["//visibility:public"],
