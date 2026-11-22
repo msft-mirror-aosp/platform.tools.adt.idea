@@ -125,6 +125,7 @@ import com.intellij.util.SofterReference
 import com.intellij.util.concurrency.AppExecutorUtil.getAppExecutorService
 import com.intellij.util.containers.DisposableWrapperList
 import com.intellij.xml.util.XmlStringUtil
+import java.awt.Cursor
 import java.awt.Dimension
 import java.awt.EventQueue
 import java.awt.Graphics
@@ -136,7 +137,6 @@ import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import java.awt.event.FocusAdapter
 import java.awt.event.FocusEvent
-import java.awt.event.FocusListener
 import java.awt.event.InputEvent
 import java.awt.event.InputEvent.BUTTON1_DOWN_MASK
 import java.awt.event.InputEvent.BUTTON2_DOWN_MASK
@@ -307,7 +307,6 @@ internal class EmulatorView(
       }
     }
 
-  @Volatile private var isDisposed = false
   override val isConnected
     get() = emulator.connectionState == ConnectionState.CONNECTED
 
@@ -383,8 +382,6 @@ internal class EmulatorView(
       }
     }
 
-  /** Last observed modifier state. */
-  private var lastModifiers: Int = 0
   private var cameraPromptUpdateGeneration: Int = 0
 
   private var virtualSceneCameraPrompt: String? = null
@@ -532,12 +529,8 @@ internal class EmulatorView(
       showLongRunningOperationIndicator("Connecting to the Emulator")
 
       addFocusListener(
-        object : FocusListener {
+        object : FocusAdapter() {
           override fun focusGained(event: FocusEvent) {
-            updateCameraPromptAndMultiTouchFeedback()
-          }
-
-          override fun focusLost(event: FocusEvent) {
             updateCameraPromptAndMultiTouchFeedback()
           }
         }
@@ -567,11 +560,11 @@ internal class EmulatorView(
   }
 
   override fun dispose() {
-    isDisposed = true
     cancelScreenshotFeed()
     emulator.removeConnectionStateListener(this)
     streamingSessionTracker.streamingEnded()
     stats?.let { Disposer.dispose(it) } // The stats object has to be disposed last.
+    super.dispose()
   }
 
   override fun sendTypedText(text: String) {
@@ -946,6 +939,10 @@ internal class EmulatorView(
   override fun hardwareInputStateChanged(event: AnActionEvent, enabled: Boolean) {
     super.hardwareInputStateChanged(event, enabled)
     updateCameraPromptAndMultiTouchFeedback(event.inputEvent!!)
+  }
+
+  override fun onFocusLost() {
+    updateCameraPromptAndMultiTouchFeedback(0)
   }
 
   @UiThread
@@ -1418,9 +1415,12 @@ internal class EmulatorView(
     }
   }
 
-  private fun updateCursor() {
+  override fun computeCustomCursor(): Cursor? {
+    super.computeCustomCursor()?.let {
+      return it
+    }
     if (!StudioFlags.EMBEDDED_EMULATOR_XR_HAND_AND_EYE_CURSORS.get()) {
-      return
+      return null
     }
     val cursorType =
       when {
@@ -1433,10 +1433,7 @@ internal class EmulatorView(
           else AdtUiCursorType.XR_EYE_INPUT
         else -> null
       }
-    val newCursor = cursorType?.let { AdtUiCursorsProvider.getInstance().getCursor(it) }
-    if (cursor != newCursor) {
-      cursor = newCursor
-    }
+    return cursorType?.let { AdtUiCursorsProvider.getInstance().getCursor(it) }
   }
 
   private fun isInsideDisplayAndMouseInputSupported(point: Point): Boolean = deviceType != DeviceType.AI_GLASSES && isInsideDisplay(point)

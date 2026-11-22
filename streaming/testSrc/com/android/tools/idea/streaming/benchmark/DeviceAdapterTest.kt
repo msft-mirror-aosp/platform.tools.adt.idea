@@ -510,8 +510,6 @@ class DeviceAdapterTest {
 
     override fun computeActualSize(framing: Framing) = deviceDisplaySize
 
-    override fun dispose() {}
-
     fun notifyFrame(frame: BufferedImage) {
       notifyFrameListeners(Rectangle(), frame)
     }

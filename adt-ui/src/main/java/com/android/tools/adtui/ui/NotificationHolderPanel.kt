@@ -189,6 +189,8 @@ class NotificationHolderPanel(content: Component) : JBLayeredPane(), UiDataProvi
       addToCenter(notificationPanel)
     }
 
+    override fun contains(x: Int, y: Int): Boolean = false
+
     override fun paint(g: Graphics) {
       if (alpha == 1.0F) {
         super.paint(g)

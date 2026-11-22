@@ -25,6 +25,8 @@ import com.intellij.testFramework.RunsInEdt
 import com.intellij.ui.EditorNotificationPanel
 import com.intellij.ui.util.preferredHeight
 import java.awt.Container
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import javax.swing.JPanel
 import org.junit.Rule
 import org.junit.Test
@@ -49,5 +51,40 @@ class NotificationHolderPanelTest {
     val insets = popup.insets
     val expectedHeight = EditorNotificationPanel().apply { text = "Notification message" }.preferredHeight + insets.top + insets.bottom
     assertThat(popup.height).isEqualTo(expectedHeight)
+  }
+
+  @Test
+  fun testFadeOutNotificationIsMouseTransparent() {
+    var contentClicks = 0
+    val content =
+      JPanel().apply {
+        addMouseListener(
+          object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) {
+              contentClicks++
+            }
+          }
+        )
+      }
+    val notificationHolderPanel = NotificationHolderPanel(content)
+    notificationHolderPanel.setBounds(0, 0, 200, 500)
+    val ui = FakeUi(notificationHolderPanel, disposableRule.disposable)
+
+    notificationHolderPanel.showFadeOutNotification("Fade-out prompt")
+    ui.layoutAndDispatchEvents()
+    val popup = notificationHolderPanel.getComponent(0) as Container
+    assertThat(popup.height).isGreaterThan(10)
+
+    // Hit-testing and mouse events inside the fade-out banner pass through to content.
+    assertThat(notificationHolderPanel.findComponentAt(50, 5)).isSameAs(content)
+    ui.mouse.click(50, 5)
+    assertThat(contentClicks).isEqualTo(1)
+
+    // Interactive notifications added via addNotification still receive hit-testing.
+    notificationHolderPanel.hideFadeOutNotification()
+    val interactiveBanner = EditorNotificationPanel().apply { text = "Interactive banner" }
+    notificationHolderPanel.addNotification(interactiveBanner)
+    ui.layoutAndDispatchEvents()
+    assertThat(notificationHolderPanel.findComponentAt(50, 5)).isNotSameAs(content)
   }
 }

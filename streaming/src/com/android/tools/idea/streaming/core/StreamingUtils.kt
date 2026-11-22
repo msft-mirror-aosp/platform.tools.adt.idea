@@ -48,16 +48,20 @@ import java.awt.Container
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.HeadlessException
+import java.awt.IllegalComponentStateException
 import java.awt.KeyboardFocusManager
 import java.awt.MouseInfo
 import java.awt.Point
 import java.awt.Rectangle
+import java.awt.Window
 import java.awt.event.MouseEvent
 import java.awt.geom.Ellipse2D
 import java.nio.ByteBuffer
 import java.nio.file.Path
 import javax.swing.Icon
+import javax.swing.JComponent
 import javax.swing.JEditorPane
+import javax.swing.JRootPane
 import javax.swing.SwingUtilities
 import javax.swing.event.HyperlinkEvent
 import javax.swing.event.HyperlinkListener
@@ -261,7 +265,10 @@ internal fun Component.containsFocus(): Boolean {
 /** Checks if the mouse pointer is inside this [Component]. */
 fun Component.isMouseInside(): Boolean = mouseLocation() != null
 
-/** Returns the mouse pointer location in this [Component]'s coordinate space if the mouse is inside it, or null otherwise. */
+/**
+ * Returns the mouse pointer location in this [Component]'s coordinate space if the mouse is inside its unoccluded visible area, or null
+ * otherwise.
+ */
 fun Component.mouseLocation(): Point? {
   // Ensure the component is showing on the screen before converting screen coordinates.
   if (!isShowing) {
@@ -275,10 +282,106 @@ fun Component.mouseLocation(): Point? {
       null
     } ?: return null
   val mouseLocation = pointerInfo.location
+  val screenLocation = Point(mouseLocation)
   // Convert the screen coordinates to the component's coordinate space.
   SwingUtilities.convertPointFromScreen(mouseLocation, this)
-  // Check if the converted point is inside the component.
-  return if (contains(mouseLocation)) mouseLocation else null
+  if (!contains(mouseLocation) || (this is JComponent && !visibleRect.contains(mouseLocation))) {
+    return null
+  }
+  val window = SwingUtilities.getWindowAncestor(this)
+  if (window != null && isOccludedByAnotherWindow(window, screenLocation)) {
+    return null
+  }
+  // Check that no overlapping sibling component (such as a floating toolbar or scrollbar) occludes the point.
+  var child: Component = this
+  var pointInChild = Point(mouseLocation)
+  while (true) {
+    val parent = child.parent ?: break
+    if (parent is JRootPane || parent is Window) {
+      break
+    }
+    val xInParent = pointInChild.x + child.x
+    val yInParent = pointInChild.y + child.y
+    if (!parent.contains(xInParent, yInParent)) {
+      return null
+    }
+    for (sibling in parent.components) {
+      if (sibling === child) {
+        break
+      }
+      if (sibling.isVisible && sibling.contains(xInParent - sibling.x, yInParent - sibling.y)) {
+        return null
+      }
+    }
+    pointInChild = Point(xInParent, yInParent)
+    child = parent
+  }
+  return mouseLocation
+}
+
+private fun isOccludedByAnotherWindow(window: Window, screenPoint: Point): Boolean {
+  if (containsInOwnedWindows(window, screenPoint)) {
+    return true
+  }
+  if (window.isAlwaysOnTop) {
+    return false
+  }
+  val activeWindow = KeyboardFocusManager.getCurrentKeyboardFocusManager().activeWindow ?: return false
+  if (activeWindow === window) {
+    return false
+  }
+  if (isOwnedBy(window, activeWindow)) {
+    return containsInSiblingPopupWindows(activeWindow, window, screenPoint)
+  }
+  return containsScreenPoint(activeWindow, screenPoint) || containsInOwnedWindows(activeWindow, screenPoint)
+}
+
+private fun containsInSiblingPopupWindows(owner: Window, window: Window, screenPoint: Point): Boolean {
+  for (owned in owner.ownedWindows) {
+    if (owned === window) {
+      continue
+    }
+    if (!isOwnedBy(window, owned) && (owned.type == Window.Type.POPUP || owned.isAlwaysOnTop)) {
+      if (containsScreenPoint(owned, screenPoint) || containsInOwnedWindows(owned, screenPoint)) {
+        return true
+      }
+    } else if (containsInSiblingPopupWindows(owned, window, screenPoint)) {
+      return true
+    }
+  }
+  return false
+}
+
+private fun containsInOwnedWindows(owner: Window, screenPoint: Point): Boolean {
+  for (owned in owner.ownedWindows) {
+    if (containsScreenPoint(owned, screenPoint) || containsInOwnedWindows(owned, screenPoint)) {
+      return true
+    }
+  }
+  return false
+}
+
+private fun containsScreenPoint(window: Window, screenPoint: Point): Boolean {
+  if (!window.isShowing) {
+    return false
+  }
+  return try {
+    val loc = window.locationOnScreen
+    screenPoint.x >= loc.x && screenPoint.y >= loc.y && screenPoint.x < loc.x + window.width && screenPoint.y < loc.y + window.height
+  } catch (_: IllegalComponentStateException) {
+    false
+  }
+}
+
+private fun isOwnedBy(window: Window, potentialOwner: Window): Boolean {
+  var current = window.owner
+  while (current != null) {
+    if (current === potentialOwner) {
+      return true
+    }
+    current = current.owner
+  }
+  return false
 }
 
 /** Checks if the point with the given coordinates in this [Container]'s coordinate space is inside any of its visible child components. */
